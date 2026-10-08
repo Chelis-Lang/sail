@@ -603,6 +603,7 @@ fn key_report(
             name: "z3".to_owned(),
             version,
             binary_sha256: sail_key::sha256(&binary),
+            platform: SolverIdentity::host_platform(),
         }),
         _ => None,
     };

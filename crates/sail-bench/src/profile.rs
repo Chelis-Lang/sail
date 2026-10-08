@@ -234,6 +234,7 @@ mod tests {
         CheckRecord {
             seq,
             key: None,
+            prefix_key: None,
             answer: answer.map(str::to_owned),
             sent_us: sent,
             answered_us: answered,

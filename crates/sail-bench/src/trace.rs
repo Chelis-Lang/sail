@@ -1,4 +1,5 @@
-//! Reading the shim's trace directories (`SAIL_TRACE_DIR`, trace version 1).
+//! Reading the shim's trace directories (`SAIL_TRACE_DIR`, trace versions 1
+//! and 2; version 2 adds `prefix_key`, the v2 key of ADR 0008).
 //!
 //! Each solver process the shim served left three files, all named by the
 //! session id `<pid>-<nanos>`: `<id>.in.smt2`, `<id>.out` and `<id>.jsonl`
@@ -14,8 +15,8 @@ use serde::Deserialize;
 
 use crate::error::BenchError;
 
-/// The trace format version this module reads.
-pub const TRACE_VERSION: u32 = 1;
+/// The newest trace format version this module reads (it also reads 1).
+pub const TRACE_VERSION: u32 = 2;
 
 /// One record of a `<id>.jsonl` trace. Unknown record types are kept as
 /// [`Record::Other`] so newer traces still load.
@@ -49,12 +50,15 @@ pub enum Record {
 }
 
 /// A `check` record.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 pub struct CheckRecord {
     /// Index of the check within its session.
     pub seq: u64,
     /// Query key v1, if the snapshot was exact.
     pub key: Option<String>,
+    /// Query key v2 (whole process prefix), from trace version 2 on.
+    #[serde(default)]
+    pub prefix_key: Option<String>,
     /// The paired answer, if pairing held.
     pub answer: Option<String>,
     /// Microseconds from session start until the check was sent.
@@ -145,11 +149,13 @@ pub fn parse_jsonl(text: &str, path: &Path) -> Result<SessionTrace, BenchError> 
         })?;
         match record {
             Record::Start { trace_version } => {
-                if trace_version != TRACE_VERSION {
+                if !(1..=TRACE_VERSION).contains(&trace_version) {
                     return Err(BenchError::TraceFormat {
                         path: path.to_path_buf(),
                         line: n + 1,
-                        message: format!("trace version {trace_version}, expected {TRACE_VERSION}"),
+                        message: format!(
+                            "trace version {trace_version}, expected 1 to {TRACE_VERSION}"
+                        ),
                     });
                 }
                 trace.trace_version = Some(trace_version);
@@ -265,9 +271,14 @@ mod tests {
         let err = parse_jsonl("{\"type\":\"check\"}\n", Path::new("x.jsonl"));
         assert!(matches!(err, Err(BenchError::TraceFormat { line: 1, .. })));
         let err = parse_jsonl(
-            "{\"type\":\"start\",\"trace_version\":2}\n",
+            "{\"type\":\"start\",\"trace_version\":3}\n",
             Path::new("x.jsonl"),
         );
         assert!(matches!(err, Err(BenchError::TraceFormat { .. })));
+        let ok = parse_jsonl(
+            "{\"type\":\"start\",\"trace_version\":2}\n",
+            Path::new("x.jsonl"),
+        );
+        assert!(ok.is_ok());
     }
 }

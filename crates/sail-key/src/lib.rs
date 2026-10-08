@@ -1,6 +1,14 @@
 //! Content-addressed keys for solver queries.
 //!
-//! A [`QueryKey`] is a SHA-256 digest that binds:
+//! Two key versions exist:
+//! - **v2, [`PrefixHasher`]: the default-mode key (ADR 0008).** It binds the
+//!   mode, the solver identity (including the platform) and every raw byte
+//!   the solver process received, up to and including the check command.
+//! - **v1, [`query_key`]: stack only.** It is used for measurement, and is
+//!   the candidate key for the named opt-in mode (ADR 0010). It is described
+//!   below.
+//!
+//! A v1 [`QueryKey`] is a SHA-256 digest that binds:
 //! - the verification mode, so opt-in modes can never collide with default
 //!   mode (charter rule 8);
 //! - the exact solver identity: name, version string and binary hash
@@ -28,6 +36,18 @@ pub struct SolverIdentity {
     pub version: String,
     /// SHA-256 of the solver executable.
     pub binary_sha256: [u8; 32],
+    /// Platform class, for example `"macos-aarch64"` (ADR 0004 update,
+    /// ADR 0010): the same binary can spend different effort on different
+    /// platforms.
+    pub platform: String,
+}
+
+impl SolverIdentity {
+    /// The platform class of this machine: `<os>-<arch>`.
+    #[must_use]
+    pub fn host_platform() -> String {
+        format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
+    }
 }
 
 /// The verification mode a result is produced under.
@@ -82,10 +102,79 @@ pub fn query_key(snapshot: &Snapshot, solver: &SolverIdentity, mode: &Mode) -> O
     field(&mut hasher, solver.name.as_bytes());
     field(&mut hasher, solver.version.as_bytes());
     field(&mut hasher, &solver.binary_sha256);
+    field(&mut hasher, solver.platform.as_bytes());
     let mut state = Vec::new();
     snapshot.encode_state(&mut state);
     field(&mut hasher, &state);
     Some(QueryKey(hasher.finalize().into()))
+}
+
+/// The running v2 key of one solver process (ADR 0008).
+///
+/// Feed it every byte sent to the process, exactly as sent, in order. At a
+/// check, after feeding the check command's bytes, [`PrefixHasher::key`]
+/// gives the key. Nothing is normalized: whitespace and comments between
+/// commands count too.
+#[derive(Clone)]
+pub struct PrefixHasher {
+    hasher: Sha256,
+    bytes: u64,
+}
+
+impl fmt::Debug for PrefixHasher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PrefixHasher({} bytes)", self.bytes)
+    }
+}
+
+impl PrefixHasher {
+    /// A hasher for a new process of `solver` under `mode`.
+    #[must_use]
+    pub fn new(solver: &SolverIdentity, mode: &Mode) -> Self {
+        let mut hasher = Sha256::new();
+        field(&mut hasher, b"sail-key/prefix/v2");
+        match mode {
+            Mode::Default => field(&mut hasher, b"mode:default"),
+            Mode::OptIn(name) => {
+                field(&mut hasher, b"mode:opt-in");
+                field(&mut hasher, name.as_bytes());
+            }
+        }
+        field(&mut hasher, solver.name.as_bytes());
+        field(&mut hasher, solver.version.as_bytes());
+        field(&mut hasher, &solver.binary_sha256);
+        field(&mut hasher, solver.platform.as_bytes());
+        Self { hasher, bytes: 0 }
+    }
+
+    /// Feeds the next bytes the process received.
+    pub fn update(&mut self, bytes: &[u8]) {
+        self.hasher.update(bytes);
+        self.bytes += bytes.len() as u64;
+    }
+
+    /// Bytes fed so far.
+    #[must_use]
+    pub fn len(&self) -> u64 {
+        self.bytes
+    }
+
+    /// Whether nothing has been fed yet.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.bytes == 0
+    }
+
+    /// The key for a check whose command ends exactly at the bytes fed so
+    /// far. The total length is bound, so a prefix and its extension never
+    /// share a key.
+    #[must_use]
+    pub fn key(&self) -> QueryKey {
+        let mut h = self.hasher.clone();
+        h.update(b"\x00sail-key/prefix/v2/end");
+        h.update(self.bytes.to_le_bytes());
+        QueryKey(h.finalize().into())
+    }
 }
 
 /// SHA-256 of a byte string, for solver binary identity and trace digests.

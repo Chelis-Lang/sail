@@ -21,7 +21,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use sail_key::{Mode, SolverIdentity, query_key, sha256};
+use sail_key::{Mode, PrefixHasher, SolverIdentity, query_key, sha256};
 use sail_session::{Event, Session, Snapshot};
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, ResponseSplitter};
@@ -30,7 +30,7 @@ use serde::Serialize;
 use crate::TapEvent;
 
 /// Trace format version; bump on any incompatible change to the records.
-const TRACE_VERSION: u32 = 1;
+const TRACE_VERSION: u32 = 2;
 
 /// What the tap needs to know about its session.
 pub(crate) struct Context {
@@ -60,7 +60,10 @@ enum Record<'a> {
     },
     Check {
         seq: u64,
+        /// Key v1 (stack only; measurement, ADR 0004).
         key: Option<String>,
+        /// Key v2 (whole process prefix; default mode, ADR 0008).
+        prefix_key: Option<String>,
         answer: Option<String>,
         sent_us: u64,
         answered_us: Option<u64>,
@@ -93,6 +96,7 @@ enum Pending {
         seq: u64,
         snapshot: Box<Snapshot>,
         key: Option<String>,
+        prefix_key: Option<String>,
         sent: Instant,
     },
     Statistics,
@@ -149,6 +153,10 @@ struct Tap<'a> {
     raw_out: BufWriter<File>,
     records: BufWriter<File>,
     identity: Option<SolverIdentity>,
+    /// Running v2 key over the raw input (ADR 0008).
+    prefix: Option<PrefixHasher>,
+    /// Raw input not yet fed to `prefix`.
+    unhashed: Vec<u8>,
     commands: CommandSplitter,
     responses: ResponseSplitter,
     session: Session,
@@ -178,6 +186,7 @@ impl Tap<'_> {
             seq,
             snapshot,
             key,
+            prefix_key,
             sent,
         } = pending
         else {
@@ -187,6 +196,7 @@ impl Tap<'_> {
         let record = Record::Check {
             seq,
             key,
+            prefix_key,
             answer: answer.map(|a| String::from_utf8_lossy(a).into_owned()),
             sent_us: micros(started, sent),
             answered_us: at.map(|t| micros(started, t)),
@@ -214,10 +224,21 @@ impl Tap<'_> {
         if self.raw_in.write_all(bytes).is_err() {
             self.failed = true;
         }
+        self.unhashed.extend_from_slice(bytes);
         let mut items = Vec::new();
         self.commands.push(bytes, &mut items);
         for item in items {
             self.command_count += 1;
+            // Feed the raw stream up to the end of this command, so the v2
+            // key at a check covers exactly the bytes up to and including it.
+            if let Some(prefix) = &mut self.prefix {
+                let end = item.offset + item.bytes.len() as u64;
+                let n = usize::try_from(end.saturating_sub(prefix.len()))
+                    .unwrap_or(usize::MAX)
+                    .min(self.unhashed.len());
+                prefix.update(self.unhashed.get(..n).unwrap_or_default());
+                self.unhashed.drain(..n);
+            }
             let expects = self.session.expects_output(&item.bytes);
             let is_stats = matches!(
                 classify(&item.bytes).map(|c| c.kind),
@@ -235,10 +256,12 @@ impl Tap<'_> {
                         .as_ref()
                         .and_then(|id| query_key(&snapshot, id, &Mode::Default))
                         .map(|k| k.to_string());
+                    let prefix_key = self.prefix.as_ref().map(|p| p.key().to_string());
                     Some(Pending::Check {
                         seq,
                         snapshot,
                         key,
+                        prefix_key,
                         sent: at,
                     })
                 }
@@ -342,6 +365,7 @@ pub(crate) fn run(ctx: &Context, rx: &Receiver<TapEvent>) {
             name: "z3".to_owned(),
             version: version.clone(),
             binary_sha256,
+            platform: SolverIdentity::host_platform(),
         }),
         _ => None,
     };
@@ -355,6 +379,10 @@ pub(crate) fn run(ctx: &Context, rx: &Receiver<TapEvent>) {
         raw_in,
         raw_out,
         records,
+        prefix: identity
+            .as_ref()
+            .map(|id| PrefixHasher::new(id, &Mode::Default)),
+        unhashed: Vec::new(),
         identity,
         commands: CommandSplitter::new(),
         responses: ResponseSplitter::new(),
