@@ -1,5 +1,10 @@
-//! Embeddable library API, daemon wire protocol and structured output schema.
+//! The embeddable API and the daemon wire protocol.
 //!
-//! Status: placeholder. See `docs/ROADMAP.md` for when this crate is built
-//! out and `docs/CHARTER.md` for its responsibility.
+//! Status: the daemon protocol and the thin client the shim uses (ADR 0011).
+//! The structured output schema arrives with `sail verify`.
 #![forbid(unsafe_code)]
+
+pub mod protocol;
+
+#[cfg(unix)]
+pub mod client;

@@ -12,6 +12,8 @@ name = "sail"
 path = "src/main.rs"
 
 [dependencies]
+sail-daemon.workspace = true
+sail-verus.workspace = true
 
 [lints]
 workspace = true

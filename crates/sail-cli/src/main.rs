@@ -50,6 +50,7 @@ fn run(args: &[String], out: &mut impl std::io::Write, err: &mut impl std::io::W
             let _ = writeln!(out, "sail {}", env!("CARGO_PKG_VERSION"));
             ExitCode::SUCCESS
         }
+        Some("serve") => serve(args.get(1..).unwrap_or_default(), err),
         Some(cmd) if COMMANDS.iter().any(|(name, _)| *name == cmd) => {
             let _ = writeln!(
                 err,
@@ -63,6 +64,57 @@ fn run(args: &[String], out: &mut impl std::io::Write, err: &mut impl std::io::W
             ExitCode::from(EXIT_USAGE)
         }
     }
+}
+
+/// `sail serve [--socket PATH] [--cache DIR]`: runs the daemon in the
+/// foreground (ADR 0011). Defaults: `<cache>/daemon.sock` and
+/// `<cache>/results`, where `<cache>` is `$SAIL_CACHE_DIR` or
+/// `~/.cache/sail`.
+#[cfg(unix)]
+fn serve(args: &[String], err: &mut impl std::io::Write) -> ExitCode {
+    let cache = match sail_verus::cache_dir() {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = writeln!(err, "{e}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+    };
+    let (mut socket, mut root) = (cache.join("daemon.sock"), cache.join("results"));
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let Some(value) = it.next() else {
+            let _ = writeln!(err, "error[SAIL0002]: {arg} needs a value");
+            return ExitCode::from(EXIT_USAGE);
+        };
+        match arg.as_str() {
+            "--socket" => socket = value.into(),
+            "--cache" => root = value.into(),
+            _ => {
+                let _ = writeln!(err, "error[SAIL0002]: unknown argument `{arg}`");
+                return ExitCode::from(EXIT_USAGE);
+            }
+        }
+    }
+    let _ = writeln!(
+        err,
+        "sail daemon: socket {}, cache {}",
+        socket.display(),
+        root.display()
+    );
+    let stats = std::sync::Arc::new(sail_daemon::Stats::default());
+    match sail_daemon::serve(&socket, &root, stats) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let _ = writeln!(err, "error[SAIL0003]: daemon failed: {e}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn serve(_args: &[String], err: &mut impl std::io::Write) -> ExitCode {
+    let _ = writeln!(err, "error[SAIL0001]: `sail serve` needs Unix sockets");
+    ExitCode::from(EXIT_UNIMPLEMENTED)
 }
 
 fn main() -> ExitCode {
