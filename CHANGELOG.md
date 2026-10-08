@@ -9,3 +9,5 @@ semantic versioning once the API is published.
 - `sail-z3`: a pass-through Z3 shim for Verus (`VERUS_Z3_PATH`), with an
   optional trace tap (`SAIL_TRACE_DIR`).
 - `cargo xtask fetch-verus`: installs the pinned Verus release.
+- `sail-bench profile|seeds|history`: query-time profile, seed stability and
+  history-dependence analyses over shim traces.

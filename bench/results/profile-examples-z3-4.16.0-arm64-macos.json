@@ -1,0 +1,3188 @@
+{
+  "meta": {
+    "date": "2026-10-08",
+    "machine": "Apple M3 (8 cores), 24 GB, macOS 26.5 arm64; other work running concurrently",
+    "verus_release": "0.2026.10.04.426d8b0",
+    "z3_version": "4.16.0",
+    "jobs": 4,
+    "docs": "docs/survey/solver-behavior.md",
+    "corpus": "examples"
+  },
+  "sessions": 285,
+  "checks": 1585,
+  "unanswered": 0,
+  "unpaired_sessions": 0,
+  "incomplete_sessions": 0,
+  "solve_us": {
+    "count": 1585,
+    "total": 7211868,
+    "min": 11,
+    "p50": 901,
+    "p90": 7760,
+    "p99": 51297,
+    "max": 751771,
+    "mean": 4550.074447949527,
+    "top_1pct_share": 0.3474794602452513,
+    "top_10pct_share": 0.7238339636831955
+  },
+  "answers": {
+    "unknown": 97,
+    "unsat": 1488
+  },
+  "groups": {
+    "adts": {
+      "sessions": 1,
+      "checks": 7,
+      "total_us": 613
+    },
+    "adts_eq": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 182
+    },
+    "assert_by_compute": {
+      "sessions": 8,
+      "checks": 31,
+      "total_us": 17841
+    },
+    "assertions": {
+      "sessions": 1,
+      "checks": 11,
+      "total_us": 1051
+    },
+    "assorted_demo": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 514
+    },
+    "atomic_increment": {
+      "sessions": 1,
+      "checks": 6,
+      "total_us": 6925
+    },
+    "atomics": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 1676
+    },
+    "basic_failure": {
+      "sessions": 1,
+      "checks": 10,
+      "total_us": 1549
+    },
+    "basic_lock1": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 2927
+    },
+    "basic_lock2": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 4097
+    },
+    "bitmap": {
+      "sessions": 3,
+      "checks": 8,
+      "total_us": 61150
+    },
+    "bitvector_basic": {
+      "sessions": 18,
+      "checks": 23,
+      "total_us": 68130
+    },
+    "bitvector_equivalence": {
+      "sessions": 5,
+      "checks": 8,
+      "total_us": 32834
+    },
+    "bitvector_garbage_collection": {
+      "sessions": 3,
+      "checks": 5,
+      "total_us": 30809
+    },
+    "broadcast_proof": {
+      "sessions": 5,
+      "checks": 8,
+      "total_us": 15581
+    },
+    "calc": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 5906
+    },
+    "cells": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 667
+    },
+    "cuckoo_hash_table__cuckoo": {
+      "sessions": 4,
+      "checks": 50,
+      "total_us": 1594943
+    },
+    "cuckoo_hash_table__main": {
+      "sessions": 5,
+      "checks": 51,
+      "total_us": 1211173
+    },
+    "cuckoo_hash_table__rwlock": {
+      "sessions": 2,
+      "checks": 27,
+      "total_us": 47742
+    },
+    "datatypes": {
+      "sessions": 1,
+      "checks": 5,
+      "total_us": 3135
+    },
+    "debug": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 437
+    },
+    "debug_expand": {
+      "sessions": 2,
+      "checks": 44,
+      "total_us": 11448
+    },
+    "doubly_linked": {
+      "sessions": 3,
+      "checks": 15,
+      "total_us": 148344
+    },
+    "doubly_linked_xor": {
+      "sessions": 16,
+      "checks": 22,
+      "total_us": 190042
+    },
+    "entry_api": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 3526
+    },
+    "even_cell": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 2022
+    },
+    "exec_termination_example": {
+      "sessions": 1,
+      "checks": 14,
+      "total_us": 62734
+    },
+    "extensionality": {
+      "sessions": 4,
+      "checks": 13,
+      "total_us": 15210
+    },
+    "external": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 76
+    },
+    "float": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 1774
+    },
+    "fun_ext": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 450
+    },
+    "generics": {
+      "sessions": 1,
+      "checks": 7,
+      "total_us": 839
+    },
+    "guide__assert_by_compute": {
+      "sessions": 1,
+      "checks": 7,
+      "total_us": 2456
+    },
+    "guide__bst_map": {
+      "sessions": 1,
+      "checks": 19,
+      "total_us": 141733
+    },
+    "guide__bst_map_generic": {
+      "sessions": 1,
+      "checks": 34,
+      "total_us": 218920
+    },
+    "guide__bst_map_type_invariant": {
+      "sessions": 1,
+      "checks": 18,
+      "total_us": 126468
+    },
+    "guide__calc": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 287
+    },
+    "guide__const": {
+      "sessions": 2,
+      "checks": 13,
+      "total_us": 3035
+    },
+    "guide__datatypes": {
+      "sessions": 2,
+      "checks": 6,
+      "total_us": 1797
+    },
+    "guide__equality": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 146
+    },
+    "guide__exec_attr": {
+      "sessions": 1,
+      "checks": 8,
+      "total_us": 19509
+    },
+    "guide__exec_spec_unverified": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 1772
+    },
+    "guide__exec_spec_verified": {
+      "sessions": 1,
+      "checks": 6,
+      "total_us": 10922
+    },
+    "guide__ext_equal": {
+      "sessions": 2,
+      "checks": 5,
+      "total_us": 21262
+    },
+    "guide__external_trait_specs": {
+      "sessions": 2,
+      "checks": 4,
+      "total_us": 606
+    },
+    "guide__getting_started": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 707
+    },
+    "guide__higher_order_fns": {
+      "sessions": 4,
+      "checks": 18,
+      "total_us": 17765
+    },
+    "guide__integers": {
+      "sessions": 1,
+      "checks": 9,
+      "total_us": 601
+    },
+    "guide__interior_mutability": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 810
+    },
+    "guide__invariants": {
+      "sessions": 1,
+      "checks": 12,
+      "total_us": 67870
+    },
+    "guide__iterators": {
+      "sessions": 1,
+      "checks": 27,
+      "total_us": 140728
+    },
+    "guide__lib_examples": {
+      "sessions": 2,
+      "checks": 16,
+      "total_us": 53419
+    },
+    "guide__logatom": {
+      "sessions": 1,
+      "checks": 6,
+      "total_us": 9097
+    },
+    "guide__modes": {
+      "sessions": 3,
+      "checks": 11,
+      "total_us": 2298
+    },
+    "guide__nonlinear_bitvec": {
+      "sessions": 8,
+      "checks": 12,
+      "total_us": 1491
+    },
+    "guide__overflow": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 560
+    },
+    "guide__pervasive_example": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 1259
+    },
+    "guide__quants": {
+      "sessions": 2,
+      "checks": 27,
+      "total_us": 31604
+    },
+    "guide__recursion": {
+      "sessions": 4,
+      "checks": 34,
+      "total_us": 79808
+    },
+    "guide__references": {
+      "sessions": 1,
+      "checks": 11,
+      "total_us": 1979
+    },
+    "guide__requires_ensures": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 869
+    },
+    "guide__requires_ensures_edit": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 754
+    },
+    "guide__strings": {
+      "sessions": 1,
+      "checks": 5,
+      "total_us": 2758
+    },
+    "guide__traits": {
+      "sessions": 1,
+      "checks": 13,
+      "total_us": 5441
+    },
+    "helping": {
+      "sessions": 1,
+      "checks": 11,
+      "total_us": 31888
+    },
+    "imo_1988_6": {
+      "sessions": 15,
+      "checks": 18,
+      "total_us": 35307
+    },
+    "impl_basic": {
+      "sessions": 1,
+      "checks": 6,
+      "total_us": 627
+    },
+    "integers": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 792
+    },
+    "invariants": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 1281
+    },
+    "iterators__map_and_filter": {
+      "sessions": 1,
+      "checks": 13,
+      "total_us": 126948
+    },
+    "iterators__skip": {
+      "sessions": 1,
+      "checks": 6,
+      "total_us": 58800
+    },
+    "iterators__slice_iter_mut": {
+      "sessions": 1,
+      "checks": 10,
+      "total_us": 27736
+    },
+    "logatom_lib": {
+      "sessions": 1,
+      "checks": 14,
+      "total_us": 19018
+    },
+    "mergesort": {
+      "sessions": 1,
+      "checks": 9,
+      "total_us": 162025
+    },
+    "modules": {
+      "sessions": 2,
+      "checks": 2,
+      "total_us": 72
+    },
+    "multiset": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 55457
+    },
+    "nevd_script": {
+      "sessions": 2,
+      "checks": 9,
+      "total_us": 7837
+    },
+    "overflow": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 1423
+    },
+    "playground": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 709
+    },
+    "power_of_2": {
+      "sessions": 12,
+      "checks": 18,
+      "total_us": 47262
+    },
+    "prelude": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 987
+    },
+    "proposal-rw2022": {
+      "sessions": 1,
+      "checks": 5,
+      "total_us": 6102
+    },
+    "quantifiers": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 1810
+    },
+    "recommends": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 4696
+    },
+    "recursion": {
+      "sessions": 1,
+      "checks": 11,
+      "total_us": 20999
+    },
+    "recursive_types": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 197
+    },
+    "resource__agreement": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 1484
+    },
+    "resource__count_to_two": {
+      "sessions": 2,
+      "checks": 24,
+      "total_us": 29053
+    },
+    "resource__log": {
+      "sessions": 1,
+      "checks": 14,
+      "total_us": 69412
+    },
+    "resource__monotonic_counter": {
+      "sessions": 1,
+      "checks": 13,
+      "total_us": 147029
+    },
+    "resource__oneshot": {
+      "sessions": 1,
+      "checks": 19,
+      "total_us": 16449
+    },
+    "rfmig_script": {
+      "sessions": 4,
+      "checks": 14,
+      "total_us": 10873
+    },
+    "rw2022_script": {
+      "sessions": 2,
+      "checks": 12,
+      "total_us": 7617
+    },
+    "rwlock_vstd": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 1689
+    },
+    "set_from_vec": {
+      "sessions": 1,
+      "checks": 5,
+      "total_us": 25720
+    },
+    "state_machines__adder": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 1024
+    },
+    "state_machines__adder_generic": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 1104
+    },
+    "state_machines__adder_with_max": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 1219
+    },
+    "state_machines__arc": {
+      "sessions": 2,
+      "checks": 14,
+      "total_us": 18964
+    },
+    "state_machines__conditional": {
+      "sessions": 1,
+      "checks": 5,
+      "total_us": 4054
+    },
+    "state_machines__counting": {
+      "sessions": 2,
+      "checks": 18,
+      "total_us": 53795
+    },
+    "state_machines__dist_rwlock": {
+      "sessions": 2,
+      "checks": 17,
+      "total_us": 190818
+    },
+    "state_machines__flat_combine": {
+      "sessions": 1,
+      "checks": 13,
+      "total_us": 42171
+    },
+    "state_machines__interner": {
+      "sessions": 2,
+      "checks": 13,
+      "total_us": 77750
+    },
+    "state_machines__leader_election_complete": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 19562
+    },
+    "state_machines__maps": {
+      "sessions": 2,
+      "checks": 11,
+      "total_us": 29113
+    },
+    "state_machines__petersons_algorithm": {
+      "sessions": 1,
+      "checks": 17,
+      "total_us": 48745
+    },
+    "state_machines__reference-examples__strategy_option": {
+      "sessions": 2,
+      "checks": 9,
+      "total_us": 3517
+    },
+    "state_machines__refinement": {
+      "sessions": 3,
+      "checks": 7,
+      "total_us": 23740
+    },
+    "state_machines__refinement_labels": {
+      "sessions": 3,
+      "checks": 7,
+      "total_us": 17121
+    },
+    "state_machines__rwlock": {
+      "sessions": 1,
+      "checks": 14,
+      "total_us": 81658
+    },
+    "state_machines__top_sort_dfs": {
+      "sessions": 2,
+      "checks": 13,
+      "total_us": 121440
+    },
+    "state_machines__tutorial__counting_to_2": {
+      "sessions": 2,
+      "checks": 6,
+      "total_us": 10801
+    },
+    "state_machines__tutorial__counting_to_n": {
+      "sessions": 2,
+      "checks": 8,
+      "total_us": 34251
+    },
+    "state_machines__tutorial__counting_to_n_atomic": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 9983
+    },
+    "state_machines__tutorial__fifo": {
+      "sessions": 2,
+      "checks": 18,
+      "total_us": 224165
+    },
+    "state_machines__tutorial__pcell_example": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 675
+    },
+    "state_machines__tutorial__rc": {
+      "sessions": 2,
+      "checks": 13,
+      "total_us": 20731
+    },
+    "state_machines__tutorial__ref_cell": {
+      "sessions": 2,
+      "checks": 18,
+      "total_us": 67524
+    },
+    "statements": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 3430
+    },
+    "statics": {
+      "sessions": 1,
+      "checks": 9,
+      "total_us": 11283
+    },
+    "std_test__chars_iterator": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 6513
+    },
+    "std_test__num": {
+      "sessions": 1,
+      "checks": 19,
+      "total_us": 39806
+    },
+    "std_test__option_test": {
+      "sessions": 1,
+      "checks": 7,
+      "total_us": 10170
+    },
+    "std_test__rc_test": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 3490
+    },
+    "std_test__result": {
+      "sessions": 1,
+      "checks": 5,
+      "total_us": 15377
+    },
+    "std_test__template": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 3338
+    },
+    "std_test__vec_test": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 5732
+    },
+    "std_test__vecdeque_test": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 30186
+    },
+    "structural": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 4224
+    },
+    "summer_school__chapter-1-22": {
+      "sessions": 1,
+      "checks": 6,
+      "total_us": 118111
+    },
+    "summer_school__chapter-2-1": {
+      "sessions": 1,
+      "checks": 1,
+      "total_us": 8986
+    },
+    "summer_school__chapter-2-2": {
+      "sessions": 1,
+      "checks": 3,
+      "total_us": 6956
+    },
+    "summer_school__chapter-2-3": {
+      "sessions": 1,
+      "checks": 5,
+      "total_us": 1483
+    },
+    "summer_school__chapter-6-1": {
+      "sessions": 2,
+      "checks": 7,
+      "total_us": 61668
+    },
+    "syntax": {
+      "sessions": 5,
+      "checks": 47,
+      "total_us": 124768
+    },
+    "syntax_attr": {
+      "sessions": 3,
+      "checks": 15,
+      "total_us": 28142
+    },
+    "test": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 3304
+    },
+    "test_expand_errors": {
+      "sessions": 1,
+      "checks": 185,
+      "total_us": 55442
+    },
+    "thread": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 946
+    },
+    "trait_for_fn": {
+      "sessions": 1,
+      "checks": 2,
+      "total_us": 4912
+    },
+    "traits": {
+      "sessions": 1,
+      "checks": 4,
+      "total_us": 5499
+    },
+    "vectors": {
+      "sessions": 1,
+      "checks": 9,
+      "total_us": 117800
+    }
+  },
+  "processes": [
+    {
+      "id": "cuckoo_hash_table__cuckoo/6828-1791470509959908000",
+      "checks": 14,
+      "answered": 14,
+      "total_us": 981994,
+      "max_us": 751771,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__main/6872-1791470513377693000",
+      "checks": 14,
+      "answered": 14,
+      "total_us": 779255,
+      "max_us": 609398,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6822-1791470509833304000",
+      "checks": 12,
+      "answered": 12,
+      "total_us": 456433,
+      "max_us": 159518,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__main/6869-1791470513340597000",
+      "checks": 12,
+      "answered": 12,
+      "total_us": 312893,
+      "max_us": 115620,
+      "paired": true
+    },
+    {
+      "id": "guide__bst_map_generic/7443-1791470524872666000",
+      "checks": 34,
+      "answered": 34,
+      "total_us": 218920,
+      "max_us": 65022,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7042-1791470517617696000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 188988,
+      "max_us": 68886,
+      "paired": true
+    },
+    {
+      "id": "mergesort/9051-1791470549142299000",
+      "checks": 9,
+      "answered": 9,
+      "total_us": 162025,
+      "max_us": 64869,
+      "paired": true
+    },
+    {
+      "id": "state_machines__dist_rwlock/10013-1791470566043166000",
+      "checks": 15,
+      "answered": 15,
+      "total_us": 150415,
+      "max_us": 43624,
+      "paired": true
+    },
+    {
+      "id": "resource__monotonic_counter/9610-1791470557677874000",
+      "checks": 13,
+      "answered": 13,
+      "total_us": 147029,
+      "max_us": 123883,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked/7124-1791470519517204000",
+      "checks": 13,
+      "answered": 13,
+      "total_us": 142201,
+      "max_us": 46390,
+      "paired": true
+    },
+    {
+      "id": "guide__bst_map/7505-1791470526195076000",
+      "checks": 19,
+      "answered": 19,
+      "total_us": 141733,
+      "max_us": 30821,
+      "paired": true
+    },
+    {
+      "id": "guide__iterators/8121-1791470534915040000",
+      "checks": 27,
+      "answered": 27,
+      "total_us": 140728,
+      "max_us": 33814,
+      "paired": true
+    },
+    {
+      "id": "iterators__map_and_filter/8921-1791470546631192000",
+      "checks": 13,
+      "answered": 13,
+      "total_us": 126948,
+      "max_us": 44578,
+      "paired": true
+    },
+    {
+      "id": "guide__bst_map_type_invariant/7474-1791470525574113000",
+      "checks": 18,
+      "answered": 18,
+      "total_us": 126468,
+      "max_us": 33821,
+      "paired": true
+    },
+    {
+      "id": "summer_school__chapter-1-22/11096-1791470595018413000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 118111,
+      "max_us": 42036,
+      "paired": true
+    },
+    {
+      "id": "vectors/11523-1791470607677565000",
+      "checks": 9,
+      "answered": 9,
+      "total_us": 117800,
+      "max_us": 51297,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__fifo/10571-1791470581069078000",
+      "checks": 9,
+      "answered": 9,
+      "total_us": 113703,
+      "max_us": 35148,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__fifo/10570-1791470581067050000",
+      "checks": 9,
+      "answered": 9,
+      "total_us": 110462,
+      "max_us": 20721,
+      "paired": true
+    },
+    {
+      "id": "syntax/11313-1791470600986073000",
+      "checks": 43,
+      "answered": 43,
+      "total_us": 100536,
+      "max_us": 14164,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6829-1791470509972166000",
+      "checks": 16,
+      "answered": 16,
+      "total_us": 84054,
+      "max_us": 15670,
+      "paired": true
+    },
+    {
+      "id": "state_machines__rwlock/10379-1791470575746617000",
+      "checks": 14,
+      "answered": 14,
+      "total_us": 81658,
+      "max_us": 10304,
+      "paired": true
+    },
+    {
+      "id": "state_machines__top_sort_dfs/10421-1791470577138692000",
+      "checks": 10,
+      "answered": 10,
+      "total_us": 81639,
+      "max_us": 24991,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6824-1791470509845580000",
+      "checks": 8,
+      "answered": 8,
+      "total_us": 72462,
+      "max_us": 23973,
+      "paired": true
+    },
+    {
+      "id": "guide__recursion/8481-1791470539640393000",
+      "checks": 27,
+      "answered": 27,
+      "total_us": 70481,
+      "max_us": 15230,
+      "paired": true
+    },
+    {
+      "id": "resource__log/9574-1791470557161090000",
+      "checks": 14,
+      "answered": 14,
+      "total_us": 69412,
+      "max_us": 49535,
+      "paired": true
+    },
+    {
+      "id": "guide__invariants/8090-1791470534327632000",
+      "checks": 12,
+      "answered": 12,
+      "total_us": 67870,
+      "max_us": 45966,
+      "paired": true
+    },
+    {
+      "id": "exec_termination_example/7217-1791470521129798000",
+      "checks": 14,
+      "answered": 14,
+      "total_us": 62734,
+      "max_us": 28700,
+      "paired": true
+    },
+    {
+      "id": "iterators__skip/8952-1791470547394512000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 58800,
+      "max_us": 14558,
+      "paired": true
+    },
+    {
+      "id": "multiset/9118-1791470550218906000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 55457,
+      "max_us": 25997,
+      "paired": true
+    },
+    {
+      "id": "test_expand_errors/11359-1791470602853264000",
+      "checks": 185,
+      "answered": 185,
+      "total_us": 55442,
+      "max_us": 4127,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__main/6866-1791470513315026000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 51926,
+      "max_us": 51926,
+      "paired": true
+    },
+    {
+      "id": "state_machines__petersons_algorithm/10203-1791470571784511000",
+      "checks": 17,
+      "answered": 17,
+      "total_us": 48745,
+      "max_us": 6118,
+      "paired": true
+    },
+    {
+      "id": "state_machines__interner/10084-1791470568380175000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 46860,
+      "max_us": 14842,
+      "paired": true
+    },
+    {
+      "id": "guide__lib_examples/8177-1791470535693314000",
+      "checks": 15,
+      "answered": 15,
+      "total_us": 46832,
+      "max_us": 14901,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6565-1791470504270084000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 46688,
+      "max_us": 46688,
+      "paired": true
+    },
+    {
+      "id": "state_machines__flat_combine/10050-1791470567585144000",
+      "checks": 13,
+      "answered": 13,
+      "total_us": 42171,
+      "max_us": 5970,
+      "paired": true
+    },
+    {
+      "id": "bitmap/6515-1791470503429708000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 41704,
+      "max_us": 17277,
+      "paired": true
+    },
+    {
+      "id": "state_machines__dist_rwlock/10012-1791470566040714000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 40403,
+      "max_us": 29127,
+      "paired": true
+    },
+    {
+      "id": "std_test__num/10814-1791470588049142000",
+      "checks": 19,
+      "answered": 19,
+      "total_us": 39806,
+      "max_us": 5954,
+      "paired": true
+    },
+    {
+      "id": "state_machines__top_sort_dfs/10417-1791470577065395000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 39801,
+      "max_us": 22164,
+      "paired": true
+    },
+    {
+      "id": "state_machines__counting/9980-1791470564537955000",
+      "checks": 12,
+      "answered": 12,
+      "total_us": 38824,
+      "max_us": 5529,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__ref_cell/10675-1791470584337785000",
+      "checks": 8,
+      "answered": 8,
+      "total_us": 36654,
+      "max_us": 6896,
+      "paired": true
+    },
+    {
+      "id": "summer_school__chapter-6-1/11231-1791470598430706000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 36341,
+      "max_us": 20329,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__main/6878-1791470513589558000",
+      "checks": 16,
+      "answered": 16,
+      "total_us": 34799,
+      "max_us": 3979,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__main/6875-1791470513466437000",
+      "checks": 8,
+      "answered": 8,
+      "total_us": 32300,
+      "max_us": 10319,
+      "paired": true
+    },
+    {
+      "id": "helping/8703-1791470542850708000",
+      "checks": 11,
+      "answered": 11,
+      "total_us": 31888,
+      "max_us": 9445,
+      "paired": true
+    },
+    {
+      "id": "guide__quants/8447-1791470538923994000",
+      "checks": 25,
+      "answered": 25,
+      "total_us": 31298,
+      "max_us": 13438,
+      "paired": true
+    },
+    {
+      "id": "state_machines__interner/10087-1791470568397275000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 30890,
+      "max_us": 12560,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__ref_cell/10676-1791470584343203000",
+      "checks": 10,
+      "answered": 10,
+      "total_us": 30870,
+      "max_us": 4853,
+      "paired": true
+    },
+    {
+      "id": "std_test__vecdeque_test/11030-1791470593267180000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 30186,
+      "max_us": 23014,
+      "paired": true
+    },
+    {
+      "id": "iterators__slice_iter_mut/8986-1791470547959359000",
+      "checks": 10,
+      "answered": 10,
+      "total_us": 27736,
+      "max_us": 10605,
+      "paired": true
+    },
+    {
+      "id": "set_from_vec/9783-1791470560290813000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 25720,
+      "max_us": 16932,
+      "paired": true
+    },
+    {
+      "id": "bitvector_equivalence/6632-1791470505709646000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 25476,
+      "max_us": 18296,
+      "paired": true
+    },
+    {
+      "id": "summer_school__chapter-6-1/11232-1791470598431970000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 25327,
+      "max_us": 11425,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__rwlock/6912-1791470515538695000",
+      "checks": 16,
+      "answered": 16,
+      "total_us": 24468,
+      "max_us": 2809,
+      "paired": true
+    },
+    {
+      "id": "syntax_attr/11268-1791470599478722000",
+      "checks": 13,
+      "answered": 13,
+      "total_us": 23841,
+      "max_us": 4988,
+      "paired": true
+    },
+    {
+      "id": "cuckoo_hash_table__rwlock/6909-1791470515531953000",
+      "checks": 11,
+      "answered": 11,
+      "total_us": 23274,
+      "max_us": 7967,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__counting_to_n/10536-1791470579653306000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 22095,
+      "max_us": 8200,
+      "paired": true
+    },
+    {
+      "id": "recursion/9437-1791470555161384000",
+      "checks": 11,
+      "answered": 11,
+      "total_us": 20999,
+      "max_us": 12344,
+      "paired": true
+    },
+    {
+      "id": "resource__count_to_two/9540-1791470556549398000",
+      "checks": 19,
+      "answered": 19,
+      "total_us": 20306,
+      "max_us": 3471,
+      "paired": true
+    },
+    {
+      "id": "bitvector_garbage_collection/6675-1791470506545695000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 19874,
+      "max_us": 15429,
+      "paired": true
+    },
+    {
+      "id": "state_machines__leader_election_complete/10127-1791470569539634000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 19562,
+      "max_us": 17575,
+      "paired": true
+    },
+    {
+      "id": "guide__exec_attr/7697-1791470529484353000",
+      "checks": 8,
+      "answered": 8,
+      "total_us": 19509,
+      "max_us": 13519,
+      "paired": true
+    },
+    {
+      "id": "state_machines__maps/10172-1791470570676525000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 19096,
+      "max_us": 6247,
+      "paired": true
+    },
+    {
+      "id": "logatom_lib/9020-1791470548530991000",
+      "checks": 14,
+      "answered": 14,
+      "total_us": 19018,
+      "max_us": 3145,
+      "paired": true
+    },
+    {
+      "id": "resource__oneshot/9643-1791470558229447000",
+      "checks": 19,
+      "answered": 19,
+      "total_us": 16449,
+      "max_us": 3358,
+      "paired": true
+    },
+    {
+      "id": "syntax/11322-1791470601617094000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 15524,
+      "max_us": 15524,
+      "paired": true
+    },
+    {
+      "id": "std_test__result/10918-1791470590885275000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 15377,
+      "max_us": 3720,
+      "paired": true
+    },
+    {
+      "id": "state_machines__counting/9977-1791470564494256000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 14971,
+      "max_us": 4600,
+      "paired": true
+    },
+    {
+      "id": "bitmap/6503-1791470503289948000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 14918,
+      "max_us": 14918,
+      "paired": true
+    },
+    {
+      "id": "extensionality/7248-1791470521711513000",
+      "checks": 10,
+      "answered": 10,
+      "total_us": 14776,
+      "max_us": 5459,
+      "paired": true
+    },
+    {
+      "id": "state_machines__refinement/10345-1791470574531872000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 14610,
+      "max_us": 11520,
+      "paired": true
+    },
+    {
+      "id": "guide__ext_equal/7870-1791470531353052000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 13465,
+      "max_us": 7362,
+      "paired": true
+    },
+    {
+      "id": "state_machines__refinement_labels/10290-1791470573324216000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 13206,
+      "max_us": 11305,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9280-1791470552903419000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 12340,
+      "max_us": 12340,
+      "paired": true
+    },
+    {
+      "id": "guide__higher_order_fns/7994-1791470532901220000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 12303,
+      "max_us": 3916,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__counting_to_n/10534-1791470579643862000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 12156,
+      "max_us": 3867,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__rc/10642-1791470583287996000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 11912,
+      "max_us": 3524,
+      "paired": true
+    },
+    {
+      "id": "statics/10746-1791470586511396000",
+      "checks": 9,
+      "answered": 9,
+      "total_us": 11283,
+      "max_us": 7293,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6598-1791470505054707000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 11035,
+      "max_us": 11035,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9250-1791470552220234000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 11001,
+      "max_us": 11001,
+      "paired": true
+    },
+    {
+      "id": "guide__exec_spec_verified/7831-1791470530698247000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 10922,
+      "max_us": 5755,
+      "paired": true
+    },
+    {
+      "id": "debug_expand/6975-1791470516606085000",
+      "checks": 41,
+      "answered": 41,
+      "total_us": 10905,
+      "max_us": 847,
+      "paired": true
+    },
+    {
+      "id": "state_machines__arc/9911-1791470562886434000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 10760,
+      "max_us": 3450,
+      "paired": true
+    },
+    {
+      "id": "broadcast_proof/6718-1791470507120551000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 10378,
+      "max_us": 7902,
+      "paired": true
+    },
+    {
+      "id": "std_test__option_test/10848-1791470588781489000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 10170,
+      "max_us": 1984,
+      "paired": true
+    },
+    {
+      "id": "state_machines__maps/10169-1791470570629779000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 10017,
+      "max_us": 2648,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__counting_to_n_atomic/10494-1791470578590223000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 9983,
+      "max_us": 3956,
+      "paired": true
+    },
+    {
+      "id": "bitvector_garbage_collection/6672-1791470506457887000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 9625,
+      "max_us": 9625,
+      "paired": true
+    },
+    {
+      "id": "guide__logatom/8229-1791470536196885000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 9097,
+      "max_us": 2635,
+      "paired": true
+    },
+    {
+      "id": "summer_school__chapter-2-1/11127-1791470596075678000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 8986,
+      "max_us": 8986,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8745-1791470543518512000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 8884,
+      "max_us": 8884,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__rc/10641-1791470583287682000",
+      "checks": 8,
+      "answered": 8,
+      "total_us": 8819,
+      "max_us": 1876,
+      "paired": true
+    },
+    {
+      "id": "resource__count_to_two/9541-1791470556549902000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 8747,
+      "max_us": 3034,
+      "paired": true
+    },
+    {
+      "id": "rfmig_script/9675-1791470558710287000",
+      "checks": 10,
+      "answered": 10,
+      "total_us": 8478,
+      "max_us": 2718,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__counting_to_2/10457-1791470577999889000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 8462,
+      "max_us": 8462,
+      "paired": true
+    },
+    {
+      "id": "state_machines__arc/9910-1791470562886452000",
+      "checks": 8,
+      "answered": 8,
+      "total_us": 8204,
+      "max_us": 1599,
+      "paired": true
+    },
+    {
+      "id": "state_machines__refinement/10343-1791470574527580000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 8014,
+      "max_us": 3372,
+      "paired": true
+    },
+    {
+      "id": "guide__ext_equal/7869-1791470531351500000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 7797,
+      "max_us": 7797,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9247-1791470552209446000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 7780,
+      "max_us": 2014,
+      "paired": true
+    },
+    {
+      "id": "nevd_script/9149-1791470550808480000",
+      "checks": 8,
+      "answered": 8,
+      "total_us": 7777,
+      "max_us": 2791,
+      "paired": true
+    },
+    {
+      "id": "rw2022_script/9715-1791470559326870000",
+      "checks": 11,
+      "answered": 11,
+      "total_us": 7561,
+      "max_us": 2381,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9256-1791470552354914000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 7256,
+      "max_us": 7256,
+      "paired": true
+    },
+    {
+      "id": "summer_school__chapter-2-2/11160-1791470596884250000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 6956,
+      "max_us": 3616,
+      "paired": true
+    },
+    {
+      "id": "atomic_increment/6345-1791470501207687000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 6925,
+      "max_us": 2651,
+      "paired": true
+    },
+    {
+      "id": "guide__lib_examples/8169-1791470535683102000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 6587,
+      "max_us": 6587,
+      "paired": true
+    },
+    {
+      "id": "std_test__chars_iterator/10781-1791470587441271000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 6513,
+      "max_us": 6513,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked/7121-1791470519492952000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 6105,
+      "max_us": 6105,
+      "paired": true
+    },
+    {
+      "id": "proposal-rw2022/9342-1791470553776618000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 6102,
+      "max_us": 2515,
+      "paired": true
+    },
+    {
+      "id": "calc/6756-1791470507781461000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 5906,
+      "max_us": 5845,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8786-1791470544343664000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 5836,
+      "max_us": 5836,
+      "paired": true
+    },
+    {
+      "id": "std_test__vec_test/10998-1791470592711465000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 5732,
+      "max_us": 4846,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6252-1791470499999975000",
+      "checks": 10,
+      "answered": 10,
+      "total_us": 5526,
+      "max_us": 1818,
+      "paired": true
+    },
+    {
+      "id": "traits/11485-1791470606653490000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 5499,
+      "max_us": 2449,
+      "paired": true
+    },
+    {
+      "id": "syntax/11319-1791470601460034000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 5478,
+      "max_us": 5478,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8780-1791470544211600000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 5472,
+      "max_us": 5472,
+      "paired": true
+    },
+    {
+      "id": "guide__traits/8668-1791470542354771000",
+      "checks": 13,
+      "answered": 13,
+      "total_us": 5441,
+      "max_us": 1997,
+      "paired": true
+    },
+    {
+      "id": "bitvector_equivalence/6629-1791470505631462000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 5236,
+      "max_us": 5236,
+      "paired": true
+    },
+    {
+      "id": "trait_for_fn/11454-1791470605789435000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 4912,
+      "max_us": 2524,
+      "paired": true
+    },
+    {
+      "id": "recommends/9406-1791470554687604000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 4696,
+      "max_us": 4036,
+      "paired": true
+    },
+    {
+      "id": "bitmap/6511-1791470503359944000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 4528,
+      "max_us": 4528,
+      "paired": true
+    },
+    {
+      "id": "guide__recursion/8478-1791470539619848000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 4279,
+      "max_us": 2332,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8775-1791470544070461000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 4270,
+      "max_us": 4270,
+      "paired": true
+    },
+    {
+      "id": "structural/11063-1791470594067627000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 4224,
+      "max_us": 2613,
+      "paired": true
+    },
+    {
+      "id": "basic_lock2/6472-1791470502844107000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 4097,
+      "max_us": 1819,
+      "paired": true
+    },
+    {
+      "id": "syntax_attr/11279-1791470599698022000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 4075,
+      "max_us": 4075,
+      "paired": true
+    },
+    {
+      "id": "state_machines__conditional/9944-1791470563577401000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 4054,
+      "max_us": 2102,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6243-1791470499817285000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 3815,
+      "max_us": 3788,
+      "paired": true
+    },
+    {
+      "id": "entry_api/7155-1791470520208565000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 3526,
+      "max_us": 1308,
+      "paired": true
+    },
+    {
+      "id": "std_test__rc_test/10885-1791470589921237000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 3490,
+      "max_us": 2233,
+      "paired": true
+    },
+    {
+      "id": "state_machines__refinement_labels/10288-1791470573324217000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 3437,
+      "max_us": 1587,
+      "paired": true
+    },
+    {
+      "id": "statements/10715-1791470585466637000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 3430,
+      "max_us": 1419,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9253-1791470552283142000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 3412,
+      "max_us": 3412,
+      "paired": true
+    },
+    {
+      "id": "std_test__template/10949-1791470591863283000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 3338,
+      "max_us": 3338,
+      "paired": true
+    },
+    {
+      "id": "test/11390-1791470604070847000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 3304,
+      "max_us": 2410,
+      "paired": true
+    },
+    {
+      "id": "datatypes/6943-1791470516129125000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 3135,
+      "max_us": 1199,
+      "paired": true
+    },
+    {
+      "id": "basic_lock1/6441-1791470502412918000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 2927,
+      "max_us": 1148,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8757-1791470543722975000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 2872,
+      "max_us": 1497,
+      "paired": true
+    },
+    {
+      "id": "syntax/11325-1791470601746443000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 2792,
+      "max_us": 2792,
+      "paired": true
+    },
+    {
+      "id": "guide__strings/8623-1791470541819481000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 2758,
+      "max_us": 1370,
+      "paired": true
+    },
+    {
+      "id": "guide__higher_order_fns/7988-1791470532896377000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 2704,
+      "max_us": 1357,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6249-1791470499903359000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 2689,
+      "max_us": 1535,
+      "paired": true
+    },
+    {
+      "id": "state_machines__reference-examples__strategy_option/10250-1791470572757037000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 2594,
+      "max_us": 681,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6238-1791470499731030000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 2588,
+      "max_us": 1762,
+      "paired": true
+    },
+    {
+      "id": "guide__recursion/8484-1791470539697096000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 2548,
+      "max_us": 2548,
+      "paired": true
+    },
+    {
+      "id": "guide__recursion/8487-1791470539788902000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 2500,
+      "max_us": 2500,
+      "paired": true
+    },
+    {
+      "id": "guide__assert_by_compute/7412-1791470524243746000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 2456,
+      "max_us": 1102,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6592-1791470504903860000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 2402,
+      "max_us": 2402,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6574-1791470504429286000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 2391,
+      "max_us": 2391,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6237-1791470499729443000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 2370,
+      "max_us": 1406,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__counting_to_2/10455-1791470577994620000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 2339,
+      "max_us": 729,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6571-1791470504412866000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 2283,
+      "max_us": 1269,
+      "paired": true
+    },
+    {
+      "id": "broadcast_proof/6721-1791470507231647000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 2268,
+      "max_us": 2234,
+      "paired": true
+    },
+    {
+      "id": "broadcast_proof/6712-1791470507109841000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 2244,
+      "max_us": 2244,
+      "paired": true
+    },
+    {
+      "id": "even_cell/7186-1791470520598817000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 2022,
+      "max_us": 1391,
+      "paired": true
+    },
+    {
+      "id": "guide__references/8518-1791470540376572000",
+      "checks": 11,
+      "answered": 11,
+      "total_us": 1979,
+      "max_us": 474,
+      "paired": true
+    },
+    {
+      "id": "bitvector_equivalence/6641-1791470505896952000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1976,
+      "max_us": 1976,
+      "paired": true
+    },
+    {
+      "id": "guide__const/7570-1791470527452997000",
+      "checks": 12,
+      "answered": 12,
+      "total_us": 1929,
+      "max_us": 594,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8783-1791470544277564000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1880,
+      "max_us": 1880,
+      "paired": true
+    },
+    {
+      "id": "quantifiers/9375-1791470554256687000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 1810,
+      "max_us": 1154,
+      "paired": true
+    },
+    {
+      "id": "float/7319-1791470522925833000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1774,
+      "max_us": 1774,
+      "paired": true
+    },
+    {
+      "id": "guide__exec_spec_unverified/7744-1791470529963462000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 1772,
+      "max_us": 923,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9274-1791470552751289000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1697,
+      "max_us": 1697,
+      "paired": true
+    },
+    {
+      "id": "rfmig_script/9674-1791470558709298000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 1696,
+      "max_us": 869,
+      "paired": true
+    },
+    {
+      "id": "rwlock_vstd/9749-1791470559769846000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 1689,
+      "max_us": 919,
+      "paired": true
+    },
+    {
+      "id": "atomics/6376-1791470501645777000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 1676,
+      "max_us": 1625,
+      "paired": true
+    },
+    {
+      "id": "guide__modes/8261-1791470536701056000",
+      "checks": 9,
+      "answered": 9,
+      "total_us": 1665,
+      "max_us": 666,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9268-1791470552620001000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1651,
+      "max_us": 1651,
+      "paired": true
+    },
+    {
+      "id": "basic_failure/6407-1791470502049449000",
+      "checks": 10,
+      "answered": 10,
+      "total_us": 1549,
+      "max_us": 371,
+      "paired": true
+    },
+    {
+      "id": "resource__agreement/9505-1791470555988763000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 1484,
+      "max_us": 617,
+      "paired": true
+    },
+    {
+      "id": "guide__higher_order_fns/7987-1791470532896917000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 1483,
+      "max_us": 643,
+      "paired": true
+    },
+    {
+      "id": "summer_school__chapter-2-3/11199-1791470597704556000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 1483,
+      "max_us": 648,
+      "paired": true
+    },
+    {
+      "id": "overflow/9183-1791470551275922000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 1423,
+      "max_us": 460,
+      "paired": true
+    },
+    {
+      "id": "bitvector_garbage_collection/6678-1791470506587173000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1310,
+      "max_us": 1310,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8766-1791470543868693000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1281,
+      "max_us": 1281,
+      "paired": true
+    },
+    {
+      "id": "invariants/8890-1791470546029230000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1281,
+      "max_us": 1281,
+      "paired": true
+    },
+    {
+      "id": "guide__higher_order_fns/7985-1791470532894714000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 1275,
+      "max_us": 853,
+      "paired": true
+    },
+    {
+      "id": "guide__pervasive_example/8413-1791470538511592000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1259,
+      "max_us": 1259,
+      "paired": true
+    },
+    {
+      "id": "state_machines__adder_with_max/9846-1791470561818699000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 1219,
+      "max_us": 501,
+      "paired": true
+    },
+    {
+      "id": "guide__datatypes/7617-1791470528516820000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1170,
+      "max_us": 1170,
+      "paired": true
+    },
+    {
+      "id": "state_machines__refinement/10341-1791470574520607000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 1116,
+      "max_us": 682,
+      "paired": true
+    },
+    {
+      "id": "guide__const/7573-1791470527472456000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1106,
+      "max_us": 1106,
+      "paired": true
+    },
+    {
+      "id": "state_machines__adder_generic/9814-1791470560741448000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 1104,
+      "max_us": 671,
+      "paired": true
+    },
+    {
+      "id": "assertions/6283-1791470500416178000",
+      "checks": 11,
+      "answered": 11,
+      "total_us": 1051,
+      "max_us": 433,
+      "paired": true
+    },
+    {
+      "id": "state_machines__adder/9879-1791470562279549000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 1024,
+      "max_us": 685,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8791-1791470544409838000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 1012,
+      "max_us": 1012,
+      "paired": true
+    },
+    {
+      "id": "prelude/9311-1791470553338835000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 987,
+      "max_us": 967,
+      "paired": true
+    },
+    {
+      "id": "thread/11423-1791470604886907000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 946,
+      "max_us": 569,
+      "paired": true
+    },
+    {
+      "id": "state_machines__reference-examples__strategy_option/10247-1791470572749989000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 923,
+      "max_us": 901,
+      "paired": true
+    },
+    {
+      "id": "guide__requires_ensures/8587-1791470541340638000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 869,
+      "max_us": 654,
+      "paired": true
+    },
+    {
+      "id": "generics/7381-1791470523772084000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 839,
+      "max_us": 284,
+      "paired": true
+    },
+    {
+      "id": "guide__interior_mutability/8059-1791470533772218000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 810,
+      "max_us": 482,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9277-1791470552817288000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 808,
+      "max_us": 808,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9259-1791470552421983000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 807,
+      "max_us": 807,
+      "paired": true
+    },
+    {
+      "id": "integers/8859-1791470545596019000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 792,
+      "max_us": 755,
+      "paired": true
+    },
+    {
+      "id": "guide__requires_ensures_edit/8549-1791470540843050000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 754,
+      "max_us": 599,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6246-1791470499895129000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 734,
+      "max_us": 592,
+      "paired": true
+    },
+    {
+      "id": "playground/9214-1791470551778947000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 709,
+      "max_us": 400,
+      "paired": true
+    },
+    {
+      "id": "guide__getting_started/7949-1791470532304710000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 707,
+      "max_us": 707,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8772-1791470544003728000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 698,
+      "max_us": 698,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6595-1791470504977760000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 675,
+      "max_us": 675,
+      "paired": true
+    },
+    {
+      "id": "state_machines__tutorial__pcell_example/10608-1791470582559932000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 675,
+      "max_us": 675,
+      "paired": true
+    },
+    {
+      "id": "cells/6787-1791470508323671000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 667,
+      "max_us": 638,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8754-1791470543626928000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 664,
+      "max_us": 664,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6589-1791470504824292000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 658,
+      "max_us": 658,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8769-1791470543935036000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 651,
+      "max_us": 651,
+      "paired": true
+    },
+    {
+      "id": "rfmig_script/9681-1791470558747842000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 645,
+      "max_us": 645,
+      "paired": true
+    },
+    {
+      "id": "broadcast_proof/6709-1791470507109961000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 644,
+      "max_us": 644,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8763-1791470543802489000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 641,
+      "max_us": 641,
+      "paired": true
+    },
+    {
+      "id": "guide__datatypes/7620-1791470528582503000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 627,
+      "max_us": 506,
+      "paired": true
+    },
+    {
+      "id": "impl_basic/8828-1791470545117034000",
+      "checks": 6,
+      "answered": 6,
+      "total_us": 627,
+      "max_us": 312,
+      "paired": true
+    },
+    {
+      "id": "adts/6199-1791470499263559000",
+      "checks": 7,
+      "answered": 7,
+      "total_us": 613,
+      "max_us": 238,
+      "paired": true
+    },
+    {
+      "id": "guide__integers/8028-1791470533316831000",
+      "checks": 9,
+      "answered": 9,
+      "total_us": 601,
+      "max_us": 130,
+      "paired": true
+    },
+    {
+      "id": "guide__overflow/8382-1791470538141693000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 560,
+      "max_us": 275,
+      "paired": true
+    },
+    {
+      "id": "guide__external_trait_specs/7906-1791470531842845000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 553,
+      "max_us": 268,
+      "paired": true
+    },
+    {
+      "id": "debug_expand/6974-1791470516605233000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 543,
+      "max_us": 497,
+      "paired": true
+    },
+    {
+      "id": "assorted_demo/6314-1791470500776686000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 514,
+      "max_us": 437,
+      "paired": true
+    },
+    {
+      "id": "state_machines__refinement_labels/10287-1791470573324216000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 478,
+      "max_us": 262,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6546-1791470503875517000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 451,
+      "max_us": 451,
+      "paired": true
+    },
+    {
+      "id": "fun_ext/7350-1791470523306227000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 450,
+      "max_us": 168,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8794-1791470544475698000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 441,
+      "max_us": 441,
+      "paired": true
+    },
+    {
+      "id": "syntax/11316-1791470601339360000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 438,
+      "max_us": 438,
+      "paired": true
+    },
+    {
+      "id": "debug/7011-1791470517133652000",
+      "checks": 4,
+      "answered": 4,
+      "total_us": 437,
+      "max_us": 385,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6549-1791470503942229000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 423,
+      "max_us": 423,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8760-1791470543736124000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 414,
+      "max_us": 414,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6552-1791470504008104000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 389,
+      "max_us": 389,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8308-1791470537172654000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 361,
+      "max_us": 361,
+      "paired": true
+    },
+    {
+      "id": "guide__modes/8262-1791470536701099000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 317,
+      "max_us": 317,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7051-1791470517792755000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 316,
+      "max_us": 316,
+      "paired": true
+    },
+    {
+      "id": "guide__modes/8260-1791470536701057000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 316,
+      "max_us": 316,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8299-1791470537094749000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 309,
+      "max_us": 309,
+      "paired": true
+    },
+    {
+      "id": "guide__quants/8444-1791470538914606000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 306,
+      "max_us": 157,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9265-1791470552554115000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 303,
+      "max_us": 303,
+      "paired": true
+    },
+    {
+      "id": "imo_1988_6/8797-1791470544562537000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 291,
+      "max_us": 291,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8320-1791470537422651000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 289,
+      "max_us": 289,
+      "paired": true
+    },
+    {
+      "id": "guide__calc/7536-1791470527010376000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 287,
+      "max_us": 148,
+      "paired": true
+    },
+    {
+      "id": "extensionality/7257-1791470521962270000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 267,
+      "max_us": 267,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8305-1791470537159868000",
+      "checks": 5,
+      "answered": 5,
+      "total_us": 263,
+      "max_us": 147,
+      "paired": true
+    },
+    {
+      "id": "syntax_attr/11271-1791470599565844000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 226,
+      "max_us": 226,
+      "paired": true
+    },
+    {
+      "id": "recursive_types/9473-1791470555572761000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 197,
+      "max_us": 184,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9262-1791470552487529000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 187,
+      "max_us": 187,
+      "paired": true
+    },
+    {
+      "id": "adts_eq/6167-1791470498839365000",
+      "checks": 2,
+      "answered": 2,
+      "total_us": 182,
+      "max_us": 157,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6577-1791470504510946000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 151,
+      "max_us": 151,
+      "paired": true
+    },
+    {
+      "id": "guide__equality/7654-1791470529051631000",
+      "checks": 3,
+      "answered": 3,
+      "total_us": 146,
+      "max_us": 79,
+      "paired": true
+    },
+    {
+      "id": "extensionality/7254-1791470521865451000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 120,
+      "max_us": 120,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6568-1791470504336881000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 112,
+      "max_us": 112,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6580-1791470504590132000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 101,
+      "max_us": 101,
+      "paired": true
+    },
+    {
+      "id": "bitvector_equivalence/6638-1791470505807474000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 101,
+      "max_us": 101,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6555-1791470504073823000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 96,
+      "max_us": 96,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6586-1791470504745075000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 88,
+      "max_us": 88,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7081-1791470518597905000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 83,
+      "max_us": 83,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6583-1791470504668003000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 80,
+      "max_us": 80,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8317-1791470537360503000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 78,
+      "max_us": 78,
+      "paired": true
+    },
+    {
+      "id": "external/7288-1791470522407194000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 76,
+      "max_us": 76,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8311-1791470537237376000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 75,
+      "max_us": 75,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8323-1791470537485352000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 65,
+      "max_us": 65,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7066-1791470518156354000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 61,
+      "max_us": 61,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6232-1791470499719093000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 60,
+      "max_us": 60,
+      "paired": true
+    },
+    {
+      "id": "nevd_script/9152-1791470550837217000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 60,
+      "max_us": 60,
+      "paired": true
+    },
+    {
+      "id": "assert_by_compute/6231-1791470499720916000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 59,
+      "max_us": 59,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7072-1791470518320846000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 58,
+      "max_us": 58,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7084-1791470518713030000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 57,
+      "max_us": 57,
+      "paired": true
+    },
+    {
+      "id": "rw2022_script/9718-1791470559351279000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 56,
+      "max_us": 56,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6562-1791470504203704000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 55,
+      "max_us": 55,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7045-1791470517644996000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 54,
+      "max_us": 54,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7048-1791470517715979000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 54,
+      "max_us": 54,
+      "paired": true
+    },
+    {
+      "id": "rfmig_script/9684-1791470558815556000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 54,
+      "max_us": 54,
+      "paired": true
+    },
+    {
+      "id": "guide__external_trait_specs/7903-1791470531777201000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 53,
+      "max_us": 53,
+      "paired": true
+    },
+    {
+      "id": "bitvector_basic/6559-1791470504139695000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 52,
+      "max_us": 52,
+      "paired": true
+    },
+    {
+      "id": "guide__nonlinear_bitvec/8314-1791470537299035000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 51,
+      "max_us": 51,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7054-1791470517906237000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 49,
+      "max_us": 49,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7057-1791470517971258000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 49,
+      "max_us": 49,
+      "paired": true
+    },
+    {
+      "id": "broadcast_proof/6710-1791470507106506000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 47,
+      "max_us": 47,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7063-1791470518094020000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 47,
+      "max_us": 47,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7078-1791470518448197000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 47,
+      "max_us": 47,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7087-1791470518776966000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 47,
+      "max_us": 47,
+      "paired": true
+    },
+    {
+      "id": "extensionality/7251-1791470521741711000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 47,
+      "max_us": 47,
+      "paired": true
+    },
+    {
+      "id": "bitvector_equivalence/6635-1791470505723982000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 45,
+      "max_us": 45,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7060-1791470518032590000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 45,
+      "max_us": 45,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7069-1791470518257728000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 44,
+      "max_us": 44,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked_xor/7075-1791470518385089000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 43,
+      "max_us": 43,
+      "paired": true
+    },
+    {
+      "id": "doubly_linked/7118-1791470519483847000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 38,
+      "max_us": 38,
+      "paired": true
+    },
+    {
+      "id": "modules/9083-1791470549829703000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 37,
+      "max_us": 37,
+      "paired": true
+    },
+    {
+      "id": "modules/9082-1791470549829706000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 35,
+      "max_us": 35,
+      "paired": true
+    },
+    {
+      "id": "power_of_2/9271-1791470552685637000",
+      "checks": 1,
+      "answered": 1,
+      "total_us": 20,
+      "max_us": 20,
+      "paired": true
+    }
+  ],
+  "slowest": [
+    {
+      "id": "cuckoo_hash_table__cuckoo/6828-1791470509959908000",
+      "seq": 13,
+      "solve_us": 751771,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__main/6872-1791470513377693000",
+      "seq": 13,
+      "solve_us": 609398,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6822-1791470509833304000",
+      "seq": 3,
+      "solve_us": 159518,
+      "answer": "unsat"
+    },
+    {
+      "id": "resource__monotonic_counter/9610-1791470557677874000",
+      "seq": 2,
+      "solve_us": 123883,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6822-1791470509833304000",
+      "seq": 1,
+      "solve_us": 117630,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__main/6869-1791470513340597000",
+      "seq": 7,
+      "solve_us": 115620,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__main/6869-1791470513340597000",
+      "seq": 1,
+      "solve_us": 83146,
+      "answer": "unsat"
+    },
+    {
+      "id": "doubly_linked_xor/7042-1791470517617696000",
+      "seq": 5,
+      "solve_us": 68886,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6828-1791470509959908000",
+      "seq": 8,
+      "solve_us": 67172,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__main/6872-1791470513377693000",
+      "seq": 10,
+      "solve_us": 66587,
+      "answer": "unsat"
+    },
+    {
+      "id": "guide__bst_map_generic/7443-1791470524872666000",
+      "seq": 17,
+      "solve_us": 65022,
+      "answer": "unsat"
+    },
+    {
+      "id": "mergesort/9051-1791470549142299000",
+      "seq": 0,
+      "solve_us": 64869,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6822-1791470509833304000",
+      "seq": 7,
+      "solve_us": 54742,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6828-1791470509959908000",
+      "seq": 10,
+      "solve_us": 54509,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__main/6866-1791470513315026000",
+      "seq": 0,
+      "solve_us": 51926,
+      "answer": "unsat"
+    },
+    {
+      "id": "vectors/11523-1791470607677565000",
+      "seq": 5,
+      "solve_us": 51297,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__main/6869-1791470513340597000",
+      "seq": 5,
+      "solve_us": 50625,
+      "answer": "unsat"
+    },
+    {
+      "id": "resource__log/9574-1791470557161090000",
+      "seq": 2,
+      "solve_us": 49535,
+      "answer": "unsat"
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6822-1791470509833304000",
+      "seq": 5,
+      "solve_us": 46818,
+      "answer": "unsat"
+    },
+    {
+      "id": "bitvector_basic/6565-1791470504270084000",
+      "seq": 0,
+      "solve_us": 46688,
+      "answer": "unsat"
+    },
+    {
+      "id": "doubly_linked/7124-1791470519517204000",
+      "seq": 4,
+      "solve_us": 46390,
+      "answer": "unsat"
+    },
+    {
+      "id": "guide__bst_map_generic/7443-1791470524872666000",
+      "seq": 13,
+      "solve_us": 46307,
+      "answer": "unsat"
+    },
+    {
+      "id": "guide__invariants/8090-1791470534327632000",
+      "seq": 9,
+      "solve_us": 45966,
+      "answer": "unsat"
+    },
+    {
+      "id": "iterators__map_and_filter/8921-1791470546631192000",
+      "seq": 7,
+      "solve_us": 44578,
+      "answer": "unsat"
+    },
+    {
+      "id": "state_machines__dist_rwlock/10013-1791470566043166000",
+      "seq": 11,
+      "solve_us": 43624,
+      "answer": "unsat"
+    }
+  ]
+}
