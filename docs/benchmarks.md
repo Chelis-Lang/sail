@@ -35,3 +35,32 @@ Slowest units (wall time: median (min–max) over rounds):
 | `verus-examples/examples/atomic_increment.rs` | 6 | 1194 ms (942 ms–1249 ms) | 1033 ms (627 ms–1152 ms) | -13.4% | 74 ms | 266 MB |
 | `verus-examples/examples/adts_eq.rs` | 2 | 1162 ms (1102 ms–1232 ms) | 939 ms (705 ms–1099 ms) | -19.2% | 20 ms | 251 MB |
 
+## `cold-fast-x86_64-linux-gha-2026-10-08`: cold workload, fast tier
+
+- Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `f601ea117b45`; 3 round(s) per unit
+- Machine: cpus: 2; host: x86_64-unknown-linux-gnu; uname: Linux 6.17.0-1022-azure x86_64
+
+| Measure | Plain Verus | sail (pass-through) | Change |
+|---|---|---|---|
+| Units | 147 | 147 | |
+| Functions | 3450 | 3450 | |
+| Total wall time (sum of unit medians) | 292.8 s | 288.1 s | -1.6% |
+| Total wall time per round: median (min–max) | 290.1 s (285.1 s–295.4 s) | 293.6 s (283.3 s–296.9 s) | |
+| Solver time reported by Verus (mean; summed over solver threads, so it can exceed wall time) | 100.7 s | | |
+| Conformance (rounds) | | 441 same, 0 different, 0 infra errors | |
+
+Slowest units (wall time: median (min–max) over rounds):
+
+| Unit | Functions | Plain | sail | Change | Solver time | Peak RSS |
+|---|---:|---:|---:|---:|---:|---:|
+| `human-eval-verus/tasks/lib.rs` | 331 | 93.6 s (84.5 s–93.8 s) | 88.7 s (85.0 s–97.2 s) | -5.2% | 74.5 s | 655 MB |
+| `vstd/source/vstd/vstd.rs` | 1871 | 77.5 s (74.4 s–80.0 s) | 76.9 s (75.9 s–82.1 s) | -0.7% | 15.6 s | 1177 MB |
+| `verus-examples/examples/cuckoo_hash_table/main.rs` | 51 | 5224 ms (5195 ms–5241 ms) | 5222 ms (5218 ms–5251 ms) | -0.0% | 1864 ms | 535 MB |
+| `verus-examples/examples/cuckoo_hash_table/cuckoo.rs` | 50 | 5028 ms (5020 ms–5819 ms) | 5023 ms (4990 ms–5151 ms) | -0.1% | 1972 ms | 531 MB |
+| `verus-examples/examples/state_machines/tutorial/fifo.rs` | 13 | 1534 ms (1528 ms–1579 ms) | 1578 ms (1524 ms–1583 ms) | +2.8% | 144 ms | 433 MB |
+| `verus-examples/examples/cuckoo_hash_table/rwlock.rs` | 24 | 1514 ms (1510 ms–1521 ms) | 1546 ms (1511 ms–1571 ms) | +2.1% | 97 ms | 436 MB |
+| `verus-examples/examples/state_machines/dist_rwlock.rs` | 16 | 1509 ms (1499 ms–1565 ms) | 1510 ms (1509 ms–1536 ms) | +0.1% | 114 ms | 434 MB |
+| `verus-examples/examples/doubly_linked_xor.rs` | 7 | 1415 ms (1374 ms–1421 ms) | 1381 ms (1378 ms–1431 ms) | -2.4% | 391 ms | 414 MB |
+| `verus-examples/examples/state_machines/flat_combine.rs` | 13 | 1412 ms (1399 ms–1460 ms) | 1431 ms (1417 ms–1484 ms) | +1.3% | 105 ms | 432 MB |
+| `verus-examples/examples/guide/bst_map_generic.rs` | 34 | 1380 ms (1376 ms–1395 ms) | 1401 ms (1380 ms–1428 ms) | +1.5% | 385 ms | 423 MB |
+
