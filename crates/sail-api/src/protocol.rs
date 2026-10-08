@@ -6,7 +6,7 @@
 //! | Op | Payload | Response |
 //! |---|---|---|
 //! | 1 `HELLO` | solver path (UTF-8) | `0`, `u32` len, identity JSON; or `1`, `u32` len, error text |
-//! | 2 `GET` | 32-byte key | `0` (miss); or `1`, `u32` len, reply bytes |
+//! | 2 `GET` | 32-byte key | `0` (miss); or `1`, `u32` len, reply bytes, then optionally `u32` len, effort JSON |
 //! | 3 `PUT` | 32-byte key, `u32` meta len, meta JSON, reply bytes | `0` |
 //! | 4 `STATS` | empty | `0`, `u32` len, [`StatsSnapshot`] JSON |
 //!
@@ -244,18 +244,44 @@ pub fn write_hello_response(w: &mut impl Write, result: Result<&Identity, &str>)
 /// # Errors
 ///
 /// I/O errors.
-pub fn write_get_response(w: &mut impl Write, reply: Option<&[u8]>) -> io::Result<()> {
+pub fn write_get_response(
+    w: &mut impl Write,
+    reply: Option<(&[u8], Option<&Effort>)>,
+) -> io::Result<()> {
     let mut body = Vec::new();
     match reply {
         None => body.push(0),
-        Some(r) => {
+        Some((r, effort)) => {
             body.push(1);
             let len = u32::try_from(r.len()).map_err(|_| invalid("too large"))?;
             body.extend_from_slice(&len.to_be_bytes());
             body.extend_from_slice(r);
+            // Optional trailer: the entry's effort as JSON. Clients that do
+            // not know it ignore bytes after the reply.
+            if let Some(e) = effort {
+                let json = serde_json::to_vec(e).map_err(io::Error::other)?;
+                let len = u32::try_from(json.len()).map_err(|_| invalid("too large"))?;
+                body.extend_from_slice(&len.to_be_bytes());
+                body.extend_from_slice(&json);
+            }
         }
     }
     write_frame(w, &body)
+}
+
+/// The effort trailer of a `GET` hit body, if present.
+#[must_use]
+pub fn get_effort_trailer(body: &[u8]) -> Option<Effort> {
+    let reply_len = usize::try_from(u32::from_be_bytes(
+        <[u8; 4]>::try_from(body.get(1..5)?).ok()?,
+    ))
+    .ok()?;
+    let rest = body.get(5 + reply_len..)?;
+    let len = usize::try_from(u32::from_be_bytes(
+        <[u8; 4]>::try_from(rest.get(..4)?).ok()?,
+    ))
+    .ok()?;
+    serde_json::from_slice(rest.get(4..4 + len)?).ok()
 }
 
 /// Writes a `STATS` response.

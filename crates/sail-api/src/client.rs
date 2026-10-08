@@ -80,9 +80,28 @@ impl Client {
     ///
     /// I/O errors.
     pub fn get(&mut self, key: &[u8; 32]) -> std::io::Result<Option<Vec<u8>>> {
+        Ok(self.get_with_effort(key)?.map(|(reply, _)| reply))
+    }
+
+    /// The cached reply for `key` with its recorded effort, if the daemon
+    /// sent one, or `None` on a miss.
+    ///
+    /// # Errors
+    ///
+    /// I/O errors.
+    pub fn get_with_effort(
+        &mut self,
+        key: &[u8; 32],
+    ) -> std::io::Result<Option<(Vec<u8>, Option<crate::protocol::Effort>)>> {
         let body = self.call(&Request::Get(*key))?;
         let (status, payload) = split_status_payload(&body)?;
-        Ok((status == 1).then(|| payload.to_vec()))
+        if status != 1 {
+            return Ok(None);
+        }
+        Ok(Some((
+            payload.to_vec(),
+            crate::protocol::get_effort_trailer(&body),
+        )))
     }
 
     /// Stores `reply` for `key`.
