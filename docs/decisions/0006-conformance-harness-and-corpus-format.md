@@ -186,3 +186,16 @@ CI runs only the PR subset of the fast tier, as the `Conformance` job in
 `ci.yml`. The whole fast, standard and deep tiers run locally with
 `ci/local.sh conformance <tier>` (ADR 0013). This supersedes the nightly and
 dispatch schedule above.
+
+## Update 2026-10-09: rustc's long-type files
+
+On the secondary Verus pin (Rust 1.98.0), rustc writes long type names to a
+file with a random name (`<stem>.long-type-<random>.txt`) and reports that
+name in its diagnostics, so plain Verus's own stderr differed between
+identical runs. Three plain runs of `examples/iterators/skip.rs` gave three
+different names.
+
+This is fixed at the source, not by normalizing. `COMMON_FLAGS` gains
+`-Z write-long-types-to-disk=no`, so rustc prints the type inline and stderr
+is byte-identical across runs. Both sides still get identical flags, and
+nothing sent to Z3 changes.

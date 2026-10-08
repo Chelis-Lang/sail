@@ -54,3 +54,21 @@ keys entirely (ADR 0009).
   or a Linux machine.
 - **The trust model** (`docs/trust.md`) gains the platform-class scoping
   rule.
+
+## Update 2026-10-09: the secondary pin is in place
+
+`corpus/toolchain.toml` holds the primary pin plus `[secondary."<release>"]`
+pins. The first is `0.2026.09.06.8dea4a2`, the release vest's recent history
+was written against, with Z3 4.16.0 and Rust 1.98.0.
+
+- **Selecting it:** setting `SAIL_VERUS_RELEASE=<release>` selects a
+  secondary pin for `cargo xtask fetch-verus`, the harness and the
+  benchmarks.
+- **Corpus validation:** the corpus is validated against the primary pin. A
+  selected secondary pin skips that check, and every report records which
+  release ran.
+- **Where it runs:** secondary runs are local only (ADR 0013).
+- **Results:** in `docs/compatibility.md`.
+- **No bundled z3:** this release's archive has none (VI-0006). Its pin uses
+  the primary's z3 (`z3 = "primary"`, the same 4.16.0 build), and the harness
+  then names it for plain Verus too.

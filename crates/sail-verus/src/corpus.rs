@@ -371,15 +371,15 @@ pub fn requirement_available(name: &str, rust_toolchain: &str) -> bool {
 }
 
 impl Corpus {
-    /// Fetches the pinned Verus commit's source (used by
-    /// `patch_verus_deps`) and returns its directory.
+    /// Fetches the Verus source at `commit`, the active release's commit
+    /// (used by `patch_verus_deps`), and returns its directory.
     ///
     /// # Errors
     ///
     /// `SAIL3014` if git fails.
-    pub fn fetch_verus_source(&self, cache: &Path) -> Result<PathBuf> {
-        let dir = checkout_dir(VERUS_REPO_URL, &self.verus_commit, cache);
-        fetch_git(VERUS_REPO_URL, &self.verus_commit, &dir, None)?;
+    pub fn fetch_verus_source(&self, cache: &Path, commit: &str) -> Result<PathBuf> {
+        let dir = checkout_dir(VERUS_REPO_URL, commit, cache);
+        fetch_git(VERUS_REPO_URL, commit, &dir, None)?;
         Ok(dir)
     }
 
@@ -411,7 +411,11 @@ impl Corpus {
     ///
     /// `SAIL3013` on a mismatch.
     pub fn check_pins(&self, pins: &Pins) -> Result<()> {
-        if self.verus_release == pins.verus.release && self.verus_commit == pins.verus.commit {
+        // A secondary release is a compatibility target: the corpus is run
+        // against it as is, and reports record which release ran.
+        if pins.is_secondary
+            || (self.verus_release == pins.verus.release && self.verus_commit == pins.verus.commit)
+        {
             Ok(())
         } else {
             Err(Error::new(
