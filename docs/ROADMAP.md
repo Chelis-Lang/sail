@@ -55,6 +55,29 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 6. A shared tier with integrity checks (`docs/trust.md`).
 7. History replay and agent-loop benchmark workloads.
 
+### Measured: warm solver pools would not pay off (2026-10-08)
+
+The charter lists warm solver pools. We measured their value before building
+them, on a vstd run on macOS arm64:
+
+| Run | Wall time | Rust front end | Verus verify phase (CPU, all threads) | Solver (all threads) |
+|---|---:|---:|---:|---:|
+| Plain Verus | 18.9 s | 5.7 s | 57.9 s | 13.0 s |
+| sail, warm | 17.1 s | 5.6 s | 50.3 s | 3.5 s |
+
+- **What's left after a warm cache is Verus, not the solver.** Most of the
+  remaining time is Verus's own work: the Rust front end, VIR, and AIR and
+  SMT generation.
+- **The Linux fast-tier warm run** started a solver for only 26 of 1,526
+  sessions.
+
+Warm pools could only shorten that small solver-side remainder, so they are
+**deprioritised**. The levers that matter now:
+- **The warm Verus frontend** (the charter roadmap item), which may need
+  Verus's cooperation;
+- **Upstream determinism (VI-0001),** to raise hit rates;
+- **Fill cost on slow filesystems:** write-behind stores in the daemon.
+
 ## Charter roadmap (designed for, built later)
 
 - Multiple SMT backends.

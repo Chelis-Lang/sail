@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail watch [ARGS...]`: re-runs `sail verify` as sources change. Edits
+  cancel the run in flight and restart it once they settle.
 - `sail verify`: runs `cargo verus verify` with the same arguments, through
   `sail-z3` and the cache daemon (started on demand).
 - `sail-bench warm` and `sail-bench edit`: the warm (no change) and
