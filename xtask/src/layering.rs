@@ -4,8 +4,9 @@
 //! `sail-smtlib` feeds `sail-session`, which feeds `sail-key`; the cache
 //! depends on keys; the solver pool depends on the session model; the daemon
 //! composes cache, solver pool, ledger and portfolio. The shim may depend
-//! only on the protocol, the session model and the thin daemon client in
-//! `sail-api`, so its fallback path stays small and simple. Changing this
+//! only on the protocol, the session model, key derivation (pure
+//! computation, ADR 0005) and the thin daemon client in `sail-api`, so its
+//! fallback path stays small and simple. Changing this
 //! table is an architectural decision: record an ADR.
 
 /// `(crate, internal crates it may depend on directly)`.
@@ -21,7 +22,10 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         &["sail-smtlib", "sail-session", "sail-solver", "sail-ledger"],
     ),
     ("sail-api", &["sail-key", "sail-ledger"]),
-    ("sail-shim", &["sail-smtlib", "sail-session", "sail-api"]),
+    (
+        "sail-shim",
+        &["sail-smtlib", "sail-session", "sail-key", "sail-api"],
+    ),
     (
         "sail-verus",
         &["sail-smtlib", "sail-session", "sail-ledger"],
