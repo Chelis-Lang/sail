@@ -175,5 +175,7 @@ needs one (see the memory allocator below).
   then reuses the prepared tree for every round.
 - **Observed outcomes.** Plain Verus is not clean on every entry, and that
   is recorded, not fixed: `page-table` reports one `rlimit exceeded` error
-  (in `allocate`, `impl_u/wrapped_token.rs`) on macOS arm64, identically in
-  plain and sail runs, while verita passes the branch on Linux.
+  (in `allocate`, `impl_u/wrapped_token.rs`) with the pinned release, on
+  both macOS arm64 and Linux x86-64, identically in every plain and sail
+  run. verita's nightly passes the branch, but it builds Verus `main`,
+  which is newer than the pinned release.
