@@ -8,6 +8,12 @@ publish.workspace = true
 repository.workspace = true
 
 [dependencies]
+sail-session.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+sail-smtlib.workspace = true
 
 [lints]
 workspace = true

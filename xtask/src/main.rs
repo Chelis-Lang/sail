@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 mod layering;
+mod verus;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -13,6 +14,7 @@ commands:
     install-hooks   copy tracked git hooks into the shared hooks directory
     check-layering  verify internal crate dependencies follow the charter DAG
     protect-main    apply branch protection to main on GitHub (PR mode)
+    fetch-verus     install the pinned Verus release (corpus/toolchain.toml)
 ";
 
 type Result<T> = std::result::Result<T, String>;
@@ -23,6 +25,7 @@ fn main() -> ExitCode {
         Some("install-hooks") => install_hooks(),
         Some("check-layering") => check_layering(),
         Some("protect-main") => protect_main(),
+        Some("fetch-verus") => verus::fetch(),
         _ => Err(USAGE.to_owned()),
     };
     match result {
