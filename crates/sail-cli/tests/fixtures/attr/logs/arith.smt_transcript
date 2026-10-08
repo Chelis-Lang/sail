@@ -1,0 +1,250 @@
+;;;>>> QUERY
+(set-option :auto_config false)
+(set-option :smt.mbqi false)
+(set-option :smt.case_split 3)
+(set-option :smt.qi.eager_threshold 100.0)
+(set-option :smt.delay_units true)
+(set-option :smt.arith.solver 2)
+(set-option :smt.arith.nl false)
+(set-option :pi.enabled false)
+(set-option :rewriter.sort_disjunctions false)
+(push)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.60
+ :memory              17.60
+ :mk-bool-var         247
+ :mk-clause-binary    33
+ :num-allocs          41254
+ :propagations        29
+ :rlimit-count        24975)
+;;;<<<
+;;;>>> QUERY
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.60
+ :memory              17.60
+ :mk-bool-var         247
+ :mk-clause-binary    33
+ :num-allocs          41254
+ :propagations        29
+ :rlimit-count        25019)
+;;;<<<
+;;;>>> QUERY
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.16.0")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         247
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          1
+ :propagations        29
+ :rlimit-count        25071)
+;;;<<<
+;;;>>> QUERY
+(pop)
+(push)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          1
+ :propagations        29
+ :rlimit-count        25262)
+;;;<<<
+;;;>>> QUERY
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          1
+ :propagations        29
+ :rlimit-count        25289)
+;;;<<<
+;;;>>> QUERY
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.16.0")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          2
+ :propagations        29
+ :rlimit-count        25291)
+;;;<<<
+;;;>>> QUERY
+(pop)
+(push)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          2
+ :propagations        29
+ :rlimit-count        25298)
+;;;<<<
+;;;>>> QUERY
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          2
+ :propagations        29
+ :rlimit-count        25309)
+;;;<<<
+;;;>>> QUERY
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.16.0")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          3
+ :propagations        29
+ :rlimit-count        25311)
+;;;<<<
+;;;>>> QUERY
+(pop)
+(push)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          3
+ :propagations        29
+ :rlimit-count        25318)
+;;;<<<
+;;;>>> QUERY
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          3
+ :propagations        29
+ :rlimit-count        25327)
+;;;<<<
+;;;>>> QUERY
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.16.0")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         248
+ :mk-clause-binary    33
+ :num-allocs          49669
+ :num-checks          4
+ :propagations        29
+ :rlimit-count        25329)
+;;;<<<

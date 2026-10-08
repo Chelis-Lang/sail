@@ -1,0 +1,31 @@
+;; Prelude
+;; AIR prelude
+;; MODULE 'module arith'
+;; input.rs:11:9: 11:15 (#0)
+;; query spun off because: nonlinear
+;; Fuel
+;; Trait-Decls
+;; Associated-Type-Decls
+;; Datatypes
+;; Trait-Bounds
+;; Associated-Type-Impls
+;; Trait-Impl-Axiom
+;; Broadcast vstd::function::axiom_fn_mut_call_requires
+;; Broadcast vstd::function::axiom_fn_mut_call_ensures
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Function-Specs input::arith::mul_pos
+;; Function-Def input::arith::mul_pos
+;; input.rs:11:9: 11:15 (#0)
+(check-valid

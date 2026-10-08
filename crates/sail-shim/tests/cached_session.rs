@@ -51,16 +51,20 @@ fn session_starts(dir: &Path) -> usize {
         .count()
 }
 
-fn run_shim(solver: &Path, socket: Option<&Path>) -> Vec<u8> {
+fn run_shim(solver: &Path, socket: Option<&Path>, provenance: Option<&Path>) -> Vec<u8> {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
     cmd.args(["-smt2", "-in"])
         .env("SAIL_Z3_PATH", solver)
         .env_remove("SAIL_TRACE_DIR")
         .env_remove("SAIL_DAEMON_SOCKET")
+        .env_remove("SAIL_PROVENANCE_DIR")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped());
     if let Some(s) = socket {
         cmd.env("SAIL_DAEMON_SOCKET", s);
+    }
+    if let Some(p) = provenance {
+        cmd.env("SAIL_PROVENANCE_DIR", p);
     }
     let mut child = match cmd.spawn() {
         Ok(c) => c,
@@ -107,6 +111,31 @@ fn replies(output: &[u8]) -> Vec<(bool, Vec<u8>)> {
         .collect()
 }
 
+/// How many replies the input asks for.
+fn outputs() -> u64 {
+    let mut commands = Vec::new();
+    CommandSplitter::new().push(INPUT, &mut commands);
+    commands
+        .iter()
+        .filter_map(|c| classify(&c.bytes).ok())
+        .filter(|c| c.kind.output() == Output::One)
+        .count() as u64
+}
+
+/// The single provenance record in `dir`, which is then emptied.
+fn take_record(dir: &Path) -> serde_json::Value {
+    let files: Vec<PathBuf> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .collect();
+    assert_eq!(files.len(), 1, "{files:?}");
+    let text = std::fs::read(&files[0]).unwrap_or_default();
+    let _ = std::fs::remove_file(&files[0]);
+    serde_json::from_slice(&text).unwrap_or_default()
+}
+
 fn rlimit(reply: &[u8]) -> Option<&[u8]> {
     let line = reply
         .split(|&b| b == b'\n')
@@ -146,17 +175,41 @@ fn second_session_replays_from_cache_without_unknowns_skipped() {
         }
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
-    let direct = run_shim(&solver, None);
+    let direct = run_shim(&solver, None, None);
     let before = session_starts(&dir);
-    let fill = run_shim(&solver, Some(&socket));
+    let records = dir.join("provenance");
+    assert!(std::fs::create_dir_all(&records).is_ok());
+    let fill = run_shim(&solver, Some(&socket), Some(&records));
     assert_equivalent(&direct, &fill);
     assert_eq!(
         session_starts(&dir),
         before + 1,
         "the fill run starts a solver"
     );
-    let warm = run_shim(&solver, Some(&socket));
+    // Provenance records (ADR 0014): keyed by the input's SHA-256, they
+    // count the replies served before a solver started.
+    let hex = sail_key::sha256(INPUT)
+        .iter()
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        });
+    let record = take_record(&records);
+    assert_eq!(record["version"], 1);
+    assert_eq!(record["input_sha256"], hex.as_str());
+    assert_eq!(record["solver_started"], true);
+    assert_eq!(record["replies_served"], 0, "the fill run misses at once");
+    let warm = run_shim(&solver, Some(&socket), Some(&records));
     assert_equivalent(&direct, &warm);
+    let record = take_record(&records);
+    assert_eq!(record["input_sha256"], hex.as_str());
+    assert_eq!(record["solver_started"], true);
+    let served = record["replies_served"].as_u64().unwrap_or(0);
+    assert!(
+        served > 0 && served < outputs(),
+        "warm run served {served} replies"
+    );
     // This session answers `unknown` three times; cached `unknown` is never
     // served (ADR 0009), so the solver starts again at the first of them and
     // replays everything before it.

@@ -1,10 +1,15 @@
-//! The embeddable API and the daemon wire protocol.
+//! The embeddable API, the daemon wire protocol and the structured output
+//! schema.
 //!
-//! Status: the daemon protocol and the thin client the shim uses (ADR 0011).
-//! The structured output schema arrives with `sail verify`.
+//! - [`protocol`] and [`client`]: the daemon protocol and the thin client
+//!   the shim uses (ADR 0011);
+//! - [`output`]: the `sail verify --output json` document (ADR 0014);
+//! - [`schema`]: a small JSON Schema checker for that document's schema.
 #![forbid(unsafe_code)]
 
+pub mod output;
 pub mod protocol;
+pub mod schema;
 
 #[cfg(unix)]
 pub mod client;

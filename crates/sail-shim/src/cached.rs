@@ -626,16 +626,53 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             s.write(&chunk);
         }
     }
-    if let Some(s) = solving {
-        return Some(s.finish());
+    // At the end of input while serving, incomplete trailing input goes to
+    // the solver, which decides what it means.
+    let (code, started) = match solving {
+        Some(s) => (Some(s.finish()), true),
+        None if splitter.finish().is_some() => (
+            start_solver(solver, args, &raw, served, Expect::Stop, client.take())
+                .map(Solving::finish),
+            true,
+        ),
+        None => (Some(ExitCode::SUCCESS), false),
+    };
+    record_provenance(&raw, served, started);
+    code
+}
+
+/// When `SAIL_PROVENANCE_DIR` is set, writes `<dir>/<pid>-<nanos>.json`
+/// saying how many replies the cache served before a solver started, keyed
+/// by the SHA-256 of the session's whole input (ADR 0014). `sail verify
+/// --output json` joins it to Verus's transcript of the same process.
+///
+/// Best effort, and only after every reply has been forwarded and the
+/// solver has exited: nothing here can affect what the client receives.
+fn record_provenance(input: &[u8], served: u64, solver_started: bool) {
+    let Some(dir) = std::env::var_os(crate::ENV_PROVENANCE_DIR).filter(|v| !v.is_empty()) else {
+        return;
+    };
+    let digest = sail_key::sha256(input);
+    let hex = digest.iter().fold(String::new(), |mut s, b| {
+        use std::fmt::Write as _;
+        let _ = write!(s, "{b:02x}");
+        s
+    });
+    let record = serde_json::json!({
+        "version": 1,
+        "input_sha256": hex,
+        "replies_served": served,
+        "solver_started": solver_started,
+    });
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let dir = Path::new(&dir);
+    let name = format!("{}-{nanos}", std::process::id());
+    let tmp = dir.join(format!("{name}.tmp"));
+    if std::fs::write(&tmp, record.to_string()).is_ok() {
+        let _ = std::fs::rename(&tmp, dir.join(format!("{name}.json")));
     }
-    // End of input while serving. Incomplete trailing input goes to the
-    // solver, which decides what it means.
-    if splitter.finish().is_some() {
-        return start_solver(solver, args, &raw, served, Expect::Stop, client.take())
-            .map(Solving::finish);
-    }
-    Some(ExitCode::SUCCESS)
 }
 
 #[cfg(test)]

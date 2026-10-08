@@ -291,6 +291,7 @@ name = "sail-api"
 version = "0.0.0"
 dependencies = [
  "sail-key",
+ "sail-ledger",
  "serde",
  "serde_json",
 ]
@@ -327,6 +328,8 @@ dependencies = [
  "sail-api",
  "sail-daemon",
  "sail-verus",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -407,8 +410,11 @@ version = "0.0.0"
 name = "sail-verus"
 version = "0.0.0"
 dependencies = [
+ "sail-ledger",
+ "sail-smtlib",
  "serde",
  "serde_json",
+ "sha2",
  "toml",
  "toml_edit",
 ]
