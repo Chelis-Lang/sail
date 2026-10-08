@@ -171,7 +171,13 @@ fn protect_main() -> Result<()> {
     let body = serde_json::json!({
         "required_status_checks": {
             "strict": false,
-            "contexts": ["No AI authorship markers", "Workspace gate"]
+            "contexts": [
+                "No AI authorship markers",
+                "Workspace gate",
+                "Solver tests",
+                "End to end",
+                "Conformance"
+            ]
         },
         "enforce_admins": true,
         "required_pull_request_reviews": {

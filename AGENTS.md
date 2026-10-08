@@ -32,7 +32,11 @@ acting. The charter's appendix records corrections made since it was written.
   opt-in, named, recorded in `docs/divergences.md`, and cached under keys that
   cannot collide with default-mode keys.
 - **Surprising Verus or Z3 behaviour:** capture a minimal reproduction in the
-  corpus and document it before working around it.
+  corpus and document it before working around it. Verus problems are
+  tracked in `docs/verus-issues/`.
+- **Never file issues, PRs or comments in other projects' repositories**
+  (Verus, Z3, corpus projects). Record upstream problems locally
+  (`docs/verus-issues/`). Whether to report upstream is a human decision.
 - **Decisions** go in numbered ADRs in `docs/decisions/` (copy `0000-template.md`).
   Changing the crate dependency graph is a decision.
 - **Solver identity is explicit.** Never assume a single solver in the cache,
@@ -63,8 +67,7 @@ bootstrap pushes (ADR 0002).
 
 In PR mode:
 - `main` is protected, and every change lands through a squash-merged PR.
-- Two checks are required: `No AI authorship markers` and `Workspace gate`.
-  Admins are not exempt.
+- Five checks are required (see Gates). Admins are not exempt.
 - Protection is applied by `cargo xtask protect-main`, which is idempotent.
 
 **Keep `main` green.**
@@ -125,49 +128,32 @@ structural rules are tested:
 
 ## Gates
 
-Run the gate locally before pushing. This is exactly what CI's `Workspace gate` runs:
+CI runs every check inside the CI image (ADR 0013), through `ci/run.sh`.
+Run the same steps locally in the same image with `ci/local.sh`:
 
 ```sh
-cargo fmt --all --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo nextest run --workspace --locked          # or: cargo test --workspace
-cargo test --workspace --doc --locked
-RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
-cargo xtask check-layering
-cargo deny --locked check
+ci/local.sh gate                  # fmt, clippy, tests, doctests, rustdoc, layering, deny, benchmarks page
+ci/local.sh solver                # every test that needs the pinned Z3 (incl. fault injection)
+ci/local.sh e2e                   # `sail verify` vs `cargo verus verify`: identical output
+ci/local.sh conformance fast pr   # the PR conformance subset, pass-through and cache-on
 ```
+
+On the host, the fast loop is still `cargo nextest run --workspace` plus the
+gate commands in `ci/run.sh`. `cargo xtask fetch-verus` installs the pinned
+Verus for host runs.
+
+**Required on every PR** (branch protection): `No AI authorship markers`,
+`Workspace gate`, `Solver tests`, `End to end`, `Conformance`.
 
 **Testing tiers** (charter §Engineering practice):
-- *Fast:* the gate above. It runs on every push and PR, and gains a small
-  conformance subset once the harness exists (M3).
-- *Standard:* conformance over the main corpus in default mode, plus cache tier
-  and shim fallback tests. This tier gates merges once it exists.
-  `.github/workflows/conformance.yml` runs a fast-tier subset on PRs and the
-  whole fast tier nightly; dispatch it with `tier=standard|deep` (ADR 0006).
-- *Fault injection:* `crates/sail-shim/tests/faults.rs` drops, hangs and
-  slows the daemon, corrupts cache entries, kills the solver and races
-  concurrent shims against the pinned Z3. Run it with the other ignored
-  shim tests:
-  `SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all`.
-  `docs/fault-injection.md` lists each scenario with its expected and
-  observed outcome.
-
-Run conformance locally (needs `cargo xtask fetch-verus` once):
-
-```sh
-cargo build --release -p sail-shim -p sail-conformance
-./target/release/sail-conformance run --tier fast --jobs 4
-```
-
-The standard tier adds the external `cargo verus` and `verus` projects
-(`--tier standard`). It also needs Verus's Rust toolchain
-(`rust_toolchain` in `corpus/toolchain.toml`) installed with rustup, and
-network access for the projects' crates.io dependencies. Projects whose
-`requires` are unavailable are skipped and listed in the summary line.
-- *Deep:* full corpus, history replay, portfolio and fragility runs, and full
-  benchmarks. Scheduled, and run before releases.
-- *Not in the fast gate:* benchmarks, profiling and long fuzzing. Record
-  machine details with every benchmark result.
+- *Fast:* the required checks above.
+- *Standard:* conformance over the whole fast tier nightly, and over the
+  standard tier weekly (includes anvil). Dispatch `conformance.yml` with any
+  tier.
+- *Deep:* `conformance.yml` with `tier=deep`, dispatched before releases.
+- *Benchmarks:* `bench.yml`, dispatched (`cold`, `warm` or `edit`). Never part
+  of the gate. Record machine details with every result.
+- *Fault injection:* `docs/fault-injection.md`, run as part of `solver`.
 
 ## Tracking
 

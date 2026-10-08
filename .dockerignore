@@ -1,0 +1,6 @@
+# The CI image (ci/Dockerfile) needs only its pinned inputs; the repository
+# itself is mounted or checked out at run time.
+*
+!rust-toolchain.toml
+!corpus/toolchain.toml
+!ci/fetch-verus.py

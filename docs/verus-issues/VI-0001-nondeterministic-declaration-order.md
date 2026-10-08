@@ -1,4 +1,18 @@
-# Draft upstream issue (not filed; owner decides, open question 9)
+# VI-0001: Nondeterministic SMT output from `arrow_*` accessor order
+
+- **Status:** open (tracked here; not filed upstream; see the README)
+- **Verus:** `0.2026.10.04.426d8b0` (pinned)
+- **Found:** 2026-10-08
+- **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
+- **Impact on sail:** caps warm cache hit rates. About 5% of fast-tier checks
+  miss on an unchanged rerun, and buckets with any reordering re-solve from
+  the first difference.
+- **Workaround:** none needed for correctness (ADR 0008). An opt-in
+  normalization mode would need charter rule 5's whole-corpus validation.
+
+The description below is written so it could be filed upstream unchanged.
+
+## Description
 
 **Title:** Nondeterministic SMT output: `arrow_*` accessors are emitted in
 `HashMap` order (enum_synthesize.rs)

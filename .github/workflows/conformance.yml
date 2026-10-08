@@ -1,14 +1,19 @@
 name: conformance
 
-# Differential conformance: plain Verus vs Verus through sail-z3, on the
-# pinned corpus (ADR 0006). PRs run a small fast-tier subset; the full fast
-# tier runs nightly; any tier can be dispatched by hand.
+# Differential conformance (ADR 0006): plain Verus vs Verus through sail-z3,
+# pass-through and then with the cache on (fill, then warm), inside the CI
+# image (ADR 0013).
+# - PRs: the fast-tier guide subset.
+# - Nightly: the whole fast tier.
+# - Weekly: the standard tier (which includes the fast tier).
+# - Dispatch: any tier.
 
 on:
   pull_request:
     branches: [main]
   schedule:
     - cron: "41 3 * * *"
+    - cron: "17 4 * * 0"
   workflow_dispatch:
     inputs:
       tier:
@@ -22,87 +27,61 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event.schedule || inputs.tier }}
   cancel-in-progress: true
 
-env:
-  CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: "0"
-
 jobs:
+  image:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/image.yml
+
   conformance:
     name: Conformance
+    needs: image
     runs-on: ubuntu-latest
-    # The standard tier verifies the external projects twice each (plain and
-    # through sail-z3); give dispatched non-fast tiers more time.
-    timeout-minutes: ${{ (github.event_name == 'workflow_dispatch' && inputs.tier != 'fast') && 330 || 90 }}
+    timeout-minutes: 350
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install pinned toolchain (rust-toolchain.toml)
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: Install Verus's toolchain
-        run: rustup toolchain install "$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' corpus/toolchain.toml)" --profile minimal
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Cache pinned Verus and corpus sources
+          save-if: false
+      - name: Cache corpus sources
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: |
-            ~/.cache/sail/verus
-            ~/.cache/sail/corpus
-          key: sail-verus-${{ runner.os }}-${{ hashFiles('corpus/toolchain.toml', 'corpus/corpus.toml') }}
-      - name: Install standard-tier requirements (OpenSSL for anvil; x86_64-unknown-none, cmake and ninja for verismo)
-        if: github.event_name == 'workflow_dispatch' && inputs.tier != 'fast'
-        run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libssl-dev cmake ninja-build
-          rustup target add x86_64-unknown-none --toolchain "$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' corpus/toolchain.toml)"
-      - name: Install pinned Verus
-        run: cargo xtask fetch-verus
-      - name: Build sail, sail-z3 and the harness
-        run: cargo build --release --locked -p sail-cli -p sail-shim -p sail-conformance
+          path: ~/.cache/sail/corpus
+          key: sail-corpus-${{ hashFiles('corpus/corpus.toml') }}
       - name: Run conformance
         env:
           EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
           TIER: ${{ inputs.tier }}
+          SAIL_CONFORMANCE_OUT: ${{ runner.temp }}/conformance-out
         run: |
-          if [ "$EVENT" = "pull_request" ]; then
-            ./target/release/sail-conformance run --tier fast --project verus-examples --filter /guide/ --jobs 4 --out conformance-out
+          if [ "$EVENT" = pull_request ]; then
+            ci/run.sh conformance fast pr
+          elif [ "$SCHEDULE" = "17 4 * * 0" ]; then
+            ci/run.sh conformance standard
           else
-            # Fewer jobs beyond the fast tier: single units peak above 4 GB.
-            if [ "${TIER:-fast}" = fast ]; then JOBS=4; else JOBS=3; fi
-            ./target/release/sail-conformance run --tier "${TIER:-fast}" --jobs "$JOBS" --out conformance-out
+            ci/run.sh conformance "${TIER:-fast}"
           fi
-      - name: Conformance with the cache (fill, then warm; ADR 0011)
-        if: github.event_name == 'pull_request' || inputs.tier == '' || inputs.tier == 'fast'
-        run: |
-          sock="$HOME/.cache/sail/ci.sock"
-          cache="$RUNNER_TEMP/sail-cache"
-          mkdir -p "$(dirname "$sock")"
-          ./target/release/sail serve --socket "$sock" --cache "$cache" &
-          for _ in $(seq 1 100); do [ -S "$sock" ] && break; sleep 0.1; done
-          [ -S "$sock" ] || { echo "daemon did not start"; exit 1; }
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            select=(--tier fast --project verus-examples --filter /guide/)
-          else
-            select=(--tier fast)
-          fi
-          for round in fill warm; do
-            SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance run "${select[@]}" --jobs 4 --out "conformance-cache-$round"
-          done
-          # The cache must actually have been used, or this job silently
-          # tested pass-through.
-          entries=$(find "$cache" -type f | wc -l)
-          echo "cache entries: $entries"
-          [ "$entries" -gt 0 ]
-      - name: Upload report
+      - name: Upload reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: conformance-report
+          name: conformance-reports
           path: |
-            conformance-out/report.json
-            conformance-out/units/*/*/stderr.txt
+            ${{ runner.temp }}/conformance-out/**/report.json
+            ${{ runner.temp }}/conformance-out/**/stderr.txt
           if-no-files-found: ignore
