@@ -1,0 +1,595 @@
+{
+  "schema_version": 1,
+  "workload": "edit",
+  "tier": "catalogue",
+  "rounds": 2,
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "sail_commit": "ecd7ee1ed9b9",
+  "started_unix": 1791486456,
+  "machine": {
+    "cpu": "Apple M3",
+    "cpus": "8",
+    "host": "aarch64-apple-darwin",
+    "memory_bytes": "25769803776",
+    "uname": "Darwin 25.5.0 arm64"
+  },
+  "units": [],
+  "edits": [
+    {
+      "id": "human-eval-013-body",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "kind": "body",
+      "description": "compute_gcd: split `b1 = b1 % a1` through a temporary",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 331,
+      "plain_original": {
+        "wall_ms": [
+          32308.168875,
+          35384.687165999996
+        ],
+        "cpu_s": [
+          64.41,
+          64.11
+        ],
+        "smt_ms": [
+          61380,
+          81800
+        ],
+        "max_rss_bytes": [
+          804241408,
+          808960000
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          45216.154625,
+          38621.38325
+        ],
+        "cpu_s": [
+          68.32,
+          66.78
+        ],
+        "smt_ms": [
+          99197,
+          81188
+        ],
+        "max_rss_bytes": [
+          804290560,
+          806912000
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          42278.40275,
+          30675.156292
+        ],
+        "cpu_s": [
+          65.07000000000001,
+          63.059999999999995
+        ],
+        "smt_ms": [
+          86440,
+          61461
+        ],
+        "max_rss_bytes": [
+          813596672,
+          802488320
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          6466.332333,
+          6526.336167
+        ],
+        "cpu_s": [
+          10.26,
+          10.12
+        ],
+        "smt_ms": [
+          2633,
+          2865
+        ],
+        "max_rss_bytes": [
+          795869184,
+          799096832
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4114,
+          "hits": 4112,
+          "puts": 298
+        },
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4114,
+          "hits": 4112,
+          "puts": 298
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "human-eval-028-spec",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "kind": "spec",
+      "description": "concatenate_impl: add an implied `ensures` clause on the result's length",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 331,
+      "plain_original": {
+        "wall_ms": [
+          38329.678042,
+          31987.295499999997
+        ],
+        "cpu_s": [
+          65.17,
+          64.12
+        ],
+        "smt_ms": [
+          73591,
+          66028
+        ],
+        "max_rss_bytes": [
+          814465024,
+          809402368
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          47096.6425,
+          53642.752541
+        ],
+        "cpu_s": [
+          67.03,
+          70.22
+        ],
+        "smt_ms": [
+          95063,
+          126801
+        ],
+        "max_rss_bytes": [
+          806731776,
+          776994816
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          43510.214417,
+          30286.01325
+        ],
+        "cpu_s": [
+          65.8,
+          65.11
+        ],
+        "smt_ms": [
+          96265,
+          61101
+        ],
+        "max_rss_bytes": [
+          816185344,
+          805453824
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          8752.769166,
+          4642.072792000001
+        ],
+        "cpu_s": [
+          9.29,
+          8.53
+        ],
+        "smt_ms": [
+          2331,
+          1062
+        ],
+        "max_rss_bytes": [
+          778010624,
+          802193408
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4391,
+          "hits": 4390,
+          "puts": 20
+        },
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4391,
+          "hits": 4390,
+          "puts": 20
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "human-eval-023-spec-break",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "kind": "spec",
+      "description": "strlen: a wrong `ensures` (length + 1), so verification fails, as in an agent's failed attempt",
+      "expected": "errors",
+      "outcome": "errors",
+      "functions": 331,
+      "plain_original": {
+        "wall_ms": [
+          35194.818708,
+          42958.372042
+        ],
+        "cpu_s": [
+          66.37,
+          67.82000000000001
+        ],
+        "smt_ms": [
+          74117,
+          100875
+        ],
+        "max_rss_bytes": [
+          822657024,
+          812367872
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          37690.928458999995,
+          42434.527208
+        ],
+        "cpu_s": [
+          68.4,
+          68.96000000000001
+        ],
+        "smt_ms": [
+          83505,
+          82359
+        ],
+        "max_rss_bytes": [
+          824918016,
+          789823488
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          34348.753708,
+          55388.238917
+        ],
+        "cpu_s": [
+          66.03999999999999,
+          67.9
+        ],
+        "smt_ms": [
+          74410,
+          116754
+        ],
+        "max_rss_bytes": [
+          817643520,
+          701038592
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          7365.560791,
+          5179.366125
+        ],
+        "cpu_s": [
+          10.129999999999999,
+          8.24
+        ],
+        "smt_ms": [
+          3957,
+          1823
+        ],
+        "max_rss_bytes": [
+          825114624,
+          781533184
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4152,
+          "hits": 4150,
+          "puts": 277
+        },
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4401,
+          "hits": 4400,
+          "puts": 27
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "vstd-relations-body",
+      "unit": "vstd/source/vstd/vstd.rs",
+      "kind": "body",
+      "description": "lemma_new_first_element_still_sorted_by: add an assertion to the proof",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 1871,
+      "plain_original": {
+        "wall_ms": [
+          56683.999625,
+          24835.004291
+        ],
+        "cpu_s": [
+          63.480000000000004,
+          58.72
+        ],
+        "smt_ms": [
+          44632,
+          18971
+        ],
+        "max_rss_bytes": [
+          1623146496,
+          2024652800
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          39707.685,
+          29517.392292
+        ],
+        "cpu_s": [
+          61.480000000000004,
+          59.46
+        ],
+        "smt_ms": [
+          20138,
+          16212
+        ],
+        "max_rss_bytes": [
+          1685061632,
+          1908457472
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          25504.419166000003,
+          30678.946917
+        ],
+        "cpu_s": [
+          54.81,
+          51.85
+        ],
+        "smt_ms": [
+          18211,
+          17525
+        ],
+        "max_rss_bytes": [
+          1968832512,
+          1868775424
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          21851.882167,
+          17527.654167
+        ],
+        "cpu_s": [
+          40.61,
+          42.08
+        ],
+        "smt_ms": [
+          1745,
+          2373
+        ],
+        "max_rss_bytes": [
+          1919139840,
+          2043478016
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 365,
+          "gets": 1045,
+          "hits": 724,
+          "puts": 19876
+        },
+        {
+          "phase": "edit",
+          "sessions": 365,
+          "gets": 20434,
+          "hits": 20432,
+          "puts": 168
+        },
+        {
+          "phase": "fill",
+          "sessions": 365,
+          "gets": 1045,
+          "hits": 724,
+          "puts": 19876
+        },
+        {
+          "phase": "edit",
+          "sessions": 365,
+          "gets": 19066,
+          "hits": 19062,
+          "puts": 1538
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "examples-vectors-body",
+      "unit": "verus-examples/examples/vectors.rs",
+      "kind": "body",
+      "description": "binary_search: flip the loop's comparison (`v[ix] < k` to `k > v[ix]`)",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 7,
+      "plain_original": {
+        "wall_ms": [
+          1124.096791,
+          965.9131669999999
+        ],
+        "cpu_s": [
+          0.75,
+          0.75
+        ],
+        "smt_ms": [
+          222,
+          217
+        ],
+        "max_rss_bytes": [
+          292601856,
+          292814848
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          1190.5779169999998,
+          1195.889459
+        ],
+        "cpu_s": [
+          0.76,
+          0.7799999999999999
+        ],
+        "smt_ms": [
+          237,
+          221
+        ],
+        "max_rss_bytes": [
+          293388288,
+          293863424
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          1008.772292,
+          1111.8062499999999
+        ],
+        "cpu_s": [
+          0.74,
+          0.83
+        ],
+        "smt_ms": [
+          252,
+          223
+        ],
+        "max_rss_bytes": [
+          292929536,
+          293601280
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          1114.324916,
+          1128.391042
+        ],
+        "cpu_s": [
+          0.7799999999999999,
+          0.7999999999999999
+        ],
+        "smt_ms": [
+          252,
+          198
+        ],
+        "max_rss_bytes": [
+          293781504,
+          293158912
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 1,
+          "gets": 1,
+          "hits": 0,
+          "puts": 90
+        },
+        {
+          "phase": "edit",
+          "sessions": 1,
+          "gets": 3,
+          "hits": 2,
+          "puts": 88
+        },
+        {
+          "phase": "fill",
+          "sessions": 1,
+          "gets": 1,
+          "hits": 0,
+          "puts": 90
+        },
+        {
+          "phase": "edit",
+          "sessions": 1,
+          "gets": 3,
+          "hits": 2,
+          "puts": 88
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    }
+  ]
+}
