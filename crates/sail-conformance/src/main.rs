@@ -209,8 +209,9 @@ fn select(
     o: &Options,
     corpus: &Corpus,
     cache: &Path,
-    toolchain: &str,
+    verus: &sail_verus::toolchain::VerusPin,
 ) -> Result<Selection, String> {
+    let toolchain = verus.rust_toolchain.as_str();
     let mut all = Vec::new();
     let mut skipped = Vec::new();
     for project in corpus.projects_in(o.tier, &o.projects) {
@@ -235,10 +236,10 @@ fn select(
         all.retain(|u| u.id.contains(f.as_str()));
     }
     let verus_source = if all.iter().any(|u| u.patch_verus_deps) {
-        eprintln!("fetching verus @ {}", corpus.verus_commit);
+        eprintln!("fetching verus @ {}", verus.commit);
         Some(
             corpus
-                .fetch_verus_source(cache)
+                .fetch_verus_source(cache, &verus.commit)
                 .map_err(|e| e.to_string())?,
         )
     } else {
@@ -428,7 +429,7 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         units,
         skipped,
         verus_source,
-    } = select(o, &corpus, &cache, &installed.pins.verus.rust_toolchain)?;
+    } = select(o, &corpus, &cache, &installed.pins.verus)?;
     let started = now_unix();
     let dir = o
         .out
@@ -504,8 +505,9 @@ fn main() -> ExitCode {
         "run" => run(&o),
         "fetch" => {
             let (corpus, installed, cache) = load()?;
-            let toolchain = &installed.pins.verus.rust_toolchain;
-            let n = select(&o, &corpus, &cache, toolchain)?.units.len();
+            let n = select(&o, &corpus, &cache, &installed.pins.verus)?
+                .units
+                .len();
             println!("{n} units ready");
             Ok(ExitCode::SUCCESS)
         }

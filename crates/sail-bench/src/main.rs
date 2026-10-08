@@ -78,7 +78,7 @@ fn select_units(
     let verus_source = if units.iter().any(|u| u.patch_verus_deps) {
         Some(
             corpus
-                .fetch_verus_source(cache)
+                .fetch_verus_source(cache, &installed.pins.verus.commit)
                 .map_err(|e| e.to_string())?,
         )
     } else {
