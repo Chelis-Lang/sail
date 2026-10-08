@@ -52,11 +52,12 @@ pub(crate) fn snapshot(root: &Path) -> BTreeMap<PathBuf, Stamp> {
 }
 
 /// Kills the process group led by `child` (it was started as a group
-/// leader), then reaps it.
+/// leader), then reaps it. `kill -s KILL -- -PGID` is the unambiguous POSIX
+/// form: without `--`, some `kill` implementations read `-PGID` as an option.
 fn cancel(child: &mut Child) {
     let pgid = child.id();
     let _ = Command::new("kill")
-        .args(["-KILL", &format!("-{pgid}")])
+        .args(["-s", "KILL", "--", &format!("-{pgid}")])
         .status();
     let _ = child.kill();
     let _ = child.wait();
@@ -98,7 +99,7 @@ pub fn watch(args: &[String], err: &mut impl std::io::Write) -> ExitCode {
             let pgid = running.load(Ordering::SeqCst);
             if pgid != 0 {
                 let _ = Command::new("kill")
-                    .args(["-KILL", &format!("-{pgid}")])
+                    .args(["-s", "KILL", "--", &format!("-{pgid}")])
                     .status();
             }
         });
@@ -114,7 +115,11 @@ pub fn watch(args: &[String], err: &mut impl std::io::Write) -> ExitCode {
             seen = now;
             pending = Some(Instant::now());
             if let Some(mut c) = child.take() {
-                let _ = writeln!(err, "sail watch: change detected; cancelling run {run}");
+                let _ = writeln!(
+                    err,
+                    "sail watch: change detected; cancelling run {run} (process group {})",
+                    c.id()
+                );
                 cancel(&mut c);
                 running.store(0, Ordering::SeqCst);
             }

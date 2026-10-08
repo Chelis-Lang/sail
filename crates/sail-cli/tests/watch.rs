@@ -33,8 +33,9 @@ fn edits_cancel_the_run_in_flight_and_restart() {
     // A stand-in for cargo-verus: logs each start, then runs "forever".
     let fake = root.join("cargo-verus");
     let script = format!(
-        "#!/bin/sh\necho start >> '{0}'\nsleep 30\necho end >> '{0}'\n",
-        log.display()
+        "#!/bin/sh\necho start >> '{0}'\necho $$ >> '{1}'\nsleep 30\necho end >> '{0}'\n",
+        log.display(),
+        root.join("pids").display()
     );
     assert!(std::fs::write(&fake, script).is_ok());
     assert!(std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).is_ok());
@@ -50,7 +51,10 @@ fn edits_cancel_the_run_in_flight_and_restart() {
         .env("SAIL_DAEMON_SOCKET", &socket)
         .env("SAIL_CACHE_DIR", root.join("cache"))
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(
+            std::fs::File::create(root.join("watch.err"))
+                .map_or_else(|_| Stdio::null(), Stdio::from),
+        )
         .spawn()
     {
         Ok(c) => c,

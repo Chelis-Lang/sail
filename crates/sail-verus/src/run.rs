@@ -562,7 +562,7 @@ fn run_with_timeout(
             Ok(None) => {
                 let pgid = child.id();
                 let _ = Command::new("kill")
-                    .args(["-KILL", &format!("-{pgid}")])
+                    .args(["-s", "KILL", "--", &format!("-{pgid}")])
                     .status();
                 let _ = child.kill();
                 let _ = child.wait();
