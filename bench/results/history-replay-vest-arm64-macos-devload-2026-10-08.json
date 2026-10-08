@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "workload": "history-replay",
+  "tier": "vest",
+  "rounds": 1,
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "sail_commit": "f111742bb058",
+  "started_unix": 1791497833,
+  "machine": {
+    "cpu": "Apple M3",
+    "cpus": "8",
+    "host": "aarch64-apple-darwin",
+    "memory_bytes": "25769803776",
+    "uname": "Darwin 25.5.0 arm64"
+  },
+  "units": [],
+  "commits": [
+    {
+      "sha": "d4e51924a0eb5b93d29cb02e45311ec4f6374c91",
+      "subject": "Improve Vest docs",
+      "unit": "vest/vest_lib",
+      "outcome": "errors",
+      "plain": {
+        "wall_ms": [
+          79584.98666600001
+        ],
+        "cpu_s": [
+          49.26
+        ],
+        "smt_ms": [],
+        "max_rss_bytes": [
+          1083998208
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          49584.581958
+        ],
+        "cpu_s": [
+          46.95
+        ],
+        "smt_ms": [],
+        "max_rss_bytes": [
+          1160265728
+        ]
+      },
+      "cache": [
+        {
+          "phase": "commit",
+          "sessions": 0,
+          "gets": 0,
+          "hits": 0,
+          "puts": 0
+        }
+      ],
+      "same": 1,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0,
+      "note": null
+    },
+    {
+      "sha": "3fb19e783640c7b3a30e78be5d90df9589b4b1a1",
+      "subject": "Rebuild Vest guide",
+      "unit": "vest/vest_lib",
+      "outcome": "errors",
+      "plain": {
+        "wall_ms": [
+          71965.965375
+        ],
+        "cpu_s": [
+          47.349999999999994
+        ],
+        "smt_ms": [],
+        "max_rss_bytes": [
+          1131921408
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          113361.89600000001
+        ],
+        "cpu_s": [
+          46.73
+        ],
+        "smt_ms": [],
+        "max_rss_bytes": [
+          1103446016
+        ]
+      },
+      "cache": [
+        {
+          "phase": "commit",
+          "sessions": 0,
+          "gets": 0,
+          "hits": 0,
+          "puts": 0
+        }
+      ],
+      "same": 1,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0,
+      "note": null
+    },
+    {
+      "sha": "1cad7092db49f74d787dc3ffc54c867a52f011ff",
+      "subject": "Update Vest to Verus 0.2026.09.06",
+      "unit": "vest/vest_lib",
+      "outcome": "errors",
+      "plain": {
+        "wall_ms": [
+          270400.914708
+        ],
+        "cpu_s": [
+          177.59
+        ],
+        "smt_ms": [
+          266987
+        ],
+        "max_rss_bytes": [
+          1628061696
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          211903.87104199998
+        ],
+        "cpu_s": [
+          179.77999999999997
+        ],
+        "smt_ms": [
+          210371
+        ],
+        "max_rss_bytes": [
+          1936359424
+        ]
+      },
+      "cache": [
+        {
+          "phase": "commit",
+          "sessions": 266,
+          "gets": 576,
+          "hits": 328,
+          "puts": 31444
+        }
+      ],
+      "same": 1,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0,
+      "note": null
+    },
+    {
+      "sha": "f958544c92e30308720e89fef5093f7f8bd8bed9",
+      "subject": "Stabilize GeneralizedTime verification",
+      "unit": "vest/vest_lib",
+      "outcome": "errors",
+      "plain": {
+        "wall_ms": [
+          275998.263459
+        ],
+        "cpu_s": [
+          185.17000000000002
+        ],
+        "smt_ms": [
+          227248
+        ],
+        "max_rss_bytes": [
+          1654145024
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          176383.76829200002
+        ],
+        "cpu_s": [
+          112.92999999999999
+        ],
+        "smt_ms": [
+          18515
+        ],
+        "max_rss_bytes": [
+          1722580992
+        ]
+      },
+      "cache": [
+        {
+          "phase": "commit",
+          "sessions": 266,
+          "gets": 31650,
+          "hits": 31649,
+          "puts": 124
+        }
+      ],
+      "same": 1,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0,
+      "note": null
+    },
+    {
+      "sha": "24ba7238bb381bd123fdda9ae29b87334f45a270",
+      "subject": "Merge pull request #50 from secure-foundations/perf/zero-cost-primitives",
+      "unit": "vest/vest_lib",
+      "outcome": "verified",
+      "plain": {
+        "wall_ms": [
+          151334.834167
+        ],
+        "cpu_s": [
+          179.76
+        ],
+        "smt_ms": [
+          179310
+        ],
+        "max_rss_bytes": [
+          2093907968
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          178121.46058400001
+        ],
+        "cpu_s": [
+          180.29
+        ],
+        "smt_ms": [
+          199150
+        ],
+        "max_rss_bytes": [
+          2234056704
+        ]
+      },
+      "cache": [
+        {
+          "phase": "commit",
+          "sessions": 266,
+          "gets": 5515,
+          "hits": 5384,
+          "puts": 26986
+        }
+      ],
+      "same": 1,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0,
+      "note": null
+    },
+    {
+      "sha": "11af01ddaef76cceded03517cd48764adb9d35b1",
+      "subject": "Merge pull request #52 from secure-foundations/various-improvements",
+      "unit": "vest/vest_lib",
+      "outcome": "verified",
+      "plain": {
+        "wall_ms": [
+          188591.90204199997
+        ],
+        "cpu_s": [
+          179.96
+        ],
+        "smt_ms": [
+          219721
+        ],
+        "max_rss_bytes": [
+          2346336256
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          127806.8195
+        ],
+        "cpu_s": [
+          109.55000000000001
+        ],
+        "smt_ms": [
+          6600
+        ],
+        "max_rss_bytes": [
+          2174959616
+        ]
+      },
+      "cache": [
+        {
+          "phase": "commit",
+          "sessions": 266,
+          "gets": 31886,
+          "hits": 31882,
+          "puts": 488
+        }
+      ],
+      "same": 1,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0,
+      "note": null
+    }
+  ]
+}

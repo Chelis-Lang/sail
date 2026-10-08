@@ -161,6 +161,24 @@ The edits:
 - `vstd-relations-body`: lemma_new_first_element_still_sorted_by: add an assertion to the proof
 - `examples-vectors-body`: binary_search: flip the loop's comparison (`v[ix] < k` to `k > v[ix]`)
 
+## `history-replay-vest-arm64-macos-devload-2026-10-08`: history replay of `vest`
+
+- Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `f111742bb058`; 6 commit(s), one run each
+- Machine: cpu: Apple M3; cpus: 8; host: aarch64-apple-darwin; memory_bytes: 25769803776; uname: Darwin 25.5.0 arm64
+
+The project's recent first-parent commits are replayed oldest first, each with the pinned Verus, against one `sail serve` whose cache persists across all of them, as on a developer or CI machine. Each commit runs plain Verus and sail, and every sail run is compared with plain Verus. The first commit starts from an empty cache. Each run builds the project from a clean target directory, so both sides' times include compiling its dependencies (vstd included). Commits written for another Verus release can fail under the pinned one; their outcome is recorded as observed.
+
+| # | Commit | Unit | Plain Verus | sail | Speedup | Replies served / recorded | Plain outcome | Conformance |
+|---:|---|---|---:|---:|---:|---:|---|---|
+| 0 | `d4e51924a0` Improve Vest docs | `vest/vest_lib` | 79.6 s | 49.6 s | 1.61× | 0 / 0 (n/a) | errors | 1 same, 0 different, 0 unstable |
+| 1 | `3fb19e7836` Rebuild Vest guide | `vest/vest_lib` | 72.0 s | 113.4 s | 0.63× | 0 / 0 (n/a) | errors | 1 same, 0 different, 0 unstable |
+| 2 | `1cad7092db` Update Vest to Verus 0.2026.09.06 | `vest/vest_lib` | 270.4 s | 211.9 s | 1.28× | 328 / 31444 (1.0%) | errors | 1 same, 0 different, 0 unstable |
+| 3 | `f958544c92` Stabilize GeneralizedTime verification | `vest/vest_lib` | 276.0 s | 176.4 s | 1.56× | 31649 / 124 (99.6%) | errors | 1 same, 0 different, 0 unstable |
+| 4 | `24ba7238bb` Merge pull request #50 from secure-foundations/perf/zero-cos | `vest/vest_lib` | 151.3 s | 178.1 s | 0.85× | 5384 / 26986 (16.6%) | verified | 1 same, 0 different, 0 unstable |
+| 5 | `11af01ddae` Merge pull request #52 from secure-foundations/various-impro | `vest/vest_lib` | 188.6 s | 127.8 s | 1.48× | 31882 / 488 (98.5%) | verified | 1 same, 0 different, 0 unstable |
+
+**Commits after the first** (sum): plain 958.3 s, sail 807.6 s, **1.19×**. Conformance over all commits: 6 same, 0 different, 0 unstable, 0 infra errors.
+
 ## `warm-fast-arm64-macos-devload-2026-10-08`: warm workload (no change), fast tier
 
 - Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `ecd7ee1ed9b9`; 1 fill round and 2 warm round(s) per unit
