@@ -1,6 +1,7 @@
 //! Tiered result cache. Status: the local disk tier (ADR 0011), the
-//! in-memory tier ([`memory`]) and disk maintenance ([`maint`]: summaries,
-//! integrity checks, eviction and clearing).
+//! in-memory tier ([`memory`]), disk maintenance ([`maint`]: summaries,
+//! integrity checks, eviction and clearing) and the shared tier of signed
+//! entries ([`shared`], ADR 0017).
 //!
 //! An entry maps a v2 query key (ADR 0008) to the exact reply bytes the
 //! pinned solver produced for that command. Each entry is one file,
@@ -12,6 +13,7 @@
 
 pub mod maint;
 pub mod memory;
+pub mod shared;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -61,7 +63,7 @@ pub struct Effort {
     pub reason: Option<String>,
 }
 
-fn hex(bytes: &[u8]) -> String {
+pub(crate) fn hex(bytes: &[u8]) -> String {
     use std::fmt::Write as _;
     bytes.iter().fold(String::with_capacity(64), |mut s, b| {
         let _ = write!(s, "{b:02x}");

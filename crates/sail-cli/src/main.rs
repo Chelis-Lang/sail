@@ -7,6 +7,7 @@
 
 mod ops;
 mod report;
+mod shared_ops;
 mod verify;
 mod watch;
 
@@ -135,67 +136,96 @@ fn env_number(name: &str) -> Result<Option<u64>, String> {
     }
 }
 
+/// The socket, cache root and daemon settings for
 /// `sail serve [--socket PATH] [--cache DIR] [--memory-bytes N]
-/// [--idle-timeout SECS]`: runs the daemon in the foreground (ADR 0011,
-/// ADR 0015). Defaults: `<cache>/daemon-v<N>.sock` and `<cache>/results`,
-/// where `<cache>` is `$SAIL_CACHE_DIR` or `~/.cache/sail`; a 256 MiB
-/// memory tier (`$SAIL_DAEMON_MEMORY_BYTES`); a 30-minute idle timeout
-/// (`$SAIL_DAEMON_IDLE_TIMEOUT`, seconds, 0 for never). The log is
+/// [--idle-timeout SECS] [--shared DIR] [--shared-timeout-ms MS]`, which runs the
+/// daemon in the foreground (ADR 0011, ADR 0015). Defaults:
+/// `<cache>/daemon-v<N>.sock` and `<cache>/results`, where `<cache>` is
+/// `$SAIL_CACHE_DIR` or `~/.cache/sail`; a 256 MiB memory tier
+/// (`$SAIL_DAEMON_MEMORY_BYTES`); a 30-minute idle timeout
+/// (`$SAIL_DAEMON_IDLE_TIMEOUT`, seconds, 0 for never); no shared tier
+/// (`$SAIL_SHARED_STORE`), looked up with a 250 ms timeout
+/// (`$SAIL_SHARED_TIMEOUT_MS`) and trusting the keys in
+/// `<cache root>/trust/*.pub` (ADR 0017). The log is
 /// `<cache root>/daemon.log`. SIGINT, SIGTERM and SIGHUP stop it cleanly.
 #[cfg(unix)]
-fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
-    let cache = match sail_verus::cache_dir() {
-        Ok(c) => c,
-        Err(e) => {
-            let _ = writeln!(err, "{e}");
-            return ExitCode::from(EXIT_USAGE);
-        }
-    };
-    let usage = |err: &mut dyn std::io::Write, msg: &str| {
-        let _ = writeln!(err, "error[SAIL0002]: {msg}");
-        ExitCode::from(EXIT_USAGE)
-    };
+fn serve_config(
+    args: &[String],
+) -> Result<(std::path::PathBuf, std::path::PathBuf, sail_daemon::Config), String> {
+    let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
     let mut config = sail_daemon::Config {
         idle_timeout: Some(sail_daemon::DEFAULT_IDLE_TIMEOUT),
         ..sail_daemon::Config::default()
     };
-    let from_env = (|| -> Result<(), String> {
-        if let Some(n) = env_number("SAIL_DAEMON_MEMORY_BYTES")? {
-            config.memory_bytes = n;
-        }
-        if let Some(n) = env_number("SAIL_DAEMON_IDLE_TIMEOUT")? {
-            config.idle_timeout = (n > 0).then(|| std::time::Duration::from_secs(n));
-        }
-        // Fault injection only (ADR 0015): slow every disk write.
-        if let Some(n) = env_number("SAIL_DAEMON_WRITE_DELAY_MS")? {
-            config.write_delay = (n > 0).then(|| std::time::Duration::from_millis(n));
-        }
-        Ok(())
-    })();
-    if let Err(e) = from_env {
-        return usage(err, &e);
+    let mut shared_store = std::env::var_os("SAIL_SHARED_STORE")
+        .filter(|v| !v.is_empty())
+        .map(std::path::PathBuf::from);
+    let mut shared_timeout = sail_daemon::DEFAULT_SHARED_TIMEOUT;
+    if let Some(n) = env_number("SAIL_DAEMON_MEMORY_BYTES")? {
+        config.memory_bytes = n;
+    }
+    if let Some(n) = env_number("SAIL_DAEMON_IDLE_TIMEOUT")? {
+        config.idle_timeout = (n > 0).then(|| std::time::Duration::from_secs(n));
+    }
+    if let Some(n) = env_number("SAIL_SHARED_TIMEOUT_MS")? {
+        shared_timeout = std::time::Duration::from_millis(n);
+    }
+    // Fault injection only (ADR 0015): slow every disk write.
+    if let Some(n) = env_number("SAIL_DAEMON_WRITE_DELAY_MS")? {
+        config.write_delay = (n > 0).then(|| std::time::Duration::from_millis(n));
     }
     let (mut socket, mut root) = (default_socket(&cache), cache.join("results"));
     let mut it = args.iter();
     while let Some(arg) = it.next() {
-        let Some(value) = it.next() else {
-            return usage(err, &format!("{arg} needs a value"));
-        };
+        let value = it.next().ok_or_else(|| format!("{arg} needs a value"))?;
         match arg.as_str() {
             "--socket" => socket = value.into(),
             "--cache" => root = value.into(),
-            "--memory-bytes" => match ops::parse_bytes(value) {
-                Some(n) => config.memory_bytes = n,
-                None => return usage(err, &format!("bad byte count `{value}`")),
-            },
-            "--idle-timeout" => match value.parse::<u64>() {
-                Ok(n) => config.idle_timeout = (n > 0).then(|| std::time::Duration::from_secs(n)),
-                Err(_) => return usage(err, &format!("bad idle timeout `{value}` (seconds)")),
-            },
-            _ => return usage(err, &format!("unknown argument `{arg}`")),
+            "--memory-bytes" => {
+                config.memory_bytes =
+                    ops::parse_bytes(value).ok_or_else(|| format!("bad byte count `{value}`"))?;
+            }
+            "--idle-timeout" => {
+                let n = value
+                    .parse::<u64>()
+                    .map_err(|_| format!("bad idle timeout `{value}` (seconds)"))?;
+                config.idle_timeout = (n > 0).then(|| std::time::Duration::from_secs(n));
+            }
+            "--shared" => shared_store = Some(value.into()),
+            "--shared-timeout-ms" => {
+                let n = value
+                    .parse::<u64>()
+                    .map_err(|_| format!("bad shared timeout `{value}` (ms)"))?;
+                shared_timeout = std::time::Duration::from_millis(n);
+            }
+            _ => return Err(format!("unknown argument `{arg}`")),
         }
     }
     config.log = Some(root.join("daemon.log"));
+    config.shared = shared_store.map(|store| sail_daemon::SharedConfig {
+        store,
+        trust_dir: sail_cache::shared::trust_dir(&root),
+        timeout: shared_timeout,
+        backoff: sail_daemon::DEFAULT_SHARED_BACKOFF,
+    });
+    Ok((socket, root, config))
+}
+
+#[cfg(unix)]
+fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
+    let (socket, root, config) = match serve_config(args) {
+        Ok(c) => c,
+        Err(e) => {
+            // Errors that carry their own code (the cache directory) keep it.
+            let code = if e.starts_with("error[") {
+                ""
+            } else {
+                "error[SAIL0002]: "
+            };
+            let _ = writeln!(err, "{code}{e}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+    };
     let stats = std::sync::Arc::new(sail_daemon::Stats::default());
     let server = match sail_daemon::bind(&socket, &root, stats, &config) {
         Ok(s) => s,

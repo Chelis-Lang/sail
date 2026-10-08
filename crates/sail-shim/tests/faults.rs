@@ -15,6 +15,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
+use sail_cache::shared::{
+    PublicKey, PublishOptions, SecretKey, SharedStore, Solver, add_trusted, publish, sign_entry,
+    trust_dir,
+};
 use sail_key::{QueryKey, SolverIdentity};
 use support::{
     DEADLINE, Fault, Op, Proxy, Scratch, Shim, TOY, Want, assert_cache_correct,
@@ -763,4 +767,265 @@ fn gc_and_clear_during_sessions_only_cost_misses() {
     // Once maintenance stops, the cache fills and serves as usual.
     concurrently(&rig, &inputs, &wants);
     assert!(assert_cache_correct(&rig.cache, &all) > 0);
+}
+
+// ---------------------------------------------------------------------------
+// 7. The shared tier (charter rule 9, ADR 0017).
+
+/// The key the shared-tier tests publish with, and readers trust.
+fn publisher() -> SecretKey {
+    SecretKey::from_seed([5; 32])
+}
+
+/// A rig whose cache holds the toy session, published to `<dir>/store`.
+fn published(tag: &str) -> (Rig, PathBuf) {
+    let rig = Rig::new(tag);
+    rig.fill(TOY);
+    let store = rig.dir.path("store");
+    let policy = |e: Option<&sail_cache::Effort>| {
+        let wire = e.map(|e| sail_api::protocol::Effort {
+            limit: e.limit,
+            used: e.used,
+            reason: e.reason.clone(),
+        });
+        sail_api::policy::unknown_servable(wire.as_ref())
+    };
+    let r = publish(
+        &sail_cache::DiskCache::new(&rig.cache),
+        &SharedStore::new(&store),
+        &publisher(),
+        &PublishOptions::default(),
+        &policy,
+    );
+    assert!(r.published > 12 && r.failed == 0, "{r:?}");
+    (rig, store)
+}
+
+/// Starts a second daemon on an empty cache under `rig`'s directory that
+/// reads `store` and trusts `trusted`. Returns its socket and cache.
+fn reader(rig: &Rig, tag: &str, store: &Path, trusted: &PublicKey) -> (PathBuf, PathBuf) {
+    let (socket, cache) = (rig.dir.path(&format!("{tag}.sock")), rig.dir.path(tag));
+    assert!(add_trusted(&cache, trusted).is_ok());
+    let config = sail_daemon::Config {
+        shared: Some(sail_daemon::SharedConfig {
+            store: store.to_path_buf(),
+            trust_dir: trust_dir(&cache),
+            timeout: Duration::from_millis(300),
+            backoff: Duration::from_secs(30),
+        }),
+        ..sail_daemon::Config::default()
+    };
+    support::start_daemon_with(&socket, &cache, config);
+    (socket, cache)
+}
+
+/// Every file under `dir`.
+fn files_under(dir: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return out;
+    };
+    for e in entries.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            out.extend(files_under(&p));
+        } else {
+            out.push(p);
+        }
+    }
+    out.sort();
+    out
+}
+
+/// A shared entry's header and reply.
+fn split_entry(data: &[u8]) -> (serde_json::Value, Vec<u8>) {
+    let nl = data.iter().position(|&b| b == b'\n').unwrap_or(0);
+    let header = serde_json::from_slice(data.get(..nl).unwrap_or_default()).unwrap_or_default();
+    (header, data.get(nl + 1..).unwrap_or_default().to_vec())
+}
+
+fn join_entry(header: &serde_json::Value, reply: &[u8]) -> Vec<u8> {
+    let mut out = serde_json::to_vec(header).unwrap_or_default();
+    out.push(b'\n');
+    out.extend_from_slice(reply);
+    out
+}
+
+/// The opposite answer for a `check-sat` reply: what a forger would plant.
+fn wrong_answer(reply: &[u8]) -> Vec<u8> {
+    match reply.trim_ascii() {
+        b"unsat" => b"sat\n".to_vec(),
+        _ => b"unsat\n".to_vec(),
+    }
+}
+
+fn hex(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    bytes.iter().fold(String::new(), |mut s, b| {
+        let _ = write!(s, "{b:02x}");
+        s
+    })
+}
+
+/// How a test rewrites one shared entry: key, header and reply in, new
+/// file contents out.
+type Rewrite<'a> = &'a dyn Fn(&QueryKey, &serde_json::Value, &[u8]) -> Vec<u8>;
+
+/// Copies `store` to `to`, rewriting every entry with `f`. Returns the
+/// number of entries.
+fn rewrite_store(store: &Path, to: &Path, f: Rewrite<'_>) -> usize {
+    copy_dir(store, to);
+    let mut n = 0;
+    for path in files_under(to) {
+        let data = std::fs::read(&path).unwrap_or_default();
+        let (header, reply) = split_entry(&data);
+        let key = header["key"]
+            .as_str()
+            .and_then(sail_cache::maint::parse_key)
+            .unwrap_or(QueryKey([0; 32]));
+        assert!(std::fs::write(&path, f(&key, &header, &reply)).is_ok());
+        n += 1;
+    }
+    n
+}
+
+/// A rewrite that signs wrong `check-sat` answers with `key`, for `solver`.
+fn resign(
+    key: &SecretKey,
+    solver: Solver,
+) -> impl Fn(&QueryKey, &serde_json::Value, &[u8]) -> Vec<u8> {
+    move |k, h, r| {
+        let command = h["command"].as_str().unwrap_or_default().to_owned();
+        let reply = if command == "check-sat" {
+            wrong_answer(r)
+        } else {
+            r.to_vec()
+        };
+        sign_entry(key, k, &reply, &command, &solver, None, 1)
+    }
+}
+
+/// The solver identity the entries in `store` were signed for.
+fn store_solver(store: &Path) -> Solver {
+    let data = files_under(store)
+        .first()
+        .and_then(|p| std::fs::read(p).ok())
+        .unwrap_or_default();
+    match serde_json::from_value(split_entry(&data).0["solver"].clone()) {
+        Ok(s) => s,
+        Err(e) => unreachable!("no solver in the store: {e}"),
+    }
+}
+
+#[test]
+#[ignore = "needs SAIL_TEST_Z3"]
+fn a_verified_shared_store_serves_a_fresh_cache_exactly() {
+    let (rig, store) = published("shared-ok");
+    let want = rig.want(TOY);
+    let (socket, cache) = reader(&rig, "b", &store, &publisher().public());
+    let starts = solver_pids(&rig.dir.0).len();
+    assert_equivalent(&want, &ok_session(&rig.solver, Some(&socket), TOY));
+    let s = daemon_stats(&socket);
+    assert!(s.shared_hits > 12 && s.shared_rejected == 0, "{s:?}");
+    // The toy session's one `unknown` is not servable (ADR 0009), so it was
+    // not published: the session hits up to it, then the solver replays.
+    assert_eq!(s.gets, s.shared_hits + 1, "{s:?}");
+    assert_eq!(solver_pids(&rig.dir.0).len(), starts + 1);
+    // The local copies are correct and say where they came from.
+    assert!(assert_cache_correct(&cache, &want) > 12);
+    let provenance = format!("shared:{}", publisher().public().id());
+    let disk = sail_cache::DiskCache::new(&cache);
+    let copied = entry_files(&cache)
+        .into_iter()
+        .filter_map(|(_, k)| k)
+        .filter_map(|k| disk.get(&k))
+        .filter(|(m, _)| m.provenance == provenance)
+        .count();
+    assert!(copied > 12, "{copied}");
+}
+
+#[test]
+#[ignore = "needs SAIL_TEST_Z3"]
+fn unverifiable_shared_entries_never_change_an_answer() {
+    let (rig, store) = published("shared-bad");
+    let want = rig.want(TOY);
+    let trusted = publisher();
+    let untrusted = SecretKey::from_seed([6; 32]);
+    let local = store_solver(&store);
+    let mut other_solver = local.clone();
+    other_solver.binary_sha256 = "cd".repeat(32);
+    let mut other_platform = local.clone();
+    "plan9-mips".clone_into(&mut other_platform.platform);
+
+    // A forger without a key: wrong answers, with valid hashes.
+    let forged = |_: &QueryKey, h: &serde_json::Value, r: &[u8]| {
+        if h["command"] != "check-sat" {
+            return join_entry(h, r);
+        }
+        let wrong = wrong_answer(r);
+        let mut h = h.clone();
+        h["reply_sha256"] = hex(&sail_key::sha256(&wrong)).into();
+        join_entry(&h, &wrong)
+    };
+    let by_untrusted = resign(&untrusted, local);
+    let for_other_solver = resign(&trusted, other_solver);
+    let for_other_platform = resign(&trusted, other_platform);
+    let truncated = |_: &QueryKey, h: &serde_json::Value, r: &[u8]| {
+        let mut out = join_entry(h, r);
+        out.truncate(out.len() / 2);
+        out
+    };
+    let cases: [(&str, Rewrite<'_>); 5] = [
+        ("forged", &forged),
+        ("untrusted", &by_untrusted),
+        ("solver", &for_other_solver),
+        ("platform", &for_other_platform),
+        ("trunc", &truncated),
+    ];
+    assert_ne!(trusted.public(), untrusted.public());
+    for (tag, f) in cases {
+        let bad = rig.dir.path(&format!("store-{tag}"));
+        assert!(rewrite_store(&store, &bad, f) > 12);
+        let (socket, cache) = reader(&rig, tag, &bad, &trusted.public());
+        for _ in 0..2 {
+            assert_equivalent(&want, &ok_session(&rig.solver, Some(&socket), TOY));
+        }
+        let s = daemon_stats(&socket);
+        // The forger left the replies before the first check intact and
+        // validly signed; those may hit. Every other case rewrote them all.
+        if tag != "forged" {
+            assert_eq!(s.shared_hits, 0, "{tag}: {s:?}");
+        }
+        assert!(s.shared_rejected > 0, "{tag}: {s:?}");
+        match tag {
+            "solver" => assert!(s.shared_other_solver > 0, "{s:?}"),
+            "platform" => assert!(s.shared_other_platform > 0, "{s:?}"),
+            _ => {}
+        }
+        // No forged answer reached the local tier.
+        assert_cache_correct(&cache, &want);
+    }
+}
+
+#[test]
+#[ignore = "needs SAIL_TEST_Z3"]
+fn a_hung_shared_store_costs_one_timeout_and_answers_stay_exact() {
+    let (rig, store) = published("shared-hung");
+    let want = rig.want(TOY);
+    // Every entry becomes a FIFO: opening one blocks, like a hung mount.
+    let hung = rig.dir.path("store-hung");
+    copy_dir(&store, &hung);
+    for path in files_under(&hung) {
+        assert!(std::fs::remove_file(&path).is_ok());
+        let made = std::process::Command::new("mkfifo").arg(&path).status();
+        assert!(made.is_ok_and(|s| s.success()));
+    }
+    let (socket, cache) = reader(&rig, "h", &hung, &publisher().public());
+    let start = std::time::Instant::now();
+    assert_equivalent(&want, &ok_session(&rig.solver, Some(&socket), TOY));
+    assert_equivalent(&want, &ok_session(&rig.solver, Some(&socket), TOY));
+    assert!(start.elapsed() < DEADLINE);
+    let s = daemon_stats(&socket);
+    assert_eq!((s.shared_hits, s.shared_timeouts), (0, 1), "{s:?}");
+    assert_cache_correct(&cache, &want);
 }

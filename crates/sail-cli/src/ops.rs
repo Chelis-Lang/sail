@@ -172,6 +172,21 @@ fn status_text(
                 human(i.queue.bytes),
                 human(i.queue.capacity_bytes)
             );
+            match &i.shared {
+                Some(s) => {
+                    let _ = writeln!(
+                        t,
+                        "  shared tier  {}, {} trusted keys ({}), timeout {} ms",
+                        s.store,
+                        s.trusted_keys.len(),
+                        s.trust_dir,
+                        s.timeout_ms
+                    );
+                }
+                None => {
+                    let _ = writeln!(t, "  shared tier  off");
+                }
+            }
         }
         None => {
             let _ = writeln!(
@@ -185,6 +200,19 @@ fn status_text(
         "  since start  {} sessions, {} gets, {} hits ({} from memory), {} puts, {} dropped puts",
         stats.hellos, stats.gets, stats.hits, stats.memory_hits, stats.puts, stats.dropped_puts
     );
+    if info.is_some_and(|i| i.shared.is_some()) || stats.shared_lookups > 0 {
+        let _ = writeln!(
+            t,
+            "  shared       {} lookups, {} hits, {} rejected ({} other solver, {} other platform), {} timeouts, {} skipped",
+            stats.shared_lookups,
+            stats.shared_hits,
+            stats.shared_rejected,
+            stats.shared_other_solver,
+            stats.shared_other_platform,
+            stats.shared_timeouts,
+            stats.shared_skipped
+        );
+    }
     t
 }
 
@@ -243,15 +271,31 @@ pub fn status(
 }
 
 /// Parsed `sail cache` options.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent command-line flags"
+)]
 #[derive(Default)]
-struct CacheArgs {
+pub(crate) struct CacheArgs {
     sub: Option<String>,
     cache: Option<PathBuf>,
     socket: Option<PathBuf>,
-    json: bool,
+    pub json: bool,
     yes: bool,
     remove: bool,
     max_bytes: Option<u64>,
+    /// Positional arguments after the command (`trust add FILE`).
+    pub rest: Vec<String>,
+    /// `publish --to`: the shared store.
+    pub to: Option<PathBuf>,
+    /// `publish --key`: the signing key file.
+    pub key: Option<PathBuf>,
+    /// `keygen --out`: where to write the new key.
+    pub out: Option<PathBuf>,
+    /// `publish --filter`: `command=NAME` or `solver=SHA256-PREFIX`.
+    pub filters: Vec<String>,
+    /// `publish --dry-run`.
+    pub dry_run: bool,
 }
 
 fn parse_cache_args(args: &[String]) -> Result<CacheArgs, String> {
@@ -273,7 +317,13 @@ fn parse_cache_args(args: &[String]) -> Result<CacheArgs, String> {
                 let v = value("--max-bytes")?;
                 a.max_bytes = Some(parse_bytes(&v).ok_or_else(|| format!("bad byte count `{v}`"))?);
             }
+            "--dry-run" => a.dry_run = true,
+            "--to" => a.to = Some(PathBuf::from(value("--to")?)),
+            "--key" => a.key = Some(PathBuf::from(value("--key")?)),
+            "--out" => a.out = Some(PathBuf::from(value("--out")?)),
+            "--filter" => a.filters.push(value("--filter")?),
             s if !s.starts_with('-') && a.sub.is_none() => a.sub = Some(s.to_owned()),
+            s if !s.starts_with('-') => a.rest.push(s.to_owned()),
             other => return Err(format!("unknown argument `{other}`")),
         }
     }
@@ -288,6 +338,12 @@ COMMANDS:
     verify [--remove]      check every entry's integrity; --remove deletes bad files
     gc --max-bytes N       evict least recently used entries down to N bytes (K/M/G suffixes)
     clear --yes            remove every entry
+    keygen --out FILE      create a signing key (FILE) and its public key (FILE.pub)
+    trust add FILE.pub     trust a public key's signatures on shared entries
+    trust list             list the trusted keys
+    trust remove ID        stop trusting a key
+    publish --to STORE --key FILE [--filter command=NAME]... [--filter solver=SHA256]
+            [--dry-run]    sign this cache's pinned-solver entries into a shared store
 
 The cache is the running daemon's (asked over its socket), or DIR.
 ";
@@ -415,7 +471,13 @@ pub fn cache(
         let _ = write!(err, "{CACHE_USAGE}");
         return ExitCode::from(EXIT_USAGE);
     };
-    if !matches!(sub.as_str(), "stats" | "verify" | "gc" | "clear") {
+    if sub == "keygen" {
+        return crate::shared_ops::keygen(&a, out, err);
+    }
+    if !matches!(
+        sub.as_str(),
+        "stats" | "verify" | "gc" | "clear" | "trust" | "publish"
+    ) {
         let _ = writeln!(
             err,
             "error[SAIL0002]: unknown cache command `{sub}`\n\n{CACHE_USAGE}"
@@ -439,6 +501,8 @@ pub fn cache(
     let disk = DiskCache::new(&root);
     let root_text = root.display().to_string();
     match sub.as_str() {
+        "trust" => crate::shared_ops::trust(&root, &a, out, err),
+        "publish" => crate::shared_ops::publish(&disk, &a, out, err),
         "stats" => {
             let s = disk.summarize();
             if a.json {

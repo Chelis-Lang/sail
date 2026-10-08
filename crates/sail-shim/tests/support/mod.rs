@@ -144,12 +144,17 @@ pub fn drain(cache: &Path) {
 
 /// Starts the real daemon in-process on `socket`, serving `cache`.
 pub fn start_daemon(socket: &Path, cache: &Path) {
+    start_daemon_with(socket, cache, sail_daemon::Config::default());
+}
+
+/// [`start_daemon`] with `config`.
+pub fn start_daemon_with(socket: &Path, cache: &Path, config: sail_daemon::Config) {
     if let Ok(mut d) = DAEMONS.lock() {
         d.push((cache.to_path_buf(), socket.to_path_buf()));
     }
     let (s, c) = (socket.to_path_buf(), cache.to_path_buf());
     let counters = Arc::new(sail_daemon::Stats::default());
-    std::thread::spawn(move || sail_daemon::serve(&s, &c, counters));
+    std::thread::spawn(move || sail_daemon::serve_with(&s, &c, counters, &config));
     wait_until(Duration::from_secs(5), "the daemon socket", || {
         UnixStream::connect(socket).is_ok()
     });
