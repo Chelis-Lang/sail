@@ -1,5 +1,8 @@
 //! Benchmark workloads, history replay and reporting.
 //!
-//! Status: placeholder. See `docs/ROADMAP.md` for when this crate is built
-//! out and `docs/CHARTER.md` for its responsibility.
+//! Status (M3): the cold workload with the plain-Verus baseline ([`cold`])
+//! and the generated `docs/benchmarks.md` ([`report`]).
 #![forbid(unsafe_code)]
+
+pub mod cold;
+pub mod report;

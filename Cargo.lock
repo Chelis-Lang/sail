@@ -206,6 +206,12 @@ version = "0.0.0"
 [[package]]
 name = "sail-bench"
 version = "0.0.0"
+dependencies = [
+ "sail-conformance",
+ "sail-verus",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "sail-cache"
