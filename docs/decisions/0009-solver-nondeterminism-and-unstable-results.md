@@ -68,3 +68,18 @@ Implemented in `sail-conformance`:
   the fragility census.
 - **rlimit drift** alone never makes a unit unstable: consumption is an
   output, not a verdict.
+
+## Update 2026-10-08: effort is recorded
+
+Every `check-sat` cache entry now records, in its `effort` metadata:
+- `limit`: the `:rlimit` in force;
+- `used`: the `rlimit-count` delta between the statistics replies around
+  the check;
+- `reason`: the `reason-unknown` reply, for `unknown` answers.
+
+`unknown` answers are now stored, so the census has data, but they are still
+never served. In the toy fixture, the `unknown` answers that come from
+failing proofs report `(incomplete quantifiers)` or
+`(incomplete (theory arithmetic))` and use about 0.02% of their limit, far
+from it. Calibrating the near-limit threshold from the fragility census
+decides when `unknown` answers like these may be served.

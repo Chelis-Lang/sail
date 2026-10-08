@@ -20,10 +20,10 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use sail_api::client::Client;
-use sail_api::protocol::{Identity, PutMeta};
+use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{Mode, PrefixHasher, QueryKey, SolverIdentity};
 use sail_session::Session;
-use sail_smtlib::command::{Output, classify};
+use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter};
 
 /// What the output side should do with the next reply.
@@ -34,6 +34,8 @@ enum Expect {
         command: String,
         /// The command's exact bytes, for the shape check.
         text: Vec<u8>,
+        /// For checks: the `:rlimit` in force (ADR 0009).
+        limit: Option<u64>,
     },
     /// Pairing can no longer be trusted: stop recording.
     Stop,
@@ -119,14 +121,50 @@ fn unservable(command: &[u8], reply: &[u8]) -> bool {
             && reply.trim_ascii_start().starts_with(b"unknown"))
 }
 
+/// A reply ready to store.
+#[derive(Debug)]
+struct Entry {
+    key: QueryKey,
+    command: String,
+    reply: Vec<u8>,
+    effort: Option<Effort>,
+}
+
+/// A `check-sat` reply held back until its effort is known: the
+/// `:all-statistics` reply after it gives the `rlimit-count` delta, and a
+/// `reason-unknown` reply may come in between (ADR 0009).
+#[derive(Debug)]
+struct HeldCheck {
+    entry: Entry,
+    before: Option<u64>,
+}
+
+/// The number after `:rlimit-count` in a statistics reply.
+fn rlimit_count(reply: &[u8]) -> Option<u64> {
+    const NEEDLE: &[u8] = b":rlimit-count";
+    let at = reply.windows(NEEDLE.len()).position(|w| w == NEEDLE)?;
+    let digits: Vec<u8> = reply
+        .get(at + NEEDLE.len()..)?
+        .iter()
+        .copied()
+        .skip_while(u8::is_ascii_whitespace)
+        .take_while(u8::is_ascii_digit)
+        .collect();
+    std::str::from_utf8(&digits).ok()?.parse().ok()
+}
+
 /// Pairs solver replies with the expectations the input side queues, in
-/// order, whichever arrives first. Recording stops for good at an `Expect::Stop`,
-/// a solver error reply, or [`Pairer::stop`].
+/// order, whichever arrives first. Recording stops for good at an
+/// `Expect::Stop`, a solver error reply, an implausible reply, or
+/// [`Pairer::stop`].
 #[derive(Default)]
 struct Pairer {
     replies: VecDeque<Vec<u8>>,
     expects: VecDeque<Expect>,
     stopped: bool,
+    /// The latest `rlimit-count` seen in a statistics reply.
+    last_count: Option<u64>,
+    held: Option<HeldCheck>,
 }
 
 impl Pairer {
@@ -142,8 +180,15 @@ impl Pairer {
         self.stopped = true;
     }
 
-    /// Every pair that can be formed now and should be stored.
-    fn drain(&mut self) -> Vec<(QueryKey, String, Vec<u8>)> {
+    /// Releases a held check, with whatever effort is known.
+    fn release(&mut self, out: &mut Vec<Entry>) {
+        if let Some(h) = self.held.take() {
+            out.push(h.entry);
+        }
+    }
+
+    /// Every entry that can be formed now and should be stored.
+    fn drain(&mut self) -> Vec<Entry> {
         let mut out = Vec::new();
         // Pop only when both sides have an entry: popping one and finding the
         // other empty would drop it and shift every later pairing by one.
@@ -152,17 +197,79 @@ impl Pairer {
             else {
                 break;
             };
-            match expect {
-                Expect::Stop => self.stopped = true,
-                Expect::Store { .. } if reply.starts_with(b"(error") => self.stopped = true,
-                Expect::Store { command, .. }
-                    if command == "check-sat"
-                        && reply.trim_ascii_start().starts_with(b"unknown") => {}
-                // Never store a reply that does not fit its command; stop
-                // recording, since pairing can no longer be trusted.
-                Expect::Store { ref text, .. } if !plausible(text, &reply) => self.stopped = true,
-                Expect::Store { key, command, .. } => out.push((key, command, reply)),
+            let Expect::Store {
+                key,
+                command,
+                text,
+                limit,
+            } = expect
+            else {
+                self.stopped = true;
+                break;
+            };
+            // Never store a reply that does not fit its command; stop
+            // recording, since pairing can no longer be trusted.
+            if reply.starts_with(b"(error") || !plausible(&text, &reply) {
+                self.stopped = true;
+                break;
             }
+            let kind = classify(&text).map(|c| c.kind).ok();
+            match kind {
+                Some(k) if k.is_check() => {
+                    self.release(&mut out);
+                    self.held = Some(HeldCheck {
+                        entry: Entry {
+                            key,
+                            command,
+                            reply,
+                            effort: Some(Effort {
+                                limit,
+                                used: None,
+                                reason: None,
+                            }),
+                        },
+                        before: self.last_count,
+                    });
+                    continue;
+                }
+                Some(CommandKind::GetInfo {
+                    keyword: b":reason-unknown",
+                }) => {
+                    if let Some(effort) = self.held.as_mut().and_then(|h| h.entry.effort.as_mut()) {
+                        effort.reason =
+                            Some(String::from_utf8_lossy(reply.trim_ascii()).into_owned());
+                    }
+                }
+                Some(CommandKind::GetInfo {
+                    keyword: b":all-statistics",
+                }) => {
+                    let count = rlimit_count(&reply);
+                    if let Some(h) = self.held.as_mut()
+                        && let (Some(before), Some(after)) = (h.before, count)
+                        && let Some(effort) = h.entry.effort.as_mut()
+                    {
+                        effort.used = Some(after.saturating_sub(before));
+                    }
+                    self.release(&mut out);
+                    self.last_count = count.or(self.last_count);
+                }
+                _ => {}
+            }
+            out.push(Entry {
+                key,
+                command,
+                reply,
+                effort: None,
+            });
+        }
+        out
+    }
+
+    /// At the end of the session: releases a held check.
+    fn finish(&mut self) -> Vec<Entry> {
+        let mut out = Vec::new();
+        if !self.stopped {
+            self.release(&mut out);
         }
         out
     }
@@ -179,19 +286,17 @@ struct Solving {
 
 /// Sends paired replies to the daemon on its own thread, so forwarding never
 /// waits on the daemon. Stops at the first daemon error.
-fn spawn_storer(
-    mut client: Client,
-    entries: Receiver<(QueryKey, String, Vec<u8>)>,
-) -> Option<JoinHandle<()>> {
+fn spawn_storer(mut client: Client, entries: Receiver<Entry>) -> Option<JoinHandle<()>> {
     std::thread::Builder::new()
         .name("sail-z3-store".to_owned())
         .spawn(move || {
-            for (key, command, reply) in entries {
+            for entry in entries {
                 let meta = PutMeta {
-                    command,
+                    command: entry.command,
                     provenance: "pinned-solver".to_owned(),
+                    effort: entry.effort,
                 };
-                if client.put(&key.0, meta, reply).is_err() {
+                if client.put(&entry.key.0, meta, entry.reply).is_err() {
                     // The daemon is gone: drop the remaining stores.
                     break;
                 }
@@ -229,7 +334,7 @@ fn output_side(
     // Pairs replies with expectations as either arrives. Stores go to a
     // separate thread, so forwarding never waits on the daemon.
     let mut pairer = Pairer::default();
-    let (store_tx, store_rx) = std::sync::mpsc::channel::<(QueryKey, String, Vec<u8>)>();
+    let (store_tx, store_rx) = std::sync::mpsc::channel::<Entry>();
     let storer = client.and_then(|client| spawn_storer(client, store_rx));
     if storer.is_none() {
         // No daemon to store to.
@@ -309,6 +414,9 @@ fn output_side(
     // Once the input has ended, every expectation is queued or about to be.
     // Before that, more may never come, so take only what is there.
     store(&mut pairer, input_done);
+    for entry in pairer.finish() {
+        let _ = store_tx.send(entry);
+    }
     drop(store_tx);
     if let Some(h) = storer {
         let _ = h.join();
@@ -440,11 +548,16 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             let name = classify(&item.bytes)
                 .map(|c| String::from_utf8_lossy(c.name).into_owned())
                 .unwrap_or_default();
+            let limit = session
+                .option(b":rlimit")
+                .and_then(|v| std::str::from_utf8(v).ok())
+                .and_then(|v| v.parse::<u64>().ok());
             let expect = |expects: Output| match expects {
                 Output::One => Expect::Store {
                     key: prefix.key(),
                     command: name.clone(),
                     text: item.bytes.clone(),
+                    limit,
                 },
                 _ => Expect::Stop,
             };
@@ -520,6 +633,7 @@ mod tests {
             key: key(i),
             command,
             text: text.as_bytes().to_vec(),
+            limit: None,
         }
     }
 
@@ -552,14 +666,14 @@ mod tests {
             while usize::from(e) < n { p.expect(model(e)); e += 1; }
             stored.extend(p.drain());
             prop_assert_eq!(stored.len(), n);
-            for (k, _, reply) in &stored {
-                prop_assert_eq!(k.0[0], reply[1]);
+            for entry in &stored {
+                prop_assert_eq!(entry.key.0[0], entry.reply[1]);
             }
         }
     }
 
     #[test]
-    fn errors_stop_and_unknown_checks_are_not_stored() {
+    fn errors_stop_recording() {
         let mut p = Pairer::default();
         p.expect(store(1, "(check-sat)"));
         p.reply(b"unknown\n".to_vec());
@@ -569,9 +683,65 @@ mod tests {
         p.reply(b"(error \"x\")\n".to_vec());
         p.expect(store(4, "(echo \"<<DONE>>\")"));
         p.reply(b"<<DONE>>\n".to_vec());
+        // The `unknown` check is held for its effort when recording stops,
+        // so only the model is stored.
         let stored = p.drain();
         assert_eq!(stored.len(), 1);
-        assert_eq!(stored[0].0, key(2));
+        assert_eq!(stored[0].key, key(2));
+        assert!(p.finish().is_empty());
+    }
+
+    fn check(i: u8, limit: u64) -> Expect {
+        match store(i, "(check-sat)") {
+            Expect::Store {
+                key, command, text, ..
+            } => Expect::Store {
+                key,
+                command,
+                text,
+                limit: Some(limit),
+            },
+            Expect::Stop => Expect::Stop,
+        }
+    }
+
+    #[test]
+    fn checks_carry_effort_and_reason() {
+        let mut p = Pairer::default();
+        p.expect(store(1, "(get-info :all-statistics)"));
+        p.reply(b"(:rlimit-count 100)\n".to_vec());
+        p.expect(check(2, 30_000_000));
+        p.reply(b"unknown\n".to_vec());
+        p.expect(store(3, "(get-info :reason-unknown)"));
+        p.reply(b"(:reason-unknown \"incomplete quantifiers\")\n".to_vec());
+        p.expect(store(4, "(get-info :all-statistics)"));
+        p.reply(b"(:rlimit-count 160)\n".to_vec());
+        let stored = p.drain();
+        let keys: Vec<u8> = stored.iter().map(|e| e.key.0[0]).collect();
+        assert_eq!(keys, [1, 3, 2, 4]);
+        let effort = stored
+            .iter()
+            .find(|e| e.key == key(2))
+            .and_then(|e| e.effort.clone());
+        assert_eq!(
+            effort,
+            Some(super::Effort {
+                limit: Some(30_000_000),
+                used: Some(60),
+                reason: Some("(:reason-unknown \"incomplete quantifiers\")".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn a_held_check_is_released_at_the_end() {
+        let mut p = Pairer::default();
+        p.expect(check(1, 10));
+        p.reply(b"unsat\n".to_vec());
+        assert!(p.drain().is_empty());
+        let rest = p.finish();
+        assert_eq!(rest.len(), 1);
+        assert_eq!(rest[0].effort.as_ref().and_then(|e| e.used), None);
     }
 
     #[test]

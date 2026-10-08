@@ -35,6 +35,17 @@ pub struct Identity {
     pub platform: String,
 }
 
+/// Solver effort recorded with a `check-sat` reply (ADR 0009).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Effort {
+    /// The `:rlimit` in force for the check (0 means unlimited).
+    pub limit: Option<u64>,
+    /// Resource units the check used (`rlimit-count` after minus before).
+    pub used: Option<u64>,
+    /// The `get-info :reason-unknown` reply, for `unknown` answers.
+    pub reason: Option<String>,
+}
+
 /// Metadata sent with a `PUT`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PutMeta {
@@ -42,6 +53,9 @@ pub struct PutMeta {
     pub command: String,
     /// Provenance (charter rule 7), for example `pinned-solver`.
     pub provenance: String,
+    /// Effort, for `check-sat` replies.
+    #[serde(default)]
+    pub effort: Option<Effort>,
 }
 
 /// A decoded request.
@@ -260,6 +274,11 @@ mod tests {
                 meta: PutMeta {
                     command: "check-sat".to_owned(),
                     provenance: "pinned-solver".to_owned(),
+                    effort: Some(Effort {
+                        limit: Some(30_000_000),
+                        used: Some(1234),
+                        reason: None,
+                    }),
                 },
                 reply: b"unsat\n".to_vec(),
             },

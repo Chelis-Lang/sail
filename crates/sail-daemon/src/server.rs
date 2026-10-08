@@ -113,9 +113,19 @@ impl State {
                 Request::Put { key, meta, reply } => {
                     self.stats.puts.fetch_add(1, Ordering::Relaxed);
                     // A failed store only costs a future miss.
-                    let _ =
-                        self.cache
-                            .put(&QueryKey(key), &reply, &meta.command, "", &meta.provenance);
+                    let effort = meta.effort.map(|e| sail_cache::Effort {
+                        limit: e.limit,
+                        used: e.used,
+                        reason: e.reason,
+                    });
+                    let _ = self.cache.put(
+                        &QueryKey(key),
+                        &reply,
+                        &meta.command,
+                        "",
+                        &meta.provenance,
+                        effort.as_ref(),
+                    );
                     write_put_response(&mut writer)
                 }
             };

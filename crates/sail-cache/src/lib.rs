@@ -38,6 +38,21 @@ pub struct Meta {
     pub stored_unix: u64,
     /// How the result was established (charter rule 7).
     pub provenance: String,
+    /// Solver effort for `check-sat` replies (ADR 0009): `limit`, `used`,
+    /// and `reason` for `unknown` answers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<Effort>,
+}
+
+/// Solver effort for a `check-sat` reply (ADR 0009).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Effort {
+    /// The `:rlimit` in force (0 means unlimited).
+    pub limit: Option<u64>,
+    /// Resource units used.
+    pub used: Option<u64>,
+    /// The `reason-unknown` reply, for `unknown` answers.
+    pub reason: Option<String>,
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -109,6 +124,7 @@ impl DiskCache {
         command: &str,
         solver: &str,
         provenance: &str,
+        effort: Option<&Effort>,
     ) -> std::io::Result<()> {
         let path = self.path(key);
         if path.is_file() {
@@ -126,6 +142,7 @@ impl DiskCache {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs()),
             provenance: provenance.to_owned(),
+            effort: effort.cloned(),
         };
         // Unique per write: two connections may store the same key at once,
         // and must not write into the same temporary file.
@@ -165,7 +182,10 @@ mod tests {
         let k = QueryKey([1; 32]);
         assert!(c.get(&k).is_none());
         let reply = b"(model\n  (define-fun x () Int 1)\n)\n\x00\xff";
-        assert!(c.put(&k, reply, "get-model", "z3", "pinned-solver").is_ok());
+        assert!(
+            c.put(&k, reply, "get-model", "z3", "pinned-solver", None)
+                .is_ok()
+        );
         let (meta, got) = c.get(&k).unwrap_or_default_for_test();
         assert_eq!(got, reply);
         assert_eq!(meta.command, "get-model");
@@ -177,7 +197,7 @@ mod tests {
         let c = DiskCache::new(scratch("corrupt"));
         let k = QueryKey([2; 32]);
         assert!(
-            c.put(&k, b"unsat\n", "check-sat", "z3", "pinned-solver")
+            c.put(&k, b"unsat\n", "check-sat", "z3", "pinned-solver", None)
                 .is_ok()
         );
         let path = c.path(&k);
@@ -191,7 +211,7 @@ mod tests {
         // An entry filed under the wrong key is also a miss.
         let other = QueryKey([3; 32]);
         assert!(
-            c.put(&k, b"sat\n", "check-sat", "z3", "pinned-solver")
+            c.put(&k, b"sat\n", "check-sat", "z3", "pinned-solver", None)
                 .is_ok()
         );
         assert!(std::fs::create_dir_all(c.path(&other).parent().unwrap_or(c.root())).is_ok());
@@ -216,7 +236,7 @@ mod tests {
                     s.spawn(move || {
                         let reply = vec![b'a' + t; 4096 * (usize::from(t) + 1)];
                         barrier.wait();
-                        let _ = c.put(&k, &reply, "get-info", "z3", "pinned-solver");
+                        let _ = c.put(&k, &reply, "get-info", "z3", "pinned-solver", None);
                     });
                 }
             });
