@@ -31,6 +31,13 @@ The daemon keeps replies in memory in front of the disk cache, stops after
 `sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
 inspects, checks, shrinks or empties the cache (ADR 0015).
 
+`sail mcp` is an MCP server on stdio for agents that verify after every
+edit. Its tools are `verify` (a crate, module or function, returning the
+JSON document above), `counterexample`, `cached_result` (latest verdicts,
+saying whether sources changed since) and `fragility` (once available).
+Register it as the stdio command `sail mcp`, for example
+`claude mcp add --transport stdio sail -- sail mcp`. See `docs/mcp.md`.
+
 - `docs/CHARTER.md`: mission, scope and the correctness contract.
 - `AGENTS.md`: how to work in this repo (humans and agents).
 - `docs/decisions/`: architecture decision records.
