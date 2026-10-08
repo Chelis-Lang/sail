@@ -1,0 +1,15 @@
+#!/bin/sh
+{
+# Tracked commit-msg hook. Install with `cargo xtask install-hooks`, which
+# copies it into the common hooks directory shared by every worktree.
+# The whole body is one brace group so a truncated copy fails loudly rather
+# than silently accepting the commit (pattern from Chelis-Lang/chelis and Chelis-Lang/dive).
+set -eu
+repo_root=$(git rev-parse --show-toplevel)
+checker="$repo_root/scripts/check-ai-markers.sh"
+if [ ! -f "$checker" ]; then
+    printf '%s\n' "commit-msg hook: $checker is missing" >&2
+    exit 2
+fi
+exec bash "$checker" message "$1"
+}

@@ -1,0 +1,13 @@
+[package]
+name = "sail-conformance"
+description = "Differential harness against plain Verus on the pinned corpus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

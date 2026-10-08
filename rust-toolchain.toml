@@ -1,0 +1,8 @@
+# Pinned exactly so local, CI and agent builds agree. Bump deliberately:
+# update `channel` here and `rust-version` in Cargo.toml together.
+# Verus brings its own toolchain (see corpus/toolchain.toml); this pin covers
+# only sail's own crates.
+[toolchain]
+channel = "1.99.0"
+profile = "minimal"
+components = ["clippy", "rustfmt"]

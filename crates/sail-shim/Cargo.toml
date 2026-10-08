@@ -1,0 +1,17 @@
+[package]
+name = "sail-shim"
+description = "The Z3-compatible binary Verus invokes; falls back to direct Z3 on any service failure"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "sail-z3"
+path = "src/main.rs"
+
+[dependencies]
+
+[lints]
+workspace = true

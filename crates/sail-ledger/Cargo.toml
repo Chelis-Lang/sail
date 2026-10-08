@@ -1,0 +1,13 @@
+[package]
+name = "sail-ledger"
+description = "Verdicts, obligation identities, provisional and confirmed tiers, and result provenance"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

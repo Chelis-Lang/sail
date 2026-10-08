@@ -1,0 +1,61 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+default-members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99"
+publish = false
+repository = "https://github.com/Chelis-Lang/sail"
+# License is deliberately unset until the owner decides (docs/open-questions.md).
+
+[workspace.dependencies]
+sail-smtlib = { path = "crates/sail-smtlib" }
+sail-session = { path = "crates/sail-session" }
+sail-key = { path = "crates/sail-key" }
+sail-cache = { path = "crates/sail-cache" }
+sail-solver = { path = "crates/sail-solver" }
+sail-shim = { path = "crates/sail-shim" }
+sail-verus = { path = "crates/sail-verus" }
+sail-ledger = { path = "crates/sail-ledger" }
+sail-portfolio = { path = "crates/sail-portfolio" }
+sail-daemon = { path = "crates/sail-daemon" }
+sail-api = { path = "crates/sail-api" }
+sail-mcp = { path = "crates/sail-mcp" }
+sail-cli = { path = "crates/sail-cli" }
+sail-conformance = { path = "crates/sail-conformance" }
+sail-bench = { path = "crates/sail-bench" }
+
+serde_json = "1"
+
+[workspace.lints.rust]
+missing_docs = "deny"
+unsafe_code = "forbid"
+unexpected_cfgs = { level = "deny", check-cfg = [] }
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+dbg_macro = "deny"
+
+# Line tables keep backtraces useful without full debuginfo's disk cost on
+# CI runners. Use `--profile profiling` for full symbols.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.release]
+debug = "line-tables-only"
+
+[profile.profiling]
+inherits = "release"
+debug = true

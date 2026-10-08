@@ -1,0 +1,13 @@
+[package]
+name = "sail-smtlib"
+description = "SMT-LIB parsing and printing, faithful to the bytes Z3 sends and receives"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

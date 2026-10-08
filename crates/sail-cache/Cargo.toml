@@ -1,0 +1,13 @@
+[package]
+name = "sail-cache"
+description = "Tiered result cache: in-memory, local disk and shared, with integrity checks and eviction"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

@@ -1,0 +1,9 @@
+/target
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
+/corpus/.work
+/bench/.work
+*.profraw
+.DS_Store
+/.claude/worktrees

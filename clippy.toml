@@ -1,0 +1,1 @@
+doc-valid-idents = ["Verus", "SMT-LIB", "Z3", "cvc5", "Alethe", "Carcara", "Dafny", "Mariposa", ".."]
