@@ -25,6 +25,7 @@ const USAGE: &str = "usage:
   sail-bench cold   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                     [--rounds N] [--name NAME] [--shim PATH]
   sail-bench report [--out PATH] FILE...
+  sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
   sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
 
 /// Which corpus units to run.
@@ -226,6 +227,33 @@ fn report_cmd(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+fn hits_cmd(args: &[String]) -> Result<(), String> {
+    let (mut base, mut then, mut json) = (None::<PathBuf>, None::<PathBuf>, None::<PathBuf>);
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let value = it
+            .next()
+            .map(PathBuf::from)
+            .ok_or(format!("{arg} needs a value"));
+        match arg.as_str() {
+            "--base" => base = Some(value?),
+            "--then" => then = Some(value?),
+            "--json" => json = Some(value?),
+            _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
+        }
+    }
+    let (Some(base), Some(then)) = (base, then) else {
+        return Err(format!("hits needs --base and --then\n{USAGE}"));
+    };
+    let report = sail_bench::hits::run(&base, &then).map_err(|e| e.to_string())?;
+    println!("{}", sail_bench::hits::summary(&report));
+    if let Some(path) = json {
+        let text = serde_json::to_vec_pretty(&report).map_err(|e| e.to_string())?;
+        std::fs::write(&path, text).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    }
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if matches!(
@@ -237,6 +265,7 @@ fn main() -> ExitCode {
     let result = match args.first().map(String::as_str) {
         Some("cold") => cold_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
+        Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
     };
     match result {
