@@ -172,11 +172,11 @@ commit = "be21389554aa6d5e0f7ab98796fd03e04b6f34d4"
 license = "MIT OR Apache-2.0"
 tier = "standard"
 verus_version_compat = "compatible"
-compat_evidence = "607 verified, 1 error in 18 min: rlimit exceeded in `allocate` (page-table/src/impl_u/wrapped_token.rs:901), identical in plain and sail runs, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3); verita's nightly (Verus main, Linux) passed this branch on 2026-10-06, before this commit"
+compat_evidence = "607 verified, 1 error: rlimit exceeded in `allocate` (page-table/src/impl_u/wrapped_token.rs:901), the same in every plain and sail run, plain Verus 0.2026.10.04, 2026-10-08, on macOS arm64 (Apple M3, 14-18 min) and Linux x86-64 (CI, 46 min); verita's nightly (Verus main, Linux) passed this branch on 2026-10-06, before this commit"
 build = "verus"
 crate_roots = ["page-table/src/lib.rs"]
 extra_verus_args = ["--crate-type=lib", "--rlimit", "100", "--cfg", "feature=\"impl\"", "--cfg", "feature=\"hlspec_user\""]
-expected = "1 error: rlimit exceeded in impl_u/wrapped_token.rs `allocate` (macOS arm64)"
+expected = "1 error: rlimit exceeded in impl_u/wrapped_token.rs `allocate`"
 
 [[project]]
 name = "anvil"
@@ -185,7 +185,7 @@ commit = "a597f9de7dbeb056403bd60b0a2ca67f686a5e1f"
 license = "MIT"
 tier = "standard"
 verus_version_compat = "compatible"
-compat_evidence = "verita nightly passed around the pinned release (docs/survey/corpus.md); not yet run here: needs OpenSSL, which this macOS machine lacks; pending a Linux standard-tier run"
+compat_evidence = "144 verified, 0 errors in 21 min (--verify-module vdeployment_controller), plain Verus 0.2026.10.04, 2026-10-08, Linux x86-64 (CI conformance run 37817812138); not run on macOS arm64 (no OpenSSL there)"
 build = "cargo-verus"
 cargo_verus_command = "focus"
 crate_roots = ["."]
@@ -194,7 +194,7 @@ extra_verus_args = ["--verify-module", "vdeployment_controller"]
 patch_verus_deps = true
 # kube's TLS stack builds openssl-sys, which needs OpenSSL headers.
 requires = ["openssl"]
-expected = "TODO"
+expected = "verified"
 
 # Tier 2: pinned, but not run (ADR 0006, update of 2026-10-08).
 
