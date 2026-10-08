@@ -103,3 +103,9 @@ Two constraints shape the harness:
   exist, per-tier counters extend the same JSON object.
 - The scratch copy for an edit is a full copy of the project. That is
   39 MB for the Verus repository.
+
+## Update 2026-10-08
+
+`bench.yml` is removed: benchmarks are local-only. Reference numbers come
+from `ci/local.sh bench <workload> <tier> <rounds>` on a Linux x86-64 machine
+(ADR 0013).
