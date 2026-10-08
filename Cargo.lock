@@ -256,6 +256,7 @@ dependencies = [
 name = "sail-cli"
 version = "0.0.0"
 dependencies = [
+ "sail-api",
  "sail-daemon",
  "sail-verus",
 ]

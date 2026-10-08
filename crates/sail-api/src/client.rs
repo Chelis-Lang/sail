@@ -55,7 +55,16 @@ impl Client {
         let body = self.call(&Request::Hello(solver_path.to_owned()))?;
         let (status, payload) = split_status_payload(&body)?;
         if status == 0 {
-            serde_json::from_slice(payload).map_err(std::io::Error::other)
+            let id: Identity = serde_json::from_slice(payload).map_err(std::io::Error::other)?;
+            if id.protocol_version == crate::protocol::PROTOCOL_VERSION {
+                Ok(id)
+            } else {
+                Err(std::io::Error::other(format!(
+                    "daemon speaks protocol {}, client {}",
+                    id.protocol_version,
+                    crate::protocol::PROTOCOL_VERSION
+                )))
+            }
         } else {
             Err(std::io::Error::other(
                 String::from_utf8_lossy(payload).into_owned(),
