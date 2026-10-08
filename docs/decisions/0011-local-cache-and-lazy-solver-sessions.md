@@ -114,3 +114,39 @@ Evidence:
   replaying all 113 sessions against the cache, gave 14 sessions with wrong
   replies on one run and 2 on another.
 - **After the fix:** two concurrent fills and the same replay gave 0.
+
+## Update 2026-10-08: fault injection
+
+The fault-injection suite (`crates/sail-shim/tests/faults.rs`, described in
+`docs/fault-injection.md`) covers four kinds of fault: daemon death and hangs,
+corrupt entries, solver kills, and concurrent clients. It found two shim bugs
+and one cache bug.
+
+- **Hang when the solver died after a miss.** The input side waited for the
+  solver only once stdin closed. Verus keeps stdin open while it waits for a
+  reply, so a solver killed mid-query left both sides waiting. The output
+  side now owns the solver process and waits for it when its output ends. If
+  input has not ended by then, the shim exits with the solver's status, as
+  pass-through does. Only expectations already queued are paired; this can
+  lose a recording, never mis-pair one.
+- **A partial reply could be stored.** The last reply runs to the end of the
+  output stream. A solver that died partway through a reply left its
+  partial bytes on the end of the reply before them. When that reply was a
+  model or a `:version` reply, the shape check passed and the entry was
+  stored (for example, a model followed by `<<DO`). The last reply is now
+  stored only if the solver exited with status 0. It is still forwarded,
+  exactly as in pass-through.
+- **Shared temporary files in the disk tier.** Two connections storing one
+  key at once wrote the same temporary file. The renamed entry could mix
+  their bytes. It failed the integrity check, so this cost a miss, not a
+  wrong answer. Temporary names now carry a per-process sequence number.
+
+Hardening and configuration:
+- **No reuse after a daemon error.** After a daemon error the shim drops
+  the connection for the rest of the session instead of reusing it for
+  stores, so a late reply is never read as the answer to a later request.
+  Starting the solver no longer depends on any connection.
+- **Configurable client timeout.** `SAIL_DAEMON_TIMEOUT_MS` sets the timeout
+  in milliseconds (default 10,000). A hung daemon costs a session at most
+  one timeout: before falling back if it hangs on a lookup, or at exit if it
+  hangs on a store.

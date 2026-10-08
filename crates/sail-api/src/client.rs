@@ -25,9 +25,19 @@ impl Client {
     ///
     /// Connection errors.
     pub fn connect(path: &Path) -> std::io::Result<Self> {
+        Self::connect_with_timeout(path, TIMEOUT)
+    }
+
+    /// Connects to the daemon socket at `path`, with `timeout` for each
+    /// read and write instead of [`TIMEOUT`].
+    ///
+    /// # Errors
+    ///
+    /// Connection errors, or a zero `timeout`.
+    pub fn connect_with_timeout(path: &Path, timeout: Duration) -> std::io::Result<Self> {
         let stream = UnixStream::connect(path)?;
-        stream.set_read_timeout(Some(TIMEOUT))?;
-        stream.set_write_timeout(Some(TIMEOUT))?;
+        stream.set_read_timeout(Some(timeout))?;
+        stream.set_write_timeout(Some(timeout))?;
         Ok(Self { stream })
     }
 

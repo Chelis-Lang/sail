@@ -1,0 +1,97 @@
+# Fault injection
+
+The charter's fault-injection tier: kill solvers mid-query, corrupt cache
+entries, drop the daemon, race concurrent clients. Each must end in either a
+correct answer or a safe fallback, never a wrong answer (rules 3 and 10).
+
+The suite is `crates/sail-shim/tests/faults.rs`, with helpers in
+`crates/sail-shim/tests/support/`. It runs against the pinned Z3 and is ignored
+without it:
+
+```sh
+SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all
+```
+
+It takes about 6 seconds on an M-series Mac.
+
+## How faults are injected
+
+- **The daemon** is the real `sail_daemon::serve`, in-process. Daemon faults
+  come from a proxy on its own socket in front of it. The proxy relays
+  protocol frames and counts requests by operation across all connections.
+  On the *n*th `HELLO`, `GET` or `PUT` it can:
+  - *die*: close the connection without replying, close every later one, and
+    remove its socket;
+  - *die mid-reply*: send half of the reply frame, then die;
+  - *hang*: accept and read, but never reply again;
+  - *delay*: send that one reply after the client has timed out.
+- **The solver** is the pinned Z3 behind a wrapper that logs its pid, so a
+  test can `kill -9` it while a query runs. A second wrapper replays a
+  recorded output stream, stops partway through a reply, and kills itself.
+- **The cache** is edited on disk between sessions.
+- **Correctness** is judged against the pinned Z3 run directly. Statistics
+  replies are compared by `rlimit-count`, the only figure plain Verus uses;
+  every other reply must be byte-identical. The *replay check* recomputes the
+  v2 key of every command in every session the test ran. Every entry the cache
+  would serve (that is, every entry that passes `DiskCache::get`'s integrity
+  checks) must be the direct-Z3 reply for its key.
+
+## Scenarios
+
+The client timeout is set to 300 ms with `SAIL_DAEMON_TIMEOUT_MS` in the hung
+and slow daemon tests.
+
+| Scenario | Safe outcome | Observed outcome |
+|---|---|---|
+| Daemon socket missing, or stale (nobody listening) | Pass-through | Pass-through; exact replies |
+| Daemon dies at `HELLO` (closed, or mid-reply) | Pass-through | Pass-through; exact replies |
+| Daemon dies while serving from cache (at `GET` 1, 4 or 9; mid-reply at `GET` 3 or 7) | The command is a miss; the solver replays the prefix | Exact replies, exit 0; the session finishes on the solver without recording |
+| Daemon dies while recording after a miss (at `PUT` 1, 5 or 20; mid-reply at `PUT` 2 or 12) | Forwarding is unaffected; recording stops | Exact replies, exit 0; entries stored before the death pass the replay check |
+| Entry corrupted: byte flipped in the reply or header, truncated to half or to nothing, overwritten with garbage, replaced by a directory | Miss | Exact replies over two sessions; corrupt files are removed when read and re-recorded |
+| Two entries' files swapped; an entry replaced by another key's valid entry | Miss (the header names a different key) | Exact replies |
+| An entry re-headered to claim another key, with a valid hash: an `echo` reply under a `check-sat` key and the reverse | Not served | The shape check rejects both; exact replies. The forged files stay on disk, because the daemon never overwrites an entry |
+| Garbage at the key of a `check-sat` that answers `unknown`; stray `.tmp-*`, non-key and foreign-directory files | Miss; strays ignored | Exact replies |
+| Solver killed mid-query, pass-through | Exit with the solver's status; output so far is a prefix | Exit 137 within the deadline; output is every reply before the killed query |
+| Solver killed mid-query, cached mode after a miss (stdin still open, as with Verus) | As pass-through; nothing stored for the killed query | Exit 137; output is every reply before the killed query; no entry for its key |
+| Solver dies partway through a reply (fake solver) | The partial reply may be forwarded, as pass-through would; it is never stored | Exit 137; output is a prefix; the replay check passes |
+| 16 concurrent sessions sharing prefixes (cuts of the fixture, and variants that diverge after a cut), cold and then warm, and then 32 at once on an empty cache | Every reply exact; every entry correct | Exact replies in every session; every entry passes the replay check |
+| Daemon hangs at `HELLO` | Pass-through after the timeout | Exact replies within the deadline |
+| Daemon hangs at `GET` 1 or 6, or answers `GET` 3 or `HELLO` late | Miss after the timeout; the connection is not reused | Exact replies within the deadline |
+| Daemon hangs at `PUT` 1 or 10, or answers `PUT` 4 late | Forwarding is unaffected; exit waits for at most one timeout | Exact replies, exit 0, within the deadline |
+
+## Bugs found
+
+The suite found three bugs, now fixed. ADR 0011 records them in its
+2026-10-08 fault-injection update.
+
+1. **Hang when the solver died in cached mode.** After a miss, the shim's
+   main thread kept reading stdin and only waited for the solver once stdin
+   closed. A client that waits for a reply before sending more (Verus does)
+   waited forever. The test killed the solver mid-query, and the shim was
+   still running 20 s later. Pass-through did not have this bug.
+2. **A partial reply could be stored.** At the end of the solver's output,
+   the last reply runs to the end of the stream. If the solver died partway
+   through a reply, the partial bytes were added to the end of the reply
+   before them. When that reply was a model or a `:version`, the result still
+   passed the shape check, so it was stored and a later session would have
+   served it. Example: a model followed by `<<DO`.
+3. **Concurrent stores of one key shared a temporary file** in the disk
+   tier. The renamed entry could mix two writers' bytes. That fails the
+   integrity check, so the cost was a miss, never a wrong answer. A unit test
+   in `sail-cache` reproduces it.
+
+Hardening made alongside: after a daemon error, the shim drops the
+connection for the rest of the session and does not reuse it for stores.
+A late reply can therefore never be read as the answer to a later request.
+The client timeout is configurable with `SAIL_DAEMON_TIMEOUT_MS`.
+
+## Not covered yet
+
+- Killing the shim itself (ADR 0005's known limitation: the solver runs on
+  until it reads end of file).
+- A real `sail serve` process killed with a signal. The proxy's
+  closed-connection and removed-socket faults are what a client sees in that
+  case.
+- A same-shape forgery (an `unsat` stored under a key whose answer is
+  `sat`). It passes every check. The local tier trusts its single writer, the
+  daemon. The shared tier will not (charter rule 9, `docs/trust.md`).
