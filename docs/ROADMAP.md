@@ -4,7 +4,9 @@ The project is built in waves. Each milestone ends with evidence: green gates,
 conformance results and, where relevant, benchmark data. Work widens only after
 the previous milestone is shown to work.
 
-## Initial session (foundation)
+## Initial session (foundation): done, 2026-10-08
+
+See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 
 - **M0: Workspace and guardrails.** The crate skeleton from the charter, the fast
   CI tier, lints, the AI-authorship guard (hook, CI and agent config), docs, and
@@ -35,9 +37,15 @@ the previous milestone is shown to work.
 
 ## Later waves (from the charter's initial scope)
 
-1. Content-addressed keys (`sail-key`) and an in-memory and local disk cache
-   (`sail-cache`) behind the shim, with exact response replay including
-   follow-ups.
+1. **In progress.** Key v2 (ADR 0008) and a local disk cache behind
+   `sail serve`. `sail-z3` replays replies from it and starts the solver
+   lazily (ADR 0011). `sail verify` is in place.
+   - Remaining:
+     - effort recording and the near-limit `unknown` policy (ADR 0009);
+     - fault injection;
+     - the warm and edit workloads;
+     - cache-on Linux numbers;
+     - an in-memory tier inside the daemon.
 2. A daemon (`sail-daemon`) with a warm solver pool (`sail-solver`), the shim's
    daemon client, and fault injection.
 3. Function and obligation mapping (`sail-verus`, `sail-ledger`), `sail verify`
