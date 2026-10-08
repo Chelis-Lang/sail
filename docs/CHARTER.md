@@ -174,3 +174,18 @@ Report back with the survey findings, the integration decision and its evidence,
 Each entry names the charter text it qualifies and the ADR that records it.
 
 1. *Architecture, dependency structure* ("Conformance and benchmarks depend on the CLI and API"). In the crate graph, `sail-conformance` and `sail-bench` depend on `sail-api` and `sail-verus` and drive the built `sail` and `sail-z3` binaries as processes; they do not link `sail-cli`. The thin daemon client the shim uses lives in `sail-api`. See ADR 0001.
+2. *Correctness contract, rules 1 and 4.* Z3's rlimit consumption on
+   nonlinear queries varies slightly between runs on identical input
+   (`corpus/repros/z3-nla-rlimit-nondeterminism/`), so plain Verus does not
+   always give the same verdict for queries that finish near their limit.
+   - **Rule 1** is read against plain Verus run repeatedly on the same
+     machine. Functions whose plain outcome varies are classified *unstable*
+     and reported separately.
+   - **Rule 4** is amended. Results produced under deterministic limits are
+     cacheable. Results that finish near the limit on nonlinear queries are
+     flagged unstable: a cached `unsat` may be served and reported as
+     unstable, and a near-limit `unknown` is re-solved or flagged, never
+     presented as a settled failure.
+   - rlimit consumption is recorded with results and never enters a key.
+
+   See ADR 0009.
