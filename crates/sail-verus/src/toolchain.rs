@@ -1,5 +1,11 @@
 //! The pinned Verus and Z3 (`corpus/toolchain.toml`) and where they are
 //! installed.
+//!
+//! The file has one primary pin, the release the corpus is validated
+//! against, and optional `[secondary."<release>"]` pins: secondary
+//! compatibility targets (ADR 0010 item 4). Setting `SAIL_VERUS_RELEASE` to
+//! a secondary release makes [`Pins::load`] return that release instead, so
+//! the harness, the benchmarks and `cargo xtask fetch-verus` all use it.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -17,7 +23,31 @@ pub struct Pins {
     pub z3: Z3Pin,
     /// Release archives by host target triple.
     pub assets: BTreeMap<String, AssetPin>,
+    /// Secondary compatibility targets, by release.
+    #[serde(default)]
+    pub secondary: BTreeMap<String, SecondaryPin>,
+    /// Whether a secondary release was selected (`SAIL_VERUS_RELEASE`).
+    #[serde(skip)]
+    pub is_secondary: bool,
+    /// When a secondary release is selected: the primary release and its
+    /// archives (a secondary release may use the primary's Z3).
+    #[serde(skip)]
+    pub primary: Option<(VerusPin, BTreeMap<String, AssetPin>)>,
 }
+
+/// A secondary Verus release and its archives.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SecondaryPin {
+    /// The release.
+    pub verus: VerusPin,
+    /// Its Z3.
+    pub z3: Z3Pin,
+    /// Its archives by host target triple.
+    pub assets: BTreeMap<String, AssetPin>,
+}
+
+/// Environment variable selecting a secondary release.
+pub const ENV_RELEASE: &str = "SAIL_VERUS_RELEASE";
 
 /// The pinned Verus release.
 #[derive(Debug, Clone, Deserialize)]
@@ -50,6 +80,10 @@ pub struct AssetPin {
     pub dir: String,
     /// SHA-256 of the bundled `z3`, empty if not yet recorded.
     pub z3_sha256: String,
+    /// `"primary"` if this archive bundles no `z3` and the primary
+    /// release's (same version, checked by `z3_sha256`) is used instead.
+    #[serde(default)]
+    pub z3: Option<String>,
 }
 
 impl Pins {
@@ -61,8 +95,44 @@ impl Pins {
     pub fn load(path: &Path) -> Result<Self> {
         let text = std::fs::read_to_string(path)
             .map_err(|e| Error::new("SAIL3002", format!("cannot read {}: {e}", path.display())))?;
-        toml::from_str(&text)
-            .map_err(|e| Error::new("SAIL3002", format!("cannot parse {}: {e}", path.display())))
+        let pins: Self = toml::from_str(&text)
+            .map_err(|e| Error::new("SAIL3002", format!("cannot parse {}: {e}", path.display())))?;
+        match std::env::var(ENV_RELEASE).ok().filter(|r| !r.is_empty()) {
+            Some(release) => pins.select(&release),
+            None => Ok(pins),
+        }
+    }
+
+    /// These pins with `release` as the active one: the primary release
+    /// itself, or one of the secondary releases.
+    ///
+    /// # Errors
+    ///
+    /// `SAIL3004` if `release` is neither.
+    pub fn select(self, release: &str) -> Result<Self> {
+        if release == self.verus.release {
+            return Ok(self);
+        }
+        let Some(s) = self.secondary.get(release).cloned() else {
+            let known: Vec<&str> = std::iter::once(self.verus.release.as_str())
+                .chain(self.secondary.keys().map(String::as_str))
+                .collect();
+            return Err(Error::new(
+                "SAIL3004",
+                format!(
+                    "Verus release {release} is not pinned (pinned: {})",
+                    known.join(", ")
+                ),
+            ));
+        };
+        Ok(Self {
+            verus: s.verus,
+            z3: s.z3,
+            assets: s.assets,
+            secondary: self.secondary,
+            is_secondary: true,
+            primary: Some((self.verus, self.assets)),
+        })
     }
 }
 
@@ -87,8 +157,12 @@ pub struct Installed {
     pub verus: PathBuf,
     /// `cargo-verus`, next to `verus` (only needed by `cargo-verus` units).
     pub cargo_verus: PathBuf,
-    /// The bundled, pinned `z3`.
+    /// The pinned `z3`: bundled with this release, or the primary
+    /// release's when this one bundles none.
     pub z3: PathBuf,
+    /// Whether `z3` is bundled with this release. If not, plain Verus must be
+    /// told where it is (`VERUS_Z3_PATH`), or its launcher finds none.
+    pub z3_bundled: bool,
 }
 
 impl Installed {
@@ -106,12 +180,26 @@ impl Installed {
                 format!("no pinned Verus asset for host {}", host()),
             )
         })?;
-        let root = match std::env::var_os("SAIL_VERUS_HOME").filter(|v| !v.is_empty()) {
-            Some(home) => PathBuf::from(home),
-            None => crate::cache_dir()?.join("verus").join(&pins.verus.release),
+        // SAIL_VERUS_HOME names the primary release's install; secondary
+        // releases always install under the cache.
+        let root_of = |release: &str, primary: bool| -> Result<PathBuf> {
+            match std::env::var_os("SAIL_VERUS_HOME").filter(|v| !v.is_empty() && primary) {
+                Some(home) => Ok(PathBuf::from(home)),
+                None => Ok(crate::cache_dir()?.join("verus").join(release)),
+            }
         };
-        let dir = root.join(&asset.dir);
-        let (verus, z3) = (dir.join("verus"), dir.join("z3"));
+        let dir = root_of(&pins.verus.release, !pins.is_secondary)?.join(&asset.dir);
+        let verus = dir.join("verus");
+        let (z3, z3_bundled) = match (asset.z3.as_deref(), &pins.primary) {
+            (Some("primary"), Some((pv, passets))) => {
+                let pdir = passets
+                    .get(host())
+                    .map(|a| a.dir.clone())
+                    .unwrap_or_default();
+                (root_of(&pv.release, true)?.join(pdir).join("z3"), false)
+            }
+            _ => (dir.join("z3"), true),
+        };
         let cargo_verus = dir.join("cargo-verus");
         if !verus.is_file() || !z3.is_file() {
             return Err(Error::new(
@@ -127,6 +215,64 @@ impl Installed {
             verus,
             cargo_verus,
             z3,
+            z3_bundled,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Pins;
+
+    const PINS: &str = r#"
+[verus]
+release = "1.0"
+tag = "release/1.0"
+commit = "aaa"
+rust_toolchain = "1.98.1"
+
+[z3]
+version = "4.16.0"
+
+[assets.h]
+url = "u1"
+sha256 = "s1"
+dir = "d"
+z3_sha256 = ""
+
+[secondary."0.9".verus]
+release = "0.9"
+tag = "release/0.9"
+commit = "bbb"
+rust_toolchain = "1.98.0"
+
+[secondary."0.9".z3]
+version = "4.16.0"
+
+[secondary."0.9".assets.h]
+url = "u2"
+sha256 = "s2"
+dir = "d"
+z3_sha256 = ""
+"#;
+
+    #[test]
+    fn selects_primary_or_secondary_releases() {
+        let pins: Pins = match toml::from_str(PINS) {
+            Ok(p) => p,
+            Err(e) => unreachable!("{e}"),
+        };
+        let primary = pins.clone().select("1.0");
+        assert!(
+            primary
+                .as_ref()
+                .is_ok_and(|p| !p.is_secondary && p.verus.commit == "aaa")
+        );
+        let secondary = pins.clone().select("0.9");
+        assert!(secondary.as_ref().is_ok_and(|p| p.is_secondary
+            && p.verus.commit == "bbb"
+            && p.verus.rust_toolchain == "1.98.0"
+            && p.assets.get("h").is_some_and(|a| a.url == "u2")));
+        assert!(pins.select("0.8").is_err());
     }
 }

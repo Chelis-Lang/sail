@@ -5,41 +5,13 @@
 //! then checks the bundled z3's SHA-256. Installs are idempotent: a verified
 //! install is left alone.
 
-use std::collections::BTreeMap;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::{Result, workspace_root};
-
-#[derive(Deserialize)]
-struct Toolchain {
-    verus: Verus,
-    z3: Z3,
-    assets: BTreeMap<String, Asset>,
-}
-
-#[derive(Deserialize)]
-struct Verus {
-    release: String,
-    rust_toolchain: String,
-}
-
-#[derive(Deserialize)]
-struct Z3 {
-    version: String,
-}
-
-#[derive(Deserialize)]
-struct Asset {
-    url: String,
-    sha256: String,
-    dir: String,
-    z3_sha256: String,
-}
 
 fn host() -> &'static str {
     if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
@@ -95,7 +67,7 @@ fn run(cmd: &mut Command) -> Result<()> {
     }
 }
 
-fn check_z3(z3: &Path, asset: &Asset) -> Result<()> {
+fn check_z3(z3: &Path, asset: &sail_verus::toolchain::AssetPin) -> Result<()> {
     let actual = file_sha256(z3)?;
     if asset.z3_sha256.is_empty() {
         println!(
@@ -118,19 +90,29 @@ fn check_z3(z3: &Path, asset: &Asset) -> Result<()> {
 /// Installs the pinned Verus release for the host and prints where it is.
 pub fn fetch() -> Result<()> {
     let path = workspace_root().join("corpus").join("toolchain.toml");
-    let text = std::fs::read_to_string(&path)
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
-    let pins: Toolchain =
-        toml::from_str(&text).map_err(|e| format!("cannot parse {}: {e}", path.display()))?;
+    // Honours SAIL_VERUS_RELEASE (a secondary pin), like the harness does.
+    let pins = sail_verus::toolchain::Pins::load(&path).map_err(|e| e.to_string())?;
     let asset = pins
         .assets
         .get(host())
         .ok_or_else(|| format!("no pinned Verus asset for host {}", host()))?;
-    let root = install_root(&pins.verus.release)?;
+    // SAIL_VERUS_HOME names the primary release's install only.
+    let root = if pins.is_secondary {
+        sail_verus::cache_dir()
+            .map_err(|e| e.to_string())?
+            .join("verus")
+            .join(&pins.verus.release)
+    } else {
+        install_root(&pins.verus.release)?
+    };
     let install = root.join(&asset.dir);
-    let z3 = install.join("z3");
+    // A release that bundles no z3 uses the primary's (`z3 = "primary"`).
+    let bundled = asset.z3.as_deref() != Some("primary");
+    let local_z3 = install.join("z3");
+    let installed = install.join("verus").is_file()
+        && (!bundled || (local_z3.is_file() && check_z3(&local_z3, asset).is_ok()));
 
-    if !(z3.is_file() && check_z3(&z3, asset).is_ok()) {
+    if !installed {
         let downloads = root.join("downloads");
         std::fs::create_dir_all(&downloads)
             .map_err(|e| format!("cannot create {}: {e}", downloads.display()))?;
@@ -165,8 +147,13 @@ pub fn fetch() -> Result<()> {
         std::fs::rename(staging.join(&asset.dir), &install)
             .map_err(|e| format!("cannot install into {}: {e}", install.display()))?;
         let _ = std::fs::remove_dir_all(&staging);
-        check_z3(&z3, asset)?;
     }
+    let z3 = sail_verus::toolchain::Installed::locate(pins.clone())
+        .map_err(|e| {
+            format!("{e} (for a release using the primary's z3, fetch the primary first)")
+        })?
+        .z3;
+    check_z3(&z3, asset)?;
 
     println!(
         "Verus {} (z3 {}) installed:",

@@ -43,7 +43,19 @@ pub enum Solver {
 }
 
 /// Flags added to every run.
-pub const COMMON_FLAGS: &[&str] = &["--output-json", "--time", "--no-report-long-running"];
+///
+/// `-Z write-long-types-to-disk=no` makes rustc print long type names inline
+/// instead of writing them to a randomly named file, whose name it then
+/// reports in the diagnostics. Without it, plain Verus's own stderr differs
+/// between identical runs on some inputs, under Rust 1.98.0 (ADR 0006
+/// update). It changes nothing sent to the solver.
+pub const COMMON_FLAGS: &[&str] = &[
+    "--output-json",
+    "--time",
+    "--no-report-long-running",
+    "-Z",
+    "write-long-types-to-disk=no",
+];
 
 /// One function's result, from Verus's `--time` breakdown.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -447,27 +459,8 @@ pub fn run_unit(
     add_invocation(&mut cmd, installed, unit, work, target_dir);
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env_remove("VERUS_Z3_PATH")
-        .env_remove("SAIL_Z3_PATH")
-        .env_remove("SAIL_TRACE_DIR")
-        .env_remove("SAIL_DAEMON_SOCKET")
-        .envs(&unit.env);
-    if let Solver::Shim {
-        shim,
-        trace_dir,
-        daemon_socket,
-    } = solver
-    {
-        cmd.env("VERUS_Z3_PATH", shim)
-            .env("SAIL_Z3_PATH", &installed.z3);
-        if let Some(dir) = trace_dir {
-            cmd.env("SAIL_TRACE_DIR", dir);
-        }
-        if let Some(socket) = daemon_socket {
-            cmd.env("SAIL_DAEMON_SOCKET", socket);
-        }
-    }
+        .stderr(Stdio::piped());
+    solver_env(&mut cmd, installed, unit, solver);
     let started = Instant::now();
     let output = run_with_timeout(&mut cmd, unit_timeout())
         .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
@@ -582,6 +575,36 @@ fn run_with_timeout(
         stdout: out.join().unwrap_or_default(),
         stderr: err.join().unwrap_or_default(),
     })
+}
+
+/// Sets the solver environment for one side of a comparison.
+fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &Solver) {
+    cmd.env_remove("VERUS_Z3_PATH")
+        .env_remove("SAIL_Z3_PATH")
+        .env_remove("SAIL_TRACE_DIR")
+        .env_remove("SAIL_DAEMON_SOCKET")
+        .envs(&unit.env);
+    if !installed.z3_bundled {
+        // This release bundles no z3, so plain Verus's launcher would find
+        // none: name the pinned one, as the sail side does through
+        // SAIL_Z3_PATH. Both sides use the same binary.
+        cmd.env("VERUS_Z3_PATH", &installed.z3);
+    }
+    if let Solver::Shim {
+        shim,
+        trace_dir,
+        daemon_socket,
+    } = solver
+    {
+        cmd.env("VERUS_Z3_PATH", shim)
+            .env("SAIL_Z3_PATH", &installed.z3);
+        if let Some(dir) = trace_dir {
+            cmd.env("SAIL_TRACE_DIR", dir);
+        }
+        if let Some(socket) = daemon_socket {
+            cmd.env("SAIL_DAEMON_SOCKET", socket);
+        }
+    }
 }
 
 /// Machine details recorded with every benchmark and conformance result.
