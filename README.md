@@ -18,6 +18,9 @@ Its only change is putting `sail-z3` in front of the Z3 your Verus already
 uses. It starts the cache daemon (`sail serve`) on demand. To switch back,
 run `cargo verus verify` again.
 
+`sail watch [ARGS...]` re-verifies whenever sources change, cancelling the
+run in flight. With the cache warm, only edited buckets are re-solved.
+
 - `docs/CHARTER.md`: mission, scope and the correctness contract.
 - `AGENTS.md`: how to work in this repo (humans and agents).
 - `docs/decisions/`: architecture decision records.
