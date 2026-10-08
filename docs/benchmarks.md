@@ -98,6 +98,40 @@ The edits:
 - `vstd-relations-body`: lemma_new_first_element_still_sorted_by: add an assertion to the proof
 - `examples-vectors-body`: binary_search: flip the loop's comparison (`v[ix] < k` to `k > v[ix]`)
 
+## `edit-catalogue-x86_64-linux-gha-2026-10-08`: edit workload (single-function body and specification edits)
+
+- Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `92ea274e3f49`; 2 round(s) per edit
+- Machine: cpus: 2; host: x86_64-unknown-linux-gnu; uname: Linux 6.17.0-1022-azure x86_64
+
+Edits come from `corpus/edits.toml`. In each round (ADR 0012), a fresh `sail serve` starts with an empty cache; plain Verus and sail with the cache run on a scratch copy of the original project (the *fill*); the edit is applied to the copy; then plain Verus and sail with the filled cache run on the edited copy. Every sail run is compared with plain Verus. *Replies served / recorded* are for the run after the edit.
+
+| Edit | Kind | Plain Verus | sail after the edit | Speedup | Replies served / recorded | Solver sessions started / cached sessions | Plain outcome | Conformance (fill and edit runs) |
+|---|---|---:|---:|---:|---:|---:|---|---|
+| `human-eval-013-body` | body | 69.7 s (68.5 s–71.0 s) | 9768 ms (9668 ms–9869 ms) | 7.14× | 8724 / 96 (98.9%) | 2 / 226 | verified | 4 same, 0 different, 0 unstable, 0 infra errors |
+| `human-eval-028-spec` | spec | 68.5 s (67.0 s–69.9 s) | 12.5 s (12.4 s–12.7 s) | 5.47× | 8280 / 540 (93.9%) | 4 / 226 | verified | 4 same, 0 different, 0 unstable, 0 infra errors |
+| `human-eval-023-spec-break` | spec | 71.3 s (68.7 s–73.9 s) | 9293 ms (9118 ms–9467 ms) | 7.67× | 8800 / 56 (99.4%) | 2 / 226 | errors | 4 same, 0 different, 0 unstable, 0 infra errors |
+| `vstd-relations-body` | body | 69.6 s (68.6 s–70.6 s) | 54.9 s (52.2 s–57.7 s) | 1.27× | 38194 / 3006 (92.7%) | 8 / 730 | verified | 4 same, 0 different, 0 unstable, 0 infra errors |
+| `examples-vectors-body` | body | 977 ms (952 ms–1002 ms) | 1002 ms (1002 ms–1003 ms) | 0.97× | 4 / 176 (2.2%) | 2 / 2 | verified | 4 same, 0 different, 0 unstable, 0 infra errors |
+| **All edits** (sum of medians) | | 280.1 s | 87.5 s | **3.20×** | | | | 20 same, 0 different, 0 unstable, 0 infra errors |
+
+The fill, on the original copy:
+
+| Edit | Unit | Functions | Plain Verus | sail fill (empty cache) | Change |
+|---|---|---:|---:|---:|---:|
+| `human-eval-013-body` | `human-eval-verus/tasks/lib.rs` | 331 | 68.1 s (67.4 s–68.9 s) | 68.0 s (66.9 s–69.0 s) | -0.3% |
+| `human-eval-028-spec` | `human-eval-verus/tasks/lib.rs` | 331 | 68.3 s (67.4 s–69.2 s) | 70.1 s (69.0 s–71.2 s) | +2.6% |
+| `human-eval-023-spec-break` | `human-eval-verus/tasks/lib.rs` | 331 | 67.3 s (65.7 s–68.9 s) | 68.7 s (67.0 s–70.3 s) | +2.0% |
+| `vstd-relations-body` | `vstd/source/vstd/vstd.rs` | 1871 | 69.2 s (64.6 s–73.7 s) | 71.7 s (71.0 s–72.3 s) | +3.6% |
+| `examples-vectors-body` | `verus-examples/examples/vectors.rs` | 7 | 978 ms (952 ms–1004 ms) | 1002 ms (1002 ms–1002 ms) | +2.5% |
+
+The edits:
+
+- `human-eval-013-body`: compute_gcd: split `b1 = b1 % a1` through a temporary
+- `human-eval-028-spec`: concatenate_impl: add an implied `ensures` clause on the result's length
+- `human-eval-023-spec-break`: strlen: a wrong `ensures` (length + 1), so verification fails, as in an agent's failed attempt
+- `vstd-relations-body`: lemma_new_first_element_still_sorted_by: add an assertion to the proof
+- `examples-vectors-body`: binary_search: flip the loop's comparison (`v[ix] < k` to `k > v[ix]`)
+
 ## `warm-fast-arm64-macos-devload-2026-10-08`: warm workload (no change), fast tier
 
 - Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `ecd7ee1ed9b9`; 1 fill round and 2 warm round(s) per unit
@@ -148,4 +182,55 @@ Units whose warm rounds still started the solver: 19 of 147. With nothing change
 | `verus-examples/examples/guide/modes.rs` | 52 / 162 (24.3%) | 2 / 6 |
 | `verus-examples/examples/state_machines/flat_combine.rs` | 130 / 130 (50.0%) | 1 / 2 |
 | `verus-examples/examples/guide/datatypes.rs` | 0 / 120 (0.0%) | 4 / 4 |
+
+## `warm-fast-x86_64-linux-gha-2026-10-08`: warm workload (no change), fast tier
+
+- Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `92ea274e3f49`; 1 fill round and 2 warm round(s) per unit
+- Machine: cpus: 2; host: x86_64-unknown-linux-gnu; uname: Linux 6.17.0-1022-azure x86_64
+
+Each unit gets a fresh `sail serve` with an empty cache (ADR 0012). The fill runs Verus through `sail-z3` with that empty cache; each warm round runs it again, with nothing changed. Plain Verus runs in every round, and every sail run (fill and warm) is compared with it. *Replies served / recorded* counts solver replies the cache served and replies recorded from a running solver; a session that misses starts the solver and replays its earlier commands into it (ADR 0011).
+
+| Measure | Plain Verus | sail fill (empty cache) | sail warm |
+|---|---|---|---|
+| Units | 147 | 147 | 147 |
+| Functions | 3450 | 3450 | 3450 |
+| Total wall time (sum of unit medians) | 249.8 s | 258.0 s (+3.3%) | 162.9 s (-34.8%) |
+| Speedup over plain Verus (total wall time) | | 0.97× | **1.53×** |
+| Total wall time per round: median (min–max) | 250.4 s (242.6 s–250.6 s) | 258.0 s | 162.9 s (156.9 s–168.8 s) |
+| CPU time, process tree (sum of unit medians) | 245.1 s | 249.3 s | 156.8 s |
+| Solver time reported by Verus (mean; summed over solver threads) | 77.6 s | 77.0 s | 2926 ms |
+| Replies served / recorded (share served) | | 870 / 39808 (2.1%) | 77206 / 4150 (94.9%) |
+| Solver sessions started / cached sessions | | 716 / 763 | 26 / 1526 |
+| Cache size after the fills (sum) | | 23 MB | |
+| Conformance (sail runs: fill and warm) | | 441 same, 0 different, 0 unstable, 0 infra errors | |
+
+Slowest units (wall time: median (min–max) over rounds):
+
+| Unit | Functions | Plain | sail fill | sail warm | Warm speedup | Warm replies served / recorded |
+|---|---:|---:|---:|---:|---:|---:|
+| `human-eval-verus/tasks/lib.rs` | 331 | 72.9 s (69.0 s–73.8 s) | 71.1 s | 11.9 s (10.7 s–13.1 s) | 6.11× | 8570 / 250 (97.2%) |
+| `vstd/source/vstd/vstd.rs` | 1871 | 68.8 s (65.0 s–69.2 s) | 72.1 s | 54.1 s (49.5 s–58.7 s) | 1.27× | 39020 / 2180 (94.7%) |
+| `verus-examples/examples/cuckoo_hash_table/main.rs` | 51 | 4409 ms (4308 ms–4709 ms) | 4510 ms | 2656 ms (2655 ms–2657 ms) | 1.66× | 1020 / 0 (100.0%) |
+| `verus-examples/examples/cuckoo_hash_table/cuckoo.rs` | 50 | 4109 ms (4108 ms–4159 ms) | 4512 ms | 2505 ms (2505 ms–2505 ms) | 1.64× | 1000 / 0 (100.0%) |
+| `verus-examples/examples/cuckoo_hash_table/rwlock.rs` | 24 | 1303 ms (1303 ms–1353 ms) | 1353 ms | 1177 ms (1152 ms–1203 ms) | 1.11× | 540 / 0 (100.0%) |
+| `verus-examples/examples/state_machines/tutorial/fifo.rs` | 13 | 1303 ms (1303 ms–1303 ms) | 1353 ms | 1102 ms (1102 ms–1102 ms) | 1.18× | 360 / 0 (100.0%) |
+| `verus-examples/examples/guide/bst_map_generic.rs` | 34 | 1203 ms (1202 ms–1203 ms) | 1253 ms | 852 ms (852 ms–852 ms) | 1.41× | 680 / 0 (100.0%) |
+| `verus-examples/examples/state_machines/dist_rwlock.rs` | 16 | 1202 ms (1202 ms–1252 ms) | 1252 ms | 1127 ms (1102 ms–1153 ms) | 1.07× | 340 / 0 (100.0%) |
+| `verus-examples/examples/state_machines/flat_combine.rs` | 13 | 1202 ms (1152 ms–1202 ms) | 1202 ms | 1127 ms (1052 ms–1203 ms) | 1.07× | 130 / 130 (50.0%) |
+| `verus-examples/examples/doubly_linked_xor.rs` | 7 | 1152 ms (1152 ms–1203 ms) | 1253 ms | 802 ms (802 ms–802 ms) | 1.44× | 440 / 0 (100.0%) |
+
+Units whose warm rounds still started the solver: 13 of 147. With nothing changed, a warm miss comes from Verus emitting different bytes for the same input (`corpus/repros/verus-nondeterministic-declaration-order/`, open question 9) or from a cached `unknown`, which is never served (ADR 0009). Most replies recorded:
+
+| Unit | Warm replies served / recorded | Solver sessions started / cached sessions |
+|---|---:|---:|
+| `vstd/source/vstd/vstd.rs` | 39020 / 2180 (94.7%) | 4 / 730 |
+| `verus-examples/examples/syntax.rs` | 480 / 460 (51.1%) | 4 / 10 |
+| `verus-examples/examples/debug_expand.rs` | 448 / 392 (53.3%) | 1 / 4 |
+| `human-eval-verus/tasks/lib.rs` | 8570 / 250 (97.2%) | 1 / 226 |
+| `verus-examples/examples/guide/traits.rs` | 32 / 228 (12.3%) | 2 / 2 |
+| `verus-examples/examples/state_machines/flat_combine.rs` | 130 / 130 (50.0%) | 1 / 2 |
+| `verus-examples/examples/guide/datatypes.rs` | 0 / 120 (0.0%) | 4 / 4 |
+| `verus-examples/examples/summer_school/chapter-1-22.rs` | 0 / 120 (0.0%) | 2 / 2 |
+| `verus-examples/examples/summer_school/chapter-6-1.rs` | 70 / 70 (50.0%) | 2 / 4 |
+| `verus-examples/examples/state_machines/arc.rs` | 220 / 60 (78.6%) | 1 / 4 |
 

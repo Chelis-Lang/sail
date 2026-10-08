@@ -1,0 +1,593 @@
+{
+  "schema_version": 1,
+  "workload": "edit",
+  "tier": "catalogue",
+  "rounds": 2,
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "sail_commit": "92ea274e3f49",
+  "started_unix": 1791488735,
+  "machine": {
+    "cpus": "2",
+    "host": "x86_64-unknown-linux-gnu",
+    "uname": "Linux 6.17.0-1022-azure x86_64"
+  },
+  "units": [],
+  "edits": [
+    {
+      "id": "human-eval-013-body",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "kind": "body",
+      "description": "compute_gcd: split `b1 = b1 % a1` through a temporary",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 331,
+      "plain_original": {
+        "wall_ms": [
+          67385.80809399999,
+          68879.55457600001
+        ],
+        "cpu_s": [
+          67.37,
+          68.89999999999999
+        ],
+        "smt_ms": [
+          54113,
+          55588
+        ],
+        "max_rss_bytes": [
+          689512448,
+          688820224
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          69030.90484,
+          66875.38672
+        ],
+        "cpu_s": [
+          69.08,
+          66.95
+        ],
+        "smt_ms": [
+          55387,
+          53475
+        ],
+        "max_rss_bytes": [
+          687464448,
+          688939008
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          70989.034956,
+          68479.671737
+        ],
+        "cpu_s": [
+          70.99,
+          68.49000000000001
+        ],
+        "smt_ms": [
+          57087,
+          55122
+        ],
+        "max_rss_bytes": [
+          687534080,
+          690225152
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          9667.776509,
+          9868.720107
+        ],
+        "cpu_s": [
+          9.58,
+          9.76
+        ],
+        "smt_ms": [
+          149,
+          150
+        ],
+        "max_rss_bytes": [
+          689061888,
+          688693248
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4363,
+          "hits": 4362,
+          "puts": 48
+        },
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4363,
+          "hits": 4362,
+          "puts": 48
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "human-eval-028-spec",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "kind": "spec",
+      "description": "concatenate_impl: add an implied `ensures` clause on the result's length",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 331,
+      "plain_original": {
+        "wall_ms": [
+          67426.25070799999,
+          69185.551851
+        ],
+        "cpu_s": [
+          67.42999999999999,
+          69.21000000000001
+        ],
+        "smt_ms": [
+          54358,
+          55823
+        ],
+        "max_rss_bytes": [
+          690483200,
+          688955392
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          69032.569742,
+          71191.531699
+        ],
+        "cpu_s": [
+          69.07,
+          71.22
+        ],
+        "smt_ms": [
+          55162,
+          57183
+        ],
+        "max_rss_bytes": [
+          689881088,
+          696578048
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          69935.401308,
+          67029.32816599999
+        ],
+        "cpu_s": [
+          69.92,
+          67.04
+        ],
+        "smt_ms": [
+          56512,
+          53848
+        ],
+        "max_rss_bytes": [
+          689188864,
+          689082368
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          12373.067996,
+          12674.705574000001
+        ],
+        "cpu_s": [
+          12.27,
+          12.56
+        ],
+        "smt_ms": [
+          2443,
+          2434
+        ],
+        "max_rss_bytes": [
+          689094656,
+          689213440
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4142,
+          "hits": 4140,
+          "puts": 270
+        },
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4142,
+          "hits": 4140,
+          "puts": 270
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "human-eval-023-spec-break",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "kind": "spec",
+      "description": "strlen: a wrong `ensures` (length + 1), so verification fails, as in an agent's failed attempt",
+      "expected": "errors",
+      "outcome": "errors",
+      "functions": 331,
+      "plain_original": {
+        "wall_ms": [
+          65724.406691,
+          68882.622103
+        ],
+        "cpu_s": [
+          65.74,
+          68.88000000000001
+        ],
+        "smt_ms": [
+          52844,
+          55285
+        ],
+        "max_rss_bytes": [
+          690487296,
+          688971776
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          67029.033992,
+          70285.31593900001
+        ],
+        "cpu_s": [
+          67.06,
+          70.33000000000001
+        ],
+        "smt_ms": [
+          53521,
+          56423
+        ],
+        "max_rss_bytes": [
+          690933760,
+          692039680
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          68680.86457399999,
+          73895.501173
+        ],
+        "cpu_s": [
+          68.7,
+          73.89
+        ],
+        "smt_ms": [
+          56420,
+          61096
+        ],
+        "max_rss_bytes": [
+          693161984,
+          693202944
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          9118.124205999999,
+          9467.411780999999
+        ],
+        "cpu_s": [
+          9.02,
+          9.36
+        ],
+        "smt_ms": [
+          126,
+          127
+        ],
+        "max_rss_bytes": [
+          693321728,
+          693370880
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4401,
+          "hits": 4400,
+          "puts": 28
+        },
+        {
+          "phase": "fill",
+          "sessions": 113,
+          "gets": 115,
+          "hits": 2,
+          "puts": 4408
+        },
+        {
+          "phase": "edit",
+          "sessions": 113,
+          "gets": 4401,
+          "hits": 4400,
+          "puts": 28
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "vstd-relations-body",
+      "unit": "vstd/source/vstd/vstd.rs",
+      "kind": "body",
+      "description": "lemma_new_first_element_still_sorted_by: add an assertion to the proof",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 1871,
+      "plain_original": {
+        "wall_ms": [
+          73693.518004,
+          64614.031779000004
+        ],
+        "cpu_s": [
+          73.82000000000001,
+          64.74
+        ],
+        "smt_ms": [
+          12085,
+          11323
+        ],
+        "max_rss_bytes": [
+          1254641664,
+          1253638144
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          72296.840652,
+          71045.68538
+        ],
+        "cpu_s": [
+          72.52,
+          71.31
+        ],
+        "smt_ms": [
+          12201,
+          12072
+        ],
+        "max_rss_bytes": [
+          1251336192,
+          1251086336
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          68629.032796,
+          70582.146516
+        ],
+        "cpu_s": [
+          68.77,
+          70.74000000000001
+        ],
+        "smt_ms": [
+          11553,
+          11594
+        ],
+        "max_rss_bytes": [
+          1250217984,
+          1251119104
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          57661.07436,
+          52196.43679
+        ],
+        "cpu_s": [
+          57.3,
+          51.790000000000006
+        ],
+        "smt_ms": [
+          1185,
+          1490
+        ],
+        "max_rss_bytes": [
+          1254023168,
+          1251471360
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 365,
+          "gets": 1045,
+          "hits": 724,
+          "puts": 19876
+        },
+        {
+          "phase": "edit",
+          "sessions": 365,
+          "gets": 19066,
+          "hits": 19062,
+          "puts": 1538
+        },
+        {
+          "phase": "fill",
+          "sessions": 365,
+          "gets": 1045,
+          "hits": 724,
+          "puts": 19876
+        },
+        {
+          "phase": "edit",
+          "sessions": 365,
+          "gets": 19136,
+          "hits": 19132,
+          "puts": 1468
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    },
+    {
+      "id": "examples-vectors-body",
+      "unit": "verus-examples/examples/vectors.rs",
+      "kind": "body",
+      "description": "binary_search: flip the loop's comparison (`v[ix] < k` to `k > v[ix]`)",
+      "expected": "verified",
+      "outcome": "verified",
+      "functions": 7,
+      "plain_original": {
+        "wall_ms": [
+          1003.898569,
+          952.0500579999999
+        ],
+        "cpu_s": [
+          0.98,
+          0.9199999999999999
+        ],
+        "smt_ms": [
+          188,
+          186
+        ],
+        "max_rss_bytes": [
+          429539328,
+          431812608
+        ]
+      },
+      "fill": {
+        "wall_ms": [
+          1002.113708,
+          1002.1021999999999
+        ],
+        "cpu_s": [
+          0.95,
+          0.9299999999999999
+        ],
+        "smt_ms": [
+          197,
+          189
+        ],
+        "max_rss_bytes": [
+          431652864,
+          431276032
+        ]
+      },
+      "plain": {
+        "wall_ms": [
+          1002.127362,
+          952.0621379999999
+        ],
+        "cpu_s": [
+          0.95,
+          0.93
+        ],
+        "smt_ms": [
+          198,
+          192
+        ],
+        "max_rss_bytes": [
+          431239168,
+          429314048
+        ]
+      },
+      "sail": {
+        "wall_ms": [
+          1002.7018590000001,
+          1002.083302
+        ],
+        "cpu_s": [
+          0.95,
+          0.95
+        ],
+        "smt_ms": [
+          197,
+          200
+        ],
+        "max_rss_bytes": [
+          429527040,
+          431575040
+        ]
+      },
+      "cache": [
+        {
+          "phase": "fill",
+          "sessions": 1,
+          "gets": 1,
+          "hits": 0,
+          "puts": 90
+        },
+        {
+          "phase": "edit",
+          "sessions": 1,
+          "gets": 3,
+          "hits": 2,
+          "puts": 88
+        },
+        {
+          "phase": "fill",
+          "sessions": 1,
+          "gets": 1,
+          "hits": 0,
+          "puts": 90
+        },
+        {
+          "phase": "edit",
+          "sessions": 1,
+          "gets": 3,
+          "hits": 2,
+          "puts": 88
+        }
+      ],
+      "same": 4,
+      "different": 0,
+      "unstable": 0,
+      "infra_errors": 0
+    }
+  ]
+}
