@@ -5,6 +5,13 @@
 //! per-function results and timings) and `--no-report-long-running` (stops
 //! timing-dependent diagnostics; see `docs/survey/verus-z3.md` §8). Both
 //! sides of a comparison therefore run with identical arguments.
+//!
+//! `cargo-verus` units run `cargo verus <command> <cargo args> -- <verus
+//! args> <common flags>` in the package directory of a scratch copy made by
+//! [`prepare_unit`], with the pinned Rust toolchain, a target directory emptied
+//! before each run, and Cargo's status output off (`CARGO_TERM_QUIET`), so stderr
+//! holds only diagnostics. Each verified crate prints its own
+//! `--output-json` document, so a run can produce several.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -14,7 +21,7 @@ use std::time::Instant;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::corpus::Unit;
+use crate::corpus::{Build, Unit};
 use crate::toolchain::Installed;
 use crate::{Error, Result};
 
@@ -38,6 +45,9 @@ pub const COMMON_FLAGS: &[&str] = &["--output-json", "--time", "--no-report-long
 /// One function's result, from Verus's `--time` breakdown.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct FunctionResult {
+    /// Which `--output-json` document (crate) it came from, counting from 0
+    /// in stdout order.
+    pub output: usize,
     /// The module, as Verus reports it.
     pub module: String,
     /// The function path.
@@ -57,8 +67,11 @@ pub struct RunRecord {
     pub exit_code: Option<i32>,
     /// Everything Verus wrote to stderr (diagnostics).
     pub stderr: String,
-    /// Verus's `--output-json` document, if stdout parsed as JSON.
-    pub json: Option<Value>,
+    /// Verus's `--output-json` documents, in stdout order: one for a
+    /// `verus` run, one per verified crate for `cargo verus`.
+    pub outputs: Vec<Value>,
+    /// Whatever followed the last JSON document on stdout (normally empty).
+    pub stdout_rest: String,
     /// Wall-clock time of the whole run, in milliseconds.
     pub wall_ms: f64,
     /// User CPU seconds of the process tree (from `time`), if measured.
@@ -70,20 +83,30 @@ pub struct RunRecord {
 }
 
 impl RunRecord {
-    /// The `verification-results` object.
+    /// The sum of a numeric `verification-results` field (for example
+    /// `verified` or `errors`) over all documents that have it.
     #[must_use]
-    pub fn verification_results(&self) -> Option<&Value> {
-        self.json.as_ref()?.get("verification-results")
+    pub fn total(&self, field: &str) -> Option<u64> {
+        self.outputs
+            .iter()
+            .filter_map(|o| o.get("verification-results")?.get(field)?.as_u64())
+            .reduce(u64::saturating_add)
     }
 
     /// Per-function results from the `--time` breakdown, sorted.
     #[must_use]
     pub fn functions(&self) -> Vec<FunctionResult> {
         let mut out = Vec::new();
-        let modules = self
-            .json
-            .as_ref()
-            .and_then(|j| j.pointer("/times-ms/smt/smt-run-module-times"))
+        for (output, doc) in self.outputs.iter().enumerate() {
+            Self::push_functions(output, doc, &mut out);
+        }
+        out.sort();
+        out
+    }
+
+    fn push_functions(output: usize, doc: &Value, out: &mut Vec<FunctionResult>) {
+        let modules = doc
+            .pointer("/times-ms/smt/smt-run-module-times")
             .and_then(Value::as_array);
         for module in modules.into_iter().flatten() {
             let name = module
@@ -93,6 +116,7 @@ impl RunRecord {
             let fns = module.get("function-breakdown").and_then(Value::as_array);
             for f in fns.into_iter().flatten() {
                 out.push(FunctionResult {
+                    output,
                     module: name.to_owned(),
                     function: f
                         .get("function")
@@ -105,18 +129,157 @@ impl RunRecord {
                 });
             }
         }
-        out.sort();
-        out
     }
 
-    /// Total solver time Verus reports (`smt-init` plus `smt-run`), in ms.
+    /// Total solver time Verus reports (`smt-init` plus `smt-run`), in ms,
+    /// summed over all documents.
     #[must_use]
     pub fn smt_ms(&self) -> Option<u64> {
-        self.json
-            .as_ref()?
-            .pointer("/times-ms/smt/total")
-            .and_then(Value::as_u64)
+        self.outputs
+            .iter()
+            .filter_map(|o| o.pointer("/times-ms/smt/total")?.as_u64())
+            .reduce(u64::saturating_add)
     }
+}
+
+/// Splits stdout into its JSON documents and whatever follows the last one.
+fn parse_outputs(stdout: &[u8]) -> (Vec<Value>, String) {
+    let mut stream = serde_json::Deserializer::from_slice(stdout).into_iter::<Value>();
+    let mut docs = Vec::new();
+    let mut end = 0;
+    while let Some(Ok(doc)) = stream.next() {
+        docs.push(doc);
+        end = stream.byte_offset();
+    }
+    let rest = stdout.get(end..).unwrap_or_default();
+    (docs, String::from_utf8_lossy(rest).trim().to_owned())
+}
+
+/// Environment that could make Cargo or rustc behave differently from a
+/// plain `cargo verus` in a clean shell (for example when the harness itself
+/// runs under `cargo run`). Removed for `cargo-verus` units.
+const CARGO_ENV_REMOVED: &[&str] = &[
+    "CARGO",
+    "CARGO_BUILD_RUSTC",
+    "CARGO_BUILD_RUSTC_WRAPPER",
+    "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER",
+    "CARGO_BUILD_RUSTFLAGS",
+    "CARGO_BUILD_TARGET_DIR",
+    "CARGO_ENCODED_RUSTFLAGS",
+    "CARGO_MAKEFLAGS",
+    "CARGO_MANIFEST_DIR",
+    "CARGO_PKG_NAME",
+    "CARGO_PRIMARY_PACKAGE",
+    "RUSTC",
+    "RUSTC_WORKSPACE_WRAPPER",
+    "RUSTC_WRAPPER",
+    "RUSTDOC",
+    "RUSTFLAGS",
+];
+
+/// Applies the pinned toolchain and quiet, deterministic Cargo settings.
+fn cargo_env(cmd: &mut Command, installed: &Installed) {
+    for var in CARGO_ENV_REMOVED {
+        cmd.env_remove(var);
+    }
+    cmd.env("RUSTUP_TOOLCHAIN", &installed.pins.verus.rust_toolchain)
+        .env("CARGO_TERM_QUIET", "true")
+        .env("CARGO_TERM_COLOR", "never")
+        .env("CARGO_TERM_PROGRESS_WHEN", "never");
+}
+
+fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        if name == ".git" || name == ".sail-fetched" {
+            continue;
+        }
+        let (src, dst) = (entry.path(), to.join(&name));
+        let kind = entry.file_type()?;
+        if kind.is_symlink() {
+            copy_symlink(&src, &dst)?;
+        } else if kind.is_dir() {
+            copy_tree(&src, &dst)?;
+        } else {
+            std::fs::copy(&src, &dst)?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn copy_symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(std::fs::read_link(src)?, dst)
+}
+
+#[cfg(not(unix))]
+fn copy_symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::copy(src, dst).map(|_| ())
+}
+
+/// Prepares `unit` to run under `scratch` and returns the unit to run.
+///
+/// `verus` units run in place and are returned unchanged. A `cargo-verus`
+/// unit gets a scratch copy of its project in `<scratch>/src` (Cargo writes
+/// `Cargo.lock` into the tree, and the fetched source is never modified),
+/// with its Verus dependencies patched to `verus_source` if
+/// `patch_verus_deps` is set, and its lockfile resolved once with
+/// `cargo metadata` so that both sides of a comparison start from the same
+/// tree.
+///
+/// # Errors
+///
+/// `SAIL3022` if the copy, the patch or dependency resolution fails, or if
+/// patching is asked for without a Verus source.
+pub fn prepare_unit(
+    installed: &Installed,
+    unit: &Unit,
+    verus_source: Option<&Path>,
+    scratch: &Path,
+) -> Result<Unit> {
+    if unit.build != Build::CargoVerus {
+        return Ok(unit.clone());
+    }
+    let fail = |what: String| Error::new("SAIL3022", format!("{}: {what}", unit.id));
+    let scratch = std::path::absolute(scratch)
+        .map_err(|e| fail(format!("cannot resolve {}: {e}", scratch.display())))?;
+    let src = scratch.join("src");
+    let _ = std::fs::remove_dir_all(&src);
+    copy_tree(&unit.source_dir, &src).map_err(|e| {
+        fail(format!(
+            "cannot copy {} to {}: {e}",
+            unit.source_dir.display(),
+            src.display()
+        ))
+    })?;
+    let package = src.join(&unit.root);
+    if unit.patch_verus_deps {
+        let verus = verus_source
+            .ok_or_else(|| fail("patch_verus_deps needs the pinned Verus source".to_owned()))?;
+        crate::patch::patch_verus_deps(&package, &src, verus).map_err(|e| fail(e.to_string()))?;
+    }
+    let mut cmd = Command::new("cargo");
+    cargo_env(&mut cmd, installed);
+    let output = cmd
+        .args(["metadata", "--format-version", "1"])
+        .current_dir(&package)
+        .stdin(Stdio::null())
+        .env("CARGO_TARGET_DIR", scratch.join("metadata-target"))
+        .output()
+        .map_err(|e| fail(format!("cannot run cargo metadata: {e}")))?;
+    if !output.status.success() {
+        return Err(fail(format!(
+            "cargo metadata failed in {}: {}",
+            package.display(),
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    let mut prepared = unit.clone();
+    prepared.source_dir = src;
+    prepared.target_dir = Some(scratch.join("target"));
+    Ok(prepared)
 }
 
 /// Parses the output of `/usr/bin/time -l` (BSD) or `-v` (GNU) into
@@ -160,6 +323,41 @@ fn time_flag() -> Option<&'static str> {
     }
 }
 
+/// Adds the arguments, working directory and Cargo settings for `unit` to
+/// `cmd`, which runs `verus` or `cargo-verus`.
+fn add_invocation(
+    cmd: &mut Command,
+    installed: &Installed,
+    unit: &Unit,
+    work: &Path,
+    target_dir: Option<&Path>,
+) {
+    let out_dir = work.to_string_lossy().into_owned();
+    let args: Vec<String> = unit
+        .args
+        .iter()
+        .map(|a| a.replace("{out}", &out_dir))
+        .collect();
+    let root = unit.source_dir.join(&unit.root);
+    if unit.build == Build::CargoVerus {
+        cargo_env(cmd, installed);
+        cmd.arg("verus")
+            .args(&unit.cargo_args)
+            .arg("--")
+            .args(&args)
+            .args(COMMON_FLAGS)
+            .current_dir(&root);
+        if let Some(dir) = target_dir {
+            cmd.env("CARGO_TARGET_DIR", dir);
+        }
+    } else {
+        cmd.args(&args)
+            .arg(&root)
+            .args(COMMON_FLAGS)
+            .current_dir(work);
+    }
+}
+
 /// Runs Verus on `unit` against `solver`, using `work` (created if needed) as
 /// the working and scratch output directory.
 ///
@@ -185,29 +383,43 @@ pub fn run_unit(
     let _ = std::fs::remove_dir_all(work);
     std::fs::create_dir_all(work)
         .map_err(|e| Error::new("SAIL3020", format!("cannot create {}: {e}", work.display())))?;
-    let out_dir = work.to_string_lossy().into_owned();
-    let args: Vec<String> = unit
-        .args
-        .iter()
-        .map(|a| a.replace("{out}", &out_dir))
-        .collect();
-    let root = unit.source_dir.join(&unit.root);
+    let cargo = unit.build == Build::CargoVerus;
+    let target_dir = if cargo {
+        let dir = unit.target_dir.as_deref().ok_or_else(|| {
+            Error::new(
+                "SAIL3020",
+                format!("{}: cargo-verus unit was not prepared", unit.id),
+            )
+        })?;
+        let _ = std::fs::remove_dir_all(dir);
+        Some(dir)
+    } else {
+        None
+    };
+    let program = if cargo {
+        &installed.cargo_verus
+    } else {
+        &installed.verus
+    };
+    if !program.is_file() {
+        return Err(Error::new(
+            "SAIL3020",
+            format!("{} is not installed", program.display()),
+        ));
+    }
     let time_file = work.join("time.txt");
     let timer = Path::new("/usr/bin/time");
     let time_mode = time_flag().filter(|_| timer.is_file());
     let mut cmd = match time_mode {
         Some(flag) => {
             let mut c = Command::new(timer);
-            c.arg(flag).arg("-o").arg(&time_file).arg(&installed.verus);
+            c.arg(flag).arg("-o").arg(&time_file).arg(program);
             c
         }
-        None => Command::new(&installed.verus),
+        None => Command::new(program),
     };
-    cmd.args(&args)
-        .arg(&root)
-        .args(COMMON_FLAGS)
-        .current_dir(work)
-        .stdin(Stdio::null())
+    add_invocation(&mut cmd, installed, unit, work, target_dir);
+    cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .env_remove("VERUS_Z3_PATH")
@@ -222,13 +434,14 @@ pub fn run_unit(
         }
     }
     let started = Instant::now();
-    let output = cmd.output().map_err(|e| {
-        Error::new(
-            "SAIL3020",
-            format!("cannot run {}: {e}", installed.verus.display()),
-        )
-    })?;
+    let output = cmd
+        .output()
+        .map_err(|e| Error::new("SAIL3020", format!("cannot run {}: {e}", program.display())))?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
+    if let Some(dir) = target_dir {
+        // Build products are large and never compared; keep the disk free.
+        let _ = std::fs::remove_dir_all(dir);
+    }
     let timing = std::fs::read_to_string(&time_file);
     if time_mode.is_some() && timing.is_err() {
         // `time` did not run Verus to completion: this is an infrastructure
@@ -242,11 +455,16 @@ pub fn run_unit(
             ),
         ));
     }
+    // Kept next to the run for inspecting differences; best effort.
+    let _ = std::fs::write(work.join("stdout.txt"), &output.stdout);
+    let _ = std::fs::write(work.join("stderr.txt"), &output.stderr);
     let (user_s, sys_s, max_rss_bytes) = parse_time(&timing.unwrap_or_default());
+    let (outputs, stdout_rest) = parse_outputs(&output.stdout);
     Ok(RunRecord {
         exit_code: output.status.code(),
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-        json: serde_json::from_slice(&output.stdout).ok(),
+        outputs,
+        stdout_rest,
         wall_ms,
         user_s,
         sys_s,
@@ -282,7 +500,49 @@ pub fn machine_info() -> BTreeMap<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_time;
+    use super::{RunRecord, parse_outputs, parse_time};
+    use serde_json::json;
+
+    #[test]
+    fn splits_concatenated_json_documents() {
+        let (docs, rest) = parse_outputs(b"{\n \"a\": 1\n}\n{\"b\": [2]}\n");
+        assert_eq!(docs, vec![json!({"a": 1}), json!({"b": [2]})]);
+        assert_eq!(rest, "");
+        let (docs, rest) = parse_outputs(b"{\"a\": 1}\nverification results:: 1 verified\n");
+        assert_eq!(docs, vec![json!({"a": 1})]);
+        assert_eq!(rest, "verification results:: 1 verified");
+        let (docs, rest) = parse_outputs(b"");
+        assert!(docs.is_empty() && rest.is_empty());
+    }
+
+    #[test]
+    fn functions_and_totals_span_all_documents() {
+        let doc = |f: &str, ok: bool, verified: u64| {
+            json!({
+                "verification-results": {"verified": verified, "errors": u64::from(!ok)},
+                "times-ms": {"smt": {"total": 5, "smt-run-module-times": [
+                    {"module": "m", "function-breakdown": [{"function": f, "success": ok, "rlimit": 3}]}
+                ]}},
+            })
+        };
+        let r = RunRecord {
+            exit_code: Some(1),
+            stderr: String::new(),
+            outputs: vec![doc("f", true, 2), doc("f", false, 4)],
+            stdout_rest: String::new(),
+            wall_ms: 0.0,
+            user_s: None,
+            sys_s: None,
+            max_rss_bytes: None,
+        };
+        assert_eq!(r.total("verified"), Some(6));
+        assert_eq!(r.total("errors"), Some(1));
+        assert_eq!(r.smt_ms(), Some(10));
+        let fns = r.functions();
+        assert_eq!(fns.len(), 2);
+        assert_eq!((fns[0].output, fns[0].success), (0, true));
+        assert_eq!((fns[1].output, fns[1].success), (1, false));
+    }
 
     #[test]
     fn parses_bsd_time() {

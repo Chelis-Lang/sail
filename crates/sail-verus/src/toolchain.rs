@@ -85,6 +85,8 @@ pub struct Installed {
     pub pins: Pins,
     /// The `verus` launcher.
     pub verus: PathBuf,
+    /// `cargo-verus`, next to `verus` (only needed by `cargo-verus` units).
+    pub cargo_verus: PathBuf,
     /// The bundled, pinned `z3`.
     pub z3: PathBuf,
 }
@@ -110,6 +112,7 @@ impl Installed {
         };
         let dir = root.join(&asset.dir);
         let (verus, z3) = (dir.join("verus"), dir.join("z3"));
+        let cargo_verus = dir.join("cargo-verus");
         if !verus.is_file() || !z3.is_file() {
             return Err(Error::new(
                 "SAIL3003",
@@ -119,6 +122,11 @@ impl Installed {
                 ),
             ));
         }
-        Ok(Self { pins, verus, z3 })
+        Ok(Self {
+            pins,
+            verus,
+            cargo_verus,
+            z3,
+        })
     }
 }

@@ -150,6 +150,12 @@ Run conformance locally (needs `cargo xtask fetch-verus` once):
 cargo build --release -p sail-shim -p sail-conformance
 ./target/release/sail-conformance run --tier fast --jobs 4
 ```
+
+The standard tier adds the external `cargo verus` and `verus` projects
+(`--tier standard`). It also needs Verus's Rust toolchain
+(`rust_toolchain` in `corpus/toolchain.toml`) installed with rustup, and
+network access for the projects' crates.io dependencies. Projects whose
+`requires` are unavailable are skipped and listed in the summary line.
 - *Deep:* full corpus, history replay, portfolio and fragility runs, and full
   benchmarks. Scheduled, and run before releases.
 - *Not in the fast gate:* benchmarks, profiling and long fuzzing. Record

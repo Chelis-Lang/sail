@@ -52,3 +52,161 @@ build = "verus"
 crate_roots = ["tasks/lib.rs"]
 extra_verus_args = ["--crate-type=lib"]
 expected = "verified"
+
+# Standard tier: the verita projects (docs/survey/corpus.md section 3), with
+# crate roots and arguments from verus@426d8b0:tools/verita/run_configuration_all.toml.
+# `cargo-verus` entries run `cargo verus focus` as verita does: only the
+# listed package is verified, and its dependencies (including vstd, patched to
+# the pinned source) are built with --no-verify.
+
+[[project]]
+name = "verified-node-replication"
+url = "https://github.com/verus-lang/verified-node-replication"
+commit = "6aed637f56043e508d3d187c4980431a7fce9373"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "253 verified, 0 errors in 8 s, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+build = "verus"
+crate_roots = ["verified-node-replication/src/lib.rs"]
+extra_verus_args = ["--crate-type=dylib"]
+expected = "verified"
+
+[[project]]
+name = "verified-ironkv"
+url = "https://github.com/verus-lang/verified-ironkv"
+commit = "7e35ed097c4089b9fbda483ea2629a0033f4d874"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "313 verified, 0 errors in 44 s, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["ironsht"]
+patch_verus_deps = true
+expected = "verified"
+
+[[project]]
+name = "vest"
+url = "https://github.com/secure-foundations/vest"
+commit = "11af01ddaef76cceded03517cd48764adb9d35b1"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "3,237 verified, 0 errors in 1.9 min, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["vest_lib"]
+patch_verus_deps = true
+expected = "verified"
+
+[[project]]
+name = "vest-generated"
+url = "https://github.com/secure-foundations/vest"
+commit = "11af01ddaef76cceded03517cd48764adb9d35b1"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "2,720 verified, 0 errors in 3.8 min (--verify-module tls), plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["vest_tests"]
+extra_verus_args = ["--verify-module", "tls"]
+patch_verus_deps = true
+expected = "verified"
+
+[[project]]
+name = "verified-storage"
+url = "https://github.com/microsoft/verified-storage"
+commit = "41cab95051229ebd457b4eed7fc111e3e7c9099c"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "capybarakv 732 verified, multilog 164, pmemlog 167, 0 errors each (1.6, 0.8 and 1.0 min), plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["capybaraKV/capybarakv", "multilog/multilog", "pmemlog"]
+extra_cargo_args = ["--no-default-features"]
+patch_verus_deps = true
+expected = "verified"
+
+# verita's single "verismo" entry is split in two because only the verismo
+# crate builds hacl-sys, whose build script needs cmake and ninja.
+[[project]]
+name = "verismo"
+url = "https://github.com/microsoft/verismo"
+commit = "6bc6dd326d8b9ca30ffec57a544b13b5fadf3cb3"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "bitflags_verus 48 verified, verismo_tspec 860, 0 errors each, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["source/bitflags_verus/src", "source/verismo_tspec/src"]
+patch_verus_deps = true
+# source/.cargo/config.toml builds for x86_64-unknown-none.
+requires = ["rust-target:x86_64-unknown-none"]
+expected = "verified"
+
+[[project]]
+name = "verismo-main"
+url = "https://github.com/microsoft/verismo"
+commit = "6bc6dd326d8b9ca30ffec57a544b13b5fadf3cb3"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "1,283 verified, 0 errors in 1.3 min, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3)"
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["source/verismo/src"]
+patch_verus_deps = true
+requires = ["rust-target:x86_64-unknown-none", "program:cmake", "program:ninja"]
+expected = "verified"
+
+[[project]]
+name = "page-table"
+url = "https://github.com/parno/verified-nrkernel"
+commit = "be21389554aa6d5e0f7ab98796fd03e04b6f34d4"
+license = "MIT OR Apache-2.0"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "607 verified, 1 error in 18 min: rlimit exceeded in `allocate` (page-table/src/impl_u/wrapped_token.rs:901), identical in plain and sail runs, plain Verus 0.2026.10.04, 2026-10-08, macOS arm64 (Apple M3); verita's nightly (Verus main, Linux) passed this branch on 2026-10-06, before this commit"
+build = "verus"
+crate_roots = ["page-table/src/lib.rs"]
+extra_verus_args = ["--crate-type=lib", "--rlimit", "100", "--cfg", "feature=\"impl\"", "--cfg", "feature=\"hlspec_user\""]
+expected = "1 error: rlimit exceeded in impl_u/wrapped_token.rs `allocate` (macOS arm64)"
+
+[[project]]
+name = "anvil"
+url = "https://github.com/anvil-verifier/anvil"
+commit = "a597f9de7dbeb056403bd60b0a2ca67f686a5e1f"
+license = "MIT"
+tier = "standard"
+verus_version_compat = "compatible"
+compat_evidence = "TODO"
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["."]
+extra_cargo_args = ["--lib"]
+extra_verus_args = ["--verify-module", "vdeployment_controller"]
+patch_verus_deps = true
+# kube's TLS stack builds openssl-sys, which needs OpenSSL headers.
+requires = ["openssl"]
+expected = "TODO"
+
+# Tier 2: pinned, but not run (ADR 0006, update of 2026-10-08).
+
+[[project]]
+name = "verified-memory-allocator"
+url = "https://github.com/verus-lang/verified-memory-allocator"
+commit = "9f99d4c22e26024be4e3e2d40b7501daab570860"
+license = "MIT"
+tier = "tier2"
+verus_version_compat = "needs-singular-build"
+compat_evidence = "the pinned release is built without Verus's singular feature (rust_verify: \"Found singular command when Verus is compiled without Singular feature\"); verita verifies it with a source build using --features singular"
+# verita first builds test_libc with cargo and copies its liblibc-*.rlib to
+# build/liblibc.rlib (a prepare script), so this needs a `script` build.
+build = "script"
+crate_roots = ["verus-mimalloc/lib.rs"]
+extra_verus_args = ["--extern", "libc=build/liblibc.rlib", "--triggers-mode", "silent", "--rlimit", "240"]
+requires = ["singular"]
