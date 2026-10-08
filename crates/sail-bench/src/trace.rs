@@ -104,18 +104,7 @@ pub struct EndRecord {
     pub paired: bool,
 }
 
-/// The files of one captured solver session.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SessionFiles {
-    /// A readable id: `<subdir>/<pid>-<nanos>` or `<pid>-<nanos>`.
-    pub id: String,
-    /// `<id>.jsonl`.
-    pub jsonl: PathBuf,
-    /// `<id>.in.smt2`.
-    pub input: PathBuf,
-    /// `<id>.out`.
-    pub output: PathBuf,
-}
+pub use sail_portfolio::sessions::SessionFiles;
 
 /// A parsed `<id>.jsonl`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -179,52 +168,14 @@ pub fn load(files: &SessionFiles) -> Result<SessionTrace, BenchError> {
     parse_jsonl(&text, &files.jsonl)
 }
 
-/// Lists the sessions under `dir`, sorted by id: the `*.jsonl` files directly
-/// in it, or, if there are none, those in its immediate subdirectories.
+/// Lists the sessions under `dir`, sorted by id; see
+/// [`sail_portfolio::sessions::discover`].
 ///
 /// # Errors
 ///
 /// [`BenchError::Io`] if a directory cannot be read.
 pub fn discover(dir: &Path) -> Result<Vec<SessionFiles>, BenchError> {
-    let mut found = sessions_in(dir, None)?;
-    if found.is_empty() {
-        let mut subdirs: Vec<PathBuf> = fs::read_dir(dir)
-            .map_err(|e| BenchError::io(dir, &e))?
-            .filter_map(Result::ok)
-            .map(|e| e.path())
-            .filter(|p| p.is_dir())
-            .collect();
-        subdirs.sort();
-        for sub in subdirs {
-            let name = sub
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            found.extend(sessions_in(&sub, Some(&name))?);
-        }
-    }
-    Ok(found)
-}
-
-fn sessions_in(dir: &Path, prefix: Option<&str>) -> Result<Vec<SessionFiles>, BenchError> {
-    let mut out = Vec::new();
-    for entry in fs::read_dir(dir).map_err(|e| BenchError::io(dir, &e))? {
-        let path = entry.map_err(|e| BenchError::io(dir, &e))?.path();
-        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-            continue;
-        };
-        let Some(stem) = name.strip_suffix(".jsonl") else {
-            continue;
-        };
-        out.push(SessionFiles {
-            id: prefix.map_or_else(|| stem.to_owned(), |p| format!("{p}/{stem}")),
-            jsonl: path.clone(),
-            input: dir.join(format!("{stem}.in.smt2")),
-            output: dir.join(format!("{stem}.out")),
-        });
-    }
-    out.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(out)
+    sail_portfolio::sessions::discover(dir).map_err(portfolio_error)
 }
 
 /// The sessions under every directory in `dirs`, in order.
@@ -233,11 +184,14 @@ fn sessions_in(dir: &Path, prefix: Option<&str>) -> Result<Vec<SessionFiles>, Be
 ///
 /// As [`discover`].
 pub fn discover_all(dirs: &[PathBuf]) -> Result<Vec<SessionFiles>, BenchError> {
-    let mut all = Vec::new();
-    for dir in dirs {
-        all.extend(discover(dir)?);
+    sail_portfolio::sessions::discover_all(dirs).map_err(portfolio_error)
+}
+
+fn portfolio_error(e: sail_portfolio::PortfolioError) -> BenchError {
+    match e {
+        sail_portfolio::PortfolioError::Io { path, message } => BenchError::Io { path, message },
+        other => BenchError::Usage(other.to_string()),
     }
-    Ok(all)
 }
 
 #[cfg(test)]

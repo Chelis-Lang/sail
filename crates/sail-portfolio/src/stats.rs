@@ -1,7 +1,7 @@
 //! Small statistics helpers: `rlimit-count` extraction, percentiles and
 //! dispersion.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// The number after `:rlimit-count` in an `:all-statistics` reply.
 #[must_use]
@@ -61,7 +61,7 @@ pub fn count_f64(n: usize) -> f64 {
 }
 
 /// Summary of a distribution of non-negative integers.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Distribution {
     /// Number of values.
     pub count: usize,
@@ -152,7 +152,7 @@ pub fn coefficient_of_variation(values: &[u64]) -> Option<f64> {
 }
 
 /// Summary of a distribution of non-negative floats.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FloatDistribution {
     /// Number of values.
     pub count: usize,

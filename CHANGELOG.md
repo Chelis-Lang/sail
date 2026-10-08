@@ -55,6 +55,16 @@ semantic versioning once the API is published.
   `dropped_puts`. The protocol version is unchanged (ADR 0015).
 - `sail watch [ARGS...]`: re-runs `sail verify` as sources change. Edits
   cancel the run in flight and restart it once they settle.
+- `sail fragility`: opt-in fragility measurement. Runs `cargo verus verify`
+  once through `sail-z3` in pass-through with tracing, then re-runs every
+  captured solver session under N configurations of the same pinned Z3
+  (reseeds, and optionally semantics-preserving assertion shuffles), and
+  reports per-check answer and effort distributions, the share of the
+  rlimit used, stability classes and scores (`--json` for the full
+  report). It changes no verdict and never touches the cache (ADR 0014).
+- `sail-bench fragility`: the fragility census over corpus units, written
+  to `bench/results/fragility-census-*.json` and rendered by
+  `sail-bench report` (ADR 0014).
 - `sail verify`: runs `cargo verus verify` with the same arguments, through
   `sail-z3` and the cache daemon (started on demand).
 - `sail-bench warm` and `sail-bench edit`: the warm (no change) and

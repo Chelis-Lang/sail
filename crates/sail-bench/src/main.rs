@@ -4,6 +4,8 @@
 //! sail-bench cold   [--tier T] [--project P]... [--filter S] [--rounds N] [--name NAME] [--shim PATH]
 //! sail-bench warm   (cold's options) [--rounds WARM_ROUNDS] [--sail PATH]
 //! sail-bench edit   [--edits corpus/edits.toml] [--filter S] [--rounds N] [--name NAME] [--shim PATH] [--sail PATH]
+//! sail-bench fragility [--tier T] [--project P]... [--filter S] [--seeds N] [--shuffles K]
+//!                      [--jobs J] [--verus-arg A]... [--name NAME] [--shim PATH]
 //! sail-bench report [--out docs/benchmarks.md] FILE...
 //! sail-bench profile <trace-dir>... [--json out.json]
 //! sail-bench seeds   <trace-dir>... --z3 <path> [--seeds N] [--jobs J] [--json out.json]
@@ -22,7 +24,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use sail_bench::cold::{self, BenchFile, UnitResult};
 use sail_bench::edit::{self, EditResult};
-use sail_bench::{daemon, warm};
+use sail_bench::{daemon, fragility, warm};
 use sail_verus::corpus::{Corpus, Tier, Unit};
 use sail_verus::run::{machine_info, prepare_unit};
 use sail_verus::toolchain::{Installed, Pins};
@@ -37,6 +39,9 @@ const USAGE: &str = "usage:
                     [--name NAME] [--shim PATH] [--sail PATH]
   sail-bench history-replay --project NAME [--commits N] [--filter SUBSTR]
                     [--name NAME] [--shim PATH] [--sail PATH]
+  sail-bench fragility [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
+                    [--seeds N] [--shuffles K] [--jobs J] [--near-limit F] [--top K]
+                    [--verus-arg ARG]... [--name NAME] [--shim PATH]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
   sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
@@ -566,6 +571,133 @@ fn history_replay_cmd(args: &[String]) -> Result<(), String> {
     write_result(out, o.name, &p)
 }
 
+/// Options of the `fragility` census.
+struct FragilityArgs {
+    selection: Options,
+    seeds: u64,
+    shuffles: u64,
+    jobs: usize,
+    near_limit: f64,
+    top: usize,
+    verus_args: Vec<String>,
+}
+
+fn parse_fragility(args: &[String]) -> Result<FragilityArgs, String> {
+    let mut rest = Vec::new();
+    let mut f = FragilityArgs {
+        selection: parse_options(&[])?,
+        seeds: 8,
+        shuffles: 0,
+        jobs: 4,
+        near_limit: 0.5,
+        top: 50,
+        verus_args: Vec::new(),
+    };
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let mut value = || {
+            it.next()
+                .cloned()
+                .ok_or(format!("{arg} needs a value\n{USAGE}"))
+        };
+        let number = |v: String| {
+            v.parse::<u64>()
+                .map_err(|_| format!("{arg} needs a number"))
+        };
+        match arg.as_str() {
+            "--seeds" => f.seeds = number(value()?)?,
+            "--shuffles" => f.shuffles = number(value()?)?,
+            "--jobs" => f.jobs = usize::try_from(number(value()?)?).unwrap_or(1),
+            "--top" => f.top = usize::try_from(number(value()?)?).unwrap_or(0),
+            "--near-limit" => {
+                f.near_limit = value()?
+                    .parse()
+                    .map_err(|_| "--near-limit needs a fraction".to_owned())?;
+            }
+            "--verus-arg" => f.verus_args.push(value()?),
+            _ => {
+                rest.push(arg.clone());
+                if matches!(
+                    arg.as_str(),
+                    "--tier" | "--project" | "--filter" | "--name" | "--shim"
+                ) {
+                    rest.push(value()?);
+                }
+            }
+        }
+    }
+    f.selection = parse_options(&rest)?;
+    if f.seeds == 0 || f.jobs == 0 {
+        return Err("--seeds and --jobs must be at least 1".to_owned());
+    }
+    Ok(f)
+}
+
+fn fragility_cmd(args: &[String]) -> Result<(), String> {
+    let f = parse_fragility(args)?;
+    let o = &f.selection;
+    let p = prepare(o.shim.clone())?;
+    let selection = Selection {
+        tier: o.tier,
+        projects: &o.projects,
+        filter: o.filter.as_deref(),
+    };
+    let units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
+    eprintln!(
+        "fragility census: {} units, {} seeds, {} shuffles, {} jobs",
+        units.len(),
+        f.seeds,
+        f.shuffles,
+        f.jobs
+    );
+    let options = fragility::CensusOptions {
+        portfolio: sail_portfolio::fragility::Options {
+            seeds: f.seeds,
+            shuffles: f.shuffles,
+            jobs: f.jobs,
+            near_limit: f.near_limit,
+        },
+        extra_verus_args: f.verus_args.clone(),
+        top: f.top,
+    };
+    let census = fragility::census(
+        &p.installed,
+        &units,
+        &p.shim,
+        &p.scratch,
+        &options,
+        |line| eprintln!("{line}"),
+    )?;
+    eprint!("{}", sail_portfolio::fragility::render(&census.report, 20));
+    let tier = tier_name(o.tier);
+    let name = o.name.clone().unwrap_or_else(|| {
+        format!(
+            "fragility-census-{tier}-{}-{}",
+            sail_verus::toolchain::host(),
+            p.started
+        )
+    });
+    let file = fragility::file(
+        &census,
+        &options,
+        fragility::Meta {
+            tier,
+            verus_release: p.installed.pins.verus.release.clone(),
+            z3_version: p.installed.pins.z3.version.clone(),
+            sail_commit: sail_commit(),
+            started_unix: p.started,
+            machine: machine_info(),
+        },
+    );
+    let path = Path::new("bench/results").join(format!("{name}.json"));
+    std::fs::create_dir_all("bench/results").map_err(|e| e.to_string())?;
+    let mut json = serde_json::to_vec_pretty(&file).map_err(|e| e.to_string())?;
+    json.push(b'\n');
+    std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    println!("wrote {}", path.display());
+    Ok(())
+}
+
 fn report_cmd(args: &[String]) -> Result<(), String> {
     let mut out = PathBuf::from("docs/benchmarks.md");
     let mut inputs = Vec::new();
@@ -579,24 +711,34 @@ fn report_cmd(args: &[String]) -> Result<(), String> {
     }
     inputs.sort();
     let mut files = Vec::new();
+    let mut censuses = Vec::new();
     for path in &inputs {
         let text = std::fs::read_to_string(path)
             .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+        let name = path
+            .file_stem()
+            .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
+        let workload = serde_json::from_str::<serde_json::Value>(&text)
+            .ok()
+            .and_then(|v| v.get("workload")?.as_str().map(str::to_owned));
+        if workload.as_deref() == Some("fragility") {
+            let census = serde_json::from_str::<fragility::CensusFile>(&text)
+                .map_err(|e| format!("{}: {e}", path.display()))?;
+            censuses.push((name, census));
+            continue;
+        }
         let Ok(file) = serde_json::from_str::<BenchFile>(&text) else {
             // Other result kinds (profiles, seed runs) are reported elsewhere.
             continue;
         };
-        let name = path
-            .file_stem()
-            .map_or_else(String::new, |s| s.to_string_lossy().into_owned());
         files.push((name, file));
     }
-    std::fs::write(&out, sail_bench::report::render(&files))
+    std::fs::write(&out, sail_bench::report::render(&files, &censuses))
         .map_err(|e| format!("cannot write {}: {e}", out.display()))?;
     println!(
         "wrote {} from {} result file(s)",
         out.display(),
-        files.len()
+        files.len() + censuses.len()
     );
     Ok(())
 }
@@ -642,6 +784,7 @@ fn main() -> ExitCode {
         Some("edit") => edit_cmd(args.get(1..).unwrap_or_default()),
         Some("agent-loop") => agent_loop_cmd(args.get(1..).unwrap_or_default()),
         Some("history-replay") => history_replay_cmd(args.get(1..).unwrap_or_default()),
+        Some("fragility") => fragility_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),

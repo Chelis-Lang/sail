@@ -20,23 +20,24 @@
 #![forbid(unsafe_code)]
 
 pub mod agent_loop;
+mod census_report;
 pub mod cli;
 pub mod cold;
 pub mod daemon;
 pub mod edit;
 pub mod error;
+pub mod fragility;
 pub mod history;
 pub mod hits;
-mod parallel;
 pub mod profile;
 pub mod replay;
 pub mod report;
 pub mod seeds;
 pub mod solver;
-pub mod stats;
 pub mod trace;
-pub mod transcript;
 pub mod warm;
+
+pub use sail_portfolio::{parallel, stats, transcript};
 
 use std::io::Write as _;
 use std::sync::atomic::{AtomicBool, Ordering};
