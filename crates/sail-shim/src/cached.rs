@@ -26,7 +26,12 @@ use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter};
 /// What the output side should do with the next reply.
 enum Expect {
     /// Store the reply under this key.
-    Store { key: QueryKey, command: String },
+    Store {
+        key: QueryKey,
+        command: String,
+        /// The command's exact bytes, for the shape check.
+        text: Vec<u8>,
+    },
     /// Pairing can no longer be trusted: stop recording.
     Stop,
 }
@@ -54,11 +59,110 @@ fn write_out(bytes: &[u8]) -> bool {
     out.write_all(bytes).and_then(|()| out.flush()).is_ok()
 }
 
-/// A cached reply that must not be served: a `check-sat` answer of `unknown`
-/// (ADR 0009 treats every cached `unknown` as unstable for now).
+/// Whether `reply` has the shape the solver gives for `command`. This is
+/// defence in depth against any pairing or storage fault: a mismatch is
+/// treated as a miss and the session falls back to the solver.
+fn plausible(command: &[u8], reply: &[u8]) -> bool {
+    use sail_smtlib::command::CommandKind;
+    let Ok(c) = classify(command) else {
+        return false;
+    };
+    let body = reply.trim_ascii();
+    match c.kind {
+        CommandKind::Echo => {
+            echo_text(command).is_some_and(|t| reply == [t.as_slice(), b"\n"].concat())
+        }
+        k if k.is_check() => matches!(body, b"sat" | b"unsat" | b"unknown"),
+        CommandKind::GetInfo {
+            keyword: b":version",
+        } => body.starts_with(b"(:version "),
+        CommandKind::GetInfo {
+            keyword: b":reason-unknown",
+        } => body.starts_with(b"(:reason-unknown "),
+        CommandKind::GetInfo {
+            keyword: b":all-statistics",
+        } => body.starts_with(b"(:") && body.ends_with(b")"),
+        _ => !body.is_empty() && !body.starts_with(b"(error"),
+    }
+}
+
+/// The text `(echo "...")` prints: the string literal's contents, with `""`
+/// unescaped to `"`.
+fn echo_text(command: &[u8]) -> Option<Vec<u8>> {
+    let start = command.iter().position(|&b| b == b'"')? + 1;
+    let end = command.iter().rposition(|&b| b == b'"')?;
+    (end >= start).then(|| {
+        let inner = command.get(start..end).unwrap_or_default();
+        let mut out = Vec::with_capacity(inner.len());
+        let mut i = 0;
+        while let Some(&b) = inner.get(i) {
+            out.push(b);
+            i += if b == b'"' && inner.get(i + 1) == Some(&b'"') {
+                2
+            } else {
+                1
+            };
+        }
+        out
+    })
+}
+
+/// A cached reply that must not be served: implausible for its command, or a
+/// `check-sat` answer of `unknown` (ADR 0009 treats every cached `unknown`
+/// as unstable for now).
 fn unservable(command: &[u8], reply: &[u8]) -> bool {
-    classify(command).is_ok_and(|c| c.kind.is_check())
-        && reply.trim_ascii_start().starts_with(b"unknown")
+    !plausible(command, reply)
+        || (classify(command).is_ok_and(|c| c.kind.is_check())
+            && reply.trim_ascii_start().starts_with(b"unknown"))
+}
+
+/// Pairs solver replies with the expectations the input side queues, in
+/// order, whichever arrives first. Recording stops for good at an `Expect::Stop`,
+/// a solver error reply, or [`Pairer::stop`].
+#[derive(Default)]
+struct Pairer {
+    replies: VecDeque<Vec<u8>>,
+    expects: VecDeque<Expect>,
+    stopped: bool,
+}
+
+impl Pairer {
+    fn reply(&mut self, reply: Vec<u8>) {
+        self.replies.push_back(reply);
+    }
+
+    fn expect(&mut self, expect: Expect) {
+        self.expects.push_back(expect);
+    }
+
+    fn stop(&mut self) {
+        self.stopped = true;
+    }
+
+    /// Every pair that can be formed now and should be stored.
+    fn drain(&mut self) -> Vec<(QueryKey, String, Vec<u8>)> {
+        let mut out = Vec::new();
+        // Pop only when both sides have an entry: popping one and finding the
+        // other empty would drop it and shift every later pairing by one.
+        while !self.stopped && !self.replies.is_empty() && !self.expects.is_empty() {
+            let (Some(reply), Some(expect)) = (self.replies.pop_front(), self.expects.pop_front())
+            else {
+                break;
+            };
+            match expect {
+                Expect::Stop => self.stopped = true,
+                Expect::Store { .. } if reply.starts_with(b"(error") => self.stopped = true,
+                Expect::Store { command, .. }
+                    if command == "check-sat"
+                        && reply.trim_ascii_start().starts_with(b"unknown") => {}
+                // Never store a reply that does not fit its command; stop
+                // recording, since pairing can no longer be trusted.
+                Expect::Store { ref text, .. } if !plausible(text, &reply) => self.stopped = true,
+                Expect::Store { key, command, .. } => out.push((key, command, reply)),
+            }
+        }
+        out
+    }
 }
 
 struct Solving {
@@ -77,44 +181,27 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
     let mut forwarded = 0usize;
     let mut seen = 0u64; // replies completed so far
     let mut prev: Option<(u64, usize)> = None; // (index, start) of the last completed reply
-    let mut unpaired: VecDeque<(u64, Vec<u8>)> = VecDeque::new();
-    let mut queue: VecDeque<Expect> = VecDeque::new();
-    let mut recording = true;
     let mut buf = vec![0u8; 64 * 1024];
 
-    // Pairs completed replies with expectations, storing what can be stored.
-    // With `wait`, first collects every remaining expectation (the input side
-    // has finished); otherwise takes only what has already arrived.
-    let mut pair = |unpaired: &mut VecDeque<(u64, Vec<u8>)>,
-                    queue: &mut VecDeque<Expect>,
-                    recording: &mut bool,
-                    wait: bool| {
+    // Pairs replies with expectations as either arrives; stores the pairs.
+    let mut pairer = Pairer::default();
+    let mut store = |pairer: &mut Pairer, wait: bool| {
         if wait {
-            queue.extend(expects.iter());
+            for e in expects {
+                pairer.expect(e);
+            }
         } else {
-            queue.extend(expects.try_iter());
+            for e in expects.try_iter() {
+                pairer.expect(e);
+            }
         }
-        while *recording {
-            let (Some((_, reply)), Some(expect)) = (unpaired.pop_front(), queue.pop_front()) else {
-                break;
+        for (key, command, reply) in pairer.drain() {
+            let meta = PutMeta {
+                command,
+                provenance: "pinned-solver".to_owned(),
             };
-            match expect {
-                Expect::Stop => *recording = false,
-                Expect::Store { key, command } => {
-                    if reply.starts_with(b"(error") {
-                        *recording = false;
-                    } else if !(command == "check-sat"
-                        && reply.trim_ascii_start().starts_with(b"unknown"))
-                    {
-                        let meta = PutMeta {
-                            command,
-                            provenance: "pinned-solver".to_owned(),
-                        };
-                        if client.put(&key.0, meta, reply).is_err() {
-                            *recording = false;
-                        }
-                    }
-                }
+            if client.put(&key.0, meta, reply).is_err() {
+                pairer.stop();
             }
         }
     };
@@ -133,7 +220,7 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
             if let Some((k, s)) = prev.take()
                 && k >= skip
             {
-                unpaired.push_back((k, all.get(s..start).unwrap_or_default().to_vec()));
+                pairer.reply(all.get(s..start).unwrap_or_default().to_vec());
             }
             if seen == skip && forward_from.is_none() {
                 forward_from = Some(start);
@@ -149,24 +236,20 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
             }
             forwarded = all.len();
         }
-        if recording {
-            pair(&mut unpaired, &mut queue, &mut recording, false);
-        }
+        store(&mut pairer, false);
     }
     // End of output: the last reply runs to the end of the stream.
     if let Some((k, s)) = prev.take()
         && k >= skip
     {
-        unpaired.push_back((k, all.get(s..).unwrap_or_default().to_vec()));
+        pairer.reply(all.get(s..).unwrap_or_default().to_vec());
     }
     if forward_from.is_none() {
         // Fewer replies than were already served: forward nothing more.
     } else if all.len() > forwarded {
         let _ = write_out(all.get(forwarded..).unwrap_or_default());
     }
-    if recording {
-        pair(&mut unpaired, &mut queue, &mut recording, true);
-    }
+    store(&mut pairer, true);
 }
 
 fn start_solver(
@@ -280,6 +363,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                     Output::One => Expect::Store {
                         key: prefix.key(),
                         command: name,
+                        text: item.bytes.clone(),
                     },
                     Output::Unknown => Expect::Stop,
                 };
@@ -310,6 +394,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 Output::One => Expect::Store {
                     key: prefix.key(),
                     command: name,
+                    text: item.bytes.clone(),
                 },
                 _ => Expect::Stop,
             };
@@ -332,4 +417,111 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         return start(&raw, served, &mut client).map(Solving::finish);
     }
     Some(ExitCode::SUCCESS)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Expect, Pairer};
+    use proptest::prelude::*;
+    use sail_key::QueryKey;
+
+    fn key(i: u8) -> QueryKey {
+        QueryKey([i; 32])
+    }
+
+    fn store(i: u8, text: &str) -> Expect {
+        let command = text
+            .trim_start_matches('(')
+            .split([' ', ')'])
+            .next()
+            .unwrap_or_default()
+            .to_owned();
+        Expect::Store {
+            key: key(i),
+            command,
+            text: text.as_bytes().to_vec(),
+        }
+    }
+
+    fn model(i: u8) -> Expect {
+        store(i, "(get-model)")
+    }
+
+    proptest! {
+        /// Whatever order replies and expectations arrive in, and however
+        /// often pairs are drained, reply `i` is stored under key `i`.
+        #[test]
+        fn pairing_is_order_independent(order in prop::collection::vec(any::<bool>(), 0..80), drains in prop::collection::vec(any::<bool>(), 0..80)) {
+            let n = order.iter().filter(|b| **b).count().min(order.len() - order.iter().filter(|b| **b).count());
+            let mut p = Pairer::default();
+            let (mut r, mut e) = (0u8, 0u8);
+            let mut stored = Vec::new();
+            for (i, is_reply) in order.iter().enumerate() {
+                if *is_reply && usize::from(r) < n {
+                    p.reply(vec![b'm', r]);
+                    r += 1;
+                } else if usize::from(e) < n {
+                    p.expect(model(e));
+                    e += 1;
+                }
+                if drains.get(i).copied().unwrap_or(false) {
+                    stored.extend(p.drain());
+                }
+            }
+            while usize::from(r) < n { p.reply(vec![b'm', r]); r += 1; }
+            while usize::from(e) < n { p.expect(model(e)); e += 1; }
+            stored.extend(p.drain());
+            prop_assert_eq!(stored.len(), n);
+            for (k, _, reply) in &stored {
+                prop_assert_eq!(k.0[0], reply[1]);
+            }
+        }
+    }
+
+    #[test]
+    fn errors_stop_and_unknown_checks_are_not_stored() {
+        let mut p = Pairer::default();
+        p.expect(store(1, "(check-sat)"));
+        p.reply(b"unknown\n".to_vec());
+        p.expect(store(2, "(get-model)"));
+        p.reply(b"(model)\n".to_vec());
+        p.expect(store(3, "(echo \"<<DONE>>\")"));
+        p.reply(b"(error \"x\")\n".to_vec());
+        p.expect(store(4, "(echo \"<<DONE>>\")"));
+        p.reply(b"<<DONE>>\n".to_vec());
+        let stored = p.drain();
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].0, key(2));
+    }
+
+    #[test]
+    fn implausible_replies_stop_recording() {
+        // The bug this guards against: a statistics reply paired with an echo.
+        let mut p = Pairer::default();
+        p.expect(store(1, "(echo \"<<DONE>>\")"));
+        p.reply(b"(:rlimit-count 5)\n".to_vec());
+        p.expect(store(2, "(get-model)"));
+        p.reply(b"(model)\n".to_vec());
+        assert_eq!(p.drain().len(), 0);
+    }
+
+    #[test]
+    fn plausibility_by_command() {
+        use super::plausible;
+        assert!(plausible(b"(echo \"<<DONE>>\")", b"<<DONE>>\n"));
+        assert!(plausible(b"(echo \"a\"\"b\")", b"a\"b\n"));
+        assert!(!plausible(b"(echo \"<<DONE>>\")", b"(:x 1)\n"));
+        assert!(plausible(b"(check-sat)", b"unsat\n"));
+        assert!(!plausible(b"(check-sat)", b"<<DONE>>\n"));
+        assert!(plausible(
+            b"(get-info :version)",
+            b"(:version \"4.16.0\")\n"
+        ));
+        assert!(!plausible(b"(get-info :version)", b"unsat\n"));
+        assert!(plausible(
+            b"(get-info :all-statistics)",
+            b"(:rlimit-count 5)\n"
+        ));
+        assert!(!plausible(b"(get-model)", b"(error \"no model\")\n"));
+    }
 }

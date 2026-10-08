@@ -16,7 +16,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::Value;
@@ -434,9 +434,8 @@ pub fn run_unit(
         }
     }
     let started = Instant::now();
-    let output = cmd
-        .output()
-        .map_err(|e| Error::new("SAIL3020", format!("cannot run {}: {e}", program.display())))?;
+    let output = run_with_timeout(&mut cmd, unit_timeout())
+        .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
     if let Some(dir) = target_dir {
         // Build products are large and never compared; keep the disk free.
@@ -469,6 +468,84 @@ pub fn run_unit(
         user_s,
         sys_s,
         max_rss_bytes,
+    })
+}
+
+/// The per-unit time limit: `SAIL_UNIT_TIMEOUT` seconds, default 3600. A
+/// unit that exceeds it is an infrastructure error (`SAIL3022`), never a
+/// Verus result.
+fn unit_timeout() -> Duration {
+    std::env::var("SAIL_UNIT_TIMEOUT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .map_or(Duration::from_secs(3600), Duration::from_secs)
+}
+
+/// Runs `cmd` to completion, capturing stdout and stderr, but kills its
+/// whole process group (the timing wrapper, Verus, shims and solvers) if it
+/// runs longer than `limit`.
+fn run_with_timeout(
+    cmd: &mut Command,
+    limit: Duration,
+) -> std::result::Result<std::process::Output, (&'static str, String)> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt as _;
+        cmd.process_group(0);
+    }
+    let mut child = cmd
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| ("SAIL3020", format!("cannot run: {e}")))?;
+    let read_all = |r: Option<Box<dyn std::io::Read + Send>>| {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            if let Some(mut r) = r {
+                let _ = r.read_to_end(&mut buf);
+            }
+            buf
+        })
+    };
+    let out = read_all(
+        child
+            .stdout
+            .take()
+            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+    );
+    let err = read_all(
+        child
+            .stderr
+            .take()
+            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+    );
+    let deadline = Instant::now() + limit;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(50)),
+            Ok(None) => {
+                let pgid = child.id();
+                let _ = Command::new("kill")
+                    .args(["-KILL", &format!("-{pgid}")])
+                    .status();
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err((
+                    "SAIL3022",
+                    format!(
+                        "exceeded the unit time limit of {}s; process group killed",
+                        limit.as_secs()
+                    ),
+                ));
+            }
+            Err(e) => return Err(("SAIL3020", format!("lost the child process: {e}"))),
+        }
+    };
+    Ok(std::process::Output {
+        status,
+        stdout: out.join().unwrap_or_default(),
+        stderr: err.join().unwrap_or_default(),
     })
 }
 

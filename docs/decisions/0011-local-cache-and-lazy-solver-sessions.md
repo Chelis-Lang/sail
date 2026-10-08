@@ -80,3 +80,37 @@ the protocol, the session model and a thin client to the daemon.
 - **What this mode adds is tested:** conformance runs with the daemon on and
   with it off, and a fault-injection test kills the daemon mid-session and
   expects fallback.
+
+## Update 2026-10-08: a pairing bug, and defence in depth
+
+The first conformance run with the cache on hung in human-eval-verus. The
+cause was a bug in recording. The loop that pairs replies with commands
+popped both queues before checking that both had an entry. When a command's
+expectation arrived before its reply, the expectation was dropped, and every
+later reply was stored under the *next* command's key. The trigger was
+timing, so it only showed up under concurrency. Here it surfaced as a hang:
+an `echo` was served a statistics reply, and Verus kept waiting for
+`<<DONE>>`.
+
+Fixes:
+- **The bug.** Pairing is now a pure `Pairer` that pops only when both
+  sides have an entry. A property test checks that pairing is independent of
+  arrival order, and it fails against the old loop.
+- **Shape checks (defence in depth).** Every reply is checked against its
+  command, both when it is served and when it is stored:
+  - an `echo` reply must be exactly its text plus a newline;
+  - `check-sat` must be `sat`, `unsat` or `unknown`;
+  - `:version` and `:reason-unknown` replies must have their own forms;
+  - statistics must be a `(:...)` list;
+  - for any other command, the reply must be non-empty and not an error.
+
+  A mismatch is a miss when serving, and stops recording when storing.
+- **Unit timeout.** The conformance harness runs each unit in its own process
+  group, with a time limit (`SAIL_UNIT_TIMEOUT`, 3,600 s by default). A hang
+  becomes an `infra-error` and does not block the run.
+
+Evidence:
+- **Before the fix:** a concurrent Verus fill of human-eval-verus, followed by
+  replaying all 113 sessions against the cache, gave 14 sessions with wrong
+  replies on one run and 2 on another.
+- **After the fix:** two concurrent fills and the same replay gave 0.

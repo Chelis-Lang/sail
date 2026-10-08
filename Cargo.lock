@@ -312,6 +312,7 @@ dependencies = [
 name = "sail-shim"
 version = "0.0.0"
 dependencies = [
+ "proptest",
  "sail-api",
  "sail-daemon",
  "sail-key",
