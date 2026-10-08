@@ -84,11 +84,15 @@ needs one (see the memory allocator below).
   vstd from source in every unit (vstd is already its own fast-tier unit),
   and `cargo verus` refuses `--verify-module` outside `focus`.
 - **Scratch copy.** Each `cargo-verus` unit runs on a copy of the fetched
-  project (without `.git`) in `<out>/units/<unit>/src`, because Cargo writes
-  `Cargo.lock` into the tree and the fetched source is never modified.
+  project (without `.git`) in `<cache>/work/<run>/<unit>/src`, because Cargo
+  writes `Cargo.lock` into the tree and the fetched source is never
+  modified. The copy is deleted after the unit. It lives under the cache,
+  not under `--out`: CI's `--out` is inside this repository, and Cargo would
+  take a copy there for a stray member of sail's workspace. Preparation
+  refuses a scratch directory inside any Cargo project.
   `cargo metadata` resolves the lockfile once, before either side runs, so
   both sides start from the same tree. Both sides use the same
-  `CARGO_TARGET_DIR` (`<out>/units/<unit>/target`), emptied before each run
+  `CARGO_TARGET_DIR` (`<cache>/work/<run>/<unit>/target`), emptied before each run
   and deleted after it. The same path keeps paths that Cargo prints (for
   example in a failed build script's report) identical on both sides, and
   emptying it stops Cargo from treating the second side's crate as fresh and
@@ -153,9 +157,8 @@ needs one (see the memory allocator below).
   (`parno/verified-nrkernel`, branch `z3-4.16.0`), which carries the Z3
   4.16.0 proof stabilization that upstream `matthias-brun/verified-nrkernel`
   does not have yet (11 commits ahead, 4 behind at pin time). ADR 0010
-  (item 4) allows fork pins that are pinned by commit and archived locally;
-  the local archive (`<cache>/archive/`) is not built yet and is follow-up
-  corpus work.
+  (item 4) allows fork pins that are pinned by commit and archived locally,
+  so the entry sets `archive = true` (a bundle under `<cache>/archive/`).
 - **Build requirements found while pinning.**
   - verismo builds for `x86_64-unknown-none` (`source/.cargo/config.toml`),
     so it needs that rustup target for Verus's toolchain. verita's nightly

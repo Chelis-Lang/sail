@@ -256,6 +256,9 @@ struct Context<'a> {
     verus_source: Option<&'a Path>,
     shim: &'a Path,
     dir: &'a Path,
+    /// Where `cargo-verus` units get their scratch copies: under the cache,
+    /// because `--out` may be inside a Cargo workspace (such as this one).
+    work: &'a Path,
     trace: bool,
     plain_runs: usize,
     confirm_runs: usize,
@@ -278,12 +281,19 @@ fn infra_error(unit: &Unit, message: String) -> UnitReport {
 fn run_one(cx: &Context, unit: &Unit) -> UnitReport {
     let (installed, dir) = (cx.installed, cx.dir);
     let base = dir.join("units").join(slug(&unit.id));
+    let scratch = cx.work.join(slug(&unit.id));
     // Both sides run on the same prepared tree.
-    let unit = match prepare_unit(installed, unit, cx.verus_source, &base) {
-        Ok(u) => u,
-        Err(e) => return infra_error(unit, e.to_string()),
+    let prepared = prepare_unit(installed, unit, cx.verus_source, &scratch);
+    let report = match prepared {
+        Ok(u) => compare_sides(cx, &u, &base),
+        Err(e) => infra_error(unit, e.to_string()),
     };
-    let unit = &unit;
+    let _ = std::fs::remove_dir_all(&scratch);
+    report
+}
+
+fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
+    let (installed, dir) = (cx.installed, cx.dir);
     let run_plain = |i: usize| {
         let dir = if i == 0 {
             base.join("plain")
@@ -431,6 +441,7 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         verus_source: verus_source.as_deref(),
         shim: &shim,
         dir: &dir,
+        work: &cache.join("work").join(started.to_string()),
         trace: o.trace,
         plain_runs: o.plain_runs,
         confirm_runs: o.confirm_runs,
