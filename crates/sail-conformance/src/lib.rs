@@ -11,7 +11,15 @@
 //! - any non-JSON text left on stdout;
 //! - each function's verdict.
 //!
-//! Any difference makes the unit `different`. Per-function rlimit
+//! [`classify`] applies ADR 0009 on top of [`compare`]. Plain Verus is not
+//! perfectly deterministic: Z3's effort on nonlinear queries jitters. So when
+//! sail differs from a plain run, the harness compares against further plain
+//! runs:
+//! - if the plain runs disagree among themselves, and sail matches one of
+//!   them, the unit is `unstable` (reported, not counted as a sail error);
+//! - otherwise it is `different`.
+//!
+//! Per-function rlimit
 //! differences are reported separately as *drift*: rlimit is not part of
 //! rule 1, but it should be identical in pass-through mode, so drift is a
 //! finding to investigate.
@@ -28,6 +36,9 @@ use serde::Serialize;
 pub enum Verdict {
     /// Identical in everything rule 1 covers.
     Same,
+    /// Plain Verus itself varies between runs, and sail matches one of its
+    /// outcomes (ADR 0009). Reported, not counted as a difference.
+    Unstable,
     /// At least one difference.
     Different,
     /// The harness could not run one side (not a conformance result).
@@ -144,6 +155,90 @@ pub fn compare(plain: &RunRecord, sail: &RunRecord) -> Comparison {
     c
 }
 
+/// The verdict for one unit given one or more plain runs and a sail run.
+#[derive(Debug, Clone, Serialize)]
+pub struct Classification {
+    /// The verdict.
+    pub verdict: Verdict,
+    /// Sail compared with the first plain run.
+    #[serde(flatten)]
+    pub comparison: Comparison,
+    /// How many plain runs were compared.
+    pub plain_runs: usize,
+    /// Functions whose plain verdict varied between plain runs, and a note if
+    /// plain diagnostics or exit codes varied.
+    pub unstable: Vec<String>,
+}
+
+/// What varies between plain runs: functions whose verdict differs, plus
+/// `"<diagnostics>"` if any rule-1 field other than function verdicts differs.
+fn plain_variation(plains: &[RunRecord]) -> Vec<String> {
+    let mut varying = std::collections::BTreeSet::new();
+    let mut other = false;
+    let base = plains.first();
+    let verdicts = |r: &RunRecord| -> BTreeMap<(usize, String, String), bool> {
+        r.functions()
+            .into_iter()
+            .map(|f| ((f.output, f.module, f.function), f.success))
+            .collect()
+    };
+    if let Some(base) = base {
+        let b = verdicts(base);
+        for run in plains.iter().skip(1) {
+            let r = verdicts(run);
+            for key in b.keys().chain(r.keys()) {
+                if b.get(key) != r.get(key) {
+                    varying.insert(key.2.clone());
+                }
+            }
+            if compare(base, run)
+                .differences
+                .iter()
+                .any(|d| !d.starts_with("function "))
+            {
+                other = true;
+            }
+        }
+    }
+    let mut out: Vec<String> = varying.into_iter().collect();
+    if other {
+        out.push("<diagnostics>".to_owned());
+    }
+    out
+}
+
+/// Classifies a sail run against `plains` (at least one plain run).
+#[must_use]
+pub fn classify(plains: &[RunRecord], sail: &RunRecord) -> Classification {
+    let Some(first) = plains.first() else {
+        return Classification {
+            verdict: Verdict::InfraError,
+            comparison: Comparison::default(),
+            plain_runs: 0,
+            unstable: Vec::new(),
+        };
+    };
+    let comparison = compare(first, sail);
+    let unstable = plain_variation(plains);
+    let verdict = if comparison.verdict() == Verdict::Same {
+        Verdict::Same
+    } else if !unstable.is_empty()
+        && plains
+            .iter()
+            .any(|p| compare(p, sail).verdict() == Verdict::Same)
+    {
+        Verdict::Unstable
+    } else {
+        Verdict::Different
+    };
+    Classification {
+        verdict,
+        comparison,
+        plain_runs: plains.len(),
+        unstable,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,6 +267,39 @@ mod tests {
             sys_s: None,
             max_rss_bytes: None,
         }
+    }
+
+    #[test]
+    fn sail_matching_one_of_varying_plain_runs_is_unstable() {
+        let proved = record(0, "", &[("m::f", true, 10)]);
+        let gave_up = record(1, "rlimit\n", &[("m::f", false, 30)]);
+        let c = classify(&[gave_up.clone(), proved.clone()], &proved);
+        assert_eq!(c.verdict, Verdict::Unstable);
+        assert_eq!(
+            c.unstable,
+            vec!["m::f".to_owned(), "<diagnostics>".to_owned()]
+        );
+        assert_eq!(c.plain_runs, 2);
+    }
+
+    #[test]
+    fn sail_matching_no_plain_run_is_different() {
+        let a = record(0, "", &[("m::f", true, 10)]);
+        let b = record(1, "x\n", &[("m::f", false, 10)]);
+        let other = record(1, "y\n", &[("m::f", false, 10)]);
+        assert_eq!(
+            classify(&[a.clone(), b], &other).verdict,
+            Verdict::Different
+        );
+        // Stable plain runs and a differing sail run: different.
+        assert_eq!(
+            classify(&[a.clone(), a.clone()], &other).verdict,
+            Verdict::Different
+        );
+        assert_eq!(
+            classify(std::slice::from_ref(&a), &a).verdict,
+            Verdict::Same
+        );
     }
 
     #[test]
