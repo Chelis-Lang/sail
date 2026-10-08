@@ -15,6 +15,11 @@ use std::io::{self, Read, Write};
 
 use serde::{Deserialize, Serialize};
 
+/// The protocol version. Bump on any incompatible change; the daemon reports
+/// it in `HELLO`, clients refuse a mismatch, and the default socket name
+/// includes it, so an upgraded client never talks to a stale daemon.
+pub const PROTOCOL_VERSION: u32 = 1;
+
 /// Largest accepted frame body, in bytes.
 pub const MAX_FRAME: u32 = 256 * 1024 * 1024;
 
@@ -33,6 +38,9 @@ pub struct Identity {
     pub binary_sha256: String,
     /// Platform class.
     pub platform: String,
+    /// The daemon's protocol version ([`PROTOCOL_VERSION`]).
+    #[serde(default)]
+    pub protocol_version: u32,
 }
 
 /// Solver effort recorded with a `check-sat` reply (ADR 0009).

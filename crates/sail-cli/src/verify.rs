@@ -124,7 +124,7 @@ pub fn verify(args: &[String], err: &mut impl std::io::Write) -> ExitCode {
     let socket = match std::env::var_os("SAIL_DAEMON_SOCKET").filter(|v| !v.is_empty()) {
         Some(s) => PathBuf::from(s),
         None => match sail_verus::cache_dir() {
-            Ok(c) => c.join("daemon.sock"),
+            Ok(c) => crate::default_socket(&c),
             Err(e) => return fail(err, "SAIL0104", &e.to_string()),
         },
     };
