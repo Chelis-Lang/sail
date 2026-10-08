@@ -52,3 +52,14 @@ identity, and it scans the full push or PR range.
 - **M0 exit requires a negative test.** A scratch branch with a
   `Co-Authored-By: Claude` trailer must be rejected both locally by the hook
   and in CI.
+
+## Update 2026-10-08
+
+The negative test passed:
+- **Local hook.** It rejected `Co-Authored-By: Claude <noreply@anthropic.com>`,
+  matching both the co-author pattern and the noreply pattern.
+- **CI.** The same commit, built with `git commit-tree` so it bypassed the hook,
+  was pushed to `scratch/ai-guard-check`. CI run 37788662801 then failed
+  `No AI authorship markers` on that commit. The branch was deleted afterwards.
+
+After that, `main` was protected and the project switched to PR mode.

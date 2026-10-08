@@ -57,10 +57,8 @@ Never bypass the hook with `--no-verify`. See ADR 0002.
 
 ## Workflow mode
 
-**Current mode: bootstrap (direct push).** During M0, the lead pushes
-scaffolding directly to `main`. Once the `No AI authorship markers` and
-`Workspace gate` checks are green on `main`, the project switches to PR mode
-(ADR 0002) and this section is updated.
+**Current mode: PR mode.** This mode has applied since 2026-10-08, after M0's
+bootstrap pushes (ADR 0002).
 
 In PR mode:
 - `main` is protected, and every change lands through a squash-merged PR.
