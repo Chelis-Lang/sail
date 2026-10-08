@@ -128,10 +128,14 @@ fn pump(
             Err(_) => return,
         };
         let chunk = buf.get(..n).unwrap_or_default();
+        // Hand the chunk to the tap before forwarding it. Otherwise the
+        // solver's reply to an input chunk can reach the tap (from the other
+        // pump) before the chunk itself does, and the tap loses pairing.
+        // The send never blocks, so forwarding is not delayed.
+        tap.send(wrap(chunk.to_vec(), Instant::now()));
         if to.write_all(chunk).and_then(|()| to.flush()).is_err() {
             return;
         }
-        tap.send(wrap(chunk.to_vec(), Instant::now()));
     }
 }
 

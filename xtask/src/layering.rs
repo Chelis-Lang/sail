@@ -60,6 +60,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         &[
             "sail-smtlib",
             "sail-session",
+            "sail-key",
             "sail-solver",
             "sail-ledger",
             "sail-verus",

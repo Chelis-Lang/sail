@@ -208,6 +208,9 @@ name = "sail-bench"
 version = "0.0.0"
 dependencies = [
  "sail-conformance",
+ "sail-key",
+ "sail-session",
+ "sail-smtlib",
  "sail-verus",
  "serde",
  "serde_json",

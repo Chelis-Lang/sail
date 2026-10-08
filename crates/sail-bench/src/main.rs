@@ -3,7 +3,13 @@
 //! ```text
 //! sail-bench cold   [--tier T] [--project P]... [--filter S] [--rounds N] [--name NAME] [--shim PATH]
 //! sail-bench report [--out docs/benchmarks.md] FILE...
+//! sail-bench profile <trace-dir>... [--json out.json]
+//! sail-bench seeds   <trace-dir>... --z3 <path> [--seeds N] [--jobs J] [--json out.json]
+//! sail-bench history <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
 //! ```
+//!
+//! `profile`, `seeds` and `history` analyse shim traces; see
+//! [`sail_bench::cli`].
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
@@ -18,7 +24,8 @@ use sail_verus::toolchain::{Installed, Pins};
 const USAGE: &str = "usage:
   sail-bench cold   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                     [--rounds N] [--name NAME] [--shim PATH]
-  sail-bench report [--out PATH] FILE...";
+  sail-bench report [--out PATH] FILE...
+  sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
 
 fn sail_commit() -> String {
     Command::new("git")
@@ -170,6 +177,12 @@ fn report_cmd(args: &[String]) -> Result<(), String> {
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if matches!(
+        args.first().map(String::as_str),
+        Some("profile" | "seeds" | "history")
+    ) {
+        return sail_bench::cli::run(args);
+    }
     let result = match args.first().map(String::as_str) {
         Some("cold") => cold_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
