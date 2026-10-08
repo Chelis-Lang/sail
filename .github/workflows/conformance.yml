@@ -61,8 +61,8 @@ jobs:
           rustup target add x86_64-unknown-none --toolchain "$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' corpus/toolchain.toml)"
       - name: Install pinned Verus
         run: cargo xtask fetch-verus
-      - name: Build sail-z3 and the harness
-        run: cargo build --release --locked -p sail-shim -p sail-conformance
+      - name: Build sail, sail-z3 and the harness
+        run: cargo build --release --locked -p sail-cli -p sail-shim -p sail-conformance
       - name: Run conformance
         env:
           EVENT: ${{ github.event_name }}
@@ -75,6 +75,28 @@ jobs:
             if [ "${TIER:-fast}" = fast ]; then JOBS=4; else JOBS=3; fi
             ./target/release/sail-conformance run --tier "${TIER:-fast}" --jobs "$JOBS" --out conformance-out
           fi
+      - name: Conformance with the cache (fill, then warm; ADR 0011)
+        if: github.event_name == 'pull_request' || inputs.tier == '' || inputs.tier == 'fast'
+        run: |
+          sock="$HOME/.cache/sail/ci.sock"
+          cache="$RUNNER_TEMP/sail-cache"
+          mkdir -p "$(dirname "$sock")"
+          ./target/release/sail serve --socket "$sock" --cache "$cache" &
+          for _ in $(seq 1 100); do [ -S "$sock" ] && break; sleep 0.1; done
+          [ -S "$sock" ] || { echo "daemon did not start"; exit 1; }
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            select=(--tier fast --project verus-examples --filter /guide/)
+          else
+            select=(--tier fast)
+          fi
+          for round in fill warm; do
+            SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance run "${select[@]}" --jobs 4 --out "conformance-cache-$round"
+          done
+          # The cache must actually have been used, or this job silently
+          # tested pass-through.
+          entries=$(find "$cache" -type f | wc -l)
+          echo "cache entries: $entries"
+          [ "$entries" -gt 0 ]
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
