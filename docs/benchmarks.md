@@ -6,6 +6,35 @@ Every benchmark round also runs the conformance comparison (charter: a speedup t
 
 The reference platform for published numbers is Linux x86-64 (ADR 0010). Results from other platforms are secondary. Result names ending in `devload` were measured on a development machine under other load, so expect wide spreads.
 
+## `agent-loop-catalogue-arm64-macos-devload-2026-10-08`: agent-loop workload (edit-and-verify cycles)
+
+- Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `6ae33ccc11bb`; 2 round(s) per loop
+- Machine: cpu: Apple M3; cpus: 8; host: aarch64-apple-darwin; memory_bytes: 25769803776; uname: Darwin 25.5.0 arm64
+
+Loops come from `corpus/agent-loops.toml`. Each round gives a loop a fresh `sail serve` with an empty cache. Cycle `initial` verifies the original (filling the cache); each later cycle applies the next step on top of the previous ones and verifies again, with the cache warm from the earlier cycles. Every cycle runs plain Verus and sail, and every sail run is compared with plain Verus. The measure is time to verdict per cycle.
+
+### `he-strlen-fix`: strlen: a wrong spec fails, the fix verifies, then a refactor
+
+| Cycle | Step | Plain Verus | sail | Speedup | Replies served / recorded | Plain outcome | Conformance |
+|---|---|---:|---:|---:|---:|---|---|
+| 0 | `initial`: verify the original (fills the cache) | 97.6 s (95.1 s–100.0 s) | 59.3 s (35.7 s–82.9 s) | 1.65× | 4 / 8816 (0.0%) | verified | 2 same, 0 different, 0 unstable, 0 infra errors |
+| 1 | `wrong-spec`: ensures length + 1 (a failing attempt) | 52.4 s (36.9 s–68.0 s) | 3765 ms (3006 ms–4524 ms) | 13.93× | 8800 / 56 (99.4%) | errors | 2 same, 0 different, 0 unstable, 0 infra errors |
+| 2 | `fix-spec`: revert the ensures (back to the original text) | 40.1 s (28.7 s–51.5 s) | 7223 ms (6343 ms–8103 ms) | 5.55× | 8570 / 250 (97.2%) | verified | 2 same, 0 different, 0 unstable, 0 infra errors |
+| 3 | `refactor-body`: bind the length and assert it before returning | 54.4 s (43.3 s–65.5 s) | 10.6 s (10.5 s–10.7 s) | 5.12× | 8554 / 266 (97.0%) | verified | 2 same, 0 different, 0 unstable, 0 infra errors |
+| | **Edit cycles** (sum of medians, excluding `initial`) | 146.9 s | 21.6 s | **6.80×** | | | |
+
+### `he-gcd-invariant`: compute_gcd: dropping the invariant fails, restoring it verifies, then a refactor
+
+| Cycle | Step | Plain Verus | sail | Speedup | Replies served / recorded | Plain outcome | Conformance |
+|---|---|---:|---:|---:|---:|---|---|
+| 0 | `initial`: verify the original (fills the cache) | 63.7 s (52.3 s–75.2 s) | 55.2 s (40.8 s–69.7 s) | 1.15× | 4 / 8816 (0.0%) | verified | 2 same, 0 different, 0 unstable, 0 infra errors |
+| 1 | `drop-invariant`: remove the loop invariant (a failing attempt) | 96.2 s (70.3 s–122.0 s) | 12.1 s (8338 ms–15.9 s) | 7.94× | 8474 / 410 (95.4%) | errors | 2 same, 0 different, 0 unstable, 0 infra errors |
+| 2 | `restore-invariant`: restore the invariant (back to the original text) | 69.5 s (43.3 s–95.8 s) | 9406 ms (8867 ms–9945 ms) | 7.39× | 8820 / 0 (100.0%) | verified | 2 same, 0 different, 0 unstable, 0 infra errors |
+| 3 | `split-mod`: split `b1 = b1 % a1` through a temporary | 76.2 s (70.8 s–81.7 s) | 7107 ms (6038 ms–8176 ms) | 10.73× | 8724 / 96 (98.9%) | verified | 2 same, 0 different, 0 unstable, 0 infra errors |
+| | **Edit cycles** (sum of medians, excluding `initial`) | 242.0 s | 28.6 s | **8.45×** | | | |
+
+**All loops, edit cycles:** plain 388.8 s, sail 50.2 s, 7.74×.
+
 ## `cold-fast-arm64-macos-devload-2026-10-08`: cold workload, fast tier
 
 - Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `1a642c2e8ca5`; 3 round(s) per unit

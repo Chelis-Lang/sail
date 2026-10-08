@@ -33,6 +33,8 @@ const USAGE: &str = "usage:
   sail-bench warm   (cold's options) [--rounds WARM_ROUNDS] [--sail PATH]
   sail-bench edit   [--edits corpus/edits.toml] [--filter SUBSTR] [--rounds N]
                     [--name NAME] [--shim PATH] [--sail PATH]
+  sail-bench agent-loop [--loops corpus/agent-loops.toml] [--filter SUBSTR] [--rounds N]
+                    [--name NAME] [--shim PATH] [--sail PATH]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
   sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
@@ -112,6 +114,7 @@ struct Options {
     shim: Option<PathBuf>,
     sail: Option<PathBuf>,
     edits: PathBuf,
+    loops: PathBuf,
 }
 
 fn parse_options(args: &[String]) -> Result<Options, String> {
@@ -124,6 +127,7 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
         shim: None,
         sail: None,
         edits: PathBuf::from("corpus/edits.toml"),
+        loops: PathBuf::from("corpus/agent-loops.toml"),
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -151,6 +155,7 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
             "--shim" => o.shim = Some(value()?.into()),
             "--sail" => o.sail = Some(value()?.into()),
             "--edits" => o.edits = value()?.into(),
+            "--loops" => o.loops = value()?.into(),
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
     }
@@ -206,6 +211,7 @@ struct Output {
     rounds: usize,
     units: Vec<UnitResult>,
     edits: Vec<EditResult>,
+    loops: Vec<sail_bench::agent_loop::LoopResult>,
 }
 
 fn write_result(out: Output, name: Option<String>, p: &Prepared) -> Result<(), String> {
@@ -230,6 +236,7 @@ fn write_result(out: Output, name: Option<String>, p: &Prepared) -> Result<(), S
         machine: machine_info(),
         units: out.units,
         edits: out.edits,
+        loops: out.loops,
     };
     let path = Path::new("bench/results").join(format!("{name}.json"));
     std::fs::create_dir_all("bench/results").map_err(|e| e.to_string())?;
@@ -270,6 +277,7 @@ fn cold_cmd(args: &[String]) -> Result<(), String> {
         rounds,
         units: results,
         edits: Vec::new(),
+        loops: Vec::new(),
     };
     write_result(out, o.name, &p)
 }
@@ -325,6 +333,7 @@ fn warm_cmd(args: &[String]) -> Result<(), String> {
         rounds,
         units: results,
         edits: Vec::new(),
+        loops: Vec::new(),
     };
     write_result(out, o.name, &p)
 }
@@ -386,6 +395,70 @@ fn edit_cmd(args: &[String]) -> Result<(), String> {
         rounds,
         units: Vec::new(),
         edits: results,
+        loops: Vec::new(),
+    };
+    write_result(out, o.name, &p)
+}
+
+fn agent_loop_cmd(args: &[String]) -> Result<(), String> {
+    use sail_bench::agent_loop;
+    let o = parse_options(args)?;
+    let rounds = o.rounds.unwrap_or(2);
+    if rounds == 0 {
+        return Err("--rounds must be at least 1".to_owned());
+    }
+    let catalogue = agent_loop::Catalogue::load(&o.loops)?;
+    let p = prepare(o.shim.clone())?;
+    let sail = daemon::locate_sail(o.sail.clone())?;
+    let mut projects: Vec<String> = catalogue
+        .loops
+        .iter()
+        .filter_map(|l| l.unit.split('/').next().map(str::to_owned))
+        .collect();
+    projects.sort();
+    projects.dedup();
+    let selection = Selection {
+        tier: Tier::Deep,
+        projects: &projects,
+        filter: None,
+    };
+    let units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
+    let mut loops = agent_loop::resolve(&catalogue, &units)?;
+    if let Some(f) = o.filter.as_deref() {
+        loops.retain(|(l, _)| l.id.contains(f) || l.unit.contains(f));
+    }
+    eprintln!(
+        "agent-loop workload: {} loops x {rounds} rounds",
+        loops.len()
+    );
+    let setup = warm::Setup {
+        installed: &p.installed,
+        shim: &p.shim,
+        sail: &sail,
+        scratch: &p.scratch,
+    };
+    let results = agent_loop::run(&setup, &loops, rounds, |r| {
+        for c in &r.cycles {
+            eprintln!(
+                "{:<18} {:<18} plain {:>6.0} ms  sail {:>6.0} ms  outcome {} (expected {})  same {}/{}",
+                r.id,
+                c.step,
+                cold::median(&c.plain.wall_ms).unwrap_or(0.0),
+                cold::median(&c.sail.wall_ms).unwrap_or(0.0),
+                c.outcome.as_deref().unwrap_or("n/a"),
+                c.expected.as_deref().unwrap_or("-"),
+                c.same,
+                c.same + c.different + c.unstable + c.infra_errors
+            );
+        }
+    });
+    let out = Output {
+        workload: "agent-loop",
+        tier: "catalogue".to_owned(),
+        rounds,
+        units: Vec::new(),
+        edits: Vec::new(),
+        loops: results,
     };
     write_result(out, o.name, &p)
 }
@@ -464,6 +537,7 @@ fn main() -> ExitCode {
         Some("cold") => cold_cmd(args.get(1..).unwrap_or_default()),
         Some("warm") => warm_cmd(args.get(1..).unwrap_or_default()),
         Some("edit") => edit_cmd(args.get(1..).unwrap_or_default()),
+        Some("agent-loop") => agent_loop_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
