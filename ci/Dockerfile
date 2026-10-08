@@ -22,10 +22,12 @@ ENV RUSTUP_HOME=/opt/rustup \
 COPY rust-toolchain.toml corpus/toolchain.toml /tmp/pins/
 # sail's own toolchain (rust-toolchain.toml) and Verus's
 # (corpus/toolchain.toml), with the bare-metal target verismo builds for.
+# Only the primary Verus pin's toolchain, the first `rust_toolchain` line:
+# secondary pins are selected locally with SAIL_VERUS_RELEASE.
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
       | sh -s -- -y --profile minimal --default-toolchain none \
  && sail_tc="$(sed -n 's/^channel = "\(.*\)"/\1/p' /tmp/pins/rust-toolchain.toml)" \
- && verus_tc="$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' /tmp/pins/toolchain.toml)" \
+ && verus_tc="$(sed -n '/^rust_toolchain = /{s/^rust_toolchain = "\(.*\)"/\1/p;q;}' /tmp/pins/toolchain.toml)" \
  && rustup toolchain install "$sail_tc" --profile minimal -c clippy,rustfmt \
  && rustup toolchain install "$verus_tc" --profile minimal -t x86_64-unknown-none \
  && rustup default "$sail_tc"

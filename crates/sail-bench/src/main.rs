@@ -510,7 +510,7 @@ fn history_replay_cmd(args: &[String]) -> Result<(), String> {
     let verus_source = if proj.patch_verus_deps {
         Some(
             p.corpus
-                .fetch_verus_source(&p.cache)
+                .fetch_verus_source(&p.cache, &p.installed.pins.verus.commit)
                 .map_err(|e| e.to_string())?,
         )
     } else {
