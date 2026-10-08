@@ -27,5 +27,5 @@ z3_sha256 = "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
 url = "https://github.com/verus-lang/verus/releases/download/release/0.2026.10.04.426d8b0/verus-0.2026.10.04.426d8b0-x86-linux.zip"
 sha256 = "624018662868563a7bec0dd07be5e4dd0c3d61124b4b55105765884bf2d4d1a0"
 dir = "verus-x86-linux"
-# Recorded on first Linux install (see ADR 0003).
-z3_sha256 = ""
+# Recorded from the first CI install (conformance workflow, 2026-10-08).
+z3_sha256 = "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
