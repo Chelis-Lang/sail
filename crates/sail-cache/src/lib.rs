@@ -10,9 +10,13 @@
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use sail_key::{QueryKey, sha256};
 use serde::{Deserialize, Serialize};
+
+/// Sequence number for temporary file names.
+static TMP_SEQ: AtomicU64 = AtomicU64::new(0);
 
 /// Format version of entry files.
 pub const ENTRY_VERSION: u32 = 1;
@@ -123,15 +127,25 @@ impl DiskCache {
                 .map_or(0, |d| d.as_secs()),
             provenance: provenance.to_owned(),
         };
-        let tmp = dir.join(format!(".tmp-{}-{}", std::process::id(), key));
-        let mut f = std::fs::File::create(&tmp)?;
-        serde_json::to_writer(&mut f, &meta).map_err(std::io::Error::other)?;
-        f.write_all(b"\n")?;
-        f.write_all(reply)?;
-        // No fsync: a torn or lost entry after a crash fails its integrity
-        // check and is a miss, which costs time, never correctness.
-        drop(f);
-        std::fs::rename(&tmp, &path)
+        // Unique per write: two connections may store the same key at once,
+        // and must not write into the same temporary file.
+        let seq = TMP_SEQ.fetch_add(1, Ordering::Relaxed);
+        let tmp = dir.join(format!(".tmp-{}-{seq}-{key}", std::process::id()));
+        let written = (|| {
+            let mut f = std::fs::File::create(&tmp)?;
+            serde_json::to_writer(&mut f, &meta).map_err(std::io::Error::other)?;
+            f.write_all(b"\n")?;
+            f.write_all(reply)?;
+            // No fsync: a torn or lost entry after a crash fails its
+            // integrity check and is a miss, which costs time, never
+            // correctness.
+            drop(f);
+            std::fs::rename(&tmp, &path)
+        })();
+        if written.is_err() {
+            let _ = std::fs::remove_file(&tmp);
+        }
+        written
     }
 }
 
@@ -183,6 +197,36 @@ mod tests {
         assert!(std::fs::create_dir_all(c.path(&other).parent().unwrap_or(c.root())).is_ok());
         assert!(std::fs::copy(c.path(&k), c.path(&other)).is_ok());
         assert!(c.get(&other).is_none());
+        let _ = std::fs::remove_dir_all(c.root());
+    }
+
+    #[test]
+    fn concurrent_puts_of_one_key_leave_a_valid_entry() {
+        // Statistics replies for one key differ in their timing figures, so
+        // racing writers store different bytes. Each must write its own
+        // temporary file, or the renamed entry can mix them.
+        let c = DiskCache::new(scratch("race"));
+        let k = QueryKey([4; 32]);
+        for round in 0..40 {
+            let _ = std::fs::remove_file(c.path(&k));
+            let barrier = std::sync::Barrier::new(8);
+            std::thread::scope(|s| {
+                for t in 0..8u8 {
+                    let (c, barrier) = (&c, &barrier);
+                    s.spawn(move || {
+                        let reply = vec![b'a' + t; 4096 * (usize::from(t) + 1)];
+                        barrier.wait();
+                        let _ = c.put(&k, &reply, "get-info", "z3", "pinned-solver");
+                    });
+                }
+            });
+            let got = c.get(&k).map(|(_, r)| r);
+            assert!(
+                got.as_ref()
+                    .is_some_and(|r| r.iter().all(|&b| Some(&b) == r.first())),
+                "round {round}: no valid entry"
+            );
+        }
         let _ = std::fs::remove_dir_all(c.root());
     }
 
