@@ -44,9 +44,10 @@ SMT emission (`docs/survey/verus-z3.md` §8).
   and so the order of their SMT declarations and fuel lists.
 
 An insertion-ordered map, or sorting before emission, would make this
-deterministic. A draft upstream report is in `upstream-issue.md`; it has not
-been filed. Other units affected in the fast
-tier include `debug_expand.rs`, `guide/traits.rs`, `guide/datatypes.rs` and
+deterministic. Tracked as
+`docs/verus-issues/VI-0001-nondeterministic-declaration-order.md`.
+
+Other units affected in the fast tier include `debug_expand.rs`, `guide/traits.rs`, `guide/datatypes.rs` and
 `state_machines/*`. vstd is affected too: 72 of 2,060 checks.
 
 ## Why it matters

@@ -1,0 +1,44 @@
+name: image
+
+# Reusable: builds and pushes the CI image (ci/Dockerfile, ADR 0013) when its
+# inputs change, and returns its name. Called by ci, conformance and bench.
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: "The CI image to run jobs in"
+        value: ${{ jobs.image.outputs.image }}
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: CI image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.tag.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: tag
+        run: echo "image=ghcr.io/chelis-lang/sail-ci:$(ci/image-tag.sh)" >> "$GITHUB_OUTPUT"
+      - name: Build and push if missing
+        env:
+          IMAGE: ${{ steps.tag.outputs.image }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "$IMAGE exists"
+          else
+            docker build -f ci/Dockerfile -t "$IMAGE" .
+            docker push "$IMAGE"
+          fi

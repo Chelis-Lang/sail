@@ -61,6 +61,7 @@ inline with the date and link the ADR that captures it.
 
    Which should come first? The proposal is upstream first: it costs nothing
    in correctness and helps every Verus user. The root cause is now located:
-   `builtin_macros/src/enum_synthesize.rs` iterates a `HashMap`. A draft
-   upstream report is in the repro directory and has not been filed; filing
-   it is the owner's call.
+   `builtin_macros/src/enum_synthesize.rs` iterates a `HashMap`.
+
+   **Answered 2026-10-08 (owner):** do not file bot issues upstream. Track
+   Verus issues locally as documentation (`docs/verus-issues/`, VI-0001).
