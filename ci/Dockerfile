@@ -30,8 +30,17 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
  && rustup toolchain install "$verus_tc" --profile minimal -t x86_64-unknown-none \
  && rustup default "$sail_tc"
 
-RUN cargo install --locked cargo-nextest@0.9.143 cargo-deny@0.20.2 \
- && rm -rf /opt/cargo/registry /opt/cargo/git
+# Prebuilt, digest-checked binaries: compiling them made image rebuilds slow.
+RUN set -eu; cd /tmp \
+ && curl -sSfLo nextest.tgz https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-0.9.143/cargo-nextest-0.9.143-x86_64-unknown-linux-gnu.tar.gz \
+ && echo "66786b9abe23920d022a182d1416b1bbc8130dd4872a9553d76985a1708dcd1e  nextest.tgz" | sha256sum -c - \
+ && tar -xzf nextest.tgz -C /opt/cargo/bin \
+ && curl -sSfLo deny.tgz https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz \
+ && echo "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f  deny.tgz" | sha256sum -c - \
+ && tar -xzf deny.tgz \
+ && install -m 0755 cargo-deny-0.20.2-x86_64-unknown-linux-musl/cargo-deny /opt/cargo/bin/cargo-deny \
+ && rm -rf nextest.tgz deny.tgz cargo-deny-0.20.2-x86_64-unknown-linux-musl \
+ && cargo nextest --version && cargo deny --version
 
 # The pinned Verus release, checked by SHA-256 (archive and bundled z3).
 COPY ci/fetch-verus.py /tmp/

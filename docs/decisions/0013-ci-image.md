@@ -67,3 +67,20 @@ sound and complete for all critical functionality.
   secondary benchmark platform (ADR 0010). Platform-specific code paths, such
   as BSD `time` and Unix-socket paths, are exercised by local runs. Revisit
   if macOS-only regressions appear.
+
+## Update 2026-10-08: CI runs only fast checks
+
+**Owner direction:** long-running tests run locally only, never in CI. A
+standard-tier conformance dispatch (with page-table at about 46 minutes on
+CI) was cancelled, and CI was reshaped:
+- **Five per-PR jobs only.** CI runs the five required checks and nothing
+  else. Conformance (the PR subset) is a job in `ci.yml`. The scheduled and
+  dispatched workflows (`conformance.yml`, `bench.yml`) are removed.
+- **Time limits.** Every job has a 10-minute limit; measured times are
+  1.2–3.8 minutes. The image job has 15 minutes.
+- **Guard.** `ci/run.sh` refuses the long steps (other conformance tiers,
+  benchmarks) when `CI=true`. They run through `ci/local.sh`, in the same
+  image.
+- **Faster image rebuilds.** The image installs prebuilt, digest-checked
+  nextest and cargo-deny instead of compiling them, so a pin change rebuilds
+  it in minutes.
