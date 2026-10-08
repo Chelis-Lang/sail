@@ -28,3 +28,13 @@ inline with the date and link the ADR that captures it.
 6. **Sources for the shared tier.** The same Z3 binary can report different
    rlimit counts on different machines. Should the shared tier be scoped per
    machine class, or should entries be re-validated locally before use?
+7. **Plain Verus is not perfectly deterministic.** Z3 4.16.0's rlimit
+   consumption varies slightly between runs on byte-identical nonlinear
+   queries (`corpus/repros/z3-nla-rlimit-nondeterminism/`). A query near its
+   limit could therefore flip between `unsat` and `unknown` in plain Verus.
+   How should rule 1 ("the same verdict as plain Verus, every time") be read
+   for such queries? Proposal:
+   - conformance compares against plain Verus run on the same machine;
+   - any unit whose plain outcome varies across repeated runs is classified
+     *unstable* and reported, not counted as a sail difference;
+   - the fragility census measures how common this is.
