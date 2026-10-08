@@ -183,9 +183,26 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
     let mut prev: Option<(u64, usize)> = None; // (index, start) of the last completed reply
     let mut buf = vec![0u8; 64 * 1024];
 
-    // Pairs replies with expectations as either arrives; stores the pairs.
+    // Pairs replies with expectations as either arrives. Stores go to a
+    // separate thread, so forwarding never waits on the daemon.
     let mut pairer = Pairer::default();
-    let mut store = |pairer: &mut Pairer, wait: bool| {
+    let (store_tx, store_rx) = std::sync::mpsc::channel::<(QueryKey, String, Vec<u8>)>();
+    let storer = std::thread::Builder::new()
+        .name("sail-z3-store".to_owned())
+        .spawn(move || {
+            for (key, command, reply) in store_rx {
+                let meta = PutMeta {
+                    command,
+                    provenance: "pinned-solver".to_owned(),
+                };
+                if client.put(&key.0, meta, reply).is_err() {
+                    // The daemon is gone: drop the remaining stores.
+                    break;
+                }
+            }
+        })
+        .ok();
+    let store = |pairer: &mut Pairer, wait: bool| {
         if wait {
             for e in expects {
                 pairer.expect(e);
@@ -195,12 +212,8 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
                 pairer.expect(e);
             }
         }
-        for (key, command, reply) in pairer.drain() {
-            let meta = PutMeta {
-                command,
-                provenance: "pinned-solver".to_owned(),
-            };
-            if client.put(&key.0, meta, reply).is_err() {
+        for entry in pairer.drain() {
+            if store_tx.send(entry).is_err() {
                 pairer.stop();
             }
         }
@@ -250,6 +263,10 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
         let _ = write_out(all.get(forwarded..).unwrap_or_default());
     }
     store(&mut pairer, true);
+    drop(store_tx);
+    if let Some(h) = storer {
+        let _ = h.join();
+    }
 }
 
 fn start_solver(

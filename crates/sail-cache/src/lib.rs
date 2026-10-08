@@ -128,7 +128,8 @@ impl DiskCache {
         serde_json::to_writer(&mut f, &meta).map_err(std::io::Error::other)?;
         f.write_all(b"\n")?;
         f.write_all(reply)?;
-        f.sync_all()?;
+        // No fsync: a torn or lost entry after a crash fails its integrity
+        // check and is a miss, which costs time, never correctness.
         drop(f);
         std::fs::rename(&tmp, &path)
     }
