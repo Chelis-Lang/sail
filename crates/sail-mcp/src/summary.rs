@@ -76,6 +76,31 @@ fn counterexamples(f: &FunctionReport) -> Vec<&str> {
         .collect()
 }
 
+/// "First of N error(s): …", for the report's errors.
+fn first_error(r: &Report) -> Option<String> {
+    // rustc's closing "aborting due to N previous errors" and Cargo's
+    // "could not compile" summarise the errors; they are not errors of their
+    // own.
+    let errors: Vec<_> = r
+        .diagnostics
+        .iter()
+        .filter(|d| {
+            d.level == "error"
+                && !d.message.starts_with("aborting due to")
+                && !d.message.starts_with("could not compile")
+        })
+        .collect();
+    errors.first().map(|d| {
+        let at = d
+            .spans
+            .iter()
+            .find(|s| s.primary)
+            .map(|s| format!(" at {}:{}:{}", s.file, s.line, s.column))
+            .unwrap_or_default();
+        format!("\nFirst of {} error(s): {}{at}.", errors.len(), d.message)
+    })
+}
+
 /// A few lines summarising a run's report.
 #[must_use]
 pub fn report(r: &Report) -> String {
@@ -154,26 +179,8 @@ pub fn report(r: &Report) -> String {
             names(functions.iter().copied().filter(|f| f.unstable))
         );
     }
-    // Rust's closing "aborting due to N previous errors" is not an error of
-    // its own.
-    let errors: Vec<_> = r
-        .diagnostics
-        .iter()
-        .filter(|d| d.level == "error" && !d.message.starts_with("aborting due to"))
-        .collect();
-    if let Some(d) = errors.first() {
-        let at = d
-            .spans
-            .iter()
-            .find(|s| s.primary)
-            .map(|s| format!(" at {}:{}:{}", s.file, s.line, s.column))
-            .unwrap_or_default();
-        let _ = write!(
-            text,
-            "\nFirst of {} error(s): {}{at}.",
-            errors.len(),
-            d.message
-        );
+    if let Some(line) = first_error(r) {
+        text.push_str(&line);
     }
     if let Some(e) = &r.error {
         let _ = write!(text, "\nsail error {}: {}", e.code, e.message);
@@ -214,5 +221,36 @@ mod tests {
                 .collect(),
         );
         assert!(report(&r).contains("and 4 more"));
+    }
+
+    #[test]
+    fn summary_errors_are_not_counted() {
+        use sail_api::output::{Diagnostic, DiagnosticSpan};
+        let diag = |message: &str, spans: Vec<DiagnosticSpan>| Diagnostic {
+            level: "error".to_owned(),
+            code: None,
+            message: message.to_owned(),
+            spans,
+            rendered: String::new(),
+        };
+        let mut r = make(vec![function("demo::bad", VerdictName::Failed)]);
+        r.diagnostics = vec![
+            diag(
+                "postcondition not satisfied",
+                vec![DiagnosticSpan {
+                    file: "src/lib.rs".to_owned(),
+                    line: 10,
+                    column: 13,
+                    primary: true,
+                }],
+            ),
+            diag("aborting due to 1 previous error", Vec::new()),
+            diag("could not compile `demo` (lib)", Vec::new()),
+        ];
+        let text = report(&r);
+        assert!(
+            text.contains("First of 1 error(s): postcondition not satisfied at src/lib.rs:10:13."),
+            "{text}"
+        );
     }
 }
