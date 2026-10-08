@@ -166,13 +166,22 @@ fn time_flag() -> Option<&'static str> {
 /// # Errors
 ///
 /// `SAIL3020` if the scratch directory cannot be prepared or Verus cannot be
-/// started. A Verus run that fails verification is not an error.
+/// started; `SAIL3021` if the timing wrapper failed to run Verus. A Verus run
+/// that fails verification is not an error.
 pub fn run_unit(
     installed: &Installed,
     unit: &Unit,
     solver: &Solver,
     work: &Path,
 ) -> Result<RunRecord> {
+    // Verus runs with `work` as its current directory, so every path handed
+    // to it (and to `time -o`) must be absolute.
+    let work = &std::path::absolute(work).map_err(|e| {
+        Error::new(
+            "SAIL3020",
+            format!("cannot resolve {}: {e}", work.display()),
+        )
+    })?;
     let _ = std::fs::remove_dir_all(work);
     std::fs::create_dir_all(work)
         .map_err(|e| Error::new("SAIL3020", format!("cannot create {}: {e}", work.display())))?;
@@ -185,7 +194,8 @@ pub fn run_unit(
     let root = unit.source_dir.join(&unit.root);
     let time_file = work.join("time.txt");
     let timer = Path::new("/usr/bin/time");
-    let mut cmd = match time_flag().filter(|_| timer.is_file()) {
+    let time_mode = time_flag().filter(|_| timer.is_file());
+    let mut cmd = match time_mode {
         Some(flag) => {
             let mut c = Command::new(timer);
             c.arg(flag).arg("-o").arg(&time_file).arg(&installed.verus);
@@ -219,8 +229,20 @@ pub fn run_unit(
         )
     })?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
-    let (user_s, sys_s, max_rss_bytes) =
-        parse_time(&std::fs::read_to_string(&time_file).unwrap_or_default());
+    let timing = std::fs::read_to_string(&time_file);
+    if time_mode.is_some() && timing.is_err() {
+        // `time` did not run Verus to completion: this is an infrastructure
+        // failure, never a Verus result.
+        return Err(Error::new(
+            "SAIL3021",
+            format!(
+                "no timing report from {}; Verus did not run: {}",
+                timer.display(),
+                String::from_utf8_lossy(&output.stderr).trim()
+            ),
+        ));
+    }
+    let (user_s, sys_s, max_rss_bytes) = parse_time(&timing.unwrap_or_default());
     Ok(RunRecord {
         exit_code: output.status.code(),
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
