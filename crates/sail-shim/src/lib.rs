@@ -37,6 +37,10 @@ pub const ENV_Z3_PATH: &str = "SAIL_Z3_PATH";
 /// Environment variable naming the daemon socket. When set, sessions are
 /// served from the daemon's cache with a lazily started solver (ADR 0011).
 pub const ENV_DAEMON_SOCKET: &str = "SAIL_DAEMON_SOCKET";
+/// Environment variable overriding the daemon client timeout, in
+/// milliseconds (default: 10,000). Each daemon exchange that takes longer is
+/// a daemon failure, which falls back to the pinned solver.
+pub const ENV_DAEMON_TIMEOUT_MS: &str = "SAIL_DAEMON_TIMEOUT_MS";
 /// Environment variable naming a directory for session traces.
 pub const ENV_TRACE_DIR: &str = "SAIL_TRACE_DIR";
 
@@ -155,7 +159,7 @@ fn spawn_solver(path: &Path, args: &[OsString]) -> Result<Child, ExitCode> {
 }
 
 #[cfg(unix)]
-fn status_code(status: std::process::ExitStatus) -> (Option<i32>, u8) {
+pub(crate) fn status_code(status: std::process::ExitStatus) -> (Option<i32>, u8) {
     use std::os::unix::process::ExitStatusExt as _;
     match (status.code(), status.signal()) {
         (Some(code), _) => (Some(code), u8::try_from(code & 0xff).unwrap_or(1)),
@@ -166,16 +170,12 @@ fn status_code(status: std::process::ExitStatus) -> (Option<i32>, u8) {
 }
 
 #[cfg(not(unix))]
-fn status_code(status: std::process::ExitStatus) -> (Option<i32>, u8) {
+pub(crate) fn status_code(status: std::process::ExitStatus) -> (Option<i32>, u8) {
     let code = status.code();
     (
         code,
         code.and_then(|c| u8::try_from(c & 0xff).ok()).unwrap_or(1),
     )
-}
-
-pub(crate) fn exit_code(status: std::process::ExitStatus) -> ExitCode {
-    ExitCode::from(status_code(status).1)
 }
 
 /// Runs the shim with the process's own arguments, stdio and environment.

@@ -21,6 +21,7 @@ serde_json.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+sail-cache.workspace = true
 sail-daemon.workspace = true
 sail-smtlib.workspace = true
 

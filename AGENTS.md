@@ -144,6 +144,13 @@ cargo deny --locked check
   and shim fallback tests. This tier gates merges once it exists.
   `.github/workflows/conformance.yml` runs a fast-tier subset on PRs and the
   whole fast tier nightly; dispatch it with `tier=standard|deep` (ADR 0006).
+- *Fault injection:* `crates/sail-shim/tests/faults.rs` drops, hangs and
+  slows the daemon, corrupts cache entries, kills the solver and races
+  concurrent shims against the pinned Z3. Run it with the other ignored
+  shim tests:
+  `SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all`.
+  `docs/fault-injection.md` lists each scenario with its expected and
+  observed outcome.
 
 Run conformance locally (needs `cargo xtask fetch-verus` once):
 

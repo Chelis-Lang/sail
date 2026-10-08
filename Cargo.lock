@@ -314,6 +314,7 @@ version = "0.0.0"
 dependencies = [
  "proptest",
  "sail-api",
+ "sail-cache",
  "sail-daemon",
  "sail-key",
  "sail-session",
