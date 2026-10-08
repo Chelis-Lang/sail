@@ -50,7 +50,8 @@ directory is owned by the user.
 
 ## Daemon version
 
-`sail verify` reuses any daemon already listening on its socket. A daemon
-from an older build may speak an older protocol. A version handshake that
-replaces a mismatched daemon is a tracked follow-up. Until then, restart
-`sail serve` after upgrading.
+The daemon reports its protocol version in `HELLO`, and clients treat a
+mismatch as "daemon unavailable": the shim passes everything through to the
+pinned solver. The default socket name includes the version
+(`daemon-v<N>.sock`), so an upgraded `sail verify` starts its own daemon
+instead of reusing a stale one.
