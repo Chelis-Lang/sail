@@ -63,6 +63,7 @@ fn identify(path: &Path) -> Result<Identity, String> {
         version,
         binary_sha256: hex(&sha256(&binary)),
         platform: SolverIdentity::host_platform(),
+        protocol_version: sail_api::protocol::PROTOCOL_VERSION,
     })
 }
 

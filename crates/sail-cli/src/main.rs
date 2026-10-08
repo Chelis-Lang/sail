@@ -69,8 +69,17 @@ fn run(args: &[String], out: &mut impl std::io::Write, err: &mut impl std::io::W
     }
 }
 
+/// The default daemon socket: `<cache>/daemon-v<protocol>.sock`, so clients
+/// of one protocol version never reach a daemon of another.
+pub(crate) fn default_socket(cache: &std::path::Path) -> std::path::PathBuf {
+    cache.join(format!(
+        "daemon-v{}.sock",
+        sail_api::protocol::PROTOCOL_VERSION
+    ))
+}
+
 /// `sail serve [--socket PATH] [--cache DIR]`: runs the daemon in the
-/// foreground (ADR 0011). Defaults: `<cache>/daemon.sock` and
+/// foreground (ADR 0011). Defaults: `<cache>/daemon-v<N>.sock` and
 /// `<cache>/results`, where `<cache>` is `$SAIL_CACHE_DIR` or
 /// `~/.cache/sail`.
 #[cfg(unix)]
@@ -82,7 +91,7 @@ fn serve(args: &[String], err: &mut impl std::io::Write) -> ExitCode {
             return ExitCode::from(EXIT_USAGE);
         }
     };
-    let (mut socket, mut root) = (cache.join("daemon.sock"), cache.join("results"));
+    let (mut socket, mut root) = (default_socket(&cache), cache.join("results"));
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         let Some(value) = it.next() else {
