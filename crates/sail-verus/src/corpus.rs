@@ -3,7 +3,8 @@
 //! The format follows the draft schema in `docs/survey/corpus.md` §4 and is
 //! recorded in ADR 0006. Projects are pinned by full commit SHA and fetched
 //! once into `<cache>/corpus/<repo>-<commit12>`. A *unit* is one Verus
-//! invocation: one crate root of one project.
+//! invocation: one crate root of one project (`build = "verus"`), or one
+//! `cargo verus` run in one package directory (`build = "cargo-verus"`).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -51,10 +52,37 @@ impl std::str::FromStr for Tier {
 pub enum Build {
     /// `verus <args> <root>` for each crate root.
     Verus,
-    /// `cargo verus verify` (not yet supported by the runner).
+    /// `cargo verus <cargo_verus_command>` in each package directory.
     CargoVerus,
     /// A project-specific script (not yet supported by the runner).
     Script,
+}
+
+/// The `cargo verus` subcommand a `cargo-verus` project runs.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CargoCommand {
+    /// `cargo verus verify`: verifies the package and every dependency that
+    /// opts into verification (including `vstd`), forwarding the Verus
+    /// arguments to all of them.
+    #[default]
+    Verify,
+    /// `cargo verus focus`: verifies only the selected package; dependencies
+    /// are built with `--no-verify` and receive no forwarded arguments. This
+    /// is what verita runs, and partial verification (`--verify-module`)
+    /// requires it.
+    Focus,
+}
+
+impl CargoCommand {
+    /// The subcommand word.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Verify => "verify",
+            Self::Focus => "focus",
+        }
+    }
 }
 
 /// One pinned project.
@@ -78,7 +106,8 @@ pub struct Project {
     pub compat_evidence: String,
     /// How it is verified.
     pub build: Build,
-    /// Crate roots relative to the repository root.
+    /// Crate roots relative to the repository root: `.rs` files for
+    /// `verus`, package directories for `cargo-verus`.
     #[serde(default)]
     pub crate_roots: Vec<String>,
     /// A directory whose `.rs` files (recursively) are each a crate root.
@@ -91,6 +120,18 @@ pub struct Project {
     /// by the unit's scratch output directory.
     #[serde(default)]
     pub extra_verus_args: Vec<String>,
+    /// Arguments passed to `cargo verus <command>` before `--`
+    /// (`cargo-verus` only).
+    #[serde(default)]
+    pub extra_cargo_args: Vec<String>,
+    /// Which `cargo verus` subcommand to run (`cargo-verus` only).
+    #[serde(default)]
+    pub cargo_verus_command: CargoCommand,
+    /// Point `vstd`/`verus_builtin`/... dependencies at the pinned Verus
+    /// source in a scratch copy of the project (`cargo-verus` only; see
+    /// [`crate::patch`]).
+    #[serde(default)]
+    pub patch_verus_deps: bool,
     /// Extra environment for Verus.
     #[serde(default)]
     pub env: BTreeMap<String, String>,
@@ -133,8 +174,21 @@ pub struct Unit {
     pub source_dir: PathBuf,
     /// The crate root, relative to `source_dir`.
     pub root: String,
-    /// Verus arguments before the crate root.
+    /// How the unit is run.
+    pub build: Build,
+    /// Verus arguments: before the crate root for `verus`, after `--` for
+    /// `cargo-verus`.
     pub args: Vec<String>,
+    /// `cargo verus` arguments before `--`, starting with the subcommand
+    /// (`cargo-verus` only).
+    pub cargo_args: Vec<String>,
+    /// Whether to patch Verus dependencies in a scratch copy first.
+    pub patch_verus_deps: bool,
+    /// Cargo's target directory (`cargo-verus` only), set by
+    /// [`crate::run::prepare_unit`]. Both sides of a comparison use the same
+    /// path, emptied before each run, so that paths Cargo prints (for
+    /// example in a failed build script's report) are identical.
+    pub target_dir: Option<PathBuf>,
     /// Extra environment.
     pub env: BTreeMap<String, String>,
     /// The expected outcome tag, if the corpus records one.
@@ -167,7 +221,123 @@ fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
     Ok(())
 }
 
+/// The repository the pinned Verus source is fetched from.
+pub const VERUS_REPO_URL: &str = "https://github.com/verus-lang/verus";
+
+/// Where a repository pinned at `commit` is fetched to under `cache`.
+fn checkout_dir(url: &str, commit: &str, cache: &Path) -> PathBuf {
+    let repo = url
+        .trim_end_matches('/')
+        .trim_end_matches(".git")
+        .rsplit('/')
+        .next()
+        .unwrap_or("repo");
+    let short = commit.get(..12).unwrap_or(commit);
+    cache.join("corpus").join(format!("{repo}-{short}"))
+}
+
+/// Fetches `commit` of `url` (shallow) into `dir` unless it is already there.
+fn fetch_git(url: &str, commit: &str, dir: &Path) -> Result<()> {
+    let marker = dir.join(".sail-fetched");
+    if std::fs::read_to_string(&marker).is_ok_and(|c| c.trim() == commit) {
+        return Ok(());
+    }
+    let _ = std::fs::remove_dir_all(dir);
+    std::fs::create_dir_all(dir)
+        .map_err(|e| Error::new("SAIL3014", format!("cannot create {}: {e}", dir.display())))?;
+    let git = |args: &[&str]| -> Result<()> {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .status()
+            .map_err(|e| Error::new("SAIL3014", format!("cannot run git: {e}")))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(Error::new(
+                "SAIL3014",
+                format!("git {} failed in {}", args.join(" "), dir.display()),
+            ))
+        }
+    };
+    git(&["init", "-q"])?;
+    git(&["remote", "add", "origin", url])?;
+    git(&["fetch", "-q", "--depth", "1", "origin", commit])?;
+    git(&["checkout", "-q", "--detach", "FETCH_HEAD"])?;
+    std::fs::write(&marker, commit).map_err(|e| {
+        Error::new(
+            "SAIL3014",
+            format!("cannot write {}: {e}", marker.display()),
+        )
+    })
+}
+
+/// Whether the external requirement `name` is available on this machine,
+/// where `rust_toolchain` is Verus's Rust toolchain:
+/// - `singular`: `VERUS_SINGULAR_PATH` names a file;
+/// - `openssl` (OpenSSL headers and libraries for `openssl-sys`):
+///   `OPENSSL_DIR` names a directory, or `pkg-config --exists openssl`
+///   succeeds;
+/// - `rust-target:<triple>`: rustup lists `<triple>` as installed for
+///   `rust_toolchain`;
+/// - `program:<name>`: an executable `<name>` is on `PATH`.
+///
+/// Any other requirement is unknown and therefore unavailable.
+#[must_use]
+pub fn requirement_available(name: &str, rust_toolchain: &str) -> bool {
+    let var = |v: &str| std::env::var_os(v).filter(|p| !p.is_empty());
+    if let Some(program) = name.strip_prefix("program:") {
+        return var("PATH").is_some_and(|path| {
+            std::env::split_paths(&path).any(|dir| dir.join(program).is_file())
+        });
+    }
+    if let Some(triple) = name.strip_prefix("rust-target:") {
+        return Command::new("rustup")
+            .args([
+                "target",
+                "list",
+                "--installed",
+                "--toolchain",
+                rust_toolchain,
+            ])
+            .stderr(std::process::Stdio::null())
+            .output()
+            .is_ok_and(|o| {
+                o.status.success()
+                    && String::from_utf8_lossy(&o.stdout)
+                        .lines()
+                        .any(|l| l.trim() == triple)
+            });
+    }
+    match name {
+        "singular" => var("VERUS_SINGULAR_PATH").is_some_and(|p| Path::new(&p).is_file()),
+        "openssl" => {
+            var("OPENSSL_DIR").is_some_and(|p| Path::new(&p).is_dir())
+                || Command::new("pkg-config")
+                    .args(["--exists", "openssl"])
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .status()
+                    .is_ok_and(|s| s.success())
+        }
+        _ => false,
+    }
+}
+
 impl Corpus {
+    /// Fetches the pinned Verus commit's source (used by
+    /// `patch_verus_deps`) and returns its directory.
+    ///
+    /// # Errors
+    ///
+    /// `SAIL3014` if git fails.
+    pub fn fetch_verus_source(&self, cache: &Path) -> Result<PathBuf> {
+        let dir = checkout_dir(VERUS_REPO_URL, &self.verus_commit, cache);
+        fetch_git(VERUS_REPO_URL, &self.verus_commit, &dir)?;
+        Ok(dir)
+    }
+
     /// Reads the manifest from `path`.
     ///
     /// # Errors
@@ -224,15 +394,7 @@ impl Project {
     /// Where this project's source is fetched to under `cache`.
     #[must_use]
     pub fn source_dir(&self, cache: &Path) -> PathBuf {
-        let repo = self
-            .url
-            .trim_end_matches('/')
-            .trim_end_matches(".git")
-            .rsplit('/')
-            .next()
-            .unwrap_or("repo");
-        let short = self.commit.get(..12).unwrap_or(&self.commit);
-        cache.join("corpus").join(format!("{repo}-{short}"))
+        checkout_dir(&self.url, &self.commit, cache)
     }
 
     /// Fetches the pinned commit (shallow) if it is not already present, and
@@ -243,40 +405,19 @@ impl Project {
     /// `SAIL3014` if git fails.
     pub fn fetch(&self, cache: &Path) -> Result<PathBuf> {
         let dir = self.source_dir(cache);
-        let marker = dir.join(".sail-fetched");
-        if std::fs::read_to_string(&marker).is_ok_and(|c| c.trim() == self.commit) {
-            return Ok(dir);
-        }
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| Error::new("SAIL3014", format!("cannot create {}: {e}", dir.display())))?;
-        let git = |args: &[&str]| -> Result<()> {
-            let status = Command::new("git")
-                .arg("-C")
-                .arg(&dir)
-                .args(args)
-                .status()
-                .map_err(|e| Error::new("SAIL3014", format!("cannot run git: {e}")))?;
-            if status.success() {
-                Ok(())
-            } else {
-                Err(Error::new(
-                    "SAIL3014",
-                    format!("git {} failed in {}", args.join(" "), dir.display()),
-                ))
-            }
-        };
-        git(&["init", "-q"])?;
-        git(&["remote", "add", "origin", &self.url])?;
-        git(&["fetch", "-q", "--depth", "1", "origin", &self.commit])?;
-        git(&["checkout", "-q", "--detach", "FETCH_HEAD"])?;
-        std::fs::write(&marker, &self.commit).map_err(|e| {
-            Error::new(
-                "SAIL3014",
-                format!("cannot write {}: {e}", marker.display()),
-            )
-        })?;
+        fetch_git(&self.url, &self.commit, &dir)?;
         Ok(dir)
+    }
+
+    /// The entries of `requires` that are not available here (see
+    /// [`requirement_available`]).
+    #[must_use]
+    pub fn missing_requirements(&self, rust_toolchain: &str) -> Vec<String> {
+        self.requires
+            .iter()
+            .filter(|r| !requirement_available(r, rust_toolchain))
+            .cloned()
+            .collect()
     }
 
     /// The units of this project, given its fetched source directory.
@@ -287,13 +428,33 @@ impl Project {
     /// `SAIL3015` for an unsupported build kind, `SAIL3012` if the source
     /// cannot be listed.
     pub fn units(&self, source_dir: &Path) -> Result<Vec<Unit>> {
-        if self.build != Build::Verus {
+        let cargo = self.build == Build::CargoVerus;
+        if self.build == Build::Script {
             return Err(Error::new(
                 "SAIL3015",
                 format!(
                     "{}: build {:?} is not supported by the runner yet",
                     self.name, self.build
                 ),
+            ));
+        }
+        if !cargo
+            && (!self.extra_cargo_args.is_empty()
+                || self.patch_verus_deps
+                || self.cargo_verus_command != CargoCommand::Verify)
+        {
+            return Err(Error::new(
+                "SAIL3015",
+                format!(
+                    "{}: extra_cargo_args, cargo_verus_command and patch_verus_deps need build = \"cargo-verus\"",
+                    self.name
+                ),
+            ));
+        }
+        if cargo && self.crate_roots_dir.is_some() {
+            return Err(Error::new(
+                "SAIL3015",
+                format!("{}: crate_roots_dir needs build = \"verus\"", self.name),
             ));
         }
         let mut roots: Vec<String> = self.crate_roots.clone();
@@ -324,12 +485,28 @@ impl Project {
                 }
                 expected = Some(mode);
             }
+            let id = if root == "." {
+                self.name.clone()
+            } else {
+                format!("{}/{root}", self.name)
+            };
+            let cargo_args = if cargo {
+                let mut a = vec![self.cargo_verus_command.as_str().to_owned()];
+                a.extend(self.extra_cargo_args.iter().cloned());
+                a
+            } else {
+                Vec::new()
+            };
             units.push(Unit {
-                id: format!("{}/{root}", self.name),
+                id,
                 project: self.name.clone(),
                 source_dir: source_dir.to_path_buf(),
                 root,
+                build: self.build,
                 args,
+                cargo_args,
+                patch_verus_deps: self.patch_verus_deps,
+                target_dir: None,
                 env: self.env.clone(),
                 expected,
             });
@@ -357,6 +534,54 @@ mod tests {
             Some("expand-errors")
         );
         assert_eq!(example_mode("use vstd::prelude::*;"), None);
+    }
+
+    fn project(extra: &str) -> Result<Project> {
+        let text = format!(
+            "name = \"p\"\nurl = \"https://example.com/o/p.git\"\ncommit = \"0123456789abcdef\"\nlicense = \"MIT\"\ntier = \"standard\"\nverus_version_compat = \"compatible\"\n{extra}"
+        );
+        toml::from_str(&text).map_err(|e| Error::new("SAIL3011", e.to_string()))
+    }
+
+    #[test]
+    fn cargo_verus_units_carry_cargo_and_verus_args() {
+        let p = project(
+            "build = \"cargo-verus\"\ncrate_roots = [\"b\", \".\"]\ncargo_verus_command = \"focus\"\nextra_cargo_args = [\"--lib\"]\nextra_verus_args = [\"--verify-module\", \"m\"]\npatch_verus_deps = true\n",
+        );
+        let units = p
+            .and_then(|p| p.units(Path::new("/src")))
+            .unwrap_or_default();
+        let ids: Vec<_> = units.iter().map(|u| u.id.as_str()).collect();
+        assert_eq!(ids, ["p", "p/b"]);
+        assert!(units.iter().all(|u| u.build == Build::CargoVerus
+            && u.patch_verus_deps
+            && u.cargo_args == ["focus", "--lib"]
+            && u.args == ["--verify-module", "m"]));
+    }
+
+    #[test]
+    fn cargo_only_fields_are_refused_for_verus_builds() {
+        let p = project("build = \"verus\"\ncrate_roots = [\"a.rs\"]\npatch_verus_deps = true\n");
+        assert!(p.and_then(|p| p.units(Path::new("/src"))).is_err());
+        let p = project("build = \"script\"\n");
+        assert!(p.and_then(|p| p.units(Path::new("/src"))).is_err());
+        let p = project("build = \"verus\"\nbogus = 1\n");
+        assert!(p.is_err(), "unknown fields are rejected");
+    }
+
+    #[test]
+    fn unknown_requirements_are_missing() {
+        let p = project(
+            "build = \"verus\"\nrequires = [\"no-such-thing\", \"rust-target:none\", \"program:no-such-program\"]\n",
+        );
+        assert_eq!(
+            p.map(|p| p.missing_requirements("no-such-toolchain")),
+            Ok(vec![
+                "no-such-thing".to_owned(),
+                "rust-target:none".to_owned(),
+                "program:no-such-program".to_owned()
+            ])
+        );
     }
 
     #[test]

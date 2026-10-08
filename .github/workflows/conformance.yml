@@ -33,7 +33,9 @@ jobs:
   conformance:
     name: Conformance
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # The standard tier verifies the external projects twice each (plain and
+    # through sail-z3); give dispatched non-fast tiers more time.
+    timeout-minutes: ${{ (github.event_name == 'workflow_dispatch' && inputs.tier != 'fast') && 330 || 90 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -52,6 +54,11 @@ jobs:
             ~/.cache/sail/verus
             ~/.cache/sail/corpus
           key: sail-verus-${{ runner.os }}-${{ hashFiles('corpus/toolchain.toml', 'corpus/corpus.toml') }}
+      - name: Install standard-tier requirements (OpenSSL for anvil; x86_64-unknown-none, cmake and ninja for verismo)
+        if: github.event_name == 'workflow_dispatch' && inputs.tier != 'fast'
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libssl-dev cmake ninja-build
+          rustup target add x86_64-unknown-none --toolchain "$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' corpus/toolchain.toml)"
       - name: Install pinned Verus
         run: cargo xtask fetch-verus
       - name: Build sail-z3 and the harness
@@ -64,7 +71,9 @@ jobs:
           if [ "$EVENT" = "pull_request" ]; then
             ./target/release/sail-conformance run --tier fast --project verus-examples --filter /guide/ --jobs 4 --out conformance-out
           else
-            ./target/release/sail-conformance run --tier "${TIER:-fast}" --jobs 4 --out conformance-out
+            # Fewer jobs beyond the fast tier: single units peak above 4 GB.
+            if [ "${TIER:-fast}" = fast ]; then JOBS=4; else JOBS=3; fi
+            ./target/release/sail-conformance run --tier "${TIER:-fast}" --jobs "$JOBS" --out conformance-out
           fi
       - name: Upload report
         if: always()

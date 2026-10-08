@@ -18,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use sail_conformance::{Comparison, Verdict, compare};
 use sail_verus::corpus::{Corpus, Tier, Unit};
-use sail_verus::run::{RunRecord, Solver, machine_info, run_unit};
+use sail_verus::run::{RunRecord, Solver, machine_info, prepare_unit, run_unit};
 use sail_verus::toolchain::{Installed, Pins};
 use serde::Serialize;
 
@@ -93,18 +93,13 @@ struct Side {
 
 impl From<&RunRecord> for Side {
     fn from(r: &RunRecord) -> Self {
-        let field = |k: &str| {
-            r.verification_results()
-                .and_then(|v| v.get(k))
-                .and_then(serde_json::Value::as_u64)
-        };
         Self {
             exit_code: r.exit_code,
             wall_ms: r.wall_ms,
             smt_ms: r.smt_ms(),
             max_rss_bytes: r.max_rss_bytes,
-            verified: field("verified"),
-            errors: field("errors"),
+            verified: r.total("verified"),
+            errors: r.total("errors"),
         }
     }
 }
@@ -121,8 +116,15 @@ struct UnitReport {
     sail: Option<Side>,
 }
 
+#[derive(Serialize)]
+struct Skipped {
+    project: String,
+    missing: Vec<String>,
+}
+
 #[derive(Serialize, Default)]
 struct Summary {
+    projects_skipped: usize,
     units: usize,
     same: usize,
     different: usize,
@@ -141,6 +143,7 @@ struct Report {
     started_unix: u64,
     flags: Vec<String>,
     summary: Summary,
+    skipped: Vec<Skipped>,
     units: Vec<UnitReport>,
 }
 
@@ -162,6 +165,14 @@ fn slug(id: &str) -> String {
         .collect()
 }
 
+/// The units to run, the projects skipped for missing requirements, and the
+/// pinned Verus source if any unit patches its Verus dependencies.
+struct Selection {
+    units: Vec<Unit>,
+    skipped: Vec<Skipped>,
+    verus_source: Option<PathBuf>,
+}
+
 fn load() -> Result<(Corpus, Installed, PathBuf), String> {
     let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
     let corpus = Corpus::load(Path::new("corpus/corpus.toml")).map_err(|e| e.to_string())?;
@@ -171,9 +182,28 @@ fn load() -> Result<(Corpus, Installed, PathBuf), String> {
     Ok((corpus, installed, cache))
 }
 
-fn units(o: &Options, corpus: &Corpus, cache: &Path) -> Result<Vec<Unit>, String> {
+fn select(
+    o: &Options,
+    corpus: &Corpus,
+    cache: &Path,
+    toolchain: &str,
+) -> Result<Selection, String> {
     let mut all = Vec::new();
+    let mut skipped = Vec::new();
     for project in corpus.projects_in(o.tier, &o.projects) {
+        let missing = project.missing_requirements(toolchain);
+        if !missing.is_empty() {
+            eprintln!(
+                "skipping {}: requires {} (not available)",
+                project.name,
+                missing.join(", ")
+            );
+            skipped.push(Skipped {
+                project: project.name.clone(),
+                missing,
+            });
+            continue;
+        }
         eprintln!("fetching {} @ {}", project.name, project.commit);
         let dir = project.fetch(cache).map_err(|e| e.to_string())?;
         all.extend(project.units(&dir).map_err(|e| e.to_string())?);
@@ -181,15 +211,56 @@ fn units(o: &Options, corpus: &Corpus, cache: &Path) -> Result<Vec<Unit>, String
     if let Some(f) = &o.filter {
         all.retain(|u| u.id.contains(f.as_str()));
     }
-    Ok(all)
+    let verus_source = if all.iter().any(|u| u.patch_verus_deps) {
+        eprintln!("fetching verus @ {}", corpus.verus_commit);
+        Some(
+            corpus
+                .fetch_verus_source(cache)
+                .map_err(|e| e.to_string())?,
+        )
+    } else {
+        None
+    };
+    Ok(Selection {
+        units: all,
+        skipped,
+        verus_source,
+    })
 }
 
-fn run_one(installed: &Installed, unit: &Unit, shim: &Path, dir: &Path, trace: bool) -> UnitReport {
+struct Context<'a> {
+    installed: &'a Installed,
+    verus_source: Option<&'a Path>,
+    shim: &'a Path,
+    dir: &'a Path,
+    trace: bool,
+}
+
+fn infra_error(unit: &Unit, message: String) -> UnitReport {
+    UnitReport {
+        id: unit.id.clone(),
+        expected: unit.expected.clone(),
+        verdict: Verdict::InfraError,
+        comparison: Comparison::default(),
+        infra_error: Some(message),
+        plain: None,
+        sail: None,
+    }
+}
+
+fn run_one(cx: &Context, unit: &Unit) -> UnitReport {
+    let (installed, dir) = (cx.installed, cx.dir);
     let base = dir.join("units").join(slug(&unit.id));
+    // Both sides run on the same prepared tree.
+    let unit = match prepare_unit(installed, unit, cx.verus_source, &base) {
+        Ok(u) => u,
+        Err(e) => return infra_error(unit, e.to_string()),
+    };
+    let unit = &unit;
     let plain = run_unit(installed, unit, &Solver::Plain, &base.join("plain"));
     let solver = Solver::Shim {
-        shim: shim.to_path_buf(),
-        trace_dir: trace.then(|| dir.join("traces").join(slug(&unit.id))),
+        shim: cx.shim.to_path_buf(),
+        trace_dir: cx.trace.then(|| dir.join("traces").join(slug(&unit.id))),
     };
     let sail = run_unit(installed, unit, &solver, &base.join("sail"));
     match (plain, sail) {
@@ -205,33 +276,19 @@ fn run_one(installed: &Installed, unit: &Unit, shim: &Path, dir: &Path, trace: b
                 sail: Some(Side::from(&s)),
             }
         }
-        (p, s) => UnitReport {
-            id: unit.id.clone(),
-            expected: unit.expected.clone(),
-            verdict: Verdict::InfraError,
-            comparison: Comparison::default(),
-            infra_error: Some(
-                [p.err(), s.err()]
-                    .into_iter()
-                    .flatten()
-                    .map(|e| e.to_string())
-                    .collect::<Vec<_>>()
-                    .join("; "),
-            ),
-            plain: None,
-            sail: None,
-        },
+        (p, s) => infra_error(
+            unit,
+            [p.err(), s.err()]
+                .into_iter()
+                .flatten()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join("; "),
+        ),
     }
 }
 
-fn run_all(
-    units: Vec<Unit>,
-    jobs: usize,
-    installed: &Installed,
-    shim: &Path,
-    dir: &Path,
-    trace: bool,
-) -> Vec<UnitReport> {
+fn run_all(units: Vec<Unit>, jobs: usize, cx: &Context) -> Vec<UnitReport> {
     let queue = Mutex::new(units.into_iter().collect::<VecDeque<_>>());
     let results = Mutex::new(Vec::new());
     std::thread::scope(|s| {
@@ -240,7 +297,7 @@ fn run_all(
                 loop {
                     let next = queue.lock().ok().and_then(|mut q| q.pop_front());
                     let Some(unit) = next else { break };
-                    let report = run_one(installed, &unit, shim, dir, trace);
+                    let report = run_one(cx, &unit);
                     let (p, s) = (
                         report.plain.as_ref().map_or(0.0, |x| x.wall_ms),
                         report.sail.as_ref().map_or(0.0, |x| x.wall_ms),
@@ -253,6 +310,7 @@ fn run_all(
                             .comparison
                             .differences
                             .first()
+                            .or(report.infra_error.as_ref())
                             .map(|d| format!("\n            {d}"))
                             .unwrap_or_default()
                     );
@@ -264,6 +322,31 @@ fn run_all(
         }
     });
     results.into_inner().unwrap_or_default()
+}
+
+fn summary_line(report: &Report) -> String {
+    let s = &report.summary;
+    let skipped = if report.skipped.is_empty() {
+        String::new()
+    } else {
+        let list: Vec<String> = report
+            .skipped
+            .iter()
+            .map(|k| format!("{}: needs {}", k.project, k.missing.join(", ")))
+            .collect();
+        format!(" ({})", list.join("; "))
+    };
+    format!(
+        "conformance ({} tier): {} units, {} same, {} different, {} infra errors; {} functions compared; {} units with rlimit drift; {} projects skipped{skipped}",
+        report.tier,
+        s.units,
+        s.same,
+        s.different,
+        s.infra_error,
+        s.functions,
+        s.units_with_rlimit_drift,
+        s.projects_skipped,
+    )
 }
 
 fn run(o: &Options) -> Result<ExitCode, String> {
@@ -280,7 +363,11 @@ fn run(o: &Options) -> Result<ExitCode, String> {
             shim.display()
         ));
     }
-    let units = units(o, &corpus, &cache)?;
+    let Selection {
+        units,
+        skipped,
+        verus_source,
+    } = select(o, &corpus, &cache, &installed.pins.verus.rust_toolchain)?;
     let started = now_unix();
     let dir = o
         .out
@@ -293,9 +380,17 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         dir.display()
     );
 
-    let mut units = run_all(units, o.jobs, &installed, &shim, &dir, o.trace);
+    let cx = Context {
+        installed: &installed,
+        verus_source: verus_source.as_deref(),
+        shim: &shim,
+        dir: &dir,
+        trace: o.trace,
+    };
+    let mut units = run_all(units, o.jobs, &cx);
     units.sort_by(|a, b| a.id.cmp(&b.id));
     let mut summary = Summary {
+        projects_skipped: skipped.len(),
         units: units.len(),
         ..Summary::default()
     };
@@ -320,24 +415,15 @@ fn run(o: &Options) -> Result<ExitCode, String> {
             .map(|s| (*s).to_owned())
             .collect(),
         summary,
+        skipped,
         units,
     };
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join("report.json");
     let json = serde_json::to_vec_pretty(&report).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    println!("{}\nreport: {}", summary_line(&report), path.display());
     let s = &report.summary;
-    println!(
-        "conformance ({} tier): {} units, {} same, {} different, {} infra errors; {} functions compared; {} units with rlimit drift\nreport: {}",
-        report.tier,
-        s.units,
-        s.same,
-        s.different,
-        s.infra_error,
-        s.functions,
-        s.units_with_rlimit_drift,
-        path.display()
-    );
     Ok(if s.different > 0 {
         ExitCode::from(1)
     } else if s.infra_error > 0 {
@@ -352,8 +438,9 @@ fn main() -> ExitCode {
     let result = parse(&args).and_then(|o| match o.command.as_str() {
         "run" => run(&o),
         "fetch" => {
-            let (corpus, _, cache) = load()?;
-            let n = units(&o, &corpus, &cache)?.len();
+            let (corpus, installed, cache) = load()?;
+            let toolchain = &installed.pins.verus.rust_toolchain;
+            let n = select(&o, &corpus, &cache, toolchain)?.units.len();
             println!("{n} units ready");
             Ok(ExitCode::SUCCESS)
         }
