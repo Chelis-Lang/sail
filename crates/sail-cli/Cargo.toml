@@ -14,10 +14,18 @@ path = "src/main.rs"
 [dependencies]
 ctrlc.workspace = true
 sail-api.workspace = true
+sail-cache.workspace = true
 sail-daemon.workspace = true
 sail-verus.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+signal-hook.workspace = true
+
+[dev-dependencies]
+sail-key.workspace = true
 
 [lints]
 workspace = true

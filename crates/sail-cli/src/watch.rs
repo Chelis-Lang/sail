@@ -78,7 +78,7 @@ fn start(args: &[String]) -> std::io::Result<Child> {
 
 /// Runs `sail verify <args>` now and again after every settled change, until
 /// interrupted.
-pub fn watch(args: &[String], err: &mut impl std::io::Write) -> ExitCode {
+pub fn watch(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
     let root = match std::env::current_dir() {
         Ok(d) => d,
         Err(e) => {

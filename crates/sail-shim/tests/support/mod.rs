@@ -117,8 +117,36 @@ pub fn wait_until(limit: Duration, what: &str, mut cond: impl FnMut() -> bool) {
     }
 }
 
+/// The socket of the daemon serving each cache root, for [`drain`].
+static DAEMONS: Mutex<Vec<(PathBuf, PathBuf)>> = Mutex::new(Vec::new());
+
+/// Waits until the daemon serving `cache` (if this test started one) has
+/// written every queued entry to disk. `PUT`s are written behind
+/// (ADR 0015), so a session can end before its entries reach disk.
+pub fn drain(cache: &Path) {
+    let socket = DAEMONS.lock().ok().and_then(|d| {
+        d.iter()
+            .find(|(c, _)| c.as_path() == cache)
+            .map(|(_, s)| s.clone())
+    });
+    let Some(socket) = socket else { return };
+    let start = Instant::now();
+    while start.elapsed() < Duration::from_secs(20) {
+        let queued = sail_api::client::Client::connect(&socket)
+            .and_then(|mut c| c.info())
+            .map(|i| i.queue.entries);
+        match queued {
+            Ok(0) | Err(_) => return,
+            Ok(_) => std::thread::sleep(Duration::from_millis(5)),
+        }
+    }
+}
+
 /// Starts the real daemon in-process on `socket`, serving `cache`.
 pub fn start_daemon(socket: &Path, cache: &Path) {
+    if let Ok(mut d) = DAEMONS.lock() {
+        d.push((cache.to_path_buf(), socket.to_path_buf()));
+    }
     let (s, c) = (socket.to_path_buf(), cache.to_path_buf());
     let counters = Arc::new(sail_daemon::Stats::default());
     std::thread::spawn(move || sail_daemon::serve(&s, &c, counters));
@@ -134,6 +162,7 @@ pub enum Op {
     Get,
     Put,
     Stats,
+    Info,
 }
 
 impl Op {
@@ -143,6 +172,7 @@ impl Op {
             Request::Get(_) => Self::Get,
             Request::Put { .. } => Self::Put,
             Request::Stats => Self::Stats,
+            Request::Info => Self::Info,
         }
     }
 
@@ -181,7 +211,7 @@ impl Fault {
 
 /// A fault-injecting proxy in front of the real daemon.
 pub struct Proxy {
-    counts: [AtomicU64; 4],
+    counts: [AtomicU64; 5],
     dead: AtomicBool,
     hung: AtomicBool,
     triggered: AtomicBool,
@@ -658,6 +688,7 @@ pub fn assert_cache_correct(cache: &Path, known: &[Want]) -> usize {
 
 /// [`assert_cache_correct`], skipping the entries at `skip`.
 pub fn assert_cache_correct_except(cache: &Path, known: &[Want], skip: &[QueryKey]) -> usize {
+    drain(cache);
     let by_key: HashMap<[u8; 32], &Want> = known.iter().map(|r| (r.key.0, r)).collect();
     // Read through a copy: `DiskCache::get` removes entries it rejects.
     let copy = cache.with_extension("check");

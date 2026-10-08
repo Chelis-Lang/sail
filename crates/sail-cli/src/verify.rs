@@ -203,8 +203,8 @@ fn split_args(args: &[String]) -> Result<(bool, Vec<String>), SetupError> {
 /// Runs `cargo verus verify <args>` through sail.
 pub fn verify(
     args: &[String],
-    out: &mut impl std::io::Write,
-    err: &mut impl std::io::Write,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
 ) -> ExitCode {
     let fail = |err: &mut dyn std::io::Write, e: &SetupError| {
         let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
@@ -363,8 +363,8 @@ fn file_sha256(path: &Path) -> Option<String> {
 fn json_failure(
     args: &[String],
     e: &SetupError,
-    out: &mut impl std::io::Write,
-    err: &mut impl std::io::Write,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
 ) -> ExitCode {
     let report = crate::report::setup_failure(args, e.0, &e.1);
     let _ = writeln!(
@@ -377,7 +377,7 @@ fn json_failure(
 }
 
 /// Copies `from` to `to` as it arrives, and returns a copy of everything.
-fn relay(mut from: impl std::io::Read, to: &mut impl std::io::Write) -> Vec<u8> {
+fn relay(mut from: impl std::io::Read, to: &mut dyn std::io::Write) -> Vec<u8> {
     let mut copy = Vec::new();
     let mut buf = vec![0u8; 64 * 1024];
     loop {
@@ -401,8 +401,8 @@ fn relay(mut from: impl std::io::Read, to: &mut impl std::io::Write) -> Vec<u8> 
 fn verify_json(
     setup: &Setup,
     args: &[String],
-    out: &mut impl std::io::Write,
-    err: &mut impl std::io::Write,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
 ) -> ExitCode {
     let scratch = match scratch() {
         Ok(s) => s,

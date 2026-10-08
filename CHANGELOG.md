@@ -12,6 +12,20 @@ semantic versioning once the API is published.
   diagnostics as data. stderr and the exit code are unchanged.
 - `sail-z3`: with `SAIL_PROVENANCE_DIR` set, a cached session records how many
   replies the cache served (ADR 0014).
+- `sail status [--json]`: the daemon's versions, uptime, cache root, log,
+  disk and memory tiers, write queue and counters. Exits 4 (`SAIL0401`)
+  when no daemon is listening (ADR 0015).
+- `sail cache stats|verify [--remove]|gc --max-bytes N|clear --yes`, on the
+  daemon's cache root or `--cache DIR` (ADR 0015).
+- Daemon: an in-memory tier in front of the disk tier
+  (`--memory-bytes`, `SAIL_DAEMON_MEMORY_BYTES`, default 256 MiB). `PUT`s
+  are written behind, through a bounded queue drained on shutdown. The
+  daemon stops after 30 minutes without connections
+  (`--idle-timeout`, `SAIL_DAEMON_IDLE_TIMEOUT`), logs to
+  `<cache root>/daemon.log`, stops cleanly on SIGINT, SIGTERM and SIGHUP,
+  and removes its socket on exit.
+- Daemon protocol: an `INFO` operation; `STATS` reports `memory_hits` and
+  `dropped_puts`. The protocol version is unchanged (ADR 0015).
 - `sail watch [ARGS...]`: re-runs `sail verify` as sources change. Edits
   cancel the run in flight and restart it once they settle.
 - `sail verify`: runs `cargo verus verify` with the same arguments, through

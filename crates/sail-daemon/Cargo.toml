@@ -12,5 +12,8 @@ sail-api.workspace = true
 sail-cache.workspace = true
 sail-key.workspace = true
 
+[dev-dependencies]
+sail-cache.workspace = true
+
 [lints]
 workspace = true
