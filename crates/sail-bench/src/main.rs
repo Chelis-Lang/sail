@@ -2,12 +2,16 @@
 //!
 //! ```text
 //! sail-bench cold   [--tier T] [--project P]... [--filter S] [--rounds N] [--name NAME] [--shim PATH]
+//! sail-bench warm   (cold's options) [--rounds WARM_ROUNDS] [--sail PATH]
+//! sail-bench edit   [--edits corpus/edits.toml] [--filter S] [--rounds N] [--name NAME] [--shim PATH] [--sail PATH]
 //! sail-bench report [--out docs/benchmarks.md] FILE...
 //! sail-bench profile <trace-dir>... [--json out.json]
 //! sail-bench seeds   <trace-dir>... --z3 <path> [--seeds N] [--jobs J] [--json out.json]
 //! sail-bench history <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
 //! ```
 //!
+//! `warm` and `edit` start `sail serve` (found next to this binary, like
+//! `sail-z3`) with a fresh cache per unit or edit round; see ADR 0012.
 //! `profile`, `seeds` and `history` analyse shim traces; see
 //! [`sail_bench::cli`].
 #![forbid(unsafe_code)]
@@ -16,7 +20,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use sail_bench::cold::{self, BenchFile};
+use sail_bench::cold::{self, BenchFile, UnitResult};
+use sail_bench::edit::{self, EditResult};
+use sail_bench::{daemon, warm};
 use sail_verus::corpus::{Corpus, Tier, Unit};
 use sail_verus::run::{machine_info, prepare_unit};
 use sail_verus::toolchain::{Installed, Pins};
@@ -24,6 +30,9 @@ use sail_verus::toolchain::{Installed, Pins};
 const USAGE: &str = "usage:
   sail-bench cold   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                     [--rounds N] [--name NAME] [--shim PATH]
+  sail-bench warm   (cold's options) [--rounds WARM_ROUNDS] [--sail PATH]
+  sail-bench edit   [--edits corpus/edits.toml] [--filter SUBSTR] [--rounds N]
+                    [--name NAME] [--shim PATH] [--sail PATH]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
   sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
@@ -93,15 +102,29 @@ fn sail_commit() -> String {
         )
 }
 
-fn cold_cmd(args: &[String]) -> Result<(), String> {
-    let (mut tier, mut projects, mut filter, mut rounds, mut name, mut shim) = (
-        Tier::Fast,
-        Vec::new(),
-        None::<String>,
-        3usize,
-        None::<String>,
-        None::<PathBuf>,
-    );
+/// Options shared by the `cold`, `warm` and `edit` workloads.
+struct Options {
+    tier: Tier,
+    projects: Vec<String>,
+    filter: Option<String>,
+    rounds: Option<usize>,
+    name: Option<String>,
+    shim: Option<PathBuf>,
+    sail: Option<PathBuf>,
+    edits: PathBuf,
+}
+
+fn parse_options(args: &[String]) -> Result<Options, String> {
+    let mut o = Options {
+        tier: Tier::Fast,
+        projects: Vec::new(),
+        filter: None,
+        rounds: None,
+        name: None,
+        shim: None,
+        sail: None,
+        edits: PathBuf::from("corpus/edits.toml"),
+    };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
         let mut value = || {
@@ -111,22 +134,40 @@ fn cold_cmd(args: &[String]) -> Result<(), String> {
         };
         match arg.as_str() {
             "--tier" => {
-                tier = value()?
+                o.tier = value()?
                     .parse()
                     .map_err(|e: sail_verus::Error| e.to_string())?;
             }
-            "--project" => projects.push(value()?),
-            "--filter" => filter = Some(value()?),
+            "--project" => o.projects.push(value()?),
+            "--filter" => o.filter = Some(value()?),
             "--rounds" => {
-                rounds = value()?
-                    .parse()
-                    .map_err(|_| "--rounds needs a number".to_owned())?;
+                o.rounds = Some(
+                    value()?
+                        .parse()
+                        .map_err(|_| "--rounds needs a number".to_owned())?,
+                );
             }
-            "--name" => name = Some(value()?),
-            "--shim" => shim = Some(value()?.into()),
+            "--name" => o.name = Some(value()?),
+            "--shim" => o.shim = Some(value()?.into()),
+            "--sail" => o.sail = Some(value()?.into()),
+            "--edits" => o.edits = value()?.into(),
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
     }
+    Ok(o)
+}
+
+/// Everything a workload run needs, located and prepared.
+struct Prepared {
+    installed: Installed,
+    corpus: Corpus,
+    cache: PathBuf,
+    shim: PathBuf,
+    started: u64,
+    scratch: PathBuf,
+}
+
+fn prepare(shim: Option<PathBuf>) -> Result<Prepared, String> {
     let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
     let corpus = Corpus::load(Path::new("corpus/corpus.toml")).map_err(|e| e.to_string())?;
     corpus.check_pins(&pins).map_err(|e| e.to_string())?;
@@ -148,14 +189,72 @@ fn cold_cmd(args: &[String]) -> Result<(), String> {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
     let scratch = cache.join("bench").join(started.to_string());
-    let selection = Selection {
-        tier,
-        projects: &projects,
-        filter: filter.as_deref(),
+    Ok(Prepared {
+        installed,
+        corpus,
+        cache,
+        shim,
+        started,
+        scratch,
+    })
+}
+
+/// What a workload produced, ready to be written as a result file.
+struct Output {
+    workload: &'static str,
+    tier: String,
+    rounds: usize,
+    units: Vec<UnitResult>,
+    edits: Vec<EditResult>,
+}
+
+fn write_result(out: Output, name: Option<String>, p: &Prepared) -> Result<(), String> {
+    let name = name.unwrap_or_else(|| {
+        format!(
+            "{}-{}-{}-{}",
+            out.workload,
+            out.tier,
+            sail_verus::toolchain::host(),
+            p.started
+        )
+    });
+    let file = BenchFile {
+        schema_version: 1,
+        workload: out.workload.to_owned(),
+        tier: out.tier,
+        rounds: out.rounds,
+        verus_release: p.installed.pins.verus.release.clone(),
+        z3_version: p.installed.pins.z3.version.clone(),
+        sail_commit: sail_commit(),
+        started_unix: p.started,
+        machine: machine_info(),
+        units: out.units,
+        edits: out.edits,
     };
-    let units = select_units(&selection, &corpus, &installed, &cache, &scratch)?;
+    let path = Path::new("bench/results").join(format!("{name}.json"));
+    std::fs::create_dir_all("bench/results").map_err(|e| e.to_string())?;
+    let json = serde_json::to_vec_pretty(&file).map_err(|e| e.to_string())?;
+    std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    println!("wrote {}", path.display());
+    Ok(())
+}
+
+fn tier_name(tier: Tier) -> String {
+    format!("{tier:?}").to_lowercase()
+}
+
+fn cold_cmd(args: &[String]) -> Result<(), String> {
+    let o = parse_options(args)?;
+    let rounds = o.rounds.unwrap_or(3);
+    let p = prepare(o.shim.clone())?;
+    let selection = Selection {
+        tier: o.tier,
+        projects: &o.projects,
+        filter: o.filter.as_deref(),
+    };
+    let units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
     eprintln!("cold workload: {} units x {rounds} rounds", units.len());
-    let results = cold::run(&installed, &units, &shim, rounds, &scratch, |r| {
+    let results = cold::run(&p.installed, &units, &p.shim, rounds, &p.scratch, |r| {
         eprintln!(
             "{:<60} plain {:>8.0} ms  sail {:>8.0} ms  same {}/{}",
             r.id,
@@ -165,31 +264,130 @@ fn cold_cmd(args: &[String]) -> Result<(), String> {
             r.same + r.different + r.infra_errors
         );
     });
-    let tier_name = format!("{tier:?}").to_lowercase();
-    let file = BenchFile {
-        schema_version: 1,
-        workload: "cold".to_owned(),
-        tier: tier_name.clone(),
+    let out = Output {
+        workload: "cold",
+        tier: tier_name(o.tier),
         rounds,
-        verus_release: installed.pins.verus.release.clone(),
-        z3_version: installed.pins.z3.version.clone(),
-        sail_commit: sail_commit(),
-        started_unix: started,
-        machine: machine_info(),
         units: results,
+        edits: Vec::new(),
     };
-    let name = name.unwrap_or_else(|| {
-        format!(
-            "cold-{tier_name}-{}-{started}",
-            sail_verus::toolchain::host()
-        )
+    write_result(out, o.name, &p)
+}
+
+/// Sums `f` over a result's cache counters for `phase`.
+fn cache_sum(cache: &[daemon::CacheRun], phase: &str, f: fn(&daemon::CacheRun) -> u64) -> u64 {
+    cache.iter().filter(|c| c.phase == phase).map(f).sum()
+}
+
+fn warm_cmd(args: &[String]) -> Result<(), String> {
+    let o = parse_options(args)?;
+    let rounds = o.rounds.unwrap_or(2);
+    if rounds == 0 {
+        return Err("--rounds must be at least 1 for the warm workload".to_owned());
+    }
+    let p = prepare(o.shim.clone())?;
+    let sail = daemon::locate_sail(o.sail.clone())?;
+    let selection = Selection {
+        tier: o.tier,
+        projects: &o.projects,
+        filter: o.filter.as_deref(),
+    };
+    let units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
+    eprintln!(
+        "warm workload: {} units x (1 fill + {rounds} warm rounds)",
+        units.len()
+    );
+    let setup = warm::Setup {
+        installed: &p.installed,
+        shim: &p.shim,
+        sail: &sail,
+        scratch: &p.scratch,
+    };
+    let results = warm::run(&setup, &units, rounds, |r| {
+        eprintln!(
+            "{:<60} plain {:>8.0} ms  fill {:>8.0} ms  warm {:>8.0} ms  served {} stored {}  same {}/{}",
+            r.id,
+            cold::median(&r.plain.wall_ms).unwrap_or(0.0),
+            r.fill
+                .as_ref()
+                .and_then(|f| cold::median(&f.wall_ms))
+                .unwrap_or(0.0),
+            cold::median(&r.sail.wall_ms).unwrap_or(0.0),
+            cache_sum(&r.cache, "warm", |c| c.hits),
+            cache_sum(&r.cache, "warm", |c| c.puts),
+            r.same,
+            r.same + r.different + r.unstable + r.infra_errors
+        );
     });
-    let path = Path::new("bench/results").join(format!("{name}.json"));
-    std::fs::create_dir_all("bench/results").map_err(|e| e.to_string())?;
-    let json = serde_json::to_vec_pretty(&file).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
-    println!("wrote {}", path.display());
-    Ok(())
+    let out = Output {
+        workload: "warm",
+        tier: tier_name(o.tier),
+        rounds,
+        units: results,
+        edits: Vec::new(),
+    };
+    write_result(out, o.name, &p)
+}
+
+fn edit_cmd(args: &[String]) -> Result<(), String> {
+    let o = parse_options(args)?;
+    let rounds = o.rounds.unwrap_or(2);
+    if rounds == 0 {
+        return Err("--rounds must be at least 1".to_owned());
+    }
+    let catalogue = edit::Catalogue::load(&o.edits)?;
+    let p = prepare(o.shim.clone())?;
+    let sail = daemon::locate_sail(o.sail.clone())?;
+    // Edits name their units: select from every tier, limited to their
+    // projects.
+    let mut projects: Vec<String> = catalogue
+        .edits
+        .iter()
+        .filter_map(|e| e.unit.split('/').next().map(str::to_owned))
+        .collect();
+    projects.sort();
+    projects.dedup();
+    let selection = Selection {
+        tier: Tier::Deep,
+        projects: &projects,
+        filter: None,
+    };
+    let units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
+    let mut edits = edit::resolve(&catalogue, &units)?;
+    if let Some(f) = o.filter.as_deref() {
+        edits.retain(|(e, _)| e.id.contains(f) || e.unit.contains(f));
+    }
+    eprintln!("edit workload: {} edits x {rounds} rounds", edits.len());
+    let setup = warm::Setup {
+        installed: &p.installed,
+        shim: &p.shim,
+        sail: &sail,
+        scratch: &p.scratch,
+    };
+    let results = edit::run(&setup, &edits, rounds, |r| {
+        eprintln!(
+            "{:<28} original: plain {:>6.0} ms fill {:>6.0} ms | edited: plain {:>6.0} ms sail {:>6.0} ms | served {} stored {} | outcome {} (expected {}) | same {}/{}",
+            r.id,
+            cold::median(&r.plain_original.wall_ms).unwrap_or(0.0),
+            cold::median(&r.fill.wall_ms).unwrap_or(0.0),
+            cold::median(&r.plain.wall_ms).unwrap_or(0.0),
+            cold::median(&r.sail.wall_ms).unwrap_or(0.0),
+            cache_sum(&r.cache, "edit", |c| c.hits),
+            cache_sum(&r.cache, "edit", |c| c.puts),
+            r.outcome.as_deref().unwrap_or("n/a"),
+            r.expected,
+            r.same,
+            r.same + r.different + r.unstable + r.infra_errors
+        );
+    });
+    let out = Output {
+        workload: "edit",
+        tier: "catalogue".to_owned(),
+        rounds,
+        units: Vec::new(),
+        edits: results,
+    };
+    write_result(out, o.name, &p)
 }
 
 fn report_cmd(args: &[String]) -> Result<(), String> {
@@ -264,6 +462,8 @@ fn main() -> ExitCode {
     }
     let result = match args.first().map(String::as_str) {
         Some("cold") => cold_cmd(args.get(1..).unwrap_or_default()),
+        Some("warm") => warm_cmd(args.get(1..).unwrap_or_default()),
+        Some("edit") => edit_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),

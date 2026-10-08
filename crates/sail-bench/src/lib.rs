@@ -1,7 +1,9 @@
 //! Benchmark workloads, history replay and reporting.
 //!
-//! Status (M3):
+//! Status (M4):
 //! - [`cold`]: the cold workload with the plain-Verus baseline;
+//! - [`warm`]: the warm, no-change workload with the cache on;
+//! - [`edit`]: the single-function body and specification edit workloads;
 //! - [`report`]: the generated `docs/benchmarks.md`.
 //!
 //! Trace analysis over the shim's captured sessions (`SAIL_TRACE_DIR`),
@@ -19,6 +21,8 @@
 
 pub mod cli;
 pub mod cold;
+pub mod daemon;
+pub mod edit;
 pub mod error;
 pub mod history;
 pub mod hits;
@@ -30,6 +34,7 @@ pub mod solver;
 pub mod stats;
 pub mod trace;
 pub mod transcript;
+pub mod warm;
 
 use std::io::Write as _;
 use std::sync::atomic::{AtomicBool, Ordering};

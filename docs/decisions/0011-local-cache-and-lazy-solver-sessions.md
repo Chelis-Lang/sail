@@ -150,3 +150,10 @@ Hardening and configuration:
   in milliseconds (default 10,000). A hung daemon costs a session at most
   one timeout: before falling back if it hangs on a lookup, or at exit if it
   hangs on a store.
+
+## Update 2026-10-08: a `STATS` operation
+
+The protocol has a fourth operation, `STATS` (op 4, empty payload). It
+returns the daemon's counters since start as JSON: `hellos`, `gets`, `hits`
+and `puts`. Benchmarks use it to report what the cache did in each run.
+See ADR 0012.

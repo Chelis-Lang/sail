@@ -3,11 +3,20 @@ name: bench
 # Benchmarks on the reference platform, Linux x86-64 (ADR 0010). Dispatched
 # by hand. The result JSON is uploaded as an artifact and committed under
 # bench/results/ in a follow-up PR; docs/benchmarks.md is regenerated from it
-# (ADR 0007). Never part of the fast gate.
+# (ADR 0007). Never part of the fast gate. Workloads: cold (ADR 0007), warm
+# and edit (ADR 0012; `rounds` is then the number of warm rounds after the
+# fill, or the rounds per edit, and `tier` is ignored for edit, which runs
+# corpus/edits.toml).
 
 on:
   workflow_dispatch:
     inputs:
+      workload:
+        description: "Workload"
+        required: true
+        default: cold
+        type: choice
+        options: [cold, warm, edit]
       tier:
         description: "Corpus tier"
         required: true
@@ -27,8 +36,8 @@ env:
   CARGO_INCREMENTAL: "0"
 
 jobs:
-  cold:
-    name: Cold workload
+  bench:
+    name: ${{ inputs.workload }} workload
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
@@ -52,18 +61,23 @@ jobs:
       - name: Install pinned Verus
         run: cargo xtask fetch-verus
       - name: Build
-        run: cargo build --release --locked -p sail-shim -p sail-bench
-      - name: Cold workload
+        run: cargo build --release --locked -p sail-shim -p sail-bench -p sail-cli
+      - name: Run the workload
         env:
+          WORKLOAD: ${{ inputs.workload }}
           TIER: ${{ inputs.tier }}
           ROUNDS: ${{ inputs.rounds }}
         run: |
-          name="cold-${TIER}-x86_64-linux-gha-$(date -u +%Y-%m-%d)"
-          ./target/release/sail-bench cold --tier "$TIER" --rounds "$ROUNDS" --name "$name"
+          day="$(date -u +%Y-%m-%d)"
+          if [ "$WORKLOAD" = edit ]; then
+            ./target/release/sail-bench edit --rounds "$ROUNDS" --name "edit-catalogue-x86_64-linux-gha-$day"
+          else
+            ./target/release/sail-bench "$WORKLOAD" --tier "$TIER" --rounds "$ROUNDS" --name "$WORKLOAD-$TIER-x86_64-linux-gha-$day"
+          fi
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bench-result
-          path: bench/results/cold-*-x86_64-linux-*.json
+          path: bench/results/*-x86_64-linux-gha-*.json
           if-no-files-found: ignore

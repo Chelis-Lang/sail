@@ -302,6 +302,11 @@ fn run_one(cx: &Context, unit: &Unit) -> UnitReport {
     let solver = Solver::Shim {
         shim: cx.shim.to_path_buf(),
         trace_dir: cx.trace.then(|| dir.join("traces").join(slug(&unit.id))),
+        // Conformance with the cache on (ADR 0011): the sail side uses the
+        // daemon named in the harness's own environment, if any.
+        daemon_socket: std::env::var_os("SAIL_DAEMON_SOCKET")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from),
     };
     let sail = match run_unit(installed, unit, &solver, &base.join("sail")) {
         Ok(s) => s,
