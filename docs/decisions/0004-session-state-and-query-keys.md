@@ -63,3 +63,21 @@ Z3 4.16.0 on Verus queries.
   decides this; preference does not.
 - Run-to-run byte differences in what Verus sends (`HashMap` ordering,
   `--log` whitespace) cost hit rate, never correctness.
+
+## Update 2026-10-08
+
+The prior-art survey (`docs/survey/prior-art.md` §5–6) adds evidence:
+- **History dependence.** Z3's answer depends on process history: earlier
+  checks, popped scopes and interrupted solves (Z3 issues #7525 and #10939,
+  and the F* documentation). This raises the prior that key v1 will not be
+  enough. The M3 experiment still decides.
+- **Platform dependence.** The same Z3 binary has reported different
+  `rlimit-count`s on different machines, from a memory-dependent
+  preprocessing bail-out (#6736). Official 4.16.0 builds needed different
+  rlimits on Windows and Linux (#8841). Solver identity for any cache
+  therefore also binds the platform: OS, architecture and, pending
+  measurement, a machine class. This is required before any shared tier
+  exists, and is recorded in `docs/trust.md`.
+- **Hidden options.** Options that look like they only affect output, such as
+  `:produce-unsat-cores`, change Z3's search. sail must never add options to
+  a default-mode session.
