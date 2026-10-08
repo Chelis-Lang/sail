@@ -32,7 +32,20 @@ accessor functions that Verus generates for datatype fields used with `->`
 ```
 
 This matches the survey's prediction of hash-ordered iteration in Verus's
-SMT emission (`docs/survey/verus-z3.md` §8). Other units affected in the fast
+SMT emission (`docs/survey/verus-z3.md` §8).
+
+**Root cause:** `verus@426d8b0:source/builtin_macros/src/enum_synthesize.rs`.
+- At line 92, the macro collects enum fields into a
+  `std::collections::HashMap` (`direct_fields`).
+- At line 155, it generates the `arrow_<field>` accessor methods by iterating
+  over that map.
+- `HashMap`'s randomised hashing (`RandomState`) changes the iteration order
+  from process to process. That changes the order of the generated items,
+  and so the order of their SMT declarations and fuel lists.
+
+An insertion-ordered map, or sorting before emission, would make this
+deterministic. A draft upstream report is in `upstream-issue.md`; it has not
+been filed. Other units affected in the fast
 tier include `debug_expand.rs`, `guide/traits.rs`, `guide/datatypes.rs` and
 `state_machines/*`. vstd is affected too: 72 of 2,060 checks.
 
