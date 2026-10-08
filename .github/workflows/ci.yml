@@ -83,5 +83,9 @@ jobs:
         run: cargo doc --workspace --no-deps --locked
       - name: crate layering
         run: cargo xtask check-layering
+      - name: docs/benchmarks.md is generated, not hand-edited
+        run: |
+          cargo run -q --locked -p sail-bench -- report --out target/benchmarks.md bench/results/*.json
+          diff -u docs/benchmarks.md target/benchmarks.md
       - name: cargo-deny
         run: cargo deny --locked check
