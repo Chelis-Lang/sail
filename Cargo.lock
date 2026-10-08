@@ -339,6 +339,7 @@ dependencies = [
  "sail-cache",
  "sail-daemon",
  "sail-key",
+ "sail-mcp",
  "sail-verus",
  "serde",
  "serde_json",
@@ -381,6 +382,12 @@ version = "0.0.0"
 [[package]]
 name = "sail-mcp"
 version = "0.0.0"
+dependencies = [
+ "sail-api",
+ "serde",
+ "serde_json",
+ "sha2",
+]
 
 [[package]]
 name = "sail-portfolio"

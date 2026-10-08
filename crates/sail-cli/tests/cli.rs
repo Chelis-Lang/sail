@@ -14,7 +14,9 @@ fn help_lists_every_charter_command() {
     let output = sail(&["--help"]);
     assert_eq!(output.status.code(), Some(0));
     let text = String::from_utf8_lossy(&output.stdout);
-    for cmd in ["verify", "watch", "serve", "status", "cache", "bench"] {
+    for cmd in [
+        "verify", "watch", "mcp", "serve", "status", "cache", "bench",
+    ] {
         assert!(text.contains(cmd), "help is missing `{cmd}`:\n{text}");
     }
 }

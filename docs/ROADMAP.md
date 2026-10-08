@@ -55,6 +55,9 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
      packages (VI-0004), and linking diagnostics to obligations.
 4. Seed portfolio and fragility scoring (`sail-portfolio`), opt-in and labelled.
 5. `sail watch` speculative verification, and the MCP server (`sail-mcp`).
+   - `sail watch` and `sail mcp` (ADR 0016) are in place.
+   - Remaining: speculative (provisional) results, and the MCP `fragility`
+     tool once `sail fragility` exists.
 6. A shared tier with integrity checks (`docs/trust.md`).
 7. History replay and agent-loop benchmark workloads.
 
