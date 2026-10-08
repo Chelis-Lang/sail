@@ -133,6 +133,7 @@ pub enum Op {
     Hello,
     Get,
     Put,
+    Stats,
 }
 
 impl Op {
@@ -141,6 +142,7 @@ impl Op {
             Request::Hello(_) => Self::Hello,
             Request::Get(_) => Self::Get,
             Request::Put { .. } => Self::Put,
+            Request::Stats => Self::Stats,
         }
     }
 
@@ -179,7 +181,7 @@ impl Fault {
 
 /// A fault-injecting proxy in front of the real daemon.
 pub struct Proxy {
-    counts: [AtomicU64; 3],
+    counts: [AtomicU64; 4],
     dead: AtomicBool,
     hung: AtomicBool,
     triggered: AtomicBool,

@@ -37,6 +37,7 @@ fn stats_count_hellos_gets_hits_and_puts() {
     let meta = PutMeta {
         command: "check-sat".to_owned(),
         provenance: "pinned-solver".to_owned(),
+        effort: None,
     };
     assert!(c.put(&key, meta, b"unsat\n".to_vec()).is_ok());
     assert_eq!(c.get(&key).ok().flatten().as_deref(), Some(&b"unsat\n"[..]));
