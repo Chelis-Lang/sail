@@ -296,7 +296,10 @@ mod tests {
             classify(&[a.clone(), a.clone()], &other).verdict,
             Verdict::Different
         );
-        assert_eq!(classify(std::slice::from_ref(&a), &a).verdict, Verdict::Same);
+        assert_eq!(
+            classify(std::slice::from_ref(&a), &a).verdict,
+            Verdict::Same
+        );
     }
 
     #[test]
