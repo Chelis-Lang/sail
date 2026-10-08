@@ -10,14 +10,16 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime};
 
 use sail_api::protocol::{
-    Identity, Info, MemoryInfo, QueueInfo, Request, StatsSnapshot, write_get_response,
+    Identity, Info, MemoryInfo, QueueInfo, Request, SharedInfo, StatsSnapshot, write_get_response,
     write_hello_response, write_info_response, write_put_response, write_stats_response,
 };
 use sail_cache::memory::{MemoryTier, State as Slot, Value};
+use sail_cache::shared::{Rejection, Solver};
 use sail_cache::{DiskCache, FileStamp};
 use sail_key::{QueryKey, SolverIdentity, sha256};
 
 use crate::log::Log;
+use crate::shared::{Lookup, SharedConfig, SharedTier};
 use crate::writer::{Job, Submitted, Writer};
 
 /// Default budget of the in-memory tier: 256 MiB.
@@ -54,6 +56,8 @@ pub struct Config {
     /// Fault injection only: sleep this long before each disk write, so
     /// tests can stop the daemon with writes still queued.
     pub write_delay: Option<Duration>,
+    /// The shared tier to consult on local misses (`None`: none).
+    pub shared: Option<SharedConfig>,
 }
 
 impl Default for Config {
@@ -66,6 +70,7 @@ impl Default for Config {
             idle_timeout: None,
             log: None,
             write_delay: None,
+            shared: None,
         }
     }
 }
@@ -85,6 +90,22 @@ pub struct Stats {
     pub memory_hits: AtomicU64,
     /// `PUT`s dropped because the write-behind queue stayed full.
     pub dropped_puts: AtomicU64,
+    /// Local misses looked up in the shared store.
+    pub shared_lookups: AtomicU64,
+    /// Shared entries that passed every check and were served.
+    pub shared_hits: AtomicU64,
+    /// Shared entries that failed a check (including the two below).
+    pub shared_rejected: AtomicU64,
+    /// Shared entries signed for another solver: refused.
+    pub shared_other_solver: AtomicU64,
+    /// Shared entries signed for this solver on another platform class:
+    /// refused (cross-class hits need a named opt-in mode, ADR 0010).
+    pub shared_other_platform: AtomicU64,
+    /// Shared lookups that timed out.
+    pub shared_timeouts: AtomicU64,
+    /// Local misses not looked up: the store was backing off after a
+    /// timeout, the key missed recently, or too many reads were running.
+    pub shared_skipped: AtomicU64,
 }
 
 impl Stats {
@@ -98,6 +119,13 @@ impl Stats {
             puts: self.puts.load(Ordering::Relaxed),
             memory_hits: self.memory_hits.load(Ordering::Relaxed),
             dropped_puts: self.dropped_puts.load(Ordering::Relaxed),
+            shared_lookups: self.shared_lookups.load(Ordering::Relaxed),
+            shared_hits: self.shared_hits.load(Ordering::Relaxed),
+            shared_rejected: self.shared_rejected.load(Ordering::Relaxed),
+            shared_other_solver: self.shared_other_solver.load(Ordering::Relaxed),
+            shared_other_platform: self.shared_other_platform.load(Ordering::Relaxed),
+            shared_timeouts: self.shared_timeouts.load(Ordering::Relaxed),
+            shared_skipped: self.shared_skipped.load(Ordering::Relaxed),
         }
     }
 }
@@ -110,6 +138,10 @@ struct State {
     writer: Writer,
     identities: IdentityCache,
     stats: Arc<Stats>,
+    shared: Option<SharedTier>,
+    /// Shared-tier rejections and timeouts logged so far (the first few
+    /// are logged, to help diagnose a trust setup).
+    shared_logged: AtomicU64,
     log: Log,
     started: Instant,
     socket: PathBuf,
@@ -155,6 +187,14 @@ fn identify(path: &Path) -> Result<Identity, String> {
     })
 }
 
+/// Which tier a `GET` hit came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Source {
+    Memory,
+    Disk,
+    Shared,
+}
+
 fn to_wire(e: &sail_cache::Effort) -> sail_api::protocol::Effort {
     sail_api::protocol::Effort {
         limit: e.limit,
@@ -184,39 +224,146 @@ impl State {
         Ok(identity)
     }
 
-    /// The reply for `key`, and whether it came from memory.
+    /// The reply for `key`, and which tier it came from.
     ///
     /// A memory slot is served only if it is pending (its write is still
     /// queued, so no entry file exists yet) or its entry file still has the
     /// stamp it had when the slot was filled. Anything else falls through
-    /// to a verified disk read, which refills the slot.
-    fn get(&self, key: &QueryKey) -> Option<(Arc<Value>, bool)> {
+    /// to a verified disk read, which refills the slot. A disk miss, for a
+    /// session whose solver is known (`solver`), falls through to the
+    /// shared tier.
+    fn get(&self, key: &QueryKey, solver: Option<&Solver>) -> Option<(Arc<Value>, Source)> {
         if let Some((value, slot)) = self.memory.lookup(key) {
             match slot {
-                Slot::Pending => return Some((value, true)),
+                Slot::Pending => return Some((value, Source::Memory)),
                 Slot::OnDisk(stamp) => {
                     if self.disk.stamp_for_hit(key) == Some(stamp) {
-                        return Some((value, true));
+                        return Some((value, Source::Memory));
                     }
                     self.memory.remove_if(key, &value);
                 }
             }
         }
-        let stored = self.disk.get_stamped(key)?;
+        if let Some(stored) = self.disk.get_stamped(key) {
+            let value = Arc::new(Value {
+                reply: stored.reply,
+                effort: stored.meta.effort,
+            });
+            self.memory
+                .insert_on_disk(key, Arc::clone(&value), stored.stamp);
+            return Some((value, Source::Disk));
+        }
+        let (shared, solver) = (self.shared.as_ref()?, solver?);
+        self.shared_get(shared, key, solver)
+            .map(|v| (v, Source::Shared))
+    }
+
+    /// Looks `key` up in the shared tier. A verified entry is also queued
+    /// for the local disk tier, with provenance `shared:<key id>` (charter
+    /// rule 7). Every failure is a miss.
+    fn shared_get(
+        &self,
+        shared: &SharedTier,
+        key: &QueryKey,
+        solver: &Solver,
+    ) -> Option<Arc<Value>> {
+        let lookup = shared.lookup(key, solver);
+        if !matches!(lookup, Lookup::Skipped) {
+            self.stats.shared_lookups.fetch_add(1, Ordering::Relaxed);
+        }
+        let verified = match lookup {
+            Lookup::Hit(v) => v,
+            Lookup::Miss => return None,
+            Lookup::Skipped => {
+                self.stats.shared_skipped.fetch_add(1, Ordering::Relaxed);
+                return None;
+            }
+            Lookup::Timeout => {
+                self.stats.shared_timeouts.fetch_add(1, Ordering::Relaxed);
+                self.shared_log(&format!(
+                    "shared store timed out on {key}: skipping it for {}s",
+                    shared.config().backoff.as_secs()
+                ));
+                return None;
+            }
+            Lookup::Rejected(r) => {
+                self.shared_rejected(key, r);
+                return None;
+            }
+        };
+        let effort = verified.effort.as_ref().map(to_wire);
+        if verified.command.starts_with("check-sat")
+            && sail_api::policy::is_unknown(&verified.reply)
+            && !sail_api::policy::unknown_servable(effort.as_ref())
+        {
+            shared.remember_rejection(key);
+            self.shared_rejected(key, Rejection::UnservableUnknown);
+            return None;
+        }
+        self.stats.shared_hits.fetch_add(1, Ordering::Relaxed);
+        let provenance = verified.provenance();
         let value = Arc::new(Value {
-            reply: stored.reply,
-            effort: stored.meta.effort,
+            reply: verified.reply,
+            effort: verified.effort,
         });
-        self.memory
-            .insert_on_disk(key, Arc::clone(&value), stored.stamp);
-        Some((value, false))
+        let job = Job {
+            key: *key,
+            value: Arc::clone(&value),
+            command: verified.command,
+            provenance,
+            solver: solver.summary(),
+        };
+        // Never wait for room here: a dropped copy only costs a future
+        // shared lookup.
+        if !self.disk.contains(key)
+            && self.writer.submit(&self.memory, job, Duration::ZERO) == Submitted::Dropped
+        {
+            self.stats.dropped_puts.fetch_add(1, Ordering::Relaxed);
+        }
+        Some(value)
+    }
+
+    fn shared_rejected(&self, key: &QueryKey, r: Rejection) {
+        self.stats.shared_rejected.fetch_add(1, Ordering::Relaxed);
+        match r {
+            Rejection::OtherSolver => {
+                self.stats
+                    .shared_other_solver
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            Rejection::OtherPlatform => {
+                self.stats
+                    .shared_other_platform
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            _ => {}
+        }
+        self.shared_log(&format!("shared entry {key} rejected: {}", r.name()));
+    }
+
+    /// Logs the first few shared-tier problems.
+    fn shared_log(&self, msg: &str) {
+        const LIMIT: u64 = 20;
+        let n = self.shared_logged.fetch_add(1, Ordering::Relaxed);
+        if n < LIMIT {
+            self.log.line(msg);
+        } else if n == LIMIT {
+            self.log
+                .line("further shared-tier problems are counted in STATS, not logged");
+        }
     }
 
     /// Stores a reply: queued for disk and held in memory meanwhile. A key
     /// whose entry file exists, or whose write is already queued, is left
     /// alone, so memory never holds bytes that differ from the entry disk
     /// has or will have.
-    fn put(&self, key: QueryKey, meta: sail_api::protocol::PutMeta, reply: Vec<u8>) {
+    fn put(
+        &self,
+        key: QueryKey,
+        meta: sail_api::protocol::PutMeta,
+        reply: Vec<u8>,
+        solver: Option<&Solver>,
+    ) {
         if self.disk.contains(&key) {
             return;
         }
@@ -232,6 +379,7 @@ impl State {
             }),
             command: meta.command,
             provenance: meta.provenance,
+            solver: solver.map(Solver::summary).unwrap_or_default(),
         };
         if self.writer.submit(&self.memory, job, self.queue_wait) == Submitted::Dropped {
             self.stats.dropped_puts.fetch_add(1, Ordering::Relaxed);
@@ -261,6 +409,15 @@ impl State {
                 entries: queued,
                 bytes: queued_bytes,
             },
+            shared: self.shared.as_ref().map(|s| {
+                let c = s.config();
+                SharedInfo {
+                    store: c.store.display().to_string(),
+                    trust_dir: c.trust_dir.display().to_string(),
+                    trusted_keys: s.trusted().0.ids(),
+                    timeout_ms: u64::try_from(c.timeout.as_millis()).unwrap_or(u64::MAX),
+                }
+            }),
         }
     }
 
@@ -282,6 +439,9 @@ impl State {
         };
         let mut reader = BufReader::new(read_half);
         let mut writer = BufWriter::new(stream);
+        // The solver this connection's session runs, from its `HELLO`. It
+        // scopes shared lookups and is recorded with every `PUT`.
+        let mut solver: Option<Solver> = None;
         loop {
             let Ok(Some(request)) = Request::read(&mut reader) else {
                 return;
@@ -290,14 +450,20 @@ impl State {
                 Request::Hello(path) => {
                     self.stats.hellos.fetch_add(1, Ordering::Relaxed);
                     let r = self.hello(&path);
+                    solver = r.as_ref().ok().map(|id| Solver {
+                        name: id.name.clone(),
+                        version: id.version.clone(),
+                        binary_sha256: id.binary_sha256.clone(),
+                        platform: id.platform.clone(),
+                    });
                     write_hello_response(&mut writer, r.as_ref().map_err(String::as_str))
                 }
                 Request::Get(key) => {
                     self.stats.gets.fetch_add(1, Ordering::Relaxed);
-                    let found = self.get(&QueryKey(key));
-                    if let Some((_, from_memory)) = &found {
+                    let found = self.get(&QueryKey(key), solver.as_ref());
+                    if let Some((_, source)) = &found {
                         self.stats.hits.fetch_add(1, Ordering::Relaxed);
-                        if *from_memory {
+                        if *source == Source::Memory {
                             self.stats.memory_hits.fetch_add(1, Ordering::Relaxed);
                         }
                     }
@@ -315,7 +481,7 @@ impl State {
                 Request::Put { key, meta, reply } => {
                     self.stats.puts.fetch_add(1, Ordering::Relaxed);
                     // A failed or dropped store only costs a future miss.
-                    self.put(QueryKey(key), meta, reply);
+                    self.put(QueryKey(key), meta, reply, solver.as_ref());
                     write_put_response(&mut writer)
                 }
                 Request::Stats => write_stats_response(&mut writer, &self.stats.snapshot()),
@@ -424,6 +590,8 @@ pub fn bind(
         writer: Writer::new(config.queue_bytes),
         identities: Mutex::new(HashMap::new()),
         stats: counters,
+        shared: config.shared.clone().map(SharedTier::new),
+        shared_logged: AtomicU64::new(0),
         log: Log::open(config.log.as_deref()),
         started: Instant::now(),
         socket: socket.to_path_buf(),
@@ -432,6 +600,21 @@ pub fn bind(
         active: AtomicU64::new(0),
         last_activity: Mutex::new(Instant::now()),
     });
+    if let Some(shared) = &state.shared {
+        let c = shared.config();
+        let (keys, problems) = shared.trusted();
+        state.log.line(&format!(
+            "shared tier: store {}, trust {} ({} keys: {}), timeout {} ms",
+            c.store.display(),
+            c.trust_dir.display(),
+            keys.len(),
+            keys.ids().join(", "),
+            c.timeout.as_millis()
+        ));
+        for p in problems {
+            state.log.line(&format!("shared tier: ignoring {p}"));
+        }
+    }
     let w = Arc::clone(&state);
     let delay = config.write_delay;
     let writer_thread = std::thread::Builder::new()
@@ -528,13 +711,14 @@ impl Server {
         }
         let s = self.state.stats.snapshot();
         self.state.log.line(&format!(
-            "stopped after {}s: {} writes drained; hellos {}, gets {}, hits {} ({} from memory), puts {}, dropped puts {}",
+            "stopped after {}s: {} writes drained; hellos {}, gets {}, hits {} ({} from memory, {} from shared), puts {}, dropped puts {}",
             self.state.started.elapsed().as_secs(),
             queued,
             s.hellos,
             s.gets,
             s.hits,
             s.memory_hits,
+            s.shared_hits,
             s.puts,
             s.dropped_puts,
         ));

@@ -24,6 +24,9 @@ pub(crate) struct Job {
     pub value: Arc<Value>,
     pub command: String,
     pub provenance: String,
+    /// The solver identity summary (`sail_cache::shared::Solver::summary`),
+    /// or empty if the session's solver is unknown.
+    pub solver: String,
 }
 
 impl Job {
@@ -161,7 +164,7 @@ impl Writer {
                 &job.key,
                 &job.value.reply,
                 &job.command,
-                "",
+                &job.solver,
                 &job.provenance,
                 job.value.effort.as_ref(),
             );

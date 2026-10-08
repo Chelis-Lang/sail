@@ -12,7 +12,7 @@ without it:
 SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all
 ```
 
-It takes about 6 seconds on an M-series Mac.
+It takes about 9 seconds on an M-series Mac.
 
 ## How faults are injected
 
@@ -60,6 +60,14 @@ and slow daemon tests.
 | Daemon hangs at `PUT` 1 or 10, or answers `PUT` 4 late | Forwarding is unaffected; exit waits for at most one timeout | Exact replies, exit 0, within the deadline |
 | Memory tier warm, then every stored entry changed under the running daemon: removed, a byte flipped in place, swapped with another entry, or replaced by a re-headered forgery (ADR 0015) | Every `GET` returns exactly what the disk tier holds now | Every `GET` matches the disk; later sessions are exact; the forgeries are not served (shape check) |
 | `gc` to half the cache, `verify --remove` and `clear`, in a loop, during 16 concurrent sessions, cold then warm | Only misses | Exact replies in every session; every entry passes the replay check |
+| Shared store published from another cache, read by a daemon on an empty cache (ADR 0017) | Served from the shared tier, copied locally with provenance `shared:<key id>` | Exact replies; every reply up to the one unpublished `unknown` came from the store; local copies pass the replay check |
+| Shared store with every `check-sat` answer flipped and its hash fixed (a forgery with no valid signature) | Miss | Exact replies over two sessions; no forged answer reaches the local tier |
+| Shared store with wrong answers signed by an untrusted key; or correctly signed by the trusted key for another solver binary, or for another platform class | Miss; foreign solver and platform counted | Exact replies; `shared_other_solver` and `shared_other_platform` count them; nothing wrong stored locally |
+| Shared store with every entry truncated to half | Miss | Exact replies |
+| Shared store hung: every entry a FIFO, so opening it blocks | One timeout, then the store is skipped for the back-off | Exact replies in two sessions; one timeout counted |
+
+Disabling the signature check makes the forged-answer case fail with a
+wrong `check-sat` reply, so the test does exercise the signature.
 
 Daemon-side cases that need no solver run in the fast gate:
 - **`crates/sail-daemon/tests/tiers.rs`:**
@@ -68,6 +76,16 @@ Daemon-side cases that need no solver run in the fast gate:
     `PUT`s, and draining on shutdown;
   - `gc`, `clear` and `verify --remove` racing six clients;
   - idle shutdown.
+- **`crates/sail-daemon/tests/shared.rs`** (ADR 0017): a verified shared
+  entry is served, copied locally with its provenance, and never published
+  again. Each of these is a miss: forged (valid hash, wrong answer),
+  untrusted signer, another solver, another platform, corrupt, truncated,
+  empty, another key's entry, a near-limit `unknown`, the wrong shape, a
+  directory. A rejected key is not looked up again for a while. Sessions
+  without `HELLO` never consult the store. A hung store (a FIFO) costs one
+  timeout, then is skipped until its back-off ends, and then serves again.
+- **`crates/sail-cli/tests/shared_ops.rs`**: `keygen`, `trust`, `publish`
+  and `sail serve --shared` as real processes.
 - **`crates/sail-cli/tests/daemon_ops.rs`**, with a real `sail serve`
   process:
   - SIGTERM with writes queued: every entry is written, and the socket is
@@ -110,6 +128,9 @@ The client timeout is configurable with `SAIL_DAEMON_TIMEOUT_MS`.
   one with writes queued is covered without a solver (above). What a shim
   sees is what the proxy's closed-connection and removed-socket faults
   produce.
-- A same-shape forgery (an `unsat` stored under a key whose answer is
-  `sat`). It passes every check. The local tier trusts its single writer, the
-  daemon. The shared tier will not (charter rule 9, `docs/trust.md`).
+- A same-shape forgery in the *local* tier (an `unsat` stored under a key
+  whose answer is `sat`). It passes every check. The local tier trusts its
+  single writer, the daemon. The shared tier does not: there the same
+  forgery is refused for want of a valid signature (above).
+- A forgery signed by a *trusted* key. It is served: a trusted signer is
+  trusted completely (`docs/trust.md`).

@@ -31,6 +31,9 @@ inline with the date and link the ADR that captures it.
 6. **Sources for the shared tier.** The same Z3 binary can report different
    rlimit counts on different machines. Should the shared tier be scoped per
    machine class, or should entries be re-validated locally before use?
+   *Answered* (ADR 0010, item 6): scoped by solver binary hash and platform
+   class. Built with signed entries in ADR 0017; a finer machine class
+   waits for measurement.
 7. **Plain Verus is not perfectly deterministic.** Z3 4.16.0's rlimit
    consumption varies slightly between runs on byte-identical nonlinear
    queries (`corpus/repros/z3-nla-rlimit-nondeterminism/`). A query near its

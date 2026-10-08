@@ -93,6 +93,31 @@ pub struct StatsSnapshot {
     /// costs a future miss, never correctness.
     #[serde(default)]
     pub dropped_puts: u64,
+    /// Local misses looked up in the shared store (ADR 0017).
+    #[serde(default)]
+    pub shared_lookups: u64,
+    /// Shared entries that passed every check and were served (included
+    /// in `hits`).
+    #[serde(default)]
+    pub shared_hits: u64,
+    /// Shared entries that failed a check, including the two counts below.
+    /// Each is a miss.
+    #[serde(default)]
+    pub shared_rejected: u64,
+    /// Shared entries signed for another solver: refused.
+    #[serde(default)]
+    pub shared_other_solver: u64,
+    /// Shared entries signed for this solver on another platform class:
+    /// refused (ADR 0010).
+    #[serde(default)]
+    pub shared_other_platform: u64,
+    /// Shared lookups that timed out.
+    #[serde(default)]
+    pub shared_timeouts: u64,
+    /// Local misses not looked up in the shared store: backing off after a
+    /// timeout, a recent miss for the key, or too many reads in flight.
+    #[serde(default)]
+    pub shared_skipped: u64,
 }
 
 impl StatsSnapshot {
@@ -106,6 +131,17 @@ impl StatsSnapshot {
             puts: self.puts.saturating_sub(earlier.puts),
             memory_hits: self.memory_hits.saturating_sub(earlier.memory_hits),
             dropped_puts: self.dropped_puts.saturating_sub(earlier.dropped_puts),
+            shared_lookups: self.shared_lookups.saturating_sub(earlier.shared_lookups),
+            shared_hits: self.shared_hits.saturating_sub(earlier.shared_hits),
+            shared_rejected: self.shared_rejected.saturating_sub(earlier.shared_rejected),
+            shared_other_solver: self
+                .shared_other_solver
+                .saturating_sub(earlier.shared_other_solver),
+            shared_other_platform: self
+                .shared_other_platform
+                .saturating_sub(earlier.shared_other_platform),
+            shared_timeouts: self.shared_timeouts.saturating_sub(earlier.shared_timeouts),
+            shared_skipped: self.shared_skipped.saturating_sub(earlier.shared_skipped),
         }
     }
 }
@@ -158,6 +194,22 @@ pub struct Info {
     pub memory: MemoryInfo,
     /// The write-behind queue.
     pub queue: QueueInfo,
+    /// The shared tier, if one is configured (ADR 0017).
+    #[serde(default)]
+    pub shared: Option<SharedInfo>,
+}
+
+/// The shared tier's configuration, as `INFO` reports it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SharedInfo {
+    /// The shared store's directory.
+    pub store: String,
+    /// The directory of trusted public keys.
+    pub trust_dir: String,
+    /// Ids of the keys trusted now.
+    pub trusted_keys: Vec<String>,
+    /// How long one lookup may take, in milliseconds.
+    pub timeout_ms: u64,
 }
 
 /// A decoded request.
@@ -469,6 +521,7 @@ mod tests {
             puts: 3,
             memory_hits: 2,
             dropped_puts: 0,
+            ..StatsSnapshot::default()
         };
         let mut buf = Vec::new();
         assert!(write_stats_response(&mut buf, &stats).is_ok());
@@ -497,6 +550,12 @@ mod tests {
             idle_timeout_secs: 1800,
             memory: MemoryInfo::default(),
             queue: QueueInfo::default(),
+            shared: Some(SharedInfo {
+                store: "/srv/sail".to_owned(),
+                trust_dir: "/tmp/c/trust".to_owned(),
+                trusted_keys: vec!["0123456789abcdef".to_owned()],
+                timeout_ms: 250,
+            }),
         };
         let mut buf = Vec::new();
         assert!(write_info_response(&mut buf, &info).is_ok());

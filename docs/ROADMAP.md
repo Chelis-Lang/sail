@@ -40,8 +40,9 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 1. **Caching.**
    - **Done:** key v2; a disk tier, a 256 MiB memory tier and write-behind
      stores (ADR 0011, 0015); serving far-from-limit `unknown` answers
-     (ADR 0009); effort recording; fault injection.
-   - **In progress:** a shared tier with signed entries.
+     (ADR 0009); effort recording; fault injection; a shared tier of
+     signed entries in a directory store (ADR 0017).
+   - **Designed, not built:** read-only HTTP(S) shared stores (ADR 0017).
    - **Deferred:** warm solver pools (measured; see below) and the opt-in
      stack-key mode (ADR 0008 update).
 2. **CLI.**

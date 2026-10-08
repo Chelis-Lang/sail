@@ -221,6 +221,7 @@ mod tests {
             puts: 4,
             memory_hits: 20,
             dropped_puts: 0,
+            ..StatsSnapshot::default()
         };
         let r = CacheRun::between("warm", &before, &after);
         assert_eq!((r.sessions, r.gets, r.hits, r.puts), (3, 20, 18, 0));
