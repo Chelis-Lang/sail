@@ -228,6 +228,11 @@ fn copy_symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
     std::fs::copy(src, dst).map(|_| ())
 }
 
+/// The nearest directory at or above `dir` that has a `Cargo.toml`.
+fn enclosing_cargo_project(dir: &Path) -> Option<&Path> {
+    dir.ancestors().find(|d| d.join("Cargo.toml").is_file())
+}
+
 /// Prepares `unit` to run under `scratch` and returns the unit to run.
 ///
 /// `verus` units run in place and are returned unchanged. A `cargo-verus`
@@ -238,10 +243,14 @@ fn copy_symlink(src: &Path, dst: &Path) -> std::io::Result<()> {
 /// `cargo metadata` so that both sides of a comparison start from the same
 /// tree.
 ///
+/// `scratch` must not be inside another Cargo project, or Cargo would treat
+/// the copy as part of that project's workspace.
+///
 /// # Errors
 ///
-/// `SAIL3022` if the copy, the patch or dependency resolution fails, or if
-/// patching is asked for without a Verus source.
+/// `SAIL3022` if `scratch` is inside a Cargo project, if the copy, the patch
+/// or dependency resolution fails, or if patching is asked for without a
+/// Verus source.
 pub fn prepare_unit(
     installed: &Installed,
     unit: &Unit,
@@ -254,6 +263,14 @@ pub fn prepare_unit(
     let fail = |what: String| Error::new("SAIL3022", format!("{}: {what}", unit.id));
     let scratch = std::path::absolute(scratch)
         .map_err(|e| fail(format!("cannot resolve {}: {e}", scratch.display())))?;
+    if let Some(outer) = enclosing_cargo_project(&scratch) {
+        // Cargo would take the copy for a member of that workspace.
+        return Err(fail(format!(
+            "scratch directory {} is inside the Cargo project at {}",
+            scratch.display(),
+            outer.display()
+        )));
+    }
     let src = scratch.join("src");
     let _ = std::fs::remove_dir_all(&src);
     copy_tree(&unit.source_dir, &src).map_err(|e| {
@@ -597,6 +614,17 @@ pub fn machine_info() -> BTreeMap<String, String> {
 mod tests {
     use super::{RunRecord, parse_outputs, parse_time};
     use serde_json::json;
+
+    #[test]
+    fn finds_an_enclosing_cargo_project() {
+        let root = std::env::temp_dir().join(format!("sail-enclosing-{}", std::process::id()));
+        let inner = root.join("a").join("b");
+        assert!(std::fs::create_dir_all(&inner).is_ok());
+        assert_eq!(super::enclosing_cargo_project(&inner), None);
+        assert!(std::fs::write(root.join("Cargo.toml"), "[workspace]\n").is_ok());
+        assert_eq!(super::enclosing_cargo_project(&inner), Some(root.as_path()));
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn splits_concatenated_json_documents() {
