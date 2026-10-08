@@ -64,6 +64,7 @@ impl Rig {
     fn fill(&self, input: &[u8]) {
         let out = ok_session(&self.solver, Some(&self.socket), input);
         assert_equivalent(&self.want(input), &out);
+        support::drain(&self.cache);
     }
 }
 
@@ -437,6 +438,7 @@ fn solver_killed_mid_query_after_a_miss() {
     assert_prefix(&want, &ended.stdout);
     assert_eq!(support::split(&ended.stdout).len(), want.len() - 1);
     let hard = want.last().map_or(QueryKey([0; 32]), |r| r.key);
+    support::drain(&rig.cache);
     assert!(!entry_path(&rig.cache, &hard).exists());
     assert_cache_correct(&rig.cache, &want);
 }
@@ -637,4 +639,128 @@ fn unkeyed() -> SolverIdentity {
         binary_sha256: [0; 32],
         platform: String::new(),
     }
+}
+
+// ---------------------------------------------------------------------------
+// 6. The in-memory tier and cache maintenance (ADR 0014).
+
+/// What the disk tier holds for `key`: the reply of an entry that passes
+/// the integrity check, or `None`. Reads without removing anything.
+fn disk_reply(cache: &Path, key: &QueryKey) -> Option<Vec<u8>> {
+    let data = std::fs::read(entry_path(cache, key)).ok()?;
+    sail_cache::parse_entry(&data, &key.to_string())
+        .ok()
+        .map(|(_, r)| r)
+}
+
+fn daemon_stats(socket: &Path) -> sail_api::protocol::StatsSnapshot {
+    sail_api::client::Client::connect(socket)
+        .and_then(|mut c| c.stats())
+        .unwrap_or_default()
+}
+
+#[test]
+#[ignore = "needs SAIL_TEST_Z3"]
+fn memory_tier_never_serves_what_the_disk_does_not_hold() {
+    let rig = Rig::new("memory");
+    let want = rig.want(TOY);
+    rig.fill(TOY);
+    // Warm: served from memory, exactly.
+    let before = daemon_stats(&rig.socket);
+    assert_equivalent(&want, &ok_session(&rig.solver, Some(&rig.socket), TOY));
+    let warm = daemon_stats(&rig.socket).since(&before);
+    assert!(
+        warm.memory_hits > 0 && warm.memory_hits == warm.hits,
+        "{warm:?}"
+    );
+    // Change every stored entry under the running daemon: remove it, flip a
+    // byte in place, swap it with the next one, or re-header the next one's
+    // entry to claim it (a forgery with a valid hash).
+    let stored: Vec<QueryKey> = want
+        .iter()
+        .map(|r| r.key)
+        .filter(|k| entry_path(&rig.cache, k).is_file())
+        .collect();
+    assert!(stored.len() > 12);
+    let mut forged = Vec::new();
+    let mut i = 0;
+    while i < stored.len() {
+        let k = stored[i];
+        let p = entry_path(&rig.cache, &k);
+        let next_key = stored[(i + 1) % stored.len()];
+        let next = entry_path(&rig.cache, &next_key);
+        match i % 5 {
+            0 => assert!(std::fs::remove_file(&p).is_ok()),
+            1 => flip(&p, |n| n - 2),
+            2 if i + 1 < stored.len() => {
+                let tmp = rig.dir.path("swap");
+                assert!(std::fs::rename(&p, &tmp).is_ok());
+                assert!(std::fs::rename(&next, &p).is_ok());
+                assert!(std::fs::rename(&tmp, &next).is_ok());
+                // The next entry was changed too; leave it be.
+                i += 1;
+            }
+            3 => {
+                let other = std::fs::read(&next).unwrap_or_default();
+                assert!(std::fs::write(rig.dir.path("forged"), rekey(&other, &k)).is_ok());
+                assert!(std::fs::rename(rig.dir.path("forged"), &p).is_ok());
+                forged.push(k);
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    // Every GET is exactly what the disk tier holds now: the daemon never
+    // answers from memory for an entry the disk no longer has.
+    let snapshot: Vec<Option<Vec<u8>>> = stored.iter().map(|k| disk_reply(&rig.cache, k)).collect();
+    let Ok(mut c) = sail_api::client::Client::connect(&rig.socket) else {
+        unreachable!("cannot connect")
+    };
+    for (k, on_disk) in stored.iter().zip(&snapshot) {
+        let got = c.get(&k.0).ok().flatten();
+        assert_eq!(&got, on_disk, "GET {k}");
+    }
+    drop(c);
+    // Sessions stay exact (the shim's shape check rejects the forgeries),
+    // and whatever they leave on disk is right.
+    for _ in 0..2 {
+        assert_equivalent(&want, &ok_session(&rig.solver, Some(&rig.socket), TOY));
+    }
+    assert!(assert_cache_correct_except(&rig.cache, &want, &forged) > 0);
+}
+
+#[test]
+#[ignore = "needs SAIL_TEST_Z3"]
+fn gc_and_clear_during_sessions_only_cost_misses() {
+    let rig = Rig::new("gc");
+    let inputs = overlapping_inputs();
+    let wants: Vec<Vec<Want>> = inputs.iter().map(|i| rig.want(i)).collect();
+    let stop = std::sync::atomic::AtomicBool::new(false);
+    let disk = sail_cache::DiskCache::new(&rig.cache);
+    let rounds = std::thread::scope(|s| {
+        let maint = s.spawn(|| {
+            let mut rounds = 0u32;
+            while !stop.load(std::sync::atomic::Ordering::SeqCst) {
+                let _ = disk.gc(disk.usage().bytes / 2);
+                if rounds % 8 == 7 {
+                    let _ = disk.clear();
+                }
+                let _ = disk.verify(true);
+                rounds += 1;
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            rounds
+        });
+        // Cold, then warm, with entries vanishing underneath.
+        concurrently(&rig, &inputs, &wants);
+        concurrently(&rig, &inputs, &wants);
+        stop.store(true, std::sync::atomic::Ordering::SeqCst);
+        maint.join().unwrap_or_default()
+    });
+    assert!(rounds > 0);
+    let all: Vec<Want> = wants.iter().flatten().cloned().collect();
+    assert_cache_correct(&rig.cache, &all);
+    // Once maintenance stops, the cache fills and serves as usual.
+    concurrently(&rig, &inputs, &wants);
+    assert!(assert_cache_correct(&rig.cache, &all) > 0);
 }

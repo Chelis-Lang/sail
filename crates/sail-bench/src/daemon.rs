@@ -52,6 +52,10 @@ impl Daemon {
             .arg(socket)
             .arg("--cache")
             .arg(cache_root)
+            // The bench stops the daemon itself; never let it stop early
+            // between runs (ADR 0014).
+            .arg("--idle-timeout")
+            .arg("0")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -122,6 +126,18 @@ pub struct CacheRun {
     pub hits: u64,
     /// Replies recorded from the solver (`PUT`).
     pub puts: u64,
+    /// Replies served from the daemon's in-memory tier (included in
+    /// `hits`; ADR 0014). Absent from files written before it existed.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub memory_hits: u64,
+}
+
+#[allow(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "serde's skip_serializing_if passes a reference"
+)]
+fn is_zero(n: &u64) -> bool {
+    *n == 0
 }
 
 impl CacheRun {
@@ -136,6 +152,7 @@ impl CacheRun {
             gets: d.gets,
             hits: d.hits,
             puts: d.puts,
+            memory_hits: d.memory_hits,
         }
     }
 
@@ -195,16 +212,20 @@ mod tests {
             gets: 10,
             hits: 9,
             puts: 4,
+            ..StatsSnapshot::default()
         };
         let after = StatsSnapshot {
             hellos: 5,
             gets: 30,
             hits: 27,
             puts: 4,
+            memory_hits: 20,
+            dropped_puts: 0,
         };
         let r = CacheRun::between("warm", &before, &after);
         assert_eq!((r.sessions, r.gets, r.hits, r.puts), (3, 20, 18, 0));
         assert_eq!(r.solver_starts(), 2);
+        assert_eq!(r.memory_hits, 20);
         assert_eq!(r.phase, "warm");
     }
 
