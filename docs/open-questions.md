@@ -3,6 +3,9 @@
 Numbered and append-only. When a question is answered, record the answer
 inline with the date and link the ADR that captures it.
 
+**Questions 1–8 were answered by the owner on 2026-10-08.** See ADR 0010
+(1–6), ADR 0009 (7) and ADR 0010's update to ADR 0008 (8).
+
 1. **License.** The workspace has no license set, and `publish = false`. Which
    license should `sail` use, and when?
 2. **Reference platform.** Baselines are first measured on the lead's machine
