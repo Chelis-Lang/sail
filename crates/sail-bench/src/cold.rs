@@ -207,7 +207,7 @@ pub fn run(
 pub struct BenchFile {
     /// Format version.
     pub schema_version: u32,
-    /// Workload name: `cold`, `warm` or `edit`.
+    /// Workload name: `cold`, `warm`, `edit` or `agent-loop`.
     pub workload: String,
     /// Corpus tier.
     pub tier: String,
@@ -230,6 +230,9 @@ pub struct BenchFile {
     /// Per-edit results (`edit`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub edits: Vec<EditResult>,
+    /// Per-loop results (`agent-loop`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub loops: Vec<crate::agent_loop::LoopResult>,
 }
 
 #[cfg(test)]
