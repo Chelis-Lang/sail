@@ -11,3 +11,6 @@ semantic versioning once the API is published.
 - `cargo xtask fetch-verus`: installs the pinned Verus release.
 - `sail-bench profile|seeds|history`: query-time profile, seed stability and
   history-dependence analyses over shim traces.
+- `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
+  patched to the pinned source in a scratch copy), project requirements
+  (skipped and reported when unavailable), and the standard-tier corpus.

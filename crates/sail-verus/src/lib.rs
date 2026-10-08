@@ -2,11 +2,13 @@
 //! Verus on corpus units with or without the shim.
 //!
 //! Status (M3): pins, the corpus, and invocation of single-file and
-//! single-crate (`build = "verus"`) units. Query-to-function mapping and
-//! diagnostic handling come in a later wave.
+//! single-crate (`build = "verus"`) and Cargo package (`build =
+//! "cargo-verus"`, with optional Verus dependency patching) units.
+//! Query-to-function mapping and diagnostic handling come in a later wave.
 #![forbid(unsafe_code)]
 
 pub mod corpus;
+pub mod patch;
 pub mod run;
 pub mod toolchain;
 
