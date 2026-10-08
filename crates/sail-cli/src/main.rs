@@ -4,6 +4,8 @@
 //! a stable "not implemented" exit code until its backend exists.
 #![forbid(unsafe_code)]
 
+mod verify;
+
 use std::fmt::Write as _;
 use std::process::ExitCode;
 
@@ -51,6 +53,7 @@ fn run(args: &[String], out: &mut impl std::io::Write, err: &mut impl std::io::W
             ExitCode::SUCCESS
         }
         Some("serve") => serve(args.get(1..).unwrap_or_default(), err),
+        Some("verify") => verify::verify(args.get(1..).unwrap_or_default(), err),
         Some(cmd) if COMMANDS.iter().any(|(name, _)| *name == cmd) => {
             let _ = writeln!(
                 err,
