@@ -51,3 +51,13 @@ inline with the date and link the ADR that captures it.
      accepts verdicts across histories and recomputes models on demand;
    - how prefix keys should treat the `rlimit` jitter of nonlinear spinoffs
      (question 7).
+9. **Verus's nondeterministic declaration order.** Verus emits some
+   declarations in a run-dependent order
+   (`corpus/repros/verus-nondeterministic-declaration-order/`), which caps
+   warm hit rates at about 95% of checks on the fast tier. The options are:
+   - report it upstream to Verus, offering a fix (deterministic iteration
+     where it emits declarations);
+   - build an opt-in normalization mode under charter rule 5.
+
+   Which should come first? The proposal is upstream first: it costs nothing
+   in correctness and helps every Verus user.
