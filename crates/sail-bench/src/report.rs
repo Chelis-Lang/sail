@@ -14,6 +14,29 @@ fn ms(x: f64) -> String {
     }
 }
 
+/// `median (min–max)` of the samples.
+fn spread(xs: &[f64]) -> String {
+    let lo = xs.iter().copied().fold(f64::INFINITY, f64::min);
+    let hi = xs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    match median(xs) {
+        Some(m) if xs.len() > 1 => format!("{} ({}–{})", ms(m), ms(lo), ms(hi)),
+        Some(m) => ms(m),
+        None => "n/a".to_owned(),
+    }
+}
+
+/// Per-round totals: the sum over units of each round's sample.
+fn round_totals(units: &[UnitResult], rounds: usize, plain: bool) -> Vec<f64> {
+    (0..rounds)
+        .map(|r| {
+            units
+                .iter()
+                .filter_map(|u| if plain { &u.plain } else { &u.sail }.wall_ms.get(r))
+                .sum()
+        })
+        .collect()
+}
+
 fn pct(sail: f64, plain: f64) -> String {
     if plain > 0.0 {
         format!("{:+.1}%", (sail - plain) / plain * 100.0)
@@ -74,7 +97,7 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
     );
     let _ = writeln!(
         out,
-        "Every benchmark round also runs the conformance comparison (charter: a speedup that coincides with any verdict difference is a bug, not a result). Times are medians over rounds. Units run one at a time.\n"
+        "Every benchmark round also runs the conformance comparison (charter: a speedup that coincides with any verdict difference is a bug, not a result). Times are medians over rounds, with the spread shown as (min–max). Units run one at a time.\n\nThe reference platform for published numbers is Linux x86-64 (ADR 0010). Results from other platforms are secondary. Result names ending in `devload` were measured on a development machine under other load, so expect wide spreads.\n"
     );
     for (name, f) in files {
         let t = totals(&f.units);
@@ -103,14 +126,15 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
             ms(t.sail),
             pct(t.sail, t.plain)
         );
-        let share = if t.plain > 0.0 {
-            t.smt / t.plain * 100.0
-        } else {
-            0.0
-        };
         let _ = writeln!(
             out,
-            "| Solver time reported by Verus (mean) | {} ({share:.0}% of wall) | | |",
+            "| Total wall time per round: median (min–max) | {} | {} | |",
+            spread(&round_totals(&f.units, f.rounds, true)),
+            spread(&round_totals(&f.units, f.rounds, false))
+        );
+        let _ = writeln!(
+            out,
+            "| Solver time reported by Verus (mean; summed over solver threads, so it can exceed wall time) | {} | | |",
             ms(t.smt)
         );
         let _ = writeln!(
@@ -126,7 +150,7 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
         });
         let _ = writeln!(
             out,
-            "Slowest units:\n\n| Unit | Functions | Plain | sail | Change | Solver time | Peak RSS |\n|---|---:|---:|---:|---:|---:|---:|"
+            "Slowest units (wall time: median (min–max) over rounds):\n\n| Unit | Functions | Plain | sail | Change | Solver time | Peak RSS |\n|---|---:|---:|---:|---:|---:|---:|"
         );
         for u in slow.iter().take(10) {
             let (p, s) = (
@@ -144,8 +168,8 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
                 "| `{}` | {} | {} | {} | {} | {} | {rss} |",
                 u.id,
                 u.functions,
-                ms(p),
-                ms(s),
+                spread(&u.plain.wall_ms),
+                spread(&u.sail.wall_ms),
                 pct(s, p),
                 ms(mean_u64(&u.plain.smt_ms).unwrap_or(0.0))
             );
