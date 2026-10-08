@@ -1,0 +1,12 @@
+#!/bin/sh
+{
+# Tracked pre-commit hook: refuse commits that rustfmt would change. Installed
+# by `cargo xtask install-hooks` into the shared hooks directory, so it covers
+# every worktree. Fast (no compilation); the full gate still runs in CI.
+set -eu
+repo_root=$(git rev-parse --show-toplevel)
+if ! cargo fmt --manifest-path "$repo_root/Cargo.toml" --all --check >/dev/null 2>&1; then
+    printf '%s\n' "pre-commit: rustfmt would change files; run \`cargo fmt --all\` and re-stage." >&2
+    exit 1
+fi
+}
