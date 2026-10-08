@@ -12,6 +12,7 @@ name = "sail-z3"
 path = "src/main.rs"
 
 [dependencies]
+sail-api.workspace = true
 sail-key.workspace = true
 sail-session.workspace = true
 sail-smtlib.workspace = true
@@ -19,6 +20,7 @@ serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+sail-daemon.workspace = true
 sail-smtlib.workspace = true
 
 [lints]
