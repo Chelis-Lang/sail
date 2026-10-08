@@ -9,7 +9,8 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 use sail_api::protocol::{
-    Identity, Request, write_get_response, write_hello_response, write_put_response,
+    Identity, Request, StatsSnapshot, write_get_response, write_hello_response, write_put_response,
+    write_stats_response,
 };
 use sail_cache::DiskCache;
 use sail_key::{QueryKey, SolverIdentity, sha256};
@@ -17,12 +18,27 @@ use sail_key::{QueryKey, SolverIdentity, sha256};
 /// Counters since the daemon started.
 #[derive(Debug, Default)]
 pub struct Stats {
+    /// `HELLO` requests (one per cached shim session).
+    pub hellos: AtomicU64,
     /// `GET` requests.
     pub gets: AtomicU64,
     /// `GET` hits.
     pub hits: AtomicU64,
     /// `PUT` requests.
     pub puts: AtomicU64,
+}
+
+impl Stats {
+    /// The current values.
+    #[must_use]
+    pub fn snapshot(&self) -> StatsSnapshot {
+        StatsSnapshot {
+            hellos: self.hellos.load(Ordering::Relaxed),
+            gets: self.gets.load(Ordering::Relaxed),
+            hits: self.hits.load(Ordering::Relaxed),
+            puts: self.puts.load(Ordering::Relaxed),
+        }
+    }
 }
 
 type IdentityCache = Mutex<HashMap<(PathBuf, u64, Option<SystemTime>), Identity>>;
@@ -100,6 +116,7 @@ impl State {
             };
             let result = match request {
                 Request::Hello(path) => {
+                    self.stats.hellos.fetch_add(1, Ordering::Relaxed);
                     let r = self.hello(&path);
                     write_hello_response(&mut writer, r.as_ref().map_err(String::as_str))
                 }
@@ -129,6 +146,7 @@ impl State {
                     );
                     write_put_response(&mut writer)
                 }
+                Request::Stats => write_stats_response(&mut writer, &self.stats.snapshot()),
             };
             if result.is_err() {
                 return;

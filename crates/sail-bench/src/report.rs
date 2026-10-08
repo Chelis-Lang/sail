@@ -4,7 +4,9 @@
 
 use std::fmt::Write as _;
 
-use crate::cold::{BenchFile, UnitResult, median};
+use crate::cold::{BenchFile, Samples, UnitResult, median};
+use crate::daemon::CacheRun;
+use crate::edit::EditResult;
 
 fn ms(x: f64) -> String {
     if x >= 10_000.0 {
@@ -87,7 +89,8 @@ fn totals(units: &[UnitResult]) -> Totals {
     t
 }
 
-/// Renders the Markdown page for `files` (each from one `cold` run).
+/// Renders the Markdown page for `files` (each from one `cold`, `warm` or
+/// `edit` run).
 #[must_use]
 pub fn render(files: &[(String, BenchFile)]) -> String {
     let mut out = String::new();
@@ -100,81 +103,529 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
         "Every benchmark round also runs the conformance comparison (charter: a speedup that coincides with any verdict difference is a bug, not a result). Times are medians over rounds, with the spread shown as (min–max). Units run one at a time.\n\nThe reference platform for published numbers is Linux x86-64 (ADR 0010). Results from other platforms are secondary. Result names ending in `devload` were measured on a development machine under other load, so expect wide spreads.\n"
     );
     for (name, f) in files {
-        let t = totals(&f.units);
-        let _ = writeln!(
-            out,
-            "## `{name}`: {} workload, {} tier\n",
-            f.workload, f.tier
-        );
-        let _ = writeln!(
-            out,
-            "- Verus {}, Z3 {}, sail `{}`; {} round(s) per unit",
-            f.verus_release, f.z3_version, f.sail_commit, f.rounds
-        );
-        let machine: Vec<String> = f.machine.iter().map(|(k, v)| format!("{k}: {v}")).collect();
-        let _ = writeln!(out, "- Machine: {}\n", machine.join("; "));
-        let _ = writeln!(
-            out,
-            "| Measure | Plain Verus | sail (pass-through) | Change |\n|---|---|---|---|"
-        );
-        let _ = writeln!(out, "| Units | {} | {} | |", f.units.len(), f.units.len());
-        let _ = writeln!(out, "| Functions | {} | {} | |", t.functions, t.functions);
-        let _ = writeln!(
-            out,
-            "| Total wall time (sum of unit medians) | {} | {} | {} |",
-            ms(t.plain),
-            ms(t.sail),
-            pct(t.sail, t.plain)
-        );
-        let _ = writeln!(
-            out,
-            "| Total wall time per round: median (min–max) | {} | {} | |",
-            spread(&round_totals(&f.units, f.rounds, true)),
-            spread(&round_totals(&f.units, f.rounds, false))
-        );
-        let _ = writeln!(
-            out,
-            "| Solver time reported by Verus (mean; summed over solver threads, so it can exceed wall time) | {} | | |",
-            ms(t.smt)
-        );
-        let _ = writeln!(
-            out,
-            "| Conformance (rounds) | | {} same, {} different, {} infra errors | |\n",
-            t.same, t.different, t.infra
-        );
-        let mut slow: Vec<&UnitResult> = f.units.iter().collect();
-        slow.sort_by(|a, b| {
-            median(&b.plain.wall_ms)
-                .unwrap_or(0.0)
-                .total_cmp(&median(&a.plain.wall_ms).unwrap_or(0.0))
-        });
-        let _ = writeln!(
-            out,
-            "Slowest units (wall time: median (min–max) over rounds):\n\n| Unit | Functions | Plain | sail | Change | Solver time | Peak RSS |\n|---|---:|---:|---:|---:|---:|---:|"
-        );
-        for u in slow.iter().take(10) {
-            let (p, s) = (
-                median(&u.plain.wall_ms).unwrap_or(0.0),
-                median(&u.sail.wall_ms).unwrap_or(0.0),
-            );
-            let rss = u
-                .plain
-                .max_rss_bytes
-                .iter()
-                .max()
-                .map_or("n/a".to_owned(), |b| mb(*b));
-            let _ = writeln!(
-                out,
-                "| `{}` | {} | {} | {} | {} | {} | {rss} |",
-                u.id,
-                u.functions,
-                spread(&u.plain.wall_ms),
-                spread(&u.sail.wall_ms),
-                pct(s, p),
-                ms(mean_u64(&u.plain.smt_ms).unwrap_or(0.0))
-            );
+        match f.workload.as_str() {
+            "warm" => render_warm(&mut out, name, f),
+            "edit" => render_edit(&mut out, name, f),
+            _ => render_cold(&mut out, name, f),
         }
         out.push('\n');
     }
     out
+}
+
+/// The section for a `cold` result file.
+fn render_cold(out: &mut String, name: &str, f: &BenchFile) {
+    let t = totals(&f.units);
+    let _ = writeln!(
+        out,
+        "## `{name}`: {} workload, {} tier\n",
+        f.workload, f.tier
+    );
+    let _ = writeln!(
+        out,
+        "- Verus {}, Z3 {}, sail `{}`; {} round(s) per unit",
+        f.verus_release, f.z3_version, f.sail_commit, f.rounds
+    );
+    let machine: Vec<String> = f.machine.iter().map(|(k, v)| format!("{k}: {v}")).collect();
+    let _ = writeln!(out, "- Machine: {}\n", machine.join("; "));
+    let _ = writeln!(
+        out,
+        "| Measure | Plain Verus | sail (pass-through) | Change |\n|---|---|---|---|"
+    );
+    let _ = writeln!(out, "| Units | {} | {} | |", f.units.len(), f.units.len());
+    let _ = writeln!(out, "| Functions | {} | {} | |", t.functions, t.functions);
+    let _ = writeln!(
+        out,
+        "| Total wall time (sum of unit medians) | {} | {} | {} |",
+        ms(t.plain),
+        ms(t.sail),
+        pct(t.sail, t.plain)
+    );
+    let _ = writeln!(
+        out,
+        "| Total wall time per round: median (min–max) | {} | {} | |",
+        spread(&round_totals(&f.units, f.rounds, true)),
+        spread(&round_totals(&f.units, f.rounds, false))
+    );
+    let _ = writeln!(
+        out,
+        "| Solver time reported by Verus (mean; summed over solver threads, so it can exceed wall time) | {} | | |",
+        ms(t.smt)
+    );
+    let _ = writeln!(
+        out,
+        "| Conformance (rounds) | | {} same, {} different, {} infra errors | |\n",
+        t.same, t.different, t.infra
+    );
+    let mut slow: Vec<&UnitResult> = f.units.iter().collect();
+    slow.sort_by(|a, b| {
+        median(&b.plain.wall_ms)
+            .unwrap_or(0.0)
+            .total_cmp(&median(&a.plain.wall_ms).unwrap_or(0.0))
+    });
+    let _ = writeln!(
+        out,
+        "Slowest units (wall time: median (min–max) over rounds):\n\n| Unit | Functions | Plain | sail | Change | Solver time | Peak RSS |\n|---|---:|---:|---:|---:|---:|---:|"
+    );
+    for u in slow.iter().take(10) {
+        let (p, s) = (
+            median(&u.plain.wall_ms).unwrap_or(0.0),
+            median(&u.sail.wall_ms).unwrap_or(0.0),
+        );
+        let rss = u
+            .plain
+            .max_rss_bytes
+            .iter()
+            .max()
+            .map_or("n/a".to_owned(), |b| mb(*b));
+        let _ = writeln!(
+            out,
+            "| `{}` | {} | {} | {} | {} | {} | {rss} |",
+            u.id,
+            u.functions,
+            spread(&u.plain.wall_ms),
+            spread(&u.sail.wall_ms),
+            pct(s, p),
+            ms(mean_u64(&u.plain.smt_ms).unwrap_or(0.0))
+        );
+    }
+}
+
+fn ratio(plain: f64, sail: f64) -> String {
+    if plain > 0.0 && sail > 0.0 {
+        format!("{:.2}×", plain / sail)
+    } else {
+        "n/a".to_owned()
+    }
+}
+
+/// Summed cache counters over the runs of `phase`.
+fn cache_totals<'a>(runs: impl IntoIterator<Item = &'a CacheRun>, phase: &str) -> CacheRun {
+    let mut t = CacheRun {
+        phase: phase.to_owned(),
+        ..CacheRun::default()
+    };
+    for r in runs.into_iter().filter(|r| r.phase == phase) {
+        t.sessions += r.sessions;
+        t.gets += r.gets;
+        t.hits += r.hits;
+        t.puts += r.puts;
+    }
+    t
+}
+
+#[allow(clippy::cast_precision_loss)] // reply counts, for display
+fn served_share(c: &CacheRun) -> String {
+    let total = c.hits + c.puts;
+    if total == 0 {
+        "n/a".to_owned()
+    } else {
+        format!("{:.1}%", c.hits as f64 / total as f64 * 100.0)
+    }
+}
+
+/// `served / recorded (share served)`.
+fn served(c: &CacheRun) -> String {
+    format!("{} / {} ({})", c.hits, c.puts, served_share(c))
+}
+
+fn med(s: &Samples) -> f64 {
+    median(&s.wall_ms).unwrap_or(0.0)
+}
+
+fn cpu_med(s: &Samples) -> f64 {
+    median(&s.cpu_s).unwrap_or(0.0)
+}
+
+#[allow(clippy::cast_precision_loss)] // milliseconds, for display
+fn smt_mean(s: &Samples) -> f64 {
+    mean_u64(&s.smt_ms).unwrap_or(0.0)
+}
+
+fn header(out: &mut String, name: &str, f: &BenchFile, what: &str, rounds: &str) {
+    let _ = writeln!(out, "## `{name}`: {what}\n");
+    let _ = writeln!(
+        out,
+        "- Verus {}, Z3 {}, sail `{}`; {rounds}",
+        f.verus_release, f.z3_version, f.sail_commit
+    );
+    let machine: Vec<String> = f.machine.iter().map(|(k, v)| format!("{k}: {v}")).collect();
+    let _ = writeln!(out, "- Machine: {}\n", machine.join("; "));
+}
+
+/// Conformance counts over `units`.
+fn conformance(units: &[UnitResult]) -> String {
+    let sum = |g: fn(&UnitResult) -> usize| units.iter().map(g).sum::<usize>();
+    format!(
+        "{} same, {} different, {} unstable, {} infra errors",
+        sum(|u| u.same),
+        sum(|u| u.different),
+        sum(|u| u.unstable),
+        sum(|u| u.infra_errors)
+    )
+}
+
+/// What a `warm` section measures.
+const WARM_INTRO: &str = "Each unit gets a fresh `sail serve` with an empty cache (ADR 0012). The fill runs Verus through `sail-z3` with that empty cache; each warm round runs it again, with nothing changed. Plain Verus runs in every round, and every sail run (fill and warm) is compared with it. *Replies served / recorded* counts solver replies the cache served and replies recorded from a running solver; a session that misses starts the solver and replays its earlier commands into it (ADR 0011).";
+
+/// The section for a `warm` result file.
+fn render_warm(out: &mut String, name: &str, f: &BenchFile) {
+    header(
+        out,
+        name,
+        f,
+        &format!("warm workload (no change), {} tier", f.tier),
+        &format!("1 fill round and {} warm round(s) per unit", f.rounds),
+    );
+    let _ = writeln!(out, "{WARM_INTRO}\n");
+    warm_summary(out, f);
+    warm_unit_tables(out, f);
+}
+
+/// The summary table of a `warm` section.
+fn warm_summary(out: &mut String, f: &BenchFile) {
+    let empty = Samples::default();
+    let fill = |u: &UnitResult| u.fill.as_ref().map_or(0.0, med);
+    let (mut plain, mut fill_t, mut warm, mut cpu) = (0.0, 0.0, 0.0, [0.0f64; 3]);
+    let mut smt = [0.0f64; 3];
+    let mut bytes = 0u64;
+    for u in &f.units {
+        let fs = u.fill.as_ref().unwrap_or(&empty);
+        plain += med(&u.plain);
+        fill_t += fill(u);
+        warm += med(&u.sail);
+        for (i, s) in [&u.plain, fs, &u.sail].into_iter().enumerate() {
+            if let (Some(c), Some(t)) = (cpu.get_mut(i), smt.get_mut(i)) {
+                *c += cpu_med(s);
+                *t += smt_mean(s);
+            }
+        }
+        bytes += u.cache_bytes.unwrap_or(0);
+    }
+    let all_cache = f.units.iter().flat_map(|u| &u.cache);
+    let (cf, cw) = (
+        cache_totals(all_cache.clone(), "fill"),
+        cache_totals(all_cache, "warm"),
+    );
+    let _ = writeln!(
+        out,
+        "| Measure | Plain Verus | sail fill (empty cache) | sail warm |\n|---|---|---|---|"
+    );
+    let n = f.units.len();
+    let functions: usize = f.units.iter().map(|u| u.functions).sum();
+    let _ = writeln!(out, "| Units | {n} | {n} | {n} |");
+    let _ = writeln!(
+        out,
+        "| Functions | {functions} | {functions} | {functions} |"
+    );
+    let _ = writeln!(
+        out,
+        "| Total wall time (sum of unit medians) | {} | {} ({}) | {} ({}) |",
+        ms(plain),
+        ms(fill_t),
+        pct(fill_t, plain),
+        ms(warm),
+        pct(warm, plain)
+    );
+    let _ = writeln!(
+        out,
+        "| Speedup over plain Verus (total wall time) | | {} | **{}** |",
+        ratio(plain, fill_t),
+        ratio(plain, warm)
+    );
+    let _ = writeln!(
+        out,
+        "| Total wall time per round: median (min–max) | {} | {} | {} |",
+        spread(&round_totals(&f.units, f.rounds + 1, true)),
+        ms(fill_t),
+        spread(&round_totals(&f.units, f.rounds, false))
+    );
+    let [cp, cfill, cwarm] = cpu;
+    let _ = writeln!(
+        out,
+        "| CPU time, process tree (sum of unit medians) | {cp:.1} s | {cfill:.1} s | {cwarm:.1} s |"
+    );
+    let [sp, sfill, swarm] = smt;
+    let _ = writeln!(
+        out,
+        "| Solver time reported by Verus (mean; summed over solver threads) | {} | {} | {} |",
+        ms(sp),
+        ms(sfill),
+        ms(swarm)
+    );
+    let _ = writeln!(
+        out,
+        "| Replies served / recorded (share served) | | {} | {} |",
+        served(&cf),
+        served(&cw)
+    );
+    let _ = writeln!(
+        out,
+        "| Solver sessions started / cached sessions | | {} / {} | {} / {} |",
+        cf.solver_starts(),
+        cf.sessions,
+        cw.solver_starts(),
+        cw.sessions
+    );
+    let _ = writeln!(
+        out,
+        "| Cache size after the fills (sum) | | {} | |",
+        mb(bytes)
+    );
+    let _ = writeln!(
+        out,
+        "| Conformance (sail runs: fill and warm) | | {} | |\n",
+        conformance(&f.units)
+    );
+}
+
+/// The per-unit tables of a `warm` section: the slowest units, and the
+/// units whose warm rounds still recorded replies.
+fn warm_unit_tables(out: &mut String, f: &BenchFile) {
+    let empty = Samples::default();
+    let mut slow: Vec<&UnitResult> = f.units.iter().collect();
+    slow.sort_by(|a, b| med(&b.plain).total_cmp(&med(&a.plain)));
+    let _ = writeln!(
+        out,
+        "Slowest units (wall time: median (min–max) over rounds):\n\n| Unit | Functions | Plain | sail fill | sail warm | Warm speedup | Warm replies served / recorded |\n|---|---:|---:|---:|---:|---:|---:|"
+    );
+    for u in slow.iter().take(10) {
+        let w = cache_totals(&u.cache, "warm");
+        let _ = writeln!(
+            out,
+            "| `{}` | {} | {} | {} | {} | {} | {} |",
+            u.id,
+            u.functions,
+            spread(&u.plain.wall_ms),
+            spread(&u.fill.as_ref().unwrap_or(&empty).wall_ms),
+            spread(&u.sail.wall_ms),
+            ratio(med(&u.plain), med(&u.sail)),
+            served(&w)
+        );
+    }
+    let mut missing: Vec<(&UnitResult, CacheRun)> = f
+        .units
+        .iter()
+        .map(|u| (u, cache_totals(&u.cache, "warm")))
+        .filter(|(_, c)| c.puts > 0)
+        .collect();
+    missing.sort_by(|a, b| b.1.puts.cmp(&a.1.puts).then_with(|| a.0.id.cmp(&b.0.id)));
+    let _ = writeln!(
+        out,
+        "\nUnits whose warm rounds still started the solver: {} of {}. With nothing changed, a warm miss comes from Verus emitting different bytes for the same input (`corpus/repros/verus-nondeterministic-declaration-order/`, open question 9) or from a cached `unknown`, which is never served (ADR 0009). Most replies recorded:\n",
+        missing.len(),
+        f.units.len()
+    );
+    let _ = writeln!(
+        out,
+        "| Unit | Warm replies served / recorded | Solver sessions started / cached sessions |\n|---|---:|---:|"
+    );
+    for (u, c) in missing.iter().take(10) {
+        let _ = writeln!(
+            out,
+            "| `{}` | {} | {} / {} |",
+            u.id,
+            served(c),
+            c.solver_starts(),
+            c.sessions
+        );
+    }
+}
+
+fn outcome_cell(e: &EditResult) -> String {
+    match e.outcome.as_deref() {
+        Some(o) if o == e.expected => o.to_owned(),
+        Some(o) => format!("{o} (**catalogue expects {}**)", e.expected),
+        None => "n/a".to_owned(),
+    }
+}
+
+/// The section for an `edit` result file.
+fn render_edit(out: &mut String, name: &str, f: &BenchFile) {
+    header(
+        out,
+        name,
+        f,
+        "edit workload (single-function body and specification edits)",
+        &format!("{} round(s) per edit", f.rounds),
+    );
+    let _ = writeln!(
+        out,
+        "Edits come from `corpus/edits.toml`. In each round (ADR 0012), a fresh `sail serve` starts with an empty cache; plain Verus and sail with the cache run on a scratch copy of the original project (the *fill*); the edit is applied to the copy; then plain Verus and sail with the filled cache run on the edited copy. Every sail run is compared with plain Verus. *Replies served / recorded* are for the run after the edit.\n"
+    );
+    let _ = writeln!(
+        out,
+        "| Edit | Kind | Plain Verus | sail after the edit | Speedup | Replies served / recorded | Solver sessions started / cached sessions | Plain outcome | Conformance (fill and edit runs) |\n|---|---|---:|---:|---:|---:|---:|---|---|"
+    );
+    let (mut plain, mut sail) = (0.0, 0.0);
+    let (mut same, mut different, mut unstable, mut infra) = (0, 0, 0, 0);
+    for e in &f.edits {
+        let c = cache_totals(&e.cache, "edit");
+        plain += med(&e.plain);
+        sail += med(&e.sail);
+        same += e.same;
+        different += e.different;
+        unstable += e.unstable;
+        infra += e.infra_errors;
+        let _ = writeln!(
+            out,
+            "| `{}` | {} | {} | {} | {} | {} | {} / {} | {} | {} same, {} different, {} unstable, {} infra errors |",
+            e.id,
+            e.kind,
+            spread(&e.plain.wall_ms),
+            spread(&e.sail.wall_ms),
+            ratio(med(&e.plain), med(&e.sail)),
+            served(&c),
+            c.solver_starts(),
+            c.sessions,
+            outcome_cell(e),
+            e.same,
+            e.different,
+            e.unstable,
+            e.infra_errors
+        );
+    }
+    let _ = writeln!(
+        out,
+        "| **All edits** (sum of medians) | | {} | {} | **{}** | | | | {same} same, {different} different, {unstable} unstable, {infra} infra errors |\n",
+        ms(plain),
+        ms(sail),
+        ratio(plain, sail)
+    );
+    let _ = writeln!(
+        out,
+        "The fill, on the original copy:\n\n| Edit | Unit | Functions | Plain Verus | sail fill (empty cache) | Change |\n|---|---|---:|---:|---:|---:|"
+    );
+    for e in &f.edits {
+        let _ = writeln!(
+            out,
+            "| `{}` | `{}` | {} | {} | {} | {} |",
+            e.id,
+            e.unit,
+            e.functions,
+            spread(&e.plain_original.wall_ms),
+            spread(&e.fill.wall_ms),
+            pct(med(&e.fill), med(&e.plain_original))
+        );
+    }
+    let _ = writeln!(out, "\nThe edits:\n");
+    for e in &f.edits {
+        let _ = writeln!(out, "- `{}`: {}", e.id, e.description);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn samples(wall: &[f64]) -> Samples {
+        Samples {
+            wall_ms: wall.to_vec(),
+            cpu_s: wall.iter().map(|w| w / 1000.0).collect(),
+            smt_ms: vec![5; wall.len()],
+            max_rss_bytes: vec![1 << 20; wall.len()],
+        }
+    }
+
+    fn cache(phase: &str, hits: u64, puts: u64) -> CacheRun {
+        CacheRun {
+            phase: phase.to_owned(),
+            sessions: 2,
+            gets: hits + 1,
+            hits,
+            puts,
+        }
+    }
+
+    fn file(workload: &str) -> BenchFile {
+        BenchFile {
+            schema_version: 1,
+            workload: workload.to_owned(),
+            tier: "fast".to_owned(),
+            rounds: 2,
+            verus_release: "v".to_owned(),
+            z3_version: "4.16.0".to_owned(),
+            sail_commit: "abc".to_owned(),
+            started_unix: 0,
+            machine: std::collections::BTreeMap::new(),
+            units: Vec::new(),
+            edits: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn renders_warm_sections() {
+        let mut f = file("warm");
+        f.units.push(UnitResult {
+            id: "p/u.rs".to_owned(),
+            functions: 3,
+            plain: samples(&[1000.0, 1200.0, 1100.0]),
+            sail: samples(&[400.0, 500.0]),
+            same: 3,
+            different: 0,
+            infra_errors: 0,
+            unstable: 0,
+            fill: Some(samples(&[1300.0])),
+            cache: vec![
+                cache("fill", 0, 10),
+                cache("warm", 10, 0),
+                cache("warm", 8, 2),
+            ],
+            cache_bytes: Some(4096),
+        });
+        let md = render(&[("warm-x".to_owned(), f)]);
+        assert!(
+            md.contains("## `warm-x`: warm workload (no change), fast tier"),
+            "{md}"
+        );
+        assert!(md.contains("| **2.44×** |"), "{md}");
+        assert!(md.contains("| 18 / 2 (90.0%) |"), "{md}");
+        assert!(
+            md.contains("3 same, 0 different, 0 unstable, 0 infra errors"),
+            "{md}"
+        );
+        assert!(md.contains("still started the solver: 1 of 1"), "{md}");
+    }
+
+    #[test]
+    fn renders_edit_sections() {
+        let mut f = file("edit");
+        f.edits.push(EditResult {
+            id: "e1".to_owned(),
+            unit: "p/u.rs".to_owned(),
+            kind: "body".to_owned(),
+            description: "does a thing".to_owned(),
+            expected: "verified".to_owned(),
+            outcome: Some("errors".to_owned()),
+            functions: 3,
+            plain_original: samples(&[1000.0]),
+            fill: samples(&[1100.0]),
+            plain: samples(&[1000.0]),
+            sail: samples(&[250.0]),
+            cache: vec![cache("fill", 0, 10), cache("edit", 9, 1)],
+            same: 2,
+            ..EditResult::default()
+        });
+        let md = render(&[("edit-x".to_owned(), f)]);
+        assert!(
+            md.contains("| `e1` | body | 1000 ms | 250 ms | 4.00× | 9 / 1 (90.0%) | 1 / 2 |"),
+            "{md}"
+        );
+        assert!(
+            md.contains("errors (**catalogue expects verified**)"),
+            "{md}"
+        );
+        assert!(md.contains("- `e1`: does a thing"), "{md}");
+    }
+
+    #[test]
+    fn cold_files_round_trip_unchanged() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../bench/results/cold-fast-x86_64-linux-gha-2026-10-08.json");
+        let text = std::fs::read_to_string(path).unwrap_or_default();
+        let original: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+        let parsed: Option<BenchFile> = serde_json::from_str(&text).ok();
+        let again = parsed.and_then(|f| serde_json::to_value(f).ok());
+        assert_eq!(again, Some(original));
+    }
 }

@@ -8,6 +8,7 @@
 //! | 1 `HELLO` | solver path (UTF-8) | `0`, `u32` len, identity JSON; or `1`, `u32` len, error text |
 //! | 2 `GET` | 32-byte key | `0` (miss); or `1`, `u32` len, reply bytes |
 //! | 3 `PUT` | 32-byte key, `u32` meta len, meta JSON, reply bytes | `0` |
+//! | 4 `STATS` | empty | `0`, `u32` len, [`StatsSnapshot`] JSON |
 //!
 //! Frames larger than [`MAX_FRAME`] are rejected.
 
@@ -26,6 +27,7 @@ pub const MAX_FRAME: u32 = 256 * 1024 * 1024;
 const OP_HELLO: u8 = 1;
 const OP_GET: u8 = 2;
 const OP_PUT: u8 = 3;
+const OP_STATS: u8 = 4;
 
 /// Solver identity as the daemon reports it (see `sail_key::SolverIdentity`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,6 +68,33 @@ pub struct PutMeta {
     pub effort: Option<Effort>,
 }
 
+/// The daemon's counters since it started (the `STATS` operation). Benchmarks
+/// read them before and after a run and report the difference.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatsSnapshot {
+    /// `HELLO` requests: one per cached shim session.
+    pub hellos: u64,
+    /// `GET` requests. A session stops asking at its first miss.
+    pub gets: u64,
+    /// `GET` requests answered from the cache.
+    pub hits: u64,
+    /// `PUT` requests: replies recorded from the solver.
+    pub puts: u64,
+}
+
+impl StatsSnapshot {
+    /// The counters accumulated between `earlier` and `self`.
+    #[must_use]
+    pub fn since(&self, earlier: &Self) -> Self {
+        Self {
+            hellos: self.hellos.saturating_sub(earlier.hellos),
+            gets: self.gets.saturating_sub(earlier.gets),
+            hits: self.hits.saturating_sub(earlier.hits),
+            puts: self.puts.saturating_sub(earlier.puts),
+        }
+    }
+}
+
 /// A decoded request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Request {
@@ -82,6 +111,8 @@ pub enum Request {
         /// The exact reply bytes.
         reply: Vec<u8>,
     },
+    /// Report the daemon's counters.
+    Stats,
 }
 
 fn invalid(msg: &str) -> io::Error {
@@ -136,6 +167,7 @@ impl Request {
                 body.extend_from_slice(&m);
                 body.extend_from_slice(reply);
             }
+            Self::Stats => body.push(OP_STATS),
         }
         write_frame(w, &body)
     }
@@ -184,6 +216,7 @@ impl Request {
                     reply,
                 }))
             }
+            OP_STATS => Ok(Some(Self::Stats)),
             _ => Err(invalid("unknown operation")),
         }
     }
@@ -222,6 +255,20 @@ pub fn write_get_response(w: &mut impl Write, reply: Option<&[u8]>) -> io::Resul
             body.extend_from_slice(r);
         }
     }
+    write_frame(w, &body)
+}
+
+/// Writes a `STATS` response.
+///
+/// # Errors
+///
+/// I/O errors.
+pub fn write_stats_response(w: &mut impl Write, stats: &StatsSnapshot) -> io::Result<()> {
+    let payload = serde_json::to_vec(stats).map_err(io::Error::other)?;
+    let mut body = vec![0u8];
+    let len = u32::try_from(payload.len()).map_err(|_| invalid("too large"))?;
+    body.extend_from_slice(&len.to_be_bytes());
+    body.extend_from_slice(&payload);
     write_frame(w, &body)
 }
 
@@ -290,6 +337,7 @@ mod tests {
                 },
                 reply: b"unsat\n".to_vec(),
             },
+            Request::Stats,
         ];
         let mut buf = Vec::new();
         for r in &reqs {
@@ -300,6 +348,28 @@ mod tests {
             assert_eq!(Request::read(&mut cur).ok().flatten().as_ref(), Some(r));
         }
         assert!(matches!(Request::read(&mut cur), Ok(None)));
+    }
+
+    #[test]
+    fn stats_response_round_trips() {
+        let stats = StatsSnapshot {
+            hellos: 1,
+            gets: 5,
+            hits: 4,
+            puts: 3,
+        };
+        let mut buf = Vec::new();
+        assert!(write_stats_response(&mut buf, &stats).is_ok());
+        let body = read_response(&mut std::io::Cursor::new(buf)).unwrap_or_default();
+        let parsed = split_status_payload(&body)
+            .ok()
+            .and_then(|(_, p)| serde_json::from_slice::<StatsSnapshot>(p).ok());
+        assert_eq!(parsed, Some(stats));
+        assert_eq!(stats.since(&StatsSnapshot { gets: 2, ..stats }).gets, 3);
+        assert_eq!(
+            StatsSnapshot::default().since(&stats),
+            StatsSnapshot::default()
+        );
     }
 
     #[test]
