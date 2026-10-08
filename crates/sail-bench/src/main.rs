@@ -17,8 +17,8 @@ use std::process::{Command, ExitCode};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use sail_bench::cold::{self, BenchFile};
-use sail_verus::corpus::{Corpus, Tier};
-use sail_verus::run::machine_info;
+use sail_verus::corpus::{Corpus, Tier, Unit};
+use sail_verus::run::{machine_info, prepare_unit};
 use sail_verus::toolchain::{Installed, Pins};
 
 const USAGE: &str = "usage:
@@ -26,6 +26,59 @@ const USAGE: &str = "usage:
                     [--rounds N] [--name NAME] [--shim PATH]
   sail-bench report [--out PATH] FILE...
   sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
+
+/// Which corpus units to run.
+struct Selection<'a> {
+    tier: Tier,
+    projects: &'a [String],
+    filter: Option<&'a str>,
+}
+
+/// Fetches and prepares the selected units. Projects whose requirements are
+/// unavailable are skipped with a note on stderr; `cargo-verus` units get
+/// their scratch copies under `<scratch>/prepared` (ADR 0006).
+fn select_units(
+    selection: &Selection,
+    corpus: &Corpus,
+    installed: &Installed,
+    cache: &Path,
+    scratch: &Path,
+) -> Result<Vec<Unit>, String> {
+    let mut units = Vec::new();
+    for project in corpus.projects_in(selection.tier, selection.projects) {
+        let missing = project.missing_requirements(&installed.pins.verus.rust_toolchain);
+        if !missing.is_empty() {
+            eprintln!(
+                "skipping {}: requires {} (not available)",
+                project.name,
+                missing.join(", ")
+            );
+            continue;
+        }
+        let dir = project.fetch(cache).map_err(|e| e.to_string())?;
+        units.extend(project.units(&dir).map_err(|e| e.to_string())?);
+    }
+    if let Some(f) = selection.filter {
+        units.retain(|u| u.id.contains(f));
+    }
+    let verus_source = if units.iter().any(|u| u.patch_verus_deps) {
+        Some(
+            corpus
+                .fetch_verus_source(cache)
+                .map_err(|e| e.to_string())?,
+        )
+    } else {
+        None
+    };
+    units
+        .iter()
+        .enumerate()
+        .map(|(i, u)| {
+            let dir = scratch.join("prepared").join(i.to_string());
+            prepare_unit(installed, u, verus_source.as_deref(), &dir).map_err(|e| e.to_string())
+        })
+        .collect()
+}
 
 fn sail_commit() -> String {
     Command::new("git")
@@ -90,19 +143,17 @@ fn cold_cmd(args: &[String]) -> Result<(), String> {
             shim.display()
         ));
     }
-    let mut units = Vec::new();
-    for project in corpus.projects_in(tier, &projects) {
-        let dir = project.fetch(&cache).map_err(|e| e.to_string())?;
-        units.extend(project.units(&dir).map_err(|e| e.to_string())?);
-    }
-    if let Some(f) = &filter {
-        units.retain(|u| u.id.contains(f.as_str()));
-    }
     let started = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
-    eprintln!("cold workload: {} units x {rounds} rounds", units.len());
     let scratch = cache.join("bench").join(started.to_string());
+    let selection = Selection {
+        tier,
+        projects: &projects,
+        filter: filter.as_deref(),
+    };
+    let units = select_units(&selection, &corpus, &installed, &cache, &scratch)?;
+    eprintln!("cold workload: {} units x {rounds} rounds", units.len());
     let results = cold::run(&installed, &units, &shim, rounds, &scratch, |r| {
         eprintln!(
             "{:<60} plain {:>8.0} ms  sail {:>8.0} ms  same {}/{}",

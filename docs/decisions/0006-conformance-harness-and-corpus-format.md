@@ -152,9 +152,10 @@ needs one (see the memory allocator below).
 - **Fork pin.** `page-table` is pinned to verita's fork branch
   (`parno/verified-nrkernel`, branch `z3-4.16.0`), which carries the Z3
   4.16.0 proof stabilization that upstream `matthias-brun/verified-nrkernel`
-  does not have yet (11 commits ahead, 4 behind at pin time). Whether fork
-  pins are acceptable is still an open owner question
-  (`docs/survey/corpus.md`, open question 3).
+  does not have yet (11 commits ahead, 4 behind at pin time). ADR 0010
+  (item 4) allows fork pins that are pinned by commit and archived locally;
+  the local archive (`<cache>/archive/`) is not built yet and is follow-up
+  corpus work.
 - **Build requirements found while pinning.**
   - verismo builds for `x86_64-unknown-none` (`source/.cargo/config.toml`),
     so it needs that rustup target for Verus's toolchain. verita's nightly
@@ -166,6 +167,9 @@ needs one (see the memory allocator below).
   - anvil builds `openssl-sys`.
 
   The conformance workflow installs all three for dispatched non-fast tiers.
+- **Benchmarks.** `sail-bench cold` selects units the same way: it skips
+  projects with missing requirements and prepares `cargo-verus` units once,
+  then reuses the prepared tree for every round.
 - **Observed outcomes.** Plain Verus is not clean on every entry, and that
   is recorded, not fixed: `page-table` reports one `rlimit exceeded` error
   (in `allocate`, `impl_u/wrapped_token.rs`) on macOS arm64, identically in
