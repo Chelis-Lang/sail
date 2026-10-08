@@ -1,0 +1,355 @@
+//! `sail mcp` over stdio: the handshake, then every tool, against a stand-in
+//! for `cargo-verus` that replays a recorded Verus run (the attribution
+//! fixture: its JSON on stdout, its diagnostics on stderr, and its logs
+//! copied into the `--log-dir` sail asks for). No real Verus or Z3 runs.
+#![cfg(unix)]
+
+use std::io::{BufRead as _, BufReader, Write as _};
+use std::path::{Path, PathBuf};
+use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::mpsc::{Receiver, channel};
+use std::time::Duration;
+
+use serde_json::{Value, json};
+
+struct Client {
+    child: Child,
+    stdin: Option<ChildStdin>,
+    lines: Receiver<String>,
+    next: i64,
+}
+
+impl Client {
+    fn start(dir: &Path, env: &[(&str, PathBuf)]) -> Self {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail"));
+        cmd.arg("mcp")
+            .current_dir(dir)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        for (k, v) in env {
+            cmd.env(k, v);
+        }
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => unreachable!("cannot start sail mcp: {e}"),
+        };
+        let (tx, lines) = channel();
+        let Some(stdout) = child.stdout.take() else {
+            unreachable!("no stdout")
+        };
+        std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines() {
+                let Ok(line) = line else { break };
+                if tx.send(line).is_err() {
+                    break;
+                }
+            }
+        });
+        let stdin = child.stdin.take();
+        Self {
+            child,
+            stdin,
+            lines,
+            next: 1,
+        }
+    }
+
+    fn send(&mut self, message: &Value) {
+        let Some(stdin) = self.stdin.as_mut() else {
+            unreachable!("stdin closed")
+        };
+        assert!(writeln!(stdin, "{message}").is_ok());
+        assert!(stdin.flush().is_ok());
+    }
+
+    fn request(&mut self, method: &str, params: &Value) -> Value {
+        let id = self.next;
+        self.next += 1;
+        self.send(&json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params}));
+        loop {
+            let line = match self.lines.recv_timeout(Duration::from_secs(60)) {
+                Ok(l) => l,
+                Err(e) => unreachable!("no response to {method}: {e}"),
+            };
+            let v: Value = serde_json::from_str(&line).unwrap_or_default();
+            if v["id"] == json!(id) {
+                return v;
+            }
+        }
+    }
+
+    fn tool(&mut self, name: &str, arguments: &Value) -> Value {
+        let r = self.request("tools/call", &json!({"name": name, "arguments": arguments}));
+        let result = r["result"].clone();
+        assert_eq!(result["resultType"], "complete", "{r}");
+        // The text content carries the structured result too.
+        let text: Value =
+            serde_json::from_str(result["content"][1]["text"].as_str().unwrap_or_default())
+                .unwrap_or_default();
+        assert_eq!(text, result["structuredContent"]);
+        result
+    }
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+fn fixture() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/attr")
+}
+
+fn write_exec(path: &Path, text: &str) {
+    use std::os::unix::fs::PermissionsExt as _;
+    assert!(std::fs::write(path, text).is_ok());
+    assert!(std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).is_ok());
+}
+
+fn text(result: &Value) -> String {
+    result["content"][0]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned()
+}
+
+#[test]
+fn handshake_then_every_tool() {
+    let root = std::env::temp_dir().join(format!("sail-mcp-it-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let project = root.join("input");
+    assert!(std::fs::create_dir_all(project.join("src")).is_ok());
+    assert!(
+        std::fs::write(
+            project.join("Cargo.toml"),
+            "[package]\nname = \"input\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[workspace]\n"
+        )
+        .is_ok()
+    );
+    assert!(std::fs::write(project.join("src/lib.rs"), "pub fn f() {}\n").is_ok());
+    let args_log = root.join("args.log");
+    let fx = fixture();
+    write_exec(
+        &root.join("cargo-verus"),
+        &format!(
+            r#"#!/bin/sh
+echo "$@" >> '{log}'
+# `fresh`: Cargo finds the crate up to date, so Verus does not run.
+[ -f '{root}/fresh' ] && exit 0
+# `broken`: the build fails before Verus verifies anything.
+[ -f '{root}/broken' ] && {{ printf 'error[E0425]: cannot find value `y` in this scope\n --> src/lib.rs:1:14\n\n' >&2; exit 101; }}
+# `slow`: a run long enough to cancel.
+[ -f '{root}/slow' ] && {{ echo started > '{root}/slow.started'; sleep 30; echo finished > '{root}/slow.finished'; }}
+prev=""
+for a in "$@"; do
+  if [ "$prev" = "--log-dir" ]; then mkdir -p "$a" && cp '{fx}'/logs/* "$a"/; fi
+  prev="$a"
+done
+cat '{fx}/verus.json'
+cat '{fx}/stderr.txt' >&2
+exit 1
+"#,
+            log = args_log.display(),
+            root = root.display(),
+            fx = fx.display()
+        ),
+    );
+    assert!(std::fs::write(root.join("z3"), "").is_ok());
+    let socket = root.join("d.sock");
+    let env = [
+        ("SAIL_CARGO_VERUS", root.join("cargo-verus")),
+        ("VERUS_Z3_PATH", root.join("z3")),
+        ("SAIL_DAEMON_SOCKET", socket.clone()),
+        ("SAIL_CACHE_DIR", root.join("cache")),
+    ];
+    let mut c = Client::start(&project, &env);
+
+    let init = c.request("initialize", &json!({"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    assert_eq!(init["result"]["protocolVersion"], "2025-11-25", "{init}");
+    c.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let list = c.request("tools/list", &json!({}));
+    let names: Vec<String> = list["result"]["tools"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|t| t["name"].as_str().map(str::to_owned))
+        .collect();
+    assert_eq!(
+        names,
+        ["verify", "counterexample", "cached_result", "fragility"]
+    );
+
+    // verify (the project defaults to the server's working directory).
+    let v = c.tool("verify", &json!({}));
+    assert_eq!(v["isError"], false, "{v}");
+    let s = &v["structuredContent"];
+    assert_eq!(s["report"]["schema_version"], 1);
+    assert_eq!(s["stored"], true);
+    assert_eq!(s["run"], 1);
+    assert_eq!(s["exit_code"], 1);
+    let verdict = |name: &str| {
+        s["report"]["crates"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .flat_map(|c| c["functions"].as_array().into_iter().flatten())
+            .find(|f| f["function"] == name)
+            .map(|f| f["verdict"].clone())
+    };
+    assert_eq!(verdict("input::max"), Some(json!("verified")));
+    assert_eq!(verdict("input::bad"), Some(json!("failed")));
+    assert_eq!(verdict("input::arith::bv_bad"), Some(json!("failed")));
+    let summary = text(&v);
+    assert!(summary.contains("verified"), "{summary}");
+    assert!(summary.contains("Failed: "), "{summary}");
+    assert!(summary.contains("postcondition not satisfied"), "{summary}");
+
+    // counterexample, by short name.
+    let ce = c.tool("counterexample", &json!({"function": "bad"}));
+    assert_eq!(ce["isError"], false, "{ce}");
+    let ce = &ce["structuredContent"];
+    assert_eq!(ce["function"], "input::bad");
+    assert_eq!(ce["verdict"], "failed");
+    let obligations = ce["obligations"].as_array().cloned().unwrap_or_default();
+    assert!(
+        obligations
+            .iter()
+            .any(|o| o["counterexample"]["assignments"]
+                .as_array()
+                .is_some_and(|a| a.iter().any(|x| x["name"] == "x!"))),
+        "{ce}"
+    );
+    assert!(
+        ce["diagnostics"].as_array().is_some_and(|d| d
+            .iter()
+            .any(|d| d["message"] == "postcondition not satisfied")),
+        "{ce}"
+    );
+    assert_eq!(ce["freshness"]["status"], "current");
+
+    // cached_result, by obligation id.
+    let id = obligations
+        .first()
+        .map(|o| o["id"].clone())
+        .unwrap_or_default();
+    let cr = c.tool("cached_result", &json!({"obligation": id}));
+    assert_eq!(cr["isError"], false, "{cr}");
+    assert_eq!(cr["structuredContent"]["obligation"]["id"], id);
+
+    // An edit makes the recorded result stale.
+    assert!(std::fs::write(project.join("src/lib.rs"), "pub fn f() { }\n").is_ok());
+    let cr = c.tool("cached_result", &json!({"function": "input::max"}));
+    let fresh = &cr["structuredContent"]["freshness"];
+    assert_eq!(fresh["status"], "stale", "{cr}");
+    assert_eq!(
+        fresh["changed_files"][0],
+        json!({"path": "src/lib.rs", "change": "modified"})
+    );
+    assert_eq!(cr["structuredContent"]["verdict"], "verified");
+    assert!(text(&cr).contains("earlier sources"), "{}", text(&cr));
+
+    // A scoped verify passes the module and function to Verus.
+    let v = c.tool("verify", &json!({"project_dir": project, "module": "arith", "function": "mul_pos", "verus_args": ["--rlimit", "20"]}));
+    assert_eq!(v["isError"], false, "{v}");
+    let logged = std::fs::read_to_string(&args_log).unwrap_or_default();
+    let call_args = logged.lines().last().unwrap_or_default();
+    assert!(
+        call_args.contains("-- --verify-module arith --verify-function mul_pos --rlimit 20"),
+        "{call_args}"
+    );
+    let cr = c.tool("cached_result", &json!({}));
+    assert_eq!(
+        cr["structuredContent"]["functions"]
+            .as_array()
+            .map(Vec::len),
+        Some(8),
+        "{cr}"
+    );
+
+    // fragility is not available yet; invalid arguments are tool errors.
+    let f = c.tool("fragility", &json!({}));
+    assert_eq!(
+        (
+            f["isError"].clone(),
+            f["structuredContent"]["available"].clone()
+        ),
+        (json!(true), json!(false))
+    );
+    let bad = c.tool("verify", &json!({"function": "--verify-all"}));
+    assert_eq!(bad["isError"], true);
+    let missing = c.tool("counterexample", &json!({"function": "nope"}));
+    assert_eq!(missing["structuredContent"]["error"], "not_found");
+
+    // When Cargo skips Verus, nothing is recorded and the latest run is
+    // pointed to.
+    assert!(std::fs::write(root.join("fresh"), "").is_ok());
+    let v = c.tool("verify", &json!({}));
+    assert_eq!(v["isError"], false, "{v}");
+    assert_eq!(v["structuredContent"]["stored"], false);
+    assert_eq!(
+        v["structuredContent"]["latest_recorded_run"]["run"], 2,
+        "{v}"
+    );
+    assert!(text(&v).contains("Verus did not run"), "{}", text(&v));
+    assert!(std::fs::remove_file(root.join("fresh")).is_ok());
+
+    // A build failure is reported as such, not as "up to date".
+    assert!(std::fs::write(root.join("broken"), "").is_ok());
+    let v = c.tool("verify", &json!({}));
+    assert_eq!(v["isError"], false, "{v}");
+    assert_eq!(v["structuredContent"]["stored"], false);
+    let said = text(&v);
+    assert!(said.contains("the build failed"), "{said}");
+    assert!(said.contains("cannot find value `y`"), "{said}");
+    assert!(std::fs::remove_file(root.join("broken")).is_ok());
+
+    // Cancelling a verify kills its run; the call gets no response, and the
+    // server keeps serving.
+    assert!(std::fs::write(root.join("slow"), "").is_ok());
+    let id = c.next;
+    c.next += 1;
+    c.send(&json!({"jsonrpc": "2.0", "id": id, "method": "tools/call", "params": {"name": "verify", "arguments": {}}}));
+    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    while !root.join("slow.started").exists() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the slow run never started"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    c.send(&json!({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": id, "reason": "test"}}));
+    let pong = c.request("ping", &json!({}));
+    assert!(pong["result"].is_object(), "{pong}");
+    // The run is gone well before it would have finished, and was not
+    // recorded.
+    let cr = c.tool("cached_result", &json!({}));
+    assert_eq!(
+        cr["structuredContent"]["runs"]
+            .as_object()
+            .map(|r| r.contains_key("3")),
+        Some(false),
+        "{cr}"
+    );
+    std::thread::sleep(Duration::from_millis(500));
+    assert!(!root.join("slow.finished").exists());
+    assert!(std::fs::remove_file(root.join("slow")).is_ok());
+
+    // Closing stdin ends the server.
+    c.stdin = None;
+    let status = c.child.wait();
+    assert!(status.is_ok_and(|s| s.success()));
+
+    // A new server finds the recorded results on disk.
+    let mut c = Client::start(&project, &env);
+    let cr = c.tool("cached_result", &json!({"function": "max"}));
+    assert_eq!(cr["structuredContent"]["verdict"], "verified", "{cr}");
+
+    let _ = Command::new("pkill")
+        .args(["-f", &format!("serve --socket {}", socket.display())])
+        .status();
+    let _ = std::fs::remove_dir_all(&root);
+}

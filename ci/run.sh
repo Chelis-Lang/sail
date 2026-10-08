@@ -11,7 +11,8 @@
 #                        project, cold and warm: identical output and exit;
 #                        then `sail verify --output json`: unchanged stderr
 #                        and exit, a schema-v1 document agreeing with
-#                        Verus's own --output-json
+#                        Verus's own --output-json; then one `verify` call
+#                        through `sail mcp`, agreeing with that document
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
 #                        cache on (fill, then warm). `pr` limits the fast
@@ -61,9 +62,10 @@ case "$step" in
 
   e2e)
     release_build
-    cargo build --release --locked -p sail-cli --example check_output
+    cargo build --release --locked -p sail-cli --example check_output --example check_mcp
     sail="$PWD/target/release/sail"
     check_output="$PWD/target/release/examples/check_output"
+    check_mcp="$PWD/target/release/examples/check_mcp"
     work="$(mktemp -d)"
     export SAIL_CACHE_DIR="$work/cache"
     cd "$work"
@@ -125,6 +127,12 @@ RS
       fi
     done
     "$check_output" "$work/json.out" "$work/verusjson.out" --attribution complete --source cache
+    # `sail mcp` (ADR 0016): one real `verify` tool call. Its verdicts must
+    # equal `sail verify --output json`'s, and its report must pass the same
+    # checks against Verus's own --output-json.
+    touch src/lib.rs
+    "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
+    "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
     ;;
 
   conformance)

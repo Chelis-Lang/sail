@@ -20,6 +20,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "verify a crate; accepts the same arguments as `cargo verus verify`",
     ),
     ("watch", "re-verify affected functions as files change"),
+    (
+        "mcp",
+        "serve verification to agents over MCP (stdio; see docs/mcp.md)",
+    ),
     ("serve", "run the S.A.I.L. daemon in the foreground"),
     ("status", "show daemon, solver pool and cache state"),
     ("cache", "inspect and manage the result cache"),
@@ -61,6 +65,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),
         Some("cache") => ops::cache(args.get(1..).unwrap_or_default(), out, err),
+        Some("mcp") => mcp(args.get(1..).unwrap_or_default(), err),
         Some(cmd) if COMMANDS.iter().any(|(name, _)| *name == cmd) => {
             let _ = writeln!(
                 err,
@@ -72,6 +77,39 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             let _ = writeln!(err, "error[SAIL0002]: unknown command `{other}`\n");
             let _ = write!(err, "{}", usage());
             ExitCode::from(EXIT_USAGE)
+        }
+    }
+}
+
+/// `sail mcp`: the MCP server on stdin and stdout (ADR 0016). Tool calls
+/// run this same `sail` binary. Results are recorded under
+/// `<cache>/mcp`, where `<cache>` is `$SAIL_CACHE_DIR` or `~/.cache/sail`.
+fn mcp(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
+    if let Some(arg) = args.first() {
+        let _ = writeln!(
+            err,
+            "error[SAIL0002]: `sail mcp` takes no arguments (got `{arg}`); it speaks MCP on stdin and stdout"
+        );
+        return ExitCode::from(EXIT_USAGE);
+    }
+    let (sail, cwd) = match (std::env::current_exe(), std::env::current_dir()) {
+        (Ok(s), Ok(c)) => (s, c),
+        (Err(e), _) | (_, Err(e)) => {
+            let _ = writeln!(err, "error[SAIL0301]: sail mcp cannot start: {e}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+    };
+    let config = sail_mcp::Config {
+        sail,
+        store_dir: sail_verus::cache_dir().ok().map(|c| c.join("mcp")),
+        cwd,
+    };
+    let stdin = std::io::stdin();
+    match sail_mcp::serve(config, stdin.lock(), std::io::stdout()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let _ = writeln!(err, "error[SAIL0302]: sail mcp: cannot read stdin: {e}");
+            ExitCode::from(1)
         }
     }
 }

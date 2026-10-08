@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail mcp`: an MCP server on stdio (`docs/mcp.md`, ADR 0016). Its tools:
+  - `verify`: a crate, module or function, through `sail verify --output
+    json`;
+  - `counterexample`: models and diagnostics from the latest run;
+  - `cached_result`: the latest known verdicts, with when and how they were
+    established and whether the sources changed since;
+  - `fragility`: reports "not available" until `sail fragility` exists.
+
+  Calls can be cancelled. Results are kept per project under
+  `<cache>/mcp`.
 - `sail verify --output json`: one schema-v1 JSON document on stdout
   (`docs/output-schema.md`, ADR 0014). It has per-function verdicts with tier
   and provenance, and per-obligation results with stable identities, effort,
