@@ -18,7 +18,7 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
 fi
 tty=()
 [ -t 1 ] && tty=(-t)
-docker run --rm "${tty[@]}" --platform linux/amd64 \
+docker run --rm ${tty[@]+"${tty[@]}"} --platform linux/amd64 \
   -v "$PWD:/work" -w /work \
   -v sail-ci-target:/work/target \
   -v sail-ci-cache:/root/.cache/sail \
