@@ -253,6 +253,18 @@ fn header(out: &mut String, name: &str, f: &BenchFile, what: &str, rounds: &str)
     let _ = writeln!(out, "- Machine: {}\n", machine.join("; "));
 }
 
+/// Conformance counts over `units`.
+fn conformance(units: &[UnitResult]) -> String {
+    let sum = |g: fn(&UnitResult) -> usize| units.iter().map(g).sum::<usize>();
+    format!(
+        "{} same, {} different, {} unstable, {} infra errors",
+        sum(|u| u.same),
+        sum(|u| u.different),
+        sum(|u| u.unstable),
+        sum(|u| u.infra_errors)
+    )
+}
+
 /// What a `warm` section measures.
 const WARM_INTRO: &str = "Each unit gets a fresh `sail serve` with an empty cache (ADR 0012). The fill runs Verus through `sail-z3` with that empty cache; each warm round runs it again, with nothing changed. Plain Verus runs in every round, and every sail run (fill and warm) is compared with it. *Replies served / recorded* counts solver replies the cache served and replies recorded from a running solver; a session that misses starts the solver and replays its earlier commands into it (ADR 0011).";
 
@@ -266,11 +278,16 @@ fn render_warm(out: &mut String, name: &str, f: &BenchFile) {
         &format!("1 fill round and {} warm round(s) per unit", f.rounds),
     );
     let _ = writeln!(out, "{WARM_INTRO}\n");
+    warm_summary(out, f);
+    warm_unit_tables(out, f);
+}
+
+/// The summary table of a `warm` section.
+fn warm_summary(out: &mut String, f: &BenchFile) {
     let empty = Samples::default();
     let fill = |u: &UnitResult| u.fill.as_ref().map_or(0.0, med);
     let (mut plain, mut fill_t, mut warm, mut cpu) = (0.0, 0.0, 0.0, [0.0f64; 3]);
     let mut smt = [0.0f64; 3];
-    let (mut functions, mut same, mut different, mut unstable, mut infra) = (0, 0, 0, 0, 0);
     let mut bytes = 0u64;
     for u in &f.units {
         let fs = u.fill.as_ref().unwrap_or(&empty);
@@ -283,11 +300,6 @@ fn render_warm(out: &mut String, name: &str, f: &BenchFile) {
                 *t += smt_mean(s);
             }
         }
-        functions += u.functions;
-        same += u.same;
-        different += u.different;
-        unstable += u.unstable;
-        infra += u.infra_errors;
         bytes += u.cache_bytes.unwrap_or(0);
     }
     let all_cache = f.units.iter().flat_map(|u| &u.cache);
@@ -300,6 +312,7 @@ fn render_warm(out: &mut String, name: &str, f: &BenchFile) {
         "| Measure | Plain Verus | sail fill (empty cache) | sail warm |\n|---|---|---|---|"
     );
     let n = f.units.len();
+    let functions: usize = f.units.iter().map(|u| u.functions).sum();
     let _ = writeln!(out, "| Units | {n} | {n} | {n} |");
     let _ = writeln!(
         out,
@@ -361,9 +374,9 @@ fn render_warm(out: &mut String, name: &str, f: &BenchFile) {
     );
     let _ = writeln!(
         out,
-        "| Conformance (sail runs: fill and warm) | | {same} same, {different} different, {unstable} unstable, {infra} infra errors | |\n"
+        "| Conformance (sail runs: fill and warm) | | {} | |\n",
+        conformance(&f.units)
     );
-    warm_unit_tables(out, f);
 }
 
 /// The per-unit tables of a `warm` section: the slowest units, and the
