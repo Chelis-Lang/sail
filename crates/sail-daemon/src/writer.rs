@@ -1,4 +1,4 @@
-//! Write-behind for `PUT`s (ADR 0014).
+//! Write-behind for `PUT`s (ADR 0015).
 //!
 //! A `PUT` is acknowledged once its reply is held by the in-memory tier (as
 //! *pending*) and queued here. One writer thread persists queued entries in

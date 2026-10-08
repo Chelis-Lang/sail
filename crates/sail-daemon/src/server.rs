@@ -5,7 +5,7 @@ use std::io::{BufReader, BufWriter};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -332,17 +332,48 @@ impl State {
 /// handler, or the idle timer).
 #[derive(Debug, Clone)]
 pub struct Handle {
-    stopping: Arc<AtomicBool>,
+    stop: Arc<StopSignal>,
     socket: PathBuf,
+}
+
+/// Set once, by the first [`Handle::shutdown`].
+#[derive(Debug, Default)]
+struct StopSignal {
+    set: AtomicBool,
+    lock: Mutex<()>,
+    cv: Condvar,
+}
+
+impl StopSignal {
+    fn is_set(&self) -> bool {
+        self.set.load(Ordering::SeqCst)
+    }
+
+    fn wait(&self) {
+        let Ok(mut guard) = self.lock.lock() else {
+            return;
+        };
+        while !self.is_set() {
+            guard = match self.cv.wait(guard) {
+                Ok(g) => g,
+                Err(_) => return,
+            };
+        }
+    }
 }
 
 impl Handle {
     /// Asks the server to stop: it stops accepting connections, waits
     /// briefly for open ones, writes every queued entry to disk, removes
-    /// its socket and returns from [`Server::run`].
+    /// its socket and returns from [`Server::run`]. This works even if the
+    /// socket file has been removed.
     pub fn shutdown(&self) {
-        if !self.stopping.swap(true, Ordering::SeqCst) {
-            // Wake the accept loop.
+        if !self.stop.set.swap(true, Ordering::SeqCst) {
+            if let Ok(_guard) = self.stop.lock.lock() {
+                self.stop.cv.notify_all();
+            }
+            // Wake the accept thread so it can exit (best effort: it is
+            // left blocked if the socket file is gone).
             let _ = UnixStream::connect(&self.socket);
         }
     }
@@ -350,10 +381,10 @@ impl Handle {
 
 /// A bound daemon, ready to [`run`](Server::run).
 pub struct Server {
-    listener: UnixListener,
+    listener: Option<UnixListener>,
     state: Arc<State>,
     socket_stamp: Option<FileStamp>,
-    stopping: Arc<AtomicBool>,
+    stop: Arc<StopSignal>,
     writer_thread: Option<JoinHandle<()>>,
 }
 
@@ -419,10 +450,10 @@ pub fn bind(
             .map_or_else(|| "none".to_owned(), |d| format!("{}s", d.as_secs())),
     ));
     Ok(Server {
-        listener,
+        listener: Some(listener),
         state,
         socket_stamp,
-        stopping: Arc::new(AtomicBool::new(false)),
+        stop: Arc::new(StopSignal::default()),
         writer_thread: Some(writer_thread),
     })
 }
@@ -432,7 +463,7 @@ impl Server {
     #[must_use]
     pub fn handle(&self) -> Handle {
         Handle {
-            stopping: Arc::clone(&self.stopping),
+            stop: Arc::clone(&self.stop),
             socket: self.state.socket.clone(),
         }
     }
@@ -442,17 +473,16 @@ impl Server {
     ///
     /// # Errors
     ///
-    /// None at present; reserved for fatal listener errors.
+    /// Thread creation errors.
     pub fn run(mut self) -> std::io::Result<()> {
-        let handle = self.handle();
         if let Some(timeout) = self.state.idle_timeout {
             let state = Arc::clone(&self.state);
-            let stopping = Arc::clone(&self.stopping);
+            let handle = self.handle();
             let tick = (timeout / 4).clamp(Duration::from_millis(10), Duration::from_secs(1));
-            let _ = std::thread::Builder::new()
+            std::thread::Builder::new()
                 .name("sail-daemon-idle".to_owned())
                 .spawn(move || {
-                    while !stopping.load(Ordering::SeqCst) {
+                    while !handle.stop.is_set() {
                         std::thread::sleep(tick);
                         if state.active.load(Ordering::SeqCst) == 0 && state.idle_for() >= timeout {
                             state.log.line(&format!(
@@ -463,28 +493,16 @@ impl Server {
                             return;
                         }
                     }
-                });
+                })?;
         }
-        for conn in self.listener.incoming() {
-            let Ok(conn) = conn else { continue };
-            // A connection that raced a shutdown is still served.
-            self.state.active.fetch_add(1, Ordering::SeqCst);
-            self.state.touch();
-            let worker = Arc::clone(&self.state);
-            let spawned = std::thread::Builder::new()
-                .name("sail-daemon-conn".to_owned())
-                .spawn(move || {
-                    worker.handle(conn);
-                    worker.touch();
-                    worker.active.fetch_sub(1, Ordering::SeqCst);
-                });
-            if spawned.is_err() {
-                self.state.active.fetch_sub(1, Ordering::SeqCst);
-            }
-            if self.stopping.load(Ordering::SeqCst) {
-                break;
-            }
+        if let Some(listener) = self.listener.take() {
+            let state = Arc::clone(&self.state);
+            let stop = Arc::clone(&self.stop);
+            std::thread::Builder::new()
+                .name("sail-daemon-accept".to_owned())
+                .spawn(move || accept_loop(&listener, &state, &stop))?;
         }
+        self.stop.wait();
         self.stop();
         Ok(())
     }
@@ -520,6 +538,30 @@ impl Server {
             s.puts,
             s.dropped_puts,
         ));
+    }
+}
+
+/// Accepts connections until the server is stopping, serving each on its
+/// own thread. A connection that raced the stop is still served.
+fn accept_loop(listener: &UnixListener, state: &Arc<State>, stop: &StopSignal) {
+    for conn in listener.incoming() {
+        let Ok(conn) = conn else { continue };
+        state.active.fetch_add(1, Ordering::SeqCst);
+        state.touch();
+        let worker = Arc::clone(state);
+        let spawned = std::thread::Builder::new()
+            .name("sail-daemon-conn".to_owned())
+            .spawn(move || {
+                worker.handle(conn);
+                worker.touch();
+                worker.active.fetch_sub(1, Ordering::SeqCst);
+            });
+        if spawned.is_err() {
+            state.active.fetch_sub(1, Ordering::SeqCst);
+        }
+        if stop.is_set() {
+            return;
+        }
     }
 }
 

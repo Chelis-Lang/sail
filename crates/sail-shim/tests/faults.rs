@@ -642,7 +642,7 @@ fn unkeyed() -> SolverIdentity {
 }
 
 // ---------------------------------------------------------------------------
-// 6. The in-memory tier and cache maintenance (ADR 0014).
+// 6. The in-memory tier and cache maintenance (ADR 0015).
 
 /// What the disk tier holds for `key`: the reply of an entry that passes
 /// the integrity check, or `None`. Reads without removing anything.

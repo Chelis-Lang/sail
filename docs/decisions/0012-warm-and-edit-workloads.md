@@ -109,3 +109,11 @@ Two constraints shape the harness:
 `bench.yml` is removed: benchmarks are local-only. Reference numbers come
 from `ci/local.sh bench <workload> <tier> <rounds>` on a Linux x86-64 machine
 (ADR 0013).
+
+## Update 2026-10-08: per-tier counters (ADR 0015)
+
+`STATS` now also reports `memory_hits` (hits served from the in-memory
+tier, included in `hits`) and `dropped_puts`, as anticipated above. Each
+unit's `cache` records carry `memory_hits` when it is non-zero, so existing
+result files read and write back unchanged. The bench starts `sail serve`
+with `--idle-timeout 0`.

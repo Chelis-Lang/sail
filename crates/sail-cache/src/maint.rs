@@ -1,5 +1,5 @@
 //! Disk-tier maintenance: listing, summaries, integrity checks, eviction
-//! and clearing (ADR 0014).
+//! and clearing (ADR 0015).
 //!
 //! Every operation here is safe to run while a daemon serves and writes the
 //! same cache:

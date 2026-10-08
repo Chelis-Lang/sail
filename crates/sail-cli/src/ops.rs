@@ -1,5 +1,5 @@
 //! `sail status` and `sail cache`: daemon state and cache maintenance
-//! (ADR 0014).
+//! (ADR 0015).
 //!
 //! Exit codes: 0 success; 2 usage error; 4 no daemon is listening
 //! (`sail status`, `SAIL0401`); 5 `sail cache verify` found bad files and

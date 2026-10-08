@@ -109,7 +109,7 @@ RS
     done
     # The deliberate failure must be reported, and the cache must be used.
     grep -q "postcondition not satisfied" "$work/plain.err"
-    entries="$(find "$SAIL_CACHE_DIR/results" -type f | wc -l)"
+    entries="$(find "$SAIL_CACHE_DIR/results/v2" -type f | wc -l)"
     echo "e2e: identical to cargo verus verify (exit $(cat "$work/plain.rc")); cache entries: $entries"
     [ "$entries" -gt 0 ]
     # `--output json` (ADR 0014): stderr and exit code unchanged, stdout one
@@ -143,7 +143,7 @@ RS
     sock="$HOME/.cache/sail/ci-$$.sock"
     cache="$(mktemp -d)/cache"
     mkdir -p "$(dirname "$sock")"
-    ./target/release/sail serve --socket "$sock" --cache "$cache" &
+    ./target/release/sail serve --socket "$sock" --cache "$cache" --idle-timeout 0 &
     daemon=$!
     trap 'kill "$daemon" 2>/dev/null || true' EXIT
     for _ in $(seq 1 100); do [ -S "$sock" ] && break; sleep 0.1; done
@@ -151,7 +151,7 @@ RS
     for round in fill warm; do
       SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/cache-$round"
     done
-    entries="$(find "$cache" -type f | wc -l)"
+    entries="$(find "$cache/v2" -type f | wc -l)"
     echo "cache entries: $entries"
     [ "$entries" -gt 0 ]
     ;;

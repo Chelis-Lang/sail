@@ -46,7 +46,7 @@ fn stats_count_hellos_gets_hits_and_puts() {
         gets: 2,
         hits: 1,
         puts: 1,
-        // The reply was still held in memory after the PUT (ADR 0014).
+        // The reply was still held in memory after the PUT (ADR 0015).
         memory_hits: 1,
         dropped_puts: 0,
     };

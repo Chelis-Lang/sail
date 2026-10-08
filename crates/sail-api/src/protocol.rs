@@ -12,7 +12,7 @@
 //! | 5 `INFO` | empty | `0`, `u32` len, [`Info`] JSON |
 //!
 //! Operations 4 and 5 are read-only and additive: they kept
-//! [`PROTOCOL_VERSION`] at 1 (ADR 0012, ADR 0014). A daemon that predates
+//! [`PROTOCOL_VERSION`] at 1 (ADR 0012, ADR 0015). A daemon that predates
 //! one rejects it by closing that connection; nothing else changes.
 //!
 //! Frames larger than [`MAX_FRAME`] are rejected.

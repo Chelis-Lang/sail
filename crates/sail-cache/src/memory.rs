@@ -1,5 +1,5 @@
 //! The in-memory tier: a bounded, least-recently-used map from keys to
-//! replies, in front of the disk tier (ADR 0014).
+//! replies, in front of the disk tier (ADR 0015).
 //!
 //! A slot is either:
 //! - **on disk**: its bytes were read from a verified disk entry, or were

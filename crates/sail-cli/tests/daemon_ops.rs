@@ -1,5 +1,5 @@
 //! `sail status`, `sail cache` and the `sail serve` lifecycle, against a
-//! real daemon process (ADR 0014). No solver needed: replies are synthetic.
+//! real daemon process (ADR 0015). No solver needed: replies are synthetic.
 #![cfg(unix)]
 
 use std::path::{Path, PathBuf};

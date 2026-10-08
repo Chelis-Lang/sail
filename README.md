@@ -26,6 +26,11 @@ It holds per-function verdicts, with tier and provenance, and per-obligation
 results with stable identities, effort and counterexample models. Diagnostics
 still go to stderr unchanged. See `docs/output-schema.md`.
 
+The daemon keeps replies in memory in front of the disk cache, stops after
+30 minutes without connections, and logs to `daemon.log` in the cache root.
+`sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
+inspects, checks, shrinks or empties the cache (ADR 0015).
+
 - `docs/CHARTER.md`: mission, scope and the correctness contract.
 - `AGENTS.md`: how to work in this repo (humans and agents).
 - `docs/decisions/`: architecture decision records.

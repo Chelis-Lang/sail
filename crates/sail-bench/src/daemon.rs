@@ -53,7 +53,7 @@ impl Daemon {
             .arg("--cache")
             .arg(cache_root)
             // The bench stops the daemon itself; never let it stop early
-            // between runs (ADR 0014).
+            // between runs (ADR 0015).
             .arg("--idle-timeout")
             .arg("0")
             .stdin(Stdio::null())
@@ -127,7 +127,7 @@ pub struct CacheRun {
     /// Replies recorded from the solver (`PUT`).
     pub puts: u64,
     /// Replies served from the daemon's in-memory tier (included in
-    /// `hits`; ADR 0014). Absent from files written before it existed.
+    /// `hits`; ADR 0015). Absent from files written before it existed.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub memory_hits: u64,
 }

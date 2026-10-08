@@ -1,5 +1,5 @@
 //! The in-memory tier, write-behind, cache maintenance under load, and the
-//! daemon lifecycle (ADR 0014). No solver needed: replies are synthetic.
+//! daemon lifecycle (ADR 0015). No solver needed: replies are synthetic.
 #![cfg(unix)]
 
 use std::path::{Path, PathBuf};
@@ -186,7 +186,7 @@ fn memory_hits_always_match_disk() {
 fn put_is_acknowledged_before_the_write_and_drained_on_shutdown() {
     let dir = Scratch::new("behind");
     let config = sail_daemon::Config {
-        write_delay: Some(Duration::from_millis(20)),
+        write_delay: Some(Duration::from_millis(50)),
         ..sail_daemon::Config::default()
     };
     let r = Running::start(&dir.0, &config);
@@ -196,8 +196,8 @@ fn put_is_acknowledged_before_the_write_and_drained_on_shutdown() {
     for i in 0..n {
         assert!(c.put(&key(i).0, meta("get-model"), reply_for(i)).is_ok());
     }
-    // 30 writes take at least 600 ms; the acknowledgements did not wait.
-    assert!(start.elapsed() < Duration::from_millis(300));
+    // 30 writes take at least 1.5 s; the acknowledgements did not wait.
+    assert!(start.elapsed() < Duration::from_secs(1));
     let info = c.info().unwrap_or_default();
     assert!(info.queue.entries > 0, "{info:?}");
     assert!(info.memory.pending > 0, "{info:?}");
@@ -351,4 +351,25 @@ fn idle_daemon_stops_removes_its_socket_and_logs() {
     assert!(text.contains("started"), "{text}");
     assert!(text.contains("idle"), "{text}");
     assert!(text.contains("stopped"), "{text}");
+}
+
+#[test]
+fn shutdown_works_after_the_socket_file_is_removed() {
+    let dir = Scratch::new("gone");
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    put_all_and_get(&r);
+    assert!(std::fs::remove_file(&r.socket).is_ok());
+    let start = Instant::now();
+    let disk = r.disk();
+    r.stop();
+    assert!(start.elapsed() < Duration::from_secs(10));
+    assert_eq!(on_disk(&disk, &key(1)), Some(reply_for(1)));
+}
+
+fn put_all_and_get(r: &Running) {
+    let mut c = r.client();
+    for i in 0..3 {
+        assert!(c.put(&key(i).0, meta("get-model"), reply_for(i)).is_ok());
+        assert_eq!(c.get(&key(i).0).ok().flatten(), Some(reply_for(i)));
+    }
 }

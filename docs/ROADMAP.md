@@ -39,13 +39,14 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 
 1. **In progress.** Key v2 (ADR 0008) and a local disk cache behind
    `sail serve`. `sail-z3` replays replies from it and starts the solver
-   lazily (ADR 0011). `sail verify` is in place.
+   lazily (ADR 0011). `sail verify` is in place. The daemon has an
+   in-memory tier, write-behind, idle shutdown, `sail status` and
+   `sail cache` (ADR 0015).
    - Remaining:
      - effort recording and the near-limit `unknown` policy (ADR 0009);
      - fault injection;
      - the warm and edit workloads;
-     - cache-on Linux numbers;
-     - an in-memory tier inside the daemon.
+     - cache-on Linux numbers.
 2. A daemon (`sail-daemon`) with a warm solver pool (`sail-solver`), the shim's
    daemon client, and fault injection.
 3. **Done.** Function and obligation mapping (`sail-verus`, `sail-ledger`),

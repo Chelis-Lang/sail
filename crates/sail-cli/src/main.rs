@@ -99,7 +99,7 @@ fn env_number(name: &str) -> Result<Option<u64>, String> {
 
 /// `sail serve [--socket PATH] [--cache DIR] [--memory-bytes N]
 /// [--idle-timeout SECS]`: runs the daemon in the foreground (ADR 0011,
-/// ADR 0014). Defaults: `<cache>/daemon-v<N>.sock` and `<cache>/results`,
+/// ADR 0015). Defaults: `<cache>/daemon-v<N>.sock` and `<cache>/results`,
 /// where `<cache>` is `$SAIL_CACHE_DIR` or `~/.cache/sail`; a 256 MiB
 /// memory tier (`$SAIL_DAEMON_MEMORY_BYTES`); a 30-minute idle timeout
 /// (`$SAIL_DAEMON_IDLE_TIMEOUT`, seconds, 0 for never). The log is
@@ -128,7 +128,7 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         if let Some(n) = env_number("SAIL_DAEMON_IDLE_TIMEOUT")? {
             config.idle_timeout = (n > 0).then(|| std::time::Duration::from_secs(n));
         }
-        // Fault injection only (ADR 0014): slow every disk write.
+        // Fault injection only (ADR 0015): slow every disk write.
         if let Some(n) = env_number("SAIL_DAEMON_WRITE_DELAY_MS")? {
             config.write_delay = (n > 0).then(|| std::time::Duration::from_millis(n));
         }

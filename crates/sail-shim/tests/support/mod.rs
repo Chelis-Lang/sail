@@ -122,7 +122,7 @@ static DAEMONS: Mutex<Vec<(PathBuf, PathBuf)>> = Mutex::new(Vec::new());
 
 /// Waits until the daemon serving `cache` (if this test started one) has
 /// written every queued entry to disk. `PUT`s are written behind
-/// (ADR 0014), so a session can end before its entries reach disk.
+/// (ADR 0015), so a session can end before its entries reach disk.
 pub fn drain(cache: &Path) {
     let socket = DAEMONS.lock().ok().and_then(|d| {
         d.iter()
