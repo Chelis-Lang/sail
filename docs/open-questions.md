@@ -60,4 +60,7 @@ inline with the date and link the ADR that captures it.
    - build an opt-in normalization mode under charter rule 5.
 
    Which should come first? The proposal is upstream first: it costs nothing
-   in correctness and helps every Verus user.
+   in correctness and helps every Verus user. The root cause is now located:
+   `builtin_macros/src/enum_synthesize.rs` iterates a `HashMap`. A draft
+   upstream report is in the repro directory and has not been filed; filing
+   it is the owner's call.
