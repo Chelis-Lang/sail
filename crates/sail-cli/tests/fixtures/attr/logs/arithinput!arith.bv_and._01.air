@@ -1,0 +1,7 @@
+;; MODULE 'module arith'
+;; input.rs:18:9: 18:15 (#0)
+;; query spun off because: bitvector
+;; Function-Def input::arith::bv_and
+;; input.rs:18:9: 18:15 (#0)
+;; AIR prelude
+(check-valid

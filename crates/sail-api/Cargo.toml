@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 sail-key.workspace = true
+sail-ledger.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

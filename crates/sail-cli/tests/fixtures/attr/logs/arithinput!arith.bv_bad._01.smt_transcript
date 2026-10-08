@@ -1,0 +1,47 @@
+;;;>>> QUERY
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:max-memory   16.97
+ :memory       16.97
+ :num-allocs   8907
+ :rlimit-count 1)
+;;;<<<
+;;;>>> QUERY
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:max-memory   16.97
+ :memory       16.97
+ :num-allocs   8907
+ :rlimit-count 53)
+;;;<<<
+;;;>>> QUERY
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.16.0")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+sat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:elim-unconstrained  3
+ :final-checks        2
+ :max-memory          17.49
+ :memory              17.23
+ :mk-bool-var         2
+ :num-allocs          33286
+ :num-checks          2
+ :rlimit-count        207
+ :solve-eqs-elim-vars 1
+ :solve-eqs-steps     1)
+;;;<<<

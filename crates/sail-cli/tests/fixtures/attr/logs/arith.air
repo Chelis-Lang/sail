@@ -1,0 +1,39 @@
+;; Prelude
+;; AIR prelude
+;; MODULE 'module arith'
+;; Fuel
+;; Trait-Decls
+;; Associated-Type-Decls
+;; Datatypes
+;; Trait-Bounds
+;; Associated-Type-Impls
+;; Trait-Impl-Axiom
+;; Broadcast vstd::function::axiom_fn_mut_call_requires
+;; Broadcast vstd::function::axiom_fn_mut_call_ensures
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Function-Specs input::arith::mul_pos
+;; Function-Def input::arith::mul_pos
+;; input.rs:7:5: 7:41 (#0)
+(check-valid
+;; Function-Specs input::arith::bv_and
+;; Function-Def input::arith::bv_and
+;; input.rs:15:5: 15:32 (#0)
+(check-valid
+;; Function-Def input::arith::bv_bad
+;; input.rs:21:5: 21:32 (#0)
+(check-valid
+;; Function-Recommends input::arith::bv_bad
+;; input.rs:21:5: 21:32 (#0)
+(check-valid

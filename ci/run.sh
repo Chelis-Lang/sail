@@ -8,7 +8,10 @@
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
 #   e2e                  `sail verify` vs `cargo verus verify` on a fresh
-#                        project, cold and warm: identical output and exit
+#                        project, cold and warm: identical output and exit;
+#                        then `sail verify --output json`: unchanged stderr
+#                        and exit, a schema-v1 document agreeing with
+#                        Verus's own --output-json
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
 #                        cache on (fill, then warm). `pr` limits the fast
@@ -58,7 +61,9 @@ case "$step" in
 
   e2e)
     release_build
+    cargo build --release --locked -p sail-cli --example check_output
     sail="$PWD/target/release/sail"
+    check_output="$PWD/target/release/examples/check_output"
     work="$(mktemp -d)"
     export SAIL_CACHE_DIR="$work/cache"
     cd "$work"
@@ -107,6 +112,19 @@ RS
     entries="$(find "$SAIL_CACHE_DIR/results" -type f | wc -l)"
     echo "e2e: identical to cargo verus verify (exit $(cat "$work/plain.rc")); cache entries: $entries"
     [ "$entries" -gt 0 ]
+    # `--output json` (ADR 0014): stderr and exit code unchanged, stdout one
+    # schema-v1 document whose verdicts agree with Verus's own --output-json.
+    # The runs above filled the cache, so every answer is served from it.
+    run json "$sail" verify --output json
+    run verusjson cargo verus verify -- --output-json --time
+    for part in rc err; do
+      if ! cmp -s "$work/plain.$part" "$work/json.$part"; then
+        echo "e2e: --output json $part differs from plain cargo verus verify" >&2
+        diff -u "$work/plain.$part" "$work/json.$part" >&2 || true
+        exit 1
+      fi
+    done
+    "$check_output" "$work/json.out" "$work/verusjson.out" --attribution complete --source cache
     ;;
 
   conformance)

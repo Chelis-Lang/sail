@@ -7,7 +7,9 @@
 //! Query-to-function mapping and diagnostic handling come in a later wave.
 #![forbid(unsafe_code)]
 
+pub mod attribution;
 pub mod corpus;
+pub mod diagnostics;
 pub mod patch;
 pub mod run;
 pub mod toolchain;

@@ -43,6 +43,10 @@ pub const ENV_DAEMON_SOCKET: &str = "SAIL_DAEMON_SOCKET";
 pub const ENV_DAEMON_TIMEOUT_MS: &str = "SAIL_DAEMON_TIMEOUT_MS";
 /// Environment variable naming a directory for session traces.
 pub const ENV_TRACE_DIR: &str = "SAIL_TRACE_DIR";
+/// Environment variable naming a directory where cached sessions record how
+/// many replies the cache served (ADR 0014). Set by `sail verify --output
+/// json`.
+pub const ENV_PROVENANCE_DIR: &str = "SAIL_PROVENANCE_DIR";
 
 /// Exit code when the shim cannot start the solver (stable, `SAIL2xxx`).
 const EXIT_SETUP: u8 = 125;

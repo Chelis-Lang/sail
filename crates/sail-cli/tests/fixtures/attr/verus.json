@@ -1,0 +1,213 @@
+{
+  "func-details": {
+    "input::max": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "input::arith::bv_and": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "input::arith::bv_bad": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "input::Counter::incr": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "input::bad": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "input::Counter::get": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "input::main": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "input::arith::mul_pos": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::function::axiom_fn_mut_call_requires": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "vstd::function::axiom_fn_mut_call_ensures": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    }
+  },
+  "verification-results": {
+    "encountered-error": true,
+    "encountered-vir-error": false,
+    "success": false,
+    "verified": 9,
+    "errors": 2,
+    "is-verifying-entire-crate": true
+  },
+  "times-ms": {
+    "verus-build": {
+      "profile": "release",
+      "version": "0.2026.10.04.426d8b0"
+    },
+    "num-threads": 2,
+    "total": 636,
+    "estimated-cpu-time": 770,
+    "rust": {
+      "total": 43,
+      "init-and-types": 10,
+      "trait-conflicts": 32,
+      "compile": 0
+    },
+    "verification": {
+      "total": 589,
+      "vir": {
+        "total": 195,
+        "hir": 2,
+        "import": 143,
+        "rust-to-vir": 21
+      }
+    },
+    "total-verify": 525,
+    "total-verify-module-times": [
+      {
+        "module": "arith",
+        "time": 379
+      },
+      {
+        "module": "",
+        "time": 145
+      }
+    ],
+    "air": {
+      "total": 190,
+      "module-times": [
+        {
+          "module": "arith",
+          "time": 101
+        },
+        {
+          "module": "",
+          "time": 88
+        }
+      ]
+    },
+    "smt": {
+      "total": 54,
+      "smt-init": 33,
+      "rlimit-init": 356,
+      "smt-init-module-times": [
+        {
+          "module": "",
+          "time": 29,
+          "time-micros": 29748,
+          "rlimit": 175
+        },
+        {
+          "module": "arith",
+          "time": 3,
+          "time-micros": 3769,
+          "rlimit": 181
+        }
+      ],
+      "smt-run": 21,
+      "rlimit-run": 3485,
+      "smt-run-module-times": [
+        {
+          "module": "",
+          "time": 18,
+          "time-micros": 18316,
+          "rlimit": 2851,
+          "function-breakdown": [
+            {
+              "function": "input::Counter::get",
+              "mode:": "exec",
+              "time": 2,
+              "time-micros": 2497,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "input::max",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 557,
+              "rlimit": 774,
+              "success": true
+            },
+            {
+              "function": "input::main",
+              "mode:": "exec",
+              "time": 0,
+              "time-micros": 120,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "input::bad",
+              "mode:": "exec",
+              "time": 1,
+              "time-micros": 1523,
+              "rlimit": 581,
+              "success": false
+            },
+            {
+              "function": "input::Counter::incr",
+              "mode:": "exec",
+              "time": 13,
+              "time-micros": 13617,
+              "rlimit": 1492,
+              "success": true
+            }
+          ]
+        },
+        {
+          "module": "arith",
+          "time": 2,
+          "time-micros": 2748,
+          "rlimit": 634,
+          "function-breakdown": [
+            {
+              "function": "input::arith::bv_and",
+              "mode:": "proof",
+              "time": 0,
+              "time-micros": 376,
+              "rlimit": 6,
+              "success": true
+            },
+            {
+              "function": "input::arith::mul_pos",
+              "mode:": "proof",
+              "time": 1,
+              "time-micros": 1389,
+              "rlimit": 470,
+              "success": true
+            },
+            {
+              "function": "input::arith::bv_bad",
+              "mode:": "proof",
+              "time": 0,
+              "time-micros": 982,
+              "rlimit": 158,
+              "success": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "verus": {
+    "profile": "release",
+    "version": "0.2026.10.04.426d8b0",
+    "platform": {
+      "os": "macos",
+      "arch": "aarch64"
+    },
+    "toolchain": "1.98.1-aarch64-apple-darwin (overridden by environment variable RUSTUP_TOOLCHAIN)",
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+  }
+}

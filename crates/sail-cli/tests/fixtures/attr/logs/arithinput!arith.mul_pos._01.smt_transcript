@@ -1,0 +1,88 @@
+;;;>>> QUERY
+(set-option :auto_config false)
+(set-option :smt.mbqi false)
+(set-option :smt.case_split 3)
+(set-option :smt.qi.eager_threshold 100.0)
+(set-option :smt.delay_units true)
+(set-option :smt.arith.solver 2)
+(set-option :smt.arith.nl false)
+(set-option :pi.enabled false)
+(set-option :rewriter.sort_disjunctions false)
+(set-option :smt.arith.solver 6)
+(push)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :arith-make-feasible 1
+ :arith-max-columns   23
+ :binary-propagations 29
+ :max-memory          17.70
+ :memory              17.70
+ :mk-bool-var         247
+ :mk-clause-binary    33
+ :num-allocs          48932
+ :propagations        29
+ :rlimit-count        24976)
+;;;<<<
+;;;>>> QUERY
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs           73
+ :arith-make-feasible 1
+ :arith-max-columns   23
+ :binary-propagations 29
+ :max-memory          17.70
+ :memory              17.70
+ :mk-bool-var         247
+ :mk-clause-binary    33
+ :num-allocs          48932
+ :propagations        29
+ :rlimit-count        25008)
+;;;<<<
+;;;>>> QUERY
+(get-info :version)
+;;;<<<
+;;;>>> RESPONSE
+(:version "4.16.0")
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 30000000)
+(check-sat)
+;;;<<<
+;;;>>> RESPONSE
+unsat
+;;;<<<
+;;;>>> QUERY
+(set-option :rlimit 0)
+(get-info :all-statistics)
+;;;<<<
+;;;>>> RESPONSE
+(:added-eqs                  79
+ :arith-eq-adapter           1
+ :arith-conflicts            3
+ :arith-fixed-eqs            1
+ :arith-lower                3
+ :arith-make-feasible        7
+ :arith-max-columns          28
+ :arith-max-rows             1
+ :arith-nla-propagate-bounds 2
+ :arith-upper                5
+ :binary-propagations        34
+ :conflicts                  4
+ :decisions                  4
+ :del-clause                 12
+ :final-checks               2
+ :max-generation             1
+ :max-memory                 17.80
+ :memory                     17.80
+ :mk-bool-var                266
+ :mk-clause                  12
+ :mk-clause-binary           33
+ :num-allocs                 57870
+ :num-checks                 1
+ :propagations               40
+ :quant-instantiations       4
+ :rlimit-count               25426)
+;;;<<<
