@@ -13,8 +13,11 @@ use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use sail_api::client::Client;
 use sail_api::protocol::{Identity, PutMeta};
@@ -166,15 +169,55 @@ impl Pairer {
 }
 
 struct Solving {
-    child: Child,
     stdin: Option<ChildStdin>,
     expects: Sender<Expect>,
-    output: Option<JoinHandle<()>>,
+    /// Set once the input side has seen the end of its input.
+    input_done: Arc<AtomicBool>,
+    /// The output side; it owns the solver and returns its exit status.
+    output: JoinHandle<u8>,
+}
+
+/// Sends paired replies to the daemon on its own thread, so forwarding never
+/// waits on the daemon. Stops at the first daemon error.
+fn spawn_storer(
+    mut client: Client,
+    entries: Receiver<(QueryKey, String, Vec<u8>)>,
+) -> Option<JoinHandle<()>> {
+    std::thread::Builder::new()
+        .name("sail-z3-store".to_owned())
+        .spawn(move || {
+            for (key, command, reply) in entries {
+                let meta = PutMeta {
+                    command,
+                    provenance: "pinned-solver".to_owned(),
+                };
+                if client.put(&key.0, meta, reply).is_err() {
+                    // The daemon is gone: drop the remaining stores.
+                    break;
+                }
+            }
+        })
+        .ok()
 }
 
 /// The output side once a solver runs: forwards replies after the first
-/// `skip`, and records paired replies.
-fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut client: Client) {
+/// `skip`, records paired replies, and owns the solver process.
+///
+/// When the solver's output ends it waits for the solver to exit. The reply
+/// in flight at that point is stored only if the solver exited cleanly: a
+/// solver that died mid-reply leaves a partial reply, which is forwarded (as
+/// pass-through would) but never stored. If the input side is still reading
+/// when the solver exits, nothing will ever answer the commands the client
+/// is waiting on, so the shim exits with the solver's status, as
+/// pass-through does.
+fn output_side(
+    mut from: impl Read,
+    mut child: Child,
+    skip: u64,
+    expects: &Receiver<Expect>,
+    client: Option<Client>,
+    input_done: &AtomicBool,
+) -> u8 {
     let mut all = Vec::new(); // every output byte so far
     let mut splitter = ResponseSplitter::new();
     let mut forward_from: Option<usize> = (skip == 0).then_some(0);
@@ -187,21 +230,11 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
     // separate thread, so forwarding never waits on the daemon.
     let mut pairer = Pairer::default();
     let (store_tx, store_rx) = std::sync::mpsc::channel::<(QueryKey, String, Vec<u8>)>();
-    let storer = std::thread::Builder::new()
-        .name("sail-z3-store".to_owned())
-        .spawn(move || {
-            for (key, command, reply) in store_rx {
-                let meta = PutMeta {
-                    command,
-                    provenance: "pinned-solver".to_owned(),
-                };
-                if client.put(&key.0, meta, reply).is_err() {
-                    // The daemon is gone: drop the remaining stores.
-                    break;
-                }
-            }
-        })
-        .ok();
+    let storer = client.and_then(|client| spawn_storer(client, store_rx));
+    if storer.is_none() {
+        // No daemon to store to.
+        pairer.stop();
+    }
     let store = |pairer: &mut Pairer, wait: bool| {
         if wait {
             for e in expects {
@@ -221,8 +254,10 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
 
     loop {
         let n = match from.read(&mut buf) {
-            Ok(0) | Err(_) => break,
+            Ok(0) => break,
             Ok(n) => n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => break,
         };
         let chunk = buf.get(..n).unwrap_or_default();
         all.extend_from_slice(chunk);
@@ -245,36 +280,56 @@ fn output_side(mut from: impl Read, skip: u64, expects: &Receiver<Expect>, mut c
             && all.len() > forwarded.max(f)
         {
             if !write_out(all.get(forwarded.max(f)..).unwrap_or_default()) {
-                return;
+                break;
             }
             forwarded = all.len();
         }
         store(&mut pairer, false);
     }
-    // End of output: the last reply runs to the end of the stream.
+    // Stop reading first: a solver blocked writing to a closed pipe then
+    // fails and exits instead of waiting forever.
+    drop(from);
+    // End of output. Deliver what is left, as pass-through would.
+    if forward_from.is_some() && all.len() > forwarded {
+        let _ = write_out(all.get(forwarded..).unwrap_or_default());
+    }
+    let (_, code) = match child.wait() {
+        Ok(status) => crate::status_code(status),
+        Err(_) => (None, 1),
+    };
+    // The last reply runs to the end of the stream, and is complete only if
+    // the solver exited cleanly.
     if let Some((k, s)) = prev.take()
         && k >= skip
+        && code == 0
     {
         pairer.reply(all.get(s..).unwrap_or_default().to_vec());
     }
-    if forward_from.is_none() {
-        // Fewer replies than were already served: forward nothing more.
-    } else if all.len() > forwarded {
-        let _ = write_out(all.get(forwarded..).unwrap_or_default());
-    }
-    store(&mut pairer, true);
+    let input_done = input_done.load(Ordering::SeqCst);
+    // Once the input has ended, every expectation is queued or about to be.
+    // Before that, more may never come, so take only what is there.
+    store(&mut pairer, input_done);
     drop(store_tx);
     if let Some(h) = storer {
         let _ = h.join();
     }
+    if !input_done {
+        // The input side is blocked reading a client that waits for replies
+        // the dead solver will never give.
+        std::process::exit(i32::from(code));
+    }
+    code
 }
 
+/// Starts the solver, queues `first` (the expectation for the command that
+/// caused the start) and writes `raw` to it. `client`, if any, records.
 fn start_solver(
     solver: &Path,
     args: &[std::ffi::OsString],
     raw: &[u8],
     skip: u64,
-    client: Client,
+    first: Expect,
+    client: Option<Client>,
 ) -> Option<Solving> {
     let mut child = Command::new(solver)
         .args(args)
@@ -285,17 +340,24 @@ fn start_solver(
         .ok()?;
     let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
         let _ = child.kill();
+        let _ = child.wait();
         return None;
     };
     let (tx, rx) = std::sync::mpsc::channel();
+    // Queued before the solver sees any input, so it precedes its reply.
+    let _ = tx.send(first);
+    let input_done = Arc::new(AtomicBool::new(false));
+    let done = Arc::clone(&input_done);
+    // If the thread cannot start, the solver is dropped with it; it exits
+    // when `stdin` is dropped below.
     let output = std::thread::Builder::new()
         .name("sail-z3-cached-out".to_owned())
-        .spawn(move || output_side(stdout, skip, &rx, client))
-        .ok();
+        .spawn(move || output_side(stdout, child, skip, &rx, client, &done))
+        .ok()?;
     let mut s = Solving {
-        child,
         stdin: Some(stdin),
         expects: tx,
+        input_done,
         output,
     };
     s.write(raw);
@@ -312,24 +374,34 @@ impl Solving {
     }
 
     fn finish(mut self) -> ExitCode {
+        self.input_done.store(true, Ordering::SeqCst);
         drop(self.stdin.take());
         drop(self.expects);
-        let status = self.child.wait();
-        if let Some(h) = self.output.take() {
-            let _ = h.join();
-        }
-        match status {
-            Ok(s) => crate::exit_code(s),
-            Err(_) => ExitCode::from(1),
-        }
+        ExitCode::from(self.output.join().unwrap_or(1))
     }
+}
+
+/// The client timeout: `SAIL_DAEMON_TIMEOUT_MS` if set to a positive number
+/// of milliseconds, otherwise [`sail_api::client::TIMEOUT`].
+fn daemon_timeout() -> Duration {
+    std::env::var(crate::ENV_DAEMON_TIMEOUT_MS)
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|&ms| ms > 0)
+        .map_or(sail_api::client::TIMEOUT, Duration::from_millis)
 }
 
 /// Runs a cached session. Returns `None`, having consumed no input, if the
 /// daemon cannot be reached or cannot identify the solver; the caller then
 /// runs plain pass-through.
+///
+/// Any daemon error after that drops the connection for the rest of the
+/// session: the command becomes a miss, and the session continues on the
+/// solver without recording. A connection that failed mid-exchange is never
+/// reused, so a late reply can never be read as the answer to a later
+/// request.
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
-    let mut client = Client::connect(socket).ok()?;
+    let mut client = Client::connect_with_timeout(socket, daemon_timeout()).ok()?;
     let identity = parse_identity(&client.hello(&solver.to_string_lossy()).ok()?)?;
     let mut prefix = PrefixHasher::new(&identity, &Mode::Default);
     let mut session = Session::new();
@@ -340,12 +412,6 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     let mut client = Some(client);
     let mut stdin = std::io::stdin().lock();
     let mut buf = vec![0u8; 64 * 1024];
-
-    // Starts the solver with everything received so far.
-    let start = |raw: &[u8], served: u64, client: &mut Option<Client>| -> Option<Solving> {
-        let c = client.take().or_else(|| Client::connect(socket).ok())?;
-        start_solver(solver, args, raw, served, c)
-    };
 
     loop {
         let n = match stdin.read(&mut buf) {
@@ -374,27 +440,31 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             let name = classify(&item.bytes)
                 .map(|c| String::from_utf8_lossy(c.name).into_owned())
                 .unwrap_or_default();
+            let expect = |expects: Output| match expects {
+                Output::One => Expect::Store {
+                    key: prefix.key(),
+                    command: name.clone(),
+                    text: item.bytes.clone(),
+                },
+                _ => Expect::Stop,
+            };
             if let Some(s) = &solving {
-                let e = match expects {
-                    Output::None => continue,
-                    Output::One => Expect::Store {
-                        key: prefix.key(),
-                        command: name,
-                        text: item.bytes.clone(),
-                    },
-                    Output::Unknown => Expect::Stop,
-                };
-                let _ = s.expects.send(e);
+                if expects != Output::None {
+                    let _ = s.expects.send(expect(expects));
+                }
                 continue;
             }
-            let hit = match (expects, client.as_mut()) {
-                (Output::None, _) => continue,
-                (Output::One, Some(c)) => c
-                    .get(&prefix.key().0)
-                    .ok()
-                    .flatten()
-                    .filter(|r| !unservable(&item.bytes, r)),
-                _ => None,
+            let hit = match expects {
+                Output::None => continue,
+                Output::One => match client.as_mut().map(|c| c.get(&prefix.key().0)) {
+                    Some(Ok(found)) => found.filter(|r| !unservable(&item.bytes, r)),
+                    Some(Err(_)) => {
+                        client = None;
+                        None
+                    }
+                    None => None,
+                },
+                Output::Unknown => None,
             };
             if let Some(reply) = hit {
                 if !write_out(&reply) {
@@ -404,18 +474,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 continue;
             }
             // Miss: start the solver with the whole input so far.
-            let Some(s) = start(&raw, served, &mut client) else {
+            let Some(s) = start_solver(solver, args, &raw, served, expect(expects), client.take())
+            else {
                 return Some(ExitCode::from(1));
             };
-            let e = match expects {
-                Output::One => Expect::Store {
-                    key: prefix.key(),
-                    command: name,
-                    text: item.bytes.clone(),
-                },
-                _ => Expect::Stop,
-            };
-            let _ = s.expects.send(e);
             solving = Some(s);
             fresh_solver = true;
         }
@@ -431,7 +493,8 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     // End of input while serving. Incomplete trailing input goes to the
     // solver, which decides what it means.
     if splitter.finish().is_some() {
-        return start(&raw, served, &mut client).map(Solving::finish);
+        return start_solver(solver, args, &raw, served, Expect::Stop, client.take())
+            .map(Solving::finish);
     }
     Some(ExitCode::SUCCESS)
 }
