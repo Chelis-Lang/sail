@@ -10,7 +10,7 @@ fresh run of the pinned Z3, through the pass-through shim.
 |---|---|---|
 | Fresh pinned-Z3 run | Confirmed results | Solver identity (version string, binary hash and platform) matches the pin |
 | In-memory tier | (not built) | |
-| Local disk tier | (not built) | |
+| Local disk tier | Replies written by the local daemon, which is its only writer | Key and reply hash match the entry, and the reply has the shape its command requires (ADR 0011). Any failure is a miss |
 | Shared tier | Untrusted until verified (rule 9) | (not built) |
 
 ## Solver identity
@@ -28,3 +28,29 @@ too. That is decided by measurement before the shared tier is built.
 **Owner decision (ADR 0010).** Shared-tier entries are scoped by solver
 binary hash plus platform class. Hits across platform classes are allowed
 only in a named opt-in mode.
+
+## Local disk tier: what its checks do and do not prove
+
+The integrity checks catch corruption, truncation, misfiled entries and
+shape mismatches. Fault injection showed each of them becomes a miss
+(`docs/fault-injection.md`).
+
+They do **not** catch a *forged* entry: one written by someone other than
+sail, with a valid hash and a plausible shape but the wrong answer (for
+example `unsat` under a key whose true answer is `sat`). The local tier is
+therefore trusted only because the daemon is its only writer, and the cache
+directory is owned by the user.
+
+**Requirements this places on the shared tier** (charter rule 9):
+- It must never be trusted the same way.
+- Its entries need provenance the reader can verify: signatures from a
+  trusted writer, or certificate checking when that arrives.
+- Otherwise, entries must be re-validated against the pinned solver before
+  use.
+
+## Daemon version
+
+`sail verify` reuses any daemon already listening on its socket. A daemon
+from an older build may speak an older protocol. A version handshake that
+replaces a mismatched daemon is a tracked follow-up. Until then, restart
+`sail serve` after upgrading.
