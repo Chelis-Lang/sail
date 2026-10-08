@@ -1,0 +1,891 @@
+{
+  "meta": {
+    "date": "2026-10-08",
+    "machine": "Apple M3 (8 cores), 24 GB, macOS 26.5 arm64; other work running concurrently",
+    "verus_release": "0.2026.10.04.426d8b0",
+    "z3_version": "4.16.0",
+    "jobs": 4,
+    "docs": "docs/survey/solver-behavior.md",
+    "corpus": "examples"
+  },
+  "solver": {
+    "path": "<pinned z3>",
+    "version": "Z3 version 4.16.0 - 64 bit",
+    "sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "sessions": 285,
+  "checks": 1585,
+  "complete_checks": 1585,
+  "unstable": 0,
+  "unstable_fraction": 0.0,
+  "verdict_unstable": 0,
+  "answers_by_seed": {
+    "0": {
+      "unknown": 97,
+      "unsat": 1488
+    },
+    "1": {
+      "unknown": 97,
+      "unsat": 1488
+    },
+    "2": {
+      "unknown": 97,
+      "unsat": 1488
+    },
+    "3": {
+      "unknown": 97,
+      "unsat": 1488
+    },
+    "4": {
+      "unknown": 97,
+      "unsat": 1488
+    },
+    "5": {
+      "unknown": 97,
+      "unsat": 1488
+    },
+    "6": {
+      "unknown": 97,
+      "unsat": 1488
+    },
+    "7": {
+      "unknown": 97,
+      "unsat": 1488
+    }
+  },
+  "reasons_unknown": {
+    "(:reason-unknown \"(incomplete quantifiers)\")": 776
+  },
+  "rlimit_cv": {
+    "count": 1584,
+    "mean": 0.01348061452097351,
+    "p50": 0.0,
+    "p90": 0.03024328726769844,
+    "p99": 0.20442060967944486,
+    "max": 1.566206825367645,
+    "zeros": 1023
+  },
+  "rlimit_ratio": {
+    "count": 1584,
+    "mean": 1.0658261260159982,
+    "p50": 1.0,
+    "p90": 1.0810185185185186,
+    "p99": 2.0090682384946725,
+    "max": 37.143389655446384,
+    "zeros": 0
+  },
+  "seed0": {
+    "answers_compared": 1585,
+    "answer_mismatches": 0,
+    "followups_compared": 194,
+    "followup_mismatches": 0,
+    "rlimit_compared": 1584,
+    "rlimit_mismatches": 1,
+    "check_count_mismatches": 0,
+    "differences": [
+      {
+        "id": "imo_1988_6/8745-1791470543518512000",
+        "seq": 0,
+        "what": "rlimit",
+        "recorded": "11212",
+        "replayed": "11218"
+      }
+    ]
+  },
+  "infra_timeouts": [],
+  "infra_errors": [],
+  "unpaired_runs": [],
+  "replay_ms": 161897,
+  "notable": [
+    {
+      "id": "guide__iterators/8121-1791470534915040000",
+      "seq": 3,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        266769,
+        432220,
+        441513,
+        5609989,
+        1714589,
+        196061,
+        151036,
+        187765
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 1.566206825367645,
+      "rlimit_ratio": 37.143389655446384
+    },
+    {
+      "id": "summer_school__chapter-1-22/11096-1791470595018413000",
+      "seq": 3,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        408950,
+        409102,
+        220386,
+        890691,
+        409128,
+        233514,
+        348860,
+        351358
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.4776638109211964,
+      "rlimit_ratio": 4.041504451280934
+    },
+    {
+      "id": "guide__recursion/8481-1791470539640393000",
+      "seq": 12,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        60041,
+        60034,
+        87382,
+        87243,
+        29071,
+        29159,
+        29159,
+        29074
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.4723584037119761,
+      "rlimit_ratio": 3.005813353513811
+    },
+    {
+      "id": "syntax/11313-1791470600986073000",
+      "seq": 1,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        1065,
+        2876,
+        2876,
+        1065,
+        2876,
+        1065,
+        1065,
+        2876
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.45952803856889113,
+      "rlimit_ratio": 2.700469483568075
+    },
+    {
+      "id": "imo_1988_6/8763-1791470543802489000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        1464,
+        1471,
+        3565,
+        1469,
+        1462,
+        3339,
+        3562,
+        1465
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.4410939758960772,
+      "rlimit_ratio": 2.4384404924760603
+    },
+    {
+      "id": "guide__recursion/8481-1791470539640393000",
+      "seq": 21,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        103648,
+        104252,
+        194574,
+        49640,
+        190713,
+        184120,
+        107786,
+        219341
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3909700773385224,
+      "rlimit_ratio": 4.418634165995165
+    },
+    {
+      "id": "guide__recursion/8481-1791470539640393000",
+      "seq": 19,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        181677,
+        195720,
+        340241,
+        339903,
+        393350,
+        201695,
+        149860,
+        165902
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3626658611083195,
+      "rlimit_ratio": 2.624783130922194
+    },
+    {
+      "id": "cuckoo_hash_table__main/6872-1791470513377693000",
+      "seq": 13,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        4758042,
+        4089598,
+        9358766,
+        3979409,
+        3710153,
+        5924960,
+        4479971,
+        3794780
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.35389930545293125,
+      "rlimit_ratio": 2.5224744100849747
+    },
+    {
+      "id": "power_of_2/9268-1791470552620001000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        4413,
+        8862,
+        4411,
+        8584,
+        4411,
+        4568,
+        4414,
+        4540
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3345251655392015,
+      "rlimit_ratio": 2.0090682384946725
+    },
+    {
+      "id": "power_of_2/9256-1791470552354914000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        15909,
+        14007,
+        15821,
+        16557,
+        16315,
+        15203,
+        16218,
+        32356
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3120394697993649,
+      "rlimit_ratio": 2.3099878632112514
+    },
+    {
+      "id": "cuckoo_hash_table__cuckoo/6828-1791470509959908000",
+      "seq": 13,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        3942263,
+        3729896,
+        6739860,
+        4412578,
+        8040851,
+        5160690,
+        7000132,
+        3966069
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.2892253957094847,
+      "rlimit_ratio": 2.155784236343319
+    },
+    {
+      "id": "bitvector_equivalence/6629-1791470505631462000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        36736,
+        67720,
+        31970,
+        73724,
+        76714,
+        76778,
+        76594,
+        76543
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.27451420399136606,
+      "rlimit_ratio": 2.4015639662183297
+    },
+    {
+      "id": "mergesort/9051-1791470549142299000",
+      "seq": 2,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        77322,
+        99112,
+        77425,
+        77344,
+        122639,
+        58760,
+        58765,
+        98375
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.24382444382221483,
+      "rlimit_ratio": 2.0871170864533695
+    },
+    {
+      "id": "vectors/11523-1791470607677565000",
+      "seq": 4,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        351121,
+        351833,
+        265645,
+        466999,
+        265681,
+        351141,
+        470400,
+        265675
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.2256958754367943,
+      "rlimit_ratio": 1.7707843174161004
+    },
+    {
+      "id": "test_expand_errors/11359-1791470602853264000",
+      "seq": 151,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        15,
+        9,
+        9,
+        12,
+        9,
+        9,
+        9,
+        9
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.20621349491963045,
+      "rlimit_ratio": 1.6666666666666667
+    },
+    {
+      "id": "mergesort/9051-1791470549142299000",
+      "seq": 1,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        56877,
+        98526,
+        98447,
+        56867,
+        98346,
+        98470,
+        98490,
+        98345
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.20442060967944486,
+      "rlimit_ratio": 1.732568976735189
+    },
+    {
+      "id": "imo_1988_6/8745-1791470543518512000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        11218,
+        11626,
+        10002,
+        6192,
+        8386,
+        8953,
+        12707,
+        9524
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.1958978759889634,
+      "rlimit_ratio": 2.0521640826873386
+    },
+    {
+      "id": "iterators__map_and_filter/8921-1791470546631192000",
+      "seq": 12,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        93347,
+        141993,
+        79624,
+        79406,
+        90026,
+        93448,
+        93382,
+        94237
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.19261432964734146,
+      "rlimit_ratio": 1.7881898093343072
+    },
+    {
+      "id": "guide__iterators/8121-1791470534915040000",
+      "seq": 11,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        77190,
+        77110,
+        56148,
+        88745,
+        88520,
+        88085,
+        56191,
+        56197
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.19219664930573097,
+      "rlimit_ratio": 1.580554961886443
+    },
+    {
+      "id": "syntax/11322-1791470601617094000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        3664,
+        3667,
+        5005,
+        3668,
+        3667,
+        3659,
+        5779,
+        3669
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.18846002789793148,
+      "rlimit_ratio": 1.5793932768515988
+    }
+  ]
+}

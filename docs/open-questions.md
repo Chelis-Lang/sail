@@ -38,3 +38,13 @@ inline with the date and link the ADR that captures it.
    - any unit whose plain outcome varies across repeated runs is classified
      *unstable* and reported, not counted as a sail difference;
    - the fragility census measures how common this is.
+8. **Default-mode key after the history experiment.** On the captured
+   corpus, answers were a function of the assertion stack, but model bytes
+   and `rlimit` effort were not (`docs/survey/solver-behavior.md`). Under
+   ADR 0004, the default-mode key must then bind the full command prefix of
+   the process, which a follow-up ADR should record. Two choices remain for
+   the owner:
+   - whether a stack-only key may serve a named opt-in mode, one that
+     accepts verdicts across histories and recomputes models on demand;
+   - how prefix keys should treat the `rlimit` jitter of nonlinear spinoffs
+     (question 7).

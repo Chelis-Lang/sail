@@ -887,3 +887,11 @@ it must:
 13. **HashMap ordering.** Run-to-run byte equality of transcripts for the same
     input. Run the corpus twice and diff the transcripts, to catch the
     `HashMap`-order sources listed in §8.
+
+Items 4 to 7 have since been measured on the pinned release, on the
+captured examples and vstd corpus (`solver-behavior.md`):
+- item 4: rlimit exhaustion reads `canceled`;
+- item 5: `:rlimit` is relative;
+- item 6: answers are stack-determined, but models and `rlimit` deltas
+  depend on history;
+- item 7: models are byte-stable across replays of the same session.

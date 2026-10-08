@@ -14,6 +14,9 @@ path = "src/main.rs"
 [dependencies]
 sail-conformance.workspace = true
 sail-verus.workspace = true
+sail-key.workspace = true
+sail-session.workspace = true
+sail-smtlib.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

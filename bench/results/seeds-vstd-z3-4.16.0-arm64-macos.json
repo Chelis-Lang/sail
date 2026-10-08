@@ -1,0 +1,873 @@
+{
+  "meta": {
+    "date": "2026-10-08",
+    "machine": "Apple M3 (8 cores), 24 GB, macOS 26.5 arm64; other work running concurrently",
+    "verus_release": "0.2026.10.04.426d8b0",
+    "z3_version": "4.16.0",
+    "jobs": 4,
+    "docs": "docs/survey/solver-behavior.md",
+    "corpus": "vstd"
+  },
+  "solver": {
+    "path": "<pinned z3>",
+    "version": "Z3 version 4.16.0 - 64 bit",
+    "sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "sessions": 365,
+  "checks": 2060,
+  "complete_checks": 2060,
+  "unstable": 0,
+  "unstable_fraction": 0.0,
+  "verdict_unstable": 0,
+  "answers_by_seed": {
+    "0": {
+      "unsat": 2060
+    },
+    "1": {
+      "unsat": 2060
+    },
+    "2": {
+      "unsat": 2060
+    },
+    "3": {
+      "unsat": 2060
+    },
+    "4": {
+      "unsat": 2060
+    },
+    "5": {
+      "unsat": 2060
+    },
+    "6": {
+      "unsat": 2060
+    },
+    "7": {
+      "unsat": 2060
+    }
+  },
+  "reasons_unknown": {},
+  "rlimit_cv": {
+    "count": 2060,
+    "mean": 0.015562863642107426,
+    "p50": 0.0,
+    "p90": 0.04041458954742671,
+    "p99": 0.25508207290228424,
+    "max": 1.018328620491194,
+    "zeros": 1278
+  },
+  "rlimit_ratio": {
+    "count": 2060,
+    "mean": 1.0589058912627627,
+    "p50": 1.0,
+    "p90": 1.1143174250832408,
+    "p99": 2.1874916559120643,
+    "max": 6.707142857142857,
+    "zeros": 0
+  },
+  "seed0": {
+    "answers_compared": 2060,
+    "answer_mismatches": 0,
+    "followups_compared": 0,
+    "followup_mismatches": 0,
+    "rlimit_compared": 2060,
+    "rlimit_mismatches": 0,
+    "check_count_mismatches": 0,
+    "differences": []
+  },
+  "infra_timeouts": [],
+  "infra_errors": [],
+  "unpaired_runs": [],
+  "replay_ms": 143881,
+  "notable": [
+    {
+      "id": "12244-1791470643191968000",
+      "seq": 55,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        700,
+        700,
+        700,
+        4695,
+        700,
+        700,
+        700,
+        4695
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 1.018328620491194,
+      "rlimit_ratio": 6.707142857142857
+    },
+    {
+      "id": "11772-1791470627432202000",
+      "seq": 15,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        781264,
+        656792,
+        275008,
+        274071,
+        277828,
+        275290,
+        273120,
+        277808
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.5035099083664426,
+      "rlimit_ratio": 2.860515524311658
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 52,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        3080111,
+        1173385,
+        1257898,
+        5704355,
+        3483569,
+        2737773,
+        3677040,
+        1653000
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.498122786348281,
+      "rlimit_ratio": 4.86145212355706
+    },
+    {
+      "id": "11621-1791470622023359000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        10074,
+        23008,
+        18105,
+        10804,
+        6365,
+        8827,
+        9054,
+        17157
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.41832738558970195,
+      "rlimit_ratio": 3.6147682639434406
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 47,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        58904,
+        145333,
+        66499,
+        57387,
+        120401,
+        65119,
+        157627,
+        157797
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.41602775948561493,
+      "rlimit_ratio": 2.7496994092738776
+    },
+    {
+      "id": "12567-1791470648976429000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        15345260,
+        26138528,
+        6533754,
+        6020566,
+        16334245,
+        16614101,
+        19950146,
+        17994597
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.39945822925380486,
+      "rlimit_ratio": 4.341539981456893
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 41,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        36827,
+        37432,
+        39709,
+        35836,
+        37974,
+        83366,
+        78950,
+        37045
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.39215994842027885,
+      "rlimit_ratio": 2.3263199017747516
+    },
+    {
+      "id": "11710-1791470625335507000",
+      "seq": 29,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        293962,
+        664898,
+        241091,
+        318838,
+        268027,
+        443195,
+        236612,
+        315886
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3864320417856638,
+      "rlimit_ratio": 2.810077257281964
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 9,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        619077,
+        1052644,
+        485523,
+        399172,
+        1132650,
+        480125,
+        1133119,
+        1044254
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.38320994290292504,
+      "rlimit_ratio": 2.8386735542573125
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 56,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        515700,
+        523818,
+        452721,
+        673647,
+        580269,
+        288311,
+        228595,
+        211158
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3703948894502684,
+      "rlimit_ratio": 3.190250902168045
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 54,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        459568,
+        499060,
+        397222,
+        184258,
+        327882,
+        205152,
+        223264,
+        233381
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3638896993649275,
+      "rlimit_ratio": 2.7084848419064573
+    },
+    {
+      "id": "12389-1791470646920377000",
+      "seq": 18,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        206600,
+        497766,
+        729549,
+        575165,
+        526925,
+        903538,
+        381831,
+        741217
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3617813381569016,
+      "rlimit_ratio": 4.373368828654405
+    },
+    {
+      "id": "11598-1791470620730316000",
+      "seq": 1,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        852993,
+        582769,
+        341102,
+        341129,
+        582906,
+        854700,
+        582703,
+        340911
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.3561280609114904,
+      "rlimit_ratio": 2.507105960206623
+    },
+    {
+      "id": "11601-1791470620830832000",
+      "seq": 0,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        2066,
+        1621,
+        915,
+        945,
+        1652,
+        909,
+        1408,
+        902
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.32247980595149195,
+      "rlimit_ratio": 2.2904656319290466
+    },
+    {
+      "id": "11710-1791470625335507000",
+      "seq": 21,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        13665,
+        14665,
+        12116,
+        12501,
+        6761,
+        6369,
+        12100,
+        6741
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.30089622403390315,
+      "rlimit_ratio": 2.3025592714711887
+    },
+    {
+      "id": "11598-1791470620730316000",
+      "seq": 5,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        104856,
+        105648,
+        56097,
+        54568,
+        105825,
+        106654,
+        107188,
+        54547
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.2839869828431867,
+      "rlimit_ratio": 1.9650576566997269
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 55,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        351377,
+        322325,
+        360734,
+        317187,
+        393241,
+        181228,
+        179768,
+        202966
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.2813748726815763,
+      "rlimit_ratio": 2.1874916559120643
+    },
+    {
+      "id": "11710-1791470625335507000",
+      "seq": 26,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        89699,
+        128746,
+        140837,
+        212340,
+        134253,
+        99054,
+        128544,
+        106370
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.27281045757877287,
+      "rlimit_ratio": 2.367250471019744
+    },
+    {
+      "id": "12244-1791470643191968000",
+      "seq": 8,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        3495,
+        3495,
+        3463,
+        2090,
+        2090,
+        2090,
+        2090,
+        2090
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.25837130617068915,
+      "rlimit_ratio": 1.6722488038277512
+    },
+    {
+      "id": "11589-1791470620441018000",
+      "seq": 45,
+      "recorded": "unsat",
+      "answers": [
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "reasons": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "rlimit": [
+        7499,
+        7496,
+        4163,
+        4182,
+        7376,
+        7359,
+        7637,
+        4198
+      ],
+      "stable": true,
+      "verdict_stable": true,
+      "rlimit_cv": 0.2558091749373614,
+      "rlimit_ratio": 1.8344943550324286
+    }
+  ]
+}

@@ -6,7 +6,9 @@
 //! composes cache, solver pool, ledger and portfolio. The shim may depend
 //! only on the protocol, the session model, key derivation (pure
 //! computation, ADR 0005) and the thin daemon client in `sail-api`, so its
-//! fallback path stays small and simple. Changing this
+//! fallback path stays small and simple. `sail-bench` may use key
+//! derivation too (pure computation), to recompute and check trace keys in
+//! its history experiment. Changing this
 //! table is an architectural decision: record an ADR.
 
 /// `(crate, internal crates it may depend on directly)`.
@@ -60,6 +62,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         &[
             "sail-smtlib",
             "sail-session",
+            "sail-key",
             "sail-solver",
             "sail-ledger",
             "sail-verus",
