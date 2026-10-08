@@ -1,7 +1,7 @@
 name: image
 
 # Reusable: builds and pushes the CI image (ci/Dockerfile, ADR 0013) when its
-# inputs change, and returns its name. Called by ci, conformance and bench.
+# inputs change, and returns its name. Called by ci.
 
 on:
   workflow_call:
@@ -17,7 +17,7 @@ jobs:
   image:
     name: CI image
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     permissions:
       contents: read
       packages: write

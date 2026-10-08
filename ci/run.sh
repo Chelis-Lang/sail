@@ -17,8 +17,19 @@
 #                        passed to sail-conformance
 #   bench WORKLOAD TIER ROUNDS
 #                        a sail-bench workload (cold|warm|edit)
+#
+# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier and
+# every benchmark is local-only: run them with ci/local.sh.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# CI runs only the fast, per-PR steps (ADR 0013). Long runs are local-only.
+local_only() {
+  if [ "${CI:-}" = true ]; then
+    echo "ci/run.sh: '$*' is local-only (ADR 0013); run it with ci/local.sh" >&2
+    exit 2
+  fi
+}
 
 step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|bench ...}"
 shift
@@ -101,6 +112,7 @@ RS
   conformance)
     tier="${1:-fast}"
     shift || true
+    [ "$tier" = fast ] && [ "${1:-}" = pr ] || local_only conformance "$tier" "$@"
     release_build
     select=(--tier "$tier" "$@")
     if [ "${1:-}" = pr ]; then
@@ -127,6 +139,7 @@ RS
     ;;
 
   bench)
+    local_only bench "$@"
     workload="${1:?bench needs a workload: cold|warm|edit}"
     tier="${2:-fast}"
     rounds="${3:-3}"

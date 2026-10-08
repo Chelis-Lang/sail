@@ -1,9 +1,10 @@
 name: ci
 
-# Every push to main and every PR. Jobs after the authorship check run inside
-# the CI image (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps
-# `ci/local.sh` runs locally. Conformance has its own workflow
-# (conformance.yml); benchmarks are dispatched (bench.yml).
+# Every push to main and every PR: the five required checks, and nothing
+# else. Jobs after the authorship check run inside the CI image
+# (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps `ci/local.sh`
+# runs locally. Each job must stay well under its 10-minute limit. Long runs
+# (standard and deep conformance tiers, benchmarks) are local-only.
 
 on:
   push:
@@ -63,7 +64,7 @@ jobs:
     name: Workspace gate
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: read
@@ -87,7 +88,7 @@ jobs:
     name: Solver tests
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: read
@@ -110,7 +111,7 @@ jobs:
     name: End to end
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: read
@@ -127,3 +128,42 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: ci/run.sh e2e
+
+  conformance:
+    # The PR subset of the fast tier: plain Verus vs sail-z3, pass-through and
+    # with the cache on (fill, then warm).
+    name: Conformance
+    needs: [no-ai-authorship, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Cache corpus sources
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/sail/corpus
+          key: sail-corpus-${{ hashFiles('corpus/corpus.toml') }}
+      - name: Run conformance
+        env:
+          SAIL_CONFORMANCE_OUT: ${{ runner.temp }}/conformance-out
+        run: ci/run.sh conformance fast pr
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: conformance-reports
+          path: ${{ runner.temp }}/conformance-out/**/report.json
+          if-no-files-found: ignore

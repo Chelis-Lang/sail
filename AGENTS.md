@@ -145,14 +145,18 @@ Verus for host runs.
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`.
 
-**Testing tiers** (charter §Engineering practice):
-- *Fast:* the required checks above.
-- *Standard:* conformance over the whole fast tier nightly, and over the
-  standard tier weekly (includes anvil). Dispatch `conformance.yml` with any
-  tier.
-- *Deep:* `conformance.yml` with `tier=deep`, dispatched before releases.
-- *Benchmarks:* `bench.yml`, dispatched (`cold`, `warm` or `edit`). Never part
-  of the gate. Record machine details with every result.
+**Testing tiers** (charter §Engineering practice). CI runs only the fast
+tier, and every CI job must finish well inside 10 minutes. Anything longer
+is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
+- *Fast (CI, every PR):* the five required checks above.
+- *Standard (local):* `ci/local.sh conformance fast`, then
+  `ci/local.sh conformance standard` (includes anvil). Run it before merging
+  changes to the shim, cache, daemon, keys or harness, and put the summary
+  lines in the PR.
+- *Deep (local):* `ci/local.sh conformance deep`, before releases.
+- *Benchmarks (local):* `ci/local.sh bench cold|warm|edit TIER ROUNDS`, or
+  `sail-bench` on the host. Never part of the gate. Record machine details
+  with every result; reference numbers come from Linux x86-64.
 - *Fault injection:* `docs/fault-injection.md`, run as part of `solver`.
 
 ## Tracking

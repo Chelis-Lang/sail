@@ -179,3 +179,10 @@ needs one (see the memory allocator below).
   both macOS arm64 and Linux x86-64, identically in every plain and sail
   run. verita's nightly passes the branch, but it builds Verus `main`,
   which is newer than the pinned release.
+
+## Update 2026-10-08: where conformance runs
+
+CI runs only the PR subset of the fast tier, as the `Conformance` job in
+`ci.yml`. The whole fast, standard and deep tiers run locally with
+`ci/local.sh conformance <tier>` (ADR 0013). This supersedes the nightly and
+dispatch schedule above.
