@@ -1,0 +1,530 @@
+{
+  "schema_version": 1,
+  "workload": "agent-loop",
+  "tier": "catalogue",
+  "rounds": 2,
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "sail_commit": "6ae33ccc11bb",
+  "started_unix": 1791496016,
+  "machine": {
+    "cpu": "Apple M3",
+    "cpus": "8",
+    "host": "aarch64-apple-darwin",
+    "memory_bytes": "25769803776",
+    "uname": "Darwin 25.5.0 arm64"
+  },
+  "units": [],
+  "loops": [
+    {
+      "id": "he-strlen-fix",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "description": "strlen: a wrong spec fails, the fix verifies, then a refactor",
+      "cycles": [
+        {
+          "step": "initial",
+          "description": "verify the original (fills the cache)",
+          "expected": null,
+          "outcome": "verified",
+          "plain": {
+            "wall_ms": [
+              95063.60975,
+              100039.109084
+            ],
+            "cpu_s": [
+              83.45,
+              90.42
+            ],
+            "smt_ms": [
+              189337,
+              235562
+            ],
+            "max_rss_bytes": [
+              800882688,
+              674758656
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              35652.324291,
+              82923.713084
+            ],
+            "cpu_s": [
+              73.44,
+              83.63999999999999
+            ],
+            "smt_ms": [
+              78787,
+              182178
+            ],
+            "max_rss_bytes": [
+              802045952,
+              759824384
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 115,
+              "hits": 2,
+              "puts": 4408
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 115,
+              "hits": 2,
+              "puts": 4408
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        },
+        {
+          "step": "wrong-spec",
+          "description": "ensures length + 1 (a failing attempt)",
+          "expected": "errors",
+          "outcome": "errors",
+          "plain": {
+            "wall_ms": [
+              36892.584042,
+              67969.56166699999
+            ],
+            "cpu_s": [
+              72.8,
+              80.41
+            ],
+            "smt_ms": [
+              89131,
+              138263
+            ],
+            "max_rss_bytes": [
+              810909696,
+              786202624
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              3006.051583,
+              4523.575958
+            ],
+            "cpu_s": [
+              7.5,
+              9.190000000000001
+            ],
+            "smt_ms": [
+              493,
+              549
+            ],
+            "max_rss_bytes": [
+              800849920,
+              806731776
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4401,
+              "hits": 4400,
+              "puts": 28
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4401,
+              "hits": 4400,
+              "puts": 28
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        },
+        {
+          "step": "fix-spec",
+          "description": "revert the ensures (back to the original text)",
+          "expected": "verified",
+          "outcome": "verified",
+          "plain": {
+            "wall_ms": [
+              28655.334166,
+              51493.251542000005
+            ],
+            "cpu_s": [
+              63.58,
+              76.91999999999999
+            ],
+            "smt_ms": [
+              55884,
+              126028
+            ],
+            "max_rss_bytes": [
+              803962880,
+              801865728
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              6342.535291,
+              8102.877082999999
+            ],
+            "cpu_s": [
+              10.37,
+              10.049999999999999
+            ],
+            "smt_ms": [
+              2234,
+              864
+            ],
+            "max_rss_bytes": [
+              803799040,
+              791527424
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4161,
+              "hits": 4160,
+              "puts": 250
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4410,
+              "hits": 4410,
+              "puts": 0
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        },
+        {
+          "step": "refactor-body",
+          "description": "bind the length and assert it before returning",
+          "expected": "verified",
+          "outcome": "verified",
+          "plain": {
+            "wall_ms": [
+              65496.849375,
+              43265.592083
+            ],
+            "cpu_s": [
+              82.81,
+              75.41
+            ],
+            "smt_ms": [
+              134186,
+              108627
+            ],
+            "max_rss_bytes": [
+              813481984,
+              805847040
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              10530.766458,
+              10711.809125
+            ],
+            "cpu_s": [
+              10.44,
+              13.02
+            ],
+            "smt_ms": [
+              1323,
+              4410
+            ],
+            "max_rss_bytes": [
+              801308672,
+              808632320
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4403,
+              "hits": 4402,
+              "puts": 8
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4154,
+              "hits": 4152,
+              "puts": 258
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        }
+      ]
+    },
+    {
+      "id": "he-gcd-invariant",
+      "unit": "human-eval-verus/tasks/lib.rs",
+      "description": "compute_gcd: dropping the invariant fails, restoring it verifies, then a refactor",
+      "cycles": [
+        {
+          "step": "initial",
+          "description": "verify the original (fills the cache)",
+          "expected": null,
+          "outcome": "verified",
+          "plain": {
+            "wall_ms": [
+              52265.831042000005,
+              75172.301584
+            ],
+            "cpu_s": [
+              81.72,
+              74.39
+            ],
+            "smt_ms": [
+              102107,
+              164978
+            ],
+            "max_rss_bytes": [
+              799244288,
+              708820992
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              40784.304166,
+              69689.336291
+            ],
+            "cpu_s": [
+              74.71,
+              74.61
+            ],
+            "smt_ms": [
+              87693,
+              141591
+            ],
+            "max_rss_bytes": [
+              778240000,
+              753336320
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 115,
+              "hits": 2,
+              "puts": 4408
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 115,
+              "hits": 2,
+              "puts": 4408
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        },
+        {
+          "step": "drop-invariant",
+          "description": "remove the loop invariant (a failing attempt)",
+          "expected": "errors",
+          "outcome": "errors",
+          "plain": {
+            "wall_ms": [
+              70338.537042,
+              121981.5435
+            ],
+            "cpu_s": [
+              78.84,
+              74.58
+            ],
+            "smt_ms": [
+              166741,
+              235470
+            ],
+            "max_rss_bytes": [
+              775684096,
+              728334336
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              8337.515958000002,
+              15877.0515
+            ],
+            "cpu_s": [
+              11.49,
+              9.19
+            ],
+            "smt_ms": [
+              3915,
+              1347
+            ],
+            "max_rss_bytes": [
+              794443776,
+              724762624
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4114,
+              "hits": 4112,
+              "puts": 330
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4363,
+              "hits": 4362,
+              "puts": 80
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        },
+        {
+          "step": "restore-invariant",
+          "description": "restore the invariant (back to the original text)",
+          "expected": "verified",
+          "outcome": "verified",
+          "plain": {
+            "wall_ms": [
+              43288.130125,
+              95808.929875
+            ],
+            "cpu_s": [
+              74.54,
+              76.09
+            ],
+            "smt_ms": [
+              94565,
+              206725
+            ],
+            "max_rss_bytes": [
+              813088768,
+              765526016
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              9944.583542,
+              8867.192707999999
+            ],
+            "cpu_s": [
+              10.27,
+              9.620000000000001
+            ],
+            "smt_ms": [
+              633,
+              454
+            ],
+            "max_rss_bytes": [
+              800669696,
+              797343744
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4410,
+              "hits": 4410,
+              "puts": 0
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4410,
+              "hits": 4410,
+              "puts": 0
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        },
+        {
+          "step": "split-mod",
+          "description": "split `b1 = b1 % a1` through a temporary",
+          "expected": "verified",
+          "outcome": "verified",
+          "plain": {
+            "wall_ms": [
+              70807.32570799999,
+              81679.77575
+            ],
+            "cpu_s": [
+              77.78999999999999,
+              74.66
+            ],
+            "smt_ms": [
+              144862,
+              158682
+            ],
+            "max_rss_bytes": [
+              803848192,
+              816447488
+            ]
+          },
+          "sail": {
+            "wall_ms": [
+              6037.5660419999995,
+              8175.651541
+            ],
+            "cpu_s": [
+              9.879999999999999,
+              9.83
+            ],
+            "smt_ms": [
+              719,
+              688
+            ],
+            "max_rss_bytes": [
+              794624000,
+              795508736
+            ]
+          },
+          "cache": [
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4363,
+              "hits": 4362,
+              "puts": 48
+            },
+            {
+              "phase": "cycle",
+              "sessions": 113,
+              "gets": 4363,
+              "hits": 4362,
+              "puts": 48
+            }
+          ],
+          "same": 2,
+          "different": 0,
+          "unstable": 0,
+          "infra_errors": 0
+        }
+      ]
+    }
+  ]
+}

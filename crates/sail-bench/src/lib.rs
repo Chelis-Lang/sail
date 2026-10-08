@@ -19,6 +19,7 @@
 //! infrastructure timeout, never as a solver answer.
 #![forbid(unsafe_code)]
 
+pub mod agent_loop;
 pub mod cli;
 pub mod cold;
 pub mod daemon;

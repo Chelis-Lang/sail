@@ -1,0 +1,88 @@
+# Agent-loop catalogue for `sail-bench agent-loop` (charter: "Agent loop
+# simulation"): sequences of small edit-and-verify cycles modelled on how
+# coding agents work, such as a failing attempt, a fix and then a refinement.
+#
+# Steps apply cumulatively to one scratch copy of the project, which is
+# never the fetched tree, against one daemon whose cache is warm from the
+# previous cycles. Each step is an exact textual replacement: `find` must
+# occur exactly once in `file` at that point in the loop. `expected` is plain
+# Verus's outcome after the step; the bench records what it observes and the
+# report flags any mismatch.
+schema_version = 1
+
+[[loop]]
+id = "he-strlen-fix"
+unit = "human-eval-verus/tasks/lib.rs"
+description = "strlen: a wrong spec fails, the fix verifies, then a refactor"
+
+[[loop.step]]
+id = "wrong-spec"
+file = "tasks/human_eval_023.rs"
+description = "ensures length + 1 (a failing attempt)"
+expected = "errors"
+find = "            == string.len(),"
+replace = "            == string.len() + 1,"
+
+[[loop.step]]
+id = "fix-spec"
+file = "tasks/human_eval_023.rs"
+description = "revert the ensures (back to the original text)"
+expected = "verified"
+find = "            == string.len() + 1,"
+replace = "            == string.len(),"
+
+[[loop.step]]
+id = "refactor-body"
+file = "tasks/human_eval_023.rs"
+description = "bind the length and assert it before returning"
+expected = "verified"
+find = """
+    string.len()
+}"""
+replace = """
+    let n = string.len();
+    assert(n == string.len());
+    n
+}"""
+
+[[loop]]
+id = "he-gcd-invariant"
+unit = "human-eval-verus/tasks/lib.rs"
+description = "compute_gcd: dropping the invariant fails, restoring it verifies, then a refactor"
+
+[[loop.step]]
+id = "drop-invariant"
+file = "tasks/human_eval_013.rs"
+description = "remove the loop invariant (a failing attempt)"
+expected = "errors"
+find = """
+            gcd(a1 as nat, b1 as nat) == gcd(a as nat, b as nat),
+"""
+replace = """
+"""
+
+[[loop.step]]
+id = "restore-invariant"
+file = "tasks/human_eval_013.rs"
+description = "restore the invariant (back to the original text)"
+expected = "verified"
+find = """
+        invariant
+        decreases b1,"""
+replace = """
+        invariant
+            gcd(a1 as nat, b1 as nat) == gcd(a as nat, b as nat),
+        decreases b1,"""
+
+[[loop.step]]
+id = "split-mod"
+file = "tasks/human_eval_013.rs"
+description = "split `b1 = b1 % a1` through a temporary"
+expected = "verified"
+find = """
+            b1 = b1 % a1;
+"""
+replace = """
+            let m = b1 % a1;
+            b1 = m;
+"""

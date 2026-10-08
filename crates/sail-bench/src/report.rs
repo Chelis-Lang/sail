@@ -106,6 +106,7 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
         match f.workload.as_str() {
             "warm" => render_warm(&mut out, name, f),
             "edit" => render_edit(&mut out, name, f),
+            "agent-loop" => render_agent_loop(&mut out, name, f),
             _ => render_cold(&mut out, name, f),
         }
         out.push('\n');
@@ -514,6 +515,74 @@ fn render_edit(out: &mut String, name: &str, f: &BenchFile) {
     }
 }
 
+/// The section for an `agent-loop` result file.
+fn render_agent_loop(out: &mut String, name: &str, f: &BenchFile) {
+    header(
+        out,
+        name,
+        f,
+        "agent-loop workload (edit-and-verify cycles)",
+        &format!("{} round(s) per loop", f.rounds),
+    );
+    let _ = writeln!(
+        out,
+        "Loops come from `corpus/agent-loops.toml`. Each round gives a loop a fresh `sail serve` with an empty cache. Cycle `initial` verifies the original (filling the cache); each later cycle applies the next step on top of the previous ones and verifies again, with the cache warm from the earlier cycles. Every cycle runs plain Verus and sail, and every sail run is compared with plain Verus. The measure is time to verdict per cycle.\n"
+    );
+    let (mut plain_all, mut sail_all) = (0.0, 0.0);
+    for l in &f.loops {
+        let _ = writeln!(out, "### `{}`: {}\n", l.id, l.description);
+        let _ = writeln!(
+            out,
+            "| Cycle | Step | Plain Verus | sail | Speedup | Replies served / recorded | Plain outcome | Conformance |\n|---|---|---:|---:|---:|---:|---|---|"
+        );
+        let (mut plain, mut sail) = (0.0, 0.0);
+        for (k, c) in l.cycles.iter().enumerate() {
+            let cache = cache_totals(&c.cache, "cycle");
+            if k > 0 {
+                plain += med(&c.plain);
+                sail += med(&c.sail);
+            }
+            let outcome = match (&c.outcome, &c.expected) {
+                (Some(o), Some(e)) if o != e => format!("{o} (**expected {e}**)"),
+                (Some(o), _) => o.clone(),
+                (None, _) => "n/a".to_owned(),
+            };
+            let _ = writeln!(
+                out,
+                "| {k} | `{}`: {} | {} | {} | {} | {} | {outcome} | {} same, {} different, {} unstable, {} infra errors |",
+                c.step,
+                c.description,
+                spread(&c.plain.wall_ms),
+                spread(&c.sail.wall_ms),
+                ratio(med(&c.plain), med(&c.sail)),
+                served(&cache),
+                c.same,
+                c.different,
+                c.unstable,
+                c.infra_errors
+            );
+        }
+        let _ = writeln!(
+            out,
+            "| | **Edit cycles** (sum of medians, excluding `initial`) | {} | {} | **{}** | | | |\n",
+            ms(plain),
+            ms(sail),
+            ratio(plain, sail)
+        );
+        plain_all += plain;
+        sail_all += sail;
+    }
+    if f.loops.len() > 1 {
+        let _ = writeln!(
+            out,
+            "**All loops, edit cycles:** plain {}, sail {}, {}.",
+            ms(plain_all),
+            ms(sail_all),
+            ratio(plain_all, sail_all)
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -550,6 +619,7 @@ mod tests {
             machine: std::collections::BTreeMap::new(),
             units: Vec::new(),
             edits: Vec::new(),
+            loops: Vec::new(),
         }
     }
 
