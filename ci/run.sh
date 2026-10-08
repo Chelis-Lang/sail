@@ -76,6 +76,9 @@ RS
       echo $? > "$work/$label.rc"
       set -e
     }
+    # Warm-up: the first build of a fresh project also verifies its vstd
+    # dependency; afterwards every run below re-verifies only the crate.
+    run warmup cargo verus verify
     run plain cargo verus verify
     run cold "$sail" verify
     run warm "$sail" verify
