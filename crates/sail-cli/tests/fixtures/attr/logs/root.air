@@ -1,0 +1,47 @@
+;; Prelude
+;; AIR prelude
+;; MODULE 'root module'
+;; Fuel
+;; Trait-Decls
+;; Associated-Type-Decls
+;; Datatypes
+;; Trait-Bounds
+;; Associated-Type-Impls
+;; Trait-Impl-Axiom
+;; Broadcast vstd::function::axiom_fn_mut_call_requires
+;; Broadcast vstd::function::axiom_fn_mut_call_ensures
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Trait-Impl-Axiom
+;; Function-Specs input::Counter::incr
+;; Function-Def input::Counter::incr
+;; input.rs:30:5: 30:27 (#0)
+(check-valid
+;; Function-Specs input::Counter::get
+;; Function-Def input::Counter::get
+;; input.rs:37:5: 37:33 (#0)
+(check-valid
+;; Function-Specs input::max
+;; Function-Def input::max
+;; input.rs:42:1: 42:34 (#0)
+(check-valid
+;; Function-Specs input::bad
+;; Function-Def input::bad
+;; input.rs:46:1: 46:26 (#0)
+(check-valid
+;; Function-Recommends input::bad
+;; input.rs:46:1: 46:26 (#0)
+(check-valid
+;; Function-Def input::main
+;; input.rs:50:1: 50:10 (#0)
+(check-valid

@@ -16,6 +16,8 @@ ctrlc.workspace = true
 sail-api.workspace = true
 sail-daemon.workspace = true
 sail-verus.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
 
 [lints]
 workspace = true

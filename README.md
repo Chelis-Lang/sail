@@ -21,6 +21,11 @@ run `cargo verus verify` again.
 `sail watch [ARGS...]` re-verifies whenever sources change, cancelling the
 run in flight. With the cache warm, only edited buckets are re-solved.
 
+`sail verify --output json [ARGS...]` also prints one JSON document on stdout.
+It holds per-function verdicts, with tier and provenance, and per-obligation
+results with stable identities, effort and counterexample models. Diagnostics
+still go to stderr unchanged. See `docs/output-schema.md`.
+
 - `docs/CHARTER.md`: mission, scope and the correctness contract.
 - `AGENTS.md`: how to work in this repo (humans and agents).
 - `docs/decisions/`: architecture decision records.

@@ -48,8 +48,10 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
      - an in-memory tier inside the daemon.
 2. A daemon (`sail-daemon`) with a warm solver pool (`sail-solver`), the shim's
    daemon client, and fault injection.
-3. Function and obligation mapping (`sail-verus`, `sail-ledger`), `sail verify`
-   pass-through, and `--output json` schema v1.
+3. **Done.** Function and obligation mapping (`sail-verus`, `sail-ledger`),
+   `sail verify` pass-through, and `--output json` schema v1 (ADR 0014).
+   - Remaining: attribution for multi-package workspaces and lib+bin
+     packages (VI-0004), and linking diagnostics to obligations.
 4. Seed portfolio and fragility scoring (`sail-portfolio`), opt-in and labelled.
 5. `sail watch` speculative verification, and the MCP server (`sail-mcp`).
 6. A shared tier with integrity checks (`docs/trust.md`).

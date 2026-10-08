@@ -1,0 +1,16 @@
+error: postcondition not satisfied
+  --> input.rs:47:13
+   |
+47 |     ensures r > x,
+   |             ^^^^^ failed this postcondition
+48 | { x }
+   |   - at the end of the function body
+
+error: bitvector assertion not satisfied
+  --> input.rs:23:9
+   |
+23 |         assert(x & 1 == 0) by (bit_vector);
+   |         ^^^^^^
+
+error: aborting due to 2 previous errors
+

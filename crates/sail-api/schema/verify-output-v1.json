@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Chelis-Lang/sail/crates/sail-api/schema/verify-output-v1.json",
+  "title": "sail verify --output json, schema version 1",
+  "description": "See docs/output-schema.md. Within version 1, fields are only ever added; consumers must ignore unknown fields. This schema is strict (additionalProperties false) so that sail's own tests catch drift.",
+  "type": "object",
+  "required": ["schema_version", "sail_version", "mode", "command", "exit_code", "solver", "cache", "attribution", "crates", "diagnostics", "summary", "error"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "sail_version": { "type": "string" },
+    "mode": { "type": "string" },
+    "command": { "type": "array", "items": { "type": "string" } },
+    "exit_code": { "type": ["integer", "null"] },
+    "solver": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["name", "version", "path", "sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": ["string", "null"] },
+            "path": { "type": ["string", "null"] },
+            "sha256": { "type": ["string", "null"] }
+          }
+        }
+      ]
+    },
+    "cache": {
+      "type": "object",
+      "required": ["daemon"],
+      "additionalProperties": false,
+      "properties": { "daemon": { "type": "boolean" } }
+    },
+    "attribution": {
+      "type": "object",
+      "required": ["status", "notes", "unmatched_sessions"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["complete", "partial", "unavailable"] },
+        "notes": { "type": "array", "items": { "type": "string" } },
+        "unmatched_sessions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "crates": { "type": "array", "items": { "$ref": "#/$defs/crate" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "summary": {
+      "type": "object",
+      "required": ["functions", "verified", "failed", "unknown", "provisional", "unstable"],
+      "additionalProperties": false,
+      "properties": {
+        "functions": { "type": "integer", "minimum": 0 },
+        "verified": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "unknown": { "type": "integer", "minimum": 0 },
+        "provisional": { "type": "integer", "minimum": 0 },
+        "unstable": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "error": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["code", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "u64_or_null": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0 }] },
+    "crate": {
+      "type": "object",
+      "required": ["name", "verus", "functions"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "verus": {
+          "type": "object",
+          "required": ["verified", "errors", "success", "encountered_vir_error"],
+          "additionalProperties": false,
+          "properties": {
+            "verified": { "$ref": "#/$defs/u64_or_null" },
+            "errors": { "$ref": "#/$defs/u64_or_null" },
+            "success": { "type": ["boolean", "null"] },
+            "encountered_vir_error": { "type": ["boolean", "null"] }
+          }
+        },
+        "functions": { "type": "array", "items": { "$ref": "#/$defs/function" } }
+      }
+    },
+    "function": {
+      "type": "object",
+      "required": ["function", "module", "fn_mode", "verdict", "tier", "unstable", "verus_success", "provenance", "timing", "fragility", "obligations"],
+      "additionalProperties": false,
+      "properties": {
+        "function": { "type": "string" },
+        "module": { "type": "string" },
+        "fn_mode": { "type": ["string", "null"] },
+        "verdict": { "enum": ["verified", "failed", "unknown", "provisional"] },
+        "tier": { "enum": ["confirmed", "provisional"] },
+        "unstable": { "type": "boolean" },
+        "verus_success": { "type": ["boolean", "null"] },
+        "provenance": {
+          "type": "object",
+          "required": ["mode", "source", "checks_solved", "checks_served", "checks_unrecorded"],
+          "additionalProperties": false,
+          "properties": {
+            "mode": { "type": "string" },
+            "source": { "enum": ["fresh", "cache", "mixed", "unrecorded"] },
+            "checks_solved": { "type": "integer", "minimum": 0 },
+            "checks_served": { "type": "integer", "minimum": 0 },
+            "checks_unrecorded": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "timing": {
+          "type": "object",
+          "required": ["smt_micros", "rlimit"],
+          "additionalProperties": false,
+          "properties": {
+            "smt_micros": { "$ref": "#/$defs/u64_or_null" },
+            "rlimit": { "$ref": "#/$defs/u64_or_null" }
+          }
+        },
+        "fragility": {
+          "description": "Reserved: null until fragility is measured.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["score", "runs", "proved"],
+              "additionalProperties": false,
+              "properties": {
+                "score": { "type": "number", "minimum": 0 },
+                "runs": { "type": "integer", "minimum": 0 },
+                "proved": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "obligations": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "$ref": "#/$defs/obligation" } }
+          ]
+        }
+      }
+    },
+    "obligation": {
+      "type": "object",
+      "required": ["id", "kind", "ordinal", "spinoff", "advisory", "span", "outcome", "unstable", "checks", "counterexample"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string" },
+        "ordinal": { "type": "integer", "minimum": 0 },
+        "spinoff": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["index", "reason"],
+              "additionalProperties": false,
+              "properties": {
+                "index": { "type": "integer", "minimum": 0 },
+                "reason": { "type": ["string", "null"] }
+              }
+            }
+          ]
+        },
+        "advisory": { "type": "boolean" },
+        "span": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["text", "file", "line", "column", "end_line", "end_column"],
+              "additionalProperties": false,
+              "properties": {
+                "text": { "type": "string" },
+                "file": { "type": ["string", "null"] },
+                "line": { "$ref": "#/$defs/u64_or_null" },
+                "column": { "$ref": "#/$defs/u64_or_null" },
+                "end_line": { "$ref": "#/$defs/u64_or_null" },
+                "end_column": { "$ref": "#/$defs/u64_or_null" }
+              }
+            }
+          ]
+        },
+        "outcome": { "enum": ["proved", "failed", "unknown"] },
+        "unstable": { "type": "boolean" },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["answer", "rlimit_limit", "rlimit_used", "reason_unknown", "source"],
+            "additionalProperties": false,
+            "properties": {
+              "answer": { "enum": ["sat", "unsat", "unknown", null] },
+              "rlimit_limit": { "$ref": "#/$defs/u64_or_null" },
+              "rlimit_used": { "$ref": "#/$defs/u64_or_null" },
+              "reason_unknown": { "type": ["string", "null"] },
+              "source": { "enum": ["solved", "cache", null] }
+            }
+          }
+        },
+        "counterexample": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["check", "model", "assignments"],
+              "additionalProperties": false,
+              "properties": {
+                "check": { "type": "integer", "minimum": 0 },
+                "model": { "type": "string" },
+                "assignments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "sort", "value"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": { "type": "string" },
+                      "sort": { "type": "string" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["level", "code", "message", "spans", "rendered"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "string" },
+        "code": { "type": ["string", "null"] },
+        "message": { "type": "string" },
+        "spans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "line", "column", "primary"],
+            "additionalProperties": false,
+            "properties": {
+              "file": { "type": "string" },
+              "line": { "type": "integer", "minimum": 0 },
+              "column": { "type": "integer", "minimum": 0 },
+              "primary": { "type": "boolean" }
+            }
+          }
+        },
+        "rendered": { "type": "string" }
+      }
+    }
+  }
+}

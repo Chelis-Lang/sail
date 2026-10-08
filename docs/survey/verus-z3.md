@@ -599,7 +599,10 @@ The batch omits the trailing newline and the `(echo "<<DONE>>")` that the
 writer thread appends, and the reply omits the `<<DONE>>` line. Transcripts
 carry no `;;` attribution comments. Their file name, though, identifies the
 bucket and spinoff, as above. Because `--log smt-transcript` alone does not
-attach an smt log, it does not change the pipe indentation.
+attach an smt log, it does not change the pipe indentation. Confirmed
+empirically (ADR 0014): `--log smt-transcript`, `--log air`, `--output-json`
+and `--time` leave every byte sent to Z3 unchanged; only `--log smt` changes
+them.
 
 ### Machine-readable verdicts and timings
 

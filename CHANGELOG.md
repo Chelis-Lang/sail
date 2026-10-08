@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail verify --output json`: one schema-v1 JSON document on stdout
+  (`docs/output-schema.md`, ADR 0014). It has per-function verdicts with tier
+  and provenance, and per-obligation results with stable identities, effort,
+  cache sources and counterexample models. It also carries Verus's
+  diagnostics as data. stderr and the exit code are unchanged.
+- `sail-z3`: with `SAIL_PROVENANCE_DIR` set, a cached session records how many
+  replies the cache served (ADR 0014).
 - `sail watch [ARGS...]`: re-runs `sail verify` as sources change. Edits
   cancel the run in flight and restart it once they settle.
 - `sail verify`: runs `cargo verus verify` with the same arguments, through
