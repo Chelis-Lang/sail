@@ -141,6 +141,15 @@ cargo deny --locked check
   conformance subset once the harness exists (M3).
 - *Standard:* conformance over the main corpus in default mode, plus cache tier
   and shim fallback tests. This tier gates merges once it exists.
+  `.github/workflows/conformance.yml` runs a fast-tier subset on PRs and the
+  whole fast tier nightly; dispatch it with `tier=standard|deep` (ADR 0006).
+
+Run conformance locally (needs `cargo xtask fetch-verus` once):
+
+```sh
+cargo build --release -p sail-shim -p sail-conformance
+./target/release/sail-conformance run --tier fast --jobs 4
+```
 - *Deep:* full corpus, history replay, portfolio and fragility runs, and full
   benchmarks. Scheduled, and run before releases.
 - *Not in the fast gate:* benchmarks, profiling and long fuzzing. Record

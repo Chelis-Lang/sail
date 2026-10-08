@@ -7,7 +7,14 @@ rust-version.workspace = true
 publish.workspace = true
 repository.workspace = true
 
+[[bin]]
+name = "sail-conformance"
+path = "src/main.rs"
+
 [dependencies]
+sail-verus.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

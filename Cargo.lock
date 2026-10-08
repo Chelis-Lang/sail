@@ -218,6 +218,11 @@ version = "0.0.0"
 [[package]]
 name = "sail-conformance"
 version = "0.0.0"
+dependencies = [
+ "sail-verus",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "sail-daemon"
@@ -278,6 +283,11 @@ version = "0.0.0"
 [[package]]
 name = "sail-verus"
 version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "toml",
+]
 
 [[package]]
 name = "serde"
