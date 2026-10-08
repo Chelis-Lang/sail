@@ -53,7 +53,8 @@ Three layers enforce this:
 3. **Agent config.** `.claude/settings.json` disables Claude Code's attribution.
    This overrides any default instruction to add `Co-Authored-By` lines.
 
-Never bypass the hook with `--no-verify`. See ADR 0002.
+Never bypass the hook with `--no-verify`. See ADR 0002. The same install adds
+a `pre-commit` hook that refuses commits `rustfmt` would change.
 
 ## Workflow mode
 
