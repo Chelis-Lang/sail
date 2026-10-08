@@ -24,3 +24,7 @@ Identity binds:
 Rlimit counts have been observed to differ across machines for the same
 binary (ADR 0004 update), so the shared tier may need to bind a machine class
 too. That is decided by measurement before the shared tier is built.
+
+**Owner decision (ADR 0010).** Shared-tier entries are scoped by solver
+binary hash plus platform class. Hits across platform classes are allowed
+only in a named opt-in mode.
