@@ -166,6 +166,8 @@ expected = "verified"
 [[project]]
 name = "page-table"
 url = "https://github.com/parno/verified-nrkernel"
+# A fork pin (verita's branch), so it is archived locally (ADR 0010).
+archive = true
 commit = "be21389554aa6d5e0f7ab98796fd03e04b6f34d4"
 license = "MIT OR Apache-2.0"
 tier = "standard"
@@ -183,7 +185,7 @@ commit = "a597f9de7dbeb056403bd60b0a2ca67f686a5e1f"
 license = "MIT"
 tier = "standard"
 verus_version_compat = "compatible"
-compat_evidence = "TODO"
+compat_evidence = "verita nightly passed around the pinned release (docs/survey/corpus.md); not yet run here: needs OpenSSL, which this macOS machine lacks; pending a Linux standard-tier run"
 build = "cargo-verus"
 cargo_verus_command = "focus"
 crate_roots = ["."]
