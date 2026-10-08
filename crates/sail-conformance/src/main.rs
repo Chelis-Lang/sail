@@ -16,7 +16,7 @@ use std::process::ExitCode;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use sail_conformance::{Comparison, Verdict, compare};
+use sail_conformance::{Comparison, Verdict, classify};
 use sail_verus::corpus::{Corpus, Tier, Unit};
 use sail_verus::run::{RunRecord, Solver, machine_info, prepare_unit, run_unit};
 use sail_verus::toolchain::{Installed, Pins};
@@ -25,7 +25,12 @@ use serde::Serialize;
 const USAGE: &str = "usage:
   sail-conformance fetch [--tier fast|standard|deep] [--project NAME]...
   sail-conformance run   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
-                         [--jobs N] [--trace] [--out DIR] [--shim PATH]";
+                         [--jobs N] [--trace] [--out DIR] [--shim PATH]
+                         [--plain-runs N] [--confirm-runs N]
+
+  --plain-runs N    plain Verus runs per unit up front (default 1)
+  --confirm-runs N  extra plain runs when sail differs, to tell plain-Verus
+                    instability from sail differences (default 2; ADR 0009)";
 
 #[derive(Debug)]
 struct Options {
@@ -37,6 +42,8 @@ struct Options {
     trace: bool,
     out: Option<PathBuf>,
     shim: Option<PathBuf>,
+    plain_runs: usize,
+    confirm_runs: usize,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -51,6 +58,8 @@ fn parse(args: &[String]) -> Result<Options, String> {
         trace: false,
         out: None,
         shim: None,
+        plain_runs: 1,
+        confirm_runs: 2,
     };
     while let Some(arg) = it.next() {
         let mut value = || {
@@ -72,12 +81,23 @@ fn parse(args: &[String]) -> Result<Options, String> {
                     .map_err(|_| "--jobs needs a number".to_owned())?;
             }
             "--trace" => o.trace = true,
+            "--plain-runs" => {
+                o.plain_runs = value()?
+                    .parse()
+                    .map_err(|_| "--plain-runs needs a number".to_owned())?;
+            }
+            "--confirm-runs" => {
+                o.confirm_runs = value()?
+                    .parse()
+                    .map_err(|_| "--confirm-runs needs a number".to_owned())?;
+            }
             "--out" => o.out = Some(value()?.into()),
             "--shim" => o.shim = Some(value()?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
     }
     o.jobs = o.jobs.max(1);
+    o.plain_runs = o.plain_runs.max(1);
     Ok(o)
 }
 
@@ -111,6 +131,8 @@ struct UnitReport {
     verdict: Verdict,
     #[serde(flatten)]
     comparison: Comparison,
+    plain_runs: usize,
+    unstable: Vec<String>,
     infra_error: Option<String>,
     plain: Option<Side>,
     sail: Option<Side>,
@@ -127,6 +149,7 @@ struct Summary {
     projects_skipped: usize,
     units: usize,
     same: usize,
+    unstable: usize,
     different: usize,
     infra_error: usize,
     functions: usize,
@@ -234,6 +257,8 @@ struct Context<'a> {
     shim: &'a Path,
     dir: &'a Path,
     trace: bool,
+    plain_runs: usize,
+    confirm_runs: usize,
 }
 
 fn infra_error(unit: &Unit, message: String) -> UnitReport {
@@ -242,6 +267,8 @@ fn infra_error(unit: &Unit, message: String) -> UnitReport {
         expected: unit.expected.clone(),
         verdict: Verdict::InfraError,
         comparison: Comparison::default(),
+        plain_runs: 0,
+        unstable: Vec::new(),
         infra_error: Some(message),
         plain: None,
         sail: None,
@@ -257,34 +284,52 @@ fn run_one(cx: &Context, unit: &Unit) -> UnitReport {
         Err(e) => return infra_error(unit, e.to_string()),
     };
     let unit = &unit;
-    let plain = run_unit(installed, unit, &Solver::Plain, &base.join("plain"));
+    let run_plain = |i: usize| {
+        let dir = if i == 0 {
+            base.join("plain")
+        } else {
+            base.join(format!("plain-{}", i + 1))
+        };
+        run_unit(installed, unit, &Solver::Plain, &dir)
+    };
+    let mut plains = Vec::new();
+    for i in 0..cx.plain_runs {
+        match run_plain(i) {
+            Ok(p) => plains.push(p),
+            Err(e) => return infra_error(unit, e.to_string()),
+        }
+    }
     let solver = Solver::Shim {
         shim: cx.shim.to_path_buf(),
         trace_dir: cx.trace.then(|| dir.join("traces").join(slug(&unit.id))),
     };
-    let sail = run_unit(installed, unit, &solver, &base.join("sail"));
-    match (plain, sail) {
-        (Ok(p), Ok(s)) => {
-            let comparison = compare(&p, &s);
-            UnitReport {
-                id: unit.id.clone(),
-                expected: unit.expected.clone(),
-                verdict: comparison.verdict(),
-                comparison,
-                infra_error: None,
-                plain: Some(Side::from(&p)),
-                sail: Some(Side::from(&s)),
-            }
+    let sail = match run_unit(installed, unit, &solver, &base.join("sail")) {
+        Ok(s) => s,
+        Err(e) => return infra_error(unit, e.to_string()),
+    };
+    let mut c = classify(&plains, &sail);
+    // ADR 0009: before calling a difference a sail error, check whether
+    // plain Verus agrees with itself.
+    for _ in 0..cx.confirm_runs {
+        if c.verdict != Verdict::Different {
+            break;
         }
-        (p, s) => infra_error(
-            unit,
-            [p.err(), s.err()]
-                .into_iter()
-                .flatten()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join("; "),
-        ),
+        match run_plain(plains.len()) {
+            Ok(p) => plains.push(p),
+            Err(e) => return infra_error(unit, e.to_string()),
+        }
+        c = classify(&plains, &sail);
+    }
+    UnitReport {
+        id: unit.id.clone(),
+        expected: unit.expected.clone(),
+        verdict: c.verdict,
+        comparison: c.comparison,
+        plain_runs: c.plain_runs,
+        unstable: c.unstable,
+        infra_error: None,
+        plain: plains.first().map(Side::from),
+        sail: Some(Side::from(&sail)),
     }
 }
 
@@ -337,10 +382,11 @@ fn summary_line(report: &Report) -> String {
         format!(" ({})", list.join("; "))
     };
     format!(
-        "conformance ({} tier): {} units, {} same, {} different, {} infra errors; {} functions compared; {} units with rlimit drift; {} projects skipped{skipped}",
+        "conformance ({} tier): {} units, {} same, {} unstable, {} different, {} infra errors; {} functions compared; {} units with rlimit drift; {} projects skipped{skipped}",
         report.tier,
         s.units,
         s.same,
+        s.unstable,
         s.different,
         s.infra_error,
         s.functions,
@@ -386,6 +432,8 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         shim: &shim,
         dir: &dir,
         trace: o.trace,
+        plain_runs: o.plain_runs,
+        confirm_runs: o.confirm_runs,
     };
     let mut units = run_all(units, o.jobs, &cx);
     units.sort_by(|a, b| a.id.cmp(&b.id));
@@ -397,6 +445,7 @@ fn run(o: &Options) -> Result<ExitCode, String> {
     for u in &units {
         match u.verdict {
             Verdict::Same => summary.same += 1,
+            Verdict::Unstable => summary.unstable += 1,
             Verdict::Different => summary.different += 1,
             Verdict::InfraError => summary.infra_error += 1,
         }

@@ -121,7 +121,11 @@ pub fn run(
                     r.functions = c.functions;
                     match c.verdict() {
                         Verdict::Same => r.same += 1,
-                        Verdict::Different | Verdict::InfraError => r.different += 1,
+                        // `compare` is pairwise and never yields `Unstable`;
+                        // any non-same round is counted as a difference.
+                        Verdict::Unstable | Verdict::Different | Verdict::InfraError => {
+                            r.different += 1;
+                        }
                     }
                     r.plain.push(&p);
                     r.sail.push(&s);

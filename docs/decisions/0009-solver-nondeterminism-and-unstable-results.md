@@ -54,3 +54,17 @@ as plain Verus, every time" (rule 1) has no fixed meaning.
   confirmed result.
 - Benchmarks that use the cache must report unstable results as their own
   category.
+
+## Update 2026-10-08
+
+Implemented in `sail-conformance`:
+- **Default runs.** One plain run and one sail run per unit.
+- **Confirming differences.** When they differ, up to `--confirm-runs`
+  further plain runs (default 2) are made.
+- **Classification.** A unit is `unstable` when plain Verus disagrees with
+  itself on a function verdict, diagnostics or exit code, and sail matches
+  one of the plain runs. Otherwise it stays `different`.
+- **Up-front repetition.** `--plain-runs N` repeats plain runs up front, for
+  the fragility census.
+- **rlimit drift** alone never makes a unit unstable: consumption is an
+  output, not a verdict.
