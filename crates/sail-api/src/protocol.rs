@@ -9,6 +9,11 @@
 //! | 2 `GET` | 32-byte key | `0` (miss); or `1`, `u32` len, reply bytes, then optionally `u32` len, effort JSON |
 //! | 3 `PUT` | 32-byte key, `u32` meta len, meta JSON, reply bytes | `0` |
 //! | 4 `STATS` | empty | `0`, `u32` len, [`StatsSnapshot`] JSON |
+//! | 5 `INFO` | empty | `0`, `u32` len, [`Info`] JSON |
+//!
+//! Operations 4 and 5 are read-only and additive: they kept
+//! [`PROTOCOL_VERSION`] at 1 (ADR 0012, ADR 0015). A daemon that predates
+//! one rejects it by closing that connection; nothing else changes.
 //!
 //! Frames larger than [`MAX_FRAME`] are rejected.
 
@@ -28,6 +33,7 @@ const OP_HELLO: u8 = 1;
 const OP_GET: u8 = 2;
 const OP_PUT: u8 = 3;
 const OP_STATS: u8 = 4;
+const OP_INFO: u8 = 5;
 
 /// Solver identity as the daemon reports it (see `sail_key::SolverIdentity`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +86,13 @@ pub struct StatsSnapshot {
     pub hits: u64,
     /// `PUT` requests: replies recorded from the solver.
     pub puts: u64,
+    /// `GET` hits served from the in-memory tier (included in `hits`).
+    #[serde(default)]
+    pub memory_hits: u64,
+    /// `PUT`s dropped because the write-behind queue stayed full. Each
+    /// costs a future miss, never correctness.
+    #[serde(default)]
+    pub dropped_puts: u64,
 }
 
 impl StatsSnapshot {
@@ -91,8 +104,60 @@ impl StatsSnapshot {
             gets: self.gets.saturating_sub(earlier.gets),
             hits: self.hits.saturating_sub(earlier.hits),
             puts: self.puts.saturating_sub(earlier.puts),
+            memory_hits: self.memory_hits.saturating_sub(earlier.memory_hits),
+            dropped_puts: self.dropped_puts.saturating_sub(earlier.dropped_puts),
         }
     }
+}
+
+/// The in-memory tier's state, as `INFO` reports it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemoryInfo {
+    /// Budget in bytes (0: the tier is off).
+    pub capacity_bytes: u64,
+    /// Replies held.
+    pub entries: u64,
+    /// Bytes charged for them.
+    pub bytes: u64,
+    /// Replies held whose disk write is still queued.
+    pub pending: u64,
+}
+
+/// The write-behind queue's state, as `INFO` reports it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QueueInfo {
+    /// Budget in bytes.
+    pub capacity_bytes: u64,
+    /// Writes queued or in progress.
+    pub entries: u64,
+    /// Their reply bytes.
+    pub bytes: u64,
+}
+
+/// The daemon's configuration and state (the `INFO` operation).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Info {
+    /// The daemon's protocol version ([`PROTOCOL_VERSION`]).
+    pub protocol_version: u32,
+    /// The daemon's sail version.
+    pub sail_version: String,
+    /// The daemon's process id.
+    pub pid: u32,
+    /// Seconds since the daemon started.
+    pub uptime_secs: u64,
+    /// The socket it serves.
+    pub socket: String,
+    /// The cache root it serves.
+    pub cache_root: String,
+    /// Its log file, if it has one.
+    #[serde(default)]
+    pub log: Option<String>,
+    /// Seconds without connections after which it stops (0: never).
+    pub idle_timeout_secs: u64,
+    /// The in-memory tier.
+    pub memory: MemoryInfo,
+    /// The write-behind queue.
+    pub queue: QueueInfo,
 }
 
 /// A decoded request.
@@ -113,6 +178,8 @@ pub enum Request {
     },
     /// Report the daemon's counters.
     Stats,
+    /// Report the daemon's configuration and state.
+    Info,
 }
 
 fn invalid(msg: &str) -> io::Error {
@@ -168,6 +235,7 @@ impl Request {
                 body.extend_from_slice(reply);
             }
             Self::Stats => body.push(OP_STATS),
+            Self::Info => body.push(OP_INFO),
         }
         write_frame(w, &body)
     }
@@ -217,6 +285,7 @@ impl Request {
                 }))
             }
             OP_STATS => Ok(Some(Self::Stats)),
+            OP_INFO => Ok(Some(Self::Info)),
             _ => Err(invalid("unknown operation")),
         }
     }
@@ -298,6 +367,20 @@ pub fn write_stats_response(w: &mut impl Write, stats: &StatsSnapshot) -> io::Re
     write_frame(w, &body)
 }
 
+/// Writes an `INFO` response.
+///
+/// # Errors
+///
+/// I/O errors.
+pub fn write_info_response(w: &mut impl Write, info: &Info) -> io::Result<()> {
+    let payload = serde_json::to_vec(info).map_err(io::Error::other)?;
+    let mut body = vec![0u8];
+    let len = u32::try_from(payload.len()).map_err(|_| invalid("too large"))?;
+    body.extend_from_slice(&len.to_be_bytes());
+    body.extend_from_slice(&payload);
+    write_frame(w, &body)
+}
+
 /// Writes a `PUT` acknowledgement.
 ///
 /// # Errors
@@ -364,6 +447,7 @@ mod tests {
                 reply: b"unsat\n".to_vec(),
             },
             Request::Stats,
+            Request::Info,
         ];
         let mut buf = Vec::new();
         for r in &reqs {
@@ -383,6 +467,8 @@ mod tests {
             gets: 5,
             hits: 4,
             puts: 3,
+            memory_hits: 2,
+            dropped_puts: 0,
         };
         let mut buf = Vec::new();
         assert!(write_stats_response(&mut buf, &stats).is_ok());
@@ -396,6 +482,33 @@ mod tests {
             StatsSnapshot::default().since(&stats),
             StatsSnapshot::default()
         );
+    }
+
+    #[test]
+    fn info_round_trips_and_old_stats_json_reads() {
+        let info = Info {
+            protocol_version: PROTOCOL_VERSION,
+            sail_version: "0.0.0".to_owned(),
+            pid: 7,
+            uptime_secs: 3,
+            socket: "/tmp/d.sock".to_owned(),
+            cache_root: "/tmp/c".to_owned(),
+            log: None,
+            idle_timeout_secs: 1800,
+            memory: MemoryInfo::default(),
+            queue: QueueInfo::default(),
+        };
+        let mut buf = Vec::new();
+        assert!(write_info_response(&mut buf, &info).is_ok());
+        let body = read_response(&mut std::io::Cursor::new(buf)).unwrap_or_default();
+        let parsed = split_status_payload(&body)
+            .ok()
+            .and_then(|(_, p)| serde_json::from_slice::<Info>(p).ok());
+        assert_eq!(parsed, Some(info));
+        // A daemon from before the per-tier counters.
+        let old: Option<StatsSnapshot> =
+            serde_json::from_str(r#"{"hellos":1,"gets":2,"hits":1,"puts":1}"#).ok();
+        assert_eq!(old.map(|s| s.memory_hits), Some(0));
     }
 
     #[test]

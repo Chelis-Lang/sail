@@ -21,11 +21,9 @@ fn help_lists_every_charter_command() {
 
 #[test]
 fn unimplemented_commands_exit_3_with_stable_code() {
-    for cmd in ["status", "cache", "bench"] {
-        let output = sail(&[cmd]);
-        assert_eq!(output.status.code(), Some(3), "sail {cmd}");
-        assert!(String::from_utf8_lossy(&output.stderr).contains("SAIL0001"));
-    }
+    let output = sail(&["bench"]);
+    assert_eq!(output.status.code(), Some(3), "sail bench");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("SAIL0001"));
 }
 
 #[test]

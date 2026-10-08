@@ -8,7 +8,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use crate::protocol::{
-    Identity, PutMeta, Request, StatsSnapshot, read_response, split_status_payload,
+    Identity, Info, PutMeta, Request, StatsSnapshot, read_response, split_status_payload,
 };
 
 /// Timeout for each request/response exchange.
@@ -125,6 +125,18 @@ impl Client {
     /// I/O errors and malformed replies.
     pub fn stats(&mut self) -> std::io::Result<StatsSnapshot> {
         let body = self.call(&Request::Stats)?;
+        let (_, payload) = split_status_payload(&body)?;
+        serde_json::from_slice(payload).map_err(std::io::Error::other)
+    }
+
+    /// The daemon's configuration and state.
+    ///
+    /// # Errors
+    ///
+    /// I/O errors and malformed replies. A daemon that predates `INFO`
+    /// closes the connection, which is an I/O error.
+    pub fn info(&mut self) -> std::io::Result<Info> {
+        let body = self.call(&Request::Info)?;
         let (_, payload) = split_status_payload(&body)?;
         serde_json::from_slice(payload).map_err(std::io::Error::other)
     }

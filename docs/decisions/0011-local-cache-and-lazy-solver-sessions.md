@@ -157,3 +157,14 @@ The protocol has a fourth operation, `STATS` (op 4, empty payload). It
 returns the daemon's counters since start as JSON: `hellos`, `gets`, `hits`
 and `puts`. Benchmarks use it to report what the cache did in each run.
 See ADR 0012.
+
+## Update 2026-10-08: memory tier, write-behind and `INFO` (ADR 0015)
+
+- **`INFO`.** A fifth operation, op 5, read-only and additive like `STATS`.
+- **New counters.** `STATS` gains `memory_hits` and `dropped_puts`.
+- **The memory tier.** It sits in front of the disk tier, and every hit
+  from it is checked against the entry file's stamp.
+- **`PUT` is written behind.** The daemon acknowledges a `PUT` once the
+  entry is held in memory and queued for disk, so an acknowledgement no
+  longer means the entry is on disk. The disk tier's atomic-write and
+  integrity rules are unchanged.

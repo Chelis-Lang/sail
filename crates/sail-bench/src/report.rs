@@ -211,6 +211,7 @@ fn cache_totals<'a>(runs: impl IntoIterator<Item = &'a CacheRun>, phase: &str) -
         t.gets += r.gets;
         t.hits += r.hits;
         t.puts += r.puts;
+        t.memory_hits += r.memory_hits;
     }
     t
 }
@@ -603,6 +604,7 @@ mod tests {
             gets: hits + 1,
             hits,
             puts,
+            memory_hits: 0,
         }
     }
 

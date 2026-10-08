@@ -74,6 +74,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         "sail-cli",
         &[
             "sail-api",
+            "sail-cache",
             "sail-ledger",
             "sail-verus",
             "sail-daemon",

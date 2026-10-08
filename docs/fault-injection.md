@@ -58,6 +58,23 @@ and slow daemon tests.
 | Daemon hangs at `HELLO` | Pass-through after the timeout | Exact replies within the deadline |
 | Daemon hangs at `GET` 1 or 6, or answers `GET` 3 or `HELLO` late | Miss after the timeout; the connection is not reused | Exact replies within the deadline |
 | Daemon hangs at `PUT` 1 or 10, or answers `PUT` 4 late | Forwarding is unaffected; exit waits for at most one timeout | Exact replies, exit 0, within the deadline |
+| Memory tier warm, then every stored entry changed under the running daemon: removed, a byte flipped in place, swapped with another entry, or replaced by a re-headered forgery (ADR 0015) | Every `GET` returns exactly what the disk tier holds now | Every `GET` matches the disk; later sessions are exact; the forgeries are not served (shape check) |
+| `gc` to half the cache, `verify --remove` and `clear`, in a loop, during 16 concurrent sessions, cold then warm | Only misses | Exact replies in every session; every entry passes the replay check |
+
+Daemon-side cases that need no solver run in the fast gate:
+- **`crates/sail-daemon/tests/tiers.rs`:**
+  - memory hits against outside changes to the disk;
+  - write-behind: acknowledgement before the write, a full queue dropping
+    `PUT`s, and draining on shutdown;
+  - `gc`, `clear` and `verify --remove` racing six clients;
+  - idle shutdown.
+- **`crates/sail-cli/tests/daemon_ops.rs`**, with a real `sail serve`
+  process:
+  - SIGTERM with writes queued: every entry is written, and the socket is
+    removed;
+  - `kill -9` with writes queued: some entries are lost, and every one left
+    is valid and correct. `sail cache verify` passes, and a new daemon
+    serves what is left exactly.
 
 ## Bugs found
 
@@ -89,9 +106,10 @@ The client timeout is configurable with `SAIL_DAEMON_TIMEOUT_MS`.
 
 - Killing the shim itself (ADR 0005's known limitation: the solver runs on
   until it reads end of file).
-- A real `sail serve` process killed with a signal. The proxy's
-  closed-connection and removed-socket faults are what a client sees in that
-  case.
+- A real `sail serve` killed with a signal *during shim sessions*. Killing
+  one with writes queued is covered without a solver (above). What a shim
+  sees is what the proxy's closed-connection and removed-socket faults
+  produce.
 - A same-shape forgery (an `unsat` stored under a key whose answer is
   `sat`). It passes every check. The local tier trusts its single writer, the
   daemon. The shared tier will not (charter rule 9, `docs/trust.md`).
