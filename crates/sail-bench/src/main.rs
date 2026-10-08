@@ -35,6 +35,8 @@ const USAGE: &str = "usage:
                     [--name NAME] [--shim PATH] [--sail PATH]
   sail-bench agent-loop [--loops corpus/agent-loops.toml] [--filter SUBSTR] [--rounds N]
                     [--name NAME] [--shim PATH] [--sail PATH]
+  sail-bench history-replay --project NAME [--commits N] [--filter SUBSTR]
+                    [--name NAME] [--shim PATH] [--sail PATH]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
   sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
@@ -212,6 +214,7 @@ struct Output {
     units: Vec<UnitResult>,
     edits: Vec<EditResult>,
     loops: Vec<sail_bench::agent_loop::LoopResult>,
+    commits: Vec<sail_bench::replay::CommitResult>,
 }
 
 fn write_result(out: Output, name: Option<String>, p: &Prepared) -> Result<(), String> {
@@ -237,6 +240,7 @@ fn write_result(out: Output, name: Option<String>, p: &Prepared) -> Result<(), S
         units: out.units,
         edits: out.edits,
         loops: out.loops,
+        commits: out.commits,
     };
     let path = Path::new("bench/results").join(format!("{name}.json"));
     std::fs::create_dir_all("bench/results").map_err(|e| e.to_string())?;
@@ -278,6 +282,7 @@ fn cold_cmd(args: &[String]) -> Result<(), String> {
         units: results,
         edits: Vec::new(),
         loops: Vec::new(),
+        commits: Vec::new(),
     };
     write_result(out, o.name, &p)
 }
@@ -334,6 +339,7 @@ fn warm_cmd(args: &[String]) -> Result<(), String> {
         units: results,
         edits: Vec::new(),
         loops: Vec::new(),
+        commits: Vec::new(),
     };
     write_result(out, o.name, &p)
 }
@@ -396,6 +402,7 @@ fn edit_cmd(args: &[String]) -> Result<(), String> {
         units: Vec::new(),
         edits: results,
         loops: Vec::new(),
+        commits: Vec::new(),
     };
     write_result(out, o.name, &p)
 }
@@ -459,6 +466,102 @@ fn agent_loop_cmd(args: &[String]) -> Result<(), String> {
         units: Vec::new(),
         edits: Vec::new(),
         loops: results,
+        commits: Vec::new(),
+    };
+    write_result(out, o.name, &p)
+}
+
+fn history_replay_cmd(args: &[String]) -> Result<(), String> {
+    use sail_bench::replay;
+    let (mut project, mut count, mut rest) = (None::<String>, 10usize, Vec::new());
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--project" => project = it.next().cloned(),
+            "--commits" => {
+                count = it
+                    .next()
+                    .and_then(|v| v.parse().ok())
+                    .ok_or("--commits needs a number")?;
+            }
+            _ => rest.push(arg.clone()),
+        }
+    }
+    let name = project.ok_or(format!("history-replay needs --project\n{USAGE}"))?;
+    if count == 0 {
+        return Err("--commits must be at least 1".to_owned());
+    }
+    let o = parse_options(&rest)?;
+    let p = prepare(o.shim.clone())?;
+    let sail = daemon::locate_sail(o.sail.clone())?;
+    let proj = p
+        .corpus
+        .projects
+        .iter()
+        .find(|x| x.name == name)
+        .ok_or(format!("no corpus project named {name}"))?;
+    let missing = proj.missing_requirements(&p.installed.pins.verus.rust_toolchain);
+    if !missing.is_empty() {
+        return Err(format!(
+            "{name} requires {} (not available)",
+            missing.join(", ")
+        ));
+    }
+    let verus_source = if proj.patch_verus_deps {
+        Some(
+            p.corpus
+                .fetch_verus_source(&p.cache)
+                .map_err(|e| e.to_string())?,
+        )
+    } else {
+        None
+    };
+    let repo = p.scratch.join("history").join(&name);
+    let commits = replay::history(proj, &repo, count)?;
+    eprintln!(
+        "history replay: {name}, {} commits (oldest first)",
+        commits.len()
+    );
+    let setup = warm::Setup {
+        installed: &p.installed,
+        shim: &p.shim,
+        sail: &sail,
+        scratch: &p.scratch,
+    };
+    let cache_root = p.scratch.join("cache").join("replay");
+    let results = replay::run(
+        &setup,
+        proj,
+        &repo,
+        &commits,
+        verus_source.as_deref(),
+        o.filter.as_deref(),
+        &cache_root,
+        |r| {
+            eprintln!(
+                "{} {:<40} plain {:>7.0} ms  sail {:>7.0} ms  outcome {}  same {}/{}{}",
+                r.sha.get(..10).unwrap_or(&r.sha),
+                r.subject.chars().take(40).collect::<String>(),
+                cold::median(&r.plain.wall_ms).unwrap_or(0.0),
+                cold::median(&r.sail.wall_ms).unwrap_or(0.0),
+                r.outcome.as_deref().unwrap_or("n/a"),
+                r.same,
+                r.same + r.different + r.unstable + r.infra_errors,
+                r.note
+                    .as_deref()
+                    .map(|n| format!("  ({n})"))
+                    .unwrap_or_default()
+            );
+        },
+    )?;
+    let out = Output {
+        workload: "history-replay",
+        tier: name,
+        rounds: 1,
+        units: Vec::new(),
+        edits: Vec::new(),
+        loops: Vec::new(),
+        commits: results,
     };
     write_result(out, o.name, &p)
 }
@@ -538,6 +641,7 @@ fn main() -> ExitCode {
         Some("warm") => warm_cmd(args.get(1..).unwrap_or_default()),
         Some("edit") => edit_cmd(args.get(1..).unwrap_or_default()),
         Some("agent-loop") => agent_loop_cmd(args.get(1..).unwrap_or_default()),
+        Some("history-replay") => history_replay_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),

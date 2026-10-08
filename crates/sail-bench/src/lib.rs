@@ -29,6 +29,7 @@ pub mod history;
 pub mod hits;
 mod parallel;
 pub mod profile;
+pub mod replay;
 pub mod report;
 pub mod seeds;
 pub mod solver;

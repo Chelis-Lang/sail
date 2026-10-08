@@ -107,6 +107,7 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
             "warm" => render_warm(&mut out, name, f),
             "edit" => render_edit(&mut out, name, f),
             "agent-loop" => render_agent_loop(&mut out, name, f),
+            "history-replay" => render_replay(&mut out, name, f),
             _ => render_cold(&mut out, name, f),
         }
         out.push('\n');
@@ -584,6 +585,67 @@ fn render_agent_loop(out: &mut String, name: &str, f: &BenchFile) {
     }
 }
 
+/// The section for a `history-replay` result file.
+fn render_replay(out: &mut String, name: &str, f: &BenchFile) {
+    header(
+        out,
+        name,
+        f,
+        &format!("history replay of `{}`", f.tier),
+        &format!("{} commit(s), one run each", f.commits.len()),
+    );
+    let _ = writeln!(
+        out,
+        "The project's recent first-parent commits are replayed oldest first, each with the pinned Verus, against one `sail serve` whose cache persists across all of them, as on a developer or CI machine. Each commit runs plain Verus and sail, and every sail run is compared with plain Verus. The first commit starts from an empty cache. Each run builds the project from a clean target directory, so both sides' times include compiling its dependencies (vstd included). Commits written for another Verus release can fail under the pinned one; their outcome is recorded as observed.\n"
+    );
+    let _ = writeln!(
+        out,
+        "| # | Commit | Unit | Plain Verus | sail | Speedup | Replies served / recorded | Plain outcome | Conformance |\n|---:|---|---|---:|---:|---:|---:|---|---|"
+    );
+    let (mut plain, mut sail) = (0.0, 0.0);
+    let (mut same, mut different, mut unstable, mut infra) = (0, 0, 0, 0);
+    for (i, c) in f.commits.iter().enumerate() {
+        let cache = cache_totals(&c.cache, "commit");
+        if i > 0 {
+            plain += med(&c.plain);
+            sail += med(&c.sail);
+        }
+        same += c.same;
+        different += c.different;
+        unstable += c.unstable;
+        infra += c.infra_errors;
+        let short: String = c.sha.chars().take(10).collect();
+        let subject: String = c.subject.chars().take(60).collect();
+        let conformance = c.note.as_deref().map_or_else(
+            || {
+                format!(
+                    "{} same, {} different, {} unstable",
+                    c.same, c.different, c.unstable
+                )
+            },
+            |n| format!("infra error: {n}"),
+        );
+        let _ = writeln!(
+            out,
+            "| {i} | `{short}` {} | `{}` | {} | {} | {} | {} | {} | {conformance} |",
+            subject.replace('|', "/"),
+            c.unit,
+            ms(med(&c.plain)),
+            ms(med(&c.sail)),
+            ratio(med(&c.plain), med(&c.sail)),
+            served(&cache),
+            c.outcome.as_deref().unwrap_or("n/a"),
+        );
+    }
+    let _ = writeln!(
+        out,
+        "\n**Commits after the first** (sum): plain {}, sail {}, **{}**. Conformance over all commits: {same} same, {different} different, {unstable} unstable, {infra} infra errors.",
+        ms(plain),
+        ms(sail),
+        ratio(plain, sail)
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -622,6 +684,7 @@ mod tests {
             units: Vec::new(),
             edits: Vec::new(),
             loops: Vec::new(),
+            commits: Vec::new(),
         }
     }
 
