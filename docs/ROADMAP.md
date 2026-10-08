@@ -37,29 +37,32 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 
 ## Later waves (from the charter's initial scope)
 
-1. **In progress.** Key v2 (ADR 0008) and a local disk cache behind
-   `sail serve`. `sail-z3` replays replies from it and starts the solver
-   lazily (ADR 0011). `sail verify` is in place. The daemon has an
-   in-memory tier, write-behind, idle shutdown, `sail status` and
-   `sail cache` (ADR 0015).
-   - Remaining:
-     - effort recording and the near-limit `unknown` policy (ADR 0009);
-     - fault injection;
-     - the warm and edit workloads;
-     - cache-on Linux numbers.
-2. A daemon (`sail-daemon`) with a warm solver pool (`sail-solver`), the shim's
-   daemon client, and fault injection.
-3. **Done.** Function and obligation mapping (`sail-verus`, `sail-ledger`),
-   `sail verify` pass-through, and `--output json` schema v1 (ADR 0014).
-   - Remaining: attribution for multi-package workspaces and lib+bin
-     packages (VI-0004), and linking diagnostics to obligations.
-4. Seed portfolio and fragility scoring (`sail-portfolio`), opt-in and labelled.
-5. `sail watch` speculative verification, and the MCP server (`sail-mcp`).
-   - `sail watch` and `sail mcp` (ADR 0016) are in place.
-   - Remaining: speculative (provisional) results, and the MCP `fragility`
-     tool once `sail fragility` exists.
-6. A shared tier with integrity checks (`docs/trust.md`).
-7. History replay and agent-loop benchmark workloads.
+1. **Caching.**
+   - **Done:** key v2; a disk tier, a 256 MiB memory tier and write-behind
+     stores (ADR 0011, 0015); serving far-from-limit `unknown` answers
+     (ADR 0009); effort recording; fault injection.
+   - **In progress:** a shared tier with signed entries.
+   - **Deferred:** warm solver pools (measured; see below) and the opt-in
+     stack-key mode (ADR 0008 update).
+2. **CLI.**
+   - **Done:** `sail verify`, `sail watch`, `sail serve`, `sail status`,
+     `sail cache`, and the MCP server `sail mcp` (ADR 0016).
+3. **Agent ergonomics.**
+   - **Done:** function attribution, the ledger and `--output json` schema v1
+     (ADR 0014).
+   - **In progress:** fragility measurement (`sail-portfolio`). The opt-in
+     portfolio mode follows it.
+4. **Benchmarks.**
+   - **Done:** cold, warm, edit, agent-loop and history-replay workloads, all
+     local-only (ADR 0013).
+5. **Corpus.**
+   - **Done:** fast and standard tiers, plus a secondary Verus pin and
+     `docs/compatibility.md`.
+   - **In progress:** `rust_verify_test` in the deep tier.
+   - **Open:** Singular, which needs a Singular-enabled Verus build.
+6. **CI.**
+   - **Done:** a container image, with five fast per-PR checks only
+     (ADR 0013).
 
 ### Measured: warm solver pools would not pay off (2026-10-08)
 
