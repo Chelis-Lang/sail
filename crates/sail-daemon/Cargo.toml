@@ -8,6 +8,9 @@ publish.workspace = true
 repository.workspace = true
 
 [dependencies]
+sail-api.workspace = true
+sail-cache.workspace = true
+sail-key.workspace = true
 
 [lints]
 workspace = true

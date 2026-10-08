@@ -224,6 +224,11 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 [[package]]
 name = "sail-api"
 version = "0.0.0"
+dependencies = [
+ "sail-key",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "sail-bench"
@@ -241,10 +246,19 @@ dependencies = [
 [[package]]
 name = "sail-cache"
 version = "0.0.0"
+dependencies = [
+ "sail-key",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "sail-cli"
 version = "0.0.0"
+dependencies = [
+ "sail-daemon",
+ "sail-verus",
+]
 
 [[package]]
 name = "sail-conformance"
@@ -258,6 +272,11 @@ dependencies = [
 [[package]]
 name = "sail-daemon"
 version = "0.0.0"
+dependencies = [
+ "sail-api",
+ "sail-cache",
+ "sail-key",
+]
 
 [[package]]
 name = "sail-key"
@@ -293,6 +312,9 @@ dependencies = [
 name = "sail-shim"
 version = "0.0.0"
 dependencies = [
+ "proptest",
+ "sail-api",
+ "sail-daemon",
  "sail-key",
  "sail-session",
  "sail-smtlib",

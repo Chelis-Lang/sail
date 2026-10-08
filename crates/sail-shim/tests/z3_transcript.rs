@@ -86,7 +86,9 @@ fn rlimit_count(reply: &[u8]) -> Option<&[u8]> {
     let text = reply
         .split(|&b| b == b'\n')
         .find(|l| l.windows(13).any(|w| w == b":rlimit-count"))?;
-    text.split(u8::is_ascii_whitespace).rfind(|w| !w.is_empty())
+    text.split(u8::is_ascii_whitespace)
+        .rfind(|w| !w.is_empty())
+        .map(|w| w.strip_suffix(b")").unwrap_or(w))
 }
 
 #[test]

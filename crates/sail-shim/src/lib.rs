@@ -18,6 +18,8 @@
 //! See ADR 0005.
 #![forbid(unsafe_code)]
 
+#[cfg(unix)]
+mod cached;
 mod trace;
 
 use std::ffi::OsString;
@@ -32,6 +34,9 @@ use std::time::Instant;
 
 /// Environment variable naming the real solver executable.
 pub const ENV_Z3_PATH: &str = "SAIL_Z3_PATH";
+/// Environment variable naming the daemon socket. When set, sessions are
+/// served from the daemon's cache with a lazily started solver (ADR 0011).
+pub const ENV_DAEMON_SOCKET: &str = "SAIL_DAEMON_SOCKET";
 /// Environment variable naming a directory for session traces.
 pub const ENV_TRACE_DIR: &str = "SAIL_TRACE_DIR";
 
@@ -169,6 +174,10 @@ fn status_code(status: std::process::ExitStatus) -> (Option<i32>, u8) {
     )
 }
 
+pub(crate) fn exit_code(status: std::process::ExitStatus) -> ExitCode {
+    ExitCode::from(status_code(status).1)
+}
+
 /// Runs the shim with the process's own arguments, stdio and environment.
 #[must_use]
 pub fn run() -> ExitCode {
@@ -178,6 +187,16 @@ pub fn run() -> ExitCode {
         Ok(path) => path,
         Err(code) => return code,
     };
+    #[cfg(unix)]
+    if let Some(socket) = std::env::var_os(ENV_DAEMON_SOCKET).filter(|v| !v.is_empty())
+        && args
+            .iter()
+            .map(|a| a.to_str())
+            .eq([Some("-smt2"), Some("-in")])
+        && let Some(code) = cached::run(std::path::Path::new(&socket), &solver, &args)
+    {
+        return code;
+    }
     let mut child = match spawn_solver(&solver, &args) {
         Ok(child) => child,
         Err(code) => return code,
