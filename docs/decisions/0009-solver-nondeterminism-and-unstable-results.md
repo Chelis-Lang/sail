@@ -83,3 +83,25 @@ failing proofs report `(incomplete quantifiers)` or
 `(incomplete (theory arithmetic))` and use about 0.02% of their limit, far
 from it. Calibrating the near-limit threshold from the fragility census
 decides when `unknown` answers like these may be served.
+
+## Update 2026-10-08: serving far-from-limit `unknown` (owner decision)
+
+**Census.** A fast-tier fill stored 3,929 `unsat` and 97 `unknown` answers.
+- All 97 `unknown` answers report `(incomplete quantifiers)`.
+- Their effort is at most 0.0089% of the 30M limit (median 0.0048%).
+- The rlimit jitter seen in the nonlinear repro is a few units.
+
+**The owner approved the policy.** A cached `unknown` is served only when
+both of these hold:
+- its recorded reason is not resource exhaustion (`canceled`, or anything
+  mentioning resources, rlimit, timeout or memory);
+- it used at most 50% of a non-zero limit.
+
+Every other `unknown` is re-solved, as is any `unknown` with no recorded
+effort.
+
+**Implementation.**
+- The daemon appends the entry's effort to `GET` hits as an optional trailer.
+  Older clients ignore it.
+- The shim decides. If a daemon sends no trailer, the shim refuses to serve
+  the `unknown`.
