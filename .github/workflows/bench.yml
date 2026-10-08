@@ -1,12 +1,10 @@
 name: bench
 
-# Benchmarks on the reference platform, Linux x86-64 (ADR 0010). Dispatched
-# by hand. The result JSON is uploaded as an artifact and committed under
-# bench/results/ in a follow-up PR; docs/benchmarks.md is regenerated from it
-# (ADR 0007). Never part of the fast gate. Workloads: cold (ADR 0007), warm
-# and edit (ADR 0012; `rounds` is then the number of warm rounds after the
-# fill, or the rounds per edit, and `tier` is ignored for edit, which runs
-# corpus/edits.toml).
+# Benchmarks on the reference platform, Linux x86-64 (ADR 0010), inside the
+# CI image (ADR 0013). Dispatched by hand. The result JSON is uploaded as an
+# artifact and committed under bench/results/ in a follow-up PR;
+# docs/benchmarks.md is regenerated from it (ADR 0007). Never part of the
+# merge gate.
 
 on:
   workflow_dispatch:
@@ -31,53 +29,44 @@ on:
 permissions:
   contents: read
 
-env:
-  CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: "0"
-
 jobs:
+  image:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/image.yml
+
   bench:
     name: ${{ inputs.workload }} workload
+    needs: image
     runs-on: ubuntu-latest
     timeout-minutes: 300
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install pinned toolchain (rust-toolchain.toml)
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: Install Verus's toolchain
-        run: rustup toolchain install "$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' corpus/toolchain.toml)" --profile minimal
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           save-if: false
-      - name: Cache pinned Verus and corpus sources
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cache/sail/verus
-            ~/.cache/sail/corpus
-          key: sail-verus-${{ runner.os }}-${{ hashFiles('corpus/toolchain.toml', 'corpus/corpus.toml') }}
-      - name: Install pinned Verus
-        run: cargo xtask fetch-verus
-      - name: Build
-        run: cargo build --release --locked -p sail-shim -p sail-bench -p sail-cli
-      - name: Run the workload
+      - name: Run workload
         env:
           WORKLOAD: ${{ inputs.workload }}
           TIER: ${{ inputs.tier }}
           ROUNDS: ${{ inputs.rounds }}
-        run: |
-          day="$(date -u +%Y-%m-%d)"
-          if [ "$WORKLOAD" = edit ]; then
-            ./target/release/sail-bench edit --rounds "$ROUNDS" --name "edit-catalogue-x86_64-linux-gha-$day"
-          else
-            ./target/release/sail-bench "$WORKLOAD" --tier "$TIER" --rounds "$ROUNDS" --name "$WORKLOAD-$TIER-x86_64-linux-gha-$day"
-          fi
+          SAIL_BENCH_LABEL: gha
+        run: ci/run.sh bench "$WORKLOAD" "$TIER" "$ROUNDS"
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bench-result
-          path: bench/results/*-x86_64-linux-gha-*.json
+          path: bench/results/*-x86_64-linux-*.json
           if-no-files-found: ignore
