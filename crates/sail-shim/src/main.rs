@@ -1,13 +1,9 @@
 //! The `sail-z3` binary: a Z3-compatible solver executable for Verus.
 //!
-//! Status: placeholder. The pass-through implementation lands in milestone
-//! M2 (`docs/ROADMAP.md`). Until then it refuses to run rather than pretend
-//! to be a solver.
+//! Point Verus at it with `VERUS_Z3_PATH=…/sail-z3` and name the pinned Z3
+//! with `SAIL_Z3_PATH`. See the `sail_shim` library docs for behaviour.
 #![forbid(unsafe_code)]
 
-use std::process::ExitCode;
-
-fn main() -> ExitCode {
-    eprintln!("error[SAIL0001]: sail-z3 is not implemented yet (see docs/ROADMAP.md)");
-    ExitCode::from(3)
+fn main() -> std::process::ExitCode {
+    sail_shim::run()
 }
