@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail verify`: runs `cargo verus verify` with the same arguments, through
+  `sail-z3` and the cache daemon (started on demand).
 - `sail serve`: the daemon, serving a local disk cache over a Unix socket.
   `sail-z3` with `SAIL_DAEMON_SOCKET` set serves replies from the cache and
   starts the pinned Z3 only on a miss, replaying the whole session prefix
