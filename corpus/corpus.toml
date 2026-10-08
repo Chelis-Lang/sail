@@ -1,0 +1,54 @@
+# The pinned corpus (charter: "How to prove it's useful"). Format: ADR 0006,
+# drafted in docs/survey/corpus.md section 4. Every entry is pinned by full
+# commit SHA. `expected` records plain Verus's outcome at pin time as
+# metadata only: conformance always compares sail with plain Verus on the
+# same run.
+schema_version = 1
+verus_release = "0.2026.10.04.426d8b0"
+verus_commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+
+[[project]]
+name = "verus-examples"
+url = "https://github.com/verus-lang/verus"
+commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+license = "MIT"
+tier = "fast"
+verus_version_compat = "compatible"
+compat_evidence = "145/147 non-ignore files match their tag with the pinned release (docs/survey/corpus.md 1.2)"
+build = "verus"
+crate_roots_dir = "examples"
+# integer_ring needs a Singular-enabled Verus; scache/rwlock.rs is tagged
+# ignore (and skipped by the in-tree harness).
+exclude = ["examples/integer_ring/", "examples/scache/"]
+extra_verus_args = ["--crate-type=lib"]
+expected_from = "examples-first-line-tag"
+
+[[project]]
+name = "vstd"
+url = "https://github.com/verus-lang/verus"
+commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+license = "MIT"
+tier = "fast"
+verus_version_compat = "compatible"
+compat_evidence = "2,060 verified, 0 errors with the pinned release (docs/survey/corpus.md 1.1)"
+build = "verus"
+crate_roots = ["source/vstd/vstd.rs"]
+extra_verus_args = [
+  "--crate-type=lib", "--is-vstd", "--export", "{out}/vstd.vir", "--out-dir", "{out}",
+  "--cfg", "feature=\"std\"", "--cfg", "feature=\"alloc\"", "--cfg", "feature=\"nonzero_internals\"",
+]
+env = { VSTD_KIND = "IsVstd" }
+expected = "verified"
+
+[[project]]
+name = "human-eval-verus"
+url = "https://github.com/secure-foundations/human-eval-verus"
+commit = "bbe93f73b0a5802c438501f9a2106f9126bd2eea"
+license = "MIT"
+tier = "fast"
+verus_version_compat = "compatible"
+compat_evidence = "verita nightly around the pinned release (docs/survey/corpus.md 2.2)"
+build = "verus"
+crate_roots = ["tasks/lib.rs"]
+extra_verus_args = ["--crate-type=lib"]
+expected = "verified"

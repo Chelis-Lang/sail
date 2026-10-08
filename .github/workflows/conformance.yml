@@ -1,0 +1,75 @@
+name: conformance
+
+# Differential conformance: plain Verus vs Verus through sail-z3, on the
+# pinned corpus (ADR 0006). PRs run a small fast-tier subset; the full fast
+# tier runs nightly; any tier can be dispatched by hand.
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Corpus tier"
+        required: true
+        default: fast
+        type: choice
+        options: [fast, standard, deep]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  conformance:
+    name: Conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned toolchain (rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Install Verus's toolchain
+        run: rustup toolchain install "$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' corpus/toolchain.toml)" --profile minimal
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Cache pinned Verus and corpus sources
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/sail/verus
+            ~/.cache/sail/corpus
+          key: sail-verus-${{ runner.os }}-${{ hashFiles('corpus/toolchain.toml', 'corpus/corpus.toml') }}
+      - name: Install pinned Verus
+        run: cargo xtask fetch-verus
+      - name: Build sail-z3 and the harness
+        run: cargo build --release --locked -p sail-shim -p sail-conformance
+      - name: Run conformance
+        env:
+          EVENT: ${{ github.event_name }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            ./target/release/sail-conformance run --tier fast --project verus-examples --filter /guide/ --jobs 4 --out conformance-out
+          else
+            ./target/release/sail-conformance run --tier "${TIER:-fast}" --jobs 4 --out conformance-out
+          fi
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: conformance-report
+          path: conformance-out/report.json
+          if-no-files-found: ignore
