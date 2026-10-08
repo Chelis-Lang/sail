@@ -7,7 +7,9 @@ use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::time::Duration;
 
-use crate::protocol::{Identity, PutMeta, Request, read_response, split_status_payload};
+use crate::protocol::{
+    Identity, PutMeta, Request, StatsSnapshot, read_response, split_status_payload,
+};
 
 /// Timeout for each request/response exchange.
 pub const TIMEOUT: Duration = Duration::from_secs(10);
@@ -95,5 +97,16 @@ impl Client {
             reply,
         })
         .map(|_| ())
+    }
+
+    /// The daemon's counters since it started.
+    ///
+    /// # Errors
+    ///
+    /// I/O errors and malformed replies.
+    pub fn stats(&mut self) -> std::io::Result<StatsSnapshot> {
+        let body = self.call(&Request::Stats)?;
+        let (_, payload) = split_status_payload(&body)?;
+        serde_json::from_slice(payload).map_err(std::io::Error::other)
     }
 }
