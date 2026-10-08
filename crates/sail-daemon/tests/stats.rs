@@ -49,6 +49,7 @@ fn stats_count_hellos_gets_hits_and_puts() {
         // The reply was still held in memory after the PUT (ADR 0015).
         memory_hits: 1,
         dropped_puts: 0,
+        ..StatsSnapshot::default()
     };
     assert_eq!(c.stats().ok(), Some(expected));
     assert_eq!(counters.snapshot(), expected);

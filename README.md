@@ -31,6 +31,18 @@ The daemon keeps replies in memory in front of the disk cache, stops after
 `sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
 inspects, checks, shrinks or empties the cache (ADR 0015).
 
+Teams and CI can share results through a shared store: a directory such as
+an NFS mount or a synced folder. Entries in it are signed, and a machine
+serves one only if a key it trusts signed it for the same solver binary and
+platform (`docs/trust.md`, ADR 0017):
+
+```sh
+sail cache keygen --out ci.key                          # once, where releases are made
+sail cache publish --to /shared/sail --key ci.key       # after a CI run fills the cache
+sail cache trust add ci.key.pub                         # on each reader
+SAIL_SHARED_STORE=/shared/sail sail verify [ARGS...]    # or: sail serve --shared DIR
+```
+
 `sail mcp` is an MCP server on stdio for agents that verify after every
 edit. Its tools are `verify` (a crate, module or function, returning the
 JSON document above), `counterexample`, `cached_result` (latest verdicts,

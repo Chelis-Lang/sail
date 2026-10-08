@@ -5,6 +5,23 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- A shared cache tier (ADR 0017, `docs/trust.md`). Its entries are signed
+  with ed25519 and verified before use. Each signature binds the key, the
+  reply hash, the command, the solver identity, the platform class, the
+  effort and the format version.
+  - `sail serve --shared DIR` (`SAIL_SHARED_STORE`) consults the store on
+    local misses, with a 250 ms timeout (`SAIL_SHARED_TIMEOUT_MS`) and a
+    back-off after a timeout. Verified hits are copied locally with
+    provenance `shared:<key id>`. Every failed check is a miss. Entries
+    for another solver or platform class are refused and counted.
+  - `sail cache keygen --out FILE`, `sail cache trust add|list|remove`,
+    and `sail cache publish --to STORE --key FILE [--filter ...]
+    [--dry-run]`. Only local pinned-solver entries are published: never
+    shared copies, and never `unknown`s the serving policy would not serve.
+  - `STATS` gains `shared_*` counters and `INFO` a `shared` section;
+    `sail status` shows both. The protocol version is unchanged.
+  - The daemon now records each session's solver identity in the entries it
+    stores. Entries stored earlier are not published.
 - `sail mcp`: an MCP server on stdio (`docs/mcp.md`, ADR 0016). Its tools:
   - `verify`: a crate, module or function, through `sail verify --output
     json`;

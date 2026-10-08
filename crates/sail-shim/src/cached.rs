@@ -112,37 +112,15 @@ fn echo_text(command: &[u8]) -> Option<Vec<u8>> {
     })
 }
 
-/// Whether a cached `unknown` may be served (ADR 0009, owner decision
-/// 2026-10-08): only when the solver gave up for a reason other than
-/// resource exhaustion, and used at most half of a non-zero limit. Anything
-/// near the limit, cancelled, or without recorded effort is re-solved.
-fn unknown_servable(effort: Option<&Effort>) -> bool {
-    let Some(e) = effort else { return false };
-    let (Some(reason), Some(used), Some(limit)) = (e.reason.as_deref(), e.used, e.limit) else {
-        return false;
-    };
-    let lower = reason.to_ascii_lowercase();
-    let exhausted = [
-        "canceled",
-        "cancelled",
-        "resource",
-        "rlimit",
-        "timeout",
-        "memout",
-        "memory",
-    ]
-    .iter()
-    .any(|w| lower.contains(w));
-    !exhausted && limit > 0 && used.saturating_mul(2) <= limit
-}
-
 /// A cached reply that must not be served: implausible for its command, or
-/// a `check-sat` answer of `unknown` that [`unknown_servable`] rejects.
+/// a `check-sat` answer of `unknown` that
+/// [`unknown_servable`](sail_api::policy::unknown_servable) rejects
+/// (ADR 0009).
 fn unservable(command: &[u8], reply: &[u8], effort: Option<&Effort>) -> bool {
     !plausible(command, reply)
         || (classify(command).is_ok_and(|c| c.kind.is_check())
             && reply.trim_ascii_start().starts_with(b"unknown")
-            && !unknown_servable(effort))
+            && !sail_api::policy::unknown_servable(effort))
 }
 
 /// A reply ready to store.
