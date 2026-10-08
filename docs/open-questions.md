@@ -42,7 +42,7 @@ inline with the date and link the ADR that captures it.
    corpus, answers were a function of the assertion stack, but model bytes
    and `rlimit` effort were not (`docs/survey/solver-behavior.md`). Under
    ADR 0004, the default-mode key must then bind the full command prefix of
-   the process, which a follow-up ADR should record. Two choices remain for
+   the process. ADR 0008 records this. Two choices remain for
    the owner:
    - whether a stack-only key may serve a named opt-in mode, one that
      accepts verdicts across histories and recomputes models on demand;
