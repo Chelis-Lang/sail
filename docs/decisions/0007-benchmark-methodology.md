@@ -40,4 +40,5 @@ runs the conformance check. Results are published in a generated
 - The M3 baseline doubles as the pass-through overhead measurement the
   charter asks for in the cold workload.
 - Later workloads plug into the same file format with a different `workload`
-  value: warm, single-function edits, history replay, agent loops.
+  value: warm, single-function edits, history replay, agent loops. The warm
+  and edit workloads do so in ADR 0012.
