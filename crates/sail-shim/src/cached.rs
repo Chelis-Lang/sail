@@ -112,13 +112,37 @@ fn echo_text(command: &[u8]) -> Option<Vec<u8>> {
     })
 }
 
-/// A cached reply that must not be served: implausible for its command, or a
-/// `check-sat` answer of `unknown` (ADR 0009 treats every cached `unknown`
-/// as unstable for now).
-fn unservable(command: &[u8], reply: &[u8]) -> bool {
+/// Whether a cached `unknown` may be served (ADR 0009, owner decision
+/// 2026-10-08): only when the solver gave up for a reason other than
+/// resource exhaustion, and used at most half of a non-zero limit. Anything
+/// near the limit, cancelled, or without recorded effort is re-solved.
+fn unknown_servable(effort: Option<&Effort>) -> bool {
+    let Some(e) = effort else { return false };
+    let (Some(reason), Some(used), Some(limit)) = (e.reason.as_deref(), e.used, e.limit) else {
+        return false;
+    };
+    let lower = reason.to_ascii_lowercase();
+    let exhausted = [
+        "canceled",
+        "cancelled",
+        "resource",
+        "rlimit",
+        "timeout",
+        "memout",
+        "memory",
+    ]
+    .iter()
+    .any(|w| lower.contains(w));
+    !exhausted && limit > 0 && used.saturating_mul(2) <= limit
+}
+
+/// A cached reply that must not be served: implausible for its command, or
+/// a `check-sat` answer of `unknown` that [`unknown_servable`] rejects.
+fn unservable(command: &[u8], reply: &[u8], effort: Option<&Effort>) -> bool {
     !plausible(command, reply)
         || (classify(command).is_ok_and(|c| c.kind.is_check())
-            && reply.trim_ascii_start().starts_with(b"unknown"))
+            && reply.trim_ascii_start().starts_with(b"unknown")
+            && !unknown_servable(effort))
 }
 
 /// A reply ready to store.
@@ -569,8 +593,10 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
             let hit = match expects {
                 Output::None => continue,
-                Output::One => match client.as_mut().map(|c| c.get(&prefix.key().0)) {
-                    Some(Ok(found)) => found.filter(|r| !unservable(&item.bytes, r)),
+                Output::One => match client.as_mut().map(|c| c.get_with_effort(&prefix.key().0)) {
+                    Some(Ok(found)) => found
+                        .filter(|(r, e)| !unservable(&item.bytes, r, e.as_ref()))
+                        .map(|(r, _)| r),
                     Some(Err(_)) => {
                         client = None;
                         None
@@ -753,6 +779,43 @@ mod tests {
         p.expect(store(2, "(get-model)"));
         p.reply(b"(model)\n".to_vec());
         assert_eq!(p.drain().len(), 0);
+    }
+
+    #[test]
+    fn unknown_policy() {
+        use super::{Effort, unservable};
+        let e = |reason: &str, used: u64, limit: u64| Effort {
+            limit: Some(limit),
+            used: Some(used),
+            reason: Some(format!("(:reason-unknown \"{reason}\")")),
+        };
+        let check = b"(check-sat)".as_slice();
+        // Far from the limit, gave up for its own reasons: servable.
+        assert!(!unservable(
+            check,
+            b"unknown\n",
+            Some(&e("(incomplete quantifiers)", 2_000, 30_000_000))
+        ));
+        // Resource exhaustion, or near the limit: never served.
+        assert!(unservable(
+            check,
+            b"unknown\n",
+            Some(&e("canceled", 30_000_000, 30_000_000))
+        ));
+        assert!(unservable(
+            check,
+            b"unknown\n",
+            Some(&e("(incomplete quantifiers)", 16_000_000, 30_000_000))
+        ));
+        // No effort recorded, or an unlimited check: never served.
+        assert!(unservable(check, b"unknown\n", None));
+        assert!(unservable(
+            check,
+            b"unknown\n",
+            Some(&e("(incomplete quantifiers)", 5, 0))
+        ));
+        // Other answers are unaffected by effort.
+        assert!(!unservable(check, b"unsat\n", None));
     }
 
     #[test]

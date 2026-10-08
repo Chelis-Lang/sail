@@ -122,11 +122,23 @@ impl State {
                 }
                 Request::Get(key) => {
                     self.stats.gets.fetch_add(1, Ordering::Relaxed);
-                    let found = self.cache.get(&QueryKey(key)).map(|(_, reply)| reply);
+                    let found = self.cache.get(&QueryKey(key));
                     if found.is_some() {
                         self.stats.hits.fetch_add(1, Ordering::Relaxed);
                     }
-                    write_get_response(&mut writer, found.as_deref())
+                    let effort = found.as_ref().and_then(|(m, _)| m.effort.clone()).map(|e| {
+                        sail_api::protocol::Effort {
+                            limit: e.limit,
+                            used: e.used,
+                            reason: e.reason,
+                        }
+                    });
+                    write_get_response(
+                        &mut writer,
+                        found
+                            .as_ref()
+                            .map(|(_, reply)| (reply.as_slice(), effort.as_ref())),
+                    )
                 }
                 Request::Put { key, meta, reply } => {
                     self.stats.puts.fetch_add(1, Ordering::Relaxed);
