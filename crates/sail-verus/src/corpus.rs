@@ -132,6 +132,11 @@ pub struct Project {
     /// [`crate::patch`]).
     #[serde(default)]
     pub patch_verus_deps: bool,
+    /// Keep a local `git bundle` of the pinned commit under
+    /// `<cache>/archive/`, and fetch from it if the remote is gone. Required
+    /// for fork pins, which can vanish (ADR 0010).
+    #[serde(default)]
+    pub archive: bool,
     /// Extra environment for Verus.
     #[serde(default)]
     pub env: BTreeMap<String, String>,
@@ -237,34 +242,74 @@ fn checkout_dir(url: &str, commit: &str, cache: &Path) -> PathBuf {
 }
 
 /// Fetches `commit` of `url` (shallow) into `dir` unless it is already there.
-fn fetch_git(url: &str, commit: &str, dir: &Path) -> Result<()> {
+fn git_in(dir: &Path, args: &[&str]) -> Result<()> {
+    let status = Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .status()
+        .map_err(|e| Error::new("SAIL3014", format!("cannot run git: {e}")))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(Error::new(
+            "SAIL3014",
+            format!("git {} failed in {}", args.join(" "), dir.display()),
+        ))
+    }
+}
+
+/// Writes a bundle of `commit` (checked out in `dir`) to `bundle`, unless it
+/// already exists.
+fn ensure_bundle(dir: &Path, commit: &str, bundle: &Path) -> Result<()> {
+    if bundle.is_file() {
+        return Ok(());
+    }
+    if let Some(parent) = bundle.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            Error::new(
+                "SAIL3014",
+                format!("cannot create {}: {e}", parent.display()),
+            )
+        })?;
+    }
+    // Name the commit with a ref so the bundle carries it.
+    git_in(dir, &["update-ref", "refs/sail/pinned", commit])?;
+    let b = bundle.to_string_lossy().into_owned();
+    git_in(dir, &["bundle", "create", "-q", &b, "refs/sail/pinned"])
+}
+
+/// Fetches `commit` from `url` into `dir`. With `archive`, a bundle of the
+/// commit is kept at that path, and is used when the remote fetch fails.
+fn fetch_git(url: &str, commit: &str, dir: &Path, archive: Option<&Path>) -> Result<()> {
     let marker = dir.join(".sail-fetched");
     if std::fs::read_to_string(&marker).is_ok_and(|c| c.trim() == commit) {
-        return Ok(());
+        return archive.map_or(Ok(()), |b| ensure_bundle(dir, commit, b));
     }
     let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir)
         .map_err(|e| Error::new("SAIL3014", format!("cannot create {}: {e}", dir.display())))?;
-    let git = |args: &[&str]| -> Result<()> {
-        let status = Command::new("git")
-            .arg("-C")
-            .arg(dir)
-            .args(args)
-            .status()
-            .map_err(|e| Error::new("SAIL3014", format!("cannot run git: {e}")))?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(Error::new(
-                "SAIL3014",
-                format!("git {} failed in {}", args.join(" "), dir.display()),
-            ))
+    git_in(dir, &["init", "-q"])?;
+    git_in(dir, &["remote", "add", "origin", url])?;
+    match (
+        git_in(dir, &["fetch", "-q", "--depth", "1", "origin", commit]),
+        archive,
+    ) {
+        (Ok(()), _) => {}
+        (Err(_), Some(bundle)) if bundle.is_file() => {
+            eprintln!(
+                "{url} unavailable; fetching {commit} from archive {}",
+                bundle.display()
+            );
+            let b = bundle.to_string_lossy().into_owned();
+            git_in(dir, &["fetch", "-q", &b, commit])?;
         }
-    };
-    git(&["init", "-q"])?;
-    git(&["remote", "add", "origin", url])?;
-    git(&["fetch", "-q", "--depth", "1", "origin", commit])?;
-    git(&["checkout", "-q", "--detach", "FETCH_HEAD"])?;
+        (Err(e), _) => return Err(e),
+    }
+    git_in(dir, &["checkout", "-q", "--detach", "FETCH_HEAD"])?;
+    if let Some(bundle) = archive {
+        ensure_bundle(dir, commit, bundle)?;
+    }
     std::fs::write(&marker, commit).map_err(|e| {
         Error::new(
             "SAIL3014",
@@ -334,7 +379,7 @@ impl Corpus {
     /// `SAIL3014` if git fails.
     pub fn fetch_verus_source(&self, cache: &Path) -> Result<PathBuf> {
         let dir = checkout_dir(VERUS_REPO_URL, &self.verus_commit, cache);
-        fetch_git(VERUS_REPO_URL, &self.verus_commit, &dir)?;
+        fetch_git(VERUS_REPO_URL, &self.verus_commit, &dir, None)?;
         Ok(dir)
     }
 
@@ -405,8 +450,18 @@ impl Project {
     /// `SAIL3014` if git fails.
     pub fn fetch(&self, cache: &Path) -> Result<PathBuf> {
         let dir = self.source_dir(cache);
-        fetch_git(&self.url, &self.commit, &dir)?;
+        let bundle = self.archive.then(|| self.archive_path(cache));
+        fetch_git(&self.url, &self.commit, &dir, bundle.as_deref())?;
         Ok(dir)
+    }
+
+    /// Where this project's pinned commit is archived when `archive` is set.
+    #[must_use]
+    pub fn archive_path(&self, cache: &Path) -> PathBuf {
+        let short = self.commit.get(..12).unwrap_or(&self.commit);
+        cache
+            .join("archive")
+            .join(format!("{}-{short}.bundle", self.name))
     }
 
     /// The entries of `requires` that are not available here (see
@@ -517,6 +572,45 @@ impl Project {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn archived_pins_survive_a_vanished_remote() {
+        let root = std::env::temp_dir().join(format!("sail-archive-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let origin = root.join("origin");
+        let run = |dir: &Path, args: &[&str]| {
+            let ok = std::process::Command::new("git")
+                .arg("-C")
+                .arg(dir)
+                .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
+                .args(args)
+                .status()
+                .is_ok_and(|s| s.success());
+            assert!(ok, "git {args:?}");
+        };
+        assert!(std::fs::create_dir_all(&origin).is_ok());
+        run(&origin, &["init", "-q"]);
+        assert!(std::fs::write(origin.join("lib.rs"), "fn main() {}").is_ok());
+        run(&origin, &["add", "."]);
+        run(&origin, &["commit", "-q", "-m", "pin"]);
+        let commit = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&origin)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+            .unwrap_or_default();
+        let url = format!("file://{}", origin.display());
+        let bundle = root.join("archive").join("p.bundle");
+        assert!(fetch_git(&url, &commit, &root.join("a"), Some(&bundle)).is_ok());
+        assert!(bundle.is_file());
+        assert!(std::fs::remove_dir_all(&origin).is_ok());
+        let again = root.join("b");
+        assert!(fetch_git(&url, &commit, &again, Some(&bundle)).is_ok());
+        assert!(again.join("lib.rs").is_file());
+        assert!(fetch_git(&url, &commit, &root.join("c"), None).is_err());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
     use super::*;
 
     #[test]
