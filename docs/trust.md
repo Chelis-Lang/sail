@@ -8,7 +8,19 @@ fresh run of the pinned Z3, through the pass-through shim.
 
 | Source | Trusted for | Checks before use |
 |---|---|---|
-| Fresh pinned-Z3 run | Confirmed results | Solver identity (version string and binary hash) matches the pin |
+| Fresh pinned-Z3 run | Confirmed results | Solver identity (version string, binary hash and platform) matches the pin |
 | In-memory tier | (not built) | |
 | Local disk tier | (not built) | |
 | Shared tier | Untrusted until verified (rule 9) | (not built) |
+
+## Solver identity
+
+A result is only as reusable as the identity it was produced under.
+Identity binds:
+- the solver name and the version string it reports;
+- the SHA-256 of the solver binary;
+- the platform (OS and architecture).
+
+Rlimit counts have been observed to differ across machines for the same
+binary (ADR 0004 update), so the shared tier may need to bind a machine class
+too. That is decided by measurement before the shared tier is built.

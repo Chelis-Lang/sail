@@ -9,3 +9,22 @@ inline with the date and link the ADR that captures it.
    (macOS arm64). Is macOS arm64 the reference platform for published
    benchmarks, or should Linux x86-64 be? This affects which Verus and Z3
    artifacts are pinned as primary.
+3. **Function attribution source.** Function names never reach the solver
+   pipe. Attribution can come from Verus's `--log smt-transcript` (which leaves
+   the pipe bytes unchanged) combined with structure, or from `--log smt`
+   (which changes the pipe's whitespace, and so cache keys). Is it acceptable
+   for `sail verify` to add Verus logging flags, given that this changes what
+   Z3 receives? It would still match plain Verus run with the same flags.
+4. **Corpus scope** (from `docs/survey/corpus.md`):
+   - include `rust_verify_test` through a source build of Verus, or not;
+   - make Singular a required or optional dependency;
+   - allow pins of commits on personal fork branches (verita uses two);
+   - pin a second Verus release for the older agent corpora.
+5. **Baseline definition.** Plain Verus may vary slightly between identical
+   runs (`rlimit-count` and scheduling across solver processes, per the
+   prior-art survey). Conformance should compare per-function verdicts and
+   diagnostics. Should benchmark baselines be the median of several runs?
+   The current plan is a median of 3 runs.
+6. **Sources for the shared tier.** The same Z3 binary can report different
+   rlimit counts on different machines. Should the shared tier be scoped per
+   machine class, or should entries be re-validated locally before use?

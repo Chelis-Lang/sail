@@ -87,6 +87,7 @@ bench/               benchmark result data (machine-readable)
 docs/                charter, roadmap, ADRs, survey, trust model, divergences,
                      open questions, benchmarks (generated)
 scripts/             small shell helpers used by hooks and CI
+                     (`cargo xtask fetch-verus` installs the pinned Verus)
 .githooks/           tracked git hooks
 ```
 
