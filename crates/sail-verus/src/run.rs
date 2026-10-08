@@ -36,6 +36,9 @@ pub enum Solver {
         shim: PathBuf,
         /// Where the shim writes traces, if tracing.
         trace_dir: Option<PathBuf>,
+        /// The cache daemon's socket (`SAIL_DAEMON_SOCKET`), for cached
+        /// sessions (ADR 0011). `None` runs pure pass-through.
+        daemon_socket: Option<PathBuf>,
     },
 }
 
@@ -188,7 +191,13 @@ fn cargo_env(cmd: &mut Command, installed: &Installed) {
         .env("CARGO_TERM_PROGRESS_WHEN", "never");
 }
 
-fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+/// Copies the directory tree `from` into `to` (created if needed), skipping
+/// `.git` and the fetch marker, and recreating symlinks as symlinks.
+///
+/// # Errors
+///
+/// Any I/O error.
+pub fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(to)?;
     for entry in std::fs::read_dir(from)? {
         let entry = entry?;
@@ -425,12 +434,21 @@ pub fn run_unit(
         .env_remove("VERUS_Z3_PATH")
         .env_remove("SAIL_Z3_PATH")
         .env_remove("SAIL_TRACE_DIR")
+        .env_remove("SAIL_DAEMON_SOCKET")
         .envs(&unit.env);
-    if let Solver::Shim { shim, trace_dir } = solver {
+    if let Solver::Shim {
+        shim,
+        trace_dir,
+        daemon_socket,
+    } = solver
+    {
         cmd.env("VERUS_Z3_PATH", shim)
             .env("SAIL_Z3_PATH", &installed.z3);
         if let Some(dir) = trace_dir {
             cmd.env("SAIL_TRACE_DIR", dir);
+        }
+        if let Some(socket) = daemon_socket {
+            cmd.env("SAIL_DAEMON_SOCKET", socket);
         }
     }
     let started = Instant::now();

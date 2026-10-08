@@ -1,0 +1,95 @@
+# Edit catalogue for `sail-bench edit` (ADR 0012): the charter's
+# single-function body edit and specification edit workloads.
+#
+# Each edit is one exact textual replacement: `find` must occur exactly once
+# in `file` (relative to the project's fetched source directory). The bench
+# applies it to a scratch copy of the project, never to the fetched tree.
+# `expected` is plain Verus's outcome on the edited copy, checked with plain
+# Verus when the edit was added; the bench records the outcome it observes
+# and the report flags any mismatch.
+#
+# Kinds:
+# - `body`: changes only a function body or proof, never a signature;
+# - `spec`: changes a signature's `requires`/`ensures`.
+schema_version = 1
+
+[[edit]]
+id = "human-eval-013-body"
+unit = "human-eval-verus/tasks/lib.rs"
+kind = "body"
+file = "tasks/human_eval_013.rs"
+description = "compute_gcd: split `b1 = b1 % a1` through a temporary"
+expected = "verified"
+find = """
+            b1 = b1 % a1;
+"""
+replace = """
+            let m = b1 % a1;
+            b1 = m;
+"""
+
+[[edit]]
+id = "human-eval-028-spec"
+unit = "human-eval-verus/tasks/lib.rs"
+kind = "spec"
+file = "tasks/human_eval_028.rs"
+description = "concatenate_impl: add an implied `ensures` clause on the result's length"
+expected = "verified"
+find = """
+        joined@ == concatenate(strings.deep_view()),
+"""
+replace = """
+        joined@ == concatenate(strings.deep_view()),
+        joined@.len() == concatenate(strings.deep_view()).len(),
+"""
+
+[[edit]]
+id = "human-eval-023-spec-break"
+unit = "human-eval-verus/tasks/lib.rs"
+kind = "spec"
+file = "tasks/human_eval_023.rs"
+description = "strlen: a wrong `ensures` (length + 1), so verification fails, as in an agent's failed attempt"
+expected = "errors"
+find = """
+            == string.len(),  // The length returned is equal to the length of the string
+"""
+replace = """
+            == string.len() + 1,  // The length returned is equal to the length of the string
+"""
+
+[[edit]]
+id = "vstd-relations-body"
+unit = "vstd/source/vstd/vstd.rs"
+kind = "body"
+file = "source/vstd/relations.rs"
+description = "lemma_new_first_element_still_sorted_by: add an assertion to the proof"
+expected = "verified"
+find = """
+    broadcast use group_seq_lemmas;
+
+    if s.len() > 1 {
+"""
+replace = """
+    broadcast use group_seq_lemmas;
+
+    assert(seq![x].add(s).len() == s.len() + 1);
+    if s.len() > 1 {
+"""
+
+[[edit]]
+id = "examples-vectors-body"
+unit = "verus-examples/examples/vectors.rs"
+kind = "body"
+file = "examples/vectors.rs"
+description = "binary_search: flip the loop's comparison (`v[ix] < k` to `k > v[ix]`)"
+expected = "verified"
+find = """
+    {
+        let ix = i1 + (i2 - i1) / 2;
+        if v[ix] < k {
+"""
+replace = """
+    {
+        let ix = i1 + (i2 - i1) / 2;
+        if k > v[ix] {
+"""

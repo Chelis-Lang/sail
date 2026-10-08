@@ -234,6 +234,7 @@ dependencies = [
 name = "sail-bench"
 version = "0.0.0"
 dependencies = [
+ "sail-api",
  "sail-conformance",
  "sail-key",
  "sail-session",
@@ -241,6 +242,7 @@ dependencies = [
  "sail-verus",
  "serde",
  "serde_json",
+ "toml",
 ]
 
 [[package]]

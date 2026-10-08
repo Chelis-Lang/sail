@@ -10,11 +10,14 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use sail_conformance::{Verdict, compare};
+use sail_conformance::{Verdict, classify, compare};
 use sail_verus::corpus::Unit;
 use sail_verus::run::{RunRecord, Solver, run_unit};
 use sail_verus::toolchain::Installed;
 use serde::{Deserialize, Serialize};
+
+use crate::daemon::CacheRun;
+use crate::edit::EditResult;
 
 /// Timings for one side of one unit, one sample per round.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -30,7 +33,8 @@ pub struct Samples {
 }
 
 impl Samples {
-    fn push(&mut self, r: &RunRecord) {
+    /// Adds one run's figures.
+    pub(crate) fn push(&mut self, r: &RunRecord) {
         self.wall_ms.push(r.wall_ms);
         if let (Some(u), Some(s)) = (r.user_s, r.sys_s) {
             self.cpu_s.push(u + s);
@@ -77,6 +81,60 @@ pub struct UnitResult {
     pub different: usize,
     /// Rounds the harness could not run.
     pub infra_errors: usize,
+    /// Rounds where sail differed from that round's plain run but matched
+    /// another plain run of the unit while plain runs disagreed (ADR 0009).
+    /// Not counted in `different`. Cached workloads only.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub unstable: usize,
+    /// Warm workload: the fill run (sail with an empty cache). In a `warm`
+    /// file, [`Self::sail`] holds the warm runs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<Samples>,
+    /// Cached workloads: the daemon's counters for each sail run, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cache: Vec<CacheRun>,
+    /// Cached workloads: bytes the cache held after the fill.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_bytes: Option<u64>,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip_serializing_if passes a reference
+fn is_zero(n: &usize) -> bool {
+    *n == 0
+}
+
+/// How one sail run compares with plain Verus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Judgement {
+    /// The same as this round's plain run.
+    Same,
+    /// Plain runs disagree among themselves and sail matches one (ADR 0009).
+    Unstable,
+    /// A difference: a bug, never a result.
+    Different,
+}
+
+/// Judges `sail` against `plains`, whose last element is this round's plain
+/// run (the others are earlier plain runs of the same unit). Returns the
+/// judgement, the number of functions compared and the differences found
+/// against this round's plain run.
+#[must_use]
+pub fn judge(plains: &[RunRecord], sail: &RunRecord) -> (Judgement, usize, Vec<String>) {
+    let Some(this) = plains.last() else {
+        return (Judgement::Different, 0, vec!["no plain run".to_owned()]);
+    };
+    let c = compare(this, sail);
+    if c.verdict() == Verdict::Same {
+        return (Judgement::Same, c.functions, Vec::new());
+    }
+    // `classify` compares with its first plain run: put this round's first.
+    let mut ordered = vec![this.clone()];
+    ordered.extend(plains.iter().take(plains.len() - 1).cloned());
+    let j = match classify(&ordered, sail).verdict {
+        Verdict::Unstable => Judgement::Unstable,
+        _ => Judgement::Different,
+    };
+    (j, c.functions, c.differences)
 }
 
 /// Runs the cold workload over `units` for `rounds` rounds.
@@ -98,10 +156,15 @@ pub fn run(
             same: 0,
             different: 0,
             infra_errors: 0,
+            unstable: 0,
+            fill: None,
+            cache: Vec::new(),
+            cache_bytes: None,
         };
         let sail_solver = Solver::Shim {
             shim: shim.to_path_buf(),
             trace_dir: None,
+            daemon_socket: None,
         };
         let work: PathBuf = scratch.join("work");
         for round in 0..rounds {
@@ -144,11 +207,12 @@ pub fn run(
 pub struct BenchFile {
     /// Format version.
     pub schema_version: u32,
-    /// Workload name (`cold`).
+    /// Workload name: `cold`, `warm` or `edit`.
     pub workload: String,
     /// Corpus tier.
     pub tier: String,
-    /// Rounds per unit.
+    /// Rounds per unit (`warm`: warm rounds after the fill; `edit`: rounds
+    /// per edit).
     pub rounds: usize,
     /// Pinned Verus release.
     pub verus_release: String,
@@ -160,8 +224,12 @@ pub struct BenchFile {
     pub started_unix: u64,
     /// Machine details.
     pub machine: BTreeMap<String, String>,
-    /// Per-unit results.
+    /// Per-unit results (`cold`, `warm`).
+    #[serde(default)]
     pub units: Vec<UnitResult>,
+    /// Per-edit results (`edit`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub edits: Vec<EditResult>,
 }
 
 #[cfg(test)]
