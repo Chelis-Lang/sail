@@ -21,6 +21,7 @@ pub mod cli;
 pub mod cold;
 pub mod error;
 pub mod history;
+pub mod hits;
 mod parallel;
 pub mod profile;
 pub mod report;

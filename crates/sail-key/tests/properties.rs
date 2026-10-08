@@ -10,6 +10,7 @@ fn z3() -> SolverIdentity {
         name: "z3".to_owned(),
         version: "4.16.0".to_owned(),
         binary_sha256: [7; 32],
+        platform: "linux-x86_64".to_owned(),
     }
 }
 
@@ -139,4 +140,47 @@ fn length_prefixing_prevents_concatenation_collisions() {
         "(check-sat)".to_owned(),
     ];
     assert_ne!(key(&a), key(&b));
+}
+
+mod prefix {
+    use sail_key::{Mode, PrefixHasher, SolverIdentity};
+
+    fn z3() -> SolverIdentity {
+        SolverIdentity {
+            name: "z3".to_owned(),
+            version: "4.16.0".to_owned(),
+            binary_sha256: [7; 32],
+            platform: "linux-x86_64".to_owned(),
+        }
+    }
+
+    fn key(chunks: &[&[u8]], solver: &SolverIdentity, mode: &Mode) -> sail_key::QueryKey {
+        let mut h = PrefixHasher::new(solver, mode);
+        for c in chunks {
+            h.update(c);
+        }
+        h.key()
+    }
+
+    #[test]
+    fn chunking_does_not_matter_but_every_byte_does() {
+        let d = Mode::Default;
+        let whole = key(&[b"(push)\n(check-sat)\n"], &z3(), &d);
+        assert_eq!(whole, key(&[b"(push)\n", b"(check-sat)\n"], &z3(), &d));
+        assert_ne!(whole, key(&[b"(push) \n(check-sat)\n"], &z3(), &d));
+        assert_ne!(whole, key(&[b"(push)\n(check-sat)"], &z3(), &d));
+    }
+
+    #[test]
+    fn identity_platform_and_mode_are_bound() {
+        let d = Mode::Default;
+        let base = key(&[b"(check-sat)"], &z3(), &d);
+        let mut other = z3();
+        other.platform = "macos-aarch64".to_owned();
+        assert_ne!(base, key(&[b"(check-sat)"], &other, &d));
+        assert_ne!(
+            base,
+            key(&[b"(check-sat)"], &z3(), &Mode::OptIn("stack".to_owned()))
+        );
+    }
 }
