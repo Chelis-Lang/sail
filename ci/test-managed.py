@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import select
 import subprocess
 import sys
 import tempfile
@@ -72,6 +73,75 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert reused["establishing_run"] == target["establishing_run"], reused
         assert reused["report"] == target["report"], "reuse must preserve establishing report"
 
+        # The installed CLI and MCP must use that same complete evidence through
+        # durable jobs, rather than substitute a Cargo 'fresh' message for proof.
+        submitted = subprocess.run([sail, "verify", "--background", "--output", "json"],
+                                   cwd=project, env=env, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, timeout=30, check=True)
+        job = json.loads(submitted.stdout)
+        assert job["id"] and job["state"] in ("queued", "running", "completed"), job
+        deadline = time.monotonic() + 120
+        while True:
+            inspected = subprocess.run([sail, "jobs", "result", job["id"], "--output", "json"],
+                                       cwd=project, env=env, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, timeout=30, check=True)
+            response = json.loads(inspected.stdout)
+            assert response["response"] == "result", response
+            if response["value"]["result"] is not None:
+                complete = response["value"]["result"]
+                break
+            assert response["value"]["job"]["state"] in ("queued", "running"), response
+            assert time.monotonic() < deadline, "background job did not finish"
+            time.sleep(.1)
+        assert complete["execution"]["verifier_invocations"] == 0, complete
+        assert complete["currentness"] == "current", complete
+        assert next(t for t in complete["targets"] if t["requested"])["report"] == target["report"]
+
+        mcp = subprocess.Popen([sail, "mcp"], cwd=project, env=env,
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True)
+        def exchange(message):
+            mcp.stdin.write(json.dumps(message) + "\n")
+            mcp.stdin.flush()
+            assert select.select([mcp.stdout], [], [], 30)[0], "MCP response timed out"
+            document = json.loads(mcp.stdout.readline())
+            assert document.get("id") == message["id"] and "error" not in document, document
+            return document["result"]
+        try:
+            exchange({"jsonrpc":"2.0", "id":1, "method":"initialize", "params":{
+                "protocolVersion":"2025-11-25", "capabilities":{},
+                "clientInfo":{"name":"managed-acceptance", "version":"1"}}})
+            mcp.stdin.write(json.dumps({"jsonrpc":"2.0", "method":"notifications/initialized"}) + "\n")
+            started = exchange({"jsonrpc":"2.0", "id":2, "method":"tools/call", "params":{
+                "name":"start_verification", "arguments":{"project_dir":str(project)}}})
+            assert not started["isError"], started
+            mcp_job = started["structuredContent"]["id"]
+            status = exchange({"jsonrpc":"2.0", "id":3, "method":"tools/call", "params":{
+                "name":"verification_status", "arguments":{"job_id":mcp_job}}})
+            assert not status["isError"] and status["structuredContent"]["value"]["id"] == mcp_job, status
+            deadline = time.monotonic() + 120
+            request_id = 4
+            while True:
+                result = exchange({"jsonrpc":"2.0", "id":request_id, "method":"tools/call", "params":{
+                    "name":"verification_result", "arguments":{"job_id":mcp_job}}})
+                assert not result["isError"], result
+                value = result["structuredContent"]["value"]
+                if value["result"] is not None:
+                    assert value["job"]["state"] == "completed", value
+                    assert value["result"]["execution"]["verifier_invocations"] == 0, value
+                    assert next(t for t in value["result"]["targets"] if t["requested"])["report"] == target["report"]
+                    break
+                assert time.monotonic() < deadline, "MCP job did not finish"
+                request_id += 1
+                time.sleep(.1)
+        finally:
+            mcp.stdin.close()
+            try:
+                mcp.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                mcp.kill()
+                mcp.wait(timeout=10)
+
         # Delete only the selected receipt. Dependencies must stay warm and a fresh
         # selected proof must replace missing evidence rather than returning nothing.
         contexts = list((root / "cache/projects").glob("*/" + warm["context_sha256"]))
@@ -102,6 +172,6 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert b"postcondition not satisfied" in plain.stderr, plain.stderr.decode()
         assert b"postcondition not satisfied" in failed_run.stderr, failed_run.stderr.decode()
 
-        print("managed acceptance: cold, unchanged, missing receipt, and restored-mtime failing edit passed")
+        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, and restored-mtime failing edit passed")
     finally:
         stop_daemon()
