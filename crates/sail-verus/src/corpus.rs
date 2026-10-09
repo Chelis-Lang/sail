@@ -281,7 +281,7 @@ fn ensure_bundle(dir: &Path, commit: &str, bundle: &Path) -> Result<()> {
 
 /// Fetches `commit` from `url` into `dir`. With `archive`, a bundle of the
 /// commit is kept at that path, and is used when the remote fetch fails.
-fn fetch_git(url: &str, commit: &str, dir: &Path, archive: Option<&Path>) -> Result<()> {
+pub(crate) fn fetch_git(url: &str, commit: &str, dir: &Path, archive: Option<&Path>) -> Result<()> {
     let marker = dir.join(".sail-fetched");
     if std::fs::read_to_string(&marker).is_ok_and(|c| c.trim() == commit) {
         return archive.map_or(Ok(()), |b| ensure_bundle(dir, commit, b));
