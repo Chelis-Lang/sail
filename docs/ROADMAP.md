@@ -35,6 +35,12 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 - **M4: Report.** Survey findings, the integration evidence, baseline and
   profile, conformance results, and open questions.
 
+## Initial product: complete, 2026-10-09
+
+Milestone M5 and `docs/reports/2026-10-09-initial-product.md` record the
+completion decisions and full local acceptance. The owner kept the unknown
+serving cap at 50%; the later research below remains deferred.
+
 ## Later waves (from the charter's initial scope)
 
 1. **Caching.**
@@ -48,13 +54,13 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 2. **CLI.**
    - **Done:** `sail verify`, `sail watch`, `sail serve`, `sail status`,
      `sail cache`, and the MCP server `sail mcp` (ADR 0016).
-   - **In review:** `sail bench` delegates to the benchmark binary.
+   - **Done:** `sail bench` delegates to the benchmark binary.
 3. **Agent ergonomics.**
    - **Done:** function attribution, the ledger and `--output json` schema v1
      (ADR 0014).
    - **Done:** fragility measurement: `sail fragility`, `sail-bench
      fragility` and the fragility census (ADR 0018).
-   - **In review:** exact function scores in JSON/MCP and sequential,
+   - **Done:** exact function scores in JSON/MCP and sequential,
      complete-run `accept-first-proof` portfolios (ADRs 0018, 0020).
      Every winning attempt independently proves the requested scope.
      Racing is deferred; seed successes are never assembled across runs.
@@ -64,7 +70,7 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 5. **Corpus.**
    - **Done:** fast and standard tiers, plus a secondary Verus pin and
      `docs/compatibility.md`.
-   - **In review:** the exclusive, strict `rust_verify_test` deep suite and
+   - **Done:** the exclusive, strict `rust_verify_test` deep suite and
      optional Singular source-build validation (ADRs 0019, 0021).
 6. **CI.**
    - **Done:** a container image, with six fast per-PR checks only

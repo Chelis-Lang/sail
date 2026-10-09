@@ -1,0 +1,185 @@
+{
+  "source_revisions": {
+    "diagnostic_fix": "a7e608bf4c28ace4b7976a0421bac68738394b27",
+    "portfolio": "df7dc6e984b7ed1ce1a8fb858cdae0a0ef58cb50",
+    "fragility": "081842efc62a433feb940de0aefd8aec512c3949",
+    "singular": "4b2708e1ad601081a758962487ef77d5b34015c9",
+    "strict_deep": "41134b99572b6f603f4fa20e0be2afa3b993218e",
+    "integrated_fast_validation": "3bbb71fb5eaf2646afa86df2bc59a3e706a045f6"
+  },
+  "limits": [
+    "Long suites run only locally; no Linux speedup is claimed from emulation.",
+    "Plain source-test failures and ignored cases are preserved, not presented as successful proofs.",
+    "Strict instability requires an exact complete observed plain outcome."
+  ],
+  "reports": [
+    {
+      "label": "standard-native/pass-through",
+      "path": "standard-native/pass-through/report.json",
+      "expected_count": 158,
+      "expected_skips": 1,
+      "platform_note": "Native macOS arm64; Anvil covered separately in Linux",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "standard-native/cache-fill",
+      "path": "standard-native/cache-fill/report.json",
+      "expected_count": 158,
+      "expected_skips": 1,
+      "platform_note": "Native macOS arm64; Anvil covered separately in Linux",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "standard-native/cache-warm",
+      "path": "standard-native/cache-warm/report.json",
+      "expected_count": 158,
+      "expected_skips": 1,
+      "platform_note": "Native macOS arm64; Anvil covered separately in Linux",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "deep-source/pass-through",
+      "path": "deep-source/pass-through/report.json",
+      "expected_count": 4695,
+      "expected_skips": 0,
+      "platform_note": "Native macOS arm64; 58 ignored; five plain libtest failures retained",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "deep-source/cache-fill",
+      "path": "deep-source/cache-fill/report.json",
+      "expected_count": 4695,
+      "expected_skips": 0,
+      "platform_note": "Native macOS arm64; 58 ignored; five plain libtest failures retained",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "deep-source/cache-warm",
+      "path": "deep-source/cache-warm/report.json",
+      "expected_count": 4695,
+      "expected_skips": 0,
+      "platform_note": "Native macOS arm64; 58 ignored; five plain libtest failures retained",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "singular/pass-through",
+      "path": "singular/pass-through/report.json",
+      "expected_count": 3,
+      "expected_skips": 0,
+      "platform_note": "Native macOS Verus; pinned Linux amd64 Singular under emulation",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "singular/cache-fill",
+      "path": "singular/cache-fill/report.json",
+      "expected_count": 3,
+      "expected_skips": 0,
+      "platform_note": "Native macOS Verus; pinned Linux amd64 Singular under emulation",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "singular/cache-warm",
+      "path": "singular/cache-warm/report.json",
+      "expected_count": 3,
+      "expected_skips": 0,
+      "platform_note": "Native macOS Verus; pinned Linux amd64 Singular under emulation",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "linux-guide/pass-through",
+      "path": "linux-guide/pass-through/report.json",
+      "expected_count": 33,
+      "expected_skips": 0,
+      "platform_note": "Pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-guide/cache-fill",
+      "path": "linux-guide/cache-fill/report.json",
+      "expected_count": 33,
+      "expected_skips": 0,
+      "platform_note": "Pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-guide/cache-warm",
+      "path": "linux-guide/cache-warm/report.json",
+      "expected_count": 33,
+      "expected_skips": 0,
+      "platform_note": "Pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-anvil/pass-through",
+      "path": "linux-anvil/pass-through/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "platform_note": "Pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-anvil/cache-fill",
+      "path": "linux-anvil/cache-fill/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "platform_note": "Pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-anvil/cache-warm",
+      "path": "linux-anvil/cache-warm/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "platform_note": "Pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-integrated-guide/pass-through",
+      "path": "linux-integrated-guide/pass-through/report.json",
+      "expected_count": 33,
+      "expected_skips": 0,
+      "platform_note": "Combined feature checkout in pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-integrated-guide/cache-fill",
+      "path": "linux-integrated-guide/cache-fill/report.json",
+      "expected_count": 33,
+      "expected_skips": 0,
+      "platform_note": "Combined feature checkout in pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "linux-integrated-guide/cache-warm",
+      "path": "linux-integrated-guide/cache-warm/report.json",
+      "expected_count": 33,
+      "expected_skips": 0,
+      "platform_note": "Combined feature checkout in pinned Linux amd64 CI image under local emulation",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "deep-normal-threads/pass-through",
+      "path": "deep-normal-threads/pass-through/report.json",
+      "expected_count": 13,
+      "expected_skips": 0,
+      "platform_note": "Corrected diagnostic path; separate normal Verus thread selection, covering multi-module error tests",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "deep-normal-threads/cache-fill",
+      "path": "deep-normal-threads/cache-fill/report.json",
+      "expected_count": 13,
+      "expected_skips": 0,
+      "platform_note": "Corrected diagnostic path; separate normal Verus thread selection, covering multi-module error tests",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "deep-normal-threads/cache-warm",
+      "path": "deep-normal-threads/cache-warm/report.json",
+      "expected_count": 13,
+      "expected_skips": 0,
+      "platform_note": "Corrected diagnostic path; separate normal Verus thread selection, covering multi-module error tests",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    }
+  ]
+}
