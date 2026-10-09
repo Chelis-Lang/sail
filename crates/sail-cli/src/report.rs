@@ -15,6 +15,7 @@ mod tests {
     use sail_api::output::SourceSummaryName as S;
     use sail_api::output::{AttributionStatus, FunctionReport, Report};
     use sail_verus::attribution::{LogFile, Provenance, SessionRecord, attribute, read_logs};
+    use sail_verus::report::incomplete_failures;
     use std::path::{Path, PathBuf};
 
     fn fixture(name: &str) -> PathBuf {

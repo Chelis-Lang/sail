@@ -105,7 +105,7 @@ pub fn build(inputs: &Inputs<'_>) -> Report {
 /// Verus can omit a failed bit-vector function from its failure set (VI-0003).
 /// In a failing crate, an incomplete mapping cannot resolve which successful
 /// timing entries are real proofs. Preserve the raw field without confirming it.
-fn incomplete_failures(report: &mut Report) {
+pub fn incomplete_failures(report: &mut Report) {
     if report.attribution.status == AttributionStatus::Complete {
         return;
     }
