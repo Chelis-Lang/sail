@@ -79,10 +79,7 @@ fn collect(path: &Path, files: &mut BTreeSet<PathBuf>, visited: &mut BTreeSet<Pa
             continue;
         };
         let name = entry.file_name();
-        if ["target", ".git", ".claude", ".codex"]
-            .iter()
-            .any(|s| name == *s)
-        {
+        if [".git", ".claude", ".codex"].iter().any(|s| name == *s) {
             continue;
         }
         complete &= collect(&entry.path(), files, visited);
@@ -231,9 +228,9 @@ mod tests {
         let root = std::env::temp_dir().join(format!("sail-input-test-{}", std::process::id()));
         let dependency = root.join("dep");
         let project = root.join("project");
-        assert!(std::fs::create_dir_all(&dependency).is_ok());
+        assert!(std::fs::create_dir_all(dependency.join("src/target")).is_ok());
         assert!(std::fs::create_dir_all(&project).is_ok());
-        let source = dependency.join("lib.rs");
+        let source = dependency.join("src/target/mod.rs");
         assert!(std::fs::write(&source, "good").is_ok());
         let data = serde_json::json!({"workspace_root":project,"packages":[{"source":"registry+https://example.invalid/index","manifest_path":dependency.join("Cargo.toml")}]});
         let before = snapshot_metadata(&data, &[]);

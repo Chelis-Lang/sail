@@ -15,12 +15,17 @@ pub(super) struct Observation {
 }
 
 impl Observation {
-    pub(super) fn begin(snapshot: &InputSnapshot, extra: &[PathBuf], cache: &Path) -> Self {
+    pub(super) fn begin(
+        snapshot: &InputSnapshot,
+        extra: &[PathBuf],
+        cache: &Path,
+        target: &Path,
+    ) -> Self {
         let changed = Arc::new(AtomicBool::new(false));
         let lost = Arc::new(AtomicBool::new(false));
         let signal = Arc::clone(&changed);
         let failed = Arc::clone(&lost);
-        let excluded = cache.canonicalize().unwrap_or_else(|_| cache.to_owned());
+        let excluded = [cache, target].map(|p| p.canonicalize().unwrap_or_else(|_| p.to_owned()));
         let tracked: Vec<PathBuf> = snapshot
             .roots
             .iter()
@@ -31,7 +36,7 @@ impl Observation {
             Ok(event) if event.need_rescan() => failed.store(true, Ordering::Release),
             Ok(event) if !matches!(event.kind, EventKind::Access(_)) => {
                 if event.paths.iter().any(|p| {
-                    !p.starts_with(&excluded)
+                    !excluded.iter().any(|root| p.starts_with(root))
                         && tracked.iter().any(|root| {
                             p.starts_with(root)
                                 || (matches!(
@@ -41,9 +46,7 @@ impl Observation {
                                         | EventKind::Modify(notify::event::ModifyKind::Name(_))
                                 ) && root.starts_with(p))
                         })
-                        && !p
-                            .components()
-                            .any(|c| c.as_os_str() == "target" || c.as_os_str() == ".git")
+                        && !p.components().any(|c| c.as_os_str() == ".git")
                 }) {
                     signal.store(true, Ordering::Release);
                 }
@@ -113,8 +116,8 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("sail-observation-test-{}", std::process::id()));
         assert!(std::fs::create_dir_all(&root).is_ok());
-        assert!(std::fs::create_dir_all(root.join("src")).is_ok());
-        let source = root.join("src/lib.rs");
+        assert!(std::fs::create_dir_all(root.join("src/target")).is_ok());
+        let source = root.join("src/target/mod.rs");
         assert!(std::fs::write(&source, "original").is_ok());
         let snapshot = InputSnapshot {
             workspace: root.clone(),
@@ -126,7 +129,8 @@ mod tests {
             ],
             complete: true,
         };
-        let observation = Observation::begin(&snapshot, &[], &root.join("cache"));
+        let observation =
+            Observation::begin(&snapshot, &[], &root.join("cache"), &root.join("target"));
         assert!(observation.complete());
         assert!(std::fs::write(&source, "temporary").is_ok());
         assert!(std::fs::write(&source, "original").is_ok());

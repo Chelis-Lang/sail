@@ -28,7 +28,9 @@ whole-target reuse receipts. Explicit force-fresh runs establish reports but do
 not authorize later automatic reuse.
 
 Input revisions hash workspace files, lockfiles, manifests, Cargo configuration,
-local path dependencies, and declared build-script paths. Build-script output
+resolved local, registry and git dependency contents, and declared build-script
+paths. Only Cargo's actual output directory and Sail's managed cache are excluded;
+a source directory named `target` is still an input. Build-script output
 `rerun-if-changed` paths and `rerun-if-env-changed` values are recorded separately;
 content changes force the script package to refresh even when size and mtime are
 restored. Without explicit rerun declarations, the package directory is hashed,
