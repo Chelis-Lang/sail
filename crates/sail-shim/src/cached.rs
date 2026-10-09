@@ -28,6 +28,8 @@ use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter};
 
 /// What the output side should do with the next reply.
 enum Expect {
+    /// Full input reached EOF; certify it only after a quiet, complete session.
+    Terminal(QueryKey),
     /// Store the reply under this key.
     Store {
         key: QueryKey,
@@ -161,6 +163,7 @@ fn rlimit_count(reply: &[u8]) -> Option<u64> {
 /// [`Pairer::stop`].
 #[derive(Default)]
 struct Pairer {
+    terminal: Option<QueryKey>,
     replies: VecDeque<Vec<u8>>,
     expects: VecDeque<Expect>,
     stopped: bool,
@@ -175,7 +178,10 @@ impl Pairer {
     }
 
     fn expect(&mut self, expect: Expect) {
-        self.expects.push_back(expect);
+        match expect {
+            Expect::Terminal(key) => self.terminal = Some(key),
+            other => self.expects.push_back(other),
+        }
     }
 
     fn stop(&mut self) {
@@ -272,6 +278,17 @@ impl Pairer {
         let mut out = Vec::new();
         if !self.stopped {
             self.release(&mut out);
+            if self.expects.is_empty()
+                && self.replies.is_empty()
+                && let Some(key) = self.terminal.take()
+            {
+                out.push(Entry {
+                    key,
+                    command: "sail-session-silence".to_owned(),
+                    reply: b"sail-session-silent/v1\n".to_vec(),
+                    effort: None,
+                });
+            }
         }
         out
     }
@@ -288,11 +305,32 @@ struct Solving {
 
 /// Sends paired replies to the daemon on its own thread, so forwarding never
 /// waits on the daemon. Stops at the first daemon error.
-fn spawn_storer(mut client: Client, entries: Receiver<Entry>) -> Option<JoinHandle<()>> {
+fn spawn_storer(
+    mut client: Client,
+    entries: Receiver<Entry>,
+    quiet: Arc<AtomicBool>,
+) -> Option<JoinHandle<()>> {
     std::thread::Builder::new()
         .name("sail-z3-store".to_owned())
         .spawn(move || {
+            // No entry is published until the entire solver session is known
+            // to have emitted no stderr. Replies from older warning sessions
+            // otherwise freeze a missing diagnostic on warm runs.
+            let mut pending = Vec::new();
+            let mut bytes = 0usize;
             for entry in entries {
+                bytes = bytes
+                    .saturating_add(entry.reply.len())
+                    .saturating_add(entry.command.len());
+                if bytes > 64 * 1024 * 1024 {
+                    return;
+                }
+                pending.push(entry);
+            }
+            if !quiet.load(Ordering::SeqCst) {
+                return;
+            }
+            for entry in pending {
                 let meta = PutMeta {
                     command: entry.command,
                     provenance: "pinned-solver".to_owned(),
@@ -305,6 +343,28 @@ fn spawn_storer(mut client: Client, entries: Receiver<Entry>) -> Option<JoinHand
             }
         })
         .ok()
+}
+
+fn queue_stores(
+    pairer: &mut Pairer,
+    expects: &Receiver<Expect>,
+    stores: &Sender<Entry>,
+    wait: bool,
+) {
+    if wait {
+        for e in expects {
+            pairer.expect(e);
+        }
+    } else {
+        for e in expects.try_iter() {
+            pairer.expect(e);
+        }
+    }
+    for entry in pairer.drain() {
+        if stores.send(entry).is_err() {
+            pairer.stop();
+        }
+    }
 }
 
 /// The output side once a solver runs: forwards replies after the first
@@ -324,11 +384,13 @@ fn output_side(
     expects: &Receiver<Expect>,
     client: Option<Client>,
     input_done: &AtomicBool,
+    stderr: Option<&crate::cached_stderr::Monitor>,
 ) -> u8 {
     let mut all = Vec::new(); // every output byte so far
     let mut splitter = ResponseSplitter::new();
     let mut forward_from: Option<usize> = (skip == 0).then_some(0);
     let mut forwarded = 0usize;
+    let mut forwarding_ok = true;
     let mut seen = 0u64; // replies completed so far
     let mut prev: Option<(u64, usize)> = None; // (index, start) of the last completed reply
     let mut buf = vec![0u8; 64 * 1024];
@@ -337,35 +399,27 @@ fn output_side(
     // separate thread, so forwarding never waits on the daemon.
     let mut pairer = Pairer::default();
     let (store_tx, store_rx) = std::sync::mpsc::channel::<Entry>();
-    let storer = client.and_then(|client| spawn_storer(client, store_rx));
+    let quiet = Arc::new(AtomicBool::new(false));
+    let storer = client.and_then(|client| spawn_storer(client, store_rx, Arc::clone(&quiet)));
     if storer.is_none() {
         // No daemon to store to.
         pairer.stop();
     }
-    let store = |pairer: &mut Pairer, wait: bool| {
-        if wait {
-            for e in expects {
-                pairer.expect(e);
-            }
-        } else {
-            for e in expects.try_iter() {
-                pairer.expect(e);
-            }
-        }
-        for entry in pairer.drain() {
-            if store_tx.send(entry).is_err() {
-                pairer.stop();
-            }
-        }
-    };
 
     loop {
         let n = match from.read(&mut buf) {
             Ok(0) => break,
             Ok(n) => n,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-            Err(_) => break,
+            Err(_) => {
+                forwarding_ok = false;
+                break;
+            }
         };
+        if stderr.is_some_and(|stderr| !stderr.flush()) {
+            forwarding_ok = false;
+            break;
+        }
         let chunk = buf.get(..n).unwrap_or_default();
         all.extend_from_slice(chunk);
         let mut items: Vec<Item> = Vec::new();
@@ -387,20 +441,21 @@ fn output_side(
             && all.len() > forwarded.max(f)
         {
             if !write_out(all.get(forwarded.max(f)..).unwrap_or_default()) {
+                forwarding_ok = false;
                 break;
             }
             forwarded = all.len();
         }
-        store(&mut pairer, false);
+        queue_stores(&mut pairer, expects, &store_tx, false);
     }
     // Stop reading first: a solver blocked writing to a closed pipe then
     // fails and exits instead of waiting forever.
     drop(from);
     // End of output. Deliver what is left, as pass-through would.
     if forward_from.is_some() && all.len() > forwarded {
-        let _ = write_out(all.get(forwarded..).unwrap_or_default());
+        forwarding_ok &= write_out(all.get(forwarded..).unwrap_or_default());
     }
-    let (_, code) = match child.wait() {
+    let (_, mut code) = match child.wait() {
         Ok(status) => crate::status_code(status),
         Err(_) => (None, 1),
     };
@@ -415,10 +470,15 @@ fn output_side(
     let input_done = input_done.load(Ordering::SeqCst);
     // Once the input has ended, every expectation is queued or about to be.
     // Before that, more may never come, so take only what is there.
-    store(&mut pairer, input_done);
+    queue_stores(&mut pairer, expects, &store_tx, input_done);
     for entry in pairer.finish() {
         let _ = store_tx.send(entry);
     }
+    let silent = stderr.is_some_and(crate::cached_stderr::Monitor::quiet);
+    if stderr.is_some_and(crate::cached_stderr::Monitor::failed) || !forwarding_ok {
+        code = 1;
+    }
+    quiet.store(code == 0 && silent, Ordering::SeqCst);
     drop(store_tx);
     if let Some(h) = storer {
         let _ = h.join();
@@ -441,11 +501,16 @@ fn start_solver(
     first: Expect,
     client: Option<Client>,
 ) -> Option<Solving> {
+    // Observation failure must not prevent replay: inherit solver stderr and
+    // disable publication when its silence cannot be established.
+    let (stderr, child_stderr) = crate::cached_stderr::Monitor::new()
+        .map_or_else(|_| (None, Stdio::inherit()), |(m, io)| (Some(m), io));
+    let client = stderr.as_ref().and(client);
     let mut child = Command::new(solver)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(child_stderr)
         .spawn()
         .ok()?;
     let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
@@ -462,7 +527,7 @@ fn start_solver(
     // when `stdin` is dropped below.
     let output = std::thread::Builder::new()
         .name("sail-z3-cached-out".to_owned())
-        .spawn(move || output_side(stdout, child, skip, &rx, client, &done))
+        .spawn(move || output_side(stdout, child, skip, &rx, client, &done, stderr.as_ref()))
         .ok()?;
     let mut s = Solving {
         stdin: Some(stdin),
@@ -483,8 +548,9 @@ impl Solving {
         }
     }
 
-    fn finish(mut self) -> ExitCode {
+    fn finish(mut self, terminal: QueryKey) -> ExitCode {
         self.input_done.store(true, Ordering::SeqCst);
+        let _ = self.expects.send(Expect::Terminal(terminal));
         drop(self.stdin.take());
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
@@ -499,6 +565,48 @@ fn daemon_timeout() -> Duration {
         .and_then(|v| v.trim().parse::<u64>().ok())
         .filter(|&ms| ms > 0)
         .map_or(sail_api::client::TIMEOUT, Duration::from_millis)
+}
+
+fn observe(
+    session: &mut Session,
+    item: &Item,
+    prefix: &mut PrefixHasher,
+    raw: &[u8],
+) -> (Output, String, Expect) {
+    let end = usize::try_from(item.offset + item.bytes.len() as u64).unwrap_or(usize::MAX);
+    let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
+    prefix.update(raw.get(from..end).unwrap_or_default());
+    let mut output = if item.kind == ItemKind::List {
+        session.expects_output(&item.bytes)
+    } else {
+        Output::Unknown
+    };
+    session.apply(&item.bytes);
+    // print-success changes the option command's own output as well as later
+    // replies. Its non-default protocol always replays live, without recording.
+    if session
+        .option(b":print-success")
+        .is_some_and(|v| v != b"false")
+    {
+        output = Output::Unknown;
+    }
+    let name = classify(&item.bytes)
+        .map(|c| String::from_utf8_lossy(c.name).into_owned())
+        .unwrap_or_default();
+    let limit = session
+        .option(b":rlimit")
+        .and_then(|v| std::str::from_utf8(v).ok())
+        .and_then(|v| v.parse::<u64>().ok());
+    let expect = match output {
+        Output::One => Expect::Store {
+            key: prefix.key(),
+            command: name.clone(),
+            text: item.bytes.clone(),
+            limit,
+        },
+        _ => Expect::Stop,
+    };
+    (output, name, expect)
 }
 
 /// Runs a cached session. Returns `None`, having consumed no input, if the
@@ -538,34 +646,31 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         // chunk reaches the solver.
         let mut fresh_solver = false;
         for item in items {
-            let end = usize::try_from(item.offset + item.bytes.len() as u64).unwrap_or(usize::MAX);
-            let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
-            prefix.update(raw.get(from..end).unwrap_or_default());
-            let expects = if item.kind == ItemKind::List {
-                session.expects_output(&item.bytes)
-            } else {
-                Output::Unknown
-            };
-            session.apply(&item.bytes);
-            let name = classify(&item.bytes)
-                .map(|c| String::from_utf8_lossy(c.name).into_owned())
-                .unwrap_or_default();
-            let limit = session
-                .option(b":rlimit")
-                .and_then(|v| std::str::from_utf8(v).ok())
-                .and_then(|v| v.parse::<u64>().ok());
-            let expect = |expects: Output| match expects {
-                Output::One => Expect::Store {
-                    key: prefix.key(),
-                    command: name.clone(),
-                    text: item.bytes.clone(),
-                    limit,
-                },
-                _ => Expect::Stop,
-            };
+            let (expects, name, expect) = observe(&mut session, &item, &mut prefix, &raw);
+            if name == "exit" && closes_session(&item.bytes) {
+                if let Some(s) = &solving
+                    && expects != Output::None
+                {
+                    let _ = s.expects.send(expect);
+                }
+                if let Some(s) = &mut solving
+                    && !fresh_solver
+                {
+                    s.write(&chunk);
+                }
+                return finish_run(
+                    solving,
+                    client,
+                    solver,
+                    args,
+                    (&raw, served),
+                    &mut prefix,
+                    true,
+                );
+            }
             if let Some(s) = &solving {
                 if expects != Output::None {
-                    let _ = s.expects.send(expect(expects));
+                    let _ = s.expects.send(expect);
                 }
                 continue;
             }
@@ -591,8 +696,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 continue;
             }
             // Miss: start the solver with the whole input so far.
-            let Some(s) = start_solver(solver, args, &raw, served, expect(expects), client.take())
-            else {
+            let Some(s) = start_solver(solver, args, &raw, served, expect, client.take()) else {
                 return Some(ExitCode::from(1));
             };
             solving = Some(s);
@@ -606,17 +710,85 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
-    let (code, started) = match solving {
-        Some(s) => (Some(s.finish()), true),
-        None if splitter.finish().is_some() => (
-            start_solver(solver, args, &raw, served, Expect::Stop, client.take())
-                .map(Solving::finish),
+    finish_run(
+        solving,
+        client,
+        solver,
+        args,
+        (&raw, served),
+        &mut prefix,
+        splitter.finish().is_none(),
+    )
+}
+
+fn closes_session(command: &[u8]) -> bool {
+    use sail_smtlib::lex::{Lexer, TokenKind};
+    let mut tokens = Lexer::new(command);
+    let _ = tokens.next();
+    let _ = tokens.next();
+    matches!(tokens.next(), Some(Ok(t)) if t.kind == TokenKind::Close) && tokens.next().is_none()
+}
+
+fn finish_run(
+    solving: Option<Solving>,
+    client: Option<Client>,
+    solver: &Path,
+    args: &[std::ffi::OsString],
+    (raw, served): (&[u8], u64),
+    prefix: &mut PrefixHasher,
+    complete: bool,
+) -> Option<ExitCode> {
+    let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
+    prefix.update(raw.get(from..).unwrap_or_default());
+    let end = SessionEnd {
+        raw,
+        served,
+        terminal: prefix.silence_key(),
+        complete,
+    };
+    let (code, started) = finish_input(solving, client, solver, args, &end);
+    record_provenance(raw, end.served, started);
+    code
+}
+
+struct SessionEnd<'a> {
+    raw: &'a [u8],
+    served: u64,
+    terminal: QueryKey,
+    complete: bool,
+}
+
+fn finish_input(
+    solving: Option<Solving>,
+    mut client: Option<Client>,
+    solver: &Path,
+    args: &[std::ffi::OsString],
+    end: &SessionEnd<'_>,
+) -> (Option<ExitCode>, bool) {
+    let certified = solving.is_none()
+        && end.complete
+        && client.as_mut().is_some_and(|c| {
+            c.get(&end.terminal.0)
+                .ok()
+                .flatten()
+                .is_some_and(|r| r == b"sail-session-silent/v1\n")
+        });
+    match solving {
+        Some(s) => (Some(s.finish(end.terminal)), true),
+        None if !certified => (
+            start_solver(
+                solver,
+                args,
+                end.raw,
+                end.served,
+                Expect::Stop,
+                client.take(),
+            )
+            .map(|s| s.finish(end.terminal)),
             true,
         ),
         None => (Some(ExitCode::SUCCESS), false),
-    };
-    record_provenance(&raw, served, started);
-    code
+    }
 }
 
 /// When `SAIL_PROVENANCE_DIR` is set, writes `<dir>/<pid>-<nanos>.json`
@@ -742,7 +914,7 @@ mod tests {
                 text,
                 limit: Some(limit),
             },
-            Expect::Stop => Expect::Stop,
+            other => other,
         }
     }
 

@@ -12,7 +12,8 @@
 //! | 5 `INFO` | empty | `0`, `u32` len, [`Info`] JSON |
 //!
 //! Operations 4 and 5 are read-only and additive: they kept
-//! [`PROTOCOL_VERSION`] at 1 (ADR 0012, ADR 0015). A daemon that predates
+//! the original version (ADR 0012, ADR 0015). Version 3 requires silent-session
+//! publication and refuses older daemons (ADR 0022). A daemon that predates
 //! one rejects it by closing that connection; nothing else changes.
 //!
 //! Frames larger than [`MAX_FRAME`] are rejected.
@@ -24,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// The protocol version. Bump on any incompatible change; the daemon reports
 /// it in `HELLO`, clients refuse a mismatch, and the default socket name
 /// includes it, so an upgraded client never talks to a stale daemon.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 3;
 
 /// Largest accepted frame body, in bytes.
 pub const MAX_FRAME: u32 = 256 * 1024 * 1024;
