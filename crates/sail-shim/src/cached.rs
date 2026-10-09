@@ -384,7 +384,7 @@ fn output_side(
     expects: &Receiver<Expect>,
     client: Option<Client>,
     input_done: &AtomicBool,
-    stderr: &crate::cached_stderr::Monitor,
+    stderr: Option<&crate::cached_stderr::Monitor>,
 ) -> u8 {
     let mut all = Vec::new(); // every output byte so far
     let mut splitter = ResponseSplitter::new();
@@ -416,7 +416,7 @@ fn output_side(
                 break;
             }
         };
-        if !stderr.flush() {
+        if stderr.is_some_and(|stderr| !stderr.flush()) {
             forwarding_ok = false;
             break;
         }
@@ -474,8 +474,8 @@ fn output_side(
     for entry in pairer.finish() {
         let _ = store_tx.send(entry);
     }
-    let silent = stderr.quiet();
-    if stderr.failed() || !forwarding_ok {
+    let silent = stderr.is_some_and(crate::cached_stderr::Monitor::quiet);
+    if stderr.is_some_and(crate::cached_stderr::Monitor::failed) || !forwarding_ok {
         code = 1;
     }
     quiet.store(code == 0 && silent, Ordering::SeqCst);
@@ -501,7 +501,11 @@ fn start_solver(
     first: Expect,
     client: Option<Client>,
 ) -> Option<Solving> {
-    let (stderr, child_stderr) = crate::cached_stderr::Monitor::new().ok()?;
+    // Observation failure must not prevent replay: inherit solver stderr and
+    // disable publication when its silence cannot be established.
+    let (stderr, child_stderr) = crate::cached_stderr::Monitor::new()
+        .map_or_else(|_| (None, Stdio::inherit()), |(m, io)| (Some(m), io));
+    let client = stderr.as_ref().and(client);
     let mut child = Command::new(solver)
         .args(args)
         .stdin(Stdio::piped())
@@ -523,7 +527,7 @@ fn start_solver(
     // when `stdin` is dropped below.
     let output = std::thread::Builder::new()
         .name("sail-z3-cached-out".to_owned())
-        .spawn(move || output_side(stdout, child, skip, &rx, client, &done, &stderr))
+        .spawn(move || output_side(stdout, child, skip, &rx, client, &done, stderr.as_ref()))
         .ok()?;
     let mut s = Solving {
         stdin: Some(stdin),

@@ -24,7 +24,9 @@ Forward stderr using a safe standard-library Unix socket and a separate pump.
 Before forwarding a stdout chunk, synchronously drain stderr already written
 by the solver, preserving warnings before the corresponding result reaches
 Verus. The pump also prevents a large stderr stream filling the socket while
-stdout is idle. No unsafe code or dependency is added.
+stdout is idle. If the monitor cannot start, inherit stderr directly and disable
+publication; an observation failure never prevents solver replay. No unsafe
+code or dependency is added.
 
 A fully cached prefix does not authorize new commands after its final reply.
 At EOF, skip the solver only with a silence record for the exact complete input,
