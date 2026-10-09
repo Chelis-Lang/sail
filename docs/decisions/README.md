@@ -1,0 +1,27 @@
+# Decisions
+
+Accepted decisions supplement the charter and its corrections appendix.
+Use [the template](0000-template.md) for a new decision.
+
+- [0001: Workspace, toolchain, lints, layering and CI tiers](0001-workspace-toolchain-and-ci.md)
+- [0002: AI-authorship guard and workflow mode](0002-authorship-guard-and-workflow-mode.md)
+- [0003: Integration point: a Z3-compatible shim named by `VERUS_Z3_PATH`](0003-integration-point.md)
+- [0004: Session-state model and query keys](0004-session-state-and-query-keys.md)
+- [0005: Shim pass-through, observation tap and fail-safe rules](0005-shim-pass-through-and-fail-safe.md)
+- [0006: Conformance harness and corpus manifest](0006-conformance-harness-and-corpus-format.md)
+- [0007: Benchmark methodology (cold workload and baseline)](0007-benchmark-methodology.md)
+- [0008: Default-mode keys bind the whole process prefix](0008-default-mode-keys-bind-the-process-prefix.md)
+- [0009: Solver nondeterminism and unstable results](0009-solver-nondeterminism-and-unstable-results.md)
+- [0010: Owner decisions on the bootstrap open questions](0010-owner-decisions-2026-10-08.md)
+- [0011: Local cache, daemon protocol and lazy solver sessions](0011-local-cache-and-lazy-solver-sessions.md)
+- [0012: Warm and edit workloads](0012-warm-and-edit-workloads.md)
+- [0013: One container image for CI and local testing](0013-ci-image.md)
+- [0014: Function attribution, the ledger, and `--output json` schema v1](0014-attribution-ledger-and-output-schema.md)
+- [0015: Daemon operations, the in-memory tier and write-behind](0015-daemon-operations-and-memory-tier.md)
+- [0016: The MCP server (`sail mcp`)](0016-mcp-server.md)
+- [0017: The shared tier: signed entries, verified before use](0017-shared-tier-with-signed-entries.md)
+- [0018: Fragility measurement](0018-fragility-measurement.md)
+- [0019: `rust_verify_test` conformance from a Verus source build](0019-rust-verify-test-conformance.md)
+- [0020: Complete-run seed portfolio](0020-complete-run-seed-portfolio.md)
+- [0021: Optional local Singular source validation](0021-optional-singular-source-validation.md)
+- [0022: Solver stderr and cache publication](0022-solver-stderr-and-cache-publication.md)
