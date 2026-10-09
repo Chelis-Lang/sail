@@ -31,7 +31,15 @@ impl Observation {
             Ok(event) if !matches!(event.kind, EventKind::Access(_)) => {
                 if event.paths.iter().any(|p| {
                     !p.starts_with(&excluded)
-                        && tracked.iter().any(|root| p.starts_with(root))
+                        && tracked.iter().any(|root| {
+                            p.starts_with(root)
+                                || (matches!(
+                                    event.kind,
+                                    EventKind::Create(_)
+                                        | EventKind::Remove(_)
+                                        | EventKind::Modify(notify::event::ModifyKind::Name(_))
+                                ) && root.starts_with(p))
+                        })
                         && !p
                             .components()
                             .any(|c| c.as_os_str() == "target" || c.as_os_str() == ".git")
@@ -57,13 +65,16 @@ impl Observation {
             } else {
                 root.parent().unwrap_or(root)
             };
-            if path.is_dir() {
+            let existing = path.ancestors().find(|p| p.is_dir());
+            if let Some(path) = existing {
                 let mode = if root.is_dir() {
                     RecursiveMode::Recursive
                 } else {
                     RecursiveMode::NonRecursive
                 };
                 complete &= watcher.watch(path, mode).is_ok();
+            } else {
+                complete = false;
             }
         }
         // Native observation errors prevent reuse even if all final bytes match.

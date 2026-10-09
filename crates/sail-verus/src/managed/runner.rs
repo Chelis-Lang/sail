@@ -107,13 +107,11 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         })
         .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
         .collect();
-    let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
-    if Path::new(&rustc).is_file() {
-        identity.push((
-            rustc.to_string_lossy().into_owned(),
-            file_digest(Path::new(&rustc))?,
-        ));
-    }
+    let rustc = resolve_program(
+        &std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()),
+        &config.workspace,
+    )?;
+    identity.push((rustc.to_string_lossy().into_owned(), file_digest(&rustc)?));
     let actual = Command::new(&rustc)
         .args(["--print", "sysroot"])
         .current_dir(&config.workspace)
@@ -139,7 +137,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         sysroot.join("lib"),
         sysroot
             .join("lib/rustlib")
-            .join(rust_host(&rustc, &config.workspace)?)
+            .join(rust_host(rustc.as_os_str(), &config.workspace)?)
             .join("lib"),
     ] {
         for item in std::fs::read_dir(directory).into_iter().flatten().flatten() {
@@ -196,6 +194,26 @@ fn context(config: &Config, data: &Value) -> Result<String> {
     );
     json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(hash)
+}
+
+fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBuf> {
+    let path = Path::new(program);
+    let resolved = if path.components().count() > 1 {
+        workspace.join(path).canonicalize().ok()
+    } else {
+        std::env::var_os("PATH")
+            .into_iter()
+            .flat_map(|v| std::env::split_paths(&v).collect::<Vec<_>>())
+            .map(|dir| dir.join(path))
+            .find(|p| p.is_file())
+            .and_then(|p| p.canonicalize().ok())
+    };
+    resolved.ok_or_else(|| {
+        Error::new(
+            "SAIL3104",
+            format!("cannot resolve compiler {}", path.display()),
+        )
+    })
 }
 
 fn rust_host(rustc: &std::ffi::OsStr, workspace: &Path) -> Result<String> {
@@ -414,7 +432,7 @@ fn target_records(
     data: &Value,
     context: &str,
     force: bool,
-    expected: &BTreeSet<(String, String)>,
+    expected: &BTreeSet<(String, String, String)>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
@@ -450,8 +468,10 @@ fn target_records(
             .map(str::to_owned)
             .collect();
         let package_id = artifact["package_id"].as_str().unwrap_or_default();
-        let requested = expected.iter().any(|(id, target)| {
-            id == package_id && target.replace('-', "_") == name.replace('-', "_")
+        let requested = expected.iter().any(|(id, target, target_kind)| {
+            id == package_id
+                && target.replace('-', "_") == name.replace('-', "_")
+                && kind.contains(target_kind)
         });
         let force = force && requested;
         let input_revision = target_revision(data, package_id);
@@ -563,7 +583,12 @@ fn target_records(
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for call in calls {
         if !results.iter().any(|r| {
-            r.establishing_run == call.run_id && r.target.replace('-', "_") == call.identity.name
+            r.establishing_run == call.run_id
+                && r.target.replace('-', "_") == call.identity.name
+                && r.kind.iter().any(|k| {
+                    k == &call.identity.crate_type
+                        || (k == "lib" && call.identity.crate_type == "rlib")
+                })
         }) {
             let package = data["packages"].as_array().into_iter().flatten().find(|p| {
                 p["manifest_path"]
@@ -571,9 +596,11 @@ fn target_records(
                     .is_some_and(|s| Path::new(s) == call.identity.manifest)
             });
             let requested = package.is_some_and(|p| {
-                expected.iter().any(|(id, name)| {
+                expected.iter().any(|(id, name, kind)| {
                     p["id"].as_str() == Some(id.as_str())
                         && name.replace('-', "_") == call.identity.name
+                        && (kind == &call.identity.crate_type
+                            || (kind == "lib" && call.identity.crate_type == "rlib"))
                 })
             });
             results.push(TargetResult {
@@ -647,7 +674,7 @@ fn target_revision(data: &Value, package_id: &str) -> String {
     clippy::too_many_lines,
     reason = "All supported Cargo target selectors are resolved explicitly before complete coverage can be claimed."
 )]
-fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String)> {
+fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, String)> {
     let workspace = args.iter().any(|a| a == "--workspace" || a == "--all");
     let mut selected_names = Vec::new();
     let mut excluded = Vec::new();
@@ -757,7 +784,15 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String)>
             {
                 continue;
             }
-            expected.insert((id.to_owned(), name.to_owned()));
+            expected.insert((
+                id.to_owned(),
+                name.to_owned(),
+                kinds
+                    .and_then(|k| k.first())
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
+            ));
         }
     }
     expected
@@ -802,21 +837,25 @@ pub fn refresh_result(
     ));
     snapshot.roots.sort();
     snapshot.roots.dedup();
+    let runtime_complete = runtime_current(cache, &result.context_sha256);
+    snapshot.complete &= covered && runtime_complete;
+    Ok(snapshot)
+}
+
+fn runtime_current(cache: &Path, context: &str) -> bool {
     let state = cache.join("runtime-identities");
-    let identity_sha = read::<String>(&state.join(format!("{}.link", result.context_sha256)));
+    let identity_sha = read::<String>(&state.join(format!("{context}.link")));
     let identities = identity_sha
         .as_ref()
         .and_then(|sha| read::<Vec<(String, String)>>(&state.join(format!("{sha}.json"))));
-    let runtime_complete = identities.as_ref().is_some_and(|paths| {
+    identities.as_ref().is_some_and(|paths| {
         identity_sha
             .as_ref()
             .is_some_and(|sha| *sha == digest(&serde_json::to_vec(paths).unwrap_or_default()))
             && paths
                 .iter()
                 .all(|(path, hash)| file_digest(Path::new(path)).as_ref() == Ok(hash))
-    });
-    snapshot.complete &= covered && runtime_complete;
-    Ok(snapshot)
+    })
 }
 
 fn script_roots(data: &Value) -> Vec<PathBuf> {
@@ -1010,14 +1049,18 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     // Flush native coalesced notifications before currentness publication. This
     // small bound is independent of solver runtime and never delays forwarding.
     std::thread::sleep(std::time::Duration::from_millis(100));
-    let currentness =
-        if !before.complete || !after.complete || !after_coverage || !monitor.complete() {
-            Currentness::Unknown
-        } else if before.revision == after.revision && !monitor.changed() {
-            Currentness::Current
-        } else {
-            Currentness::Historical
-        };
+    let currentness = if !before.complete
+        || !after.complete
+        || !after_coverage
+        || !monitor.complete()
+        || !runtime_current(&config.cache, &hash)
+    {
+        Currentness::Unknown
+    } else if before.revision == after.revision && !monitor.changed() {
+        Currentness::Current
+    } else {
+        Currentness::Historical
+    };
     if currentness != Currentness::Current {
         for target in &targets {
             let _ = std::fs::remove_file(receipt_path(
@@ -1029,9 +1072,11 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         }
     }
     if exit == Some(0)
-        && expected.iter().any(|(id, name)| {
+        && expected.iter().any(|(id, name, kind)| {
             !targets.iter().any(|t| {
-                &t.package_id == id && t.target.replace('-', "_") == name.replace('-', "_")
+                &t.package_id == id
+                    && t.target.replace('-', "_") == name.replace('-', "_")
+                    && t.kind.contains(kind)
             })
         })
     {
@@ -1097,11 +1142,11 @@ mod tests {
                 &data,
                 &["-p".to_owned(), "a".to_owned(), "--lib".to_owned()]
             ),
-            BTreeSet::from([("a".to_owned(), "a".to_owned())])
+            BTreeSet::from([("a".to_owned(), "a".to_owned(), "lib".to_owned())])
         );
         assert_eq!(
             expected_targets(&data, &["--bin".to_owned(), "app".to_owned()]),
-            BTreeSet::from([("a".to_owned(), "app".to_owned())])
+            BTreeSet::from([("a".to_owned(), "app".to_owned(), "bin".to_owned())])
         );
         assert!(expected_targets(&data, &["-p".to_owned(), "missing".to_owned()]).is_empty());
     }
