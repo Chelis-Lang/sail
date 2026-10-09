@@ -234,8 +234,19 @@ fn finish(
         crate::attribution::Provenance::NoCache
     };
     let attr = crate::attribution::attribute(&docs, Some(&logs), &provenance, None);
+    // Forwarded selectors are per package. A dependency did not receive the
+    // requesting package's focused flags, so its full proof is not scoped away.
+    let mut report_args = runtime.args.clone();
+    if crate::managed::focused(&report_args) && !actual_focus() {
+        report_args.truncate(
+            report_args
+                .iter()
+                .position(|a| a == "--")
+                .unwrap_or(report_args.len()),
+        );
+    }
     let report = crate::report::build(&crate::report::Inputs {
-        args: &runtime.args,
+        args: &report_args,
         exit_code: exit,
         solver_path: Some(runtime.z3.to_string_lossy().into_owned()),
         solver_sha256: Some(runtime.z3_sha256.clone()),
@@ -244,7 +255,7 @@ fn finish(
         diagnostics: &crate::diagnostics::parse(&rendered_diagnostics(stderr)),
     });
     let success =
-        crate::managed::receipt_complete(&report) && !crate::managed::focused(&runtime.args);
+        crate::managed::receipt_complete(&report) && !crate::managed::focused(&report_args);
     let invocation = Invocation {
         identity,
         run_id: runtime.run_id.clone(),
@@ -283,4 +294,34 @@ fn rendered_diagnostics(stderr: &[u8]) -> String {
             }
             text
         })
+}
+
+fn actual_focus() -> bool {
+    let package = ["CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR"].map(std::env::var);
+    let [Ok(name), Ok(version), Ok(manifest)] = package else {
+        return true;
+    };
+    let hash = digest(
+        Path::new(&manifest)
+            .join("Cargo.toml")
+            .to_string_lossy()
+            .as_bytes(),
+    );
+    let id = format!("{name}-{version}-{}", hash.get(..12).unwrap_or_default());
+    [
+        " __VERUS_DRIVER_ARGS__".to_owned(),
+        format!(" __VERUS_DRIVER_ARGS_FOR_{id}"),
+    ]
+    .into_iter()
+    .filter_map(|key| std::env::var(key).ok())
+    .any(|value| {
+        [
+            "--verify-function",
+            "--verify-module",
+            "--verify-only-module",
+            "--verify-root",
+        ]
+        .iter()
+        .any(|flag| value.contains(flag))
+    })
 }

@@ -61,6 +61,9 @@ pub struct TargetResult {
     pub establishing_run: String,
     /// True when Cargo's fresh artifact and its complete proof receipt matched.
     pub reused: bool,
+    /// True for an explicitly selected verification target; false for dependencies.
+    #[serde(default)]
+    pub requested: bool,
     /// True only for successful, complete target verification.
     pub complete: bool,
     /// Original report; its timing and provenance belong to `establishing_run`.

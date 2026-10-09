@@ -376,6 +376,7 @@ fn target_records(
     data: &Value,
     context: &str,
     force: bool,
+    expected: &BTreeSet<(String, String)>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
@@ -411,6 +412,10 @@ fn target_records(
             .map(str::to_owned)
             .collect();
         let package_id = artifact["package_id"].as_str().unwrap_or_default();
+        let requested = expected.iter().any(|(id, target)| {
+            id == package_id && target.replace('-', "_") == name.replace('-', "_")
+        });
+        let force = force && requested;
         let path = receipt_path(paths, package_id, name, &kind);
         let call = calls.iter().find(|c| {
             c.identity.manifest == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -460,6 +465,7 @@ fn target_records(
                 kind,
                 establishing_run: call.run_id.clone(),
                 reused: false,
+                requested,
                 complete: call.success,
                 report: call.report.clone(),
             });
@@ -503,6 +509,7 @@ fn target_records(
                 kind,
                 establishing_run: receipt.invocation.run_id,
                 reused: true,
+                requested,
                 complete: true,
                 report: receipt.invocation.report,
             });
@@ -520,6 +527,12 @@ fn target_records(
                     .as_str()
                     .is_some_and(|s| Path::new(s) == call.identity.manifest)
             });
+            let requested = package.is_some_and(|p| {
+                expected.iter().any(|(id, name)| {
+                    p["id"].as_str() == Some(id.as_str())
+                        && name.replace('-', "_") == call.identity.name
+                })
+            });
             results.push(TargetResult {
                 package_id: package
                     .and_then(|p| p["id"].as_str())
@@ -529,6 +542,7 @@ fn target_records(
                 kind: vec![call.identity.crate_type],
                 establishing_run: call.run_id,
                 reused: false,
+                requested,
                 complete: call.success,
                 report: call.report,
             });
@@ -794,7 +808,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     };
     json(&paths.runtime, &runtime)?;
     let mut exit = invoke(config, &paths, err)?;
-    let (mut targets, missing) = target_records(&paths, &data, &hash, forced)?;
+    let (mut targets, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
     if exit == Some(0) && !missing.is_empty() {
         clean(
             config,
@@ -804,7 +818,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
             .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
         exit = invoke(config, &paths, err)?;
-        let (retried, missing) = target_records(&paths, &data, &hash, forced)?;
+        let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
         targets = retried;
         if !missing.is_empty() {
             return Err(Error::new(
