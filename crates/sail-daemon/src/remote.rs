@@ -155,6 +155,7 @@ pub struct HttpClient {
     base: Url,
     token: String,
     metrics: Arc<Metrics>,
+    ca_hash: Option<[u8; 32]>,
 }
 
 #[derive(Default)]
@@ -199,6 +200,7 @@ impl HttpClient {
             .connect_timeout(timeout)
             .redirect(reqwest::redirect::Policy::none())
             .no_proxy();
+        let mut ca_hash = None;
         if let Some(path) = &config.ca_file {
             let pem = std::fs::read(path).map_err(|_| failure("cannot read private CA file"))?;
             if pem.len() > 1024 * 1024 {
@@ -206,6 +208,7 @@ impl HttpClient {
             }
             let certificate = reqwest::Certificate::from_pem(&pem)
                 .map_err(|_| failure("invalid private CA certificate"))?;
+            ca_hash = Some(sail_key::sha256(&pem));
             builder = builder.add_root_certificate(certificate);
         }
         let client = builder
@@ -216,7 +219,12 @@ impl HttpClient {
             base,
             token,
             metrics: Arc::new(Metrics::default()),
+            ca_hash,
         })
+    }
+
+    pub(crate) fn same_configuration(&self, other: &Self) -> bool {
+        self.base == other.base && self.token == other.token && self.ca_hash == other.ca_hash
     }
 
     pub(crate) fn retain_metrics(&mut self, previous: &Self) {

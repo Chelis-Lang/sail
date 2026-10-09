@@ -172,7 +172,14 @@ impl SharedTier {
         {
             new.retain_metrics(previous);
         }
-        let changed = current.as_ref().is_none_or(|r| r.endpoint != endpoint);
+        let changed = current.as_ref().is_none_or(|r| {
+            r.endpoint != endpoint
+                || match (&r.client, &client) {
+                    (Some(old), Some(new)) => !old.same_configuration(new),
+                    (None, None) => false,
+                    _ => true,
+                }
+        });
         *current = Some(Remote {
             loaded: Instant::now(),
             client: client.clone(),
@@ -394,6 +401,38 @@ mod http_tests {
     use super::*;
     use sail_cache::shared::{SecretKey, add_trusted, sign_entry};
     use std::io::{Read as _, Write as _};
+
+    #[test]
+    fn credential_rotation_clears_previous_transport_backoff() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let root = std::env::temp_dir().join(format!("sail-rotate-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let token = root.join("token");
+        std::fs::write(&token, "0123456789abcdef0123456789abcdef").unwrap();
+        std::fs::set_permissions(&token, std::fs::Permissions::from_mode(0o600)).unwrap();
+        crate::remote::connect(
+            &root,
+            &crate::remote::RemoteConfig {
+                endpoint: "http://127.0.0.1:1".to_owned(),
+                token_file: token.clone(),
+                ca_file: None,
+            },
+        )
+        .unwrap();
+        let tier = SharedTier::auto(None, &root);
+        assert!(tier.remote_client().is_some());
+        *tier.backoff_until.lock().unwrap() = Some(Instant::now() + Duration::from_secs(60));
+        let key = QueryKey([22; 32]);
+        tier.remember_miss(&key);
+        std::fs::write(&token, "fedcba9876543210fedcba9876543210").unwrap();
+        tier.remote.lock().unwrap().as_mut().unwrap().loaded =
+            Instant::now().checked_sub(TRUST_RELOAD).unwrap();
+        assert!(tier.remote_client().is_some());
+        assert!(!tier.backing_off());
+        assert!(!tier.recently_missed(&key));
+        let _ = std::fs::remove_dir_all(root);
+    }
 
     #[test]
     fn concurrent_readers_coalesce_one_http_lookup() {
