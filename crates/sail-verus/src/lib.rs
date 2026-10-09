@@ -11,6 +11,8 @@ pub mod attribution;
 pub mod corpus;
 pub mod diagnostics;
 pub mod patch;
+pub mod report;
+mod report_scope;
 pub mod run;
 pub mod rvt;
 pub mod source_build;

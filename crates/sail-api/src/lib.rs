@@ -10,6 +10,7 @@
 
 pub mod output;
 pub mod policy;
+pub mod project;
 pub mod protocol;
 pub mod schema;
 
