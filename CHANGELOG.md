@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add feature-scoped Singular source builds, validated runtime identities, and
+  an optional local conformance environment for integer-ring examples and the
+  pinned memory allocator.
+
 - Keep portfolio mode and seed provenance in compact MCP result lookups and
   summaries. Unknown summaries no longer infer an unobserved resource failure.
 
@@ -33,9 +37,6 @@ semantic versioning once the API is published.
 - Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
   selection, and isolated protocol-v4 cache namespaces (ADR 0020).
 
-- Add feature-scoped Singular source builds, validated runtime identities, and
-  an optional local conformance environment for integer-ring examples and the
-  pinned memory allocator.
 - Avoid adding a second progress-suppression flag to the deep suite example
   that supplies it itself. Verification arguments remain identical on both sides.
 

@@ -65,6 +65,8 @@ cargo nextest run --workspace
 
 The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automatically.
 
+## Portfolio and fragility
+
 An explicit seed portfolio can try independent complete verification runs:
 
 ```sh
