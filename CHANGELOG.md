@@ -8,6 +8,9 @@ semantic versioning once the API is published.
 - Add feature-scoped Singular source builds, validated runtime identities, and
   an optional local conformance environment for integer-ring examples and the
   pinned memory allocator.
+- Avoid adding a second progress-suppression flag to the deep suite example
+  that supplies it itself. Verification arguments remain identical on both sides.
+
 - Exclude overlapping deep suites and source rebuilds with exclusive build
   ownership; reject concurrency before materialized input cleanup.
 
