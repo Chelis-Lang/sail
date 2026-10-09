@@ -67,7 +67,7 @@ bootstrap pushes (ADR 0002).
 
 In PR mode:
 - `main` is protected, and every change lands through a squash-merged PR.
-- Five checks are required (see Gates). Admins are not exempt.
+- Six checks are required (see Gates). Admins are not exempt.
 - Protection is applied by `cargo xtask protect-main`, which is idempotent.
 
 **Keep `main` green.**
@@ -144,12 +144,15 @@ gate commands in `ci/run.sh`. `cargo xtask fetch-verus` installs the pinned
 Verus for host runs.
 
 **Required on every PR** (branch protection): `No AI authorship markers`,
-`Workspace gate`, `Solver tests`, `End to end`, `Conformance`.
+`Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
+The completion guard runs even when another job fails and requires every
+gate, including image creation, to have succeeded. Branches must be current
+with `main` before merging.
 
 **Testing tiers** (charter §Engineering practice). CI runs only the fast
 tier, and every CI job must finish well inside 10 minutes. Anything longer
 is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
-- *Fast (CI, every PR):* the five required checks above.
+- *Fast (CI, every PR):* the six required checks above.
 - *Standard (local):* `ci/local.sh conformance fast`, then
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
   changes to the shim, cache, daemon, keys or harness, and put the summary

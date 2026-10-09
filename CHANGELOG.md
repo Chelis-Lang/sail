@@ -17,6 +17,10 @@ semantic versioning once the API is published.
     difference.
   - `ci/run.sh deep-rvt [cache]` (local-only) runs both, optionally also
     with the cache daemon.
+- Required `CI completion` rejects failed, cancelled and skipped gates,
+  including CI image failures. Branch protection requires an updated branch;
+  every CI job now has at most ten minutes.
+
 - A shared cache tier (ADR 0017, `docs/trust.md`). Its entries are signed
   with ed25519 and verified before use. Each signature binds the key, the
   reply hash, the command, the solver identity, the platform class, the
