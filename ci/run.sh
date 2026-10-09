@@ -44,6 +44,7 @@ release_build() {
 
 case "$step" in
   gate)
+    bash ci/test-completion.sh
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
