@@ -191,3 +191,21 @@ Constraints:
   `docs/divergences.md` (rule 8). This ADR adds measurement only.
 - **Shuffling is available but off by default.** Its configurations are
   labelled in every report.
+
+## Function reports (2026-10-09)
+
+`--measure-fragility` is an explicit, local-only verification option. It captures
+baseline sessions in pass-through mode and joins their full input SHA-256 and
+ordered check sequence to AIR/transcript obligations. No function name is guessed
+from timing or the number of positive-effort functions. Advisory checks are not
+counted as primary proof obligations. A function score requires every primary
+obligation to be covered and every replay to be complete; missing evidence stays
+null with notes. Count a configuration as proving the function only if all its
+primary obligations prove together. Keep the schema's fraction-not-proving score
+separate from the census's existing effort-pressure and disagreement scores.
+
+These are captured-prefix replays, not independent seeded Verus proofs. They do
+not change the baseline verdict. The complete-run portfolio remains the only mode
+that selects a different seeded proof. Ordinary verification runs no replay.
+The fragility MCP response also carries an attributed verification report when
+capturing fresh runs; trace-only measurements cannot invent verification results.

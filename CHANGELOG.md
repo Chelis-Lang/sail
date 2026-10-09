@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Join fragility captures to functions by exact transcript hashes and check
+  order; expose conservative function scores in JSON and MCP on request.
+
 - Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
   selection, and isolated protocol-v2 cache namespaces (ADR 0020).
 

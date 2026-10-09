@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 mod fragility;
+mod fragility_join;
 mod ops;
 mod portfolio;
 mod report;

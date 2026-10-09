@@ -134,6 +134,7 @@ fn run_schema() -> Value {
             "package": string_schema("Verify only this workspace package (`-p`)."),
             "module": string_schema("Verify only this module and its descendants, relative to the crate root (Verus `--verify-module`, e.g. `arith` or `foo::bar`)."),
             "function": string_schema("Verify only this function (Verus `--verify-function`: a unique substring of the name, or a pattern with `*` at either end). It is looked up in `module`, or in the crate root if no module is given."),
+            "measure_fragility": {"type": "boolean", "description": "Opt-in local solver replays to attach function fragility scores. Can take much longer than ordinary verification."},
             "portfolio": {"type": "string", "enum": ["accept-first-proof"], "description": "Explicit opt-in: run complete independent Verus attempts and accept the first complete proof. May take much longer; records every attempt."},
             "cargo_args": list_schema("Extra `cargo verus verify` arguments (before `--`), e.g. [\"--release\"]."),
             "verus_args": list_schema("Extra Verus arguments (after `--`), e.g. [\"--rlimit\", \"30\"]."),

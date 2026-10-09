@@ -230,3 +230,17 @@ ordered seeds, each independent attempt (report, exit, timing, infrastructure
 error and verbatim stderr), and `winner_seed`. Every selected function's
 provenance includes `configuration.seed`. Baseline seed 0 denotes unchanged
 solver defaults. Ordinary reports omit these optional fields.
+
+`--measure-fragility` explicitly measures solver replay configurations and writes
+JSON (`--fragility-seeds N`, default 8). Each function's existing `fragility`
+field is set only when its exact transcript input hash and ordered AIR checks
+cover every primary obligation. `proved` counts configurations proving every
+primary obligation together; `score = 1 - proved/runs`. It differs from the
+census's per-check effort-pressure/disagreement metric. Missing mappings,
+ambiguous sessions and incomplete replays leave the field null with notes.
+Verdicts remain those of the baseline run. A replay score is not a complete-run
+seeded proof; only the portfolio mode can select such a proof.
+
+The MCP verify tool accepts `measure_fragility: true`. The existing fragility
+tool also includes an optional `verification` report with the same function
+scores. Normal verification performs no replay measurement.

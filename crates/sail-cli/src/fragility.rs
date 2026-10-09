@@ -25,6 +25,7 @@
 //! instead of running Verus.
 
 use std::ffi::OsString;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -198,6 +199,9 @@ struct JsonOutput<'a> {
     attributed: bool,
     /// The fragility report.
     report: &'a Report,
+    /// The unchanged baseline verification report, with attributed scores.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    verification: Option<&'a sail_api::output::Report>,
 }
 
 fn fail(err: &mut dyn std::io::Write, code: &str, msg: &str) -> ExitCode {
@@ -209,6 +213,8 @@ fn fail(err: &mut dyn std::io::Write, code: &str, msg: &str) -> ExitCode {
 struct Captured {
     exit_code: Option<i32>,
     functions: Vec<VerusFunction>,
+    logs: Vec<sail_verus::attribution::LogFile>,
+    verification: sail_api::output::Report,
 }
 
 /// Runs `cargo verus <subcommand>` through the shim with tracing into
@@ -221,20 +227,48 @@ fn capture(
     dir: &Path,
     args: &[String],
 ) -> Result<Captured, String> {
+    let logs_dir = dir.join("logs");
+    let unavailable = crate::verify::logs_unavailable(args);
     let output = Command::new(cargo_verus)
         .arg("verus")
         .arg(subcommand)
-        .args(with_verus_flags(args).iter().map(OsString::from))
+        .args(
+            crate::verify::logged_args(&with_verus_flags(args), unavailable.is_none(), &logs_dir)
+                .iter()
+                .map(OsString::from),
+        )
         .env("VERUS_Z3_PATH", shim)
         .env("SAIL_Z3_PATH", z3)
         .env("SAIL_TRACE_DIR", dir)
+        .env("SAIL_SOLVER_MODE", "default")
         .env_remove("SAIL_DAEMON_SOCKET")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .output()
         .map_err(|e| format!("cannot run {}: {e}", cargo_verus.display()))?;
+    let (docs, _) = sail_verus::attribution::json_documents(&output.stdout);
+    let logs = sail_verus::attribution::read_logs(&logs_dir).unwrap_or_default();
+    let attribution = sail_verus::attribution::attribute(
+        &docs,
+        Some(&logs),
+        &sail_verus::attribution::Provenance::NoCache,
+        unavailable.as_deref(),
+    );
+    let diagnostics = sail_verus::diagnostics::parse(&String::from_utf8_lossy(&output.stderr));
+    let verification = crate::report::build(&crate::report::Inputs {
+        args,
+        exit_code: output.status.code(),
+        solver_path: Some(z3.to_string_lossy().into_owned()),
+        solver_sha256: crate::verify::file_sha256(z3),
+        daemon: false,
+        attribution: &attribution,
+        diagnostics: &diagnostics,
+    });
+    let _ = std::io::stderr().write_all(&output.stderr);
     Ok(Captured {
+        logs,
+        verification,
         exit_code: output.status.code(),
         functions: verus_functions(&output.stdout),
     })
@@ -330,7 +364,15 @@ pub fn fragility(
         let _ = std::fs::remove_dir_all(&dir);
     }
     match result {
-        Ok((report, attributed)) => print(&a, &report, attributed, captured.as_ref(), out, err),
+        Ok((report, attributed, verification)) => print(
+            &a,
+            &report,
+            attributed,
+            captured.as_ref(),
+            verification.as_ref(),
+            out,
+            err,
+        ),
         Err(e) => fail(err, "SAIL0112", &e),
     }
 }
@@ -341,6 +383,7 @@ fn print(
     report: &Report,
     attributed: bool,
     captured: Option<&Captured>,
+    verification: Option<&sail_api::output::Report>,
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
@@ -352,6 +395,7 @@ fn print(
             verus_functions: captured.map(|c| c.functions.as_slice()).unwrap_or_default(),
             attributed,
             report,
+            verification,
         };
         match serde_json::to_string_pretty(&doc) {
             Ok(text) => {
@@ -371,7 +415,7 @@ fn print(
                 if attributed {
                     "yes"
                 } else {
-                    "no (more than one function; see ADR 0018)"
+                    "no (exact AIR/transcript mapping unavailable)"
                 }
             );
         }
@@ -385,7 +429,7 @@ fn measure(
     z3: &Path,
     dir: &Path,
     captured: Option<&Captured>,
-) -> Result<(Report, bool), String> {
+) -> Result<(Report, bool, Option<sail_api::output::Report>), String> {
     let found = sessions::discover(dir).map_err(|e| e.to_string())?;
     if found.is_empty() {
         return Err(format!(
@@ -406,17 +450,14 @@ fn measure(
     };
     let mut report =
         fragility::measure(&solver, &found, &a.options, |_, _| {}).map_err(|e| e.to_string())?;
-    let names: Vec<String> = captured
-        .map(|c| {
-            c.functions
-                .iter()
-                .filter(|f| f.rlimit > 0)
-                .map(|f| f.function.clone())
-                .collect()
-        })
-        .unwrap_or_default();
-    let attributed = fragility::attribute_single_function(&mut report, &names);
-    Ok((report, attributed))
+    let verification = captured.map(|c| {
+        let mut verification = c.verification.clone();
+        crate::fragility_join::attach(&mut verification, &mut report, &found, &c.logs);
+        verification
+    });
+    let attributed =
+        !report.checks.is_empty() && report.checks.iter().all(|c| c.function.is_some());
+    Ok((report, attributed, verification))
 }
 
 #[cfg(test)]

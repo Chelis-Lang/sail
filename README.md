@@ -80,3 +80,13 @@ Projects invoked directly through Verus can use the same portfolio with
 `--verus-source path/to/lib.rs -- <Verus flags>`. The pinned Verus launcher
 runs the complete requested scope independently on each attempt; Cargo target
 cleanup applies only to Cargo projects.
+
+For function scores in a verification report, request measurement explicitly:
+
+```sh
+sail verify --measure-fragility --fragility-seeds 8 --output json
+```
+
+This runs baseline verification without cached replies, then replays its exact
+solver sessions. It can be expensive and is local-only; ordinary verification
+runs no census. Incomplete or ambiguous attribution is reported as unavailable.
