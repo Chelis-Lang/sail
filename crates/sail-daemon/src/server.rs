@@ -282,6 +282,7 @@ impl State {
         key: &QueryKey,
         solver: &Solver,
     ) -> Option<Arc<Value>> {
+        shared.description()?;
         let lookup = shared.lookup(key, solver);
         if !matches!(lookup, Lookup::Skipped) {
             self.stats.shared_lookups.fetch_add(1, Ordering::Relaxed);
@@ -291,6 +292,10 @@ impl State {
             Lookup::Miss => return None,
             Lookup::Skipped => {
                 self.stats.shared_skipped.fetch_add(1, Ordering::Relaxed);
+                return None;
+            }
+            Lookup::Unavailable => {
+                self.shared_log("shared store unavailable; lookups backing off");
                 return None;
             }
             Lookup::Timeout => {
@@ -427,15 +432,20 @@ impl State {
                 entries: queued,
                 bytes: queued_bytes,
             },
-            shared: self.shared.as_ref().map(|s| {
-                let c = s.config();
-                SharedInfo {
-                    store: c.store.display().to_string(),
-                    trust_dir: c.trust_dir.display().to_string(),
-                    trusted_keys: s.trusted().0.ids(),
-                    timeout_ms: u64::try_from(c.timeout.as_millis()).unwrap_or(u64::MAX),
-                }
-            }),
+            shared: self
+                .shared
+                .as_ref()
+                .filter(|s| s.description().is_some())
+                .map(|s| {
+                    let c = s.config();
+                    SharedInfo {
+                        store: s.description().unwrap_or_default(),
+                        trust_dir: c.trust_dir.display().to_string(),
+                        trusted_keys: s.trusted().0.ids(),
+                        timeout_ms: u64::try_from(c.timeout.as_millis()).unwrap_or(u64::MAX),
+                        remote: s.remote_info(),
+                    }
+                }),
         }
     }
 
@@ -610,7 +620,7 @@ pub fn bind(
         writer: Writer::new(config.queue_bytes),
         identities: Mutex::new(HashMap::new()),
         stats: counters,
-        shared: config.shared.clone().map(SharedTier::new),
+        shared: Some(SharedTier::auto(config.shared.clone(), cache_root)),
         shared_logged: AtomicU64::new(0),
         log: Log::open(config.log.as_deref()),
         started: Instant::now(),
@@ -620,12 +630,14 @@ pub fn bind(
         active: AtomicU64::new(0),
         last_activity: Mutex::new(Instant::now()),
     });
-    if let Some(shared) = &state.shared {
+    if let Some(shared) = &state.shared
+        && shared.description().is_some()
+    {
         let c = shared.config();
         let (keys, problems) = shared.trusted();
         state.log.line(&format!(
             "shared tier: store {}, trust {} ({} keys: {}), timeout {} ms",
-            c.store.display(),
+            shared.description().unwrap_or_default(),
             c.trust_dir.display(),
             keys.len(),
             keys.ids().join(", "),

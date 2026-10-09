@@ -172,21 +172,7 @@ fn status_text(
                 human(i.queue.bytes),
                 human(i.queue.capacity_bytes)
             );
-            match &i.shared {
-                Some(s) => {
-                    let _ = writeln!(
-                        t,
-                        "  shared tier  {}, {} trusted keys ({}), timeout {} ms",
-                        s.store,
-                        s.trusted_keys.len(),
-                        s.trust_dir,
-                        s.timeout_ms
-                    );
-                }
-                None => {
-                    let _ = writeln!(t, "  shared tier  off");
-                }
-            }
+            shared_status(&mut t, i.shared.as_ref());
         }
         None => {
             let _ = writeln!(
@@ -460,6 +446,9 @@ pub fn cache(
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
+    if let Some(code) = crate::remote_cache::cache(args, out, err) {
+        return code;
+    }
     let a = match parse_cache_args(args) {
         Ok(a) => a,
         Err(e) => {
@@ -543,6 +532,35 @@ pub fn cache(
                 ExitCode::from(1)
             }
         },
+    }
+}
+
+fn shared_status(t: &mut String, shared: Option<&sail_api::protocol::SharedInfo>) {
+    match shared {
+        Some(s) => {
+            let _ = writeln!(
+                t,
+                "  shared tier  {}, {} trusted keys ({}), timeout {} ms",
+                s.store,
+                s.trusted_keys.len(),
+                s.trust_dir,
+                s.timeout_ms
+            );
+            if let Some(remote) = &s.remote {
+                let _ = writeln!(
+                    t,
+                    "  remote       {} requests, {} auth refused, {} unavailable, {} coalesced; last {}",
+                    remote.requests,
+                    remote.auth_refused,
+                    remote.unavailable,
+                    remote.coalesced,
+                    remote.last_status.as_deref().unwrap_or("none")
+                );
+            }
+        }
+        None => {
+            let _ = writeln!(t, "  shared tier  off");
+        }
     }
 }
 

@@ -1,0 +1,367 @@
+//! Optional authenticated HTTP shared-store transport and private reader configuration.
+//! No client or runtime is constructed until a remote store is configured.
+
+use std::io::{Read as _, Write as _};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use reqwest::blocking::Client;
+use reqwest::{StatusCode, Url};
+use sail_cache::shared::{MAX_ENTRY_BYTES, PublicKey, Solver};
+use sail_key::QueryKey;
+use serde::{Deserialize, Serialize};
+
+/// Private configuration filename beneath the local cache root.
+pub const CONFIG_FILE: &str = "sail-remote.json";
+
+/// Reader settings. Credentials are referenced by file, never stored inline.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RemoteConfig {
+    /// HTTPS endpoint, or literal loopback HTTP endpoint for local use.
+    pub endpoint: String,
+    /// Owner-only bearer credential file.
+    pub token_file: PathBuf,
+    /// Optional PEM certificate authority for private deployments.
+    pub ca_file: Option<PathBuf>,
+}
+
+fn failure(message: &str) -> String {
+    format!("SAIL0650: {message}")
+}
+
+/// Validates an endpoint without accepting URL credentials, queries or fragments.
+/// HTTP is permitted only for literal loopback IP addresses.
+///
+/// # Errors
+/// The endpoint is malformed or does not satisfy the transport policy.
+pub fn endpoint(text: &str) -> Result<Url, String> {
+    let mut url = Url::parse(text).map_err(|_| failure("invalid shared endpoint"))?;
+    let loopback = url.host_str().is_some_and(|h| {
+        h.trim_matches(['[', ']'])
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|ip| ip.is_loopback())
+    });
+    if !(url.scheme() == "https" || url.scheme() == "http" && loopback)
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return Err(failure(
+            "use HTTPS (HTTP only on literal loopback), without URL credentials, query or fragment",
+        ));
+    }
+    if !url.path().ends_with('/') {
+        let path = format!("{}/", url.path());
+        url.set_path(&path);
+    }
+    Ok(url)
+}
+
+/// Reads a bounded owner-only credential file, refusing symlinks and blank tokens.
+///
+/// # Errors
+/// The file is unsafe, unreadable or malformed.
+pub fn read_token(path: &Path) -> Result<String, String> {
+    let meta =
+        std::fs::symlink_metadata(path).map_err(|_| failure("cannot read credential file"))?;
+    if !meta.is_file() || meta.len() > 4096 {
+        return Err(failure(
+            "credential must be a regular file of at most 4096 bytes",
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        if meta.permissions().mode() & 0o077 != 0 {
+            return Err(failure("credential file must be private (chmod 600)"));
+        }
+    }
+    let text = std::fs::read_to_string(path).map_err(|_| failure("cannot read credential file"))?;
+    let token = text.trim();
+    if token.len() < 16
+        || !token
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+    {
+        return Err(failure(
+            "credential must contain at least 16 token characters",
+        ));
+    }
+    Ok(token.to_owned())
+}
+
+/// Loads optional remote reader settings. Invalid settings fail safe.
+///
+/// # Errors
+/// A present configuration is invalid or unreadable.
+pub fn load(root: &Path) -> Result<Option<RemoteConfig>, String> {
+    let path = root.join(CONFIG_FILE);
+    let data = match std::fs::read(&path) {
+        Ok(d) if d.len() <= 16 * 1024 => d,
+        Ok(_) => return Err(failure("remote configuration is too large")),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err(failure("cannot read remote configuration")),
+    };
+    let config: RemoteConfig =
+        serde_json::from_slice(&data).map_err(|_| failure("invalid remote configuration"))?;
+    endpoint(&config.endpoint)?;
+    Ok(Some(config))
+}
+
+/// Saves settings atomically, validating credentials and TLS setup first.
+///
+/// # Errors
+/// Validation or private configuration persistence fails.
+pub fn connect(root: &Path, config: &RemoteConfig) -> Result<(), String> {
+    HttpClient::new(config, Duration::from_millis(250))?;
+    std::fs::create_dir_all(root).map_err(|_| failure("cannot create cache root"))?;
+    let path = root.join(CONFIG_FILE);
+    let tmp = root.join(format!(".sail-remote-{}.tmp", std::process::id()));
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(0o600);
+    }
+    let data = serde_json::to_vec(config).map_err(|_| failure("cannot encode remote settings"))?;
+    let result = options
+        .open(&tmp)
+        .and_then(|mut f| f.write_all(&data))
+        .and_then(|()| std::fs::rename(&tmp, &path));
+    let _ = std::fs::remove_file(tmp);
+    result.map_err(|_| failure("cannot save remote settings"))
+}
+
+/// Removes remote settings, leaving local entries and signing trust intact.
+///
+/// # Errors
+/// A present configuration cannot be removed.
+pub fn disconnect(root: &Path) -> Result<(), String> {
+    match std::fs::remove_file(root.join(CONFIG_FILE)) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(failure("cannot remove remote configuration")),
+    }
+}
+
+/// A pooled HTTP client. Debug deliberately excludes endpoint and credentials.
+#[derive(Clone)]
+pub struct HttpClient {
+    client: Client,
+    base: Url,
+    token: String,
+    metrics: Arc<Metrics>,
+}
+
+#[derive(Default)]
+struct Metrics {
+    requests: AtomicU64,
+    auth: AtomicU64,
+    unavailable: AtomicU64,
+    last: Mutex<Option<String>>,
+}
+
+impl std::fmt::Debug for HttpClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("HttpClient(<private configuration>)")
+    }
+}
+
+/// An authenticated publication's outcome.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Published {
+    /// New entry committed.
+    Created,
+    /// Identical entry already present.
+    Present,
+    /// Another valid publication owns this path.
+    Conflict,
+}
+
+impl HttpClient {
+    /// Constructs a TLS-validating client with one whole-request deadline.
+    ///
+    /// # Errors
+    /// The endpoint, credential, CA or HTTP client is invalid.
+    pub fn new(config: &RemoteConfig, timeout: Duration) -> Result<Self, String> {
+        let base = endpoint(&config.endpoint)?;
+        let token = read_token(&config.token_file)?;
+        if rustls::crypto::CryptoProvider::get_default().is_none() {
+            // Concurrent readers may race installation; either winner installs the same provider.
+            let _ = rustls::crypto::ring::default_provider().install_default();
+        }
+        let mut builder = Client::builder()
+            .timeout(timeout)
+            .connect_timeout(timeout)
+            .redirect(reqwest::redirect::Policy::none())
+            .no_proxy();
+        if let Some(path) = &config.ca_file {
+            let pem = std::fs::read(path).map_err(|_| failure("cannot read private CA file"))?;
+            if pem.len() > 1024 * 1024 {
+                return Err(failure("private CA file is too large"));
+            }
+            let certificate = reqwest::Certificate::from_pem(&pem)
+                .map_err(|_| failure("invalid private CA certificate"))?;
+            builder = builder.add_root_certificate(certificate);
+        }
+        let client = builder
+            .build()
+            .map_err(|_| failure("cannot initialize HTTP transport"))?;
+        Ok(Self {
+            client,
+            base,
+            token,
+            metrics: Arc::new(Metrics::default()),
+        })
+    }
+
+    pub(crate) fn retain_metrics(&mut self, previous: &Self) {
+        self.metrics = Arc::clone(&previous.metrics);
+    }
+
+    /// Sanitized transport state, suitable for status output.
+    #[must_use]
+    pub fn info(&self) -> sail_api::protocol::RemoteInfo {
+        sail_api::protocol::RemoteInfo {
+            endpoint: self.base.to_string(),
+            last_status: self.metrics.last.lock().ok().and_then(|v| v.clone()),
+            requests: self.metrics.requests.load(Ordering::Relaxed),
+            auth_refused: self.metrics.auth.load(Ordering::Relaxed),
+            unavailable: self.metrics.unavailable.load(Ordering::Relaxed),
+            coalesced: 0,
+        }
+    }
+
+    fn record(&self, status: &str, unavailable: bool) {
+        if let Ok(mut current) = self.metrics.last.lock() {
+            *current = Some(status.to_owned());
+        }
+        if unavailable {
+            self.metrics.unavailable.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    /// Relative format-v2 path, using only validated solver identity fields.
+    #[must_use]
+    pub fn entry_path(solver: &Solver, key: &QueryKey) -> Option<String> {
+        if !solver.well_formed() {
+            return None;
+        }
+        let key = key.to_string();
+        Some(format!(
+            "v2/{}/{}/{}/{}",
+            solver.platform,
+            solver.binary_sha256,
+            key.get(..2)?,
+            key
+        ))
+    }
+
+    /// Fetches bounded bytes. Authentication, HTTP and transport failures are unavailable stores.
+    ///
+    /// # Errors
+    /// The store is unavailable or the response exceeds the limit.
+    pub fn get(&self, solver: &Solver, key: &QueryKey) -> Result<Option<Vec<u8>>, String> {
+        let path =
+            Self::entry_path(solver, key).ok_or_else(|| failure("invalid solver identity"))?;
+        let url = self
+            .base
+            .join(&path)
+            .map_err(|_| failure("invalid entry path"))?;
+        self.metrics.requests.fetch_add(1, Ordering::Relaxed);
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(&self.token)
+            .header("Accept-Encoding", "identity")
+            .send()
+            .map_err(|e| {
+                self.record(
+                    if e.is_timeout() {
+                        "timeout"
+                    } else {
+                        "unavailable"
+                    },
+                    true,
+                );
+                failure("shared store unavailable")
+            })?;
+        if response.status() == StatusCode::NOT_FOUND {
+            self.record("not-found", false);
+            return Ok(None);
+        }
+        if response.status() != StatusCode::OK
+            || response.headers().contains_key("content-encoding")
+        {
+            let status = response.status();
+            if status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN {
+                self.metrics.auth.fetch_add(1, Ordering::Relaxed);
+            }
+            self.record(&format!("http-{}", status.as_u16()), true);
+            return Err(failure("shared store rejected lookup"));
+        }
+        if response
+            .content_length()
+            .is_some_and(|n| n > MAX_ENTRY_BYTES)
+        {
+            self.record("oversized-response", true);
+            return Err(failure("shared response exceeds entry limit"));
+        }
+        let mut bytes = Vec::new();
+        response
+            .take(MAX_ENTRY_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| {
+                self.record("interrupted-response", true);
+                failure("shared response interrupted")
+            })?;
+        if bytes.len() as u64 > MAX_ENTRY_BYTES {
+            self.record("oversized-response", true);
+            return Err(failure("shared response exceeds entry limit"));
+        }
+        self.record("ok", false);
+        Ok(Some(bytes))
+    }
+
+    /// Uploads a signed entry. The supplied public key checks publication integrity,
+    /// and does not grant trust to any reader.
+    ///
+    /// # Errors
+    /// Publication fails, or the store refuses the upload.
+    pub fn put(
+        &self,
+        solver: &Solver,
+        key: &QueryKey,
+        data: Vec<u8>,
+        public: &PublicKey,
+    ) -> Result<Published, String> {
+        if data.len() as u64 > MAX_ENTRY_BYTES {
+            return Err(failure("publication exceeds entry limit"));
+        }
+        let path =
+            Self::entry_path(solver, key).ok_or_else(|| failure("invalid solver identity"))?;
+        let url = self
+            .base
+            .join(&path)
+            .map_err(|_| failure("invalid entry path"))?;
+        let response = self
+            .client
+            .put(url)
+            .bearer_auth(&self.token)
+            .header("sail-public-key", public.to_text().trim())
+            .header("Content-Type", "application/octet-stream")
+            .body(data)
+            .send()
+            .map_err(|_| failure("shared publication unavailable"))?;
+        match response.status() {
+            StatusCode::CREATED => Ok(Published::Created),
+            StatusCode::NO_CONTENT => Ok(Published::Present),
+            StatusCode::CONFLICT => Ok(Published::Conflict),
+            _ => Err(failure("shared publication refused")),
+        }
+    }
+}
