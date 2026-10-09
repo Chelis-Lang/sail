@@ -2,6 +2,7 @@
 
 use super::input::InputSnapshot;
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -59,6 +60,10 @@ impl Observation {
             };
         };
         let mut complete = true;
+        // A file/config watch can share a directory with a package root.
+        // Register that directory once: recursive coverage must never be
+        // downgraded by a later nonrecursive subscription.
+        let mut directories = BTreeMap::<PathBuf, bool>::new();
         for root in snapshot.roots.iter().chain(extra) {
             let path = if root.is_dir() {
                 root.as_path()
@@ -67,15 +72,19 @@ impl Observation {
             };
             let existing = path.ancestors().find(|p| p.is_dir());
             if let Some(path) = existing {
-                let mode = if root.is_dir() {
-                    RecursiveMode::Recursive
-                } else {
-                    RecursiveMode::NonRecursive
-                };
-                complete &= watcher.watch(path, mode).is_ok();
+                let path = path.canonicalize().unwrap_or_else(|_| path.to_owned());
+                *directories.entry(path).or_default() |= root.is_dir();
             } else {
                 complete = false;
             }
+        }
+        for (path, recursive) in directories {
+            let mode = if recursive {
+                RecursiveMode::Recursive
+            } else {
+                RecursiveMode::NonRecursive
+            };
+            complete &= watcher.watch(&path, mode).is_ok();
         }
         // Native observation errors prevent reuse even if all final bytes match.
         if lost.load(Ordering::Acquire) {
@@ -104,12 +113,17 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("sail-observation-test-{}", std::process::id()));
         assert!(std::fs::create_dir_all(&root).is_ok());
-        let source = root.join("lib.rs");
+        assert!(std::fs::create_dir_all(root.join("src")).is_ok());
+        let source = root.join("src/lib.rs");
         assert!(std::fs::write(&source, "original").is_ok());
         let snapshot = InputSnapshot {
             workspace: root.clone(),
             revision: String::new(),
-            roots: vec![root.clone()],
+            roots: vec![
+                root.clone(),
+                root.join("rust-toolchain.toml"),
+                root.join(".cargo/config"),
+            ],
             complete: true,
         };
         let observation = Observation::begin(&snapshot, &[], &root.join("cache"));
