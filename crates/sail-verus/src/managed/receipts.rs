@@ -44,6 +44,7 @@ pub(crate) struct Invocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Receipt {
     pub version: u32,
+    pub checksum: String,
     pub package_id: String,
     pub name: String,
     pub kind: Vec<String>,
@@ -53,8 +54,15 @@ pub(crate) struct Receipt {
 }
 
 impl Receipt {
+    pub(crate) fn seal(mut self) -> Self {
+        self.checksum = String::new();
+        self.checksum = digest(&serde_json::to_vec(&self).unwrap_or_default());
+        self
+    }
     pub(crate) fn valid(&self, context: &str) -> bool {
+        let checksum = self.clone().seal().checksum;
         self.version == 1
+            && self.checksum == checksum
             && self.context == context
             && self.invocation.success
             && complete(&self.invocation.report)
@@ -90,4 +98,57 @@ pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, Str
 
 pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
     serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sail_api::output::CrateReport;
+    #[test]
+    fn receipt_rejects_corruption_changed_artifact_and_wrong_context() {
+        let path = std::env::temp_dir().join(format!("sail-receipt-test-{}", std::process::id()));
+        assert!(std::fs::write(&path, "artifact").is_ok());
+        let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");
+        report.error = None;
+        report.exit_code = Some(0);
+        report.crates.push(CrateReport {
+            name: Some("input".to_owned()),
+            verus: sail_api::output::VerusResults {
+                verified: Some(0),
+                errors: Some(0),
+                success: Some(true),
+                encountered_vir_error: Some(false),
+            },
+            functions: Vec::new(),
+        });
+        let receipt = Receipt {
+            version: 1,
+            checksum: String::new(),
+            package_id: "input".to_owned(),
+            name: "input".to_owned(),
+            kind: vec!["lib".to_owned()],
+            context: "ctx".to_owned(),
+            invocation: Invocation {
+                identity: TargetIdentity {
+                    manifest: PathBuf::from("Cargo.toml"),
+                    name: "input".to_owned(),
+                    crate_type: "lib".to_owned(),
+                    rustc_args_sha256: "args".to_owned(),
+                },
+                run_id: "run".to_owned(),
+                report,
+                success: true,
+            },
+            artifact_hashes: artifact_hashes(std::slice::from_ref(&path)).unwrap_or_default(),
+        }
+        .seal();
+        assert!(receipt.valid("ctx"));
+        assert!(!receipt.valid("different"));
+        let mut corrupt = receipt.clone();
+        corrupt.invocation.report.mode = "other".to_owned();
+        assert!(!corrupt.valid("ctx"));
+        assert!(std::fs::write(&path, "tampered").is_ok());
+        assert!(!receipt.valid("ctx"));
+        assert!(std::fs::remove_file(path).is_ok());
+    }
 }

@@ -45,6 +45,7 @@ struct Paths {
     receipts: PathBuf,
     runtime: PathBuf,
     run: PathBuf,
+    build_inputs: PathBuf,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -66,6 +67,10 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "The context explicitly enumerates all executable and environment bindings."
+)]
 fn context(config: &Config, data: &Value) -> Result<String> {
     let mut identity = Vec::new();
     for path in [
@@ -82,7 +87,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         wrapper.to_string_lossy().into_owned(),
         file_digest(&wrapper)?,
     ));
-    let mut environment: BTreeMap<String, String> = std::env::vars_os()
+    let mut environment: BTreeMap<Vec<u8>, Vec<u8>> = std::env::vars_os()
         .filter(|(k, _)| {
             let key = k.to_string_lossy();
             ![
@@ -100,13 +105,49 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             .contains(&key.as_ref())
                 && !key.starts_with("SAIL_MANAGED_")
         })
-        .map(|(k, v)| {
-            (
-                k.to_string_lossy().into_owned(),
-                v.to_string_lossy().into_owned(),
-            )
-        })
+        .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
         .collect();
+    let actual = Command::new("rustc")
+        .args(["--print", "sysroot"])
+        .current_dir(&config.workspace)
+        .output()
+        .map_err(|e| Error::new("SAIL3104", format!("cannot identify Rust toolchain: {e}")))?;
+    if !actual.status.success() {
+        return Err(Error::new(
+            "SAIL3104",
+            String::from_utf8_lossy(&actual.stderr),
+        ));
+    }
+    let sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
+    for path in [
+        sysroot.join("bin/rustc"),
+        sysroot.join("bin/cargo"),
+        config.cargo_verus.with_file_name("rust_verify"),
+    ] {
+        if path.is_file() {
+            identity.push((path.to_string_lossy().into_owned(), file_digest(&path)?));
+        }
+    }
+    for directory in [
+        sysroot.join("lib"),
+        sysroot
+            .join("lib/rustlib")
+            .join(crate::toolchain::host())
+            .join("lib"),
+    ] {
+        for item in std::fs::read_dir(directory).into_iter().flatten().flatten() {
+            let name = item.file_name().to_string_lossy().into_owned();
+            if name.starts_with("librustc_driver")
+                || name.starts_with("libLLVM")
+                || name.starts_with("librustc_codegen_llvm")
+            {
+                identity.push((
+                    item.path().to_string_lossy().into_owned(),
+                    file_digest(&item.path())?,
+                ));
+            }
+        }
+    }
     // The exact Cargo configuration bytes join the context, not only its path.
     let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
     for parent in workspace.ancestors() {
@@ -118,13 +159,21 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         ] {
             let path = parent.join(file);
             if path.is_file() {
-                environment.insert(path.to_string_lossy().into_owned(), file_digest(&path)?);
+                environment.insert(
+                    path.as_os_str().as_encoded_bytes().to_vec(),
+                    file_digest(&path)?.into_bytes(),
+                );
             }
         }
     }
     Ok(digest(
-        &serde_json::to_vec(&(1, &config.args, identity, environment))
-            .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
+        &serde_json::to_vec(&(
+            1,
+            &config.args,
+            identity,
+            environment.into_iter().collect::<Vec<_>>(),
+        ))
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     ))
 }
 
@@ -160,6 +209,7 @@ fn prepare(config: &Config, workspace: &Path, hash: &str, run_id: &str) -> Resul
         proxy_alias: context.join("sail-verus-driver"),
         receipts: context.join("receipts"),
         runtime: context.join("runtime.json"),
+        build_inputs: context.join("build-inputs.json"),
         run: context.join("runs").join(run_id),
     };
     for dir in [
@@ -246,8 +296,7 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
     let stdout = child.stdout.take().map(|mut pipe| {
         std::thread::spawn(move || {
             let mut bytes = Vec::new();
-            let _ = pipe.read_to_end(&mut bytes);
-            bytes
+            pipe.read_to_end(&mut bytes).map(|_| bytes)
         })
     });
     let mut captured = Vec::new();
@@ -269,14 +318,18 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
         .wait()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?
         .code();
-    let stdout = stdout.and_then(|h| h.join().ok()).unwrap_or_default();
+    let stdout = stdout
+        .ok_or_else(|| Error::new("SAIL3106", "missing Cargo output pipe"))?
+        .join()
+        .map_err(|_| Error::new("SAIL3106", "Cargo output reader failed"))?
+        .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     std::fs::write(paths.run.join("cargo.stdout"), stdout)
         .and_then(|()| std::fs::write(paths.run.join("cargo.stderr"), captured))
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     Ok(code)
 }
 
-fn focused(args: &[String]) -> bool {
+pub(crate) fn focused(args: &[String]) -> bool {
     args.iter().skip_while(|a| a.as_str() != "--").any(|s| {
         [
             "--verify-module",
@@ -367,13 +420,20 @@ fn target_records(
                 })
         });
         if let Some(call) = call {
-            let artifact_paths: Vec<PathBuf> = artifact["filenames"]
+            let mut artifact_paths: Vec<PathBuf> = artifact["filenames"]
                 .as_array()
                 .into_iter()
                 .flatten()
                 .filter_map(Value::as_str)
                 .map(PathBuf::from)
                 .collect();
+            artifact_paths.extend(
+                artifact_paths
+                    .clone()
+                    .into_iter()
+                    .map(|p| p.with_extension("vir"))
+                    .filter(|p| p.is_file()),
+            );
             let hashes = artifact_hashes(&artifact_paths)?;
             let reusable = call.success && complete(&call.report) && !force;
             if reusable {
@@ -381,13 +441,15 @@ fn target_records(
                     &path,
                     &Receipt {
                         version: 1,
+                        checksum: String::new(),
                         package_id: package_id.to_owned(),
                         name: name.to_owned(),
                         kind: kind.clone(),
                         context: context.to_owned(),
                         invocation: call.clone(),
                         artifact_hashes: hashes,
-                    },
+                    }
+                    .seal(),
                 )?;
             } else {
                 let _ = std::fs::remove_file(&path);
@@ -401,9 +463,37 @@ fn target_records(
                 complete: call.success,
                 report: call.report.clone(),
             });
-        } else if let Some(receipt) = read::<Receipt>(&path)
-            .filter(|r| artifact["fresh"] == true && !force && r.valid(context))
-        {
+        } else if let Some(receipt) = read::<Receipt>(&path).filter(|r| {
+            let mut observed: Vec<PathBuf> = artifact["filenames"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(PathBuf::from)
+                .collect();
+            observed.extend(
+                observed
+                    .clone()
+                    .into_iter()
+                    .map(|p| p.with_extension("vir"))
+                    .filter(|p| p.is_file()),
+            );
+            artifact["fresh"] == true
+                && !force
+                && r.package_id == package_id
+                && r.invocation.identity.manifest
+                    == Path::new(package["manifest_path"].as_str().unwrap_or_default())
+                && r.invocation.identity.name == name.replace('-', "_")
+                && kind.iter().any(|k| {
+                    k == &r.invocation.identity.crate_type
+                        || (k == "lib" && r.invocation.identity.crate_type == "rlib")
+                })
+                && r.name == name
+                && r.kind == kind
+                && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>()
+                    == observed.into_iter().collect()
+                && r.valid(context)
+        }) {
             event(
                 &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.run_id}),
             );
@@ -452,6 +542,162 @@ fn target_records(
     Ok((results, missing))
 }
 
+fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String)> {
+    let workspace = args.iter().any(|a| a == "--workspace" || a == "--all");
+    let mut selected_names = Vec::new();
+    let mut excluded = Vec::new();
+    let mut bins = Vec::new();
+    let mut lib = false;
+    let mut it = args.iter().take_while(|a| a.as_str() != "--");
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-p" | "--package" => {
+                if let Some(v) = it.next() {
+                    selected_names.push(v.as_str());
+                }
+            }
+            "--exclude" => {
+                if let Some(v) = it.next() {
+                    excluded.push(v.as_str());
+                }
+            }
+            "--bin" => {
+                if let Some(v) = it.next() {
+                    bins.push(v.as_str());
+                }
+            }
+            "--lib" => lib = true,
+            _ => {
+                if let Some(v) = a.strip_prefix("--package=") {
+                    selected_names.push(v);
+                }
+            }
+        }
+    }
+    let default = data["resolve"]["root"].as_str();
+    let mut expected = BTreeSet::new();
+    for package in data["packages"].as_array().into_iter().flatten() {
+        let id = package["id"].as_str().unwrap_or_default();
+        let name = package["name"].as_str().unwrap_or_default();
+        let member = data["workspace_members"]
+            .as_array()
+            .is_some_and(|m| m.contains(&package["id"]));
+        let chosen = if !selected_names.is_empty() {
+            selected_names.iter().any(|n| *n == name || *n == id)
+        } else if workspace {
+            member
+        } else if let Some(root) = default {
+            id == root
+        } else {
+            data["workspace_default_members"]
+                .as_array()
+                .is_some_and(|m| m.contains(&package["id"]))
+        };
+        if !chosen
+            || excluded.contains(&name)
+            || package
+                .pointer("/metadata/verus/verify")
+                .and_then(Value::as_bool)
+                != Some(true)
+        {
+            continue;
+        }
+        let features = data["resolve"]["nodes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|p| p["id"] == package["id"])
+            .and_then(|p| p["features"].as_array());
+        for target in package["targets"].as_array().into_iter().flatten() {
+            let kinds = target["kind"].as_array();
+            let bin = kinds.is_some_and(|k| k.iter().any(|v| v == "bin"));
+            let library = kinds.is_some_and(|k| {
+                k.iter().any(|v| {
+                    matches!(
+                        v.as_str(),
+                        Some("lib" | "rlib" | "dylib" | "cdylib" | "staticlib" | "proc-macro")
+                    )
+                })
+            });
+            let name = target["name"].as_str().unwrap_or_default();
+            if (lib || !bin) && !library || (!bins.is_empty() && (!bin || !bins.contains(&name))) {
+                continue;
+            }
+            if target["required-features"]
+                .as_array()
+                .is_some_and(|required| {
+                    required
+                        .iter()
+                        .any(|f| features.is_none_or(|enabled| !enabled.contains(f)))
+                })
+            {
+                continue;
+            }
+            expected.insert((id.to_owned(), name.to_owned()));
+        }
+    }
+    expected
+}
+
+/// Rechecks a persisted result's declared inputs without starting Cargo or Verus.
+/// Caller environment is explicit so daemon status never substitutes its own configuration.
+///
+/// # Errors
+/// Returns `SAIL3108` for missing observation state; callers should report unknown freshness.
+pub fn refresh_result(
+    cache: &Path,
+    result: &ProjectResult,
+    environment: &BTreeMap<String, String>,
+) -> Result<super::input::InputSnapshot> {
+    let workspace = Path::new(&result.workspace);
+    let context = cache
+        .join("projects")
+        .join(digest(workspace.as_os_str().as_encoded_bytes()))
+        .join(&result.context_sha256);
+    let data: Value = read(&context.join("input-state.json"))
+        .ok_or_else(|| Error::new("SAIL3108", "declared input observation is unavailable"))?;
+    let (_, mut extras, covered) = super::build_inputs::stale_environment(
+        &context.join("build-inputs.json"),
+        &data,
+        Some(environment),
+    );
+    extras.extend(script_roots(&data));
+    let home = environment
+        .get("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| {
+            environment
+                .get("HOME")
+                .map(|h| PathBuf::from(h).join(".cargo"))
+        });
+    let mut snapshot = super::input::snapshot_metadata_home(&data, &extras, home.as_deref());
+    snapshot.complete &= covered;
+    Ok(snapshot)
+}
+
+fn script_roots(data: &Value) -> Vec<PathBuf> {
+    data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|p| {
+            p["targets"].as_array().is_some_and(|t| {
+                t.iter().any(|v| {
+                    v["kind"]
+                        .as_array()
+                        .is_some_and(|k| k.iter().any(|k| k == "custom-build"))
+                })
+            })
+        })
+        .filter_map(|p| {
+            p["manifest_path"]
+                .as_str()
+                .and_then(|s| Path::new(s).parent())
+                .map(Path::to_owned)
+        })
+        .collect()
+}
+
 /// Invokes Cargo and returns current or historical per-target verification reports.
 ///
 /// # Errors
@@ -475,7 +721,20 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     }
     let started = Instant::now();
     let data = metadata(&config.workspace, &config.args, &config.cargo)?;
-    let before = snapshot_metadata(&data, &[]);
+    let initial = snapshot_metadata(&data, &[]);
+    if std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
+        return Err(Error::new(
+            "SAIL3100",
+            "incremental verification does not support a chained workspace rustc wrapper",
+        ));
+    }
+    let expected = expected_targets(&data, &config.args);
+    if expected.is_empty() {
+        return Err(Error::new(
+            "SAIL3100",
+            "no selected Cargo targets declare package.metadata.verus.verify=true",
+        ));
+    }
     let hash = context(config, &data)?;
     let run_id = format!(
         "{}-{}",
@@ -484,11 +743,30 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos())
     );
-    let (paths, _lock) = prepare(config, &before.workspace, &hash, &run_id)?;
+    let (paths, _lock) = prepare(config, &initial.workspace, &hash, &run_id)?;
+    let (stale_scripts, mut extras, script_coverage) =
+        super::build_inputs::stale(&paths.build_inputs, &data);
+    let script_roots = script_roots(&data);
+    extras.extend(script_roots.clone());
+    let before = snapshot_metadata(&data, &extras);
+    if !stale_scripts.is_empty() {
+        clean(config, &paths.target, &stale_scripts)?;
+    }
+    let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
+    json(
+        &paths
+            .run
+            .parent()
+            .and_then(Path::parent)
+            .unwrap_or(&paths.run)
+            .join("input-state.json"),
+        &data,
+    )?;
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
         || focused(&config.args)
-        || !before.complete;
+        || !before.complete
+        || !monitor.complete();
     let names: BTreeSet<String> = data["packages"]
         .as_array()
         .into_iter()
@@ -535,17 +813,26 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             ));
         }
     }
+    super::build_inputs::update(
+        &paths.build_inputs,
+        &paths.run.join("artifacts.jsonl"),
+        &data,
+    )?;
+    let (_, mut after_extras, after_coverage) =
+        super::build_inputs::stale(&paths.build_inputs, &data);
+    after_extras.extend(script_roots);
     let after = snapshot_metadata(
         &metadata(&config.workspace, &config.args, &config.cargo)?,
-        &[],
+        &after_extras,
     );
-    let currentness = if !before.complete || !after.complete {
-        Currentness::Unknown
-    } else if before.revision == after.revision {
-        Currentness::Current
-    } else {
-        Currentness::Historical
-    };
+    let currentness =
+        if !before.complete || !after.complete || !after_coverage || !monitor.complete() {
+            Currentness::Unknown
+        } else if before.revision == after.revision && !monitor.changed() {
+            Currentness::Current
+        } else {
+            Currentness::Historical
+        };
     if currentness != Currentness::Current {
         for target in &targets {
             let _ = std::fs::remove_file(receipt_path(
@@ -556,10 +843,33 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             ));
         }
     }
-    let verifier_invocations = u64::try_from(invocations(&paths).len()).unwrap_or(u64::MAX);
+    if exit == Some(0)
+        && expected.iter().any(|(id, name)| {
+            !targets.iter().any(|t| {
+                &t.package_id == id && t.target.replace('-', "_") == name.replace('-', "_")
+            })
+        })
+    {
+        return Err(Error::new(
+            "SAIL3107",
+            "not every selected verification target produced a complete observation",
+        ));
+    }
+    let verifier_invocations = u64::try_from(
+        std::fs::read_dir(paths.run.join("invocations"))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|e| e.path().extension().is_some_and(|s| s == "started"))
+            .count(),
+    )
+    .unwrap_or(u64::MAX);
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = Vec::new();
+    if !script_coverage {
+        notes.push("Build-script input declarations were established during this run".to_owned());
+    }
     if focused(&config.args) {
         notes.push(
             "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
@@ -585,4 +895,37 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     };
     json(&paths.run.join("result.json"), &result)?;
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn expected_target_coverage_respects_packages_and_target_selection() {
+        let data = serde_json::json!({"workspace_members":["a","b"],"workspace_default_members":["a","b"],"resolve":{"root":null,"nodes":[]},"packages":[
+            {"id":"a","name":"a","metadata":{"verus":{"verify":true}},"targets":[{"name":"a","kind":["lib"]},{"name":"app","kind":["bin"]}]},
+            {"id":"b","name":"b","metadata":{"verus":{"verify":true}},"targets":[{"name":"b","kind":["lib"]}]}
+        ]});
+        assert_eq!(expected_targets(&data, &[]).len(), 3);
+        assert_eq!(
+            expected_targets(
+                &data,
+                &["-p".to_owned(), "a".to_owned(), "--lib".to_owned()]
+            ),
+            BTreeSet::from([("a".to_owned(), "a".to_owned())])
+        );
+        assert_eq!(
+            expected_targets(&data, &["--bin".to_owned(), "app".to_owned()]),
+            BTreeSet::from([("a".to_owned(), "app".to_owned())])
+        );
+        assert!(expected_targets(&data, &["-p".to_owned(), "missing".to_owned()]).is_empty());
+    }
+    #[test]
+    fn focused_proof_selection_is_never_whole_target_coverage() {
+        assert!(focused(&[
+            "--".to_owned(),
+            "--verify-function=lemma".to_owned()
+        ]));
+        assert!(!focused(&["--features".to_owned(), "foo".to_owned()]));
+    }
 }

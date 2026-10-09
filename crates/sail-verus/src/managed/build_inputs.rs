@@ -1,0 +1,187 @@
+//! Content validation for Cargo's declared build-script inputs.
+//!
+//! Cargo checksum freshness covers Rust source; build-script fingerprints still
+//! use timestamps. These receipts additionally hash declared paths and environment.
+
+use super::files::{digest, json};
+use super::input::snapshot_paths;
+use super::receipts::read;
+use crate::Result;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct BuildInput {
+    package_id: String,
+    package_name: String,
+    manifest: PathBuf,
+    paths: Vec<PathBuf>,
+    env: BTreeMap<String, Option<String>>,
+    digest: String,
+    covered: bool,
+}
+
+fn current(record: &BuildInput, environment: Option<&BTreeMap<String, String>>) -> (String, bool) {
+    let (files, complete) = snapshot_paths(&record.paths);
+    let env: BTreeMap<String, Option<String>> = record
+        .env
+        .keys()
+        .map(|k| {
+            (
+                k.clone(),
+                environment.map_or_else(|| std::env::var(k).ok(), |e| e.get(k).cloned()),
+            )
+        })
+        .collect();
+    (
+        digest(&serde_json::to_vec(&(files, env)).unwrap_or_default()),
+        complete,
+    )
+}
+
+pub(super) fn stale(path: &Path, data: &Value) -> (Vec<String>, Vec<PathBuf>, bool) {
+    stale_environment(path, data, None)
+}
+
+pub(super) fn stale_environment(
+    path: &Path,
+    data: &Value,
+    environment: Option<&BTreeMap<String, String>>,
+) -> (Vec<String>, Vec<PathBuf>, bool) {
+    let previous = read::<Vec<BuildInput>>(path).unwrap_or_default();
+    let mut clean = BTreeSet::new();
+    let mut extras = Vec::new();
+    let mut covered = true;
+    for record in &previous {
+        let (hash, complete) = current(record, environment);
+        if !record.covered || !complete || hash != record.digest {
+            clean.insert(record.package_name.clone());
+        }
+        extras.extend(record.paths.iter().cloned());
+        covered &= record.covered && complete;
+    }
+    // New scripts have no declared-input observation; their first run must be fresh.
+    for package in data["packages"].as_array().into_iter().flatten() {
+        if package["source"].is_null()
+            && package["targets"].as_array().is_some_and(|targets| {
+                targets.iter().any(|t| {
+                    t["kind"]
+                        .as_array()
+                        .is_some_and(|k| k.iter().any(|v| v == "custom-build"))
+                })
+            })
+            && !previous
+                .iter()
+                .any(|r| r.package_id == package["id"].as_str().unwrap_or_default())
+        {
+            clean.insert(package["name"].as_str().unwrap_or_default().to_owned());
+            covered = false;
+        }
+    }
+    (clean.into_iter().collect(), extras, covered)
+}
+
+pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> {
+    let mut previous = read::<Vec<BuildInput>>(path).unwrap_or_default();
+    for value in std::fs::read_to_string(artifacts)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+    {
+        if value["reason"] != "build-script-executed" {
+            continue;
+        }
+        let Some(package) = data["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|p| p["id"] == value["package_id"])
+        else {
+            continue;
+        };
+        // Registry scripts are immutable under Cargo.lock, but declared external
+        // inputs are still inspected when Cargo exposes their build output.
+        let manifest = PathBuf::from(package["manifest_path"].as_str().unwrap_or_default());
+        let package_dir = manifest.parent().unwrap_or(Path::new("."));
+        let output = Path::new(value["out_dir"].as_str().unwrap_or_default())
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join("output");
+        let text = std::fs::read_to_string(output).unwrap_or_default();
+        let mut paths = Vec::new();
+        let mut env = BTreeMap::new();
+        for line in text.lines() {
+            let line = line
+                .strip_prefix("cargo::")
+                .or_else(|| line.strip_prefix("cargo:"))
+                .unwrap_or(line);
+            if let Some(p) = line.strip_prefix("rerun-if-changed=") {
+                paths.push(package_dir.join(p));
+            }
+            if let Some(key) = line.strip_prefix("rerun-if-env-changed=") {
+                env.insert(key.to_owned(), std::env::var(key).ok());
+            }
+        }
+        // With no declaration Cargo watches the entire package. Hash that same
+        // input contract and refresh on content changes, independent of mtime.
+        if paths.is_empty() && env.is_empty() {
+            paths.push(package_dir.to_owned());
+        }
+        let mut record = BuildInput {
+            package_id: package["id"].as_str().unwrap_or_default().to_owned(),
+            package_name: package["name"].as_str().unwrap_or_default().to_owned(),
+            manifest,
+            paths,
+            env,
+            digest: String::new(),
+            covered: true,
+        };
+        let (hash, complete) = current(&record, None);
+        record.digest = hash;
+        record.covered = complete;
+        previous.retain(|r| r.package_id != record.package_id);
+        previous.push(record);
+    }
+    json(path, &previous)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn declared_external_build_input_refresh_ignores_restored_timestamps() {
+        let root =
+            std::env::temp_dir().join(format!("sail-build-input-test-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let payload = root.join("payload.txt");
+        assert!(std::fs::write(&payload, "good").is_ok());
+        let mut record = BuildInput {
+            package_id: "pkg".to_owned(),
+            package_name: "pkg".to_owned(),
+            manifest: root.join("Cargo.toml"),
+            paths: vec![payload.clone()],
+            env: BTreeMap::new(),
+            digest: String::new(),
+            covered: true,
+        };
+        record.digest = current(&record, None).0;
+        let state = root.join("state.json");
+        assert!(json(&state, &vec![record]).is_ok());
+        let data = serde_json::json!({"packages":[]});
+        assert_eq!(stale(&state, &data).0, Vec::<String>::new());
+        let file = std::fs::File::open(&payload).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let mtime = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(std::fs::write(&payload, "fail").is_ok());
+        assert!(
+            file.set_times(std::fs::FileTimes::new().set_modified(mtime))
+                .is_ok()
+        );
+        assert_eq!(stale(&state, &data).0, vec!["pkg"]);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+}

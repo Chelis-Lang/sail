@@ -169,11 +169,17 @@ fn driver() -> Result<ExitCode> {
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    json(
+        &runtime.invocations.join(format!("{}.started", child.id())),
+        &serde_json::json!({"target":identity.name,"run_id":runtime.run_id}),
+    )?;
+    event(
+        &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
+    );
     let stdout = child.stdout.take().map(|mut pipe| {
         std::thread::spawn(move || {
             let mut bytes = Vec::new();
-            let _ = pipe.read_to_end(&mut bytes);
-            bytes
+            pipe.read_to_end(&mut bytes).map(|_| bytes)
         })
     });
     let mut stderr = Vec::new();
@@ -195,7 +201,11 @@ fn driver() -> Result<ExitCode> {
     let exit = child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let stdout = stdout.and_then(|h| h.join().ok()).unwrap_or_default();
+    let stdout = stdout
+        .ok_or_else(|| Error::new("SAIL3111", "missing solver output pipe"))?
+        .join()
+        .map_err(|_| Error::new("SAIL3111", "solver output reader failed"))?
+        .map_err(|e| Error::new("SAIL3111", format!("cannot capture solver output: {e}")))?;
     finish(&runtime, identity, &dir, &stdout, &stderr, exit.code())?;
     Ok(status(exit))
 }
@@ -231,9 +241,10 @@ fn finish(
         solver_sha256: Some(runtime.z3_sha256.clone()),
         daemon: runtime.daemon,
         attribution: &attr,
-        diagnostics: &crate::diagnostics::parse(&String::from_utf8_lossy(stderr)),
+        diagnostics: &crate::diagnostics::parse(&rendered_diagnostics(stderr)),
     });
-    let success = crate::managed::receipt_complete(&report);
+    let success =
+        crate::managed::receipt_complete(&report) && !crate::managed::focused(&runtime.args);
     let invocation = Invocation {
         identity,
         run_id: runtime.run_id.clone(),
@@ -257,4 +268,19 @@ fn finish(
         ));
     }
     Ok(())
+}
+
+fn rendered_diagnostics(stderr: &[u8]) -> String {
+    String::from_utf8_lossy(stderr)
+        .lines()
+        .fold(String::new(), |mut text, line| {
+            let value = serde_json::from_str::<serde_json::Value>(line).ok();
+            if let Some(rendered) = value.as_ref().and_then(|v| v["rendered"].as_str()) {
+                text.push_str(rendered);
+            } else {
+                text.push_str(line);
+                text.push('\n');
+            }
+            text
+        })
 }

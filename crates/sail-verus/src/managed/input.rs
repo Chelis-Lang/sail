@@ -91,9 +91,32 @@ fn collect(path: &Path, files: &mut BTreeSet<PathBuf>, visited: &mut BTreeSet<Pa
 }
 
 pub(super) fn snapshot_metadata(data: &Value, extras: &[PathBuf]) -> InputSnapshot {
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    snapshot_metadata_home(data, extras, home.as_deref())
+}
+
+pub(super) fn snapshot_metadata_home(
+    data: &Value,
+    extras: &[PathBuf],
+    cargo_home: Option<&Path>,
+) -> InputSnapshot {
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     let mut files = BTreeSet::new();
     let mut visited = BTreeSet::new();
+    if let Some(path) = data["target_directory"]
+        .as_str()
+        .and_then(|s| Path::new(s).canonicalize().ok())
+    {
+        visited.insert(path);
+    }
+    if let Ok(path) = crate::cache_dir().and_then(|p| {
+        p.canonicalize()
+            .map_err(|e| crate::Error::new("SAIL3101", e.to_string()))
+    }) {
+        visited.insert(path);
+    }
     let mut roots = Vec::new();
     let mut complete = !workspace.as_os_str().is_empty();
     for p in data["packages"].as_array().into_iter().flatten() {
@@ -125,11 +148,9 @@ pub(super) fn snapshot_metadata(data: &Value, extras: &[PathBuf]) -> InputSnapsh
             }
         }
     }
-    if let Some(home) = std::env::var_os("CARGO_HOME").or_else(|| {
-        std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo").into_os_string())
-    }) {
+    if let Some(home) = cargo_home {
         for name in ["config", "config.toml"] {
-            let path = PathBuf::from(&home).join(name);
+            let path = home.join(name);
             if path.is_file() {
                 files.insert(path);
             }
@@ -166,4 +187,42 @@ pub(super) fn snapshot_metadata(data: &Value, extras: &[PathBuf]) -> InputSnapsh
 /// Returns `SAIL3103` when Cargo metadata cannot be obtained.
 pub fn snapshot(workspace: &Path, args: &[String], cargo: &Path) -> Result<InputSnapshot> {
     Ok(snapshot_metadata(&metadata(workspace, args, cargo)?, &[]))
+}
+
+// Used for build-script paths outside the package/workspace root.
+pub(super) fn snapshot_paths(paths: &[PathBuf]) -> (String, bool) {
+    let data = serde_json::json!({"workspace_root":"/", "packages":[]});
+    let snapshot = snapshot_metadata(&data, paths);
+    (snapshot.revision, snapshot.complete)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::{File, FileTimes};
+
+    #[test]
+    fn content_revision_covers_external_dependencies_and_restored_mtime() {
+        let root = std::env::temp_dir().join(format!("sail-input-test-{}", std::process::id()));
+        let dependency = root.join("dep");
+        let project = root.join("project");
+        assert!(std::fs::create_dir_all(&dependency).is_ok());
+        assert!(std::fs::create_dir_all(&project).is_ok());
+        let source = dependency.join("lib.rs");
+        assert!(std::fs::write(&source, "good").is_ok());
+        let data = serde_json::json!({"workspace_root":project,"packages":[{"source":null,"manifest_path":dependency.join("Cargo.toml")}]});
+        let before = snapshot_metadata(&data, &[]);
+        let file = File::open(&source).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let mtime = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert!(std::fs::write(&source, "fail").is_ok());
+        assert!(file.set_times(FileTimes::new().set_modified(mtime)).is_ok());
+        let after = snapshot_metadata(&data, &[]);
+        assert!(before.complete && after.complete);
+        assert_ne!(before.revision, after.revision);
+        assert_eq!(after.roots, vec![dependency]);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
 }
