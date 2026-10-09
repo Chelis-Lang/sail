@@ -28,3 +28,22 @@ Each report comes from `sail-conformance run --tier fast --project verus-example
 --filter /guide/ --jobs 3`, using the appropriate shim and daemon and a fresh
 cache per variant and round. Every fill is immediately followed by its warm run.
 Long probes remain local-only.
+
+## Initial product acceptance
+
+`initial-product-acceptance-2026-10-09.json` retains the summaries, unstable
+case identities, plain failures and SHA-256 hashes of the final acceptance
+reports. Long standard, source and Singular suites ran locally, independently
+of fast CI. No local paths are embedded in the generated artifact.
+
+Organize the raw reports under `REPORT_DIRECTORY`, matching the relative paths
+in `initial-product-acceptance-input.json`, then regenerate with:
+
+```sh
+python3 bench/validation/acceptance.py bench/validation/initial-product-acceptance-input.json REPORT_DIRECTORY > bench/validation/initial-product-acceptance-2026-10-09.json
+```
+
+The generator refuses incomplete coverage, a disagreement, an infrastructure
+error or an unexpected skip. Deep instability additionally requires that the
+entire Sail result match one complete observed plain result. Preserved plain
+failures and ignored upstream cases do not count as successful proofs.
