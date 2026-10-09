@@ -257,7 +257,8 @@ impl Suite {
             .env_remove("VERUS_Z3_PATH")
             .env_remove("SAIL_Z3_PATH")
             .env_remove("SAIL_TRACE_DIR")
-            .env_remove("SAIL_DAEMON_SOCKET");
+            .env_remove("SAIL_DAEMON_SOCKET")
+            .env("SAIL_SOLVER_MODE", "default");
         // Suppress timing-dependent progress notes at their source, on both
         // sides, exactly as the ordinary corpus harness does (ADR 0006).
         cmd.env("VERUS_EXTRA_ARGS", extra_args(self.verus_threads, false));
