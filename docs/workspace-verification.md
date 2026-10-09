@@ -22,12 +22,15 @@ or incompatible receipt requires fresh verification.
 
 Verification arguments, features, toolchain and executable identity participate
 in the context. Declared workspace and path-dependency inputs are checked for
-changes. A proof from a failed, interrupted or partial verification cannot
+changes, including resolved registry/git dependencies and compiler-declared
+external includes. Newly discovered inputs prevent that establishing run from
+claiming currentness until they can be observed. A proof from a failed, interrupted or partial verification cannot
 become a reusable whole-target receipt. Function/module selection runs fresh;
 its report describes that requested scope. Managed mode owns its target and
 observation logs, and does not accept an external `--target-dir`, direct Verus
 source selection, tests/benches/examples, a chained workspace rustc wrapper,
-portfolio or fragility measurement. Ordinary Cargo library and binary targets
+portfolio, fragility measurement, custom sysroots or JSON target specifications.
+Ordinary Cargo library and binary targets
 are supported.
 
 The ordinary `sail verify` path keeps its existing drop-in output and behavior.
@@ -41,7 +44,9 @@ execution counters describe the current Cargo request; historical timings are
 never counted as fresh verification work.
 
 `currentness` is `current`, `historical` or `unknown`. A changed revision makes
-results historical. Incomplete input observation never claims that historical
+results historical. Currentness is evaluated under the job's original submitted
+configuration; changing features or environment requires another request with
+its own context. Incomplete input observation never claims that historical
 proof evidence establishes a current workspace. Exit code and proof outcome
 remain distinct from whether a job's execution finished.
 
@@ -58,7 +63,9 @@ sail jobs cancel JOB
 ```
 
 Background verification returns immediately with a durable job identity. One
-worker runs by default, with identical in-flight requests coalesced. Status,
+worker runs by default. Identical in-flight requests coalesce once complete
+remembered input coverage establishes the same revision. Cold requests without
+that evidence remain distinct, so an unseen edit cannot be swallowed. Status,
 logs and previous results remain available while another verification runs.
 Cancellation terminates the worker's process group, including Cargo-Verus and
 its solvers. If the daemon restarts during verification, the unfinished job
