@@ -192,4 +192,19 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         started.elapsed() < std::time::Duration::from_secs(2),
         "job tools must return while the verifier is running"
     );
+    reject_report_as_job(&fixture);
+}
+
+fn reject_report_as_job(fixture: &Fixture) {
+    fixture.write("start.json", &crate::store::tests::report(vec![]));
+    assert!(
+        call(
+            &fixture.context,
+            "start_verification",
+            &Map::new(),
+            &Cancel::default()
+        )
+        .is_error,
+        "an older verifier's report cannot masquerade as a durable job identity"
+    );
 }

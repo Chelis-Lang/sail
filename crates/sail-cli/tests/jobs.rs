@@ -64,6 +64,7 @@ fn human_and_json_inspection_preserve_lifecycle_and_reject_non_utf8_environment(
         .unwrap_or_else(|error| unreachable!("{error}"));
     assert_eq!(missing.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&missing.stderr).contains("SAIL0805"));
+    background_submission_does_not_invoke_cargo(&root, &cache_socket);
     let invalid = Command::new(env!("CARGO_BIN_EXE_sail"))
         .args(["verify", "--background"])
         .env("SAIL_DAEMON_SOCKET", &cache_socket)
@@ -77,4 +78,43 @@ fn human_and_json_inspection_preserve_lifecycle_and_reject_non_utf8_environment(
     assert!(String::from_utf8_lossy(&invalid.stderr).contains("SAIL0812"));
     daemon.shutdown();
     let _ = std::fs::remove_dir_all(root);
+}
+
+fn background_submission_does_not_invoke_cargo(root: &std::path::Path, socket: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt as _;
+    let cargo = root.join("cargo");
+    let marker = root.join("metadata-invoked");
+    assert!(
+        std::fs::write(
+            &cargo,
+            format!(
+                "#!/bin/sh\necho invoked > '{}'\nsleep 30\nexit 1\n",
+                marker.display()
+            )
+        )
+        .is_ok()
+    );
+    assert!(std::fs::set_permissions(&cargo, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let started = Instant::now();
+    let submitted = Command::new(env!("CARGO_BIN_EXE_sail"))
+        .args(["verify", "--background", "--output", "json"])
+        .env("SAIL_DAEMON_SOCKET", socket)
+        .env("SAIL_CACHE_DIR", root.join("cache"))
+        .env("CARGO", &cargo)
+        .current_dir(root.join("project"))
+        .output()
+        .unwrap_or_else(|error| unreachable!("{error}"));
+    assert!(
+        submitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&submitted.stderr)
+    );
+    assert!(
+        !marker.exists(),
+        "submission must not resolve Cargo dependencies"
+    );
+    assert!(
+        matches!(serde_json::from_slice::<sail_api::jobs::Status>(&submitted.stdout), Ok(status) if status.state == Lifecycle::Queued && status.input_revision.is_none())
+    );
+    assert!(started.elapsed() < Duration::from_secs(2));
 }

@@ -119,7 +119,8 @@ impl Monitoring {
 fn fingerprint(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<[u8; 32]> {
     let mut files = Vec::new();
     for root in roots {
-        collect(root, excluded, &mut files)?;
+        let declared_output = excluded.iter().any(|output| root.starts_with(output));
+        collect(root, excluded, declared_output, &mut files)?;
     }
     files.sort();
     files.dedup();
@@ -147,8 +148,15 @@ fn fingerprint(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<[u8; 
     Ok(hash.finalize().into())
 }
 
-fn collect(path: &Path, excluded: &[PathBuf], files: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    if !super::relevant(path) || excluded.iter().any(|output| path.starts_with(output)) {
+fn collect(
+    path: &Path,
+    excluded: &[PathBuf],
+    declared_output: bool,
+    files: &mut Vec<PathBuf>,
+) -> std::io::Result<()> {
+    if !super::relevant(path)
+        || (!declared_output && excluded.iter().any(|output| path.starts_with(output)))
+    {
         return Ok(());
     }
     if path.is_dir() {
@@ -164,7 +172,7 @@ fn collect(path: &Path, excluded: &[PathBuf], files: &mut Vec<PathBuf>) -> std::
             {
                 continue;
             }
-            collect(&entry.path(), excluded, files)?;
+            collect(&entry.path(), excluded, declared_output, files)?;
         }
     } else {
         files.push(path.to_path_buf());

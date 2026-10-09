@@ -291,13 +291,15 @@ fn verify(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResu
                     job.currentness
                 );
                 let changed = match result.currentness {
-                    sail_api::project::Currentness::Historical => Some(true),
+                    // Dynamic currentness includes edits after completion, so
+                    // historical evidence cannot identify when the edit happened.
+                    sail_api::project::Currentness::Historical
+                    | sail_api::project::Currentness::Unknown => None,
                     sail_api::project::Currentness::Current => Some(false),
-                    sail_api::project::Currentness::Unknown => None,
                 };
                 return ToolResult::ok(
                     text.clone(),
-                    json!({"project_dir":project,"sail_args":request.sail_args(VERIFY_COMMAND),"exit_code":result.exit_code,"duration_ms":result.execution.wall_ms,"sources":{"input_revision":result.input_revision,"changed_during_run":changed},"stored":true,"summary":text,"report":raw,"job":job,"project_result":result}),
+                    json!({"project_dir":project,"sail_args":request.sail_args(VERIFY_COMMAND),"exit_code":result.exit_code,"duration_ms":result.execution.wall_ms,"sources":{"input_revision":result.input_revision,"changed_during_run":changed,"currentness":result.currentness},"stored":true,"summary":text,"report":raw,"job":job,"project_result":result}),
                 );
             }
             Ok(None) => {}

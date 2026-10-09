@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::{OpenOptionsExt as _, PermissionsExt as _};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -107,32 +107,8 @@ pub(super) fn load(root: &Path) -> io::Result<BTreeMap<String, Stored>> {
 pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
     let mut status = job.status.clone();
     let result = if status.state == Lifecycle::Completed {
-        let path = state.root.join(&status.id).join("stdout");
-        if std::fs::metadata(&path)?.len() > sail_api::jobs::MAX_FRAME as u64 {
-            return Err(io::Error::other(
-                "SAIL0814: result exceeds RPC limit; retained output is available in the private job store",
-            ));
-        }
-        let bytes = std::fs::read(path)?;
-        let mut project: sail_api::project::ProjectResult =
-            serde_json::from_slice(&bytes).map_err(io::Error::other)?;
-        let environment = &job.submission.environment;
-        let cache = environment
-            .get("SAIL_CACHE_DIR")
-            .map(std::path::PathBuf::from)
-            .or_else(|| {
-                environment
-                    .get("XDG_CACHE_HOME")
-                    .map(|home| std::path::PathBuf::from(home).join("sail"))
-            })
-            .or_else(|| {
-                environment
-                    .get("HOME")
-                    .map(|home| std::path::PathBuf::from(home).join(".cache/sail"))
-            });
-        let snapshot = cache.and_then(|cache| {
-            sail_verus::managed::refresh_result(&cache, &project, environment).ok()
-        });
+        let mut project = project(state, job)?;
+        let snapshot = refresh(job, &project);
         status.currentness = match snapshot {
             Some(snapshot) if snapshot.revision != project.input_revision => {
                 Currentness::Historical
@@ -161,6 +137,81 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
         job: status,
         result,
     })
+}
+
+fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
+    let path = state.root.join(&job.status.id).join("stdout");
+    if std::fs::metadata(&path)?.len() > sail_api::jobs::MAX_FRAME as u64 {
+        return Err(io::Error::other(
+            "SAIL0814: result exceeds RPC limit; retained output is available in the private job store",
+        ));
+    }
+    serde_json::from_slice(&std::fs::read(path)?).map_err(io::Error::other)
+}
+fn refresh(
+    job: &Stored,
+    project: &sail_api::project::ProjectResult,
+) -> Option<sail_verus::managed::InputSnapshot> {
+    let environment = &job.submission.environment;
+    let cache = cache(job)?;
+    sail_verus::managed::refresh_result(&cache, project, environment).ok()
+}
+fn cache(job: &Stored) -> Option<PathBuf> {
+    let environment = &job.submission.environment;
+    let cache = environment
+        .get("SAIL_CACHE_DIR")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            environment
+                .get("XDG_CACHE_HOME")
+                .map(|home| std::path::PathBuf::from(home).join("sail"))
+        })
+        .or_else(|| {
+            environment
+                .get("HOME")
+                .map(|home| std::path::PathBuf::from(home).join(".cache/sail"))
+        })?;
+    let cache = if cache.is_absolute() {
+        cache
+    } else {
+        job.submission.project_dir.join(cache)
+    };
+    Some(cache)
+}
+pub(super) fn known_revision(state: &State, job: &Stored) -> Option<String> {
+    let project = project(state, job).ok()?;
+    let snapshot = refresh(job, &project)?;
+    snapshot.complete.then_some(snapshot.revision)
+}
+
+pub(super) fn running_revision(state: &State, job: &Stored) -> Option<(String, String)> {
+    let mut bytes = Vec::new();
+    File::open(state.root.join(&job.status.id).join("events.jsonl"))
+        .ok()?
+        .take(64 * 1024)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    for line in bytes.split(|byte| *byte == b'\n') {
+        let Ok(event) = serde_json::from_slice::<serde_json::Value>(line) else {
+            continue;
+        };
+        if event["kind"] != "context-ready"
+            || event["complete"] != true
+            || event["source_observation"] != true
+        {
+            continue;
+        }
+        let original = event["input_revision"].as_str()?.to_owned();
+        let snapshot = sail_verus::managed::refresh_context(
+            &cache(job)?,
+            Path::new(event["workspace"].as_str()?),
+            event["context_sha256"].as_str()?,
+            &job.submission.environment,
+        )
+        .ok()?;
+        return snapshot.complete.then_some((original, snapshot.revision));
+    }
+    None
 }
 
 pub(super) fn chunk(state: &State, job: &Stored, name: &str, offset: u64) -> io::Result<Chunk> {

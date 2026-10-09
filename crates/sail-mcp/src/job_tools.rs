@@ -83,13 +83,17 @@ fn execute(
     match run::run(&ctx.config.sail, &arguments, project, cancel) {
         Ok(outcome) if outcome.exit_code == Some(0) => {
             match serde_json::from_slice::<Value>(&outcome.stdout) {
-                Ok(document) => ToolResult::ok(
+                Ok(document) if valid_response(&arguments, &document) => ToolResult::ok(
                     "Verification job response; proof outcomes are in the completed result."
                         .to_owned(),
                     document,
                 ),
                 Err(error) => ToolResult::error(
                     format!("SAIL0813: invalid job response: {error}"),
+                    json!({"error":"invalid_response"}),
+                ),
+                Ok(_) => ToolResult::error(
+                    "SAIL0813: expected a supported durable job response".to_owned(),
                     json!({"error":"invalid_response"}),
                 ),
             }
@@ -102,6 +106,32 @@ fn execute(
             format!("SAIL0813: cannot contact project service: {error}"),
             json!({"error":"service_unavailable"}),
         ),
+    }
+}
+
+fn valid_response(arguments: &[String], document: &Value) -> bool {
+    use sail_api::jobs::{Response, VERSION};
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "verify")
+    {
+        return serde_json::from_value::<sail_api::jobs::Status>(document.clone())
+            .is_ok_and(|status| status.version == VERSION);
+    }
+    match serde_json::from_value::<Response>(document.clone()) {
+        Ok(Response::Result(result)) => {
+            arguments
+                .get(1)
+                .is_some_and(|argument| argument == "result")
+                && result.job.version == VERSION
+        }
+        Ok(Response::Status(status)) => {
+            arguments
+                .get(1)
+                .is_some_and(|argument| argument == "status" || argument == "cancel")
+                && status.version == VERSION
+        }
+        _ => false,
     }
 }
 

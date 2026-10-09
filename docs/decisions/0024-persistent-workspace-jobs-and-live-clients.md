@@ -31,6 +31,13 @@ requests with a known revision coalesce; requests without a known revision do
 not. Lifecycle is distinct from proof verdict. Completed reports retain their
 establishing run, scope, solver/configuration identity and input revision.
 
+CLI submission returns a durable ID without running Cargo metadata or resolving
+dependencies. The service can identify equal in-flight requests from remembered
+completed contexts or a worker context-ready event, rechecking contents outside
+the status lock. This requires a prior complete compiler-input observation.
+Cold requests before that observation, and requests with incomplete coverage,
+remain separate; the worker establishes their definitive revision.
+
 A queued or running job keeps the daemon alive. Cancellation kills the entire
 worker process group. A parent pipe terminates orphaned workers when the daemon
 dies. Explicit shutdown cancels work; records interrupted by a crash become

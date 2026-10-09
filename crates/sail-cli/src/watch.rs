@@ -233,7 +233,11 @@ fn changed(
             !matches!(event.kind, EventKind::Access(_))
                 && event.paths.iter().any(|path| {
                     relevant(path)
-                        && !excluded.iter().any(|output| path.starts_with(output))
+                        && (!excluded.iter().any(|output| path.starts_with(output))
+                            || roots.iter().any(|root| {
+                                path.starts_with(root)
+                                    && excluded.iter().any(|output| root.starts_with(output))
+                            }))
                         && roots.iter().any(|root| {
                             if root.file_name().is_some_and(|name| name == ".cargo") {
                                 path == root
@@ -336,9 +340,9 @@ impl Live {
             self.event_tail.push_str(&chunk.text);
             while let Some(end) = self.event_tail.find('\n') {
                 let line: String = self.event_tail.drain(..=end).collect();
-                if let Ok(mut event) = serde_json::from_str::<serde_json::Value>(&line) {
-                    event["job_id"] = json!(status.id);
-                    let _ = writeln!(out, "{event}");
+                if let Ok(serde_json::Value::Object(mut event)) = serde_json::from_str(&line) {
+                    event.insert("job_id".to_owned(), json!(status.id));
+                    let _ = writeln!(out, "{}", serde_json::Value::Object(event));
                 }
             }
         }

@@ -247,6 +247,9 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     if !submission.project_dir.is_dir() || submission.args.iter().any(|arg| arg.contains('\0')) {
         return Err(io::Error::other("SAIL0806: invalid project or arguments"));
     }
+    if submission.input_revision.is_none() {
+        establish_revision(state, &mut submission)?;
+    }
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
     if let Some(job) = jobs.values().find(|job| {
         !job.status.state.terminal()
@@ -272,6 +275,48 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     state.queue.lock().map_err(lock_error)?.push_back(id);
     state.ready.notify_one();
     Ok(status)
+}
+fn establish_revision(state: &State, submission: &mut Submission) -> io::Result<()> {
+    // Refresh remembered inputs outside the lock and without Cargo/downloads.
+    let matches: Vec<_> = state
+        .jobs
+        .lock()
+        .map_err(lock_error)?
+        .values()
+        .filter(|job| {
+            job.submission.project_dir == submission.project_dir
+                && job.submission.args == submission.args
+                && job.submission.force == submission.force
+                && job.submission.environment == submission.environment
+        })
+        .cloned()
+        .collect();
+    for active in matches.iter().filter(|job| !job.status.state.terminal()) {
+        if let Some((original, current)) = store::running_revision(state, active) {
+            if let Some(job) = state
+                .jobs
+                .lock()
+                .map_err(lock_error)?
+                .get_mut(&active.status.id)
+                && !job.status.state.terminal()
+                && job.submission.input_revision.is_none()
+            {
+                job.submission.input_revision = Some(original.clone());
+                job.status.input_revision = Some(original);
+                store::save(&state.root, job)?;
+            }
+            submission.input_revision = Some(current);
+            return Ok(());
+        }
+    }
+    if let Some(completed) = matches
+        .iter()
+        .filter(|job| job.status.state == Lifecycle::Completed)
+        .max_by_key(|job| job.status.submitted_at_ms)
+    {
+        submission.input_revision = store::known_revision(state, completed);
+    }
+    Ok(())
 }
 fn cancel(state: &State, id: &str, superseded: bool) -> io::Result<Status> {
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
