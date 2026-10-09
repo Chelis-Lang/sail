@@ -154,13 +154,26 @@ pub(crate) fn verify(
                     serde_json::to_string(&result).unwrap_or_default()
                 );
             } else {
+                let counts = result
+                    .targets
+                    .iter()
+                    .filter(|target| target.requested)
+                    .fold((0u64, 0u64, 0u64), |(verified, failed, unknown), target| {
+                        (
+                            verified.saturating_add(target.report.summary.verified),
+                            failed.saturating_add(target.report.summary.failed),
+                            unknown.saturating_add(target.report.summary.unknown),
+                        )
+                    });
                 let _ = writeln!(
                     out,
-                    "{} targets: {} verified now, {} reused ({:?})",
-                    result.targets.len(),
+                    "{:?} evidence: {} verified, {} failed, {} unknown; {} verifier runs, {} target reports reused",
+                    result.currentness,
+                    counts.0,
+                    counts.1,
+                    counts.2,
                     result.execution.verifier_invocations,
                     result.execution.reused_targets,
-                    result.currentness
                 );
             }
             Some(ExitCode::from(

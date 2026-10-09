@@ -21,7 +21,7 @@ output = Path(sys.argv[2]).resolve()
 output.parent.mkdir(parents=True, exist_ok=True)
 raw = output.parent / (output.stem + '-raw')
 raw.mkdir(exist_ok=True)
-workspace = Path(tempfile.mkdtemp(prefix='sail-live-benchmark-'))
+workspace = Path(tempfile.mkdtemp(prefix='sail-live-benchmark-', dir='/tmp'))
 env = os.environ.copy()
 env['SAIL_CACHE_DIR'] = str(workspace / 'cache')
 env['SAIL_DAEMON_SOCKET'] = str(workspace / 'daemon.sock')
@@ -44,7 +44,8 @@ source.write_text(text)
 
 def functions(report):
     return sorted((f['function'].split('::', 1)[-1], f['verdict'])
-                  for crate in report['crates'] for f in crate['functions'])
+                  for crate in report['crates'] for f in crate['functions']
+                  if f['function'].startswith('demo::'))
 
 
 def requested(document):
@@ -56,7 +57,8 @@ def requested(document):
 def run(label, managed):
     if not managed:
         # Obtain a fresh complete report, with the SMT cache already warm.
-        os.utime(source, None)
+        subprocess.run([env.get('CARGO', 'cargo'), 'clean', '-p', 'demo'], cwd=project,
+                       env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     args = [str(sail), 'verify', '--output', 'json']
     if managed:
         args.insert(2, '--incremental')
@@ -117,7 +119,8 @@ record = {
                   'cargo_verus_sha256': hashlib.sha256(Path(cargo_verus).read_bytes()).hexdigest()},
     'limits': ['Development machine under concurrent compilation and conformance load',
                'RSS is the largest single process measured by time, not summed tree memory',
-               'Small successful two-function fixture; broader projects may have different costs'],
+               'Small successful two-function fixture; broader projects may have different costs',
+               'Baseline cleans its selected caller artifact before timed verification to obtain a complete fresh report; dependency artifacts and SMT entries stay warm'],
     'functions': requested(managed), 'fill': {'plain': cold, 'managed': first},
     'rounds': rounds, 'proof_edit': {'plain': edited_plain, 'managed': edited_managed},
     'summary': {'plain': summary(p), 'managed': summary(m),
