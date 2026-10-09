@@ -3,8 +3,9 @@
 use crate::{Error, Result};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
@@ -25,6 +26,22 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
         hasher.update(&buf[..n]);
     }
     Ok(format!("{:x}", hasher.finalize()))
+}
+
+/// Deduplicates alias reads within one hash phase, never across observations.
+#[derive(Default)]
+pub(super) struct FileDigests(BTreeMap<PathBuf, String>);
+
+impl FileDigests {
+    pub(super) fn hash(&mut self, path: &Path) -> Result<String> {
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
+        if let Some(hash) = self.0.get(&canonical) {
+            return Ok(hash.clone());
+        }
+        let hash = file_digest(path)?;
+        self.0.insert(canonical, hash.clone());
+        Ok(hash)
+    }
 }
 
 pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {

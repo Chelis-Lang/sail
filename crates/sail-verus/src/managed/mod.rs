@@ -11,7 +11,7 @@ mod source_inputs;
 pub(crate) use files::{digest, event, file_digest, json};
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity};
-pub use runner::{Config, refresh_result, run};
+pub use runner::{Config, refresh_context, refresh_result, run};
 
 pub(crate) use receipts::complete as receipt_complete;
 

@@ -73,6 +73,7 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
 )]
 fn context(config: &Config, data: &Value) -> Result<String> {
     let mut identity = Vec::new();
+    let mut hashed = super::files::FileDigests::default();
     for path in [
         &config.sail,
         &config.cargo_verus,
@@ -80,12 +81,12 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         &config.z3,
         &config.shim,
     ] {
-        identity.push((path.to_string_lossy().into_owned(), file_digest(path)?));
+        identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
     }
     let wrapper = config.cargo_verus.with_file_name("verus");
     identity.push((
         wrapper.to_string_lossy().into_owned(),
-        file_digest(&wrapper)?,
+        hashed.hash(&wrapper)?,
     ));
     let mut environment: BTreeMap<Vec<u8>, Vec<u8>> = std::env::vars_os()
         .filter(|(k, _)| {
@@ -112,7 +113,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         &std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()),
         &config.workspace,
     )?;
-    identity.push((rustc.to_string_lossy().into_owned(), file_digest(&rustc)?));
+    identity.push((rustc.to_string_lossy().into_owned(), hashed.hash(&rustc)?));
     let actual = Command::new(&rustc)
         .args(["--print", "sysroot"])
         .current_dir(&config.workspace)
@@ -131,7 +132,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         config.cargo_verus.with_file_name("rust_verify"),
     ] {
         if path.is_file() {
-            identity.push((path.to_string_lossy().into_owned(), file_digest(&path)?));
+            identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
         }
     }
     for directory in [
@@ -149,7 +150,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             {
                 identity.push((
                     item.path().to_string_lossy().into_owned(),
-                    file_digest(&item.path())?,
+                    hashed.hash(&item.path())?,
                 ));
             }
         }
@@ -167,7 +168,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             if path.is_file() {
                 environment.insert(
                     path.as_os_str().as_encoded_bytes().to_vec(),
-                    file_digest(&path)?.into_bytes(),
+                    hashed.hash(&path)?.into_bytes(),
                 );
             }
         }
@@ -810,11 +811,28 @@ pub fn refresh_result(
     result: &ProjectResult,
     environment: &BTreeMap<String, String>,
 ) -> Result<super::input::InputSnapshot> {
-    let workspace = Path::new(&result.workspace);
+    refresh_context(
+        cache,
+        Path::new(&result.workspace),
+        &result.context_sha256,
+        environment,
+    )
+}
+
+/// Refreshes a running context's persisted input declaration without invoking Cargo.
+///
+/// # Errors
+/// Returns `SAIL3108` until the worker has persisted its context and declarations.
+pub fn refresh_context(
+    cache: &Path,
+    workspace: &Path,
+    context_sha256: &str,
+    environment: &BTreeMap<String, String>,
+) -> Result<super::input::InputSnapshot> {
     let context = cache
         .join("projects")
         .join(digest(workspace.as_os_str().as_encoded_bytes()))
-        .join(&result.context_sha256);
+        .join(context_sha256);
     let data: Value = read(&context.join("input-state.json"))
         .ok_or_else(|| Error::new("SAIL3108", "declared input observation is unavailable"))?;
     let (_, mut extras, covered) = super::build_inputs::stale_environment(
@@ -837,15 +855,27 @@ pub fn refresh_result(
         workspace,
         home.as_deref(),
     ));
+    snapshot.roots.extend(runtime_paths(cache, context_sha256));
     snapshot.roots.sort();
     snapshot.roots.dedup();
     let source_coverage = super::source_inputs::load(&context.join("source-inputs.json")).1;
-    let runtime_complete = runtime_current(cache, &result.context_sha256);
+    let runtime_complete = runtime_current(cache, context_sha256);
     snapshot.complete &= covered && source_coverage && runtime_complete;
     Ok(snapshot)
 }
 
+fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
+    let state = cache.join("runtime-identities");
+    read::<String>(&state.join(format!("{context}.link")))
+        .and_then(|sha| read::<Vec<(String, String)>>(&state.join(format!("{sha}.json"))))
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(path, _)| PathBuf::from(path))
+        .collect()
+}
+
 fn runtime_current(cache: &Path, context: &str) -> bool {
+    let mut hashed = super::files::FileDigests::default();
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
     let identities = identity_sha
@@ -857,7 +887,7 @@ fn runtime_current(cache: &Path, context: &str) -> bool {
             .is_some_and(|sha| *sha == digest(&serde_json::to_vec(paths).unwrap_or_default()))
             && paths
                 .iter()
-                .all(|(path, hash)| file_digest(Path::new(path)).as_ref() == Ok(hash))
+                .all(|(path, hash)| hashed.hash(Path::new(path)).as_ref() == Ok(hash))
     })
 }
 
@@ -960,6 +990,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
             .as_deref(),
     ));
+    before.roots.extend(runtime_paths(&config.cache, &hash));
     if !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
@@ -978,6 +1009,11 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             .join("input-state.json"),
         &data,
     )?;
+    event(&serde_json::json!({
+        "kind":"context-ready", "workspace":before.workspace,
+        "context_sha256":hash, "input_revision":before.revision,
+        "complete":before.complete && script_coverage && monitor.complete()
+    }));
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
         || focused(&config.args)
