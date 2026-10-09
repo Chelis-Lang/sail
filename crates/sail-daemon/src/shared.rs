@@ -339,8 +339,9 @@ impl SharedTier {
         let in_flight = Arc::clone(&self.in_flight);
         let (key_c, local_c) = (*key, local.clone());
         let remote = self.remote_client();
-        let directory = !self.config.store.as_os_str().is_empty()
-            && !self.config.store.to_string_lossy().starts_with("http");
+        let store = self.config.store.to_string_lossy();
+        let directory =
+            !store.is_empty() && !store.starts_with("http://") && !store.starts_with("https://");
         let spawned = std::thread::Builder::new()
             .name("sail-daemon-shared".to_owned())
             .spawn(move || {
