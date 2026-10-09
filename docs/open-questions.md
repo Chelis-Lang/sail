@@ -104,3 +104,12 @@ inline with the date and link the ADR that captures it.
     Singular validation. One complete attempt must prove every requested
     verifying target; never assemble per-function successes across seeds.
     HTTP stores, pools, stack-only keys and later research remain deferred.
+
+12. **Next product phase.**
+
+    **Answered 2026-10-09 (approved M6 plan):** implement managed complete
+    workspace reports, durable jobs shared by CLI/watch/MCP, and an optional
+    authenticated HTTP store for signed SMT entries. Keep local setup automatic,
+    signing trust independent of access credentials, and long validation local.
+    Persistent Verus internals, pools, stack-only keys and new backends remain
+    deferred. See ADRs 0023–0026 and milestone M6 in `docs/ROADMAP.md`.
