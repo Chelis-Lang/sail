@@ -207,8 +207,11 @@ impl Server {
                 let state = Arc::clone(&self.state);
                 let shutdown = stop.clone();
                 tokio::spawn(async move {
-                    let _permit = permit;
-                    let service = service_fn(move |request| route(request, Arc::clone(&state)));
+                    let permit = Arc::new(permit);
+                    let _permit = Arc::clone(&permit);
+                    let service = service_fn(move |request| {
+                        route(request, Arc::clone(&state), Arc::clone(&permit))
+                    });
                     let mut builder = http1::Builder::new();
                     builder
                         .timer(TokioTimer::new())
@@ -243,6 +246,19 @@ async fn drive_connection(
         }
     })
     .await;
+}
+
+// A timed-out connection cannot interrupt kernel filesystem I/O. Keep its
+// capacity reservation until that operation actually finishes, preventing an
+// unavailable store from accumulating replacement background operations.
+fn guarded_blocking<T: Send + 'static>(
+    permit: Arc<tokio::sync::OwnedSemaphorePermit>,
+    operation: impl FnOnce() -> T + Send + 'static,
+) -> tokio::task::JoinHandle<T> {
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        operation()
+    })
 }
 
 fn response(status: StatusCode) -> Reply {
@@ -300,7 +316,11 @@ fn parse_path(text: &str) -> Option<(String, String, QueryKey)> {
     ))
 }
 
-async fn route(mut request: Request<Incoming>, state: Arc<State>) -> Result<Reply, Infallible> {
+async fn route(
+    mut request: Request<Incoming>,
+    state: Arc<State>,
+    permit: Arc<tokio::sync::OwnedSemaphorePermit>,
+) -> Result<Reply, Infallible> {
     if !authorized(&request, &state) {
         return Ok(response(StatusCode::UNAUTHORIZED));
     }
@@ -318,7 +338,7 @@ async fn route(mut request: Request<Incoming>, state: Arc<State>) -> Result<Repl
         .join(key.to_string().get(..2).unwrap_or("xx"))
         .join(key.to_string());
     if request.method() == Method::GET {
-        let data = tokio::task::spawn_blocking(move || SharedStore::read(&path)).await;
+        let data = guarded_blocking(permit, move || SharedStore::read(&path)).await;
         return Ok(match data {
             Ok(Ok(Some(data))) => Response::new(Full::new(Bytes::from(data))),
             Ok(Ok(None)) => response(StatusCode::NOT_FOUND),
@@ -382,7 +402,7 @@ async fn route(mut request: Request<Incoming>, state: Arc<State>) -> Result<Repl
     .await;
     drop(file);
     let result = match body {
-        Ok(Ok(())) => tokio::task::spawn_blocking({
+        Ok(Ok(())) => guarded_blocking(permit, {
             let tmp = tmp.clone();
             move || commit(&tmp, &path, &platform, &solver, &key, &public)
         })
@@ -521,6 +541,37 @@ mod deadline_tests {
             .unwrap();
         });
         assert!(dropped.load(Ordering::SeqCst));
+        assert_eq!(capacity.available_permits(), 1);
+    }
+
+    #[test]
+    fn timed_out_connection_keeps_stalled_filesystem_work_within_capacity() {
+        let capacity = Arc::new(tokio::sync::Semaphore::new(1));
+        let permit = Arc::new(Arc::clone(&capacity).try_acquire_owned().unwrap());
+        let (release, blocked) = std::sync::mpsc::channel();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let worker = guarded_blocking(permit, move || {
+                let _ = blocked.recv();
+            });
+            drive_connection(
+                worker,
+                Handle(Arc::new(AtomicBool::new(false))),
+                Duration::from_millis(20),
+            )
+            .await;
+            assert_eq!(capacity.available_permits(), 0);
+            release.send(()).unwrap();
+            tokio::time::timeout(Duration::from_secs(1), async {
+                let released = Arc::clone(&capacity).acquire_owned().await.unwrap();
+                drop(released);
+            })
+            .await
+            .unwrap();
+        });
         assert_eq!(capacity.available_permits(), 1);
     }
 }
