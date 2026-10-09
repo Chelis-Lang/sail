@@ -127,35 +127,43 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             String::from_utf8_lossy(&actual.stderr),
         ));
     }
-    let sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
-    for path in [
-        sysroot.join("bin/rustc"),
-        sysroot.join("bin/cargo"),
-        config.cargo_verus.with_file_name("rust_verify"),
-    ] {
-        if path.is_file() {
-            identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
-        }
-    }
-    // Include every installed target's implicit standard/compiler libraries.
-    // Cargo may choose its target through ancestor configuration or environment,
-    // so host-only binding would miss cross-target standard library mutations.
-    let mut directories = vec![sysroot.join("lib")];
-    for entry in std::fs::read_dir(sysroot.join("lib/rustlib"))
-        .into_iter()
-        .flatten()
-        .flatten()
-    {
-        let library = entry.path().join("lib");
-        if library.is_dir() {
-            directories.push(library);
-        }
-    }
-    for directory in directories {
-        for item in std::fs::read_dir(directory).into_iter().flatten().flatten() {
-            let path = item.path();
+    let cargo_sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
+    let verifier_sysroot = verifier_sysroot(&wrapper, &config.workspace)?;
+    let sysroots = BTreeSet::from([cargo_sysroot, verifier_sysroot]);
+    identity.push((
+        config
+            .cargo_verus
+            .with_file_name("rust_verify")
+            .to_string_lossy()
+            .into_owned(),
+        hashed.hash(&config.cargo_verus.with_file_name("rust_verify"))?,
+    ));
+    for sysroot in sysroots {
+        for path in [sysroot.join("bin/rustc"), sysroot.join("bin/cargo")] {
             if path.is_file() {
                 identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
+            }
+        }
+        // Include every installed target's implicit standard/compiler libraries.
+        // Cargo may choose its target through ancestor configuration or environment,
+        // so host-only binding would miss cross-target standard library mutations.
+        let mut directories = vec![sysroot.join("lib")];
+        for entry in std::fs::read_dir(sysroot.join("lib/rustlib"))
+            .into_iter()
+            .flatten()
+            .flatten()
+        {
+            let library = entry.path().join("lib");
+            if library.is_dir() {
+                directories.push(library);
+            }
+        }
+        for directory in directories {
+            for item in std::fs::read_dir(directory).into_iter().flatten().flatten() {
+                let path = item.path();
+                if path.is_file() {
+                    identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
+                }
             }
         }
     }
@@ -217,6 +225,46 @@ fn context(config: &Config, data: &Value) -> Result<String> {
     );
     json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(hash)
+}
+
+fn verifier_sysroot(wrapper: &Path, workspace: &Path) -> Result<PathBuf> {
+    let output = Command::new(wrapper)
+        .args(["--version", "--output-json"])
+        .current_dir(workspace)
+        .output()
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    let version: Value = serde_json::from_slice(&output.stdout).map_err(|e| {
+        Error::new(
+            "SAIL3104",
+            format!("cannot identify verifier toolchain: {e}"),
+        )
+    })?;
+    let toolchain = version["verus"]["toolchain"]
+        .as_str()
+        .and_then(|v| v.split_whitespace().next())
+        .ok_or_else(|| {
+            Error::new(
+                "SAIL3104",
+                "verifier did not report its active Rust toolchain",
+            )
+        })?;
+    let output = Command::new("rustup")
+        .args(["run", toolchain, "rustc", "--print", "sysroot"])
+        .current_dir(workspace)
+        .output()
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    if !output.status.success() {
+        return Err(Error::new(
+            "SAIL3104",
+            format!(
+                "cannot resolve verifier toolchain: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ),
+        ));
+    }
+    Ok(PathBuf::from(
+        String::from_utf8_lossy(&output.stdout).trim(),
+    ))
 }
 
 fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBuf> {
