@@ -76,11 +76,21 @@ CI) was cancelled, and CI was reshaped:
 - **Five per-PR jobs only.** CI runs the five required checks and nothing
   else. Conformance (the PR subset) is a job in `ci.yml`. The scheduled and
   dispatched workflows (`conformance.yml`, `bench.yml`) are removed.
-- **Time limits.** Every job has a 10-minute limit; measured times are
-  1.2–3.8 minutes. The image job has 15 minutes.
+- **Time limits.** Every job has at most a 10-minute limit; measured testing
+  times are 1.2–3.8 minutes.
 - **Guard.** `ci/run.sh` refuses the long steps (other conformance tiers,
   benchmarks) when `CI=true`. They run through `ci/local.sh`, in the same
   image.
 - **Faster image rebuilds.** The image installs prebuilt, digest-checked
   nextest and cargo-deny instead of compiling them, so a pin change rebuilds
   it in minutes.
+
+## Update 2026-10-09: skipped gates cannot authorize a merge
+
+An image failure skipped the dependent required jobs after PRs #41 and #43.
+`CI completion` now runs with `always()` on a normal runner and requires
+authorship, image creation and all four testing jobs to report `success`.
+Failure, cancellation, skipping and missing results fail the guard. It is
+the sixth required check. Branch protection also requires branches to be
+updated with `main`, so independently passing changes are tested together.
+The guard's negative cases run in the local and CI workspace gate.
