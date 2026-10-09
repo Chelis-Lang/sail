@@ -5,6 +5,7 @@ SAIL_CARGO_VERUS selects the installed pin. Run with SAIL executable and output
 JSON arguments. Raw reports live beside the output; published summaries omit
 local paths and full environments. All three rounds assert verdict equivalence.
 """
+import atexit
 import hashlib
 import json
 import os
@@ -25,7 +26,7 @@ workspace = Path(tempfile.mkdtemp(prefix='sail-live-benchmark-', dir='/tmp'))
 env = os.environ.copy()
 env['SAIL_CACHE_DIR'] = str(workspace / 'cache')
 env['SAIL_DAEMON_SOCKET'] = str(workspace / 'daemon.sock')
-env['SAIL_DAEMON_IDLE_TIMEOUT'] = '30'
+env['SAIL_DAEMON_IDLE_TIMEOUT'] = '0'
 cargo_verus = env['SAIL_CARGO_VERUS']
 subprocess.run([cargo_verus, 'verus', 'new', '--lib', 'demo'], cwd=workspace,
                env=env, stdout=subprocess.DEVNULL, check=True)
@@ -40,6 +41,26 @@ pub fn maximum(a: u32, b: u32) -> (r: u32)
 }
 '''
 source.write_text(text)
+# Own the daemon throughout the experiment. A cold Cargo build can outlast
+# ordinary idle expiry, so an on-demand daemon alone cannot ensure warm SMT
+# cache comparisons. Only this process is terminated during cleanup.
+daemon = subprocess.Popen([str(sail), 'serve', '--cache', env['SAIL_CACHE_DIR'],
+                           '--socket', env['SAIL_DAEMON_SOCKET'], '--idle-timeout', '0'],
+                          env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def stop_daemon():
+    if daemon.poll() is None:
+        daemon.terminate()
+        try:
+            daemon.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            daemon.kill()
+            daemon.wait(timeout=10)
+atexit.register(stop_daemon)
+deadline = time.monotonic() + 10
+while not Path(env['SAIL_DAEMON_SOCKET']).exists() and time.monotonic() < deadline:
+    assert daemon.poll() is None, 'benchmark cache daemon failed to start'
+    time.sleep(.02)
+assert Path(env['SAIL_DAEMON_SOCKET']).exists(), 'benchmark cache daemon unavailable'
 
 
 def functions(report):

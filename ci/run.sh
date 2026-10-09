@@ -88,6 +88,7 @@ case "$step" in
     check_output="$PWD/target/release/examples/check_output"
     check_mcp="$PWD/target/release/examples/check_mcp"
     sail_portfolio_test="$PWD/ci/test-portfolio.sh"
+    sail_managed_test="$PWD/ci/test-managed.py"
     work="$(mktemp -d)"
     export SAIL_CACHE_DIR="$work/cache"
     cd "$work"
@@ -156,6 +157,9 @@ RS
     "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
     "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
     bash "$sail_portfolio_test"
+    # Bounded complete-report receipts: reuse, missing evidence and a failing
+    # proof edit with restored timestamps, compared with the pinned Verus.
+    python3 "$sail_managed_test" "$sail"
     ;;
 
   conformance)

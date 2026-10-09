@@ -25,6 +25,14 @@ when the remote feature is unconfigured. The existing local CLI installation
 remains sail plus sail-z3; managed Cargo/driver aliases are created privately
 by Sail when needed.
 
+Enable sha2's `asm` feature so its existing CPU dispatch also uses arm64 SHA
+instructions. Managed verification hashes the compiler runtime and artifacts
+by content on every request; the software implementation made that validation
+cost exceed fresh verification on a small crate. This changes the dependency's
+implementation, not the digest algorithm, key format or content-binding rule.
+Sail itself continues to forbid unsafe code. Existing key, signature and
+transcript tests must pass with the feature enabled.
+
 ## Validation
 
 Run the complete workspace gate, including cargo-deny, on every feature PR.
