@@ -37,4 +37,11 @@ examples and memory allocator in pass-through, fill and warm modes. The separate
 image pins the Singular package and uses separate build/cache volumes. No CI
 workflow runs this step. Source selection is explicit through
 `SAIL_VERUS_SOURCE_BUILD`; artifact identity failures are infrastructure errors.
-Results from the takeover validation will be recorded after its local run.
+Local validation on 2026-10-09 completed all three modes: 3 units, 606
+functions, all the same, zero differences, zero infrastructure errors and zero
+skips in each mode. The two integer-ring examples proved 9 and 27 obligations;
+the allocator proved 736, all with zero errors. The final cache held 7,812
+entries. One unit had resource-count drift without verdict or diagnostic drift.
+The source build ran natively on macOS arm64; its Singular subprocess used the
+pinned local Linux image under amd64 emulation. These are correctness results,
+not Linux benchmark numbers.
