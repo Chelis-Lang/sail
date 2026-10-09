@@ -444,7 +444,11 @@ fn solver_killed_mid_query_after_a_miss() {
     let hard = want.last().map_or(QueryKey([0; 32]), |r| r.key);
     support::drain(&rig.cache);
     assert!(!entry_path(&rig.cache, &hard).exists());
-    assert_cache_correct(&rig.cache, &want);
+    // The prefill's complete-input silence record survives independently of
+    // the longer killed session; validate it against that exact direct run.
+    let mut known = rig.want(QUICK);
+    known.extend(want);
+    assert_cache_correct(&rig.cache, &known);
 }
 
 #[test]
@@ -481,7 +485,9 @@ fn solver_killed_mid_reply_stores_no_partial_reply() {
     );
     assert!(killed(ended.status), "status {:?}", ended.status);
     assert_prefix(&want, &ended.stdout);
-    assert!(assert_cache_correct(&cache, &want) > 0);
+    // Publication now requires a clean, silent whole session. A killed
+    // solver cannot certify that guarantee, even for its earlier replies.
+    assert_eq!(assert_cache_correct(&cache, &want), 0);
 }
 
 // ---------------------------------------------------------------------------

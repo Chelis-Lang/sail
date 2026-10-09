@@ -30,7 +30,12 @@ semantic versioning once the API is published.
   acceptance (pinned Verus issue VI-0009).
 
 - Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
-  selection, and isolated protocol-v2 cache namespaces (ADR 0020).
+  selection, and isolated protocol-v4 cache namespaces (ADR 0020).
+
+- Preserve solver stderr during cached verification. Publish replies only after
+  a clean, silent session completes; warning sessions always re-solve. Refuse
+  older daemon and cache formats that could suppress diagnostics.
+
 - Required `CI completion` rejects failed, cancelled and skipped gates,
   including CI image failures. Branch protection requires an updated branch;
   every CI job now has at most ten minutes.

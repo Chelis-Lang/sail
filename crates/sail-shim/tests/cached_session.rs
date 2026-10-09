@@ -23,7 +23,9 @@ fn z3() -> String {
 
 fn scratch() -> PathBuf {
     // Short: Unix socket paths are limited to about 100 bytes.
-    let d = PathBuf::from(format!("/tmp/sail-cs-{}", std::process::id()));
+    static SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let serial = SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let d = PathBuf::from(format!("/tmp/sail-cs-{}-{serial}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     assert!(std::fs::create_dir_all(&d).is_ok());
     d
@@ -215,4 +217,207 @@ fn second_session_replays_from_cache_without_unknowns_skipped() {
     // replays everything before it.
     assert_eq!(session_starts(&dir), before + 2);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn input_run(solver: &Path, socket: Option<&Path>, input: &[u8]) -> std::process::Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
+    cmd.args(["-smt2", "-in"])
+        .env("SAIL_Z3_PATH", solver)
+        .env_remove("SAIL_DAEMON_SOCKET")
+        .env_remove("SAIL_TRACE_DIR")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let Some(socket) = socket {
+        cmd.env("SAIL_DAEMON_SOCKET", socket);
+    }
+    let mut child = cmd.spawn().unwrap_or_else(|e| unreachable!("shim: {e}"));
+    let mut stdin = child.stdin.take();
+    let bytes = input.to_vec();
+    let writer = std::thread::spawn(move || {
+        if let Some(stdin) = stdin.as_mut() {
+            let _ = stdin.write_all(&bytes);
+        }
+    });
+    let output = child
+        .wait_with_output()
+        .unwrap_or_else(|e| unreachable!("output: {e}"));
+    let _ = writer.join();
+    output
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn stderr_warnings_survive_cold_and_warm_sessions() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    let root = cache.clone();
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &cache, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let input = [
+        b"(get-info :version)\n".as_slice(),
+        include_bytes!("../../../corpus/repros/z3-stderr-cache-warning/input.smt2"),
+    ]
+    .concat();
+    let direct = input_run(&solver, None, &input);
+    assert!(direct.status.success());
+    assert!(
+        String::from_utf8_lossy(&direct.stderr)
+            .contains("pattern does not contain all quantified variables")
+    );
+    let before = session_starts(&dir);
+    for round in 1..=2 {
+        let actual = input_run(&solver, Some(&socket), &input);
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(
+            actual.stderr, direct.stderr,
+            "stderr missing in round {round}"
+        );
+        assert_eq!(session_starts(&dir), before + round);
+    }
+    let files = std::fs::read_dir(root.join("v2"))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .flat_map(|bucket| {
+            std::fs::read_dir(bucket.path())
+                .into_iter()
+                .flatten()
+                .flatten()
+        })
+        .count();
+    assert_eq!(files, 0, "warning session must not publish any reply");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn late_and_large_stderr_prevent_publication_without_blocking() {
+    use std::os::unix::fs::PermissionsExt as _;
+    for late in [false, true] {
+        let dir = scratch();
+        let real = serde_json::to_string(&z3()).unwrap_or_default();
+        let script = format!(
+            r"#!/usr/bin/env python3
+import subprocess, sys, time
+real = {real}
+if '-smt2' not in sys.argv:
+    p = subprocess.run([real] + sys.argv[1:])
+    sys.exit(p.returncode)
+p = subprocess.run([real] + sys.argv[1:], input=sys.stdin.buffer.read(), capture_output=True)
+warning = b'late stderr\n' if {late} else b'large stderr\n' * 100000
+if {late}:
+    sys.stdout.buffer.write(p.stdout)
+    sys.stdout.buffer.flush()
+    time.sleep(0.05)
+sys.stderr.buffer.write(warning)
+sys.stderr.buffer.flush()
+if not {late}:
+    sys.stdout.buffer.write(p.stdout)
+    sys.stdout.buffer.flush()
+sys.exit(p.returncode)
+",
+            late = if late { "True" } else { "False" }
+        );
+        let solver = dir.join("z3");
+        assert!(std::fs::write(&solver, script).is_ok());
+        assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o755)).is_ok());
+        let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+        let (sock, root) = (socket.clone(), cache.clone());
+        std::thread::spawn(move || {
+            sail_daemon::serve(&sock, &root, Arc::new(sail_daemon::Stats::default()))
+        });
+        for _ in 0..100 {
+            if socket.exists() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let input = b"(check-sat)\n(exit)\n";
+        let direct = input_run(&solver, None, input);
+        for _ in 0..2 {
+            let actual = input_run(&solver, Some(&socket), input);
+            assert!(actual.status.success());
+            assert_eq!(actual.stdout, direct.stdout);
+            assert_eq!(actual.stderr, direct.stderr);
+        }
+        let files = std::fs::read_dir(cache.join("v2"))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .flat_map(|bucket| {
+                std::fs::read_dir(bucket.path())
+                    .into_iter()
+                    .flatten()
+                    .flatten()
+            })
+            .count();
+        assert_eq!(files, 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn new_no_output_suffix_cannot_hide_diagnostics_after_cache_hits() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &cache, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let quiet = b"(get-info :version)\n(exit)\n";
+    assert!(input_run(&solver, Some(&socket), quiet).status.success());
+    let starts = session_starts(&dir);
+    assert!(input_run(&solver, Some(&socket), quiet).status.success());
+    assert_eq!(
+        session_starts(&dir),
+        starts,
+        "certified quiet input must hit"
+    );
+    let mut warning = b"(get-info :version)\n".to_vec();
+    let repro = include_bytes!("../../../corpus/repros/z3-stderr-cache-warning/input.smt2");
+    warning.extend(
+        String::from_utf8_lossy(repro)
+            .replace("(check-sat)\n", "")
+            .as_bytes(),
+    );
+    let direct = input_run(&solver, None, &warning);
+    assert!(
+        String::from_utf8_lossy(&direct.stderr)
+            .contains("pattern does not contain all quantified variables")
+    );
+    for _ in 0..2 {
+        let actual = input_run(&solver, Some(&socket), &warning);
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(actual.stderr, direct.stderr);
+    }
+    let malformed = b"(get-info :version)\n(assert 1)\n(exit)\n";
+    let error = input_run(&solver, None, malformed);
+    assert!(String::from_utf8_lossy(&error.stdout).contains("(error"));
+    for _ in 0..2 {
+        let actual = input_run(&solver, Some(&socket), malformed);
+        assert_eq!(actual.status.code(), error.status.code());
+        assert_eq!(actual.stdout, error.stdout);
+        assert_eq!(actual.stderr, error.stderr);
+    }
+    let _ = std::fs::remove_dir_all(dir);
 }

@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 static TMP_SEQ: AtomicU64 = AtomicU64::new(0);
 
 /// Format version of entry files.
-pub const ENTRY_VERSION: u32 = 1;
+pub const ENTRY_VERSION: u32 = 2;
 
 /// Metadata stored with each reply.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -494,6 +494,28 @@ mod tests {
         let (meta, got) = c.get(&k).unwrap_or_default_for_test();
         assert_eq!(got, reply);
         assert_eq!(meta.command, "get-model");
+        let _ = std::fs::remove_dir_all(c.root());
+    }
+
+    #[test]
+    fn entries_without_session_silence_evidence_are_rejected() {
+        let c = DiskCache::new(scratch("legacy-stderr"));
+        let k = QueryKey([19; 32]);
+        assert!(
+            c.put(&k, b"unsat\n", "check-sat", "z3", "pinned-solver", None)
+                .is_ok()
+        );
+        let data = std::fs::read(c.entry_path(&k)).unwrap_or_default();
+        let end = data.iter().position(|&b| b == b'\n').unwrap_or(0);
+        let mut header: serde_json::Value =
+            serde_json::from_slice(&data[..end]).unwrap_or_default();
+        header["entry_version"] = 1.into();
+        let mut old = serde_json::to_vec(&header).unwrap_or_default();
+        old.extend_from_slice(&data[end..]);
+        assert!(matches!(
+            parse_entry(&old, &k.to_string()),
+            Err(Problem::WrongVersion)
+        ));
         let _ = std::fs::remove_dir_all(c.root());
     }
 

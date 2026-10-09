@@ -12,7 +12,7 @@
 //! | 5 `INFO` | empty | `0`, `u32` len, [`Info`] JSON |
 //!
 //! Operations 4 and 5 are read-only and additive: they kept
-//! the protocol at 1 (ADR 0012, ADR 0015). Version 2 negotiates the mode
+//! the protocol at 1 (ADR 0012, ADR 0015). Version 4 requires silent-session publication and negotiates the mode
 //! in HELLO (ADR 0020). A daemon that predates
 //! one rejects it by closing that connection; nothing else changes.
 //!
@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// The protocol version. Bump on any incompatible change; the daemon reports
 /// it in `HELLO`, clients refuse a mismatch, and the default socket name
 /// includes it, so an upgraded client never talks to a stale daemon.
-pub const PROTOCOL_VERSION: u32 = 2;
+pub const PROTOCOL_VERSION: u32 = 4;
 
 /// A cache namespace negotiated for one solver connection.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,7 +49,7 @@ impl VerificationMode {
     }
 }
 
-/// A protocol-v2 solver handshake, including the cache namespace.
+/// A protocol-v4 solver handshake, including the cache namespace.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hello {
     /// The exact solver executable to identify.

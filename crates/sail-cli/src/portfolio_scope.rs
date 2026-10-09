@@ -129,6 +129,27 @@ pub(crate) fn required(metadata: &Value, args: &[String]) -> Result<Vec<String>,
             }
         }
     }
+    for name in &names {
+        let owners: BTreeSet<_> = metadata["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|p| p.pointer("/metadata/verus/verify").and_then(Value::as_bool) == Some(true))
+            .filter(|p| {
+                p["targets"].as_array().into_iter().flatten().any(|t| {
+                    t["name"]
+                        .as_str()
+                        .is_some_and(|n| n.replace('-', "_") == *name)
+                })
+            })
+            .filter_map(|p| p["id"].as_str())
+            .collect();
+        if owners.len() > 1 {
+            return Err(format!(
+                "requested crate {name:?} belongs to multiple verifying packages; its report would be ambiguous"
+            ));
+        }
+    }
     if names.is_empty() {
         return Err("no selected verification-enabled library or binary targets".to_owned());
     }
@@ -175,6 +196,7 @@ mod tests {
         let mut same_names = m.clone();
         same_names["packages"][1]["targets"][0]["name"] = Value::String("custom_lib".to_owned());
         assert!(required(&same_names, &args(&["--workspace"])).is_err());
+        assert!(required(&same_names, &args(&["-p", "first", "--lib"])).is_err());
         let mut rlib = m;
         rlib["packages"][0]["targets"][0]["kind"] = serde_json::json!(["rlib"]);
         assert_eq!(
