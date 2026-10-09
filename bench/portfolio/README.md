@@ -8,3 +8,7 @@ Generated from `cost-aarch64-macos-devload-2026-10-09.json`: three paired rounds
 | whole-file | 2319.0 (2127.9–3609.3) | 14485.2 (9828.3–15469.5) | 12138.1 (11204.5–17093.8) | all three attempts fail; baseline failure preserved |
 
 Warm runs serve cached checks; compiler and CLI work still run. Alternative configurations carry separate prefix keys. A hard unknown at its resource limit is always re-solved, so this probe does not predict the warm cost of page-table’s fragile allocation proof.
+
+## Independent allocation proof
+
+Retained in `page-table-allocate-aarch64-macos-2026-10-09.json`: seed 4 proved exactly `impl_u::wrapped_token::WrappedMapToken::allocate` on macOS arm64 at `--rlimit 20`, with 448,058,976 resource units and zero errors. The unchanged baseline reached its wall timeout. Both attempts, solver hash and proving configuration are retained. This confirms only the requested allocation function, not the entire page-table crate, and is not a reference-platform speedup benchmark.
