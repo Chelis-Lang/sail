@@ -28,7 +28,7 @@ winning configuration. Human output labels the selected mode and seed. MCP
 exposes the mode explicitly; watch forwards the same CLI options.
 
 The baseline and alternatives all use `Mode::OptIn("accept-first-proof")` keys.
-Protocol version 2 negotiates the mode in HELLO; stale daemons fail safe and the
+Protocol version 4 requires the silent-session safety rules (ADR 0022) and negotiates the mode in HELLO; stale daemons fail safe and the
 default socket changes with the version. Disk and memory metadata bind the mode;
 old disk records default to default mode. Portfolio sessions never read the shared
 store, and publishing filters their entries. The shim's mode negotiation uses

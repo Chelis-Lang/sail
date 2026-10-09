@@ -481,7 +481,9 @@ fn solver_killed_mid_reply_stores_no_partial_reply() {
     );
     assert!(killed(ended.status), "status {:?}", ended.status);
     assert_prefix(&want, &ended.stdout);
-    assert!(assert_cache_correct(&cache, &want) > 0);
+    // Publication now requires a clean, silent whole session. A killed
+    // solver cannot certify that guarantee, even for its earlier replies.
+    assert_eq!(assert_cache_correct(&cache, &want), 0);
 }
 
 // ---------------------------------------------------------------------------
