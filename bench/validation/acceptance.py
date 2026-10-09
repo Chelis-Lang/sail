@@ -50,7 +50,7 @@ for entry in manifest['reports']:
 assert len({record['label'] for record in records}) == len(records)
 print(json.dumps({
     'schema_version': 1,
-    'scope': 'Initial product acceptance after the solver diagnostic correction',
+    'scope': manifest.get('scope', 'Initial product acceptance after the solver diagnostic correction'),
     'source_revisions': manifest['source_revisions'],
     'limits': manifest['limits'],
     'reports': records,

@@ -64,8 +64,16 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         cold_run, cold, target = managed()
         assert cold_run.returncode == 0 and cold["exit_code"] == 0, cold_run.stderr.decode()
         assert target["complete"] and not target["reused"], target
-        assert cold["currentness"] == "current", cold
+        assert cold["currentness"] in ("current", "historical"), cold
         assert target["report"]["summary"]["verified"] == 1, target
+
+        # Discovering compiler-declared inputs cannot authorize cold reuse.
+        # Establish a fully observed proof before requiring zero fresh work.
+        if cold["currentness"] == "historical":
+            established_run, established, target = managed()
+            assert established_run.returncode == 0 and established["currentness"] == "current", established
+            assert target["complete"] and not target["reused"], target
+            assert established["execution"]["verifier_invocations"] > 0, established
 
         warm_run, warm, reused = managed()
         assert warm_run.returncode == 0 and reused["reused"] and reused["complete"], warm

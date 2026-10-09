@@ -24,8 +24,10 @@ Verification arguments, features, toolchain and executable identity participate
 in the context. Declared workspace and path-dependency inputs are checked for
 changes, including resolved registry/git dependencies and compiler-declared
 external includes. Newly discovered inputs prevent that establishing run from
-claiming currentness until they can be observed. A proof from a failed, interrupted or partial verification cannot
-become a reusable whole-target receipt. Function/module selection runs fresh;
+claiming currentness until they can be observed. Failed, interrupted or partial
+target proofs cannot become reusable whole-target receipts. Publication waits
+for a coherent input check and an atomic run commit, so an interrupted publisher
+cannot leave usable unvalidated receipts. Function/module selection runs fresh;
 its report describes that requested scope. Managed mode owns its target and
 observation logs, and does not accept an external `--target-dir`, direct Verus
 source selection, tests/benches/examples, a chained workspace rustc wrapper,

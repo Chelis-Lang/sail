@@ -110,7 +110,7 @@ def run(label, managed):
     document = json.loads(result.stdout)
     assert document.get('error') is None
     if managed:
-        assert document['currentness'] == 'current'
+        assert document['currentness'] == 'current' or label == 'managed-fill' and document['currentness'] == 'historical'
     resident = None
     for line in timing.read_text().splitlines():
         if 'maximum resident set size' in line.lower():
@@ -124,6 +124,11 @@ def run(label, managed):
 plain, cold = run('plain-fill', False)
 managed, first = run('managed-fill', True)
 assert functions(plain) == requested(managed)
+establishment = None
+if managed['currentness'] == 'historical':
+    managed, establishment = run('managed-establish', True)
+    assert functions(plain) == requested(managed)
+    assert managed['execution']['verifier_invocations'] > 0
 rounds = []
 for round_number in range(1, 4):
     plain, p = run(f'plain-warm-{round_number}', False)
@@ -157,6 +162,7 @@ record = {
                f'Synthetic successful {options.functions}-function fixture; real projects may have different costs',
                'Baseline cleans its selected caller artifact before timed verification to obtain a complete fresh report; dependency artifacts and SMT entries stay warm'],
     'functions': requested(managed), 'fill': {'plain': cold, 'managed': first},
+    'fully_observed_establishment': establishment,
     'rounds': rounds, 'proof_edit': {'plain': edited_plain, 'managed': edited_managed},
     'summary': {'plain': summary(p), 'managed': summary(m),
                 'median_speedup': statistics.median(p) / statistics.median(m)},
