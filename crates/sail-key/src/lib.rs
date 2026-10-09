@@ -175,6 +175,18 @@ impl PrefixHasher {
         h.update(self.bytes.to_le_bytes());
         QueryKey(h.finalize().into())
     }
+
+    /// Key for evidence that the complete input ended cleanly without solver
+    /// diagnostics or unexpected replies. Feed every input byte, including
+    /// trailing whitespace, before calling. This domain cannot be used as a
+    /// normal command-reply key.
+    #[must_use]
+    pub fn silence_key(&self) -> QueryKey {
+        let mut h = Sha256::new();
+        field(&mut h, b"sail-key/session-silence/v1");
+        field(&mut h, &self.key().0);
+        QueryKey(h.finalize().into())
+    }
 }
 
 /// SHA-256 of a byte string, for solver binary identity and trace digests.
