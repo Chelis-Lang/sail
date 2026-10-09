@@ -10,6 +10,7 @@ mod fragility_join;
 mod measurement;
 mod ops;
 mod portfolio;
+mod portfolio_scope;
 mod report;
 mod scope;
 mod shared_ops;

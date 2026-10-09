@@ -208,6 +208,7 @@ pub(crate) fn force_verification(
     }
     let metadata: serde_json::Value =
         serde_json::from_slice(&output.stdout).map_err(|e| e.to_string())?;
+    let required = crate::portfolio_scope::required(&metadata, args)?;
     let members = metadata
         .get("workspace_members")
         .and_then(serde_json::Value::as_array)
@@ -246,10 +247,7 @@ pub(crate) fn force_verification(
     }
     let output = clean.output().map_err(|e| e.to_string())?;
     if output.status.success() {
-        Ok(packages
-            .iter()
-            .map(|(_, name)| name.replace('-', "_"))
-            .collect())
+        Ok(required)
     } else {
         Err(String::from_utf8_lossy(&output.stderr).into_owned())
     }
