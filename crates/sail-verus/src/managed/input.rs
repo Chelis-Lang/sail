@@ -215,6 +215,15 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
     let mut paths = snapshot.observation_paths.clone();
     for path in &snapshot.roots {
         paths.insert(path.clone());
+        if let Ok(canonical) = path.canonicalize() {
+            paths.insert(canonical);
+        }
+        for alias in path
+            .ancestors()
+            .filter(|p| std::fs::symlink_metadata(p).is_ok_and(|m| m.file_type().is_symlink()))
+        {
+            paths.insert(alias.to_owned());
+        }
         // Observe missing configuration files through their nearest existing
         // parent, so create-and-remove is visible without callback delivery.
         if !path.exists()
@@ -331,6 +340,31 @@ mod tests {
         assert!(before.complete && after.complete);
         assert_eq!(before.revision, after.revision);
         assert_ne!(stamp_before, mutation_stamp(&after));
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn runtime_alias_target_restoration_changes_stamp() {
+        let root = std::env::temp_dir().join(format!("sail-runtime-stamp-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(root.join("project")).is_ok());
+        let runtime = root.join("runtime");
+        let alias = root.join("alias");
+        assert!(std::fs::write(&runtime, "original").is_ok());
+        assert!(std::os::unix::fs::symlink(&runtime, &alias).is_ok());
+        let data = serde_json::json!({"workspace_root":root.join("project"),"packages":[]});
+        let mut before = snapshot_metadata(&data, &[]);
+        before.roots.push(alias);
+        let stamp = mutation_stamp(&before);
+        let file = File::open(&runtime).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let mtime = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert!(std::fs::write(&runtime, "transient").is_ok());
+        assert!(std::fs::write(&runtime, "original").is_ok());
+        assert!(file.set_times(FileTimes::new().set_modified(mtime)).is_ok());
+        assert_ne!(stamp, mutation_stamp(&before));
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
 
