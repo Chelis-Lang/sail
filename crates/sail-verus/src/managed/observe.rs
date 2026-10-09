@@ -146,4 +146,39 @@ mod tests {
         drop(observation);
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
+    #[cfg(unix)]
+    #[test]
+    fn restored_changes_to_external_symlink_inputs_are_observed() {
+        let root = std::env::temp_dir().join(format!(
+            "sail-observation-symlink-test-{}",
+            std::process::id()
+        ));
+        let project = root.join("project");
+        assert!(std::fs::create_dir_all(&project).is_ok());
+        let external = root.join("external.rs");
+        assert!(std::fs::write(&external, "original").is_ok());
+        assert!(std::os::unix::fs::symlink(&external, project.join("lib.rs")).is_ok());
+        let data = serde_json::json!({"workspace_root":project,"packages":[{"source":null,"manifest_path":project.join("Cargo.toml")}]});
+        let snapshot = super::super::input::snapshot_metadata(&data, &[]);
+        assert!(
+            snapshot
+                .roots
+                .iter()
+                .any(|p| external.canonicalize().is_ok_and(|target| target == *p))
+        );
+        let observer = Observation::begin(&snapshot, &[], &root.join("cache"));
+        assert!(observer.complete());
+        assert!(std::fs::write(&external, "temporary").is_ok());
+        assert!(std::fs::write(&external, "original").is_ok());
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(4);
+        while !observer.changed() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert!(
+            observer.changed(),
+            "symlink target change must invalidate work"
+        );
+        drop(observer);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
 }

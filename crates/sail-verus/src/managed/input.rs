@@ -60,12 +60,20 @@ pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Resul
     serde_json::from_slice(&output.stdout).map_err(|e| Error::new("SAIL3103", e.to_string()))
 }
 
-fn collect(path: &Path, files: &mut BTreeSet<PathBuf>, visited: &mut BTreeSet<PathBuf>) -> bool {
+fn collect(
+    path: &Path,
+    files: &mut BTreeSet<PathBuf>,
+    visited: &mut BTreeSet<PathBuf>,
+    roots: &mut Vec<PathBuf>,
+) -> bool {
     let Ok(canonical) = path.canonicalize() else {
         return false;
     };
     if !visited.insert(canonical.clone()) {
         return true;
+    }
+    if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
+        roots.push(canonical.clone());
     }
     if canonical.is_file() {
         files.insert(canonical);
@@ -84,7 +92,7 @@ fn collect(path: &Path, files: &mut BTreeSet<PathBuf>, visited: &mut BTreeSet<Pa
         if [".git", ".claude", ".codex"].iter().any(|s| name == *s) {
             continue;
         }
-        complete &= collect(&entry.path(), files, visited);
+        complete &= collect(&entry.path(), files, visited, roots);
     }
     complete
 }
@@ -126,7 +134,7 @@ pub(super) fn snapshot_metadata_home(
             .and_then(|s| Path::new(s).parent())
         {
             roots.push(parent.to_owned());
-            complete &= collect(parent, &mut files, &mut visited);
+            complete &= collect(parent, &mut files, &mut visited, &mut roots);
         }
     }
     for name in [
@@ -157,7 +165,7 @@ pub(super) fn snapshot_metadata_home(
         }
     }
     for path in extras {
-        complete &= collect(path, &mut files, &mut visited);
+        complete &= collect(path, &mut files, &mut visited, &mut roots);
     }
     let mut hasher = Sha256::new();
     for path in files {
