@@ -950,7 +950,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     let started = Instant::now();
     let mut data = metadata(&config.workspace, &config.args, &config.cargo)?;
     data["sail_cache_directory"] = Value::String(config.cache.to_string_lossy().into_owned());
-    let initial = snapshot_metadata(&data, &[]);
+    let workspace_root = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     if std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
         return Err(Error::new(
             "SAIL3100",
@@ -973,7 +973,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos())
     );
-    let (paths, _lock) = prepare(config, &initial.workspace, &hash, &run_id)?;
+    let (paths, _lock) = prepare(config, &workspace_root, &hash, &run_id)?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
     let (sources, source_coverage) = super::source_inputs::load(&source_state);
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();

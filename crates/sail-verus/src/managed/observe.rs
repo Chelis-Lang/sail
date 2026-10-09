@@ -51,7 +51,11 @@ impl Observation {
                                         | EventKind::Modify(notify::event::ModifyKind::Name(_))
                                 ) && root.starts_with(p))
                         })
-                        && !p.components().any(|c| c.as_os_str() == ".git")
+                        && (!p.components().any(|c| c.as_os_str() == ".git")
+                            || tracked.iter().any(|root| {
+                                root.components().any(|c| c.as_os_str() == ".git")
+                                    && p.starts_with(root)
+                            }))
                 }) {
                     signal.store(true, Ordering::Release);
                 }
@@ -183,6 +187,40 @@ mod tests {
             "symlink target change must invalidate work"
         );
         drop(observer);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+    #[test]
+    fn explicitly_declared_inputs_in_reserved_directories_are_observed() {
+        let root = std::env::temp_dir().join(format!(
+            "sail-observation-declared-test-{}",
+            std::process::id()
+        ));
+        for name in [".claude", ".git"] {
+            assert!(std::fs::create_dir_all(root.join(name)).is_ok());
+        }
+        let files = [root.join(".claude/payload"), root.join(".git/payload")];
+        for file in &files {
+            assert!(std::fs::write(file, "original").is_ok());
+        }
+        let data = serde_json::json!({"workspace_root":root,"packages":[{"manifest_path":root.join("Cargo.toml")}],"sail_source_inputs":files});
+        let snapshot = super::super::input::snapshot_metadata(&data, &[]);
+        for file in &files {
+            let observer = Observation::begin(&snapshot, &[], &root.join("cache"));
+            assert!(observer.complete());
+            assert!(std::fs::write(file, "temporary").is_ok());
+            let changed = super::super::input::snapshot_metadata(&data, &[]);
+            assert_ne!(snapshot.revision, changed.revision);
+            assert!(std::fs::write(file, "original").is_ok());
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(4);
+            while !observer.changed() && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            assert!(
+                observer.changed(),
+                "explicit input changes override reserved-directory exclusions"
+            );
+            drop(observer);
+        }
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
 }

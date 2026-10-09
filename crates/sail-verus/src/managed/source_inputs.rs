@@ -51,17 +51,6 @@ fn dependencies(text: &str) -> Option<Vec<String>> {
 
 pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec<PathBuf>, bool)> {
     let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
-    let package_roots: Vec<PathBuf> = data["packages"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|p| {
-            Path::new(p["manifest_path"].as_str()?)
-                .parent()?
-                .canonicalize()
-                .ok()
-        })
-        .collect();
     let (previous, _) = load(path);
     let mut paths: BTreeSet<PathBuf> = previous.into_iter().collect();
     let mut covered = true;
@@ -99,9 +88,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         for input in inputs {
             let declared = workspace.join(input);
             let resolved = declared.canonicalize().unwrap_or(declared);
-            if !package_roots.iter().any(|p| resolved.starts_with(p)) {
-                paths.insert(resolved);
-            }
+            paths.insert(resolved);
         }
     }
     let paths: Vec<PathBuf> = paths.into_iter().collect();
