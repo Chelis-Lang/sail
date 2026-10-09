@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail bench` runs the installed workload tool with unchanged arguments and
+  standard streams.
+
+- Fresh fragility measurements force reverification in a locked Sail-owned
+  target, preserving the caller’s Cargo artifacts and dependency compilation.
+
 - Join fragility captures to functions by exact transcript hashes and check
   order; expose conservative function scores in JSON and MCP on request.
 - Exclude skipped timing successes from function-scoped reports and portfolio

@@ -290,7 +290,17 @@ pub fn verify(
         Err(e) => return fail(err, &e),
     };
     setup.measure = measure;
-    if json || measure.is_some() {
+    if measure.is_some() {
+        let (measured_args, _ownership) =
+            match crate::measurement::prepare(&args, crate::portfolio::partial(&args)) {
+                Ok(v) => v,
+                Err(message) => {
+                    return json_failure(&args, &SetupError("SAIL0110", message), out, err);
+                }
+            };
+        return verify_json(&setup, &measured_args, out, err);
+    }
+    if json {
         return verify_json(&setup, &args, out, err);
     }
     let (mut cmd, _) = command(&setup, &args);
@@ -347,6 +357,7 @@ pub(crate) fn portfolio_attempt(
         match crate::portfolio::force_verification(
             args.get(1..).unwrap_or_default(),
             Path::new(&target),
+            crate::portfolio::partial(args),
         ) {
             Ok(names) => Some(names),
             Err(e) => {

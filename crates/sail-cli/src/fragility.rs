@@ -226,6 +226,8 @@ fn capture(
     dir: &Path,
     args: &[String],
 ) -> Result<Captured, String> {
+    let (args, _ownership) = crate::measurement::prepare(args, subcommand == "focus")?;
+    let args = args.as_slice();
     let logs_dir = dir.join("logs");
     let unavailable = crate::verify::logs_unavailable(args);
     let output = Command::new(cargo_verus)

@@ -7,6 +7,7 @@
 
 mod fragility;
 mod fragility_join;
+mod measurement;
 mod ops;
 mod portfolio;
 mod report;
@@ -41,8 +42,6 @@ const COMMANDS: &[(&str, &str)] = &[
 
 /// Exit code for a malformed command line.
 const EXIT_USAGE: u8 = 2;
-/// Exit code for a command `sail` recognises but does not implement yet.
-const EXIT_UNIMPLEMENTED: u8 = 3;
 
 fn usage() -> String {
     let mut text = format!(
@@ -80,17 +79,35 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("cache") => ops::cache(args.get(1..).unwrap_or_default(), out, err),
         Some("mcp") => mcp(args.get(1..).unwrap_or_default(), err),
         Some("fragility") => fragility::fragility(args.get(1..).unwrap_or_default(), out, err),
-        Some(cmd) if COMMANDS.iter().any(|(name, _)| *name == cmd) => {
-            let _ = writeln!(
-                err,
-                "error[SAIL0001]: `sail {cmd}` is not implemented yet (see docs/ROADMAP.md)"
-            );
-            ExitCode::from(EXIT_UNIMPLEMENTED)
-        }
+        Some("bench") => bench(args.get(1..).unwrap_or_default(), err),
         Some(other) => {
             let _ = writeln!(err, "error[SAIL0002]: unknown command `{other}`\n");
             let _ = write!(err, "{}", usage());
             ExitCode::from(EXIT_USAGE)
+        }
+    }
+}
+
+/// Runs the installed benchmark tool with identical arguments and stdio.
+fn bench(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
+    let result = std::env::current_exe().and_then(|exe| {
+        std::process::Command::new(exe.with_file_name("sail-bench"))
+            .args(args)
+            .status()
+    });
+    match result {
+        Ok(status) => ExitCode::from(
+            status
+                .code()
+                .and_then(|c| u8::try_from(c).ok())
+                .unwrap_or(1),
+        ),
+        Err(e) => {
+            let _ = writeln!(
+                err,
+                "error[SAIL0003]: cannot run sail-bench: {e}; build/install sail-bench next to sail"
+            );
+            ExitCode::from(2)
         }
     }
 }

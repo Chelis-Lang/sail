@@ -90,3 +90,11 @@ sail verify --measure-fragility --fragility-seeds 8 --output json
 This runs baseline verification without cached replies, then replays its exact
 solver sessions. It can be expensive and is local-only; ordinary verification
 runs no census. Incomplete or ambiguous attribution is reported as unavailable.
+
+Explicit fragility measurements reverify in a Sail-owned Cargo target, reusing
+dependency compilation between requests. They never clean the caller’s target.
+Do not combine measurement with an external `--target-dir` or a portfolio.
+
+`sail bench` forwards workload arguments to `sail-bench` installed beside it;
+build both with `cargo build --release -p sail-cli -p sail-bench -p sail-shim`.
+Benchmarks remain local-only and never form part of the CI gate.

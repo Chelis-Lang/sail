@@ -164,7 +164,12 @@ impl RunArgs {
         }
         let mut verus = Vec::new();
         if let Some(m) = &self.module {
-            verus.extend(["--verify-module".to_owned(), m.clone()]);
+            let flag = if self.function.is_some() {
+                "--verify-only-module"
+            } else {
+                "--verify-module"
+            };
+            verus.extend([flag.to_owned(), m.clone()]);
         }
         if let Some(f) = &self.function {
             if self.module.is_none() {
@@ -282,7 +287,7 @@ mod tests {
                 "-p",
                 "demo",
                 "--",
-                "--verify-module",
+                "--verify-only-module",
                 "arith",
                 "--verify-function",
                 "mul_pos",

@@ -88,7 +88,7 @@ point; whole-project requests use `cargo verus verify`.
 |---|---|
 | `project_dir` | The project. Default: the server's working directory. Relative paths resolve against it. |
 | `package` | `-p <package>`. |
-| `module` | Verus `--verify-module <module>`: this module and its descendants, relative to the crate root (`arith`, `foo::bar`). |
+| `module` | Verus `--verify-module <module>`: this module and its descendants (with `function`, `--verify-only-module` selects that function’s owning module), relative to the crate root (`arith`, `foo::bar`). |
 | `function` | Verus `--verify-function <function>`: a unique substring of the name, or a pattern with `*` at either end. It is looked up in `module`, or in the crate root (`--verify-root`) if no module is given. |
 | `portfolio` | Optional `accept-first-proof`: sequential complete Verus attempts; every winning function comes from one complete run, with seed/configuration and attempt evidence. Never enabled by default. |
 | `measure_fragility` | Optional boolean: capture and replay solver sessions locally, attaching exact per-function scores; incomplete or ambiguous attribution stays null with a note. Cannot be combined with a portfolio. |
