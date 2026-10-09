@@ -104,9 +104,6 @@ pub struct SolverInfo {
     pub path: Option<String>,
     /// SHA-256 of the binary, as lowercase hex.
     pub sha256: Option<String>,
-    /// Solver execution platform class. Older records may lack this field.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub platform: Option<String>,
 }
 
 /// Cache use.

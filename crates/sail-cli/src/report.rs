@@ -78,11 +78,6 @@ pub(crate) fn build(inputs: &Inputs<'_>) -> Report {
             version: a.solver_version.clone(),
             path: inputs.solver_path.clone(),
             sha256: inputs.solver_sha256.clone(),
-            platform: Some(format!(
-                "{}-{}",
-                std::env::consts::OS,
-                std::env::consts::ARCH
-            )),
         }),
         cache: CacheInfo {
             daemon: inputs.daemon,

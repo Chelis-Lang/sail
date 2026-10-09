@@ -97,7 +97,6 @@ fn full() -> Report {
             version: Some("4.16.0".to_owned()),
             path: Some("/opt/z3".to_owned()),
             sha256: Some("ab".repeat(32)),
-            platform: Some("linux-x86_64".to_owned()),
         }),
         cache: CacheInfo { daemon: true },
         attribution: AttributionInfo {

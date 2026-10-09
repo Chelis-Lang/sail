@@ -60,7 +60,7 @@ omitted when no portfolio was requested.
 | `mode` | string | `default`, or explicitly selected `accept-first-proof` (charter rule 8). |
 | `command` | string[] | The arguments passed to `cargo verus verify`, without sail's own flags. |
 | `exit_code` | int \| null | `cargo verus verify`'s exit code. |
-| `solver` | object \| null | `name` (`z3`), `version` (as Z3 reported it), `path`, `sha256` of the binary, and optional `platform` execution class (older records may omit it). |
+| `solver` | object \| null | `name` (`z3`), `version` (as Z3 reported it), `path`, `sha256` of the binary. |
 | `cache.daemon` | bool | Whether solver sessions could be served from the cache daemon. |
 | `attribution` | object | `status` (`complete`, `partial` or `unavailable`), `notes` (plain-language reasons), `unmatched_sessions`. |
 | `crates` | array | One entry per Verus run (crate), in the order Verus finished. |
