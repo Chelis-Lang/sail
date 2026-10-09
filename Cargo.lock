@@ -431,8 +431,10 @@ dependencies = [
  "sail-api",
  "sail-conformance",
  "sail-key",
+ "sail-portfolio",
  "sail-session",
  "sail-smtlib",
+ "sail-solver",
  "sail-verus",
  "serde",
  "serde_json",
@@ -459,6 +461,7 @@ dependencies = [
  "sail-daemon",
  "sail-key",
  "sail-mcp",
+ "sail-portfolio",
  "sail-verus",
  "serde",
  "serde_json",
@@ -512,6 +515,11 @@ dependencies = [
 [[package]]
 name = "sail-portfolio"
 version = "0.0.0"
+dependencies = [
+ "sail-smtlib",
+ "sail-solver",
+ "serde",
+]
 
 [[package]]
 name = "sail-session"
@@ -546,6 +554,10 @@ dependencies = [
 [[package]]
 name = "sail-solver"
 version = "0.0.0"
+dependencies = [
+ "serde",
+ "sha2",
+]
 
 [[package]]
 name = "sail-verus"

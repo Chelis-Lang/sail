@@ -281,3 +281,147 @@ Units whose warm rounds still started the solver: 13 of 147. With nothing change
 | `verus-examples/examples/summer_school/chapter-6-1.rs` | 70 / 70 (50.0%) | 2 / 4 |
 | `verus-examples/examples/state_machines/arc.rs` | 220 / 60 (78.6%) | 1 / 4 |
 
+## `fragility-census-fast-arm64-macos-devload-2026-10-08`: fragility census, fast tier
+
+Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0018). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.
+
+- Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `0a0a3a985070`; 8 configurations (baseline, seed=1, seed=2, seed=3, seed=4, seed=5, seed=6, seed=7)
+- Machine: cpu: Apple M3; cpus: 8; host: aarch64-apple-darwin; memory_bytes: 25769803776; uname: Darwin 25.5.0 arm64
+- 147 units, 763 solver sessions, 4086 checks; capture 516 s, replays 5511 s of solver time
+- Baseline replay versus the capture: 0 of 4086 answers and 1 of 4085 `rlimit` deltas differ
+- Infrastructure: 0 incomplete runs, 0 runs with unpaired batches (never counted as answers)
+
+| Stability | Checks |
+|---|---:|
+| stable-proved | 3986 |
+| stable-unproved | 97 |
+| unstable | 3 |
+| answer text changed (any) | 3 |
+
+| Per-check distribution | Checks | Zero | p50 | p90 | p99 | Max |
+|---|---:|---:|---:|---:|---:|---:|
+| effort CV across configurations | 4085 | 2395 | 0.000 | 0.060 | 0.273 | 1.566 |
+| effort max/min | 4085 | 0 | 1.000 | 1.163 | 2.316 | 37.143 |
+| largest share of the limit used | 4085 | 0 | 0.020% | 0.219% | 3.798% | 100.000% |
+| fragility score | 4086 | 1 | 0.000 | 0.002 | 0.038 | 1.000 |
+
+| Largest share of the limit used | Checks | With an `unknown` | Unstable |
+|---|---:|---:|---:|
+| [0, 0.001%) | 652 | 0 | 0 |
+| [0.001%, 0.01%) | 807 | 97 | 0 |
+| [0.01%, 0.1%) | 1962 | 0 | 0 |
+| [0.1%, 1%) | 520 | 0 | 0 |
+| [1%, 10%) | 129 | 0 | 0 |
+| [10%, 25%) | 6 | 0 | 0 |
+| [25%, 50%) | 4 | 0 | 0 |
+| [50%, 75%) | 2 | 0 | 0 |
+| [75%, 100%) | 0 | 0 | 0 |
+| ≥ 100% | 3 | 3 | 3 |
+
+`unknown` answers: 100 checks answered `unknown` under some configuration, 3 of them proved under another. 4 `unknown` answers reached the limit; 4 have no reason on record (a replay sends only the captured follow-ups). Share of the limit used by an `unknown`: p50 0.00483%, p99 0.00888%, max 100.000%; largest with a recorded reason other than resource exhaustion: 0.00888%. Reasons: `(:reason-unknown "(incomplete quantifiers)")` ×776.
+
+Most fragile units (top 15 by score):
+
+| Unit | Checks | Worst class | Max used | Max CV | Failing functions | Score |
+|---|---:|---|---:|---:|---:|---:|
+| `human-eval-verus/tasks/lib.rs` | 441 | unstable | 100.000% | 1.257 | - | 1.000 |
+| `vstd/source/vstd/vstd.rs` | 2060 | stable-proved | 43.564% | 1.018 | - | 0.436 |
+| `verus-examples/examples/cuckoo_hash_table/main.rs` | 51 | stable-proved | 31.196% | 0.354 | - | 0.312 |
+| `verus-examples/examples/cuckoo_hash_table/cuckoo.rs` | 50 | stable-proved | 26.803% | 0.289 | - | 0.268 |
+| `verus-examples/examples/guide/iterators.rs` | 27 | stable-proved | 18.700% | 1.566 | - | 0.187 |
+| `verus-examples/examples/resource/monotonic_counter.rs` | 13 | stable-proved | 11.423% | 0.084 | - | 0.114 |
+| `verus-examples/examples/vectors.rs` | 9 | stable-proved | 7.812% | 0.226 | - | 0.078 |
+| `verus-examples/examples/guide/invariants.rs` | 12 | stable-proved | 6.062% | 0.156 | - | 0.061 |
+| `verus-examples/examples/bitvector_basic.rs` | 23 | stable-proved | 3.674% | 0.168 | - | 0.037 |
+| `verus-examples/examples/summer_school/chapter-1-22.rs` | 6 | stable-proved | 2.969% | 0.478 | - | 0.030 |
+| `verus-examples/examples/resource/log.rs` | 14 | stable-proved | 2.891% | 0.087 | - | 0.029 |
+| `verus-examples/examples/doubly_linked_xor.rs` | 22 | stable-proved | 1.974% | 0.098 | - | 0.020 |
+| `verus-examples/examples/mergesort.rs` | 9 | stable-proved | 1.909% | 0.244 | - | 0.019 |
+| `verus-examples/examples/guide/recursion.rs` | 34 | stable-proved | 1.311% | 0.472 | - | 0.013 |
+| `verus-examples/examples/std_test/vecdeque_test.rs` | 2 | stable-proved | 1.086% | 0.061 | - | 0.011 |
+
+Attributed functions:
+
+| Function | Checks | Worst class | Max used | Max CV | Score |
+|---|---:|---|---:|---:|---:|
+| `chapter_2_1::main` | 1 | stable-proved | 0.041% | 0.003 | 0.000 |
+| `chars_iterator::test` | 1 | stable-proved | 0.129% | 0.004 | 0.001 |
+| `external::main` | 1 | stable-proved | 0.00046% | 0.000 | 0.000 |
+| `float::main` | 1 | stable-proved | 0.035% | 0.000 | 0.000 |
+| `getting_started::main` | 1 | stable-proved | 0.015% | 0.005 | 0.000 |
+| `invariants::main` | 1 | stable-proved | 0.026% | 0.002 | 0.000 |
+| `pcell_example::main` | 1 | stable-proved | 0.014% | 0.000 | 0.000 |
+| `pervasive_example::main` | 1 | stable-proved | 0.026% | 0.007 | 0.000 |
+| `template::a_test` | 1 | stable-proved | 0.00233% | 0.000 | 0.000 |
+| `vecdeque_test::vec_deque_test` | 2 | stable-proved | 1.086% | 0.061 | 0.011 |
+
+Most fragile checks (top 10 by score):
+
+| Check | Function | Class | Baseline | Proved | Effort (rlimit units) | Max used | Answers |
+|---|---|---|---|---:|---:|---:|---|
+| `human-eval-verus/tasks/lib.rs/28199-1791502023800322000` #0 | - | unstable | unsat | 7/8 | 1934029–30000000 (CV 1.257) | 100.000% | unknown ×1, unsat ×7 |
+| `human-eval-verus/tasks/lib.rs/28389-1791502026163669000` #0 | - | unstable | unsat | 7/8 | 3061972–30000000 (CV 0.513) | 100.000% | unknown ×1, unsat ×7 |
+| `human-eval-verus/tasks/lib.rs/28401-1791502026331418000` #0 | - | unstable | unsat | 6/8 | 33975244–600000000 (CV 0.982) | 100.000% | unknown ×2, unsat ×6 |
+| `human-eval-verus/tasks/lib.rs/28314-1791502024937513000` #20 | - | stable-proved | unsat | 8/8 | 23529954–64756558 (CV 0.385) | 71.952% | unsat ×8 |
+| `human-eval-verus/tasks/lib.rs/28138-1791502023295223000` #2 | - | stable-proved | unsat | 8/8 | 4497364–15795695 (CV 0.362) | 52.652% | unsat ×8 |
+| `vstd/source/vstd/vstd.rs/21258-1791501969062372000` #0 | - | stable-proved | unsat | 8/8 | 6020566–26138528 (CV 0.399) | 43.564% | unsat ×8 |
+| `verus-examples/examples/cuckoo_hash_table/main.rs/83861-1791501704379172000` #13 | - | stable-proved | unsat | 8/8 | 3710153–9358766 (CV 0.354) | 31.196% | unsat ×8 |
+| `verus-examples/examples/cuckoo_hash_table/cuckoo.rs/83647-1791501698301732000` #13 | - | stable-proved | unsat | 8/8 | 3729896–8040851 (CV 0.289) | 26.803% | unsat ×8 |
+| `human-eval-verus/tasks/lib.rs/28386-1791502026110333000` #2 | - | stable-proved | unsat | 8/8 | 41327709–77402652 (CV 0.227) | 25.801% | unsat ×8 |
+| `vstd/source/vstd/vstd.rs/13523-1791501926887828000` #52 | - | stable-proved | unsat | 8/8 | 1173385–5704355 (CV 0.498) | 19.015% | unsat ×8 |
+
+## `fragility-census-page-table-allocate-arm64-macos-devload-2026-10-08`: fragility census, standard tier
+
+Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0018). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.
+
+- Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `0a0a3a985070`; 8 configurations (baseline, seed=1, seed=2, seed=3, seed=4, seed=5, seed=6, seed=7); extra Verus arguments `--verify-only-module impl_u::wrapped_token --verify-function WrappedMapToken::allocate`
+- Machine: cpu: Apple M3; cpus: 8; host: aarch64-apple-darwin; memory_bytes: 25769803776; uname: Darwin 25.5.0 arm64
+- 1 units, 1 solver sessions, 1 checks; capture 2271 s, replays 6925 s of solver time
+- Baseline replay versus the capture: 0 of 1 answers and 0 of 1 `rlimit` deltas differ
+- Infrastructure: 0 incomplete runs, 0 runs with unpaired batches (never counted as answers)
+
+| Stability | Checks |
+|---|---:|
+| unstable | 1 |
+| answer text changed (any) | 1 |
+
+| Per-check distribution | Checks | Zero | p50 | p90 | p99 | Max |
+|---|---:|---:|---:|---:|---:|---:|
+| effort CV across configurations | 1 | 0 | 0.315 | 0.315 | 0.315 | 0.315 |
+| effort max/min | 1 | 0 | 6.696 | 6.696 | 6.696 | 6.696 |
+| largest share of the limit used | 1 | 0 | 100.000% | 100.000% | 100.000% | 100.000% |
+| fragility score | 1 | 0 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+| Largest share of the limit used | Checks | With an `unknown` | Unstable |
+|---|---:|---:|---:|
+| [0, 0.001%) | 0 | 0 | 0 |
+| [0.001%, 0.01%) | 0 | 0 | 0 |
+| [0.01%, 0.1%) | 0 | 0 | 0 |
+| [0.1%, 1%) | 0 | 0 | 0 |
+| [1%, 10%) | 0 | 0 | 0 |
+| [10%, 25%) | 0 | 0 | 0 |
+| [25%, 50%) | 0 | 0 | 0 |
+| [50%, 75%) | 0 | 0 | 0 |
+| [75%, 100%) | 0 | 0 | 0 |
+| ≥ 100% | 1 | 1 | 1 |
+
+`unknown` answers: 1 checks answered `unknown` under some configuration, 1 of them proved under another. 7 `unknown` answers reached the limit; 0 have no reason on record (a replay sends only the captured follow-ups). Share of the limit used by an `unknown`: p50 100.000%, p99 100.000%, max 100.000%; largest with a recorded reason other than resource exhaustion: n/a. Reasons: `(:reason-unknown "canceled")` ×7.
+
+Most fragile units (top 15 by score):
+
+| Unit | Checks | Worst class | Max used | Max CV | Failing functions | Score |
+|---|---:|---|---:|---:|---:|---:|
+| `page-table/page-table/src/lib.rs` | 1 | unstable | 100.000% | 0.315 | 1 | 1.000 |
+
+Attributed functions:
+
+| Function | Checks | Worst class | Max used | Max CV | Score |
+|---|---:|---|---:|---:|---:|
+| `lib::impl_u::wrapped_token::WrappedMapToken::allocate` | 1 | unstable | 100.000% | 0.315 | 1.000 |
+
+Most fragile checks (top 10 by score):
+
+| Check | Function | Class | Baseline | Proved | Effort (rlimit units) | Max used | Answers |
+|---|---|---|---|---:|---:|---:|---|
+| `page-table/page-table/src/lib.rs/81716-1791501681902362000` #0 | lib::impl_u::wrapped_token::WrappedMapToken::allocate | unstable | unknown | 1/8 | 448058976–3000000000 (CV 0.315) | 100.000% | unknown ×7, unsat ×1 |
+

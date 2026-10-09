@@ -10,7 +10,7 @@
 //! - `cached_result`: the latest known verdicts, without re-running, with
 //!   when and how they were established and whether sources changed since
 //!   ([`store`]);
-//! - `fragility`: `sail fragility`, once it exists.
+//! - `fragility`: `sail fragility --output json` (ADR 0018).
 //!
 //! Verification always runs the `sail` binary as a child process, so this
 //! crate depends only on `sail-api` for the report types (ADR 0016).

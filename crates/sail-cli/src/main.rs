@@ -5,6 +5,7 @@
 //! implemented" exit code until their backends exist.
 #![forbid(unsafe_code)]
 
+mod fragility;
 mod ops;
 mod report;
 mod shared_ops;
@@ -29,6 +30,10 @@ const COMMANDS: &[(&str, &str)] = &[
     ("status", "show daemon, solver pool and cache state"),
     ("cache", "inspect and manage the result cache"),
     ("bench", "run benchmark workloads"),
+    (
+        "fragility",
+        "measure proof fragility across solver seeds (opt-in; changes no verdict)",
+    ),
 ];
 
 /// Exit code for a malformed command line.
@@ -42,7 +47,7 @@ fn usage() -> String {
         env!("CARGO_PKG_VERSION")
     );
     for (name, help) in COMMANDS {
-        let _ = writeln!(text, "    {name:<8} {help}");
+        let _ = writeln!(text, "    {name:<10} {help}");
     }
     text
 }
@@ -67,6 +72,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),
         Some("cache") => ops::cache(args.get(1..).unwrap_or_default(), out, err),
         Some("mcp") => mcp(args.get(1..).unwrap_or_default(), err),
+        Some("fragility") => fragility::fragility(args.get(1..).unwrap_or_default(), out, err),
         Some(cmd) if COMMANDS.iter().any(|(name, _)| *name == cmd) => {
             let _ = writeln!(
                 err,

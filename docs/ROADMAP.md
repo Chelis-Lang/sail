@@ -51,8 +51,11 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 3. **Agent ergonomics.**
    - **Done:** function attribution, the ledger and `--output json` schema v1
      (ADR 0014).
-   - **In progress:** fragility measurement (`sail-portfolio`). The opt-in
-     portfolio mode follows it.
+   - **Done:** fragility measurement: `sail fragility`, `sail-bench
+     fragility` and the fragility census (ADR 0018).
+   - **Next:** feeding fragility into `--output json` and the MCP
+     `fragility` tool through the ledger's function attribution; then
+     racing and the opt-in portfolio mode.
 4. **Benchmarks.**
    - **Done:** cold, warm, edit, agent-loop and history-replay workloads, all
      local-only (ADR 0013).
