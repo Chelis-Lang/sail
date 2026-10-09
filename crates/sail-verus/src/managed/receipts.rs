@@ -39,6 +39,7 @@ pub(crate) struct Invocation {
     pub run_id: String,
     pub report: Report,
     pub success: bool,
+    pub dependencies: BTreeMap<PathBuf, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +50,7 @@ pub(crate) struct Receipt {
     pub name: String,
     pub kind: Vec<String>,
     pub context: String,
+    pub input_revision: String,
     pub invocation: Invocation,
     pub artifact_hashes: BTreeMap<PathBuf, String>,
 }
@@ -65,6 +67,11 @@ impl Receipt {
             && self.checksum == checksum
             && self.context == context
             && self.invocation.success
+            && self
+                .invocation
+                .dependencies
+                .iter()
+                .all(|(path, hash)| file_digest(path).as_ref() == Ok(hash))
             && complete(&self.invocation.report)
             && !self.artifact_hashes.is_empty()
             && self
@@ -128,6 +135,7 @@ mod tests {
             name: "input".to_owned(),
             kind: vec!["lib".to_owned()],
             context: "ctx".to_owned(),
+            input_revision: "inputs".to_owned(),
             invocation: Invocation {
                 identity: TargetIdentity {
                     manifest: PathBuf::from("Cargo.toml"),
@@ -138,6 +146,7 @@ mod tests {
                 run_id: "run".to_owned(),
                 report,
                 success: true,
+                dependencies: BTreeMap::new(),
             },
             artifact_hashes: artifact_hashes(std::slice::from_ref(&path)).unwrap_or_default(),
         }

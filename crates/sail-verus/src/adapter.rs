@@ -256,11 +256,13 @@ fn finish(
     });
     let success =
         crate::managed::receipt_complete(&report) && !crate::managed::focused(&report_args);
+    let dependencies = driver_dependencies()?;
     let invocation = Invocation {
         identity,
         run_id: runtime.run_id.clone(),
         report,
         success,
+        dependencies,
     };
     json(
         &runtime
@@ -324,4 +326,22 @@ fn actual_focus() -> bool {
         .iter()
         .any(|flag| value.contains(flag))
     })
+}
+
+fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> {
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let mut files = std::collections::BTreeMap::new();
+    for pair in args.windows(2).filter(|w| w[0] == "--extern") {
+        if let Some((_, path)) = pair[1].to_str().and_then(|s| s.split_once('=')) {
+            let path = PathBuf::from(path);
+            if path.is_file() {
+                files.insert(path.clone(), file_digest(&path)?);
+            }
+            let vir = path.with_extension("vir");
+            if vir.is_file() {
+                files.insert(vir.clone(), file_digest(&vir)?);
+            }
+        }
+    }
+    Ok(files)
 }

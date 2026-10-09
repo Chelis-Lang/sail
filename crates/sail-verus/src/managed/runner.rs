@@ -107,7 +107,14 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         })
         .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
         .collect();
-    let actual = Command::new("rustc")
+    let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
+    if Path::new(&rustc).is_file() {
+        identity.push((
+            rustc.to_string_lossy().into_owned(),
+            file_digest(Path::new(&rustc))?,
+        ));
+    }
+    let actual = Command::new(&rustc)
         .args(["--print", "sysroot"])
         .current_dir(&config.workspace)
         .output()
@@ -132,7 +139,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         sysroot.join("lib"),
         sysroot
             .join("lib/rustlib")
-            .join(crate::toolchain::host())
+            .join(rust_host(&rustc, &config.workspace)?)
             .join("lib"),
     ] {
         for item in std::fs::read_dir(directory).into_iter().flatten().flatten() {
@@ -166,7 +173,19 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             }
         }
     }
-    Ok(digest(
+    identity.sort();
+    let state = config.cache.join("runtime-identities");
+    std::fs::create_dir_all(&state).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    let identity_sha =
+        digest(&serde_json::to_vec(&identity).map_err(|e| Error::new("SAIL3104", e.to_string()))?);
+    if !state.join(format!("{identity_sha}.json")).is_file() {
+        json(&state.join(format!("{identity_sha}.json")), &identity)?;
+    }
+    environment.insert(
+        b"sail-runtime-identities".to_vec(),
+        identity_sha.clone().into_bytes(),
+    );
+    let hash = digest(
         &serde_json::to_vec(&(
             1,
             &config.args,
@@ -174,7 +193,21 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             environment.into_iter().collect::<Vec<_>>(),
         ))
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
-    ))
+    );
+    json(&state.join(format!("{hash}.link")), &identity_sha)?;
+    Ok(hash)
+}
+
+fn rust_host(rustc: &std::ffi::OsStr, workspace: &Path) -> Result<String> {
+    let output = Command::new(rustc)
+        .arg("-vV")
+        .current_dir(workspace)
+        .output()
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .find_map(|line| line.strip_prefix("host: ").map(str::to_owned))
+        .ok_or_else(|| Error::new("SAIL3104", "cannot identify compiler host target"))
 }
 
 fn alias(original: &Path, path: &Path) -> Result<()> {
@@ -239,6 +272,11 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     for window in config.args.windows(2) {
         if window[0] == "--manifest-path" {
             cmd.arg("--manifest-path").arg(&window[1]);
+        }
+    }
+    for arg in &config.args {
+        if arg.starts_with("--manifest-path=") {
+            cmd.arg(arg);
         }
     }
     let output = cmd
@@ -416,6 +454,7 @@ fn target_records(
             id == package_id && target.replace('-', "_") == name.replace('-', "_")
         });
         let force = force && requested;
+        let input_revision = target_revision(data, package_id);
         let path = receipt_path(paths, package_id, name, &kind);
         let call = calls.iter().find(|c| {
             c.identity.manifest == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -440,7 +479,8 @@ fn target_records(
                     .filter(|p| p.is_file()),
             );
             let hashes = artifact_hashes(&artifact_paths)?;
-            let reusable = call.success && complete(&call.report) && !force;
+            let reusable =
+                call.success && complete(&call.report) && !force && !input_revision.is_empty();
             if reusable {
                 json(
                     &path,
@@ -451,6 +491,7 @@ fn target_records(
                         name: name.to_owned(),
                         kind: kind.clone(),
                         context: context.to_owned(),
+                        input_revision: input_revision.clone(),
                         invocation: call.clone(),
                         artifact_hashes: hashes,
                     }
@@ -466,7 +507,7 @@ fn target_records(
                 establishing_run: call.run_id.clone(),
                 reused: false,
                 requested,
-                complete: call.success,
+                complete: call.success && complete(&call.report),
                 report: call.report.clone(),
             });
         } else if let Some(receipt) = read::<Receipt>(&path).filter(|r| {
@@ -486,6 +527,8 @@ fn target_records(
             );
             artifact["fresh"] == true
                 && !force
+                && !input_revision.is_empty()
+                && r.input_revision == input_revision
                 && r.package_id == package_id
                 && r.invocation.identity.manifest
                     == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -543,7 +586,7 @@ fn target_records(
                 establishing_run: call.run_id,
                 reused: false,
                 requested,
-                complete: call.success,
+                complete: call.success && complete(&call.report),
                 report: call.report,
             });
         }
@@ -556,12 +599,61 @@ fn target_records(
     Ok((results, missing))
 }
 
+fn target_revision(data: &Value, package_id: &str) -> String {
+    let mut closure = BTreeSet::from([package_id.to_owned()]);
+    let mut pending = vec![package_id.to_owned()];
+    while let Some(id) = pending.pop() {
+        if let Some(node) = data["resolve"]["nodes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|n| n["id"].as_str() == Some(id.as_str()))
+        {
+            for dependency in node["dependencies"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+            {
+                if closure.insert(dependency.to_owned()) {
+                    pending.push(dependency.to_owned());
+                }
+            }
+        }
+    }
+    let mut package_data = data.clone();
+    let mut packages: Vec<Value> = data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|p| p["id"].as_str().is_some_and(|id| closure.contains(id)))
+        .cloned()
+        .collect();
+    // Immutable registry/git packages are still content-bound; local edits or
+    // corruption of a fetched crate cannot silently retain an old proof.
+    for package in &mut packages {
+        package["source"] = Value::Null;
+    }
+    package_data["packages"] = Value::Array(packages);
+    let snapshot = snapshot_metadata(&package_data, &[]);
+    if snapshot.complete {
+        snapshot.revision
+    } else {
+        String::new()
+    }
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "All supported Cargo target selectors are resolved explicitly before complete coverage can be claimed."
+)]
 fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String)> {
     let workspace = args.iter().any(|a| a == "--workspace" || a == "--all");
     let mut selected_names = Vec::new();
     let mut excluded = Vec::new();
     let mut bins = Vec::new();
     let mut lib = false;
+    let mut all_bins = false;
     let mut it = args.iter().take_while(|a| a.as_str() != "--");
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -581,9 +673,16 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String)>
                 }
             }
             "--lib" => lib = true,
+            "--bins" => all_bins = true,
             _ => {
                 if let Some(v) = a.strip_prefix("--package=") {
                     selected_names.push(v);
+                }
+                if let Some(v) = a.strip_prefix("--exclude=") {
+                    excluded.push(v);
+                }
+                if let Some(v) = a.strip_prefix("--bin=") {
+                    bins.push(v);
                 }
             }
         }
@@ -597,7 +696,13 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String)>
             .as_array()
             .is_some_and(|m| m.contains(&package["id"]));
         let chosen = if !selected_names.is_empty() {
-            selected_names.iter().any(|n| *n == name || *n == id)
+            selected_names.iter().any(|n| {
+                *n == name
+                    || *n == id
+                    || n.split_once('@').is_some_and(|(selected, version)| {
+                        selected == name && package["version"].as_str() == Some(version)
+                    })
+            })
         } else if workspace {
             member
         } else if let Some(root) = default {
@@ -634,7 +739,12 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String)>
                 })
             });
             let name = target["name"].as_str().unwrap_or_default();
-            if (lib || !bin) && !library || (!bins.is_empty() && (!bin || !bins.contains(&name))) {
+            let selected_kind = if lib || all_bins || !bins.is_empty() {
+                (lib && library) || (bin && (all_bins || bins.contains(&name)))
+            } else {
+                library || bin
+            };
+            if !selected_kind {
                 continue;
             }
             if target["required-features"]
@@ -685,7 +795,27 @@ pub fn refresh_result(
                 .map(|h| PathBuf::from(h).join(".cargo"))
         });
     let mut snapshot = super::input::snapshot_metadata_home(&data, &extras, home.as_deref());
-    snapshot.complete &= covered;
+    snapshot.roots.extend(extras);
+    snapshot.roots.extend(super::input::configuration_paths(
+        workspace,
+        home.as_deref(),
+    ));
+    snapshot.roots.sort();
+    snapshot.roots.dedup();
+    let state = cache.join("runtime-identities");
+    let identity_sha = read::<String>(&state.join(format!("{}.link", result.context_sha256)));
+    let identities = identity_sha
+        .as_ref()
+        .and_then(|sha| read::<Vec<(String, String)>>(&state.join(format!("{sha}.json"))));
+    let runtime_complete = identities.as_ref().is_some_and(|paths| {
+        identity_sha
+            .as_ref()
+            .is_some_and(|sha| *sha == digest(&serde_json::to_vec(paths).unwrap_or_default()))
+            && paths
+                .iter()
+                .all(|(path, hash)| file_digest(Path::new(path)).as_ref() == Ok(hash))
+    });
+    snapshot.complete &= covered && runtime_complete;
     Ok(snapshot)
 }
 
@@ -722,7 +852,19 @@ fn script_roots(data: &Value) -> Vec<PathBuf> {
 )]
 pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     if config.args.iter().any(|s| {
-        s == "--target-dir"
+        [
+            "--tests",
+            "--benches",
+            "--examples",
+            "--all-targets",
+            "--test",
+            "--bench",
+            "--example",
+            "--no-verify",
+        ]
+        .iter()
+        .any(|flag| s == flag || s.starts_with(&format!("{flag}=")))
+            || s == "--target-dir"
             || s.starts_with("--target-dir=")
             || s == "--no-verify"
             || s.starts_with("--log")
@@ -734,7 +876,8 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         ));
     }
     let started = Instant::now();
-    let data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    let mut data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    data["sail_cache_directory"] = Value::String(config.cache.to_string_lossy().into_owned());
     let initial = snapshot_metadata(&data, &[]);
     if std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
         return Err(Error::new(
@@ -750,6 +893,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         ));
     }
     let hash = context(config, &data)?;
+
     let run_id = format!(
         "{}-{}",
         std::process::id(),
@@ -762,11 +906,23 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
-    let before = snapshot_metadata(&data, &extras);
+    let mut before = snapshot_metadata(&data, &extras);
+    before.roots.extend(super::input::configuration_paths(
+        &before.workspace,
+        std::env::var_os("CARGO_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
+            .as_deref(),
+    ));
     if !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
     let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
+    // Establish the revision again after the watcher is live, closing the setup
+    // interval between metadata collection and native observation.
+    let monitored = snapshot_metadata(&data, &extras);
+    before.revision = monitored.revision;
+    before.complete &= monitored.complete;
     json(
         &paths
             .run
@@ -795,6 +951,19 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         .collect();
     if forced {
         clean(config, &paths.target, &selected(&config.args, &names))?;
+    }
+    let dirty: Vec<String> = std::fs::read_dir(&paths.receipts)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| read::<Receipt>(&e.path()))
+        .filter(|r| r.input_revision != target_revision(&data, &r.package_id))
+        .map(|r| r.package_id)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    if !dirty.is_empty() {
+        clean(config, &paths.target, &dirty)?;
     }
     let runtime = Runtime {
         run_id: run_id.clone(),
@@ -835,10 +1004,12 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     let (_, mut after_extras, after_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     after_extras.extend(script_roots);
-    let after = snapshot_metadata(
-        &metadata(&config.workspace, &config.args, &config.cargo)?,
-        &after_extras,
-    );
+    let mut after_data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
+    let after = snapshot_metadata(&after_data, &after_extras);
+    // Flush native coalesced notifications before currentness publication. This
+    // small bound is independent of solver runtime and never delays forwarding.
+    std::thread::sleep(std::time::Duration::from_millis(100));
     let currentness =
         if !before.complete || !after.complete || !after_coverage || !monitor.complete() {
             Currentness::Unknown

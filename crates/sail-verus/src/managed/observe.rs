@@ -20,10 +20,18 @@ impl Observation {
         let signal = Arc::clone(&changed);
         let failed = Arc::clone(&lost);
         let excluded = cache.canonicalize().unwrap_or_else(|_| cache.to_owned());
+        let tracked: Vec<PathBuf> = snapshot
+            .roots
+            .iter()
+            .chain(extra)
+            .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
+            .collect();
         let callback = move |event: notify::Result<notify::Event>| match event {
+            Ok(event) if event.need_rescan() => failed.store(true, Ordering::Release),
             Ok(event) if !matches!(event.kind, EventKind::Access(_)) => {
                 if event.paths.iter().any(|p| {
                     !p.starts_with(&excluded)
+                        && tracked.iter().any(|root| p.starts_with(root))
                         && !p
                             .components()
                             .any(|c| c.as_os_str() == "target" || c.as_os_str() == ".git")
@@ -44,12 +52,19 @@ impl Observation {
         };
         let mut complete = true;
         for root in snapshot.roots.iter().chain(extra) {
-            let path = if root.is_file() {
-                root.parent().unwrap_or(root)
-            } else {
+            let path = if root.is_dir() {
                 root.as_path()
+            } else {
+                root.parent().unwrap_or(root)
             };
-            complete &= watcher.watch(path, RecursiveMode::Recursive).is_ok();
+            if path.is_dir() {
+                let mode = if root.is_dir() {
+                    RecursiveMode::Recursive
+                } else {
+                    RecursiveMode::NonRecursive
+                };
+                complete &= watcher.watch(path, mode).is_ok();
+            }
         }
         // Native observation errors prevent reuse even if all final bytes match.
         if lost.load(Ordering::Acquire) {

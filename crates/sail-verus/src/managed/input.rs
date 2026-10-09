@@ -105,6 +105,12 @@ pub(super) fn snapshot_metadata_home(
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     let mut files = BTreeSet::new();
     let mut visited = BTreeSet::new();
+    if let Some(path) = data["sail_cache_directory"]
+        .as_str()
+        .and_then(|s| Path::new(s).canonicalize().ok())
+    {
+        visited.insert(path);
+    }
     if let Some(path) = data["target_directory"]
         .as_str()
         .and_then(|s| Path::new(s).canonicalize().ok())
@@ -194,6 +200,26 @@ pub(super) fn snapshot_paths(paths: &[PathBuf]) -> (String, bool) {
     let data = serde_json::json!({"workspace_root":"/", "packages":[]});
     let snapshot = snapshot_metadata(&data, paths);
     (snapshot.revision, snapshot.complete)
+}
+
+pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    for parent in workspace.ancestors() {
+        files.extend(
+            [
+                ".cargo/config",
+                ".cargo/config.toml",
+                "rust-toolchain",
+                "rust-toolchain.toml",
+            ]
+            .into_iter()
+            .map(|name| parent.join(name)),
+        );
+    }
+    if let Some(home) = cargo_home {
+        files.extend([home.join("config"), home.join("config.toml")]);
+    }
+    files
 }
 
 #[cfg(test)]
