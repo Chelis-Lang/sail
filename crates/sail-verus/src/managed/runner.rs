@@ -858,7 +858,8 @@ pub fn refresh_context(
     snapshot.roots.extend(runtime_paths(cache, context_sha256));
     snapshot.roots.sort();
     snapshot.roots.dedup();
-    let source_coverage = super::source_inputs::load(&context.join("source-inputs.json")).1;
+    let source_state = context.join("source-inputs.json");
+    let source_coverage = source_state.is_file() && super::source_inputs::load(&source_state).1;
     let runtime_complete = runtime_current(cache, context_sha256);
     snapshot.complete &= covered && source_coverage && runtime_complete;
     Ok(snapshot)
@@ -1012,7 +1013,8 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace,
         "context_sha256":hash, "input_revision":before.revision,
-        "complete":before.complete && script_coverage && monitor.complete()
+        "complete":before.complete && script_coverage && monitor.complete(),
+        "source_observation":source_state.is_file()
     }));
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")

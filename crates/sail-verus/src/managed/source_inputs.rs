@@ -1,4 +1,4 @@
-//! Compiler-declared inputs outside resolved package directories.
+//! Compiler-declared inputs, including explicit files beneath excluded directories.
 
 use super::files::json;
 use super::receipts::read;
