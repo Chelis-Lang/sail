@@ -134,7 +134,7 @@ pub(crate) fn verify(
     if options.background {
         let mut args = options.args;
         if options.json {
-            args.extend(["--output".into(), "json".into()]);
+            args.splice(0..0, ["--output".into(), "json".into()]);
         }
         return Some(crate::jobs::background(&args, out, err));
     }
