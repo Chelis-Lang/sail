@@ -31,7 +31,7 @@ impl Observation {
             .roots
             .iter()
             .chain(extra)
-            .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
+            .flat_map(|p| [p.clone(), p.canonicalize().unwrap_or_else(|_| p.clone())])
             .collect();
         let callback = move |event: notify::Result<notify::Event>| match event {
             Ok(event) if event.need_rescan() => failed.store(true, Ordering::Release),
@@ -77,6 +77,17 @@ impl Observation {
         // downgraded by a later nonrecursive subscription.
         let mut directories = BTreeMap::<PathBuf, bool>::new();
         for root in snapshot.roots.iter().chain(extra) {
+            // Watch alias bindings as well as their canonical contents. A
+            // temporary symlink replacement must not escape native observation.
+            for alias in root
+                .ancestors()
+                .filter(|p| std::fs::symlink_metadata(p).is_ok_and(|m| m.file_type().is_symlink()))
+            {
+                if let Some(parent) = alias.parent() {
+                    let parent = parent.canonicalize().unwrap_or_else(|_| parent.to_owned());
+                    directories.entry(parent).or_default();
+                }
+            }
             let path = if root.is_dir() {
                 root.as_path()
             } else {
@@ -195,14 +206,19 @@ mod tests {
             "sail-observation-declared-test-{}",
             std::process::id()
         ));
-        for name in [".claude", ".git"] {
+        for name in [".claude", ".git", "target", "cache"] {
             assert!(std::fs::create_dir_all(root.join(name)).is_ok());
         }
-        let files = [root.join(".claude/payload"), root.join(".git/payload")];
+        let files = [
+            root.join(".claude/payload"),
+            root.join(".git/payload"),
+            root.join("target/generated.rs"),
+            root.join("cache/generated.rs"),
+        ];
         for file in &files {
             assert!(std::fs::write(file, "original").is_ok());
         }
-        let data = serde_json::json!({"workspace_root":root,"packages":[{"manifest_path":root.join("Cargo.toml")}],"sail_source_inputs":files});
+        let data = serde_json::json!({"workspace_root":root,"packages":[{"manifest_path":root.join("Cargo.toml")}],"sail_source_inputs":files,"target_directory":root.join("target"),"sail_cache_directory":root.join("cache")});
         let snapshot = super::super::input::snapshot_metadata(&data, &[]);
         for file in &files {
             let observer = Observation::begin(&snapshot, &[], &root.join("cache"));

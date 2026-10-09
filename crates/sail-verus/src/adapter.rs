@@ -121,6 +121,25 @@ fn verifying(args: &[OsString]) -> bool {
     std::env::var(format!("__VERUS_DRIVER_VERIFY_{id}")).as_deref() == Ok("1")
 }
 
+fn custom_compiler_context(args: &[OsString]) -> bool {
+    if args
+        .iter()
+        .any(|a| a == "--sysroot" || a.to_string_lossy().starts_with("--sysroot="))
+    {
+        return true;
+    }
+    let target = argument(args, "--target").or_else(|| {
+        args.iter()
+            .find_map(|a| a.to_str()?.strip_prefix("--target=").map(str::to_owned))
+    });
+    target.is_some_and(|v| {
+        Path::new(&v)
+            .extension()
+            .and_then(std::ffi::OsStr::to_str)
+            .is_some_and(|v| v.eq_ignore_ascii_case("json"))
+    })
+}
+
 fn driver() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
@@ -130,6 +149,12 @@ fn driver() -> Result<ExitCode> {
             .status()
             .map(status)
             .map_err(|e| Error::new("SAIL3111", e.to_string()));
+    }
+    if custom_compiler_context(&args) {
+        return Err(Error::new(
+            "SAIL3111",
+            "incremental verification does not support a custom sysroot or JSON target specification",
+        ));
     }
     let runtime_path = PathBuf::from(required("SAIL_MANAGED_RUNTIME")?);
     let runtime: Runtime = serde_json::from_slice(
@@ -344,4 +369,26 @@ fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> 
         }
     }
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn explicit_custom_toolchain_inputs_fail_closed() {
+        for args in [
+            vec!["--sysroot", "/custom"],
+            vec!["--sysroot=/custom"],
+            vec!["--target", "custom.json"],
+            vec!["--target=custom.json"],
+        ] {
+            assert!(custom_compiler_context(
+                &args.into_iter().map(OsString::from).collect::<Vec<_>>()
+            ));
+        }
+        assert!(!custom_compiler_context(&[
+            "--target".into(),
+            "x86_64-unknown-linux-gnu".into()
+        ]));
+    }
 }

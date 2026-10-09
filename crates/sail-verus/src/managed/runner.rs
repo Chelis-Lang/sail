@@ -137,23 +137,25 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
         }
     }
-    for directory in [
-        sysroot.join("lib"),
-        sysroot
-            .join("lib/rustlib")
-            .join(rust_host(rustc.as_os_str(), &config.workspace)?)
-            .join("lib"),
-    ] {
+    // Include every installed target's implicit standard/compiler libraries.
+    // Cargo may choose its target through ancestor configuration or environment,
+    // so host-only binding would miss cross-target standard library mutations.
+    let mut directories = vec![sysroot.join("lib")];
+    for entry in std::fs::read_dir(sysroot.join("lib/rustlib"))
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        let library = entry.path().join("lib");
+        if library.is_dir() {
+            directories.push(library);
+        }
+    }
+    for directory in directories {
         for item in std::fs::read_dir(directory).into_iter().flatten().flatten() {
-            let name = item.file_name().to_string_lossy().into_owned();
-            if name.starts_with("librustc_driver")
-                || name.starts_with("libLLVM")
-                || name.starts_with("librustc_codegen_llvm")
-            {
-                identity.push((
-                    item.path().to_string_lossy().into_owned(),
-                    hashed.hash(&item.path())?,
-                ));
+            let path = item.path();
+            if path.is_file() {
+                identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
             }
         }
     }
@@ -172,6 +174,23 @@ fn context(config: &Config, data: &Value) -> Result<String> {
                     path.as_os_str().as_encoded_bytes().to_vec(),
                     hashed.hash(&path)?.into_bytes(),
                 );
+            }
+        }
+    }
+    for value in config
+        .args
+        .iter()
+        .chain(std::env::var("CARGO_BUILD_TARGET").ok().iter())
+    {
+        let candidate = value.strip_prefix("--target=").unwrap_or(value);
+        if Path::new(candidate)
+            .extension()
+            .and_then(std::ffi::OsStr::to_str)
+            .is_some_and(|v| v.eq_ignore_ascii_case("json"))
+        {
+            let path = config.workspace.join(candidate);
+            if path.is_file() {
+                identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
             }
         }
     }
@@ -219,18 +238,6 @@ fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBu
             format!("cannot resolve compiler {}", path.display()),
         )
     })
-}
-
-fn rust_host(rustc: &std::ffi::OsStr, workspace: &Path) -> Result<String> {
-    let output = Command::new(rustc)
-        .arg("-vV")
-        .current_dir(workspace)
-        .output()
-        .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .find_map(|line| line.strip_prefix("host: ").map(str::to_owned))
-        .ok_or_else(|| Error::new("SAIL3104", "cannot identify compiler host target"))
 }
 
 fn alias(original: &Path, path: &Path) -> Result<()> {
@@ -944,6 +951,8 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             || s == "--no-verify"
             || s.starts_with("--log")
             || s == "--verus-source"
+            || s == "--sysroot"
+            || s.starts_with("--sysroot=")
     }) {
         return Err(Error::new(
             "SAIL3100",
