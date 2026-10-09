@@ -255,3 +255,29 @@ build (its materialized inputs and OS lock are separate). Pass-through,
 cache-fill and cache-warm each reported one `ok`, one `same`, zero differences
 and zero infrastructure errors. Its original failed invocation is excluded
 from source coverage; the raw full-suite count is not rewritten.
+
+## Complete corrected acceptance (2026-10-09)
+
+After the strict comparator, exclusive OS lock, duplicate-option correction
+and solver-diagnostic publication fix (ADR 0022), the entire suite was run
+in all three modes. Each unstable result matches one complete observed plain
+output; no unseen or hybrid diagnostic is accepted.
+
+| Mode | Cases | Same | Unstable | Different | Infrastructure errors | Wall seconds |
+|---|---:|---:|---:|---:|---:|---:|
+| Pass-through | 4,695 | 4,691 | 4 | 0 | 0 | 3,536 |
+| Cache fill | 4,695 | 4,691 | 4 | 0 | 0 | 3,293 |
+| Cache warm | 4,695 | 4,692 | 3 | 0 | 0 | 4,433 |
+
+Every mode retains 58 ignored cases and the same five plain failures: the two
+source-build `cargo_new_*` cases and the three tests requiring multi-module
+error reporting described above. There are 4,632 plain `ok` cases. The corrected
+example invocation is included in these full runs and passes. The earlier
+warm disagreements from suppressed Z3 warnings were genuine cache defects;
+these full corrected results supersede them, without removing a diagnostic.
+
+Separate normal-thread coverage matched 13 selected cases in each mode,
+including the three module-error tests. All 13 plain cases passed. This
+supplies the coverage unavailable under the full suite's one-thread setting.
+Concurrent development load makes these wall times correctness evidence,
+not reference performance measurements. Long suites remain local-only.
