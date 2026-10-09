@@ -149,6 +149,7 @@ mod tests {
             ],
             excluded: vec![root.join("target")],
             complete: true,
+            observation_paths: std::collections::BTreeSet::new(),
         };
         let observation = Observation::begin(&snapshot, &[], &root.join("cache"));
         assert!(observation.complete());

@@ -338,6 +338,7 @@ fn prepare(config: &Config, workspace: &Path, hash: &str, run_id: &str) -> Resul
         &paths.run,
         &paths.run.join("invocations"),
         &paths.run.join("sidecars"),
+        &paths.run.join("pending-receipts"),
     ] {
         std::fs::create_dir_all(dir).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     }
@@ -569,13 +570,16 @@ fn target_records(
                     .filter(|p| p.is_file()),
             );
             let hashes = artifact_hashes(&artifact_paths)?;
-            let reusable =
-                call.success && complete(&call.report) && !force && !input_revision.is_empty();
+            let reusable = call.success && complete(&call.report) && !input_revision.is_empty();
             if reusable {
                 json(
-                    &path,
+                    &paths
+                        .run
+                        .join("pending-receipts")
+                        .join(path.file_name().unwrap_or_default()),
                     &Receipt {
-                        version: 1,
+                        version: 2,
+                        committed: paths.run.join("committed.json"),
                         checksum: String::new(),
                         package_id: package_id.to_owned(),
                         name: name.to_owned(),
@@ -1069,7 +1073,9 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     // interval between metadata collection and native observation.
     let monitored = snapshot_metadata(&data, &extras);
     before.revision = monitored.revision;
+    before.observation_paths = monitored.observation_paths;
     before.complete &= monitored.complete;
+    let stamp_before = super::input::mutation_stamp(&before);
     json(
         &paths
             .run
@@ -1127,6 +1133,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         sidecars: paths.run.join("sidecars"),
         invocations: paths.run.join("invocations"),
         original_wrapper: actual_wrapper(&config.cargo_verus)?,
+        receipts: paths.receipts.clone(),
     };
     json(&paths.runtime, &runtime)?;
     let mut exit = invoke(config, &paths, err)?;
@@ -1139,6 +1146,9 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         )?;
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
             .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
+        std::fs::remove_dir_all(paths.run.join("pending-receipts"))
+            .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
+            .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
         exit = invoke(config, &paths, err)?;
         let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
         targets = retried;
@@ -1166,7 +1176,16 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         &paths.build_inputs.with_file_name("input-state.json"),
         &after_data,
     )?;
-    let after = snapshot_metadata(&after_data, &after_extras);
+    let mut after = snapshot_metadata(&after_data, &after_extras);
+    after.roots.extend(super::input::configuration_paths(
+        &after.workspace,
+        std::env::var_os("CARGO_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
+            .as_deref(),
+    ));
+    after.roots.extend(runtime_paths(&config.cache, &hash));
+    let stamp_after = super::input::mutation_stamp(&after);
     // Flush native coalesced notifications before currentness publication. This
     // small bound is independent of solver runtime and never delays forwarding.
     std::thread::sleep(std::time::Duration::from_millis(100));
@@ -1176,23 +1195,16 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         || !source_coverage
         || !monitor.complete()
         || !runtime_current(&config.cache, &hash)
+        || stamp_before.is_none()
+        || stamp_after.is_none()
     {
         Currentness::Unknown
-    } else if before.revision == after.revision && !monitor.changed() {
+    } else if before.revision == after.revision && stamp_before == stamp_after && !monitor.changed()
+    {
         Currentness::Current
     } else {
         Currentness::Historical
     };
-    if currentness != Currentness::Current {
-        for target in &targets {
-            let _ = std::fs::remove_file(receipt_path(
-                &paths,
-                &target.package_id,
-                &target.target,
-                &target.kind,
-            ));
-        }
-    }
     if exit == Some(0)
         && expected.iter().any(|(id, name, kind)| {
             !targets.iter().any(|t| {
@@ -1246,6 +1258,9 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         error: None,
     };
     json(&paths.run.join("result.json"), &result)?;
+    if result.currentness == Currentness::Current {
+        super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
+    }
     Ok(result)
 }
 

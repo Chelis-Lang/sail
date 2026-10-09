@@ -172,6 +172,7 @@ fn driver() -> Result<ExitCode> {
                 .collect::<Vec<_>>(),
         ),
     };
+    crate::managed::retire_receipts(&runtime, &identity)?;
     let dir = runtime.sidecars.join(identity.key());
     std::fs::create_dir_all(dir.join("provenance"))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;

@@ -81,3 +81,20 @@ Regression tests cover restored-mtime source/build inputs, restored edits during
 verification, receipt corruption and altered artifacts, selector coverage, and
 partial-scope exclusion. Whole-workspace and differential acceptance results are
 recorded by the milestone lead before merge.
+
+Receipt publication is transactional. The driver retires any prior receipt for a
+fresh target before verification can rewrite its artifact. Successful target
+receipts are staged within the run; only a coherent final observation publishes
+them, followed by one atomic commit marker binding every receipt checksum.
+Cancellation or a crash before that marker leaves receipts that cannot authorize
+reuse. Already confirmed dependency receipts remain eligible.
+
+Run-local coherence also compares Unix device, inode, size, modification time,
+and change time for the enumerated files, directories, aliases, configurations,
+and runtime inputs. These stamps are separate from logical content revisions and
+proof keys. An edit restored during verification changes the stamp even when its
+bytes and modification time return to their original values, independently of
+native watcher callback latency. An unsupported or unreadable stamp prevents
+currentness and publication. Regression tests kill a publisher after receipt
+files are copied but before commit, and restore both source bytes and mtime while
+checking that the mutation stamp changes.

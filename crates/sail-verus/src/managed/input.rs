@@ -21,6 +21,7 @@ pub struct InputSnapshot {
     pub excluded: Vec<PathBuf>,
     /// False if declared inputs could not be read completely.
     pub complete: bool,
+    pub(crate) observation_paths: BTreeSet<PathBuf>,
 }
 
 pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
@@ -74,6 +75,7 @@ fn collect(
     }
     if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
         roots.push(canonical.clone());
+        roots.push(path.to_owned());
     }
     if canonical.is_file() {
         files.insert(canonical);
@@ -119,11 +121,11 @@ pub(super) fn snapshot_metadata_home(
     if let Ok(path) = crate::cache_dir() {
         excluded.push(path);
     }
-    for path in &excluded {
-        if let Ok(path) = path.canonicalize() {
-            visited.insert(path);
-        }
-    }
+    let excluded_canonical: BTreeSet<_> = excluded
+        .iter()
+        .filter_map(|p| p.canonicalize().ok())
+        .collect();
+    visited.extend(excluded_canonical.iter().cloned());
     excluded.sort();
     excluded.dedup();
     let mut roots = Vec::new();
@@ -175,6 +177,13 @@ pub(super) fn snapshot_metadata_home(
     for path in extras.iter().chain(&source_inputs) {
         complete &= collect(path, &mut files, &mut visited, &mut roots);
     }
+    let mut observation_paths = files.clone();
+    observation_paths.extend(
+        visited
+            .into_iter()
+            .filter(|p| !excluded_canonical.contains(p)),
+    );
+    let stamp_before = stamp_paths(&observation_paths);
     let mut hasher = Sha256::new();
     for path in files {
         let bytes = path.as_os_str().as_encoded_bytes();
@@ -187,6 +196,7 @@ pub(super) fn snapshot_metadata_home(
             hasher.update(b"unreadable");
         }
     }
+    complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
     roots.sort();
     roots.dedup();
     InputSnapshot {
@@ -195,7 +205,66 @@ pub(super) fn snapshot_metadata_home(
         roots,
         excluded,
         complete,
+        observation_paths,
     }
+}
+
+// A run-local mutation stamp is separate from logical proof keys: reverting an
+// edit between completed runs may reuse a proof, reverting during a run may not.
+pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
+    let mut paths = snapshot.observation_paths.clone();
+    for path in &snapshot.roots {
+        paths.insert(path.clone());
+        // Observe missing configuration files through their nearest existing
+        // parent, so create-and-remove is visible without callback delivery.
+        if !path.exists()
+            && let Some(parent) = path.ancestors().skip(1).find(|p| p.exists())
+        {
+            paths.insert(parent.to_owned());
+        }
+    }
+    stamp_paths(&paths)
+}
+
+#[cfg(unix)]
+fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
+    use std::os::unix::fs::MetadataExt as _;
+    let mut stamp = Sha256::new();
+    for path in paths {
+        let name = path.as_os_str().as_encoded_bytes();
+        stamp.update((name.len() as u64).to_le_bytes());
+        stamp.update(name);
+        let metadata = match std::fs::symlink_metadata(path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                stamp.update(b"missing");
+                continue;
+            }
+            Err(_) => return None,
+        };
+        for number in [
+            metadata.dev(),
+            metadata.ino(),
+            metadata.size(),
+            u64::from(metadata.mode()),
+        ] {
+            stamp.update(number.to_le_bytes());
+        }
+        for number in [
+            metadata.mtime(),
+            metadata.mtime_nsec(),
+            metadata.ctime(),
+            metadata.ctime_nsec(),
+        ] {
+            stamp.update(number.to_le_bytes());
+        }
+    }
+    Some(format!("{:x}", stamp.finalize()))
+}
+
+#[cfg(not(unix))]
+fn stamp_paths(_paths: &BTreeSet<PathBuf>) -> Option<String> {
+    None
 }
 
 /// Hashes Cargo's declared workspace and resolved dependency inputs.
@@ -237,6 +306,33 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 mod tests {
     use super::*;
     use std::fs::{File, FileTimes};
+
+    #[test]
+    fn mutation_stamp_detects_restored_content_and_mtime_without_callbacks() {
+        let root = std::env::temp_dir().join(format!("sail-mutation-stamp-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        assert!(std::fs::create_dir_all(root.join("target")).is_ok());
+        let source = root.join("source.rs");
+        assert!(std::fs::write(&source, "original").is_ok());
+        let data = serde_json::json!({"workspace_root":root,"target_directory":root.join("target"),"packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let before = snapshot_metadata(&data, &[]);
+        let stamp_before = mutation_stamp(&before);
+        assert!(std::fs::write(root.join("target/output"), "owned output").is_ok());
+        assert_eq!(stamp_before, mutation_stamp(&snapshot_metadata(&data, &[])));
+        let file = File::open(&source).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let mtime = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert!(std::fs::write(&source, "transient").is_ok());
+        assert!(std::fs::write(&source, "original").is_ok());
+        assert!(file.set_times(FileTimes::new().set_modified(mtime)).is_ok());
+        let after = snapshot_metadata(&data, &[]);
+        assert!(before.complete && after.complete);
+        assert_eq!(before.revision, after.revision);
+        assert_ne!(stamp_before, mutation_stamp(&after));
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
 
     #[test]
     fn content_revision_covers_registry_dependencies_and_restored_mtime() {
