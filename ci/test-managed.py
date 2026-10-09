@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import select
+import signal
 import subprocess
 import sys
 import tempfile
@@ -15,6 +16,23 @@ sail = str(Path(sys.argv[1]).resolve())
 cargo_verus = os.environ.get("SAIL_CARGO_VERUS") or shutil.which("cargo-verus")
 if not cargo_verus:
     raise SystemExit("managed acceptance requires the pinned cargo-verus")
+
+def bounded_verification(arguments, cwd, env, timeout):
+    process = subprocess.Popen(arguments, cwd=cwd, env=env,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        # Stop the complete owned verification tree before its scratch directory
+        # is removed. Killing only Sail leaves Cargo writing into that directory.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.communicate(timeout=10)
+        raise
+    return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
 with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary:
     root = Path(temporary)
@@ -51,9 +69,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         source.write_text(good)
 
         def managed(*args):
-            run = subprocess.run([sail, "verify", "--incremental", "--output", "json", *args],
-                                 cwd=project, env=env, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, timeout=240)
+            run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
+                                       project, env, 240)
             result = json.loads(run.stdout)
             assert result["kind"] == "sail-project-result", result
             assert result["error"] is None, result
@@ -173,9 +190,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert failed_run.returncode != 0 and not failure["reused"] and not failure["complete"], failed
         assert failure["report"]["summary"]["failed"] == 1, failure
         assert failed["execution"]["verifier_invocations"] >= 1, failed["execution"]
-        plain = subprocess.run([cargo_verus, "verus", "verify", "--target-dir",
-                                str(contexts[0] / "target")], cwd=project, env=env,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=120)
+        plain = bounded_verification([cargo_verus, "verus", "verify", "--target-dir",
+                                      str(contexts[0] / "target")], project, env, 120)
         assert plain.returncode == failed_run.returncode, (plain.returncode, failed_run.returncode)
         assert b"postcondition not satisfied" in plain.stderr, plain.stderr.decode()
         assert b"postcondition not satisfied" in failed_run.stderr, failed_run.stderr.decode()
