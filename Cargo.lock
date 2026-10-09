@@ -1163,6 +1163,7 @@ dependencies = [
  "sail-api",
  "sail-cache",
  "sail-key",
+ "sail-verus",
  "serde",
  "serde_json",
  "tokio",

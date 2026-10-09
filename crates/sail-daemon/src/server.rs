@@ -677,7 +677,17 @@ impl Server {
     /// # Errors
     ///
     /// Thread creation errors.
-    pub fn run(mut self) -> std::io::Result<()> {
+    pub fn run(self) -> std::io::Result<()> {
+        self.run_with_activity(Arc::new(AtomicU64::new(0)))
+    }
+
+    /// Serves while also accounting for queued and running verification jobs.
+    /// Active jobs keep the service alive even between solver connections.
+    ///
+    /// # Errors
+    ///
+    /// Thread creation errors.
+    pub fn run_with_activity(mut self, activity: Arc<AtomicU64>) -> std::io::Result<()> {
         if let Some(timeout) = self.state.idle_timeout {
             let state = Arc::clone(&self.state);
             let handle = self.handle();
@@ -687,7 +697,13 @@ impl Server {
                 .spawn(move || {
                     while !handle.stop.is_set() {
                         std::thread::sleep(tick);
-                        if state.active.load(Ordering::SeqCst) == 0 && state.idle_for() >= timeout {
+                        if activity.load(Ordering::SeqCst) > 0 {
+                            if let Ok(mut last) = state.last_activity.lock() {
+                                *last = Instant::now();
+                            }
+                        } else if state.active.load(Ordering::SeqCst) == 0
+                            && state.idle_for() >= timeout
+                        {
                             state.log.line(&format!(
                                 "idle for {}s with no connections: stopping",
                                 timeout.as_secs()

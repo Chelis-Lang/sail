@@ -12,6 +12,7 @@ mod ops;
 mod portfolio;
 mod portfolio_scope;
 mod report;
+#[cfg(test)]
 mod scope;
 mod shared_ops;
 mod verify;
