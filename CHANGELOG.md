@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Required `CI completion` rejects failed, cancelled and skipped gates,
+  including CI image failures. Branch protection requires an updated branch;
+  every CI job now has at most ten minutes.
+
 - A shared cache tier (ADR 0017, `docs/trust.md`). Its entries are signed
   with ed25519 and verified before use. Each signature binds the key, the
   reply hash, the command, the solver identity, the platform class, the
