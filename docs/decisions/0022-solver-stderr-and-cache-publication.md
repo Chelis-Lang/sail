@@ -36,6 +36,10 @@ the record only after all expected replies pair, no unexpected reply remains,
 and the same clean, silent-session evidence holds. Without it replay the whole
 input, skipping only stdout replies already served. This preserves warnings or
 errors from trailing declarations/assertions that produce no normal reply.
+A valid `(exit)` completes the session immediately, including when the caller
+keeps stdin open. Validate its empty argument list before treating it as terminal;
+malformed exit commands remain solver input. Non-default `print-success` forces
+live replay without recording, because enabling it changes its own reply framing.
 A missing or corrupt record costs a replay. It is evidence of observed silence,
 not a proof certificate.
 
@@ -55,7 +59,9 @@ publish no entry. Late stderr and stderr larger than the socket buffer exercise
 races and backpressure. A regression failed on the first fix when an added
 assertion warned after a cached version reply; it now checks warnings and error
 replies from new no-output suffixes, and proves unchanged quiet input avoids
-starting the solver. Fault tests validate silence-record keys against complete
+starting the solver. An open-stdin regression failed before the terminal-command
+fix and passes with warm quiet and warning inputs. Malformed exit and
+`print-success` streams also match direct Z3. Fault tests validate silence-record keys against complete
 direct-Z3 fixture inputs independently. Existing quiet-session tests must still show real cache
 hits. A solver killed mid-reply now publishes no entry at all: its fault test
 requires zero entries instead of requiring earlier replies to survive, while

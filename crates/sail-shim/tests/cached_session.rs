@@ -419,5 +419,77 @@ fn new_no_output_suffix_cannot_hide_diagnostics_after_cache_hits() {
         assert_eq!(actual.stdout, error.stdout);
         assert_eq!(actual.stderr, error.stderr);
     }
+    for input in [
+        b"(get-info :version)\n(exit 1)\n(echo \"after\")\n(exit)\n".as_slice(),
+        b"(get-info :version)\n(set-option :print-success true)\n(get-option :produce-models)\n(exit)\n".as_slice(),
+    ] {
+        let direct = input_run(&solver, None, input);
+        for _ in 0..2 {
+            let actual = input_run(&solver, Some(&socket), input);
+            assert_eq!(actual.status.code(), direct.status.code());
+            assert_eq!(actual.stdout, direct.stdout);
+            assert_eq!(actual.stderr, direct.stderr);
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+fn input_run_open(solver: &Path, socket: &Path, input: &[u8]) -> std::process::Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_sail-z3"))
+        .args(["-smt2", "-in"])
+        .env("SAIL_Z3_PATH", solver)
+        .env("SAIL_DAEMON_SOCKET", socket)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| unreachable!("start shim: {e}"));
+    let mut writer = child.stdin.take().unwrap_or_else(|| unreachable!("stdin"));
+    assert!(writer.write_all(input).is_ok());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while child.try_wait().ok().flatten().is_none() {
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            unreachable!("exit waited for stdin EOF");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    // Keep the separate writer open until after the child exits.
+    let output = child
+        .wait_with_output()
+        .unwrap_or_else(|e| unreachable!("read: {e}"));
+    drop(writer);
+    output
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn cached_exit_does_not_wait_for_client_to_close_stdin() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &cache, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let quiet = b"(get-info :version)\n(exit)\n";
+    assert!(input_run(&solver, Some(&socket), quiet).status.success());
+    let starts = session_starts(&dir);
+    let warm = input_run_open(&solver, &socket, quiet);
+    assert!(warm.status.success());
+    assert_eq!(session_starts(&dir), starts);
+    let warning = b"(get-info :version)\n(declare-fun f (Int) Int)\n(assert (forall ((x Int) (y Int)) (! (= (f x) y) :pattern ((f x)))))\n( exit )\n";
+    let direct = input_run(&solver, None, warning);
+    let actual = input_run_open(&solver, &socket, warning);
+    assert_eq!(actual.status.code(), direct.status.code());
+    assert_eq!(actual.stdout, direct.stdout);
+    assert_eq!(actual.stderr, direct.stderr);
     let _ = std::fs::remove_dir_all(dir);
 }

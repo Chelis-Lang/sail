@@ -567,6 +567,48 @@ fn daemon_timeout() -> Duration {
         .map_or(sail_api::client::TIMEOUT, Duration::from_millis)
 }
 
+fn observe(
+    session: &mut Session,
+    item: &Item,
+    prefix: &mut PrefixHasher,
+    raw: &[u8],
+) -> (Output, String, Expect) {
+    let end = usize::try_from(item.offset + item.bytes.len() as u64).unwrap_or(usize::MAX);
+    let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
+    prefix.update(raw.get(from..end).unwrap_or_default());
+    let mut output = if item.kind == ItemKind::List {
+        session.expects_output(&item.bytes)
+    } else {
+        Output::Unknown
+    };
+    session.apply(&item.bytes);
+    // print-success changes the option command's own output as well as later
+    // replies. Its non-default protocol always replays live, without recording.
+    if session
+        .option(b":print-success")
+        .is_some_and(|v| v != b"false")
+    {
+        output = Output::Unknown;
+    }
+    let name = classify(&item.bytes)
+        .map(|c| String::from_utf8_lossy(c.name).into_owned())
+        .unwrap_or_default();
+    let limit = session
+        .option(b":rlimit")
+        .and_then(|v| std::str::from_utf8(v).ok())
+        .and_then(|v| v.parse::<u64>().ok());
+    let expect = match output {
+        Output::One => Expect::Store {
+            key: prefix.key(),
+            command: name.clone(),
+            text: item.bytes.clone(),
+            limit,
+        },
+        _ => Expect::Stop,
+    };
+    (output, name, expect)
+}
+
 /// Runs a cached session. Returns `None`, having consumed no input, if the
 /// daemon cannot be reached or cannot identify the solver; the caller then
 /// runs plain pass-through.
@@ -604,34 +646,31 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         // chunk reaches the solver.
         let mut fresh_solver = false;
         for item in items {
-            let end = usize::try_from(item.offset + item.bytes.len() as u64).unwrap_or(usize::MAX);
-            let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
-            prefix.update(raw.get(from..end).unwrap_or_default());
-            let expects = if item.kind == ItemKind::List {
-                session.expects_output(&item.bytes)
-            } else {
-                Output::Unknown
-            };
-            session.apply(&item.bytes);
-            let name = classify(&item.bytes)
-                .map(|c| String::from_utf8_lossy(c.name).into_owned())
-                .unwrap_or_default();
-            let limit = session
-                .option(b":rlimit")
-                .and_then(|v| std::str::from_utf8(v).ok())
-                .and_then(|v| v.parse::<u64>().ok());
-            let expect = |expects: Output| match expects {
-                Output::One => Expect::Store {
-                    key: prefix.key(),
-                    command: name.clone(),
-                    text: item.bytes.clone(),
-                    limit,
-                },
-                _ => Expect::Stop,
-            };
+            let (expects, name, expect) = observe(&mut session, &item, &mut prefix, &raw);
+            if name == "exit" && closes_session(&item.bytes) {
+                if let Some(s) = &solving
+                    && expects != Output::None
+                {
+                    let _ = s.expects.send(expect);
+                }
+                if let Some(s) = &mut solving
+                    && !fresh_solver
+                {
+                    s.write(&chunk);
+                }
+                return finish_run(
+                    solving,
+                    client,
+                    solver,
+                    args,
+                    (&raw, served),
+                    &mut prefix,
+                    true,
+                );
+            }
             if let Some(s) = &solving {
                 if expects != Output::None {
-                    let _ = s.expects.send(expect(expects));
+                    let _ = s.expects.send(expect);
                 }
                 continue;
             }
@@ -657,8 +696,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 continue;
             }
             // Miss: start the solver with the whole input so far.
-            let Some(s) = start_solver(solver, args, &raw, served, expect(expects), client.take())
-            else {
+            let Some(s) = start_solver(solver, args, &raw, served, expect, client.take()) else {
                 return Some(ExitCode::from(1));
             };
             solving = Some(s);
@@ -672,16 +710,44 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
+    finish_run(
+        solving,
+        client,
+        solver,
+        args,
+        (&raw, served),
+        &mut prefix,
+        splitter.finish().is_none(),
+    )
+}
+
+fn closes_session(command: &[u8]) -> bool {
+    use sail_smtlib::lex::{Lexer, TokenKind};
+    let mut tokens = Lexer::new(command);
+    let _ = tokens.next();
+    let _ = tokens.next();
+    matches!(tokens.next(), Some(Ok(t)) if t.kind == TokenKind::Close) && tokens.next().is_none()
+}
+
+fn finish_run(
+    solving: Option<Solving>,
+    client: Option<Client>,
+    solver: &Path,
+    args: &[std::ffi::OsString],
+    (raw, served): (&[u8], u64),
+    prefix: &mut PrefixHasher,
+    complete: bool,
+) -> Option<ExitCode> {
     let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
     prefix.update(raw.get(from..).unwrap_or_default());
     let end = SessionEnd {
-        raw: &raw,
+        raw,
         served,
         terminal: prefix.silence_key(),
-        complete: splitter.finish().is_none(),
+        complete,
     };
     let (code, started) = finish_input(solving, client, solver, args, &end);
-    record_provenance(&raw, served, started);
+    record_provenance(raw, end.served, started);
     code
 }
 
