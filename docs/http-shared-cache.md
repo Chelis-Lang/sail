@@ -72,9 +72,9 @@ pinned toolchain and use the runtime-only image:
 
 ```sh
 cp target/release/sail deploy/cache/sail
-docker build -t sail-team-cache deploy/cache
+docker build --platform linux/amd64 -t sail-team-cache deploy/cache
 docker network create sail-team-private
-docker run --name sail-cache --network sail-team-private \
+docker run --platform linux/amd64 --name sail-cache --network sail-team-private \
     --mount source=sail-team-store,target=/store -d sail-team-cache
 ```
 
@@ -97,7 +97,8 @@ entries are shared. Whole-session silence certificates are ordinary signed
 entries and are published alongside replies, allowing a fresh reader to avoid
 starting Z3 when the complete session is available.
 
-Uploads spool to private temporary files. A complete, validated upload is installed
+Uploads spool to private temporary files. Signed entry headers are limited to
+16 KiB, and signature validation borrows the reply buffer instead of copying it. A complete, validated upload is installed
 atomically without replacing an existing publication. Identical bytes return
 success; another valid publication at the same path returns a conflict. Publication
 reports retain conflicts separately and continue with other entries. Because

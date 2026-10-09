@@ -17,7 +17,7 @@ use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::{TokioIo, TokioTimer};
 use sail_cache::shared::{
-    Header, MAX_ENTRY_BYTES, PublicKey, SharedStore, TrustedKeys, verify_entry,
+    Header, MAX_ENTRY_BYTES, PublicKey, SharedStore, TrustedKeys, verify_entry_ref,
 };
 use sail_key::QueryKey;
 
@@ -393,6 +393,13 @@ fn commit(
     let Ok(Some(data)) = SharedStore::read(tmp) else {
         return StatusCode::BAD_REQUEST;
     };
+    if data
+        .iter()
+        .position(|b| *b == b'\n')
+        .is_none_or(|n| n > 16 * 1024)
+    {
+        return StatusCode::BAD_REQUEST;
+    }
     let header: Option<Header> = data
         .split(|b| *b == b'\n')
         .next()
@@ -408,10 +415,10 @@ fn commit(
     }
     let mut trust = TrustedKeys::default();
     trust.insert(*public);
-    let Ok(verified) = verify_entry(&data, key, &trust, &header.solver) else {
+    let Ok((verified, reply)) = verify_entry_ref(&data, key, &trust, &header.solver) else {
         return StatusCode::BAD_REQUEST;
     };
-    if verified.command.starts_with("check-sat") && sail_api::policy::is_unknown(&verified.reply) {
+    if verified.command.starts_with("check-sat") && sail_api::policy::is_unknown(reply) {
         let effort = verified.effort.map(|e| sail_api::protocol::Effort {
             limit: e.limit,
             used: e.used,
@@ -431,11 +438,7 @@ fn commit(
     match std::fs::hard_link(tmp, path) {
         Ok(()) => StatusCode::CREATED,
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            if SharedStore::read(path)
-                .ok()
-                .flatten()
-                .is_some_and(|existing| existing == data)
-            {
+            if same_file(path, &data) {
                 StatusCode::NO_CONTENT
             } else {
                 StatusCode::CONFLICT
@@ -443,4 +446,25 @@ fn commit(
         }
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
+}
+
+fn same_file(path: &Path, data: &[u8]) -> bool {
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    if !file
+        .metadata()
+        .is_ok_and(|m| m.is_file() && m.len() == data.len() as u64)
+    {
+        return false;
+    }
+    let mut buffer = [0u8; 8 * 1024];
+    for expected in data.chunks(buffer.len()) {
+        let actual = &mut buffer[..expected.len()];
+        if file.read_exact(actual).is_err() || actual != expected {
+            return false;
+        }
+    }
+    let mut trailing = [0u8; 1];
+    file.read(&mut trailing).is_ok_and(|n| n == 0)
 }

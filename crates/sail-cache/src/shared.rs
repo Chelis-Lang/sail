@@ -587,6 +587,26 @@ pub fn verify_entry(
     trusted: &TrustedKeys,
     local: &Solver,
 ) -> Result<Verified, Rejection> {
+    let (header, reply) = verify_entry_ref(data, key, trusted, local)?;
+    Ok(Verified {
+        command: header.command,
+        reply: reply.to_vec(),
+        effort: header.effort,
+        signer: header.signer,
+    })
+}
+
+/// Applies every check of [`verify_entry`] while borrowing the reply bytes.
+/// Servers can validate a large upload without allocating a second reply buffer.
+///
+/// # Errors
+/// The first failed verification check, exactly as for [`verify_entry`].
+pub fn verify_entry_ref<'a>(
+    data: &'a [u8],
+    key: &QueryKey,
+    trusted: &TrustedKeys,
+    local: &Solver,
+) -> Result<(Header, &'a [u8]), Rejection> {
     let nl = data
         .iter()
         .position(|&b| b == b'\n')
@@ -629,12 +649,7 @@ pub fn verify_entry(
     if !shape_ok(&header.command, reply) {
         return Err(Rejection::BadShape);
     }
-    Ok(Verified {
-        command: header.command,
-        reply: reply.to_vec(),
-        effort: header.effort,
-        signer: header.signer,
-    })
+    Ok((header, reply))
 }
 
 /// A shared store: a directory reachable as a path.

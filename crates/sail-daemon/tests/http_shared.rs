@@ -455,3 +455,119 @@ fn chunked_bodies_are_read_exactly_and_abrupt_termination_is_unavailable() {
     thread.join().unwrap();
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn auth_refusals_have_separate_transport_counters() {
+    let (config, thread, root) = fake_response(
+        b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n",
+        Duration::ZERO,
+    );
+    let client = Fixture::client(&config);
+    assert!(client.get(&solver(), &KEY).is_err());
+    let info = client.info();
+    assert_eq!(info.requests, 1);
+    assert_eq!(info.auth_refused, 1);
+    assert_eq!(info.unavailable, 1);
+    assert_eq!(info.last_status.as_deref(), Some("http-401"));
+    thread.join().unwrap();
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn rejected_explicit_urls_never_leak_in_daemon_logs_or_status() {
+    let root = PathBuf::from(format!("/tmp/sail-http-redact-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    let config = sail_daemon::Config {
+        log: Some(root.join("daemon.log")),
+        shared: Some(sail_daemon::SharedConfig {
+            store: "https://username:supersecret@example.com/?token=secretquery".into(),
+            trust_dir: root.join("trust"),
+            timeout: Duration::from_millis(250),
+            backoff: Duration::from_secs(30),
+        }),
+        ..sail_daemon::Config::default()
+    };
+    let socket = root.join("d.sock");
+    let server = sail_daemon::bind(
+        &socket,
+        &root,
+        std::sync::Arc::new(sail_daemon::Stats::default()),
+        &config,
+    )
+    .unwrap();
+    let stop = server.handle();
+    let thread = std::thread::spawn(move || server.run());
+    let mut client = sail_api::client::Client::connect(&socket).unwrap();
+    let info = serde_json::to_string(&client.info().unwrap()).unwrap();
+    drop(client);
+    stop.shutdown();
+    thread.join().unwrap().unwrap();
+    let log = std::fs::read_to_string(root.join("daemon.log")).unwrap();
+    for text in [&info, &log] {
+        assert!(!text.contains("supersecret"));
+        assert!(!text.contains("secretquery"));
+        assert!(text.contains("invalid HTTP endpoint"));
+    }
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn existing_daemon_picks_up_new_remote_configuration_without_restart() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let fixture = Fixture::new();
+    let root = PathBuf::from(format!("/tmp/sail-http-live-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    let socket = root.join("d.sock");
+    let cache = root.join("cache");
+    let secret = SecretKey::from_seed([72; 32]);
+    sail_cache::shared::add_trusted(&cache, &secret.public()).unwrap();
+    let fake = root.join("z3");
+    std::fs::write(&fake, "#!/bin/sh\necho 'Z3 version 4.16.0 - 64 bit'\n").unwrap();
+    std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let server = sail_daemon::bind(
+        &socket,
+        &cache,
+        std::sync::Arc::new(sail_daemon::Stats::default()),
+        &sail_daemon::Config::default(),
+    )
+    .unwrap();
+    let stop = server.handle();
+    let thread = std::thread::spawn(move || server.run());
+    let mut client = sail_api::client::Client::connect(&socket).unwrap();
+    let identity = client.hello(fake.to_str().unwrap()).unwrap();
+    let identity = Solver {
+        name: identity.name,
+        version: identity.version,
+        binary_sha256: identity.binary_sha256,
+        platform: identity.platform,
+    };
+    assert!(client.info().unwrap().shared.is_none());
+    assert_eq!(client.get(&KEY.0).unwrap(), None);
+    let data = sign_entry(&secret, &KEY, b"unsat\n", "check-sat", &identity, None, 1);
+    assert_eq!(
+        Fixture::client(&fixture.write).put(&identity, &KEY, data, &secret.public()),
+        Ok(Published::Created)
+    );
+    sail_daemon::remote::connect(&cache, &fixture.read).unwrap();
+    let started = std::time::Instant::now();
+    loop {
+        if let Some(reply) = client.get(&KEY.0).unwrap() {
+            assert_eq!(reply, b"unsat\n");
+            break;
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(7),
+            "daemon did not reload configuration"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    let info = client.info().unwrap().shared.unwrap().remote.unwrap();
+    assert_eq!(info.last_status.as_deref(), Some("ok"));
+    assert_eq!(info.requests, 1);
+    drop(client);
+    stop.shutdown();
+    thread.join().unwrap().unwrap();
+    let _ = std::fs::remove_dir_all(root);
+}
