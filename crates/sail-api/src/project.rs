@@ -32,6 +32,8 @@ pub struct ProjectResult {
     pub execution: Execution,
     /// Coverage limitations or recovery notes.
     pub notes: Vec<String>,
+    /// Setup or infrastructure failure, never a solver verdict.
+    pub error: Option<crate::output::ErrorInfo>,
 }
 
 /// Relationship of a result to the workspace's current declared inputs.

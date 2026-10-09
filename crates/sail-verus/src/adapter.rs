@@ -1,0 +1,260 @@
+//! Private Cargo and Verus-driver roles for the same installed Sail executable.
+//!
+//! Metadata, rustc probes, build scripts, and non-verification packages are
+//! forwarded with their original argument bytes. Verified targets alone get
+//! isolated observation sidecars; these flags leave solver input unchanged.
+
+use crate::managed::{Invocation, Runtime, TargetIdentity, digest, event, file_digest, json};
+use crate::{Error, Result};
+use std::ffi::OsString;
+use std::io::{BufRead, Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitCode, Stdio};
+
+fn required(name: &str) -> Result<OsString> {
+    std::env::var_os(name)
+        .filter(|v| !v.is_empty())
+        .ok_or_else(|| Error::new("SAIL3110", format!("private adapter missing {name}")))
+}
+
+fn status(status: std::process::ExitStatus) -> ExitCode {
+    ExitCode::from(
+        status
+            .code()
+            .and_then(|n| u8::try_from(n & 255).ok())
+            .unwrap_or(1),
+    )
+}
+
+/// Dispatches installed private executable aliases before public CLI parsing.
+/// Returns `None` for an ordinary Sail invocation.
+#[must_use]
+pub fn dispatch() -> Option<ExitCode> {
+    let name = std::env::args_os()
+        .next()
+        .and_then(|p| PathBuf::from(p).file_name().map(std::ffi::OsStr::to_owned));
+    let role = name.as_deref()?.to_str()?;
+    let outcome = match role {
+        "sail-cargo" => cargo(),
+        "sail-verus-driver" => driver(),
+        _ => return None,
+    };
+    Some(outcome.unwrap_or_else(|e| {
+        eprintln!("{e}");
+        ExitCode::from(2)
+    }))
+}
+
+fn cargo() -> Result<ExitCode> {
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let mut cmd = Command::new(required("SAIL_MANAGED_CARGO")?);
+    cmd.args(&args);
+    let build = args.iter().any(|s| s == "build" || s == "check");
+    if !build {
+        return cmd
+            .status()
+            .map(status)
+            .map_err(|e| Error::new("SAIL3110", e.to_string()));
+    }
+    cmd.env("SAIL_MANAGED_WRAPPER", required("RUSTC_WRAPPER")?)
+        .env("RUSTC_WRAPPER", required("SAIL_MANAGED_PROXY")?);
+    // Cargo messages remain on stdout; target Verus documents live in sidecars.
+    cmd.stdout(Stdio::piped()).stderr(Stdio::inherit());
+    let path = PathBuf::from(required("SAIL_MANAGED_ARTIFACTS")?);
+    let mut records = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+    if let Some(stdout) = child.stdout.take() {
+        for line in std::io::BufReader::new(stdout).split(b'\n') {
+            let line = line.map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+            if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&line)
+                && matches!(
+                    value["reason"].as_str(),
+                    Some("compiler-artifact" | "build-script-executed")
+                )
+            {
+                records
+                    .write_all(&line)
+                    .and_then(|()| records.write_all(b"\n"))
+                    .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+            }
+            std::io::stdout()
+                .write_all(&line)
+                .and_then(|()| std::io::stdout().write_all(b"\n"))
+                .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+        }
+    }
+    child
+        .wait()
+        .map(status)
+        .map_err(|e| Error::new("SAIL3110", e.to_string()))
+}
+
+fn argument(args: &[OsString], flag: &str) -> Option<String> {
+    args.windows(2)
+        .find(|w| w[0] == flag)
+        .map(|w| w[1].to_string_lossy().into_owned())
+}
+
+fn verifying(args: &[OsString]) -> bool {
+    if argument(args, "--crate-name").as_deref() == Some("___")
+        || std::env::var("CARGO_CRATE_NAME").is_ok_and(|v| v.starts_with("build_script_"))
+    {
+        return false;
+    }
+    let package = ["CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR"].map(std::env::var);
+    let [Ok(name), Ok(version), Ok(manifest)] = package else {
+        return false;
+    };
+    let hash = digest(
+        Path::new(&manifest)
+            .join("Cargo.toml")
+            .to_string_lossy()
+            .as_bytes(),
+    );
+    let id = format!("{name}-{version}-{}", hash.get(..12).unwrap_or_default());
+    std::env::var(format!("__VERUS_DRIVER_VERIFY_{id}")).as_deref() == Ok("1")
+}
+
+fn driver() -> Result<ExitCode> {
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
+    if !verifying(&args) {
+        return Command::new(wrapper)
+            .args(args)
+            .status()
+            .map(status)
+            .map_err(|e| Error::new("SAIL3111", e.to_string()));
+    }
+    let runtime_path = PathBuf::from(required("SAIL_MANAGED_RUNTIME")?);
+    let runtime: Runtime = serde_json::from_slice(
+        &std::fs::read(runtime_path).map_err(|e| Error::new("SAIL3111", e.to_string()))?,
+    )
+    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let identity = TargetIdentity {
+        manifest: PathBuf::from(required("CARGO_MANIFEST_DIR")?).join("Cargo.toml"),
+        name: argument(&args, "--crate-name").unwrap_or_default(),
+        crate_type: argument(&args, "--crate-type").unwrap_or_default(),
+        rustc_args_sha256: digest(
+            &args
+                .iter()
+                .flat_map(|s| s.as_encoded_bytes().iter().copied().chain([0]))
+                .collect::<Vec<_>>(),
+        ),
+    };
+    let dir = runtime.sidecars.join(identity.key());
+    std::fs::create_dir_all(dir.join("provenance"))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let logs = dir.join("logs");
+    let mut cmd = Command::new(wrapper);
+    cmd.args(&args)
+        .args([
+            "--output-json",
+            "--time",
+            "--log",
+            "air",
+            "--log",
+            "smt-transcript",
+            "--log-dir",
+        ])
+        .arg(&logs)
+        .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let stdout = child.stdout.take().map(|mut pipe| {
+        std::thread::spawn(move || {
+            let mut bytes = Vec::new();
+            let _ = pipe.read_to_end(&mut bytes);
+            bytes
+        })
+    });
+    let mut stderr = Vec::new();
+    if let Some(mut pipe) = child.stderr.take() {
+        let mut buf = vec![0; 65536];
+        loop {
+            let n = pipe
+                .read(&mut buf)
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+            if n == 0 {
+                break;
+            }
+            stderr.extend_from_slice(&buf[..n]);
+            std::io::stderr()
+                .write_all(&buf[..n])
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+        }
+    }
+    let exit = child
+        .wait()
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let stdout = stdout.and_then(|h| h.join().ok()).unwrap_or_default();
+    finish(&runtime, identity, &dir, &stdout, &stderr, exit.code())?;
+    Ok(status(exit))
+}
+
+fn finish(
+    runtime: &Runtime,
+    identity: TargetIdentity,
+    dir: &Path,
+    stdout: &[u8],
+    stderr: &[u8],
+    exit: Option<i32>,
+) -> Result<()> {
+    std::fs::write(dir.join("verus.stdout"), stdout)
+        .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let (docs, rest) = crate::attribution::json_documents(stdout);
+    std::io::stderr()
+        .write_all(&rest)
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let logs = crate::attribution::read_logs(&dir.join("logs")).unwrap_or_default();
+    let provenance = if runtime.daemon {
+        crate::attribution::Provenance::Records(crate::attribution::read_session_records(
+            &dir.join("provenance"),
+        ))
+    } else {
+        crate::attribution::Provenance::NoCache
+    };
+    let attr = crate::attribution::attribute(&docs, Some(&logs), &provenance, None);
+    let report = crate::report::build(&crate::report::Inputs {
+        args: &runtime.args,
+        exit_code: exit,
+        solver_path: Some(runtime.z3.to_string_lossy().into_owned()),
+        solver_sha256: Some(runtime.z3_sha256.clone()),
+        daemon: runtime.daemon,
+        attribution: &attr,
+        diagnostics: &crate::diagnostics::parse(&String::from_utf8_lossy(stderr)),
+    });
+    let success = crate::managed::receipt_complete(&report);
+    let invocation = Invocation {
+        identity,
+        run_id: runtime.run_id.clone(),
+        report,
+        success,
+    };
+    json(
+        &runtime
+            .invocations
+            .join(format!("{}.json", invocation.identity.key())),
+        &invocation,
+    )?;
+    event(
+        &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.name,"success":success}),
+    );
+    // Solver bytes are evidence, never a transformed input.
+    if file_digest(&runtime.original_wrapper).is_err() {
+        return Err(Error::new(
+            "SAIL3111",
+            "Verus disappeared during verification",
+        ));
+    }
+    Ok(())
+}
