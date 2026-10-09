@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "platform": "aarch64-macos",
+  "mode": "accept-first-proof",
+  "request": {
+    "packages": [
+      "first",
+      "second"
+    ],
+    "selection": "--workspace",
+    "source": "use vstd::prelude::*;\nverus! { pub fn identity(x: u32) -> (r: u32) ensures r == x { x } }\n"
+  },
+  "solver": {
+    "name": "z3",
+    "version": null,
+    "sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+  },
+  "winner_seed": 0,
+  "exit_code": 0,
+  "summary": {
+    "functions": 1873,
+    "verified": 1873,
+    "failed": 0,
+    "unknown": 0,
+    "provisional": 0,
+    "unstable": 0
+  },
+  "crates": [
+    {
+      "name": "vstd",
+      "functions": 1871,
+      "verification": {
+        "verified": 2060,
+        "errors": 0,
+        "success": true,
+        "encountered_vir_error": false
+      }
+    },
+    {
+      "name": "second",
+      "functions": 1,
+      "verification": {
+        "verified": 1,
+        "errors": 0,
+        "success": true,
+        "encountered_vir_error": false
+      }
+    },
+    {
+      "name": "first",
+      "functions": 1,
+      "verification": {
+        "verified": 1,
+        "errors": 0,
+        "success": true,
+        "encountered_vir_error": false
+      }
+    }
+  ],
+  "notes": [
+    "Both requested workspace targets produced successful verification reports in one baseline attempt.",
+    "The first run also verified the vstd dependency.",
+    "No benchmark speedup claim."
+  ]
+}
