@@ -92,6 +92,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             let key = k.to_string_lossy();
             ![
                 "SAIL_JOB_EVENTS",
+                "SAIL_JOB_GUARD_PARENT",
                 "SAIL_MANAGED_FORCE",
                 "SAIL_DAEMON_SOCKET",
                 "SAIL_PROVENANCE_DIR",
@@ -197,16 +198,17 @@ fn context(config: &Config, data: &Value) -> Result<String> {
 }
 
 fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBuf> {
+    // Keep the invoked name: rustup dispatches by argv[0], so canonicalizing
+    // rustc's symlink and executing `rustup --print sysroot` changes its role.
     let path = Path::new(program);
     let resolved = if path.components().count() > 1 {
-        workspace.join(path).canonicalize().ok()
+        Some(workspace.join(path)).filter(|p| p.is_file())
     } else {
         std::env::var_os("PATH")
             .into_iter()
             .flat_map(|v| std::env::split_paths(&v).collect::<Vec<_>>())
             .map(|dir| dir.join(path))
             .find(|p| p.is_file())
-            .and_then(|p| p.canonicalize().ok())
     };
     resolved.ok_or_else(|| {
         Error::new(
