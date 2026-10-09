@@ -13,6 +13,7 @@ mod measurement;
 mod ops;
 mod portfolio;
 mod portfolio_scope;
+mod remote_cache;
 mod report;
 #[cfg(test)]
 mod scope;
@@ -75,6 +76,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             ExitCode::SUCCESS
         }
         Some("serve") => serve(args.get(1..).unwrap_or_default(), err),
+        Some("_serve-jobs") => serve_jobs(args.get(1..).unwrap_or_default(), err),
         Some("verify") => verify::verify(args.get(1..).unwrap_or_default(), out, err),
         Some("_portfolio-attempt") => {
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
@@ -151,11 +153,11 @@ fn mcp(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
     }
 }
 
-/// The default daemon socket: `<cache>/daemon-v<protocol>.sock`, so clients
+/// The default daemon socket: `<cache>/daemon-v<protocol>-workspace-v1.sock`, so clients
 /// of one protocol version never reach a daemon of another.
 pub(crate) fn default_socket(cache: &std::path::Path) -> std::path::PathBuf {
     cache.join(format!(
-        "daemon-v{}.sock",
+        "daemon-v{}-workspace-v1.sock",
         sail_api::protocol::PROTOCOL_VERSION
     ))
 }
@@ -176,7 +178,7 @@ fn env_number(name: &str) -> Result<Option<u64>, String> {
 /// `sail serve [--socket PATH] [--cache DIR] [--memory-bytes N]
 /// [--idle-timeout SECS] [--shared DIR] [--shared-timeout-ms MS]`, which runs the
 /// daemon in the foreground (ADR 0011, ADR 0015). Defaults:
-/// `<cache>/daemon-v<N>.sock` and `<cache>/results`, where `<cache>` is
+/// `<cache>/daemon-v<N>-workspace-v1.sock` and `<cache>/results`, where `<cache>` is
 /// `$SAIL_CACHE_DIR` or `~/.cache/sail`; a 256 MiB memory tier
 /// (`$SAIL_DAEMON_MEMORY_BYTES`); a 30-minute idle timeout
 /// (`$SAIL_DAEMON_IDLE_TIMEOUT`, seconds, 0 for never); no shared tier
@@ -328,6 +330,64 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
             ExitCode::from(1)
         }
     }
+}
+
+/// A jobs-only sidecar for an explicitly selected, older cache daemon.
+#[cfg(unix)]
+fn serve_jobs(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let setup = (|| {
+        let (socket, root, config) = serve_config(args)?;
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        let jobs = sail_daemon::jobs::bind(
+            &sail_api::jobs::socket_path(&socket),
+            &root.join("projects/jobs"),
+            &executable,
+        )
+        .and_then(sail_daemon::jobs::JobServer::spawn)
+        .map_err(|error| error.to_string())?;
+        Ok::<_, String>((jobs, config.idle_timeout))
+    })();
+    let (mut jobs, timeout) = match setup {
+        Ok(setup) => setup,
+        Err(error) => {
+            let _ = writeln!(err, "error[SAIL0800]: cannot start job sidecar: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let stopped = std::sync::Arc::new(AtomicBool::new(false));
+    for signal in [
+        signal_hook::consts::SIGINT,
+        signal_hook::consts::SIGTERM,
+        signal_hook::consts::SIGHUP,
+    ] {
+        if let Err(error) = signal_hook::flag::register(signal, stopped.clone()) {
+            let _ = writeln!(
+                err,
+                "error[SAIL0800]: cannot register job shutdown: {error}"
+            );
+            jobs.shutdown();
+            return ExitCode::from(2);
+        }
+    }
+    let activity = jobs.activity();
+    let mut idle_since = std::time::Instant::now();
+    while !stopped.load(Ordering::Relaxed) {
+        if activity.load(Ordering::Relaxed) > 0 {
+            idle_since = std::time::Instant::now();
+        } else if timeout.is_some_and(|timeout| idle_since.elapsed() >= timeout) {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    jobs.shutdown();
+    ExitCode::SUCCESS
+}
+
+#[cfg(not(unix))]
+fn serve_jobs(_args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
+    let _ = writeln!(err, "error[SAIL0800]: local jobs need Unix sockets");
+    ExitCode::from(2)
 }
 
 #[cfg(not(unix))]
