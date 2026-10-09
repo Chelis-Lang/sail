@@ -102,7 +102,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
     ] {
         identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
     }
-    let wrapper = config.cargo_verus.with_file_name("verus");
+    let wrapper = actual_wrapper(&config.cargo_verus)?;
     identity.push((
         wrapper.to_string_lossy().into_owned(),
         hashed.hash(&wrapper)?,
@@ -127,6 +127,8 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             String::from_utf8_lossy(&actual.stderr),
         ));
     }
+    let rustup = resolve_program(std::ffi::OsStr::new("rustup"), &config.workspace)?;
+    identity.push((rustup.to_string_lossy().into_owned(), hashed.hash(&rustup)?));
     let cargo_sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
     let verifier_sysroot = verifier_sysroot(&wrapper, &config.workspace)?;
     let sysroots = BTreeSet::from([cargo_sysroot, verifier_sysroot]);
@@ -136,7 +138,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
             .with_file_name("rust_verify")
             .to_string_lossy()
             .into_owned(),
-        hashed.hash(&config.cargo_verus.with_file_name("rust_verify"))?,
+        hashed.hash(&wrapper.with_file_name("rust_verify"))?,
     ));
     for sysroot in sysroots {
         for path in [sysroot.join("bin/rustc"), sysroot.join("bin/cargo")] {
@@ -225,6 +227,14 @@ fn context(config: &Config, data: &Value) -> Result<String> {
     );
     json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(hash)
+}
+
+fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
+    // Cargo-Verus uses current_exe, not its invoked symlink's directory.
+    cargo_verus
+        .canonicalize()
+        .map(|p| p.with_file_name("verus"))
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))
 }
 
 fn verifier_sysroot(wrapper: &Path, workspace: &Path) -> Result<PathBuf> {
@@ -1116,7 +1126,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         daemon: config.socket.is_some(),
         sidecars: paths.run.join("sidecars"),
         invocations: paths.run.join("invocations"),
-        original_wrapper: config.cargo_verus.with_file_name("verus"),
+        original_wrapper: actual_wrapper(&config.cargo_verus)?,
     };
     json(&paths.runtime, &runtime)?;
     let mut exit = invoke(config, &paths, err)?;
@@ -1296,6 +1306,13 @@ mod tests {
         assert!(std::os::unix::fs::symlink(&executable, &alias).is_ok());
         let resolved = resolve_program(alias.as_os_str(), &root).unwrap_or_default();
         assert_eq!(resolved, alias, "execution must retain argv[0] role");
+        assert_eq!(
+            actual_wrapper(&alias).ok(),
+            executable
+                .canonicalize()
+                .ok()
+                .map(|p| p.with_file_name("verus"))
+        );
         let mut hashes = super::super::files::FileDigests::default();
         assert_eq!(hashes.hash(&alias), hashes.hash(&executable));
         assert!(std::fs::write(&executable, "changed").is_ok());
