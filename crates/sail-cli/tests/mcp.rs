@@ -270,15 +270,23 @@ exit 1
         "{cr}"
     );
 
-    // fragility is not available yet; invalid arguments are tool errors.
+    // fragility runs `sail fragility --output json`. The stand-in
+    // cargo-verus replays a recorded run and never starts a solver, so no
+    // session is captured: a tool error from an available command.
     let f = c.tool("fragility", &json!({}));
+    let fs = &f["structuredContent"];
     assert_eq!(
         (
             f["isError"].clone(),
-            f["structuredContent"]["available"].clone()
+            fs["available"].clone(),
+            fs["exit_code"].clone()
         ),
-        (json!(true), json!(false))
+        (json!(true), json!(true), json!(2)),
+        "{f}"
     );
+    assert_eq!(fs["sail_args"][0], "fragility", "{f}");
+    assert!(fs["stderr_tail"].to_string().contains("SAIL0112"), "{f}");
+    // Invalid arguments are tool errors.
     let bad = c.tool("verify", &json!({"function": "--verify-all"}));
     assert_eq!(bad["isError"], true);
     let missing = c.tool("counterexample", &json!({"function": "nope"}));

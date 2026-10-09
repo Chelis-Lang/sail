@@ -7,6 +7,7 @@ use std::fmt::Write as _;
 use crate::cold::{BenchFile, Samples, UnitResult, median};
 use crate::daemon::CacheRun;
 use crate::edit::EditResult;
+use crate::fragility::CensusFile;
 
 fn ms(x: f64) -> String {
     if x >= 10_000.0 {
@@ -90,9 +91,9 @@ fn totals(units: &[UnitResult]) -> Totals {
 }
 
 /// Renders the Markdown page for `files` (each from one `cold`, `warm` or
-/// `edit` run).
+/// `edit` run) and `censuses` (fragility census runs).
 #[must_use]
-pub fn render(files: &[(String, BenchFile)]) -> String {
+pub fn render(files: &[(String, BenchFile)], censuses: &[(String, CensusFile)]) -> String {
     let mut out = String::new();
     let _ = writeln!(
         out,
@@ -110,6 +111,10 @@ pub fn render(files: &[(String, BenchFile)]) -> String {
             "history-replay" => render_replay(&mut out, name, f),
             _ => render_cold(&mut out, name, f),
         }
+        out.push('\n');
+    }
+    for (name, c) in censuses {
+        crate::census_report::render(&mut out, name, c);
         out.push('\n');
     }
     out
@@ -708,7 +713,7 @@ mod tests {
             ],
             cache_bytes: Some(4096),
         });
-        let md = render(&[("warm-x".to_owned(), f)]);
+        let md = render(&[("warm-x".to_owned(), f)], &[]);
         assert!(
             md.contains("## `warm-x`: warm workload (no change), fast tier"),
             "{md}"
@@ -741,7 +746,7 @@ mod tests {
             same: 2,
             ..EditResult::default()
         });
-        let md = render(&[("edit-x".to_owned(), f)]);
+        let md = render(&[("edit-x".to_owned(), f)], &[]);
         assert!(
             md.contains("| `e1` | body | 1000 ms | 250 ms | 4.00× | 9 / 1 (90.0%) | 1 / 2 |"),
             "{md}"

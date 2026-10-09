@@ -8,7 +8,10 @@
 //! computation, ADR 0005) and the thin daemon client in `sail-api`, so its
 //! fallback path stays small and simple. `sail-bench` may use key
 //! derivation too (pure computation), to recompute and check trace keys in
-//! its history experiment. Changing this
+//! its history experiment. `sail-bench` and `sail-cli` use
+//! `sail-portfolio` for fragility measurement (ADR 0018); no crate on the
+//! cache-key path may reach it, so measurement mutations can never feed a
+//! key. Changing this
 //! table is an architectural decision: record an ADR.
 
 /// `(crate, internal crates it may depend on directly)`.
@@ -65,6 +68,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
             "sail-key",
             "sail-solver",
             "sail-ledger",
+            "sail-portfolio",
             "sail-verus",
             "sail-api",
             "sail-conformance",
@@ -79,6 +83,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
             "sail-verus",
             "sail-daemon",
             "sail-mcp",
+            "sail-portfolio",
             "sail-conformance",
             "sail-bench",
         ],
@@ -140,6 +145,25 @@ mod tests {
             "sail-verus",
         ] {
             assert!(!reach.contains(heavy), "sail-shim may not reach {heavy}");
+        }
+    }
+
+    #[test]
+    fn measurement_mutations_cannot_reach_cache_keys() {
+        // ADR 0018: the portfolio's reseeded and shuffled sessions exist
+        // only to measure. Nothing that derives, stores or serves cache
+        // keys may depend on it.
+        for keyed in [
+            "sail-shim",
+            "sail-key",
+            "sail-cache",
+            "sail-session",
+            "sail-api",
+        ] {
+            assert!(
+                !reachable(keyed).contains("sail-portfolio"),
+                "{keyed} may not reach sail-portfolio"
+            );
         }
     }
 

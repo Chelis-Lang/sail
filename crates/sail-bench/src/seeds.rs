@@ -21,35 +21,9 @@ use serde::Serialize;
 use crate::solver::{self, Identity, Outcome, Solver};
 use crate::stats::{FloatDistribution, as_f64, coefficient_of_variation};
 use crate::trace::SessionFiles;
-use crate::transcript::{CheckObservation, Class, Cmd, Transcript, split_commands};
+use crate::transcript::{CheckObservation, Transcript, split_commands};
 
-/// Inserts the two seed options before the first command of `commands`
-/// (split from `input`) that is not a `set-option`. Seed 0 returns the input
-/// unchanged.
-#[must_use]
-pub fn inject_seed(input: &[u8], commands: &[Cmd], seed: u64) -> Vec<u8> {
-    if seed == 0 {
-        return input.to_vec();
-    }
-    let at = commands
-        .iter()
-        .find(|c| c.class != Class::SetOption)
-        .and_then(|c| usize::try_from(c.offset).ok())
-        .unwrap_or(input.len())
-        .min(input.len());
-    let (head, tail) = input.split_at(at);
-    let mut out = Vec::with_capacity(input.len() + 80);
-    out.extend_from_slice(head);
-    if !head.is_empty() && !head.ends_with(b"\n") {
-        out.push(b'\n');
-    }
-    out.extend_from_slice(
-        format!("(set-option :smt.random_seed {seed})\n(set-option :sat.random_seed {seed})\n")
-            .as_bytes(),
-    );
-    out.extend_from_slice(tail);
-    out
-}
+pub use sail_portfolio::config::inject_seed;
 
 /// One replay of one session under one seed.
 #[derive(Debug, Clone)]
@@ -576,29 +550,6 @@ pub fn render(r: &SeedsReport) -> String {
 mod tests {
     use super::*;
     use crate::transcript::Followup;
-
-    #[test]
-    fn injects_after_the_option_prelude() {
-        let input = b"(set-option :a 1)\n(set-option :b 2)\n(declare-const x Int)\n(check-sat)\n";
-        let commands = split_commands(input);
-        let out = inject_seed(input, &commands, 7);
-        assert_eq!(
-            String::from_utf8_lossy(&out),
-            "(set-option :a 1)\n(set-option :b 2)\n\
-(set-option :smt.random_seed 7)\n(set-option :sat.random_seed 7)\n\
-(declare-const x Int)\n(check-sat)\n"
-        );
-        assert_eq!(inject_seed(input, &commands, 0), input);
-        // No prelude: the options go first.
-        let input = b"(push)(check-sat)";
-        let out = inject_seed(input, &split_commands(input), 3);
-        assert!(out.starts_with(b"(set-option :smt.random_seed 3)\n"));
-        assert!(out.ends_with(b"(push)(check-sat)"));
-        // Only options: they go last.
-        let input = b"(set-option :a 1)";
-        let out = inject_seed(input, &split_commands(input), 3);
-        assert!(out.starts_with(b"(set-option :a 1)\n(set-option :smt"));
-    }
 
     fn obs(answer: &str, delta: u64, reason: Option<&str>) -> CheckObservation {
         CheckObservation {

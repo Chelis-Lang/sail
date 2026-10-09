@@ -35,7 +35,7 @@ fn on_path(name: &str) -> Option<PathBuf> {
 }
 
 /// The `cargo-verus` to run: `$SAIL_CARGO_VERUS`, else the one on `PATH`.
-fn cargo_verus() -> Option<PathBuf> {
+pub(crate) fn cargo_verus() -> Option<PathBuf> {
     std::env::var_os("SAIL_CARGO_VERUS")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
@@ -45,7 +45,7 @@ fn cargo_verus() -> Option<PathBuf> {
 /// The Z3 the user's Verus would use, following the Verus launcher's own
 /// rules: `$VERUS_Z3_PATH` if set (and not already `sail-z3`), else `z3`
 /// next to the Verus binaries, else `z3` on `PATH`.
-fn real_z3(cargo_verus: &Path, shim: &Path) -> Option<PathBuf> {
+pub(crate) fn real_z3(cargo_verus: &Path, shim: &Path) -> Option<PathBuf> {
     let from_env = std::env::var_os("VERUS_Z3_PATH")
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
