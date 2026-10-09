@@ -53,7 +53,7 @@ and slow daemon tests.
 | Garbage at the key of a `check-sat` that answers `unknown`; stray `.tmp-*`, non-key and foreign-directory files | Miss; strays ignored | Exact replies |
 | Solver killed mid-query, pass-through | Exit with the solver's status; output so far is a prefix | Exit 137 within the deadline; output is every reply before the killed query |
 | Solver killed mid-query, cached mode after a miss (stdin still open, as with Verus) | As pass-through; nothing stored for the killed query | Exit 137; output is every reply before the killed query; no entry for its key |
-| Solver dies partway through a reply (fake solver) | The partial reply may be forwarded, as pass-through would; it is never stored | Exit 137; output is a prefix; the replay check passes |
+| Solver dies partway through a reply (fake solver) | The partial reply may be forwarded, as pass-through would; it is never stored | Exit 137; output is a prefix; zero entries are published (ADR 0022) |
 | 16 concurrent sessions sharing prefixes (cuts of the fixture, and variants that diverge after a cut), cold and then warm, and then 32 at once on an empty cache | Every reply exact; every entry correct | Exact replies in every session; every entry passes the replay check |
 | Daemon hangs at `HELLO` | Pass-through after the timeout | Exact replies within the deadline |
 | Daemon hangs at `GET` 1 or 6, or answers `GET` 3 or `HELLO` late | Miss after the timeout; the connection is not reused | Exact replies within the deadline |
@@ -134,3 +134,12 @@ The client timeout is configurable with `SAIL_DAEMON_TIMEOUT_MS`.
   forgery is refused for want of a valid signature (above).
 - A forgery signed by a *trusted* key. It is served: a trusted signer is
   trusted completely (`docs/trust.md`).
+
+## Solver stderr (ADR 0022)
+
+Real Z3 quantifier warnings match direct stdout, stderr and exit code on fill
+and repeated runs. Late stderr and stderr larger than the socket buffer also
+match and publish no entries. Quiet-session tests still require genuine hits.
+Abnormal solver termination discards every staged reply, including complete
+replies before the fault. Earlier prefix retention was a cache benefit, not a
+correctness requirement.

@@ -20,6 +20,8 @@
 
 #[cfg(unix)]
 mod cached;
+#[cfg(unix)]
+mod cached_stderr;
 mod trace;
 
 use std::ffi::OsString;
