@@ -10,7 +10,7 @@
 //! that Z3 unchanged. Switching back means running `cargo verus verify`
 //! again.
 //!
-//! `sail verify --output json [args…]` (ADR 0018) also asks Verus for
+//! `sail verify --output json [args…]` (ADR 0014) also asks Verus for
 //! machine-readable results and logs that leave Z3's input unchanged, and
 //! prints one schema-v1 document (`docs/output-schema.md`) on stdout.
 //! Verus's diagnostics still go to stderr, verbatim. Without `--output
@@ -256,7 +256,7 @@ fn has_verus_flag(args: &[String], flag: &str) -> bool {
 /// and `cargo verus` forwards the same `--log-dir` to every package it
 /// verifies. Logs are therefore requested only when one Verus process will
 /// write them: a single workspace member with at most one lib or bin target
-/// (ADR 0018, `docs/verus-issues/VI-0004`).
+/// (ADR 0014, `docs/verus-issues/VI-0004`).
 fn logs_unavailable(args: &[String]) -> Option<String> {
     for flag in ["--log", "--log-all", "--log-dir"] {
         if has_verus_flag(args, flag) {
