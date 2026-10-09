@@ -174,6 +174,15 @@ pub(super) fn chunk(state: &State, job: &Stored, name: &str, offset: u64) -> io:
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return Err(error),
     }
+    // Keep complete UTF-8 characters together across RPC slices and append races.
+    // Invalid subprocess bytes remain lossy diagnostics, but a valid JSONL event
+    // must not acquire replacement characters merely because it crossed 64 KiB.
+    if (bytes.len() == 64 * 1024 || !job.status.state.terminal())
+        && let Err(error) = std::str::from_utf8(&bytes)
+        && error.error_len().is_none()
+    {
+        bytes.truncate(error.valid_up_to());
+    }
     Ok(Chunk {
         next: offset + bytes.len() as u64,
         text: String::from_utf8_lossy(&bytes).into_owned(),

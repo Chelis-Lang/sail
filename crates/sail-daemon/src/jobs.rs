@@ -48,29 +48,32 @@ pub struct JobHandle {
 /// # Errors
 /// Returns socket, ownership, persistence, or thread setup errors.
 pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServer> {
-    store::private_dir(root)?;
+    let socket = std::path::absolute(socket)?;
+    let root = std::path::absolute(root)?;
+    let executable = std::path::absolute(executable)?;
+    store::private_dir(&root)?;
     if let Some(parent) = socket.parent() {
         std::fs::create_dir_all(parent)?;
     }
     if socket.exists() {
-        if UnixStream::connect(socket).is_ok() {
+        if UnixStream::connect(&socket).is_ok() {
             return Err(io::Error::new(
                 io::ErrorKind::AddrInUse,
                 "SAIL0803: job endpoint already running",
             ));
         }
-        std::fs::remove_file(socket)?;
+        std::fs::remove_file(&socket)?;
     }
-    let jobs = store::load(root)?;
-    let listener = UnixListener::bind(socket)?;
-    std::fs::set_permissions(socket, std::fs::Permissions::from_mode(0o600))?;
+    let jobs = store::load(&root)?;
+    let listener = UnixListener::bind(&socket)?;
+    std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
     listener.set_nonblocking(true)?;
     Ok(JobServer {
-        socket: socket.to_path_buf(),
+        socket,
         listener,
         state: Arc::new(State {
-            root: root.to_path_buf(),
-            executable: executable.to_path_buf(),
+            root,
+            executable,
             jobs: Mutex::new(jobs),
             queue: Mutex::new(VecDeque::new()),
             ready: Condvar::new(),
@@ -158,6 +161,9 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                 let state = Arc::clone(state);
                 let clients = Arc::clone(&clients);
                 let _ = std::thread::spawn(move || {
+                    // Accepted sockets inherit nonblocking mode on macOS.
+                    // RPC frames must use bounded blocking I/O, including large results.
+                    let _ = stream.set_nonblocking(false);
                     let timeout = Some(Duration::from_secs(5));
                     let _ = stream.set_read_timeout(timeout);
                     let _ = stream.set_write_timeout(timeout);

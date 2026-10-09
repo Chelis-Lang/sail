@@ -60,6 +60,10 @@ fn human_and_json_inspection_preserve_lifecycle_and_reject_non_utf8_environment(
     assert!(
         matches!(serde_json::from_slice::<Response>(&json.stdout), Ok(Response::Status(status)) if status.state == Lifecycle::Running)
     );
+    let missing = run(&["jobs", "status", "nonexistent", "--output", "json"])
+        .unwrap_or_else(|error| unreachable!("{error}"));
+    assert_eq!(missing.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&missing.stderr).contains("SAIL0805"));
     let invalid = Command::new(env!("CARGO_BIN_EXE_sail"))
         .args(["verify", "--background"])
         .env("SAIL_DAEMON_SOCKET", &cache_socket)

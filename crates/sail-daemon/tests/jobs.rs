@@ -58,6 +58,53 @@ fn wait(client: &Client, id: &str, predicate: impl Fn(Lifecycle) -> bool) -> Sta
 const REPORT: &str = r#"printf '%s\n' '{"kind":"sail-project-result","schema_version":1,"run_id":"fixture","workspace":"fixture","context_sha256":"fixture","input_revision":"fixture","currentness":"unknown","exit_code":0,"targets":[],"execution":{"verifier_invocations":0,"reused_targets":0,"wall_ms":0},"notes":[],"error":null}'"#;
 
 #[test]
+fn bounded_event_slices_preserve_unicode_and_wait_for_incomplete_appends() {
+    let (root, executable, socket) = fixture("sleep 30");
+    let mut handle = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &executable)
+        .and_then(sail_daemon::jobs::JobServer::spawn)
+        .unwrap_or_else(|error| unreachable!("{error}"));
+    let client = Client::new(&socket);
+    let job = submit(&client, submission(&root, "revision"));
+    wait(&client, &job.id, |state| state == Lifecycle::Running);
+    let events = root.join("jobs").join(&job.id).join("events.jsonl");
+    let text = format!("{}é\n", "a".repeat(64 * 1024 - 1));
+    assert!(std::fs::write(&events, &text).is_ok());
+    let mut received = String::new();
+    let mut offset = 0;
+    for _ in 0..3 {
+        let response = client.call(&Request::Events {
+            id: job.id.clone(),
+            offset,
+        });
+        let Ok(Response::Chunk(chunk)) = response else {
+            unreachable!("no events chunk: {response:?}")
+        };
+        offset = chunk.next;
+        received.push_str(&chunk.text);
+    }
+    assert_eq!(received, text);
+    assert!(std::fs::write(&events, [b'a', 0xc3]).is_ok());
+    let Ok(Response::Chunk(chunk)) = client.call(&Request::Events {
+        id: job.id.clone(),
+        offset: 0,
+    }) else {
+        unreachable!("no events chunk")
+    };
+    assert_eq!(chunk.text, "a");
+    assert_eq!(chunk.next, 1);
+    assert!(std::fs::write(&events, "aé").is_ok());
+    let Ok(Response::Chunk(chunk)) = client.call(&Request::Events {
+        id: job.id,
+        offset: chunk.next,
+    }) else {
+        unreachable!("no events chunk")
+    };
+    assert_eq!(chunk.text, "é");
+    handle.shutdown();
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
 fn queued_requests_coalesce_and_status_never_waits_for_the_worker() {
     let (root, executable, socket) = fixture("echo waiting >&2\nsleep 30");
     let server = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &executable);

@@ -78,7 +78,10 @@ pub(crate) fn connect_or_start() -> Result<Client, String> {
 pub(crate) fn submit(client: &Client, args: &[String]) -> Result<Status, String> {
     let project_dir = std::env::current_dir().map_err(|error| error.to_string())?;
     let args = strip_output(args)?;
-    let input_revision = revision(&project_dir, &args).map(|snapshot| snapshot.revision);
+    // Submission must return a durable ID without Cargo metadata, dependency
+    // downloads or verifier setup. The worker establishes the complete revision.
+    // Unknown revisions cannot safely coalesce across intervening input edits.
+    let input_revision = None;
     let submission = Submission {
         project_dir,
         args,
