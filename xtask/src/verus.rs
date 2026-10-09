@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 
 use crate::{Result, workspace_root};
 
-fn host() -> &'static str {
+pub(crate) fn host() -> &'static str {
     if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
         "aarch64-apple-darwin"
     } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
@@ -23,7 +23,7 @@ fn host() -> &'static str {
     }
 }
 
-fn file_sha256(path: &Path) -> Result<String> {
+pub(crate) fn file_sha256(path: &Path) -> Result<String> {
     let mut file =
         std::fs::File::open(path).map_err(|e| format!("cannot open {}: {e}", path.display()))?;
     let mut hasher = Sha256::new();
@@ -67,7 +67,7 @@ fn run(cmd: &mut Command) -> Result<()> {
     }
 }
 
-fn check_z3(z3: &Path, asset: &sail_verus::toolchain::AssetPin) -> Result<()> {
+pub(crate) fn check_z3(z3: &Path, asset: &sail_verus::toolchain::AssetPin) -> Result<()> {
     let actual = file_sha256(z3)?;
     if asset.z3_sha256.is_empty() {
         println!(

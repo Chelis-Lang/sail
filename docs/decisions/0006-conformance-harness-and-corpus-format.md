@@ -199,3 +199,22 @@ This is fixed at the source, not by normalizing. `COMMON_FLAGS` gains
 `-Z write-long-types-to-disk=no`, so rustc prints the type inline and stderr
 is byte-identical across runs. Both sides still get identical flags, and
 nothing sent to Z3 changes.
+
+## Update 2026-10-09: a second kind of unit, the `rust_verify_test` tests
+
+ADR 0019 adds `sail-conformance rust-verify-test`, which compares plain
+Verus and sail on each test of Verus's own `rust_verify_test` suite, run
+from a source build of the pinned commit. A test is not a corpus unit:
+- **No `--output-json`.** The suite's harness chooses Verus's flags, so
+  the comparison is libtest's outcome (`ok`, `FAILED`, `ignored`), the
+  exit code, and stderr and stdout byte for byte. stderr holds every
+  diagnostic Verus reported, as the harness renders it.
+- **Two blanked fields.** A panic's OS thread id and libtest's `finished
+  in` timing are blanked before comparing. Neither is Verus output, and
+  both vary between identical runs. Nothing else is normalized.
+- **Unstable, by line.** A test is also `unstable` when the plain runs
+  vary and sail differs from the first plain run only on lines where the
+  plain runs vary among themselves (random temporary paths in the
+  harness's own messages). Corpus units keep the stricter rule.
+- **Reports** go to `<cache>/conformance/rust-verify-test-<timestamp>/`
+  (or `--out`), with a reproduction for each `different` test.
