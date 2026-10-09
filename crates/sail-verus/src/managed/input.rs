@@ -15,7 +15,7 @@ pub struct InputSnapshot {
     pub workspace: PathBuf,
     /// Digest of paths and file contents.
     pub revision: String,
-    /// Local package directories, including external path dependencies.
+    /// Resolved package directories, including path, registry and git dependencies.
     pub roots: Vec<PathBuf>,
     /// False if declared inputs could not be read completely.
     pub complete: bool,
@@ -126,10 +126,9 @@ pub(super) fn snapshot_metadata_home(
     let mut roots = Vec::new();
     let mut complete = !workspace.as_os_str().is_empty();
     for p in data["packages"].as_array().into_iter().flatten() {
-        if p["source"].is_null()
-            && let Some(parent) = p["manifest_path"]
-                .as_str()
-                .and_then(|s| Path::new(s).parent())
+        if let Some(parent) = p["manifest_path"]
+            .as_str()
+            .and_then(|s| Path::new(s).parent())
         {
             roots.push(parent.to_owned());
             complete &= collect(parent, &mut files, &mut visited);
@@ -187,7 +186,7 @@ pub(super) fn snapshot_metadata_home(
     }
 }
 
-/// Hashes Cargo's declared local workspace and dependency inputs.
+/// Hashes Cargo's declared workspace and resolved dependency inputs.
 ///
 /// # Errors
 /// Returns `SAIL3103` when Cargo metadata cannot be obtained.
@@ -228,7 +227,7 @@ mod tests {
     use std::fs::{File, FileTimes};
 
     #[test]
-    fn content_revision_covers_external_dependencies_and_restored_mtime() {
+    fn content_revision_covers_registry_dependencies_and_restored_mtime() {
         let root = std::env::temp_dir().join(format!("sail-input-test-{}", std::process::id()));
         let dependency = root.join("dep");
         let project = root.join("project");
@@ -236,7 +235,7 @@ mod tests {
         assert!(std::fs::create_dir_all(&project).is_ok());
         let source = dependency.join("lib.rs");
         assert!(std::fs::write(&source, "good").is_ok());
-        let data = serde_json::json!({"workspace_root":project,"packages":[{"source":null,"manifest_path":dependency.join("Cargo.toml")}]});
+        let data = serde_json::json!({"workspace_root":project,"packages":[{"source":"registry+https://example.invalid/index","manifest_path":dependency.join("Cargo.toml")}]});
         let before = snapshot_metadata(&data, &[]);
         let file = File::open(&source).unwrap_or_else(|e| unreachable!("fixture: {e}"));
         let mtime = file
