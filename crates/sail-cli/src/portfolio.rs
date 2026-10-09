@@ -191,7 +191,11 @@ fn manifest_args(args: &[String]) -> Vec<String> {
 }
 
 /// Cleans only verification-enabled packages, only in this request's target.
-pub(crate) fn force_verification(args: &[String], target: &Path) -> Result<Vec<String>, String> {
+pub(crate) fn force_verification(
+    args: &[String],
+    target: &Path,
+    focus: bool,
+) -> Result<Vec<String>, String> {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let manifests = manifest_args(args);
     let output = Command::new(&cargo)
@@ -227,7 +231,7 @@ pub(crate) fn force_verification(args: &[String], target: &Path) -> Result<Vec<S
         return Err("no verification-enabled packages in Cargo metadata".to_owned());
     }
     // cargo-verus focus puts its artifacts in a child target directory.
-    let clean_target = if partial(args) {
+    let clean_target = if focus {
         target.join("verus-partial")
     } else {
         target.to_path_buf()

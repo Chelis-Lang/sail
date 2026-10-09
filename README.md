@@ -46,7 +46,7 @@ SAIL_SHARED_STORE=/shared/sail sail verify [ARGS...]    # or: sail serve --share
 `sail mcp` is an MCP server on stdio for agents that verify after every
 edit. Its tools are `verify` (a crate, module or function, returning the
 JSON document above), `counterexample`, `cached_result` (latest verdicts,
-saying whether sources changed since) and `fragility` (once available).
+saying whether sources changed since) and `fragility` (local solver replay measurement).
 Register it as the stdio command `sail mcp`, for example
 `claude mcp add --transport stdio sail -- sail mcp`. See `docs/mcp.md`.
 
@@ -83,3 +83,21 @@ Projects invoked directly through Verus can use the same portfolio with
 `--verus-source path/to/lib.rs -- <Verus flags>`. The pinned Verus launcher
 runs the complete requested scope independently on each attempt; Cargo target
 cleanup applies only to Cargo projects.
+
+For function scores in a verification report, request measurement explicitly:
+
+```sh
+sail verify --measure-fragility --fragility-seeds 8 --output json
+```
+
+This runs baseline verification without cached replies, then replays its exact
+solver sessions. It can be expensive and is local-only; ordinary verification
+runs no census. Incomplete or ambiguous attribution is reported as unavailable.
+
+Explicit fragility measurements reverify in a Sail-owned Cargo target, reusing
+dependency compilation between requests. They never clean the caller’s target.
+Do not combine measurement with an external `--target-dir` or a portfolio.
+
+`sail bench` forwards workload arguments to `sail-bench` installed beside it;
+build both with `cargo build --release -p sail-cli -p sail-bench -p sail-shim`.
+Benchmarks remain local-only and never form part of the CI gate.

@@ -74,6 +74,8 @@ pub struct RunArgs {
     /// Verus `--verify-function <function>` (with `--verify-root` when no
     /// module is given).
     pub function: Option<String>,
+    /// Explicit solver replay measurement for per-function fragility.
+    pub measure_fragility: bool,
     /// Explicit complete-run portfolio mode; never enabled by default.
     pub portfolio: Option<String>,
     /// Further `cargo verus verify` arguments, before `--`.
@@ -91,6 +93,7 @@ impl RunArgs {
         "function",
         "cargo_args",
         "portfolio",
+        "measure_fragility",
         "verus_args",
     ];
 
@@ -106,6 +109,14 @@ impl RunArgs {
             package: opt_value(args, "package")?,
             module: opt_value(args, "module")?,
             function: opt_value(args, "function")?,
+            measure_fragility: args
+                .get("measure_fragility")
+                .map(|v| {
+                    v.as_bool()
+                        .ok_or_else(|| "measure_fragility must be boolean".to_owned())
+                })
+                .transpose()?
+                .unwrap_or(false),
             portfolio: opt_value(args, "portfolio")?,
             cargo_args: str_list(args, "cargo_args")?,
             verus_args: str_list(args, "verus_args")?,
@@ -141,6 +152,9 @@ impl RunArgs {
     #[must_use]
     pub fn sail_args(&self, prefix: &[&str]) -> Vec<String> {
         let mut out: Vec<String> = prefix.iter().map(|s| (*s).to_owned()).collect();
+        if self.measure_fragility && prefix.first() == Some(&"verify") {
+            out.push("--measure-fragility".to_owned());
+        }
         if let Some(mode) = &self.portfolio {
             out.extend(["--portfolio".to_owned(), mode.clone()]);
         }
@@ -150,7 +164,12 @@ impl RunArgs {
         }
         let mut verus = Vec::new();
         if let Some(m) = &self.module {
-            verus.extend(["--verify-module".to_owned(), m.clone()]);
+            let flag = if self.function.is_some() {
+                "--verify-only-module"
+            } else {
+                "--verify-module"
+            };
+            verus.extend([flag.to_owned(), m.clone()]);
         }
         if let Some(f) = &self.function {
             if self.module.is_none() {
@@ -268,7 +287,7 @@ mod tests {
                 "-p",
                 "demo",
                 "--",
-                "--verify-module",
+                "--verify-only-module",
                 "arith",
                 "--verify-function",
                 "mul_pos",

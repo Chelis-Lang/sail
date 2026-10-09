@@ -42,12 +42,18 @@ pub fn function_line(f: &FunctionReport) -> String {
             line.push_str(" (NOT verified: not yet confirmed by the pinned solver)");
         }
         VerdictName::Unknown => {
-            line.push_str(" (Z3 gave up near its limit; not a settled failure)");
+            line.push_str(" (verification not confirmed; not a settled failure)");
         }
         VerdictName::Verified | VerdictName::Failed => {}
     }
     if f.unstable {
         line.push_str(", unstable");
+    }
+    if f.provenance.mode != "default" {
+        let _ = write!(line, "; mode {}", f.provenance.mode);
+        if let Some(configuration) = f.provenance.configuration {
+            let _ = write!(line, ", seed {}", configuration.seed);
+        }
     }
     line
 }
@@ -135,6 +141,16 @@ pub fn report(r: &Report) -> String {
         let _ = write!(text, "; checks: {solved} solved fresh, {served} from cache");
     }
     text.push('.');
+    if r.mode != "default" {
+        let _ = write!(text, "\nMode: {}", r.mode);
+        if let Some(portfolio) = &r.portfolio {
+            if let Some(seed) = portfolio.winner_seed {
+                let _ = write!(text, "; complete proof from seed {seed}.");
+            } else {
+                text.push_str("; no complete proof.");
+            }
+        }
+    }
     let of = |v: VerdictName| {
         functions
             .iter()
@@ -161,7 +177,7 @@ pub fn report(r: &Report) -> String {
     if of(VerdictName::Unknown).next().is_some() {
         let _ = write!(
             text,
-            "\nUnknown (Z3 gave up near its limit; not a settled failure): {}.",
+            "\nUnknown (verification not confirmed; not a settled failure): {}.",
             names(of(VerdictName::Unknown))
         );
     }
@@ -221,6 +237,14 @@ mod tests {
                 .collect(),
         );
         assert!(report(&r).contains("and 4 more"));
+    }
+
+    #[test]
+    fn unknown_does_not_claim_an_unobserved_resource_failure() {
+        let f = function("demo::uncertain", VerdictName::Unknown);
+        assert!(function_line(&f).contains("verification not confirmed"));
+        assert!(!function_line(&f).contains("near its limit"));
+        assert!(!report(&make(vec![f])).contains("near its limit"));
     }
 
     #[test]

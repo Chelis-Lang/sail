@@ -9,7 +9,9 @@
 - **Impact on sail:** `sail verify --output json` reports such a function as
   `failed`, which differs from Verus's `success` field but agrees with Verus's
   diagnostics and exit code. When attribution is unavailable, sail can only
-  repeat Verus's `success`, so the gap stays open.
+  preserve Verus's raw `success` but cannot trust it in a failing crate.
+  Uncertain successes are reported `unknown` with an attribution note, never
+  confirmed as verified.
 
 ## Description
 
@@ -32,3 +34,9 @@ sail attributes the failed spun-off bit-vector obligation (`Function-Def`,
 spinoff reason `bitvector`, first answer `sat`) to the function and reports
 `failed` (`sail_ledger::FunctionRecord::outcome`). `crates/sail-cli/examples/check_output.rs`
 treats exactly this case as agreement.
+
+When attribution is partial or unavailable and the crate reports an error,
+Sail does not confirm successful timing entries. The raw field, diagnostics
+and exit code are retained. A successful crate with zero errors keeps its
+ordinary Verus results. This conservative fallback closes the unresolved
+false-verification gap without guessing which function failed.
