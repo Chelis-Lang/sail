@@ -1,6 +1,7 @@
 //! Versioned, bounded local project-job protocol, independent of the SMT cache.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -224,13 +225,15 @@ pub fn read_frame<T: serde::de::DeserializeOwned>(reader: &mut impl Read) -> io:
 /// The job endpoint alongside a cache endpoint, without changing cache protocol.
 #[must_use]
 pub fn socket_path(cache_socket: &Path) -> PathBuf {
-    cache_socket.with_file_name(format!(
-        "jobs-v1-{}.sock",
-        cache_socket
-            .file_stem()
-            .unwrap_or_default()
-            .to_string_lossy()
-    ))
+    let digest = sail_key::sha256(cache_socket.as_os_str().as_encoded_bytes());
+    let suffix = digest
+        .iter()
+        .take(4)
+        .fold(String::new(), |mut value, byte| {
+            let _ = write!(value, "{byte:02x}");
+            value
+        });
+    cache_socket.with_file_name(format!("jobs-v1-{suffix}.sock"))
 }
 
 /// A short-lived, timeout-bounded local client. Every call has its own connection.

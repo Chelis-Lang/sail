@@ -105,17 +105,64 @@ pub(super) fn load(root: &Path) -> io::Result<BTreeMap<String, Stored>> {
     Ok(jobs)
 }
 pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
-    let result = if job.status.state == Lifecycle::Completed {
-        let bytes = std::fs::read(state.root.join(&job.status.id).join("stdout"))?;
-        Some(serde_json::from_slice(&bytes).map_err(io::Error::other)?)
+    let mut status = job.status.clone();
+    let result = if status.state == Lifecycle::Completed {
+        let path = state.root.join(&status.id).join("stdout");
+        if std::fs::metadata(&path)?.len() > sail_api::jobs::MAX_FRAME as u64 {
+            return Err(io::Error::other(
+                "SAIL0814: result exceeds RPC limit; retained output is available in the private job store",
+            ));
+        }
+        let bytes = std::fs::read(path)?;
+        let mut project: sail_api::project::ProjectResult =
+            serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+        let environment = &job.submission.environment;
+        let cache = environment
+            .get("SAIL_CACHE_DIR")
+            .map(std::path::PathBuf::from)
+            .or_else(|| {
+                environment
+                    .get("XDG_CACHE_HOME")
+                    .map(|home| std::path::PathBuf::from(home).join("sail"))
+            })
+            .or_else(|| {
+                environment
+                    .get("HOME")
+                    .map(|home| std::path::PathBuf::from(home).join(".cache/sail"))
+            });
+        let snapshot = cache.and_then(|cache| {
+            sail_verus::managed::refresh_result(&cache, &project, environment).ok()
+        });
+        status.currentness = match snapshot {
+            Some(snapshot) if snapshot.revision != project.input_revision => {
+                Currentness::Historical
+            }
+            Some(snapshot)
+                if snapshot.complete
+                    && project.currentness == sail_api::project::Currentness::Current =>
+            {
+                Currentness::Current
+            }
+            _ if project.currentness == sail_api::project::Currentness::Historical => {
+                Currentness::Historical
+            }
+            _ => Currentness::Unknown,
+        };
+        project.currentness = match status.currentness {
+            Currentness::Current => sail_api::project::Currentness::Current,
+            Currentness::Historical => sail_api::project::Currentness::Historical,
+            Currentness::Unknown => sail_api::project::Currentness::Unknown,
+        };
+        Some(serde_json::to_value(project).map_err(io::Error::other)?)
     } else {
         None
     };
     Ok(ResultDocument {
-        job: job.status.clone(),
+        job: status,
         result,
     })
 }
+
 pub(super) fn chunk(state: &State, job: &Stored, name: &str, offset: u64) -> io::Result<Chunk> {
     let path = state.root.join(&job.status.id).join(name);
     let mut bytes = Vec::new();

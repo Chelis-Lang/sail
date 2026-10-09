@@ -13,7 +13,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use sail_api::jobs::{Lifecycle, Request, Response, Status, Submission};
+use sail_api::jobs::{Currentness, Lifecycle, Request, Response, Status, Submission};
 
 use store::Stored;
 
@@ -121,9 +121,14 @@ impl JobHandle {
     pub fn shutdown(&mut self) {
         self.state.stop.store(true, Ordering::SeqCst);
         self.state.ready.notify_all();
-        if let Ok(jobs) = self.state.jobs.lock() {
-            for job in jobs.values() {
+        if let Ok(mut jobs) = self.state.jobs.lock() {
+            for job in jobs.values_mut() {
                 job.cancel.store(true, Ordering::SeqCst);
+                if !job.status.state.terminal() {
+                    job.status.state = Lifecycle::Cancelled;
+                    job.status.finished_at_ms = Some(store::now());
+                    let _ = store::save(&self.state.root, job);
+                }
             }
         }
         if let Some(thread) = self.listener.take() {
@@ -160,7 +165,9 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                         |error| Response::Error(format!("SAIL0801: {error}")),
                         |request| dispatch(&state, request),
                     );
-                    let _ = sail_api::jobs::write_frame(&mut stream, &response);
+                    if sail_api::jobs::write_frame(&mut stream, &response).is_err() {
+                        let _ = sail_api::jobs::write_frame(&mut stream, &Response::Error("SAIL0814: result exceeds RPC limit; retained files are available in the private job store".to_owned()));
+                    }
                     clients.fetch_sub(1, Ordering::SeqCst);
                 });
             }
@@ -183,12 +190,24 @@ fn dispatch(state: &State, request: Request) -> Response {
                         .as_ref()
                         .is_none_or(|dir| *dir == job.status.project_dir)
                 })
-                .map(|job| job.status.clone())
+                .map(|job| {
+                    let mut status = job.status.clone();
+                    if status.state == Lifecycle::Completed {
+                        status.currentness = Currentness::Unknown;
+                    }
+                    status
+                })
                 .collect();
             statuses.sort_by_key(|status| status.submitted_at_ms);
             Response::List(statuses)
         }),
-        Request::Status { id } => get(state, &id).map(|job| Response::Status(job.status)),
+        Request::Status { id } => get(state, &id).and_then(|job| {
+            if job.status.state == Lifecycle::Completed {
+                store::result(state, &job).map(|document| Response::Status(document.job))
+            } else {
+                Ok(Response::Status(job.status))
+            }
+        }),
         Request::Result { id } => get(state, &id)
             .and_then(|job| store::result(state, &job))
             .map(Response::Result),
@@ -215,16 +234,28 @@ fn get(state: &State, id: &str) -> io::Result<Stored> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "SAIL0805: unknown job"))
 }
 fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
+    if state.stop.load(Ordering::SeqCst) {
+        return Err(io::Error::other("SAIL0815: job service is stopping"));
+    }
     submission.project_dir = submission.project_dir.canonicalize()?;
     if !submission.project_dir.is_dir() || submission.args.iter().any(|arg| arg.contains('\0')) {
         return Err(io::Error::other("SAIL0806: invalid project or arguments"));
     }
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
-    if let Some(job) = jobs
-        .values()
-        .find(|job| !job.status.state.terminal() && job.submission == submission)
-    {
+    if let Some(job) = jobs.values().find(|job| {
+        !job.status.state.terminal()
+            && submission.input_revision.is_some()
+            && job.submission == submission
+    }) {
         return Ok(job.status.clone());
+    }
+    if jobs
+        .values()
+        .filter(|job| !job.status.state.terminal())
+        .count()
+        >= 256
+    {
+        return Err(io::Error::other("SAIL0815: job queue is full"));
     }
     let job = Stored::new(submission);
     let id = job.status.id.clone();

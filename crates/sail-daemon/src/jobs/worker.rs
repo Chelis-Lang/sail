@@ -2,7 +2,7 @@
 
 use std::io;
 use std::os::unix::process::CommandExt as _;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
@@ -10,6 +10,33 @@ use sail_api::jobs::{Currentness, Lifecycle};
 use sail_api::project::ProjectResult;
 
 use super::{State, get, lock_error, store};
+
+struct Process(Child);
+impl std::ops::Deref for Process {
+    type Target = Child;
+    fn deref(&self) -> &Child {
+        &self.0
+    }
+}
+impl std::ops::DerefMut for Process {
+    fn deref_mut(&mut self) -> &mut Child {
+        &mut self.0
+    }
+}
+impl Drop for Process {
+    fn drop(&mut self) {
+        if !matches!(self.0.try_wait(), Ok(Some(_))) {
+            let _ = Command::new("kill")
+                .args(["-s", "KILL", "--", &format!("-{}", self.0.id())])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+}
 
 pub(super) fn run(state: &State) {
     loop {
@@ -80,14 +107,16 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
         .env_clear()
         .envs(&job.submission.environment)
         .env("SAIL_JOB_EVENTS", directory.join("events.jsonl"))
-        .stdin(Stdio::null())
+        .env("SAIL_JOB_GUARD_PARENT", "1")
+        .stdin(Stdio::piped())
         .stdout(stdout)
         .stderr(stderr)
         .process_group(0);
     if job.submission.force {
         command.env("SAIL_MANAGED_FORCE", "1");
     }
-    let mut child = command.spawn()?;
+    let mut child = Process(command.spawn()?);
+    let _parent_pipe = child.stdin.take();
     {
         let mut jobs = state.jobs.lock().map_err(lock_error)?;
         if let Some(job) = jobs.get_mut(id)
@@ -120,6 +149,16 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
     };
     let bytes = std::fs::read(directory.join("stdout"))?;
     let document: ProjectResult = serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+    if document.exit_code != status.code() {
+        return Err(io::Error::other(
+            "managed report and process exit status disagree",
+        ));
+    }
+    if document.error.is_some() {
+        return Err(io::Error::other(
+            "managed verifier reported an infrastructure failure",
+        ));
+    }
     if document.kind != "sail-project-result"
         || document.schema_version != sail_api::project::SCHEMA_VERSION
     {

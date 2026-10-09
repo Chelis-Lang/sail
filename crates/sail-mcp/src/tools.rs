@@ -77,7 +77,7 @@ pub struct ToolResult {
 }
 
 impl ToolResult {
-    fn ok(text: String, structured: Value) -> Self {
+    pub(super) fn ok(text: String, structured: Value) -> Self {
         Self {
             text,
             structured,
@@ -85,7 +85,7 @@ impl ToolResult {
         }
     }
 
-    fn error(text: String, structured: Value) -> Self {
+    pub(super) fn error(text: String, structured: Value) -> Self {
         Self {
             text,
             structured,
@@ -93,7 +93,7 @@ impl ToolResult {
         }
     }
 
-    fn invalid(message: &str) -> Self {
+    pub(super) fn invalid(message: &str) -> Self {
         Self::error(
             format!("Invalid arguments: {message}"),
             json!({"error": message}),
@@ -157,11 +157,11 @@ fn lookup_schema(target: &str) -> Value {
 /// The tool definitions (`tools/list`), in a fixed order.
 #[must_use]
 pub fn definitions() -> Value {
-    json!([
+    let mut definitions = json!([
         {
             "name": "verify",
             "title": "Verify with sail",
-            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a short summary and the schema-v1 report (docs/output-schema.md): per-function verdicts (verified, failed, unknown, provisional) with tier and provenance, obligation ids, counterexample models, Verus diagnostics as data, timings and cache sources. `provisional` is never `verified`. The run is recorded for `cached_result` and `counterexample`. If Cargo considers the crate up to date it does not re-run Verus; the tool then says so and points at the recorded result.",
+            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a short summary and the schema-v1 report (docs/output-schema.md): per-function verdicts (verified, failed, unknown, provisional) with tier and provenance, obligation ids, counterexample models, Verus diagnostics as data, timings and cache sources. `provisional` is never `verified`. Default verification uses a persistent forced-fresh workspace job, while retaining dependency build artifacts. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false}
         },
@@ -186,7 +186,11 @@ pub fn definitions() -> Value {
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "openWorldHint": false}
         }
-    ])
+    ]);
+    if let Some(list) = definitions.as_array_mut() {
+        list.extend(crate::job_tools::definitions(&run_schema()));
+    }
+    definitions
 }
 
 /// Runs tool `name`. `None` means there is no such tool.
@@ -198,6 +202,10 @@ pub fn call(
     cancel: &Cancel,
 ) -> Option<ToolResult> {
     Some(match name {
+        "start_verification"
+        | "verification_status"
+        | "verification_result"
+        | "cancel_verification" => crate::job_tools::call(ctx, name, args, cancel),
         "verify" => verify(ctx, args, cancel),
         "counterexample" => counterexample(ctx, args),
         "cached_result" => cached_result(ctx, args),
@@ -206,7 +214,7 @@ pub fn call(
     })
 }
 
-fn project_dir(ctx: &Context, given: Option<&str>) -> Result<PathBuf, ToolResult> {
+pub(super) fn project_dir(ctx: &Context, given: Option<&str>) -> Result<PathBuf, ToolResult> {
     let path = given.map_or_else(|| ctx.config.cwd.clone(), |p| ctx.config.cwd.join(p));
     match path.canonicalize() {
         Ok(p) if p.is_dir() => Ok(p),
@@ -230,10 +238,10 @@ fn freshness(run: &RunRecord, now: &store::Snapshot) -> Value {
     } else if stale {
         "The sources changed since this run: its results apply to the earlier sources only. Re-run verify to confirm."
     } else {
-        "The project's sources are unchanged since this run (files outside the project directory are not tracked)."
+        "Tracked sources are unchanged, but this historical record has no complete workspace/runtime freshness evidence. Use verification_result for managed currentness."
     };
     json!({
-        "status": if stale { "stale" } else { "current" },
+        "status": if stale { "stale" } else { "unknown" },
         "run": run.run,
         "established_at": run.finished_at,
         "established_by": format!("sail {}", run.sail_args.join(" ")),
@@ -269,6 +277,21 @@ fn verify(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResu
         Ok(p) => p,
         Err(e) => return e,
     };
+    if !request.measure_fragility && request.portfolio.is_none() {
+        match crate::job_tools::blocking(ctx, &request, &project, cancel) {
+            Ok(Some((job, result))) => {
+                let Some(report) = crate::job_tools::merged_report(&result) else {
+                    return ToolResult::ok("Cargo completed before any verification target produced a report; see the job diagnostics.".to_owned(), json!({"job":job,"project_result":result}));
+                };
+                let now = store::snapshot(&project);
+                let raw = serde_json::to_value(&report).unwrap_or(Value::Null);
+                let base = json!({"project_dir":project,"sail_args":request.sail_args(VERIFY_COMMAND),"exit_code":result.exit_code,"job":job,"project_result":result});
+                return finish_verify(ctx, &project, &request, base, raw, report, &now, &now);
+            }
+            Ok(None) => {}
+            Err(error) => return error,
+        }
+    }
     let lock = ctx.lock(&project);
     let _guard = lock.lock();
     let sail_args = request.sail_args(VERIFY_COMMAND);
@@ -465,10 +488,10 @@ fn cached_result(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
         Ok(p) => p,
         Err(e) => return e,
     };
-    // Wait for a run in progress in this project, so a lookup sent after
-    // `verify` sees that run's results.
-    let lock = ctx.lock(&project);
-    let _guard = lock.lock();
+    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, false) {
+        return result;
+    }
+    // Return the most recently completed result while a newer run is in flight.
     let now = store::snapshot(&project);
     ctx.store.with(&project, |p| {
         if p.last().is_none() {
@@ -620,10 +643,10 @@ fn counterexample(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
         Ok(p) => p,
         Err(e) => return e,
     };
-    // Wait for a run in progress in this project, so a lookup sent after
-    // `verify` sees that run's results.
-    let lock = ctx.lock(&project);
-    let _guard = lock.lock();
+    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, true) {
+        return result;
+    }
+    // Return the most recently completed result while a newer run is in flight.
     let now = store::snapshot(&project);
     ctx.store.with(&project, |p| {
         if p.last().is_none() {
@@ -790,6 +813,51 @@ fn fragility(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolR
 mod tests {
     use super::*;
     use sail_api::output::{PortfolioAttempt, PortfolioReport, SolverConfiguration, VerdictName};
+
+    #[test]
+    fn lookup_returns_completed_evidence_while_a_project_run_is_locked() {
+        let root = std::env::temp_dir().join(format!("sail-mcp-lookup-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let project = root.canonicalize().unwrap_or(root.clone());
+        let context = Arc::new(Context::new(Config {
+            sail: root.join("missing-sail"),
+            store_dir: None,
+            cwd: project.clone(),
+        }));
+        let report = store::tests::report(vec![store::tests::function(
+            "demo::proved",
+            VerdictName::Verified,
+        )]);
+        context.store.record(
+            &project,
+            RunRecord {
+                run: 0,
+                finished_unix_ms: 0,
+                finished_at: store::rfc3339(0),
+                sail_args: vec![],
+                exit_code: Some(0),
+                duration_ms: 0,
+                scoped: false,
+                sources: store::snapshot(&project),
+                sources_changed_during_run: false,
+                report,
+            },
+        );
+        let lock = context.lock(&project);
+        let guard = lock.lock();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let worker_context = Arc::clone(&context);
+        let worker = std::thread::spawn(move || {
+            let result = cached_result(&worker_context, &Map::new());
+            let _ = sender.send(result);
+        });
+        let result = receiver.recv_timeout(std::time::Duration::from_secs(1));
+        drop(guard);
+        assert!(worker.join().is_ok());
+        assert!(result.is_ok(), "lookup must not wait for the run lock");
+        assert!(result.is_ok_and(|result| !result.is_error));
+        let _ = std::fs::remove_dir_all(root);
+    }
 
     #[test]
     fn persisted_portfolio_lookups_keep_mode_and_configuration() {

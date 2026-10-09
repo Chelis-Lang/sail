@@ -19,6 +19,7 @@
 #![forbid(unsafe_code)]
 
 mod args;
+mod job_tools;
 pub mod jsonrpc;
 mod run;
 pub mod server;

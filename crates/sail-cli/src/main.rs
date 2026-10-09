@@ -81,7 +81,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("_portfolio-attempt") => {
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
         }
-        Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), err),
+        Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), out, err),
         Some("jobs") => jobs::run(args.get(1..).unwrap_or_default(), out, err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),
         Some("cache") => ops::cache(args.get(1..).unwrap_or_default(), out, err),
