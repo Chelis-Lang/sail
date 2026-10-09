@@ -12,6 +12,8 @@ pub mod corpus;
 pub mod diagnostics;
 pub mod patch;
 pub mod run;
+pub mod rvt;
+pub mod source_build;
 pub mod toolchain;
 
 /// An error with a stable code (`SAIL3xxx`) and a message.

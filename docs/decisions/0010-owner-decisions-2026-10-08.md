@@ -72,3 +72,14 @@ was written against, with Z3 4.16.0 and Rust 1.98.0.
 - **No bundled z3:** this release's archive has none (VI-0006). Its pin uses
   the primary's z3 (`z3 = "primary"`, the same 4.16.0 build), and the harness
   then names it for plain Verus too.
+
+## Update 2026-10-09: `rust_verify_test` runs in the deep tier
+
+Item 4's `rust_verify_test` is in place (ADR 0019):
+- **Build.** `cargo xtask build-verus-source` builds the pinned commit with
+  vargo under `<cache>/verus-src-build/<commit>`, with the pinned z3.
+- **Run.** `ci/local.sh deep-rvt` (or `ci/run.sh deep-rvt` on the host)
+  compares plain Verus and `sail-z3` test by test. It is local-only.
+- **Singular** is still not built: a Singular-enabled source build is
+  possible, but using it for the Singular corpus entries needs more than
+  the build (ADR 0019).

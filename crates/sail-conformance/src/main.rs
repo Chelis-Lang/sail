@@ -4,11 +4,14 @@
 //! sail-conformance fetch [--tier T] [--project P]...
 //! sail-conformance run   [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--trace] [--out DIR] [--shim PATH]
+//! sail-conformance rust-verify-test [--filter S]... [--every N] [--jobs N] ...
 //! ```
 //!
 //! `run` exits 0 when every unit is the same under sail as under plain
 //! Verus, 1 if any unit differs, and 2 on usage or infrastructure errors.
 #![forbid(unsafe_code)]
+
+mod rust_verify_test;
 
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -27,6 +30,8 @@ const USAGE: &str = "usage:
   sail-conformance run   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                          [--jobs N] [--trace] [--out DIR] [--shim PATH]
                          [--plain-runs N] [--confirm-runs N]
+
+  sail-conformance rust-verify-test ...   (see `rust-verify-test --help`)
 
   --plain-runs N    plain Verus runs per unit up front (default 1)
   --confirm-runs N  extra plain runs when sail differs, to tell plain-Verus
@@ -501,6 +506,19 @@ fn run(o: &Options) -> Result<ExitCode, String> {
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("rust-verify-test") {
+        let rest = args.get(1..).unwrap_or_default();
+        let result = if rest.iter().any(|a| a == "--help" || a == "-h") {
+            println!("{}", rust_verify_test::USAGE);
+            Ok(ExitCode::SUCCESS)
+        } else {
+            rust_verify_test::main(rest)
+        };
+        return result.unwrap_or_else(|message| {
+            eprintln!("{message}");
+            ExitCode::from(2)
+        });
+    }
     let result = parse(&args).and_then(|o| match o.command.as_str() {
         "run" => run(&o),
         "fetch" => {

@@ -12,8 +12,8 @@
 //! | 5 `INFO` | empty | `0`, `u32` len, [`Info`] JSON |
 //!
 //! Operations 4 and 5 are read-only and additive: they kept
-//! the protocol at 1 (ADR 0012, ADR 0015). Version 4 requires silent-session publication and negotiates the mode
-//! in HELLO (ADR 0020). A daemon that predates
+//! the original version (ADR 0012, ADR 0015). Version 4 requires silent-session
+//! publication (ADR 0022) and negotiates the mode in HELLO (ADR 0020). A daemon that predates
 //! one rejects it by closing that connection; nothing else changes.
 //!
 //! Frames larger than [`MAX_FRAME`] are rejected.
