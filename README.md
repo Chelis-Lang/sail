@@ -54,10 +54,18 @@ sail cache trust add ci.key.pub                         # on each reader
 SAIL_SHARED_STORE=/shared/sail sail verify [ARGS...]    # or: sail serve --shared DIR
 ```
 
+An optional HTTP server shares the same signed entries over HTTPS:
+`sail cache serve`, `sail cache connect`, and `sail cache publish --to URL`.
+Readers configure signing trust separately from access credentials. See
+[HTTP team caching](docs/http-shared-cache.md) for a local trial and deployment.
+
 `sail mcp` is an MCP server on stdio for agents that verify after every
 edit. Its tools are `verify` (a crate, module or function, returning the
 JSON document above), `counterexample`, `cached_result` (latest verdicts,
 saying whether sources changed since) and `fragility` (local solver replay measurement).
+The asynchronous tools `start_verification`, `verification_status`,
+`verification_result` and `cancel_verification` use the same durable jobs as
+the CLI, so an agent can inspect results while verification continues.
 Register it as the stdio command `sail mcp`, for example
 `claude mcp add --transport stdio sail -- sail mcp`. See `docs/mcp.md`.
 

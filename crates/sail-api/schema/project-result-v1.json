@@ -88,6 +88,7 @@
         "object",
         "null"
       ],
+      "required": ["code", "message"],
       "properties": {
         "code": {
           "type": "string",
