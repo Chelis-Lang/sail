@@ -186,8 +186,34 @@ Constraints:
 - **ADR 0009's threshold now has data.** See ADR 0009's 2026-10-08 census
   update for the recommendation. The serving policy is unchanged until the
   owner decides.
-- **An opt-in "accept a proof from any configuration" mode** is still to be
-  built. It needs its own key namespace and an entry in
-  `docs/divergences.md` (rule 8). This ADR adds measurement only.
+- **The complete-run portfolio** is separate (ADR 0020), has an opt-in key
+  namespace, and is registered in `docs/divergences.md`. Measurement alone
+  never selects a different verdict.
 - **Shuffling is available but off by default.** Its configurations are
   labelled in every report.
+
+## Function reports (2026-10-09)
+
+`--measure-fragility` is an explicit, local-only verification option. It captures
+baseline sessions in pass-through mode and joins their full input SHA-256 and
+ordered check sequence to AIR/transcript obligations. No function name is guessed
+from timing or the number of positive-effort functions. Advisory checks are not
+counted as primary proof obligations. A function score requires every primary
+obligation to be covered and every replay to be complete; missing evidence stays
+null with notes. Count a configuration as proving the function only if all its
+primary obligations prove together. Keep the schema's fraction-not-proving score
+separate from the census's existing effort-pressure and disagreement scores.
+
+These are captured-prefix replays, not independent seeded Verus proofs. They do
+not change the baseline verdict. The complete-run portfolio remains the only mode
+that selects a different seeded proof. Ordinary verification runs no replay.
+The fragility MCP response also carries an attributed verification report when
+capturing fresh runs; trace-only measurements cannot invent verification results.
+
+Explicit fresh measurements use a Cargo target owned by Sail, scoped to the
+project/manifest location. Each measurement cleans only verification-enabled
+workspace packages there, retaining dependency compilation. The caller’s target
+is neither cleaned nor overwritten. An exclusive OS-file lock prevents concurrent
+cleanups of that target. Changing forwarded flags alone cannot force Cargo to
+reverify (VI-0005); unchanged-source measurement requests therefore also force
+a real verification. Explicit external `--target-dir` conflicts are rejected.

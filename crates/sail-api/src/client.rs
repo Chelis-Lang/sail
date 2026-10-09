@@ -54,7 +54,23 @@ impl Client {
     ///
     /// I/O errors, or the daemon's error message.
     pub fn hello(&mut self, solver_path: &str) -> std::io::Result<Identity> {
-        let body = self.call(&Request::Hello(solver_path.to_owned()))?;
+        self.hello_in_mode(solver_path, crate::protocol::VerificationMode::Default)
+    }
+
+    /// Identifies a solver and negotiates the connection's cache namespace.
+    ///
+    /// # Errors
+    ///
+    /// I/O errors, a rejected handshake, or a stale daemon protocol.
+    pub fn hello_in_mode(
+        &mut self,
+        solver_path: &str,
+        mode: crate::protocol::VerificationMode,
+    ) -> std::io::Result<Identity> {
+        let body = self.call(&Request::Hello(crate::protocol::Hello {
+            solver_path: solver_path.to_owned(),
+            mode,
+        }))?;
         let (status, payload) = split_status_payload(&body)?;
         if status == 0 {
             let id: Identity = serde_json::from_slice(payload).map_err(std::io::Error::other)?;

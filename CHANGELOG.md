@@ -8,6 +8,35 @@ semantic versioning once the API is published.
 - Add feature-scoped Singular source builds, validated runtime identities, and
   an optional local conformance environment for integer-ring examples and the
   pinned memory allocator.
+
+- Keep portfolio mode and seed provenance in compact MCP result lookups and
+  summaries. Unknown summaries no longer infer an unobserved resource failure.
+
+- Failing crates with incomplete attribution no longer confirm successful
+  timing entries that may hide bit-vector failures (VI-0003). They report
+  uncertainty while preserving Verus's raw fields and diagnostics. MCP retires
+  old persisted result records; reverify to establish current results.
+
+- `sail bench` runs the installed workload tool with unchanged arguments and
+  standard streams.
+
+- Fresh fragility measurements force reverification in a locked Sail-owned
+  target, preserving the caller’s Cargo artifacts and dependency compilation.
+
+- Join fragility captures to functions by exact transcript hashes and check
+  order; expose conservative function scores in JSON and MCP on request.
+- Require reports for every requested verifying Cargo target before accepting
+  a portfolio proof; reject ambiguous or unsupported target coverage.
+
+- Exercise a real seeded proof, cold and warm, in the fast end-to-end check.
+  Bound daemon readiness to sixty seconds and fail early when the daemon exits.
+
+- Exclude skipped timing successes from function-scoped reports and portfolio
+  acceptance (pinned Verus issue VI-0009).
+
+- Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
+  selection, and isolated protocol-v4 cache namespaces (ADR 0020).
+
 - Avoid adding a second progress-suppression flag to the deep suite example
   that supplies it itself. Verification arguments remain identical on both sides.
 

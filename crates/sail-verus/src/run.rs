@@ -629,7 +629,8 @@ fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &So
         .env_remove("SAIL_Z3_PATH")
         .env_remove("SAIL_TRACE_DIR")
         .env_remove("SAIL_DAEMON_SOCKET")
-        .envs(&unit.env);
+        .envs(&unit.env)
+        .env("SAIL_SOLVER_MODE", "default");
     if !installed.z3_bundled {
         // This release bundles no z3, so plain Verus's launcher would find
         // none: name the pinned one, as the sail side does through
@@ -683,6 +684,53 @@ pub fn machine_info() -> BTreeMap<String, String> {
 mod tests {
     use super::{RunRecord, parse_outputs, parse_time};
     use serde_json::json;
+
+    #[test]
+    fn conformance_forces_default_mode_on_both_sides() {
+        let Ok(pins) = crate::toolchain::Pins::embedded() else {
+            unreachable!("embedded pins invalid")
+        };
+        let installed = super::Installed {
+            pins,
+            verus: "verus".into(),
+            cargo_verus: "cargo-verus".into(),
+            z3: "z3".into(),
+            z3_bundled: true,
+        };
+        let unit = super::Unit {
+            id: "fixture".to_owned(),
+            project: "fixture".to_owned(),
+            source_dir: "fixture".into(),
+            root: "lib.rs".to_owned(),
+            build: crate::corpus::Build::Verus,
+            args: Vec::new(),
+            cargo_args: Vec::new(),
+            patch_verus_deps: false,
+            target_dir: None,
+            env: std::collections::BTreeMap::from([(
+                "SAIL_SOLVER_MODE".to_owned(),
+                "accept-first-proof".to_owned(),
+            )]),
+            expected: None,
+        };
+        for solver in [
+            super::Solver::Plain,
+            super::Solver::Shim {
+                shim: "sail-z3".into(),
+                trace_dir: None,
+                daemon_socket: None,
+            },
+        ] {
+            let mut cmd = std::process::Command::new("never-executed");
+            cmd.env("SAIL_SOLVER_MODE", "accept-first-proof");
+            super::solver_env(&mut cmd, &installed, &unit, &solver);
+            let mode = cmd
+                .get_envs()
+                .find(|(k, _)| *k == "SAIL_SOLVER_MODE")
+                .and_then(|(_, v)| v);
+            assert_eq!(mode, Some(std::ffi::OsStr::new("default")));
+        }
+    }
 
     #[test]
     fn finds_an_enclosing_cargo_project() {

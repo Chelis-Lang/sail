@@ -125,7 +125,7 @@ fn handshake_then_every_tool() {
     assert!(
         std::fs::write(
             project.join("Cargo.toml"),
-            "[package]\nname = \"input\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[workspace]\n"
+            "[package]\nname = \"input\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[package.metadata.verus]\nverify = true\n\n[workspace]\n"
         )
         .is_ok()
     );
@@ -258,7 +258,9 @@ exit 1
     let logged = std::fs::read_to_string(&args_log).unwrap_or_default();
     let call_args = logged.lines().last().unwrap_or_default();
     assert!(
-        call_args.contains("-- --verify-module arith --verify-function mul_pos --rlimit 20"),
+        call_args.starts_with(
+            "verus focus -- --verify-only-module arith --verify-function mul_pos --rlimit 20"
+        ),
         "{call_args}"
     );
     let cr = c.tool("cached_result", &json!({}));

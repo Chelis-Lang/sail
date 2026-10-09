@@ -1,0 +1,488 @@
+{
+  "schema_version": 1,
+  "kind": "portfolio-cost",
+  "date": "2026-10-09",
+  "machine": {
+    "os": "Darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "logical_cpus": 8,
+    "load_at_start": [
+      53.2529296875,
+      49.171875,
+      67.34033203125
+    ],
+    "reference": false,
+    "load": "shared development machine",
+    "load_at_end": [
+      58.439453125,
+      52.7763671875,
+      66.388671875
+    ]
+  },
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+  "source": "corpus/repros/verus-partial-success/input.rs",
+  "source_sha256": "dbf8ef1e5578aa81965fe9ea85b1c5d17731941dd2b791c883fd73654bab8813",
+  "rounds": [
+    {
+      "scope": "good",
+      "round": 1,
+      "plain_ms": 1563.7090420000002,
+      "plain_verification": {
+        "encountered-error": false,
+        "encountered-vir-error": false,
+        "verified": 1,
+        "errors": 0,
+        "is-verifying-entire-crate": false
+      },
+      "cold": {
+        "wall_ms": 2394.6603749999995,
+        "winner_seed": 0,
+        "summary": {
+          "functions": 1,
+          "verified": 1,
+          "failed": 0,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": true,
+            "exit_code": 0,
+            "wall_ms": 2380.4974159999997,
+            "error": null,
+            "checks_solved": 1,
+            "checks_served": 0
+          }
+        ]
+      },
+      "warm": {
+        "wall_ms": 2832.488542,
+        "winner_seed": 0,
+        "summary": {
+          "functions": 1,
+          "verified": 1,
+          "failed": 0,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": true,
+            "exit_code": 0,
+            "wall_ms": 2823.907708,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 1
+          }
+        ]
+      }
+    },
+    {
+      "scope": "good",
+      "round": 2,
+      "plain_ms": 2870.695166,
+      "plain_verification": {
+        "encountered-error": false,
+        "encountered-vir-error": false,
+        "verified": 1,
+        "errors": 0,
+        "is-verifying-entire-crate": false
+      },
+      "cold": {
+        "wall_ms": 3948.1625419999987,
+        "winner_seed": 0,
+        "summary": {
+          "functions": 1,
+          "verified": 1,
+          "failed": 0,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": true,
+            "exit_code": 0,
+            "wall_ms": 3936.037292,
+            "error": null,
+            "checks_solved": 1,
+            "checks_served": 0
+          }
+        ]
+      },
+      "warm": {
+        "wall_ms": 4970.7080000000005,
+        "winner_seed": 0,
+        "summary": {
+          "functions": 1,
+          "verified": 1,
+          "failed": 0,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": true,
+            "exit_code": 0,
+            "wall_ms": 4953.575374999999,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 1
+          }
+        ]
+      }
+    },
+    {
+      "scope": "good",
+      "round": 3,
+      "plain_ms": 3079.1275409999985,
+      "plain_verification": {
+        "encountered-error": false,
+        "encountered-vir-error": false,
+        "verified": 1,
+        "errors": 0,
+        "is-verifying-entire-crate": false
+      },
+      "cold": {
+        "wall_ms": 5140.269708000002,
+        "winner_seed": 0,
+        "summary": {
+          "functions": 1,
+          "verified": 1,
+          "failed": 0,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": true,
+            "exit_code": 0,
+            "wall_ms": 5124.884542,
+            "error": null,
+            "checks_solved": 1,
+            "checks_served": 0
+          }
+        ]
+      },
+      "warm": {
+        "wall_ms": 6873.091124999998,
+        "winner_seed": 0,
+        "summary": {
+          "functions": 1,
+          "verified": 1,
+          "failed": 0,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": true,
+            "exit_code": 0,
+            "wall_ms": 6826.09675,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 1
+          }
+        ]
+      }
+    },
+    {
+      "scope": "whole-file",
+      "round": 1,
+      "plain_ms": 2127.931541999999,
+      "plain_verification": {
+        "encountered-error": true,
+        "encountered-vir-error": false,
+        "success": false,
+        "verified": 1,
+        "errors": 1,
+        "is-verifying-entire-crate": true
+      },
+      "cold": {
+        "wall_ms": 15469.549083000004,
+        "winner_seed": null,
+        "summary": {
+          "functions": 2,
+          "verified": 1,
+          "failed": 1,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 6092.833500000001,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          },
+          {
+            "seed": 1,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4736.3885,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          },
+          {
+            "seed": 4,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4623.978375,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          }
+        ]
+      },
+      "warm": {
+        "wall_ms": 12138.080124999995,
+        "winner_seed": null,
+        "summary": {
+          "functions": 2,
+          "verified": 1,
+          "failed": 1,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 3868.855917,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          },
+          {
+            "seed": 1,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 3594.963459,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          },
+          {
+            "seed": 4,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4657.0985,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          }
+        ]
+      }
+    },
+    {
+      "scope": "whole-file",
+      "round": 2,
+      "plain_ms": 3609.288667000001,
+      "plain_verification": {
+        "encountered-error": true,
+        "encountered-vir-error": false,
+        "success": false,
+        "verified": 1,
+        "errors": 1,
+        "is-verifying-entire-crate": true
+      },
+      "cold": {
+        "wall_ms": 14485.173541999999,
+        "winner_seed": null,
+        "summary": {
+          "functions": 2,
+          "verified": 1,
+          "failed": 1,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 5950.5165,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          },
+          {
+            "seed": 1,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4523.387791,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          },
+          {
+            "seed": 4,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 3980.371792,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          }
+        ]
+      },
+      "warm": {
+        "wall_ms": 17093.785417000006,
+        "winner_seed": null,
+        "summary": {
+          "functions": 2,
+          "verified": 1,
+          "failed": 1,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4593.450709,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          },
+          {
+            "seed": 1,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4936.361833,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          },
+          {
+            "seed": 4,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 7524.476500000001,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          }
+        ]
+      }
+    },
+    {
+      "scope": "whole-file",
+      "round": 3,
+      "plain_ms": 2318.9883750000035,
+      "plain_verification": {
+        "encountered-error": true,
+        "encountered-vir-error": false,
+        "success": false,
+        "verified": 1,
+        "errors": 1,
+        "is-verifying-entire-crate": true
+      },
+      "cold": {
+        "wall_ms": 9828.269917,
+        "winner_seed": null,
+        "summary": {
+          "functions": 2,
+          "verified": 1,
+          "failed": 1,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4073.786458,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          },
+          {
+            "seed": 1,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 2777.553458,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          },
+          {
+            "seed": 4,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 2966.087375,
+            "error": null,
+            "checks_solved": 4,
+            "checks_served": 0
+          }
+        ]
+      },
+      "warm": {
+        "wall_ms": 11204.508749999988,
+        "winner_seed": null,
+        "summary": {
+          "functions": 2,
+          "verified": 1,
+          "failed": 1,
+          "unknown": 0,
+          "provisional": 0,
+          "unstable": 0
+        },
+        "attempts": [
+          {
+            "seed": 0,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4224.014999999999,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          },
+          {
+            "seed": 1,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 4383.646374999999,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          },
+          {
+            "seed": 4,
+            "verified": false,
+            "exit_code": 1,
+            "wall_ms": 2575.8862919999997,
+            "error": null,
+            "checks_solved": 0,
+            "checks_served": 4
+          }
+        ]
+      }
+    }
+  ]
+}

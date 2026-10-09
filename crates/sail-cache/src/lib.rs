@@ -32,6 +32,9 @@ pub const ENTRY_VERSION: u32 = 2;
 /// Metadata stored with each reply.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Meta {
+    /// Verification namespace; older entries belong to default mode.
+    #[serde(default = "default_mode")]
+    pub mode: String,
     /// Entry format version.
     pub entry_version: u32,
     /// The key, as hex.
@@ -50,6 +53,20 @@ pub struct Meta {
     /// and `reason` for `unknown` answers.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effort: Option<Effort>,
+}
+
+fn default_mode() -> String {
+    "default".to_owned()
+}
+
+/// Provenance and namespace for an explicitly scoped cache store.
+pub struct StoreContext<'a> {
+    /// Exact solver identity summary.
+    pub solver: &'a str,
+    /// How the reply was established.
+    pub provenance: &'a str,
+    /// Verification namespace.
+    pub mode: &'a str,
 }
 
 /// Solver effort for a `check-sat` reply (ADR 0009).
@@ -382,6 +399,32 @@ impl DiskCache {
         provenance: &str,
         effort: Option<&Effort>,
     ) -> std::io::Result<PutOutcome> {
+        self.put_scoped(
+            key,
+            reply,
+            command,
+            &StoreContext {
+                solver,
+                provenance,
+                mode: "default",
+            },
+            effort,
+        )
+    }
+
+    /// Stores an entry with explicit provenance and verification namespace.
+    ///
+    /// # Errors
+    ///
+    /// I/O errors creating or writing the entry.
+    pub fn put_scoped(
+        &self,
+        key: &QueryKey,
+        reply: &[u8],
+        command: &str,
+        context: &StoreContext<'_>,
+        effort: Option<&Effort>,
+    ) -> std::io::Result<PutOutcome> {
         let path = self.entry_path(key);
         if path.is_file() {
             return Ok(PutOutcome::Exists);
@@ -389,15 +432,16 @@ impl DiskCache {
         let dir = path.parent().unwrap_or(&self.root).to_path_buf();
         std::fs::create_dir_all(&dir)?;
         let meta = Meta {
+            mode: context.mode.to_owned(),
             entry_version: ENTRY_VERSION,
             key: key.to_string(),
             reply_sha256: hex(&sha256(reply)),
             command: command.to_owned(),
-            solver: solver.to_owned(),
+            solver: context.solver.to_owned(),
             stored_unix: SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs()),
-            provenance: provenance.to_owned(),
+            provenance: context.provenance.to_owned(),
             effort: effort.cloned(),
         };
         // Unique per write: two writers may store the same key at once, and

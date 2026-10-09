@@ -134,6 +134,8 @@ fn run_schema() -> Value {
             "package": string_schema("Verify only this workspace package (`-p`)."),
             "module": string_schema("Verify only this module and its descendants, relative to the crate root (Verus `--verify-module`, e.g. `arith` or `foo::bar`)."),
             "function": string_schema("Verify only this function (Verus `--verify-function`: a unique substring of the name, or a pattern with `*` at either end). It is looked up in `module`, or in the crate root if no module is given."),
+            "measure_fragility": {"type": "boolean", "description": "Opt-in local solver replays to attach function fragility scores. Can take much longer than ordinary verification."},
+            "portfolio": {"type": "string", "enum": ["accept-first-proof"], "description": "Explicit opt-in: run complete independent Verus attempts and accept the first complete proof. May take much longer; records every attempt."},
             "cargo_args": list_schema("Extra `cargo verus verify` arguments (before `--`), e.g. [\"--release\"]."),
             "verus_args": list_schema("Extra Verus arguments (after `--`), e.g. [\"--rlimit\", \"30\"]."),
         }
@@ -236,6 +238,9 @@ fn freshness(run: &RunRecord, now: &store::Snapshot) -> Value {
         "established_at": run.finished_at,
         "established_by": format!("sail {}", run.sail_args.join(" ")),
         "exit_code": run.exit_code,
+        "mode": run.report.mode,
+        "solver": run.report.solver,
+        "winner_seed": run.report.portfolio.as_ref().and_then(|p| p.winner_seed),
         "scoped": run.scoped,
         "sources_changed_since": !changed.is_empty(),
         "sources_changed_during_run": run.sources_changed_during_run,
@@ -493,6 +498,8 @@ fn one_result(
         "function": f.function,
         "verdict": summary::verdict_name(summary::effective_verdict(f)),
         "tier": f.tier,
+        "mode": f.provenance.mode,
+        "configuration": f.provenance.configuration,
         "freshness": fresh,
     });
     if let Some(id) = &a.obligation {
@@ -536,6 +543,8 @@ fn all_results(p: &ProjectRecord, project: &Path, now: &store::Snapshot) -> Tool
                 "tier": f.function.tier,
                 "unstable": f.function.unstable,
                 "source": f.function.provenance.source,
+                "mode": f.function.provenance.mode,
+                "configuration": f.function.provenance.configuration,
                 "run": f.run.run,
                 "status": runs.get(&f.run.run).map_or(Value::Null, |r| r["status"].clone()),
             })
@@ -707,6 +716,8 @@ fn models(
             "function": f.function,
             "verdict": summary::verdict_name(summary::effective_verdict(f)),
             "tier": f.tier,
+            "mode": f.provenance.mode,
+            "configuration": f.provenance.configuration,
             "obligations": selected,
             "diagnostics": diagnostics,
             "diagnostics_matched_by": if f.obligations.is_some() { "source location: from the function's first line to the next function's" } else { "none: every diagnostic of the run" },
@@ -734,6 +745,12 @@ fn fragility(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolR
         Ok(p) => p,
         Err(e) => return e,
     };
+    if request.portfolio.is_some() {
+        return ToolResult::error(
+            "Portfolio is available only on the verify tool".to_owned(),
+            json!({"error": "portfolio_requires_verify"}),
+        );
+    }
     if !has_fragility(&ctx.config.sail, &project) {
         return ToolResult::error(
             "Fragility measurement is not available yet: this sail has no `sail fragility` command. Use verify; each function's `unstable` flag marks answers that could differ between runs.".to_owned(),
@@ -766,5 +783,94 @@ fn fragility(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolR
                 ToolResult::error(text, s)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sail_api::output::{PortfolioAttempt, PortfolioReport, SolverConfiguration, VerdictName};
+
+    #[test]
+    fn persisted_portfolio_lookups_keep_mode_and_configuration() {
+        let mut f = store::tests::function("demo::proved", VerdictName::Verified);
+        f.provenance.mode = "accept-first-proof".to_owned();
+        f.provenance.configuration = Some(SolverConfiguration { seed: 4 });
+        let mut report = store::tests::report(vec![f]);
+        report.solver = Some(sail_api::output::SolverInfo {
+            name: "z3".to_owned(),
+            version: Some("4.16.0".to_owned()),
+            path: None,
+            sha256: Some("ab".repeat(32)),
+        });
+        let solver = serde_json::to_value(&report.solver).unwrap_or_default();
+        report.mode = "accept-first-proof".to_owned();
+        report.crates[0].verus.verified = Some(1);
+        report.crates[0].verus.errors = Some(0);
+        report.portfolio = Some(PortfolioReport {
+            seeds: vec![0, 4],
+            winner_seed: Some(4),
+            attempts: vec![
+                PortfolioAttempt {
+                    configuration: SolverConfiguration { seed: 0 },
+                    verified: false,
+                    exit_code: Some(1),
+                    wall_ms: 1.0,
+                    error: None,
+                    report: None,
+                    stderr: "baseline failed".to_owned(),
+                },
+                PortfolioAttempt {
+                    configuration: SolverConfiguration { seed: 4 },
+                    verified: true,
+                    exit_code: Some(0),
+                    wall_ms: 1.0,
+                    error: None,
+                    report: Some(Box::new(report.clone())),
+                    stderr: String::new(),
+                },
+            ],
+        });
+        let mut record = ProjectRecord::default();
+        record.record(RunRecord {
+            run: 0,
+            finished_unix_ms: 0,
+            finished_at: store::rfc3339(0),
+            sail_args: vec![
+                "verify".to_owned(),
+                "--portfolio=accept-first-proof".to_owned(),
+            ],
+            exit_code: Some(0),
+            duration_ms: 1,
+            scoped: false,
+            sources: store::Snapshot::new(),
+            sources_changed_during_run: false,
+            report,
+        });
+        let encoded = serde_json::to_vec(&record).unwrap_or_default();
+        let Ok(record) = serde_json::from_slice::<ProjectRecord>(&encoded) else {
+            unreachable!("record did not round trip")
+        };
+        let Ok(found) = record.function("proved") else {
+            unreachable!("recorded function missing")
+        };
+        let args = LookupArgs::default();
+        let now = store::Snapshot::new();
+        let project = Path::new("demo");
+        for result in [
+            one_result(&args, found, project, &now),
+            models(&args, found, project, &now),
+        ] {
+            assert_eq!(result.structured["mode"], "accept-first-proof");
+            assert_eq!(result.structured["configuration"]["seed"], 4);
+            assert_eq!(result.structured["freshness"]["winner_seed"], 4);
+            assert_eq!(result.structured["freshness"]["solver"], solver);
+            assert!(result.text.contains("mode accept-first-proof, seed 4"));
+        }
+        let all = all_results(&record, project, &now);
+        assert_eq!(all.structured["functions"][0]["mode"], "accept-first-proof");
+        assert_eq!(all.structured["functions"][0]["configuration"]["seed"], 4);
+        assert!(all.text.contains("mode accept-first-proof, seed 4"));
+        assert!(summary::report(&found.run.report).contains("complete proof from seed 4"));
     }
 }

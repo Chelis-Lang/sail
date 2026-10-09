@@ -87,6 +87,19 @@ pub struct AssetPin {
 }
 
 impl Pins {
+    /// The compiled-in supported pins, selecting any requested secondary release.
+    ///
+    /// # Errors
+    ///
+    /// `SAIL3002` for malformed embedded pins or `SAIL3004` for an unknown release.
+    pub fn embedded() -> Result<Self> {
+        let pins: Self = toml::from_str(include_str!("../../../corpus/toolchain.toml"))
+            .map_err(|e| Error::new("SAIL3002", format!("cannot parse embedded pins: {e}")))?;
+        match std::env::var(ENV_RELEASE).ok().filter(|r| !r.is_empty()) {
+            Some(release) => pins.select(&release),
+            None => Ok(pins),
+        }
+    }
     /// Reads the pins from `path`.
     ///
     /// # Errors

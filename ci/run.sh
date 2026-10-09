@@ -59,8 +59,7 @@ start_daemon() {
   ./target/release/sail serve --socket "$sock" --cache "$cache" --idle-timeout 0 &
   daemon=$!
   trap 'kill "$daemon" 2>/dev/null || true' EXIT
-  for _ in $(seq 1 100); do [ -S "$sock" ] && break; sleep 0.1; done
-  [ -S "$sock" ] || { echo "daemon did not start" >&2; exit 1; }
+  bash "$PWD/ci/wait-daemon.sh" "$sock" "$daemon"
 }
 
 case "$step" in
@@ -88,6 +87,7 @@ case "$step" in
     sail="$PWD/target/release/sail"
     check_output="$PWD/target/release/examples/check_output"
     check_mcp="$PWD/target/release/examples/check_mcp"
+    sail_portfolio_test="$PWD/ci/test-portfolio.sh"
     work="$(mktemp -d)"
     export SAIL_CACHE_DIR="$work/cache"
     cd "$work"
@@ -155,6 +155,7 @@ RS
     touch src/lib.rs
     "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
     "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
+    bash "$sail_portfolio_test"
     ;;
 
   conformance)

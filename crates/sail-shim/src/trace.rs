@@ -34,6 +34,7 @@ const TRACE_VERSION: u32 = 2;
 
 /// What the tap needs to know about its session.
 pub(crate) struct Context {
+    pub mode: Mode,
     pub dir: PathBuf,
     pub solver: PathBuf,
     pub args: Vec<String>,
@@ -254,7 +255,7 @@ impl Tap<'_> {
                     let key = self
                         .identity
                         .as_ref()
-                        .and_then(|id| query_key(&snapshot, id, &Mode::Default))
+                        .and_then(|id| query_key(&snapshot, id, &self.ctx.mode))
                         .map(|k| k.to_string());
                     let prefix_key = self.prefix.as_ref().map(|p| p.key().to_string());
                     Some(Pending::Check {
@@ -379,9 +380,7 @@ pub(crate) fn run(ctx: &Context, rx: &Receiver<TapEvent>) {
         raw_in,
         raw_out,
         records,
-        prefix: identity
-            .as_ref()
-            .map(|id| PrefixHasher::new(id, &Mode::Default)),
+        prefix: identity.as_ref().map(|id| PrefixHasher::new(id, &ctx.mode)),
         unhashed: Vec::new(),
         identity,
         commands: CommandSplitter::new(),

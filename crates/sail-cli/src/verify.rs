@@ -104,6 +104,8 @@ struct SetupError(&'static str, String);
 
 /// What `sail verify` runs.
 struct Setup {
+    mode: sail_api::protocol::VerificationMode,
+    measure: Option<u64>,
     cargo_verus: PathBuf,
     shim: PathBuf,
     z3: PathBuf,
@@ -139,6 +141,8 @@ fn setup() -> Result<Setup, SetupError> {
             .map_err(|e| SetupError("SAIL0104", e.to_string()))?,
     };
     Ok(Setup {
+        mode: sail_api::protocol::VerificationMode::Default,
+        measure: None,
         cargo_verus,
         shim,
         z3,
@@ -148,14 +152,51 @@ fn setup() -> Result<Setup, SetupError> {
 
 /// `cargo verus verify <args>` with sail's environment; the daemon is
 /// started on demand. Returns the command and whether the daemon is in use.
+fn direct_source(args: &[String]) -> Option<&str> {
+    let mut it = args.iter().take_while(|a| *a != "--");
+    while let Some(arg) = it.next() {
+        if arg == "--verus-source" {
+            return it.next().map(String::as_str);
+        }
+    }
+    None
+}
+
 fn command(s: &Setup, args: &[String]) -> (Command, bool) {
     let mut cmd = Command::new(&s.cargo_verus);
     cmd.arg("verus")
         .arg("verify")
         .args(args.iter().map(OsString::from))
         .env("VERUS_Z3_PATH", &s.shim)
-        .env("SAIL_Z3_PATH", &s.z3);
-    let daemon = ensure_daemon(&s.socket);
+        .env("SAIL_Z3_PATH", &s.z3)
+        .env("SAIL_SOLVER_MODE", s.mode.name());
+    if crate::portfolio::partial(args) {
+        // Partial selection is explicitly requested; cargo-verus requires focus.
+        cmd = {
+            let mut focus = Command::new(&s.cargo_verus);
+            focus
+                .arg("verus")
+                .arg("focus")
+                .args(args)
+                .env("VERUS_Z3_PATH", &s.shim)
+                .env("SAIL_Z3_PATH", &s.z3)
+                .env("SAIL_SOLVER_MODE", s.mode.name());
+            focus
+        };
+    }
+    if s.mode == sail_api::protocol::VerificationMode::AcceptFirstProof {
+        cmd.stdin(Stdio::null());
+    }
+    if let Some(source) = direct_source(args) {
+        cmd = Command::new(s.cargo_verus.with_file_name("verus"));
+        cmd.arg(source)
+            .args(args.iter().skip_while(|a| *a != "--").skip(1))
+            .env("VERUS_Z3_PATH", &s.shim)
+            .env("SAIL_Z3_PATH", &s.z3)
+            .env("SAIL_SOLVER_MODE", s.mode.name())
+            .stdin(Stdio::null());
+    }
+    let daemon = s.measure.is_none() && ensure_daemon(&s.socket);
     if daemon {
         cmd.env("SAIL_DAEMON_SOCKET", &s.socket);
     } else {
@@ -210,11 +251,32 @@ pub fn verify(
         let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
         ExitCode::from(EXIT_SETUP)
     };
+    let (args, measure) = match crate::fragility_join::extract(args) {
+        Ok(v) => v,
+        Err(message) => return fail(err, &SetupError("SAIL0110", message)),
+    };
+    let args = args.as_slice();
+    match crate::portfolio::parse(args) {
+        Ok(Some(_)) if measure.is_some() => {
+            return fail(
+                err,
+                &SetupError(
+                    "SAIL0110",
+                    "measure fragility separately from a portfolio".to_owned(),
+                ),
+            );
+        }
+        Ok(Some(options)) => return crate::portfolio::run(options, out, err),
+        Ok(None) => {}
+        Err(message) => {
+            return fail(err, &SetupError("SAIL0110", message));
+        }
+    }
     let (json, args) = match split_args(args) {
         Ok(split) => split,
         Err(e) => return fail(err, &e),
     };
-    let setup = match setup() {
+    let mut setup = match setup() {
         Ok(s) => s,
         Err(e) if json => {
             let report = crate::report::setup_failure(&args, e.0, &e.1);
@@ -227,6 +289,17 @@ pub fn verify(
         }
         Err(e) => return fail(err, &e),
     };
+    setup.measure = measure;
+    if measure.is_some() {
+        let (measured_args, _ownership) =
+            match crate::measurement::prepare(&args, crate::portfolio::partial(&args)) {
+                Ok(v) => v,
+                Err(message) => {
+                    return json_failure(&args, &SetupError("SAIL0110", message), out, err);
+                }
+            };
+        return verify_json(&setup, &measured_args, out, err);
+    }
     if json {
         return verify_json(&setup, &args, out, err);
     }
@@ -243,6 +316,86 @@ pub fn verify(
     }
 }
 
+/// Internal independent portfolio worker. Closing its parent's input pipe
+/// kills the worker's entire process group, even when the parent was killed.
+pub(crate) fn portfolio_attempt(
+    args: &[String],
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> ExitCode {
+    crate::portfolio::guard_parent();
+    let Some(seed) = args.first().and_then(|s| s.parse::<u32>().ok()) else {
+        let _ = writeln!(err, "error[SAIL0110]: invalid portfolio attempt seed");
+        return ExitCode::from(2);
+    };
+    let mut setup = match setup() {
+        Ok(s) => s,
+        Err(e) => {
+            let _ = writeln!(err, "error[{}]: {}", e.0, e.1);
+            return ExitCode::from(2);
+        }
+    };
+    setup.mode = sail_api::protocol::VerificationMode::AcceptFirstProof;
+    let pinned = sail_verus::toolchain::Pins::embedded()
+        .ok()
+        .and_then(|p| p.assets.get(sail_verus::toolchain::host()).cloned())
+        .is_some_and(|a| file_sha256(&setup.z3).as_deref() == Some(a.z3_sha256.as_str()));
+    if !pinned {
+        let _ = writeln!(
+            err,
+            "error[SAIL0115]: portfolio requires the pinned Z3 binary"
+        );
+        return ExitCode::from(2);
+    }
+    let Some(target) = std::env::var_os("SAIL_PORTFOLIO_TARGET") else {
+        let _ = writeln!(err, "error[SAIL0111]: portfolio worker has no owned target");
+        return ExitCode::from(2);
+    };
+    let expected = if direct_source(args).is_some() {
+        None
+    } else {
+        match crate::portfolio::force_verification(
+            args.get(1..).unwrap_or_default(),
+            Path::new(&target),
+            crate::portfolio::partial(args),
+        ) {
+            Ok(names) => Some(names),
+            Err(e) => {
+                let _ = writeln!(err, "error[SAIL0111]: {e}");
+                return ExitCode::from(2);
+            }
+        }
+    };
+    let mut bytes = Vec::new();
+    let status = verify_json(&setup, args.get(1..).unwrap_or_default(), &mut bytes, err);
+    if let Ok(mut report) = serde_json::from_slice::<sail_api::output::Report>(&bytes) {
+        if expected.as_ref().is_some_and(|names| {
+            names.iter().any(|required| {
+                !report
+                    .crates
+                    .iter()
+                    .any(|c| c.name.as_ref() == Some(required))
+            })
+        }) {
+            report.error = Some(sail_api::output::ErrorInfo {
+                code: "SAIL0113".to_owned(),
+                message: "not every requested verification target produced a result".to_owned(),
+            });
+        }
+        setup.mode.name().clone_into(&mut report.mode);
+        for f in report.crates.iter_mut().flat_map(|c| &mut c.functions) {
+            f.provenance.mode.clone_from(&report.mode);
+            f.provenance.configuration = Some(sail_api::output::SolverConfiguration { seed });
+        }
+        let _ = writeln!(
+            out,
+            "{}",
+            serde_json::to_string(&report).unwrap_or_default()
+        );
+    }
+    status
+}
+
 /// Whether the arguments already pass Verus `flag` (after `--`).
 fn has_verus_flag(args: &[String], flag: &str) -> bool {
     args.iter()
@@ -257,7 +410,7 @@ fn has_verus_flag(args: &[String], flag: &str) -> bool {
 /// verifies. Logs are therefore requested only when one Verus process will
 /// write them: a single workspace member with at most one lib or bin target
 /// (ADR 0014, `docs/verus-issues/VI-0004`).
-fn logs_unavailable(args: &[String]) -> Option<String> {
+pub(crate) fn logs_unavailable(args: &[String]) -> Option<String> {
     for flag in ["--log", "--log-all", "--log-dir"] {
         if has_verus_flag(args, flag) {
             return Some(format!(
@@ -339,7 +492,7 @@ fn scratch() -> std::io::Result<Scratch> {
 }
 
 /// SHA-256 of a file, as lowercase hex.
-fn file_sha256(path: &Path) -> Option<String> {
+pub(crate) fn file_sha256(path: &Path) -> Option<String> {
     use sha2::Digest as _;
     let mut file = std::fs::File::open(path).ok()?;
     let mut hasher = sha2::Sha256::new();
@@ -396,6 +549,25 @@ fn relay(mut from: impl std::io::Read, to: &mut dyn std::io::Write) -> Vec<u8> {
     copy
 }
 
+pub(crate) fn logged_args(args: &[String], logs: bool, logs_dir: &Path) -> Vec<String> {
+    let mut extra: Vec<String> = Vec::new();
+    for flag in ["--output-json", "--time"] {
+        if !has_verus_flag(args, flag) {
+            extra.push(flag.to_owned());
+        }
+    }
+    if logs {
+        extra.extend(["--log", "smt-transcript", "--log", "air", "--log-dir"].map(str::to_owned));
+        extra.push(logs_dir.to_string_lossy().into_owned());
+    }
+    let mut full: Vec<String> = args.to_vec();
+    if !full.iter().any(|a| a == "--") {
+        full.push("--".to_owned());
+    }
+    full.extend(extra);
+    full
+}
+
 /// `sail verify --output json`: runs with the extra Verus flags, relays
 /// stderr verbatim while keeping a copy, and prints the report on stdout.
 fn verify_json(
@@ -415,26 +587,19 @@ fn verify_json(
         }
     };
     let logs_dir = scratch.0.join("logs");
-    let unavailable = logs_unavailable(args);
-    let mut extra: Vec<String> = Vec::new();
-    for flag in ["--output-json", "--time"] {
-        if !has_verus_flag(args, flag) {
-            extra.push(flag.to_owned());
-        }
-    }
-    if unavailable.is_none() {
-        extra.extend(["--log", "smt-transcript", "--log", "air", "--log-dir"].map(str::to_owned));
-        extra.push(logs_dir.to_string_lossy().into_owned());
-    }
-    let mut full: Vec<String> = args.to_vec();
-    if !full.iter().any(|a| a == "--") {
-        full.push("--".to_owned());
-    }
-    full.extend(extra);
+    let unavailable = if direct_source(args).is_some() {
+        None
+    } else {
+        logs_unavailable(args)
+    };
+    let full = logged_args(args, unavailable.is_none(), &logs_dir);
     let (mut cmd, daemon) = command(setup, &full);
     cmd.env("SAIL_PROVENANCE_DIR", scratch.0.join("provenance"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if setup.measure.is_some() {
+        cmd.env("SAIL_TRACE_DIR", scratch.0.join("traces"));
+    }
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => {
@@ -485,7 +650,7 @@ fn verify_json(
         );
     }
     let diagnostics = sail_verus::diagnostics::parse(&String::from_utf8_lossy(&stderr_copy));
-    let report = crate::report::build(&crate::report::Inputs {
+    let mut report = crate::report::build(&crate::report::Inputs {
         args,
         exit_code: status,
         solver_path: Some(setup.z3.to_string_lossy().into_owned()),
@@ -494,6 +659,15 @@ fn verify_json(
         attribution: &result,
         diagnostics: &diagnostics,
     });
+    if let Some(seeds) = setup.measure {
+        crate::fragility_join::measure(
+            &mut report,
+            &setup.z3,
+            &scratch.0.join("traces"),
+            logs.as_deref().unwrap_or_default(),
+            seeds,
+        );
+    }
     let _ = writeln!(
         out,
         "{}",

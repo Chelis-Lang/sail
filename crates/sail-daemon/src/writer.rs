@@ -160,12 +160,15 @@ impl Writer {
             if let Some(d) = delay {
                 std::thread::sleep(d);
             }
-            let outcome = disk.put_stamped(
+            let outcome = disk.put_scoped(
                 &job.key,
                 &job.value.reply,
                 &job.command,
-                &job.solver,
-                &job.provenance,
+                &sail_cache::StoreContext {
+                    solver: &job.solver,
+                    provenance: &job.provenance,
+                    mode: &job.value.mode,
+                },
                 job.value.effort.as_ref(),
             );
             match outcome {
