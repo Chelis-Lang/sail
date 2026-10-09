@@ -25,3 +25,7 @@ Use [the template](0000-template.md) for a new decision.
 - [0020: Complete-run seed portfolio](0020-complete-run-seed-portfolio.md)
 - [0021: Optional local Singular source validation](0021-optional-singular-source-validation.md)
 - [0022: Solver stderr and cache publication](0022-solver-stderr-and-cache-publication.md)
+- [0023: Managed incremental workspace verification](0023-managed-incremental-workspace-verification.md)
+- [0024: Persistent workspace jobs and live clients](0024-persistent-workspace-jobs-and-live-clients.md)
+- [0025: HTTP shared cache and local-first team workflow](0025-http-shared-cache-and-local-first-team-workflow.md)
+- [0026: Live workspace dependencies](0026-live-workspace-dependencies.md)

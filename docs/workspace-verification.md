@@ -26,12 +26,16 @@ changes. A proof from a failed, interrupted or partial verification cannot
 become a reusable whole-target receipt. Function/module selection runs fresh;
 its report describes that requested scope. Managed mode owns its target and
 observation logs, and does not accept an external `--target-dir`, direct Verus
-source selection, portfolio or fragility measurement.
+source selection, tests/benches/examples, a chained workspace rustc wrapper,
+portfolio or fragility measurement. Ordinary Cargo library and binary targets
+are supported.
 
 The ordinary `sail verify` path keeps its existing drop-in output and behavior.
 The explicit managed JSON format is a `sail-project-result` envelope, version 1,
-containing per-target schema-v1 reports. Each target identifies its package,
-target kind, establishing run, completeness and reuse. Embedded diagnostic,
+containing per-target schema-v1 reports. Its JSON Schema is
+`crates/sail-api/schema/project-result-v1.json`. Each target identifies its package,
+target kind, establishing run, completeness and reuse. The `requested` field
+distinguishes the selected Cargo scope from dependency reports. Embedded diagnostic,
 timing and solver provenance fields describe that establishing run. The outer
 execution counters describe the current Cargo request; historical timings are
 never counted as fresh verification work.
@@ -85,3 +89,8 @@ and `cancel_verification`. Existing blocking verification and result tools
 remain available. Status/result inspection does not wait behind a verification
 worker. Results carry currentness, scope and establishing provenance so agents
 can distinguish finished work from current proof evidence.
+
+Existing solver-cache entries remain compatible. The automatic daemon socket
+now includes the workspace-service capability (`daemon-v4-workspace-v1.sock`).
+An explicitly selected older cache daemon can keep running: Sail starts a
+private jobs-only sidecar alongside it instead of terminating it.
