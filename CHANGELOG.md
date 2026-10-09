@@ -7,6 +7,8 @@ semantic versioning once the API is published.
 
 - Join fragility captures to functions by exact transcript hashes and check
   order; expose conservative function scores in JSON and MCP on request.
+- Exclude skipped timing successes from function-scoped reports and portfolio
+  acceptance (pinned Verus issue VI-0009).
 
 - Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
   selection, and isolated protocol-v2 cache namespaces (ADR 0020).

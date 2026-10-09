@@ -66,7 +66,7 @@ pub(crate) fn build(inputs: &Inputs<'_>) -> Report {
             }
         })
         .collect();
-    Report {
+    let mut report = Report {
         portfolio: None,
         schema_version: SCHEMA_VERSION,
         sail_version: env!("CARGO_PKG_VERSION").to_owned(),
@@ -95,7 +95,9 @@ pub(crate) fn build(inputs: &Inputs<'_>) -> Report {
         crates,
         diagnostics: inputs.diagnostics.iter().map(diagnostic).collect(),
         error: None,
-    }
+    };
+    crate::scope::restrict(&mut report);
+    report
 }
 
 /// A report for a run that never started Verus.

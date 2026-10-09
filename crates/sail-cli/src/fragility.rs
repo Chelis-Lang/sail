@@ -265,11 +265,21 @@ fn capture(
         diagnostics: &diagnostics,
     });
     let _ = std::io::stderr().write_all(&output.stderr);
+    let functions = verus_functions(&output.stdout)
+        .into_iter()
+        .filter(|f| {
+            verification
+                .crates
+                .iter()
+                .flat_map(|c| &c.functions)
+                .any(|v| v.function == f.function)
+        })
+        .collect();
     Ok(Captured {
         logs,
         verification,
         exit_code: output.status.code(),
-        functions: verus_functions(&output.stdout),
+        functions,
     })
 }
 
