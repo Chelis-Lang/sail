@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Exercise a real seeded proof, cold and warm, in the fast end-to-end check.
+  Bound daemon readiness to sixty seconds and fail early when the daemon exits.
+
 - Exclude skipped timing successes from function-scoped reports and portfolio
   acceptance (pinned Verus issue VI-0009).
 
