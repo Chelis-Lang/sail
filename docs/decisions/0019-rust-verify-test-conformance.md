@@ -117,15 +117,16 @@ dynamic-library path (`sail_verus::rvt`).
 - **What must be equal:** libtest's outcome (`ok`, `FAILED`, `ignored`),
   the exit code, stderr byte for byte (every diagnostic Verus reported, as
   the harness renders it, and any panic message), and stdout (libtest's
-  report). The only text blanked is the panic thread id and libtest's
-  timing, which are not Verus output.
+  report). The only text blanked is the panic thread id, libtest's
+  timing, and the six-character tempfile name in the two cargo-new tests'
+  known missing-manifest panic (the complete message and path suffix are
+  retained). These are not Verus diagnostics.
 - **Flakiness is classified, never hidden** (ADR 0009). On a difference the
   plain side runs again, up to `--confirm-runs` times (default 10: tests
   are cheap, and a 4-way variation escaped 5 confirming runs once). The test is
-  `unstable` if the plain runs disagree among themselves and sail either
-  matches one of them, or differs from the first only on lines where the
-  plain runs also differ (same outcome, exit code and line counts). The
-  report records which (`matches_a_plain_run`). Otherwise it is
+  `unstable` if the plain runs disagree among themselves and sail matches a complete observed plain run after the documented
+  normalization. An unobserved message or a combination of lines from
+  different plain runs remains `different`. Otherwise it is
   `different`. Unstable tests are listed in the report and summary.
 - **Reproductions.** For a `different` test the runner saves every run's
   stdout and stderr under `<out>/tests/<test>/`, reruns the test plainly
@@ -208,3 +209,15 @@ at a time. No run found a sail difference.
 - **Plain outcomes** (one thread): 4,632 ok and 5 FAILED, the same on both
   sides: the two `cargo_new_*` tests and the three tests that need two
   threads' errors (above).
+
+## Strict comparison correction (2026-10-09)
+
+The original varying-line rule could accept an arbitrary new diagnostic
+on a line where plain output varied. It is removed before merge. The
+regressions reject both an unseen message and a hybrid of two plain outputs.
+The historical results above used that broader classifier; the strict
+rerun results below supersede them for acceptance.
+
+The same `--no-report-long-running` flag is supplied to both sides, as in
+ADR 0006. It suppresses timing-triggered Verus progress and completion notices
+at their source; no Verus diagnostics are removed by the comparator.

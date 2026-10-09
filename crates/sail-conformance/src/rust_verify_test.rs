@@ -97,8 +97,7 @@ struct TestReport {
     sail: Option<Outcome>,
     plain_runs: usize,
     plain_varies: bool,
-    /// For `unstable`: whether sail matched a plain run exactly (else it
-    /// differed only on lines where the plain runs vary).
+    /// Whether sail matched a complete plain run after approved normalization.
     matches_a_plain_run: bool,
     differences: Vec<String>,
     infra_error: Option<String>,

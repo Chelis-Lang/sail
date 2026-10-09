@@ -19,10 +19,12 @@
 //!   message;
 //! - stdout, libtest's own report.
 //!
-//! Two pieces of that text are not Verus output and vary between identical
-//! runs, so they are blanked (and only they): the OS thread id in a panic
+//! Three pieces of that text vary between identical runs and are normalized
+//! narrowly: the OS thread id in a panic
 //! message (`thread 'name' (12345) panicked at`), and libtest's
-//! `finished in 0.52s` timing.
+//! `finished in 0.52s` timing, and the exact temporary Cargo project path in
+//! the two cargo-new tests. Verus progress notices are suppressed in both
+//! runs with `--no-report-long-running`, as in the corpus harness.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -256,9 +258,13 @@ impl Suite {
             .env_remove("SAIL_Z3_PATH")
             .env_remove("SAIL_TRACE_DIR")
             .env_remove("SAIL_DAEMON_SOCKET");
-        if let Some(n) = self.verus_threads {
-            cmd.env("VERUS_EXTRA_ARGS", format!("--num-threads {n}"));
-        }
+        // Suppress timing-dependent progress notes at their source, on both
+        // sides, exactly as the ordinary corpus harness does (ADR 0006).
+        let extra = self.verus_threads.map_or_else(
+            || "--no-report-long-running".to_owned(),
+            |n| format!("--no-report-long-running --num-threads {n}"),
+        );
+        cmd.env("VERUS_EXTRA_ARGS", extra);
         for var in [
             "CARGO",
             "CARGO_TARGET_DIR",
@@ -312,14 +318,54 @@ impl Suite {
             .map_err(|(code, message)| Error::new(code, format!("{}: {message}", test.id())))?;
         let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
         let stdout = blank_libtest_timing(&String::from_utf8_lossy(&output.stdout));
+        let stderr = blank_thread_ids(&String::from_utf8_lossy(&output.stderr));
+        let stderr = if test.binary == "cargo"
+            && matches!(
+                test.name.as_str(),
+                "cargo_new_builds" | "cargo_new_verifies"
+            ) {
+            blank_cargo_new_path(&stderr, &std::env::temp_dir())
+        } else {
+            stderr
+        };
         Ok(TestRecord {
             outcome: parse_outcome(&stdout),
             exit_code: output.status.code(),
             stdout,
-            stderr: blank_thread_ids(&String::from_utf8_lossy(&output.stderr)),
+            stderr,
             wall_ms,
         })
     }
+}
+
+/// Blanks only the six-character tempfile component in the two cargo-new
+/// tests' known missing-manifest panic. No diagnostic message is removed.
+fn blank_cargo_new_path(stderr: &str, temp: &Path) -> String {
+    let prefix = format!(
+        "cannot open Cargo.toml file: {}/.tmp",
+        temp.display().to_string().trim_end_matches('/')
+    );
+    stderr
+        .split_inclusive('\n')
+        .map(|line| {
+            let Some(rest) = line.strip_prefix(&prefix) else {
+                return line.to_owned();
+            };
+            if rest
+                .as_bytes()
+                .get(..6)
+                .is_some_and(|s| s.iter().all(u8::is_ascii_alphanumeric))
+                && matches!(
+                    rest.get(6..),
+                    Some("/test_project/Cargo.toml\n" | "/test_project/Cargo.toml")
+                )
+            {
+                format!("{prefix}<id>{}", &rest[6..])
+            } else {
+                line.to_owned()
+            }
+        })
+        .collect()
 }
 
 /// The test names in `--list --format terse` output (`name: test` lines).
@@ -416,6 +462,22 @@ pub fn kept_input_dir(stderr: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn blanks_only_the_known_cargo_new_generated_path() {
+        let root = Path::new("/tmp");
+        let a = "cannot open Cargo.toml file: /tmp/.tmpAb123X/test_project/Cargo.toml\n";
+        let b = "cannot open Cargo.toml file: /tmp/.tmpZy987Q/test_project/Cargo.toml\n";
+        assert_eq!(blank_cargo_new_path(a, root), blank_cargo_new_path(b, root));
+        for text in [
+            "wrong error: /tmp/.tmpAb123X/test_project/Cargo.toml\n",
+            "cannot open Cargo.toml file: /tmp/.tmpAb123X/other/Cargo.toml\n",
+            "cannot open Cargo.toml file: /tmp/.tmpAb123XY/test_project/Cargo.toml\n",
+            "cannot open Cargo.toml file: /else/.tmpAb123X/test_project/Cargo.toml\n",
+        ] {
+            assert_eq!(blank_cargo_new_path(text, root), text);
+        }
+    }
 
     #[test]
     fn lists_terse_test_names() {
