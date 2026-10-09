@@ -47,3 +47,23 @@ The generator refuses incomplete coverage, a disagreement, an infrastructure
 error or an unexpected skip. Deep instability additionally requires that the
 entire Sail result match one complete observed plain result. Preserved plain
 failures and ignored upstream cases do not count as successful proofs.
+
+## HTTP shared-cache runtime
+
+`http-cache-runtime-linux-2026-10-09.json` records the tested runtime image and
+Sail binary hashes, Linux platform, glibc and unprivileged user. It checks actual
+server startup, reader/writer authentication, private credential permissions and
+credential persistence after replacement. The test publishes only a loopback
+host port, captures credentials privately and removes its containers and volume.
+Docker is needed for this deployment probe, not normal Sail verification.
+
+After building `deploy/cache/Dockerfile` with the Linux release binary, run:
+
+```sh
+python3 bench/validation/http_runtime.py --image sail-team-cache --out bench/validation/http-cache-runtime-linux-2026-10-09.json
+```
+
+Signed publication, conflicting writes, certificate-based full-session reuse and
+a fresh HTTP reader's exact equality with pinned Z3 are covered by the daemon
+and ignored real-solver integration suites. The runtime probe complements those
+checks and does not claim to validate TLS termination in an operator's proxy.
