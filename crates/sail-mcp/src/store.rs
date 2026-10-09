@@ -32,7 +32,10 @@ use sail_api::output::{FunctionReport, Report};
 use serde::{Deserialize, Serialize};
 
 /// The on-disk format version of [`ProjectRecord`].
-pub const STORE_FORMAT: u32 = 1;
+///
+/// Version 2 retires reports predating the conservative VI-0003 attribution
+/// policy. A source match cannot make their old verified claims trustworthy.
+pub const STORE_FORMAT: u32 = 2;
 
 /// Relative source path → SHA-256 of its contents.
 pub type Snapshot = BTreeMap<String, String>;
@@ -594,6 +597,42 @@ pub(crate) mod tests {
         assert_eq!(verdict, Ok(VerdictName::Verified));
         // Another project's record is separate.
         assert!(again.with(Path::new("/other"), |p| p.last().is_none()));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn legacy_records_cannot_restore_uncertain_verified_claims() {
+        let dir = std::env::temp_dir().join(format!("sail-mcp-legacy-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let project = Path::new("/legacy/project");
+        let store = Store::new(Some(dir.clone()));
+        let mut legacy = run(
+            false,
+            vec![function("demo::hidden_bv", VerdictName::Verified)],
+        );
+        legacy.exit_code = Some(1);
+        legacy.report.exit_code = Some(1);
+        legacy.report.crates[0].verus.errors = Some(1);
+        legacy.report.crates[0].verus.success = Some(false);
+        let mut record = ProjectRecord {
+            project_dir: project.to_string_lossy().into_owned(),
+            ..ProjectRecord::default()
+        };
+        record.record(legacy);
+        record.format = 1;
+        let Some(file) = store.file(project) else {
+            unreachable!("persisted store needs a file");
+        };
+        assert!(persist(&file, &record).is_ok());
+        let bytes = std::fs::read(&file).unwrap_or_default();
+        let decoded = serde_json::from_slice::<ProjectRecord>(&bytes);
+        assert!(
+            decoded.is_ok(),
+            "legacy record must be readable: {decoded:?}"
+        );
+        let again = Store::new(Some(dir.clone()));
+        assert!(again.with(project, |p| p.last().is_none()
+            && p.all_functions().is_empty()));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
