@@ -35,6 +35,8 @@ use crate::verus::{check_z3, file_sha256, host};
 struct Options {
     force: bool,
     keep_intermediates: bool,
+    features: Vec<String>,
+    print_path: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options> {
@@ -42,10 +44,12 @@ fn parse(args: &[String]) -> Result<Options> {
     for arg in args {
         match arg.as_str() {
             "--force" => o.force = true,
+            "--features=singular" => o.features = vec!["singular".to_owned()],
+            "--print-path" => o.print_path = true,
             "--keep-intermediates" => o.keep_intermediates = true,
             _ => {
                 return Err(format!(
-                    "unknown argument `{arg}`\nusage: cargo xtask build-verus-source [--force] [--keep-intermediates]"
+                    "unknown argument `{arg}`\nusage: cargo xtask build-verus-source [--force] [--keep-intermediates] [--features=singular]"
                 ));
             }
         }
@@ -70,6 +74,7 @@ const CARGO_ENV: &[&str] = &[
     "RUSTFLAGS",
     "CARGO_ENCODED_RUSTFLAGS",
     "RUSTUP_TOOLCHAIN",
+    "SAIL_VERUS_SOURCE_BUILD",
 ];
 
 fn clean<'a>(cmd: &'a mut Command, jobs: &str) -> &'a mut Command {
@@ -187,6 +192,7 @@ fn compile(
     z3: &Path,
     asset: &AssetPin,
     jobs: &str,
+    singular: bool,
 ) -> Result<Vec<(String, PathBuf)>> {
     // The toolchain and components Verus's rust-toolchain.toml lists
     // (rustc-dev, llvm-tools, rustfmt).
@@ -212,6 +218,9 @@ fn compile(
             .env("PATH", &path)
             .env("VERUS_Z3_PATH", z3)
             .args(args);
+        if singular {
+            cmd.args(["--features", "singular"]);
+        }
         cmd
     };
 
@@ -239,9 +248,25 @@ fn compile(
     Ok(executables)
 }
 
-/// Builds the pinned Verus commit from source; see the module docs.
-pub fn build(args: &[String]) -> Result<()> {
-    let o = parse(args)?;
+fn relative_binaries(build: &Path, executables: &[(String, PathBuf)]) -> Result<Vec<TestBinary>> {
+    let root = build
+        .canonicalize()
+        .map_err(|e| format!("cannot resolve {}: {e}", build.display()))?;
+    let mut test_binaries = Vec::new();
+    for (name, exe) in executables {
+        let rel = exe
+            .strip_prefix(&root)
+            .map_err(|_| format!("{} is outside {}", exe.display(), build.display()))?;
+        test_binaries.push(TestBinary {
+            name: name.clone(),
+            path: rel.to_path_buf(),
+        });
+    }
+
+    Ok(test_binaries)
+}
+
+fn active_pins() -> Result<(Pins, AssetPin)> {
     let pins = Pins::load(
         &crate::workspace_root()
             .join("corpus")
@@ -253,6 +278,13 @@ pub fn build(args: &[String]) -> Result<()> {
         .get(host())
         .ok_or_else(|| format!("no pinned Verus asset for host {}", host()))?
         .clone();
+    Ok((pins, asset))
+}
+
+/// Builds the pinned Verus commit from source; see the module docs.
+pub fn build(args: &[String]) -> Result<()> {
+    let o = parse(args)?;
+    let (pins, asset) = active_pins()?;
     let installed = Installed::locate(pins.clone())
         .map_err(|e| format!("{e}\nthe source build uses the release's pinned z3"))?;
     check_z3(&installed.z3, &asset)?;
@@ -260,13 +292,18 @@ pub fn build(args: &[String]) -> Result<()> {
     let commit = &pins.verus.commit;
     let toolchain = &pins.verus.rust_toolchain;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let build = source_build::build_dir(&cache, commit);
+    let features = o.features.clone();
+    let build = source_build::variant_dir(&cache, commit, toolchain, &features);
+    if o.print_path {
+        println!("{}", build.display());
+        return Ok(());
+    }
     let _ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
-    let features: Vec<String> = Vec::new();
 
     if !o.force
         && let Ok(m) = Manifest::load(&build)
         && m.commit == *commit
+        && m.rust_toolchain == *toolchain
         && m.features == features
         && m.z3_sha256 == z3_sha256
         && m.is_complete(&build)
@@ -296,20 +333,14 @@ pub fn build(args: &[String]) -> Result<()> {
         .ok()
         .filter(|j| j.parse::<u32>().is_ok_and(|n| n > 0))
         .unwrap_or_else(|| "4".to_owned());
-    let executables = compile(&checkout, &installed.z3, &asset, &jobs)?;
-    let root = build
-        .canonicalize()
-        .map_err(|e| format!("cannot resolve {}: {e}", build.display()))?;
-    let mut test_binaries = Vec::new();
-    for (name, exe) in &executables {
-        let rel = exe
-            .strip_prefix(&root)
-            .map_err(|_| format!("{} is outside {}", exe.display(), build.display()))?;
-        test_binaries.push(TestBinary {
-            name: name.clone(),
-            path: rel.to_path_buf(),
-        });
-    }
+    let executables = compile(
+        &checkout,
+        &installed.z3,
+        &asset,
+        &jobs,
+        !features.is_empty(),
+    )?;
+    let test_binaries = relative_binaries(&build, &executables)?;
 
     if !o.keep_intermediates {
         let before = dir_size(&build);
@@ -333,6 +364,7 @@ pub fn build(args: &[String]) -> Result<()> {
         features,
         build_seconds: started.elapsed().as_secs(),
         test_binaries,
+        artifacts: source_build::artifact_hashes(&build).map_err(|e| e.to_string())?,
     };
     manifest.save(&build).map_err(|e| e.to_string())?;
     println!(

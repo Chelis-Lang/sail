@@ -28,3 +28,20 @@ every unit either way (147 of 147 the same).
 The secondary pin is meant for external projects written against that
 release, such as vest's recent history (`sail-bench history-replay`). It is
 not meant for the in-tree tier.
+
+## Optional Singular validation
+
+The binary releases omit Singular support. Use `ci/local-singular.sh` to build
+the pinned commit with `--features=singular` and compare the tagged integer-ring
+examples and memory allocator in pass-through, fill and warm modes. The separate
+image pins the Singular package and uses separate build/cache volumes. No CI
+workflow runs this step. Source selection is explicit through
+`SAIL_VERUS_SOURCE_BUILD`; artifact identity failures are infrastructure errors.
+Post-diagnostic-fix local validation on 2026-10-09 completed all three modes:
+3 units, 606 functions, all the same, zero differences, zero infrastructure
+errors and zero skips in each mode. Verus reports 9 and 27 verified for the
+integer-ring examples and 736 for the allocator, all with zero errors. The
+final cache held 8,080 entries. One unit had resource-count drift without
+verdict or diagnostic drift. The source build ran natively on macOS arm64;
+its Singular subprocess used the pinned local Linux image under amd64
+emulation. These are correctness results, not Linux benchmark numbers.

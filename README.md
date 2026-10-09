@@ -65,6 +65,18 @@ cargo nextest run --workspace
 
 The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automatically.
 
+## Optional Singular validation
+
+Run `ci/local-singular.sh` locally to build the pinned Verus source with
+Singular support and compare the tagged integer-ring examples and memory
+allocator in pass-through, cache-fill and cache-warm modes. The separate image
+pins the Singular package; its source build and cache use separate volumes.
+This long validation is excluded from CI. To select an already built source
+variant explicitly, set `SAIL_VERUS_SOURCE_BUILD` to its build directory; the
+runner checks its commit, feature set, toolchain and runtime hashes (ADR 0021).
+Singular obligations are tagged in the corpus and execute through Verus; the
+Z3 cache only answers Z3 queries.
+
 An explicit seed portfolio can try independent complete verification runs:
 
 ```sh
