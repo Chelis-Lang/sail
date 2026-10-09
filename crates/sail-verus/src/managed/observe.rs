@@ -37,7 +37,11 @@ impl Observation {
             Ok(event) if event.need_rescan() => failed.store(true, Ordering::Release),
             Ok(event) if !matches!(event.kind, EventKind::Access(_)) => {
                 if event.paths.iter().any(|p| {
-                    !excluded.iter().any(|root| p.starts_with(root))
+                    (!excluded.iter().any(|root| p.starts_with(root))
+                        || tracked.iter().any(|root| {
+                            excluded.iter().any(|output| root.starts_with(output))
+                                && p.starts_with(root)
+                        }))
                         && tracked.iter().any(|root| {
                             p.starts_with(root)
                                 || (matches!(

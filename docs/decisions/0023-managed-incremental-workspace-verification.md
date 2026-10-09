@@ -35,7 +35,11 @@ a source directory named `target` is still an input. Build-script output
 content changes force the script package to refresh even when size and mtime are
 restored. Without explicit rerun declarations, the package directory is hashed,
 matching Cargo's default declared input contract. Native filesystem observation
-also invalidates work when an edit is restored during a running proof. Lost input
+also invalidates work when an edit is restored during a running proof. Canonical
+external symlink targets are watched, and compiler dep-info records external
+`include!` inputs for subsequent snapshots. Newly discovered external compiler
+inputs make the establishing run historical until a fresh, fully observed run;
+unreadable dep-info gives unknown currentness. Lost input
 coverage gives unknown currentness; changed inputs give historical results and
 invalidate newly established reuse receipts. Undeclared external build-script
 side effects remain outside Cargo's input contract and cannot authorize reuse.

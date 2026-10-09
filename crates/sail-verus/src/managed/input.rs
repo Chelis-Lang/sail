@@ -164,7 +164,15 @@ pub(super) fn snapshot_metadata_home(
             }
         }
     }
-    for path in extras {
+    let source_inputs: Vec<PathBuf> = data["sail_source_inputs"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(PathBuf::from)
+        .collect();
+    roots.extend(source_inputs.iter().cloned());
+    for path in extras.iter().chain(&source_inputs) {
         complete &= collect(path, &mut files, &mut visited, &mut roots);
     }
     let mut hasher = Sha256::new();

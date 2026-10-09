@@ -839,8 +839,9 @@ pub fn refresh_result(
     ));
     snapshot.roots.sort();
     snapshot.roots.dedup();
+    let source_coverage = super::source_inputs::load(&context.join("source-inputs.json")).1;
     let runtime_complete = runtime_current(cache, &result.context_sha256);
-    snapshot.complete &= covered && runtime_complete;
+    snapshot.complete &= covered && source_coverage && runtime_complete;
     Ok(snapshot)
 }
 
@@ -943,11 +944,15 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             .map_or(0, |d| d.as_nanos())
     );
     let (paths, _lock) = prepare(config, &initial.workspace, &hash, &run_id)?;
+    let source_state = paths.build_inputs.with_file_name("source-inputs.json");
+    let (sources, source_coverage) = super::source_inputs::load(&source_state);
+    data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     let (stale_scripts, mut extras, script_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
     let mut before = snapshot_metadata(&data, &extras);
+    before.complete &= source_coverage;
     before.roots.extend(super::input::configuration_paths(
         &before.workspace,
         std::env::var_os("CARGO_HOME")
@@ -1042,11 +1047,18 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         &paths.run.join("artifacts.jsonl"),
         &data,
     )?;
+    let (sources, source_coverage) =
+        super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
     let (_, mut after_extras, after_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     after_extras.extend(script_roots);
     let mut after_data = metadata(&config.workspace, &config.args, &config.cargo)?;
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
+    after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
+    json(
+        &paths.build_inputs.with_file_name("input-state.json"),
+        &after_data,
+    )?;
     let after = snapshot_metadata(&after_data, &after_extras);
     // Flush native coalesced notifications before currentness publication. This
     // small bound is independent of solver runtime and never delays forwarding.
@@ -1054,6 +1066,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     let currentness = if !before.complete
         || !after.complete
         || !after_coverage
+        || !source_coverage
         || !monitor.complete()
         || !runtime_current(&config.cache, &hash)
     {

@@ -6,6 +6,7 @@ mod input;
 mod observe;
 mod receipts;
 mod runner;
+mod source_inputs;
 
 pub(crate) use files::{digest, event, file_digest, json};
 pub use input::{InputSnapshot, snapshot};
