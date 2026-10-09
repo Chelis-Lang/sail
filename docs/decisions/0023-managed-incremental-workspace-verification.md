@@ -21,7 +21,14 @@ requires a complete successful receipt, a checksum over that receipt, matching
 Cargo package/target/kind, the observed artifact paths, and content hashes of
 artifacts including Verus `.vir` files. The receipt context binds ordered flags,
 exact environment bytes, toolchain configuration, actual Cargo/Rust driver and
-Verus binaries, relevant dynamic compiler libraries, Sail, the shim, and Z3.
+Verus binaries, Sail, the shim, and Z3. Both Cargo's compiler and the verifier's
+actual Rust runtime are identified: the adjacent Verus launcher reports its active
+toolchain through `--version --output-json`. All installed sysroot target libraries
+are content-bound and watched, including implicit standard libraries. Phase-local
+hash deduplication avoids rereading executable aliases; it never carries hashes
+across observations or trusts timestamps. Custom sysroots and JSON target
+specifications fail explicitly because v1 cannot establish their complete runtime
+identity.
 Missing or invalid receipts trigger a targeted clean of Sail-owned artifacts and
 fresh verification. Failed, cancelled, scoped, and incomplete results are never
 whole-target reuse receipts. Explicit force-fresh runs establish reports but do
@@ -49,7 +56,11 @@ reports retain schema version 1 and their original counters and provenance.
 Every target identifies the invocation that established its report and whether
 it was reused. Current invocation counters are separate. Declared input state is
 persisted so job status can check freshness without starting Cargo or blocking
-behind a verifier worker.
+behind a verifier worker. A `context-ready` event exposes an established runtime
+and declaration context for job coalescing, without invoking Cargo during job
+submission. Cold contexts cannot coalesce until compiler declarations have been
+observed. Force-fresh applies to requested workspace targets while successful
+dependency receipts remain eligible.
 
 ## Consequences
 
