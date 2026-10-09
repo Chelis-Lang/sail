@@ -42,19 +42,22 @@ end-to-end comparison, and all three 33-unit guide rounds also pass locally.
 The combined Linux-container gate passes all 268 tests and all 35 solver,
 fault and portfolio tests. One native debug portfolio test exceeded the
 unchanged three-minute limit during concurrent source validation; sampling
-showed active solver-binary hashing, and the container run passed in 79 s.
+showed active solver-binary hashing. The same test passed in the Linux debug
+build, and in 9.5 s in the native release build with the same assertions and
+three-minute limit; no check was changed.
 
 Post-fix standard pass-through matches 158 native macOS units across 12,583
 functions, with zero differences and infrastructure errors. Only Anvil is
 skipped for missing native OpenSSL; its Linux-container pass-through matches.
 Linux Anvil also matches fill and warm, each across 143 functions, with zero differences or infrastructure errors and genuine cache entries. Native fill/warm are still running.
 
-The strict, exclusively owned source suite has completed pass-through and
-cache-fill. Each reports 4,691 same, four confirmed unstable, zero differences
-and zero infrastructure errors across 4,695 cases. Every unstable output
+The strict, exclusively owned source suite completed all three modes.
+Pass-through and fill each report 4,691 same and four confirmed unstable; warm
+reports 4,692 same and three unstable. Every mode has zero differences and
+zero infrastructure errors across 4,695 cases. Every unstable output
 matches one complete observed plain result. There are 58 ignored cases and
 five retained plain-test failures; these are not presented as passing proofs.
-Warm acceptance is running. Normal-thread coverage previously matched 13
+Normal-thread coverage separately matched 13
 selected cases in each mode, including the module-error tests that cannot pass
 under the full suite's one-thread setting.
 
@@ -81,9 +84,9 @@ current-format results still survive a restart.
 
 The optional Singular source build is complete and runtime identities are
 validated. Previous pass-through, fill and warm rounds matched all three units
-across 606 functions: the integer-ring examples proved 9 and 27 obligations,
-and the allocator proved 736, all with zero errors. Post-diagnostic-fix rounds
-are running. Verus runs natively on macOS and Singular in the pinned Linux
+across 606 functions. Post-diagnostic-fix pass-through and cache-fill also
+match all three units; Verus reports 9 and 27 verified for the integer-ring
+examples and 736 for the allocator, all with zero errors. The corrected warm run also matches, with 8,080 cache entries. Verus runs natively on macOS and Singular in the pinned Linux
 image under emulation; these are correctness results, not Linux speedups.
 
 ### Superseded runs and defects

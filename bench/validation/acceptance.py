@@ -28,10 +28,15 @@ for entry in manifest['reports']:
         'started_unix': report['started_unix'],
         'verus_release': report['verus_release'],
         'z3_version': report['z3_version'],
+        'solver_sha256': entry['solver_sha256'],
         'machine': report['machine'],
         'platform_note': entry['platform_note'],
         'summary': summary,
     }
+    if 'verus_commit' in report:
+        record['verus_commit'] = report['verus_commit']
+        record['features'] = report['features']
+        record['verus_threads'] = report['verus_threads']
     if 'tests' in report:
         assert len(report['tests']) == count
         unstable = [test for test in report['tests'] if test['verdict'] == 'unstable']

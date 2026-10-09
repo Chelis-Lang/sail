@@ -86,7 +86,8 @@ semantic versioning once the API is published.
   - `counterexample`: models and diagnostics from the latest run;
   - `cached_result`: the latest known verdicts, with when and how they were
     established and whether the sources changed since;
-  - `fragility`: reports "not available" until `sail fragility` exists.
+  - `fragility`: opt-in, exact captured-query replay with conservative
+    per-function scores and explicit unavailable attribution.
 
   Calls can be cancelled. Results are kept per project under
   `<cache>/mcp`.
