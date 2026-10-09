@@ -67,3 +67,24 @@ Signed publication, conflicting writes, certificate-based full-session reuse and
 a fresh HTTP reader's exact equality with pinned Z3 are covered by the daemon
 and ignored real-solver integration suites. The runtime probe complements those
 checks and does not claim to validate TLS termination in an operator's proxy.
+
+## Linux Anvil acceptance
+
+`anvil-cache-acceptance-linux-2026-10-10.json` retains Anvil's pass-through,
+cache-fill and cache-warm differential results, raw report hashes and exact
+tested binary and solver hashes. Every round compares 143 structured functions;
+Verus itself reports 144 verified and zero errors. No projects are skipped.
+
+This is a long local-only run of `ci/run.sh conformance standard --project anvil`
+inside the CI image, with OpenSSL available. Linux x86-64 runs under emulation
+on the shared development machine. Wall times and RSS are retained observations,
+and do not establish reference performance claims.
+
+With raw reports and the unchanged tested binaries available, regenerate with:
+
+```sh
+python3 bench/validation/anvil_acceptance.py REPORT_DIRECTORY RELEASE_BINARY_DIRECTORY --solver PINNED_Z3 --cache-entries ENTRY_COUNT > bench/validation/anvil-cache-acceptance-linux-2026-10-10.json
+```
+
+The generator refuses a missing round, disagreement, instability, infrastructure
+error, skip or unexpected coverage. It retains no local paths or credentials.
