@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Failing crates with incomplete attribution no longer confirm successful
+  timing entries that may hide bit-vector failures (VI-0003). They report
+  uncertainty while preserving Verus's raw fields and diagnostics.
+
 - `sail bench` runs the installed workload tool with unchanged arguments and
   standard streams.
 

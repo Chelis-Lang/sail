@@ -244,3 +244,8 @@ seeded proof; only the portfolio mode can select such a proof.
 The MCP verify tool accepts `measure_fragility: true`. The existing fragility
 tool also includes an optional `verification` report with the same function
 scores. Normal verification performs no replay measurement.
+
+When a crate fails and attribution is incomplete, successful timing entries
+are reported `unknown` with a note (VI-0003). Their raw `verus_success` fields
+are retained. Verus can leave that field true for failed bit-vector queries,
+so it cannot establish a confirmed function proof in this case.

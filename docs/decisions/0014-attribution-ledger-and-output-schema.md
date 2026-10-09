@@ -167,3 +167,14 @@ entry point. Compare such requests against plain `cargo verus focus` with
 the same selectors and flags. Whole-project requests still use `verify`.
 This also lets MCP function/module requests and their optional measurements
 execute the requested scope. No scope is inferred or widened.
+
+## Failing crates with incomplete attribution (2026-10-09)
+
+VI-0003's real fixture shows that a failed bit-vector query can retain a true
+function-success field. With incomplete attribution, the failing crate cannot
+establish which successful timing entries are proofs. Preserve the raw fields
+and diagnostics, but expose those uncertain entries as `unknown`, with a note.
+Complete attribution keeps its precise obligation-based verdicts, and successful
+crates keep their normal Verus results. The ordinary verifier stream and exit
+code are unchanged. The old fallback test that left this gap open is replaced
+with assertions that retain every function and refuse false proof claims.
