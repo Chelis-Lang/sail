@@ -239,6 +239,7 @@ fn freshness(run: &RunRecord, now: &store::Snapshot) -> Value {
         "established_by": format!("sail {}", run.sail_args.join(" ")),
         "exit_code": run.exit_code,
         "mode": run.report.mode,
+        "solver": run.report.solver,
         "winner_seed": run.report.portfolio.as_ref().and_then(|p| p.winner_seed),
         "scoped": run.scoped,
         "sources_changed_since": !changed.is_empty(),
@@ -796,6 +797,14 @@ mod tests {
         f.provenance.mode = "accept-first-proof".to_owned();
         f.provenance.configuration = Some(SolverConfiguration { seed: 4 });
         let mut report = store::tests::report(vec![f]);
+        report.solver = Some(sail_api::output::SolverInfo {
+            name: "z3".to_owned(),
+            version: Some("4.16.0".to_owned()),
+            path: None,
+            sha256: Some("ab".repeat(32)),
+            platform: Some("linux-x86_64".to_owned()),
+        });
+        let solver = serde_json::to_value(&report.solver).unwrap_or_default();
         report.mode = "accept-first-proof".to_owned();
         report.crates[0].verus.verified = Some(1);
         report.crates[0].verus.errors = Some(0);
@@ -856,6 +865,7 @@ mod tests {
             assert_eq!(result.structured["mode"], "accept-first-proof");
             assert_eq!(result.structured["configuration"]["seed"], 4);
             assert_eq!(result.structured["freshness"]["winner_seed"], 4);
+            assert_eq!(result.structured["freshness"]["solver"], solver);
             assert!(result.text.contains("mode accept-first-proof, seed 4"));
         }
         let all = all_results(&record, project, &now);
