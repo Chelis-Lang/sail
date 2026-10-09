@@ -298,6 +298,7 @@ pub fn build(args: &[String]) -> Result<()> {
         println!("{}", build.display());
         return Ok(());
     }
+    let _ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
 
     if !o.force
         && let Ok(m) = Manifest::load(&build)

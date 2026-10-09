@@ -8,6 +8,8 @@ semantic versioning once the API is published.
 - Add feature-scoped Singular source builds, validated runtime identities, and
   an optional local conformance environment for integer-ring examples and the
   pinned memory allocator.
+- Exclude overlapping deep suites and source rebuilds with exclusive build
+  ownership; reject concurrency before materialized input cleanup.
 
 - Deep tier: Verus's own `rust_verify_test` suite (4,695 tests) runs
   plain and through `sail-z3`, test by test (ADR 0019).

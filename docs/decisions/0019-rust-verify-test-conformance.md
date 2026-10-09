@@ -223,3 +223,13 @@ rerun results below supersede them for acceptance.
 The same `--no-report-long-running` flag is supplied to both sides, as in
 ADR 0006. It suppresses timing-triggered Verus progress and completion notices
 at their source; no Verus diagnostics are removed by the comparator.
+
+## Exclusive build ownership
+
+A targeted normal-thread run overlapped the full suite during takeover testing.
+Both suites called `clear_inputs` on the same materialized input directory,
+causing missing-file panics in the other suite. Those results were discarded.
+The runner and source builder now hold the same exclusive OS file lock for
+the entire operation (including cleanup). A second operation fails with
+`SAIL3043` before touching the shared directory; process exit releases the lock.
+No dependency or unsafe code is needed. Normal-thread coverage runs separately.
