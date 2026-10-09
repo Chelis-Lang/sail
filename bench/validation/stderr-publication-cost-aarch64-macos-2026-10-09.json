@@ -3,8 +3,8 @@
   "scope": "33 pinned Verus guide units; three fill/warm rounds per variant",
   "before_revision": "a7d9294b5031683a7e7551327f15030317e1e22a",
   "after_revisions": [
-    "b546e89",
-    "1e4d8df"
+    "b546e89a11956b81443b5535a520d8a1bd7449f7",
+    "1e4d8df757f7e16e60e06ad3170cfc42f6a9c3b5"
   ],
   "after_changes": "silent-session publication and complete-input silence records; shared store disabled",
   "load": "concurrent development, source conformance and compilation; no idle-machine claim",
