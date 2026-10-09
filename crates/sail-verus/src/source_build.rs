@@ -17,6 +17,40 @@ use crate::{Error, Result};
 /// The manifest's file name, in the build directory.
 pub const MANIFEST: &str = "sail-build.json";
 
+/// Takes exclusive ownership of this source build until the returned file drops.
+///
+/// Deep suites share materialized test directories, and rebuilding prunes runtime
+/// files. Concurrent use must fail before either operation touches those files.
+///
+/// # Errors
+///
+/// `SAIL3043` if another process owns the build or its lock cannot be opened.
+pub fn lock_build(build: &Path) -> Result<std::fs::File> {
+    std::fs::create_dir_all(build).map_err(|e| {
+        Error::new(
+            "SAIL3043",
+            format!("cannot create {}: {e}", build.display()),
+        )
+    })?;
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(build.join("sail-build.lock"))
+        .map_err(|e| Error::new("SAIL3043", format!("cannot open source build lock: {e}")))?;
+    file.try_lock().map_err(|e| {
+        Error::new(
+            "SAIL3043",
+            format!(
+                "source build {} is in use or cannot be locked: {e}",
+                build.display()
+            ),
+        )
+    })?;
+    Ok(file)
+}
+
 /// The manifest schema this crate reads and writes.
 pub const SCHEMA_VERSION: u32 = 1;
 
@@ -132,6 +166,17 @@ impl Manifest {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn source_build_ownership_is_exclusive_and_released_on_drop() {
+        let build = std::env::temp_dir().join(format!("sail-build-lock-{}", std::process::id()));
+        let first = lock_build(&build).unwrap_or_else(|e| unreachable!("first lock: {e}"));
+        assert!(lock_build(&build).is_err_and(|e| e.code == "SAIL3043"));
+        drop(first);
+        let second = lock_build(&build).unwrap_or_else(|e| unreachable!("released lock: {e}"));
+        drop(second);
+        let _ = std::fs::remove_dir_all(build);
+    }
 
     #[test]
     fn build_dirs_are_per_commit() {

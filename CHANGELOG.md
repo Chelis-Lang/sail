@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Exclude overlapping deep suites and source rebuilds with exclusive build
+  ownership; reject concurrency before materialized input cleanup.
+
 - Deep tier: Verus's own `rust_verify_test` suite (4,695 tests) runs
   plain and through `sail-z3`, test by test (ADR 0019).
   - `cargo xtask build-verus-source` builds the pinned Verus commit from

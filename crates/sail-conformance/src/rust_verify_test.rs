@@ -398,18 +398,26 @@ fn select(o: &Options, suite: &Suite) -> Result<Vec<TestCase>, String> {
     Ok(tests.into_iter().step_by(o.every).collect())
 }
 
-/// Runs the command; exit 0 if every test is the same (or unstable), 1 on
-/// any difference, 2 on infrastructure errors.
-pub fn main(args: &[String]) -> Result<ExitCode, String> {
-    let o = parse(args)?;
+fn open_suite(threads: u32) -> Result<(Installed, Suite, std::fs::File), String> {
     let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
     let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
     let verus = &installed.pins.verus;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
     let build = source_build::build_dir(&cache, &verus.commit);
+    let ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
     let mut suite =
         Suite::open(&build, &verus.rust_toolchain, &installed.z3).map_err(|e| e.to_string())?;
-    suite.verus_threads = (o.verus_threads > 0).then_some(o.verus_threads);
+    suite.verus_threads = (threads > 0).then_some(threads);
+    Ok((installed, suite, ownership))
+}
+
+/// Runs the command; exit 0 if every test is the same (or unstable), 1 on
+/// any difference, 2 on infrastructure errors.
+pub fn main(args: &[String]) -> Result<ExitCode, String> {
+    let o = parse(args)?;
+    let (installed, suite, _ownership) = open_suite(o.verus_threads)?;
+    let verus = &installed.pins.verus;
+    let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
     let tests = select(&o, &suite)?;
     if o.list {
         for t in &tests {

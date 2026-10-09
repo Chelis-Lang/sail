@@ -261,6 +261,7 @@ pub fn build(args: &[String]) -> Result<()> {
     let toolchain = &pins.verus.rust_toolchain;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
     let build = source_build::build_dir(&cache, commit);
+    let _ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
     let features: Vec<String> = Vec::new();
 
     if !o.force
