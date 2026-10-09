@@ -26,6 +26,8 @@ use crate::remote::read_token;
 const CONNECTIONS: usize = 8;
 const BODY_TIMEOUT: Duration = Duration::from_secs(30);
 const HEADER_TIMEOUT: Duration = Duration::from_secs(5);
+// Covers request headers, upload body and response writes, including a stalled reader.
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(40);
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 type Reply = Response<Full<Bytes>>;
 struct Upload(PathBuf);
@@ -215,21 +217,32 @@ impl Server {
                         .max_headers(64)
                         .keep_alive(false);
                     let connection = builder.serve_connection(TokioIo::new(stream), service);
-                    tokio::pin!(connection);
-                    loop {
-                        if tokio::time::timeout(Duration::from_millis(100), &mut connection)
-                            .await
-                            .is_ok()
-                            || shutdown.0.load(Ordering::SeqCst)
-                        {
-                            break;
-                        }
-                    }
+                    drive_connection(connection, shutdown, CONNECTION_TIMEOUT).await;
                 });
             }
             Ok(())
         })
     }
+}
+
+async fn drive_connection(
+    connection: impl std::future::Future,
+    shutdown: Handle,
+    deadline: Duration,
+) {
+    tokio::pin!(connection);
+    let _ = tokio::time::timeout(deadline, async {
+        loop {
+            if tokio::time::timeout(Duration::from_millis(100), &mut connection)
+                .await
+                .is_ok()
+                || shutdown.0.load(Ordering::SeqCst)
+            {
+                break;
+            }
+        }
+    })
+    .await;
 }
 
 fn response(status: StatusCode) -> Reply {
@@ -467,4 +480,47 @@ fn same_file(path: &Path, data: &[u8]) -> bool {
     }
     let mut trailing = [0u8; 1];
     file.read(&mut trailing).is_ok_and(|n| n == 0)
+}
+
+#[cfg(test)]
+mod deadline_tests {
+    #![allow(clippy::unwrap_used, reason = "test assertions")]
+    use super::*;
+
+    #[test]
+    fn total_deadline_drops_stalled_response_and_releases_capacity() {
+        struct Dropped(Arc<AtomicBool>);
+        impl Drop for Dropped {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::SeqCst);
+            }
+        }
+        let dropped = Arc::new(AtomicBool::new(false));
+        let observed = Arc::clone(&dropped);
+        let capacity = Arc::new(tokio::sync::Semaphore::new(1));
+        let permit = Arc::clone(&capacity).try_acquire_owned().unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let stalled = async {
+                let _dropped = Dropped(observed);
+                let _permit = permit;
+                std::future::pending::<()>().await;
+            };
+            tokio::time::timeout(
+                Duration::from_secs(1),
+                drive_connection(
+                    stalled,
+                    Handle(Arc::new(AtomicBool::new(false))),
+                    Duration::from_millis(20),
+                ),
+            )
+            .await
+            .unwrap();
+        });
+        assert!(dropped.load(Ordering::SeqCst));
+        assert_eq!(capacity.available_permits(), 1);
+    }
 }

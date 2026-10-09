@@ -107,7 +107,9 @@ with the earlier publication; the earlier valid entry remains available.
 
 Publication uses four bounded workers. The server allows eight connections, at
 most 64 headers and a 16 KiB header buffer; header reads expire after five seconds,
-and upload bodies after 30 seconds. Entries are limited to 64 MiB regardless of
+and upload bodies after 30 seconds. Every connection, including response writes to
+a stalled reader, expires after 40 seconds and releases its connection slot.
+Entries are limited to 64 MiB regardless of
 Content-Length or chunked framing. Uploads stream to disk; download and signature
 validation buffers are bounded by the same entry limit. At most eight server
 entry operations are active, so their worst-case entry buffers total 512 MiB.
