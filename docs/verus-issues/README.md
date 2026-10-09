@@ -18,6 +18,8 @@ filed as is.
 | [VI-0005](VI-0005-forwarded-args-do-not-re-verify.md) | Changing forwarded Verus arguments does not re-verify a fresh crate | open | described (steps) |
 | [VI-0006](VI-0006-release-without-bundled-z3.md) | The 0.2026.09.06 macOS release archive bundles no z3 | open | `corpus/toolchain.toml` secondary pin |
 
+| [VI-0009](VI-0009-partial-success-for-skipped-functions.md) | Partial timing success includes skipped functions | open | `corpus/repros/verus-partial-success/` |
+
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).
 

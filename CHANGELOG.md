@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Exclude skipped timing successes from function-scoped reports and portfolio
+  acceptance (pinned Verus issue VI-0009).
+
 - Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
   selection, and isolated protocol-v2 cache namespaces (ADR 0020).
 - Required `CI completion` rejects failed, cancelled and skipped gates,

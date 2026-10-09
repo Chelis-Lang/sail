@@ -9,6 +9,7 @@ mod fragility;
 mod ops;
 mod portfolio;
 mod report;
+mod scope;
 mod shared_ops;
 mod verify;
 mod watch;

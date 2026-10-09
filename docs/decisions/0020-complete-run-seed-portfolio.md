@@ -41,3 +41,8 @@ Sequential attempts limit resource contention and preserve complete-run evidence
 Direct Verus corpus entries use `--verus-source FILE -- <flags>` with the
 pinned launcher and the same complete-run acceptance rule. The 50% unknown serving threshold remains unchanged by owner decision. Seed
 census observations remain measurements, rather than changes to default policy.
+
+Function-only timing data can include skipped successes (VI-0009). Structured
+reports apply the explicit selector using pinned Verus matching rules before
+complete-run acceptance or MCP storage. Exact names take priority over unique
+substring fallback; explicit leading/trailing wildcard rules are preserved.
