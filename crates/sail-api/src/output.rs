@@ -226,7 +226,7 @@ pub struct FunctionReport {
     pub provenance: ProvenanceReport,
     /// Time and effort, as Verus reports them.
     pub timing: Timing,
-    /// Reserved: `null` until fragility is measured (seed portfolio).
+    /// Explicit replay measurement; `null` without complete attribution and replay.
     pub fragility: Option<Fragility>,
     /// Its obligations; `null` when attribution was unavailable for it.
     pub obligations: Option<Vec<ObligationReport>>,
@@ -284,14 +284,14 @@ pub struct Timing {
     pub rlimit: Option<u64>,
 }
 
-/// Reserved for fragility measurement; always `null` in this version.
+/// Function fragility from complete replay configurations and primary obligations.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Fragility {
     /// Fraction of runs that did not prove it, from 0 to 1.
     pub score: f64,
-    /// Runs measured.
+    /// Replay configurations measured.
     pub runs: u32,
-    /// Runs that proved it.
+    /// Configurations proving every primary obligation together.
     pub proved: u32,
 }
 

@@ -49,14 +49,15 @@ fresh crate because Verus's arguments changed (`docs/verus-issues/VI-0005`).
 
 ## The document
 
-All field names are `snake_case`. Optional values are present as `null`;
-fields are never omitted.
+All field names are `snake_case`. Existing optional values are present as
+`null`. The additive portfolio evidence and proving-configuration fields are
+omitted when no portfolio was requested.
 
 | Field | Type | Meaning |
 |---|---|---|
 | `schema_version` | `1` | This schema. |
 | `sail_version` | string | The `sail` that wrote it. |
-| `mode` | string | `default`. A future opt-in, verdict-changing mode writes its own name here (charter rule 8). |
+| `mode` | string | `default`, or explicitly selected `accept-first-proof` (charter rule 8). |
 | `command` | string[] | The arguments passed to `cargo verus verify`, without sail's own flags. |
 | `exit_code` | int \| null | `cargo verus verify`'s exit code. |
 | `solver` | object \| null | `name` (`z3`), `version` (as Z3 reported it), `path`, `sha256` of the binary. |
@@ -80,11 +81,11 @@ sorted by name.
 | `fn_mode` | `exec`, `proof` or `spec`. |
 | `verdict` | `verified`, `failed`, `unknown` or `provisional`. See [Verdicts](#verdicts-and-tiers). |
 | `tier` | `confirmed` or `provisional`. |
-| `unstable` | Whether any of its answers could plausibly differ between plain Verus runs: a proof that used more than half its rlimit, or a give-up from resource exhaustion or near the limit (ADR 0009). |
+| `unstable` | Whether any of its answers could plausibly differ between plain Verus runs: a proof that used more than half its rlimit, or a give-up from resource exhaustion or near the limit (ADR 0009); also true when explicit replay measurement observes both proofs and failures. |
 | `verus_success` | Verus's own `success` for it, verbatim. Incomplete for bit-vector queries (`docs/verus-issues/VI-0003`). |
-| `provenance` | `mode`; `source` (`fresh`, `cache`, `mixed` or `unrecorded`); `checks_solved`, `checks_served` and `checks_unrecorded`. |
+| `provenance` | `mode`; optional portfolio `configuration.seed`; `source` (`fresh`, `cache`, `mixed` or `unrecorded`); `checks_solved`, `checks_served` and `checks_unrecorded`. |
 | `timing` | `smt_micros` and `rlimit`, as Verus reports them. |
-| `fragility` | Reserved. Always `null` until fragility is measured (seed portfolio). It will then be `{score, runs, proved}`. |
+| `fragility` | `{score, runs, proved}` after an explicit complete replay measurement; otherwise `null`, with attribution notes when measurement is incomplete. |
 | `obligations` | Its obligations, or `null` if attribution was unavailable for it. |
 
 ### Obligations
@@ -169,9 +170,12 @@ as a tie-breaker, recovers most refactors.
   so its tier is `confirmed`. Speculative results (`sail watch`, MCP) will
   use this tier.
 
-**Agreement with Verus.** `verified` holds exactly when Verus's own `success`
-is true, with one deliberate exception. Verus's `success` stays `true` for a
-function whose only failure is a bit-vector query (VI-0003), although Verus
+**Agreement with Verus.** Complete attribution combines Verus's reported
+success with every primary obligation outcome. Partial function requests
+exclude timing entries for unselected functions (VI-0009). In a failing crate
+with incomplete attribution, apparently successful timing entries remain
+`unknown`, with their raw success fields retained (VI-0003). Verus's
+`success` stays `true` for a function whose only failure is a bit-vector query (VI-0003), although Verus
 reports the error and exits non-zero. When attribution shows the failed
 bit-vector obligation, sail reports `failed`. This agrees with Verus's
 diagnostics and exit code. The e2e CI step checks agreement with Verus's
@@ -210,8 +214,9 @@ asks for logs only when one Verus process will write them: a single workspace
 member with at most one lib or bin target, and no `--log` arguments of the
 user's own.
 
-Otherwise `attribution.status` is `unavailable`, its notes say why, every
-function's `obligations` is `null`, and verdicts come from Verus's JSON alone.
+Otherwise `attribution.status` is `unavailable`, its notes say why, and every
+function's `obligations` is `null`. Successful crates use Verus's JSON; failing
+crates leave apparently successful timing entries `unknown` with a note.
 
 `partial` means some processes could not be matched. The notes say which.
 Verus can overwrite a spinoff's log when two ops of one function both spin
