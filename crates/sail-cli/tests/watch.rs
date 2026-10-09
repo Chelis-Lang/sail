@@ -44,6 +44,10 @@ fn edits_cancel_the_run_in_flight_and_restart() {
         "watch_fixture",
         "[dependencies]\nwatch_dependency={path='../dependency'}",
     );
+    let nested_source = krate.join("src/target/mod.rs");
+    assert!(std::fs::create_dir_all(krate.join("src/target")).is_ok());
+    assert!(std::fs::write(&nested_source, "pub fn a() {}\n").is_ok());
+    assert!(std::fs::create_dir_all(krate.join("target")).is_ok());
     let log = root.join("runs.log");
     let fake = root.join("worker");
     let script = format!(
@@ -90,6 +94,18 @@ fn edits_cancel_the_run_in_flight_and_restart() {
         );
     }
     wait_for("the restarted run", || count(&log, "start") == 2);
+    // A source directory named target is a real input, unlike Cargo's output directory.
+    assert!(std::fs::write(&nested_source, "pub fn b() {}\n").is_ok());
+    wait_for("the nested target source restart", || {
+        count(&log, "start") == 3
+    });
+    assert!(std::fs::write(krate.join("target/generated.rs"), "generated output").is_ok());
+    std::thread::sleep(Duration::from_millis(650));
+    assert_eq!(
+        count(&log, "start"),
+        3,
+        "Cargo output must not trigger a watch loop"
+    );
     assert_eq!(count(&log, "end"), 0);
     let _ = Command::new("kill")
         .args(["-INT", &watch.id().to_string()])

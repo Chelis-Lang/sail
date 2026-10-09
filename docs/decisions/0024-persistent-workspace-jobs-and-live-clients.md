@@ -44,7 +44,9 @@ unvalidated completion currentness as unknown. No prior result is presented as
 current merely because the local Rust files match.
 
 `watch` consumes filesystem events across Cargo workspace/path-dependency roots,
-lockfiles, inherited configuration and toolchain files. It debounces for 300 ms,
+lockfiles, inherited configuration and toolchain files. Output exclusions use
+Cargo metadata and the actual Sail cache paths, so source directories named
+`target` still trigger verification. It debounces for 300 ms,
 supersedes active jobs, and schedules the latest edit. JSONL reports lifecycle
 and target completion; human output follows diagnostics. Watch never infers a
 semantic function dependency graph. Once a job finishes and its output drains,

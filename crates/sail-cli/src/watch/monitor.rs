@@ -17,6 +17,7 @@ pub(super) struct Monitoring {
     fallback: bool,
     scanned: Instant,
     baseline: Option<[u8; 32]>,
+    excluded: Vec<PathBuf>,
 }
 impl Monitoring {
     pub(super) fn new(err: &mut dyn Write) -> Self {
@@ -30,6 +31,7 @@ impl Monitoring {
             fallback: false,
             scanned: Instant::now(),
             baseline: None,
+            excluded: vec![],
         };
         if monitoring.native.is_none() {
             monitoring.degrade(err);
@@ -48,6 +50,7 @@ impl Monitoring {
     pub(super) fn subscribe(
         &mut self,
         roots: &[PathBuf],
+        excluded: &[PathBuf],
         subscriptions: &mut BTreeMap<PathBuf, bool>,
         err: &mut dyn Write,
     ) {
@@ -81,7 +84,8 @@ impl Monitoring {
         }
         *subscriptions = desired;
         // Capture once when input coverage changes, never every native poll.
-        self.baseline = fingerprint(roots).ok();
+        self.excluded = excluded.to_vec();
+        self.baseline = fingerprint(roots, excluded).ok();
         self.scanned = Instant::now();
     }
     pub(super) fn changed(&mut self, roots: &[PathBuf], err: &mut dyn Write) -> bool {
@@ -91,14 +95,14 @@ impl Monitoring {
                 Ok(event) if !event.need_rescan() => {
                     let (sender, receiver) = channel();
                     let _ = sender.send(Ok(event));
-                    edited |= super::changed(&receiver, roots);
+                    edited |= super::changed(&receiver, roots, &self.excluded);
                 }
                 _ => self.degrade(err),
             }
         }
         if self.fallback && self.scanned.elapsed() >= SCAN_INTERVAL {
             self.scanned = Instant::now();
-            match fingerprint(roots) {
+            match fingerprint(roots, &self.excluded) {
                 Ok(next) => {
                     edited |= self.baseline.is_none_or(|previous| previous != next);
                     self.baseline = Some(next);
@@ -112,10 +116,10 @@ impl Monitoring {
     }
 }
 
-fn fingerprint(roots: &[PathBuf]) -> std::io::Result<[u8; 32]> {
+fn fingerprint(roots: &[PathBuf], excluded: &[PathBuf]) -> std::io::Result<[u8; 32]> {
     let mut files = Vec::new();
     for root in roots {
-        collect(root, &mut files)?;
+        collect(root, excluded, &mut files)?;
     }
     files.sort();
     files.dedup();
@@ -143,8 +147,8 @@ fn fingerprint(roots: &[PathBuf]) -> std::io::Result<[u8; 32]> {
     Ok(hash.finalize().into())
 }
 
-fn collect(path: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    if !super::relevant(path) {
+fn collect(path: &Path, excluded: &[PathBuf], files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    if !super::relevant(path) || excluded.iter().any(|output| path.starts_with(output)) {
         return Ok(());
     }
     if path.is_dir() {
@@ -160,7 +164,7 @@ fn collect(path: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
             {
                 continue;
             }
-            collect(&entry.path(), files)?;
+            collect(&entry.path(), excluded, files)?;
         }
     } else {
         files.push(path.to_path_buf());
@@ -188,11 +192,26 @@ mod tests {
             fallback: true,
             scanned: Instant::now(),
             baseline: None,
+            excluded: vec![],
         };
         let roots = vec![root.clone()];
-        monitoring.subscribe(&roots, &mut BTreeMap::new(), &mut Vec::new());
+        let output = root.join("output");
+        assert!(std::fs::create_dir_all(&output).is_ok());
+        monitoring.subscribe(
+            &roots,
+            std::slice::from_ref(&output),
+            &mut BTreeMap::new(),
+            &mut Vec::new(),
+        );
         monitoring.scanned -= SCAN_INTERVAL;
         assert!(!monitoring.changed(&roots, &mut Vec::new()));
+        assert!(std::fs::write(output.join("generated.rs"), "generated").is_ok());
+        monitoring.scanned -= SCAN_INTERVAL;
+        assert!(!monitoring.changed(&roots, &mut Vec::new()));
+        assert!(std::fs::create_dir_all(root.join("src/target")).is_ok());
+        assert!(std::fs::write(root.join("src/target/mod.rs"), "source").is_ok());
+        monitoring.scanned -= SCAN_INTERVAL;
+        assert!(monitoring.changed(&roots, &mut Vec::new()));
         assert!(std::fs::write(&source, "pub fn b() {}\n").is_ok());
         if let Some(modified) = modified {
             assert!(

@@ -22,6 +22,12 @@ mod monitor;
 
 const SETTLE: Duration = Duration::from_millis(300);
 
+#[derive(Default)]
+struct Inputs {
+    roots: Vec<PathBuf>,
+    excluded: Vec<PathBuf>,
+}
+
 struct Live {
     client: Client,
     status: Option<Status>,
@@ -67,12 +73,12 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
         events_drained: false,
     };
     let mut monitoring = monitor::Monitoring::new(err);
-    let mut roots = Vec::new();
+    let mut inputs = Inputs::default();
     let mut subscriptions = BTreeMap::new();
     let mut extra = Vec::new();
     refresh_roots(
         &mut monitoring,
-        &mut roots,
+        &mut inputs,
         &mut subscriptions,
         &root,
         &args,
@@ -80,14 +86,14 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
         err,
     );
     while !stop.load(Ordering::SeqCst) {
-        if monitoring.changed(&roots, err) {
+        if monitoring.changed(&inputs.roots, err) {
             live.cancel(true)?;
             live.pending = Some(Instant::now());
         }
         if live.pending.is_some_and(|time| time.elapsed() >= SETTLE) {
             refresh_roots(
                 &mut monitoring,
-                &mut roots,
+                &mut inputs,
                 &mut subscriptions,
                 &root,
                 &args,
@@ -105,11 +111,11 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
             live.events_drained = false;
         }
         live.poll(out, err)?;
-        if let Some(inputs) = live.observed_inputs.take() {
-            extra = inputs;
+        if let Some(observed) = live.observed_inputs.take() {
+            extra = observed;
             refresh_roots(
                 &mut monitoring,
-                &mut roots,
+                &mut inputs,
                 &mut subscriptions,
                 &root,
                 &args,
@@ -149,7 +155,7 @@ fn arguments(args: &[String]) -> Result<(bool, Vec<String>), String> {
 }
 fn refresh_roots(
     monitoring: &mut monitor::Monitoring,
-    roots: &mut Vec<PathBuf>,
+    inputs: &mut Inputs,
     subscriptions: &mut BTreeMap<PathBuf, bool>,
     project: &Path,
     args: &[String],
@@ -160,6 +166,7 @@ fn refresh_roots(
     let mut next = snapshot.map_or_else(
         || vec![project.to_path_buf()],
         |snapshot| {
+            inputs.excluded = snapshot.excluded;
             let mut roots = snapshot.roots;
             roots.push(snapshot.workspace);
             roots
@@ -186,8 +193,8 @@ fn refresh_roots(
     next.extend_from_slice(extra);
     next.sort();
     next.dedup();
-    monitoring.subscribe(&next, subscriptions, err);
-    *roots = next;
+    monitoring.subscribe(&next, &inputs.excluded, subscriptions, err);
+    inputs.roots = next;
 }
 fn desired_subscriptions(roots: &[PathBuf]) -> BTreeMap<PathBuf, bool> {
     let mut subscriptions = BTreeMap::new();
@@ -210,18 +217,23 @@ fn desired_subscriptions(roots: &[PathBuf]) -> BTreeMap<PathBuf, bool> {
 
 fn relevant(path: &Path) -> bool {
     !path.components().any(|part| {
-        ["target", ".git", ".claude", ".codex"]
+        [".git", ".claude", ".codex"]
             .iter()
             .any(|ignored| part.as_os_str() == *ignored)
     })
 }
-fn changed(changes: &Receiver<notify::Result<Event>>, roots: &[PathBuf]) -> bool {
+fn changed(
+    changes: &Receiver<notify::Result<Event>>,
+    roots: &[PathBuf],
+    excluded: &[PathBuf],
+) -> bool {
     let mut edited = false;
     while let Ok(event) = changes.try_recv() {
         edited |= event.is_ok_and(|event| {
             !matches!(event.kind, EventKind::Access(_))
                 && event.paths.iter().any(|path| {
                     relevant(path)
+                        && !excluded.iter().any(|output| path.starts_with(output))
                         && roots.iter().any(|root| {
                             if root.file_name().is_some_and(|name| name == ".cargo") {
                                 path == root
