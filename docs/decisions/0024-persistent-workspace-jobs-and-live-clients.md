@@ -47,7 +47,12 @@ current merely because the local Rust files match.
 lockfiles, inherited configuration and toolchain files. It debounces for 300 ms,
 supersedes active jobs, and schedules the latest edit. JSONL reports lifecycle
 and target completion; human output follows diagnostics. Watch never infers a
-semantic function dependency graph.
+semantic function dependency graph. Once a job finishes and its output drains,
+watch stops job RPC polling until another input event. If native events fail or
+request a rescan, a five-second content scan of remembered input roots detects
+edits, including edits with restored timestamps. This fallback does not rerun
+Cargo metadata or hash verifier binaries every poll. Newly reported external
+build inputs and inherited configuration are added to monitoring after a run.
 
 MCP gains asynchronous start/status/result/cancel tools. Default blocking verify
 uses a forced-fresh job and preserves its report-v1 response, selecting only

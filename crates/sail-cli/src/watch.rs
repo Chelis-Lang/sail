@@ -5,17 +5,20 @@
 //! remain durable and are identified by job and input revision; a cancelled or
 //! superseded run is never presented as a current proof.
 
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, channel};
+use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Event, EventKind};
 use sail_api::jobs::{Client, Lifecycle, Request, Response, Status};
 use serde_json::json;
+
+mod monitor;
 
 const SETTLE: Duration = Duration::from_millis(300);
 
@@ -27,6 +30,10 @@ struct Live {
     event_offset: u64,
     event_tail: String,
     jsonl: bool,
+    observed_inputs: Option<Vec<PathBuf>>,
+    observed_job: Option<String>,
+    diagnostics_drained: bool,
+    events_drained: bool,
 }
 
 /// Watches the Cargo workspace and local path dependencies until interrupted.
@@ -54,17 +61,39 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
         event_offset: 0,
         event_tail: String::new(),
         jsonl,
+        observed_inputs: None,
+        observed_job: None,
+        diagnostics_drained: false,
+        events_drained: false,
     };
-    let (mut watcher, changes) = watcher()?;
+    let mut monitoring = monitor::Monitoring::new(err);
     let mut roots = Vec::new();
-    refresh_roots(&mut watcher, &mut roots, &root, &args, err)?;
+    let mut subscriptions = BTreeMap::new();
+    let mut extra = Vec::new();
+    refresh_roots(
+        &mut monitoring,
+        &mut roots,
+        &mut subscriptions,
+        &root,
+        &args,
+        &extra,
+        err,
+    );
     while !stop.load(Ordering::SeqCst) {
-        if changed(&changes, &roots) {
+        if monitoring.changed(&roots, err) {
             live.cancel(true)?;
             live.pending = Some(Instant::now());
         }
         if live.pending.is_some_and(|time| time.elapsed() >= SETTLE) {
-            refresh_roots(&mut watcher, &mut roots, &root, &args, err)?;
+            refresh_roots(
+                &mut monitoring,
+                &mut roots,
+                &mut subscriptions,
+                &root,
+                &args,
+                &extra,
+                err,
+            );
             let status = crate::jobs::submit(&live.client, &args)?;
             announce(&status, "queued", live.jsonl, out, err);
             live.status = Some(status);
@@ -72,8 +101,22 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
             live.diagnostic_offset = 0;
             live.event_offset = 0;
             live.event_tail.clear();
+            live.diagnostics_drained = false;
+            live.events_drained = false;
         }
         live.poll(out, err)?;
+        if let Some(inputs) = live.observed_inputs.take() {
+            extra = inputs;
+            refresh_roots(
+                &mut monitoring,
+                &mut roots,
+                &mut subscriptions,
+                &root,
+                &args,
+                &extra,
+                err,
+            );
+        }
         std::thread::sleep(Duration::from_millis(100));
     }
     live.cancel(false)
@@ -104,21 +147,15 @@ fn arguments(args: &[String]) -> Result<(bool, Vec<String>), String> {
     }
     Ok((jsonl, rest))
 }
-fn watcher() -> Result<(RecommendedWatcher, Receiver<notify::Result<Event>>), String> {
-    let (sender, receiver) = channel();
-    let watcher = notify::recommended_watcher(move |event| {
-        let _ = sender.send(event);
-    })
-    .map_err(|error| error.to_string())?;
-    Ok((watcher, receiver))
-}
 fn refresh_roots(
-    watcher: &mut RecommendedWatcher,
+    monitoring: &mut monitor::Monitoring,
     roots: &mut Vec<PathBuf>,
+    subscriptions: &mut BTreeMap<PathBuf, bool>,
     project: &Path,
     args: &[String],
+    extra: &[PathBuf],
     err: &mut dyn Write,
-) -> Result<(), String> {
+) {
     let snapshot = crate::jobs::revision(project, args);
     let mut next = snapshot.map_or_else(
         || vec![project.to_path_buf()],
@@ -146,27 +183,31 @@ fn refresh_roots(
             }
         }
     }
+    next.extend_from_slice(extra);
     next.sort();
     next.dedup();
-    for root in roots.iter().filter(|root| !next.contains(root)) {
-        let _ = watcher.unwatch(root);
-    }
-    for root in next.iter().filter(|root| !roots.contains(root)) {
-        if let Err(error) = watcher.watch(
-            root,
-            if root.file_name().is_some_and(|name| name == ".cargo") {
-                RecursiveMode::NonRecursive
-            } else {
-                RecursiveMode::Recursive
-            },
-        ) {
-            let _ = writeln!(err, "sail watch: cannot watch {}: {error}", root.display());
-            return Err("filesystem monitoring is incomplete".to_owned());
+    monitoring.subscribe(&next, subscriptions, err);
+    *roots = next;
+}
+fn desired_subscriptions(roots: &[PathBuf]) -> BTreeMap<PathBuf, bool> {
+    let mut subscriptions = BTreeMap::new();
+    for root in roots {
+        let recursive = root.is_dir() && root.file_name().is_none_or(|name| name != ".cargo");
+        let path = if root.is_dir() {
+            Some(root.as_path())
+        } else {
+            root.ancestors().skip(1).find(|parent| parent.is_dir())
+        };
+        if let Some(path) = path {
+            subscriptions
+                .entry(path.to_path_buf())
+                .and_modify(|mode| *mode |= recursive)
+                .or_insert(recursive);
         }
     }
-    *roots = next;
-    Ok(())
+    subscriptions
 }
+
 fn relevant(path: &Path) -> bool {
     !path.components().any(|part| {
         ["target", ".git", ".claude", ".codex"]
@@ -177,7 +218,7 @@ fn relevant(path: &Path) -> bool {
 fn changed(changes: &Receiver<notify::Result<Event>>, roots: &[PathBuf]) -> bool {
     let mut edited = false;
     while let Ok(event) = changes.try_recv() {
-        edited |= event.map_or(true, |event| {
+        edited |= event.is_ok_and(|event| {
             !matches!(event.kind, EventKind::Access(_))
                 && event.paths.iter().any(|path| {
                     relevant(path)
@@ -187,8 +228,10 @@ fn changed(changes: &Receiver<notify::Result<Event>>, roots: &[PathBuf]) -> bool
                                     || path.file_name().is_some_and(|name| {
                                         name == "config" || name == "config.toml"
                                     })
-                            } else {
+                            } else if root.is_dir() {
                                 path.starts_with(root)
+                            } else {
+                                path == root || root.starts_with(path)
                             }
                         })
                 })
@@ -230,13 +273,21 @@ impl Live {
         let Some(previous) = self.status.as_ref() else {
             return Ok(());
         };
+        if previous.state.terminal() && self.diagnostics_drained && self.events_drained {
+            return Ok(());
+        }
         let id = previous.id.clone();
-        let Response::Status(status) = self
-            .client
-            .call(&Request::Status { id: id.clone() })
-            .map_err(|error| error.to_string())?
-        else {
-            return Err("SAIL0802: unexpected status response".to_owned());
+        let status = if previous.state.terminal() {
+            previous.clone()
+        } else {
+            let Response::Status(status) = self
+                .client
+                .call(&Request::Status { id: id.clone() })
+                .map_err(|error| error.to_string())?
+            else {
+                return Err("SAIL0802: unexpected status response".to_owned());
+            };
+            status
         };
         if previous.state != status.state {
             let event = match status.state {
@@ -255,6 +306,7 @@ impl Live {
             })
             .map_err(|error| error.to_string())?
         {
+            self.diagnostics_drained = chunk.complete && chunk.next == self.diagnostic_offset;
             self.diagnostic_offset = chunk.next;
             let _ = write!(err, "{}", chunk.text);
         }
@@ -267,6 +319,7 @@ impl Live {
                 })
                 .map_err(|error| error.to_string())?
         {
+            self.events_drained = chunk.complete && chunk.next == self.event_offset;
             self.event_offset = chunk.next;
             self.event_tail.push_str(&chunk.text);
             while let Some(end) = self.event_tail.find('\n') {
@@ -277,7 +330,76 @@ impl Live {
                 }
             }
         }
+        if !self.jsonl {
+            self.events_drained = true;
+        }
+        if status.state == Lifecycle::Completed && self.observed_job.as_deref() != Some(&status.id)
+        {
+            self.observed_job = Some(status.id.clone());
+            if let Response::Result(document) = self
+                .client
+                .call(&Request::Result {
+                    id: status.id.clone(),
+                })
+                .map_err(|error| error.to_string())?
+                && let Some(result) = document.result
+                && let Ok(result) =
+                    serde_json::from_value::<sail_api::project::ProjectResult>(result)
+                && let Ok(environment) = crate::jobs::environment()
+                && let Ok(cache) = sail_verus::cache_dir()
+                && let Ok(snapshot) =
+                    sail_verus::managed::refresh_result(&cache, &result, &environment)
+            {
+                self.observed_inputs = Some(snapshot.roots);
+            }
+        }
         self.status = Some(status);
         Ok(())
+    }
+}
+
+impl Drop for Live {
+    fn drop(&mut self) {
+        let _ = self.cancel(false);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terminal_drained_job_never_contacts_the_service_again() {
+        let mut live = Live {
+            client: Client::new(PathBuf::from("/missing-sail-watch-test.sock")),
+            status: Some(Status {
+                version: 1,
+                id: "finished".to_owned(),
+                project_dir: PathBuf::from("/workspace"),
+                args: vec![],
+                state: Lifecycle::Completed,
+                submitted_at_ms: 0,
+                started_at_ms: Some(0),
+                finished_at_ms: Some(1),
+                exit_code: Some(0),
+                input_revision: Some("earlier-revision".to_owned()),
+                currentness: sail_api::jobs::Currentness::Current,
+                error: None,
+            }),
+            pending: None,
+            diagnostic_offset: 0,
+            event_offset: 0,
+            event_tail: String::new(),
+            jsonl: true,
+            observed_inputs: None,
+            observed_job: Some("finished".to_owned()),
+            diagnostics_drained: true,
+            events_drained: true,
+        };
+        let started = Instant::now();
+        for _ in 0..1000 {
+            assert!(live.poll(&mut Vec::new(), &mut Vec::new()).is_ok());
+        }
+        assert!(started.elapsed() < Duration::from_secs(1));
     }
 }

@@ -166,6 +166,9 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
             _ => return Err("SAIL0811: usage: sail jobs list|status|result|cancel|logs ID [--follow] [--output json]".to_owned()),
         };
         let response = client.call(&request).map_err(|error| error.to_string())?;
+        if let Response::Error(error) = &response {
+            return Err(error.clone());
+        }
         let text = if json {
             serde_json::to_string_pretty(&response).map_err(|error| error.to_string())?
         } else {

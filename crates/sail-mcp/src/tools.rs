@@ -283,10 +283,22 @@ fn verify(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResu
                 let Some(report) = crate::job_tools::merged_report(&result) else {
                     return ToolResult::ok("Cargo completed before any verification target produced a report; see the job diagnostics.".to_owned(), json!({"job":job,"project_result":result}));
                 };
-                let now = store::snapshot(&project);
                 let raw = serde_json::to_value(&report).unwrap_or(Value::Null);
-                let base = json!({"project_dir":project,"sail_args":request.sail_args(VERIFY_COMMAND),"exit_code":result.exit_code,"job":job,"project_result":result});
-                return finish_verify(ctx, &project, &request, base, raw, report, &now, &now);
+                let text = format!(
+                    "sail verify: {}\nJob {}; currentness {:?}.",
+                    summary::report(&report),
+                    job.id,
+                    job.currentness
+                );
+                let changed = match result.currentness {
+                    sail_api::project::Currentness::Historical => Some(true),
+                    sail_api::project::Currentness::Current => Some(false),
+                    sail_api::project::Currentness::Unknown => None,
+                };
+                return ToolResult::ok(
+                    text.clone(),
+                    json!({"project_dir":project,"sail_args":request.sail_args(VERIFY_COMMAND),"exit_code":result.exit_code,"duration_ms":result.execution.wall_ms,"sources":{"input_revision":result.input_revision,"changed_during_run":changed},"stored":true,"summary":text,"report":raw,"job":job,"project_result":result}),
+                );
             }
             Ok(None) => {}
             Err(error) => return error,

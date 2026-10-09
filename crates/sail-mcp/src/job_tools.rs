@@ -6,6 +6,10 @@ use crate::args::RunArgs;
 use crate::run::{self, Cancel};
 use crate::tools::{Context, ToolResult, project_dir};
 
+#[cfg(test)]
+#[path = "job_tools_tests.rs"]
+mod tests;
+
 pub(super) fn definitions(run_schema: &Value) -> Vec<Value> {
     let id_schema = json!({"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":{"type":"string","description":"Durable job id returned by start_verification."}}});
     vec![
@@ -203,16 +207,31 @@ pub(super) fn merged_report(
             .attribution
             .notes
             .extend(next.attribution.notes.clone());
-        report.attribution.unmatched_sessions += next.attribution.unmatched_sessions;
+        report.attribution.unmatched_sessions = report
+            .attribution
+            .unmatched_sessions
+            .saturating_add(next.attribution.unmatched_sessions);
         if next.attribution.status != sail_api::output::AttributionStatus::Complete {
             report.attribution.status = sail_api::output::AttributionStatus::Partial;
         }
-        report.summary.functions += next.summary.functions;
-        report.summary.verified += next.summary.verified;
-        report.summary.failed += next.summary.failed;
-        report.summary.unknown += next.summary.unknown;
-        report.summary.provisional += next.summary.provisional;
-        report.summary.unstable += next.summary.unstable;
+        report.summary.functions = report
+            .summary
+            .functions
+            .saturating_add(next.summary.functions);
+        report.summary.verified = report
+            .summary
+            .verified
+            .saturating_add(next.summary.verified);
+        report.summary.failed = report.summary.failed.saturating_add(next.summary.failed);
+        report.summary.unknown = report.summary.unknown.saturating_add(next.summary.unknown);
+        report.summary.provisional = report
+            .summary
+            .provisional
+            .saturating_add(next.summary.provisional);
+        report.summary.unstable = report
+            .summary
+            .unstable
+            .saturating_add(next.summary.unstable);
     }
     report.exit_code = result.exit_code;
     Some(report)
@@ -269,8 +288,12 @@ pub(super) fn lookup(
         else {
             continue;
         };
-        let result: sail_api::project::ProjectResult =
-            serde_json::from_value(document.result?).ok()?;
+        let Some(value) = document.result else {
+            continue;
+        };
+        let Ok(result) = serde_json::from_value::<sail_api::project::ProjectResult>(value) else {
+            continue;
+        };
         let functions: Vec<_> = result
             .targets
             .iter()
@@ -295,9 +318,12 @@ pub(super) fn lookup(
         if query.is_some() && functions.len() > 1 {
             return Some(ToolResult::error("Ambiguous function; select its complete reported path and target through verification_result.".to_owned(), json!({"error":"ambiguous","job":document.job,"functions":functions.iter().map(|(_, function)| &function.function).collect::<Vec<_>>()})));
         }
+        if let Some(error) = missing_obligation(&functions, args, &document.job) {
+            return Some(error);
+        }
         let entries: Vec<_> = functions.iter().map(|(target, function)| {
-            let obligations: Vec<_> = function.obligations.iter().flatten().filter(|obligation| args.obligation.as_ref().is_none_or(|id| *id == obligation.id)).collect();
-            json!({"package_id":target.package_id,"target":target.target,"establishing_run":target.establishing_run,"reused":target.reused,"function":function,"counterexamples":if models {serde_json::to_value(obligations.iter().filter_map(|obligation| obligation.counterexample.as_ref()).collect::<Vec<_>>()).unwrap_or(Value::Null)}else{Value::Null}})
+            let obligations: Vec<_> = function.obligations.iter().flatten().filter(|obligation| args.obligation.as_ref().is_none_or(|id| id.split_once('#').is_some_and(|pair| obligation.id == format!("{}#{}", function.function, pair.1)))).collect();
+            json!({"package_id":target.package_id,"target":target.target,"establishing_run":target.establishing_run,"reused":target.reused,"function":function.function,"verdict":crate::summary::verdict_name(crate::summary::effective_verdict(function)),"tier":function.tier,"mode":function.provenance.mode,"configuration":function.provenance.configuration,"function_report":function,"obligations":if models {serde_json::to_value(&obligations).unwrap_or(Value::Null)}else{Value::Null},"counterexamples":if models {serde_json::to_value(obligations.iter().filter_map(|obligation| obligation.counterexample.as_ref()).collect::<Vec<_>>()).unwrap_or(Value::Null)}else{Value::Null}})
         }).collect();
         return Some(ToolResult::ok(
             format!(
@@ -310,4 +336,31 @@ pub(super) fn lookup(
         ));
     }
     None
+}
+
+fn missing_obligation(
+    functions: &[(
+        &sail_api::project::TargetResult,
+        &sail_api::output::FunctionReport,
+    )],
+    args: &crate::args::LookupArgs,
+    job: &sail_api::jobs::Status,
+) -> Option<ToolResult> {
+    let id = args.obligation.as_ref()?;
+    let function = functions.first()?.1;
+    let suffix = id.split_once('#').map_or("", |pair| pair.1);
+    let canonical = format!("{}#{suffix}", function.function);
+    if function
+        .obligations
+        .iter()
+        .flatten()
+        .any(|obligation| obligation.id == canonical)
+    {
+        None
+    } else {
+        Some(ToolResult::error(
+            format!("No obligation {id} in the latest recorded function result."),
+            json!({"error":"not_found","obligation":id,"job":job}),
+        ))
+    }
 }
