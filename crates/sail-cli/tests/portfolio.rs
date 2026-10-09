@@ -150,3 +150,44 @@ fn timeout_is_infrastructure_and_kills_descendants() {
         "descendant still alive: {status}"
     );
 }
+
+#[test]
+#[ignore = "needs the pinned Z3 identity"]
+fn parent_death_stops_the_independent_worker_group() {
+    use std::time::{Duration, Instant};
+    let f = Fixture::new("parent");
+    let mut child = f
+        .command()
+        .env("SAIL_TEST_SLOW", "1")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap_or_else(|e| unreachable!("start: {e}"));
+    let start = Instant::now();
+    while !f.dir.join("child.pid").is_file() {
+        assert!(
+            start.elapsed() < Duration::from_secs(60),
+            "worker did not start"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let pid = std::fs::read_to_string(f.dir.join("child.pid")).unwrap_or_default();
+    assert!(child.kill().is_ok());
+    assert!(child.wait().is_ok());
+    let start = Instant::now();
+    loop {
+        let state = Command::new("ps")
+            .args(["-o", "stat=", "-p", pid.trim()])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .unwrap_or_default();
+        if state.trim().is_empty() || state.trim().starts_with('Z') {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "orphan remains active: {state}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}

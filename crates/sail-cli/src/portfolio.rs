@@ -376,6 +376,14 @@ fn attempt(
     if report.is_none() && error.is_none() {
         error = Some("Verus produced no valid report".to_owned());
     }
+    if error.is_none()
+        && exit_code == Some(0)
+        && report
+            .as_ref()
+            .is_some_and(|r| r.crates.iter().all(|c| c.functions.is_empty()))
+    {
+        error = Some("Verus produced no function verification results".to_owned());
+    }
     let verified = error.is_none() && exit_code == Some(0) && report.as_ref().is_some_and(complete);
     Ok(PortfolioAttempt {
         configuration: SolverConfiguration { seed },
