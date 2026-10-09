@@ -67,7 +67,9 @@ A successful exit and one package report do not establish a whole workspace
 proof. Metadata resolves requested verification-enabled targets from default
 members, `--workspace`, exact package selectors and exclusions, and library or
 binary selection. Every selected target must produce a report in the same
-attempt. Custom crate names are respected. Ambiguous crate names, nonexact
+attempt. Custom crate names are respected. Crate names shared by multiple verifying packages are also ambiguous: a
+dependency report cannot stand in for a missing requested package. Ambiguous
+crate names, nonexact
 package selectors and test/example/benchmark target selection are rejected
 before verification; choose an explicit library or binary scope instead.
 Cleaning still covers every verification-enabled workspace package in the
