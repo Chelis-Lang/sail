@@ -113,3 +113,6 @@ variant explicitly, set `SAIL_VERUS_SOURCE_BUILD` to its build directory; the
 runner checks its commit, feature set, toolchain and runtime hashes (ADR 0021).
 Singular obligations are tagged in the corpus and execute through Verus; the
 Z3 cache only answers Z3 queries.
+
+Project decisions are indexed in [docs/decisions/README.md](docs/decisions/README.md);
+the completion evidence is in [the initial-product report](docs/reports/2026-10-09-initial-product.md).

@@ -48,24 +48,26 @@ See `docs/reports/2026-10-08-bootstrap.md` for the evidence.
 2. **CLI.**
    - **Done:** `sail verify`, `sail watch`, `sail serve`, `sail status`,
      `sail cache`, and the MCP server `sail mcp` (ADR 0016).
+   - **In review:** `sail bench` delegates to the benchmark binary.
 3. **Agent ergonomics.**
    - **Done:** function attribution, the ledger and `--output json` schema v1
      (ADR 0014).
    - **Done:** fragility measurement: `sail fragility`, `sail-bench
      fragility` and the fragility census (ADR 0018).
-   - **Next:** feeding fragility into `--output json` and the MCP
-     `fragility` tool through the ledger's function attribution; then
-     racing and the opt-in portfolio mode.
+   - **In review:** exact function scores in JSON/MCP and sequential,
+     complete-run `accept-first-proof` portfolios (ADRs 0018, 0020).
+     Every winning attempt independently proves the requested scope.
+     Racing is deferred; seed successes are never assembled across runs.
 4. **Benchmarks.**
    - **Done:** cold, warm, edit, agent-loop and history-replay workloads, all
      local-only (ADR 0013).
 5. **Corpus.**
    - **Done:** fast and standard tiers, plus a secondary Verus pin and
      `docs/compatibility.md`.
-   - **In progress:** `rust_verify_test` in the deep tier.
-   - **Open:** Singular, which needs a Singular-enabled Verus build.
+   - **In review:** the exclusive, strict `rust_verify_test` deep suite and
+     optional Singular source-build validation (ADRs 0019, 0021).
 6. **CI.**
-   - **Done:** a container image, with five fast per-PR checks only
+   - **Done:** a container image, with six fast per-PR checks only
      (ADR 0013).
 
 ### Measured: warm solver pools would not pay off (2026-10-08)

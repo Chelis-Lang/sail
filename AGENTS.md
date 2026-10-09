@@ -159,7 +159,7 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   lines in the PR.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
-  suite (about 4,400 tests), plain vs `sail-z3` test by test, from a source
+  suite (4,695 cases, including 58 ignored), plain vs `sail-z3` test by test, from a source
   build of the pinned Verus commit that the step makes first under
   `<cache>/verus-src-build/<commit>` (`cargo xtask build-verus-source`).
   `cache` adds rounds with the cache daemon; ARGS such as `--filter modes::`

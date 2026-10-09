@@ -179,11 +179,13 @@ source-build selection. The required CI gates continue to use the binary release
 - A Verus pin change needs a new source build (`<cache>/verus-src-build`
   is keyed by commit); old builds can be deleted by hand.
 
-## Results
+## Historical results (superseded for acceptance)
 
 Verus `0.2026.10.04.426d8b0`, Z3 4.16.0, 2026-10-09. Development machine
 (macOS arm64, 8 cores, shared: load average 20 to 50 throughout), 4 tests
-at a time. No run found a sail difference.
+at a time. These historical runs used the broad varying-line classifier.
+They do not establish acceptance of the strict comparator or corrected cache;
+the complete results below supersede them.
 
 | Run | Tests | Same | Unstable | Different | Wall |
 |---|---|---|---|---|---|

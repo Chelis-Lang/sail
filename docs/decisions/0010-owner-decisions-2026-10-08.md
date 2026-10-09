@@ -80,6 +80,6 @@ Item 4's `rust_verify_test` is in place (ADR 0019):
   vargo under `<cache>/verus-src-build/<commit>`, with the pinned z3.
 - **Run.** `ci/local.sh deep-rvt` (or `ci/run.sh deep-rvt` on the host)
   compares plain Verus and `sail-z3` test by test. It is local-only.
-- **Singular** is still not built: a Singular-enabled source build is
-  possible, but using it for the Singular corpus entries needs more than
-  the build (ADR 0019).
+- **Singular** uses a separate optional source build and pinned local image
+  (ADR 0021). Tagged integer-ring and allocator corpus entries are compared
+  in pass-through, fill and warm modes; results are in `docs/compatibility.md`.
