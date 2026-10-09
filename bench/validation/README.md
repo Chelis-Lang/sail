@@ -6,15 +6,15 @@ Every comparison checks verdicts and diagnostics against plain Verus. All
 396 unit comparisons matched; each round compared 311 functions.
 
 The metric sums individual unit wall times, rather than parallel elapsed time.
-Median fill changed from 70.9 s to 77.4 s (+9.2%), with ranges 40.6–82.9 s and
-38.1–180.5 s. Median warm changed from 42.3 s to 35.3 s (-16.4%), with ranges
-33.4–62.7 s and 30.4–71.8 s. Concurrent development, compilation and source
+Median fill changed from 39.6 s to 39.1 s (-1.1%), with ranges 35.5–41.1 s and
+37.7–55.5 s. Median warm changed from 29.9 s to 34.9 s (+16.7%), with ranges 29.5–49.9 s and
+32.7–35.3 s. Concurrent development, compilation and source
 conformance ran on this secondary macOS machine. These overlapping ranges
 establish neither a stable speedup nor a stable regression.
 
-The after variants have identical active cached-session code; the later revision
-also moves unused shared-store files to their new safe directory. Shared storage
-was disabled during this probe. Source reports are retained locally; their
+The after variant includes immediate `(exit)` completion as well as safe publication
+and exact complete-input silence records. Shared storage was disabled during this
+probe. Source reports are retained locally; their
 SHA-256 hashes and summaries are in the artifact, without local paths.
 
 To regenerate from a directory containing `old-1-fill/report.json` through

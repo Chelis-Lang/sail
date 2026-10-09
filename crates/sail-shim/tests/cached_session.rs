@@ -493,3 +493,75 @@ fn cached_exit_does_not_wait_for_client_to_close_stdin() {
     assert_eq!(actual.stderr, direct.stderr);
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn closed_stderr_sink_does_not_deadlock_a_large_diagnostic() {
+    use std::os::fd::OwnedFd;
+    use std::os::unix::fs::PermissionsExt as _;
+    use std::os::unix::net::UnixStream;
+
+    let dir = scratch();
+    let real = serde_json::to_string(&z3()).unwrap_or_default();
+    let solver = dir.join("z3");
+    let script = format!(
+        "#!/usr/bin/env python3\nimport subprocess, sys\nif '-smt2' not in sys.argv:\n    sys.exit(subprocess.call([{real}] + sys.argv[1:]))\nsys.stderr.buffer.write(b'diagnostic\\n' * 100000)\nsys.stderr.buffer.flush()\n"
+    );
+    assert!(std::fs::write(&solver, script).is_ok());
+    assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+    let (sock, root) = (socket.clone(), cache.clone());
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &root, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let (reader, writer) = UnixStream::pair().unwrap_or_else(|e| unreachable!("stderr: {e}"));
+    drop(reader);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_sail-z3"))
+        .args(["-smt2", "-in"])
+        .env("SAIL_Z3_PATH", &solver)
+        .env("SAIL_DAEMON_SOCKET", &socket)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::from(OwnedFd::from(writer)))
+        .spawn()
+        .unwrap_or_else(|e| unreachable!("start: {e}"));
+    let mut input = child.stdin.take().unwrap_or_else(|| unreachable!("stdin"));
+    assert!(input.write_all(b"(check-sat)\n(exit)\n").is_ok());
+    drop(input);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while child.try_wait().ok().flatten().is_none() {
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            unreachable!("closed stderr sink blocked solver shutdown");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    let output = child
+        .wait_with_output()
+        .unwrap_or_else(|e| unreachable!("read: {e}"));
+    assert!(!output.status.success());
+    assert_eq!(output.stdout, [] as [u8; 0]);
+    let entries = std::fs::read_dir(cache.join("v2"))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .flat_map(|bucket| {
+            std::fs::read_dir(bucket.path())
+                .into_iter()
+                .flatten()
+                .flatten()
+        })
+        .count();
+    assert_eq!(
+        entries, 0,
+        "failed stderr forwarding must prevent publication"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

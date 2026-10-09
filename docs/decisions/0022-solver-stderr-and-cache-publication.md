@@ -27,6 +27,9 @@ Verus. The pump also prevents a large stderr stream filling the socket while
 stdout is idle. If the monitor cannot start, inherit stderr directly and disable
 publication; an observation failure never prevents solver replay. No unsafe
 code or dependency is added.
+If forwarding stderr fails, close the socket's read side so a solver writing
+a large diagnostic cannot deadlock on a full, unread buffer. No entry from that
+failed session is published.
 
 A fully cached prefix does not authorize new commands after its final reply.
 At EOF, skip the solver only with a silence record for the exact complete input,
@@ -57,6 +60,8 @@ Real Z3 warning input must give the same stdout, stderr and exit code through
 pass-through, fill and warm runs. Warning sessions must start Z3 again and
 publish no entry. Late stderr and stderr larger than the socket buffer exercise
 races and backpressure. A regression failed on the first fix when an added
+diagnostic filled the socket after the caller closed stderr; it now terminates
+without publication. Another regression failed when an added
 assertion warned after a cached version reply; it now checks warnings and error
 replies from new no-output suffixes, and proves unchanged quiet input avoids
 starting the solver. An open-stdin regression failed before the terminal-command
