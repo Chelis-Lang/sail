@@ -7,6 +7,8 @@
 
 mod fragility;
 mod fragility_join;
+mod jobs;
+mod managed_cli;
 mod measurement;
 mod ops;
 mod portfolio;
@@ -27,7 +29,8 @@ const COMMANDS: &[(&str, &str)] = &[
         "verify",
         "verify a crate; accepts the same arguments as `cargo verus verify`",
     ),
-    ("watch", "re-verify affected functions as files change"),
+    ("watch", "re-verify the workspace as files change"),
+    ("jobs", "inspect, follow, or cancel local verification jobs"),
     (
         "mcp",
         "serve verification to agents over MCP (stdio; see docs/mcp.md)",
@@ -53,7 +56,7 @@ fn usage() -> String {
     for (name, help) in COMMANDS {
         let _ = writeln!(text, "    {name:<10} {help}");
     }
-    text.push_str("\nVERIFY OPTIONS (before --):\n    --output json\n    --measure-fragility [--fragility-seeds N]\n    --portfolio accept-first-proof [--portfolio-seeds 1,2,...]\n    --portfolio-timeout-secs N\n");
+    text.push_str("\nVERIFY OPTIONS (before --):\n    --output json\n    --incremental\n    --background\n    --measure-fragility [--fragility-seeds N]\n    --portfolio accept-first-proof [--portfolio-seeds 1,2,...]\n    --portfolio-timeout-secs N\n");
     text
 }
 
@@ -77,6 +80,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
         }
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), err),
+        Some("jobs") => jobs::run(args.get(1..).unwrap_or_default(), out, err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),
         Some("cache") => ops::cache(args.get(1..).unwrap_or_default(), out, err),
         Some("mcp") => mcp(args.get(1..).unwrap_or_default(), err),
@@ -278,6 +282,28 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         root.display(),
         root.join("daemon.log").display()
     );
+    let executable = match std::env::current_exe() {
+        Ok(path) => path,
+        Err(e) => {
+            let _ = writeln!(err, "error[SAIL0800]: cannot locate job worker: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let job_server = match sail_daemon::jobs::bind(
+        &sail_api::jobs::socket_path(&socket),
+        &root.join("projects/jobs"),
+        &executable,
+    )
+    .and_then(sail_daemon::jobs::JobServer::spawn)
+    {
+        Ok(handle) => handle,
+        Err(e) => {
+            let _ = writeln!(err, "error[SAIL0800]: cannot start job service: {e}");
+            return ExitCode::from(2);
+        }
+    };
+    let mut job_server = job_server;
+    let activity = job_server.activity();
     let handle = server.handle();
     let signals = signal_hook::iterator::Signals::new([
         signal_hook::consts::SIGINT,
@@ -293,7 +319,9 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
                 }
             });
     }
-    match server.run() {
+    let result = server.run_with_activity(activity);
+    job_server.shutdown();
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             let _ = writeln!(err, "error[SAIL0003]: daemon failed: {e}");
@@ -309,6 +337,9 @@ fn serve(_args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
 }
 
 fn main() -> ExitCode {
+    if let Some(exit) = sail_verus::adapter::dispatch() {
+        return exit;
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     run(&args, &mut std::io::stdout(), &mut std::io::stderr())
 }
