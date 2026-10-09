@@ -12,7 +12,7 @@
 //!
 //! **Function attribution.** The solver's input carries no function names.
 //! A check is attributed to a function only when Verus's `--time` breakdown
-//! for its unit lists exactly one function (for example a run restricted
+//! for its unit lists exactly one function that used solver effort (for example a run restricted
 //! with `--verify-function`). Otherwise results are per (session, check)
 //! and per unit; ADR 0014 records the limitation, which the ledger's
 //! function attribution will lift.
@@ -132,6 +132,9 @@ fn unit_dir(index: usize) -> String {
 struct Capture {
     exit_code: Option<i32>,
     functions: Vec<String>,
+    /// Functions that used solver effort (`rlimit > 0`); under
+    /// `--verify-function` the others are listed but not verified.
+    solved: Vec<String>,
     failed: Vec<String>,
     error: Option<String>,
 }
@@ -178,6 +181,11 @@ fn capture_units(
                         .filter(|f| !f.success)
                         .map(|f| f.function.clone())
                         .collect(),
+                    solved: fns
+                        .iter()
+                        .filter(|f| f.rlimit > 0)
+                        .map(|f| f.function.clone())
+                        .collect(),
                     functions: fns.into_iter().map(|f| f.function).collect(),
                     error: None,
                 }
@@ -185,6 +193,7 @@ fn capture_units(
             Err(e) => Capture {
                 exit_code: None,
                 functions: Vec::new(),
+                solved: Vec::new(),
                 failed: Vec::new(),
                 error: Some(e.to_string()),
             },
@@ -241,7 +250,7 @@ pub fn census(
     };
     for c in &mut report.checks {
         if let Some(cap) = unit_of(&c.session).and_then(|i| captures.get(i))
-            && let [only] = cap.functions.as_slice()
+            && let [only] = cap.solved.as_slice()
         {
             c.function = Some(only.clone());
         }

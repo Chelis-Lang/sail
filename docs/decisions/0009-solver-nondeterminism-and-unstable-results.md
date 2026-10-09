@@ -105,3 +105,83 @@ effort.
   Older clients ignore it.
 - The shim decides. If a daemon sends no trailer, the shim refuses to serve
   the `unknown`.
+
+## Update 2026-10-09: fragility census and a calibrated threshold (recommendation)
+
+The fragility census (ADR 0014) gives the calibration data this ADR asked
+for. **This update recommends a threshold; it does not change the serving
+policy.** The owner decides.
+
+**Census.**
+- **Fast tier, 147 units.** That is 763 solver sessions and 4,086 checks,
+  each re-run under 8 configurations: the unmodified session and seeds 1
+  to 7 (`bench/results/fragility-census-fast-arm64-macos-devload-2026-10-08.json`).
+- **Run twice.** The two runs agreed on every reported check and every
+  class count. Their distributions differed only in the sixth digit of
+  the means, which is the known nonlinear `rlimit` jitter.
+- **Stability.** 3,986 checks were proved under every configuration, 97 were
+  proved under none, and 3 were **unstable**: proved under some
+  configurations and not others. All 3 are in `human-eval-verus`, and plain
+  Verus (the unmodified session) proves all 3.
+- **Unknowns with a recorded reason.** There were 776 such answers (check
+  times configuration), on 97 checks.
+  - Every one reports `(incomplete quantifiers)`.
+  - Each used at most **0.0089%** of its limit (median 0.0048%).
+  - None of these checks was proved under any configuration.
+- **Every answer flip was a resource exhaustion.**
+  - The 4 `unknown` answers in the 3 unstable checks each used exactly 100%
+    of the limit. The other configurations proved those checks using 6% to
+    99% of it:
+    - limit 30M: proved at 6–53%, exhausted under seed 3;
+    - limit 30M: proved at 10–99% (82% unmodified), exhausted under seed 3;
+    - limit 600M: proved at 6–43%, exhausted under seeds 1 and 3.
+  - **`page-table`'s `allocate` (VI-0002) behaves the same way.** It was
+    measured alone (`--verify-function`). It exhausted its 3,000M limit
+    under 7 of 8 configurations, and seed 4 proved it using 448M (15%).
+- **Seeds change effort a lot.** For the same check, the most effort over
+  the least effort across seeds is 1.0 at the median, 2.3 at p99 and
+  **37×** at most (`guide/iterators.rs` #3, always proved).
+
+**What this says about the threshold.**
+1. **The reason test decided every case; the 50% threshold decided none.**
+   Every answer that flipped was an exhaustion, which the reason test
+   refuses. Every non-exhaustion `unknown` sat more than 5,000× below 50%.
+2. **Unknowns cluster at the two extremes.** Non-exhaustion unknowns sit near
+   0% of the limit and never flip. Exhaustions sit at 100%. Nothing in the
+   corpus sits in between.
+3. **The threshold is a backstop** for a non-resource `unknown` whose effort
+   is high enough that a different search could have reached a proof. Seeds
+   move a check's effort by up to 37×, so an `unknown` that used a fraction
+   `f` of its limit could plausibly use up to `37f` under another search.
+   Keeping that below the limit needs `f < 1/37 ≈ 2.7%`.
+
+**Recommendation.** Serve a cached `unknown` only if both of these hold:
+- its reason is not resource exhaustion (unchanged);
+- it used **at most 1% of a non-zero limit**, down from 50%.
+
+The effects:
+- **Same answers served on this corpus.** The largest non-exhaustion
+  `unknown` is 0.0089% of the limit, 112× below 1%.
+- **Stays inside the worst observed seed spread.** A 37× swing from 1%
+  still reaches only 37% of the limit.
+- **The error is always on the safe side.** Refusing to serve costs only
+  a re-solve, which gives the answer the pinned Z3 gives. It never costs a
+  wrong answer.
+
+The 1% figure comes from the fast tier, on one machine, with 8 seeds.
+Recalibrate if either of these happens:
+- the standard-tier census (anvil, ironkv, page-table in full) finds a
+  non-exhaustion `unknown` above 0.1% of its limit;
+- a census finds a seed spread above 100×.
+
+**Two related observations.**
+- **Plain Verus proves a check at 82% of its limit** in human-eval (the 30M
+  check proved at 10–99%). One of the eight configurations exhausted it.
+  Serving its cached `unsat` is safe and already allowed, and the census
+  reports it as unstable.
+- **The census itself knows no `reason-unknown` for 4 `unknown` answers.**
+  A replay sends only the captured follow-ups, and Verus asks for a reason
+  only after a non-`unsat` answer. The census therefore treats an `unknown`
+  that reached the limit as an exhaustion, whatever is on record. The
+  shim's policy does not need this rule: it serves only entries recorded
+  with a reason.

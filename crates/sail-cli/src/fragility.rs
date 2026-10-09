@@ -3,10 +3,12 @@
 //! ```text
 //! sail fragility [--seeds N] [--shuffles K] [--jobs J] [--near-limit F] [--top K]
 //!                [--json] [--keep-traces DIR] [--traces DIR] [--z3 PATH]
-//!                [cargo verus verify arguments…]
+//!                [--focus] [cargo verus verify arguments…]
 //! ```
 //!
-//! Runs `cargo verus verify <arguments>` once, with `sail-z3` in pure
+//! Runs `cargo verus verify <arguments>` (or `cargo verus focus` with
+//! `--focus`, which partial verification such as `--verify-function`
+//! requires) once, with `sail-z3` in pure
 //! pass-through (no daemon, no cache) and tracing on, so every solver
 //! session is exactly what plain Verus sent. It adds `--output-json --time`
 //! after `--` (unless already given) to read Verus's per-function
@@ -42,6 +44,7 @@ struct Args {
     options: Options,
     top: usize,
     json: bool,
+    focus: bool,
     keep_traces: Option<PathBuf>,
     traces: Option<PathBuf>,
     z3: Option<PathBuf>,
@@ -54,6 +57,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         options: Options::default(),
         top: 10,
         json: false,
+        focus: false,
         keep_traces: None,
         traces: None,
         z3: None,
@@ -79,6 +83,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
                     .map_err(|_| "--near-limit needs a fraction".to_owned())?;
             }
             "--json" => a.json = true,
+            "--focus" => a.focus = true,
             "--keep-traces" => a.keep_traces = Some(value()?.into()),
             "--traces" => a.traces = Some(value()?.into()),
             "--z3" => a.z3 = Some(value()?.into()),
@@ -164,7 +169,7 @@ struct JsonOutput<'a> {
     /// Verus's per-function breakdown from the capture run.
     verus_functions: &'a [VerusFunction],
     /// Whether checks were attributed to a function (only when Verus
-    /// reported exactly one).
+    /// reported exactly one function that used solver effort).
     attributed: bool,
     /// The fragility report.
     report: &'a Report,
@@ -181,9 +186,11 @@ struct Captured {
     functions: Vec<VerusFunction>,
 }
 
-/// Runs `cargo verus verify` through the shim with tracing into `dir`.
+/// Runs `cargo verus <subcommand>` through the shim with tracing into
+/// `dir`.
 fn capture(
     cargo_verus: &Path,
+    subcommand: &str,
     shim: &Path,
     z3: &Path,
     dir: &Path,
@@ -191,7 +198,7 @@ fn capture(
 ) -> Result<Captured, String> {
     let output = Command::new(cargo_verus)
         .arg("verus")
-        .arg("verify")
+        .arg(subcommand)
         .args(with_verus_flags(args).iter().map(OsString::from))
         .env("VERUS_Z3_PATH", shim)
         .env("SAIL_Z3_PATH", z3)
@@ -277,7 +284,14 @@ pub fn fragility(
                 &format!("cannot create {}: {e}", dir.display()),
             );
         }
-        match capture(&cargo_verus, &shim, &z3, &dir, &a.passthrough) {
+        match capture(
+            &cargo_verus,
+            if a.focus { "focus" } else { "verify" },
+            &shim,
+            &z3,
+            &dir,
+            &a.passthrough,
+        ) {
             Ok(c) => (dir, Some(c), temporary),
             Err(e) => return fail(err, "SAIL0105", &e),
         }
@@ -348,9 +362,13 @@ fn measure(
         return Err(format!(
             "no solver sessions were captured in {}{}",
             dir.display(),
-            captured
-                .and_then(|c| c.exit_code)
-                .map_or_else(String::new, |c| format!(" (Verus exited {c})"))
+            match captured.and_then(|c| c.exit_code) {
+                Some(0) => " (Verus exited 0: Cargo may have found the crate up to date; \
+                            change a source file or run `cargo clean -p <crate>`, then retry)"
+                    .to_owned(),
+                Some(c) => format!(" (Verus exited {c})"),
+                None => String::new(),
+            }
         ));
     }
     let solver = Solver {
@@ -360,7 +378,13 @@ fn measure(
     let mut report =
         fragility::measure(&solver, &found, &a.options, |_, _| {}).map_err(|e| e.to_string())?;
     let names: Vec<String> = captured
-        .map(|c| c.functions.iter().map(|f| f.function.clone()).collect())
+        .map(|c| {
+            c.functions
+                .iter()
+                .filter(|f| f.rlimit > 0)
+                .map(|f| f.function.clone())
+                .collect()
+        })
         .unwrap_or_default();
     let attributed = fragility::attribute_single_function(&mut report, &names);
     Ok((report, attributed))
@@ -376,10 +400,12 @@ mod tests {
 
     #[test]
     fn parses_sail_flags_then_passes_the_rest_through() {
-        let a = parse(&strings("--seeds 3 --json -p demo -- --verify-function f"));
+        let a = parse(&strings(
+            "--seeds 3 --json --focus -p demo -- --verify-function f",
+        ));
         let Ok(a) = a else { unreachable!("{a:?}") };
         assert_eq!(a.options.seeds, 3);
-        assert!(a.json);
+        assert!(a.json && a.focus);
         assert_eq!(a.passthrough, strings("-p demo -- --verify-function f"));
         // A sail flag after the first cargo argument belongs to cargo.
         let a = parse(&strings("-p demo --seeds 3"));

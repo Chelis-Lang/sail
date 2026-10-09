@@ -114,13 +114,20 @@ Constraints:
     whether another configuration proved the check (ADR 0009's calibration
     data);
   - the baseline replay compared with the capture.
+- **Unknowns with no reason on record.** A replay sends only the captured
+  follow-ups, and Verus asks for `reason-unknown` only after a non-`unsat`
+  answer. A configuration that fails a check the capture proved therefore
+  has no reason on record. Such an `unknown` counts as an exhaustion when
+  its delta reached the limit. It never counts as a non-exhaustion give-up.
 
 ### Function attribution (minimal, pending the ledger)
 
 - **Results are keyed by (session, check).** A check gets a function name
   only when Verus's `--time` breakdown for the run lists **exactly one**
-  function, for example under `--verify-function`. Otherwise it stays
-  unattributed. A wrong name would be worse than none.
+  function that used solver effort (`rlimit > 0`), for example under
+  `--verify-function`. Verus also lists the functions it skipped there,
+  with an `rlimit` of 0. Otherwise the check stays unattributed. A wrong
+  name would be worse than none.
 - **Why the obvious heuristics fail.** On `examples/assertions.rs`:
   - the per-query `req%`/`ens%` declarations name callees, not the function
     being checked;
@@ -137,10 +144,15 @@ Constraints:
 
 - **`sail fragility`** (`sail-cli`; user-facing, as the charter's
   "fragility measurement" feature):
-  - Usage: `[--seeds N] [--shuffles K] [--jobs J] [--json] [--keep-traces DIR | --traces DIR] [--z3 PATH] [cargo verus verify args…]`.
+  - Usage: `[--seeds N] [--shuffles K] [--jobs J] [--json] [--keep-traces DIR | --traces DIR] [--z3 PATH] [--focus] [cargo verus verify args…]`.
   - It runs `cargo verus verify` once, through `sail-z3` in pure
-    pass-through with tracing: no daemon, no cache. It adds
+    pass-through with tracing: no daemon, no cache. With `--focus` it runs
+    `cargo verus focus` instead, which partial verification needs. It adds
     `--output-json --time` after `--`.
+  - Example for one function:
+    `sail fragility --focus -- --verify-root --verify-function max`.
+  - If Cargo considers the crate up to date, Verus does not run and
+    nothing is captured. The error says so.
   - It then measures and prints a summary, or the whole report with
     `--json`.
   - It never reads or writes the cache, so it cannot affect `sail verify`'s

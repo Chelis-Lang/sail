@@ -81,11 +81,15 @@ fn check_line(out: &mut String, c: &CheckFragility) {
         .collect();
     let _ = writeln!(
         out,
-        "| `{}` #{} | {} | {} | {}/{} | {} | {} | {} |",
+        "| `{}` #{} | {} | {} | {} | {}/{} | {} | {} | {} |",
         c.session,
         c.seq,
         c.function.as_deref().unwrap_or("-"),
         c.stability.name(),
+        c.answers
+            .first()
+            .and_then(Option::as_deref)
+            .unwrap_or("n/a"),
         c.proved,
         c.answers.len(),
         effort,
@@ -147,9 +151,11 @@ pub fn render(out: &mut String, name: &str, c: &CensusFile) {
         .collect();
     let _ = writeln!(
         out,
-        "`unknown` answers: {} checks answered `unknown` under some configuration, {} of them proved under another. Share of the limit used by an `unknown`: p50 {}, p99 {}, max {}; largest for a reason other than resource exhaustion: {}. Reasons: {}.\n",
+        "`unknown` answers: {} checks answered `unknown` under some configuration, {} of them proved under another. {} `unknown` answers reached the limit; {} have no reason on record (a replay sends only the captured follow-ups). Share of the limit used by an `unknown`: p50 {}, p99 {}, max {}; largest with a recorded reason other than resource exhaustion: {}. Reasons: {}.\n",
         u.checks,
         u.proved_elsewhere,
+        u.at_limit,
+        u.without_reason,
         pct(u.used_fraction.p50),
         pct(u.used_fraction.p99),
         pct(u.used_fraction.max),
@@ -245,7 +251,7 @@ fn groups(out: &mut String, c: &CensusFile) {
     shown.sort_by(|a, b| b.score.total_cmp(&a.score));
     let _ = writeln!(
         out,
-        "Most fragile checks (top 10 by score):\n\n| Check | Function | Class | Proved | Effort (rlimit units) | Max used | Answers |\n|---|---|---|---:|---:|---:|---|"
+        "Most fragile checks (top 10 by score):\n\n| Check | Function | Class | Baseline | Proved | Effort (rlimit units) | Max used | Answers |\n|---|---|---|---|---:|---:|---:|---|"
     );
     for check in shown.iter().take(10) {
         check_line(out, check);

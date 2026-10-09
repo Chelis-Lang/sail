@@ -195,7 +195,10 @@ pub struct CheckFragility {
     pub limit: Option<u64>,
     /// The answer under each configuration, in configuration order.
     pub answers: Vec<Option<String>>,
-    /// The `:reason-unknown` reply under each configuration, if any.
+    /// The reply to the captured `get-info :reason-unknown` follow-up under
+    /// each configuration, if the capture sent one. It is present even
+    /// after an `unsat` answer when the capture asked; summaries use it
+    /// only for `unknown` answers.
     pub reasons: Vec<Option<String>>,
     /// The `rlimit-count` delta under each configuration.
     pub rlimit: Vec<Option<u64>>,
@@ -417,9 +420,19 @@ pub struct UnknownSummary {
     /// The used/limit fraction of each `unknown` answer (per check and
     /// configuration), where a limit and delta are known.
     pub used_fraction: FloatDistribution,
-    /// The largest used/limit fraction of any `unknown` whose reason does
-    /// not indicate resource exhaustion.
+    /// The largest used/limit fraction of any `unknown` with a recorded
+    /// reason that does not indicate resource exhaustion.
     pub max_used_fraction_not_exhausted: Option<f64>,
+    /// `unknown` answers with no `:reason-unknown` reply. A replay sends
+    /// only the captured follow-ups, and Verus asks for a reason only after
+    /// an answer other than `unsat`, so a configuration that fails a check
+    /// the capture proved has no reason on record.
+    #[serde(default)]
+    pub without_reason: usize,
+    /// `unknown` answers whose delta reached the limit (resource
+    /// exhaustion, whatever the reason on record).
+    #[serde(default)]
+    pub at_limit: usize,
 }
 
 /// Seed-0 replay versus the captured session.
@@ -495,6 +508,7 @@ pub fn summarise(checks: &[CheckFragility], near_limit: f64, baseline: BaselineC
     let mut reasons = BTreeMap::new();
     let mut unknown_fracs = Vec::new();
     let mut max_not_exhausted: Option<f64> = None;
+    let (mut without_reason, mut at_limit) = (0, 0);
     for c in checks {
         *by_class.entry(c.stability.name().to_owned()).or_insert(0) += 1;
         for (k, n) in &c.answer_counts {
@@ -509,13 +523,15 @@ pub fn summarise(checks: &[CheckFragility], near_limit: f64, baseline: BaselineC
                 continue;
             }
             any_unknown = true;
-            if let Some(r) = r {
-                *reasons.entry(r.clone()).or_insert(0) += 1;
+            match r {
+                Some(r) => *reasons.entry(r.clone()).or_insert(0) += 1,
+                None => without_reason += 1,
             }
             if let (Some(d), Some(l)) = (d, c.limit.filter(|l| *l > 0)) {
                 let f = as_f64(*d) / as_f64(l);
                 unknown_fracs.push(f);
-                if !r.as_deref().is_some_and(reason_is_exhaustion) {
+                at_limit += usize::from(*d >= l);
+                if r.as_deref().is_some_and(|r| !reason_is_exhaustion(r)) {
                     max_not_exhausted = Some(max_not_exhausted.map_or(f, |m| m.max(f)));
                 }
             }
@@ -557,6 +573,8 @@ pub fn summarise(checks: &[CheckFragility], near_limit: f64, baseline: BaselineC
             reasons,
             used_fraction: FloatDistribution::of(&unknown_fracs),
             max_used_fraction_not_exhausted: max_not_exhausted,
+            without_reason,
+            at_limit,
         },
         baseline_vs_recorded: baseline,
     }
@@ -771,8 +789,10 @@ fn analyse_session(
         .collect()
 }
 
-/// Attributes every check to `functions[0]` when Verus reported exactly one
-/// function for the run (for example under `--verify-function`), and
+/// Attributes every check to `functions[0]` when the caller found exactly
+/// one function that used solver effort in the run (for example under
+/// `--verify-function`, where Verus also lists unverified functions with
+/// an `rlimit` of 0), and
 /// rebuilds [`Report::functions`]. With more than one function, checks stay
 /// unattributed: the solver's input carries no function names, and a wrong
 /// attribution would be worse than none (ADR 0014). Returns whether
@@ -1006,23 +1026,50 @@ mod tests {
             20,
             Some("(:reason-unknown \"(incomplete quantifiers)\")"),
         );
-        let x = obs("unknown", 900, Some("(:reason-unknown \"canceled\")"));
+        let exhausted = obs("unknown", 900, Some("(:reason-unknown \"canceled\")"));
         let mut checks = vec![
             analyse_check("a", 0, None, Some(1000), &[Some(&p), Some(&p)]),
             analyse_check("a", 1, None, Some(1000), &[Some(&q), Some(&q)]),
-            analyse_check("b", 0, None, Some(1000), &[Some(&p), Some(&x)]),
+            analyse_check("b", 0, None, Some(1000), &[Some(&p), Some(&exhausted)]),
         ];
-        let s = summarise(&checks, 0.5, BaselineCheck::default());
-        assert_eq!(s.checks, 3);
-        assert_eq!(s.by_class.get("unstable"), Some(&1));
-        assert_eq!(s.unknown.checks, 2);
-        assert_eq!(s.unknown.proved_elsewhere, 1);
-        assert_eq!(s.unknown.max_used_fraction_not_exhausted, Some(0.02));
-        assert_eq!(s.near_limit, 1);
-        assert_eq!(s.answer_unstable, 1);
-        let total: usize = s.used_fraction_histogram.iter().map(|b| b.checks).sum();
+        let summary = summarise(&checks, 0.5, BaselineCheck::default());
+        assert_eq!(summary.checks, 3);
+        assert_eq!(summary.by_class.get("unstable"), Some(&1));
+        assert_eq!(summary.unknown.checks, 2);
+        assert_eq!(summary.unknown.proved_elsewhere, 1);
+        assert_eq!(summary.unknown.max_used_fraction_not_exhausted, Some(0.02));
+        assert_eq!(
+            (summary.unknown.without_reason, summary.unknown.at_limit),
+            (0, 0)
+        );
+        // An unknown with no reason on record never counts as a
+        // non-exhausted give-up, and one at the limit counts as exhausted.
+        let n = CheckObservation {
+            followups: vec![],
+            ..obs("unknown", 1000, None)
+        };
+        let lone = [analyse_check(
+            "c",
+            0,
+            None,
+            Some(1000),
+            &[Some(&p), Some(&n)],
+        )];
+        let l = summarise(&lone, 0.5, BaselineCheck::default());
+        assert_eq!(l.unknown.max_used_fraction_not_exhausted, None);
+        assert_eq!((l.unknown.without_reason, l.unknown.at_limit), (1, 1));
+        assert_eq!(summary.near_limit, 1);
+        assert_eq!(summary.answer_unstable, 1);
+        let total: usize = summary
+            .used_fraction_histogram
+            .iter()
+            .map(|b| b.checks)
+            .sum();
         assert_eq!(total, 3);
-        assert_eq!(s.used_fraction_histogram.last().map(|b| b.checks), Some(0));
+        assert_eq!(
+            summary.used_fraction_histogram.last().map(|b| b.checks),
+            Some(0)
+        );
         let groups = group(&checks, |c| Some(c.session.clone()));
         assert_eq!(groups.len(), 2);
         assert_eq!(groups[0].stability, Stability::StableUnproved);

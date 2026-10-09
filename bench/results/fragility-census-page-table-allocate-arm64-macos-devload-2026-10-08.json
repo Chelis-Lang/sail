@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "workload": "fragility",
+  "tier": "standard",
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "sail_commit": "0a0a3a985070",
+  "started_unix": 1791501673,
+  "machine": {
+    "cpu": "Apple M3",
+    "cpus": "8",
+    "host": "aarch64-apple-darwin",
+    "memory_bytes": "25769803776",
+    "uname": "Darwin 25.5.0 arm64"
+  },
+  "solver": {
+    "path": "/Users/jeff/.cache/sail/verus/0.2026.10.04.426d8b0/verus-arm64-macos/z3",
+    "version": "Z3 version 4.16.0 - 64 bit",
+    "sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+  },
+  "configs": [
+    "baseline",
+    "seed=1",
+    "seed=2",
+    "seed=3",
+    "seed=4",
+    "seed=5",
+    "seed=6",
+    "seed=7"
+  ],
+  "near_limit": 0.5,
+  "extra_verus_args": [
+    "--verify-only-module",
+    "impl_u::wrapped_token",
+    "--verify-function",
+    "WrappedMapToken::allocate"
+  ],
+  "units": [
+    {
+      "id": "page-table/page-table/src/lib.rs",
+      "exit_code": 1,
+      "functions": 1,
+      "failed_functions": [
+        "lib::impl_u::wrapped_token::WrappedMapToken::allocate"
+      ],
+      "sessions": 1,
+      "checks": 1,
+      "stability": "unstable",
+      "by_class": {
+        "unstable": 1
+      },
+      "score": 1.0,
+      "max_used_fraction": 1.0,
+      "max_cv": 0.31479777809090603,
+      "error": null
+    }
+  ],
+  "summary": {
+    "checks": 1,
+    "by_class": {
+      "unstable": 1
+    },
+    "answer_unstable": 1,
+    "answers": {
+      "unknown": 7,
+      "unsat": 1
+    },
+    "effort_cv": {
+      "count": 1,
+      "mean": 0.31479777809090603,
+      "p50": 0.31479777809090603,
+      "p90": 0.31479777809090603,
+      "p99": 0.31479777809090603,
+      "max": 0.31479777809090603,
+      "zeros": 0
+    },
+    "effort_ratio": {
+      "count": 1,
+      "mean": 6.6955471504715485,
+      "p50": 6.6955471504715485,
+      "p90": 6.6955471504715485,
+      "p99": 6.6955471504715485,
+      "max": 6.6955471504715485,
+      "zeros": 0
+    },
+    "used_fraction": {
+      "count": 1,
+      "mean": 1.0,
+      "p50": 1.0,
+      "p90": 1.0,
+      "p99": 1.0,
+      "max": 1.0,
+      "zeros": 0
+    },
+    "used_fraction_histogram": [
+      {
+        "lo": 0.0,
+        "hi": 0.00001,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.00001,
+        "hi": 0.0001,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.0001,
+        "hi": 0.001,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.001,
+        "hi": 0.01,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.01,
+        "hi": 0.1,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.1,
+        "hi": 0.25,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.25,
+        "hi": 0.5,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.5,
+        "hi": 0.75,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 0.75,
+        "hi": 1.0,
+        "checks": 0,
+        "with_unknown": 0,
+        "unstable": 0
+      },
+      {
+        "lo": 1.0,
+        "hi": null,
+        "checks": 1,
+        "with_unknown": 1,
+        "unstable": 1
+      }
+    ],
+    "near_limit": 1,
+    "score": {
+      "count": 1,
+      "mean": 1.0,
+      "p50": 1.0,
+      "p90": 1.0,
+      "p99": 1.0,
+      "max": 1.0,
+      "zeros": 0
+    },
+    "unknown": {
+      "checks": 1,
+      "proved_elsewhere": 1,
+      "reasons": {
+        "(:reason-unknown \"canceled\")": 7
+      },
+      "used_fraction": {
+        "count": 7,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p90": 1.0,
+        "p99": 1.0,
+        "max": 1.0,
+        "zeros": 0
+      },
+      "max_used_fraction_not_exhausted": null,
+      "without_reason": 0,
+      "at_limit": 7
+    },
+    "baseline_vs_recorded": {
+      "answers_compared": 1,
+      "answer_mismatches": 0,
+      "rlimit_compared": 1,
+      "rlimit_mismatches": 0
+    }
+  },
+  "functions": [
+    {
+      "name": "lib::impl_u::wrapped_token::WrappedMapToken::allocate",
+      "checks": 1,
+      "stability": "unstable",
+      "by_class": {
+        "unstable": 1
+      },
+      "min_proved_fraction": 0.125,
+      "max_used_fraction": 1.0,
+      "max_cv": 0.31479777809090603,
+      "score": 1.0
+    }
+  ],
+  "notable": [
+    {
+      "session": "page-table/page-table/src/lib.rs/81716-1791501681902362000",
+      "seq": 0,
+      "function": "lib::impl_u::wrapped_token::WrappedMapToken::allocate",
+      "recorded": "unknown",
+      "limit": 3000000000,
+      "answers": [
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "unsat",
+        "unknown",
+        "unknown",
+        "unknown"
+      ],
+      "reasons": [
+        "(:reason-unknown \"canceled\")",
+        "(:reason-unknown \"canceled\")",
+        "(:reason-unknown \"canceled\")",
+        "(:reason-unknown \"canceled\")",
+        "(:reason-unknown \"unknown\")",
+        "(:reason-unknown \"canceled\")",
+        "(:reason-unknown \"canceled\")",
+        "(:reason-unknown \"canceled\")"
+      ],
+      "rlimit": [
+        3000000000,
+        3000000000,
+        3000000000,
+        3000000000,
+        448058976,
+        3000000000,
+        3000000000,
+        3000000000
+      ],
+      "answer_counts": {
+        "unknown": 7,
+        "unsat": 1
+      },
+      "proved": 1,
+      "proved_fraction": 0.125,
+      "effort": {
+        "min": 448058976,
+        "median": 3000000000,
+        "max": 3000000000,
+        "cv": 0.31479777809090603
+      },
+      "max_used_fraction": 1.0,
+      "margin": 0.0,
+      "stability": "unstable",
+      "score": 1.0
+    }
+  ],
+  "infra": [],
+  "unpaired_runs": [],
+  "capture_ms": 2271298,
+  "replay_ms": 6925412
+}
