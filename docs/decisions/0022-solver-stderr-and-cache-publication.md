@@ -38,7 +38,9 @@ A missing or corrupt record costs a replay. It is evidence of observed silence,
 not a proof certificate.
 
 Local entry format 2 and shared signed format 2 reject older entries whose
-silence was never established. Protocol version 3 and its default socket
+silence was never established. New shared entries use `<store>/v2` so immutable
+old shared files cannot block safe publication. Local `sail cache verify --remove`
+can discard retired entries in one scan before refilling. Protocol version 3 and its default socket
 refuse older daemons. Version 2 is reserved for the concurrent portfolio work;
 its later integration uses a separate protocol version. Query keys retain the
 same input/history/identity definition; output effort never enters a key.
