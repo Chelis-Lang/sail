@@ -28,6 +28,14 @@ def render(result, filename):
 if __name__ == '__main__':
     source = pathlib.Path(__file__).with_name('cost-aarch64-macos-devload-2026-10-09.json')
     try:
-        pathlib.Path(__file__).with_name('README.md').write_text(render(json.loads(source.read_text()), source.name))
+        text = render(json.loads(source.read_text()), source.name)
+        proof_file = pathlib.Path(__file__).with_name('page-table-allocate-aarch64-macos-2026-10-09.json')
+        if proof_file.exists():
+            proof = json.loads(proof_file.read_text())
+            function = proof['functions'][0]
+            text += '\n## Independent allocation proof\n\n'
+            text += f"Retained in `{proof_file.name}`: seed {proof['winner_seed']} proved exactly `{proof['scope']}` on macOS arm64 at `--rlimit 20`, with {function['timing']['rlimit']:,} resource units and zero errors. "
+            text += 'The unchanged baseline reached its wall timeout. Both attempts, solver hash and proving configuration are retained. This confirms only the requested allocation function, not the entire page-table crate, and is not a reference-platform speedup benchmark.\n'
+        pathlib.Path(__file__).with_name('README.md').write_text(text)
     except (OSError, ValueError, KeyError) as error:
         sys.exit(f'error[SAIL0116]: cannot render portfolio probe: {error}')
