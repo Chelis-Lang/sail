@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "scope": "33 pinned Verus guide units; three fill/warm rounds per variant",
+  "before_revision": "a7d9294b5031683a7e7551327f15030317e1e22a",
+  "after_revisions": [
+    "01850e1ea5be5f8f13fcc75e6edc434307cc2e67"
+  ],
+  "after_changes": "silent-session publication, complete-input silence records and immediate exit completion; shared store disabled",
+  "load": "concurrent development, source conformance and compilation; no idle-machine claim",
+  "metric": "sum of per-unit Sail wall times; parallel elapsed time is different",
+  "round_order": [
+    [
+      "old",
+      "new"
+    ],
+    [
+      "new",
+      "old"
+    ],
+    [
+      "old",
+      "new"
+    ]
+  ],
+  "records": [
+    {
+      "name": "old-1-fill",
+      "report_sha256": "ad36b6512d01a1a3a90511e8aee6f9a957a58cd946801fe7b494be37a18d21b1",
+      "started_unix": 1791566005,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 41.076838126
+    },
+    {
+      "name": "old-2-fill",
+      "report_sha256": "d1bbd966f02b44d339fa1e840cf343a5dd98496a8834ae21a860c446259c688d",
+      "started_unix": 1791566159,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 39.557903378999995
+    },
+    {
+      "name": "old-3-fill",
+      "report_sha256": "a828139de5da7ace1307535ce790162b4a105cfe42bf4e42fbb2b81a06beb7dd",
+      "started_unix": 1791566209,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 35.47183053999999
+    },
+    {
+      "name": "old-1-warm",
+      "report_sha256": "c262b56201e6dfb1c5e246395096ed29b84a6d9ba1c00a8a2d3946de93db08e3",
+      "started_unix": 1791566033,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 29.543609206999996
+    },
+    {
+      "name": "old-2-warm",
+      "report_sha256": "7511941e685f6c2c16640aaff8b08bb0d2b103b45abd47fef3b6edf962ad04c5",
+      "started_unix": 1791566186,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 29.910066123999997
+    },
+    {
+      "name": "old-3-warm",
+      "report_sha256": "b60f966f1428c9092906edc11a9cc9990256761b7bd2ead3cd330403a4219ab7",
+      "started_unix": 1791566233,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 49.908491289
+    },
+    {
+      "name": "new-1-fill",
+      "report_sha256": "a98bf20f19e50e59fcb6179274b37eb176c9da2661486765ad6755070ed275af",
+      "started_unix": 1791566056,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 37.668994919
+    },
+    {
+      "name": "new-2-fill",
+      "report_sha256": "3843bf2f1fac4a0ae044ef4ad7b702cac2426e1879308fbb6c48a7fb7a918284",
+      "started_unix": 1791566107,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 39.111774501000006
+    },
+    {
+      "name": "new-3-fill",
+      "report_sha256": "38e087f085ba551b6b7c50e6b4d8cc051a879759506627733c7054509ed63f83",
+      "started_unix": 1791566269,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 55.463925540999995
+    },
+    {
+      "name": "new-1-warm",
+      "report_sha256": "3e9b48c39089c638237997814b95aa6014016d9728cbd7bb19111655a0478f0c",
+      "started_unix": 1791566081,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 35.27127891500001
+    },
+    {
+      "name": "new-2-warm",
+      "report_sha256": "6fef77c052acca1696c94e5cb483be67464fc5983edc5b86f47ffb6553de486b",
+      "started_unix": 1791566133,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 34.919086212
+    },
+    {
+      "name": "new-3-warm",
+      "report_sha256": "8c23b7056e3cf907e9c08f88003e45b8747821ba53881aca5b3aeb8d7b46ab0e",
+      "started_unix": 1791566306,
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "sail_wall_sum_s": 32.687774209
+    }
+  ],
+  "totals": {
+    "old-fill": {
+      "rounds_s": [
+        41.076838126,
+        39.557903378999995,
+        35.47183053999999
+      ],
+      "median_s": 39.557903378999995,
+      "min_s": 35.47183053999999,
+      "max_s": 41.076838126
+    },
+    "old-warm": {
+      "rounds_s": [
+        29.543609206999996,
+        29.910066123999997,
+        49.908491289
+      ],
+      "median_s": 29.910066123999997,
+      "min_s": 29.543609206999996,
+      "max_s": 49.908491289
+    },
+    "new-fill": {
+      "rounds_s": [
+        37.668994919,
+        39.111774501000006,
+        55.463925540999995
+      ],
+      "median_s": 39.111774501000006,
+      "min_s": 37.668994919,
+      "max_s": 55.463925540999995
+    },
+    "new-warm": {
+      "rounds_s": [
+        35.27127891500001,
+        34.919086212,
+        32.687774209
+      ],
+      "median_s": 34.919086212,
+      "min_s": 32.687774209,
+      "max_s": 35.27127891500001
+    }
+  },
+  "machine": {
+    "cpu": "Apple M3",
+    "cpus": "8",
+    "host": "aarch64-apple-darwin",
+    "memory_bytes": "25769803776",
+    "uname": "Darwin 25.5.0 arm64"
+  },
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "comparison": {
+    "fill": {
+      "median_delta_percent": -1.1277869651626249
+    },
+    "warm": {
+      "median_delta_percent": 16.74693752676375
+    }
+  },
+  "interpretation": "Ranges overlap widely; no stable speedup or regression is established."
+}

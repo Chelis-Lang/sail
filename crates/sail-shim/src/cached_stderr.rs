@@ -1,6 +1,7 @@
 //! Forward solver stderr and certify silence only after solver shutdown.
 
 use std::io::{Read, Write};
+use std::net::Shutdown;
 use std::os::fd::OwnedFd;
 use std::os::unix::net::UnixStream;
 use std::process::Stdio;
@@ -34,6 +35,11 @@ impl State {
                         .is_err()
                     {
                         self.failed = true;
+                        // Release the child's writer even when our stderr sink
+                        // is gone. Keeping a full unread socket would deadlock
+                        // a solver before it can produce stdout or exit.
+                        let _ = self.stream.shutdown(Shutdown::Read);
+                        self.eof = true;
                         break;
                     }
                 }
@@ -41,6 +47,8 @@ impl State {
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                 Err(_) => {
                     self.failed = true;
+                    let _ = self.stream.shutdown(Shutdown::Read);
+                    self.eof = true;
                     break;
                 }
             }
