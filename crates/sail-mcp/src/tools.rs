@@ -134,6 +134,7 @@ fn run_schema() -> Value {
             "package": string_schema("Verify only this workspace package (`-p`)."),
             "module": string_schema("Verify only this module and its descendants, relative to the crate root (Verus `--verify-module`, e.g. `arith` or `foo::bar`)."),
             "function": string_schema("Verify only this function (Verus `--verify-function`: a unique substring of the name, or a pattern with `*` at either end). It is looked up in `module`, or in the crate root if no module is given."),
+            "portfolio": {"type": "string", "enum": ["accept-first-proof"], "description": "Explicit opt-in: run complete independent Verus attempts and accept the first complete proof. May take much longer; records every attempt."},
             "cargo_args": list_schema("Extra `cargo verus verify` arguments (before `--`), e.g. [\"--release\"]."),
             "verus_args": list_schema("Extra Verus arguments (after `--`), e.g. [\"--rlimit\", \"30\"]."),
         }
@@ -734,6 +735,12 @@ fn fragility(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolR
         Ok(p) => p,
         Err(e) => return e,
     };
+    if request.portfolio.is_some() {
+        return ToolResult::error(
+            "Portfolio is available only on the verify tool".to_owned(),
+            json!({"error": "portfolio_requires_verify"}),
+        );
+    }
     if !has_fragility(&ctx.config.sail, &project) {
         return ToolResult::error(
             "Fragility measurement is not available yet: this sail has no `sail fragility` command. Use verify; each function's `unstable` flag marks answers that could differ between runs.".to_owned(),

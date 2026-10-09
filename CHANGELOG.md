@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Require reports for every requested verifying Cargo target before accepting
+  a portfolio proof; reject ambiguous or unsupported target coverage.
+
+- Exercise a real seeded proof, cold and warm, in the fast end-to-end check.
+  Bound daemon readiness to sixty seconds and fail early when the daemon exits.
+
+- Exclude skipped timing successes from function-scoped reports and portfolio
+  acceptance (pinned Verus issue VI-0009).
+
+- Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
+  selection, and isolated protocol-v4 cache namespaces (ADR 0020).
+
 - Avoid adding a second progress-suppression flag to the deep suite example
   that supplies it itself. Verification arguments remain identical on both sides.
 

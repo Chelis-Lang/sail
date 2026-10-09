@@ -1,0 +1,77 @@
+{
+  "verus_release": "0.2026.10.04.426d8b0",
+  "project_commit": "be21389554aa6d5e0f7ab98796fd03e04b6f34d4",
+  "source": "page-table/src/lib.rs",
+  "platform": "aarch64-macos",
+  "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+  "scope": "impl_u::wrapped_token::WrappedMapToken::allocate",
+  "flags": [
+    "--crate-type",
+    "lib",
+    "--rlimit",
+    "20",
+    "--cfg",
+    "feature=\"impl\"",
+    "--cfg",
+    "feature=\"hlspec_user\"",
+    "--no-report-long-running",
+    "--verify-only-module",
+    "impl_u::wrapped_token",
+    "--verify-function",
+    "WrappedMapToken::allocate"
+  ],
+  "exit_code": 0,
+  "winner_seed": 4,
+  "summary": {
+    "functions": 1,
+    "verified": 1,
+    "failed": 0,
+    "unknown": 0,
+    "provisional": 0,
+    "unstable": 0
+  },
+  "attempts": [
+    {
+      "configuration": {
+        "seed": 0
+      },
+      "verified": false,
+      "exit_code": null,
+      "wall_ms": 3600067.432542,
+      "error": "attempt timed out"
+    },
+    {
+      "configuration": {
+        "seed": 4
+      },
+      "verified": true,
+      "exit_code": 0,
+      "wall_ms": 705715.7177080001,
+      "error": null
+    }
+  ],
+  "functions": [
+    {
+      "function": "lib::impl_u::wrapped_token::WrappedMapToken::allocate",
+      "verdict": "verified",
+      "tier": "confirmed",
+      "timing": {
+        "smt_micros": 663477317,
+        "rlimit": 448058976
+      },
+      "provenance": {
+        "configuration": {
+          "seed": 4
+        },
+        "mode": "accept-first-proof",
+        "source": "fresh",
+        "checks_solved": 1,
+        "checks_served": 0,
+        "checks_unrecorded": 0
+      }
+    }
+  ],
+  "note": "One complete proof of the explicitly requested function. The unchanged baseline reached its wall timeout. This is not a whole-page-table proof or a reference-platform speedup benchmark. The function-specific rlimit attribute sets the observed effective limit to 3,000,000,000 despite the global --rlimit 20 flag.",
+  "effective_rlimit": 3000000000,
+  "resource_fraction": 0.149352992
+}

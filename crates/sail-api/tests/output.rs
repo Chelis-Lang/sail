@@ -57,6 +57,7 @@ fn full() -> Report {
         unstable: false,
         verus_success: Some(true),
         provenance: ProvenanceReport {
+            configuration: None,
             mode: "default".to_owned(),
             source: SourceSummaryName::Cache,
             checks_solved: 0,
@@ -85,6 +86,7 @@ fn full() -> Report {
         functions: vec![function],
     }];
     Report {
+        portfolio: None,
         schema_version: SCHEMA_VERSION,
         sail_version: "0.0.0".to_owned(),
         mode: "default".to_owned(),
@@ -126,6 +128,7 @@ fn full() -> Report {
 /// The smallest valid report: every optional field unset.
 fn minimal() -> Report {
     Report {
+        portfolio: None,
         schema_version: SCHEMA_VERSION,
         sail_version: "0.0.0".to_owned(),
         mode: "default".to_owned(),

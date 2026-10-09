@@ -27,6 +27,8 @@ pub const SLOT_OVERHEAD: u64 = 128;
 /// A cached reply with the effort its entry records.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Value {
+    /// The verification namespace, checked before serving.
+    pub mode: String,
     /// The exact reply bytes.
     pub reply: Vec<u8>,
     /// The entry's recorded effort, for `check-sat` replies.
@@ -255,6 +257,7 @@ mod tests {
 
     fn val(n: usize, b: u8) -> Arc<Value> {
         Arc::new(Value {
+            mode: "default".to_owned(),
             reply: vec![b; n],
             effort: None,
         })

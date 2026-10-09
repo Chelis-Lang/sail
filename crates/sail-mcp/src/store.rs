@@ -432,6 +432,7 @@ pub(crate) mod tests {
             unstable: false,
             verus_success: Some(verdict == VerdictName::Verified),
             provenance: ProvenanceReport {
+                configuration: None,
                 mode: "default".to_owned(),
                 source: SourceSummaryName::Unrecorded,
                 checks_solved: 0,
@@ -459,6 +460,7 @@ pub(crate) mod tests {
             functions,
         }];
         Report {
+            portfolio: None,
             schema_version: 1,
             sail_version: "0.0.0".to_owned(),
             mode: "default".to_owned(),

@@ -232,8 +232,16 @@ impl State {
     /// to a verified disk read, which refills the slot. A disk miss, for a
     /// session whose solver is known (`solver`), falls through to the
     /// shared tier.
-    fn get(&self, key: &QueryKey, solver: Option<&Solver>) -> Option<(Arc<Value>, Source)> {
+    fn get(
+        &self,
+        key: &QueryKey,
+        solver: Option<&Solver>,
+        mode: &str,
+    ) -> Option<(Arc<Value>, Source)> {
         if let Some((value, slot)) = self.memory.lookup(key) {
+            if value.mode != mode {
+                return None;
+            }
             match slot {
                 Slot::Pending => return Some((value, Source::Memory)),
                 Slot::OnDisk(stamp) => {
@@ -245,13 +253,20 @@ impl State {
             }
         }
         if let Some(stored) = self.disk.get_stamped(key) {
+            if stored.meta.mode != mode {
+                return None;
+            }
             let value = Arc::new(Value {
+                mode: stored.meta.mode,
                 reply: stored.reply,
                 effort: stored.meta.effort,
             });
             self.memory
                 .insert_on_disk(key, Arc::clone(&value), stored.stamp);
             return Some((value, Source::Disk));
+        }
+        if mode != "default" {
+            return None;
         }
         let (shared, solver) = (self.shared.as_ref()?, solver?);
         self.shared_get(shared, key, solver)
@@ -303,6 +318,7 @@ impl State {
         self.stats.shared_hits.fetch_add(1, Ordering::Relaxed);
         let provenance = verified.provenance();
         let value = Arc::new(Value {
+            mode: "default".to_owned(),
             reply: verified.reply,
             effort: verified.effort,
         });
@@ -363,6 +379,7 @@ impl State {
         meta: sail_api::protocol::PutMeta,
         reply: Vec<u8>,
         solver: Option<&Solver>,
+        mode: &str,
     ) {
         if self.disk.contains(&key) {
             return;
@@ -370,6 +387,7 @@ impl State {
         let job = Job {
             key,
             value: Arc::new(Value {
+                mode: mode.to_owned(),
                 reply,
                 effort: meta.effort.map(|e| sail_cache::Effort {
                     limit: e.limit,
@@ -442,14 +460,16 @@ impl State {
         // The solver this connection's session runs, from its `HELLO`. It
         // scopes shared lookups and is recorded with every `PUT`.
         let mut solver: Option<Solver> = None;
+        let mut mode = sail_api::protocol::VerificationMode::Default;
         loop {
             let Ok(Some(request)) = Request::read(&mut reader) else {
                 return;
             };
             let result = match request {
-                Request::Hello(path) => {
+                Request::Hello(hello) => {
+                    mode = hello.mode;
                     self.stats.hellos.fetch_add(1, Ordering::Relaxed);
-                    let r = self.hello(&path);
+                    let r = self.hello(&hello.solver_path);
                     solver = r.as_ref().ok().map(|id| Solver {
                         name: id.name.clone(),
                         version: id.version.clone(),
@@ -460,7 +480,7 @@ impl State {
                 }
                 Request::Get(key) => {
                     self.stats.gets.fetch_add(1, Ordering::Relaxed);
-                    let found = self.get(&QueryKey(key), solver.as_ref());
+                    let found = self.get(&QueryKey(key), solver.as_ref(), mode.name());
                     if let Some((_, source)) = &found {
                         self.stats.hits.fetch_add(1, Ordering::Relaxed);
                         if *source == Source::Memory {
@@ -481,7 +501,7 @@ impl State {
                 Request::Put { key, meta, reply } => {
                     self.stats.puts.fetch_add(1, Ordering::Relaxed);
                     // A failed or dropped store only costs a future miss.
-                    self.put(QueryKey(key), meta, reply, solver.as_ref());
+                    self.put(QueryKey(key), meta, reply, solver.as_ref(), mode.name());
                     write_put_response(&mut writer)
                 }
                 Request::Stats => write_stats_response(&mut writer, &self.stats.snapshot()),

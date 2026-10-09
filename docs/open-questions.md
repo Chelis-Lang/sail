@@ -68,3 +68,10 @@ inline with the date and link the ADR that captures it.
 
    **Answered 2026-10-08 (owner):** do not file bot issues upstream. Track
    Verus issues locally as documentation (`docs/verus-issues/`, VI-0001).
+
+10. **Unknown serving threshold after the census.** Answered 2026-10-09:
+    keep 50%. Resource-exhaustion reasons remain unservable. The observed
+    far-from-limit quantifier failures do not change this policy.
+11. **Seed portfolio.** Answered 2026-10-09: build `accept-first-proof` as
+    sequential complete independent Verus runs, baseline then seeds 1–7;
+    never combine per-function successes across attempts (ADR 0020).

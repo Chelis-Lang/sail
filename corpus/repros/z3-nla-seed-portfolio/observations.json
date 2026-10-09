@@ -1,0 +1,173 @@
+{
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "rlimit_parameter": 0.01,
+  "scope": "complete one-function crate",
+  "input_sha256": "20a8b5c71e9664143b114eaf5874b5e9ed1774627e705aad9ac31ed915a70b86",
+  "samples": [
+    {
+      "platform": "aarch64-macos",
+      "cache": "cold",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "exit_code": 0,
+      "winner_seed": 4,
+      "attempts": [
+        {
+          "seed": 0,
+          "verified": false,
+          "exit_code": 1,
+          "functions": {
+            "functions": 1,
+            "verified": 0,
+            "failed": 0,
+            "unknown": 1,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            30002
+          ]
+        },
+        {
+          "seed": 4,
+          "verified": true,
+          "exit_code": 0,
+          "functions": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            25826
+          ]
+        }
+      ]
+    },
+    {
+      "platform": "aarch64-macos",
+      "cache": "warm",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "exit_code": 0,
+      "winner_seed": 4,
+      "attempts": [
+        {
+          "seed": 0,
+          "verified": false,
+          "exit_code": 1,
+          "functions": {
+            "functions": 1,
+            "verified": 0,
+            "failed": 0,
+            "unknown": 1,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            30002
+          ]
+        },
+        {
+          "seed": 4,
+          "verified": true,
+          "exit_code": 0,
+          "functions": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            25826
+          ]
+        }
+      ]
+    },
+    {
+      "platform": "aarch64-macos",
+      "cache": "fresh",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "exit_code": 0,
+      "winner_seed": 4,
+      "attempts": [
+        {
+          "seed": 0,
+          "verified": false,
+          "exit_code": 1,
+          "functions": {
+            "functions": 1,
+            "verified": 0,
+            "failed": 0,
+            "unknown": 1,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            30002
+          ]
+        },
+        {
+          "seed": 4,
+          "verified": true,
+          "exit_code": 0,
+          "functions": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            25826
+          ]
+        }
+      ]
+    },
+    {
+      "platform": "x86_64-linux",
+      "cache": "cold",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+      "exit_code": 0,
+      "winner_seed": 4,
+      "attempts": [
+        {
+          "seed": 0,
+          "verified": false,
+          "exit_code": 1,
+          "functions": {
+            "functions": 1,
+            "verified": 0,
+            "failed": 0,
+            "unknown": 1,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            30002
+          ]
+        },
+        {
+          "seed": 4,
+          "verified": true,
+          "exit_code": 0,
+          "functions": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 1
+          },
+          "effort": [
+            25812
+          ]
+        }
+      ]
+    }
+  ]
+}
