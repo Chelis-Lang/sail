@@ -224,3 +224,9 @@ removed, renamed, or given a different meaning; any such change is version 2.
 Consumers must ignore fields they do not know. The published JSON Schema is
 strict (`additionalProperties: false`), so that sail's own tests catch drift.
 Validate against the schema of the version you were built for.
+
+With `--portfolio accept-first-proof`, optional `portfolio` evidence records the
+ordered seeds, each independent attempt (report, exit, timing, infrastructure
+error and verbatim stderr), and `winner_seed`. Every selected function's
+provenance includes `configuration.seed`. Baseline seed 0 denotes unchanged
+solver defaults. Ordinary reports omit these optional fields.

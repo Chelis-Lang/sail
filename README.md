@@ -64,3 +64,19 @@ cargo nextest run --workspace
 ```
 
 The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automatically.
+
+An explicit seed portfolio can try independent complete verification runs:
+
+```sh
+sail verify --portfolio accept-first-proof --portfolio-seeds 4 --output json
+```
+
+The baseline runs first. The first complete proof wins; function results from
+separate attempts are never combined. Attempts and their diagnostics are retained
+under the cache's `portfolio/` directory. This can take substantially longer and
+is local-only. See `docs/divergences.md` and ADR 0020.
+
+Projects invoked directly through Verus can use the same portfolio with
+`--verus-source path/to/lib.rs -- <Verus flags>`. The pinned Verus launcher
+runs the complete requested scope independently on each attempt; Cargo target
+cleanup applies only to Cargo projects.

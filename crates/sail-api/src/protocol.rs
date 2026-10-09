@@ -5,14 +5,15 @@
 //!
 //! | Op | Payload | Response |
 //! |---|---|---|
-//! | 1 `HELLO` | solver path (UTF-8) | `0`, `u32` len, identity JSON; or `1`, `u32` len, error text |
+//! | 1 `HELLO` | [`Hello`] JSON (path and mode) | `0`, `u32` len, identity JSON; or `1`, `u32` len, error text |
 //! | 2 `GET` | 32-byte key | `0` (miss); or `1`, `u32` len, reply bytes, then optionally `u32` len, effort JSON |
 //! | 3 `PUT` | 32-byte key, `u32` meta len, meta JSON, reply bytes | `0` |
 //! | 4 `STATS` | empty | `0`, `u32` len, [`StatsSnapshot`] JSON |
 //! | 5 `INFO` | empty | `0`, `u32` len, [`Info`] JSON |
 //!
 //! Operations 4 and 5 are read-only and additive: they kept
-//! [`PROTOCOL_VERSION`] at 1 (ADR 0012, ADR 0015). A daemon that predates
+//! the protocol at 1 (ADR 0012, ADR 0015). Version 2 negotiates the mode
+//! in HELLO (ADR 0020). A daemon that predates
 //! one rejects it by closing that connection; nothing else changes.
 //!
 //! Frames larger than [`MAX_FRAME`] are rejected.
@@ -24,7 +25,38 @@ use serde::{Deserialize, Serialize};
 /// The protocol version. Bump on any incompatible change; the daemon reports
 /// it in `HELLO`, clients refuse a mismatch, and the default socket name
 /// includes it, so an upgraded client never talks to a stale daemon.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
+
+/// A cache namespace negotiated for one solver connection.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum VerificationMode {
+    /// Exact default-mode replies.
+    #[default]
+    Default,
+    /// Complete verification attempts in the seed portfolio.
+    AcceptFirstProof,
+}
+
+impl VerificationMode {
+    /// The stable namespace name.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::AcceptFirstProof => "accept-first-proof",
+        }
+    }
+}
+
+/// A protocol-v2 solver handshake, including the cache namespace.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Hello {
+    /// The exact solver executable to identify.
+    pub solver_path: String,
+    /// The namespace used for every subsequent lookup and store.
+    pub mode: VerificationMode,
+}
 
 /// Largest accepted frame body, in bytes.
 pub const MAX_FRAME: u32 = 256 * 1024 * 1024;
@@ -216,7 +248,7 @@ pub struct SharedInfo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Request {
     /// Identify the solver at this path.
-    Hello(String),
+    Hello(Hello),
     /// Look up a key.
     Get([u8; 32]),
     /// Store a reply.
@@ -269,9 +301,9 @@ impl Request {
     pub fn write(&self, w: &mut impl Write) -> io::Result<()> {
         let mut body = Vec::new();
         match self {
-            Self::Hello(path) => {
+            Self::Hello(hello) => {
                 body.push(OP_HELLO);
-                body.extend_from_slice(path.as_bytes());
+                body.extend_from_slice(&serde_json::to_vec(hello).map_err(io::Error::other)?);
             }
             Self::Get(key) => {
                 body.push(OP_GET);
@@ -312,7 +344,7 @@ impl Request {
         };
         match op {
             OP_HELLO => Ok(Some(Self::Hello(
-                String::from_utf8(rest.to_vec()).map_err(|_| invalid("path is not UTF-8"))?,
+                serde_json::from_slice(rest).map_err(|_| invalid("bad solver handshake"))?,
             ))),
             OP_GET => Ok(Some(Self::Get(key(rest)?))),
             OP_PUT => {
@@ -483,7 +515,14 @@ mod tests {
     #[test]
     fn requests_round_trip() {
         let reqs = [
-            Request::Hello("/opt/z3".to_owned()),
+            Request::Hello(Hello {
+                solver_path: "/opt/z3".to_owned(),
+                mode: VerificationMode::Default,
+            }),
+            Request::Hello(Hello {
+                solver_path: "/opt/z3".to_owned(),
+                mode: VerificationMode::AcceptFirstProof,
+            }),
             Request::Get([9; 32]),
             Request::Put {
                 key: [7; 32],

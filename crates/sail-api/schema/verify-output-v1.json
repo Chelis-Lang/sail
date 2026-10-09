@@ -7,6 +7,7 @@
   "required": ["schema_version", "sail_version", "mode", "command", "exit_code", "solver", "cache", "attribution", "crates", "diagnostics", "summary", "error"],
   "additionalProperties": false,
   "properties": {
+    "portfolio": {"$ref": "#/$defs/portfolio"},
     "schema_version": { "const": 1 },
     "sail_version": { "type": "string" },
     "mode": { "type": "string" },
@@ -75,6 +76,293 @@
     }
   },
   "$defs": {
+    "solver_configuration": {
+        "type": "object",
+        "required": [
+          "seed"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "seed": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "portfolio": {
+        "type": "object",
+        "required": [
+          "seeds",
+          "winner_seed",
+          "attempts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "seeds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "winner_seed": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/portfolio_attempt"
+            }
+          }
+        }
+      },
+      "portfolio_attempt": {
+        "type": "object",
+        "required": [
+          "configuration",
+          "verified",
+          "exit_code",
+          "wall_ms",
+          "error",
+          "report",
+          "stderr"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "configuration": {
+            "$ref": "#/$defs/solver_configuration"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "wall_ms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "report": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/attempt_report"
+              }
+            ]
+          },
+          "stderr": {
+            "type": "string"
+          }
+        }
+      },
+      "attempt_report": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "sail_version",
+          "mode",
+          "command",
+          "exit_code",
+          "solver",
+          "cache",
+          "attribution",
+          "crates",
+          "diagnostics",
+          "summary",
+          "error"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1
+          },
+          "sail_version": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "command": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "solver": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "name",
+                  "version",
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "path": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "cache": {
+            "type": "object",
+            "required": [
+              "daemon"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "daemon": {
+                "type": "boolean"
+              }
+            }
+          },
+          "attribution": {
+            "type": "object",
+            "required": [
+              "status",
+              "notes",
+              "unmatched_sessions"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "unavailable"
+                ]
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "unmatched_sessions": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "crates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/crate"
+            }
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/diagnostic"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "required": [
+              "functions",
+              "verified",
+              "failed",
+              "unknown",
+              "provisional",
+              "unstable"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "functions": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "verified": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "failed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unknown": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "provisional": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unstable": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "error": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
     "u64_or_null": { "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 0 }] },
     "crate": {
       "type": "object",
@@ -115,7 +403,8 @@
           "properties": {
             "mode": { "type": "string" },
             "source": { "enum": ["fresh", "cache", "mixed", "unrecorded"] },
-            "checks_solved": { "type": "integer", "minimum": 0 },
+            "configuration": {"$ref": "#/$defs/solver_configuration"},
+        "checks_solved": { "type": "integer", "minimum": 0 },
             "checks_served": { "type": "integer", "minimum": 0 },
             "checks_unrecorded": { "type": "integer", "minimum": 0 }
           }

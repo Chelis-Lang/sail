@@ -794,6 +794,10 @@ pub fn publish(
             continue;
         };
         r.examined += 1;
+        if meta.mode != MODE_DEFAULT {
+            r.filtered += 1;
+            continue;
+        }
         if meta.provenance.starts_with(PROVENANCE_PREFIX) {
             r.from_shared += 1;
             continue;
@@ -1132,6 +1136,20 @@ mod tests {
             let r = disk.put(&QueryKey([*k; 32]), reply, cmd, solver, prov, *effort);
             assert!(r.is_ok());
         }
+        assert!(
+            disk.put_scoped(
+                &QueryKey([7; 32]),
+                b"unsat\n",
+                "check-sat",
+                &crate::StoreContext {
+                    solver: &id,
+                    provenance: PINNED_SOLVER,
+                    mode: "accept-first-proof"
+                },
+                None
+            )
+            .is_ok()
+        );
         let policy = |e: Option<&Effort>| e.is_some_and(|e| e.used.unwrap_or(u64::MAX) * 2 <= 100);
         let opts = PublishOptions {
             commands: vec!["check-sat".to_owned()],
@@ -1147,7 +1165,7 @@ mod tests {
                 r.unknown_held,
                 r.filtered
             ),
-            (6, 2, 1, 1, 1, 1)
+            (7, 2, 1, 1, 1, 2)
         );
         // Published entries verify for a reader trusting the key.
         let trusted = trusting(&sk);

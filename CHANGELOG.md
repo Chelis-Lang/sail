@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
+  selection, and isolated protocol-v2 cache namespaces (ADR 0020).
+
 - A shared cache tier (ADR 0017, `docs/trust.md`). Its entries are signed
   with ed25519 and verified before use. Each signature binds the key, the
   reply hash, the command, the solver identity, the platform class, the

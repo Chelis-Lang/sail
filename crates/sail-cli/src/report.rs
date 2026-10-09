@@ -67,6 +67,7 @@ pub(crate) fn build(inputs: &Inputs<'_>) -> Report {
         })
         .collect();
     Report {
+        portfolio: None,
         schema_version: SCHEMA_VERSION,
         sail_version: env!("CARGO_PKG_VERSION").to_owned(),
         mode: "default".to_owned(),
@@ -100,6 +101,7 @@ pub(crate) fn build(inputs: &Inputs<'_>) -> Report {
 /// A report for a run that never started Verus.
 pub(crate) fn setup_failure(args: &[String], code: &str, message: &str) -> Report {
     Report {
+        portfolio: None,
         schema_version: SCHEMA_VERSION,
         sail_version: env!("CARGO_PKG_VERSION").to_owned(),
         mode: "default".to_owned(),
