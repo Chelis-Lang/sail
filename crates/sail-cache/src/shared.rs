@@ -6,7 +6,7 @@
 //! used only if it carries a valid ed25519 signature from a key the reader
 //! trusts, and the signature binds everything the reader relies on.
 //!
-//! **Layout.** `<store>/v1/<platform>/<solver binary sha256>/<k0k1>/<key>`,
+//! **Layout.** `<store>/v2/<platform>/<solver binary sha256>/<k0k1>/<key>`,
 //! so entries are scoped by solver binary and platform class (ADR 0010,
 //! item 6). The path is only a lookup hint: every field it encodes is also
 //! in the signed header and checked there.
@@ -58,7 +58,7 @@ pub const MAX_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
 const DOMAIN: &[u8] = b"sail-shared/entry/v1";
 
 /// The store's top-level directory for this format.
-const STORE_DIR: &str = "v1";
+const STORE_DIR: &str = "v2";
 
 const SECRET_TAG: &str = "sail-ed25519-secret-v1";
 const PUBLIC_TAG: &str = "sail-ed25519-public-v1";

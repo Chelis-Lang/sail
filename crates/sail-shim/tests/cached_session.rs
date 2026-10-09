@@ -366,3 +366,58 @@ sys.exit(p.returncode)
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn new_no_output_suffix_cannot_hide_diagnostics_after_cache_hits() {
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let socket = dir.join("d.sock");
+    let (sock, cache) = (socket.clone(), dir.join("cache"));
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &cache, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let quiet = b"(get-info :version)\n(exit)\n";
+    assert!(input_run(&solver, Some(&socket), quiet).status.success());
+    let starts = session_starts(&dir);
+    assert!(input_run(&solver, Some(&socket), quiet).status.success());
+    assert_eq!(
+        session_starts(&dir),
+        starts,
+        "certified quiet input must hit"
+    );
+    let mut warning = b"(get-info :version)\n".to_vec();
+    let repro = include_bytes!("../../../corpus/repros/z3-stderr-cache-warning/input.smt2");
+    warning.extend(
+        String::from_utf8_lossy(repro)
+            .replace("(check-sat)\n", "")
+            .as_bytes(),
+    );
+    let direct = input_run(&solver, None, &warning);
+    assert!(
+        String::from_utf8_lossy(&direct.stderr)
+            .contains("pattern does not contain all quantified variables")
+    );
+    for _ in 0..2 {
+        let actual = input_run(&solver, Some(&socket), &warning);
+        assert_eq!(actual.status.code(), direct.status.code());
+        assert_eq!(actual.stdout, direct.stdout);
+        assert_eq!(actual.stderr, direct.stderr);
+    }
+    let malformed = b"(get-info :version)\n(assert 1)\n(exit)\n";
+    let error = input_run(&solver, None, malformed);
+    assert!(String::from_utf8_lossy(&error.stdout).contains("(error"));
+    for _ in 0..2 {
+        let actual = input_run(&solver, Some(&socket), malformed);
+        assert_eq!(actual.status.code(), error.status.code());
+        assert_eq!(actual.stdout, error.stdout);
+        assert_eq!(actual.stderr, error.stderr);
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}

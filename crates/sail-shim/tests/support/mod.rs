@@ -461,6 +461,7 @@ pub fn direct(input: &[u8]) -> Vec<u8> {
         .args(["-smt2", "-in"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
     {
         Ok(c) => c,
@@ -476,7 +477,10 @@ pub fn direct(input: &[u8]) -> Vec<u8> {
     let out = child.wait_with_output();
     let _ = w.join();
     match out {
-        Ok(o) => o.stdout,
+        Ok(o) => {
+            assert!(o.stderr.is_empty(), "fault fixture must be solver-silent");
+            o.stdout
+        }
         Err(e) => unreachable!("{e}"),
     }
 }
@@ -484,6 +488,8 @@ pub fn direct(input: &[u8]) -> Vec<u8> {
 /// One output-producing command of a session.
 #[derive(Debug, Clone)]
 pub struct Want {
+    /// Complete silent fixture input, independently checked by direct Z3.
+    pub silence_key: Option<QueryKey>,
     /// The v2 key the shim files the reply under.
     pub key: QueryKey,
     /// The command's bytes.
@@ -528,6 +534,7 @@ pub fn replies(identity: &SolverIdentity, input: &[u8], output: &[u8]) -> Vec<Wa
                 )
             });
             out.push(Want {
+                silence_key: None,
                 key: prefix.key(),
                 command: item.bytes,
                 stats,
@@ -537,6 +544,18 @@ pub fn replies(identity: &SolverIdentity, input: &[u8], output: &[u8]) -> Vec<Wa
     }
     for (r, bytes) in out.iter_mut().zip(split(output)) {
         r.reply = bytes;
+    }
+    if !out.is_empty()
+        && out
+            .iter()
+            .all(|r| !r.reply.is_empty() && !r.reply.starts_with(b"(error"))
+        && split(output).len() == out.len()
+    {
+        let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
+        prefix.update(input.get(from..).unwrap_or_default());
+        if let Some(last) = out.last_mut() {
+            last.silence_key = Some(prefix.silence_key());
+        }
     }
     out
 }
@@ -706,9 +725,17 @@ pub fn assert_cache_correct_except(cache: &Path, known: &[Want], skip: &[QueryKe
         if skip.contains(&key) {
             continue;
         }
-        let Some((_, reply)) = disk.get(&key) else {
+        let Some((meta, reply)) = disk.get(&key) else {
             continue;
         };
+        if meta.command == "sail-session-silence" {
+            assert!(
+                known.iter().any(|r| r.silence_key == Some(key)),
+                "unobserved silence certificate"
+            );
+            assert_eq!(reply, b"sail-session-silent/v1\n");
+            continue;
+        }
         let Some(want) = by_key.get(&key.0) else {
             unreachable!("{} is valid but no session asked for it", path.display())
         };

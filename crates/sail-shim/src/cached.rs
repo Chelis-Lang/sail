@@ -28,6 +28,8 @@ use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter};
 
 /// What the output side should do with the next reply.
 enum Expect {
+    /// Full input reached EOF; certify it only after a quiet, complete session.
+    Terminal(QueryKey),
     /// Store the reply under this key.
     Store {
         key: QueryKey,
@@ -161,6 +163,7 @@ fn rlimit_count(reply: &[u8]) -> Option<u64> {
 /// [`Pairer::stop`].
 #[derive(Default)]
 struct Pairer {
+    terminal: Option<QueryKey>,
     replies: VecDeque<Vec<u8>>,
     expects: VecDeque<Expect>,
     stopped: bool,
@@ -175,7 +178,10 @@ impl Pairer {
     }
 
     fn expect(&mut self, expect: Expect) {
-        self.expects.push_back(expect);
+        match expect {
+            Expect::Terminal(key) => self.terminal = Some(key),
+            other => self.expects.push_back(other),
+        }
     }
 
     fn stop(&mut self) {
@@ -272,6 +278,17 @@ impl Pairer {
         let mut out = Vec::new();
         if !self.stopped {
             self.release(&mut out);
+            if self.expects.is_empty()
+                && self.replies.is_empty()
+                && let Some(key) = self.terminal.take()
+            {
+                out.push(Entry {
+                    key,
+                    command: "sail-session-silence".to_owned(),
+                    reply: b"sail-session-silent/v1\n".to_vec(),
+                    effort: None,
+                });
+            }
         }
         out
     }
@@ -527,8 +544,9 @@ impl Solving {
         }
     }
 
-    fn finish(mut self) -> ExitCode {
+    fn finish(mut self, terminal: QueryKey) -> ExitCode {
         self.input_done.store(true, Ordering::SeqCst);
+        let _ = self.expects.send(Expect::Terminal(terminal));
         drop(self.stdin.take());
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
@@ -669,17 +687,57 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
-    let (code, started) = match solving {
-        Some(s) => (Some(s.finish()), true),
-        None if splitter.finish().is_some() => (
-            start_solver(solver, args, &raw, served, Expect::Stop, client.take())
-                .map(Solving::finish),
+    let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
+    prefix.update(raw.get(from..).unwrap_or_default());
+    let end = SessionEnd {
+        raw: &raw,
+        served,
+        terminal: prefix.silence_key(),
+        complete: splitter.finish().is_none(),
+    };
+    let (code, started) = finish_input(solving, client, solver, args, &end);
+    record_provenance(&raw, served, started);
+    code
+}
+
+struct SessionEnd<'a> {
+    raw: &'a [u8],
+    served: u64,
+    terminal: QueryKey,
+    complete: bool,
+}
+
+fn finish_input(
+    solving: Option<Solving>,
+    mut client: Option<Client>,
+    solver: &Path,
+    args: &[std::ffi::OsString],
+    end: &SessionEnd<'_>,
+) -> (Option<ExitCode>, bool) {
+    let certified = solving.is_none()
+        && end.complete
+        && client.as_mut().is_some_and(|c| {
+            c.get(&end.terminal.0)
+                .ok()
+                .flatten()
+                .is_some_and(|r| r == b"sail-session-silent/v1\n")
+        });
+    match solving {
+        Some(s) => (Some(s.finish(end.terminal)), true),
+        None if !certified => (
+            start_solver(
+                solver,
+                args,
+                end.raw,
+                end.served,
+                Expect::Stop,
+                client.take(),
+            )
+            .map(|s| s.finish(end.terminal)),
             true,
         ),
         None => (Some(ExitCode::SUCCESS), false),
-    };
-    record_provenance(&raw, served, started);
-    code
+    }
 }
 
 /// When `SAIL_PROVENANCE_DIR` is set, writes `<dir>/<pid>-<nanos>.json`
@@ -805,7 +863,7 @@ mod tests {
                 text,
                 limit: Some(limit),
             },
-            Expect::Stop => Expect::Stop,
+            other => other,
         }
     }
 

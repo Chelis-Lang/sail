@@ -14,3 +14,9 @@ The corrected cache forwards stderr, publishes only sessions observed silent
 through EOF, and refuses older local/shared entry formats. Warning sessions
 always start the pinned solver again. A bounded staging limit may cost cache
 misses without changing forwarded output.
+
+A second failure occurs when only `(get-info :version)` is cached: append the
+warning assertion after that reply and omit `check-sat`. The assertion writes
+stderr without requesting a normal stdout reply. The cached prefix cannot
+authorize skipping those new trailing commands. An exact complete-input
+silence record now gates solver-free completion (ADR 0022).
