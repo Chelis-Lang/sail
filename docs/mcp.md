@@ -73,7 +73,8 @@ The `env` entry is needed only if `cargo-verus` is not on the client's
 
 Charter rule 7 holds in every tool. A function whose tier is `provisional`
 is reported as `provisional`, never `verified`, in summaries and in looked-up
-verdicts. `unknown` (Z3 gave up near its limit) is never a settled failure.
+verdicts. `unknown` means verification was not confirmed and is never a settled
+failure. It does not by itself establish that Z3 exhausted a resource limit.
 
 ### `verify`
 
@@ -182,6 +183,11 @@ Established by run 2 (sail verify --output json) at 2026-10-08T22:41:21.259Z; Th
 - `freshness`: as for `cached_result`.
 
 ### `cached_result`
+
+Compact lookup responses and counterexample responses retain each function's
+`mode` and `configuration` (including a portfolio seed). Their human summaries
+label opt-in modes and seeds too. Run freshness includes the originating mode
+and winning seed; recalling a portfolio proof never relabels it as default.
 
 Looks up the latest known verdict for a function or obligation, or for every
 recorded function when given neither. Nothing is re-run. Arguments are as for

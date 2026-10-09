@@ -157,10 +157,11 @@ as a tie-breaker, recovers most refactors.
 - `failed`: confirmed, and not proved, and the failure is settled: Z3 found a
   model, or gave up far from its limit for its own reasons (for example
   `(incomplete quantifiers)`).
-- `unknown`: confirmed, and not proved, because Z3 gave up at or near its
-  limit, or no answer was recorded. Plain Verus reports such a function as
-  failed (for example `rlimit exceeded`). sail never presents it as a settled
-  failure (ADR 0009).
+- `unknown`: verification was not confirmed. Z3 may have given up at or near its
+  limit, or no answer was recorded. Resource failures appear in plain Verus as
+  failures (for example `rlimit exceeded`). A failing crate with incomplete
+  attribution also leaves apparently successful timing entries uncertain
+  (VI-0003). sail never presents an unknown as a settled failure (ADR 0009).
 - `provisional`: not yet established by the pinned solver on the exact query.
   **A provisional result is never `verified`, whatever its evidence says**
   (charter rule 7). `sail verify` itself never produces provisional results.

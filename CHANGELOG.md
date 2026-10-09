@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Keep portfolio mode and seed provenance in compact MCP result lookups and
+  summaries. Unknown summaries no longer infer an unobserved resource failure.
+
 - Failing crates with incomplete attribution no longer confirm successful
   timing entries that may hide bit-vector failures (VI-0003). They report
   uncertainty while preserving Verus's raw fields and diagnostics.
