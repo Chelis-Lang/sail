@@ -958,12 +958,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     if !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
-    let monitor = super::observe::Observation::begin(
-        &before,
-        &extras,
-        &config.cache,
-        Path::new(data["target_directory"].as_str().unwrap_or_default()),
-    );
+    let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
     // Establish the revision again after the watcher is live, closing the setup
     // interval between metadata collection and native observation.
     let monitored = snapshot_metadata(&data, &extras);

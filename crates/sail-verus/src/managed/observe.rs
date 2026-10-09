@@ -15,17 +15,18 @@ pub(super) struct Observation {
 }
 
 impl Observation {
-    pub(super) fn begin(
-        snapshot: &InputSnapshot,
-        extra: &[PathBuf],
-        cache: &Path,
-        target: &Path,
-    ) -> Self {
+    pub(super) fn begin(snapshot: &InputSnapshot, extra: &[PathBuf], cache: &Path) -> Self {
         let changed = Arc::new(AtomicBool::new(false));
         let lost = Arc::new(AtomicBool::new(false));
         let signal = Arc::clone(&changed);
         let failed = Arc::clone(&lost);
-        let excluded = [cache, target].map(|p| p.canonicalize().unwrap_or_else(|_| p.to_owned()));
+        let excluded: Vec<PathBuf> = snapshot
+            .excluded
+            .iter()
+            .map(PathBuf::as_path)
+            .chain([cache])
+            .map(|p| p.canonicalize().unwrap_or_else(|_| p.to_owned()))
+            .collect();
         let tracked: Vec<PathBuf> = snapshot
             .roots
             .iter()
@@ -127,10 +128,10 @@ mod tests {
                 root.join("rust-toolchain.toml"),
                 root.join(".cargo/config"),
             ],
+            excluded: vec![root.join("target")],
             complete: true,
         };
-        let observation =
-            Observation::begin(&snapshot, &[], &root.join("cache"), &root.join("target"));
+        let observation = Observation::begin(&snapshot, &[], &root.join("cache"));
         assert!(observation.complete());
         assert!(std::fs::write(&source, "temporary").is_ok());
         assert!(std::fs::write(&source, "original").is_ok());

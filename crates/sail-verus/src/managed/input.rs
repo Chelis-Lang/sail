@@ -17,6 +17,8 @@ pub struct InputSnapshot {
     pub revision: String,
     /// Resolved package directories, including path, registry and git dependencies.
     pub roots: Vec<PathBuf>,
+    /// Absolute Cargo/Sail output directories excluded from input tracking.
+    pub excluded: Vec<PathBuf>,
     /// False if declared inputs could not be read completely.
     pub complete: bool,
 }
@@ -102,24 +104,20 @@ pub(super) fn snapshot_metadata_home(
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     let mut files = BTreeSet::new();
     let mut visited = BTreeSet::new();
-    if let Some(path) = data["sail_cache_directory"]
-        .as_str()
-        .and_then(|s| Path::new(s).canonicalize().ok())
-    {
-        visited.insert(path);
+    let mut excluded: Vec<PathBuf> = ["sail_cache_directory", "target_directory"]
+        .into_iter()
+        .filter_map(|name| data[name].as_str().map(PathBuf::from))
+        .collect();
+    if let Ok(path) = crate::cache_dir() {
+        excluded.push(path);
     }
-    if let Some(path) = data["target_directory"]
-        .as_str()
-        .and_then(|s| Path::new(s).canonicalize().ok())
-    {
-        visited.insert(path);
+    for path in &excluded {
+        if let Ok(path) = path.canonicalize() {
+            visited.insert(path);
+        }
     }
-    if let Ok(path) = crate::cache_dir().and_then(|p| {
-        p.canonicalize()
-            .map_err(|e| crate::Error::new("SAIL3101", e.to_string()))
-    }) {
-        visited.insert(path);
-    }
+    excluded.sort();
+    excluded.dedup();
     let mut roots = Vec::new();
     let mut complete = !workspace.as_os_str().is_empty();
     for p in data["packages"].as_array().into_iter().flatten() {
@@ -179,6 +177,7 @@ pub(super) fn snapshot_metadata_home(
         workspace,
         revision: format!("{:x}", hasher.finalize()),
         roots,
+        excluded,
         complete,
     }
 }
