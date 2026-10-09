@@ -261,6 +261,9 @@ a snapshot of the project's sources taken just before the run.
   (`<cache>` is `$SAIL_CACHE_DIR` or `~/.cache/sail`). So results survive a
   server restart and are shared by servers on one machine. A store file that
   cannot be read or written is ignored, and the `verify` result says so.
+  Store format 2 requires reverification of older records: those reports
+  predate conservative handling of incomplete attribution (VI-0003) and
+  cannot establish current confirmed results.
 - **Staleness.** A lookup compares the run's snapshot with the sources now.
   Any difference, or a change while the run was in progress, makes the
   result `stale`. The changed files are listed. A stale verdict applies to
