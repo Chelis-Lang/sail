@@ -41,6 +41,35 @@ Milestone M5 and `docs/reports/2026-10-09-initial-product.md` record the
 completion decisions and full local acceptance. The owner kept the unknown
 serving cap at 50%; the later research below remains deferred.
 
+## M6: Live workspace verification and team caching (in progress)
+
+The next product milestone prioritizes a complete local developer and agent
+workflow. Ordinary single-developer use needs no credentials, server setup,
+account, or container. One verification worker runs by default.
+
+1. **Managed workspace verification** ([#64](https://github.com/Chelis-Lang/sail/issues/64)).
+   Always invoke Cargo; retain complete successful per-target proof receipts in
+   Sail-owned artifacts. Bind them to the exact verification context and actual
+   artifacts. Return complete reports when Cargo reuses verified targets, and
+   refresh missing or incompatible evidence.
+2. **Persistent jobs, watch and MCP** ([#65](https://github.com/Chelis-Lang/sail/issues/65)).
+   Submit, inspect, follow and cancel verification across sessions. Watch the
+   workspace and local path dependencies; distinguish current results from
+   historical or superseded work. Result lookups stay responsive during runs.
+3. **Optional HTTP team cache** ([#66](https://github.com/Chelis-Lang/sail/issues/66)).
+   Read and publish signed SMT entries over authenticated HTTPS, with an
+   optional lightweight self-hosted service. Reader signing trust remains
+   independent of transport authentication; remote failures cost misses.
+
+Exit evidence: unchanged eligible workspaces invoke no verifier and return
+complete reports; edits and verification-context changes invalidate correctly;
+job cancellation/restart/currentness work across CLI and MCP; a fresh remote
+reader consumes verified signed replies and silence certificates. Run full
+local gates and affected conformance, with three-round performance and resource
+measurements. Long tests stay local-only; every required CI job remains below
+ten minutes. Persistent Verus internals, solver pools, normalization, stack-only
+keys and new SMT backends remain deferred.
+
 ## Later waves (from the charter's initial scope)
 
 1. **Caching.**

@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add explicit managed workspace verification with complete per-target reports,
+  successful proof receipts, and verification-context isolation.
+- Add persistent local verification jobs, background submission, status/results,
+  cancellation, diagnostics, and workspace-aware watch and MCP job tools.
+- Add optional authenticated HTTP shared-cache reading and signed publication,
+  private connection settings, and a deployable local/private team server.
+
+
 - Add feature-scoped Singular source builds, validated runtime identities, and
   an optional local conformance environment for integer-ring examples and the
   pinned memory allocator.

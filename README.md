@@ -2,9 +2,10 @@
 
 **S.A.I.L.** (Satisfiability Analysis & Inference Layer) is a Rust service and toolchain that sits between the [Verus](https://github.com/verus-lang/verus) verifier and its pinned Z3. Its goal is to return verification results as fast as possible, through caching, warm solver pools and function-level scheduling, without ever returning a result plain Verus would not have returned.
 
-Status: **early.** Pass-through and local result caching work and pass the
-conformance harness (`docs/reports/2026-10-08-bootstrap.md`). See
-`docs/ROADMAP.md` for what comes next.
+Status: **initial product complete; live workspace features in development.**
+Pass-through, local/shared signed caching, portfolios, attribution and MCP pass
+the retained local acceptance (`docs/reports/2026-10-09-initial-product.md`).
+See `docs/ROADMAP.md` for the current milestone.
 
 ## Using it
 
@@ -18,8 +19,18 @@ Its only change is putting `sail-z3` in front of the Z3 your Verus already
 uses. It starts the cache daemon (`sail serve`) on demand. To switch back,
 run `cargo verus verify` again.
 
-`sail watch [ARGS...]` re-verifies whenever sources change, cancelling the
-run in flight. With the cache warm, only edited buckets are re-solved.
+The managed workflow adds complete incremental reports and durable local jobs:
+
+```sh
+sail verify --incremental --output json  # complete reports, including reused targets
+sail verify --background                # submit and keep working
+sail jobs list                         # status, result, logs and cancel also available
+sail watch                            # follow workspace and path-dependency edits
+```
+
+One verifier worker runs by default. Completed target reports record which run
+established them; current execution counters stay separate. Ordinary local use
+needs no server configuration or credentials. See [live workspace verification](docs/workspace-verification.md).
 
 `sail verify --output json [ARGS...]` also prints one JSON document on stdout.
 It holds per-function verdicts, with tier and provenance, and per-obligation
