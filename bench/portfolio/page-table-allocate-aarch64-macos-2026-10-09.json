@@ -71,5 +71,7 @@
       }
     }
   ],
-  "note": "One complete proof of the explicitly requested function. The unchanged baseline reached its wall timeout. This is not a whole-page-table proof or a reference-platform speedup benchmark."
+  "note": "One complete proof of the explicitly requested function. The unchanged baseline reached its wall timeout. This is not a whole-page-table proof or a reference-platform speedup benchmark. The function-specific rlimit attribute sets the observed effective limit to 3,000,000,000 despite the global --rlimit 20 flag.",
+  "effective_rlimit": 3000000000,
+  "resource_fraction": 0.149352992
 }

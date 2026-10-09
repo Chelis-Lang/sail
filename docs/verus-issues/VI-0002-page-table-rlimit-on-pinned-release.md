@@ -36,7 +36,8 @@ sail-bench fragility --tier standard --project page-table \
 
 Results (`bench/results/fragility-census-page-table-allocate-arm64-macos-devload-2026-10-08.json`):
 - **One check.** The function's whole proof is a single check, with limit
-  3,000,000,000 (`--rlimit 100`).
+  3,000,000,000 (the function’s `#[verifier::rlimit(1000)]` attribute;
+  the project command also supplies global `--rlimit 100`).
 - **The unmodified session** (Z3's default seed, as plain Verus runs it)
   exhausts the limit (`canceled`). This reproduces the recorded failure.
 - **Seeds 1, 2, 3, 5, 6 and 7** also exhaust it.
@@ -50,3 +51,14 @@ fits verita's nightly passing with a slightly different Verus: a
 different query text perturbs the search much as a different seed does.
 An opt-in "accept a proof from any configuration" mode (charter rule 8)
 would verify `allocate`; default mode must keep reporting the failure.
+
+## Complete-run portfolio confirmation (2026-10-09)
+
+An independent `allocate`-only verification attempt proved the complete
+requested function with seed 4 and zero errors. Its unchanged baseline reached
+the 3,600-second wall timeout. The observed effective solver limit was still
+3,000,000,000, despite the command’s global `--rlimit 20`: the function-specific
+attribute overrides it. Effort was 448,058,976 (15%). The artifact under
+`bench/portfolio/page-table-allocate-aarch64-macos-2026-10-09.json` retains the
+flags, actual limit, both attempts and solver hash. This proves the requested
+function, not the entire page-table project.
