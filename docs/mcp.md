@@ -73,21 +73,26 @@ The `env` entry is needed only if `cargo-verus` is not on the client's
 
 Charter rule 7 holds in every tool. A function whose tier is `provisional`
 is reported as `provisional`, never `verified`, in summaries and in looked-up
-verdicts. `unknown` (Z3 gave up near its limit) is never a settled failure.
+verdicts. `unknown` means verification was not confirmed and is never a settled
+failure. It does not by itself establish that Z3 exhausted a resource limit.
 
 ### `verify`
 
 Runs `sail verify --output json` in the project and returns its schema-v1
 report (`docs/output-schema.md`). The report has per-function verdicts with
 tier and provenance, obligation ids, counterexample models, diagnostics,
-timings and cache sources. The run is recorded for the lookups.
+timings and cache sources. The run is recorded for the lookups. Explicit module/function selectors use
+`cargo verus focus`, which is the pinned verifier’s supported partial entry
+point; whole-project requests use `cargo verus verify`.
 
 | Argument | Meaning |
 |---|---|
 | `project_dir` | The project. Default: the server's working directory. Relative paths resolve against it. |
 | `package` | `-p <package>`. |
-| `module` | Verus `--verify-module <module>`: this module and its descendants, relative to the crate root (`arith`, `foo::bar`). |
+| `module` | Verus `--verify-module <module>`: this module and its descendants (with `function`, `--verify-only-module` selects that function’s owning module), relative to the crate root (`arith`, `foo::bar`). |
 | `function` | Verus `--verify-function <function>`: a unique substring of the name, or a pattern with `*` at either end. It is looked up in `module`, or in the crate root (`--verify-root`) if no module is given. |
+| `portfolio` | Optional `accept-first-proof`: sequential complete Verus attempts; every winning function comes from one complete run, with seed/configuration and attempt evidence. Never enabled by default. |
+| `measure_fragility` | Optional boolean: capture and replay solver sessions locally, attaching exact per-function scores; incomplete or ambiguous attribution stays null with a note. Cannot be combined with a portfolio. |
 | `cargo_args` | Further `cargo verus verify` arguments, before `--`. They may not contain `--` or `--output`. |
 | `verus_args` | Further Verus arguments, after `--`. |
 
@@ -179,6 +184,11 @@ Established by run 2 (sail verify --output json) at 2026-10-08T22:41:21.259Z; Th
 
 ### `cached_result`
 
+Compact lookup responses and counterexample responses retain each function's
+`mode` and `configuration` (including a portfolio seed). Their human summaries
+label opt-in modes and seeds too. Run freshness includes the originating mode
+and winning seed; recalling a portfolio proof never relabels it as default.
+
 Looks up the latest known verdict for a function or obligation, or for every
 recorded function when given neither. Nothing is re-run. Arguments are as for
 `counterexample`, all optional.
@@ -251,6 +261,9 @@ a snapshot of the project's sources taken just before the run.
   (`<cache>` is `$SAIL_CACHE_DIR` or `~/.cache/sail`). So results survive a
   server restart and are shared by servers on one machine. A store file that
   cannot be read or written is ignored, and the `verify` result says so.
+  Store format 2 requires reverification of older records: those reports
+  predate conservative handling of incomplete attribution (VI-0003) and
+  cannot establish current confirmed results.
 - **Staleness.** A lookup compares the run's snapshot with the sources now.
   Any difference, or a change while the run was in progress, makes the
   result `stale`. The changed files are listed. A stale verdict applies to

@@ -85,8 +85,11 @@ permitted to depend only on `sail-api` (`xtask/src/layering.rs`).
 - Summaries and lookups present a function by its effective verdict:
   `provisional` whenever the tier is provisional, whatever the verdict field
   says.
-- `unknown` is described as "Z3 gave up near its limit; not a settled
-  failure".
+- `unknown` is described as "verification not confirmed; not a settled
+  failure". The 2026-10-09 VI-0003 correction also uses unknown for incomplete
+  attribution, so a summary cannot infer resource exhaustion from this verdict.
+- Opt-in portfolio summaries and compact lookups retain their mode and seed
+  configuration, including when recalled from the result store.
 
 **The result store.**
 - Each `verify` that produces results is recorded per canonical project

@@ -117,8 +117,23 @@ fn complementary_partial_proofs_preserve_baseline_failure() {
     assert_eq!(o.status.code(), Some(1));
     let r: serde_json::Value = serde_json::from_slice(&o.stdout).unwrap_or_default();
     assert!(r["portfolio"]["winner_seed"].is_null());
-    assert_eq!(r["crates"][0]["functions"][0]["verdict"], "verified");
+    // No logs identify the fixture's successful entry in a failing crate:
+    // preserve its raw result but do not turn it into a confirmed proof.
+    assert_eq!(r["crates"][0]["functions"][0]["verdict"], "unknown");
+    assert_eq!(r["crates"][0]["functions"][0]["verus_success"], true);
     assert_eq!(r["crates"][0]["functions"][1]["verdict"], "failed");
+    let attempts = r["portfolio"]["attempts"]
+        .as_array()
+        .unwrap_or_else(|| unreachable!("attempt evidence"));
+    assert_eq!(attempts.len(), 3);
+    for a in attempts {
+        assert_eq!(a["verified"], false);
+        let seed = a["configuration"]["seed"].as_u64().unwrap_or_default();
+        let fs = &a["report"]["crates"][0]["functions"];
+        assert_eq!(fs[0]["verus_success"], seed == 0);
+        assert_eq!(fs[1]["verus_success"], seed != 0);
+        assert_eq!(a["exit_code"], 1);
+    }
     assert!(String::from_utf8_lossy(&o.stderr).contains("diagnostics for seed 0"));
 }
 

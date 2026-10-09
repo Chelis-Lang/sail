@@ -22,10 +22,19 @@ fn help_lists_every_charter_command() {
 }
 
 #[test]
-fn unimplemented_commands_exit_3_with_stable_code() {
-    let output = sail(&["bench"]);
-    assert_eq!(output.status.code(), Some(3), "sail bench");
-    assert!(String::from_utf8_lossy(&output.stderr).contains("SAIL0001"));
+fn bench_delegates_to_the_benchmark_binary() {
+    let output = sail(&["bench", "--help"]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let help = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        help.contains("history-replay") && help.contains("agent-loop"),
+        "{help}"
+    );
 }
 
 #[test]

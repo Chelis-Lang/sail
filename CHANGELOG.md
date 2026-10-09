@@ -5,6 +5,22 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Keep portfolio mode and seed provenance in compact MCP result lookups and
+  summaries. Unknown summaries no longer infer an unobserved resource failure.
+
+- Failing crates with incomplete attribution no longer confirm successful
+  timing entries that may hide bit-vector failures (VI-0003). They report
+  uncertainty while preserving Verus's raw fields and diagnostics. MCP retires
+  old persisted result records; reverify to establish current results.
+
+- `sail bench` runs the installed workload tool with unchanged arguments and
+  standard streams.
+
+- Fresh fragility measurements force reverification in a locked Sail-owned
+  target, preserving the caller’s Cargo artifacts and dependency compilation.
+
+- Join fragility captures to functions by exact transcript hashes and check
+  order; expose conservative function scores in JSON and MCP on request.
 - Require reports for every requested verifying Cargo target before accepting
   a portfolio proof; reject ambiguous or unsupported target coverage.
 

@@ -97,7 +97,37 @@ pub(crate) fn build(inputs: &Inputs<'_>) -> Report {
         error: None,
     };
     crate::scope::restrict(&mut report);
+    incomplete_failures(&mut report);
     report
+}
+
+/// Verus can omit a failed bit-vector function from its failure set (VI-0003).
+/// In a failing crate, an incomplete mapping cannot resolve which successful
+/// timing entries are real proofs. Preserve the raw field without confirming it.
+fn incomplete_failures(report: &mut Report) {
+    if report.attribution.status == AttributionStatus::Complete {
+        return;
+    }
+    let mut uncertain = 0;
+    for c in &mut report.crates {
+        if c.verus.errors.is_some_and(|n| n > 0)
+            || c.verus.success == Some(false)
+            || c.verus.encountered_vir_error == Some(true)
+        {
+            for f in &mut c.functions {
+                if f.verdict == sail_api::output::VerdictName::Verified {
+                    f.verdict = sail_api::output::VerdictName::Unknown;
+                    uncertain += 1;
+                }
+            }
+        }
+    }
+    if uncertain > 0 {
+        report.attribution.notes.push(format!(
+            "{uncertain} successful timing entries in failing crates are uncertain because attribution is incomplete (VI-0003)"
+        ));
+        report.summary = Summary::of(&report.crates);
+    }
 }
 
 /// A report for a run that never started Verus.
@@ -263,6 +293,41 @@ mod tests {
     }
 
     #[test]
+    fn incomplete_attribution_never_confirms_hidden_bit_vector_failures() {
+        let verus = std::fs::read(fixture("verus.json")).unwrap_or_default();
+        let (docs, _) = sail_verus::attribution::json_documents(&verus);
+        let attribution = attribute(&docs, None, &Provenance::NoCache, None);
+        let r = build(&Inputs {
+            args: &[],
+            exit_code: Some(1),
+            solver_path: None,
+            solver_sha256: None,
+            daemon: false,
+            attribution: &attribution,
+            diagnostics: &[],
+        });
+        assert_eq!(r.summary.verified, 0);
+        let bad = function(&r, "input::arith::bv_bad");
+        assert!(bad.is_some_and(|f| f.verus_success == Some(true)
+            && f.verdict == sail_api::output::VerdictName::Unknown));
+        assert!(r.attribution.notes.iter().any(|n| n.contains("VI-0003")));
+        assert_eq!(r.invariant_violations(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn successful_crates_keep_confirmed_verus_results_without_logs() {
+        let mut r = report(&Provenance::NoCache);
+        r.attribution.status = AttributionStatus::Unavailable;
+        for c in &mut r.crates {
+            c.verus.errors = Some(0);
+            c.verus.success = Some(true);
+        }
+        let verified = r.summary.verified;
+        incomplete_failures(&mut r);
+        assert_eq!(r.summary.verified, verified);
+    }
+
+    #[test]
     fn cache_sources_come_from_session_records() {
         // A record for the root module's process saying the cache served its
         // first 20 replies: checks before reply 20 are cached, later ones
@@ -297,7 +362,7 @@ mod tests {
     }
 
     #[test]
-    fn without_logs_verdicts_still_come_from_verus() {
+    fn without_logs_raw_verus_results_are_preserved_without_false_proofs() {
         let verus = std::fs::read(fixture("verus.json")).unwrap_or_default();
         let (docs, _) = sail_verus::attribution::json_documents(&verus);
         let a = attribute(&docs, None, &Provenance::NoCache, Some("multiple packages"));
@@ -311,12 +376,22 @@ mod tests {
             diagnostics: &[],
         });
         assert_eq!(r.attribution.status, AttributionStatus::Unavailable);
-        assert_eq!(r.attribution.notes, ["multiple packages"]);
-        assert_eq!(r.summary.functions, 8);
         assert_eq!(
-            r.summary.failed, 1,
-            "without obligations the bit-vector gap stays open"
+            r.attribution.notes.first().map(String::as_str),
+            Some("multiple packages")
         );
+        assert!(r.attribution.notes.iter().any(|n| n.contains("VI-0003")));
+        assert_eq!(r.summary.functions, 8);
+        assert_eq!(r.summary.failed, 1, "the known raw failure is retained");
+        assert_eq!(r.summary.unknown, 7);
+        assert_eq!(r.summary.verified, 0);
+        assert!(r.crates.iter().flat_map(|c| &c.functions).all(|f| {
+            match f.verus_success {
+                Some(true) => f.verdict == sail_api::output::VerdictName::Unknown,
+                Some(false) => f.verdict == sail_api::output::VerdictName::Failed,
+                None => false,
+            }
+        }));
         assert!(
             r.crates
                 .iter()
