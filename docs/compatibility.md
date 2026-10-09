@@ -28,3 +28,13 @@ every unit either way (147 of 147 the same).
 The secondary pin is meant for external projects written against that
 release, such as vest's recent history (`sail-bench history-replay`). It is
 not meant for the in-tree tier.
+
+## Optional Singular validation
+
+The binary releases omit Singular support. Use `ci/local-singular.sh` to build
+the pinned commit with `--features=singular` and compare the tagged integer-ring
+examples and memory allocator in pass-through, fill and warm modes. The separate
+image pins the Singular package and uses separate build/cache volumes. No CI
+workflow runs this step. Source selection is explicit through
+`SAIL_VERUS_SOURCE_BUILD`; artifact identity failures are infrastructure errors.
+Results from the takeover validation will be recorded after its local run.

@@ -147,7 +147,8 @@ build-verus-source` builds only. The CI image is unchanged: the build
 installs `rustc-dev` and `llvm-tools` with rustup when it runs, and running
 the tests needs only the `rustc` component the image already has.
 
-**Singular is not built.** Verus's `singular` feature is a plain Cargo
+**Original Singular deferral (superseded by ADR 0021).** Singular was not built
+in this initial deep-suite change. Verus's `singular` feature is a plain Cargo
 feature (no build dependencies), so `vargo build --features singular`
 would work. Using it for the corpus's Singular entries
 (`examples/integer_ring/*`, `verified-memory-allocator`) would also need:
@@ -158,7 +159,8 @@ would work. Using it for the corpus's Singular entries
 - the corpus harness pointed at a source build's `verus` launcher instead
   of the release's, which `Installed` does not support yet.
 
-That is more than a modest addition, so it is left for a later ADR.
+ADR 0021 adds the optional tool image, isolated feature build and explicit
+source-build selection. The required CI gates continue to use the binary release.
 
 ## Consequences
 

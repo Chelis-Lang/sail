@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add feature-scoped Singular source builds, validated runtime identities, and
+  an optional local conformance environment for integer-ring examples and the
+  pinned memory allocator.
+
 - Deep tier: Verus's own `rust_verify_test` suite (4,695 tests) runs
   plain and through `sail-z3`, test by test (ADR 0019).
   - `cargo xtask build-verus-source` builds the pinned Verus commit from

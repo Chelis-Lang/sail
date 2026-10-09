@@ -203,6 +203,49 @@ fn cargo_env(cmd: &mut Command, installed: &Installed) {
         .env("CARGO_TERM_PROGRESS_WHEN", "never");
 }
 
+fn prepare_libc(installed: &Installed, unit: &Unit, scratch: &Path) -> Result<Unit> {
+    let fail = |m: String| Error::new("SAIL3022", m);
+    let scratch = std::path::absolute(scratch).map_err(|e| fail(e.to_string()))?;
+    let source = scratch.join("src");
+    copy_tree(&unit.source_dir, &source).map_err(|e| fail(e.to_string()))?;
+    let target = scratch.join("libc-target");
+    let status = Command::new("cargo")
+        .args(["build", "--release", "--locked", "--manifest-path"])
+        .arg(source.join("test_libc/Cargo.toml"))
+        .arg("--target-dir")
+        .arg(&target)
+        .env("RUSTUP_TOOLCHAIN", &installed.pins.verus.rust_toolchain)
+        .env_remove("RUSTFLAGS")
+        .status()
+        .map_err(|e| fail(e.to_string()))?;
+    if !status.success() {
+        return Err(fail("test_libc build failed".to_owned()));
+    }
+    let candidates: Vec<PathBuf> = std::fs::read_dir(target.join("release/deps"))
+        .map_err(|e| fail(e.to_string()))?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name().is_some_and(|n| {
+                n.to_string_lossy().starts_with("liblibc-")
+                    && n.to_string_lossy().ends_with(".rlib")
+            })
+        })
+        .collect();
+    let [libc] = candidates.as_slice() else {
+        return Err(fail("test_libc produced no unique libc rlib".to_owned()));
+    };
+    let mut prepared = unit.clone();
+    prepared.source_dir = source;
+    prepared.build = Build::Verus;
+    for arg in &mut prepared.args {
+        if arg == "libc=build/liblibc.rlib" {
+            *arg = format!("libc={}", libc.display());
+        }
+    }
+    Ok(prepared)
+}
+
 /// Copies the directory tree `from` into `to` (created if needed), skipping
 /// `.git` and the fetch marker, and recreating symlinks as symlinks.
 ///
@@ -269,6 +312,9 @@ pub fn prepare_unit(
     verus_source: Option<&Path>,
     scratch: &Path,
 ) -> Result<Unit> {
+    if unit.build == Build::LibcVerus {
+        return prepare_libc(installed, unit, scratch);
+    }
     if unit.build != Build::CargoVerus {
         return Ok(unit.clone());
     }

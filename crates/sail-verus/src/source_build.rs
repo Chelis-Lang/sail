@@ -8,6 +8,8 @@
 //! [`build_dir`], never inside this repository, and records what it built
 //! in a [`Manifest`]. The harness ([`crate::rvt`]) reads the manifest.
 
+use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -24,6 +26,64 @@ pub const SCHEMA_VERSION: u32 = 1;
 #[must_use]
 pub fn build_dir(cache: &Path, commit: &str) -> PathBuf {
     cache.join("verus-src-build").join(commit)
+}
+
+/// A feature and toolchain scoped source-build directory. Default builds retain
+/// their historical location; selected features always have a distinct identity.
+#[must_use]
+pub fn variant_dir(cache: &Path, commit: &str, toolchain: &str, features: &[String]) -> PathBuf {
+    if features.is_empty() {
+        return build_dir(cache, commit);
+    }
+    let id = format!("{commit}:{toolchain}:{features:?}");
+    let hash = format!("{:x}", Sha256::digest(id.as_bytes()));
+    cache
+        .join("verus-src-build")
+        .join(format!("{commit}-{}", &hash[..16]))
+}
+
+fn safe_relative(path: &Path) -> bool {
+    path.components()
+        .all(|p| matches!(p, std::path::Component::Normal(_)))
+}
+
+pub(crate) fn hash_file(path: &Path) -> Result<String> {
+    use std::io::Read as _;
+    let mut file = std::fs::File::open(path).map_err(|e| Error::new("SAIL3040", e.to_string()))?;
+    let mut hash = Sha256::new();
+    let mut chunk = vec![0u8; 65536];
+    loop {
+        let n = file
+            .read(&mut chunk)
+            .map_err(|e| Error::new("SAIL3040", e.to_string()))?;
+        if n == 0 {
+            break;
+        }
+        hash.update(&chunk[..n]);
+    }
+    Ok(format!("{:x}", hash.finalize()))
+}
+
+/// Hashes every runtime file directly in target-verus/release.
+///
+/// # Errors
+/// `SAIL3040` if an artifact cannot be read.
+pub fn artifact_hashes(build: &Path) -> Result<BTreeMap<PathBuf, String>> {
+    let dir = checkout_dir(build).join("source/target-verus/release");
+    let entries = std::fs::read_dir(&dir).map_err(|e| Error::new("SAIL3040", e.to_string()))?;
+    let mut hashes = BTreeMap::new();
+    for entry in entries {
+        let path = entry
+            .map_err(|e| Error::new("SAIL3040", e.to_string()))?
+            .path();
+        if path.is_file() {
+            let relative = path
+                .strip_prefix(build)
+                .map_err(|e| Error::new("SAIL3040", e.to_string()))?;
+            hashes.insert(relative.to_path_buf(), hash_file(&path)?);
+        }
+    }
+    Ok(hashes)
 }
 
 /// The Verus checkout inside a build directory.
@@ -64,9 +124,11 @@ pub struct Manifest {
     pub rust_toolchain: String,
     /// SHA-256 of the z3 it was built and tested with (the pinned one).
     pub z3_sha256: String,
-    /// Cargo features enabled (none so far: Verus's `singular` feature is
-    /// not built; ADR 0019).
+    /// Cargo features enabled; optional Singular builds are isolated (ADR 0021).
     pub features: Vec<String>,
+    /// SHA-256 of runtime artifacts, relative to this build.
+    #[serde(default)]
+    pub artifacts: BTreeMap<PathBuf, String>,
     /// How long the build took, in seconds.
     pub build_seconds: u64,
     /// The `rust_verify_test` test binaries, sorted by name.
@@ -122,10 +184,13 @@ impl Manifest {
     #[must_use]
     pub fn is_complete(&self, build: &Path) -> bool {
         !self.test_binaries.is_empty()
+            && self.artifacts.iter().all(|(p, hash)| {
+                safe_relative(p) && hash_file(&build.join(p)).ok().as_ref() == Some(hash)
+            })
             && self
                 .test_binaries
                 .iter()
-                .all(|b| build.join(&b.path).is_file())
+                .all(|b| safe_relative(&b.path) && build.join(&b.path).is_file())
     }
 }
 
@@ -153,6 +218,7 @@ mod tests {
             z3_sha256: "00".to_owned(),
             features: Vec::new(),
             build_seconds: 1,
+            artifacts: BTreeMap::new(),
             test_binaries: vec![TestBinary {
                 name: "basic".to_owned(),
                 path: PathBuf::from("bin/basic-123"),
@@ -165,5 +231,48 @@ mod tests {
         assert!(m.is_complete(&dir));
         let _ = std::fs::remove_dir_all(&dir);
         assert!(Manifest::load(&dir).is_err_and(|e| e.code == "SAIL3040"));
+    }
+    #[test]
+    fn feature_builds_and_toolchains_have_distinct_locations() {
+        let features = vec!["singular".to_owned()];
+        let cache = Path::new("/cache");
+        assert_ne!(
+            variant_dir(cache, "commit", "1", &features),
+            build_dir(cache, "commit")
+        );
+        assert_ne!(
+            variant_dir(cache, "commit", "1", &features),
+            variant_dir(cache, "commit", "2", &features)
+        );
+    }
+
+    #[test]
+    fn corrupt_runtime_artifacts_and_traversal_are_rejected() {
+        let dir = std::env::temp_dir().join(format!("sail-build-hash-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&dir).is_ok());
+        assert!(std::fs::write(dir.join("solver"), "original").is_ok());
+        let mut manifest = Manifest {
+            schema_version: SCHEMA_VERSION,
+            commit: "abc".to_owned(),
+            rust_toolchain: "1".to_owned(),
+            z3_sha256: "hash".to_owned(),
+            features: vec![],
+            build_seconds: 0,
+            test_binaries: vec![TestBinary {
+                name: "test".to_owned(),
+                path: "solver".into(),
+            }],
+            artifacts: BTreeMap::from([(
+                "solver".into(),
+                hash_file(&dir.join("solver")).unwrap_or_default(),
+            )]),
+        };
+        assert!(manifest.is_complete(&dir));
+        assert!(std::fs::write(dir.join("solver"), "corrupt").is_ok());
+        assert!(!manifest.is_complete(&dir));
+        manifest.test_binaries[0].path = "../solver".into();
+        manifest.artifacts.clear();
+        assert!(!manifest.is_complete(&dir));
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -1,0 +1,5 @@
+# Optional local validation image. Never built or run by a CI workflow.
+ARG SAIL_CI_IMAGE=ubuntu:24.04
+FROM ${SAIL_CI_IMAGE}
+RUN apt-get update && apt-get install -y --no-install-recommends singular=1:4.3.2-p10+ds-1.1build1 && rm -rf /var/lib/apt/lists/*
+ENV VERUS_SINGULAR_PATH=/usr/bin/Singular

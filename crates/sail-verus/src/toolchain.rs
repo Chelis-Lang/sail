@@ -166,6 +166,47 @@ pub struct Installed {
 }
 
 impl Installed {
+    fn from_source(pins: Pins, build: &Path) -> Result<Self> {
+        let manifest = crate::source_build::Manifest::load(build)?;
+        let expected = pins.assets.get(host()).map(|a| a.z3_sha256.as_str());
+        if manifest.commit != pins.verus.commit
+            || manifest.rust_toolchain != pins.verus.rust_toolchain
+            || Some(manifest.z3_sha256.as_str()) != expected
+            || manifest.features.iter().any(|f| f != "singular")
+            || manifest.artifacts.is_empty()
+            || !manifest.is_complete(build)
+        {
+            return Err(Error::new(
+                "SAIL3040",
+                "source build identity or artifact hashes do not match the active pins",
+            ));
+        }
+        let dir = crate::source_build::checkout_dir(build).join("source/target-verus/release");
+        let verus = dir.join("verus");
+        let cargo_verus = dir.join("cargo-verus");
+        let z3 = dir.join("z3");
+        if crate::source_build::hash_file(&z3).ok().as_deref() != Some(manifest.z3_sha256.as_str())
+        {
+            return Err(Error::new(
+                "SAIL3040",
+                "source build solver binary does not match its pinned hash",
+            ));
+        }
+        if ![&verus, &cargo_verus, &z3].iter().all(|p| p.is_file()) {
+            return Err(Error::new(
+                "SAIL3040",
+                "source build has missing runtime executables",
+            ));
+        }
+        Ok(Self {
+            pins,
+            verus,
+            cargo_verus,
+            z3,
+            z3_bundled: true,
+        })
+    }
+
     /// Locates the install made by `cargo xtask fetch-verus` for `pins`:
     /// `$SAIL_VERUS_HOME`, else `<cache>/verus/<release>`.
     ///
@@ -174,6 +215,9 @@ impl Installed {
     /// `SAIL3003` if there is no pinned asset for this host or the install
     /// is missing.
     pub fn locate(pins: Pins) -> Result<Self> {
+        if let Some(build) = std::env::var_os("SAIL_VERUS_SOURCE_BUILD") {
+            return Self::from_source(pins, Path::new(&build));
+        }
         let asset = pins.assets.get(host()).ok_or_else(|| {
             Error::new(
                 "SAIL3003",

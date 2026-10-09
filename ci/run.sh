@@ -198,6 +198,14 @@ RS
     cargo xtask build-verus-source "$@"
     ;;
 
+  singular)
+    local_only singular "$@"
+    cargo xtask build-verus-source --features=singular
+    source_build="$(cargo xtask build-verus-source --features=singular --print-path)"
+    export SAIL_VERUS_SOURCE_BUILD="$source_build"
+    bash ci/run.sh conformance deep --project verus-integer-ring --project verified-memory-allocator "$@"
+    ;;
+
   deep-rvt)
     local_only deep-rvt "$@"
     with_cache=false
