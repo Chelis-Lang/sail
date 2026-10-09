@@ -44,7 +44,7 @@ pub const FORMAT: &str = "sail-shared-entry";
 
 /// Version of the shared entry format. It is signed, so an entry can never
 /// be read under another version's rules.
-pub const SHARED_VERSION: u32 = 1;
+pub const SHARED_VERSION: u32 = 2;
 
 /// The only mode shared entries exist for today. Opt-in modes have keys of
 /// their own (charter rule 8) and would need their own trust decision.
@@ -958,6 +958,18 @@ mod tests {
         let other = SecretKey::from_seed([2; 32]);
         let trusted = trusting(&sk);
         let good = sign_entry(&sk, &KEY, b"unsat\n", "check-sat", &solver(), None, 1);
+        // Even a trusted signature must not admit the old publication rules.
+        let end = good.iter().position(|&b| b == b'\n').unwrap_or(0);
+        let mut old_header: Header = serde_json::from_slice(&good[..end])
+            .unwrap_or_else(|e| unreachable!("valid fixture: {e}"));
+        old_header.entry_version = 1;
+        old_header.signature = hex(&sk.sign(&old_header.signed_bytes()).to_bytes());
+        let mut old = serde_json::to_vec(&old_header).unwrap_or_default();
+        old.extend_from_slice(&good[end..]);
+        assert_eq!(
+            verify_entry(&old, &KEY, &trusted, &solver()),
+            Err(Rejection::WrongFormat)
+        );
 
         // A forgery with a valid hash and no valid signature.
         let mut forged = sign_entry(&other, &KEY, b"sat\n", "check-sat", &solver(), None, 1);
