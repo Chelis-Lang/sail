@@ -48,6 +48,25 @@ struct Paths {
     build_inputs: PathBuf,
 }
 
+fn input_environment_key(key: &std::ffi::OsStr) -> bool {
+    ![
+        "SAIL_JOB_EVENTS",
+        "SAIL_JOB_GUARD_PARENT",
+        "SAIL_MANAGED_FORCE",
+        "SAIL_DAEMON_SOCKET",
+        "SAIL_PROVENANCE_DIR",
+        "SAIL_TRACE_DIR",
+        "SAIL_PROJECT_SOCKET",
+        "PWD",
+        "OLDPWD",
+        "SHLVL",
+        "_",
+    ]
+    .iter()
+    .any(|excluded| key == *excluded)
+        && !key.as_encoded_bytes().starts_with(b"SAIL_MANAGED_")
+}
+
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     let mut packages = Vec::new();
     let mut it = args.iter().take_while(|s| s.as_str() != "--");
@@ -89,24 +108,7 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         hashed.hash(&wrapper)?,
     ));
     let mut environment: BTreeMap<Vec<u8>, Vec<u8>> = std::env::vars_os()
-        .filter(|(k, _)| {
-            let key = k.to_string_lossy();
-            ![
-                "SAIL_JOB_EVENTS",
-                "SAIL_JOB_GUARD_PARENT",
-                "SAIL_MANAGED_FORCE",
-                "SAIL_DAEMON_SOCKET",
-                "SAIL_PROVENANCE_DIR",
-                "SAIL_TRACE_DIR",
-                "SAIL_PROJECT_SOCKET",
-                "PWD",
-                "OLDPWD",
-                "SHLVL",
-                "_",
-            ]
-            .contains(&key.as_ref())
-                && !key.starts_with("SAIL_MANAGED_")
-        })
+        .filter(|(k, _)| input_environment_key(k))
         .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
         .collect();
     let rustc = resolve_program(
@@ -1186,7 +1188,7 @@ mod tests {
     #[test]
     fn expected_target_coverage_respects_packages_and_target_selection() {
         let data = serde_json::json!({"workspace_members":["a","b"],"workspace_default_members":["a","b"],"resolve":{"root":null,"nodes":[]},"packages":[
-            {"id":"a","name":"a","metadata":{"verus":{"verify":true}},"targets":[{"name":"a","kind":["lib"]},{"name":"app","kind":["bin"]}]},
+            {"id":"a","name":"a","metadata":{"verus":{"verify":true}},"targets":[{"name":"a","kind":["lib"]},{"name":"a","kind":["bin"]}]},
             {"id":"b","name":"b","metadata":{"verus":{"verify":true}},"targets":[{"name":"b","kind":["lib"]}]}
         ]});
         assert_eq!(expected_targets(&data, &[]).len(), 3);
@@ -1198,8 +1200,8 @@ mod tests {
             BTreeSet::from([("a".to_owned(), "a".to_owned(), "lib".to_owned())])
         );
         assert_eq!(
-            expected_targets(&data, &["--bin".to_owned(), "app".to_owned()]),
-            BTreeSet::from([("a".to_owned(), "app".to_owned(), "bin".to_owned())])
+            expected_targets(&data, &["--bin".to_owned(), "a".to_owned()]),
+            BTreeSet::from([("a".to_owned(), "a".to_owned(), "bin".to_owned())])
         );
         assert!(expected_targets(&data, &["-p".to_owned(), "missing".to_owned()]).is_empty());
     }
@@ -1210,5 +1212,41 @@ mod tests {
             "--verify-function=lemma".to_owned()
         ]));
         assert!(!focused(&["--features".to_owned(), "foo".to_owned()]));
+    }
+    #[test]
+    fn lifecycle_only_job_environment_does_not_partition_proofs() {
+        for key in [
+            "SAIL_JOB_EVENTS",
+            "SAIL_JOB_GUARD_PARENT",
+            "SAIL_MANAGED_FORCE",
+            "SAIL_MANAGED_PROXY",
+        ] {
+            assert!(!input_environment_key(std::ffi::OsStr::new(key)));
+        }
+        for key in ["RUSTFLAGS", "RUSTC", "PATH", "SAIL_CACHE_DIR"] {
+            assert!(input_environment_key(std::ffi::OsStr::new(key)));
+        }
+    }
+    #[cfg(unix)]
+    #[test]
+    fn resolved_compiler_preserves_dispatch_alias_name() {
+        let root =
+            std::env::temp_dir().join(format!("sail-runtime-alias-test-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let executable = root.join("rustup");
+        let alias = root.join("rustc");
+        assert!(std::fs::write(&executable, "fixture").is_ok());
+        assert!(std::os::unix::fs::symlink(&executable, &alias).is_ok());
+        let resolved = resolve_program(alias.as_os_str(), &root).unwrap_or_default();
+        assert_eq!(resolved, alias, "execution must retain argv[0] role");
+        let mut hashes = super::super::files::FileDigests::default();
+        assert_eq!(hashes.hash(&alias), hashes.hash(&executable));
+        assert!(std::fs::write(&executable, "changed").is_ok());
+        assert_ne!(
+            hashes.hash(&alias),
+            super::super::files::FileDigests::default().hash(&alias),
+            "independent phases must re-read content"
+        );
+        assert!(std::fs::remove_dir_all(root).is_ok());
     }
 }
