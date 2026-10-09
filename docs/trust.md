@@ -161,3 +161,17 @@ mismatch as "daemon unavailable": the shim passes everything through to the
 pinned solver. The default socket name includes the version
 (`daemon-v<N>.sock`), so an upgraded `sail verify` starts its own daemon
 instead of reusing a stale one.
+
+## Solver diagnostics and publication
+
+The stdout reply cache admits a session only after a clean solver exit with
+no stderr bytes (ADR 0022). Quantifier warnings are forwarded and cause all
+staged entries to be discarded; future runs therefore reproduce the warnings.
+Local and signed shared entry format 2 reject older entries whose silence was
+not established. A trusted shared writer must follow the same publication rule.
+
+Solver-free completion additionally requires a silence record for the exact
+complete session input. Cached replies alone cannot cover new trailing
+commands. The record uses a separate key domain, with the same solver and mode
+identity; shared writers must certify complete silent sessions, never synthesize
+records merely from cached prefixes.

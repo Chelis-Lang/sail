@@ -26,6 +26,11 @@ semantic versioning once the API is published.
     difference.
   - `ci/run.sh deep-rvt [cache]` (local-only) runs both, optionally also
     with the cache daemon.
+
+- Preserve solver stderr during cached verification. Publish replies only after
+  a clean, silent session completes; warning sessions always re-solve. Refuse
+  older daemon and cache formats that could suppress diagnostics.
+
 - Required `CI completion` rejects failed, cancelled and skipped gates,
   including CI image failures. Branch protection requires an updated branch;
   every CI job now has at most ten minutes.
