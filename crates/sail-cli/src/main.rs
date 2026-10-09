@@ -1,8 +1,7 @@
 //! The `sail` binary.
 //!
-//! Status: `verify`, `watch`, `serve`, `status` and `cache` work; the other commands
-//! named by the charter are recognised and refuse with a stable "not
-//! implemented" exit code until their backends exist.
+//! Verification, persistent jobs, workspace watch, MCP, cache management,
+//! fragility measurement and local benchmark commands.
 #![forbid(unsafe_code)]
 
 mod fragility;
@@ -37,7 +36,7 @@ const COMMANDS: &[(&str, &str)] = &[
         "serve verification to agents over MCP (stdio; see docs/mcp.md)",
     ),
     ("serve", "run the S.A.I.L. daemon in the foreground"),
-    ("status", "show daemon, solver pool and cache state"),
+    ("status", "show daemon and cache state"),
     ("cache", "inspect and manage the result cache"),
     ("bench", "run benchmark workloads"),
     (
