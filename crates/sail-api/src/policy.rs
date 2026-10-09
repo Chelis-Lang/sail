@@ -27,7 +27,7 @@ pub fn unknown_servable(effort: Option<&Effort>) -> bool {
     ]
     .iter()
     .any(|w| lower.contains(w));
-    !exhausted && limit > 0 && used.saturating_mul(2) <= limit
+    !exhausted && limit > 0 && used <= limit / 2
 }
 
 /// Whether `reply` is a `check-sat` answer of `unknown`.
@@ -54,6 +54,9 @@ mod tests {
         assert!(ok("incomplete quantifiers", 10, 100));
         assert!(ok("incomplete quantifiers", 50, 100));
         assert!(!ok("incomplete quantifiers", 51, 100));
+        assert!(ok("incomplete", u64::MAX / 2, u64::MAX));
+        assert!(!ok("incomplete", u64::MAX / 2 + 1, u64::MAX));
+        assert!(!ok("incomplete", u64::MAX, u64::MAX));
         assert!(!ok("canceled", 1, 100));
         assert!(!ok("max. resource limit exceeded", 1, 100));
         assert!(!ok("incomplete", 0, 0));
