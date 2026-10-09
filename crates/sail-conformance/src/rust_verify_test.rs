@@ -403,7 +403,10 @@ fn open_suite(threads: u32) -> Result<(Installed, Suite, std::fs::File), String>
     let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
     let verus = &installed.pins.verus;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let build = source_build::build_dir(&cache, &verus.commit);
+    let build = std::env::var_os("SAIL_VERUS_SOURCE_BUILD").map_or_else(
+        || source_build::build_dir(&cache, &verus.commit),
+        PathBuf::from,
+    );
     let ownership = source_build::lock_build(&build).map_err(|e| e.to_string())?;
     let mut suite =
         Suite::open(&build, &verus.rust_toolchain, &installed.z3).map_err(|e| e.to_string())?;

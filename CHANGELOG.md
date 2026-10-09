@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add feature-scoped Singular source builds, validated runtime identities, and
+  an optional local conformance environment for integer-ring examples and the
+  pinned memory allocator.
+
 - Keep portfolio mode and seed provenance in compact MCP result lookups and
   summaries. Unknown summaries no longer infer an unobserved resource failure.
 

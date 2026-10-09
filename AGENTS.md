@@ -168,6 +168,10 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
 - *Secondary Verus (local):* `SAIL_VERUS_RELEASE=<release>` runs any of the
   above against a secondary pin (`corpus/toolchain.toml`). Record results in
   `docs/compatibility.md`.
+- *Singular (optional, local):* `ci/local-singular.sh` builds the pinned source
+  with Singular and checks tagged deep-tier projects (ADR 0021). It is never a
+  required CI job. `SAIL_VERUS_SOURCE_BUILD` explicitly selects a validated
+  source variant; binary releases do not support Singular.
 - *Benchmarks (local):* `ci/local.sh bench cold|warm|edit TIER ROUNDS`, or
   `sail-bench` on the host. Never part of the gate. Record machine details
   with every result; reference numbers come from Linux x86-64.

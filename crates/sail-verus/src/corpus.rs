@@ -56,6 +56,8 @@ pub enum Build {
     CargoVerus,
     /// A project-specific script (not yet supported by the runner).
     Script,
+    /// Verus with a scratch-built libc rlib from `test_libc`.
+    LibcVerus,
 }
 
 /// The `cargo verus` subcommand a `cargo-verus` project runs.
@@ -356,6 +358,13 @@ pub fn requirement_available(name: &str, rust_toolchain: &str) -> bool {
             });
     }
     match name {
+        "verus-feature:singular" => {
+            std::env::var_os("SAIL_VERUS_SOURCE_BUILD").is_some_and(|build| {
+                crate::source_build::Manifest::load(Path::new(&build)).is_ok_and(|m| {
+                    m.features.iter().any(|f| f == "singular") && m.rust_toolchain == rust_toolchain
+                })
+            })
+        }
         "singular" => var("VERUS_SINGULAR_PATH").is_some_and(|p| Path::new(&p).is_file()),
         "openssl" => {
             var("OPENSSL_DIR").is_some_and(|p| Path::new(&p).is_dir())

@@ -196,19 +196,32 @@ patch_verus_deps = true
 requires = ["openssl"]
 expected = "verified"
 
-# Tier 2: pinned, but not run (ADR 0006, update of 2026-10-08).
+# Optional deep projects, requiring a Singular-enabled source build (ADR 0021).
+
+[[project]]
+name = "verus-integer-ring"
+url = "https://github.com/verus-lang/verus"
+commit = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+license = "MIT"
+tier = "deep"
+verus_version_compat = "needs-singular-build"
+compat_evidence = "requires a pinned source build with the singular feature"
+build = "verus"
+crate_roots_dir = "examples/integer_ring"
+extra_verus_args = ["--crate-type=lib"]
+expected_from = "examples-first-line-tag"
+requires = ["singular", "verus-feature:singular"]
 
 [[project]]
 name = "verified-memory-allocator"
 url = "https://github.com/verus-lang/verified-memory-allocator"
 commit = "9f99d4c22e26024be4e3e2d40b7501daab570860"
 license = "MIT"
-tier = "tier2"
+tier = "deep"
 verus_version_compat = "needs-singular-build"
-compat_evidence = "the pinned release is built without Verus's singular feature (rust_verify: \"Found singular command when Verus is compiled without Singular feature\"); verita verifies it with a source build using --features singular"
-# verita first builds test_libc with cargo and copies its liblibc-*.rlib to
-# build/liblibc.rlib (a prepare script), so this needs a `script` build.
-build = "script"
+compat_evidence = "requires a pinned source build with the singular feature"
+# Build pinned test_libc in scratch and supply its release rlib explicitly.
+build = "libc-verus"
 crate_roots = ["verus-mimalloc/lib.rs"]
 extra_verus_args = ["--extern", "libc=build/liblibc.rlib", "--triggers-mode", "silent", "--rlimit", "240"]
-requires = ["singular"]
+requires = ["singular", "verus-feature:singular"]
