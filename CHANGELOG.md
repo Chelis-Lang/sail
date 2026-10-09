@@ -20,6 +20,10 @@ semantic versioning once the API is published.
 
 - Join fragility captures to functions by exact transcript hashes and check
   order; expose conservative function scores in JSON and MCP on request.
+
+- Exercise a real seeded proof, cold and warm, in the fast end-to-end check.
+  Bound daemon readiness to sixty seconds and fail early when the daemon exits.
+
 - Exclude skipped timing successes from function-scoped reports and portfolio
   acceptance (pinned Verus issue VI-0009).
 

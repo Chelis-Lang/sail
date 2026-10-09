@@ -46,3 +46,17 @@ Function-only timing data can include skipped successes (VI-0009). Structured
 reports apply the explicit selector using pinned Verus matching rules before
 complete-run acceptance or MCP storage. Exact names take priority over unique
 substring fallback; explicit leading/trailing wildcard rules are preserved.
+
+## Small end-to-end proof
+
+`corpus/repros/z3-nla-seed-portfolio/` records a complete one-function
+nonlinear proof. At the pinned release's `--rlimit 0.01`, the unchanged
+baseline exhausts its budget, and seed 4 independently proves the crate.
+Fresh and warm host runs and a Linux CI-image run retain the proving
+configuration and solver hash. This is separate from page-table's allocation
+census and does not imply a complete page-table proof.
+
+The fast end-to-end step runs this small case cold and warm. It checks both
+attempts, a single complete confirmed proof, pinned solver identity and seed
+provenance, genuine warm proof hits, and re-solving the exhausted baseline.
+Long corpus checks remain local-only.
