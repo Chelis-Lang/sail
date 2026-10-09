@@ -17,6 +17,8 @@ filed as is.
 | [VI-0004](VI-0004-shared-log-directory.md) | Every crate in a `cargo verus` run shares one log directory, and each clears it | open | described (source references) |
 | [VI-0005](VI-0005-forwarded-args-do-not-re-verify.md) | Changing forwarded Verus arguments does not re-verify a fresh crate | open | described (steps) |
 | [VI-0006](VI-0006-release-without-bundled-z3.md) | The 0.2026.09.06 macOS release archive bundles no z3 | open | `corpus/toolchain.toml` secondary pin |
+| [VI-0007](VI-0007-nondeterministic-error-order.md) | Errors from different modules are reported in a run-dependent order | open | `corpus/repros/verus-nondeterministic-error-order/` |
+| [VI-0008](VI-0008-func-details-hash-order.md) | `--output-json` lists `func-details` in hash order | open | `rust_verify_test` `output_json` tests (described) |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).

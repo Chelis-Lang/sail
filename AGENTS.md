@@ -85,7 +85,8 @@ their own branches. The lead reviews and merges.
 
 ```
 crates/sail-*        one crate per charter component (see docs/CHARTER.md)
-xtask/               cargo xtask: install-hooks, check-layering, protect-main
+xtask/               cargo xtask: install-hooks, check-layering, protect-main,
+                     fetch-verus, build-verus-source
 corpus/              pinned Verus/Z3 toolchain and corpus project pins
 bench/               benchmark result data (machine-readable)
 docs/                charter, roadmap, ADRs, survey, trust model, divergences,
@@ -153,7 +154,14 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
   changes to the shim, cache, daemon, keys or harness, and put the summary
   lines in the PR.
-- *Deep (local):* `ci/local.sh conformance deep`, before releases.
+- *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
+  `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
+  suite (about 4,400 tests), plain vs `sail-z3` test by test, from a source
+  build of the pinned Verus commit that the step makes first under
+  `<cache>/verus-src-build/<commit>` (`cargo xtask build-verus-source`).
+  `cache` adds rounds with the cache daemon; ARGS such as `--filter modes::`
+  or `--every 10` select a subset. It runs on the host too (`ci/run.sh
+  deep-rvt`). See ADR 0019.
 - *Secondary Verus (local):* `SAIL_VERUS_RELEASE=<release>` runs any of the
   above against a secondary pin (`corpus/toolchain.toml`). Record results in
   `docs/compatibility.md`.

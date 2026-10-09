@@ -502,7 +502,7 @@ pub fn run_unit(
 /// The per-unit time limit: `SAIL_UNIT_TIMEOUT` seconds, default 3600. A
 /// unit that exceeds it is an infrastructure error (`SAIL3022`), never a
 /// Verus result.
-fn unit_timeout() -> Duration {
+pub(crate) fn unit_timeout() -> Duration {
     std::env::var("SAIL_UNIT_TIMEOUT")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -512,7 +512,7 @@ fn unit_timeout() -> Duration {
 /// Runs `cmd` to completion, capturing stdout and stderr, but kills its
 /// whole process group (the timing wrapper, Verus, shims and solvers) if it
 /// runs longer than `limit`.
-fn run_with_timeout(
+pub(crate) fn run_with_timeout(
     cmd: &mut Command,
     limit: Duration,
 ) -> std::result::Result<std::process::Output, (&'static str, String)> {

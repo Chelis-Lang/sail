@@ -27,6 +27,8 @@
 
 use std::collections::BTreeMap;
 
+pub mod rvt;
+
 use sail_verus::run::RunRecord;
 use serde::Serialize;
 
@@ -68,7 +70,7 @@ impl Comparison {
     }
 }
 
-fn first_difference(a: &str, b: &str) -> String {
+pub(crate) fn first_difference(a: &str, b: &str) -> String {
     let line = a
         .lines()
         .zip(b.lines())

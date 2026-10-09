@@ -21,6 +21,15 @@
 #                        passed to sail-conformance
 #   bench WORKLOAD TIER ROUNDS
 #                        a sail-bench workload (cold|warm|edit)
+#   build-verus-source [--force] [--keep-intermediates]
+#                        a source build of the pinned Verus commit with its
+#                        rust_verify_test binaries, under the cache
+#   deep-rvt [cache] [ARGS...]
+#                        deep tier: Verus's rust_verify_test suite, plain vs
+#                        sail-z3 pass-through, per test (ADR 0019); with
+#                        `cache`, then also with the cache daemon (fill,
+#                        warm). ARGS go to `sail-conformance
+#                        rust-verify-test` (for example --filter modes::)
 #
 # CI runs gate, solver, e2e and `conformance fast pr`. Every other tier and
 # every benchmark is local-only: run them with ci/local.sh.
@@ -35,11 +44,23 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|bench ...}"
+step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|bench|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
   cargo build --release --locked -p sail-cli -p sail-shim -p sail-conformance -p sail-bench
+}
+
+# Starts a cache daemon on a fresh cache; sets $sock, $cache and $daemon.
+start_daemon() {
+  sock="$HOME/.cache/sail/ci-$$.sock"
+  cache="$(mktemp -d)/cache"
+  mkdir -p "$(dirname "$sock")"
+  ./target/release/sail serve --socket "$sock" --cache "$cache" --idle-timeout 0 &
+  daemon=$!
+  trap 'kill "$daemon" 2>/dev/null || true' EXIT
+  for _ in $(seq 1 100); do [ -S "$sock" ] && break; sleep 0.1; done
+  [ -S "$sock" ] || { echo "daemon did not start" >&2; exit 1; }
 }
 
 case "$step" in
@@ -148,14 +169,7 @@ RS
     out="${SAIL_CONFORMANCE_OUT:-conformance-out}"
     ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/pass-through"
     # With the cache on: fill, then warm. A difference in either is a failure.
-    sock="$HOME/.cache/sail/ci-$$.sock"
-    cache="$(mktemp -d)/cache"
-    mkdir -p "$(dirname "$sock")"
-    ./target/release/sail serve --socket "$sock" --cache "$cache" --idle-timeout 0 &
-    daemon=$!
-    trap 'kill "$daemon" 2>/dev/null || true' EXIT
-    for _ in $(seq 1 100); do [ -S "$sock" ] && break; sleep 0.1; done
-    [ -S "$sock" ] || { echo "daemon did not start" >&2; exit 1; }
+    start_daemon
     for round in fill warm; do
       SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/cache-$round"
     done
@@ -176,6 +190,29 @@ RS
       edit) ./target/release/sail-bench edit --rounds "$rounds" --name "$name" ;;
       *) echo "unknown workload $workload" >&2; exit 2 ;;
     esac
+    ;;
+
+  build-verus-source)
+    local_only build-verus-source "$@"
+    cargo xtask build-verus-source "$@"
+    ;;
+
+  deep-rvt)
+    local_only deep-rvt "$@"
+    with_cache=false
+    if [ "${1:-}" = cache ]; then with_cache=true; shift; fi
+    cargo xtask build-verus-source
+    release_build
+    out="${SAIL_CONFORMANCE_OUT:-conformance-out}/rust-verify-test"
+    # Keep local parallelism modest: 4 tests at a time unless --jobs says so.
+    ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/pass-through" "$@"
+    if [ "$with_cache" = true ]; then
+      start_daemon
+      for round in fill warm; do
+        SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/cache-$round" "$@"
+      done
+      echo "cache entries: $(find "$cache/v2" -type f | wc -l)"
+    fi
     ;;
 
   *)

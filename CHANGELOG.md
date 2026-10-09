@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Deep tier: Verus's own `rust_verify_test` suite (4,695 tests) runs
+  plain and through `sail-z3`, test by test (ADR 0019).
+  - `cargo xtask build-verus-source` builds the pinned Verus commit from
+    source with vargo, the pinned z3 and toolchain, under
+    `<cache>/verus-src-build/<commit>`, and prunes it to what the tests
+    need.
+  - `sail-conformance rust-verify-test [--filter S]... [--every N]
+    [--jobs N]` compares outcomes, exit codes and diagnostics, classifies
+    plain-Verus flakiness separately, and exports a reproduction for each
+    difference.
+  - `ci/run.sh deep-rvt [cache]` (local-only) runs both, optionally also
+    with the cache daemon.
 - A shared cache tier (ADR 0017, `docs/trust.md`). Its entries are signed
   with ed25519 and verified before use. Each signature binds the key, the
   reply hash, the command, the solver identity, the platform class, the

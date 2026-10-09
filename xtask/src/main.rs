@@ -3,6 +3,7 @@
 
 mod layering;
 mod verus;
+mod verus_source;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -15,6 +16,9 @@ commands:
     check-layering  verify internal crate dependencies follow the charter DAG
     protect-main    apply branch protection to main on GitHub (PR mode)
     fetch-verus     install the pinned Verus release (corpus/toolchain.toml)
+    build-verus-source [--force] [--keep-intermediates] [--singular]
+                    build the pinned Verus commit from source, with its
+                    rust_verify_test binaries (deep tier; ADR 0019)
 ";
 
 type Result<T> = std::result::Result<T, String>;
@@ -26,6 +30,10 @@ fn main() -> ExitCode {
         Some("check-layering") => check_layering(),
         Some("protect-main") => protect_main(),
         Some("fetch-verus") => verus::fetch(),
+        Some("build-verus-source") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            verus_source::build(&rest)
+        }
         _ => Err(USAGE.to_owned()),
     };
     match result {
