@@ -35,8 +35,8 @@ in `docs/reports/2026-10-08-bootstrap.md` and `docs/benchmarks.md`.
 ## Local acceptance
 
 The combined feature checkout passes all 268 host gate tests. Required GitHub
-checks for the core diagnostic fix and complete-run portfolio are green; every
-job takes less than four minutes. The Linux CI-image core gate, all 30 core solver tests,
+checks for the core diagnostic fix and complete-run portfolio are green. Fast
+CI retains its ten-minute job limits; long acceptance stays local-only. The Linux CI-image core gate, all 30 core solver tests,
 end-to-end comparison, and all three 33-unit guide rounds also pass locally.
 The combined Linux-container gate passes all 268 tests and all 35 solver,
 fault and portfolio tests. Its unchanged end-to-end retry passes, and all three
