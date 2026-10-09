@@ -170,9 +170,7 @@ fn command(s: &Setup, args: &[String]) -> (Command, bool) {
         .env("VERUS_Z3_PATH", &s.shim)
         .env("SAIL_Z3_PATH", &s.z3)
         .env("SAIL_SOLVER_MODE", s.mode.name());
-    if s.mode == sail_api::protocol::VerificationMode::AcceptFirstProof
-        && crate::portfolio::partial(args)
-    {
+    if crate::portfolio::partial(args) {
         // Partial selection is explicitly requested; cargo-verus requires focus.
         cmd = {
             let mut focus = Command::new(&s.cargo_verus);

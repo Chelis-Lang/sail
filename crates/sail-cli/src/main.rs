@@ -51,6 +51,7 @@ fn usage() -> String {
     for (name, help) in COMMANDS {
         let _ = writeln!(text, "    {name:<10} {help}");
     }
+    text.push_str("\nVERIFY OPTIONS (before --):\n    --output json\n    --measure-fragility [--fragility-seeds N]\n    --portfolio accept-first-proof [--portfolio-seeds 1,2,...]\n    --portfolio-timeout-secs N\n");
     text
 }
 

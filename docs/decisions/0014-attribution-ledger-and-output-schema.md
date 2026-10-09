@@ -157,3 +157,13 @@ be given to the conformance baseline (ADR 0010 item 3).
   linked to obligations.
 - **The shim gains a best-effort side file.** Its forwarded stream is
   unchanged, and the cached-session test checks the record.
+
+## Partial verification (2026-10-09)
+
+When the caller explicitly selects a module, root or function, `sail verify`
+uses `cargo verus focus`, as `sail fragility` already does. The pinned
+`cargo verus verify` rejects partial selectors; `focus` is its supported
+entry point. Compare such requests against plain `cargo verus focus` with
+the same selectors and flags. Whole-project requests still use `verify`.
+This also lets MCP function/module requests and their optional measurements
+execute the requested scope. No scope is inferred or widened.

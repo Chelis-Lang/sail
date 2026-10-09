@@ -194,8 +194,7 @@ struct JsonOutput<'a> {
     verus_exit_code: Option<i32>,
     /// Verus's per-function breakdown from the capture run.
     verus_functions: &'a [VerusFunction],
-    /// Whether checks were attributed to a function (only when Verus
-    /// reported exactly one function that used solver effort).
+    /// Whether any checks have an exact AIR/transcript function mapping.
     attributed: bool,
     /// The fragility report.
     report: &'a Report,

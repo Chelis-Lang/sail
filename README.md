@@ -46,7 +46,7 @@ SAIL_SHARED_STORE=/shared/sail sail verify [ARGS...]    # or: sail serve --share
 `sail mcp` is an MCP server on stdio for agents that verify after every
 edit. Its tools are `verify` (a crate, module or function, returning the
 JSON document above), `counterexample`, `cached_result` (latest verdicts,
-saying whether sources changed since) and `fragility` (once available).
+saying whether sources changed since) and `fragility` (local solver replay measurement).
 Register it as the stdio command `sail mcp`, for example
 `claude mcp add --transport stdio sail -- sail mcp`. See `docs/mcp.md`.
 

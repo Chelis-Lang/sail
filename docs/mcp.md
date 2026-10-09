@@ -80,7 +80,9 @@ verdicts. `unknown` (Z3 gave up near its limit) is never a settled failure.
 Runs `sail verify --output json` in the project and returns its schema-v1
 report (`docs/output-schema.md`). The report has per-function verdicts with
 tier and provenance, obligation ids, counterexample models, diagnostics,
-timings and cache sources. The run is recorded for the lookups.
+timings and cache sources. The run is recorded for the lookups. Explicit module/function selectors use
+`cargo verus focus`, which is the pinned verifier’s supported partial entry
+point; whole-project requests use `cargo verus verify`.
 
 | Argument | Meaning |
 |---|---|
@@ -88,6 +90,8 @@ timings and cache sources. The run is recorded for the lookups.
 | `package` | `-p <package>`. |
 | `module` | Verus `--verify-module <module>`: this module and its descendants, relative to the crate root (`arith`, `foo::bar`). |
 | `function` | Verus `--verify-function <function>`: a unique substring of the name, or a pattern with `*` at either end. It is looked up in `module`, or in the crate root (`--verify-root`) if no module is given. |
+| `portfolio` | Optional `accept-first-proof`: sequential complete Verus attempts; every winning function comes from one complete run, with seed/configuration and attempt evidence. Never enabled by default. |
+| `measure_fragility` | Optional boolean: capture and replay solver sessions locally, attaching exact per-function scores; incomplete or ambiguous attribution stays null with a note. Cannot be combined with a portfolio. |
 | `cargo_args` | Further `cargo verus verify` arguments, before `--`. They may not contain `--` or `--output`. |
 | `verus_args` | Further Verus arguments, after `--`. |
 
