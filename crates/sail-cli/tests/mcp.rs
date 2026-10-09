@@ -180,7 +180,16 @@ exit 1
         .collect();
     assert_eq!(
         names,
-        ["verify", "counterexample", "cached_result", "fragility"]
+        [
+            "verify",
+            "counterexample",
+            "cached_result",
+            "fragility",
+            "start_verification",
+            "verification_status",
+            "verification_result",
+            "cancel_verification",
+        ]
     );
 
     // verify (the project defaults to the server's working directory).

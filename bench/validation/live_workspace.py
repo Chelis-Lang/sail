@@ -6,6 +6,7 @@ JSON arguments. Raw reports live beside the output; published summaries omit
 local paths and full environments. All three rounds assert verdict equivalence.
 """
 import atexit
+import argparse
 import hashlib
 import json
 import os
@@ -17,8 +18,15 @@ import sys
 import tempfile
 import time
 
-sail = Path(sys.argv[1]).resolve()
-output = Path(sys.argv[2]).resolve()
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('sail', type=Path)
+parser.add_argument('output', type=Path)
+parser.add_argument('--functions', type=int, default=2,
+                    help='total functions in the explicit synthetic fixture (minimum 2)')
+options = parser.parse_args()
+assert 2 <= options.functions <= 2000, 'fixture size must be between 2 and 2000'
+sail = options.sail.resolve()
+output = options.output.resolve()
 output.parent.mkdir(parents=True, exist_ok=True)
 raw = output.parent / (output.stem + '-raw')
 raw.mkdir(exist_ok=True)
@@ -41,6 +49,12 @@ pub fn maximum(a: u32, b: u32) -> (r: u32)
 }
 '''
 source.write_text(text)
+if options.functions > 2:
+    additional = ''.join(
+        f'pub fn identity_{number}(x: u32) -> (r: u32) ensures r == x {{ x }}\n'
+        for number in range(options.functions - 2))
+    text = text.rsplit('}\n', 1)[0] + additional + '}\n'
+    source.write_text(text)
 # Own the daemon throughout the experiment. A cold Cargo build can outlast
 # ordinary idle expiry, so an on-demand daemon alone cannot ensure warm SMT
 # cache comparisons. Only this process is terminated during cleanup.
@@ -140,7 +154,7 @@ record = {
                   'cargo_verus_sha256': hashlib.sha256(Path(cargo_verus).read_bytes()).hexdigest()},
     'limits': ['Development machine under concurrent compilation and conformance load',
                'RSS is the largest single process measured by time, not summed tree memory',
-               'Small successful two-function fixture; broader projects may have different costs',
+               f'Synthetic successful {options.functions}-function fixture; real projects may have different costs',
                'Baseline cleans its selected caller artifact before timed verification to obtain a complete fresh report; dependency artifacts and SMT entries stay warm'],
     'functions': requested(managed), 'fill': {'plain': cold, 'managed': first},
     'rounds': rounds, 'proof_edit': {'plain': edited_plain, 'managed': edited_managed},
