@@ -9,7 +9,7 @@
 //! fallback path stays small and simple. `sail-bench` may use key
 //! derivation too (pure computation), to recompute and check trace keys in
 //! its history experiment. `sail-bench` and `sail-cli` use
-//! `sail-portfolio` for fragility measurement (ADR 0014); no crate on the
+//! `sail-portfolio` for fragility measurement (ADR 0018); no crate on the
 //! cache-key path may reach it, so measurement mutations can never feed a
 //! key. Changing this
 //! table is an architectural decision: record an ADR.
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn measurement_mutations_cannot_reach_cache_keys() {
-        // ADR 0014: the portfolio's reseeded and shuffled sessions exist
+        // ADR 0018: the portfolio's reseeded and shuffled sessions exist
         // only to measure. Nothing that derives, stores or serves cache
         // keys may depend on it.
         for keyed in [

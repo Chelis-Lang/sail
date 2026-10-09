@@ -223,12 +223,18 @@ status, and `runs` holds each run's freshness.
 
 ### `fragility`
 
-Calls `sail fragility` once this `sail` has it. The tool checks
-`sail --help` on every call. Until then it returns `isError: true` with
-`{"available": false, "error": "not_available"}` and says to use the
-`unstable` flags from `verify`. The arguments are `verify`'s. When the
-command lands, the tool runs `sail fragility --output json` with them (the
-`FRAGILITY_COMMAND` line in `crates/sail-mcp/src/tools.rs`).
+Runs `sail fragility --output json` (ADR 0018) with `verify`'s arguments
+(the `FRAGILITY_COMMAND` line in `crates/sail-mcp/src/tools.rs`). The
+command captures one Verus run through the pass-through shim, re-runs every
+solver session under 8 seeds, and returns per-check answer and effort
+distributions, stability classes and scores in `result`. It changes no
+verdict and never touches the cache. Expect it to take several times as
+long as `verify`. Selecting a `module` or `function` runs `cargo verus
+focus`, and checks are attributed to a function only when exactly one
+function was verified.
+
+The tool checks `sail --help` on every call. A `sail` without the command
+gets `isError: true` with `{"available": false, "error": "not_available"}`.
 
 ## The result store
 

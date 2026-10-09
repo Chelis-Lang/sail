@@ -795,7 +795,7 @@ fn analyse_session(
 /// an `rlimit` of 0), and
 /// rebuilds [`Report::functions`]. With more than one function, checks stay
 /// unattributed: the solver's input carries no function names, and a wrong
-/// attribution would be worse than none (ADR 0014). Returns whether
+/// attribution would be worse than none (ADR 0018). Returns whether
 /// attribution happened.
 pub fn attribute_single_function(report: &mut Report, functions: &[String]) -> bool {
     let [only] = functions else {

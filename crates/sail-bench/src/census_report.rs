@@ -8,7 +8,7 @@ use sail_portfolio::stats::FloatDistribution;
 use crate::fragility::{CensusFile, CensusUnit};
 
 /// What a census section measures.
-const INTRO: &str = "Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0014). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.";
+const INTRO: &str = "Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0018). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.";
 
 fn f3(x: Option<f64>) -> String {
     x.map_or_else(|| "n/a".to_owned(), |v| format!("{v:.3}"))

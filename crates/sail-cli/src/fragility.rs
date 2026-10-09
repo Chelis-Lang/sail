@@ -3,19 +3,21 @@
 //! ```text
 //! sail fragility [--seeds N] [--shuffles K] [--jobs J] [--near-limit F] [--top K]
 //!                [--json] [--keep-traces DIR] [--traces DIR] [--z3 PATH]
-//!                [--focus] [cargo verus verify arguments…]
+//!                [--focus] [--output json] [cargo verus verify arguments…]
 //! ```
 //!
-//! Runs `cargo verus verify <arguments>` (or `cargo verus focus` with
-//! `--focus`, which partial verification such as `--verify-function`
-//! requires) once, with `sail-z3` in pure
+//! Runs `cargo verus verify <arguments>` (or `cargo verus focus`, which
+//! partial verification such as `--verify-function` requires: chosen with
+//! `--focus`, or automatically when the Verus arguments select part of the
+//! crate) once, with `sail-z3` in pure
 //! pass-through (no daemon, no cache) and tracing on, so every solver
 //! session is exactly what plain Verus sent. It adds `--output-json --time`
 //! after `--` (unless already given) to read Verus's per-function
 //! breakdown. Then it re-runs every captured session under `N`
-//! configurations of the same pinned Z3 (`sail-portfolio`, ADR 0014) and
+//! configurations of the same pinned Z3 (`sail-portfolio`, ADR 0018) and
 //! reports per-check fragility: a human summary on stdout, or the whole
-//! report as JSON with `--json`.
+//! report as JSON with `--json` (or `--output json`, as `sail verify` and
+//! the MCP `fragility` tool spell it).
 //!
 //! This is an opt-in measurement. It never changes a verdict, and it never
 //! reads or writes the cache, so it cannot change the cache keys or answers
@@ -83,6 +85,13 @@ fn parse(args: &[String]) -> Result<Args, String> {
                     .map_err(|_| "--near-limit needs a fraction".to_owned())?;
             }
             "--json" => a.json = true,
+            "--output" => {
+                let v = value()?;
+                if v != "json" {
+                    return Err(format!("--output {v}: only `json` is supported"));
+                }
+                a.json = true;
+            }
             "--focus" => a.focus = true,
             "--keep-traces" => a.keep_traces = Some(value()?.into()),
             "--traces" => a.traces = Some(value()?.into()),
@@ -99,6 +108,22 @@ fn parse(args: &[String]) -> Result<Args, String> {
         return Err("--seeds, --jobs and --timeout-secs must be at least 1".to_owned());
     }
     Ok(a)
+}
+
+/// Verus flags that select part of a crate. `cargo verus` accepts them
+/// only under `focus`, so they switch the capture to `cargo verus focus`.
+const PARTIAL: &[&str] = &[
+    "--verify-module",
+    "--verify-only-module",
+    "--verify-function",
+    "--verify-root",
+];
+
+/// Whether the Verus arguments (after `--`) select part of the crate.
+fn partial(args: &[String]) -> bool {
+    args.iter()
+        .skip_while(|a| *a != "--")
+        .any(|a| PARTIAL.contains(&a.as_str()))
 }
 
 /// `cargo verus verify` arguments with Verus's breakdown flags added after
@@ -286,7 +311,11 @@ pub fn fragility(
         }
         match capture(
             &cargo_verus,
-            if a.focus { "focus" } else { "verify" },
+            if a.focus || partial(&a.passthrough) {
+                "focus"
+            } else {
+                "verify"
+            },
             &shim,
             &z3,
             &dir,
@@ -342,7 +371,7 @@ fn print(
                 if attributed {
                     "yes"
                 } else {
-                    "no (more than one function; see ADR 0014)"
+                    "no (more than one function; see ADR 0018)"
                 }
             );
         }
@@ -415,6 +444,20 @@ mod tests {
         assert!(parse(&strings("--seeds 0")).is_err());
         assert!(parse(&strings("--seeds x")).is_err());
         assert!(parse(&strings("--json --seeds")).is_err());
+        let a = parse(&strings("--output json -p x"));
+        assert!(a.is_ok_and(|a| a.json));
+        assert!(parse(&strings("--output text")).is_err());
+    }
+
+    #[test]
+    fn partial_selectors_need_focus() {
+        assert!(partial(&strings(
+            "-p x -- --verify-root --verify-function f"
+        )));
+        assert!(partial(&strings("-- --verify-module m")));
+        assert!(!partial(&strings("-p x -- --rlimit 20")));
+        // Before `--` they are cargo arguments, not Verus selectors.
+        assert!(!partial(&strings("--verify-function f")));
     }
 
     #[test]

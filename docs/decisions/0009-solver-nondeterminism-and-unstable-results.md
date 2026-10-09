@@ -108,7 +108,7 @@ effort.
 
 ## Update 2026-10-09: fragility census and a calibrated threshold (recommendation)
 
-The fragility census (ADR 0014) gives the calibration data this ADR asked
+The fragility census (ADR 0018) gives the calibration data this ADR asked
 for. **This update recommends a threshold; it does not change the serving
 policy.** The owner decides.
 

@@ -16,10 +16,9 @@ use crate::summary;
 /// The `sail` arguments `verify` starts with.
 const VERIFY_COMMAND: &[&str] = &["verify", "--output", "json"];
 
-/// The `sail` arguments `fragility` starts with. `sail fragility` is not
-/// built yet. The tool probes `sail --help` for it on every call, so once it
-/// lands it is used without a server change; this line is the one to adjust
-/// if its interface differs.
+/// The `sail` arguments `fragility` starts with (`sail fragility`, ADR
+/// 0018). The tool still probes `sail --help` for it on every call, so a
+/// `sail` without it gives a clear not-available result.
 const FRAGILITY_COMMAND: &[&str] = &["fragility", "--output", "json"];
 
 /// How many changed files a freshness report lists.
@@ -181,7 +180,7 @@ pub fn definitions() -> Value {
         {
             "name": "fragility",
             "title": "Proof fragility",
-            "description": "Measure how fragile proofs are (how often they still verify under different solver seeds), via `sail fragility`. Returns a clear not-available result while this sail build has no `sail fragility`.",
+            "description": "Measure how fragile proofs are (how often they still verify under different solver seeds), via `sail fragility` (an opt-in measurement that re-runs the solver sessions under several seeds; it changes no verdict and can take much longer than verify). Returns a clear not-available result if this sail build has no `sail fragility`.",
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "openWorldHint": false}
         }

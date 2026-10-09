@@ -12,10 +12,10 @@
 //!
 //! **Function attribution.** The solver's input carries no function names.
 //! A check is attributed to a function only when Verus's `--time` breakdown
-//! for its unit lists exactly one function that used solver effort (for example a run restricted
-//! with `--verify-function`). Otherwise results are per (session, check)
-//! and per unit; ADR 0014 records the limitation, which the ledger's
-//! function attribution will lift.
+//! for its unit lists exactly one function that used solver effort (for
+//! example a run restricted with `--verify-function`). Otherwise results
+//! are per (session, check) and per unit; ADR 0018 records the limitation,
+//! which ADR 0014's function attribution will lift.
 
 use std::collections::BTreeMap;
 use std::path::Path;

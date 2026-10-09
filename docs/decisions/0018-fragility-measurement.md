@@ -1,4 +1,4 @@
-# 0014: Fragility measurement
+# 0018: Fragility measurement
 
 - **Status:** accepted
 - **Date:** 2026-10-08
@@ -24,9 +24,9 @@ Constraints:
 - Mariposa's mutations (prior-art §3.1) are assertion shuffling, symbol
   renaming and reseeding. Shuffling found the most instability. Renaming
   and reordering are exactly the normalizations rule 5 forbids by default.
-- The solver's input carries no function names
-  (`--log smt-transcript` doesn't either). Function attribution is being
-  built separately (`sail-verus`, `sail-ledger`).
+- The solver's input carries no function names. Function attribution
+  from Verus's AIR logs and solver-op structure was built concurrently
+  (ADR 0014: `sail-verus`, `sail-ledger`, `sail verify --output json`).
 
 ## Decision
 
@@ -120,7 +120,7 @@ Constraints:
   has no reason on record. Such an `unknown` counts as an exhaustion when
   its delta reached the limit. It never counts as a non-exhaustion give-up.
 
-### Function attribution (minimal, pending the ledger)
+### Function attribution (minimal, until ADR 0014's attribution is wired in)
 
 - **Results are keyed by (session, check).** A check gets a function name
   only when Verus's `--time` breakdown for the run lists **exactly one**
@@ -136,9 +136,12 @@ Constraints:
 - **The census therefore reports** per check, per session and per corpus
   unit (one source file for the examples), plus per function where
   attributed.
-- **Next step.** Wiring the ledger's function attribution into
-  `CheckFragility::function` replaces this. It needs no change in the
-  measurement.
+- **Next step.** Feed ADR 0014's attribution (AIR `;; <Kind> <function>`
+  comments mapped to solver ops) into `CheckFragility::function`. Then
+  fill the reserved `fragility` field of `--output json` and the MCP
+  `fragility` tool. The measurement itself does not change: it already
+  keys every check by session and index, which is what that attribution
+  maps.
 
 ### Surfaces
 
@@ -149,6 +152,12 @@ Constraints:
     pass-through with tracing: no daemon, no cache. With `--focus` it runs
     `cargo verus focus` instead, which partial verification needs. It adds
     `--output-json --time` after `--`.
+  - `--output json` is accepted as a synonym for `--json`. The MCP
+    `fragility` tool (ADR 0016) runs `sail fragility --output json` with
+    `verify`'s arguments.
+  - Verus selectors after `--` (`--verify-module`, `--verify-only-module`,
+    `--verify-function`, `--verify-root`) switch to `cargo verus focus`,
+    as `--focus` does.
   - Example for one function:
     `sail fragility --focus -- --verify-root --verify-function max`.
   - If Cargo considers the crate up to date, Verus does not run and

@@ -283,7 +283,7 @@ Units whose warm rounds still started the solver: 13 of 147. With nothing change
 
 ## `fragility-census-fast-arm64-macos-devload-2026-10-08`: fragility census, fast tier
 
-Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0014). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.
+Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0018). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.
 
 - Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `0a0a3a985070`; 8 configurations (baseline, seed=1, seed=2, seed=3, seed=4, seed=5, seed=6, seed=7)
 - Machine: cpu: Apple M3; cpus: 8; host: aarch64-apple-darwin; memory_bytes: 25769803776; uname: Darwin 25.5.0 arm64
@@ -372,7 +372,7 @@ Most fragile checks (top 10 by score):
 
 ## `fragility-census-page-table-allocate-arm64-macos-devload-2026-10-08`: fragility census, standard tier
 
-Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0014). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.
+Each unit's solver sessions are captured from plain Verus through `sail-z3` in pass-through, then every session is replayed in a fresh pinned Z3 under each configuration: the unmodified session (`baseline`, Z3's default seed) and reseeds that set `smt.random_seed` and `sat.random_seed` after Verus's option prelude (ADR 0018). Each check is measured after its exact session prefix. *Proved* means `unsat`. *Used* is a check's largest `rlimit-count` delta over the configurations, as a share of the `:rlimit` in force. A check is *unstable* when some configurations prove it and others do not. Nothing here changes a verdict.
 
 - Verus 0.2026.10.04.426d8b0, Z3 4.16.0, sail `0a0a3a985070`; 8 configurations (baseline, seed=1, seed=2, seed=3, seed=4, seed=5, seed=6, seed=7); extra Verus arguments `--verify-only-module impl_u::wrapped_token --verify-function WrappedMapToken::allocate`
 - Machine: cpu: Apple M3; cpus: 8; host: aarch64-apple-darwin; memory_bytes: 25769803776; uname: Darwin 25.5.0 arm64

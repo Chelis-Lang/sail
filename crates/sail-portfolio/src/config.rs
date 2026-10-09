@@ -18,7 +18,7 @@
 //! handed to a fresh solver process and thrown away. They never reach the
 //! shim, the cache or key derivation: this crate does not depend on
 //! `sail-key` or `sail-cache`, and `xtask/src/layering.rs` tests that
-//! neither can reach it (ADR 0014).
+//! neither can reach it (ADR 0018).
 
 use serde::{Deserialize, Serialize};
 

@@ -26,7 +26,7 @@ brittleness the charter's fragility census measures.
 
 ## Fragility census (2026-10-09)
 
-`allocate` was measured alone, with this command (ADR 0014):
+`allocate` was measured alone, with this command (ADR 0018):
 
 ```sh
 sail-bench fragility --tier standard --project page-table \

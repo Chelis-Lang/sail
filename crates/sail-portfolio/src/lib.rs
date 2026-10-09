@@ -1,6 +1,6 @@
 //! Seed portfolios, racing and fragility scoring.
 //!
-//! Status: fragility **measurement** (ADR 0014). Racing and an opt-in
+//! Status: fragility **measurement** (ADR 0018). Racing and an opt-in
 //! "accept a proof from any configuration" mode are not built.
 //!
 //! - [`sessions`]: finding captured solver sessions in shim trace
