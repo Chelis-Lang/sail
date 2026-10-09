@@ -32,6 +32,28 @@ semantic versioning once the API is published.
 - Explicit complete-run seed portfolio mode, retained attempt evidence, MCP
   selection, and isolated protocol-v4 cache namespaces (ADR 0020).
 
+- Add feature-scoped Singular source builds, validated runtime identities, and
+  an optional local conformance environment for integer-ring examples and the
+  pinned memory allocator.
+- Avoid adding a second progress-suppression flag to the deep suite example
+  that supplies it itself. Verification arguments remain identical on both sides.
+
+- Exclude overlapping deep suites and source rebuilds with exclusive build
+  ownership; reject concurrency before materialized input cleanup.
+
+- Deep tier: Verus's own `rust_verify_test` suite (4,695 tests) runs
+  plain and through `sail-z3`, test by test (ADR 0019).
+  - `cargo xtask build-verus-source` builds the pinned Verus commit from
+    source with vargo, the pinned z3 and toolchain, under
+    `<cache>/verus-src-build/<commit>`, and prunes it to what the tests
+    need.
+  - `sail-conformance rust-verify-test [--filter S]... [--every N]
+    [--jobs N]` compares outcomes, exit codes and diagnostics, classifies
+    plain-Verus flakiness separately, and exports a reproduction for each
+    difference.
+  - `ci/run.sh deep-rvt [cache]` (local-only) runs both, optionally also
+    with the cache daemon.
+
 - Preserve solver stderr during cached verification. Publish replies only after
   a clean, silent session completes; warning sessions always re-solve. Refuse
   older daemon and cache formats that could suppress diagnostics.

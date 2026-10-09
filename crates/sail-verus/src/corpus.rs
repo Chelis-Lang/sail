@@ -56,6 +56,8 @@ pub enum Build {
     CargoVerus,
     /// A project-specific script (not yet supported by the runner).
     Script,
+    /// Verus with a scratch-built libc rlib from `test_libc`.
+    LibcVerus,
 }
 
 /// The `cargo verus` subcommand a `cargo-verus` project runs.
@@ -281,7 +283,7 @@ fn ensure_bundle(dir: &Path, commit: &str, bundle: &Path) -> Result<()> {
 
 /// Fetches `commit` from `url` into `dir`. With `archive`, a bundle of the
 /// commit is kept at that path, and is used when the remote fetch fails.
-fn fetch_git(url: &str, commit: &str, dir: &Path, archive: Option<&Path>) -> Result<()> {
+pub(crate) fn fetch_git(url: &str, commit: &str, dir: &Path, archive: Option<&Path>) -> Result<()> {
     let marker = dir.join(".sail-fetched");
     if std::fs::read_to_string(&marker).is_ok_and(|c| c.trim() == commit) {
         return archive.map_or(Ok(()), |b| ensure_bundle(dir, commit, b));
@@ -356,6 +358,13 @@ pub fn requirement_available(name: &str, rust_toolchain: &str) -> bool {
             });
     }
     match name {
+        "verus-feature:singular" => {
+            std::env::var_os("SAIL_VERUS_SOURCE_BUILD").is_some_and(|build| {
+                crate::source_build::Manifest::load(Path::new(&build)).is_ok_and(|m| {
+                    m.features.iter().any(|f| f == "singular") && m.rust_toolchain == rust_toolchain
+                })
+            })
+        }
         "singular" => var("VERUS_SINGULAR_PATH").is_some_and(|p| Path::new(&p).is_file()),
         "openssl" => {
             var("OPENSSL_DIR").is_some_and(|p| Path::new(&p).is_dir())
