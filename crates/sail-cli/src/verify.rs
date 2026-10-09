@@ -344,14 +344,16 @@ pub(crate) fn portfolio_attempt(
     let status = verify_json(&setup, args.get(1..).unwrap_or_default(), &mut bytes, err);
     if let Ok(mut report) = serde_json::from_slice::<sail_api::output::Report>(&bytes) {
         if expected.as_ref().is_some_and(|names| {
-            !report
-                .crates
-                .iter()
-                .any(|c| c.name.as_ref().is_some_and(|name| names.contains(name)))
+            names.iter().any(|required| {
+                !report
+                    .crates
+                    .iter()
+                    .any(|c| c.name.as_ref() == Some(required))
+            })
         }) {
             report.error = Some(sail_api::output::ErrorInfo {
                 code: "SAIL0113".to_owned(),
-                message: "no verification result for a requested workspace package".to_owned(),
+                message: "not every requested verification target produced a result".to_owned(),
             });
         }
         setup.mode.name().clone_into(&mut report.mode);

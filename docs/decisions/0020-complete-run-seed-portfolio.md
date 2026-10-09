@@ -60,3 +60,19 @@ The fast end-to-end step runs this small case cold and warm. It checks both
 attempts, a single complete confirmed proof, pinned solver identity and seed
 provenance, genuine warm proof hits, and re-solving the exhausted baseline.
 Long corpus checks remain local-only.
+
+## Cargo coverage
+
+A successful exit and one package report do not establish a whole workspace
+proof. Metadata resolves requested verification-enabled targets from default
+members, `--workspace`, exact package selectors and exclusions, and library or
+binary selection. Every selected target must produce a report in the same
+attempt. Custom crate names are respected. Ambiguous crate names, nonexact
+package selectors and test/example/benchmark target selection are rejected
+before verification; choose an explicit library or binary scope instead.
+Cleaning still covers every verification-enabled workspace package in the
+owned directory, including packages outside a selected subset.
+
+The regression omits one requested workspace member's report: the original
+code accepted the remaining member as a complete proof. The corrected code
+rejects it, while `-p input` still accepts that explicitly smaller scope.

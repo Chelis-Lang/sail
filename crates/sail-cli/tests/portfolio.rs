@@ -22,7 +22,7 @@ if [ "$1" = clean ]; then
   echo "$@" >> "$SAIL_FIXTURE/clean.log"
   exit 0
 fi
-printf '%s\n' '{"packages":[{"id":"path+file:///demo#input@0.1.0","name":"input","metadata":{"verus":{"verify":true}},"targets":[{"kind":["lib"]}]}],"workspace_members":["path+file:///demo#input@0.1.0"],"workspace_default_members":["path+file:///demo#input@0.1.0"]}'
+printf '%s\n' '{"packages":[{"id":"path+file:///demo#input@0.1.0","name":"input","metadata":{"verus":{"verify":true}},"targets":[{"kind":["lib"],"name":"input"}]}],"workspace_members":["path+file:///demo#input@0.1.0"],"workspace_default_members":["path+file:///demo#input@0.1.0"]}'
 "#;
         let verifier = r"#!/usr/bin/env python3
 import json, os, sys, subprocess
@@ -190,4 +190,41 @@ fn parent_death_stops_the_independent_worker_group() {
         );
         std::thread::sleep(Duration::from_millis(20));
     }
+}
+
+#[test]
+#[ignore = "needs the pinned Z3 identity"]
+fn every_requested_workspace_target_must_report_verification() {
+    let f = Fixture::new("missing-workspace");
+    let cargo = std::fs::read_to_string(f.dir.join("cargo")).unwrap_or_default();
+    let cargo = cargo.replace(
+        "\"workspace_members\":[\"path+file:///demo#input@0.1.0\"]",
+        "\"workspace_members\":[\"path+file:///demo#input@0.1.0\",\"path+file:///demo#missing@0.1.0\"]",
+    ).replace(
+        "\"packages\":[",
+        "\"packages\":[{\"id\":\"path+file:///demo#missing@0.1.0\",\"name\":\"missing\",\"metadata\":{\"verus\":{\"verify\":true}},\"targets\":[{\"kind\":[\"lib\"],\"name\":\"missing\"}]},",
+    );
+    assert!(std::fs::write(f.dir.join("cargo"), cargo).is_ok());
+    let output = f
+        .command()
+        .arg("--workspace")
+        .output()
+        .unwrap_or_else(|e| unreachable!("run: {e}"));
+    let report: serde_json::Value =
+        serde_json::from_slice(&output.stdout).unwrap_or_else(|e| unreachable!("report: {e}"));
+    assert!(
+        !output.status.success(),
+        "incomplete workspace was accepted"
+    );
+    assert!(report["portfolio"]["winner_seed"].is_null());
+    let selected = f
+        .command()
+        .args(["-p", "input"])
+        .output()
+        .unwrap_or_else(|e| unreachable!("run: {e}"));
+    assert!(
+        selected.status.success(),
+        "{}",
+        String::from_utf8_lossy(&selected.stderr)
+    );
 }

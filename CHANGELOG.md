@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Require reports for every requested verifying Cargo target before accepting
+  a portfolio proof; reject ambiguous or unsupported target coverage.
+
 - Exercise a real seeded proof, cold and warm, in the fast end-to-end check.
   Bound daemon readiness to sixty seconds and fail early when the daemon exits.
 
