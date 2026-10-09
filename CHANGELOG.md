@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Avoid adding a second progress-suppression flag to the deep suite example
+  that supplies it itself. Verification arguments remain identical on both sides.
+
 - Exclude overlapping deep suites and source rebuilds with exclusive build
   ownership; reject concurrency before materialized input cleanup.
 

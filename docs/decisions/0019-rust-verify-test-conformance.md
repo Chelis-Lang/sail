@@ -231,3 +231,23 @@ The runner and source builder now hold the same exclusive OS file lock for
 the entire operation (including cleanup). A second operation fails with
 `SAIL3043` before touching the shared directory; process exit releases the lock.
 No dependency or unsafe code is needed. Normal-thread coverage runs separately.
+
+## Effective progress option supplied once
+
+`examples::examples_assert_by_compute` already adds `--no-report-long-running`
+from its example header. Adding it through `VERUS_EXTRA_ARGS` a second time
+caused Verus to reject the invocation before verification. This extra plain
+and Sail test failure is a runner defect, not an upstream proof failure.
+The runner checks that known example's actual header and omits its redundant
+extra flag, preserving the thread selection and the same effective options
+on both sides. Source files and diagnostics remain unchanged.
+
+Full runs made before this correction retain their raw reports. That case's
+failed invocation is not accepted as coverage: a separate corrected test in
+all three modes supplies its evidence, without repeating unaffected cases.
+
+The corrected example was run in an isolated clone of the immutable source
+build (its materialized inputs and OS lock are separate). Pass-through,
+cache-fill and cache-warm each reported one `ok`, one `same`, zero differences
+and zero infrastructure errors. Its original failed invocation is excluded
+from source coverage; the raw full-suite count is not rewritten.

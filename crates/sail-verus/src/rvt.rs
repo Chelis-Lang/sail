@@ -260,11 +260,7 @@ impl Suite {
             .env_remove("SAIL_DAEMON_SOCKET");
         // Suppress timing-dependent progress notes at their source, on both
         // sides, exactly as the ordinary corpus harness does (ADR 0006).
-        let extra = self.verus_threads.map_or_else(
-            || "--no-report-long-running".to_owned(),
-            |n| format!("--no-report-long-running --num-threads {n}"),
-        );
-        cmd.env("VERUS_EXTRA_ARGS", extra);
+        cmd.env("VERUS_EXTRA_ARGS", extra_args(self.verus_threads, false));
         for var in [
             "CARGO",
             "CARGO_TARGET_DIR",
@@ -291,6 +287,11 @@ impl Suite {
         let mut cmd = Command::new(&test.path);
         cmd.args(["--exact", &test.name, "--nocapture", "--test-threads", "1"]);
         self.environment(&mut cmd);
+        // This example supplies the same flag from its source header. Verus
+        // rejects duplicate flags, so retain the effective option exactly once.
+        if supplies_progress_flag(test, &self.build) {
+            cmd.env("VERUS_EXTRA_ARGS", extra_args(self.verus_threads, true));
+        }
         if keep_input {
             cmd.env("VERUS_KEEP_TEST_DIR", "1");
         }
@@ -336,6 +337,32 @@ impl Suite {
             wall_ms,
         })
     }
+}
+
+fn extra_args(threads: Option<u32>, progress_supplied: bool) -> String {
+    let mut args = Vec::new();
+    if !progress_supplied {
+        args.push("--no-report-long-running".to_owned());
+    }
+    if let Some(n) = threads {
+        args.push(format!("--num-threads {n}"));
+    }
+    args.join(" ")
+}
+
+fn supplies_progress_flag(test: &TestCase, build: &Path) -> bool {
+    test.binary == "examples"
+        && test.name == "examples_assert_by_compute"
+        && std::fs::read_to_string(build.join("verus/examples/assert_by_compute.rs"))
+            .ok()
+            .and_then(|s| s.lines().next().map(str::to_owned))
+            .is_some_and(|line| {
+                line.trim().split(' ').take(3).eq([
+                    "//",
+                    "rust_verify/tests/example.rs",
+                    "no-report-long-running",
+                ])
+            })
 }
 
 /// Blanks only the six-character tempfile component in the two cargo-new
@@ -462,6 +489,42 @@ pub fn kept_input_dir(stderr: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn source_supplied_progress_option_is_not_added_twice() {
+        let dir = std::env::temp_dir().join(format!("sail-rvt-progress-{}", std::process::id()));
+        let source = dir.join("verus/examples/assert_by_compute.rs");
+        assert!(std::fs::create_dir_all(source.parent().unwrap_or(&dir)).is_ok());
+        let mut test = TestCase {
+            binary: "examples".to_owned(),
+            path: PathBuf::new(),
+            name: "examples_assert_by_compute".to_owned(),
+            ignored: false,
+        };
+        assert!(
+            std::fs::write(
+                &source,
+                "// rust_verify/tests/example.rs no-report-long-running --- comment\n"
+            )
+            .is_ok()
+        );
+        assert!(supplies_progress_flag(&test, &dir));
+        assert_eq!(extra_args(Some(1), true), "--num-threads 1");
+        assert_eq!(extra_args(None, true), "");
+        test.name = "another_example".to_owned();
+        assert!(!supplies_progress_flag(&test, &dir));
+        test.name = "examples_assert_by_compute".to_owned();
+        assert!(
+            std::fs::write(&source, "// rust_verify/tests/example.rs expect-success\n").is_ok()
+        );
+        assert!(!supplies_progress_flag(&test, &dir));
+        assert_eq!(
+            extra_args(Some(1), false),
+            "--no-report-long-running --num-threads 1"
+        );
+        assert_eq!(extra_args(None, false), "--no-report-long-running");
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn blanks_only_the_known_cargo_new_generated_path() {
