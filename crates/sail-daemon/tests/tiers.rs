@@ -373,3 +373,55 @@ fn put_all_and_get(r: &Running) {
         assert_eq!(c.get(&key(i).0).ok().flatten(), Some(reply_for(i)));
     }
 }
+
+#[test]
+fn mode_isolation_survives_memory_and_disk_restarts() {
+    use sail_api::protocol::VerificationMode;
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = Scratch::new("mode");
+    let solver = dir.0.join("z3");
+    assert!(std::fs::write(&solver, b"#!/bin/sh\necho 'Z3 version 4.16.0'\n").is_ok());
+    assert!(std::fs::set_permissions(&solver, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let mut portfolio = r.client();
+    assert!(
+        portfolio
+            .hello_in_mode(
+                &solver.to_string_lossy(),
+                VerificationMode::AcceptFirstProof
+            )
+            .is_ok()
+    );
+    assert!(
+        portfolio
+            .put(&key(900).0, meta("check-sat"), b"unsat\n".to_vec())
+            .is_ok()
+    );
+    wait_until(Duration::from_secs(10), "mode entry", || drained(&r));
+    let mut default = r.client();
+    assert!(default.hello(&solver.to_string_lossy()).is_ok());
+    assert_eq!(default.get(&key(900).0).ok().flatten(), None);
+    assert_eq!(
+        portfolio.get(&key(900).0).ok().flatten(),
+        Some(b"unsat\n".to_vec())
+    );
+    r.stop();
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let mut default = r.client();
+    assert!(default.hello(&solver.to_string_lossy()).is_ok());
+    assert_eq!(default.get(&key(900).0).ok().flatten(), None);
+    let mut portfolio = r.client();
+    assert!(
+        portfolio
+            .hello_in_mode(
+                &solver.to_string_lossy(),
+                VerificationMode::AcceptFirstProof
+            )
+            .is_ok()
+    );
+    assert_eq!(
+        portfolio.get(&key(900).0).ok().flatten(),
+        Some(b"unsat\n".to_vec())
+    );
+    r.stop();
+}

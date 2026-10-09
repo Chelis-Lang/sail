@@ -217,6 +217,11 @@ pub fn run() -> ExitCode {
         Some(dir) => {
             let (tx, rx) = std::sync::mpsc::sync_channel(TAP_CAPACITY);
             let ctx = trace::Context {
+                mode: if std::env::var("SAIL_SOLVER_MODE").as_deref() == Ok("accept-first-proof") {
+                    sail_key::Mode::OptIn("accept-first-proof".to_owned())
+                } else {
+                    sail_key::Mode::Default
+                },
                 dir: PathBuf::from(dir),
                 solver: solver.clone(),
                 args: args

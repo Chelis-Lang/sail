@@ -26,6 +26,9 @@ pub const JSON_SCHEMA: &str = include_str!("../schema/verify-output-v1.json");
 /// The whole document.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Report {
+    /// Complete-run seed portfolio evidence, only when explicitly requested.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub portfolio: Option<PortfolioReport>,
     /// Always [`SCHEMA_VERSION`].
     pub schema_version: u32,
     /// The `sail` version that wrote it.
@@ -51,6 +54,43 @@ pub struct Report {
     pub summary: Summary,
     /// Set when `sail verify` itself could not run Verus.
     pub error: Option<ErrorInfo>,
+}
+
+/// A solver configuration establishing a complete portfolio attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SolverConfiguration {
+    /// Both Z3 random seeds (zero represents the unchanged default baseline).
+    pub seed: u32,
+}
+
+/// One independent Verus attempt in a sequential portfolio.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PortfolioAttempt {
+    /// The configuration this attempt used.
+    pub configuration: SolverConfiguration,
+    /// Whether complete verification was established.
+    pub verified: bool,
+    /// Its process exit code; absent for cancellation or startup failure.
+    pub exit_code: Option<i32>,
+    /// Wall time including compilation and verification.
+    pub wall_ms: f64,
+    /// Infrastructure failure, never a solver answer.
+    pub error: Option<String>,
+    /// The attempt's complete verification report, when available.
+    pub report: Option<Box<Report>>,
+    /// Its stderr, retained verbatim.
+    pub stderr: String,
+}
+
+/// Evidence for the explicitly selected complete-run portfolio.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PortfolioReport {
+    /// Ordered configurations, including the unchanged baseline.
+    pub seeds: Vec<u32>,
+    /// The first configuration establishing a complete verification.
+    pub winner_seed: Option<u32>,
+    /// Every completed or failed attempt, in order.
+    pub attempts: Vec<PortfolioAttempt>,
 }
 
 /// The solver's identity.
@@ -220,6 +260,9 @@ impl From<SourceSummary> for SourceSummaryName {
 /// How a function's answers were established (charter rule 7).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProvenanceReport {
+    /// The proving configuration in a portfolio attempt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub configuration: Option<SolverConfiguration>,
     /// The mode that produced them (`default`, or an opt-in mode's name).
     pub mode: String,
     /// Summary of `checks_*`.
@@ -549,6 +592,7 @@ impl From<&FunctionRecord> for FunctionReport {
             unstable: f.unstable(),
             verus_success: f.verus_success,
             provenance: ProvenanceReport {
+                configuration: None,
                 mode: f.mode.name().to_owned(),
                 source: sources.summary().into(),
                 checks_solved: sources.solved,
@@ -648,5 +692,34 @@ mod tests {
         let s = SourceSpan::parse("garbage");
         assert_eq!((s.file, s.line), (None, None));
         assert_eq!(s.text, "garbage");
+    }
+    #[test]
+    fn portfolio_evidence_matches_the_schema() {
+        let mut r: Report = serde_json::from_str(include_str!(
+            "../../sail-cli/tests/fixtures/attr/report.golden.json"
+        ))
+        .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let attempt = PortfolioAttempt {
+            configuration: SolverConfiguration { seed: 4 },
+            verified: false,
+            exit_code: Some(1),
+            wall_ms: 1.0,
+            error: None,
+            report: Some(Box::new(r.clone())),
+            stderr: "original diagnostics".to_owned(),
+        };
+        r.mode = "accept-first-proof".to_owned();
+        r.portfolio = Some(PortfolioReport {
+            seeds: vec![0, 4],
+            winner_seed: None,
+            attempts: vec![attempt],
+        });
+        let schema = serde_json::from_str(JSON_SCHEMA).unwrap_or_default();
+        let value = serde_json::to_value(r).unwrap_or_default();
+        assert!(
+            crate::schema::validate(&schema, &value).is_empty(),
+            "{:?}",
+            crate::schema::validate(&schema, &value)
+        );
     }
 }

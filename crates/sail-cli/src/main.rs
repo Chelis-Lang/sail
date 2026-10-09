@@ -7,7 +7,10 @@
 
 mod fragility;
 mod ops;
+mod portfolio;
+mod portfolio_scope;
 mod report;
+mod scope;
 mod shared_ops;
 mod verify;
 mod watch;
@@ -68,6 +71,9 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         }
         Some("serve") => serve(args.get(1..).unwrap_or_default(), err),
         Some("verify") => verify::verify(args.get(1..).unwrap_or_default(), out, err),
+        Some("_portfolio-attempt") => {
+            verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
+        }
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),
         Some("cache") => ops::cache(args.get(1..).unwrap_or_default(), out, err),

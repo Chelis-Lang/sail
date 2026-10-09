@@ -567,6 +567,27 @@ fn daemon_timeout() -> Duration {
         .map_or(sail_api::client::TIMEOUT, Duration::from_millis)
 }
 
+/// Connects without consuming input and binds the explicit verification mode.
+fn connect(socket: &Path, solver: &Path) -> Option<(Client, PrefixHasher)> {
+    let mode = match std::env::var("SAIL_SOLVER_MODE").as_deref() {
+        Ok("accept-first-proof") => sail_api::protocol::VerificationMode::AcceptFirstProof,
+        Ok("default") | Err(std::env::VarError::NotPresent) => {
+            sail_api::protocol::VerificationMode::Default
+        }
+        _ => return None,
+    };
+    let mut client = Client::connect_with_timeout(socket, daemon_timeout()).ok()?;
+    let identity = parse_identity(&client.hello_in_mode(&solver.to_string_lossy(), mode).ok()?)?;
+    let key_mode = match mode {
+        sail_api::protocol::VerificationMode::Default => Mode::Default,
+        sail_api::protocol::VerificationMode::AcceptFirstProof => {
+            Mode::OptIn(mode.name().to_owned())
+        }
+    };
+    let prefix = PrefixHasher::new(&identity, &key_mode);
+    Some((client, prefix))
+}
+
 fn observe(
     session: &mut Session,
     item: &Item,
@@ -619,9 +640,7 @@ fn observe(
 /// reused, so a late reply can never be read as the answer to a later
 /// request.
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
-    let mut client = Client::connect_with_timeout(socket, daemon_timeout()).ok()?;
-    let identity = parse_identity(&client.hello(&solver.to_string_lossy()).ok()?)?;
-    let mut prefix = PrefixHasher::new(&identity, &Mode::Default);
+    let (client, mut prefix) = connect(socket, solver)?;
     let mut session = Session::new();
     let mut splitter = CommandSplitter::new();
     let mut raw: Vec<u8> = Vec::new();

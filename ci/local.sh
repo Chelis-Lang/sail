@@ -16,9 +16,15 @@ image="sail-ci:$(ci/image-tag.sh)"
 if ! docker image inspect "$image" >/dev/null 2>&1; then
   docker buildx build --platform linux/amd64 -f ci/Dockerfile -t "$image" --load .
 fi
+sail_runtime_env=()
+for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_BUILD_JOBS SAIL_BENCH_LABEL; do
+  if sail_env_value="$(printenv "$sail_env_name")"; then
+    sail_runtime_env+=(-e "$sail_env_name=$sail_env_value")
+  fi
+done
 tty=()
 [ -t 1 ] && tty=(-t)
-docker run --rm ${tty[@]+"${tty[@]}"} --platform linux/amd64 \
+docker run --rm ${tty[@]+"${tty[@]}"} ${sail_runtime_env[@]+"${sail_runtime_env[@]}"} --platform linux/amd64 \
   -v "$PWD:/work" -w /work \
   -v sail-ci-target:/work/target \
   -v sail-ci-cache:/root/.cache/sail \

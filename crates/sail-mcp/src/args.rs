@@ -74,6 +74,8 @@ pub struct RunArgs {
     /// Verus `--verify-function <function>` (with `--verify-root` when no
     /// module is given).
     pub function: Option<String>,
+    /// Explicit complete-run portfolio mode; never enabled by default.
+    pub portfolio: Option<String>,
     /// Further `cargo verus verify` arguments, before `--`.
     pub cargo_args: Vec<String>,
     /// Further Verus arguments, after `--`.
@@ -88,6 +90,7 @@ impl RunArgs {
         "module",
         "function",
         "cargo_args",
+        "portfolio",
         "verus_args",
     ];
 
@@ -103,9 +106,17 @@ impl RunArgs {
             package: opt_value(args, "package")?,
             module: opt_value(args, "module")?,
             function: opt_value(args, "function")?,
+            portfolio: opt_value(args, "portfolio")?,
             cargo_args: str_list(args, "cargo_args")?,
             verus_args: str_list(args, "verus_args")?,
         };
+        if parsed
+            .portfolio
+            .as_deref()
+            .is_some_and(|p| p != "accept-first-proof")
+        {
+            return Err("`portfolio` must be `accept-first-proof`".to_owned());
+        }
         if parsed.cargo_args.iter().any(|a| a == "--") {
             return Err(
                 "`cargo_args` must not contain `--`; put Verus arguments in `verus_args`"
@@ -130,6 +141,9 @@ impl RunArgs {
     #[must_use]
     pub fn sail_args(&self, prefix: &[&str]) -> Vec<String> {
         let mut out: Vec<String> = prefix.iter().map(|s| (*s).to_owned()).collect();
+        if let Some(mode) = &self.portfolio {
+            out.extend(["--portfolio".to_owned(), mode.clone()]);
+        }
         out.extend(self.cargo_args.iter().cloned());
         if let Some(p) = &self.package {
             out.extend(["-p".to_owned(), p.clone()]);
