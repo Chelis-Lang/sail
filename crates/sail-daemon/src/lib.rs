@@ -11,6 +11,8 @@
 #![forbid(unsafe_code)]
 
 #[cfg(unix)]
+pub mod jobs;
+#[cfg(unix)]
 mod log;
 #[cfg(unix)]
 mod server;
