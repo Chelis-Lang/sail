@@ -8,6 +8,11 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(unix)]
+mod decoded;
+#[cfg(unix)]
+mod ownership;
+
 /// Project job protocol version.
 pub const VERSION: u32 = 1;
 /// Maximum request or response frame (32 MiB).
@@ -331,11 +336,17 @@ fn endpoint_path(path: &Path) -> PathBuf {
     absolute
 }
 
-/// A short-lived, timeout-bounded local client. Every call has its own connection.
+/// A timeout-bounded local client. Every call receives a complete fresh frame.
+///
+/// [`Client::with_result_decoding_cache`] opts persistent clients into bounded
+/// decoding reuse for byte-identical Result frames; every returned response is
+/// independently owned. No RPC or freshness decision is cached. See
+/// `docs/result-client.md` for the retained-storage audit.
 #[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct Client {
     socket: PathBuf,
+    decoded: Option<std::sync::Arc<decoded::Cache>>,
 }
 #[cfg(unix)]
 impl Client {
@@ -344,6 +355,19 @@ impl Client {
     pub fn new(socket: impl Into<PathBuf>) -> Self {
         Self {
             socket: socket.into(),
+            decoded: None,
+        }
+    }
+    /// A persistent client with bounded exact-fresh-frame decoding reuse.
+    ///
+    /// Clones share one cache; every RPC still receives its complete fresh
+    /// frame. The first eligible Result incurs an extra independent graph
+    /// clone, so [`Client::new`] is preferable for single-use calls.
+    #[must_use]
+    pub fn with_result_decoding_cache(socket: impl Into<PathBuf>) -> Self {
+        Self {
+            socket: socket.into(),
+            decoded: Some(std::sync::Arc::default()),
         }
     }
     /// Sends one RPC with five-second I/O deadlines.
@@ -370,7 +394,10 @@ impl Client {
         stream.set_read_timeout(timeout)?;
         stream.set_write_timeout(timeout)?;
         write_frame(&mut stream, request)?;
-        let response = read_frame(&mut stream)?;
+        let response = match &self.decoded {
+            Some(cache) => cache.read(&mut stream)?,
+            None => read_frame(&mut stream)?,
+        };
         match response {
             Response::Error(message) => Err(io::Error::other(message)),
             response => Ok(response),
