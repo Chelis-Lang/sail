@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-09T22:51:44.037893+00:00",
+  "artifact": "runtime-only HTTP shared-cache container",
+  "platform": "linux/amd64",
+  "image_id": "sha256:1472d3609d7556e06a47409bfba019a374a0cae0a5729bf9d5f2cf304e959763",
+  "runtime_user": 10001,
+  "glibc": "glibc 2.39",
+  "binary": {
+    "sha256": "4ce2c683ad4ce0a92931489775cc97e740ec23a437b733ce8f34438e4875b971",
+    "bytes": 47413128
+  },
+  "credential_modes": [
+    "700",
+    "600",
+    "600"
+  ],
+  "http": {
+    "unauthenticated_get": 401,
+    "reader_missing_entry_get": 404,
+    "writer_missing_entry_get": 404,
+    "reader_put_refused": 401
+  },
+  "credentials_survive_restart": true
+}

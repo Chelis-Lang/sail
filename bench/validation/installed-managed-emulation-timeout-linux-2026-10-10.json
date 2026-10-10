@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "scope": "Final installed CLI/MCP local Linux emulation acceptance attempt",
+  "source_commit": "44339db890aa197e3ee2cb998f0008d5934b222d",
+  "binaries": {
+    "sail": {
+      "sha256": "a4dd04771f29304211bb6b35a1224b330aebd7b6d131e0368fd3b39576b556c5",
+      "bytes": 58543912
+    },
+    "sail-z3": {
+      "sha256": "e3b09d12d271645fb76340e5f783341ae6b69d0a39b29103818051d6fb68f264",
+      "bytes": 7681880
+    }
+  },
+  "machine": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "execution_environment": "Pinned CI image under Linux/amd64 emulation on shared Apple silicon development host",
+    "ci_image": "sail-ci:df4ba79c5c7c3cc1"
+  },
+  "result": {
+    "passed": false,
+    "pipeline_exit_code": 1,
+    "phase": "initial cold managed verification",
+    "proof_deadline_seconds": 240,
+    "failure": "subprocess.TimeoutExpired",
+    "complete_cold_report_produced": false,
+    "installed_cli_mcp_assertions_completed": false,
+    "elapsed_seconds": 243.48,
+    "max_single_process_rss_bytes": 237039616
+  },
+  "raw_evidence": {
+    "installed-managed.stderr": {
+      "bytes": 2125,
+      "sha256": "ed0bd621dd2afb572848d14fb0101537561a36c8a01b344a394f755d2e96960c"
+    },
+    "installed-managed.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "installed-managed.time": {
+      "bytes": 1002,
+      "sha256": "19f66761b7f00bb03700b00a6426734f40dbe0ac282c08f52b82635bd4494820"
+    },
+    "pipeline-exit.json": {
+      "bytes": 525,
+      "sha256": "2b2f0bfe5a18a01b40f7fcdb80cb472057b5d8d6052d2b53645dff338c21d20e"
+    }
+  },
+  "limits": [
+    "Local-only emulated Linux attempt under shared development load; not native Linux acceptance or a reference speedup claim",
+    "The installed test ran unchanged with its production 240-second proof deadline; no limit or assertion was weakened",
+    "The timeout occurred before a complete cold report; no verdict or currentness disagreement was observed or ruled out",
+    "Temporary fixture cleanup removed intermediate cold verification files; stderr, stdout, GNU time output and pipeline failure record survived",
+    "The subsequent local 600-second measurements and raw SMT oracle are separate attempts and cannot turn this failed installed check into a pass",
+    "RSS is the largest single process measured by GNU time, not summed process tree memory"
+  ]
+}

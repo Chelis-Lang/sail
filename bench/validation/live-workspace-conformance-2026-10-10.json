@@ -1,0 +1,366 @@
+{
+  "schema_version": 1,
+  "scope": "M6 default SMT conformance acceptance with explicit supplemental platform coverage",
+  "source_revisions": {
+    "base": "a6e719f1ae8bb5d1e3d4e296118107392f5db09f",
+    "integration_core": "44339db890aa197e3ee2cb998f0008d5934b222d",
+    "managed_receipt_fix": "a518a104c033948127c6e61ab705023907b74ac8"
+  },
+  "limits": [
+    "Long suites run locally only; no CI benchmark or standard tier job",
+    "Integration runs overlapped frontend and job fixes; this artifact does not claim one frozen executable throughout all native corpus runs",
+    "Default SMT forwarding, verdict policy, unknown cap and key formats were unchanged by frontend receipt fixes",
+    "Native standard has two explicit requirement skips recovered by separate zero-skip verismo-main and Linux Anvil runs; combined coverage is 159 units across 12726 structured functions per mode",
+    "Linux Anvil times under emulation and concurrent development are acceptance observations, not reference performance claims"
+  ],
+  "reports": [
+    {
+      "label": "fast/pass-through",
+      "report_sha256": "1170ff42d1214abf7c6bb67b650a98322b6d87c323481496754ad96c953f237b",
+      "started_unix": 1791585760,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64, full fast corpus",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 147,
+        "same": 147,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 3450,
+        "units_with_rlimit_drift": 1
+      }
+    },
+    {
+      "label": "fast/cache-fill",
+      "report_sha256": "a626a5fa7723879c7ead60b2057d9de8202693260bd61830c37d6cd6c93898c1",
+      "started_unix": 1791586454,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64, full fast corpus",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 147,
+        "same": 147,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 3450,
+        "units_with_rlimit_drift": 1
+      }
+    },
+    {
+      "label": "fast/cache-warm",
+      "report_sha256": "8f788cfeafd4c08c0e1d45a021791c096ca1ab45648d609f42885438964df598",
+      "started_unix": 1791587456,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64, full fast corpus",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 147,
+        "same": 147,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 3450,
+        "units_with_rlimit_drift": 1
+      }
+    },
+    {
+      "label": "standard/pass-through",
+      "report_sha256": "a306f8dc1872b769235424521c0993b4fed0f633cc03f4f8970738f9fcb23e69",
+      "started_unix": 1791585761,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64; Anvil and verismo-main requirements covered separately below",
+      "summary": {
+        "projects_skipped": 2,
+        "units": 157,
+        "same": 157,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 11446,
+        "units_with_rlimit_drift": 3
+      },
+      "skipped_requirements": [
+        {
+          "project": "verismo-main",
+          "missing": [
+            "program:ninja"
+          ]
+        },
+        {
+          "project": "anvil",
+          "missing": [
+            "openssl"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "standard/cache-fill",
+      "report_sha256": "87ca1181976e2d008780d26679c21caeaf88f035f60acea07d789d467f30af96",
+      "started_unix": 1791590928,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64; Anvil and verismo-main requirements covered separately below",
+      "summary": {
+        "projects_skipped": 2,
+        "units": 157,
+        "same": 157,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 11446,
+        "units_with_rlimit_drift": 3
+      },
+      "skipped_requirements": [
+        {
+          "project": "verismo-main",
+          "missing": [
+            "program:ninja"
+          ]
+        },
+        {
+          "project": "anvil",
+          "missing": [
+            "openssl"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "standard/cache-warm",
+      "report_sha256": "1c51f9c06853fa74c48cae35f58eaa2972a32a6aa00b0298d89015e499ed4a84",
+      "started_unix": 1791593476,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64; Anvil and verismo-main requirements covered separately below",
+      "summary": {
+        "projects_skipped": 2,
+        "units": 157,
+        "same": 157,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 11446,
+        "units_with_rlimit_drift": 3
+      },
+      "skipped_requirements": [
+        {
+          "project": "verismo-main",
+          "missing": [
+            "program:ninja"
+          ]
+        },
+        {
+          "project": "anvil",
+          "missing": [
+            "openssl"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "verismo/pass-through",
+      "report_sha256": "974e61270be403e3648851bfc2a0bdc89e0a6c0f7552c84703b02ca8b6a6d314",
+      "started_unix": 1791589363,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64; existing Ninja path made explicit for verismo-main",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 1,
+        "same": 1,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 1137,
+        "units_with_rlimit_drift": 0
+      }
+    },
+    {
+      "label": "verismo/cache-fill",
+      "report_sha256": "40e5e2c3d358594d5bfdb22393c2086422a019dd0043bf6e41a011edf8122f7e",
+      "started_unix": 1791589975,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64; existing Ninja path made explicit for verismo-main",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 1,
+        "same": 1,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 1137,
+        "units_with_rlimit_drift": 0
+      }
+    },
+    {
+      "label": "verismo/cache-warm",
+      "report_sha256": "89a293ebda6db4f7f3c11bef7740796686b0060ff0dd8f0e7af3e0e7a955c0a8",
+      "started_unix": 1791590215,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
+      "machine": {
+        "cpu": "Apple M3",
+        "cpus": "8",
+        "host": "aarch64-apple-darwin",
+        "memory_bytes": "25769803776",
+        "uname": "Darwin 25.5.0 arm64"
+      },
+      "platform_note": "Native macOS arm64; existing Ninja path made explicit for verismo-main",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 1,
+        "same": 1,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 1137,
+        "units_with_rlimit_drift": 0
+      }
+    },
+    {
+      "label": "anvil/pass-through",
+      "report_sha256": "142c5522fc292c852cc5ca5b29fc7506f29eef0ee83ec45887caf74a0f63a8aa",
+      "started_unix": 1791586172,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+      "machine": {
+        "cpus": "8",
+        "host": "x86_64-unknown-linux-gnu",
+        "uname": "Linux 7.0.12-linuxkit x86_64"
+      },
+      "platform_note": "Linux x86-64 under local emulation with OpenSSL; frozen default SMT binaries recorded separately",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 1,
+        "same": 1,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 143,
+        "units_with_rlimit_drift": 0
+      }
+    },
+    {
+      "label": "anvil/cache-fill",
+      "report_sha256": "1257879a96f5ab3e57079e7c9e15fed8cde740d62dcff701f5e903510f4b1878",
+      "started_unix": 1791587363,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+      "machine": {
+        "cpus": "8",
+        "host": "x86_64-unknown-linux-gnu",
+        "uname": "Linux 7.0.12-linuxkit x86_64"
+      },
+      "platform_note": "Linux x86-64 under local emulation with OpenSSL; frozen default SMT binaries recorded separately",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 1,
+        "same": 1,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 143,
+        "units_with_rlimit_drift": 0
+      }
+    },
+    {
+      "label": "anvil/cache-warm",
+      "report_sha256": "9ae3b9f88a9b2284d07539f8d88a60a31fefa4851f4fe522aef024c4dc30eece",
+      "started_unix": 1791588908,
+      "verus_release": "0.2026.10.04.426d8b0",
+      "z3_version": "4.16.0",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+      "machine": {
+        "cpus": "8",
+        "host": "x86_64-unknown-linux-gnu",
+        "uname": "Linux 7.0.12-linuxkit x86_64"
+      },
+      "platform_note": "Linux x86-64 under local emulation with OpenSSL; frozen default SMT binaries recorded separately",
+      "summary": {
+        "projects_skipped": 0,
+        "units": 1,
+        "same": 1,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 143,
+        "units_with_rlimit_drift": 0
+      }
+    }
+  ]
+}

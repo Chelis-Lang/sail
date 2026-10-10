@@ -147,7 +147,10 @@ Verus for host runs.
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, to have succeeded. Branches must be current
-with `main` before merging.
+with `main` before merging. The `End to end` check aggregates two parallel
+phases, legacy and managed, and succeeds only when both complete successfully.
+`ci/local.sh e2e` still runs both; `e2e legacy` or `e2e managed` selects a phase
+for diagnosis. Neither phase may be skipped to authorize a merge.
 
 **Testing tiers** (charter §Engineering practice). CI runs only the fast
 tier, and every CI job must finish well inside 10 minutes. Anything longer

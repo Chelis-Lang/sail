@@ -1,0 +1,125 @@
+{
+  "scope": "M6 default SMT conformance acceptance with explicit supplemental platform coverage",
+  "source_revisions": {
+    "base": "a6e719f1ae8bb5d1e3d4e296118107392f5db09f",
+    "integration_core": "44339db890aa197e3ee2cb998f0008d5934b222d",
+    "managed_receipt_fix": "a518a104c033948127c6e61ab705023907b74ac8"
+  },
+  "limits": [
+    "Long suites run locally only; no CI benchmark or standard tier job",
+    "Integration runs overlapped frontend and job fixes; this artifact does not claim one frozen executable throughout all native corpus runs",
+    "Default SMT forwarding, verdict policy, unknown cap and key formats were unchanged by frontend receipt fixes",
+    "Native standard has two explicit requirement skips recovered by separate zero-skip verismo-main and Linux Anvil runs; combined coverage is 159 units across 12726 structured functions per mode",
+    "Linux Anvil times under emulation and concurrent development are acceptance observations, not reference performance claims"
+  ],
+  "reports": [
+    {
+      "label": "fast/pass-through",
+      "path": "live-conformance-fast/pass-through/report.json",
+      "expected_count": 147,
+      "expected_skips": 0,
+      "expected_functions": 3450,
+      "platform_note": "Native macOS arm64, full fast corpus",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "fast/cache-fill",
+      "path": "live-conformance-fast/cache-fill/report.json",
+      "expected_count": 147,
+      "expected_skips": 0,
+      "expected_functions": 3450,
+      "platform_note": "Native macOS arm64, full fast corpus",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "fast/cache-warm",
+      "path": "live-conformance-fast/cache-warm/report.json",
+      "expected_count": 147,
+      "expected_skips": 0,
+      "expected_functions": 3450,
+      "platform_note": "Native macOS arm64, full fast corpus",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "standard/pass-through",
+      "path": "live-conformance-standard/pass-through/report.json",
+      "expected_count": 157,
+      "expected_skips": 2,
+      "expected_functions": 11446,
+      "platform_note": "Native macOS arm64; Anvil and verismo-main requirements covered separately below",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "standard/cache-fill",
+      "path": "live-conformance-standard/cache-fill/report.json",
+      "expected_count": 157,
+      "expected_skips": 2,
+      "expected_functions": 11446,
+      "platform_note": "Native macOS arm64; Anvil and verismo-main requirements covered separately below",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "standard/cache-warm",
+      "path": "live-conformance-standard/cache-warm/report.json",
+      "expected_count": 157,
+      "expected_skips": 2,
+      "expected_functions": 11446,
+      "platform_note": "Native macOS arm64; Anvil and verismo-main requirements covered separately below",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "verismo/pass-through",
+      "path": "live-conformance-verismo/pass-through/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "expected_functions": 1137,
+      "platform_note": "Native macOS arm64; existing Ninja path made explicit for verismo-main",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "verismo/cache-fill",
+      "path": "live-conformance-verismo/cache-fill/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "expected_functions": 1137,
+      "platform_note": "Native macOS arm64; existing Ninja path made explicit for verismo-main",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "verismo/cache-warm",
+      "path": "live-conformance-verismo/cache-warm/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "expected_functions": 1137,
+      "platform_note": "Native macOS arm64; existing Ninja path made explicit for verismo-main",
+      "solver_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb"
+    },
+    {
+      "label": "anvil/pass-through",
+      "path": "live-conformance-anvil/pass-through/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "expected_functions": 143,
+      "platform_note": "Linux x86-64 under local emulation with OpenSSL; frozen default SMT binaries recorded separately",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "anvil/cache-fill",
+      "path": "live-conformance-anvil/cache-fill/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "expected_functions": 143,
+      "platform_note": "Linux x86-64 under local emulation with OpenSSL; frozen default SMT binaries recorded separately",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "label": "anvil/cache-warm",
+      "path": "live-conformance-anvil/cache-warm/report.json",
+      "expected_count": 1,
+      "expected_skips": 0,
+      "expected_functions": 143,
+      "platform_note": "Linux x86-64 under local emulation with OpenSSL; frozen default SMT binaries recorded separately",
+      "solver_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  ]
+}

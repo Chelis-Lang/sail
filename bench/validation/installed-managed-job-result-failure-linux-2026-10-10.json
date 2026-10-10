@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "scope": "Fixed frozen Linux installed CLI/MCP job-result failure attempt",
+  "source_commit": "a518a104c033948127c6e61ab705023907b74ac8",
+  "binaries": {
+    "sail-z3": {
+      "sha256": "e3b09d12d271645fb76340e5f783341ae6b69d0a39b29103818051d6fb68f264",
+      "bytes": 7681880
+    },
+    "sail": {
+      "sha256": "e32ceb3ec7b0d75f7c398645dcc8f306dd3010dcc9b708e24a7dafa3b943715f",
+      "bytes": 58964288
+    }
+  },
+  "machine": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "execution_environment": "Pinned CI image under Linux/amd64 emulation on a shared development host"
+  },
+  "result": {
+    "passed": false,
+    "pipeline_phase_exit_code": 1,
+    "failure": "CalledProcessError: installed jobs result command returned exit 2",
+    "job_id": "1791593559018-181-0",
+    "failure_location": "ci/test-managed.py:133",
+    "proof_deadline_seconds": 240,
+    "elapsed_seconds": 190.95,
+    "max_single_process_rss_bytes": 2104160256,
+    "proof_timeout": false,
+    "cold_and_warm_checks_passed": true,
+    "missing_receipt_and_restored_mtime_checks_executed": false
+  },
+  "completed_managed_invocations": [
+    {
+      "run_id": "183-1791593401427137428",
+      "context_sha256": "677bea23bc09e285f5c3307cdb72a61f9aa75f6cabaffdc4d06b50c47a68c781",
+      "input_revision": "6f2dc2d890cc0dff73fd382adc89040f1cf01a9b2fe71506c240853928d11958",
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 2,
+        "reused_targets": 0,
+        "wall_ms": 151173.871361
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "kind": [
+            "lib"
+          ],
+          "requested": true,
+          "reused": false,
+          "complete": true,
+          "establishing_run": "183-1791593401427137428"
+        },
+        {
+          "target": "vstd",
+          "kind": [
+            "lib"
+          ],
+          "requested": false,
+          "reused": false,
+          "complete": true,
+          "establishing_run": "183-1791593401427137428"
+        }
+      ]
+    },
+    {
+      "run_id": "4642-1791593549973285260",
+      "context_sha256": "677bea23bc09e285f5c3307cdb72a61f9aa75f6cabaffdc4d06b50c47a68c781",
+      "input_revision": "6f2dc2d890cc0dff73fd382adc89040f1cf01a9b2fe71506c240853928d11958",
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 0,
+        "reused_targets": 2,
+        "wall_ms": 14708.108881999999
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "kind": [
+            "lib"
+          ],
+          "requested": true,
+          "reused": true,
+          "complete": true,
+          "establishing_run": "183-1791593401427137428"
+        },
+        {
+          "target": "vstd",
+          "kind": [
+            "lib"
+          ],
+          "requested": false,
+          "reused": true,
+          "complete": true,
+          "establishing_run": "183-1791593401427137428"
+        }
+      ]
+    }
+  ],
+  "raw_evidence": {
+    "installed-managed-script-raw/managed-01.stderr": {
+      "sha256": "eafb97da2623c05f85a25044b652e577db5f744b61b2630a45de831369ff85ed",
+      "bytes": 737
+    },
+    "installed-managed-script-raw/managed-01.stdout.json": {
+      "sha256": "403d10fefe001f0c0537196c53eb23ecdc4977884a2d685b3b361f1610970fa3",
+      "bytes": 1947737
+    },
+    "installed-managed-script-raw/managed-02.stderr": {
+      "sha256": "f4403412cb20dc7d8a0a94c08c9c8853e4bac9b3e8489158834f30512311ed97",
+      "bytes": 72
+    },
+    "installed-managed-script-raw/managed-02.stdout.json": {
+      "sha256": "2519603fafc962ff5c679206bc8ebd0043cf278a96144320fea66683000f185a",
+      "bytes": 1947741
+    },
+    "installed-managed.exit-code": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2
+    },
+    "installed-managed.stderr": {
+      "sha256": "39660df8ca7e06fda4c81cf0f638ed21f7e6128be47faf032c882a474447bc26",
+      "bytes": 1446
+    },
+    "installed-managed.stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "installed-managed.time": {
+      "sha256": "e546ec9dd8735e0c0bd164052bd53dc37bc920038ec13fde26d65f51fd4703c0",
+      "bytes": 1013
+    }
+  },
+  "limits": [
+    "Local-only Linux amd64 emulation under shared development load; not native reference performance or a successful installed acceptance",
+    "Cold and first unchanged warm report checks passed: Current complete reports with zero fresh warm verifier invocations",
+    "The installed CLI background job result lookup failed before MCP, missing-receipt and failing-edit checks completed",
+    "Original script check=True did not retain the failed jobs subprocess stdout/stderr before temporary fixture cleanup; cause remains unestablished from this attempt",
+    "Freshness CPU time versus the existing 5-second RPC read deadline is being investigated separately; this artifact does not assert a timeout diagnosis",
+    "No production deadline, assertion or core binary was changed during the attempt; further benchmark phases are separate outcomes",
+    "RSS is GNU time largest single process, not summed process tree memory"
+  ]
+}

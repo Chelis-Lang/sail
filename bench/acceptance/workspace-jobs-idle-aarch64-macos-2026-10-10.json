@@ -1,0 +1,49 @@
+{
+  "schema": "sail-acceptance/workspace-jobs-idle/v1",
+  "date": "2026-10-10",
+  "source_commit": "4f5ab580aa98645ba961991122453516c0732303",
+  "build_profile": "debug",
+  "binary": {
+    "sha256": "99f9251c6430189efa5864621a606c62306be6c9d2c68e0c9688b800cc466a2b",
+    "bytes": 37084872
+  },
+  "machine": {
+    "os": "Darwin",
+    "os_release": "25.5.0",
+    "architecture": "arm64",
+    "logical_cpus": 8,
+    "load_average": [
+      116.66455078125,
+      100.48193359375,
+      96.9814453125
+    ]
+  },
+  "fixture": {
+    "backend": "fake cargo-verus exits successfully without targets; actual sail daemon and watch",
+    "terminal_state": "infrastructure_error",
+    "network_shared_cache_configured": false,
+    "native_notifications": true,
+    "qualification": "Idle service resource sample only; no proof or verification performance claim."
+  },
+  "sample": {
+    "wall_seconds": 5.0,
+    "method": "ps accumulated process CPU time and RSS before and after settled native watch",
+    "cpu_time_resolution_seconds": 0.01,
+    "processes": {
+      "daemon": {
+        "cpu_seconds_delta": 0.01,
+        "cpu_percent_of_one_core": 0.2,
+        "rss_kib_before": 9776,
+        "rss_kib_after": 9664,
+        "child_process_names": []
+      },
+      "watch": {
+        "cpu_seconds_delta": 0.0,
+        "cpu_percent_of_one_core": 0.0,
+        "rss_kib_before": 10368,
+        "rss_kib_after": 10000,
+        "child_process_names": []
+      }
+    }
+  }
+}

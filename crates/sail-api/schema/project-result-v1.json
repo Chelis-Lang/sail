@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sail.invalid/schema/project-result-v1.json",
+  "title": "Sail managed project result v1",
+  "type": "object",
+  "required": [
+    "kind",
+    "schema_version",
+    "run_id",
+    "workspace",
+    "context_sha256",
+    "input_revision",
+    "currentness",
+    "exit_code",
+    "targets",
+    "execution",
+    "notes",
+    "error"
+  ],
+  "properties": {
+    "kind": {
+      "const": "sail-project-result"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "workspace": {
+      "type": "string"
+    },
+    "context_sha256": {
+      "type": "string"
+    },
+    "input_revision": {
+      "type": "string"
+    },
+    "currentness": {
+      "enum": [
+        "current",
+        "historical",
+        "unknown"
+      ]
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/target"
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "verifier_invocations",
+        "reused_targets",
+        "wall_ms"
+      ],
+      "properties": {
+        "verifier_invocations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reused_targets": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "wall_ms": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "error": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^SAIL[0-9]{4}$"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "target": {
+      "type": "object",
+      "required": [
+        "package_id",
+        "target",
+        "kind",
+        "establishing_run",
+        "reused",
+        "requested",
+        "complete",
+        "report"
+      ],
+      "properties": {
+        "package_id": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "establishing_run": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reused": {
+          "type": "boolean"
+        },
+        "requested": {
+          "type": "boolean"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "report": {
+          "$ref": "verify-output-v1.json"
+        }
+      }
+    }
+  }
+}
