@@ -128,7 +128,9 @@ but exceeded the original latency target and had no active verifier. Source work
 now closes decoded-allocation and validation-scratch accounting gaps, and routes
 private span reads through guards covering compiler clones created before a
 capture begins. These candidates require a combined ordinary build and complete
-source qualification before activation.
+source qualification before activation. The physical audit also found
+diagnostic-event JSON expansion that can overlap preparation; its bounded
+observer fix and exact combined-source tests precede the next ordinary build.
 
 Priority order for completing this milestone:
 

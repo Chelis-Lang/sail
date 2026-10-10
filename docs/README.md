@@ -33,6 +33,9 @@ The [reader acceptance guide](reader-acceptance.md) explains genuine proof setup
 owned-job archival, compatible storage layouts and failure handling.
 [Whole-result profiling](result-frame-profile.md) records transfer and complete
 response decoding costs without changing reader acceptance.
+The [source preparation audit](../engine/verus/candidates/decode-budget/README.md)
+records allocation ownership, phase bounds and outstanding combined-runtime
+checks for the unselected engine candidate.
 Long corpus, source-build and benchmark work runs locally in the Linux container;
 required CI remains short.
 
