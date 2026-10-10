@@ -43,6 +43,15 @@ struct Entry {
     _reservation: Reservation,
 }
 
+struct Promotion<'a>(&'a Entry);
+impl Drop for Promotion<'_> {
+    fn drop(&mut self) {
+        // No retry inside this call. Later fresh RPCs may try again after a
+        // temporary resource refusal; successful publication changes generation.
+        self.0.promoting.store(false, Ordering::Release);
+    }
+}
+
 #[derive(Default)]
 pub(super) struct Cache {
     staged: bool,
@@ -105,11 +114,13 @@ impl Cache {
             if let Some(entry) = matching {
                 // No wait behind another promotion. Overlapping cold requests
                 // all captured None before I/O, so none clones a decoded graph.
-                if entry
-                    .promoting
-                    .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-                    .is_ok()
+                if self.is_current(&entry)
+                    && entry
+                        .promoting
+                        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+                        .is_ok()
                 {
+                    let _claim = Promotion(&entry);
                     self.retain(&bytes, &envelope.body, Some(&entry));
                 }
             } else {
@@ -119,6 +130,11 @@ impl Cache {
             self.retain(&bytes, &envelope.body, None);
         }
         Ok(envelope.body)
+    }
+    fn is_current(&self, expected: &Arc<Entry>) -> bool {
+        self.entry
+            .try_lock()
+            .is_ok_and(|slot| slot.as_ref().is_some_and(|now| Arc::ptr_eq(now, expected)))
     }
     fn snapshot(&self) -> Option<Arc<Entry>> {
         self.entry.try_lock().ok()?.as_ref().map(Arc::clone)
@@ -316,7 +332,7 @@ mod tests {
                 &original,
             )?;
         }
-        assert!(prior.promoting.load(Ordering::Acquire));
+        assert!(!prior.promoting.load(Ordering::Acquire));
         assert!(
             cache
                 .snapshot()
@@ -463,16 +479,17 @@ mod tests {
         );
         assert_eq!(cache.budget.0.load(Ordering::Acquire), OWNED_LIMIT);
         drop(held);
-        // A refused promotion does not wait/retry that generation or spend
-        // memory; subsequent full fresh responses still decode correctly.
+        // This later fresh RPC can promote after resource pressure clears;
+        // there was no wait/retry in the earlier refused call.
+        assert!(!candidate.promoting.load(Ordering::Acquire));
         equal(&cache.read(&mut Cursor::new(&bytes))?, &original)?;
-        assert!(
-            cache
-                .snapshot()
-                .is_some_and(|entry| entry.response.is_none())
-        );
+        let ready = cache
+            .snapshot()
+            .ok_or_else(|| io::Error::other("promotion missing"))?;
+        assert!(ready.response.is_some());
+        let used = cache.budget.0.load(Ordering::Acquire);
         drop(candidate);
-        assert_eq!(cache.budget.0.load(Ordering::Acquire), charge);
+        assert_eq!(cache.budget.0.load(Ordering::Acquire), used - charge);
         Ok(())
     }
     #[test]
