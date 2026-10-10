@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "status": "allocation_only_probe_safe_refusals_preserved",
+  "production_decode_budget_bytes": 134217728,
+  "decoder_overlay_sha256": "8812f5151a19528c014b9d3a8875367fbf0f1c6ec4938f94cbf764ea03e60384",
+  "source_patch_sha256": "b6da2aaf376c5d43bdb0e0f7da14bd3adb2dcdc3ef45cd5020e931fbe661e585",
+  "entries": 105,
+  "admitted": 36,
+  "refused": 69,
+  "raw_sha256": {
+    "measured_decode.rs": "add3c7d2a7621d85425641f534a555217e980f315d58b0b22ee9a631179daf27",
+    "measured_probe.rs": "d6697b63f03a81be63165f5b269b6f991714b7d88e3decc5d7983ea471ddb400",
+    "measured_probe": "0f3a9449432be634b61e4c49ebefe28f0f87bcf02b5435d61c5b1dde7186e1ce",
+    "charges.stdout": "f17f5aa6906ca18734fb93ff83ebb9317fa8abd5e07d4753817badf392cb5830",
+    "charges.stderr": "245b0e89ffbab619c55ec999daa31feb7d52ca579a8c9fb0bc591a174fd1f032"
+  },
+  "primitive_dispatch_attempted_bytes_at_refusal": {
+    "min": 5685648,
+    "median": 6554248,
+    "max": 7621208
+  },
+  "representative_refusal": {
+    "entry": "0e7f976f7ef9b2ac44018d62d3cad4723d7bf10060f2228432a7b8fae4fe804e.prepared",
+    "charged_through_refusal": 134217816,
+    "by_site": {
+      "dispatch": 74301816,
+      "bytes": 7847208,
+      "seed": 52068792
+    },
+    "top_types": [
+      {
+        "site": "dispatch",
+        "type": "alloc::string::String",
+        "calls": 29737,
+        "charged": 9515840
+      },
+      {
+        "site": "dispatch",
+        "type": "vir::ast::TypX",
+        "calls": 18617,
+        "charged": 8340416
+      },
+      {
+        "site": "bytes",
+        "type": "borrowed string/byte payload",
+        "calls": 29737,
+        "charged": 7847208
+      },
+      {
+        "site": "dispatch",
+        "type": "vir::ast::SpannedTyped<vir::sst::ExpX>",
+        "calls": 5418,
+        "charged": 7281792
+      },
+      {
+        "site": "dispatch",
+        "type": "vir::sst::ExpX",
+        "calls": 8305,
+        "charged": 5846720
+      },
+      {
+        "site": "seed",
+        "type": "u64",
+        "calls": 27457,
+        "charged": 5271744
+      },
+      {
+        "site": "dispatch",
+        "type": "u64",
+        "calls": 27457,
+        "charged": 5271744
+      },
+      {
+        "site": "seed",
+        "type": "vir::messages::Span",
+        "calls": 7389,
+        "charged": 5201856
+      },
+      {
+        "site": "dispatch",
+        "type": "<vir::messages::Span as serde_core::de::Deserialize<'_>>::deserialize::Encoded",
+        "calls": 7389,
+        "charged": 4256064
+      },
+      {
+        "site": "seed",
+        "type": "vir::sst::ExpX",
+        "calls": 5418,
+        "charged": 3814272
+      },
+      {
+        "site": "seed",
+        "type": "alloc::sync::Arc<alloc::string::String>",
+        "calls": 19588,
+        "charged": 3760896
+      },
+      {
+        "site": "seed",
+        "type": "alloc::string::String",
+        "calls": 10150,
+        "charged": 3248000
+      }
+    ],
+    "primitive_dispatch_bytes": 6380112
+  },
+  "scope": "Additional bounded diagnostic counters; same128MiB admission and byte input. Entry digest and complete consumption checked; placeholder raw span bindings only. No actual compiler callback, graph/domain/provenance validation, HIT, proof reuse, full physical quota, or performance claim. Counters include the attempted charge that triggered refusal; they are not physical allocation measurements.",
+  "readout": "Primitive dispatcher duplicates account for only5.69\u20137.62MB of the134.2MB budget at refusal. Inline and pointer-owner decomposition requires a separate closed-schema review; no cap increase or constant reduction follows from this record."
+}

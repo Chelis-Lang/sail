@@ -195,3 +195,14 @@ The overlay also extends the existing blocked nested-owner release test to
 replay owners and adds exact focused JSON equality/borrowed-owner checks. Those
 `rust_verify` tests await the combined source build; their pending status is
 recorded rather than presented as passing.
+
+## Measured admission precision
+
+The private allocation-only [type profile](primitive-charge-profile.json)
+reproduces the original 105 checksummed retained bodies: 36 decode within the
+unchanged 128 MiB guard and 69 safely refuse. It does not validate a live
+compiler callback, graph results, provenance, or proof reuse. Extra diagnostic
+counters are outside the physical preparation claim. At refusal, duplicate
+primitive dispatcher charges account for only 5.69–7.62 MB. Larger string,
+span and inline/pointer-owner charges need a closed-schema allocation audit;
+this evidence does not authorize higher caps or smaller generic constants.
