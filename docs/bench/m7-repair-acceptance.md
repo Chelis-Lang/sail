@@ -55,6 +55,10 @@ M7 binary, an `--engine-install` validated source variant, and an explicit
 `--environment` label. Each mode has a private cache. M7 imports the same
 validated runtime into its private cache rather than rebuilding it per cycle.
 Installation and dependency warm-up are retained but excluded from cycle time.
+JSON checkpoints are flushed to a temporary file, atomically replaced and
+directory-synced; failures before replacement preserve the previous snapshot.
+Filesystem interruption still makes a run incomplete. Recovered artifacts
+must parse and match their recorded identities before they support a claim.
 Each distinct repair function also gets an original-source context warm-up:
 function selection is part of context identity, so warming stock verification
 does not establish that repair context's build-script declarations. Exactly one

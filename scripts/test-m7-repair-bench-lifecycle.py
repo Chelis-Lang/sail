@@ -17,6 +17,21 @@ spec.loader.exec_module(bench)
 
 
 class Lifecycle(unittest.TestCase):
+    def test_checkpoint_failure_preserves_previous_complete_snapshot(self):
+        with tempfile.TemporaryDirectory(prefix="m7-checkpoint-") as temporary:
+            path = Path(temporary) / "results.json"
+            original = {"acceptance": {"complete": False}, "samples": [{"round": 0}]}
+            bench.write_json(path, original)
+            for failure in ("fsync", "replace"):
+                with mock.patch.object(bench.os, failure, side_effect=OSError("disk unavailable")):
+                    with self.assertRaisesRegex(OSError, "disk unavailable"):
+                        bench.write_json(path, {"samples": [{"round": 1}]})
+                self.assertEqual(json.loads(path.read_text()), original)
+                self.assertEqual(list(path.parent.iterdir()), [path])
+            replacement = {"samples": [{"round": 1}], "acceptance": {"complete": False}}
+            bench.write_json(path, replacement)
+            self.assertEqual(json.loads(path.read_text()), replacement)
+
     def test_observation_failure_interrupts_cli_then_cancels_only_owned_job(self):
         with tempfile.TemporaryDirectory(prefix="m7-lifecycle-", dir="/tmp") as temporary:
             root = Path(temporary)
