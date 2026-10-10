@@ -47,9 +47,32 @@
         },
         "batched": {
           "type": "boolean"
+        },
+        "selection_error": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "code",
+                "message"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^SAIL[0-9]{4}$"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          ]
         }
       }
     }
   },
-  "$comment": "accepted is recomputed from full evidence: Current, successful complete requested target reports, whole-target successful Verus inventory and successful process seal. Focus evidence cannot authorize acceptance. batched records actual supported engine behavior, not composition of independent processes."
+  "$comment": "accepted additionally requires no selection_error. accepted is recomputed from full evidence: Current, successful complete requested target reports, whole-target successful Verus inventory and successful process seal. Focus evidence cannot authorize acceptance. batched records actual supported engine behavior, not composition of independent processes."
 }

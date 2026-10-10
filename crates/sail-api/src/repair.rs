@@ -22,6 +22,9 @@ pub struct BatchResult {
     pub compiler_invocations: u64,
     /// True only for engine-supported focus/full batching within compiler calls.
     pub batched: bool,
+    /// Exact focus selection was unavailable or ambiguous; full evidence is retained.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_error: Option<crate::output::ErrorInfo>,
 }
 
 impl BatchResult {
@@ -29,7 +32,7 @@ impl BatchResult {
     /// Preliminary focus success cannot authorize a repair.
     #[must_use]
     pub fn accepted(&self) -> bool {
-        accepted(&self.full)
+        self.selection_error.is_none() && accepted(&self.full)
     }
 }
 

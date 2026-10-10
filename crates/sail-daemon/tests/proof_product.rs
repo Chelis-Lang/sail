@@ -236,6 +236,7 @@ fn repair_job_preserves_focus_success_full_failure_and_never_promotes_preliminar
         manifest_sha256: "mock-engine-manifest".into(),
         compiler_invocations: 1,
         batched: true,
+        selection_error: None,
     };
     let mut stored = sail_api::repair::ResultDocument::from(batch);
     stored.accepted = true; // Never trust a serialized accepted field.

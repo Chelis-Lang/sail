@@ -38,6 +38,11 @@ report: successful, complete requested targets, whole-target verification and
 Current input evidence after compiler completion. A passing focus phase remains
 provisional. A failing full phase, late compiler failure, edited inputs or
 incomplete input coverage cannot authorize a repair.
+A missing or ambiguous exact function records `batch.selection_error` with a
+stable code and prevents acceptance while retaining the independent full report.
+The private worker exits with the full phase's status so a completed proof is
+not mistaken for an infrastructure failure; the public repair command exits
+nonzero when the repair is not accepted.
 
 ## Resumable observations
 
