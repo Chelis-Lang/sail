@@ -13,6 +13,7 @@ import pathlib
 import shutil
 import signal
 import subprocess
+import time
 
 
 def digest(path):
@@ -20,22 +21,20 @@ def digest(path):
 
 
 def execute(command, environment, timeout, output, prefix, cwd=None, diagnostics=False):
+    observer = None
+    if diagnostics:
+        try:
+            from importlib.machinery import SourceFileLoader
+            observer = SourceFileLoader('actor_observation', str(pathlib.Path(__file__).with_name('actor-observation.py'))).load_module().Monitor(command, output, prefix)
+        except Exception:
+            pass  # Before actor launch; unavailable optional observations.
+    started = time.monotonic()
     with subprocess.Popen(command, env=environment, cwd=cwd, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, start_new_session=True) as process:
-        observer = None
-        if diagnostics:
-            try:
-                from importlib.machinery import SourceFileLoader
-                observer = SourceFileLoader('actor_observation', str(pathlib.Path(__file__).with_name('actor-observation.py'))).load_module().Monitor(process, command, output, prefix)
-            except Exception as error:
-                # Optional observations never replace the real actor or its
-                # deadline. Preserve unavailability without discarding proof.
-                try:
-                    (output / (prefix + '.observation-unavailable.json')).write_text(json.dumps({'reason': str(error)}) + '\n')
-                except OSError:
-                    pass
+        if observer is not None:
+            observer.bind(process, int(started * 1_000_000_000))
         try:
-            stdout, stderr = process.communicate(timeout=timeout)
+            stdout, stderr = process.communicate(timeout=max(0, timeout - (time.monotonic() - started)))
         except subprocess.TimeoutExpired:
             os.killpg(process.pid, signal.SIGKILL)
             stdout, stderr = process.communicate()

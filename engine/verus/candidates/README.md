@@ -248,3 +248,13 @@ or the unchanged 600-second deadline. Samples have an 8 MiB disk limit; process,
 thread, argv and solver-identity inventories are separately bounded and report
 truncation. Unavailable observations cannot authorize a proof or turn a timeout
 into a pass. Non-Linux execution records that `/proc` is unavailable.
+
+Observation threads are prepared before launching their actor. All sidecar and
+`/proc` I/O stays on the daemon thread; binding an actor performs no file I/O.
+The existing actor deadline is anchored immediately before `Popen`, and
+`communicate` receives only its remaining time. The sampler pins the actual
+leader’s parent, process group and start tick, rechecks leader identity before
+payload reads and sample publication, and uses fd-relative process payloads so
+numeric PID reuse cannot redirect reads. Leader exit, disappearance or identity
+change stops sampling. Optional diagnostic shutdown cannot prevent killing and
+draining the real actor at its deadline.
