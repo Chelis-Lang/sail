@@ -174,6 +174,26 @@ def selected_report(project):
             "summary": report["summary"], "diagnostics": report["diagnostics"]}
 
 
+def warm_repair_state(doc, allow_setup):
+    """Only an explicit first-run declaration transition permits one retry."""
+    batch = doc.get("batch", {})
+    full = batch.get("full", {})
+    if not batch.get("batched") or not batch.get("manifest_sha256") or batch.get("focus") is None:
+        raise ValueError("SAIL0942: repair warmup did not use the real source engine")
+    if doc.get("selection_error") or full.get("error") or full.get("exit_code") != 0:
+        raise ValueError("SAIL0942: original repair warmup did not verify")
+    targets = [target for target in full.get("targets", []) if target.get("requested")]
+    if len(targets) != 1 or not targets[0].get("complete"):
+        raise ValueError("SAIL0942: original repair warmup has incomplete full evidence")
+    if doc.get("accepted") is True and full.get("currentness") == "current":
+        return "ready"
+    if (allow_setup and doc.get("accepted") is False
+            and full.get("currentness") in ("unknown", "historical")
+            and "Build-script input declarations were established during this run" in full.get("notes", [])):
+        return "declarations-established"
+    raise ValueError("SAIL0942: repair warmup lacks Current accepted full evidence")
+
+
 def run(args):
     data = catalogue()
     if args.rounds < data["minimum_rounds"]:
@@ -182,8 +202,9 @@ def run(args):
     result = {"schema_version": 1, "catalogue_sha256": FROZEN_HASH,
               "baseline_commit": data["baseline_commit"], "platform": platform.platform(),
               "execution_environment": args.environment, "binary_sha256": {k: sha(v) for k, v in binaries.items()},
-              "rounds": args.rounds, "samples": [], "acceptance": {"complete": False}}
+              "rounds": args.rounds, "warmups": [], "samples": [], "acceptance": {"complete": False}}
     args.out.mkdir(parents=True, exist_ok=False)
+    write_json(args.out / "results.json", result)
     for project in data["projects"]:
         workspace = (args.scratch / project["id"]).resolve()
         frozen = json.loads((workspace / ".sail-m7-workload.json").read_text())
@@ -214,6 +235,25 @@ def run(args):
                           workspace, envs[mode], (args.out / project["id"] / ("warm-" + mode)).resolve(), args.timeout)
             if selected_report(warm["report"])["exit_code"] != 0:
                 raise ValueError("SAIL0942: original project did not verify during warmup")
+            result["warmups"].append({"project": project["id"], "mode": mode,
+                                      "kind": "dependencies-and-solver", "wall_ms": warm["wall_ms"]})
+            write_json(args.out / "results.json", result)
+        # Repair selection is part of context identity. A stock verify warmup
+        # cannot establish the build/source declarations for those contexts.
+        for index, function in enumerate(dict.fromkeys(cycle["function"] for cycle in project["cycles"])):
+            for attempt in range(2):
+                warm = invoke([str(binaries["m7"]), "repair-check", "--engine", "interactive",
+                               "--function", function, "--output", "json"] + selection + ["--lib"],
+                              workspace, envs["m7"],
+                              (args.out / project["id"] / ("warm-repair-%d-%d" % (index, attempt))).resolve(),
+                              args.timeout)
+                state = warm_repair_state(warm["report"], allow_setup=attempt == 0)
+                result["warmups"].append({"project": project["id"], "mode": "m7", "kind": "repair-context",
+                                          "function": function, "attempt": attempt, "state": state,
+                                          "wall_ms": warm["wall_ms"]})
+                write_json(args.out / "results.json", result)
+                if state == "ready":
+                    break
         for round_index in range(args.rounds):
             for cycle in project["cycles"]:
                 # Preserve identical paths and cumulative failure→repair content.
@@ -246,7 +286,9 @@ def run(args):
                             raise ValueError("SAIL0942: invocation did not produce a real source-engine batch")
                         pair[mode] = {key: value[key] for key in ("wall_ms", "first_actionable_ms", "max_rss_bytes")}
                         pair[mode].update(full=selected_report(batch["full"]),
-                                          compiler_invocations=batch["compiler_invocations"], accepted=doc["accepted"])
+                                          compiler_invocations=batch["compiler_invocations"], accepted=doc["accepted"],
+                                          batch_metadata={key: value for key, value in batch.items()
+                                                          if key not in ("focus", "full")})
                 pair["same"] = pair["m6"]["full"] == pair["m7"]["full"]
                 pair["expected_observed"] = ((pair["m6"]["full"]["exit_code"] == 0) == (cycle["expected"] == "verified"))
                 if pair["m7"]["accepted"] != (cycle["expected"] == "verified"):
