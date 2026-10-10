@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Stage complete-result decoding reuse in ordinary persistent Rust SDK clients:
+  retain the first validated frame without cloning its graph, then promote after
+  an identical fresh response. Keep complete RPC validation and independent
+  returned reports, with bounded retention and an explicit uncached constructor.
+
 - Retain raw partial stdout and stderr for timed-out corpus verification units.
   The timeout remains an infrastructure error and kills the verifier process
   group; partial output never becomes a completed proof or conformance result.
