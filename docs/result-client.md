@@ -147,7 +147,7 @@ same endpoint resolution. Keep the client across reads:
 ```rust
 use sail_api::jobs::{Client, Request, Response};
 
-let client = Client::with_result_decoding_cache(job_socket);
+let client = Client::new(job_socket);
 let response = client.call(&Request::Result { id: job_id.clone() })?;
 if let Response::Result(document) = response {
     println!("{:?}: {:?}", document.job.state, document.job.currentness);
