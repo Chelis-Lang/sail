@@ -33,6 +33,16 @@ diagnostic records case/round boundaries and, if the existing 60-second session
 bound expires, the exact owned child tree, thread wait states and output size.
 It does not read credentials or process environments.
 
+A subsequent isolated run of this exact case, with diagnostic logging and all
+original checks intact, passed in 11.340 seconds. All five cases and both
+sessions per case passed; the platform-mismatch case recorded one rejection,
+zero shared hits and zero shared timeouts. This did not reproduce or explain
+the original integrated timeout. The
+[portable diagnostic record](../bench/validation/shared-signature-fault-diagnostic-linux-emulated-2026-10-10.json)
+retains both outcomes, the diagnostic invocation's initial solver-path setup
+failure, and the executed source, binary and log hashes. No production fix or
+deadline change is claimed.
+
 ## How faults are injected
 
 - **The daemon** is the real `sail_daemon::serve`, in-process. Daemon faults
