@@ -1,0 +1,35 @@
+{
+  "verus": "0.2026.10.04.426d8b0",
+  "verification_results": {
+    "encountered-error": false,
+    "encountered-vir-error": false,
+    "success": true,
+    "verified": 2,
+    "errors": 0,
+    "is-verifying-entire-crate": true
+  },
+  "function_breakdown": [
+    {
+      "module": "second",
+      "functions": [
+        {
+          "function": "friendly_collision::S::check",
+          "success": true
+        }
+      ]
+    },
+    {
+      "module": "first",
+      "functions": [
+        {
+          "function": "friendly_collision::S::check",
+          "success": true
+        }
+      ]
+    },
+    {
+      "module": "",
+      "functions": []
+    }
+  ]
+}

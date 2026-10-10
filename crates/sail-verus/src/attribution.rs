@@ -751,6 +751,29 @@ fn obligations(
     by_fn
 }
 
+fn remove_ambiguous_joins(
+    docs: &[Value],
+    by_fn: &mut BTreeMap<String, Vec<ObligationRecord>>,
+    notes: &mut Vec<String>,
+) {
+    // Verus's friendly names omit trait implementation identity. Multiple
+    // timing entries can therefore name different implementations identically,
+    // even in one module. Neither log order nor source position establishes a
+    // stable join: leave every such record unattributed rather than attaching
+    // all operations to the first entry or inventing obligation identities.
+    let mut occurrences = BTreeMap::new();
+    for (_, function, ..) in docs.iter().flat_map(verus_functions) {
+        *occurrences.entry(function).or_insert(0usize) += 1;
+    }
+    for (function, count) in occurrences {
+        if count > 1 && by_fn.remove(&function).is_some() {
+            notes.push(format!(
+                "Verus reports {count} entries named {function}; obligations are not attributed because the friendly name does not distinguish implementations"
+            ));
+        }
+    }
+}
+
 /// Joins Verus's documents with its logs (if any) and the provenance.
 ///
 /// `logs` is `None` when sail did not ask Verus for logs; `unavailable`
@@ -767,6 +790,7 @@ pub fn attribute(
     let mut by_fn = logs
         .map(|l| obligations(l, provenance, &mut notes, &mut unmatched_sessions))
         .unwrap_or_default();
+    remove_ambiguous_joins(docs, &mut by_fn, &mut notes);
     let mut missing = 0u64;
     let mut crates = Vec::new();
     for doc in docs {
@@ -832,7 +856,7 @@ pub fn attribute(
     }
     if missing > 0 {
         notes.push(format!(
-            "{missing} functions have no attributed obligations (their logs are missing or were overwritten)"
+            "{missing} functions have no attributed obligations (their logs are missing, overwritten, or ambiguous)"
         ));
     }
     if unmatched_sessions > 0 {
@@ -1027,6 +1051,90 @@ unsat
         assert_eq!(ops[1].checks.len(), 1);
         assert_eq!(ops[1].checks[0].effort.limit, Some(0));
         assert_eq!(ops[1].checks[0].effort.used, None);
+    }
+
+    #[test]
+    fn repeated_friendly_names_never_join_distinct_implementations() {
+        let function = "demo::S::check";
+        let entry = |success| {
+            serde_json::json!({
+                "function": function, "success": success, "time-micros": 7
+            })
+        };
+        let doc = serde_json::json!({
+            "verification-results": {"verified": 3, "errors": 0, "success": true},
+            "times-ms": {"smt": {"smt-run-module-times": [
+                {"module": "first", "function-breakdown": [entry(true), entry(true)]},
+                {"module": "second", "function-breakdown": [entry(true)]}
+            ]}}
+        });
+        let log = |stem: &str| LogFile {
+            stem: stem.to_owned(),
+            air: vec![AirQuery {
+                function: function.to_owned(),
+                kind: "Function-Def".to_owned(),
+                span: Some(format!("src/{stem}.rs:1:1: 1:9 (#0)")),
+            }],
+            ops: vec![SmtOp::default()],
+            spinoff_reason: None,
+            input_sha256: stem.to_owned(),
+            solver_version: None,
+        };
+        for logs in [
+            vec![log("first"), log("second")],
+            vec![log("second"), log("first")],
+        ] {
+            let result = attribute(
+                std::slice::from_ref(&doc),
+                Some(&logs),
+                &Provenance::NoCache,
+                None,
+            );
+            assert_eq!(result.status, Status::Partial);
+            assert_eq!(result.crates[0].success, Some(true));
+            assert_eq!(result.crates[0].functions.len(), 3);
+            assert!(
+                result.crates[0]
+                    .functions
+                    .iter()
+                    .all(|f| f.function == function
+                        && f.verus_success == Some(true)
+                        && f.obligations.is_none())
+            );
+            assert_eq!(result.crates[0].functions[0].module, "first");
+            assert_eq!(result.crates[0].functions[2].module, "second");
+            assert!(
+                result
+                    .notes
+                    .iter()
+                    .any(|n| n.contains("does not distinguish implementations"))
+            );
+            let build = |attribution: &Attribution| {
+                crate::report::build(&crate::report::Inputs {
+                    args: &[],
+                    exit_code: Some(0),
+                    solver_path: None,
+                    solver_sha256: None,
+                    daemon: false,
+                    attribution,
+                    diagnostics: &[],
+                })
+            };
+            let report = build(&result);
+            assert_eq!(report.invariant_violations(), [] as [String; 0]);
+            assert!(crate::managed::receipt_complete(&report));
+            let mut failing = result.clone();
+            failing.crates[0].errors = Some(1);
+            failing.crates[0].success = Some(false);
+            let report = build(&failing);
+            assert!(!crate::managed::receipt_complete(&report));
+            assert!(
+                report.crates[0]
+                    .functions
+                    .iter()
+                    .all(|f| f.verdict == sail_api::output::VerdictName::Unknown)
+            );
+        }
     }
 
     #[test]

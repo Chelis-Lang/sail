@@ -178,3 +178,15 @@ Complete attribution keeps its precise obligation-based verdicts, and successful
 crates keep their normal Verus results. The ordinary verifier stream and exit
 code are unchanged. The old fallback test that left this gap open is replaced
 with assertions that retain every function and refuse false proof claims.
+
+## Ambiguous friendly function names (2026-10-10)
+
+VI-0010 records that distinct trait implementations can share a friendly
+function name, even inside one module. If the Verus timing breakdown contains
+more than one entry for that name, Sail retains each original record but does
+not join obligations to any occurrence. Attribution is explicitly partial and
+raw logs remain available. Log order, ordinal renumbering and source spans do
+not establish the missing implementation identity. Unique names retain their
+existing obligation IDs. The duplicate-ID invariant remains unchanged;
+successful whole-target results retain their existing authority, while failing
+crates with partial attribution remain conservative.
