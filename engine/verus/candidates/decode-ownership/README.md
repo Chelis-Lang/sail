@@ -123,3 +123,11 @@ prepared entries, sealed runtimes and the active Linux build were left intact.
 sizes, retained inventories and measured available-space change. The historical
 check results remain in `combined-source-checks.json`; recompiling host compiler
 objects requires rebuilding those disposable intermediates.
+
+The owner's later cleanup request also covered seven earlier, completed worktree
+builds. Only their inactive Cargo `target/debug` directories were removed, after
+retaining exact test/CLI/example/loader bytes and Cargo identities in the current
+owned evidence set. Worktree source, other raw output and runtime freezes were
+preserved. [This second record](prior-worktree-cleanup.json) distinguishes
+original logical size from observed filesystem availability; concurrent activity
+prevents attributing the availability change solely to this cleanup.

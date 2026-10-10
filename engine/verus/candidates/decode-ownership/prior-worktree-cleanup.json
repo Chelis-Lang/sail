@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "scope": "Seven inactive owned worktree Cargo target/debug directories only; source, raw validation data and runtime freezes preserved",
+  "available_before_bytes": 7524495360,
+  "available_after_bytes": 12354899968,
+  "observed_available_difference_bytes": 4830404608,
+  "measurement_note": "Filesystem availability includes concurrent activity; original logical sizes and retained content are recorded independently.",
+  "sets": [
+    {
+      "worktree_label": "m7-bench-lifecycle",
+      "source_head": "ebe11927d1547720df89cbd1dbbb43311938b71b",
+      "logical_bytes_before": 1554063239,
+      "files_before": 16150,
+      "retained_files": 15,
+      "retained_bytes": 170285592,
+      "retained_inventory_sha256": "a9fbafe3217e9e0e4dba43cde2d732fcb9145124bd31ffc0032c7f0383c61ccf"
+    },
+    {
+      "worktree_label": "m7-product",
+      "source_head": "fe482553f083a650102e5ca779f8ec9029433d2d",
+      "logical_bytes_before": 1843826699,
+      "files_before": 18139,
+      "retained_files": 25,
+      "retained_bytes": 311173968,
+      "retained_inventory_sha256": "455164d01dcfd5aaf04d9960f26887cbde352fd1fa823c1f4e13b435c4d92eb8"
+    },
+    {
+      "worktree_label": "m7-http-coalesced-publication",
+      "source_head": "c51b297cd6affaee3f60263e5f795006c08da2f1",
+      "logical_bytes_before": 1170180480,
+      "files_before": 10541,
+      "retained_files": 66,
+      "retained_bytes": 74316112,
+      "retained_inventory_sha256": "5818f60168d38460ee17eb23847c944b0c424fa4165f4207517b1413e76155e7"
+    },
+    {
+      "worktree_label": "m7-http-established-fixtures",
+      "source_head": "b37f8d076ab74ad203505665032ace21634e7f55",
+      "logical_bytes_before": 760080422,
+      "files_before": 4245,
+      "retained_files": 31,
+      "retained_bytes": 34698264,
+      "retained_inventory_sha256": "365e3b89d9de4ec8ac04cb88ef58f4c51b2d427a4f643dafa5a0b714121e94c3"
+    },
+    {
+      "worktree_label": "m7-mcp-responsive-fixture",
+      "source_head": "02b3bcf5355efd8b63bea939edddd2c57ee39547",
+      "logical_bytes_before": 334661033,
+      "files_before": 2431,
+      "retained_files": 17,
+      "retained_bytes": 13989712,
+      "retained_inventory_sha256": "a15cdc49a546191f5d9684ec919d7b6f85239292585ffa68b07eaeb3c6fe0be6"
+    },
+    {
+      "worktree_label": "m7-result-frame-profile",
+      "source_head": "29f78c01982f006d72600fec11d647cc15f85097",
+      "logical_bytes_before": 84307963,
+      "files_before": 392,
+      "retained_files": 12,
+      "retained_bytes": 3667736,
+      "retained_inventory_sha256": "e3c0eb92400de212f6dc3cb2bfbdbe30be3b200c5df410e04a16b0471d9b43ae"
+    },
+    {
+      "worktree_label": "m7-rust-read-probe",
+      "source_head": "a6eafc4c82c079f9622e5febf6c815b3f341e6ab",
+      "logical_bytes_before": 1248883784,
+      "files_before": 9114,
+      "retained_files": 81,
+      "retained_bytes": 192170440,
+      "retained_inventory_sha256": "960213203ffe1576fcc458ec29bcefd8b8aecdaf0e51edfce3590d64f5b93bc1"
+    }
+  ]
+}
