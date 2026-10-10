@@ -154,6 +154,7 @@ no previous-revision proof reuse or product qualification is established.
 The follow-up [scoped-query allocation audit](scoped-graph-scratch.md) binds a
 [separate combined patch](../scoped-query-private-span.patch). It retains the
 8 MiB scratch limit and all preceding source identities and failures. The
-actual pinned VIR suite passes 37/37 plus strict all-target Clippy. Driver and
-ordinary-runtime qualification remain separate; no checked real cross-edit hit
+actual pinned VIR suite passes 37/37 and the driver suite passes 22/22; both
+strict all-target Clippy checks pass. Ordinary-runtime qualification remains
+separate; no checked real cross-edit hit
 has yet been established by this follow-up.

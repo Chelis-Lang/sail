@@ -59,8 +59,8 @@ missing input, arithmetic overflow, and an output vector that must not inherit
 
 The [actual pinned VIR checks](scoped-query-source-checks.json) pass 37/37 tests
 and strict all-target Clippy at ordinary priority with two compiler jobs. The
-actual driver checks are rerunning; the ordinary combined build and all source
-qualification stages remain required. A scoped allocation argument or
+actual driver suite also passes 22/22 and strict all-target Clippy. The ordinary
+combined build and all source qualification stages remain required. A scoped allocation argument or
 passing unit control does not establish a prior-revision preparation restore.
 The candidate must still pass the unchanged checked-HIT and full real HE gates
 before any product qualification or runtime selection.
