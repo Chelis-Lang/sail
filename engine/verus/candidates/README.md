@@ -112,3 +112,10 @@ lookup. It uses the existing typed encodings, a 64 MiB retained serialization
 bound under the global gate and a separate 128 MiB process-wide disk bound.
 These records diagnose the first changed input; they do not broaden any cache
 equivalence or suppress a miss.
+
+`test-key-delta.py --engine VARIANT/verus --z3 PINNED/z3 --project HE --out OUTPUT`
+runs two bounded callbacks focused on module 013 around a module 023 body edit.
+It preserves both source forms and directly compares each ordered component's
+bytes before reporting the first change. It always restores its private source
+copy. Its result is a miss-cause diagnostic, not conformance, useful cross-edit
+reuse or a speed claim.
