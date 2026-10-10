@@ -56,6 +56,27 @@ class AcceptanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bench.selected_report({"exit_code": 2, "error": {"message": "broken engine"}})
 
+    def test_only_explicit_cold_declarations_allow_one_retry(self):
+        doc = {"accepted": False, "selection_error": None, "batch": {
+            "batched": True, "manifest_sha256": "manifest", "focus": {},
+            "full": {"currentness": "unknown", "exit_code": 0, "error": None,
+                     "targets": [{"requested": True, "complete": True}],
+                     "notes": ["Build-script input declarations were established during this run"]}}}
+        self.assertEqual(bench.warm_repair_state(doc, True), "declarations-established")
+        with self.assertRaises(ValueError):
+            bench.warm_repair_state(doc, False)
+        doc["batch"]["full"]["notes"] = []
+        with self.assertRaises(ValueError):
+            bench.warm_repair_state(doc, True)
+        doc["accepted"] = True
+        with self.assertRaises(ValueError):
+            bench.warm_repair_state(doc, True)
+        doc["batch"]["full"]["currentness"] = "current"
+        self.assertEqual(bench.warm_repair_state(doc, False), "ready")
+        doc["batch"]["full"]["targets"][0]["complete"] = False
+        with self.assertRaises(ValueError):
+            bench.warm_repair_state(doc, False)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -55,6 +55,18 @@ M7 binary, an `--engine-install` validated source variant, and an explicit
 `--environment` label. Each mode has a private cache. M7 imports the same
 validated runtime into its private cache rather than rebuilding it per cycle.
 Installation and dependency warm-up are retained but excluded from cycle time.
+Each distinct repair function also gets an original-source context warm-up:
+function selection is part of context identity, so warming stock verification
+does not establish that repair context's build-script declarations. Exactly one
+retry is permitted when a successful, complete first result explicitly reports
+newly established declarations. The next result must be Current and accepted;
+missing freshness coverage is never counted as initialization success.
+
+Run with scratch projects, runtime, caches and output on the container's native
+Linux filesystem (for example under `/tmp`), then copy the retained output to
+the repository. A Docker Desktop host bind mount cannot establish the required
+kernel freshness coverage. This affects evidence classification, not the
+verification verdict or the permission to run the workload under emulation.
 
 `scripts/m7-job-read-bench.py --socket SOCKET --job COMPLETED_JOB
 --active-job RUNNING_JOB --environment LABEL --out RESULT.json` exercises the
