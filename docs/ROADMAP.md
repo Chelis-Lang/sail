@@ -80,6 +80,28 @@ measurements. Long tests stay local-only; every required CI job remains below
 ten minutes. Persistent Verus internals, solver pools, normalization, stack-only
 keys and new SMT backends remain deferred.
 
+## M7: Interactive proof engine and repair workflow (in progress)
+
+The approved contract is [ADR 0027](decisions/0027-interactive-proof-engine-and-repair-workflow.md).
+
+- Optional pinned source engine: retain one compiler callback for a focused
+  check followed by independent full validation; reuse conservative prepared
+  lowering without retaining compiler state across source revisions.
+- CLI/MCP repair checks, failure evidence, saved named baselines and comparison.
+- A separate live proof-event journal with revision-aware projection and
+  cancellation/reconnect handling.
+- Shared complete input observation and responsive job reads, addressing #69.
+
+Exit: exact full-result/diagnostic/solver-input conformance; full local corpus
+and affected source tests; established reads below 200 ms p95 during active
+verification; and at least **2× median improvement on each** of frozen
+human-eval-verus and Vest repair catalogues in the local Linux container.
+The owner will rerun reference measurements on a native Linux host later;
+container emulation is labelled and does not block implementation. Three
+rounds and spread are required. Batch-local preparation reuse is distinguished
+from persistent reuse across edits. No successful focus is accepted before
+complete current full validation. M7 remains incomplete until these gates pass.
+
 ## Later waves (from the charter's initial scope)
 
 1. **Caching.**
