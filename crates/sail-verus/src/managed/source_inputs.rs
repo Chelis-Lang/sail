@@ -5,17 +5,27 @@ use super::receipts::read;
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 #[derive(Default, Serialize, Deserialize)]
 struct Inputs {
     paths: Vec<PathBuf>,
     covered: bool,
+    #[serde(default)]
+    by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
 }
 
 pub(super) fn load(path: &Path) -> (Vec<PathBuf>, bool) {
-    read::<Inputs>(path).map_or((Vec::new(), true), |v| (v.paths, v.covered))
+    // Older observations do not attribute includes to their consuming package.
+    // Establish the scoped declarations before authorizing new current receipts.
+    read::<Inputs>(path).map_or((Vec::new(), true), |v| {
+        (v.paths, v.covered && v.by_package.is_some())
+    })
+}
+
+pub(super) fn packages(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
+    read::<Inputs>(path).and_then(|v| v.by_package)
 }
 
 fn dependencies(text: &str) -> Option<Vec<String>> {
@@ -53,6 +63,11 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
     let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
     let (previous, _) = load(path);
     let mut paths: BTreeSet<PathBuf> = previous.into_iter().collect();
+    let mut by_package: BTreeMap<String, BTreeSet<PathBuf>> = packages(path)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(package, paths)| (package, paths.into_iter().collect()))
+        .collect();
     let mut covered = true;
     for artifact in std::fs::read_to_string(artifacts)
         .unwrap_or_default()
@@ -66,6 +81,10 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         {
             continue;
         }
+        let Some(package) = artifact["package_id"].as_str() else {
+            covered = false;
+            continue;
+        };
         let dep_info = artifact["filenames"]
             .as_array()
             .into_iter()
@@ -88,6 +107,10 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         for input in inputs {
             let declared = workspace.join(input);
             let resolved = declared.canonicalize().unwrap_or(declared);
+            by_package
+                .entry(package.to_owned())
+                .or_default()
+                .insert(resolved.clone());
             paths.insert(resolved);
         }
     }
@@ -97,6 +120,12 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         &Inputs {
             paths: paths.clone(),
             covered,
+            by_package: Some(
+                by_package
+                    .into_iter()
+                    .map(|(package, paths)| (package, paths.into_iter().collect()))
+                    .collect(),
+            ),
         },
     )?;
     Ok((paths, covered))
@@ -130,7 +159,7 @@ mod tests {
         assert!(std::fs::write(&external, "good").is_ok());
         assert!(std::fs::write(target.join("demo-123.d"), "out.d: ../shared\\ file.rs\n").is_ok());
         let artifacts = root.join("artifacts.jsonl");
-        let artifact = serde_json::json!({"reason":"compiler-artifact","target":{"kind":["lib"]},"filenames":[target.join("libdemo-123.rmeta")]});
+        let artifact = serde_json::json!({"reason":"compiler-artifact","package_id":"demo","target":{"kind":["lib"]},"filenames":[target.join("libdemo-123.rmeta")]});
         assert!(std::fs::write(&artifacts, artifact.to_string()).is_ok());
         let state = root.join("sources.json");
         let mut data = serde_json::json!({"workspace_root":project,"packages":[{"manifest_path":project.join("Cargo.toml")}]});
@@ -138,6 +167,10 @@ mod tests {
         let (paths, covered) =
             update(&state, &artifacts, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
         assert!(covered && paths.len() == 1);
+        assert_eq!(
+            packages(&state).unwrap_or_default().get("demo"),
+            Some(&paths)
+        );
         data["sail_source_inputs"] = serde_json::to_value(paths).unwrap_or_default();
         let established = super::super::input::snapshot_metadata(&data, &[]);
         assert_ne!(
@@ -154,5 +187,17 @@ mod tests {
         let changed = super::super::input::snapshot_metadata(&data, &[]);
         assert_ne!(established.revision, changed.revision);
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn legacy_global_observations_require_scoped_establishment() {
+        let path = std::env::temp_dir().join(format!(
+            "sail-source-input-legacy-{}.json",
+            std::process::id()
+        ));
+        assert!(std::fs::write(&path, r#"{"paths":[],"covered":true}"#).is_ok());
+        assert!(!load(&path).1);
+        assert!(packages(&path).is_none());
+        assert!(std::fs::remove_file(path).is_ok());
     }
 }

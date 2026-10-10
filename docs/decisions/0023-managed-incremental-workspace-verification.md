@@ -62,6 +62,17 @@ submission. Cold contexts cannot coalesce until compiler declarations have been
 observed. Force-fresh applies to requested workspace targets while successful
 dependency receipts remain eligible.
 
+Compiler declarations retain both a global observation union and the consuming
+Cargo package identity. A target receipt binds declarations from that package's
+transitive dependency closure. Discovering a workspace source therefore does not
+dirty an unrelated vstd receipt, and editing that source refreshes the workspace
+proof while confirmed dependencies remain eligible. Explicit includes are bound
+to their consuming package even when their path belongs to another package.
+Older observations without package attribution require fresh establishment.
+Fresh staged receipt revisions use the final declarations, read inside the
+run's coherence stamps; they are sealed and published only after currentness
+passes. Newly uncovered external inputs still make the run historical.
+
 ## Consequences
 
 The default CLI and SMT cache keys are unchanged. Workspace attribution and

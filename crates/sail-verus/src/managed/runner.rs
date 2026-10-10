@@ -746,6 +746,16 @@ fn target_revision(data: &Value, package_id: &str) -> String {
         package["source"] = Value::Null;
     }
     package_data["packages"] = Value::Array(packages);
+    if let Some(observed) = data["sail_source_inputs_by_package"].as_object() {
+        package_data["sail_source_inputs"] = Value::Array(
+            closure
+                .iter()
+                .filter_map(|id| observed.get(id).and_then(Value::as_array))
+                .flatten()
+                .cloned()
+                .collect(),
+        );
+    }
     let snapshot = snapshot_metadata(&package_data, &[]);
     if snapshot.complete {
         snapshot.revision
@@ -1075,6 +1085,8 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
     let (sources, source_coverage) = super::source_inputs::load(&source_state);
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
+    data["sail_source_inputs_by_package"] =
+        serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
     let (stale_scripts, mut extras, script_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
@@ -1200,6 +1212,8 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
     after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
     after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
+    after_data["sail_source_inputs_by_package"] =
+        serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
     json(
         &paths.build_inputs.with_file_name("input-state.json"),
         &after_data,
@@ -1213,6 +1227,11 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             .as_deref(),
     ));
     after.roots.extend(runtime_paths(&config.cache, &hash));
+    // Resolve fresh receipt bindings while the input stamp still brackets every
+    // content read. A newly discovered include may already belong to another
+    // observed package, so global currentness alone does not imply that the
+    // pre-invocation target revision contained that particular include.
+    let pending = completed_receipts(&paths.run, &after_data)?;
     let stamp_after = super::input::mutation_stamp(&after);
     let absent = absent.finish();
     let currentness = if !before.complete
@@ -1289,14 +1308,107 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     };
     json(&paths.run.join("result.json"), &result)?;
     if result.currentness == Currentness::Current {
+        for (path, receipt) in pending {
+            json(&path, &receipt)?;
+        }
         super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
     }
     Ok(result)
 }
 
+fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)>> {
+    std::fs::read_dir(run.join("pending-receipts"))
+        .map_err(|e| Error::new("SAIL3107", e.to_string()))?
+        .map(|entry| {
+            let path = entry
+                .map_err(|e| Error::new("SAIL3107", e.to_string()))?
+                .path();
+            let mut receipt: Receipt = read(&path)
+                .ok_or_else(|| Error::new("SAIL3107", "staged proof receipt is unreadable"))?;
+            receipt.input_revision = target_revision(data, &receipt.package_id);
+            if receipt.input_revision.is_empty() {
+                return Err(Error::new(
+                    "SAIL3107",
+                    "completed target input revision is unavailable",
+                ));
+            }
+            Ok((path, receipt.seal()))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn discovered_workspace_sources_do_not_dirty_dependency_receipts() {
+        let root =
+            std::env::temp_dir().join(format!("sail-receipt-source-scope-{}", std::process::id()));
+        let app = root.join("app");
+        let dependency = root.join("registry/vstd");
+        let target = root.join("target");
+        for path in [&app, &dependency, &target] {
+            assert!(std::fs::create_dir_all(path).is_ok());
+            assert!(std::fs::write(path.join("Cargo.toml"), "manifest").is_ok());
+        }
+        let app_source = app.join("lib.rs");
+        let dependency_source = dependency.join("lib.rs");
+        assert!(std::fs::write(&app_source, "good").is_ok());
+        assert!(std::fs::write(&dependency_source, "dependency").is_ok());
+        let mut data = serde_json::json!({
+            "workspace_root":app,"target_directory":target,
+            "packages":[{"id":"app","manifest_path":app.join("Cargo.toml")},
+                        {"id":"vstd","manifest_path":dependency.join("Cargo.toml")}],
+            "resolve":{"nodes":[{"id":"app","dependencies":["vstd"]},
+                                  {"id":"vstd","dependencies":[]}]}
+        });
+        let dependency_before = target_revision(&data, "vstd");
+        let app_before = target_revision(&data, "app");
+        let mut artifacts = Vec::new();
+        for (id, source) in [("app", &app_source), ("vstd", &dependency_source)] {
+            assert!(
+                std::fs::write(
+                    target.join(format!("{id}-123.d")),
+                    format!("artifact.d: {}\n", source.display())
+                )
+                .is_ok()
+            );
+            artifacts.push(serde_json::json!({
+                "reason":"compiler-artifact","package_id":id,
+                "target":{"kind":["lib"]},
+                "filenames":[target.join(format!("lib{id}-123.rmeta"))]
+            }));
+        }
+        let artifact_path = root.join("artifacts.jsonl");
+        assert!(
+            std::fs::write(
+                &artifact_path,
+                artifacts
+                    .iter()
+                    .map(Value::to_string)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+            .is_ok()
+        );
+        let state = root.join("sources.json");
+        let (paths, covered) = super::super::source_inputs::update(&state, &artifact_path, &data)
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert!(covered && paths.len() == 2);
+        data["sail_source_inputs"] = serde_json::to_value(paths).unwrap_or_default();
+        data["sail_source_inputs_by_package"] =
+            serde_json::to_value(super::super::source_inputs::packages(&state)).unwrap_or_default();
+        assert_eq!(target_revision(&data, "vstd"), dependency_before);
+        assert_eq!(target_revision(&data, "app"), app_before);
+        assert!(std::fs::write(&app_source, "fail").is_ok());
+        assert_eq!(target_revision(&data, "vstd"), dependency_before);
+        assert_ne!(target_revision(&data, "app"), app_before);
+        assert!(std::fs::write(&dependency_source, "changed dependency").is_ok());
+        assert_ne!(target_revision(&data, "vstd"), dependency_before);
+        assert_ne!(target_revision(&data, "app"), app_before);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
     #[test]
     fn expected_target_coverage_respects_packages_and_target_selection() {
         let data = serde_json::json!({"workspace_members":["a","b"],"workspace_default_members":["a","b"],"resolve":{"root":null,"nodes":[]},"packages":[
