@@ -51,13 +51,7 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
     if let Err(message) =
         ctrlc::set_handler(move || signal.store(true, std::sync::atomic::Ordering::SeqCst))
     {
-        let _ = call(
-            &client,
-            &Request::Cancel {
-                id: status.id.clone(),
-                superseded: false,
-            },
-        );
+        cancel_owned(&client, &status.id);
         return error(
             &format!("cannot supervise repair cancellation: {message}"),
             err,
@@ -66,13 +60,7 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
     let _ = writeln!(err, "Repair validation job {}", status.id);
     loop {
         if stopped.load(std::sync::atomic::Ordering::SeqCst) {
-            let _ = call(
-                &client,
-                &Request::Cancel {
-                    id: status.id.clone(),
-                    superseded: false,
-                },
-            );
+            cancel_owned(&client, &status.id);
             return ExitCode::from(130);
         }
         match call(
