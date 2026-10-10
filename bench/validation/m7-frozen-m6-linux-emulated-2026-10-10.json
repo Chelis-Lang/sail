@@ -1,0 +1,16 @@
+{
+  "commit": "0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca",
+  "source_archive_sha256": "b35168ccf4eed73310738200d0f9fdefba6cb2c3f689faec8d63f415ce17074d",
+  "execution_environment": "Linux amd64 Docker under emulation on macOS arm64",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.0\nLLVM version: 23.1.1\n",
+  "files": {
+    "sail": {
+      "sha256": "69288597f5f5c0d0a81a66b00a6b0f174ba17bf6a878447050a2d7f75c0c36d8",
+      "bytes": 58964632
+    },
+    "sail-z3": {
+      "sha256": "aaa7e3c43ee6282b575b615ad87a4c964bae14c2f6a56787c98f03d1159582bd",
+      "bytes": 7681904
+    }
+  }
+}
