@@ -4,6 +4,10 @@ A proof report and a claim that it describes current inputs are separate facts.
 The daemon retains establishing reports even when current input coverage is
 unknown. `Current` requires complete declarations and coherent content validation;
 `Historical` records changed inputs. `Unknown` never authorizes proof reuse.
+These labels describe input freshness, not a solver verdict. A Current report can
+contain a failed proof. A previously verified report with Unknown or Historical
+inputs remains accessible as evidence of its establishing run, but cannot accept
+a repair to today's inputs. CLI and MCP clients receive the same classification.
 
 On Linux, the daemon keeps at most 32 process-local context projections and runs
 at most two background revalidations. A context binds its cache root, workspace
@@ -13,11 +17,16 @@ snapshot only when its validation completes within each reader's own call interv
 sequential reads never reuse it by age. Publication and read completion require
 the same runtime-generation identity and native barriers. Hash work happens outside job-service
 and verifier-worker locks. Established reads retain the existing five-second RPC
-deadline; uncertain readers return promptly with Unknown and an explanatory note.
+deadline; uncertain readers return with Unknown and an explanatory note rather
+than waiting for a verification worker. `SAIL3114` identifies unavailable or
+pending current-input validation. Background establishment may make a later read
+Current without rerunning a successful proof, but clients must observe that
+public Current result before admitting it. The original Unknown response remains
+valid evidence of what was available at that time.
 
 The same coherent guard brackets the managed verifier invocation: leases and
 native coverage begin before its establishing content snapshot and remain held
-through verification and post-run hashes. A preexisting writable mapping,
+through verification, final validation and receipt publication. A preexisting writable mapping,
 conflicting write, replacement or lost coverage makes the result Unknown and
 prevents current receipt publication. Fresh Rust verification still runs.
 
@@ -60,9 +69,30 @@ printing a manifest. It uses no third-party modules, owns at
 most 4,096 file descriptors, and exits immediately on SIGIO to release leases so
 an editor can write. No unsafe Rust or FFI is introduced. Missing Python, denied
 lease ownership, unsupported kernel/filesystem behavior, an existing writable
-mapping, helper loss or a timed-out check disables the fast path. Unprivileged
+mapping, helper loss or unavailable kernel evidence disables the fast path. Unprivileged
 leases require matching file ownership; system-owned runtime files may prevent
 establishment. MacOS retains conservative content revalidation.
+
+Established read barriers inspect the helper's kernel-owned lease state rather
+than asking a scheduled Python process for another acknowledgement. Sail binds
+the initial descriptors, exact device/inode multiset and helper PID/start time,
+then requires two complete ACTIVE READ inventories with live, non-stopped owner
+checks. A global inventory affected by unrelated lease enumeration can fall back
+to every initially bound descriptor's kernel `fdinfo`; known breaking or malformed
+owner state cannot. Both sweeps share a 2 MiB byte cap and the 4,096-descriptor
+limit. No failed owner is retried or revived.
+
+The helper never acquires or renews a lease after readiness. A final intact
+inventory therefore proves continuous protection of digests collected after
+acquisition. Established readers clone that captured snapshot, record its
+checkpoint before validation, and perform the complete final lease and runtime
+identity checks. Independent native namespace checks bracket the read. The
+combined check establishes a valid snapshot within the call interval, rather
+than promising an atomic filesystem state at response delivery. Scheduling time
+alone supplies neither validity nor invalidity; kernel reads do not promise an
+interruptible wall-clock bound. The public five-second deadline and measured
+200 ms p95 goal still apply. See [ADR 0029](decisions/0029-kernel-lease-work-bounds-and-freshness.md)
+for the monotonicity argument and kernel sources.
 
 The fast path accepts only supported local filesystems. A host-shared mount such
 as virtiofs, or a network filesystem whose event/lease coverage is uncertain, does
@@ -104,8 +134,30 @@ It is Linux and local-only: four readers start together and make 200 status/resu
 reads. Every sample must preserve Current evidence and both input revisions, with
 no infrastructure error; complete typed project reports and repair envelopes are
 validated without dropping functions. The selected worker must belong to the
-running project's directory. Its kernel start-time identity and non-zombie Rust
-verifier descendants must remain present before and after every timed read.
+running project's directory. The same non-stopped, non-zombie Rust verifier PID,
+kernel start time and ancestry must be present before and after every timed
+read, with its actual `--crate-name` matching the requested proof crate.
+Dependency compilation, vstd, a stopped process or a different crate do not
+qualify as an independently active selected-target verification.
 Both p95 latencies must stay below 200 ms. Unknown evidence, lost verifier activity,
 RPC errors and slow reads fail; failed samples remain in the result artifact.
 A successful Rust probe does not erase or waive a failed Python census.
+
+Reproduce the complete preparation and both censuses with
+`scripts/m7-reader-acceptance.py`, following
+[the local acceptance guide](bench/m7-repair-acceptance.md#reproducible-warm-reader-preparation).
+Its ordinary full verification and exact repair-function context are separate
+setup steps: different contexts have different Cargo target directories, so
+warming a stock target does not by itself prepare the repair target. Setup costs
+and every initial Unknown result are retained. Preparation is not a speedup or
+reader-latency sample, and no copied receipt supplies the baseline proof.
+
+The local a6/b346 reader run is a latency and lifecycle diagnostic of that exact
+older product/runtime pair, not final M7 acceptance or source-candidate selection.
+Earlier failures and interruptions remain in `docs/validation/`, including
+[the cold setup failure](validation/m7-cb07-cold-reader-failure.json),
+[the prior reader failure](validation/m7-f111-reader-failure.json) and
+[the interrupted diagnostic](validation/m7-a6-reader-diagnostic-interruption.json).
+Cheap Running-status polls, an accepted baseline proof, kernel unit tests and a
+static source review each establish their own narrower facts; none substitutes
+for both complete four-reader censuses under an actual selected-target verifier.

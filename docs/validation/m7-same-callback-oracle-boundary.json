@@ -6,10 +6,15 @@
   "reviewed_candidate_patch_sha256": "245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
   "source_inventory": "docs/validation/m7-prepared-order-consumer-audit.json",
   "activation": false,
-  "original_stock_comparison": "The existing failed stock raw-input comparison remains failed. This diagnostic cannot replace that result or select a baseline.",
+  "original_stock_comparison": "The failed independent-stock raw-input comparison remains preserved. The owner subsequently selected exact same-compiler-input cached-versus-fresh request bytes as the preparation byte baseline; stock verdicts and diagnostics remain mandatory. This static diagnostic review cannot qualify or activate a runtime.",
   "initial_state": {
     "capture_point": "Before take_bucket restores any prepared effects, within the same compiler callback and bucket, after the exact original typed pruned Krate and Ctx::new inputs exist.",
-    "shared_immutable_inputs": ["Exact pruned Krate and its ordered vectors", "Current graph and SCC vectors", "Current source and span owners", "Exact verification options and selected bucket"],
+    "shared_immutable_inputs": [
+      "Exact pruned Krate and its ordered vectors",
+      "Current graph and SCC vectors",
+      "Current source and span owners",
+      "Exact verification options and selected bucket"
+    ],
     "construction": "Construct independent Ctx::new owners from the same inputs, with explicitly forked GlobalCtx mutable owners. Validate equal initial state before either arm runs. Never start fresh lowering from an already restored Ctx."
   },
   "mutable_boundaries": [
