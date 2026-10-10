@@ -7,9 +7,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Barrier};
 use std::time::{Duration, Instant};
 
-#[cfg(test)]
-use sail_api::jobs::write_frame;
-use sail_api::jobs::{Client, MAX_FRAME, Request, Response, read_frame};
+use sail_api::jobs::{Client, MAX_FRAME, Request, Response, read_frame, write_frame};
 use serde_json::{Value, json};
 
 #[cfg(unix)]
@@ -38,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Case::StagedCold,
             Case::StagedSecond,
             Case::StagedWarm,
+            Case::RawTransfer,
         ] {
             results.insert(
                 format!("{}_{}", case.name(), threads),
@@ -51,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "kind":"offline_actual_client_full_frame_replay", "live_acceptance":false,
             "frame_bytes":bytes.len(), "frame_sha256":sail_key::sha256(&bytes).iter().fold(String::new(), |mut digest, byte| {let _=write!(digest,"{byte:02x}");digest}),
             "complete_graph_equality_checked":true, "samples_per_case":8,
-            "every_call_receives_complete_fresh_frame":true,"results":results
+            "every_call_receives_complete_fresh_frame":true,"producer":"owned serial accept/write fixture; no actual daemon/freshness", "raw_transfer_control_decodes_after_timing":true,"results":results
         }))?
     );
     Ok(())
@@ -112,6 +111,7 @@ enum Case {
     StagedCold,
     StagedSecond,
     StagedWarm,
+    RawTransfer,
 }
 impl Case {
     fn name(self) -> &'static str {
@@ -122,7 +122,31 @@ impl Case {
             Self::StagedCold => "default_cold",
             Self::StagedSecond => "default_second",
             Self::StagedWarm => "default_warm",
+            Self::RawTransfer => "raw_fresh_frame_transfer_control",
         }
+    }
+}
+#[cfg(unix)]
+impl Case {
+    fn call(
+        self,
+        socket: &std::path::Path,
+        shared: &Client,
+        staged: &Client,
+        request: &Request,
+    ) -> io::Result<MeasuredReply> {
+        if matches!(self, Self::RawTransfer) {
+            return receive_complete_frame(socket, request).map(MeasuredReply::Frame);
+        }
+        let reply = match self {
+            Self::WarmClient | Self::StagedWarm => shared.call(request)?,
+            Self::StagedCold | Self::StagedSecond => staged.call(request)?,
+            Self::ColdClient => Client::with_result_decoding_cache(socket).call(request)?,
+            Self::Generic | Self::RawTransfer => {
+                Client::without_result_decoding_cache(socket).call(request)?
+            }
+        };
+        Ok(MeasuredReply::Typed(reply))
     }
 }
 #[cfg(unix)]
@@ -180,7 +204,7 @@ fn measure(
         let mut samples = Vec::new();
         for _ in 0..(8 / threads) {
             let barrier = Barrier::new(threads);
-            let wave = std::thread::scope(|inner| -> io::Result<Vec<(f64, Response)>> {
+            let wave = std::thread::scope(|inner| -> io::Result<Vec<(f64, MeasuredReply)>> {
                 let handles: Vec<_> = (0..threads)
                     .map(|_| {
                         inner.spawn(|| -> io::Result<_> {
@@ -190,16 +214,7 @@ fn measure(
                             }
                             barrier.wait();
                             let started = Instant::now();
-                            let reply = match case {
-                                Case::WarmClient | Case::StagedWarm => client.call(&request)?,
-                                Case::StagedCold | Case::StagedSecond => staged.call(&request)?,
-                                Case::ColdClient => {
-                                    Client::with_result_decoding_cache(&socket).call(&request)?
-                                }
-                                Case::Generic => {
-                                    Client::without_result_decoding_cache(&socket).call(&request)?
-                                }
-                            };
+                            let reply = case.call(&socket, &client, &staged, &request)?;
                             Ok((started.elapsed().as_secs_f64() * 1000.0, reply))
                         })
                     })
@@ -215,7 +230,7 @@ fn measure(
             })?;
             // Full graph validation and destruction are outside each timed wave.
             for (elapsed, reply) in wave {
-                validate(reply, expected)?;
+                reply.validate(bytes, expected)?;
                 samples.push(elapsed);
             }
         }
@@ -229,6 +244,43 @@ fn measure(
     });
     drop(owned_root);
     measured
+}
+enum MeasuredReply {
+    Typed(Response),
+    Frame(Vec<u8>),
+}
+impl MeasuredReply {
+    fn validate(self, bytes: &[u8], expected: &Value) -> io::Result<()> {
+        match self {
+            Self::Typed(reply) => validate(reply, expected),
+            Self::Frame(frame) => {
+                if frame.as_slice() != bytes {
+                    return Err(io::Error::other("complete fresh frame changed"));
+                }
+                // Full typed decoding occurs after the diagnostic transfer
+                // interval; this control never supplies a product reply.
+                validate(read_frame(&mut std::io::Cursor::new(frame))?, expected)
+            }
+        }
+    }
+}
+#[cfg(unix)]
+fn receive_complete_frame(socket: &std::path::Path, request: &Request) -> io::Result<Vec<u8>> {
+    let mut stream = std::os::unix::net::UnixStream::connect(socket)?;
+    let timeout = Some(Duration::from_secs(5));
+    stream.set_read_timeout(timeout)?;
+    stream.set_write_timeout(timeout)?;
+    write_frame(&mut stream, request)?;
+    let mut length = [0; 4];
+    stream.read_exact(&mut length)?;
+    let size = usize::try_from(u32::from_be_bytes(length)).map_err(io::Error::other)?;
+    if size > MAX_FRAME {
+        return Err(io::Error::other("profile frame exceeds limit"));
+    }
+    let mut frame = vec![0; size + 4];
+    frame[..4].copy_from_slice(&length);
+    stream.read_exact(&mut frame[4..])?;
+    Ok(frame)
 }
 fn validate(reply: Response, expected: &Value) -> io::Result<()> {
     if serde_json::to_value(reply).map_err(io::Error::other)? != *expected {
@@ -253,6 +305,14 @@ mod tests {
         bytes.extend_from_slice(payload);
         let started = Instant::now();
         assert!(measure(Case::WarmClient, 1, &Arc::new(bytes), &Value::Null).is_err());
+        assert!(started.elapsed() < Duration::from_secs(2));
+        Ok(())
+    }
+    #[test]
+    fn raw_transfer_control_still_decodes_and_refuses_malformed_full_graph() -> io::Result<()> {
+        let bytes = b"\0\0\0\x0a{not-json}".to_vec();
+        let started = Instant::now();
+        assert!(measure(Case::RawTransfer, 1, &Arc::new(bytes), &Value::Null).is_err());
         assert!(started.elapsed() < Duration::from_secs(2));
         Ok(())
     }
