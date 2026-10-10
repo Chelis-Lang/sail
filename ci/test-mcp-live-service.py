@@ -142,13 +142,21 @@ class Mcp:
         assert json.loads(result["content"][1]["text"]) == document, result
         return document
 
-    def close(self):
-        if self.process.poll() is None:
+    def finish(self):
+        # Only a normal server shutdown can establish the final EOF/no-late-reply
+        # check. A timeout or crash remains a failed control, even if cleanup can
+        # subsequently terminate the owned server and expose EOF.
+        if not self.process.stdin.closed:
             self.process.stdin.close()
-            try:
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                stop(self.process)
+        code = self.process.wait(timeout=5)
+        assert code == 0, f"installed MCP did not exit normally after EOF: {code}"
+        self.stderr.close()
+
+    def close(self):
+        # Failure cleanup is bounded but cannot turn a failed finish into PASS.
+        if not self.process.stdin.closed:
+            self.process.stdin.close()
+        stop(self.process)
         self.stderr.close()
 
 
@@ -294,7 +302,8 @@ def run(arguments):
             assert not children(mcp.process.pid), "read cancellation unexpectedly spawned a CLI child"
             # Joining the actual server before draining EOF also checks replies
             # queued after the next successful read, not just the first ping.
-            mcp.close()
+            mcp.finish()
+            summary["normal_mcp_exit_code"] = mcp.process.returncode
             tail = bytes(mcp.buffer) + mcp.process.stdout.read(1024 * 1024 + 1)
             assert len(tail) <= 1024 * 1024 and (not tail or tail.endswith(b"\n")), "incomplete/oversized final MCP stream"
             mcp.messages.extend(json.loads(line) for line in tail.splitlines())

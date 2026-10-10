@@ -63,17 +63,31 @@
     "Source5879 precedes cancellable API hardening88a0a78; integrated final source/global gates and original installed verifier acceptance remain separate"
   ],
   "controller_followup": {
-    "script_sha256": "7a77d5ef1b32221417d68dce9f7b41ff06b1ae5669ef5c1773e5149839c36177",
+    "script_sha256": "e6d44009fa4485056fc53ab18ca58c38c2d46fd2d6de0da2cf70dbc9c3521ae5",
     "changes": [
       "Explicit complete cancellation cleanup <1s assertion",
       "Absolute read/request deadline even for an already buffered response",
-      "Proc comm parsing uses final delimiter"
+      "Proc comm parsing uses final delimiter",
+      "Normal MCP exit0 within original5s stdin-EOF shutdown bound is mandatory; forced cleanup cannot establish a pass"
     ],
-    "qualification": "Pending final hardened-source installed controller rerun; prior successful5879 run retained with its own exact script hash"
+    "qualification": "Pending final hardened-source installed controller rerun; prior successful5879 run retained with its own exact script hash",
+    "prior_strict_script_sha256": "7a77d5ef1b32221417d68dce9f7b41ff06b1ae5669ef5c1773e5149839c36177",
+    "controller_only_tests": {
+      "fixture": "ci/test-mcp-live-service-controller.py",
+      "scope": "Owned Python-child controller controls, not installed MCP/proof acceptance",
+      "tests": 3,
+      "passed": true,
+      "elapsed_s": 5.722,
+      "cases": [
+        "Normal EOF exits0 and retains complete output",
+        "Nonzero exit17 rejected",
+        "Actual5s timeout rejected, followed by bounded owned cleanup"
+      ]
+    }
   },
   "ci_integration": {
     "phase": "ci/run.sh e2e managed (also full)",
-    "order": "Transport control before unchanged managed proof acceptance",
+    "order": "Controller negative checks, then actual transport control, then unchanged managed proof acceptance",
     "evidence": "managed-acceptance/mcp-live-service in the existing always-retained managed artifact",
     "shell_syntax": "bash -n PASS",
     "production_or_deadline_changes": false,

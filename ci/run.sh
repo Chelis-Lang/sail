@@ -197,6 +197,7 @@ RS
       # Separate raw evidence shares the managed artifact's retained directory.
       # It supplements the unchanged pinned-verifier acceptance below.
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
+      python3 "$sail_checkout/ci/test-mcp-live-service-controller.py"
       python3 "$sail_checkout/ci/test-mcp-live-service.py" "$sail" \
         --out "$sail_managed_evidence/mcp-live-service" \
         --execution "Linux x86-64 CI/local container transport control"

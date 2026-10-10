@@ -395,13 +395,20 @@ does not substitute a verifier or a CLI adapter. Removing the owned executable
 pathname after MCP starts makes subprocess fallback unavailable during the read
 checks. It checks the same job's changed running/cancelled replies, restart
 identity, and cancellation of a blocked service read through MCP notifications.
+Success requires the MCP server to exit normally with code zero within five
+seconds after stdin EOF, followed by complete stdout EOF without a cancelled
+reply. Forced termination is failure cleanup and cannot establish success.
 All owned actors are stopped before their scratch directory is removed.
 `ci/local.sh e2e managed` includes this control before the unchanged managed
-proof acceptance. CI retains its raw messages, stderr and summary under
+proof acceptance. Three separate Python-child controller controls reject an
+abnormal exit or ignored EOF and accept a normal completed stream; they do not
+stand in for installed MCP or verifier acceptance. CI retains raw messages,
+stderr and summary under
 `managed-acceptance/mcp-live-service`, alongside the original proof evidence.
 
-The supplemental installed Linux-container run passed these controls; its
-[portable record](validation/m7-mcp-live-service.json) also retains the initial
+The earlier supplemental installed Linux-container run passed its recorded
+controller version; the stricter normal-exit controller and hardened runtime
+await a new installed run. The [portable record](validation/m7-mcp-live-service.json) also retains the initial
 fixture error concerning the missing-program error projection. The source
 revision and binary/script hashes are explicit in that record.
 
