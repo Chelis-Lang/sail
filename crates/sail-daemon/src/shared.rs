@@ -504,6 +504,53 @@ mod http_tests {
     }
 
     #[test]
+    fn fixed_valid_and_forged_signature_cpu_control() {
+        let mut fixture = http_fixture("signature-cpu", false);
+        let secret = SecretKey::from_seed([8; 32]);
+        let (trusted, problems) = fixture.tier.trusted();
+        assert!(problems.is_empty());
+        let valid = sign_entry(
+            &secret,
+            &fixture.key,
+            b"unsat\n",
+            "check-sat",
+            &fixture.solver,
+            None,
+            1,
+        );
+        let newline = valid.iter().position(|b| *b == b'\n').unwrap();
+        let mut header: serde_json::Value = serde_json::from_slice(&valid[..newline]).unwrap();
+        header["published_unix"] = serde_json::json!(2);
+        let mut forged = serde_json::to_vec(&header).unwrap();
+        forged.push(b'\n');
+        forged.extend_from_slice(&valid[newline + 1..]);
+        for (label, data, expected) in [
+            ("valid", valid.as_slice(), true),
+            ("forged", forged.as_slice(), false),
+        ] {
+            let before = thread_cpu_ticks();
+            let started = Instant::now();
+            for _ in 0..16 {
+                let result = verify_entry(data, &fixture.key, &trusted, &fixture.solver);
+                assert_eq!(result.is_ok(), expected);
+                if !expected {
+                    assert!(matches!(result, Err(Rejection::BadSignature)));
+                }
+            }
+            let wall = started.elapsed();
+            let ticks = before
+                .zip(thread_cpu_ticks())
+                .and_then(|(before, after)| after.checked_sub(before));
+            eprintln!(
+                "fixed signature CPU control: label={label} count=16 wall_us={} thread_cpu_ticks={ticks:?}",
+                wall.as_micros()
+            );
+        }
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
+        fixture.close();
+    }
+
+    #[test]
     fn credential_rotation_clears_previous_transport_backoff() {
         use std::os::unix::fs::PermissionsExt as _;
         let root = std::env::temp_dir().join(format!("sail-rotate-{}", std::process::id()));
