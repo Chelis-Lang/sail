@@ -200,3 +200,18 @@ Docs describe the current state. Use repo-relative paths only: no absolute local
 paths and no personal emails. Public APIs carry rustdoc. Record user-visible
 changes in `CHANGELOG.md`. `docs/benchmarks.md` is generated from data under
 `bench/` and never edited by hand.
+
+Documentation is part of implementation and every agent handoff:
+- Update the relevant user guide with commands, setup, observable behavior,
+  errors and material limitations when a feature changes. Link new guides from
+  `docs/README.md` and the main README where users need them.
+- Keep internal design and `docs/ROADMAP.md` current. Distinguish implemented,
+  built, qualified, selected and accepted; record remaining gates and dependencies.
+- Record surprising upstream behavior with a minimal reproduction and local
+  issue entry. Keep Sail defects and unresolved validation failures visible in
+  `docs/known-issues.md`; do not attribute a cause without evidence.
+- Validation records identify source/runtime/environment, actual scope, result
+  and limits. Preserve failed and interrupted attempts. Never describe static
+  review, a fixture pass or a candidate build as real-project acceptance.
+- Each agent handoff and PR lists the documentation changed or explains why the
+  change has no documentation impact. The lead reviews docs alongside code.

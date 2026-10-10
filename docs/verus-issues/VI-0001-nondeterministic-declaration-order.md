@@ -42,3 +42,21 @@ methods.
 **Reproduction:** run `verus --crate-type=lib examples/syntax.rs` several
 times with `VERUS_Z3_PATH` pointing at a wrapper that tees stdin, and compare
 the captured streams.
+
+## M7 source-engine controls (2026-10-10)
+
+The same ordering variation appears in `human_eval_160` for identical pinned
+human-eval source. Candidate `2459` retained its failed independent-stock raw
+comparison. Four fixed-order controls captured ordered VIR before preparation:
+`arrow_1, arrow_2` and `arrow_2, arrow_1` each produced their corresponding raw
+solver stream. A changed order missed the prepared cache; an actual hit agreed
+with fresh lowering for that order. See the retained
+[ordered controls](../../engine/verus/candidates/qualifications/2459-order-controls.md).
+These controls did not find a stale ordered-vector restore and do not qualify
+the candidate or establish cross-edit speedup.
+
+The owner's [ADR 0027 amendment](../decisions/0027-interactive-proof-engine-and-repair-workflow.md)
+requires the preparation byte oracle to compare cached and fresh lowering from
+the same compiler input. Independent stock verdict/diagnostic checks remain,
+and stock transcript instability must be reported. Default solver keys still
+bind actual bytes; Sail does not reorder declarations to hide this issue.
