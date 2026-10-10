@@ -106,8 +106,9 @@ complete current full validation. M7 remains incomplete until these gates pass.
 Current acceptance status and unresolved defects are in
 [known issues](known-issues.md) and the
 [retained acceptance guide](bench/m7-repair-acceptance.md). The complete `62ad095`
-Linux workspace gate passed; its real-solver suite retains one unresolved fault
-test timeout. The frozen `1dc` default fast tier passed all three cache phases;
+Linux workspace gate passed; the later `d12d4af` gate failed five HTTP-cache
+concurrency tests and requires diagnosis. The earlier real-solver suite retains
+one unresolved fault test timeout. The frozen `1dc` default fast tier passed all three cache phases;
 its standard run was interrupted and needs a complete new run. The selected
 source baseline still lacks an established physical preparation-memory bound.
 Graph-ledger/oracle candidates remain unselected, and a persistent hit inside one
@@ -115,8 +116,9 @@ focus/full invocation is not demonstrated reuse across edits.
 
 Priority order for completing this milestone:
 
-1. Diagnose the shared-entry fault timeout without relaxing its assertions or
-   deadlines; finish the interrupted full default standard corpus validation.
+1. Resolve the HTTP-cache gate failures and diagnose the shared-entry fault
+   timeout without relaxing assertions or deadlines; finish the interrupted full
+   default standard corpus validation.
 2. Build and qualify the bounded source candidate with the same-input lowering
    oracle, independent stock outcomes, adversarial controls and physical budget.
 3. Establish genuine Current real-project results and execute the original live
