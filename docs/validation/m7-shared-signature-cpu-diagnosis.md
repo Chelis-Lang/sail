@@ -20,3 +20,9 @@ and independently bounded cold-constructor regression remain unchanged. Test
 instrumentation adds work and is diagnostic, not a product latency claim. No
 crypto optimization or trust reuse is justified until the measured CPU interval
 establishes a cause. The original failed gate remains preserved.
+
+A fixed direct control verifies 16 authentic entries and refuses 16 entries with
+a modified signed publication field as `BadSignature`, using the same
+`verify_entry` path and trusted key. It records wall time and calling-thread CPU
+ticks with no network or serving deadline in the measurement. Each cryptographic
+outcome is asserted; the diagnostic does not replace the real HTTP regressions.
