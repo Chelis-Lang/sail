@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "scope": "Complete frozen Linux workspace gate; excludes ignored real-solver tests and long corpus/engine/product acceptance",
+  "source_commit": "7dc855d60a480e8668a7a6f7b837eec66e9a5d27",
+  "source_archive_sha256": "35badbb9a81bb1cd7ab7fba766531ece24a7903d4e0e00d3ba20196e756bfd39",
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load",
+  "command": [
+    "bash",
+    "ci/run.sh",
+    "gate"
+  ],
+  "cargo_build_jobs": 2,
+  "nextest_case_workers": 2,
+  "internal_fixture_concurrency": "unchanged",
+  "exit_code": 100,
+  "nextest": {
+    "passed": 437,
+    "failed": 2,
+    "ignored_solver_tests": 37,
+    "elapsed_s": 160.418
+  },
+  "checks": {
+    "completion_guard": true,
+    "python_harness_regressions": true,
+    "fmt": true,
+    "strict_workspace_all_targets_clippy": true,
+    "nextest": "failed",
+    "cli_examples": "not_attempted",
+    "original_frame_profile_example_2_tests": "not_attempted",
+    "doctests": "not_attempted",
+    "warnings_denied_rustdoc": "not_attempted",
+    "layering": "not_attempted",
+    "cargo_deny": "not_attempted",
+    "generated_benchmarks_freshness": "not_attempted"
+  },
+  "http_lookup_deadline_ms": 250,
+  "paused_initiator_server_delay_ms": 75,
+  "trust_checks": "strict signature and all query/hash/solver/platform/mode/shape bindings retained",
+  "raw_log_sha256": "3b7f4a747d3c09ee574dee4114f5f74aa10fde813ca9560c8b59fe1748374701",
+  "raw_log_bytes": 54811,
+  "preceding_failures_retained": [
+    "m7-linux-gate-d12-failure-emulated-2026-10-10.json",
+    "m7-linux-gate-a9-failure-emulated-2026-10-10.json",
+    "m7-linux-gate-5fd-emulated-2026-10-10.json"
+  ],
+  "qualification": "This complete frozen attempt failed two original HTTP bounds after all 439 tests executed. The 5fd complete pass remains an earlier separate scope. No assertions, serving bounds, cryptographic checks or fixture concurrency were weakened. Phase timings and thread ticks do not establish the entire cause; further scoped diagnosis is required. Long source, reader and performance acceptance remains incomplete.",
+  "failures": [
+    {
+      "test": "shared::http_tests::verified_http_reply_reaches_readers_while_initiator_is_paused",
+      "expected_reader_deadline_ms": 250,
+      "actual_reader_elapsed_ms": 293.833834,
+      "transport_trust_setup_ms": 74.137334,
+      "classification_wall_ms": 73.409,
+      "classification_thread_cpu_ticks": 3,
+      "clock_ticks_per_second": 100,
+      "phase_microseconds": {
+        "client_construction_start": 0,
+        "client_construction_end": 54686,
+        "first_lookup_start": 332999,
+        "spawn_start": 335000,
+        "helper_start": 335701,
+        "request_start": 336303,
+        "second_lookup_start": 338152,
+        "request_built": 339442,
+        "server_accepted": 387966,
+        "server_read": 408453,
+        "server_delay_ended": 500556,
+        "server_sent": 501938,
+        "request_send_returned": 575427,
+        "response_body_completed": 585658,
+        "transport_returned": 585681,
+        "classified": 659924,
+        "published": 660292
+      },
+      "requests": 1,
+      "coalesced": 1,
+      "unavailable": 0,
+      "request_read_bytes": 285,
+      "request_read_error": null,
+      "complete_request_headers": true
+    },
+    {
+      "test": "client_refuses_redirects_encodings_oversize_and_stalled_responses",
+      "timeout_ms": 50,
+      "server_stall_ms": 300,
+      "original_cold_constructor_plus_lookup_assertion_ms": 250,
+      "actual_elapsed": "not emitted by original assertion",
+      "result": "request correctly refused, elapsed assertion failed"
+    }
+  ]
+}
