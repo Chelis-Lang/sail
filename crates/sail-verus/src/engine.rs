@@ -270,39 +270,51 @@ pub fn repair(
         .join("runs")
         .join(&full.run_id);
     let mut selected = Vec::new();
-    for entry in std::fs::read_dir(run.join("sidecars"))
-        .map_err(|e| Error::new("SAIL3121", e.to_string()))?
-    {
-        let entry = entry.map_err(|e| Error::new("SAIL3121", e.to_string()))?;
-        let path = entry.path().join("focus.report.json");
-        if !path.is_file() {
-            continue;
+    let mut selection_error = None;
+    let gathered = (|| -> Result<()> {
+        for entry in std::fs::read_dir(run.join("sidecars"))
+            .map_err(|e| Error::new("SAIL3121", e.to_string()))?
+        {
+            let entry = entry.map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+            let path = entry.path().join("focus.report.json");
+            if !path.is_file() {
+                continue;
+            }
+            let focus: FocusTarget = serde_json::from_slice(
+                &std::fs::read(path).map_err(|e| Error::new("SAIL3121", e.to_string()))?,
+            )
+            .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+            if focus.function != function {
+                continue;
+            }
+            if let Some(target) = full.targets.iter().find(|target| {
+                target.requested
+                    && target.package_id == focus.package_id
+                    && target.target.replace('-', "_") == focus.target
+                    && target.kind.contains(&focus.kind)
+            }) {
+                let mut target = target.clone();
+                target.report = focus.report;
+                target.complete = false;
+                target.reused = false;
+                selected.push(target);
+            }
         }
-        let focus: FocusTarget = serde_json::from_slice(
-            &std::fs::read(path).map_err(|e| Error::new("SAIL3121", e.to_string()))?,
-        )
-        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
-        if focus.function != function {
-            continue;
-        }
-        if let Some(target) = full.targets.iter().find(|target| {
-            target.requested
-                && target.package_id == focus.package_id
-                && target.target.replace('-', "_") == focus.target
-                && target.kind.contains(&focus.kind)
-        }) {
-            let mut target = target.clone();
-            target.report = focus.report;
-            target.complete = false;
-            target.reused = false;
-            selected.push(target);
-        }
+        Ok(())
+    })();
+    if let Err(error) = gathered {
+        selected.clear();
+        selection_error = Some(sail_api::output::ErrorInfo {
+            code: error.code.into(),
+            message: error.to_string(),
+        });
     }
     if selected.len() > 1 {
-        return Err(Error::new(
-            "SAIL3122",
-            "repair function matched more than one selected Cargo target",
-        ));
+        selected.clear();
+        selection_error = Some(sail_api::output::ErrorInfo {
+            code: "SAIL3122".into(),
+            message: "repair function matched more than one selected Cargo target".into(),
+        });
     }
     let focus = if selected.is_empty() {
         None
@@ -319,14 +331,15 @@ pub fn repair(
             .push("Explicit focused evidence; independent full validation follows".into());
         Some(result)
     };
-    if focus.is_none() && full.exit_code == Some(0) {
-        return Err(Error::new(
-            "SAIL3122",
-            "exact repair function was not established in the selected target",
-        ));
+    if focus.is_none() && selection_error.is_none() {
+        selection_error = Some(sail_api::output::ErrorInfo {
+            code: "SAIL3122".into(),
+            message: "exact repair function was not established in the selected target".into(),
+        });
     }
     Ok(sail_api::repair::BatchResult {
         batched: focus.is_some(),
+        selection_error,
         focus,
         compiler_invocations: full.execution.verifier_invocations,
         full,
