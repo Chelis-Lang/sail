@@ -262,7 +262,13 @@ for a scheduled Python acknowledgement. At cold acquisition, the helper reports
 its complete descriptor inventory; Sail binds each descriptor to the requested
 device/inode and its kernel lease entry. Read barriers require the exact lease
 multiset for that PID, all `LEASE ACTIVE READ`, plus the same live, non-stopped
-process start time before and after the sweep. Global seq-file inventory counts
+process start time before and after the sweep. Sail validates ownership again
+through a final independently read complete inventory,
+under the same aggregate byte cap. SIGIO can close descriptors before the owner
+process exits, so process liveness cannot stand in for final lease ownership.
+The linearization point is the final confirmation sweep's entry, not its return.
+An invalid first sweep is terminal and is never retried by the second one.
+Global seq-file inventory counts
 can change across buffer refills when unrelated owners add or remove leases.
 If otherwise valid ACTIVE rows disagree with the initial inventory, Sail checks
 each initially bound descriptor through kernel `fdinfo`, whose lease rows are

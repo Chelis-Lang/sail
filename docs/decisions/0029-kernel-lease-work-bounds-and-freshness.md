@@ -22,6 +22,11 @@ Remove elapsed-time rejection from kernel lease freshness validation. Retain the
 2 MiB aggregate kernel-read cap, 4,096 initial descriptor limit and every exact
 owner, inventory, lease-state and namespace check. Use allocation-free row
 parsing and a sorted exact inode multiset, preserving hardlink multiplicity.
+Validate two independent complete inventories with owner-state checks between
+and after them. Both global reads and any descriptor fallback share the same
+aggregate byte cap; the second sweep never retries or revives a failed first
+sweep. SIGIO may close descriptors before the helper process exits, so process
+liveness alone is insufficient to establish retained lease ownership.
 
 Each helper acquires its complete read-lease inventory before readiness and
 never adds or renews leases afterward. Its immutable PID/start-time generation
@@ -29,6 +34,9 @@ can only lose ACTIVE leases. Observing every expected lease ACTIVE, even across
 multiple kernel iterations or a scheduling pause, proves they were all ACTIVE
 at sweep entry: a later ACTIVE observation cannot follow a break and reacquisition
 within this owner. Live, non-stopped owner identity checks bracket the sweep.
+The freshness linearization point is the final confirmation sweep's entry,
+not its return or an assumed atomic proc snapshot. Caller namespace/content
+barriers independently bracket the captured bytes and their publication.
 Independent namespace, interpreter, mount and inode barriers still bracket the
 retained bytes. Breaking, missing, malformed, unexpected, oversized or unavailable
 state permanently invalidates the owner.

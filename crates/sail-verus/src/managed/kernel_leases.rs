@@ -95,6 +95,25 @@ fn descriptor(text: &str, pid: u32) -> Option<Key> {
     leases.next().is_none().then_some(key)
 }
 
+fn kernel_rows(already_read: u64) -> Result<Vec<u8>, &'static str> {
+    let remaining = MAX_LOCK_BYTES
+        .checked_sub(already_read)
+        .ok_or("kernel-lease-state-too-large")?;
+    let mut bytes = Vec::new();
+    let file = std::fs::File::open(Path::new("/proc/locks"))
+        .map_err(|_| "kernel-lease-state-read-unavailable")?;
+    file.take(remaining + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "kernel-lease-state-read-unavailable")?;
+    if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > remaining {
+        return Err("kernel-lease-state-too-large");
+    }
+    if !bytes.is_empty() && !bytes.ends_with(b"\n") {
+        return Err("kernel-lease-state-truncated");
+    }
+    Ok(bytes)
+}
+
 pub(super) struct Inventory {
     pid: u32,
     started: u64,
@@ -158,27 +177,29 @@ impl Inventory {
         // The byte cap bounds inventory work; kernel proc reads are not
         // interruptible wall-clock deadlines. A late read cannot restore an
         // invalidated owner generation, regardless of elapsed scheduling time.
-        let mut bytes = Vec::new();
-        let file = std::fs::File::open(Path::new("/proc/locks"))
-            .map_err(|_| "kernel-lease-state-read-unavailable")?;
-        file.take(MAX_LOCK_BYTES + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|_| "kernel-lease-state-read-unavailable")?;
-        if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_LOCK_BYTES {
-            return Err("kernel-lease-state-too-large");
-        }
-        if !bytes.is_empty() && !bytes.ends_with(b"\n") {
-            return Err("kernel-lease-state-truncated");
-        }
-        let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
-        after_read();
-        self.check_inventory(text, bytes.len())?;
-        if process(self.pid) != Some(self.started) {
-            return Err("kernel-lease-owner-inactive");
+        let mut consumed = 0;
+        let mut after_read = Some(after_read);
+        // Confirm a final independent inventory after processing the first one.
+        // SIGIO can close all descriptors before the helper process exits;
+        // process liveness alone cannot confirm retained lease ownership.
+        for _ in 0..2 {
+            let bytes = kernel_rows(consumed)?;
+            consumed += u64::try_from(bytes.len()).unwrap_or(MAX_LOCK_BYTES + 1);
+            let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
+            if let Some(pause) = after_read.take() {
+                pause();
+            }
+            consumed = self.check_inventory(text, consumed)?;
+            if process(self.pid) != Some(self.started) {
+                return Err("kernel-lease-owner-inactive");
+            }
         }
         Ok(())
     }
-    fn check_inventory(&self, text: &str, bytes_read: usize) -> Result<(), &'static str> {
+    fn check_inventory(&self, text: &str, bytes_read: u64) -> Result<u64, &'static str> {
+        let mut remaining = MAX_LOCK_BYTES
+            .checked_sub(bytes_read)
+            .ok_or("kernel-lease-state-too-large")?;
         // Keep the exact hardlink multiplicity while avoiding a tree node
         // allocation for each owned inode on every read. The bounded proc input
         // also bounds the observed rows; sorting never changes their identity.
@@ -190,7 +211,7 @@ impl Inventory {
         }
         found.sort_unstable();
         if found == self.expected_rows {
-            return Ok(());
+            return Ok(bytes_read);
         }
         if found.iter().any(|key| !self.expected.contains_key(key)) {
             return Err("kernel-lease-inventory-invalidated");
@@ -201,7 +222,6 @@ impl Inventory {
         // cannot replace/add descriptors or reacquire leases after readiness.
         // Confirm this initially-bound descriptor inventory independently before
         // declaring failure; never revive an already-invalidated generation.
-        let mut remaining = MAX_LOCK_BYTES.saturating_sub(bytes_read as u64);
         for (fd, expected) in &self.descriptors {
             let file = std::fs::File::open(format!("/proc/{}/fdinfo/{fd}", self.pid))
                 .map_err(|_| "kernel-lease-descriptor-unavailable")?;
@@ -219,7 +239,7 @@ impl Inventory {
                 return Err("kernel-lease-inventory-invalidated");
             }
         }
-        Ok(())
+        Ok(MAX_LOCK_BYTES - remaining)
     }
     #[cfg(test)]
     pub(super) fn check_after_pause_for_test(
@@ -258,6 +278,26 @@ mod tests {
             Some(found)
         );
         assert!(inventory("1: -> LEASE BREAKER WRITE 7 00:2a:100 0 EOF", 7).is_none());
+    }
+    #[test]
+    fn final_inventory_cannot_reset_the_aggregate_byte_cap() {
+        let text = "1: LEASE ACTIVE READ 7 00:2a:100 0 EOF\n";
+        let key = key("00:2a:100").unwrap_or_else(|| unreachable!("fixture"));
+        let bound = Inventory {
+            pid: 7,
+            started: 0,
+            expected: BTreeMap::from([(key, 1)]),
+            expected_rows: vec![key],
+            descriptors: Vec::new(),
+        };
+        assert_eq!(
+            bound.check_inventory(text, MAX_LOCK_BYTES),
+            Ok(MAX_LOCK_BYTES)
+        );
+        assert_eq!(
+            bound.check_inventory(text, MAX_LOCK_BYTES + 1),
+            Err("kernel-lease-state-too-large")
+        );
     }
     #[test]
     fn descriptor_requires_one_complete_exact_owner_active_row() {
