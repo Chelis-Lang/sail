@@ -1093,6 +1093,7 @@ dependencies = [
  "sail-ledger",
  "serde",
  "serde_json",
+ "socket2",
 ]
 
 [[package]]

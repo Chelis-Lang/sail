@@ -167,7 +167,9 @@ fn blocked_read_and_write_cancel_and_leave_no_polling_monitor() -> io::Result<()
             });
             ready_rx
                 .recv_timeout(Duration::from_secs(2))
-                .map_err(io::Error::other)?;
+                .map_err(|error| {
+                    io::Error::other(format!("blocked_write={blocked_write}: readiness: {error}"))
+                })?;
             cancelled.store(true, Ordering::Release);
             let result = call.join().map_err(|_| io::Error::other("caller failed"))?;
             release_tx.send(()).map_err(io::Error::other)?;
@@ -277,5 +279,201 @@ fn complete_normal_reply_preserves_graph_and_wakes_owned_monitor() -> io::Result
     let finished = polls.load(Ordering::Acquire);
     std::thread::sleep(Duration::from_millis(40));
     assert_eq!(polls.load(Ordering::Acquire), finished);
+    Ok(())
+}
+
+#[test]
+fn completed_cached_reply_is_refused_when_cancelled_at_final_admission() -> io::Result<()> {
+    let expected: Response = serde_json::from_value(serde_json::json!({
+        "response":"result", "value":{
+            "job":{"version":1,"id":"owned","project_dir":"/project","args":[],
+            "state":"completed","submitted_at_ms":1,"started_at_ms":2,
+            "finished_at_ms":3,"exit_code":0,"input_revision":"revision",
+            "currentness":"current","error":null},
+            "result":{"proof":"complete-model"}}}))
+    .map_err(io::Error::other)?;
+    let reply = expected.clone();
+    let server = Server::start(move |mut stream, _| {
+        let _: Request = read_frame(&mut stream)?;
+        write_frame(&mut stream, &reply)
+    })?;
+    let client = Client::with_result_decoding_cache(&server.socket);
+    let mut seeded = Vec::new();
+    write_frame(&mut seeded, &expected)?;
+    client
+        .decoded
+        .as_ref()
+        .ok_or_else(|| io::Error::other("cache absent"))?
+        .read(&mut std::io::Cursor::new(seeded))?;
+    let caller = std::thread::current().id();
+    let caller_checks = AtomicUsize::new(0);
+    let error = client
+        .call_cancellable(&request(), || {
+            // The caller's third check occurs after receiving the full fresh frame
+            // and joining its monitor. This models cancellation at final admission.
+            std::thread::current().id() == caller
+                && caller_checks.fetch_add(1, Ordering::Relaxed) == 2
+        })
+        .err()
+        .ok_or_else(|| io::Error::other("late cached success admitted"))?;
+    assert_eq!(caller_checks.load(Ordering::Relaxed), 3);
+    assert_eq!(error.io_error().kind(), io::ErrorKind::Interrupted);
+    assert!(!error.is_pre_rpc_connect_failure());
+    Ok(())
+}
+
+#[test]
+#[allow(
+    clippy::panic,
+    reason = "Exercises an external SDK cancellation callback unwind."
+)]
+fn callback_unwind_breaks_blocked_read_and_joins_monitor() -> io::Result<()> {
+    let (ready_tx, ready_rx) = mpsc::channel();
+    let server = Server::start(move |mut stream, _| {
+        let _: Request = read_frame(&mut stream)?;
+        ready_tx.send(()).map_err(io::Error::other)?;
+        let mut byte = [0];
+        assert_eq!(
+            stream.read(&mut byte)?,
+            0,
+            "failed monitor did not close socket"
+        );
+        Ok(())
+    })?;
+    let caller = std::thread::current().id();
+    let ready_rx = Mutex::new(ready_rx);
+    let monitor_failed = AtomicBool::new(false);
+    let error = Client::new(&server.socket)
+        .call_cancellable(&request(), || {
+            if std::thread::current().id() != caller {
+                // Wait for actual request bytes; this is an after-send failure.
+                // try_recv stays prompt while the server reads the request.
+                if ready_rx
+                    .lock()
+                    .is_ok_and(|receiver| receiver.try_recv().is_ok())
+                {
+                    monitor_failed.store(true, Ordering::Release);
+                    panic!("external callback failure");
+                }
+            }
+            false
+        })
+        .err()
+        .ok_or_else(|| io::Error::other("failed callback admitted success"))?;
+    assert!(monitor_failed.load(Ordering::Acquire));
+    assert!(!error.is_pre_rpc_connect_failure());
+    assert!(error.io_error().to_string().contains("SAIL0806"));
+    Ok(())
+}
+
+#[test]
+fn controlled_send_buffer_proves_blocked_write_cancellation() -> io::Result<()> {
+    let (ready_tx, ready_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let server = Server::start(move |mut stream, _| {
+        let mut length = [0; 4];
+        stream.read_exact(&mut length)?;
+        ready_tx.send(()).map_err(io::Error::other)?;
+        let _ = release_rx.recv_timeout(TRANSPORT);
+        Ok(())
+    })?;
+    let stream = UnixStream::connect(&server.socket)?;
+    let socket = socket2::SockRef::from(&stream);
+    socket.set_send_buffer_size(4096)?;
+    let capacity = socket.send_buffer_size()?;
+    let payload = capacity
+        .checked_mul(8)
+        .ok_or_else(|| io::Error::other("buffer overflow"))?;
+    assert!(payload > capacity && payload < super::super::MAX_FRAME / 2);
+    let request = Request::Result {
+        id: "x".repeat(payload),
+    };
+    let client = Client::new(&server.socket);
+    let cancelled = AtomicBool::new(false);
+    let error = std::thread::scope(|scope| -> io::Result<_> {
+        let call = scope.spawn(|| {
+            client.exchange_cancellable(
+                stream,
+                &request,
+                &|| cancelled.load(Ordering::Acquire),
+                Instant::now(),
+            )
+        });
+        ready_rx
+            .recv_timeout(Duration::from_secs(2))
+            .map_err(io::Error::other)?;
+        // The peer consumed only the header. The larger-than-SO_SNDBUF body
+        // cannot finish writing until it drains data; the call is still owned.
+        assert!(!call.is_finished());
+        cancelled.store(true, Ordering::Release);
+        let result = call.join().map_err(|_| io::Error::other("caller failed"))?;
+        release_tx.send(()).map_err(io::Error::other)?;
+        result
+            .err()
+            .ok_or_else(|| io::Error::other("blocked write admitted success"))
+    })?;
+    assert_eq!(error.io_error().kind(), io::ErrorKind::Interrupted);
+    assert!(!error.is_pre_rpc_connect_failure());
+    Ok(())
+}
+
+#[test]
+fn full_unix_backlog_refuses_before_rpc_without_blocking_connect() -> io::Result<()> {
+    static COUNT: AtomicU64 = AtomicU64::new(0);
+    let root = PathBuf::from(format!(
+        "/tmp/sail-backlog-{}-{}",
+        std::process::id(),
+        COUNT.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::create_dir(&root)?;
+    let socket = root.join("rpc.sock");
+    let _owner = Server {
+        root,
+        socket: socket.clone(),
+        thread: None,
+    };
+    let address = socket2::SockAddr::unix(&socket)?;
+    let listener = socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None)?;
+    listener.bind(&address)?;
+    listener.listen(1)?;
+    let mut held = Vec::new();
+    let mut saturated = false;
+    for _ in 0..8 {
+        let connecting = socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None)?;
+        connecting.set_nonblocking(true)?;
+        match connecting.connect(&address) {
+            Ok(()) => held.push(connecting),
+            // Linux reports EAGAIN for a full Unix backlog; macOS reports
+            // ECONNREFUSED. The owned listener and filled peers stay alive.
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::WouldBlock | io::ErrorKind::ConnectionRefused
+                ) =>
+            {
+                saturated = true;
+                break;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    assert!(saturated && !held.is_empty(), "owned backlog not saturated");
+    let error = Client::new(&socket)
+        .call_cancellable(&request(), || false)
+        .err()
+        .ok_or_else(|| io::Error::other("full backlog admitted a reply"))?;
+    assert!(error.is_pre_rpc_connect_failure(), "{error}");
+    // Only the already-filled connections exist, and none carries RPC bytes.
+    for _ in &held {
+        let (peer, _) = listener.accept()?;
+        peer.set_nonblocking(true)?;
+        let descriptor: std::os::fd::OwnedFd = peer.into();
+        let mut peer = UnixStream::from(descriptor);
+        let mut byte = [0];
+        assert_eq!(
+            peer.read(&mut byte).err().map(|error| error.kind()),
+            Some(io::ErrorKind::WouldBlock)
+        );
+    }
     Ok(())
 }
