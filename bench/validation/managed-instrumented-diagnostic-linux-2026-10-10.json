@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "scope": "Instrumented emulated Linux diagnostic retry and copied-cache replay; not unwrapped performance acceptance",
+  "source_commit": "a518a104c033948127c6e61ab705023907b74ac8",
+  "binaries": {
+    "sail": {
+      "bytes": 58964288,
+      "sha256": "e32ceb3ec7b0d75f7c398645dcc8f306dd3010dcc9b708e24a7dafa3b943715f"
+    },
+    "sail-z3": {
+      "bytes": 7681880,
+      "sha256": "e3b09d12d271645fb76340e5f783341ae6b69d0a39b29103818051d6fb68f264"
+    }
+  },
+  "machine": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "execution_environment": "Pinned CI image under Linux/amd64 emulation on shared development host"
+  },
+  "diagnostic_retry": {
+    "process_exit_code": 0,
+    "proof_deadline_seconds": 600,
+    "outer_wrapper_sha256": "bf04013eb5915ba4f9adb87514e4a2b6f74a1e8057fc8eba0fbce94ad6b1bafa",
+    "verdict_comparisons_passed": true,
+    "phases": [
+      {
+        "label": "managed-fill",
+        "currentness": "current",
+        "exit_code": 0,
+        "all_targets_complete": true,
+        "execution": {
+          "verifier_invocations": 2,
+          "reused_targets": 0
+        },
+        "report": {
+          "bytes": 1945155,
+          "sha256": "25c3b79fdab1c58e0791f1c484eab240cdeeeeaa588cdb116e62bd33c88e629a"
+        }
+      },
+      {
+        "label": "managed-reuse-1",
+        "currentness": "current",
+        "exit_code": 0,
+        "all_targets_complete": true,
+        "execution": {
+          "verifier_invocations": 0,
+          "reused_targets": 2
+        },
+        "report": {
+          "bytes": 1945147,
+          "sha256": "6b30c89f13b8555972875e2f625da4b156eb646e9ed3999428196d2e72bd15e3"
+        }
+      },
+      {
+        "label": "managed-reuse-2",
+        "currentness": "current",
+        "exit_code": 0,
+        "all_targets_complete": true,
+        "execution": {
+          "verifier_invocations": 0,
+          "reused_targets": 2
+        },
+        "report": {
+          "bytes": 1945147,
+          "sha256": "90e1d54c508bc1734c7ca460ef2eca817e5a699da93badff33a20992f02762c9"
+        }
+      },
+      {
+        "label": "managed-reuse-3",
+        "currentness": "current",
+        "exit_code": 0,
+        "all_targets_complete": true,
+        "execution": {
+          "verifier_invocations": 0,
+          "reused_targets": 2
+        },
+        "report": {
+          "bytes": 1945147,
+          "sha256": "3446404ccb97f16bd94abdc11bc5a8fafc69d0f6ca1f37ded867d010d06fe58f"
+        }
+      },
+      {
+        "label": "managed-edited",
+        "currentness": "current",
+        "exit_code": 0,
+        "all_targets_complete": true,
+        "execution": {
+          "verifier_invocations": 1,
+          "reused_targets": 1
+        },
+        "report": {
+          "bytes": 1945148,
+          "sha256": "cf9f7522c3894130ddee3934d19b0d4622f4e7c65b8f1f79e319c82b051a8983"
+        }
+      }
+    ],
+    "raw_summary": {
+      "bytes": 7118,
+      "sha256": "c33677f4846281d87578075098d88849c3b908025374c89fc7e4b27aad3fbf15"
+    }
+  },
+  "raw_protocol": {
+    "sessions": 737,
+    "all_exit_zero": true,
+    "all_frames_balanced": true,
+    "selected": [
+      {
+        "session": "utf8vstd!utf8.decode_encode_width_4._01.smt_transcript",
+        "input_sha256": "19f60a6c64df54313472a7c837a4d97effb8c896e6951c6d98914f86bf02364a",
+        "batches": 5,
+        "matching_raw_sessions": 2
+      },
+      {
+        "session": "arithmetic__internals__mod_internals__lemma_div_add_denominator.smt_transcript",
+        "input_sha256": "5f1baf4c2f7f0a0fedfdad2c7a9254c3ea2723d865a2573b85c33d6df0b9b3fd",
+        "batches": 5,
+        "matching_raw_sessions": 2
+      },
+      {
+        "session": "std_specs__bitsvstd!std_specs.bits.axiom_u8_trailing_ones._04.smt_transcript",
+        "input_sha256": "8ecff9e3f6bae3021070bdb5c34477aed315e1a0c5c1785286aae4c0ef9903e3",
+        "batches": 5,
+        "matching_raw_sessions": 2
+      },
+      {
+        "session": "std_specs__bitsvstd!std_specs.bits.axiom_u8_trailing_ones._01.smt_transcript",
+        "input_sha256": "d519dcb2d88d3933262e41d7ec188df96220efdc92ce7dd5b5c8f583b91d9632",
+        "batches": 5,
+        "matching_raw_sessions": 42
+      },
+      {
+        "session": "std_specs__bitsvstd!std_specs.bits.axiom_u8_trailing_ones._03.smt_transcript",
+        "input_sha256": "d22a10965cea4ccb9891ece4b51fdef3e0dbd6d1db3254b3267dfb2d421c867e",
+        "batches": 5,
+        "matching_raw_sessions": 2
+      },
+      {
+        "session": "std_specs__bitsvstd!std_specs.bits.axiom_u8_trailing_ones._02.smt_transcript",
+        "input_sha256": "5c43fb1a35a99f921e3a42b8ebb993f6e5c2c6d9d271ae37a9a5895b4869645c",
+        "batches": 5,
+        "matching_raw_sessions": 4
+      }
+    ]
+  },
+  "copied_original_cache_replay": {
+    "runs": [
+      {
+        "session": "arithmetic__internals__mod_internals__lemma_div_add_denominator.smt_transcript",
+        "kind": "cached",
+        "input_sha256": "5f1baf4c2f7f0a0fedfdad2c7a9254c3ea2723d865a2573b85c33d6df0b9b3fd",
+        "batches": 5,
+        "exit_code": 0,
+        "reply_sha256": "f0587b20664d09624acf0ac6bd517790a2964e362d29edce9b5401258a700e4b",
+        "complete": true,
+        "extra_reply_bytes": 0,
+        "non_statistics_equal": true,
+        "rlimit_counts_equal": true
+      },
+      {
+        "session": "std_specs__bitsvstd!std_specs.bits.axiom_u8_trailing_ones._03.smt_transcript",
+        "kind": "cached",
+        "input_sha256": "d22a10965cea4ccb9891ece4b51fdef3e0dbd6d1db3254b3267dfb2d421c867e",
+        "batches": 5,
+        "exit_code": 0,
+        "reply_sha256": "2edc20612be152fd404fde0c1c5c53e65fd6abe84cdc7d559cfe0676b1569ae3",
+        "complete": true,
+        "extra_reply_bytes": 0,
+        "non_statistics_equal": true,
+        "rlimit_counts_equal": true
+      },
+      {
+        "session": "utf8vstd!utf8.decode_encode_width_4._01.smt_transcript",
+        "kind": "cached",
+        "input_sha256": "19f60a6c64df54313472a7c837a4d97effb8c896e6951c6d98914f86bf02364a",
+        "batches": 5,
+        "exit_code": 0,
+        "reply_sha256": "5a0a5bae7f238921160cad17fe72d349b0b798005ee0d9d9c43f68b2211153da",
+        "complete": true,
+        "extra_reply_bytes": 0,
+        "non_statistics_equal": true,
+        "rlimit_counts_equal": true
+      }
+    ],
+    "provenance": [
+      {
+        "input_sha256": "5f1baf4c2f7f0a0fedfdad2c7a9254c3ea2723d865a2573b85c33d6df0b9b3fd",
+        "replies_served": 10,
+        "solver_started": false,
+        "version": 1
+      },
+      {
+        "input_sha256": "d22a10965cea4ccb9891ece4b51fdef3e0dbd6d1db3254b3267dfb2d421c867e",
+        "replies_served": 10,
+        "solver_started": false,
+        "version": 1
+      },
+      {
+        "input_sha256": "19f60a6c64df54313472a7c837a4d97effb8c896e6951c6d98914f86bf02364a",
+        "replies_served": 10,
+        "solver_started": false,
+        "version": 1
+      }
+    ],
+    "raw_summary": {
+      "bytes": 3331,
+      "sha256": "d4aa4b9aa9898e1ffc00b9a50bc40a73717b1f4f16ba238fd8351d228befe4eb"
+    }
+  },
+  "raw_protocol_summary": {
+    "bytes": 238794,
+    "sha256": "59dda4e73a5034cb587908c6f8ef43a28a09bd710a5b60ae13c0d8d6e70783f8"
+  },
+  "limits": [
+    "External byte-forwarding instrumentation changes context and timing; this retry is diagnostic evidence only and supplies no speedup claim",
+    "The earlier unwrapped600-second timeout remains a failed attempt; its causal Verus wait is not established by this successful retry",
+    "Copied-cache replay used a separate copy of the original cache and did not alter its entries or compiler artifacts",
+    "Native Linux CI installed CLI/MCP acceptance is separately recorded; this artifact does not reinterpret emulated failures"
+  ]
+}
