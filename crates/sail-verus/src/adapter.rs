@@ -107,9 +107,15 @@ fn verifying(args: &[OsString]) -> bool {
     {
         return false;
     }
+    cargo_package_id().is_some_and(|id| {
+        std::env::var(format!("__VERUS_DRIVER_VERIFY_{id}")).as_deref() == Ok("1")
+    })
+}
+
+fn cargo_package_id() -> Option<String> {
     let package = ["CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR"].map(std::env::var);
     let [Ok(name), Ok(version), Ok(manifest)] = package else {
-        return false;
+        return None;
     };
     let hash = digest(
         Path::new(&manifest)
@@ -117,8 +123,64 @@ fn verifying(args: &[OsString]) -> bool {
             .to_string_lossy()
             .as_bytes(),
     );
-    let id = format!("{name}-{version}-{}", hash.get(..12).unwrap_or_default());
-    std::env::var(format!("__VERUS_DRIVER_VERIFY_{id}")).as_deref() == Ok("1")
+    Some(format!(
+        "{name}-{version}-{}",
+        hash.get(..12).unwrap_or_default()
+    ))
+}
+
+fn cargo_driver_args(id: &str) -> Result<Vec<String>> {
+    cargo_driver_args_with(id, |key| match std::env::var(key) {
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(error) => Err(Error::new(
+            "SAIL3121",
+            format!("invalid effective Cargo driver arguments: {error}"),
+        )),
+    })
+}
+
+fn cargo_driver_args_with(
+    id: &str,
+    mut lookup: impl FnMut(&str) -> Result<Option<String>>,
+) -> Result<Vec<String>> {
+    let mut arguments = Vec::new();
+    for key in [
+        " __VERUS_DRIVER_ARGS__".to_owned(),
+        format!(" __VERUS_DRIVER_ARGS_FOR_{id}"),
+    ] {
+        if let Some(value) = lookup(&key)? {
+            // Match the pinned rust_verify decoder exactly: only delimited
+            // tokens after the leading separator are effective driver options.
+            arguments.extend(
+                value
+                    .split("__VERUS_DRIVER_ARGS_SEP__")
+                    .skip(1)
+                    .map(str::to_owned),
+            );
+        }
+    }
+    Ok(arguments)
+}
+
+fn launcher_arguments(args: &[OsString], engine: bool, effective: &[String]) -> Vec<OsString> {
+    let mut arguments = args.to_vec();
+    let boundary = args
+        .iter()
+        .position(|argument| argument == "--")
+        .unwrap_or(args.len());
+    if engine
+        && effective
+            .iter()
+            .take_while(|argument| *argument != "--")
+            .any(|argument| argument == "--no-vstd")
+        && !args[..boundary]
+            .iter()
+            .any(|argument| argument == "--no-vstd")
+    {
+        arguments.insert(boundary, OsString::from("--no-vstd"));
+    }
+    arguments
 }
 
 fn custom_compiler_context(args: &[OsString]) -> bool {
@@ -181,8 +243,32 @@ fn driver() -> Result<ExitCode> {
     std::fs::create_dir_all(dir.join("provenance"))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let logs = dir.join("logs");
+    // VI-0011: the pinned launcher chooses macro mode before decoding Cargo's
+    // effective per-package options. Reflect only an already requested mode,
+    // and only for the explicitly selected optional engine. Stock is unchanged.
+    let launcher_args = if runtime.engine.is_some() {
+        let id = cargo_package_id().ok_or_else(|| {
+            Error::new(
+                "SAIL3121",
+                "engine invocation lacks its Cargo package identity",
+            )
+        })?;
+        launcher_arguments(&args, true, &cargo_driver_args(&id)?)
+    } else {
+        args.clone()
+    };
+    if launcher_args != args {
+        json(
+            &dir.join("launcher-options.json"),
+            &serde_json::json!({
+                "version":1,"run_id":runtime.run_id,"context_sha256":runtime.context_sha256,
+                "package_id":cargo_package_id(),"target":identity.name,"kind":identity.crate_type,
+                "forwarded":["--no-vstd"],"source":"effective-cargo-driver-options","engine_only":true
+            }),
+        )?;
+    }
     let mut cmd = Command::new(&wrapper);
-    cmd.args(&args)
+    cmd.args(&launcher_args)
         .args([
             "--output-json",
             "--time",
@@ -277,7 +363,7 @@ fn driver() -> Result<ExitCode> {
             std::fs::create_dir_all(dir.join("provenance"))
                 .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
             let output = Command::new(&engine.stock_wrapper)
-                .args(&args)
+                .args(&launcher_args)
                 .args([
                     "--output-json",
                     "--time",
@@ -525,6 +611,76 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn engine_reflects_only_exact_effective_no_vstd_once_before_separator() {
+        let args = vec![OsString::from("crate.rs"), "--".into(), "trailing".into()];
+        let effective = vec!["--no-vstd".into(), "--no-vstd".into()];
+        assert_eq!(
+            launcher_arguments(&args, true, &effective),
+            vec![
+                OsString::from("crate.rs"),
+                "--no-vstd".into(),
+                "--".into(),
+                "trailing".into()
+            ]
+        );
+        assert_eq!(launcher_arguments(&args, false, &effective), args);
+        assert_eq!(
+            launcher_arguments(
+                &args,
+                true,
+                &["prefix--no-vstd".into(), "--no-vstd=something".into()]
+            ),
+            args
+        );
+        let literal = vec![OsString::from("crate.rs"), "--no-vstd".into()];
+        assert_eq!(launcher_arguments(&literal, true, &effective), literal);
+    }
+
+    #[test]
+    fn effective_driver_options_use_only_common_and_exact_current_package() {
+        let values = std::collections::BTreeMap::from([
+            (" __VERUS_DRIVER_ARGS__", "__VERUS_DRIVER_ARGS_SEP__--time"),
+            (
+                " __VERUS_DRIVER_ARGS_FOR_this",
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd",
+            ),
+            (
+                " __VERUS_DRIVER_ARGS_FOR_other",
+                "__VERUS_DRIVER_ARGS_SEP__--is-vstd",
+            ),
+        ]);
+        let mut looked_up = Vec::new();
+        let arguments = cargo_driver_args_with("this", |key| {
+            looked_up.push(key.to_owned());
+            Ok(values.get(key).map(|value| (*value).to_owned()))
+        });
+        assert_eq!(
+            arguments.ok(),
+            Some(vec!["--time".into(), "--no-vstd".into()])
+        );
+        assert_eq!(
+            looked_up,
+            [" __VERUS_DRIVER_ARGS__", " __VERUS_DRIVER_ARGS_FOR_this"]
+        );
+        assert_eq!(
+            cargo_driver_args_with("other", |_| Ok(Some("--no-vstd".into()))).ok(),
+            Some(Vec::new())
+        );
+        let args = vec![OsString::from("crate.rs")];
+        assert_eq!(
+            launcher_arguments(&args, true, &["--".into(), "--no-vstd".into()]),
+            args
+        );
+        assert!(
+            cargo_driver_args_with("this", |_| Err(Error::new(
+                "SAIL3121",
+                "invalid argument encoding"
+            )))
+            .is_err()
+        );
+    }
+
     #[test]
     fn explicit_custom_toolchain_inputs_fail_closed() {
         for args in [
