@@ -8,6 +8,7 @@ failure is retained separately from reader latency. No prior receipt is copied.
 import argparse
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -187,6 +188,9 @@ class Run:
         return json.loads((directory / "stdout").read_bytes()) if json_output else None
 
     def freeze(self):
+        self.summary["controller_scripts"] = {name: bench.sha(HERE / name) for name in (
+            "m7-reader-acceptance.py", "m7-repair-bench.py",
+            "m7-retained-jobs-acceptance.py", "m7-job-read-bench.py")}
         frozen = json.loads((self.bin / "freeze.json").read_bytes())
         for name in ("sail", "sail-z3"):
             assert frozen["files"][name]["sha256"] == bench.sha(self.bin / name), "product freeze changed"
@@ -347,10 +351,12 @@ class Run:
                 for job in self.owned:
                     try:
                         response, _, _ = self.probe.call(self.probe.endpoint(self.socket), {"operation": "status", "id": job})
-                        if response["response"] == "status" and response["value"]["state"] in ("queued", "running"):
+                        assert response["response"] == "status", response
+                        if response["value"]["state"] in ("queued", "running"):
                             cancelled, _, _ = self.probe.call(self.probe.endpoint(self.socket), {"operation": "cancel", "id": job, "superseded": False})
                             bench.write_json(self.out / ("owned-cancel-" + job + ".json"), cancelled)
-                    except (OSError, ValueError) as error:
+                            assert cancelled["response"] == "status" and cancelled["value"]["state"] not in ("queued", "running"), cancelled
+                    except (OSError, ValueError, AssertionError) as error:
                         self.summary["cleanup_errors"].append(str(error))
                 self.save()
             assert not self.summary["cleanup_errors"], self.summary["cleanup_errors"]
@@ -368,8 +374,8 @@ def main():
                         help="unmeasured preparation budget per proof; 0 explicitly prepares to completion with owned cancellation, without changing measured bounds")
     parser.add_argument("--keep-daemon", action="store_true", help="retain only the successful owned service for real retained-job inspection")
     args = parser.parse_args()
-    if args.setup_timeout < 0:
-        parser.error("preparation budget must be nonnegative")
+    if not math.isfinite(args.setup_timeout) or args.setup_timeout < 0:
+        parser.error("preparation budget must be finite and nonnegative")
     if os.environ.get("CI"):
         parser.error("long warm-reader acceptance is local-only")
     if platform.system() != "Linux" or not Path("/proc").is_dir():
