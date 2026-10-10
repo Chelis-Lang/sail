@@ -8,7 +8,10 @@ unknown. `Current` requires complete declarations and coherent content validatio
 On Linux, the daemon keeps at most 32 process-local context projections and runs
 at most two background revalidations. A context binds its cache root, workspace
 spelling, runtime identity, invocation configuration and explicit environment.
-Restart begins with no trusted projections. Hash work happens outside job-service
+Restart begins with no trusted projections. Overlapping readers may share a coherent
+snapshot only when its validation completes within each reader's own call interval;
+sequential reads never reuse it by age. Publication and read completion require
+the same runtime-generation identity and native barriers. Hash work happens outside job-service
 and verifier-worker locks. Established reads retain the existing five-second RPC
 deadline; uncertain readers return promptly with Unknown and an explanatory note.
 
@@ -41,7 +44,17 @@ read-only bind mount do not supply that guarantee.
 
 The optional lease owner is an embedded Python 3 standard-library helper launched
 with isolated module loading, structured arguments and private bounded socket I/O.
-It is a trusted installed runtime dependency, uses no third-party modules, owns at
+Sail resolves an absolute interpreter once per establishment and binds its
+loaded standard-library source/bytecode files and mapped ELF libraries. The
+cold manifest and content hashes precede launch; the helper checks its actual
+loaded closure before and after lease acquisition, and parent hashes must still
+match afterward. Direct watches and read leases retain this closure. Changed
+PATH resolution, replacement, new bytecode, or a broken runtime lease invalidates
+the projection. These exact dependency digests also join the managed context.
+The native kernel and the installed interpreter/ELF-loader bootstrap are the
+trusted OS boundary: self-reported module maps cannot attest a malicious bootstrap.
+No Python package or loader supplied by an untrusted party becomes trusted by
+printing a manifest. It uses no third-party modules, owns at
 most 4,096 file descriptors, and exits immediately on SIGIO to release leases so
 an editor can write. No unsafe Rust or FFI is introduced. Missing Python, denied
 lease ownership, unsupported kernel/filesystem behavior, an existing writable

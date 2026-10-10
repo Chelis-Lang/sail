@@ -115,6 +115,13 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<S
             identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
         }
     }
+    // Python is an optional Linux freshness dependency. Its exact interpreter,
+    // loaded stdlib and ELF closure join the context; unavailable coverage still
+    // permits fresh verification but the coherent guard cannot publish Current.
+    #[cfg(target_os = "linux")]
+    if let Some(helper) = super::lease::helper_identity() {
+        identity.extend(helper);
+    }
     let wrapper = actual_wrapper(&config.cargo_verus)?;
     identity.push((
         wrapper.to_string_lossy().into_owned(),

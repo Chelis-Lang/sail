@@ -3,11 +3,12 @@
 //! Rust. Unsupported kernels/filesystems, conflicting mappings and helper loss
 //! disable reuse. Source/build/config contents are always hashed separately.
 
+use super::precise::Observer;
 use std::io::{Read, Write};
 use std::os::fd::OwnedFd;
 use std::os::unix::fs::MetadataExt as _;
 use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
@@ -16,9 +17,22 @@ pub(super) struct ReadLease {
     socket: UnixStream,
     bindings: Vec<(PathBuf, PathBuf, u64, u64)>,
     mounts: String,
+    interpreter: PathBuf,
+    helper_observer: Observer,
 }
 impl ReadLease {
     pub(super) fn acquire(paths: &[PathBuf]) -> Option<Self> {
+        if paths.len() > 4096 {
+            return None;
+        }
+        let interpreter = interpreter()?;
+        let closure = helper_paths(&interpreter)?;
+        let helper_observer = Observer::begin(&closure, &[])?;
+        let baseline = helper_digests(&closure)?;
+        let mut paths = paths.to_vec();
+        paths.extend(closure.iter().filter(|p| p.is_file()).cloned());
+        paths.sort();
+        paths.dedup();
         if paths.len() > 4096 {
             return None;
         }
@@ -37,7 +51,11 @@ impl ReadLease {
             })
             .collect::<Option<_>>()?;
         let identities: Vec<_> = bindings.iter().map(|(_, p, d, i)| (p, d, i)).collect();
-        let mut bytes = serde_json::to_vec(&identities).ok()?;
+        let mut bytes = serde_json::to_vec(&serde_json::json!({
+            "files": identities,
+            "runtime": closure,
+        }))
+        .ok()?;
         bytes.push(b'\n');
         if bytes.len() > 1_048_576 {
             return None;
@@ -50,23 +68,34 @@ impl ReadLease {
         let child_input: OwnedFd = child_socket.try_clone().ok()?.into();
         let child_output: OwnedFd = child_socket.into();
         let parent_socket = socket.try_clone().ok()?;
-        let process = Command::new("python3")
-            .args(["-I", "-u", "-c", include_str!("lease.py")])
+        let helper = format!(
+            "{}\n{}",
+            include_str!("helper_runtime.py"),
+            include_str!("lease.py")
+        );
+        let process = Command::new(&interpreter)
+            .args(["-I", "-u", "-c", &helper])
             .stdin(Stdio::from(child_input))
             .stdout(Stdio::from(child_output))
             .stderr(Stdio::null())
             .spawn()
             .ok()?;
-        let lease = Self {
+        let mut lease = Self {
             process,
             socket: parent_socket,
             bindings,
             mounts,
+            interpreter,
+            helper_observer,
         };
         socket.write_all(&bytes).ok()?;
         let mut reply = [0; 3];
         socket.read_exact(&mut reply).ok()?;
-        if reply != *b"ok\n" || !lease.bindings_current() {
+        if reply != *b"ok\n"
+            || !lease.bindings_current()
+            || helper_digests(&closure)? != baseline
+            || !lease.helper_observer.clean()
+        {
             return None;
         }
         lease
@@ -80,7 +109,10 @@ impl ReadLease {
         Some(lease)
     }
     pub(super) fn clean(&mut self) -> bool {
-        if !self.bindings_current() {
+        if !self.bindings_current()
+            || interpreter().as_ref() != Some(&self.interpreter)
+            || !self.helper_observer.clean()
+        {
             return false;
         }
         let mut reply = [0; 3];
@@ -103,6 +135,76 @@ impl ReadLease {
                 })
     }
 }
+// PATH is selected once for launch; subsequent barriers also check its exact
+// resolution. No interpreter substitution is hidden by an unchanged PATH value.
+fn interpreter() -> Option<PathBuf> {
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|directory| directory.join("python3"))
+        .find(|path| path.is_file())
+        .and_then(|path| std::path::absolute(path).ok())
+}
+fn helper_digests(paths: &[PathBuf]) -> Option<Vec<Option<String>>> {
+    paths
+        .iter()
+        .map(|path| {
+            if path.is_file() {
+                super::files::file_digest(path).ok().map(Some)
+            } else if !path.exists() {
+                Some(None)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+pub(super) fn helper_identity() -> Option<Vec<(String, String)>> {
+    let paths = helper_paths(&interpreter()?)?;
+    paths
+        .into_iter()
+        .filter(|p| p.is_file())
+        .map(|path| {
+            Some((
+                path.to_str()?.to_owned(),
+                super::files::file_digest(&path).ok()?,
+            ))
+        })
+        .collect()
+}
+fn helper_paths(interpreter: &Path) -> Option<Vec<PathBuf>> {
+    // This cold-only process is bounded independently of any job RPC. The
+    // installed interpreter/loader bootstrap is the explicit trusted OS boundary.
+    let (mut socket, child_socket) = UnixStream::pair().ok()?;
+    socket.set_read_timeout(Some(Duration::from_secs(2))).ok()?;
+    let output: OwnedFd = child_socket.into();
+    let probe = format!(
+        "{}\nprint(json.dumps(support_paths()), flush=True)",
+        include_str!("helper_runtime.py")
+    );
+    let mut child = Command::new(interpreter)
+        .args(["-I", "-u", "-c", &probe])
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(output))
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    let mut bytes = Vec::new();
+    let read = std::io::Read::by_ref(&mut socket)
+        .take(1_048_577)
+        .read_to_end(&mut bytes);
+    let _ = child.kill();
+    let _ = child.wait();
+    if read.is_err() || bytes.len() > 1_048_576 {
+        return None;
+    }
+    let mut paths: Vec<PathBuf> = serde_json::from_slice(&bytes).ok()?;
+    if paths.len() > 1024 || paths.iter().any(|p| !p.is_absolute()) {
+        return None;
+    }
+    paths.push(interpreter.to_owned());
+    paths.sort();
+    paths.dedup();
+    Some(paths)
+}
 impl Drop for ReadLease {
     fn drop(&mut self) {
         let _ = self.process.kill();
@@ -123,6 +225,52 @@ mod tests {
         ));
         assert!(std::fs::write(&file, b"good").is_ok());
         file
+    }
+    #[test]
+    fn replacing_selected_interpreter_under_unchanged_path_invalidates_projection() {
+        let root = fixture().with_extension("python-path");
+        assert!(std::fs::create_dir(&root).is_ok());
+        let actual = interpreter().unwrap_or_else(|| unreachable!("Python fixture"));
+        assert!(std::os::unix::fs::symlink(actual, root.join("python3")).is_ok());
+        let mut paths = vec![root.clone()];
+        paths.extend(std::env::split_paths(
+            &std::env::var_os("PATH").unwrap_or_default(),
+        ));
+        let path = std::env::join_paths(paths).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let output = Command::new(std::env::current_exe().unwrap_or_default())
+            .args([
+                "--exact",
+                "managed::lease::tests::selected_interpreter_child",
+                "--nocapture",
+            ])
+            .env("PATH", path)
+            .env("SAIL_LEASE_INTERPRETER_CHILD", "1")
+            .output()
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+    #[test]
+    fn selected_interpreter_child() {
+        // The outer test changes only its child's environment: Rust 2024 forbids
+        // mutating this test runner's shared process environment without unsafe.
+        if std::env::var_os("SAIL_LEASE_INTERPRETER_CHILD").is_none() {
+            return;
+        }
+        let file = fixture();
+        let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(lease.clean());
+        let selected = interpreter().unwrap_or_default();
+        let replacement = selected.with_extension("new");
+        assert!(std::os::unix::fs::symlink("/bin/true", &replacement).is_ok());
+        assert!(std::fs::rename(replacement, selected).is_ok());
+        assert!(!lease.clean());
+        assert!(std::fs::remove_file(file).is_ok());
     }
     #[test]
     fn writer_through_outside_hardlink_breaks_lease_without_waiting_for_kernel_timeout() {
