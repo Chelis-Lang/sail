@@ -7,12 +7,14 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   e2e                  `sail verify` vs `cargo verus verify` on a fresh
+#   e2e [legacy|managed] Run both phases by default; CI runs them in parallel.
+#                        `sail verify` vs `cargo verus verify` on a fresh
 #                        project, cold and warm: identical output and exit;
 #                        then `sail verify --output json`: unchanged stderr
 #                        and exit, a schema-v1 document agreeing with
 #                        Verus's own --output-json; then one `verify` call
-#                        through `sail mcp`, agreeing with that document
+#                        through `sail mcp`, agreeing with that document;
+#                        managed receipts, durable jobs and asynchronous MCP
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
 #                        cache on (fill, then warm). `pr` limits the fast
@@ -82,19 +84,29 @@ case "$step" in
     ;;
 
   e2e)
+    phase="${1:-full}"
+    if [ "$#" -gt 1 ]; then
+      echo 'e2e: expected at most one phase: legacy|managed' >&2
+      exit 2
+    fi
+    case "$phase" in
+      full|legacy|managed) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed" >&2; exit 2 ;;
+    esac
     release_build
-    cargo build --release --locked -p sail-cli --example check_output --example check_mcp
     sail="$PWD/target/release/sail"
-    check_output="$PWD/target/release/examples/check_output"
-    check_mcp="$PWD/target/release/examples/check_mcp"
-    sail_portfolio_test="$PWD/ci/test-portfolio.sh"
     sail_managed_test="$PWD/ci/test-managed.py"
-    work="$(mktemp -d)"
-    export SAIL_CACHE_DIR="$work/cache"
-    cd "$work"
-    cargo verus new --lib demo >/dev/null
-    cd demo
-    cat > src/lib.rs <<'RS'
+    if [ "$phase" != managed ]; then
+      cargo build --release --locked -p sail-cli --example check_output --example check_mcp
+      check_output="$PWD/target/release/examples/check_output"
+      check_mcp="$PWD/target/release/examples/check_mcp"
+      sail_portfolio_test="$PWD/ci/test-portfolio.sh"
+      work="$(mktemp -d)"
+      export SAIL_CACHE_DIR="$work/cache"
+      cd "$work"
+      cargo verus new --lib demo >/dev/null
+      cd demo
+      cat > src/lib.rs <<'RS'
 use vstd::prelude::*;
 
 verus! {
@@ -109,57 +121,60 @@ pub fn bad(x: u32) -> (r: u32)
 
 } // verus!
 RS
-    run() { # $1 = label; rest = command
-      local label="$1"; shift
-      touch src/lib.rs
-      set +e
-      "$@" > "$work/$label.out" 2> "$work/$label.err"
-      echo $? > "$work/$label.rc"
-      set -e
-    }
-    # Warm-up: the first build of a fresh project also verifies its vstd
-    # dependency; afterwards every run below re-verifies only the crate.
-    run warmup cargo verus verify
-    run plain cargo verus verify
-    run cold "$sail" verify
-    run warm "$sail" verify
-    for label in cold warm; do
-      for part in rc out err; do
-        if ! cmp -s "$work/plain.$part" "$work/$label.$part"; then
-          echo "e2e: $label $part differs from plain cargo verus verify" >&2
-          diff -u "$work/plain.$part" "$work/$label.$part" >&2 || true
+      run() { # $1 = label; rest = command
+        local label="$1"; shift
+        touch src/lib.rs
+        set +e
+        "$@" > "$work/$label.out" 2> "$work/$label.err"
+        echo $? > "$work/$label.rc"
+        set -e
+      }
+      # Warm-up: the first build of a fresh project also verifies its vstd
+      # dependency; afterwards every run below re-verifies only the crate.
+      run warmup cargo verus verify
+      run plain cargo verus verify
+      run cold "$sail" verify
+      run warm "$sail" verify
+      for label in cold warm; do
+        for part in rc out err; do
+          if ! cmp -s "$work/plain.$part" "$work/$label.$part"; then
+            echo "e2e: $label $part differs from plain cargo verus verify" >&2
+            diff -u "$work/plain.$part" "$work/$label.$part" >&2 || true
+            exit 1
+          fi
+        done
+      done
+      # The deliberate failure must be reported, and the cache must be used.
+      grep -q "postcondition not satisfied" "$work/plain.err"
+      entries="$(find "$SAIL_CACHE_DIR/results/v2" -type f | wc -l)"
+      echo "e2e: identical to cargo verus verify (exit $(cat "$work/plain.rc")); cache entries: $entries"
+      [ "$entries" -gt 0 ]
+      # `--output json` (ADR 0014): stderr and exit code unchanged, stdout one
+      # schema-v1 document whose verdicts agree with Verus's own --output-json.
+      # The runs above filled the cache, so every answer is served from it.
+      run json "$sail" verify --output json
+      run verusjson cargo verus verify -- --output-json --time
+      for part in rc err; do
+        if ! cmp -s "$work/plain.$part" "$work/json.$part"; then
+          echo "e2e: --output json $part differs from plain cargo verus verify" >&2
+          diff -u "$work/plain.$part" "$work/json.$part" >&2 || true
           exit 1
         fi
       done
-    done
-    # The deliberate failure must be reported, and the cache must be used.
-    grep -q "postcondition not satisfied" "$work/plain.err"
-    entries="$(find "$SAIL_CACHE_DIR/results/v2" -type f | wc -l)"
-    echo "e2e: identical to cargo verus verify (exit $(cat "$work/plain.rc")); cache entries: $entries"
-    [ "$entries" -gt 0 ]
-    # `--output json` (ADR 0014): stderr and exit code unchanged, stdout one
-    # schema-v1 document whose verdicts agree with Verus's own --output-json.
-    # The runs above filled the cache, so every answer is served from it.
-    run json "$sail" verify --output json
-    run verusjson cargo verus verify -- --output-json --time
-    for part in rc err; do
-      if ! cmp -s "$work/plain.$part" "$work/json.$part"; then
-        echo "e2e: --output json $part differs from plain cargo verus verify" >&2
-        diff -u "$work/plain.$part" "$work/json.$part" >&2 || true
-        exit 1
-      fi
-    done
-    "$check_output" "$work/json.out" "$work/verusjson.out" --attribution complete --source cache
-    # `sail mcp` (ADR 0016): one real `verify` tool call. Its verdicts must
-    # equal `sail verify --output json`'s, and its report must pass the same
-    # checks against Verus's own --output-json.
-    touch src/lib.rs
-    "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
-    "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
-    bash "$sail_portfolio_test"
-    # Bounded complete-report receipts: reuse, missing evidence and a failing
-    # proof edit with restored timestamps, compared with the pinned Verus.
-    python3 "$sail_managed_test" "$sail"
+      "$check_output" "$work/json.out" "$work/verusjson.out" --attribution complete --source cache
+      # `sail mcp` (ADR 0016): one real `verify` tool call. Its verdicts must
+      # equal `sail verify --output json`'s, and its report must pass the same
+      # checks against Verus's own --output-json.
+      touch src/lib.rs
+      "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
+      "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
+      bash "$sail_portfolio_test"
+    fi
+    if [ "$phase" != legacy ]; then
+      # Bounded complete-report receipts: reuse, missing evidence and a failing
+      # proof edit with restored timestamps, compared with the pinned Verus.
+      python3 "$sail_managed_test" "$sail"
+    fi
     ;;
 
   conformance)
