@@ -92,6 +92,16 @@ fn publish(pending: &Pending, result: Lookup) {
     }
 }
 
+#[cfg(test)]
+type Phases = Arc<Mutex<Vec<(&'static str, Instant)>>>;
+
+#[cfg(test)]
+fn phase(phases: &Phases, label: &'static str) {
+    if let Ok(mut records) = phases.lock() {
+        records.push((label, Instant::now()));
+    }
+}
+
 struct Remote {
     loaded: Instant,
     client: Option<crate::remote::HttpClient>,
@@ -99,6 +109,8 @@ struct Remote {
 }
 
 pub(crate) struct SharedTier {
+    #[cfg(test)]
+    phases: Phases,
     store: SharedStore,
     root: PathBuf,
     remote: Mutex<Option<Remote>>,
@@ -114,6 +126,8 @@ pub(crate) struct SharedTier {
 impl SharedTier {
     pub fn new(config: SharedConfig) -> Self {
         Self {
+            #[cfg(test)]
+            phases: Arc::new(Mutex::new(Vec::new())),
             store: SharedStore::new(&config.store),
             root: config
                 .trust_dir
@@ -288,11 +302,15 @@ impl SharedTier {
     }
 
     fn lookup_with(&self, key: &QueryKey, local: &Solver, after_spawn: impl FnOnce()) -> Lookup {
+        #[cfg(test)]
+        phase(&self.phases, "lookup-start");
         // Reload before backoff checks so disconnect or changed configuration takes effect.
         let _ = self.remote_client();
         if self.description().is_none() {
             return Lookup::Skipped;
         }
+        #[cfg(test)]
+        phase(&self.phases, "client-ready");
         let id = format!("{}:{key}", local.summary());
         let (pending, leader) = {
             let Ok(mut active) = self.pending.lock() else {
@@ -359,9 +377,15 @@ impl SharedTier {
         let publication = Arc::clone(pending);
         let directory =
             !store.is_empty() && !store.starts_with("http://") && !store.starts_with("https://");
+        #[cfg(test)]
+        let phases = Arc::clone(&self.phases);
+        #[cfg(test)]
+        phase(&self.phases, "spawn-start");
         let spawned = std::thread::Builder::new()
             .name("sail-daemon-shared".to_owned())
             .spawn(move || {
+                #[cfg(test)]
+                phase(&phases, "helper-start");
                 let data = if let Some(remote) = remote {
                     remote
                         .get(&local_c, &key_c)
@@ -371,6 +395,8 @@ impl SharedTier {
                 } else {
                     Ok(None)
                 };
+                #[cfg(test)]
+                phase(&phases, "transport-returned");
                 let result = match data {
                     Ok(Some(data)) => match verify_entry(&data, &key_c, &trusted, &local_c) {
                         Ok(verified) => Lookup::Hit(verified),
@@ -380,10 +406,14 @@ impl SharedTier {
                     Err(Rejection::Unreadable) => Lookup::Unavailable,
                     Err(reason) => Lookup::Rejected(reason),
                 };
+                #[cfg(test)]
+                phase(&phases, "classified");
                 in_flight.fetch_sub(1, Ordering::SeqCst);
                 // Coalesced readers need not wait for the initiating client to
                 // be scheduled again after this independently verified result.
                 publish(&publication, result.clone());
+                #[cfg(test)]
+                phase(&phases, "published");
                 let _ = tx.send(result);
             });
         if spawned.is_err() {
@@ -470,10 +500,20 @@ mod http_tests {
         key: QueryKey,
         stop: Arc<std::sync::atomic::AtomicBool>,
         count: Arc<AtomicUsize>,
+        phases: Phases,
         server: Option<std::thread::JoinHandle<()>>,
     }
 
     impl HttpFixture {
+        fn phase_report(&self) -> Vec<(&'static str, u128)> {
+            let records = self.phases.lock().unwrap();
+            let first = records.iter().map(|(_, time)| *time).min().unwrap();
+            records
+                .iter()
+                .map(|(name, time)| (*name, time.duration_since(first).as_micros()))
+                .collect()
+        }
+
         fn close(&mut self) {
             self.stop.store(true, Ordering::Relaxed);
             self.server.take().unwrap().join().unwrap();
@@ -524,12 +564,15 @@ mod http_tests {
         let stopping = Arc::clone(&stop);
         let count = Arc::new(AtomicUsize::new(0));
         let counts = Arc::clone(&count);
+        let phases = Arc::new(Mutex::new(Vec::new()));
+        let server_phases = Arc::clone(&phases);
         let server = std::thread::spawn(move || {
             while !stopping.load(Ordering::Relaxed) {
                 let Ok((mut stream, _)) = listener.accept() else {
                     std::thread::sleep(Duration::from_millis(1));
                     continue;
                 };
+                phase(&server_phases, "server-accepted");
                 counts.fetch_add(1, Ordering::Relaxed);
                 stream.set_nonblocking(false).unwrap();
                 stream
@@ -537,17 +580,23 @@ mod http_tests {
                     .unwrap();
                 let mut input = [0u8; 4096];
                 let _ = stream.read(&mut input);
+                phase(&server_phases, "server-read");
                 std::thread::sleep(Duration::from_millis(75));
+                phase(&server_phases, "server-delay-ended");
                 let _ = write!(
                     stream,
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
                     data.len()
                 );
                 let _ = stream.write_all(&data);
+                phase(&server_phases, "server-sent");
             }
         });
+        let mut tier = SharedTier::auto(None, &root);
+        tier.phases = Arc::clone(&phases);
         HttpFixture {
-            tier: Arc::new(SharedTier::auto(None, &root)),
+            tier: Arc::new(tier),
+            phases,
             root,
             solver,
             key,
@@ -577,11 +626,13 @@ mod http_tests {
             let result = worker.join().unwrap();
             assert!(
                 matches!(result, Lookup::Hit(_)),
-                "lookup: {result:?}; remote: {:?}",
-                tier.remote_info()
+                "lookup: {result:?}; remote: {:?}; phases_us: {:?}",
+                tier.remote_info(),
+                fixture.phase_report()
             );
         }
         fixture.close();
+        eprintln!("reader phases_us: {:?}", fixture.phase_report());
         assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
     }
 
@@ -611,9 +662,12 @@ mod http_tests {
         assert!(still_paused, "initiator must remain blocked during lookup");
         assert!(
             elapsed < fixture.tier.config.timeout,
-            "elapsed: {elapsed:?}"
+            "elapsed: {elapsed:?}; remote: {:?}; phases_us: {:?}",
+            fixture.tier.remote_info(),
+            fixture.phase_report()
         );
         assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
+        eprintln!("paused initiator phases_us: {:?}", fixture.phase_report());
         (result, initiating_result)
     }
 
