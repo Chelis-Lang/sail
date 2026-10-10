@@ -135,3 +135,28 @@ in `bench/acceptance/workspace-jobs-rpc-x86_64-linux-emulated-2026-10-10.json`
 records actual bounded errors without claiming proof acceptance. Its idle and
 two-concurrent controls succeeded, while four concurrent freshness reads under
 emulation reached the existing five-second deadline.
+
+## M6 default solver conformance
+
+`live-workspace-conformance-2026-10-10.json` retains twelve report summaries and
+hashes. Full fast coverage is 147 units and 3,450 compared functions in each
+pass-through, fill and warm round. Native standard coverage is 157 units and
+11,446 functions, with two explicit requirement skips. Separate zero-skip
+verismo-main and Linux Anvil runs recover those requirements: combined standard
+coverage is 159 units and 12,726 compared functions per round. No round has a
+verdict/diagnostic disagreement, instability or infrastructure error. Expected
+plain verification failures remain failures.
+
+The native integration runs overlapped frontend fixes; these summaries do not
+claim one frozen executable throughout the corpus. Default SMT policy and key
+formats were unchanged. The separate Anvil artifact retains its exact tested
+binaries. Long tiers ran locally only.
+
+With raw reports arranged under `REPORT_DIRECTORY` as named by the manifest:
+
+```sh
+python3 bench/validation/acceptance.py bench/validation/live-workspace-conformance-input.json REPORT_DIRECTORY > bench/validation/live-workspace-conformance-2026-10-10.json
+```
+
+The generator checks exact unit/function coverage, explicit skips and zero
+infra/disagreement counts. Published summaries retain no report paths.
