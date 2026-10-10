@@ -246,24 +246,31 @@ fn driver() -> Result<ExitCode> {
     // VI-0011: the pinned launcher chooses macro mode before decoding Cargo's
     // effective per-package options. Reflect only an already requested mode,
     // and only for the explicitly selected optional engine. Stock is unchanged.
-    let launcher_args = if runtime.engine.is_some() {
+    let effective = if runtime.engine.is_some() {
         let id = cargo_package_id().ok_or_else(|| {
             Error::new(
                 "SAIL3121",
                 "engine invocation lacks its Cargo package identity",
             )
         })?;
-        launcher_arguments(&args, true, &cargo_driver_args(&id)?)
+        cargo_driver_args(&id)?
     } else {
-        args.clone()
+        Vec::new()
     };
+    let launcher_args = launcher_arguments(&args, runtime.engine.is_some(), &effective);
     if launcher_args != args {
         json(
             &dir.join("launcher-options.json"),
             &serde_json::json!({
                 "version":1,"run_id":runtime.run_id,"context_sha256":runtime.context_sha256,
                 "package_id":cargo_package_id(),"target":identity.name,"kind":identity.crate_type,
-                "forwarded":["--no-vstd"],"source":"effective-cargo-driver-options","engine_only":true
+                "forwarded":["--no-vstd"],"source":"effective-cargo-driver-options","engine_only":true,
+                "original_arguments":args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
+                "launcher_arguments":launcher_args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
+                "effective_arguments":effective,
+                "cargo_identity": (["CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR", "CARGO_CRATE_NAME", "CARGO_PRIMARY_PACKAGE"]
+                    .into_iter().filter_map(|key|std::env::var(key).ok().map(|value|(key,value)))
+                    .collect::<std::collections::BTreeMap<_,_>>())
             }),
         )?;
     }
