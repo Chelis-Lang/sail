@@ -85,7 +85,14 @@ vector metadata share a process-wide 16 MiB charge. Captures refuse allocation
 when that budget cannot be reserved. Frame encoding has one global lock and a
 one-MiB cap; conservatively count two MiB for realloc overlap. Finishing a
 ledger temporarily allocates at most another 16 MiB of outer-vector metadata
-before charge admission; there is no frame-content copy. Add this conservative
+before charge admission; there is no frame-content copy. One global encoding
+lock covers both frame encoding and finish conversion. Buffer destructors take
+and physically drop all frames before releasing quota. The final capture clone
+consumes its Arc allocation, drops the state and only then releases metadata
+quota. A deterministic two-thread regression blocks physical disposal and
+checks that racing replacement admission remains refused. Deserialization and
+replay occur under the global preparation gate; decoded frames are explicitly
+dropped before effect restoration and before that gate can be released. Add this conservative
 34 MiB allowance to the existing worst-case 458 MiB constructor/key phase:
 492 MiB remains below the 512 MiB preparation allocation bound. The store and
 restore phases remain below that bound with the same allowance. Active decoded
@@ -102,13 +109,17 @@ None of these observations weakens an admission or proof check.
 
 Source tests exercise an unrelated edge surviving replay, a new recursive SCC
 rejecting it, trait-cycle membership/path changes, component-order changes,
-borrowed/owned codec equivalence, malformed/trailing data, unsupported reads and
-budget refusal. The candidate oracle retains all existing checkpoint checks
+borrowed/owned codec equivalence, malformed/trailing data, unsupported reads, budget refusal, final-clone lifetime and racing quota
+release. The candidate oracle retains all existing checkpoint checks
 and exact raw SMT, verdict and diagnostic comparisons, plus recursion, trait,
 bitvector and late EXEC fixtures. No check or baseline is relaxed.
 
-Compilation and those executable source tests are pending. Only static coverage,
-patch applicability and syntax checks have run. A separately built variant
+The isolated host candidate passes seven graph-ledger VIR regressions and the
+complete eight-test VIR library suite. The complete `rust_verify` library passes
+release `cargo check`, including raw-field privacy coverage. No runtime binary,
+vstd verification or source manifest was built by these checks. Runtime source
+oracles and product acceptance remain pending. Static coverage, patch
+applicability and syntax checks also pass. A separately built variant
 must pass them, source/cancellation gates and real-project raw SMT oracles before
 it can replace the current artifact. Global datatype maps, imported source/span
 bindings or other constructor fields may still invalidate every real body-edit

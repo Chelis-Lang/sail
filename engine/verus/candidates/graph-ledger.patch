@@ -175,10 +175,10 @@ index 5b4d93a..73ed841 100644
  
 diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
 new file mode 100644
-index 0000000..2b2edc4
+index 0000000..f6eb318
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,475 @@
+@@ -0,0 +1,477 @@
 +//! Private batch session: all retained spans belong to the active compiler callback.
 +use super::*;
 +use std::cell::{Cell,RefCell};
@@ -400,6 +400,8 @@ index 0000000..2b2edc4
 +        if actual.as_str()!=expected {emit("prepared-miss",serde_json::json!({"stage":"span-provenance","key":key}));return None;}
 +    }
 +    if reader.position()!=bytes.len() as u64 {return None;}
++    // PREPARATION_GATE is still held; no decoded ledger survives its release.
++    drop(portable.graph_reads);
 +    ctx.sail_restore_effects(portable.effects);
 +    MISSES.fetch_sub(1,Ordering::Relaxed);
 +    if batch {BATCH_HITS.fetch_add(1,Ordering::Relaxed);}else{PERSISTENT_HITS.fetch_add(1,Ordering::Relaxed);}
@@ -1438,10 +1440,10 @@ index 56b98e9..f1a072f 100644
      Decoration(TypDecoration),
 diff --git a/source/vir/src/sail_graph.rs b/source/vir/src/sail_graph.rs
 new file mode 100644
-index 0000000..c028cb9
+index 0000000..cbed1fa
 --- /dev/null
 +++ b/source/vir/src/sail_graph.rs
-@@ -0,0 +1,492 @@
+@@ -0,0 +1,564 @@
 +//! Exact observed call-graph dependencies of one prepared lowering.
 +use crate::ast::Fun;
 +use crate::recursion::Node;
@@ -1510,9 +1512,15 @@ index 0000000..c028cb9
 +    frames: LinkedList<Vec<u8>>,
 +    bytes: usize,
 +}
++fn release_after_drop<T>(owned: T, release: impl FnOnce()) {
++    drop(owned);
++    release();
++}
 +impl Drop for Recording {
 +    fn drop(&mut self) {
-+        OWNED.fetch_sub(self.bytes, Ordering::Relaxed);
++        release_after_drop(std::mem::take(&mut self.frames), || {
++            OWNED.fetch_sub(self.bytes, Ordering::Relaxed);
++        });
 +    }
 +}
 +#[derive(Default)]
@@ -1520,13 +1528,21 @@ index 0000000..c028cb9
 +    active: bool,
 +    recording: Option<Recording>,
 +}
-+impl Drop for State {
-+    fn drop(&mut self) {
-+        OWNED.fetch_sub(128, Ordering::Relaxed);
-+    }
-+}
 +#[derive(Clone)]
 +pub struct Capture(Option<Arc<Mutex<State>>>);
++impl Drop for Capture {
++    fn drop(&mut self) {
++        if let Some(inner) = self.0.take() {
++            // into_inner consumes and deallocates the final Arc before returning
++            // its value. Only the final clone releases the capture allocation.
++            if let Some(state) = Arc::into_inner(inner) {
++                release_after_drop(state, || {
++                    OWNED.fetch_sub(128, Ordering::Relaxed);
++                });
++            }
++        }
++    }
++}
 +impl Default for Capture {
 +    fn default() -> Self {
 +        Self(if charge(128) { Some(Arc::new(Mutex::new(State::default()))) } else { None })
@@ -1543,7 +1559,9 @@ index 0000000..c028cb9
 +}
 +impl Drop for Ledger {
 +    fn drop(&mut self) {
-+        OWNED.fetch_sub(self.bytes, Ordering::Relaxed);
++        release_after_drop(std::mem::take(&mut self.frames), || {
++            OWNED.fetch_sub(self.bytes, Ordering::Relaxed);
++        });
 +    }
 +}
 +impl Capture {
@@ -1607,6 +1625,8 @@ index 0000000..c028cb9
 +        }
 +        state.active = false;
 +        let mut recording = state.recording.take()?;
++        // Conversion metadata cannot overlap another conversion or frame encoder.
++        let _gate = ENCODE.lock().ok()?;
 +        let mut frames = Vec::new();
 +        frames.try_reserve_exact(recording.frames.len()).ok()?;
 +        let metadata = frames.capacity().checked_mul(std::mem::size_of::<Vec<u8>>())?;
@@ -1918,6 +1938,60 @@ index 0000000..c028cb9
 +            )
 +            .is_err()
 +        );
++    }
++    #[test]
++    fn quota_release_waits_for_physical_drop_even_during_racing_admission() {
++        use std::sync::mpsc;
++        struct Allocation {
++            bytes: Option<Vec<u8>>,
++            started: mpsc::Sender<()>,
++            finish: mpsc::Receiver<()>,
++        }
++        impl Drop for Allocation {
++            fn drop(&mut self) {
++                self.started.send(()).unwrap();
++                self.finish.recv().unwrap();
++                drop(self.bytes.take());
++            }
++        }
++        let quota = Arc::new(AtomicUsize::new(128));
++        let (started_tx, started_rx) = mpsc::channel();
++        let (finish_tx, finish_rx) = mpsc::channel();
++        let owned =
++            Allocation { bytes: Some(vec![0; 128]), started: started_tx, finish: finish_rx };
++        let worker_quota = quota.clone();
++        let thread = std::thread::spawn(move || {
++            release_after_drop(owned, || {
++                worker_quota.fetch_sub(128, Ordering::SeqCst);
++            })
++        });
++        started_rx.recv().unwrap();
++        assert!(
++            quota
++                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| old
++                    .checked_add(128)
++                    .filter(|value| *value <= 128))
++                .is_err(),
++            "admitted replacement while old allocation is live"
++        );
++        finish_tx.send(()).unwrap();
++        thread.join().unwrap();
++        assert_eq!(
++            quota.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old| old
++                .checked_add(128)
++                .filter(|value| *value <= 128)),
++            Ok(0)
++        );
++    }
++    #[test]
++    fn final_capture_clone_keeps_recording_owned_until_drop() {
++        let capture = Capture::default();
++        capture.begin();
++        let cloned = capture.clone();
++        drop(capture);
++        let input = node("a");
++        cloned.record(QueryRef::IsCycle(&input, false));
++        assert!(cloned.finish().is_some());
 +    }
 +    #[test]
 +    fn unsupported_or_oversized_read_cannot_publish() {
