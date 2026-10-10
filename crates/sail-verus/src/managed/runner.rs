@@ -100,6 +100,11 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
 fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<String> {
     let mut identity = Vec::new();
     let mut hashed = super::files::FileDigests::default();
+    if let Some(engine) = engine {
+        // Shares only this phase's actual byte reads: no retained metadata or
+        // digest cache can authorize a different invocation's engine.
+        crate::engine::validate_request(engine, |path| hashed.hash(path))?;
+    }
     for path in [
         &config.sail,
         &config.cargo_verus,
@@ -1546,6 +1551,78 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn corrupt_engine_is_rejected_before_its_version_probe()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use crate::source_build::{Manifest, SCHEMA_VERSION, artifact_hashes, checkout_dir};
+        use std::os::unix::fs::PermissionsExt as _;
+        let root =
+            std::env::temp_dir().join(format!("sail-engine-no-probe-{}", std::process::id()));
+        let runtime = checkout_dir(&root).join("source/target-verus/release");
+        std::fs::create_dir_all(&runtime)?;
+        let marker = root.join("engine-executed");
+        for name in ["cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"] {
+            std::fs::write(runtime.join(name), name)?;
+        }
+        let launcher = runtime.join("verus");
+        std::fs::write(
+            &launcher,
+            format!("#!/bin/sh\ntouch '{}'\nexit 1\n", marker.display()),
+        )?;
+        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o700))?;
+        let pins = crate::toolchain::Pins::embedded()?;
+        let manifest = Manifest {
+            schema_version: SCHEMA_VERSION,
+            commit: pins.verus.commit.clone(),
+            rust_toolchain: pins.verus.rust_toolchain.clone(),
+            z3_sha256: pins
+                .assets
+                .get(crate::toolchain::host())
+                .ok_or("host pin")?
+                .z3_sha256
+                .clone(),
+            features: crate::engine::features(),
+            artifacts: artifact_hashes(&root)?,
+            build_seconds: 0,
+            test_binaries: Vec::new(),
+        };
+        manifest.save(&root)?;
+        let path = root.join(crate::source_build::MANIFEST);
+        let request = crate::engine::Request {
+            function: None,
+            cargo_verus: runtime.join("cargo-verus"),
+            manifest_sha256: file_digest(&path)?,
+            manifest: path,
+            stock_wrapper: launcher.clone(),
+            artifacts: manifest.artifacts.keys().map(|p| root.join(p)).collect(),
+            prepared: root.join("prepared"),
+        };
+        let config = Config {
+            workspace: root.clone(),
+            cache: root.join("cache"),
+            sail: launcher.clone(),
+            cargo_verus: request.cargo_verus.clone(),
+            cargo: launcher.clone(),
+            shim: launcher.clone(),
+            z3: runtime.join("z3"),
+            socket: None,
+            args: Vec::new(),
+            force: true,
+        };
+        std::fs::write(runtime.join("z3"), b"tampered")?;
+        let error = context(&config, Some(&request))
+            .err()
+            .ok_or("corrupt engine was accepted")?;
+        assert_eq!(error.code, "SAIL3120");
+        assert!(
+            !marker.exists(),
+            "unvalidated engine was executed for discovery"
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn rebinding_declared_external_inputs_preserves_seals_and_rejects_corruption() {
         let root = std::env::temp_dir().join(format!(

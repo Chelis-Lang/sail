@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Validate optional-engine artifacts in the same byte-hashing phase as the
+  verification context, retaining complete inventory and manifest checks before
+  any engine executable starts.
+
 - Retain optional per-driver preparation counters with separate batch-local and
   persistent reuse; unavailable telemetry is distinct from observed zero hits.
 
