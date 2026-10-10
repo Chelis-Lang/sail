@@ -69,7 +69,14 @@ impl Request {
         super::files::digest(&bytes)
     }
     fn refresh(&self, runtime: &Mutex<RuntimeSlot>) -> Option<InputSnapshot> {
-        let started = std::time::Instant::now();
+        self.refresh_started(runtime, std::time::Instant::now(), || {})
+    }
+    fn refresh_started(
+        &self,
+        runtime: &Mutex<RuntimeSlot>,
+        started: std::time::Instant,
+        before_publish: impl FnOnce(),
+    ) -> Option<InputSnapshot> {
         let deadline = started + std::time::Duration::from_millis(100);
         let mut validation = loop {
             let mut slot = read_projection(runtime)?;
@@ -104,19 +111,22 @@ impl Request {
                 || true,
             )
             .ok()?;
+            // Record the conservative overlap boundary before final validation.
+            // Publication can be delayed by mutex contention: its later time
+            // must never admit a reader that started after this validation.
+            let checkpoint = std::time::Instant::now();
             valid(&mut validation)?;
-            Some(snapshot)
+            Some((checkpoint, snapshot))
         })();
+        before_publish();
         let mut slot = read_projection(runtime)?;
-        if let Some(snapshot) = &result {
+        if let Some((checkpoint, snapshot)) = &result {
             slot.runtime = Some(validation);
-            slot.coherent = snapshot
-                .complete
-                .then(|| (std::time::Instant::now(), snapshot.clone()));
+            slot.coherent = snapshot.complete.then(|| (*checkpoint, snapshot.clone()));
         } else {
             slot.coherent = None;
         }
-        result
+        result.map(|(_, snapshot)| snapshot)
     }
 }
 
@@ -696,6 +706,63 @@ mod tests {
                     .is_none()
             );
         }
+    }
+    #[test]
+    fn late_publication_cannot_coalesce_a_reader_after_validation_and_mmap_break() {
+        let fixture = Fixture::new("late-publication");
+        let index = FreshnessIndex::default();
+        assert!(fixture.establish(&index).complete);
+        let request = FreshnessIndex::request(
+            &fixture.cache,
+            &fixture.workspace,
+            &fixture.context,
+            &fixture.environment,
+        )
+        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let runtime = index
+            .entry(&request.key())
+            .and_then(|entry| entry.lock().ok().and_then(|s| s.runtime.clone()))
+            .unwrap_or_else(|| unreachable!("fixture"));
+        let (validated_tx, validated_rx) = std::sync::mpsc::channel();
+        let (publish_tx, publish_rx) = std::sync::mpsc::channel();
+        let owner_runtime = Arc::clone(&runtime);
+        let owner_request = request.clone();
+        let owner = std::thread::spawn(move || {
+            owner_request.refresh_started(&owner_runtime, Instant::now(), || {
+                assert!(validated_tx.send(()).is_ok());
+                assert!(publish_rx.recv_timeout(Duration::from_secs(5)).is_ok());
+            })
+        });
+        assert!(validated_rx.recv_timeout(Duration::from_secs(5)).is_ok());
+        // Final validation has completed, but publication is delayed. A new
+        // writable mapping breaks the kernel lease before this reader enters.
+        // inotify alone cannot observe the resulting mmap content mutation.
+        assert!(
+            std::process::Command::new("python3")
+                .args([
+                    "-I",
+                    "-c",
+                    "import mmap,os,sys; f=os.open(sys.argv[1],os.O_RDWR); m=mmap.mmap(f,0); os.close(f); m[0]=1; m.flush(); m.close()",
+                ])
+                .arg(&fixture.runtime)
+                .status()
+                .is_ok_and(|s| s.success())
+        );
+        let late_started = Instant::now();
+        assert!(publish_tx.send(()).is_ok());
+        assert!(
+            owner
+                .join()
+                .unwrap_or_else(|e| std::panic::resume_unwind(e))
+                .is_some(),
+            "the owner was valid before the subsequent write"
+        );
+        assert!(
+            request
+                .refresh_started(&runtime, late_started, || {})
+                .is_none(),
+            "a delayed publication must not admit a reader after validation"
+        );
     }
     #[test]
     fn four_readers_do_not_wait_behind_unrelated_validation_or_context_locks() {
