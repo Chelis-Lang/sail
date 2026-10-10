@@ -164,6 +164,8 @@ struct Metrics {
     auth: AtomicU64,
     unavailable: AtomicU64,
     last: Mutex<Option<String>>,
+    #[cfg(test)]
+    phases: Mutex<Vec<(&'static str, std::time::Instant)>>,
 }
 
 impl std::fmt::Debug for HttpClient {
@@ -189,6 +191,8 @@ impl HttpClient {
     /// # Errors
     /// The endpoint, credential, CA or HTTP client is invalid.
     pub fn new(config: &RemoteConfig, timeout: Duration) -> Result<Self, String> {
+        #[cfg(test)]
+        let began = std::time::Instant::now();
         let base = endpoint(&config.endpoint)?;
         let token = read_token(&config.token_file)?;
         if rustls::crypto::CryptoProvider::get_default().is_none() {
@@ -214,13 +218,35 @@ impl HttpClient {
         let client = builder
             .build()
             .map_err(|_| failure("cannot initialize HTTP transport"))?;
+        let metrics = Arc::new(Metrics::default());
+        #[cfg(test)]
+        if let Ok(mut records) = metrics.phases.lock() {
+            records.push(("client-construction-start", began));
+            records.push(("client-construction-end", std::time::Instant::now()));
+        }
         Ok(Self {
             client,
             base,
             token,
-            metrics: Arc::new(Metrics::default()),
+            metrics,
             ca_hash,
         })
+    }
+
+    #[cfg(test)]
+    fn phase(&self, name: &'static str) {
+        if let Ok(mut records) = self.metrics.phases.lock() {
+            records.push((name, std::time::Instant::now()));
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn phases(&self) -> Vec<(&'static str, std::time::Instant)> {
+        self.metrics
+            .phases
+            .lock()
+            .map(|records| records.clone())
+            .unwrap_or_default()
     }
 
     pub(crate) fn same_configuration(&self, other: &Self) -> bool {
@@ -274,6 +300,8 @@ impl HttpClient {
     /// # Errors
     /// The store is unavailable or the response exceeds the limit.
     pub fn get(&self, solver: &Solver, key: &QueryKey) -> Result<Option<Vec<u8>>, String> {
+        #[cfg(test)]
+        self.phase("request-start");
         let path =
             Self::entry_path(solver, key).ok_or_else(|| failure("invalid solver identity"))?;
         let url = self
@@ -281,23 +309,27 @@ impl HttpClient {
             .join(&path)
             .map_err(|_| failure("invalid entry path"))?;
         self.metrics.requests.fetch_add(1, Ordering::Relaxed);
-        let response = self
+        let request = self
             .client
             .get(url)
             .bearer_auth(&self.token)
-            .header("Accept-Encoding", "identity")
-            .send()
-            .map_err(|e| {
-                self.record(
-                    if e.is_timeout() {
-                        "timeout"
-                    } else {
-                        "unavailable"
-                    },
-                    true,
-                );
-                failure("shared store unavailable")
-            })?;
+            .header("Accept-Encoding", "identity");
+        #[cfg(test)]
+        self.phase("request-built");
+        let sent = request.send();
+        #[cfg(test)]
+        self.phase("request-send-returned");
+        let response = sent.map_err(|e| {
+            self.record(
+                if e.is_timeout() {
+                    "timeout"
+                } else {
+                    "unavailable"
+                },
+                true,
+            );
+            failure("shared store unavailable")
+        })?;
         if response.status() == StatusCode::NOT_FOUND {
             self.record("not-found", false);
             return Ok(None);
@@ -332,6 +364,8 @@ impl HttpClient {
             return Err(failure("shared response exceeds entry limit"));
         }
         self.record("ok", false);
+        #[cfg(test)]
+        self.phase("response-body-completed");
         Ok(Some(bytes))
     }
 

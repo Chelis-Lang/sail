@@ -493,6 +493,8 @@ mod http_tests {
         let _ = std::fs::remove_dir_all(root);
     }
 
+    type RequestRead = (Option<usize>, Option<std::io::ErrorKind>, bool);
+
     struct HttpFixture {
         root: PathBuf,
         tier: Arc<SharedTier>,
@@ -501,17 +503,26 @@ mod http_tests {
         stop: Arc<std::sync::atomic::AtomicBool>,
         count: Arc<AtomicUsize>,
         phases: Phases,
+        requests: Arc<Mutex<Vec<RequestRead>>>,
         server: Option<std::thread::JoinHandle<()>>,
     }
 
     impl HttpFixture {
         fn phase_report(&self) -> Vec<(&'static str, u128)> {
-            let records = self.phases.lock().unwrap();
+            let mut records = self.phases.lock().unwrap().clone();
+            if let Some(client) = self.tier.remote_client() {
+                records.extend(client.phases());
+            }
+            records.sort_by_key(|(_, time)| *time);
             let first = records.iter().map(|(_, time)| *time).min().unwrap();
             records
                 .iter()
                 .map(|(name, time)| (*name, time.duration_since(first).as_micros()))
                 .collect()
+        }
+
+        fn request_report(&self) -> Vec<RequestRead> {
+            self.requests.lock().unwrap().clone()
         }
 
         fn close(&mut self) {
@@ -566,6 +577,8 @@ mod http_tests {
         let counts = Arc::clone(&count);
         let phases = Arc::new(Mutex::new(Vec::new()));
         let server_phases = Arc::clone(&phases);
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let server_requests = Arc::clone(&requests);
         let server = std::thread::spawn(move || {
             while !stopping.load(Ordering::Relaxed) {
                 let Ok((mut stream, _)) = listener.accept() else {
@@ -579,7 +592,16 @@ mod http_tests {
                     .set_read_timeout(Some(Duration::from_secs(1)))
                     .unwrap();
                 let mut input = [0u8; 4096];
-                let _ = stream.read(&mut input);
+                let read = stream.read(&mut input);
+                let report = match read {
+                    Ok(bytes) => (
+                        Some(bytes),
+                        None,
+                        input[..bytes].windows(4).any(|v| v == b"\r\n\r\n"),
+                    ),
+                    Err(error) => (None, Some(error.kind()), false),
+                };
+                server_requests.lock().unwrap().push(report);
                 phase(&server_phases, "server-read");
                 std::thread::sleep(Duration::from_millis(75));
                 phase(&server_phases, "server-delay-ended");
@@ -597,6 +619,7 @@ mod http_tests {
         HttpFixture {
             tier: Arc::new(tier),
             phases,
+            requests,
             root,
             solver,
             key,
@@ -626,13 +649,18 @@ mod http_tests {
             let result = worker.join().unwrap();
             assert!(
                 matches!(result, Lookup::Hit(_)),
-                "lookup: {result:?}; remote: {:?}; phases_us: {:?}",
+                "lookup: {result:?}; remote: {:?}; phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
                 tier.remote_info(),
-                fixture.phase_report()
+                fixture.phase_report(),
+                fixture.request_report()
             );
         }
         fixture.close();
-        eprintln!("reader phases_us: {:?}", fixture.phase_report());
+        eprintln!(
+            "reader phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
+            fixture.phase_report(),
+            fixture.request_report()
+        );
         assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
     }
 
@@ -662,12 +690,17 @@ mod http_tests {
         assert!(still_paused, "initiator must remain blocked during lookup");
         assert!(
             elapsed < fixture.tier.config.timeout,
-            "elapsed: {elapsed:?}; remote: {:?}; phases_us: {:?}",
+            "elapsed: {elapsed:?}; remote: {:?}; phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
             fixture.tier.remote_info(),
-            fixture.phase_report()
+            fixture.phase_report(),
+            fixture.request_report()
         );
         assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
-        eprintln!("paused initiator phases_us: {:?}", fixture.phase_report());
+        eprintln!(
+            "paused initiator phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
+            fixture.phase_report(),
+            fixture.request_report()
+        );
         (result, initiating_result)
     }
 
