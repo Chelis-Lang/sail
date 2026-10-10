@@ -134,6 +134,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
         None
     };
     Ok(ResultDocument {
+        repair: None,
         job: status,
         result,
     })

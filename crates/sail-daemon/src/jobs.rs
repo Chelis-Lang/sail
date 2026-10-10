@@ -1,5 +1,6 @@
 //! Durable, FIFO project verification jobs on a separate local endpoint.
 
+mod product;
 mod store;
 mod worker;
 
@@ -25,6 +26,7 @@ struct State {
     ready: Condvar,
     stop: AtomicBool,
     activity: Arc<AtomicU64>,
+    proofs: crate::proof_journal::Journals,
 }
 
 /// A bound project endpoint; it owns one FIFO verification worker.
@@ -79,6 +81,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             ready: Condvar::new(),
             stop: AtomicBool::new(false),
             activity: Arc::new(AtomicU64::new(0)),
+            proofs: crate::proof_journal::Journals::default(),
         }),
     })
 }
@@ -187,6 +190,34 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
 
 fn dispatch(state: &State, request: Request) -> Response {
     let result = match request {
+        Request::Capabilities => Ok(Response::Capabilities {
+            proof_version: sail_api::proof::VERSION,
+            repair: true,
+        }),
+        Request::ProofEvents { id, cursor, limit } => get(state, &id)
+            .and_then(|job| {
+                state.proofs.page(
+                    &state.root.join(&id),
+                    &id,
+                    &cursor,
+                    limit,
+                    job.status.state.terminal(),
+                )
+            })
+            .map(Response::ProofEvents),
+        Request::Explain {
+            id,
+            target,
+            function,
+            obligation,
+        } => product::explain(state, &id, &target, &function, obligation.as_deref())
+            .map(|value| Response::Explanation(Box::new(value))),
+        Request::SaveBaseline { id, name } => product::save_baseline(state, &id, &name)
+            .map(|value| Response::Baseline(Box::new(value))),
+        Request::Baselines => product::baselines(state).map(Response::Baselines),
+        Request::Compare { before, after } => {
+            product::compare(state, &before, &after).map(Response::Comparison)
+        }
         Request::Submit { submission } => submit(state, submission).map(Response::Status),
         Request::List { project_dir } => state.jobs.lock().map_err(lock_error).map(|jobs| {
             let mut statuses: Vec<_> = jobs
@@ -286,6 +317,7 @@ fn establish_revision(state: &State, submission: &mut Submission) -> io::Result<
         .filter(|job| {
             job.submission.project_dir == submission.project_dir
                 && job.submission.args == submission.args
+                && job.submission.mode == submission.mode
                 && job.submission.force == submission.force
                 && job.submission.environment == submission.environment
         })
