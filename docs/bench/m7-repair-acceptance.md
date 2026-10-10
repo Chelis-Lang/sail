@@ -151,6 +151,50 @@ cleanup outcomes are retained; private environments are not copied. Passing
 this integration does not replace the three-round performance workload, source
 oracle, full corpus conformance, or concurrent-read latency census.
 
+## Reproducible warm-reader preparation
+
+`scripts/m7-reader-acceptance.py` prepares the reader workload from an explicitly
+supplied source-only Cargo workspace. Supply the immutable product and collector
+directories, their `freeze.json` files, the qualified source runtime, and the
+exact package, target kind and function:
+
+```sh
+python3 scripts/m7-reader-acceptance.py \
+  --bin-dir acceptance/product --source-runtime acceptance/qualified-engine \
+  --source-workspace acceptance/pinned-source-only \
+  --python-probe acceptance/probes/python-reader-probe.py \
+  --probe-bin-dir acceptance/probes --out acceptance/reader-evidence \
+  --package human-eval-verus --target human_eval_verus --kind lib \
+  --function human_eval_verus::human_eval_013::compute_gcd \
+  --environment-label linux-x86_64-local --setup-timeout 0 --keep-daemon
+```
+
+The workspace must already have the corpus's supported Cargo manifest and pinned
+dependency paths. The controller makes fresh baseline and active source copies,
+excluding actual Cargo output; it never copies target artifacts or receipts. In
+each copy it first runs ordinary independent full verification, then establishes
+the exact interactive repair-function context. It records every preparation
+invocation, result, elapsed time and failure. Only the catalogue's explicit
+first-run input-declaration transition permits one establishment rerun. Other
+Unknown, Historical, incomplete, wrong-scope or failed reports reject admission.
+
+`--setup-timeout 0` explicitly permits this unmeasured dependency and context
+preparation to finish, with progress output and owned-process cancellation.
+The default preparation budget is 600 seconds per invocation. Preparation is
+separate from read-latency acceptance: both workspaces must have independently
+complete, successful Current full reports before the measured actor starts.
+The original Python and Rust collectors each retain four clients, 200 samples,
+five-second RPC deadlines, exact selected-crate ancestry and p95 below 200 ms.
+Their own process bound remains 600 seconds. A passing collector cannot replace
+missing or stale full evidence, and the earlier cold 600-second failure remains
+in the acceptance record.
+
+On failure the controller retains public job output and cancels only jobs and
+the private service it created. On success `--keep-daemon` leaves that exact
+service available for the retained CLI/MCP scenario above, with its actual PID,
+baseline job ID and input revision in `summary.json`. These are setup and test
+tools, not new proof modes or evidence that the performance gates have passed.
+
 ## Retained acceptance progress (2026-10-10)
 
 M7 remains in progress. Passing integration checks do not substitute for the
