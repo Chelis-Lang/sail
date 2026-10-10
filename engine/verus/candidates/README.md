@@ -1,11 +1,15 @@
 # Exact graph-read candidate
 
-This candidate has compiled library checks, VIR unit tests and an ordinary Linux
-source build, but no qualified runtime. The build verified 2,060 vstd obligations
-with zero errors; its exact manifest and artifacts are retained in
-`qualifications/2459-linux-build.json`. Runtime source oracles and product
-acceptance remain pending. It does not change
-`interactive.patch`, the installer or any qualified runtime. See ADR 0028.
+Candidate `2459` completed an ordinary Linux source build with 2,060 vstd
+functions verified and passed its library, fixture, checkpoint and cancellation
+controls. Its real HE qualification failed an independent-stock exact SMT
+comparison, so it remains unqualified and unselected. Fixed declaration-order
+controls preserve both fresh compiler orders and their exact cached/fresh output
+pairs. The separate other-module edit matched all stock solver bytes, but
+obtained no preparation reuse from the previous revision. See
+`qualifications/2459-linux.json` and `qualifications/2459-order-controls.md`.
+Neither candidate changes `interactive.patch`, the installer or a qualified
+runtime. See ADR 0028.
 
 Apply `graph-ledger.patch` to a separate checkout of the primary pinned Verus
 commit. Do not apply it on top of `interactive.patch`: the candidate is a complete
@@ -51,3 +55,60 @@ serialized entry/provenance/source storage uses explicit global gates or direct
 ownership accounting, rather than destructor counters. Compiler-owned message
 clones are working state outside cache ownership; removing cache references does
 not invalidate those clones.
+
+## Same-input raw-byte oracle candidate
+
+`graph-ledger-oracle.patch` is a complete, separate candidate patch. The owner
+selected a byte comparison between restored and fresh lowering from the same
+compiler input, retaining independent stock verdict and diagnostic checks and
+reporting stock transcript instability. The historical `2459` qualification
+failure remains preserved. This new candidate has host library regressions;
+its ordinary runtime build and executable qualification are pending. It is not
+selected by the installer or the public runtime pin.
+
+The diagnostic oracle runs only when `SAIL_ENGINE_ORACLE_DIR` is set and a
+preparation has passed the normal key, provenance and graph-ledger validation.
+It constructs independent fresh and restored `Ctx::new` owners from the same
+immutable current pruned IR. Name, graph capture, chosen-trigger, qid, log,
+reporter, solver and verifier outcome owners are independent. It compares
+post-lowering and final effects, grouped/immediate and deferred diagnostics,
+typed function outcomes, and the ordered list of actual solver-writer byte
+streams. Each arm invokes the explicit real pinned solver. Partial writes,
+capture errors, nonzero solver termination, missing launch/closure or unknown
+state fail the oracle. An empty session list is exact empty evidence, not a
+solver proof. Shadow work cannot advance primary producer ordinals or cache
+counters; it does not alter the authoritative primary lowering.
+
+The oracle's actual-written streams, diagnostic files and summaries have a
+256 MiB process-wide retained disk quota. Each diagnostic file is bounded by
+16 MiB and each summary by 64 KiB. There are at most 4,096 session allocations
+per arm. These diagnostic files and the two temporary compiler/verifier working
+states are separate from the production preparation cache's memory budget;
+this opt-in qualification mode is not a product performance path. Capsule
+comparisons use the same global preparation serialization lock and bounded
+encoders, and drop temporary buffers before unlocking. The production quota
+physical-drop fixes from `graph-ledger.patch` remain present.
+
+After an ordinary verified build of the distinct variant, run:
+
+```sh
+python3 engine/verus/candidates/test-same-callback.py \
+  --engine VARIANT/verus --stock STOCK/verus --z3 PINNED/z3 --out OUTPUT
+```
+
+The fixed controls fill a preparation, prove a real restored-hit positive with
+actual sessions, then inject ordered-function, spec-body and latent-effect
+corruption into the independent restored arm **after successful validation**.
+The primary cache contents remain unchanged. The first two faults must fail
+actual wire equality; the last must fail complete effect equality. Positive
+shadow work must preserve primary obligation identities/order and authoritative
+stock verdicts and diagnostics. These executable controls, existing stock
+fixture verdict/diagnostic checks, checkpoint/cancellation controls and both
+real-project edit catalogues remain required before activation.
+
+`SAIL_ENGINE_ORACLE_COMPONENTS` plus `SAIL_ENGINE_ORACLE_COMPONENT_MODULE`
+optionally records exact baseline components in their original order before
+lookup. It uses the existing typed encodings, a 64 MiB retained serialization
+bound under the global gate and a separate 128 MiB process-wide disk bound.
+These records diagnose the first changed input; they do not broaden any cache
+equivalence or suppress a miss.
