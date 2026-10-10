@@ -173,3 +173,46 @@ and final Linux library stages were not reached. Raw streams and deadline
 metadata are retained; see `qualifications/2421-linux-resumed-failure.json`.
 The candidate remains unqualified and unselected. Narrowing the measured unused
 span-vector dependency does not establish a remedy for this solver timeout.
+
+## Private span-seed dependency candidate
+
+`private-span-boundary.patch` is a separate, unselected development candidate
+based on `2421`. It removes only the unused whole
+`GlobalCtx.datatype_graph_span_infos` vector from the preparation baseline.
+The field is private. Its only ordinary reader, `recursive_types::check_traits`,
+still runs against the fresh complete graph and vector before bucket lowering.
+The accessor invalidates an active preparation capture. Current callback span
+registration uses that same accessor before capture, so current raw-span owners,
+used-span bindings and provenance remain exact. The interpreter clone factory
+and diagnostic oracle fork explicitly invalidate any active parent capture
+before creating a new capture owner. An unexpected future read therefore costs
+a miss; it does not broaden cache equivalence silently.
+
+The new dependency domain is
+`sail-prepared/graph-ledger/private-span-seed/v4`. The portable representation
+remains version 3; its data representation has not changed. All other 30 baseline
+components, pruned IR, ordered graph answers/function schedule, options and
+mutable effects remain bound. `audit-private-span-boundary.py` checks privacy,
+the closed raw-read inventory, both clone-escape guards and fresh trait-check
+ordering. Host release VIR regressions passed 12/12; see
+`qualifications/private-span-host.json`. This is library evidence, not a built
+or qualified runtime.
+
+After combining the independently reviewed decoded-allocation correction and
+ordinarily building a separately sealed runtime, run:
+
+```sh
+python3 engine/verus/candidates/test-private-span-cross-edit.py \
+  --engine VARIANT/verus --stock STOCK/verus --z3 PINNED/z3 \
+  --project HE --patch CANDIDATE.patch --out OUTPUT
+```
+
+The additive control checks a complete module-013 proof against stock before
+and after an actual module-023 body edit. It requires a persistent restore in
+**FOCUS**, before the invocation can write any full-phase preparation, with
+previous-revision files retained. Every real hit must pass the same-input raw
+wire/effect/diagnostic oracle. This scoped control cannot replace complete
+HE/Vest qualification, mandatory stock checks or the two whole-loop performance
+gates. The retained `2421` primary timeout is not assumed solved by this seam.
+A combined runtime build is deliberately pending the decoded preparation
+allocation fix; no aggregate 512 MiB claim is made from these seam tests.
