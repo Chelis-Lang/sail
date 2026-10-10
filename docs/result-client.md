@@ -71,3 +71,31 @@ Offline decoding or cloning improvements do not qualify those gates or the
 M7 edit-loop performance target. See [freshness](freshness.md),
 [the repair workflow](proof-repair-walkthrough.md) and
 [the roadmap](ROADMAP.md) for the separate product contracts.
+
+## Calling the SDK
+
+Pass the durable **job** socket, rather than the SMT-cache socket. A configured
+cache endpoint can be converted with `jobs::socket_path`; the CLI and MCP use the
+same endpoint resolution. Keep the client across reads:
+
+```rust
+use sail_api::jobs::{Client, Request, Response};
+
+let client = Client::with_result_decoding_cache(job_socket);
+let response = client.call(&Request::Result { id: job_id.clone() })?;
+if let Response::Result(document) = response {
+    println!("{:?}: {:?}", document.job.state, document.job.currentness);
+}
+```
+
+The returned lifecycle and currentness are separate from the proof outcome.
+Inspect the complete report or repair acceptance evidence before treating a
+function as verified. A cached decoding does not turn provisional, historical
+or unknown evidence into a confirmed result.
+
+Connection and I/O failures return `io::Error`. Framing rejects an oversized
+body with `SAIL0801` and an incompatible envelope version with `SAIL0802`;
+malformed JSON and server errors are returned without substituting a prior
+result. The ordinary `call` method retains its existing five-second **per-I/O**
+timeouts; it does not promise a five-second total across arbitrary fragmented
+reads. Cancelling and bounded MCP transport are separate integration work.
