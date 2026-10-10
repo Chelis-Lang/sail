@@ -1,0 +1,153 @@
+{
+  "version": 1,
+  "scope": "Failed unselected c39 source qualification; no confirmed previous-revision reuse or product qualification",
+  "patch_sha256": "c39c47bf8472603b5a8c5084c89ccc00ec1137a3ea180cf4c876bf3e7ef92f7a",
+  "manifest_sha256": "52a5ed7fb56798922cffa4977ec5729c3ebe132d7b6b02be99589b02ff4f83af",
+  "execution": "linux-x86_64-container-emulated-sharedload",
+  "machine": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+  "pipeline": {
+    "version": 1,
+    "exit_code": 1,
+    "elapsed_seconds": 293.38639450699884,
+    "scope": "Unselected source qualification only; product/performance/activation remain independent"
+  },
+  "stages": [
+    {
+      "name": "private-graph-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 1.3068157090001478
+    },
+    {
+      "name": "private-span-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 0.7585585010001523
+    },
+    {
+      "name": "old-domain-migration",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 12.664338005999525
+    },
+    {
+      "name": "same-input-hit-controls",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 25.670660511001188
+    },
+    {
+      "name": "source-fixtures",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 71.19206203100111
+    },
+    {
+      "name": "graph-checkpoint",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 112.87003613599882
+    },
+    {
+      "name": "cancel-restart",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 8.414993835998757
+    },
+    {
+      "name": "first-input-delta",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 30.94293922200086
+    },
+    {
+      "name": "previous-revision-focus",
+      "status": "failed",
+      "exit_code": 1,
+      "elapsed_seconds": 28.03138763699826
+    }
+  ],
+  "failed_stage": {
+    "version": 1,
+    "scope": "Module013 source proof and genuine prior-revision focused preparation; not whole-project or product qualification",
+    "engine_verifier_sha256": "9a51b46295c937e7120e2b329833753a5f52e4e5b64e901f2b016170c1446c05",
+    "patch_sha256": "c39c47bf8472603b5a8c5084c89ccc00ec1137a3ea180cf4c876bf3e7ef92f7a",
+    "results": [
+      {
+        "revision": 0,
+        "prior_preparations": [],
+        "edited_source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+        "assertions_completed": false,
+        "exit_code": 0,
+        "full_module_verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "actual_hits": 0,
+        "focus_restores": [],
+        "same_callback_checks": [],
+        "preparation": {
+          "version": 1,
+          "enabled": true,
+          "batch_hits": 0,
+          "persistent_hits": 0,
+          "misses": 4,
+          "peak_retained_bytes": 3498506,
+          "memory_budget_bytes": 536870912,
+          "disk_budget_bytes": 536870912
+        }
+      }
+    ],
+    "controls_completed": false
+  },
+  "observed_misses": [
+    {
+      "version": 1,
+      "phase": "full",
+      "event": "prepared-miss",
+      "payload": {
+        "stage": "ledger-scratch-budget",
+        "key": "0beb52e4a5eb3962d8035cba643f1a045620475580a3b60d9727b5ec9b69532c"
+      }
+    }
+  ],
+  "retained_artifacts": {
+    "qualification.log": {
+      "sha256": "534589717a91971966c3f5633a8915908389e3ad14e2dc02f9172be9963d5119",
+      "bytes": 237
+    },
+    "qualification/previous-revision-focus.log": {
+      "sha256": "aa0e59b1ab0210d71e6f46c24aa677742c3f6a25a6b4fd86c1108a71e99eaddd",
+      "bytes": 496
+    },
+    "qualification/previous-revision-focus/0/engine.stdout": {
+      "sha256": "c05fee2d8ef9903dba61edf5e1aecf6ca4e962b518805662e671f0461df5711b",
+      "bytes": 7726
+    },
+    "qualification/previous-revision-focus/0/engine.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/0/stock.stdout": {
+      "sha256": "3f0f046fc79a5e54e8e054857d90b796c184c86db9e6b131587e33adfe6b597d",
+      "bytes": 7771
+    },
+    "qualification/previous-revision-focus/0/stock.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/0/events.jsonl": {
+      "sha256": "2a3b8c1caab5ead43c1bfeed0f762a37f4698028e1ec9285ccb0fdeaf1a424fd",
+      "bytes": 14420
+    }
+  },
+  "checks_unchanged": true,
+  "full_he_stage_run": false,
+  "previous_revision_proof_reuse_confirmed": false,
+  "selected_runtime_changed": false,
+  "product_qualified": false
+}
