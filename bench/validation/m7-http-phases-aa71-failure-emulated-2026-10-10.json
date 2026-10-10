@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "kind": "targeted-http-phase-diagnostic",
+  "source_commit": "aa71d8f9968fbc7e213e58e628577d2f5e0b909a",
+  "source_archive_sha256": "caab9bec87b010c97ce5362c7a15afe960d8b36f9b87be8d2059a0aaaa9591ed",
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; concurrent local source qualification and default corpus verification",
+  "command": "cargo test --locked -p sail-daemon shared::http_tests -- --nocapture",
+  "build_jobs": 2,
+  "exit_code": 101,
+  "tests_run": 4,
+  "passed": 1,
+  "failed": 3,
+  "elapsed_seconds": 2.98,
+  "configured_lookup_timeout_ms": 250,
+  "server_delay_ms": 75,
+  "cases": [
+    {
+      "test": "concurrent_readers_coalesce_one_http_lookup",
+      "phases_us": {
+        "client_ready": 234473,
+        "helper_started": 361367,
+        "server_accepted": 471860,
+        "transport_timeout": 681909,
+        "published": 682103
+      },
+      "result": "Timeout",
+      "remote_requests": 1,
+      "coalesced": 7
+    },
+    {
+      "test": "verified_http_reply_reaches_readers_while_initiator_is_paused",
+      "phases_us": {
+        "client_ready": 302585,
+        "helper_started": 303145,
+        "follower_started": 305196,
+        "server_accepted": 479842,
+        "transport_timeout": 682793,
+        "published": 682999,
+        "server_read_returned": 956536,
+        "server_sent": 1042426
+      },
+      "follower_elapsed_ms": 294.769583
+    },
+    {
+      "test": "forged_http_reply_is_refused_while_initiator_is_paused",
+      "phases_us": {
+        "client_ready": 204685,
+        "helper_started": 217598,
+        "follower_started": 222153,
+        "server_accepted": 470657,
+        "transport_timeout": 681970,
+        "published": 682128,
+        "server_read_returned": 955563,
+        "server_sent": 1040318
+      },
+      "follower_elapsed_ms": 376.521
+    }
+  ],
+  "interpretation": "Delay precedes reply verification. Server read returned after client timeout in both paused-initiator cases. This trace did not capture read byte count or error, so it does not establish whether a complete request arrived or the read observed connection closure. Follow-up retains those outcomes. No TLS or transport cause is claimed.",
+  "raw_log": {
+    "name": "sail-m7-http-phases-aa71d8f.log",
+    "bytes": 3431,
+    "sha256": "217574d5335abd5001ac079890da80ccab3b2ee374b3676d03229c0e6626aeee"
+  },
+  "acceptance": false,
+  "limits_changed": false
+}
