@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "scope": "Complete ignored real-Z3, cached-session, HTTP shared-cache, attribution and fault-injection suite on frozen integrated source",
+  "source_commit": "5fd7986e6fe8cfe130cdff848ec6084c97cd1b46",
+  "source_archive_sha256": "94506c234c1996e9841d31d1b8d707f1007024ca67adce11c734e75030203536",
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load",
+  "command": [
+    "bash",
+    "ci/run.sh",
+    "solver"
+  ],
+  "cargo_build_jobs": 2,
+  "nextest_case_workers": 2,
+  "internal_fixture_concurrency": "unchanged",
+  "solver": {
+    "name": "Z3",
+    "version": "4.16.0",
+    "binary_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+  },
+  "exit_code": 0,
+  "passed": 37,
+  "failed": 0,
+  "non_solver_tests_filtered": 439,
+  "elapsed_s": 182.337,
+  "shared_entry_fault_case_elapsed_s": 13.751,
+  "shared_entry_fault_case_test_deadline_s": 180,
+  "session_deadline_s": 60,
+  "raw_log_sha256": "485fc1c5da291fbd5736a96b495f6141f06db42ef7082331493acbfa9a323082",
+  "raw_log_bytes": 4218,
+  "qualification": "Assertions, per-test and per-session bounds unchanged. This later complete suite pass does not erase or identify the cause of the original62ad timeout. Real-reader, complete source-candidate and performance acceptance remain pending."
+}
