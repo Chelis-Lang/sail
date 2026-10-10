@@ -56,6 +56,25 @@ class AcceptanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bench.selected_report({"exit_code": 2, "error": {"message": "broken engine"}})
 
+    def test_unavailable_or_over_budget_preparation_is_not_measured_as_enabled(self):
+        record = {"version": 1, "enabled": True, "memory_budget_bytes": 512 * 1024 * 1024,
+                  "disk_budget_bytes": 512 * 1024 * 1024, "peak_retained_bytes": 1024}
+        self.assertEqual(bench.checked_preparation({"preparation": [record]}), [record])
+        for invalid in ({}, {"preparation": []}, {"preparation": [dict(record, enabled=False)]},
+                        {"preparation": [dict(record, peak_retained_bytes=513 * 1024 * 1024)]},
+                        {"preparation": [dict(record, disk_budget_bytes=513 * 1024 * 1024)]}):
+            with self.assertRaises(ValueError):
+                bench.checked_preparation(invalid)
+
+    def test_public_focus_observations_are_actionable_and_full_events_are_not(self):
+        event = {"input": {"phase": "focus", "observation": {"kind": "function_observed"}}}
+        self.assertTrue(bench.actionable_event(event))
+        event["input"]["phase"] = "full"
+        self.assertFalse(bench.actionable_event(event))
+        event["input"]["phase"] = "focus"
+        event["input"]["observation"]["kind"] = "function_started"
+        self.assertFalse(bench.actionable_event(event))
+
     def test_only_explicit_cold_declarations_allow_one_retry(self):
         doc = {"accepted": False, "selection_error": None, "batch": {
             "batched": True, "manifest_sha256": "manifest", "focus": {},
