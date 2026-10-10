@@ -123,6 +123,10 @@ passed all 439 workspace tests and every documentation/policy check.
 The same frozen source passed all 37 real-solver/fault tests with their original
 limits. Its complete end-to-end attempt passed legacy checks, then failed the
 original 240-second cold managed-verification limit; repair was not reached.
+An isolated repair phase on those same product bytes subsequently failed its
+original 120-second total deadline while waiting for the first job. The default
+managed evidence directory now lives outside temporary fixture scratch so
+future timeout output survives cleanup. Every e2e phase is still required.
 These suite passes do not establish product acceptance or source-engine qualification.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh

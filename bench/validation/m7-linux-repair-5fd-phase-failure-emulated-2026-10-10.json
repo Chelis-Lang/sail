@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "kind": "isolated-original-repair-phase-failure",
+  "passed": false,
+  "sail_source_commit": "5fd7986e6fe8cfe130cdff848ec6084c97cd1b46",
+  "source_archive_sha256": "94506c234c1996e9841d31d1b8d707f1007024ca67adce11c734e75030203536",
+  "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load; isolated repair phase, original integrated e2e failed managed240",
+  "sail_sha256": "7c38e9d2b9fd16e3fb479d93a32aca206c2be5a9717aa82e2d17293096a5c1ff",
+  "shim_sha256": "7477fcfa07d97c6194f49d4c7651b20dedc7c01b9ca8be3d251bea65e242cd68",
+  "engine_source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "engine_patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+  "engine_manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+  "fixture": {
+    "vstd": "supported-no-vstd-metadata",
+    "dependency_verification": "ordinary-full-cargo-plan",
+    "rust_toolchain": "1.98.1"
+  },
+  "deadlines_s": {
+    "workflow": 120,
+    "command": 30,
+    "rpc": 5
+  },
+  "elapsed_s": 120.34582213799968,
+  "failed_stage": "first success repair job did not finish before original total workflow deadline",
+  "last_public_job": {
+    "version": 1,
+    "id": "1791664215845-139098-0",
+    "project_dir": "/tmp/sr-y_cmg_of/project",
+    "args": [
+      "--package",
+      "repair_demo",
+      "--lib"
+    ],
+    "state": "running",
+    "submitted_at_ms": 1791664215845,
+    "started_at_ms": 1791664215863,
+    "finished_at_ms": null,
+    "exit_code": null,
+    "input_revision": null,
+    "currentness": "unknown",
+    "error": null
+  },
+  "last_public_result_present": false,
+  "cli_operations": 331,
+  "max_cli_operation_s": 0.42833108400009223,
+  "mcp_attempted": false,
+  "later_scenarios_attempted": false,
+  "progress_failures": [],
+  "cleanup_errors": [],
+  "worker_stderr": {
+    "sha256": "61a4f38fd041519251764d36f2beb8f87f1454fbb97597468646ef9ace0030a4",
+    "bytes": 661,
+    "last_observed_phase": "Cargo compiling verus_builtin_macros; no completed requested proof report retained",
+    "causal_limit": "Last retained compiler output does not establish the entire cause of the deadline overrun."
+  },
+  "raw_evidence": {
+    "archive_sha256": "5f634ab31bf7e8727282a1d4545575554dee945a7b68dc6ef6b0d2edd36ab5cc",
+    "archive_bytes": 23961,
+    "files": 672,
+    "controller_log_sha256": "dcd03bd4d3d0d0c64fd13f5161f3159502eea9d7e82633301d9fa73c52abdb3a",
+    "controller_log_bytes": 1212
+  },
+  "qualification": "Isolated phase diagnosis only. The complete integrated attempt already failed managed240. Neither failure authorizes skipping a phase, extending deadlines, or product acceptance. Earlier native CI success remains a separate frozen scope."
+}

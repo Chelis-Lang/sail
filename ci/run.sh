@@ -193,7 +193,10 @@ RS
     if [ "$phase" = full ] || [ "$phase" = managed ]; then
       # Bounded complete-report receipts: reuse, missing evidence and a failing
       # proof edit with restored timestamps, compared with the pinned Verus.
-      python3 "$sail_managed_test" "$sail"
+      # Keep timeout/error output outside the fixture's TemporaryDirectory.
+      # Use the checkout path because the full legacy phase changes cwd.
+      SAIL_MANAGED_ACCEPTANCE_OUT="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}" \
+        python3 "$sail_managed_test" "$sail"
     fi
     if [ "$phase" = full ] || [ "$phase" = repair ]; then
       cd "$sail_checkout"
