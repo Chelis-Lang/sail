@@ -101,8 +101,10 @@ the actual execution environment with every result. Native-host availability
 does not block this phase. Synthetic fixtures do not replace the two real
 catalogues, and a failed speed gate remains visible.
 
-Correctness compares full verdicts, diagnostics and solver input bytes with
-stock. Include full regressions after a successful focus, late borrow/EXEC
+Correctness compares full verdicts and diagnostics with independent stock
+runs, and cached versus fresh lowering solver input bytes from the same
+compiler input (the owner amendment below). Include full regressions after a
+successful focus, late borrow/EXEC
 errors, bitvector failures, recursive obligations, duplicated diagnostics,
 stale span checkpoints, preserved-mtime content edits, aliases/configuration
 changes, observation loss, corrupt preparation, cancellation, restart and
@@ -110,6 +112,34 @@ event reconnects. Run the full local fast and standard corpus and affected
 source/deep tests. Long source builds and benchmarks remain local-only; each
 required CI job stays below ten minutes. CI uses validated pinned engine
 artifacts and rejects a manifest with a stale patch digest.
+
+## Owner amendment: the source-engine byte oracle (2026-10-10)
+
+VI-0001 makes independent stock compiler invocations emit different
+`arrow_1`/`arrow_2` declaration orders for identical source. The failed
+qualification and four fixed-order controls are retained under
+`engine/verus/candidates/qualifications/`; no old failure becomes a pass.
+The owner approved comparing cached lowering with fresh lowering from the
+**same compiler input**, keeping stock verdict and diagnostic checks and
+reporting stock transcript instability.
+
+The byte oracle observes actual ordered bytes written to every pinned solver
+session, including framing and follow-up requests. Both arms begin with
+identical current compiler inputs and independently owned mutable lowering,
+naming, reporting and solver state. Compare lowering and final effects,
+grouped/immediate diagnostics and outcomes as additional checks. The fresh
+arm performs stock lowering directly. Shadow checks cannot mutate production
+proof events, counters, preparation entries or the authoritative result.
+Incomplete capture, unsupported state or a mismatch fails qualification.
+Post-validation corruption of a real restored hit must be detected; rejecting
+an entry before restoration is insufficient negative evidence.
+
+This changes the source-engine byte comparison baseline, not query bytes or
+default-mode replay. No normalization is authorized. Full stock verdicts and
+diagnostics, final compiler sealing, Current acceptance, memory limits, local
+corpus coverage, real-reader deadlines and both twofold speed gates remain
+mandatory. A new source patch requires its own exact build and qualification
+before selection; the existing runtime is unchanged by this decision.
 
 ## Consequences
 

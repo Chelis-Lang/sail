@@ -129,19 +129,19 @@ inline with the date and link the ADR that captures it.
 
 14. **Source-engine byte oracle when stock emits unstable declaration order.**
 
-    **Pending, 2026-10-10:** the graph candidate's real human-eval qualification
-    failed the exact independent-stock SMT-byte check on unchanged source.
-    Stock chose a different `arrow_1`/`arrow_2` declaration order (VI-0001).
-    The candidate's cached and fresh-lowering runs matched all 114 sessions;
-    four fixed-order controls reproduced both stock orders and missed when
-    current compiler input order changed. The original failed qualification
-    remains in `engine/verus/candidates/qualifications/2459-linux.json`, with
-    controls in `2459-order-controls.json` in that directory.
+    The graph candidate's real human-eval qualification failed the exact
+    independent-stock SMT-byte check on unchanged source. Stock chose a
+    different `arrow_1`/`arrow_2` declaration order (VI-0001). Cached and
+    fresh-lowering engine runs matched all 114 sessions; four fixed-order
+    controls reproduced both orders and missed when current compiler input
+    order changed. The original failed qualification remains in
+    `engine/verus/candidates/qualifications/2459-linux.json`, with controls
+    in `2459-order-controls.json` in that directory.
 
-    The owner has been asked whether cached-versus-fresh lowering from the
-    same compiler input should be the byte oracle, retaining independent-stock
-    verdict/diagnostic checks and reporting stock transcript instability, or
-    whether exact independent-stock bytes remain the acceptance gate.
-    ADR 0027's existing gate remains in force until answered. An additive
-    same-callback byte oracle is being implemented for diagnosis; no candidate
-    runtime is selected or qualified by these controls.
+    **Answered 2026-10-10 (owner):** compare cached lowering with fresh
+    lowering from the same compiler input; keep independent stock verdict
+    and diagnostic checks and report stock transcript instability. The
+    same-callback oracle compares actual ordered solver bytes with independent
+    mutable owners and records diagnostic/effect/outcome comparisons. Its
+    implementation must pass before it can qualify a new variant; the old
+    failed qualification is not relabelled. See ADR 0027's amendment.
