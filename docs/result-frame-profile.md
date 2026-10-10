@@ -20,7 +20,11 @@ cargo run --release -p sail-api --example result_frame_profile -- \
     --frame target/current-result.frame
 ```
 
-The input includes the four-byte length prefix. Alternatively, pass a JSON file
+The input includes the four-byte length prefix. Loading is bounded by the public
+frame limit; truncation, trailing bytes and additional frames are refused.
+Decode stages retain the exact captured bytes and JSON member order. Cold
+encoding is checked against the complete original graph, because serialization
+can legitimately choose a different member order. Alternatively, pass a JSON file
 containing the public Response body without `--frame`. The example checks that
 its typed response preserves the original whole JSON graph before measuring
 one- and four-thread typed decode, generic Value decode, full-response clone,
@@ -77,3 +81,10 @@ preservation; this profiler makes no such change. Likewise, avoiding a stdout
 SHA read requires continuous ownership of that exact file and its namespace
 from the first validated content hash. Stat metadata or an unrelated runtime
 input guard is insufficient, including for restored-mtime and replaced files.
+
+The initial Rust profiler reencoded the typed response before timing its decode
+stages. Its recorded whole-graph comparisons remain evidence, but an original-byte
+decode claim additionally requires verifying that reencoded frame's byte identity.
+The current tool uses the captured frame directly and tests a different JSON
+member order, extra frames and truncation. The earlier measurements remain
+offline diagnostics with their original implementation identities.

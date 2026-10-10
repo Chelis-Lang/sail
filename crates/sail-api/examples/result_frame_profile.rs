@@ -1,37 +1,31 @@
 //! Offline whole-result profiling; this never validates a live proof or freshness.
+#![forbid(unsafe_code)]
 
 use std::hint::black_box;
-use std::io::{self, Cursor};
+use std::io::{self, Cursor, Read};
 use std::sync::Arc;
 use std::time::Instant;
 
-use sail_api::jobs::{Response, read_frame, write_frame};
+use sail_api::jobs::{MAX_FRAME, Response, read_frame, write_frame};
 use serde_json::{Value, json};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    let (input, framed) = match args.as_slice() {
-        [path] => (std::fs::read(path)?, false),
-        [flag, path] if flag == "--frame" => (std::fs::read(path)?, true),
+    let (path, framed) = match args.as_slice() {
+        [path] => (path, false),
+        [flag, path] if flag == "--frame" => (path, true),
         _ => return Err("usage: result_frame_profile [--frame] RESPONSE_FILE".into()),
     };
-    let (body, expected) = if framed {
-        (
-            read_frame(&mut Cursor::new(&input))?,
-            read_frame(&mut Cursor::new(&input))?,
-        )
-    } else {
-        (
-            serde_json::from_slice::<Response>(&input)?,
-            serde_json::from_slice::<Value>(&input)?,
-        )
-    };
-    if serde_json::to_value(&body)? != expected {
-        return Err("typed response did not preserve the original whole graph".into());
-    }
+    let mut input = Vec::new();
+    std::fs::File::open(path)?
+        .take((MAX_FRAME as u64) + 5)
+        .read_to_end(&mut input)?;
+    let (body, expected) = decode_input(&input, framed)?;
     let mut encoded = Vec::new();
     write_frame(&mut encoded, &body)?;
-    let frame = Arc::new(encoded);
+    // Decode costs must use the captured bytes, including their member order.
+    // Only an unframed JSON input needs a generated protocol envelope.
+    let frame = Arc::new(if framed { input } else { encoded });
     let mut results = serde_json::Map::new();
     for threads in [1, 4] {
         for stage in [
@@ -50,11 +44,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         serde_json::to_string_pretty(&json!({
             "kind": "offline_whole_result_rust_profile",
             "frame_bytes": frame.len(), "samples": 8,
+            "captured_frame_used_for_decode": framed,
             "complete_graph_equality_checked": true, "live_acceptance": false,
             "results": results,
         }))?
     );
     Ok(())
+}
+
+fn decode_input(input: &[u8], framed: bool) -> io::Result<(Response, Value)> {
+    if input.len() > MAX_FRAME + if framed { 4 } else { 0 } {
+        return Err(io::Error::other("profile input exceeds the frame limit"));
+    }
+    let (body, expected) = if framed {
+        let mut cursor = Cursor::new(input);
+        let body = read_frame(&mut cursor)?;
+        if cursor.position() != input.len() as u64 {
+            return Err(io::Error::other("extra bytes after captured frame"));
+        }
+        (body, read_frame(&mut Cursor::new(input))?)
+    } else {
+        (
+            serde_json::from_slice::<Response>(input).map_err(io::Error::other)?,
+            serde_json::from_slice::<Value>(input).map_err(io::Error::other)?,
+        )
+    };
+    if serde_json::to_value(&body).map_err(io::Error::other)? != expected {
+        return Err(io::Error::other(
+            "typed response did not preserve the original whole graph",
+        ));
+    }
+    Ok((body, expected))
 }
 
 #[derive(Clone, Copy)]
@@ -103,7 +123,10 @@ impl Output {
                 serde_json::to_value(value).map_err(io::Error::other)? == *expected
             }
             Self::Value(value) => value == expected,
-            Self::Frame(value) => value == frame,
+            Self::Frame(value) => {
+                let decoded: Value = read_frame(&mut Cursor::new(value))?;
+                decoded == *expected
+            }
             Self::Cached(value) => value.as_slice() == frame,
         };
         if equal {
@@ -111,6 +134,52 @@ impl Output {
         } else {
             Err(io::Error::other("whole result changed"))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn original_member_order_is_preserved_and_encoding_keeps_the_whole_graph() -> io::Result<()> {
+        let payload =
+            br#"{ "body": { "value": "SAIL0000: example", "response": "error" }, "version": 1 }"#;
+        let mut frame = u32::try_from(payload.len())
+            .map_err(io::Error::other)?
+            .to_be_bytes()
+            .to_vec();
+        frame.extend_from_slice(payload);
+        let (body, expected) = decode_input(&frame, true)?;
+        let captured = Arc::new(frame);
+        Stage::Typed
+            .run(&captured, &body)?
+            .validate(&captured, &expected)?;
+        Stage::Encode
+            .run(&captured, &body)?
+            .validate(&captured, &expected)?;
+        let mut encoded = Vec::new();
+        write_frame(&mut encoded, &body)?;
+        assert_ne!(captured.as_slice(), encoded);
+        Ok(())
+    }
+
+    #[test]
+    fn extra_frames_and_incomplete_or_oversized_input_are_refused() -> io::Result<()> {
+        let mut frame = Vec::new();
+        write_frame(&mut frame, &Response::Error("SAIL0000: example".into()))?;
+        assert!(decode_input(&frame[..frame.len() - 1], true).is_err());
+        let mut extra = frame.clone();
+        extra.extend_from_slice(&frame);
+        assert!(decode_input(&extra, true).is_err());
+        extra.truncate(frame.len());
+        extra.push(0);
+        assert!(decode_input(&extra, true).is_err());
+        let oversized = u32::try_from(MAX_FRAME + 1)
+            .map_err(io::Error::other)?
+            .to_be_bytes();
+        assert!(decode_input(&oversized, true).is_err());
+        Ok(())
     }
 }
 
