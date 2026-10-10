@@ -142,15 +142,21 @@ source qualification before activation. The physical audit also found
 diagnostic-event JSON expansion that can overlap preparation; its bounded
 observer fix now passes all 22 actual RustVerify driver tests and strict
 all-target Clippy in the combined candidate. Its fixed 128 MiB decoder allowance
-still refuses 69 of 105 real human-eval preparations; precise ownership
-accounting, a complete ordinary build and runtime qualification precede selection.
-The reader track is measuring complete fresh-frame decoding and persistent
-client reuse. It preserves the full result schema, freshness checks and RPC
-bounds; replay measurements are separate from the original live reader gate.
+refuses 69 of 105 real human-eval preparations. The subsequent unselected
+[closed ownership overlay](../engine/verus/candidates/decode-ownership/README.md)
+admits 77 and safely refuses 28 under that same 128 MiB allowance; its 12
+allocation controls pass. This checks allocation admission, not span binding,
+graph validation or reuse after an edit. Combined actual-source checks, a
+complete ordinary build and runtime qualification precede selection.
+The reader track now provides an explicit persistent SDK decoding cache and
+joined cancellable transport. Every call receives the complete fresh frame;
+decoding reuse grants no proof or freshness authority. The integrated API's
+41 library/contract tests pass in the local Linux container. MCP activation and
+the original live reader gate remain separate from offline replay measurements.
 
 Priority order for completing this milestone:
 
-1. Retain the now-passing workspace and real-solver/fault gates, finish the current
+1. Regain a complete passing current workspace gate, retain real-solver/fault evidence, finish the current
    CLI/MCP suite without changing assertions or deadlines,
    and finish full default standard corpus validation. The original shared-entry
    timeout's cause remains unresolved despite the subsequent complete suite pass.

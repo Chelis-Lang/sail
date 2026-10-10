@@ -37,6 +37,8 @@ response decoding costs without changing reader acceptance.
 The [source preparation audit](../engine/verus/candidates/decode-budget/README.md)
 records allocation ownership, phase bounds and outstanding combined-runtime
 checks for the unselected engine candidate.
+Its [closed ownership refinement](../engine/verus/candidates/decode-ownership/README.md)
+records exact audited routes, retained payload probes and safe budget refusals.
 Long corpus, source-build and benchmark work runs locally in the Linux container;
 required CI remains short.
 
