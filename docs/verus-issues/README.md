@@ -24,6 +24,8 @@ filed as is.
 
 | [VI-0010](VI-0010-ambiguous-friendly-function-names.md) | Distinct trait implementations share a friendly function name | open | `corpus/repros/verus-ambiguous-friendly-name/` |
 
+| [VI-0011](VI-0011-cargo-no-vstd-launcher-mode.md) | Cargo no-vstd metadata misses launcher macro-mode selection | open | `corpus/repros/verus-cargo-no-vstd/` |
+
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).
 
