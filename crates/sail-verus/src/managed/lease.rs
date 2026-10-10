@@ -111,6 +111,11 @@ impl ReadLease {
         Some(lease)
     }
     pub(super) fn clean(&mut self) -> bool {
+        // A timed-out request can leave an old acknowledgement buffered. Never
+        // let a later check certify a previously invalidated owner generation.
+        if self.failure.is_some() {
+            return false;
+        }
         if !self.bindings_current() {
             self.failure.get_or_insert("lease-binding-invalidated");
             return false;
@@ -342,6 +347,106 @@ mod tests {
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
             .unwrap_or_else(|| unreachable!("mapping gone"));
         assert!(lease.clean());
+        assert!(std::fs::remove_file(file).is_ok());
+    }
+    fn delayed_owner(
+        lease: &mut ReadLease,
+        file: &Path,
+    ) -> std::io::BufReader<std::process::ChildStderr> {
+        let (socket, child_socket) =
+            UnixStream::pair().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        socket
+            .set_read_timeout(Some(Duration::from_millis(50)))
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        socket
+            .set_write_timeout(Some(Duration::from_millis(50)))
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let input: OwnedFd = child_socket
+            .try_clone()
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"))
+            .into();
+        let output: OwnedFd = child_socket.into();
+        // Widen the legal interval between closing lease descriptors on SIGIO
+        // and process exit. A delayed first acknowledgement remains queued;
+        // the replacement owner never acknowledges the second request.
+        let helper = r"import fcntl,os,signal,sys,time
+fd=os.open(sys.argv[1],os.O_RDONLY)
+def released(_signal,_frame):
+ os.close(fd)
+ print('released',file=sys.stderr,flush=True)
+signal.signal(signal.SIGIO,released)
+fcntl.fcntl(fd,fcntl.F_SETLEASE,fcntl.F_RDLCK)
+print('ready',file=sys.stderr,flush=True)
+assert sys.stdin.buffer.readline()==b'check\n'
+time.sleep(0.15)
+sys.stdout.buffer.write(b'ok\n');sys.stdout.buffer.flush()
+print('buffered',file=sys.stderr,flush=True)
+sys.stdin.buffer.readline()
+time.sleep(10)
+";
+        lease.process = Command::new("python3")
+            .args(["-I", "-u", "-c", helper])
+            .arg(&file)
+            .stdin(Stdio::from(input))
+            .stdout(Stdio::from(output))
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        lease.socket = socket;
+        std::io::BufReader::new(
+            lease
+                .process
+                .stderr
+                .take()
+                .unwrap_or_else(|| unreachable!("fixture stderr")),
+        )
+    }
+    #[test]
+    fn delayed_acknowledgement_after_mapping_break_cannot_recertify_owner() {
+        use std::io::BufRead as _;
+        let file = fixture();
+        let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(lease.process.kill().is_ok());
+        assert!(lease.process.wait().is_ok());
+        let mut events = delayed_owner(&mut lease, &file);
+        let mut line = String::new();
+        assert!(events.read_line(&mut line).is_ok());
+        assert_eq!(line.trim(), "ready");
+        assert!(!lease.clean());
+        assert_eq!(lease.failure_reason(), "lease-check-read-timeout");
+        line.clear();
+        assert!(events.read_line(&mut line).is_ok());
+        assert_eq!(line.trim(), "buffered");
+        let mut mapping = Command::new("python3").args(["-I","-u","-c",
+            "import mmap,os,sys; f=os.open(sys.argv[1],os.O_RDWR); m=mmap.mmap(f,0); os.close(f); m[:]=b'fail'; m.flush(); m[:]=b'good'; m.flush(); print('mapped',flush=True); sys.stdin.readline(); m.close()"])
+            .arg(&file).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let mut ready = [0; 7];
+        assert!(
+            mapping
+                .stdout
+                .as_mut()
+                .is_some_and(|o| o.read_exact(&mut ready).is_ok())
+        );
+        assert_eq!(&ready, b"mapped\n");
+        line.clear();
+        assert!(events.read_line(&mut line).is_ok());
+        assert_eq!(line.trim(), "released");
+        assert!(ReadLease::acquire(std::slice::from_ref(&file)).is_none());
+        assert!(
+            !lease.clean(),
+            "late acknowledgement cannot certify a broken owner"
+        );
+        assert_eq!(lease.failure_reason(), "lease-check-read-timeout");
+        assert!(
+            mapping
+                .stdin
+                .as_mut()
+                .is_some_and(|i| i.write_all(b"done\n").is_ok())
+        );
+        assert!(mapping.wait().is_ok_and(|s| s.success()));
+        drop(lease);
         assert!(std::fs::remove_file(file).is_ok());
     }
     #[test]
