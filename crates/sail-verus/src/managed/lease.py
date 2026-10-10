@@ -38,7 +38,7 @@ try:
     if soft < wanted:
         resource.setrlimit(resource.RLIMIT_NOFILE, (wanted, hard))
     for path, device, inode in identities:
-        fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK)
+        fd = os.open(bytes(path), os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK)
         fds.append(fd)
         metadata = os.fstat(fd)
         if not stat.S_ISREG(metadata.st_mode) or (metadata.st_dev, metadata.st_ino) != (device, inode):

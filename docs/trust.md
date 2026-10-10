@@ -200,6 +200,12 @@ read leases, native event coverage, and synchronous barriers. Mutable input
 contents are rehashed for reads. A writable mapping, conflicting writer, helper
 loss, timeout or uncertain path coverage makes current evidence unavailable;
 historical proof output remains available and is never relabelled Current.
+The exact sorted input-file inventory can be retained only within that same
+continuous lease and namespace-observer generation. Every mutable file is still
+content-hashed on each read with the original path encoding. New files, removals,
+replacements, symlink changes, absent configurations and changed declaration
+records invalidate the inventory and require a full recollection; no byte digest
+or elapsed-time validity is reused.
 
 Linux requires the lease holder to own the file or hold the kernel lease
 capability. The helper also leases its resolved Python interpreter, loaded

@@ -86,6 +86,7 @@ mod tests {
             excluded: Vec::new(),
             complete: true,
             observation_paths: BTreeSet::new(),
+            content_paths: BTreeSet::new(),
         }
     }
     #[test]
