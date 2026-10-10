@@ -1,0 +1,461 @@
+diff --git a/source/rust_verify/src/driver.rs b/source/rust_verify/src/driver.rs
+index 5b4d93a..de55076 100644
+--- a/source/rust_verify/src/driver.rs
++++ b/source/rust_verify/src/driver.rs
+@@ -357,6 +357,7 @@ pub fn run(
+         return (verifier, stats, Err(()));
+     }
+ 
++    crate::verifier::sail_engine_sealed(!verifier.encountered_vir_error && verifier.count_errors == 0);
+     (verifier, stats, Ok(()))
+ }
+ 
+diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
+index 71d4a33..a8e1fb1 100644
+--- a/source/rust_verify/src/verifier.rs
++++ b/source/rust_verify/src/verifier.rs
+@@ -47,6 +47,9 @@ use vir::ast_util::{fun_as_friendly_rust_name, is_visible_to};
+ use vir::def::{CommandContext, CommandsWithContext, CommandsWithContextX, SnapPos};
+ use vir::prelude::PreludeConfig;
+ 
++#[path = "sail_engine.rs"]
++mod sail_engine;
++
+ const RLIMIT_PER_SECOND_Z3: f32 = 3000000f32;
+ const RLIMIT_PER_SECOND_CVC5: f32 = 333333f32; // ~= 5s
+ 
+@@ -80,6 +83,7 @@ impl<'tcx> Reporter<'tcx> {
+ /// errors/notes)
+ impl air::messages::Diagnostics for Reporter<'_> {
+     fn report_as(&self, msg: &ArcDynMessage, level: MessageLevel) {
++        sail_engine::diagnostic(msg, level);
+         let msg: &MessageX =
+             msg.downcast_ref().expect("unexpected value in Any -> Message conversion");
+ 
+@@ -1000,6 +1004,10 @@ impl Verifier {
+             air_context.finish_query();
+         }
+ 
++        sail_engine::emit("obligation-observed", serde_json::json!({
++            "function": fun_as_friendly_rust_name(&context.fun), "description":context.desc,
++            "invalidity":invalidity, "timed_out":timed_out, "confirmed":false
++        }));
+         RunCommandQueriesResult {
+             used_axioms,
+             invalidity,
+@@ -1969,9 +1977,16 @@ impl Verifier {
+             vir::printer::write_krate(&mut file, &pruned_krate, &self.args.log_args.vir_log_option);
+         }
+ 
++        let checkpoint_key = sail_engine::bucket_key(self, bucket_id, &pruned_krate, &ctx);
++        let (krate_sst, cached_ctx) = if let Some(cached) = sail_engine::take_bucket(&checkpoint_key) {
++            sail_engine::emit("prepared-hit", serde_json::json!({"bucket":bucket_name}));
++            sail_engine::replay_bucket_diagnostics(&checkpoint_key, reporter);
++            cached
++        } else {
++        let collector = sail_engine::RecordingReporter::new(reporter);
+         let krate_sst = vir::ast_to_sst_crate::ast_to_sst_krate(
+             &mut ctx,
+-            reporter,
++            &collector,
+             &self.get_bucket(bucket_id).funs,
+             &pruned_krate,
+         )?;
+@@ -1988,6 +2003,10 @@ impl Verifier {
+             return Ok(ctx.free());
+         }
+         let krate_sst = vir::poly::poly_krate_for_module(&mut ctx, &krate_sst);
++        sail_engine::store_bucket(checkpoint_key.clone(), &krate_sst, &ctx, collector.messages());
++        (krate_sst, ctx.clone())
++        };
++        ctx = cached_ctx;
+ 
+         let VerifyBucketOut { time_smt_init, time_smt_run, rlimit_count } =
+             self.verify_bucket(reporter, &krate_sst, source_map, bucket_id, &mut ctx)?;
+@@ -2016,10 +2035,10 @@ impl Verifier {
+         &mut self,
+         compiler: &Compiler,
+         spans: &SpanContext,
++        reporter: &impl Diagnostics,
+     ) -> Result<(), VerifyErr> {
+         let time_verify_sequential_start = Instant::now();
+ 
+-        let reporter = Reporter::new(spans, compiler);
+         let krate = self.vir_crate.clone().expect("vir_crate should be initialized");
+         let air_no_span = self.air_no_span.clone().expect("air_no_span should be initialized");
+ 
+@@ -2039,6 +2058,10 @@ impl Verifier {
+             None
+         };
+ 
++        let cached_common = sail_engine::take_common(self);
++        let (mut global_ctx, krate) = if let Some(common) = cached_common {
++            common
++        } else {
+         let mut global_ctx = vir::context::GlobalCtx::new(
+             &krate,
+             self.crate_id.clone().expect("crate_id"),
+@@ -2056,6 +2079,9 @@ impl Verifier {
+         )?;
+         vir::recursive_types::check_traits(&krate, &global_ctx)?;
+         let krate = vir::ast_simplify::simplify_krate(&mut global_ctx, &krate)?;
++        sail_engine::store_common(self, &global_ctx, &krate);
++        (global_ctx, krate)
++        };
+ 
+         if self.args.log_all || self.args.log_args.log_vir_simple {
+             let mut file = self.create_log_file(None, crate::config::VIR_SIMPLE_FILE_SUFFIX)?;
+@@ -2171,7 +2197,7 @@ impl Verifier {
+                             };
+                             if let Some((_i, bucket_id, task, reporter)) = elm {
+                                 let res = thread_verifier.verify_bucket_outer(
+-                                    &reporter,
++                                    reporter,
+                                     &thread_krate,
+                                     None,
+                                     &bucket_id,
+@@ -2213,7 +2239,6 @@ impl Verifier {
+             let mut active_bucket = None;
+             let mut num_done = 0;
+             let mut local_msgs: VecDeque<ReporterMessage> = VecDeque::new();
+-            let reporter = Reporter::new(spans, compiler);
+             loop {
+                 let msg = match local_msgs.pop_front() {
+                     Some(msg) => msg,
+@@ -2526,7 +2551,7 @@ impl Verifier {
+ 
+             for bucket_id in &bucket_ids {
+                 global_ctx = self.verify_bucket_outer(
+-                    &reporter,
++                    reporter,
+                     &krate,
+                     Some(source_map),
+                     bucket_id,
+@@ -2563,20 +2588,20 @@ impl Verifier {
+                 chosen.manual,
+             ) {
+                 (ShowTriggers::Selective, true, false) if chosen.low_confidence => {
+-                    report_chosen_triggers(&reporter, &chosen, true);
++                    report_chosen_triggers(reporter, &chosen, true);
+                     low_confidence_triggers = Some(chosen.span);
+                 }
+                 (ShowTriggers::Module, true, false) => {
+-                    report_chosen_triggers(&reporter, &chosen, true);
++                    report_chosen_triggers(reporter, &chosen, true);
+                 }
+                 (ShowTriggers::AllModules, _, false) => {
+-                    report_chosen_triggers(&reporter, &chosen, true);
++                    report_chosen_triggers(reporter, &chosen, true);
+                 }
+                 (ShowTriggers::Verbose, true, _) => {
+-                    report_chosen_triggers(&reporter, &chosen, !chosen.manual);
++                    report_chosen_triggers(reporter, &chosen, !chosen.manual);
+                 }
+                 (ShowTriggers::VerboseAllModules, _, _) => {
+-                    report_chosen_triggers(&reporter, &chosen, !chosen.manual);
++                    report_chosen_triggers(reporter, &chosen, !chosen.manual);
+                 }
+                 (
+                     ShowTriggers::Selective
+@@ -2619,7 +2644,7 @@ impl Verifier {
+         let time_verify_crate_start = Instant::now();
+ 
+         let result = if !self.args.no_verify || self.args.build_sst {
+-            self.verify_crate_inner(&compiler, spans)
++            self.verify_crate_inner(&compiler, spans, &Reporter::new(spans, compiler))
+         } else {
+             Ok(())
+         };
+@@ -3313,7 +3338,9 @@ impl rustc_driver::Callbacks for VerifierCallbacksEraseMacro {
+         }
+ 
+         self.spans = Some(spans);
++        self.verifier.sail_focus(compiler, self.spans.as_ref().unwrap());
+         self.finish_verus(compiler);
++        sail_engine::clear();
+ 
+         rustc_driver::Compilation::Stop
+     }
+@@ -3392,3 +3419,5 @@ impl VerifierCallbacksEraseMacro {
+         }
+     }
+ }
++
++pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit("compiler-sealed",serde_json::json!({"success":success})); }
+diff --git a/source/vir/src/context.rs b/source/vir/src/context.rs
+index eb97120..68f9873 100644
+--- a/source/vir/src/context.rs
++++ b/source/vir/src/context.rs
+@@ -52,6 +52,7 @@ pub struct WarningCtx {
+ }
+ 
+ /// Context for across all modules
++#[derive(Clone)]
+ pub struct GlobalCtx {
+     pub(crate) chosen_triggers: std::cell::RefCell<Vec<ChosenTriggers>>, // diagnostics
+     pub(crate) datatypes: Arc<HashMap<Path, (TypPositives, Variants)>>,
+@@ -82,7 +83,7 @@ pub struct GlobalCtx {
+ }
+ 
+ // Context for verifying one function
+-#[derive(Debug)]
++#[derive(Clone, Debug)]
+ pub struct FunctionCtx {
+     // false normally, true if we're just checking spec preconditions
+     pub(crate) checking_spec_preconditions: bool,
+@@ -100,6 +101,7 @@ pub struct FunctionCtx {
+ }
+ 
+ // Context for verifying one module
++#[derive(Clone)]
+ pub struct Ctx {
+     pub(crate) module: Module,
+     pub(crate) datatype_is_transparent: HashMap<Dt, bool>,
+@@ -139,6 +141,15 @@ pub struct Ctx {
+ }
+ 
+ impl Ctx {
++    pub fn sail_baseline(&self) -> String {
++        // Globals are shared from the exact original preparation; this captures
++        // every mutable pre-lowering effect plus the complete pruning side data.
++        format!("{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
++            self.global.chosen_triggers.borrow(),self.global.qid_map.borrow(),
++            self.mono_types,self.spec_fn_types,self.reached_dyn_traits,self.used_builtins,
++            self.fndef_types,self.resolved_typs,self.debug)
++    }
++
+     pub(crate) fn checking_spec_preconditions(&self) -> bool {
+         match self.fun {
+             Some(FunctionCtx { checking_spec_preconditions: true, .. }) => true,
+diff --git a/source/vir/src/def.rs b/source/vir/src/def.rs
+index fa66348..d3cdd5d 100644
+--- a/source/vir/src/def.rs
++++ b/source/vir/src/def.rs
+@@ -329,6 +329,7 @@ fn krate_ident_to_string(krate: &str) -> String {
+ //   but if two crates have the same name, we have to disambiguate them
+ // - for simplicity, we handle this disambiguation on demand so that we don't
+ //   do any more renaming than necessary in each AIR file
++#[derive(Clone)]
+ struct NameCtxtImpl {
+     duplicate_name_counter: HashMap<String, u32>,
+     stable_id_map: HashMap<u64, String>,
+@@ -351,7 +352,13 @@ impl NameCtxtImpl {
+ }
+ 
+ pub struct NameCtxt {
+-    imp: std::rc::Rc<std::cell::RefCell<NameCtxtImpl>>,
++    imp: std::sync::Arc<std::sync::Mutex<NameCtxtImpl>>,
++}
++
++impl Clone for NameCtxt {
++    fn clone(&self) -> Self {
++        Self { imp: std::sync::Arc::new(std::sync::Mutex::new(self.imp.lock().unwrap().clone())) }
++    }
+ }
+ 
+ impl NameCtxt {
+@@ -360,11 +367,11 @@ impl NameCtxt {
+     // Therefore, code generating AIR should use the existing NameCtxt from the Ctx struct
+     // for that AIR file, rather than allocating additional NameCtxt values.
+     pub(crate) fn new() -> Self {
+-        Self { imp: std::rc::Rc::new(std::cell::RefCell::new(NameCtxtImpl::new())) }
++        Self { imp: std::sync::Arc::new(std::sync::Mutex::new(NameCtxtImpl::new())) }
+     }
+ 
+     fn krate_id_to_string(&self, id: u64, name: &str) -> String {
+-        self.imp.borrow_mut().krate_id_to_string(id, name)
++        self.imp.lock().unwrap().krate_id_to_string(id, name)
+     }
+ }
+ 
+diff --git a/source/vir/src/prune.rs b/source/vir/src/prune.rs
+index 75afda7..084f04a 100644
+--- a/source/vir/src/prune.rs
++++ b/source/vir/src/prune.rs
+@@ -898,6 +898,7 @@ fn collect_broadcast_triggers(
+ }
+ 
+ #[derive(Debug)]
++#[derive(Clone)]
+ pub struct UsedBuiltins {
+     pub uses_array: bool,
+     pub uses_bytestr: bool,
+diff --git a/source/vir/src/resolve_axioms.rs b/source/vir/src/resolve_axioms.rs
+index 56b98e9..0879206 100644
+--- a/source/vir/src/resolve_axioms.rs
++++ b/source/vir/src/resolve_axioms.rs
+@@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet};
+ use std::sync::Arc;
+ 
+ #[derive(Hash, PartialEq, Eq, Clone)]
++#[derive(Debug)]
+ pub enum ResolvableType {
+     Datatype(Dt),
+     Decoration(TypDecoration),
+diff --git a/source/vir/src/sst.rs b/source/vir/src/sst.rs
+index 860614a..e04dc3f 100644
+--- a/source/vir/src/sst.rs
++++ b/source/vir/src/sst.rs
+@@ -21,11 +21,13 @@ use vir_macros::ToDebugSNode;
+ pub type Trig = Exps;
+ pub type Trigs = Arc<Vec<Trig>>;
+ 
++# [derive(Clone, Debug)]
+ pub struct BndInfoUser {
+     pub span: Span,
+     pub trigs: Trigs,
+ }
+ 
++# [derive(Clone, Debug)]
+ pub struct BndInfo {
+     pub fun: Fun,
+     pub user: Option<BndInfoUser>,
+--- /dev/null
++++ b/source/rust_verify/src/sail_engine.rs
+@@ -0,0 +1,146 @@
++//! Private batch session: all retained spans belong to the active compiler callback.
++use super::*;
++use std::cell::RefCell;
++use std::sync::atomic::{AtomicBool, Ordering};
++use sha2::{Digest, Sha256};
++static FOCUS: AtomicBool = AtomicBool::new(false);
++static CACHING: AtomicBool = AtomicBool::new(false);
++const BUDGET: usize = 512 * 1024 * 1024;
++type Messages = Vec<(ArcDynMessage, MessageLevel)>;
++struct Entry { sst: vir::sst::KrateSst, ctx: vir::context::Ctx, messages: Messages, charge: usize }
++#[derive(Default)]
++struct Cache {
++    common: Option<(usize, usize, GlobalCtx, Krate)>,
++    buckets: HashMap<String, Entry>,
++    charged: usize,
++}
++struct CacheCell(std::sync::Mutex<Cache>);
++impl CacheCell {
++    fn borrow(&self) -> std::sync::MutexGuard<'_, Cache> { self.0.lock().unwrap() }
++    fn borrow_mut(&self) -> std::sync::MutexGuard<'_, Cache> { self.0.lock().unwrap() }
++}
++fn with_cache<T>(f: impl FnOnce(&CacheCell)->T)->T {
++    static CACHE: std::sync::OnceLock<CacheCell> = std::sync::OnceLock::new();
++    f(CACHE.get_or_init(||CacheCell(std::sync::Mutex::new(Cache::default()))))
++}
++fn active() -> bool { std::env::var("SAIL_ENGINE").as_deref() == Ok("interactive") }
++pub(super) fn emit(kind: &str, payload: serde_json::Value) {
++    if !active() { return; }
++    let Some(path) = std::env::var_os("SAIL_ENGINE_EVENTS") else { return; };
++    let value = serde_json::json!({"version":1,"phase":if FOCUS.load(Ordering::Relaxed) {"focus"} else {"full"}, "event":kind,"payload":payload});
++    if let Ok(mut out) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
++        let _ = writeln!(out, "{}", value);
++    }
++}
++pub(super) fn diagnostic(message: &ArcDynMessage, level: MessageLevel) {
++    if let Some(msg) = message.downcast_ref::<MessageX>() {
++        emit("diagnostic", serde_json::json!({"message":msg,"level":level}));
++    }
++}
++pub(super) fn clear() { CACHING.store(false,Ordering::Relaxed); with_cache(|cache| *cache.borrow_mut() = Cache::default()); }
++pub(super) fn take_common(v: &Verifier) -> Option<(GlobalCtx, Krate)> {
++    if !active() || !CACHING.load(Ordering::Relaxed) { return None; }
++    with_cache(|cache| {
++        let cache=cache.borrow();
++        let (krate,args,global,simplified)=cache.common.as_ref()?;
++        if *krate != Arc::as_ptr(v.vir_crate.as_ref()?) as usize || *args != Arc::as_ptr(&v.args) as usize { return None; }
++        // No mutations from SMT are shared back into this immutable baseline.
++        Some((global.clone(), simplified.clone()))
++    })
++}
++pub(super) fn store_common(v: &Verifier, global: &GlobalCtx, simplified: &Krate) {
++    if !active() || !CACHING.load(Ordering::Relaxed) { return; }
++    with_cache(|cache| cache.borrow_mut().common=Some((Arc::as_ptr(v.vir_crate.as_ref().unwrap()) as usize, Arc::as_ptr(&v.args) as usize, global.clone(), simplified.clone())));
++}
++pub(super) fn bucket_key(v: &Verifier, bucket: &BucketId, krate: &Krate, ctx: &vir::context::Ctx) -> String {
++    if !CACHING.load(Ordering::Relaxed) || v.args.log_all || v.args.log_args.log_vir_sst || v.args.log_args.log_interpreter || v.args.log_args.log_call_graph { return String::new(); }
++    // The shared baseline supplies the *same* exact globals, graph order and options.
++    // Cache lifetime is shorter than the live compiler callback; no cross-revision spans.
++    let bytes = format!("{:p}:{:p}:{:?}:{:?}:{:?}", Arc::as_ptr(v.vir_crate.as_ref().unwrap()),Arc::as_ptr(&v.args),bucket, { let mut funs=v.get_bucket(bucket).funs.iter().map(fun_as_friendly_rust_name).collect::<Vec<_>>();funs.sort();funs }, krate);
++    let bytes=format!("{bytes}:{}",ctx.sail_baseline());
++    format!("{:x}", Sha256::digest(bytes.as_bytes()))
++}
++pub(super) fn take_bucket(key: &str) -> Option<(vir::sst::KrateSst,vir::context::Ctx)> {
++    if key.is_empty() || !active() || !CACHING.load(Ordering::Relaxed) { return None; }
++    with_cache(|cache| cache.borrow().buckets.get(key).map(|e|(e.sst.clone(),e.ctx.clone())))
++}
++pub(super) fn store_bucket(key: String, sst: &vir::sst::KrateSst, ctx: &vir::context::Ctx, messages: Messages) {
++    if key.is_empty() || !active() || !CACHING.load(Ordering::Relaxed) { return; }
++    // Conservative charge includes expanded debug representation; saturation avoids overflow.
++    let charge=format!("{:?}",sst).len().saturating_mul(8).saturating_add(1024*1024);
++    if charge>BUDGET { return; }
++    with_cache(|cache| {
++        let mut cache=cache.borrow_mut();
++        if cache.charged.saturating_add(charge)>BUDGET { cache.buckets.clear();cache.charged=0; }
++        if let Some(previous)=cache.buckets.insert(key,Entry{sst:sst.clone(),ctx:ctx.clone(),messages,charge}) { cache.charged=cache.charged.saturating_sub(previous.charge); }
++        cache.charged+=charge;
++    });
++}
++pub(super) fn replay_bucket_diagnostics(key: &str, reporter: &impl Diagnostics) {
++    with_cache(|cache| {
++        if let Some(entry)=cache.borrow().buckets.get(key) {
++            for (message,level) in &entry.messages { reporter.report_as(message,*level); }
++        }
++    });
++}
++pub(super) struct RecordingReporter<'a,T> { reporter: &'a T, messages: RefCell<Messages> }
++impl<'a,T:Diagnostics> RecordingReporter<'a,T> {
++    pub fn new(reporter:&'a T)->Self{Self{reporter,messages:RefCell::new(Vec::new())}}
++    pub fn messages(&self)->Messages{self.messages.borrow().clone()}
++}
++impl<T:Diagnostics> air::messages::Diagnostics for RecordingReporter<'_,T> {
++    fn report_as(&self,msg:&ArcDynMessage,level:MessageLevel){self.messages.borrow_mut().push((msg.clone(),level));self.reporter.report_as(msg,level);}
++    fn report(&self,msg:&ArcDynMessage){self.report_as(msg,msg.downcast_ref::<MessageX>().unwrap().level);}
++    fn report_now(&self,msg:&ArcDynMessage){self.report(msg);}
++    fn report_as_now(&self,msg:&ArcDynMessage,level:MessageLevel){self.report_as(msg,level);}
++}
++impl<T:Diagnostics> Diagnostics for RecordingReporter<'_,T> {
++    fn use_progress_bars(&self)->bool{false}
++    fn add_progress_bar(&self,_:CommandContext){}
++    fn complete_progress_bar(&self,_:CommandContext){}
++}
++#[derive(Default)]
++struct FocusReporter { messages: RefCell<Messages> }
++impl air::messages::Diagnostics for FocusReporter {
++    fn report_as(&self,msg:&ArcDynMessage,level:MessageLevel){ self.messages.borrow_mut().push((msg.clone(),level));diagnostic(msg,level); }
++    fn report(&self,msg:&ArcDynMessage){self.report_as(msg,msg.downcast_ref::<MessageX>().unwrap().level);}
++    fn report_now(&self,msg:&ArcDynMessage){self.report(msg);}
++    fn report_as_now(&self,msg:&ArcDynMessage,level:MessageLevel){self.report_as(msg,level);}
++}
++impl Diagnostics for FocusReporter {
++    fn use_progress_bars(&self)->bool{false}
++    fn add_progress_bar(&self,_:CommandContext){}
++    fn complete_progress_bar(&self,_:CommandContext){}
++}
++impl Verifier {
++    pub(super) fn sail_focus(&mut self, compiler: &Compiler, spans:&SpanContext) {
++        if !active() { return; }
++        clear();
++        let Ok(name)=std::env::var("SAIL_ENGINE_FUNCTION") else { return; };
++        let krate=self.vir_crate.as_ref().unwrap();
++        let matches=krate.functions.iter().filter(|f| fun_as_friendly_rust_name(&f.x.name)==name).collect::<Vec<_>>();
++        if matches.len()!=1 { emit("focus-unavailable",serde_json::json!({"function":name,"matches":matches.len()}));return; }
++        CACHING.store(true,Ordering::Relaxed);
++        let selected=matches[0];
++        let module=selected.x.owning_module.clone().unwrap();
++        let mut focus=self.from_self();
++        focus.num_threads=1;
++        focus.user_filter=Some(UserFilter::Function(module.segments.clone(),name.clone(),HashSet::from([selected.x.name.clone()])));
++        let log=self.args.log_dir.as_ref().map(|p|std::path::PathBuf::from(p).join("focus"));
++        if let Some(path)=log { let _=std::fs::create_dir_all(&path);focus.created_log_dir=Arc::new(std::sync::Mutex::new(Some(path.clone())));focus.created_solver_log_dir=Arc::new(std::sync::Mutex::new(Some(path))); }
++        FOCUS.store(true,Ordering::Relaxed);
++        emit("phase-started",serde_json::json!({"function":name}));
++        let reporter=FocusReporter::default();
++        let status=focus.verify_crate_inner(compiler,spans,&reporter);
++        let mut functions=serde_json::Map::new();
++        for (fun,details) in &focus.func_details { functions.insert(fun_as_friendly_rust_name(fun),details.to_json()); }
++        let mut times=Vec::new();
++        for (bucket, stats) in &focus.func_times { let mut fns=Vec::new(); for (fun,stats) in stats { fns.push(serde_json::json!({"function":fun_as_friendly_rust_name(fun),"mode:":focus.get_function_mode(fun).map(|m|m.to_string()),"time-micros":stats.smt_time.as_micros(),"rlimit":stats.rlimit_count,"success":!focus.func_fails.contains(fun)})); } times.push(serde_json::json!({"module":module_name(bucket.module()),"function-breakdown":fns})); }
++        let diagnostics=reporter.messages.borrow().iter().filter_map(|(msg,level)|msg.downcast_ref::<MessageX>().map(|msg|serde_json::json!({"message":msg,"level":level}))).collect::<Vec<_>>();
++        let document=serde_json::json!({"version":1,"function":name,"confirmed":false,"diagnostics":diagnostics,"verus":{"func-details":functions,"verification-results":{"encountered-error":status.is_err(),"encountered-vir-error":focus.encountered_vir_error,"verified":focus.count_verified,"errors":focus.count_errors,"is-verifying-entire-crate":false},"times-ms":{"smt":{"smt-run-module-times":times}}}});
++        if let Some(path)=std::env::var_os("SAIL_ENGINE_FOCUS_REPORT") { let _=std::fs::write(path,document.to_string()); }
++        emit("phase-finished",serde_json::json!({"function":name,"errors":focus.count_errors,"confirmed":false}));
++        FOCUS.store(false,Ordering::Relaxed);
++        emit("phase-started",serde_json::json!({}));
++    }
++}

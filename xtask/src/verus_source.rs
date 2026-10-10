@@ -32,11 +32,16 @@ use crate::Result;
 use crate::verus::{check_z3, file_sha256, host};
 
 #[derive(Default)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "Independent source-build command switches mirror explicit CLI options."
+)]
 struct Options {
     force: bool,
     keep_intermediates: bool,
     features: Vec<String>,
     print_path: bool,
+    engine: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options> {
@@ -44,6 +49,7 @@ fn parse(args: &[String]) -> Result<Options> {
     for arg in args {
         match arg.as_str() {
             "--force" => o.force = true,
+            "--interactive-engine" => o.engine = true,
             "--features=singular" => o.features = vec!["singular".to_owned()],
             "--print-path" => o.print_path = true,
             "--keep-intermediates" => o.keep_intermediates = true,
@@ -193,6 +199,7 @@ fn compile(
     asset: &AssetPin,
     jobs: &str,
     singular: bool,
+    engine: bool,
 ) -> Result<Vec<(String, PathBuf)>> {
     // The toolchain and components Verus's rust-toolchain.toml lists
     // (rustc-dev, llvm-tools, rustfmt).
@@ -229,6 +236,10 @@ fn compile(
     let copied = source.join("target-verus").join("release").join("z3");
     if copied.is_file() {
         check_z3(&copied, asset)?;
+    }
+
+    if engine {
+        return Ok(Vec::new());
     }
 
     println!("building the rust_verify_test binaries");
@@ -282,6 +293,10 @@ fn active_pins() -> Result<(Pins, AssetPin)> {
 }
 
 /// Builds the pinned Verus commit from source; see the module docs.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Source build identity, patch application, and final manifest publication stay one lifecycle."
+)]
 pub fn build(args: &[String]) -> Result<()> {
     let o = parse(args)?;
     let (pins, asset) = active_pins()?;
@@ -292,7 +307,11 @@ pub fn build(args: &[String]) -> Result<()> {
     let commit = &pins.verus.commit;
     let toolchain = &pins.verus.rust_toolchain;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let features = o.features.clone();
+    let features = if o.engine {
+        sail_verus::engine::features()
+    } else {
+        o.features.clone()
+    };
     let build = source_build::variant_dir(&cache, commit, toolchain, &features);
     if o.print_path {
         println!("{}", build.display());
@@ -306,7 +325,11 @@ pub fn build(args: &[String]) -> Result<()> {
         && m.rust_toolchain == *toolchain
         && m.features == features
         && m.z3_sha256 == z3_sha256
-        && m.is_complete(&build)
+        && (if o.engine {
+            sail_verus::engine::Installed::locate(&cache, &pins).is_ok()
+        } else {
+            m.is_complete(&build)
+        })
     {
         println!(
             "Verus {commit} source build is complete in {} ({} test binaries); --force rebuilds it",
@@ -323,6 +346,24 @@ pub fn build(args: &[String]) -> Result<()> {
         .map_err(|e| format!("cannot create {}: {e}", build.display()))?;
     println!("fetching verus @ {commit} into {}", build.display());
     let checkout = source_build::fetch_source(&build, commit).map_err(|e| e.to_string())?;
+    if o.engine {
+        let patch = build.join("sail-engine.patch");
+        std::fs::write(&patch, sail_verus::engine::PATCH).map_err(|e| e.to_string())?;
+        let applied = Command::new("git")
+            .current_dir(&checkout)
+            .args(["apply", "--reverse", "--check"])
+            .arg(&patch)
+            .output()
+            .map_err(|e| e.to_string())?
+            .status
+            .success();
+        if !applied {
+            run(Command::new("git")
+                .current_dir(&checkout)
+                .arg("apply")
+                .arg(&patch))?;
+        }
+    }
     let channel = toolchain_channel(&checkout.join("rust-toolchain.toml"))?;
     if channel != *toolchain {
         return Err(format!(
@@ -338,7 +379,8 @@ pub fn build(args: &[String]) -> Result<()> {
         &installed.z3,
         &asset,
         &jobs,
-        !features.is_empty(),
+        features.iter().any(|feature| feature == "singular"),
+        o.engine,
     )?;
     let test_binaries = relative_binaries(&build, &executables)?;
 

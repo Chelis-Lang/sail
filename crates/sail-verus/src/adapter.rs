@@ -140,6 +140,10 @@ fn custom_compiler_context(args: &[OsString]) -> bool {
     })
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "Engine fallback is kept alongside the owned subprocess drain and seal check."
+)]
 fn driver() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
@@ -177,7 +181,7 @@ fn driver() -> Result<ExitCode> {
     std::fs::create_dir_all(dir.join("provenance"))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let logs = dir.join("logs");
-    let mut cmd = Command::new(wrapper);
+    let mut cmd = Command::new(&wrapper);
     cmd.args(&args)
         .args([
             "--output-json",
@@ -192,6 +196,19 @@ fn driver() -> Result<ExitCode> {
         .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    let source_events = dir.join("engine.events.jsonl");
+    if let Some(engine) = &runtime.engine {
+        cmd.env("SAIL_ENGINE", "interactive")
+            .env("SAIL_ENGINE_EVENTS", &source_events)
+            .env("SAIL_ENGINE_FOCUS_REPORT", dir.join("focus.source.json"));
+        if let Some(function) = &engine.function {
+            cmd.env("SAIL_ENGINE_FUNCTION", function);
+        }
+    }
+    let relay = runtime
+        .engine
+        .as_ref()
+        .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -219,9 +236,11 @@ fn driver() -> Result<ExitCode> {
                 break;
             }
             stderr.extend_from_slice(&buf[..n]);
-            std::io::stderr()
-                .write_all(&buf[..n])
-                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+            if runtime.engine.is_none() {
+                std::io::stderr()
+                    .write_all(&buf[..n])
+                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+            }
         }
     }
     let exit = child
@@ -232,6 +251,50 @@ fn driver() -> Result<ExitCode> {
         .join()
         .map_err(|_| Error::new("SAIL3111", "solver output reader failed"))?
         .map_err(|e| Error::new("SAIL3111", format!("cannot capture solver output: {e}")))?;
+    if let Some(relay) = relay {
+        relay.finish();
+    }
+    let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
+        if crate::engine_events::sealed(&source_events) {
+            save_focus(&runtime, &identity, &dir)?;
+            (stdout, stderr, exit)
+        } else {
+            // A source worker that did not reach the late EXEC seal contributes
+            // no proof receipt or focused evidence. Stock verification starts
+            // from its original compiler invocation and immutable solver mode.
+            std::fs::write(dir.join("engine.failed.stdout"), &stdout)
+                .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &stderr))
+                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+            let _ = std::fs::remove_file(dir.join("focus.source.json"));
+            let output = Command::new(&engine.stock_wrapper)
+                .args(&args)
+                .args([
+                    "--output-json",
+                    "--time",
+                    "--log",
+                    "air",
+                    "--log",
+                    "smt-transcript",
+                    "--log-dir",
+                ])
+                .arg(&logs)
+                .env_remove("SAIL_ENGINE")
+                .env_remove("SAIL_ENGINE_FUNCTION")
+                .env_remove("SAIL_ENGINE_EVENTS")
+                .env_remove("SAIL_ENGINE_FOCUS_REPORT")
+                .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
+                .output()
+                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+            (output.stdout, output.stderr, output.status)
+        }
+    } else {
+        (stdout, stderr, exit)
+    };
+    if runtime.engine.is_some() {
+        std::io::stderr()
+            .write_all(&stderr)
+            .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    }
     finish(&runtime, identity, &dir, &stdout, &stderr, exit.code())?;
     Ok(status(exit))
 }
@@ -370,6 +433,66 @@ fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> 
         }
     }
     Ok(files)
+}
+
+fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Result<()> {
+    let path = dir.join("focus.source.json");
+    if !path.is_file() {
+        return Ok(());
+    }
+    let source: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(path).map_err(|e| Error::new("SAIL3121", e.to_string()))?,
+    )
+    .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    let function = source["function"]
+        .as_str()
+        .ok_or_else(|| Error::new("SAIL3121", "focused source evidence has no function"))?;
+    let logs = crate::attribution::read_logs(&dir.join("logs/focus")).unwrap_or_default();
+    let docs = vec![source["verus"].clone()];
+    let attr = crate::attribution::attribute(
+        &docs,
+        Some(&logs),
+        &crate::attribution::Provenance::NoCache,
+        None,
+    );
+    let mut args = runtime.args.clone();
+    args.extend([
+        "--".to_owned(),
+        "--verify-function".to_owned(),
+        function.to_owned(),
+    ]);
+    let report = crate::report::build(&crate::report::Inputs {
+        args: &args,
+        exit_code: Some(i32::from(
+            source["verus"]["verification-results"]["errors"]
+                .as_u64()
+                .unwrap_or(1)
+                > 0,
+        )),
+        solver_path: Some(runtime.z3.to_string_lossy().into_owned()),
+        solver_sha256: Some(runtime.z3_sha256.clone()),
+        daemon: false,
+        attribution: &attr,
+        diagnostics: &[],
+    });
+    json(
+        &dir.join("focus.report.json"),
+        &crate::engine::FocusTarget {
+            function: function.to_owned(),
+            package_id: runtime
+                .packages
+                .get(&identity.manifest)
+                .cloned()
+                .unwrap_or_default(),
+            target: identity.name.clone(),
+            kind: if identity.crate_type == "rlib" {
+                "lib".into()
+            } else {
+                identity.crate_type.clone()
+            },
+            report,
+        },
+    )
 }
 
 #[cfg(test)]

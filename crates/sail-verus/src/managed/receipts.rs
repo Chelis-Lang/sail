@@ -18,6 +18,10 @@ pub(crate) struct Runtime {
     pub invocations: PathBuf,
     pub original_wrapper: PathBuf,
     pub receipts: PathBuf,
+    pub context_sha256: String,
+    pub input_revision: String,
+    pub packages: BTreeMap<PathBuf, String>,
+    pub engine: Option<crate::engine::Request>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
