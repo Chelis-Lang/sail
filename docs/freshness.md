@@ -83,3 +83,28 @@ lost or incomplete coverage queues a distinct job promptly while background
 validation proceeds. It never hashes the full runtime before returning a durable
 job id. MacOS retains conservative full revalidation as a secondary platform;
 Linux latency bounds do not describe that fallback.
+
+## Local product-client read census
+
+The independent Python census remains `scripts/m7-job-read-bench.py`. An additive
+Rust probe uses the installed product protocol client, including its complete
+response decoding and unchanged five-second I/O deadlines:
+
+```sh
+cargo build --release -p sail-cli --example job_read_bench
+target/release/examples/job_read_bench \
+  --socket CACHE_SOCKET --job COMPLETED_JOB --active-job RUNNING_JOB \
+  --active-worker OWNED_REPAIR_WORKER_PID \
+  --environment 'Linux container; record architecture, emulation and load' \
+  --out reader-census.json
+```
+
+It is Linux and local-only: four readers start together and make 200 status/result
+reads. Every sample must preserve Current evidence and both input revisions, with
+no infrastructure error; complete typed project reports and repair envelopes are
+validated without dropping functions. The selected worker must belong to the
+running project's directory. Its kernel start-time identity and non-zombie Rust
+verifier descendants must remain present before and after every timed read.
+Both p95 latencies must stay below 200 ms. Unknown evidence, lost verifier activity,
+RPC errors and slow reads fail; failed samples remain in the result artifact.
+A successful Rust probe does not erase or waive a failed Python census.
