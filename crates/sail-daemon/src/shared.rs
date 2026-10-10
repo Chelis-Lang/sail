@@ -16,6 +16,8 @@
 //! or was rejected is not looked up again for a short while (negative
 //! caching), so concurrent sessions sharing a prefix ask the store once.
 
+mod initialization;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
@@ -102,25 +104,19 @@ fn phase(phases: &Phases, label: &'static str) {
     }
 }
 
-struct Remote {
-    loaded: Instant,
-    client: Option<crate::remote::HttpClient>,
-    endpoint: Option<String>,
-}
-
 pub(crate) struct SharedTier {
     #[cfg(test)]
     phases: Phases,
     store: SharedStore,
     root: PathBuf,
-    remote: Mutex<Option<Remote>>,
+    remote: Arc<initialization::State>,
     pending: Mutex<HashMap<String, Pending>>,
     coalesced: AtomicU64,
     config: SharedConfig,
     trust: Mutex<Option<Trust>>,
     in_flight: Arc<AtomicUsize>,
-    backoff_until: Mutex<Option<Instant>>,
-    negative: Mutex<HashMap<[u8; 32], Instant>>,
+    backoff_until: Arc<Mutex<Option<Instant>>>,
+    negative: Arc<Mutex<HashMap<[u8; 32], Instant>>>,
 }
 
 impl SharedTier {
@@ -134,14 +130,14 @@ impl SharedTier {
                 .parent()
                 .unwrap_or_else(|| std::path::Path::new("."))
                 .to_path_buf(),
-            remote: Mutex::new(None),
+            remote: Arc::new(initialization::State::default()),
             pending: Mutex::new(HashMap::new()),
             coalesced: AtomicU64::new(0),
             config,
             trust: Mutex::new(None),
             in_flight: Arc::new(AtomicUsize::new(0)),
-            backoff_until: Mutex::new(None),
-            negative: Mutex::new(HashMap::new()),
+            backoff_until: Arc::new(Mutex::new(None)),
+            negative: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -157,74 +153,18 @@ impl SharedTier {
         tier
     }
 
-    fn remote_client(&self) -> Option<crate::remote::HttpClient> {
-        let mut current = self.remote.lock().ok()?;
-        if let Some(remote) = current.as_ref()
-            && remote.loaded.elapsed() < TRUST_RELOAD
-        {
-            return remote.client.clone();
-        }
-        let explicit = self.config.store.to_string_lossy();
-        let configured = crate::remote::load(&self.root).ok().flatten();
-        let config = if explicit.starts_with("http://") || explicit.starts_with("https://") {
-            configured
-                .filter(|c| c.endpoint.trim_end_matches('/') == explicit.trim_end_matches('/'))
-                .or_else(|| {
-                    std::env::var_os("SAIL_SHARED_TOKEN_FILE").map(|token| {
-                        crate::remote::RemoteConfig {
-                            endpoint: explicit.to_string(),
-                            token_file: token.into(),
-                            ca_file: std::env::var_os("SAIL_SHARED_CA_FILE").map(Into::into),
-                        }
-                    })
-                })
-        } else if explicit.is_empty() {
-            configured
-        } else {
-            None
-        };
-        let endpoint = config
-            .as_ref()
-            .and_then(|c| crate::remote::endpoint(&c.endpoint).ok())
-            .map(|url| url.to_string());
-        let mut client =
-            config.and_then(|c| crate::remote::HttpClient::new(&c, self.config.timeout).ok());
-        if let (Some(new), Some(old)) = (&mut client, current.as_ref())
-            && old.endpoint == endpoint
-            && let Some(previous) = &old.client
-        {
-            new.retain_metrics(previous);
-        }
-        let changed = current.as_ref().is_none_or(|r| {
-            r.endpoint != endpoint
-                || match (&r.client, &client) {
-                    (Some(old), Some(new)) => !old.same_configuration(new),
-                    (None, None) => false,
-                    _ => true,
-                }
-        });
-        *current = Some(Remote {
-            loaded: Instant::now(),
-            client: client.clone(),
-            endpoint,
-        });
-        if changed {
-            if let Ok(mut negative) = self.negative.lock() {
-                negative.clear();
-            }
-            if let Ok(mut backoff) = self.backoff_until.lock() {
-                *backoff = None;
-            }
-        }
-        client
-    }
-
     pub fn description(&self) -> Option<String> {
-        let _ = self.remote_client();
+        if !self.configured() {
+            return None;
+        }
         self.remote
-            .lock()
-            .ok()
-            .and_then(|r| r.as_ref().and_then(|r| r.endpoint.clone()))
+            .endpoint()
+            .or_else(|| {
+                crate::remote::load(&self.root)
+                    .ok()
+                    .flatten()
+                    .map(|c| c.endpoint)
+            })
             .or_else(|| {
                 (!self.config.store.as_os_str().is_empty()).then(|| {
                     let text = self.config.store.to_string_lossy();
@@ -241,14 +181,21 @@ impl SharedTier {
     }
 
     pub fn remote_info(&self) -> Option<sail_api::protocol::RemoteInfo> {
-        let _ = self.remote_client();
-        let mut info = self.remote.lock().ok()?.as_ref()?.client.as_ref()?.info();
+        if !self.configured() {
+            return None;
+        }
+        let mut info = self.remote.client()?.info();
         info.coalesced = self.coalesced.load(Ordering::Relaxed);
         Some(info)
     }
 
     pub fn config(&self) -> &SharedConfig {
         &self.config
+    }
+
+    fn configured(&self) -> bool {
+        !self.config.store.as_os_str().is_empty()
+            || self.root.join(crate::remote::CONFIG_FILE).is_file()
     }
 
     /// The trusted keys, re-read at most every [`TRUST_RELOAD`], and any
@@ -271,6 +218,7 @@ impl SharedTier {
         (keys, problems)
     }
 
+    #[cfg(test)]
     fn backing_off(&self) -> bool {
         self.backoff_until
             .lock()
@@ -279,6 +227,7 @@ impl SharedTier {
             .is_some_and(|until| Instant::now() < until)
     }
 
+    #[cfg(test)]
     fn recently_missed(&self, key: &QueryKey) -> bool {
         self.negative
             .lock()
@@ -304,13 +253,12 @@ impl SharedTier {
     fn lookup_with(&self, key: &QueryKey, local: &Solver, after_spawn: impl FnOnce()) -> Lookup {
         #[cfg(test)]
         phase(&self.phases, "lookup-start");
-        // Reload before backoff checks so disconnect or changed configuration takes effect.
-        let _ = self.remote_client();
-        if self.description().is_none() {
+        // No HTTP runtime is constructed on the foreground path.
+        if !self.configured() {
             return Lookup::Skipped;
         }
         #[cfg(test)]
-        phase(&self.phases, "client-ready");
+        phase(&self.phases, "foreground-ready");
         let id = format!("{}:{key}", local.summary());
         let (pending, leader) = {
             let Ok(mut active) = self.pending.lock() else {
@@ -355,9 +303,6 @@ impl SharedTier {
         pending: &Pending,
         after_spawn: impl FnOnce(),
     ) -> Lookup {
-        if self.backing_off() || self.recently_missed(key) {
-            return Lookup::Skipped;
-        }
         let (trusted, _) = self.trusted();
         if trusted.is_empty() {
             return Lookup::Skipped;
@@ -372,7 +317,11 @@ impl SharedTier {
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         let in_flight = Arc::clone(&self.in_flight);
         let (key_c, local_c) = (*key, local.clone());
-        let remote = self.remote_client();
+        let remote = Arc::clone(&self.remote);
+        let root = self.root.clone();
+        let config = self.config.clone();
+        let backoff = Arc::clone(&self.backoff_until);
+        let negative = Arc::clone(&self.negative);
         let store = self.config.store.to_string_lossy();
         let publication = Arc::clone(pending);
         let directory =
@@ -386,25 +335,56 @@ impl SharedTier {
             .spawn(move || {
                 #[cfg(test)]
                 phase(&phases, "helper-start");
-                let data = if let Some(remote) = remote {
-                    remote
-                        .get(&local_c, &key_c)
-                        .map_err(|_| Rejection::Unreadable)
-                } else if directory {
-                    SharedStore::read(&path)
+                let resolved = remote.resolve(&root, &config, || {
+                    if let Ok(mut entries) = negative.lock() {
+                        entries.clear();
+                    }
+                    if let Ok(mut until) = backoff.lock() {
+                        *until = None;
+                    }
+                });
+                // A constructor may complete after the caller has already
+                // published its fallback. Keep the validated client for later
+                // requests, without starting an obsolete network request.
+                let ended = publication.0.lock().map_or(true, |value| value.is_some());
+                let skipped = ended
+                    || backoff
+                        .lock()
+                        .ok()
+                        .and_then(|until| *until)
+                        .is_some_and(|until| Instant::now() < until)
+                    || negative
+                        .lock()
+                        .ok()
+                        .and_then(|entries| entries.get(&key_c.0).copied())
+                        .is_some_and(|at| at.elapsed() < NEGATIVE_TTL);
+                let data = if skipped {
+                    None
                 } else {
-                    Ok(None)
+                    match resolved {
+                        initialization::Resolution::Ready(Some(remote)) => Some(
+                            remote
+                                .get(&local_c, &key_c)
+                                .map_err(|_| Rejection::Unreadable),
+                        ),
+                        initialization::Resolution::Ready(None) if directory => {
+                            Some(SharedStore::read(&path))
+                        }
+                        initialization::Resolution::Ready(None)
+                        | initialization::Resolution::Initializing => None,
+                    }
                 };
                 #[cfg(test)]
                 phase(&phases, "transport-returned");
                 let result = match data {
-                    Ok(Some(data)) => match verify_entry(&data, &key_c, &trusted, &local_c) {
+                    None => Lookup::Skipped,
+                    Some(Ok(Some(data))) => match verify_entry(&data, &key_c, &trusted, &local_c) {
                         Ok(verified) => Lookup::Hit(verified),
                         Err(reason) => Lookup::Rejected(reason),
                     },
-                    Ok(None) => Lookup::Miss,
-                    Err(Rejection::Unreadable) => Lookup::Unavailable,
-                    Err(reason) => Lookup::Rejected(reason),
+                    Some(Ok(None)) => Lookup::Miss,
+                    Some(Err(Rejection::Unreadable)) => Lookup::Unavailable,
+                    Some(Err(reason)) => Lookup::Rejected(reason),
                 };
                 #[cfg(test)]
                 phase(&phases, "classified");
@@ -421,6 +401,10 @@ impl SharedTier {
             return Lookup::Skipped;
         }
         after_spawn();
+        self.finish_lookup(key, &rx)
+    }
+
+    fn finish_lookup(&self, key: &QueryKey, rx: &std::sync::mpsc::Receiver<Lookup>) -> Lookup {
         match rx.recv_timeout(self.config.timeout) {
             Ok(Lookup::Miss) => {
                 self.remember_miss(key);
@@ -480,14 +464,25 @@ mod http_tests {
         )
         .unwrap();
         let tier = SharedTier::auto(None, &root);
-        assert!(tier.remote_client().is_some());
+        assert!(matches!(
+            tier.remote.resolve(&root, &tier.config, || {
+                tier.negative.lock().unwrap().clear();
+                *tier.backoff_until.lock().unwrap() = None;
+            }),
+            initialization::Resolution::Ready(Some(_))
+        ));
         *tier.backoff_until.lock().unwrap() = Some(Instant::now() + Duration::from_secs(60));
         let key = QueryKey([22; 32]);
         tier.remember_miss(&key);
         std::fs::write(&token, "fedcba9876543210fedcba9876543210").unwrap();
-        tier.remote.lock().unwrap().as_mut().unwrap().loaded =
-            Instant::now().checked_sub(TRUST_RELOAD).unwrap();
-        assert!(tier.remote_client().is_some());
+        tier.remote.expire();
+        assert!(matches!(
+            tier.remote.resolve(&root, &tier.config, || {
+                tier.negative.lock().unwrap().clear();
+                *tier.backoff_until.lock().unwrap() = None;
+            }),
+            initialization::Resolution::Ready(Some(_))
+        ));
         assert!(!tier.backing_off());
         assert!(!tier.recently_missed(&key));
         let _ = std::fs::remove_dir_all(root);
@@ -510,7 +505,7 @@ mod http_tests {
     impl HttpFixture {
         fn phase_report(&self) -> Vec<(&'static str, u128)> {
             let mut records = self.phases.lock().unwrap().clone();
-            if let Some(client) = self.tier.remote_client() {
+            if let Some(client) = self.tier.remote.client() {
                 records.extend(client.phases());
             }
             records.sort_by_key(|(_, time)| *time);
@@ -718,5 +713,92 @@ mod http_tests {
         let (result, initiating_result) = paused_initiator_lookup(&mut fixture);
         assert!(matches!(result, Lookup::Rejected(_)), "lookup: {result:?}");
         assert!(matches!(initiating_result, Lookup::Rejected(_)));
+    }
+
+    #[test]
+    fn paused_client_constructor_cannot_block_followers_or_status() {
+        let mut fixture = http_fixture("construction", false);
+        // A shorter supported request budget leaves room inside the unchanged
+        // 250-ms service ceiling to detect a constructor with no deadline.
+        Arc::get_mut(&mut fixture.tier).unwrap().config.timeout = Duration::from_millis(50);
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Mutex::new(release_rx);
+        *fixture.tier.remote.before_constructor.lock().unwrap() = Some(Arc::new(move || {
+            entered_tx.send(()).unwrap();
+            let _ = release_rx.lock().unwrap().recv();
+        }));
+        let tier = Arc::clone(&fixture.tier);
+        let solver = fixture.solver.clone();
+        let key = fixture.key;
+        let (initial_tx, initial_rx) = std::sync::mpsc::channel();
+        let initiator = std::thread::spawn(move || {
+            initial_tx.send(tier.lookup(&key, &solver)).unwrap();
+        });
+        entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
+        let started = Instant::now();
+        assert!(fixture.tier.remote_info().is_none());
+        assert!(fixture.tier.description().is_some());
+        assert!(started.elapsed() < DEFAULT_SHARED_TIMEOUT);
+        let tier = Arc::clone(&fixture.tier);
+        let solver = fixture.solver.clone();
+        let (returned_tx, returned_rx) = std::sync::mpsc::channel();
+        let follower = std::thread::spawn(move || {
+            returned_tx.send(tier.lookup(&key, &solver)).unwrap();
+        });
+        let result = returned_rx.recv_timeout(DEFAULT_SHARED_TIMEOUT).unwrap();
+        assert!(matches!(result, Lookup::Timeout | Lookup::Skipped));
+        assert!(matches!(
+            initial_rx.recv_timeout(DEFAULT_SHARED_TIMEOUT).unwrap(),
+            Lookup::Timeout
+        ));
+        initiator.join().unwrap();
+        follower.join().unwrap();
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
+        release_tx.send(()).unwrap();
+        fixture.close();
+    }
+
+    #[test]
+    fn invalid_credentials_and_disconnect_do_not_reuse_old_transport() {
+        let mut fixture = http_fixture("disconnect", false);
+        assert!(matches!(
+            fixture.tier.lookup(&fixture.key, &fixture.solver),
+            Lookup::Hit(_)
+        ));
+        std::fs::write(fixture.root.join("read.token"), "invalid").unwrap();
+        fixture.tier.remote.expire();
+        assert!(matches!(
+            fixture.tier.lookup(&fixture.key, &fixture.solver),
+            Lookup::Skipped
+        ));
+        assert!(fixture.tier.remote_info().is_none());
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
+        crate::remote::disconnect(&fixture.root).unwrap();
+        assert!(matches!(
+            fixture.tier.lookup(&fixture.key, &fixture.solver),
+            Lookup::Skipped
+        ));
+        fixture.close();
+    }
+
+    #[test]
+    fn disconnect_hides_cached_transport_without_initializing_or_waiting_for_drop() {
+        let mut fixture = http_fixture("cached-disconnect", false);
+        assert!(matches!(
+            fixture.tier.lookup(&fixture.key, &fixture.solver),
+            Lookup::Hit(_)
+        ));
+        assert!(fixture.tier.remote_info().is_some());
+        crate::remote::disconnect(&fixture.root).unwrap();
+        assert!(fixture.tier.description().is_none());
+        assert!(fixture.tier.remote_info().is_none());
+        assert!(matches!(
+            fixture.tier.lookup(&fixture.key, &fixture.solver),
+            Lookup::Skipped
+        ));
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
+        fixture.close();
     }
 }
