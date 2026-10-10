@@ -1,0 +1,445 @@
+{
+  "version": 1,
+  "scope": "Local Sail workspace cleanup; no product acceptance claim",
+  "worktrees": {
+    "removed_checkouts": 43,
+    "inactive_checkouts_retired": 42,
+    "active_checkout_removed_in_error": "m7-gate-diagnostics",
+    "recovery": "Full dirty source archive and Git reference retained; agent recovered diagnostic source, committed82f9870 in protected m7-mcp-client, and restarted from a frozen native Linux source. Interrupted compile retained as setup failure; no tests ran there.",
+    "remaining": [
+      "repository checkout",
+      "m7-baseline",
+      "m7-mcp-client",
+      "m7-physical-preparation",
+      "m7-result-client"
+    ],
+    "source_archive_bytes": 73617362,
+    "archive_sha256_and_recovery_refs_verified": true,
+    "recovery_records": [
+      {
+        "name": "agent-a5018d839e4cfc0ea",
+        "head": "cf3907a52997f961c71dbe9d2431dacae1eec51c",
+        "source_archive_sha256": "15ad97a66ea06de44612cb0a4170ab5c0ddbe6f752bb69b9675e73aa3f3b1a11",
+        "restore_ref": "refs/cleanup/worktrees/agent-a5018d839e4cfc0ea",
+        "raw_target_retained": false
+      },
+      {
+        "name": "agent-a797a95f84a5f3926",
+        "head": "04c0fbecade729d525810e1fd1216453901e28f2",
+        "source_archive_sha256": "c87372740cefad3064f896d1949bb608a1bf6318c7eff4950f35d407b9e8f65d",
+        "restore_ref": "refs/cleanup/worktrees/agent-a797a95f84a5f3926",
+        "raw_target_retained": false
+      },
+      {
+        "name": "e2e-phases",
+        "head": "a3462a3937f245dab3a96a6c021b90b54037f8f9",
+        "source_archive_sha256": "874da416bafec371e0c0c0ace8a2c07d12455b9aa5cdc91528ffaf86a2b1f8ca",
+        "restore_ref": "refs/cleanup/worktrees/e2e-phases",
+        "raw_target_retained": false
+      },
+      {
+        "name": "live-http",
+        "head": "fa1b341aa1a8fb2f65de9cf83c490331bf87a7b4",
+        "source_archive_sha256": "38d9e8b7485b76102cd1b22b245ac05e477364b7f8c7d4f7534ad6878a7be999",
+        "restore_ref": "refs/cleanup/worktrees/live-http",
+        "raw_target_retained": false
+      },
+      {
+        "name": "live-jobs",
+        "head": "748427752a65c892ce75c4494b9d352ea8e5d445",
+        "source_archive_sha256": "7ebf75aa25aa1d236626647a046dfc2514642fa7c6231dd13b58270320cb2d26",
+        "restore_ref": "refs/cleanup/worktrees/live-jobs",
+        "raw_target_retained": false
+      },
+      {
+        "name": "live-runner",
+        "head": "da476a192e9dafaf4b318e8da23e091db06a8c9b",
+        "source_archive_sha256": "a471a6deccd2ef5b5667e1729619a83fc5cd9949915839f90fb2a5b644e42aa7",
+        "restore_ref": "refs/cleanup/worktrees/live-runner",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-bench-lifecycle",
+        "head": "ebe11927d1547720df89cbd1dbbb43311938b71b",
+        "source_archive_sha256": "d71f2f8c95bcc5d813909fb40d504f0e7b20e49651de624a7c418e6d0be61875",
+        "restore_ref": "refs/cleanup/worktrees/m7-bench-lifecycle",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-default-validation",
+        "head": "1d59765486f6530871fc8f66463ec5a66ea418d8",
+        "source_archive_sha256": "efba5fab5028e0c77c814ae078047e9896b6a58b20dec630c1c21f9b3078a100",
+        "restore_ref": "refs/cleanup/worktrees/m7-default-validation",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-engine",
+        "head": "df056f5f0d71f02ccdf2e9d9366789326de6d92a",
+        "source_archive_sha256": "0a569dfb77632a50b6885e3c4f836f32f79ba30d2d5b0a11eb2f8ee06a00cce4",
+        "restore_ref": "refs/cleanup/worktrees/m7-engine",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-final-product-integration",
+        "head": "49d3d4e6c19397bcaaf56d83b31f9cb4b46db644",
+        "source_archive_sha256": "2c81017d1483e85d3e3e64d5161fbe824060e2369bac74eea8412d7307299bdf",
+        "restore_ref": "refs/cleanup/worktrees/m7-final-product-integration",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-freshness",
+        "head": "3ddc4b2a44a2774be895a204e9941231d55dafd5",
+        "source_archive_sha256": "27656c49b3adef031034318b486220b57f1ff402025936e2941f2fc8ceba6f85",
+        "restore_ref": "refs/cleanup/worktrees/m7-freshness",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-freshness-diagnostics",
+        "head": "f9f64b85bf7154e66fab747e74442ac952e0c66d",
+        "source_archive_sha256": "1d91766cf271eab795305b8e755284c5f77a6c3a9199de3bc4465299eb687436",
+        "restore_ref": "refs/cleanup/worktrees/m7-freshness-diagnostics",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-gate-diagnostics",
+        "head": "54cee3a9c01c6fc1e56cb6c8882641ada156eda6",
+        "source_archive_sha256": "a86987c0884fe5c873c3ed3a803caedf3f4b5389afb864c5b6ef6045e9c9fcb6",
+        "restore_ref": "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-http-coalesced-publication",
+        "head": "c51b297cd6affaee3f60263e5f795006c08da2f1",
+        "source_archive_sha256": "e17b84ba66b9be53d5f9c1d100704c3013b3f5b3c413b25662e118c0d81a9d1d",
+        "restore_ref": "refs/cleanup/worktrees/m7-http-coalesced-publication",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-http-crypto",
+        "head": "dabdbaf1858cf4cce32214114dd666407efec27e",
+        "source_archive_sha256": "572fbe934f65e6ace911494d2b94defd9b05149702d341829151cb3f4525c9f0",
+        "restore_ref": "refs/cleanup/worktrees/m7-http-crypto",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-http-established-fixtures",
+        "head": "b37f8d076ab74ad203505665032ace21634e7f55",
+        "source_archive_sha256": "bba588c48e6bc79e176f10d16558b62f24e22052988547cafa75c0ce99384619",
+        "restore_ref": "refs/cleanup/worktrees/m7-http-established-fixtures",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-http-stalled-timing",
+        "head": "6753912883e49e8b712d21f6bb57163ae8aaf5db",
+        "source_archive_sha256": "fdfb9393c0c2c77a5492410cd6ce2a3881153d09a47fa5ca7f143ec1679eda50",
+        "restore_ref": "refs/cleanup/worktrees/m7-http-stalled-timing",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-http-verification-cost",
+        "head": "f318933dacba6df16153b207935ee2e01ffa3c4b",
+        "source_archive_sha256": "f27a77e8e130cd71d3a4e7065a168ff99dee7449d7bd694848824583db7e1447",
+        "restore_ref": "refs/cleanup/worktrees/m7-http-verification-cost",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-inventory-acceptance",
+        "head": "f111b55ca1739e48c485cad66d7ac5341838f6da",
+        "source_archive_sha256": "ad3fa328f41f82ce57c67ed7d9f79a754a29741b05c275db5c13d4d5e293bac1",
+        "restore_ref": "refs/cleanup/worktrees/m7-inventory-acceptance",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-inventory-profile",
+        "head": "f111b55ca1739e48c485cad66d7ac5341838f6da",
+        "source_archive_sha256": "a9223f666a22e02914bddef1f7e6baf318a5397d3959101b322436f605467dd6",
+        "restore_ref": "refs/cleanup/worktrees/m7-inventory-profile",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-kernel-lease-validation",
+        "head": "01586547ab169ed407f4b0788e7d15599010a23b",
+        "source_archive_sha256": "59ba1affd4d437302b9b2d36a9db81acd2bb553917a10f42d6d893acf36c9c10",
+        "restore_ref": "refs/cleanup/worktrees/m7-kernel-lease-validation",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-mcp-responsive-fixture",
+        "head": "02b3bcf5355efd8b63bea939edddd2c57ee39547",
+        "source_archive_sha256": "7c3247f9c16d91b697fff6d94d19d5b634d681e328965030f88c87f6590322e9",
+        "restore_ref": "refs/cleanup/worktrees/m7-mcp-responsive-fixture",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-native-runtime",
+        "head": "7076d164c802578e5a4d7ff820eb11852cacea79",
+        "source_archive_sha256": "72a12b58f60c9756d960fad25a8f1f89129011edb224cb2bfcc5b70e015352c9",
+        "restore_ref": "refs/cleanup/worktrees/m7-native-runtime",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-product",
+        "head": "fe482553f083a650102e5ca779f8ec9029433d2d",
+        "source_archive_sha256": "ec26a70f60799c8f2e5106cfd264cbcd106b631a49e2000d753192b2b2f6d990",
+        "restore_ref": "refs/cleanup/worktrees/m7-product",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-reader-fastpath",
+        "head": "ec9e5b95978998554d9a3b1372653b939ca50a0c",
+        "source_archive_sha256": "335ceed2c4f4f4da50bf07abc47aec6c24c96b54a66a5889e266eac0643e16a7",
+        "restore_ref": "refs/cleanup/worktrees/m7-reader-fastpath",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-reader-hotpath",
+        "head": "6da932cc456b6e3f83708696ebbae854db9fdb8a",
+        "source_archive_sha256": "2cf0ef88ac755ddaa3e10ac5146314fc26cad86665fcb892a067088a5925ddb4",
+        "restore_ref": "refs/cleanup/worktrees/m7-reader-hotpath",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-reader-latency",
+        "head": "ee724cb57c7877092473f102509d286b6de2d412",
+        "source_archive_sha256": "f5c801de51c2470052c80929129d86d917917ab384e37c86b9ffbb7f16e1ce91",
+        "restore_ref": "refs/cleanup/worktrees/m7-reader-latency",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-reader-preparation",
+        "head": "7ac2c0f8c9603eb395dae7f054063527e0caf1fd",
+        "source_archive_sha256": "50dcac7f7bbde81d9a797729b0fd03e0dacb320f000299760f954da03b7461c5",
+        "restore_ref": "refs/cleanup/worktrees/m7-reader-preparation",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-reader-profile",
+        "head": "85279be161d7335e38f7ce52931da773fb6ea772",
+        "source_archive_sha256": "5660beaa07ad594db8e38148394b977df4c8ff5e14fd2c27791ec64fc33cb111",
+        "restore_ref": "refs/cleanup/worktrees/m7-reader-profile",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-repair-walkthrough",
+        "head": "9d701aca3953518883945be5a7cc44b68860713f",
+        "source_archive_sha256": "5fb8fcf659efe0d2ca93452c2df5950ec729c140a168023831fea662a9df8be2",
+        "restore_ref": "refs/cleanup/worktrees/m7-repair-walkthrough",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-result-frame-profile",
+        "head": "29f78c01982f006d72600fec11d647cc15f85097",
+        "source_archive_sha256": "bd769cd7b05b99184bd86c4a74c209bb4f72aec38daccac9ad5b8ed6397c8f97",
+        "restore_ref": "refs/cleanup/worktrees/m7-result-frame-profile",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-rust-read-probe",
+        "head": "a6eafc4c82c079f9622e5febf6c815b3f341e6ab",
+        "source_archive_sha256": "91f7d8789a4fa29afbd3372cf27f9b54fda00e3af21977638cd08ba1264d1acd",
+        "restore_ref": "refs/cleanup/worktrees/m7-rust-read-probe",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-shared-fault-diagnosis",
+        "head": "84394907db8470551f2da849f8ef59f3fa6e7f55",
+        "source_archive_sha256": "fdfe44e73210b2a09b98c8a0c35753d247ccdb2697a78986c1e5d32cd7e18e2c",
+        "restore_ref": "refs/cleanup/worktrees/m7-shared-fault-diagnosis",
+        "raw_target_retained": true
+      },
+      {
+        "name": "m7-warm-reader-setup",
+        "head": "8912abfd8dd8e58fa320975ec3a410e09c3c84c6",
+        "source_archive_sha256": "f25d39e97b5eba507c863194d892985fee21755a4f85e644496ce3b67fb6f5d0",
+        "restore_ref": "refs/cleanup/worktrees/m7-warm-reader-setup",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-watch-race",
+        "head": "94d56dac221afc8f81e0afd2d13bb8f36b74dc94",
+        "source_archive_sha256": "9d044e5d0c840ab92fbfd7a37f0cd09c08b8cf5867e1c6cf2672d5b88b958a22",
+        "restore_ref": "refs/cleanup/worktrees/m7-watch-race",
+        "raw_target_retained": false
+      },
+      {
+        "name": "m7-worker-validation",
+        "head": "9245fef8fff7cedf9019291078aba1e62258cd9a",
+        "source_archive_sha256": "863fdfdd5930f3fc641faa215259304a6e5513ff059bb581738ae868d884f326",
+        "restore_ref": "refs/cleanup/worktrees/m7-worker-validation",
+        "raw_target_retained": true
+      },
+      {
+        "name": "managed-cli-evidence",
+        "head": "3ba705a9798f8021f4a4301eabc8c796ceaf2135",
+        "source_archive_sha256": "348e411aa2681f3a9b890d8221e2f54a89115321581db28ecc1adcced4669e91",
+        "restore_ref": "refs/cleanup/worktrees/managed-cli-evidence",
+        "raw_target_retained": false
+      },
+      {
+        "name": "public-docs",
+        "head": "9483a82c7af4b1a581c6a73fc3ef40e4b59d825a",
+        "source_archive_sha256": "cdfb4d9dbc0f9c4b73032f92dc74976894909c9fab2989a83b1ef50c701dadc4",
+        "restore_ref": "refs/cleanup/worktrees/public-docs",
+        "raw_target_retained": false
+      },
+      {
+        "name": "takeover-docs",
+        "head": "612113ebef949a410507bcb4bca0585a2fd7d51d",
+        "source_archive_sha256": "1ada0c61514e4d331e9798c42b1a03e9ba05524133ba497f15db180550bae0cd",
+        "restore_ref": "refs/cleanup/worktrees/takeover-docs",
+        "raw_target_retained": false
+      },
+      {
+        "name": "takeover-fragility",
+        "head": "346cccffa3d12bb4dedffa4fd6b2ebc6321635cf",
+        "source_archive_sha256": "7f17a8c5da19787878ae62724f6482a57089cee10f86dda84693b6cbc9d15535",
+        "restore_ref": "refs/cleanup/worktrees/takeover-fragility",
+        "raw_target_retained": true
+      },
+      {
+        "name": "takeover-portfolio",
+        "head": "e2ef1282bb69f8f5f84ebaab9f7c380996721e28",
+        "source_archive_sha256": "2de580a4d37459440766f5992b5e5c97106ced960d2c8ebf9124fd916182e709",
+        "restore_ref": "refs/cleanup/worktrees/takeover-portfolio",
+        "raw_target_retained": false
+      },
+      {
+        "name": "takeover-singular",
+        "head": "eaae0668c5c40dd72c8941430294009fe0a9462d",
+        "source_archive_sha256": "e3da19f2c828b44481f0148ad6c5ed5061ddb2cc237a5f4f829e815548bedc4f",
+        "restore_ref": "refs/cleanup/worktrees/takeover-singular",
+        "raw_target_retained": false
+      },
+      {
+        "name": "takeover-stderr",
+        "head": "a7e608bf4c28ace4b7976a0421bac68738394b27",
+        "source_archive_sha256": "fffeaa8f6914da6c3750dd710890c6d52554c91350b1b7ce6b5591b4a2eec698",
+        "restore_ref": "refs/cleanup/worktrees/takeover-stderr",
+        "raw_target_retained": false
+      }
+    ]
+  },
+  "compiler_intermediates": {
+    "host_sets": [
+      {
+        "name": "target/debug",
+        "files": 1210,
+        "logical_bytes_removed": 885466815
+      },
+      {
+        "name": ".claude/worktrees/takeover-fragility/target/debug",
+        "files": 596,
+        "logical_bytes_removed": 372255772
+      },
+      {
+        "name": ".claude/worktrees/m7-freshness/target/debug",
+        "files": 708,
+        "logical_bytes_removed": 397142181
+      },
+      {
+        "name": ".claude/worktrees/m7-reader-fastpath/target/debug",
+        "files": 711,
+        "logical_bytes_removed": 412622256
+      }
+    ],
+    "archived_sets": [
+      {
+        "name": "m7-engine",
+        "files": 7527,
+        "logical_bytes_removed": 618042438
+      },
+      {
+        "name": "m7-freshness",
+        "files": 4556,
+        "logical_bytes_removed": 232862920
+      },
+      {
+        "name": "m7-freshness-diagnostics",
+        "files": 128,
+        "logical_bytes_removed": 40208481
+      },
+      {
+        "name": "m7-kernel-lease-validation",
+        "files": 2142,
+        "logical_bytes_removed": 278685822
+      },
+      {
+        "name": "m7-reader-fastpath",
+        "files": 2660,
+        "logical_bytes_removed": 164167016
+      },
+      {
+        "name": "m7-reader-latency",
+        "files": 128,
+        "logical_bytes_removed": 40491727
+      },
+      {
+        "name": "m7-result-frame-profile",
+        "files": 161,
+        "logical_bytes_removed": 94523682
+      },
+      {
+        "name": "takeover-fragility",
+        "files": 37952,
+        "logical_bytes_removed": 1365985459
+      }
+    ],
+    "incremental_sets": [
+      {
+        "name": "m7-engine",
+        "files": 216,
+        "logical_bytes_removed": 470621845
+      },
+      {
+        "name": "m7-reader-latency",
+        "files": 52,
+        "logical_bytes_removed": 75191094
+      },
+      {
+        "name": "m7-freshness",
+        "files": 224,
+        "logical_bytes_removed": 366789736
+      },
+      {
+        "name": "m7-freshness-diagnostics",
+        "files": 52,
+        "logical_bytes_removed": 70338114
+      },
+      {
+        "name": "m7-kernel-lease-validation",
+        "files": 68,
+        "logical_bytes_removed": 174614607
+      },
+      {
+        "name": "m7-reader-fastpath",
+        "files": 196,
+        "logical_bytes_removed": 289335080
+      }
+    ],
+    "root_cleanup_logical_bytes_removed": 6349345045,
+    "team_cleanup_records": [
+      "../../engine/verus/candidates/decode-ownership/intermediate-cleanup.json",
+      "../../engine/verus/candidates/decode-ownership/prior-worktree-cleanup.json"
+    ]
+  },
+  "docker": {
+    "exited_container_inventory_empty": true,
+    "dangling_image_inventory_empty": true,
+    "containers_removed_by_this_final_cleanup": 0,
+    "images_removed_by_this_final_cleanup": 0,
+    "note": "Earlier four stopped containers were already absent when checked for deletion. Other actors were concurrently cleaning the machine. No global prune, restart or data-volume removal performed."
+  },
+  "space": {
+    "available_bytes_after": 97460068352,
+    "note": "Observed filesystem availability includes concurrent cleanup and builds; do not attribute its whole change to Sail. Logical file sizes are recorded independently."
+  },
+  "preserved": [
+    "active Linux acceptance container and Cargo target volume",
+    "three active agent worktrees and mounted baseline",
+    "selected and candidate Verus runtimes and ongoing source build",
+    "all retired source, dirty patches and recovery Git references",
+    "raw validation and failure evidence",
+    "retained executable and loadable-library identities",
+    "container data volumes"
+  ]
+}

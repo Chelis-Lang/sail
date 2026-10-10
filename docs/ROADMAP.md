@@ -135,6 +135,12 @@ These suite passes do not establish product acceptance or source-engine qualific
 The subsequent complete `7dc855d` workspace gate failed two original HTTP
 elapsed checks (437/439 tests passed); the current branch still requires a
 complete passing gate before pushing.
+The newest frozen `f6508ba` attempt passed strict all-target Clippy but failed
+19 of 471 workspace tests: HTTP serving, legacy MCP responsiveness and initial
+freshness/lease coverage. Its full failure record remains
+[retained](../bench/validation/m7-linux-gate-f650-failure-emulated-2026-10-10.json).
+Focused acquisition-stage diagnostics take priority over publishing; no test
+deadline or admission rule changes to hide these failures.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh
 real-reader attempt failed ordinary human-eval setup at the unchanged

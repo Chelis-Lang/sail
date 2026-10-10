@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "source_commit": "f6508baaeb6b2712647ba09aa97820818af46532",
+  "source_archive_sha256": "bf56e8fc3205ab674141f50d2095d1a563b4619a7fcedb47b00f728ad8d34dd5",
+  "scope": "Complete local gate attempted on frozen source; nextest failure stops later steps",
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load",
+  "build_jobs": 2,
+  "test_workers": 2,
+  "gate_exit_code": 100,
+  "acceptance": false,
+  "passed_steps": [
+    "Python gate/controller controls",
+    "cargo fmt --all --check",
+    "cargo clippy --workspace --all-targets --locked -- -D warnings"
+  ],
+  "nextest": {
+    "tests": 471,
+    "passed": 452,
+    "failed": 19,
+    "skipped": 37,
+    "elapsed_seconds": 492.283,
+    "failures": [
+      {
+        "test": "sail-daemon shared::http_tests::concurrent_readers_coalesce_one_http_lookup",
+        "elapsed_seconds": 1.882
+      },
+      {
+        "test": "sail-daemon shared::http_tests::disconnect_hides_cached_transport_without_initializing_or_waiting_for_drop",
+        "elapsed_seconds": 1.577
+      },
+      {
+        "test": "sail-daemon shared::http_tests::invalid_credentials_and_disconnect_do_not_reuse_old_transport",
+        "elapsed_seconds": 1.116
+      },
+      {
+        "test": "sail-daemon shared::http_tests::forged_http_reply_is_refused_while_initiator_is_paused",
+        "elapsed_seconds": 1.426
+      },
+      {
+        "test": "sail-daemon shared::http_tests::status_reads_existing_metrics_during_owned_transport_refresh",
+        "elapsed_seconds": 1.394
+      },
+      {
+        "test": "sail-daemon shared::http_tests::verified_http_reply_reaches_readers_while_initiator_is_paused",
+        "elapsed_seconds": 1.286
+      },
+      {
+        "test": "sail-mcp job_tools::tests::async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs",
+        "elapsed_seconds": 3.148
+      },
+      {
+        "test": "sail-verus managed::coherent::tests::preexisting_mapping_and_transient_writes_cannot_establish_current_proof",
+        "elapsed_seconds": 7.767
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::changed_runtime_cannot_be_current_and_restart_revalidates",
+        "elapsed_seconds": 5.831
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::busy_reader_preserves_independent_validation_owner",
+        "elapsed_seconds": 6.24
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::dropped_observer_and_uncertain_source_declarations_never_reuse",
+        "elapsed_seconds": 4.089
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::delayed_namespace_barrier_coalesces_only_valid_in_call_checkpoints",
+        "elapsed_seconds": 10.53
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::established_reads_invalidate_true_content_changes_with_restored_mtime",
+        "elapsed_seconds": 7.358
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::final_validation_rejects_changes_after_snapshot_capture",
+        "elapsed_seconds": 8.219
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::four_readers_do_not_wait_behind_unrelated_validation_or_context_locks",
+        "elapsed_seconds": 12.45
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::transient_source_mmap_restore_invalidates_retained_byte_digests",
+        "elapsed_seconds": 14.045
+      },
+      {
+        "test": "sail-verus managed::freshness::tests::guarded_inventory_invalidates_namespace_and_alias_changes",
+        "elapsed_seconds": 78.531
+      },
+      {
+        "test": "sail-verus managed::lease::tests::paused_reader_keeps_unbroken_generation_but_rejects_writer_and_mapping_breaks",
+        "elapsed_seconds": 9.773
+      },
+      {
+        "test": "sail-verus managed::sysroot::tests::new_targets_and_restored_namespace_changes_break_owned_coverage",
+        "elapsed_seconds": 3.454
+      }
+    ]
+  },
+  "not_reached": [
+    "Separate example tests",
+    "Doctests",
+    "Rustdoc",
+    "Layering",
+    "Cargo deny",
+    "Generated benchmark page comparison"
+  ],
+  "raw_log": {
+    "bytes": 92893,
+    "sha256": "c172402d4d59d042a16c20eeeb9d4bf47d39aff5ea14d09d3b5268c34a7bd0e2"
+  },
+  "limits": [
+    "No assertion, cap, deadline or expected outcome changed",
+    "Several fixture initial-complete failures lack their acquisition reason; stage diagnostics are being added before focused reproduction",
+    "MCP historical-evidence fixture uses legacy fake-CLI Context::new, not installed persistent socket reads; its original responsiveness assertion failed at2.274769585s against2s",
+    "No causal claim about shared load, host cleanup or the Docker backend is established",
+    "Earlier full5fd gate and real solver passes remain frozen historical scopes; neither replaces this failure"
+  ]
+}
