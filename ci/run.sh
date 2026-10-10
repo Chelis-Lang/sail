@@ -69,6 +69,7 @@ case "$step" in
   gate)
     bash ci/test-completion.sh
     python3 scripts/test-m7-repair-bench.py
+    python3 scripts/test-m7-repair-bench-lifecycle.py
     python3 scripts/test-m7-job-read-bench.py
     python3 ci/test-engine-artifact.py
     python3 ci/test-repair-lifecycle.py
@@ -99,9 +100,17 @@ case "$step" in
       full|legacy|managed|repair) ;;
       *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair" >&2; exit 2 ;;
     esac
+    sail_checkout="$PWD"
     release_build
-    sail="$PWD/target/release/sail"
-    sail_managed_test="$PWD/ci/test-managed.py"
+    # A host-mounted checkout can have an unsupported FUSE ancestor even when
+    # target/ is a Linux volume. Execute exact copied runtime bytes under /tmp,
+    # so managed freshness can observe every runtime path on the native kernel.
+    sail_runtime="$(mktemp -d /tmp/sail-e2e-runtime.XXXXXX)"
+    trap 'rm -rf "$sail_runtime"' EXIT
+    cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_runtime/"
+    chmod 700 "$sail_runtime/sail" "$sail_runtime/sail-z3"
+    sail="$sail_runtime/sail"
+    sail_managed_test="$sail_checkout/ci/test-managed.py"
     if [ "$phase" = full ] || [ "$phase" = legacy ]; then
       cargo build --release --locked -p sail-cli --example check_output --example check_mcp
       check_output="$PWD/target/release/examples/check_output"
@@ -182,6 +191,7 @@ RS
       python3 "$sail_managed_test" "$sail"
     fi
     if [ "$phase" = full ] || [ "$phase" = repair ]; then
+      cd "$sail_checkout"
       : "${SAIL_ENGINE_BUILD:?repair acceptance requires the validated prebuilt engine}"
       release_build -p sail-conformance
       # Fetch pinned source for Cargo's ordinary builtin/macro dependencies.
