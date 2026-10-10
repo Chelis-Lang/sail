@@ -108,3 +108,30 @@ timing, and the result includes these observations for review.
 Correctness includes exact solver-input and full diagnostic comparisons,
 full local fast/standard corpus coverage, and affected source tests described
 in ADR 0027. Long runs stay outside CI.
+
+## Retained acceptance progress (2026-10-10)
+
+M7 remains in progress. Passing integration checks do not substitute for the
+real-project performance and exact-input gates.
+
+| Check | Observed result | Evidence |
+|---|---|---|
+| Native Linux CI repair CLI/MCP integration | Passed 215 operations with unchanged deadlines, including cancellation and baseline comparison; uses the small no-vstd fixture | `bench/validation/m7-repair-cli-mcp-native-linux-2026-10-10.json` |
+| Corrected source variant, host differential tests | Ten exact fixtures, eight prepared revisions, cancellation/restart and three preparation regressions pass | `engine/verus/qualification-host.json` |
+| Corrected source variant, real human-eval | Two full callbacks each verify 441 obligations without the worker TLS panic; exact differential and selected persistent-restore assertions fail | `engine/verus/qualifications/cd40e16e-real-he-failure.json` |
+| Established concurrent reads, prior inventory variant | Failed: 82/200 Current reads, status p95 372.334 ms and result p95 454.569 ms; all samples have an actual live verifier | `docs/validation/m7-f111-reader-failure.json` |
+| Frozen whole repair loops | No qualified measured samples yet; the earlier run failed during context warm-up | Whole-loop acceptance remains outstanding |
+| Full default fast tier, earlier frozen variant | Pass-through and fill each match 147/147; warm has 146 Same and one vstd infrastructure timeout | Original timeout remains a failure; the later traced diagnostic does not replace it |
+
+The human-eval input difference is confined to the already recorded stock
+declaration-order variation in `human_eval_160`. All other 113 full SMT inputs,
+diagnostics, counters and function details match. The second fresh callback
+restores only one preparation and misses 105; this does not establish useful
+reuse across edits. Both failures remain visible, without normalization or an
+acceptance waiver.
+
+Input digest retention under continuous kernel guards and the worker's guarded
+sysroot baseline have additional invalidation tests. Their real-project gains
+still need measuring. The additive Rust probe described in `docs/freshness.md`
+uses the actual product client; the original Python census and its failures
+remain independent evidence.
