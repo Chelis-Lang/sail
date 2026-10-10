@@ -19,14 +19,20 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def execute(command, environment, timeout):
+def execute(command, environment, timeout, output, prefix):
     with subprocess.Popen(command, env=environment, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, start_new_session=True) as process:
         try:
             stdout, stderr = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
             os.killpg(process.pid, signal.SIGKILL)
-            process.communicate()
+            stdout, stderr = process.communicate()
+            (output / (prefix + '.stdout')).write_bytes(stdout)
+            (output / (prefix + '.stderr')).write_bytes(stderr)
+            (output / (prefix + '.deadline.json')).write_text(json.dumps({
+                'timed_out': True, 'deadline_seconds': timeout,
+                'exit_code': process.returncode, 'stdout_bytes': len(stdout),
+                'stderr_bytes': len(stderr)}, indent=2) + '\n')
             raise
         return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
@@ -61,7 +67,7 @@ def run(args):
         command = [args.engine, str(source), '--no-vstd', '--crate-name', 'demo', '-V', 'use-crate-name',
                    '--output-json', '--time', '--no-report-long-running', '--log', 'air',
                    '--log', 'smt-transcript', '--log-dir', str(work / 'logs')]
-        process = execute(command, environment, args.timeout)
+        process = execute(command, environment, args.timeout, work, "engine")
         (work / 'stdout').write_bytes(process.stdout)
         (work / 'stderr').write_bytes(process.stderr)
         events = [json.loads(line) for line in (work / 'events.jsonl').read_text().splitlines()]
@@ -71,9 +77,14 @@ def run(args):
                 'actual_hits': actual_hits, 'oracle_summaries': summaries,
                 'full': json.loads(process.stdout)['verification-results']}
         records.append(item)
-        (root / 'summary.json').write_text(json.dumps({'version': 1, 'scope': 'Owner-selected same-input raw-byte oracle; stock verdict and diagnostic controls mandatory; candidate unqualified',
-                                                      'engine_verifier_sha256': digest(pathlib.Path(args.engine).with_name('rust_verify')),
-                                                      'z3_sha256': digest(pathlib.Path(args.z3)), 'records': records}, indent=2) + '\n')
+        def save(completed=False):
+            (root / 'summary.json').write_text(json.dumps({
+                'version': 1,
+                'scope': 'Owner-selected same-input raw-byte oracle; stock verdict and diagnostic controls mandatory; candidate unqualified',
+                'all_controls_completed': completed,
+                'engine_verifier_sha256': digest(pathlib.Path(args.engine).with_name('rust_verify')),
+                'z3_sha256': digest(pathlib.Path(args.z3)), 'records': records}, indent=2) + '\n')
+        save()
         if fault is None:
             assert process.returncode == 0, 'Cold fixture failed before oracle'
         elif fault == '':
@@ -105,7 +116,7 @@ def run(args):
             stock_command = command.copy()
             stock_command[0] = args.stock
             stock_command[-1] = str(work / 'stock-logs')
-            stock = execute(stock_command, stock_env, args.timeout)
+            stock = execute(stock_command, stock_env, args.timeout, work, "stock")
             (work / 'stock.stdout').write_bytes(stock.stdout)
             (work / 'stock.stderr').write_bytes(stock.stderr)
             assert stock.returncode == process.returncode and stock.stderr == process.stderr
@@ -118,6 +129,8 @@ def run(args):
                               for entry in module.get('function-breakdown', []))
             assert verdicts(stock_document) == verdicts(fill_document), 'Stock function verdicts differ'
             item['stock_verdicts_and_diagnostics_equal'] = True
+        item['assertions_completed'] = True
+        save(completed=index == 4)
         print(item['case'], 'passed control', 'hits', actual_hits, flush=True)
 
 
