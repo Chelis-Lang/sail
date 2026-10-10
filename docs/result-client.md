@@ -142,15 +142,33 @@ bundle hashes, cold costs and rejected slower streaming alternative are kept.
 
 Pass the durable **job** socket, rather than the SMT-cache socket. A configured
 cache endpoint can be converted with `jobs::socket_path`; the CLI and MCP use the
-same endpoint resolution. Keep the client across reads:
+same endpoint resolution. The snippet runs inside a function returning
+`std::io::Result<()>`; replace the job ID with an existing submitted job. Endpoint
+resolution does not start a missing daemon. Submit through CLI/MCP first, then
+keep the client across reads:
 
 ```rust
 use sail_api::jobs::{Client, Request, Response};
 
+let project_dir = std::env::current_dir()?;
+let job_socket = sail_api::jobs::configured_socket(&project_dir)?;
 let client = Client::new(job_socket);
-let response = client.call(&Request::Result { id: job_id.clone() })?;
-if let Response::Result(document) = response {
-    println!("{:?}: {:?}", document.job.state, document.job.currentness);
+
+let job_id = "SUBMITTED_JOB_ID";
+// Retain this client: later identical frames may reuse decoding, never authority.
+for _ in 0..3 {
+    match client.call(&Request::Result { id: job_id.to_owned() })? {
+        Response::Result(document) => {
+            if document.job.id != job_id {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData, "Result belongs to another job",
+                ));
+            }
+            println!("{:?}: {:?}", document.job.state, document.job.currentness);
+        }
+        Response::Error(message) => eprintln!("{message}"),
+        _ => eprintln!("Unexpected response to a result request"),
+    }
 }
 ```
 

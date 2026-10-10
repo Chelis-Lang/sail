@@ -9,7 +9,7 @@ experimental features and validation limits are identified explicitly.
 | Task | Guide |
 |---|---|
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |
-| Check one repair, follow proof events, explain failures and compare saved baselines | [Proof repair](proof-repair.md) — M7 remains experimental |
+| Check one repair, follow proof events, explain failures and compare saved baselines | [Walkthrough](proof-repair-walkthrough.md), [repair contract](proof-repair.md) — M7 remains experimental |
 | Integrate an agent through stdio MCP | [MCP tools](mcp.md) |
 | Reuse complete fresh-frame decoding in a persistent Rust SDK client | [Result client](result-client.md) |
 | Consume structured reports and provenance | [Output schema](output-schema.md) |
@@ -44,8 +44,10 @@ required CI remains short.
 
 Evidence lives in `bench/validation/`, `docs/validation/` and
 `engine/verus/qualifications/` or `engine/verus/candidates/qualifications/`.
-Each record applies to its stated source, runtime and environment. A later pass
-does not erase an earlier failure, and a candidate build or static review does
+[The retained M7 status history](validation/m7-acceptance-status-history.md)
+keeps earlier failed, interrupted and setup-only scopes out of the current
+roadmap. Each record applies to its stated source, runtime and environment.
+A later pass does not erase an earlier failure, and a candidate build or static review does
 not qualify a runtime. Reports summarize completed milestones:
 [bootstrap](reports/2026-10-08-bootstrap.md),
 [initial product](reports/2026-10-09-initial-product.md), and

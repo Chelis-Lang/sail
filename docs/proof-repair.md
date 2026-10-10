@@ -14,8 +14,10 @@ unfinished M7 acceptance.
 
 The optional `interactive` engine is a Sail-managed build of the pinned Verus
 source. It is selected explicitly. Stock verification retains its existing
-behavior. An unavailable or invalid engine returns a setup error; it never
-silently claims a batched run.
+behavior. An unavailable or invalid engine returns a setup error. An internal
+runtime failure retains its failed evidence and falls back to stock full verification;
+missing focused evidence cannot be fabricated or labelled a successful batch.
+Inspect `batch.batched`, focus and selection errors alongside the full report.
 
 Inspect or register an already built validated engine:
 

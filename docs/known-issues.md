@@ -3,6 +3,8 @@
 This page separates product limitations, upstream behavior and unresolved test
 failures. It describes the current M7 development branch; it does not declare
 that branch released or accepted. The [roadmap](ROADMAP.md) tracks remaining work.
+The [retained status history](validation/m7-acceptance-status-history.md) preserves
+the detailed prior roadmap narrative and its distinct failed/setup scopes.
 
 ## Interactive repair engine (M7)
 
@@ -48,7 +50,7 @@ four-reader latency gate has been established. See the
   manifest; see [the build record](../engine/verus/candidates/decode-ownership/ordinary-linux-build.json).
   The following runtime pipeline passed its early controls but failed the
   required previous-revision focus gate: zero checked hits after a graph scratch
-  admission refusal. Full human-eval qualification was not reached. Allocation
+  admission refusal. Full human-eval qualification was not reached.
   [The failed source pipeline](../engine/verus/candidates/decode-ownership/c39-qualification-failure.json)
   retains every reached gate. Allocation bounds now follow the actual scratch
   owners for each query under the unchanged 8 MiB cap, with 37 pinned VIR
@@ -143,6 +145,10 @@ not change a test deadline or turn observed failures into passes.
 | Earlier full workspace-test attempt | Frozen `f6508ba`: Python controls, fmt and strict all-target Clippy passed; nextest ran all 471 tests, with 452 passed and 19 failed. Six HTTP cases, the legacy MCP responsiveness fixture and twelve freshness/lease fixtures failed under their original assertions. Initial coverage failures need acquisition-stage diagnostics; causes are not established. Remaining gate steps were not reached. | [Failure](../bench/validation/m7-linux-gate-f650-failure-emulated-2026-10-10.json) |
 | Integrated gate after focused fixes | Frozen `44af609` stopped during strict all-target Clippy on a timeout-retention test assertion lint. The same assertion is corrected in `7fcb720`; its full attempt then passed strict Clippy but failed 9/478 workspace tests under default inter-case scheduling. No full gate or product pass is claimed. | [Failed scope](validation/m7-integrated-gate-44af609.json) |
 | Subsequent integrated workspace-test attempt | Frozen `7fcb720`: 469/478 passed, nine failed (seven HTTP/reload cases, legacy MCP and the four-reader 100 ms fixture). Earlier initial freshness/lease coverage failures were not observed. Default eight-CPU scheduling was used rather than the earlier two-case/two-build execution. A complete gate for the latest SDK/freshness changes remains required, with unchanged internal fixture concurrency and all original assertions. | [Full failure](../bench/validation/m7-linux-gate-7fcb-failure-emulated-2026-10-11.json) |
+| Current installed product build | Frozen `b36acc7` explicit Sail/shim binary build completed in 301 seconds. Immutable hashes bind the product and unchanged reader collectors; full gate is in progress. Build success does not qualify it. | [Build identities](validation/m7-current-product-build.json) |
+| Current installed MCP transport | Frozen `b36acc7` passed all five unchanged installed transport/lifecycle controls, including normal EOF exit. The worker was stopped/cancelled before any proof. This does not qualify Current reports, live-reader latency, source allocation or M7 overall. | [Installed smoke](validation/m7-installed-mcp-b36.md) |
+| Indexed namespace and watch controls | Exact path predicates pass generated old/new equivalence and all original native mutation/overflow guards. Canonical membership preserves hardlink descriptor replacement. Local queue/setup measurements identify narrower improvements, not full service latency. | [Event filter](validation/m7-namespace-indexed-filter.json), [watch index](validation/m7-native-watch-index.json) |
+| Frozen `749255e` HTTP/coalescing follow-ups | One later invocation per exact frozen fixture passed. Original serving/coalescing failures remain unresolved; a passing traced diagnostic does not establish their cause. The initial HTTP lookup assertion now records existing result/phase evidence. | [HTTP scope](validation/m7-http-749-followup.json), [coalescing scope](validation/m7-coalescing-749-diagnostic.json) |
 | Freshness publication controls | Exact parser and per-slot notifications pass all 35 focused controls and affected strict Clippy. Live fixture p95 varies from 12.293 to 68.622 ms; neither fixture replaces the failed real-project census. | [Scoped record](validation/m7-freshness-publication.json) |
 | Independent HTTP core diagnosis | Unchanged frozen test binary: 9/10 cases pass, concurrent lookup times out before the server's original delay finishes. Complete CPU-versus-scheduling cause remains unresolved. | [Diagnostic](validation/m7-shared-http-core-diagnostic.json) |
 | Preceding established-transport gate | Source `a9dc753`, 435/436 tests passed. The verified paused-initiator serving check failed after real transport/trust establishment; response-to-classification took 135.738 ms. Its entire CPU versus scheduling cause remains unknown. Later gate steps were not attempted. | [Failure](../bench/validation/m7-linux-gate-a9-failure-emulated-2026-10-10.json) |
@@ -161,8 +167,8 @@ not change a test deadline or turn observed failures into passes.
 | Complete standard retry, still running | Frozen `1dc`, default mode: plain stock Verus on verismo exceeded the unchanged 3,600-second unit limit and was killed by the harness. Remaining units are still running; cache phases have not started. Retained sleeping-thread observations do not establish a cause or an upstream defect. | [Observation](validation/m7-standard-verismo-timeout-observation.json) |
 
 These records cover their frozen artifacts, not every later source candidate.
-The complete current solver suite passes with retained phase diagnostics; this
-does not identify the cause of the earlier timeout.
+The latest recorded complete solver suite is frozen `5fd7986`; its pass does
+not qualify later source changes or identify the cause of the earlier timeout.
 HTTP serving/coalescing assertions and their original deadlines remain unchanged;
 the subsequent `5fd7986` gate passed those assertions while both earlier failed
 runs remain recorded as failures.

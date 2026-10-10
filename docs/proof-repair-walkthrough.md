@@ -20,10 +20,15 @@ export PATH="$PWD/target/release:$PATH"
 sail engine status --output json
 ```
 
-The source-build command installs the selected engine. `fetch-verus` installs
-artifacts but does not put `cargo-verus` on `PATH`: configure your ordinary stock
-launcher on `PATH` or through `SAIL_CARGO_VERUS`. Keep `sail` and `sail-z3`
-side by side. Linux freshness validation also needs Python 3; see the
+The source-build command installs the selected engine in the same Sail cache
+that `engine status` inspects. Import and execution must use that cache too;
+relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
+The selected runtime is experimental and has unresolved physical preparation
+accounting; corrective variants are unselected until their complete gates pass.
+
+`fetch-verus` installs artifacts but does not put `cargo-verus` on `PATH`:
+configure your ordinary stock launcher on `PATH` or through `SAIL_CARGO_VERUS`.
+Keep `sail` and `sail-z3` side by side. Linux freshness validation also needs Python 3; see the
 [freshness contract](freshness.md) for kernel observation, read leases and
 unsupported filesystem coverage. macOS uses a conservative fallback.
 
@@ -41,7 +46,7 @@ stock build is not an interactive engine. Builds under
 A successful install/status check establishes runtime identity, not the unfinished
 M7 acceptance claims. Keep the ordinary stock launcher available for fallback.
 
-## Establish an independent full baseline
+## Establish a baseline with complete full validation
 
 For an existing library, substitute its package and exact crate-qualified
 function below. This small example uses the pinned published `vstd` dependency:
@@ -202,9 +207,12 @@ Comparison takes exactly one `baseline` or `before_job`. Library submission omit
 
 ## Return to stock verification
 
-An explicit unavailable engine returns an error rather than silently switching
-modes. Inspect that error and cancel any owned unfinished job before starting a
-separate stock run:
+An explicitly unavailable or invalid engine returns a setup error. A runtime
+internal failure uses the documented stock fallback and preserves failed engine
+evidence; it cannot fabricate focused evidence or claim a successful batch.
+Inspect `batch.batched`, `batch.focus`, `batch.selection_error` and the full result.
+For a setup error, inspect it and cancel any owned unfinished job before
+starting a separate stock run:
 
 ```sh
 sail verify --incremental --package repair_demo --lib --output json
