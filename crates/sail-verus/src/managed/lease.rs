@@ -457,6 +457,24 @@ mod tests {
                 .status()
                 .is_ok_and(|s| s.success())
         );
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while std::time::Instant::now() < deadline
+            && !std::fs::read_to_string(format!("/proc/{}/stat", lease.process.id())).is_ok_and(
+                |text| {
+                    text.rsplit_once(')')
+                        .is_some_and(|(_, fields)| fields.trim_start().starts_with('T'))
+                },
+            )
+        {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(
+            std::fs::read_to_string(format!("/proc/{}/stat", lease.process.id())).is_ok_and(
+                |text| text
+                    .rsplit_once(')')
+                    .is_some_and(|(_, fields)| fields.trim_start().starts_with('T'))
+            )
+        );
         assert!(!lease.clean());
         assert_eq!(lease.failure_reason(), "kernel-lease-state-unavailable");
         assert!(
