@@ -96,7 +96,8 @@ kernel freshness coverage. This affects evidence classification, not the
 verification verdict or the permission to run the workload under emulation.
 
 `scripts/m7-job-read-bench.py --socket SOCKET --job COMPLETED_JOB
---active-job RUNNING_JOB --active-worker LINUX_PID --environment LABEL --out RESULT.json` exercises the
+--active-job RUNNING_JOB --active-worker LINUX_PID --active-crate human_eval_verus
+--environment LABEL --out RESULT.json` exercises the
 actual framed job protocol with four concurrent clients and 200 reads. It
 includes transfer and JSON decoding time and keeps the five-second deadline.
 It waits for initial Current establishment outside the read census and records
@@ -105,9 +106,19 @@ other job must remain Running before and after every read. Unknown, Historical,
 unavailable and incomplete samples cannot satisfy the latency goal.
 The supplied worker PID must be the active job's `_repair-worker`. Every sample
 also records a live `rust_verify` descendant before and after the timed RPC,
-bound to the worker's kernel start time; metadata setup and zombie processes
+bound to the worker's kernel start time and the exact selected Cargo crate;
+metadata setup, ordinary builtin/macros dependency compilation, stopped and zombie processes
 cannot qualify as active verification. Process inspection is outside the RPC
 timing, and the result includes these observations for review.
+The same compiler PID and kernel start time must occur on both sides of each
+RPC; distinct callbacks around an otherwise idle interval do not qualify.
+Every parent in the sampled lineage must predate its child, rejecting recycled
+ancestor PIDs. State and CPU accounting may change during legitimate work.
+The process census retains only the crate selector from a bounded command-line
+read, with kernel identity checked on both sides. It does not retain arbitrary
+compiler arguments or process environments. A process named `rust_verify` alone
+is insufficient: Cargo-Verus also invokes that executable for non-verifying
+dependencies. Both the Python and typed Rust probes require `--active-crate`.
 
 Correctness includes exact solver-input and full diagnostic comparisons,
 full local fast/standard corpus coverage, and affected source tests described

@@ -5,6 +5,7 @@ pub(super) struct Args {
     pub job: String,
     pub active_job: String,
     pub worker: u32,
+    pub active_crate: String,
     pub environment: String,
     pub out: PathBuf,
 }
@@ -17,6 +18,7 @@ pub(super) fn parse(values: impl Iterator<Item = String>) -> io::Result<Args> {
             "--job",
             "--active-job",
             "--active-worker",
+            "--active-crate",
             "--environment",
             "--out",
         ]
@@ -43,10 +45,16 @@ pub(super) fn parse(values: impl Iterator<Item = String>) -> io::Result<Args> {
         job: get("--job")?,
         active_job: get("--active-job")?,
         worker: get("--active-worker")?.parse().map_err(io::Error::other)?,
+        active_crate: get("--active-crate")?,
         environment: get("--environment")?,
         out: PathBuf::from(get("--out")?),
     };
-    if args.worker == 0 || args.job == args.active_job {
+    if args.worker == 0
+        || args.job == args.active_job
+        || super::process::crate_name(format!("--crate-name={}\0", args.active_crate).as_bytes())
+            .as_deref()
+            != Some(args.active_crate.as_str())
+    {
         return Err(io::Error::other(
             "local Linux census requires distinct completed/active jobs and nonzero worker PID",
         ));
@@ -75,6 +83,8 @@ mod tests {
             "0",
             "--environment",
             "test",
+            "--active-crate",
+            "human_eval_verus",
             "--out",
             "out",
         ];
@@ -97,6 +107,8 @@ mod valid_tests {
             "7",
             "--environment",
             "test",
+            "--active-crate",
+            "human_eval_verus",
             "--out",
             "out",
         ];
