@@ -1068,6 +1068,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     if !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
+    let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
     let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
     // Establish the revision again after the watcher is live, closing the setup
     // interval between metadata collection and native observation.
@@ -1088,14 +1089,15 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace,
         "context_sha256":hash, "input_revision":before.revision,
-        "complete":before.complete && script_coverage && monitor.complete(),
+        "complete":before.complete && script_coverage && monitor.complete() && absent.ready(),
         "source_observation":source_state.is_file()
     }));
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
         || focused(&config.args)
         || !before.complete
-        || !monitor.complete();
+        || !monitor.complete()
+        || !absent.ready();
     let names: BTreeSet<String> = data["packages"]
         .as_array()
         .into_iter()
@@ -1186,20 +1188,22 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     ));
     after.roots.extend(runtime_paths(&config.cache, &hash));
     let stamp_after = super::input::mutation_stamp(&after);
-    // Flush native coalesced notifications before currentness publication. This
-    // small bound is independent of solver runtime and never delays forwarding.
-    std::thread::sleep(std::time::Duration::from_millis(100));
+    let absent = absent.finish();
     let currentness = if !before.complete
         || !after.complete
         || !after_coverage
         || !source_coverage
         || !monitor.complete()
+        || !absent.complete
         || !runtime_current(&config.cache, &hash)
         || stamp_before.is_none()
         || stamp_after.is_none()
     {
         Currentness::Unknown
-    } else if before.revision == after.revision && stamp_before == stamp_after && !monitor.changed()
+    } else if before.revision == after.revision
+        && stamp_before == stamp_after
+        && !monitor.changed()
+        && !absent.changed
     {
         Currentness::Current
     } else {

@@ -1,5 +1,6 @@
 //! Managed Cargo artifacts and successful per-target verification receipts.
 
+mod absent;
 mod build_inputs;
 mod files;
 mod input;

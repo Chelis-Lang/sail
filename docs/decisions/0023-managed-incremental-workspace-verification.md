@@ -31,8 +31,8 @@ specifications fail explicitly because v1 cannot establish their complete runtim
 identity.
 Missing or invalid receipts trigger a targeted clean of Sail-owned artifacts and
 fresh verification. Failed, cancelled, scoped, and incomplete results are never
-whole-target reuse receipts. Explicit force-fresh runs establish reports but do
-not authorize later automatic reuse.
+whole-target reuse receipts. Explicit force-fresh refreshes requested targets and can establish complete
+receipts for later ordinary reuse; partial scopes cannot.
 
 Input revisions hash workspace files, lockfiles, manifests, Cargo configuration,
 resolved local, registry and git dependency contents, and declared build-script
@@ -98,3 +98,20 @@ native watcher callback latency. An unsupported or unreadable stamp prevents
 currentness and publication. Regression tests kill a publisher after receipt
 files are copied but before commit, and restore both source bytes and mtime while
 checking that the mutation stamp changes.
+
+On Linux, a separate safe `inotify` subscription records precise child names for
+configuration paths absent at startup. Watches are installed synchronously; the
+nonblocking kernel queue is drained before publication. A transient configuration
+creation/removal invalidates work even when its final state is absent. Queue
+overflow, lost watches and read errors prevent currentness. Cargo's unrelated
+SQLite journals do not invalidate an absent configuration, so normal warm reuse
+works without changing Cargo home, package paths, flags or child environment.
+
+macOS retains conservative change-time stamps on the nearest existing parent of
+an absent configuration. FSEvents callbacks, cookies and synchronous flush are
+insufficient to prove all preceding mutations were delivered; an empirical
+flush-and-disconnect prototype missed transient config creation/removal. Cargo
+cache journals may therefore make a macOS incremental run historical and prevent
+whole-target receipt publication. Existing/default SMT caching remains available.
+This limitation is explicit until a sound targeted observation or configuration
+isolation mechanism preserves Cargo semantics.
