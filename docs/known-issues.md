@@ -39,7 +39,13 @@ four-reader latency gate has been established. See the
   retained the same actual selected verifier. The frozen collector did not record
   the failed samples' exact freshness labels or reasons; their cause is being
   profiled. Rust and retained CLI/MCP scenarios were not attempted after this
-  failure. See [all retained samples](validation/m7-a6-b346-reader-census-failure.json).
+  failure. See [all retained samples](validation/m7-a6-b346-reader-census-failure.json). A
+  separate traced retained-job diagnostic, with no active verifier or new proof,
+  classified 13/200 Unknown reads as bounded runtime-validation ownership waits;
+  187 were Current. It retained all namespace/runtime/lease checks and unchanged
+  original job bytes. Its instrumented timings fail the latency target and do
+  not explain the original live run's sustained failures. See the
+  [classified diagnostic](validation/m7-retained-proof-freshness-profile.json).
 - The older frozen reader controller assumed the newer `results/projects/jobs`
   storage layout, while a6 stores jobs under `projects/jobs`. Public proof
   evidence remained intact, but automatic raw archival could omit those files.
