@@ -21,6 +21,48 @@ MAX_FRAME = 32 * 1024 * 1024
 DEADLINE = 5
 
 
+def process_table(proc=Path("/proc")):
+    """Capture kernel identities without reading process environment variables."""
+    result = {}
+    for directory in proc.iterdir():
+        if not directory.name.isdecimal():
+            continue
+        try:
+            raw = (directory / "stat").read_text()
+            closing = raw.rindex(")")
+            fields = raw[closing + 2:].split()
+            result[int(directory.name)] = {
+                "pid": int(directory.name), "parent": int(fields[1]),
+                "name": raw[raw.index("(") + 1:closing], "state": fields[0],
+                "started_ticks": int(fields[19]),
+            }
+        except (OSError, ValueError, IndexError):
+            # A process may exit during enumeration; an absent verifier cannot
+            # satisfy the acceptance contract.
+            continue
+    return result
+
+
+def active_verifiers(table, worker, started_ticks):
+    """Only live Rust verifiers descended from the exact worker qualify."""
+    owner = table.get(worker)
+    if owner is None or owner["started_ticks"] != started_ticks or owner["state"] == "Z":
+        return []
+    verified = []
+    for candidate in table.values():
+        if candidate["name"] != "rust_verify" or candidate["state"] == "Z":
+            continue
+        parent = candidate["parent"]
+        seen = set()
+        while parent in table and parent not in seen:
+            if parent == worker:
+                verified.append(candidate)
+                break
+            seen.add(parent)
+            parent = table[parent]["parent"]
+    return sorted(verified, key=lambda item: item["pid"])
+
+
 def exact(stream, count):
     result = bytearray()
     while len(result) < count:
@@ -80,6 +122,11 @@ def p95(values):
 
 def measure(args):
     address = endpoint(args.socket)
+    worker = process_table().get(args.active_worker)
+    command = (Path("/proc") / str(args.active_worker) / "cmdline").read_bytes().split(b"\0")
+    if worker is None or len(command) < 2 or command[1] != b"_repair-worker":
+        raise ValueError("SAIL0943: active PID is not a repair verification worker")
+    worker_started = worker["started_ticks"]
     # Establishment may hash the runtime once asynchronously. It is outside the
     # latency census, but its actual duration and every incomplete read remain visible.
     started = time.monotonic()
@@ -101,12 +148,15 @@ def measure(args):
     def sample(index):
         active, _, _ = call(address, {"operation": "status", "id": args.active_job})
         active_before = status(active)["state"]
+        verifiers_before = active_verifiers(process_table(), args.active_worker, worker_started)
         operation = "status" if index % 2 == 0 else "result"
         response, elapsed, length = call(address, {"operation": operation, "id": args.job})
+        verifiers_after = active_verifiers(process_table(), args.active_worker, worker_started)
         active, _, _ = call(address, {"operation": "status", "id": args.active_job})
         return {"operation": operation, "wall_ms": elapsed, "response_bytes": length,
                 "current": valid_established(response, args.job, revision),
-                "active_before": active_before, "active_after": status(active)["state"]}
+                "active_before": active_before, "active_after": status(active)["state"],
+                "verifiers_before": verifiers_before, "verifiers_after": verifiers_after}
 
     with ThreadPoolExecutor(max_workers=args.clients) as readers:
         samples = list(readers.map(sample, range(args.samples)))
@@ -117,11 +167,13 @@ def measure(args):
         summary[operation] = {"count": len(values), "median_ms": statistics.median(values),
                               "p95_ms": p95(values), "max_ms": max(values)}
     passed = (len(samples) == args.samples and all(sample["current"]
+              and sample["verifiers_before"] and sample["verifiers_after"]
               and sample["active_before"] == sample["active_after"] == "running" for sample in samples)
               and all(value["p95_ms"] < 200 for value in summary.values()))
     result = {"schema_version": 1, "platform": platform.platform(),
               "execution_environment": args.environment, "clients": args.clients,
               "deadline_seconds": DEADLINE, "job": args.job, "active_job": args.active_job,
+              "active_worker": worker,
               "input_revision": revision, "establishment_ms": establishment_ms,
               "establishment_reads": establishment_reads, "samples": samples,
               "summary": summary, "passed": passed}
@@ -136,6 +188,8 @@ def main():
     parser.add_argument("--socket", type=Path, required=True, help="SMT daemon socket")
     parser.add_argument("--job", required=True, help="Completed real verification job")
     parser.add_argument("--active-job", required=True, help="Another currently running verification")
+    parser.add_argument("--active-worker", type=int, required=True,
+                        help="Linux PID of that job's _repair-worker; live descendant verifier required")
     parser.add_argument("--clients", type=int, default=4)
     parser.add_argument("--samples", type=int, default=200)
     parser.add_argument("--establish-timeout", type=float, default=600)

@@ -92,13 +92,18 @@ kernel freshness coverage. This affects evidence classification, not the
 verification verdict or the permission to run the workload under emulation.
 
 `scripts/m7-job-read-bench.py --socket SOCKET --job COMPLETED_JOB
---active-job RUNNING_JOB --environment LABEL --out RESULT.json` exercises the
+--active-job RUNNING_JOB --active-worker LINUX_PID --environment LABEL --out RESULT.json` exercises the
 actual framed job protocol with four concurrent clients and 200 reads. It
 includes transfer and JSON decoding time and keeps the five-second deadline.
 It waits for initial Current establishment outside the read census and records
 that duration. Every measured read must retain the completed revision, and the
 other job must remain Running before and after every read. Unknown, Historical,
 unavailable and incomplete samples cannot satisfy the latency goal.
+The supplied worker PID must be the active job's `_repair-worker`. Every sample
+also records a live `rust_verify` descendant before and after the timed RPC,
+bound to the worker's kernel start time; metadata setup and zombie processes
+cannot qualify as active verification. Process inspection is outside the RPC
+timing, and the result includes these observations for review.
 
 Correctness includes exact solver-input and full diagnostic comparisons,
 full local fast/standard corpus coverage, and affected source tests described
