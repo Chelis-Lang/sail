@@ -154,6 +154,13 @@ HTTP/reload cases, legacy MCP and the four-reader elapsed bound failed. Its
 [complete failure](../bench/validation/m7-linux-gate-7fcb-failure-emulated-2026-10-11.json)
 retains default inter-case scheduling separately from the earlier two-case local
 gates. A complete passing integrated gate remains required.
+An indexed Linux namespace predicate now passes the original six native mutation
+and overflow controls plus generated old/new path equivalence. A local emulated
+4,097-path queue control dropped from 14.44 seconds and incomplete coverage to
+8.38 ms with complete coverage under the unchanged drain budget. Its
+[isolated record](validation/m7-namespace-indexed-filter.json) does not establish
+real reader latency or erase any failed full gate; watch acquisition remains a
+separate unoptimized cost.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh
 real-reader attempt failed ordinary human-eval setup at the unchanged
