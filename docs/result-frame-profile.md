@@ -88,3 +88,11 @@ decode claim additionally requires verifying that reencoded frame's byte identit
 The current tool uses the captured frame directly and tests a different JSON
 member order, extra frames and truncation. The earlier measurements remain
 offline diagnostics with their original implementation identities.
+
+A subsequent [codec equality check](validation/m7-original-result-frame-codec-check.json)
+found that typed reencoding exactly equals the archived 4,314,950-byte framed
+response on the host. The production codec, manifest and dependency lock are
+unchanged from the historical profiler. This establishes byte equality for that
+input with the current codec; it does not rerun the historical native timing
+measurement. The profiler now reports this equality explicitly while continuing
+to decode the original captured bytes.
