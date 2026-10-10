@@ -938,6 +938,18 @@ pub fn refresh_context(
     context_sha256: &str,
     environment: &BTreeMap<String, String>,
 ) -> Result<super::input::InputSnapshot> {
+    refresh_context_validated(cache, workspace, context_sha256, environment, || {
+        runtime_current(cache, context_sha256)
+    })
+}
+
+pub(super) fn refresh_context_validated(
+    cache: &Path,
+    workspace: &Path,
+    context_sha256: &str,
+    environment: &BTreeMap<String, String>,
+    runtime_valid: impl FnOnce() -> bool,
+) -> Result<super::input::InputSnapshot> {
     let context = cache
         .join("projects")
         .join(digest(workspace.as_os_str().as_encoded_bytes()))
@@ -974,9 +986,104 @@ pub fn refresh_context(
     snapshot.roots.dedup();
     let source_state = context.join("source-inputs.json");
     let source_coverage = source_state.is_file() && super::source_inputs::load(&source_state).1;
-    let runtime_complete = runtime_current(cache, context_sha256);
+    let runtime_complete = runtime_valid();
     snapshot.complete &= covered && source_coverage && runtime_complete;
     Ok(snapshot)
+}
+
+#[cfg(target_os = "linux")]
+pub(super) fn observation_plan(
+    cache: &Path,
+    workspace: &Path,
+    context_sha256: &str,
+    environment: &BTreeMap<String, String>,
+) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+    let context = cache
+        .join("projects")
+        .join(digest(workspace.as_os_str().as_encoded_bytes()))
+        .join(context_sha256);
+    let data: Value = read(&context.join("input-state.json"))
+        .ok_or_else(|| Error::new("SAIL3108", "declared input observation is unavailable"))?;
+    let home = environment
+        .get("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| {
+            environment
+                .get("HOME")
+                .map(|p| PathBuf::from(p).join(".cargo"))
+        });
+    let invocation = Path::new(
+        data["sail_invocation_directory"]
+            .as_str()
+            .unwrap_or_else(|| workspace.to_str().unwrap_or_default()),
+    );
+    let mut roots: Vec<PathBuf> = data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|p| {
+            p["manifest_path"]
+                .as_str()
+                .and_then(|p| Path::new(p).parent())
+        })
+        .map(Path::to_owned)
+        .collect();
+    roots.extend(
+        data["sail_source_inputs"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(PathBuf::from),
+    );
+    roots.extend(super::build_inputs::observation_paths(
+        &context.join("build-inputs.json"),
+    ));
+    roots.extend(script_roots(&data));
+    roots.extend(super::input::configuration_paths(
+        invocation,
+        home.as_deref(),
+    ));
+    roots.extend(runtime_paths(cache, context_sha256));
+    for name in [
+        "input-state.json",
+        "source-inputs.json",
+        "build-inputs.json",
+    ] {
+        roots.push(context.join(name));
+    }
+    let identities = cache.join("runtime-identities");
+    let link = identities.join(format!("{context_sha256}.link"));
+    if let Some(sha) = read::<String>(&link) {
+        roots.push(identities.join(format!("{sha}.json")));
+    }
+    roots.push(link);
+    roots.sort();
+    roots.dedup();
+    let excluded = ["target_directory", "sail_cache_directory"]
+        .into_iter()
+        .filter_map(|key| data[key].as_str())
+        .map(|p| invocation.join(p))
+        .chain([cache.to_owned()])
+        .collect();
+    Ok((roots, excluded))
+}
+
+#[cfg(target_os = "linux")]
+pub(super) fn runtime_identity(cache: &Path, context: &str) -> Option<(String, Vec<PathBuf>)> {
+    let state = cache.join("runtime-identities");
+    let sha = read::<String>(&state.join(format!("{context}.link")))?;
+    let identities = read::<Vec<(String, String)>>(&state.join(format!("{sha}.json")))?;
+    if sha != digest(&serde_json::to_vec(&identities).ok()?) || identities.is_empty() {
+        return None;
+    }
+    Some((
+        sha,
+        identities
+            .into_iter()
+            .map(|(path, _)| PathBuf::from(path))
+            .collect(),
+    ))
 }
 
 fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
@@ -989,7 +1096,7 @@ fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-fn runtime_current(cache: &Path, context: &str) -> bool {
+pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
     let mut hashed = super::files::FileDigests::default();
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
@@ -1139,12 +1246,13 @@ pub(crate) fn run_engine(
     }
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
     let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
+    let mut coherent = super::coherent::Guard::begin(&before);
     // Establish the revision again after the watcher is live, closing the setup
     // interval between metadata collection and native observation.
     let monitored = snapshot_metadata(&data, &extras);
     before.revision = monitored.revision;
     before.observation_paths = monitored.observation_paths;
-    before.complete &= monitored.complete;
+    before.complete &= monitored.complete && coherent.ready();
     let stamp_before = super::input::mutation_stamp(&before);
     super::configuration::check(&invocation, &config.args)?;
     json(
@@ -1282,6 +1390,7 @@ pub(crate) fn run_engine(
     let pending = completed_receipts(&paths.run, &after_data)?;
     let stamp_after = super::input::mutation_stamp(&after);
     let absent = absent.finish();
+    let coherent_complete = coherent.ready();
     let currentness = if !before.complete
         || !after.complete
         || !after_coverage
@@ -1289,6 +1398,7 @@ pub(crate) fn run_engine(
         || !monitor.complete()
         || !absent.complete
         || !runtime_current(&config.cache, &hash)
+        || !coherent_complete
         || stamp_before.is_none()
         || stamp_after.is_none()
     {
@@ -1328,6 +1438,9 @@ pub(crate) fn run_engine(
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = Vec::new();
+    if !coherent_complete {
+        notes.push("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification; no current proof receipt is published".to_owned());
+    }
     if !script_coverage {
         notes.push("Build-script input declarations were established during this run".to_owned());
     }

@@ -2,15 +2,22 @@
 
 mod absent;
 mod build_inputs;
+mod coherent;
 mod configuration;
 mod files;
+mod freshness;
 mod input;
+#[cfg(target_os = "linux")]
+mod lease;
 mod observe;
+#[cfg(target_os = "linux")]
+mod precise;
 mod receipts;
 mod runner;
 mod source_inputs;
 
 pub(crate) use files::{digest, event, file_digest, json};
+pub use freshness::FreshnessIndex;
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
 pub(crate) use runner::run_engine;

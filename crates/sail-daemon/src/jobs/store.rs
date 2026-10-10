@@ -174,12 +174,18 @@ fn project_bytes(state: &State, job: &Stored) -> io::Result<Vec<u8>> {
 }
 
 fn refresh(
+    state: &State,
     job: &Stored,
     project: &sail_api::project::ProjectResult,
 ) -> Option<sail_verus::managed::InputSnapshot> {
     let environment = &job.submission.environment;
     let cache = cache(job)?;
-    sail_verus::managed::refresh_result(&cache, project, environment).ok()
+    state.freshness.inspect(
+        &cache,
+        Path::new(&project.workspace),
+        &project.context_sha256,
+        environment,
+    )
 }
 fn cache(job: &Stored) -> Option<PathBuf> {
     let environment = &job.submission.environment;
@@ -203,9 +209,28 @@ fn cache(job: &Stored) -> Option<PathBuf> {
     };
     Some(cache)
 }
+pub(super) fn establish_freshness(state: &State, job: &Stored) {
+    if let (Some(cache), Ok(project)) = (cache(job), project(state, job)) {
+        let _ = state.freshness.establish(
+            &cache,
+            Path::new(&project.workspace),
+            &project.context_sha256,
+            &job.submission.environment,
+        );
+    }
+}
+
 pub(super) fn known_revision(state: &State, job: &Stored) -> Option<String> {
     let project = project(state, job).ok()?;
-    let snapshot = refresh(job, &project)?;
+    let snapshot = state
+        .freshness
+        .establish(
+            &cache(job)?,
+            Path::new(&project.workspace),
+            &project.context_sha256,
+            &job.submission.environment,
+        )
+        .ok()?;
     snapshot.complete.then_some(snapshot.revision)
 }
 
@@ -227,13 +252,15 @@ pub(super) fn running_revision(state: &State, job: &Stored) -> Option<(String, S
             continue;
         }
         let original = event["input_revision"].as_str()?.to_owned();
-        let snapshot = sail_verus::managed::refresh_context(
-            &cache(job)?,
-            Path::new(event["workspace"].as_str()?),
-            event["context_sha256"].as_str()?,
-            &job.submission.environment,
-        )
-        .ok()?;
+        let snapshot = state
+            .freshness
+            .establish(
+                &cache(job)?,
+                Path::new(event["workspace"].as_str()?),
+                event["context_sha256"].as_str()?,
+                &job.submission.environment,
+            )
+            .ok()?;
         return snapshot.complete.then_some((original, snapshot.revision));
     }
     None

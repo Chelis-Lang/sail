@@ -27,6 +27,7 @@ struct State {
     stop: AtomicBool,
     activity: Arc<AtomicU64>,
     proofs: crate::proof_journal::Journals,
+    freshness: sail_verus::managed::FreshnessIndex,
 }
 
 /// A bound project endpoint; it owns one FIFO verification worker.
@@ -82,6 +83,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             stop: AtomicBool::new(false),
             activity: Arc::new(AtomicU64::new(0)),
             proofs: crate::proof_journal::Journals::default(),
+            freshness: sail_verus::managed::FreshnessIndex::default(),
         }),
     })
 }
