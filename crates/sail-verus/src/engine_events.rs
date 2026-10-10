@@ -180,9 +180,19 @@ fn convert(
 /// current inputs or a successful full proof; those belong to the managed runner.
 pub(crate) fn sealed(path: &Path) -> bool {
     std::fs::read_to_string(path).is_ok_and(|text| {
-        text.lines()
-            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-            .any(|event| event["version"] == 1 && event["event"] == "compiler-sealed")
+        if !text.ends_with('\n') {
+            return false;
+        }
+        let events: Option<Vec<Value>> = text
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).ok())
+            .collect();
+        events.is_some_and(|events| {
+            events.iter().all(|event| event["version"] == 1)
+                && events.last().is_some_and(|event| {
+                    event["event"] == "compiler-sealed" && event["phase"] == "full"
+                })
+        })
     })
 }
 
@@ -208,5 +218,37 @@ pub(crate) fn diagnostic(raw: &Value) -> sail_api::output::Diagnostic {
             })
             .collect(),
         rendered: String::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn interrupted_or_malformed_stream_cannot_seal() -> Result<(), Box<dyn std::error::Error>> {
+        let path =
+            std::env::temp_dir().join(format!("sail-engine-seal-{}.jsonl", std::process::id()));
+        let sealed_line =
+            r#"{"version":1,"event":"compiler-sealed","phase":"full","payload":{"success":false}}"#;
+        std::fs::write(&path, format!("{sealed_line}\n"))?;
+        assert!(sealed(&path));
+        std::fs::write(&path, sealed_line)?;
+        assert!(!sealed(&path));
+        std::fs::write(&path, format!("broken\n{sealed_line}\n"))?;
+        assert!(!sealed(&path));
+        std::fs::write(&path, format!("{sealed_line}\n{{\n"))?;
+        assert!(!sealed(&path));
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
+    #[test]
+    fn source_diagnostic_retains_exact_message_and_location() {
+        let raw = serde_json::json!({"message":{"note":"postcondition not satisfied","spans":[{"as_string":"crate:part.rs:5:30: 5:35 (#0)"}]},"level":"Error"});
+        let parsed = diagnostic(&raw);
+        assert_eq!(parsed.message, "postcondition not satisfied");
+        assert_eq!(parsed.level, "error");
+        assert_eq!(parsed.spans[0].file, "crate:part.rs");
+        assert_eq!(parsed.spans[0].line, 5);
+        assert_eq!(parsed.spans[0].column, 30);
     }
 }

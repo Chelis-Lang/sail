@@ -65,7 +65,15 @@ impl Installed {
     /// `SAIL3120` if missing, misidentified, or corrupted. Run
     /// `cargo xtask build-verus-engine` to install the explicit variant.
     pub fn locate(cache: &Path, pins: &Pins) -> Result<Self> {
-        let build = build_dir(cache, pins);
+        Self::at(&build_dir(cache, pins), pins)
+    }
+
+    /// Validates an explicitly supplied build without installing or modifying it.
+    ///
+    /// # Errors
+    /// `SAIL3120` when its identity or artifact bytes do not match the engine.
+    pub fn at(build: &Path, pins: &Pins) -> Result<Self> {
+        let build = build.to_owned();
         let manifest = Manifest::load(&build).map_err(|e| {
             Error::new(
                 "SAIL3120",
@@ -103,6 +111,88 @@ impl Installed {
             build,
         })
     }
+}
+
+/// Install provenance exposed by the explicit engine-management command.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Status {
+    /// Independently versioned install response.
+    pub version: u32,
+    /// Verus source commit.
+    pub commit: String,
+    /// Verus Rust toolchain.
+    pub rust_toolchain: String,
+    /// Current exact source patch digest.
+    pub patch_sha256: String,
+    /// Exact dependency resolution digest.
+    pub source_lock_sha256: String,
+    /// Complete build-manifest digest.
+    pub manifest_sha256: String,
+    /// Build location resolved to its real source variant.
+    pub build: PathBuf,
+    /// Selected engine launcher.
+    pub verus: PathBuf,
+}
+
+/// Reports an available install only after its full artifact validation.
+///
+/// # Errors
+/// `SAIL3120` when the optional build is unavailable or corrupt.
+pub fn status(cache: &Path, pins: &Pins) -> Result<Status> {
+    let installed = Installed::locate(cache, pins)?;
+    Ok(Status {
+        version: 1,
+        commit: pins.verus.commit.clone(),
+        rust_toolchain: pins.verus.rust_toolchain.clone(),
+        patch_sha256: patch_sha256(),
+        source_lock_sha256: crate::managed::digest(SOURCE_LOCK.as_bytes()),
+        manifest_sha256: installed.manifest_sha256,
+        build: installed
+            .build
+            .canonicalize()
+            .map_err(|e| Error::new("SAIL3120", e.to_string()))?,
+        verus: installed.verus,
+    })
+}
+
+/// Makes one validated source variant available under an independent cache root.
+/// Existing installs are never overwritten; the alias is monitored like every
+/// other runtime path during managed execution.
+///
+/// # Errors
+/// `SAIL3120` for a wrong build, conflicting destination, or unsupported platform.
+pub fn import(cache: &Path, pins: &Pins, source: &Path) -> Result<Status> {
+    let installed = Installed::at(source, pins)?;
+    let destination = build_dir(cache, pins);
+    let source = installed
+        .build
+        .canonicalize()
+        .map_err(|e| Error::new("SAIL3120", e.to_string()))?;
+    if !destination.exists() {
+        let parent = destination
+            .parent()
+            .ok_or_else(|| Error::new("SAIL3120", "invalid engine cache path"))?;
+        std::fs::create_dir_all(parent).map_err(|e| Error::new("SAIL3120", e.to_string()))?;
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&source, &destination)
+            .map_err(|e| Error::new("SAIL3120", e.to_string()))?;
+        #[cfg(not(unix))]
+        return Err(Error::new(
+            "SAIL3120",
+            "source-engine import currently requires Unix",
+        ));
+    }
+    if destination
+        .canonicalize()
+        .map_err(|e| Error::new("SAIL3120", e.to_string()))?
+        != source
+    {
+        return Err(Error::new(
+            "SAIL3120",
+            "engine cache already refers to a different source variant",
+        ));
+    }
+    status(cache, pins)
 }
 
 /// Immutable engine controls passed to the owned driver, never process globals.
@@ -208,16 +298,33 @@ pub fn repair(
             selected.push(target);
         }
     }
+    if selected.len() > 1 {
+        return Err(Error::new(
+            "SAIL3122",
+            "repair function matched more than one selected Cargo target",
+        ));
+    }
     let focus = if selected.is_empty() {
         None
     } else {
         let mut result = full.clone();
+        result.exit_code = Some(i32::from(
+            selected
+                .iter()
+                .any(|target| target.report.exit_code != Some(0)),
+        ));
         result.targets = selected;
         result
             .notes
             .push("Explicit focused evidence; independent full validation follows".into());
         Some(result)
     };
+    if focus.is_none() && full.exit_code == Some(0) {
+        return Err(Error::new(
+            "SAIL3122",
+            "exact repair function was not established in the selected target",
+        ));
+    }
     Ok(sail_api::repair::BatchResult {
         batched: focus.is_some(),
         focus,
