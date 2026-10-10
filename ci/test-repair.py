@@ -47,6 +47,7 @@ def run(args):
     head = subprocess.check_output(["git", "-C", str(source_tree), "rev-parse", "HEAD"], text=True).strip()
     builtin = source_tree / "source/builtin"
     macros = source_tree / "source/builtin_macros"
+    vstd = source_tree / "source/vstd"
     assert (builtin / "Cargo.toml").is_file() and (macros / "Cargo.toml").is_file()
     with tempfile.TemporaryDirectory(prefix="sr-", dir="/tmp") as temporary:
         root = Path(temporary)
@@ -56,16 +57,15 @@ def run(args):
             '[package]\nname="repair_demo"\nversion="0.1.0"\nedition="2021"\n'
             '[package.metadata.verus]\nverify=true\n[dependencies]\n'
             f'verus_builtin={{path={json.dumps(str(builtin))}}}\n'
-            f'verus_builtin_macros={{path={json.dumps(str(macros))}}}\n')
+            f'verus_builtin_macros={{path={json.dumps(str(macros))}}}\n'
+            f'vstd={{path={json.dumps(str(vstd))}}}\n')
         source = project / "src/lib.rs"
         def write(body):
             source.write_text("use verus_builtin::*;\nuse verus_builtin_macros::*;\nverus! {\n" + body + "\n}\n")
         write(GOOD)
-        # The pinned macros use this supported selector for a Cargo crate that
-        # deliberately has no vstd dependency. Direct Verus sets it for --no-vstd;
-        # Cargo expands macros separately before the Verus driver runs.
-        env = dict(os.environ, VSTD_KIND="NoVstd", SAIL_CACHE_DIR=str(root / "cache"),
+        env = dict(os.environ, SAIL_CACHE_DIR=str(root / "cache"),
                    SAIL_DAEMON_SOCKET=str(root / "d.sock"))
+        env.pop("VSTD_KIND", None)
         setup = execute([sail, "engine", "install", "--from", str(engine), "--output", "json"], project, env, 30)
         (evidence / "engine-install.stdout.json").write_bytes(setup.stdout)
         (evidence / "engine-install.stderr").write_bytes(setup.stderr)
@@ -88,7 +88,7 @@ def run(args):
         summary = {"version":1,"kind":"actual-prebuilt-engine-cli-mcp-acceptance",
                    "machine":platform.platform(),"environment_label":args.environment_label,
                    "source_commit":head,"proof_tool_budget_s":args.timeout,"passed":False,
-                   "fixture_vstd_kind":"NoVstd","fixture_rust_toolchain":engine_status["rust_toolchain"],
+                   "fixture_vstd":"pinned-source-path","fixture_rust_toolchain":engine_status["rust_toolchain"],
                    "sail_sha256":hashlib.sha256(Path(sail).read_bytes()).hexdigest(),
                    "engine_manifest_sha256":engine_status["manifest_sha256"]}
         (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
@@ -149,10 +149,12 @@ def run(args):
             good_job, good = submit("success")
             document, result, target = full(good)
             cold_declarations = "Build-script input declarations were established during this run" in result["notes"]
-            if result["currentness"] == "historical" or (result["currentness"] == "unknown" and cold_declarations):
+            if cold_declarations:
                 # Cold dep-info discovery must not authorize acceptance. One
                 # subsequent observed full invocation must establish current inputs.
-                assert not document["accepted"] and result["exit_code"] == 0 and target["complete"], good
+                assert result["exit_code"] == 0 and target["complete"], good
+                if result["currentness"] != "current":
+                    assert not document["accepted"], good
                 good_job, good = submit("success-established")
                 document, result, target = full(good)
             assert result["currentness"] == "current" and document["accepted"], good
