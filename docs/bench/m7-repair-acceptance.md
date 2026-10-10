@@ -1,0 +1,46 @@
+# M7 repair acceptance
+
+The workload is frozen in `corpus/repair-edits.json` before optimization.
+Its SHA-256 is
+`6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6`.
+The M6 comparison commit is `0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca`.
+
+Both pinned real projects contain five cycles: a body edit, an implied
+specification extension, a proof or implementation refactor, a failing
+specification attempt and its repair. Each cycle's source text is recorded
+exactly. Independent edits start from the original project; repair starts from
+the failing cycle. Edits apply to scratch copies and must match exactly once.
+The fetched corpus is never modified. An unexpected outcome is a failed
+acceptance case, not grounds to silently substitute an easier function.
+
+human-eval-verus has no Cargo manifest. The workload wraps the unchanged
+`tasks/lib.rs` and all its modules in a single library package named
+`human_eval_verus`, edition 2021, with `package.metadata.verus.verify = true`
+and `vstd` from the pinned Verus source. The same wrapper and dependency
+resolution are used for M6 and M7. Vest retains its workspace and `vest_lib`
+library, with Verus dependencies patched to the same pinned source as the
+standard-tier harness.
+
+Each round alternates M6 and M7 ordering over the same cycle and path. M6
+performs a managed focused invocation and an independent full invocation.
+M7 runs one explicitly selected repair batch. Both use warm SMT caches and
+the same selected package/library, full scope, dependencies and solver flags.
+Warm-up and installation/build time are separate from measured cycles.
+
+Retain raw phase reports and diagnostics, process identity, source/catalogue
+hashes, wall time, first actionable evidence, peak RSS, cache counters and
+preparation statistics. Full M7 outcomes must equal full M6 outcomes. A
+successful focus followed by a failing full result is a rejected repair.
+First actionable evidence is a failure/progress event, not acceptance.
+
+Report three rounds and their spread. The goal is at least 2× median whole-loop
+improvement on each catalogue. Report established status/result latency with
+active verification and concurrent readers against the 200 ms p95 goal.
+Do not change client deadlines or count unavailable/unknown evidence as a
+confirmed pass. On 2026-10-10 the owner directed running these workloads in
+the local Linux x86-64 container now, labelling emulation, and rerunning native
+host reference numbers later.
+
+Correctness includes exact solver-input and full diagnostic comparisons,
+full local fast/standard corpus coverage, and affected source tests described
+in ADR 0027. Long runs stay outside CI.

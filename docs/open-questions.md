@@ -113,3 +113,16 @@ inline with the date and link the ADR that captures it.
     signing trust independent of access credentials, and long validation local.
     Persistent Verus internals, pools, stack-only keys and new backends remain
     deferred. See ADRs 0023–0026 and milestone M6 in `docs/ROADMAP.md`.
+
+13. **Interactive proof engine and repair workflow.**
+
+    **Answered 2026-10-10 (approved M7 plan):** build an optional pinned
+    source engine, CLI/MCP repair validation, deterministic explanations,
+    immutable named baselines, separate proof events and shared safe
+    freshness tracking. Retain a compiler callback only within one revision;
+    focused evidence requires independent full validation. The completion
+    gate is at least 2× median improvement on each of two frozen Linux
+    real-project catalogues. The owner subsequently directed local-container
+    execution now, with native-host reference measurements rerun later;
+    native-host availability must not block implementation. Editor integration
+    and automated proof edits are deferred. See ADR 0027.
