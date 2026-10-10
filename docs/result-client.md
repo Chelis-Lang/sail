@@ -222,3 +222,13 @@ or freshness observer. Four-reader transfer costs therefore include that
 fixture's scheduling and serialized writes. They do not establish that the
 production server has the same bottleneck. Malformed complete JSON still fails
 and shuts down/joins the owned producer.
+
+The [component record](validation/m7-result-client-components.json) retains
+the exact source/binary/frame identities and all samples. On emulated Linux,
+four-thread median allocation/copy was 0.96 ms, whole-body comparison 0.34 ms,
+independent complete graph cloning 17.75 ms and typed frame parsing 50.02 ms.
+The typed-read p95 also had a 3512.67 ms outlier. These results do not support a
+product buffer-pool or unsafe-initialization change. Full-response ownership
+and every fresh-frame validation remain intact. The record keeps the separate
+raw-transfer replay's variation rather than assigning a live bottleneck from
+these component timings.
