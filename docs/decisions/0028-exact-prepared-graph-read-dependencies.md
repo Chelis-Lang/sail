@@ -1,6 +1,6 @@
 # 0028: Exact prepared graph-read dependencies
 
-- **Status:** proposed candidate; compilation, runtime qualification and product acceptance pending
+- **Status:** proposed candidate; source build passes, runtime qualification and product acceptance pending
 - **Date:** 2026-10-10
 
 ## Context
@@ -119,9 +119,13 @@ bitvector and late EXEC fixtures. No check or baseline is relaxed.
 
 The isolated host candidate passes seven graph-ledger VIR regressions and the
 complete eight-test VIR library suite. The complete `rust_verify` library passes nine release tests, including the
-reporter nested-Arc/racing-admission regressions; raw-field privacy also compiled. No runtime binary,
-vstd verification or source manifest was built by these checks. Runtime source
-oracles and product acceptance remain pending. Static coverage, patch
+reporter nested-Arc/racing-admission regressions; raw-field privacy also compiled.
+Separately, the ordinary Linux source builder produced the final candidate's
+runtime and source manifest, verifying 2,060 vstd obligations with zero errors.
+`engine/verus/candidates/qualifications/2459-linux-build.json` retains the exact
+patch, manifest, artifact hashes and emulated execution environment. The Linux
+VIR library also passes all eight tests. Runtime source oracles and product
+acceptance remain pending. Static coverage, patch
 applicability and syntax checks also pass. A separately built variant
 must pass them, source/cancellation gates and real-project raw SMT oracles before
 it can replace the current artifact. Global datatype maps, imported source/span
