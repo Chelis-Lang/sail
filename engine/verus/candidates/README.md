@@ -296,8 +296,13 @@ replay bindings, diagnostics and validation scratch cannot be excluded as
 compiler working IR before that handoff.
 
 The combined source passed all 26 host release VIR tests, strict all-target
-VIR clippy and the private graph/span boundary audits. Full RustVerify library
-compilation and its exact focus/observer/physical-owner tests are in progress.
+VIR clippy and the private graph/span boundary audits. The first full RustVerify library compile failed before tests with 132 repeated
+macro-resolution errors: the helper tests had placed `sail_engine` at crate root,
+but the real source nests it under `verifier`. Exact diagnostics and source
+identities are retained in `qualifications/bounded-private-span-host.json`.
+The nested-layout correction and actual driver regressions remain pending;
+the separate unused-parameter warning will also be corrected before strict
+checks, without suppressing the lint.
 An allocation-only probe of the 105 retained, checksummed actual HE portable
 preparations admitted 36 and refused 69 at the 128 MiB decode budget. Admitted
 entries also decoded with explicit key-matched placeholder raw-span owners;
