@@ -932,10 +932,14 @@ mod http_tests {
     fn status_reads_existing_metrics_during_owned_transport_refresh() {
         let mut fixture = http_fixture("status-refresh", false);
         fixture.establish_transport_and_trust();
-        assert!(matches!(
-            fixture.tier.lookup(&fixture.key, &fixture.solver),
-            Lookup::Hit(_)
-        ));
+        let initial = fixture.tier.lookup(&fixture.key, &fixture.solver);
+        assert!(
+            matches!(initial, Lookup::Hit(_)),
+            "initial serving lookup: {initial:?}; remote: {:?}; phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
+            fixture.tier.remote_info(),
+            fixture.phase_report(),
+            fixture.request_report()
+        );
         fixture.tier.remote.expire();
         let (entered_tx, entered_rx) = std::sync::mpsc::channel();
         let (release_tx, release_rx) = std::sync::mpsc::channel();

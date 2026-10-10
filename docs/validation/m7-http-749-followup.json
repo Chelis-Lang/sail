@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "scope": "Exact frozen749 HTTP phase follow-up; no production transport/trust change",
+  "acceptance": false,
+  "environment": {
+    "platform": "linux-x86_64",
+    "execution": "Docker Desktop x86-64 emulation under shared load",
+    "clock_ticks_per_second": 100
+  },
+  "binary": {
+    "source": "749255e",
+    "sha256": "f83c2fdf398d3c384148d22efee966f946eabf1269e10e683fc08f47694d29fd",
+    "bytes": 43672952,
+    "kind": "Actual compiled sail-daemon unit-test binary frozen before rebuild"
+  },
+  "original_full_gate": {
+    "passed": 480,
+    "total": 483,
+    "failed": 3,
+    "serving_bound_ms": 250,
+    "status_refresh": {
+      "test": "shared::http_tests::status_reads_existing_metrics_during_owned_transport_refresh",
+      "elapsed_s": 1.193,
+      "setup_ms": 148.408084,
+      "failure": "Initial serving lookup Hit assertion before remote.expire and the paused constructor",
+      "result_and_phases": "Not recorded in original assertion; classification/transport cause unproved"
+    },
+    "paused_reader": {
+      "test": "shared::http_tests::verified_http_reply_reaches_readers_while_initiator_is_paused",
+      "elapsed_s": 1.3,
+      "follower_elapsed_ms": 255.784,
+      "setup_ms": 214.526959,
+      "classification_wall_us": 15683,
+      "classification_cpu_ticks": 1,
+      "headers_read_bytes": 285,
+      "headers_complete": true,
+      "server_delay_ms": 75,
+      "phases_us": {
+        "lookup_start_initiator": 397780,
+        "lookup_start_follower": 405344,
+        "helper_start": 406291,
+        "request_start": 406836,
+        "request_built": 410691,
+        "server_accepted": 433736,
+        "server_read": 510533,
+        "server_delay_ended": 586475,
+        "server_sent": 586746,
+        "request_send_returned": 636913,
+        "response_body_completed": 646075,
+        "transport_returned": 646092,
+        "classified": 663721,
+        "published": 664970
+      },
+      "phase_intervals_us": {
+        "server_accepted_to_read": 76797,
+        "actual_server_sleep": 75942,
+        "server_sent_to_send_return": 50167,
+        "send_return_to_body_completion": 9162,
+        "transport_return_to_classified": 17629
+      },
+      "interpretation": "Long intervals precede classification; recorded CPU ticks only describe classifier and have10ms resolution. No transport CPU/scheduler cause established."
+    }
+  },
+  "separate_frozen_controls": {
+    "attempts_per_case": 1,
+    "execution": "Two exact test cases in separate processes concurrently, original bounds and fixtures unchanged",
+    "status_refresh": {
+      "passed": true,
+      "elapsed_s": 1.42,
+      "setup_ms": 101.488625,
+      "classification_wall_us": 5497,
+      "classification_cpu_ticks": 0
+    },
+    "paused_reader": {
+      "passed": true,
+      "elapsed_s": 0.74,
+      "setup_ms": 93.337917,
+      "classification_wall_us": 27803,
+      "classification_cpu_ticks": 2,
+      "phases_us": {
+        "lookup_start_initiator": 225846,
+        "lookup_start_follower": 238300,
+        "helper_start": 230091,
+        "request_start": 230660,
+        "request_built": 234282,
+        "server_accepted": 270048,
+        "server_read": 287057,
+        "server_delay_ended": 371142,
+        "server_sent": 371533,
+        "request_send_returned": 387202,
+        "response_body_completed": 402300,
+        "transport_returned": 402332,
+        "classified": 431472,
+        "published": 432316
+      }
+    },
+    "limitation": "Both narrower controls passed; cannot erase failed full gate or attribute its cause from differing runs."
+  },
+  "source_review": {
+    "production_changes": false,
+    "observations": [
+      "Transport/trust construction established outside serving interval",
+      "Pinned reqwest already enables TCP_NODELAY; no evidence supports changing TCP defaults",
+      "Fixture fixed75ms server delay and complete285byte headers retained",
+      "Actual strict signature verification remains mandatory",
+      "Existing independent TCP split-response diagnostic did not demonstrate Nagle as cause",
+      "No unjustified async-runtime replacement, priority adjustment or deadline change"
+    ]
+  },
+  "diagnostic_followup": "Initial serving assertion now retains actual Lookup, sanitized remote metrics, complete existing phase markers and header-read record; expected Hit and all runtime behavior unchanged. This assertion-only change needs integrated check, not represented as frozen-binary execution.",
+  "retained_raw_sha256": {
+    "status-refresh.log": "617356b73a3147b20c55df9b45cdd3ff78c84a43014305d9b274c6c5802fadae",
+    "paused-reader.log": "e6d1af6c102ee153360bd4ae427d27037d76f1aff7899e0f270bce87471770f7",
+    "native-output.d": "14ba96001af00982e162bdaa3b1e1043d092a9224b6c6868b1f46afacfaefd2a"
+  },
+  "remaining": [
+    "Complete current full gate remains required",
+    "Original status-refresh transport versus classification stage unknown",
+    "Final hardened installed MCP controller still needs actual current release bytes",
+    "No source-engine or real reader latency acceptance inferred"
+  ]
+}
