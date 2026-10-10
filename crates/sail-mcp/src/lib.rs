@@ -1,7 +1,8 @@
 //! The MCP server exposing verification to agents (`sail mcp`).
 //!
 //! It speaks the Model Context Protocol over stdio (newline-delimited
-//! JSON-RPC 2.0; [`jsonrpc`], [`server`]) and offers four tools ([`tools`]):
+//! JSON-RPC 2.0; [`jsonrpc`], [`server`]) with verification and evidence tools
+//! ([`tools`]):
 //! - `verify`: runs `sail verify --output json` in a project, optionally
 //!   for one module or function, and returns the schema-v1 report
 //!   (`docs/output-schema.md`) with a short summary;
@@ -11,6 +12,12 @@
 //!   when and how they were established and whether sources changed since
 //!   ([`store`]);
 //! - `fragility`: `sail fragility --output json` (ADR 0018).
+//! - `start_verification`, `verification_status`, `verification_result` and
+//!   `cancel_verification`: durable workspace jobs, with lifecycle kept separate
+//!   from proof outcomes;
+//! - `start_repair_validation`, `verification_events`, `explain_failure` and
+//!   `compare_verification`: independent focus/full repair evidence, provisional
+//!   events, recorded failure details and comparisons (ADR 0027).
 //!
 //! Verification always runs the `sail` binary as a child process, so this
 //! crate depends only on `sail-api` for report types and read-only job clients

@@ -382,3 +382,26 @@ or `engine: interactive`; stock is the default.
 Save named baselines through `sail baseline save NAME --job JOB`. See
 [`proof-repair.md`](proof-repair.md) for currentness, compiler-seal and journal
 retention contracts.
+
+## Live read transport validation
+
+On Linux, `python3 ci/test-mcp-live-service.py PATH_TO_SAIL --out EVIDENCE_DIR
+--execution MACHINE_LABEL` runs the installed MCP server against an independent
+real Sail job service. The installed `sail-z3` must be beside `sail`. The script
+stops an actual verification worker and cancels it before proof completion; it
+does not substitute a verifier or a CLI adapter. Removing the owned executable
+pathname after MCP starts makes subprocess fallback unavailable during the read
+checks. It checks the same job's changed running/cancelled replies, restart
+identity, and cancellation of a blocked service read through MCP notifications.
+All owned actors are stopped before their scratch directory is removed.
+
+The supplemental installed Linux-container run passed these controls; its
+[portable record](validation/m7-mcp-live-service.json) also retains the initial
+fixture error concerning the missing-program error projection. The source
+revision and binary/script hashes are explicit in that record.
+
+This is supplementary transport evidence. It establishes neither a current
+proof, counterexample correctness, live reader latency, nor the repair-loop
+speed target. The original installed CLI/MCP verifier acceptance and reader
+collector limits remain separate required checks. Raw replies and failures are
+retained in the specified evidence directory.
