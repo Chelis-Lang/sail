@@ -104,6 +104,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         compiler_invocations: 1,
         batched: true,
         selection_error: None,
+        preparation: None,
     });
     std::fs::write(
         fixture.root.join("result.json"),
