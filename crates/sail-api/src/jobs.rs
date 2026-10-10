@@ -301,6 +301,57 @@ pub fn read_frame<T: serde::de::DeserializeOwned>(reader: &mut impl Read) -> io:
     Ok(envelope.body)
 }
 
+/// Resolve the configured cache root without accessing the filesystem.
+///
+/// # Errors
+/// Returns `SAIL3001` when no cache or home environment setting is available.
+pub fn cache_directory() -> io::Result<PathBuf> {
+    let var = |name: &str| std::env::var_os(name).filter(|value| !value.is_empty());
+    var("SAIL_CACHE_DIR")
+        .map(PathBuf::from)
+        .or_else(|| var("XDG_CACHE_HOME").map(|root| PathBuf::from(root).join("sail")))
+        .or_else(|| var("HOME").map(|root| PathBuf::from(root).join(".cache/sail")))
+        .ok_or_else(|| {
+            io::Error::other("SAIL3001: none of SAIL_CACHE_DIR, XDG_CACHE_HOME or HOME is set")
+        })
+}
+
+/// Default cache-service endpoint for the current protocol.
+#[must_use]
+pub fn default_cache_socket(cache: &Path) -> PathBuf {
+    cache.join(format!(
+        "daemon-v{}-workspace-v2-proof-v1.sock",
+        crate::protocol::PROTOCOL_VERSION
+    ))
+}
+
+/// Resolve a cache endpoint using the caller's working directory.
+/// Relative cache roots and explicit overrides belong to that caller.
+#[must_use]
+pub fn cache_socket(cache: &Path, explicit: Option<&Path>, cwd: &Path) -> PathBuf {
+    let socket = explicit.map_or_else(|| default_cache_socket(cache), Path::to_path_buf);
+    if socket.is_absolute() {
+        socket
+    } else {
+        cwd.join(socket)
+    }
+}
+
+/// Resolve the job endpoint with the same environment semantics as the CLI.
+///
+/// # Errors
+/// Returns the cache configuration error without starting a service.
+pub fn configured_socket(cwd: &Path) -> io::Result<PathBuf> {
+    let explicit = std::env::var_os("SAIL_DAEMON_SOCKET")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from);
+    Ok(socket_path(&cache_socket(
+        &cache_directory()?,
+        explicit.as_deref(),
+        cwd,
+    )))
+}
+
 /// The job endpoint alongside a cache endpoint, without changing cache protocol.
 /// Relative paths and existing filesystem aliases identify the same endpoint.
 #[must_use]
@@ -420,6 +471,40 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn endpoint_resolution_anchors_only_relative_settings_to_each_caller() {
+        let a = Path::new("/workspace/a");
+        let b = Path::new("/workspace/b");
+        assert_ne!(
+            cache_socket(Path::new("cache"), None, a),
+            cache_socket(Path::new("cache"), None, b)
+        );
+        assert_eq!(
+            cache_socket(Path::new("/shared/cache"), None, a),
+            cache_socket(Path::new("/shared/cache"), None, b)
+        );
+        assert_eq!(
+            cache_socket(
+                Path::new("ignored"),
+                Some(Path::new("sockets/service.sock")),
+                a
+            ),
+            a.join("sockets/service.sock")
+        );
+        assert_eq!(
+            cache_socket(
+                Path::new("ignored"),
+                Some(Path::new("/explicit/service.sock")),
+                b
+            ),
+            Path::new("/explicit/service.sock")
+        );
+        assert_eq!(
+            cache_socket(Path::new("cache"), None, a),
+            a.join(default_cache_socket(Path::new("cache")))
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn endpoint_aliases_share_the_same_namespace_before_and_after_startup() {
