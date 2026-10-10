@@ -175,3 +175,20 @@ complete session input. Cached replies alone cannot cover new trailing
 commands. The record uses a separate key domain, with the same solver and mode
 identity; shared writers must certify complete silent sessions, never synthesize
 records merely from cached prefixes.
+
+## Optional source engine and preparation
+
+The interactive engine is an explicitly selected pinned Verus source variant.
+Its manifest binds the source commit, Rust toolchain, patch and lockfile digests,
+solver and every runtime artifact. Installation and use reject incompatible or
+changed runtime bytes. A prebuilt CI archive additionally binds its archive
+digest to a committed pin; access credentials authorize download, not proof.
+Source builds and artifact validation happen locally before publishing that pin.
+
+Prepared lowering checkpoints have the local tier's trust boundary: the owned
+engine writes a private user cache. Version, input key, body digest and exact
+current-callback span bindings detect corruption and stale preparation. They do
+not authenticate a forged checkpoint written by someone controlling that cache.
+Preparation is never imported from the shared SMT store. A hit reuses lowering;
+the full proof and late compiler checks still run. Focus and progress evidence
+remain provisional until a complete successful full result is Current.
