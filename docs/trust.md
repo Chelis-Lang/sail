@@ -192,3 +192,26 @@ not authenticate a forged checkpoint written by someone controlling that cache.
 Preparation is never imported from the shared SMT store. A hit reuses lowering;
 the full proof and late compiler checks still run. Focus and progress evidence
 remain provisional until a complete successful full result is Current.
+
+## Retained freshness and kernel lease ownership
+
+On Linux, retaining expensive runtime digests requires continuously held kernel
+read leases, native event coverage, and synchronous barriers. Mutable input
+contents are rehashed for reads. A writable mapping, conflicting writer, helper
+loss, timeout or uncertain path coverage makes current evidence unavailable;
+historical proof output remains available and is never relabelled Current.
+
+Linux requires the lease holder to own the file or hold the kernel lease
+capability. The helper also leases its resolved Python interpreter, loaded
+standard-library files and native modules. An ordinary user may be unable to
+lease a system-owned Python installation. In that case Sail cannot retain the
+runtime projection and reports unavailable current evidence; it does not infer
+immutability from permissions or substitute metadata checks. Container tests
+whose runtime files are owned by the service account establish that environment's
+coverage, not general unprivileged host coverage.
+
+Encoded job-result frames are an allocation optimization, not freshness evidence.
+Every read verifies the exact retained stdout bytes against the validated seal
+and checks current input evidence before selecting a frame. Cached frames are
+bounded by 128 MiB and 16 jobs, carry no time-based validity, and are discarded
+on a seal mismatch. Restart establishes freshness again.

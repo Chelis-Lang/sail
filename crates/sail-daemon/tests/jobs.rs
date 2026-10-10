@@ -254,6 +254,31 @@ fn sealed_status_matches_full_result_and_refuses_restored_metadata_tampering() {
             );
         }
         assert!(std::fs::write(&output, bytes).is_ok());
+        // A rejected same-key mutation evicts the encoded frame. Restoration
+        // must reparse the sealed contents and preserve the full wire shape.
+        let Ok(Response::Result(restored)) = client.call(&Request::Result { id: job.id.clone() })
+        else {
+            unreachable!("restored result")
+        };
+        assert_eq!(restored.job.currentness, expected);
+        assert_eq!(restored.result, document.result);
+        let readers: Vec<_> = (0..4)
+            .map(|_| {
+                let client = Client::new(&socket);
+                let id = job.id.clone();
+                std::thread::spawn(move || client.call(&Request::Result { id }))
+            })
+            .collect();
+        for reader in readers {
+            let Ok(Response::Result(value)) = reader
+                .join()
+                .unwrap_or_else(|e| std::panic::resume_unwind(e))
+            else {
+                unreachable!("reader result")
+            };
+            assert_eq!(value.result, restored.result);
+            assert_eq!(value.job.currentness, expected);
+        }
         handle.shutdown();
         // A legacy record deliberately lacks the seal: full parsing and the
         // same currentness classification remain mandatory after restart.
@@ -275,4 +300,57 @@ fn sealed_status_matches_full_result_and_refuses_restored_metadata_tampering() {
         legacy.shutdown();
         let _ = std::fs::remove_dir_all(root);
     }
+}
+
+#[test]
+fn cached_repair_frames_preserve_all_evidence_and_derive_acceptance() {
+    use sail_api::jobs::{Currentness, Mode};
+    let report_text = REPORT.split_once('{').map_or_else(
+        || unreachable!("fixture"),
+        |(_, rest)| format!("{{{}", rest.trim_end_matches('\'')),
+    );
+    let full: serde_json::Value =
+        serde_json::from_str(&report_text).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+    let envelope = serde_json::json!({"version":1,"accepted":true,"batch": {
+        "full":full, "focus":full, "manifest_sha256":"manifest", "compiler_invocations":1,
+        "batched":true, "selection_error":{"code":"SAIL0904","message":"missing selection"}
+    }});
+    let (root, executable, socket) = fixture(&format!("printf '%s\n' '{envelope}'"));
+    let mut handle = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &executable)
+        .and_then(sail_daemon::jobs::JobServer::spawn)
+        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+    let mut request = submission(&root, "repair");
+    request.mode = Mode::Repair(sail_api::repair::Selection {
+        package: "demo".to_owned(),
+        target: None,
+        kind: "lib".to_owned(),
+        function: "demo::max".to_owned(),
+    });
+    let client = Client::new(&socket);
+    let job = submit(&client, request);
+    wait(&client, &job.id, |state| state == Lifecycle::Completed);
+    for _ in 0..3 {
+        let Ok(Response::Result(document)) = client.call(&Request::Result { id: job.id.clone() })
+        else {
+            unreachable!("repair result")
+        };
+        assert_eq!(document.job.currentness, Currentness::Unknown);
+        let repair = document
+            .repair
+            .unwrap_or_else(|| unreachable!("repair envelope"));
+        assert!(
+            !repair.accepted,
+            "stored acceptance must never authorize a repair"
+        );
+        assert!(repair.batch.selection_error.is_some());
+        assert!(repair.batch.focus.is_some());
+        assert_eq!(
+            document.result,
+            serde_json::to_value(&repair.batch.full).ok()
+        );
+        assert_eq!(repair.batch.manifest_sha256, "manifest");
+        assert_eq!(repair.batch.compiler_invocations, 1);
+    }
+    handle.shutdown();
+    let _ = std::fs::remove_dir_all(root);
 }

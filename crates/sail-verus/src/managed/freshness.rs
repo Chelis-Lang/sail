@@ -31,6 +31,13 @@ struct RuntimeValidation {
 struct RuntimeSlot {
     runtime: Option<RuntimeValidation>,
     coherent: Option<(std::time::Instant, InputSnapshot)>,
+    validating: bool,
+}
+#[cfg(target_os = "linux")]
+enum Refresh {
+    Ready(InputSnapshot),
+    Busy,
+    Invalid,
 }
 #[cfg(target_os = "linux")]
 #[derive(Default)]
@@ -68,31 +75,49 @@ impl Request {
         }
         super::files::digest(&bytes)
     }
-    fn refresh(&self, runtime: &Mutex<RuntimeSlot>) -> Option<InputSnapshot> {
-        self.refresh_started(runtime, std::time::Instant::now(), || {})
+    fn refresh(&self, runtime: &Mutex<RuntimeSlot>) -> Refresh {
+        self.refresh_outcome(runtime, std::time::Instant::now(), || {})
     }
+    #[cfg(test)]
     fn refresh_started(
         &self,
         runtime: &Mutex<RuntimeSlot>,
         started: std::time::Instant,
         before_publish: impl FnOnce(),
     ) -> Option<InputSnapshot> {
+        match self.refresh_outcome(runtime, started, before_publish) {
+            Refresh::Ready(snapshot) => Some(snapshot),
+            Refresh::Busy | Refresh::Invalid => None,
+        }
+    }
+    fn refresh_outcome(
+        &self,
+        runtime: &Mutex<RuntimeSlot>,
+        started: std::time::Instant,
+        before_publish: impl FnOnce(),
+    ) -> Refresh {
         let deadline = started + std::time::Duration::from_millis(100);
         let mut validation = loop {
-            let mut slot = read_projection(runtime)?;
+            let Some(mut slot) = read_projection(runtime) else {
+                return Refresh::Busy;
+            };
             // Coalescing is linearizable within this reader's own interval.
             // A sequential reader never inherits a previous read's timestamp.
             if let Some((completed, snapshot)) = &slot.coherent
                 && *completed >= started
             {
-                return Some(snapshot.clone());
+                return Refresh::Ready(snapshot.clone());
             }
             if let Some(validation) = slot.runtime.take() {
+                slot.validating = true;
                 break validation;
+            }
+            if !slot.validating {
+                return Refresh::Invalid;
             }
             drop(slot);
             if std::time::Instant::now() >= deadline {
-                return None;
+                return Refresh::Busy;
             }
             std::thread::sleep(std::time::Duration::from_millis(1));
         };
@@ -119,14 +144,17 @@ impl Request {
             Some((checkpoint, snapshot))
         })();
         before_publish();
-        let mut slot = read_projection(runtime)?;
+        let Some(mut slot) = read_projection(runtime) else {
+            return Refresh::Invalid;
+        };
+        slot.validating = false;
         if let Some((checkpoint, snapshot)) = &result {
             slot.runtime = Some(validation);
             slot.coherent = snapshot.complete.then(|| (*checkpoint, snapshot.clone()));
         } else {
             slot.coherent = None;
         }
-        result.map(|(_, snapshot)| snapshot)
+        result.map_or(Refresh::Invalid, |(_, snapshot)| Refresh::Ready(snapshot))
     }
 }
 
@@ -208,18 +236,25 @@ impl FreshnessIndex {
                 };
                 (projection.generation, runtime)
             };
-            if let Some(runtime) = runtime
-                && let Some(snapshot) = request.refresh(&runtime)
-            {
-                let mut projection = read_projection(&entry)?;
-                if projection.generation == generation
-                    && projection
-                        .runtime
-                        .as_ref()
-                        .is_some_and(|current| Arc::ptr_eq(current, &runtime))
-                    && projection.observer.as_mut().is_some_and(Observer::clean)
-                {
-                    return Some(snapshot);
+            if let Some(runtime) = runtime {
+                let snapshot = match request.refresh(&runtime) {
+                    Refresh::Ready(snapshot) => Some(snapshot),
+                    // A bounded waiter is unavailable for this read, but must
+                    // not discard the independent validation owner's leases.
+                    Refresh::Busy => return None,
+                    Refresh::Invalid => None,
+                };
+                if let Some(snapshot) = snapshot {
+                    let mut projection = read_projection(&entry)?;
+                    if projection.generation == generation
+                        && projection
+                            .runtime
+                            .as_ref()
+                            .is_some_and(|current| Arc::ptr_eq(current, &runtime))
+                        && projection.observer.as_mut().is_some_and(Observer::clean)
+                    {
+                        return Some(snapshot);
+                    }
                 }
             }
             let mut projection = read_projection(&entry)?;
@@ -289,19 +324,26 @@ impl FreshnessIndex {
                 };
                 (state.generation, runtime)
             };
-            if let Some(runtime) = runtime
-                && let Some(snapshot) = request.refresh(&runtime)
-            {
-                let mut state = read_projection(&entry)
-                    .ok_or_else(|| Error::new("SAIL3114", "freshness state busy"))?;
-                if state.generation == generation
-                    && state
-                        .runtime
-                        .as_ref()
-                        .is_some_and(|current| Arc::ptr_eq(current, &runtime))
-                    && state.observer.as_mut().is_some_and(Observer::clean)
-                {
-                    return Ok(snapshot);
+            if let Some(runtime) = runtime {
+                let snapshot = match request.refresh(&runtime) {
+                    Refresh::Ready(snapshot) => Some(snapshot),
+                    Refresh::Busy => {
+                        return Err(Error::new("SAIL3114", "freshness validation busy"));
+                    }
+                    Refresh::Invalid => None,
+                };
+                if let Some(snapshot) = snapshot {
+                    let mut state = read_projection(&entry)
+                        .ok_or_else(|| Error::new("SAIL3114", "freshness state busy"))?;
+                    if state.generation == generation
+                        && state
+                            .runtime
+                            .as_ref()
+                            .is_some_and(|current| Arc::ptr_eq(current, &runtime))
+                        && state.observer.as_mut().is_some_and(Observer::clean)
+                    {
+                        return Ok(snapshot);
+                    }
                 }
             }
             let _permit = Permit::acquire(&self.active)
@@ -365,6 +407,7 @@ impl FreshnessIndex {
                     Arc::new(Mutex::new(RuntimeSlot {
                         runtime: Some(RuntimeValidation { identity, lease }),
                         coherent: None,
+                        validating: false,
                     }))
                 })
             } else {
@@ -706,6 +749,69 @@ mod tests {
                     .is_none()
             );
         }
+    }
+    #[test]
+    fn busy_reader_preserves_independent_validation_owner() {
+        let fixture = Fixture::new("busy-owner");
+        let index = FreshnessIndex::default();
+        assert!(fixture.establish(&index).complete);
+        let request = FreshnessIndex::request(
+            &fixture.cache,
+            &fixture.workspace,
+            &fixture.context,
+            &fixture.environment,
+        )
+        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let entry = index
+            .entry(&request.key())
+            .unwrap_or_else(|| unreachable!("fixture"));
+        let (generation, runtime) = {
+            let state = entry.lock().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            (
+                state.generation,
+                state
+                    .runtime
+                    .clone()
+                    .unwrap_or_else(|| unreachable!("fixture")),
+            )
+        };
+        let (validated_tx, validated_rx) = std::sync::mpsc::channel();
+        let (publish_tx, publish_rx) = std::sync::mpsc::channel();
+        let owner_runtime = Arc::clone(&runtime);
+        let owner = std::thread::spawn(move || {
+            request.refresh_started(&owner_runtime, Instant::now(), || {
+                assert!(validated_tx.send(()).is_ok());
+                assert!(publish_rx.recv_timeout(Duration::from_secs(5)).is_ok());
+            })
+        });
+        assert!(validated_rx.recv_timeout(Duration::from_secs(5)).is_ok());
+        assert!(
+            fixture.inspect(&index).is_none(),
+            "busy readers remain unavailable"
+        );
+        {
+            let state = entry.lock().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            assert_eq!(state.generation, generation, "busy is not invalidation");
+            assert!(
+                state
+                    .runtime
+                    .as_ref()
+                    .is_some_and(|value| Arc::ptr_eq(value, &runtime))
+            );
+            assert!(!state.refreshing, "no redundant full runtime hash");
+        }
+        assert!(publish_tx.send(()).is_ok());
+        assert!(
+            owner
+                .join()
+                .unwrap_or_else(|e| std::panic::resume_unwind(e))
+                .is_some()
+        );
+        assert!(
+            fixture
+                .inspect(&index)
+                .is_some_and(|snapshot| snapshot.complete)
+        );
     }
     #[test]
     fn late_publication_cannot_coalesce_a_reader_after_validation_and_mmap_break() {
