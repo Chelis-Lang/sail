@@ -119,10 +119,29 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
                 return ExitCode::from(u8::from(!repair.accepted));
             }
             Ok(Response::Result(_)) => std::thread::sleep(Duration::from_millis(100)),
-            Ok(_) => return error("unexpected repair response", err),
-            Err(message) => return error(&message, err),
+            Ok(_) => {
+                cancel_owned(&client, &status.id);
+                return error("unexpected repair response", err);
+            }
+            Err(message) => {
+                cancel_owned(&client, &status.id);
+                return error(&message, err);
+            }
         }
     }
+}
+
+// This foreground command owns precisely this submitted/coalesced request.
+// Best-effort cancellation uses the same bounded RPC; an unavailable endpoint
+// must not replace the original polling error with its cleanup error.
+fn cancel_owned(client: &Client, id: &str) {
+    let _ = call(
+        client,
+        &Request::Cancel {
+            id: id.to_owned(),
+            superseded: false,
+        },
+    );
 }
 
 pub(crate) fn worker(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
