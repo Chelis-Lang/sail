@@ -370,6 +370,18 @@ impl Client {
             decoded: Some(std::sync::Arc::default()),
         }
     }
+    /// Rebinds the endpoint while sharing this client's optional decoding budget.
+    ///
+    /// A bounded endpoint table can keep one aggregate cache family, including
+    /// in-flight entries from evicted endpoints. Every call receives the new
+    /// endpoint's complete fresh frame; byte equality never replaces an RPC.
+    #[must_use]
+    pub fn with_socket(&self, socket: impl Into<PathBuf>) -> Self {
+        Self {
+            socket: socket.into(),
+            decoded: self.decoded.clone(),
+        }
+    }
     /// Sends one RPC with five-second I/O deadlines.
     ///
     /// # Errors

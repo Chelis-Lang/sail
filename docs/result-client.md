@@ -34,7 +34,12 @@ The count includes raw bytes, Entry/Arc inline storage, boxes, String/PathBuf an
 Vec capacities, enum slots, nested schema descendants and map nodes. Returned
 caller-owned graphs, temporary parsing/clone buffers and allocator fragmentation
 are outside this retention bound; it is not an RSS guarantee or a process-wide limit across
-unrelated clients. Endpoint tables must bound their client families separately. Unknown ownership,
+unrelated clients. Endpoint tables must bound their client families separately.
+`client.with_socket(socket)` rebinds an endpoint while sharing the same optional
+cache and budget; use this for a bounded multi-endpoint table instead of creating
+an unrelated 128 MiB family per endpoint. Evicted endpoints' in-flight entries
+remain charged. The new endpoint still supplies the complete fresh reply before
+any exact-body comparison. Unknown ownership,
 arithmetic overflow or an exhausted budget leaves the correct result uncached.
 
 The audit binds the pinned Rust 1.99 BTree implementation and serde_json 1.0.151
