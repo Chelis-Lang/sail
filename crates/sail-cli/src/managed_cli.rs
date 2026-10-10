@@ -15,7 +15,7 @@ fn options(args: &[String]) -> Result<Option<Options>, String> {
     let before = args.iter().take_while(|a| a.as_str() != "--");
     if !before
         .clone()
-        .any(|a| a == "--incremental" || a == "--background")
+        .any(|a| a == "--incremental" || a == "--background" || a == "--engine")
     {
         return Ok(None);
     }
@@ -53,7 +53,7 @@ fn options(args: &[String]) -> Result<Option<Options>, String> {
     Ok(Some(result))
 }
 
-fn config(args: Vec<String>) -> Result<sail_verus::managed::Config, String> {
+pub(crate) fn config(args: Vec<String>) -> Result<sail_verus::managed::Config, String> {
     let cargo_verus = crate::verify::cargo_verus()
         .ok_or("error[SAIL0101]: cargo-verus not found; set SAIL_CARGO_VERUS")?;
     let sail = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -145,7 +145,18 @@ pub(crate) fn verify(
         Ok(c) => c,
         Err(message) => return Some(failure(&message, out, err, options.json)),
     };
-    match sail_verus::managed::run(&config, err) {
+    let (mode, args) = match crate::jobs::engine_options(&config.args) {
+        Ok(options) => options,
+        Err(message) => return Some(failure(&message, out, err, options.json)),
+    };
+    let mut config = config;
+    config.args = args;
+    let result = if mode == sail_api::jobs::Mode::Interactive {
+        sail_verus::engine::verify(&config, err)
+    } else {
+        sail_verus::managed::run(&config, err)
+    };
+    match result {
         Ok(result) => {
             if options.json {
                 let _ = writeln!(

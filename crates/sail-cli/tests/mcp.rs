@@ -215,6 +215,10 @@ exit 1
             "verification_status",
             "verification_result",
             "cancel_verification",
+            "verification_events",
+            "explain_failure",
+            "compare_verification",
+            "start_repair_validation",
         ]
     );
 

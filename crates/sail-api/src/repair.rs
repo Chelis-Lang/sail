@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::output::{Diagnostic, FunctionReport, VerdictName};
+use crate::output::{Diagnostic, FunctionReport, OutcomeName, VerdictName};
 use crate::project::{Currentness, ProjectResult};
 use crate::proof::Target;
 
@@ -48,6 +48,11 @@ pub fn accepted(full: &ProjectResult) -> bool {
                 && target.report.summary.failed == 0
                 && target.report.summary.unknown == 0
                 && target.report.summary.provisional == 0
+                && !target.report.crates.is_empty()
+                && target.report.crates.iter().all(|report| {
+                    report.verus.success == Some(true)
+                        && report.verus.encountered_vir_error != Some(true)
+                })
         })
 }
 
@@ -146,6 +151,8 @@ pub enum Change {
     Added,
     /// No matching evidence: partial scopes do not establish removal.
     NotObserved,
+    /// Absent from a finalized whole-target function inventory.
+    Removed,
     /// Scope/runtime/mode differs; compare descriptively, not as a regression.
     Incomparable,
     /// Other non-proof transition.
@@ -164,6 +171,23 @@ pub struct Difference {
     /// Later verdict, absent when not observed.
     pub after: Option<VerdictName>,
     /// Conservative comparison classification.
+    pub change: Change,
+    /// Exact attributed obligation IDs; ordinals are not semantically matched.
+    pub obligations: Vec<ObligationDifference>,
+}
+
+/// A comparison of one exact attributed obligation identity.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ObligationDifference {
+    /// Exact producer identifier, never matched by a source-line heuristic.
+    pub id: String,
+    /// Earlier solver-derived obligation outcome.
+    pub before: Option<OutcomeName>,
+    /// Later solver-derived obligation outcome.
+    pub after: Option<OutcomeName>,
+    /// Whether a failure is advisory in the later or earlier evidence.
+    pub advisory: bool,
+    /// Descriptive transition; an advisory failure is not a function regression.
     pub change: Change,
 }
 
@@ -295,6 +319,7 @@ fn scopes(result: &ProjectResult) -> Vec<(Target, String, Vec<String>)> {
 pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
     let compatible =
         before.context_sha256 == after.context_sha256 && scopes(before) == scopes(after);
+    let after_project = after;
     let left = functions(before);
     let right = functions(after);
     let ids: std::collections::BTreeSet<_> = left.keys().chain(right.keys()).cloned().collect();
@@ -302,6 +327,11 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
         .into_iter()
         .map(|(target, function)| {
             let key = (target.clone(), function.clone());
+            let obligations = obligations(
+                left.get(&key).copied(),
+                right.get(&key).copied(),
+                compatible,
+            );
             let before = left.get(&key).map(|f| effective(f));
             let after = right.get(&key).map(|f| effective(f));
             let change = if compatible {
@@ -314,6 +344,7 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
                     ) => Change::BecameUnknown,
                     (Some(_), Some(VerdictName::Verified)) => Change::Recovered,
                     (None, Some(_)) => Change::Added,
+                    (Some(_), None) if inventory(after_project, &target) => Change::Removed,
                     (Some(_), None) => Change::NotObserved,
                     _ => Change::Changed,
                 }
@@ -326,6 +357,7 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
                 before,
                 after,
                 change,
+                obligations,
             }
         })
         .collect();
@@ -350,4 +382,71 @@ fn effective(report: &FunctionReport) -> VerdictName {
     } else {
         report.verdict
     }
+}
+
+fn inventory(project: &ProjectResult, id: &Target) -> bool {
+    project.targets.iter().any(|target| {
+        target.package_id == id.package_id
+            && target.target == id.name
+            && target.kind == id.kind
+            && target.report.error.is_none()
+            && !target.report.crates.is_empty()
+            && target.report.crates.iter().all(|report| {
+                report.verus.success.is_some() && report.verus.encountered_vir_error != Some(true)
+            })
+    })
+}
+
+fn obligations(
+    before: Option<&FunctionReport>,
+    after: Option<&FunctionReport>,
+    compatible: bool,
+) -> Vec<ObligationDifference> {
+    let index = |function: Option<&FunctionReport>| {
+        function
+            .and_then(|f| f.obligations.as_ref())
+            .into_iter()
+            .flatten()
+            .map(|obligation| (obligation.id.clone(), obligation.clone()))
+            .collect::<std::collections::BTreeMap<_, _>>()
+    };
+    let left = index(before);
+    let right = index(after);
+    left.keys()
+        .chain(right.keys())
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .map(|id| {
+            let old = left.get(&id);
+            let new = right.get(&id);
+            let before = old.map(|o| o.outcome);
+            let after = new.map(|o| o.outcome);
+            let advisory = new.or(old).is_some_and(|o| o.advisory);
+            let change = if compatible {
+                match (before, after) {
+                    (Some(a), Some(b)) if a == b => Change::Unchanged,
+                    (Some(OutcomeName::Proved), Some(OutcomeName::Failed)) if !advisory => {
+                        Change::Regressed
+                    }
+                    (Some(OutcomeName::Proved), Some(OutcomeName::Unknown)) => {
+                        Change::BecameUnknown
+                    }
+                    (Some(_), Some(OutcomeName::Proved)) => Change::Recovered,
+                    (None, Some(_)) => Change::Added,
+                    (Some(_), None) => Change::NotObserved,
+                    _ => Change::Changed,
+                }
+            } else {
+                Change::Incomparable
+            };
+            ObligationDifference {
+                id,
+                before,
+                after,
+                advisory,
+                change,
+            }
+        })
+        .collect()
 }

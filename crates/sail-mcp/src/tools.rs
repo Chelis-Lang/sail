@@ -131,6 +131,7 @@ fn run_schema() -> Value {
         "additionalProperties": false,
         "properties": {
             "project_dir": string_schema("The Cargo project to verify (absolute, or relative to the server's working directory). Default: the server's working directory."),
+            "engine": {"type":"string","enum":["stock","interactive"],"description":"Optional pinned source engine, unavailable until installed explicitly."},
             "package": string_schema("Verify only this workspace package (`-p`)."),
             "module": string_schema("Verify only this module and its descendants, relative to the crate root (Verus `--verify-module`, e.g. `arith` or `foo::bar`)."),
             "function": string_schema("Verify only this function (Verus `--verify-function`: a unique substring of the name, or a pattern with `*` at either end). It is looked up in `module`, or in the crate root if no module is given."),
@@ -189,6 +190,7 @@ pub fn definitions() -> Value {
     ]);
     if let Some(list) = definitions.as_array_mut() {
         list.extend(crate::job_tools::definitions(&run_schema()));
+        list.extend(crate::proof_tools::definitions());
     }
     definitions
 }
@@ -206,6 +208,10 @@ pub fn call(
         | "verification_status"
         | "verification_result"
         | "cancel_verification" => crate::job_tools::call(ctx, name, args, cancel),
+        "verification_events"
+        | "explain_failure"
+        | "compare_verification"
+        | "start_repair_validation" => crate::proof_tools::call(ctx, name, args, cancel),
         "verify" => verify(ctx, args, cancel),
         "counterexample" => counterexample(ctx, args),
         "cached_result" => cached_result(ctx, args),

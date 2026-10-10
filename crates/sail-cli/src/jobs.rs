@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
 
-use sail_api::jobs::{Client, Request, Response, Status, Submission};
+use sail_api::jobs::{Client, Mode, Request, Response, Status, Submission};
 
 pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
     std::env::vars_os()
@@ -16,6 +16,9 @@ pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
                 "SAIL_JOB_EVENTS",
                 "SAIL_MANAGED_FORCE",
                 "SAIL_JOB_GUARD_PARENT",
+                "SAIL_PROOF_EVENTS",
+                "SAIL_ENGINE",
+                "SAIL_ENGINE_FUNCTION",
             ]
             .iter()
             .any(|value| key == value)
@@ -76,14 +79,23 @@ pub(crate) fn connect_or_start() -> Result<Client, String> {
 }
 
 pub(crate) fn submit(client: &Client, args: &[String]) -> Result<Status, String> {
-    let project_dir = std::env::current_dir().map_err(|error| error.to_string())?;
     let args = strip_output(args)?;
+    let (mode, args) = engine_options(&args)?;
+    submit_mode(client, args, mode)
+}
+
+pub(crate) fn submit_mode(
+    client: &Client,
+    args: Vec<String>,
+    mode: Mode,
+) -> Result<Status, String> {
+    let project_dir = std::env::current_dir().map_err(|error| error.to_string())?;
     // Submission must return a durable ID without Cargo metadata, dependency
     // downloads or verifier setup. The worker establishes the complete revision.
     // Unknown revisions cannot safely coalesce across intervening input edits.
     let input_revision = None;
     let submission = Submission {
-        mode: sail_api::jobs::Mode::Stock,
+        mode,
         project_dir,
         args,
         force: std::env::var("SAIL_MANAGED_FORCE").is_ok_and(|value| value == "1"),
@@ -107,7 +119,7 @@ pub(crate) fn revision(
     sail_verus::managed::snapshot(project, args, &cargo).ok()
 }
 
-fn strip_output(args: &[String]) -> Result<Vec<String>, String> {
+pub(crate) fn strip_output(args: &[String]) -> Result<Vec<String>, String> {
     let mut result = Vec::new();
     let mut iterator = args.iter();
     while let Some(arg) = iterator.next() {
@@ -154,6 +166,9 @@ pub(crate) fn background(args: &[String], out: &mut dyn Write, err: &mut dyn Wri
 
 /// Runs `sail jobs list|status|result|cancel|logs ID [--follow] [--output json]`.
 pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    if args.first().is_some_and(|arg| arg == "events") {
+        return crate::product_cli::events(&args[1..], out, err);
+    }
     let mut run = || -> Result<(), String> {
         let (json, follow, args) = job_arguments(args)?;
         let client = connect_or_start()?;
@@ -261,6 +276,7 @@ fn response_text(response: &Response) -> String {
         }
         Response::Chunk(chunk) => chunk.text.clone(),
         Response::Error(error) => error.clone(),
+        _ => "Unsupported job response; request structured output.".to_owned(),
     }
 }
 
@@ -289,4 +305,31 @@ fn logs(client: &Client, id: &str, follow: bool, out: &mut dyn Write) -> Result<
             _ => return Err("SAIL0802: unexpected log response".to_owned()),
         }
     }
+}
+
+/// Parse only Sail engine options before the Cargo/Verus separator.
+pub(crate) fn engine_options(args: &[String]) -> Result<(Mode, Vec<String>), String> {
+    let mut mode = Mode::Stock;
+    let mut rest = Vec::new();
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        if arg == "--" {
+            rest.push(arg.clone());
+            rest.extend(iter.cloned());
+            break;
+        }
+        if arg == "--engine" {
+            let value = iter
+                .next()
+                .ok_or("SAIL0906: --engine requires stock or interactive")?;
+            mode = match value.as_str() {
+                "stock" => Mode::Stock,
+                "interactive" => Mode::Interactive,
+                _ => return Err("SAIL0906: --engine requires stock or interactive".into()),
+            };
+        } else {
+            rest.push(arg.clone());
+        }
+    }
+    Ok((mode, rest))
 }
