@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Read-latency acceptance must retain the proof freshness contract."""
+
+import copy
+import importlib.util
+from pathlib import Path
+import unittest
+
+spec = importlib.util.spec_from_file_location("read_bench", Path(__file__).with_name("m7-job-read-bench.py"))
+bench = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(bench)
+
+
+class ReadAcceptanceTests(unittest.TestCase):
+    def result(self):
+        return {"response": "result", "value": {
+            "job": {"id": "proof", "state": "completed", "currentness": "current", "input_revision": "r"},
+            "result": {"currentness": "current", "input_revision": "r", "error": None}}}
+
+    def test_fast_unknown_or_historical_result_never_qualifies(self):
+        result = self.result()
+        self.assertTrue(bench.valid_established(result, "proof", "r"))
+        for field in ("job", "result"):
+            for currentness in ("unknown", "historical"):
+                changed = copy.deepcopy(result)
+                changed["value"][field]["currentness"] = currentness
+                self.assertFalse(bench.valid_established(changed, "proof", "r"))
+
+    def test_another_revision_or_incomplete_worker_never_qualifies(self):
+        result = self.result()
+        self.assertFalse(bench.valid_established(result, "other", "r"))
+        self.assertFalse(bench.valid_established(result, "proof", "new"))
+        for state in ("running", "cancelled", "infrastructure_error"):
+            changed = copy.deepcopy(result)
+            changed["value"]["job"]["state"] = state
+            self.assertFalse(bench.valid_established(changed, "proof", "r"))
+
+    def test_unavailable_result_is_not_latency_success(self):
+        result = self.result()
+        result["value"]["result"] = None
+        self.assertFalse(bench.valid_established(result, "proof", "r"))
+
+
+if __name__ == "__main__":
+    unittest.main()

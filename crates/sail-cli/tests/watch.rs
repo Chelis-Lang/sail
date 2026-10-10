@@ -34,7 +34,9 @@ fn package(root: &Path, name: &str, dependencies: &str) {
 #[test]
 fn edits_cancel_the_run_in_flight_and_restart() {
     use std::os::unix::fs::PermissionsExt as _;
-    let root = std::env::temp_dir().join(format!("sail-watch-{}", std::process::id()));
+    // macOS's per-user TMPDIR can exceed the Unix socket limit after the
+    // versioned proof endpoint filename is appended. Use the short Unix root.
+    let root = Path::new("/tmp").join(format!("sail-watch-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let krate = root.join("crate");
     let dependency = root.join("dependency");

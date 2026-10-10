@@ -49,6 +49,22 @@ confirmed pass. On 2026-10-10 the owner directed running these workloads in
 the local Linux x86-64 container now, labelling emulation, and rerunning native
 host reference numbers later.
 
+The local-only runner is `scripts/m7-repair-bench.py`. Its `prepare` command
+creates fresh pinned scratch projects; `run` takes the frozen M6 binary, the
+M7 binary, an `--engine-install` validated source variant, and an explicit
+`--environment` label. Each mode has a private cache. M7 imports the same
+validated runtime into its private cache rather than rebuilding it per cycle.
+Installation and dependency warm-up are retained but excluded from cycle time.
+
+`scripts/m7-job-read-bench.py --socket SOCKET --job COMPLETED_JOB
+--active-job RUNNING_JOB --environment LABEL --out RESULT.json` exercises the
+actual framed job protocol with four concurrent clients and 200 reads. It
+includes transfer and JSON decoding time and keeps the five-second deadline.
+It waits for initial Current establishment outside the read census and records
+that duration. Every measured read must retain the completed revision, and the
+other job must remain Running before and after every read. Unknown, Historical,
+unavailable and incomplete samples cannot satisfy the latency goal.
+
 Correctness includes exact solver-input and full diagnostic comparisons,
 full local fast/standard corpus coverage, and affected source tests described
 in ADR 0027. Long runs stay outside CI.
