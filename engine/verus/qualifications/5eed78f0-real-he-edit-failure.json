@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "patch_sha256": "5eed78f066cd3c6a9761cf216bef24b46946f6d58b8da6f1f837311102dcaa74",
+  "scope": "Other-module edit exact differential failed; independent full stock repeats establish VI-0001 upstream accessor ordering. Original failed oracle retained, never normalized or reclassified as pass.",
+  "edit": {
+    "file": "tasks/human_eval_023.rs",
+    "operation": "strlen body refactor with local length binding"
+  },
+  "selected_function": "human_eval_verus::human_eval_013::compute_gcd",
+  "preparation": {
+    "version": 1,
+    "enabled": true,
+    "batch_hits": 0,
+    "persistent_hits": 1,
+    "misses": 105,
+    "peak_retained_bytes": 9972110,
+    "memory_budget_bytes": 536870912,
+    "disk_budget_bytes": 536870912
+  },
+  "matching": [
+    "exit",
+    "stderr",
+    "verification-results",
+    "func-details",
+    "full session inventory"
+  ],
+  "mismatches": [
+    {
+      "session": "human_eval_160.smt_transcript",
+      "stock_input_sha256": "3035cc9925fbbf6cf1648d34b5cbcaa00761746cf0e7956d8402cab94b5e529f",
+      "engine_input_sha256": "79de268eb3a2899a6d8a8ec99da3430ecd49dbd14c6c446cc4847d6b8d38f8fd",
+      "first_difference": "synthesized arrow_1/arrow_2 accessor declaration order"
+    }
+  ],
+  "engine_verifier_sha256": "d67fddf57a5682bec019a995fa6a807f2e465609318ab89ded788559adcb0c1b",
+  "machine": "macOS-26.5-arm64-arm-64bit",
+  "upstream_issue": "docs/verus-issues/VI-0001-nondeterministic-declaration-order.md",
+  "stock_repeats": [
+    {
+      "mode": "stock",
+      "same_full_verdicts_diagnostics": true,
+      "different_sessions_from_first": [],
+      "session160_input_sha256": "3035cc9925fbbf6cf1648d34b5cbcaa00761746cf0e7956d8402cab94b5e529f"
+    },
+    {
+      "mode": "stock-repeat",
+      "same_full_verdicts_diagnostics": true,
+      "different_sessions_from_first": [],
+      "session160_input_sha256": "3035cc9925fbbf6cf1648d34b5cbcaa00761746cf0e7956d8402cab94b5e529f"
+    },
+    {
+      "mode": "stock-repeat-2",
+      "same_full_verdicts_diagnostics": true,
+      "different_sessions_from_first": [
+        "human_eval_160.smt_transcript"
+      ],
+      "session160_input_sha256": "79de268eb3a2899a6d8a8ec99da3430ecd49dbd14c6c446cc4847d6b8d38f8fd"
+    }
+  ]
+}
