@@ -40,6 +40,20 @@ class ReadAcceptanceTests(unittest.TestCase):
         result["value"]["result"] = None
         self.assertFalse(bench.valid_established(result, "proof", "r"))
 
+    def test_running_job_without_live_descendant_verifier_does_not_qualify(self):
+        owner = {"pid": 20, "parent": 1, "name": "sail", "state": "S", "started_ticks": 40}
+        compiler = {"pid": 22, "parent": 21, "name": "rust_verify", "state": "R", "started_ticks": 50}
+        table = {20: owner, 21: {"pid": 21, "parent": 20, "name": "cargo",
+                                "state": "S", "started_ticks": 45}, 22: compiler}
+        self.assertEqual(bench.active_verifiers(table, 20, 40), [compiler])
+        self.assertEqual(bench.active_verifiers(table, 20, 41), [])
+        self.assertEqual(bench.active_verifiers({20: owner}, 20, 40), [])
+        compiler["state"] = "Z"
+        self.assertEqual(bench.active_verifiers(table, 20, 40), [])
+        compiler["state"] = "R"
+        table[21]["parent"] = 1
+        self.assertEqual(bench.active_verifiers(table, 20, 40), [])
+
 
 if __name__ == "__main__":
     unittest.main()
