@@ -19,9 +19,21 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def execute(command, environment, timeout, output, prefix, cwd=None):
+def execute(command, environment, timeout, output, prefix, cwd=None, diagnostics=False):
     with subprocess.Popen(command, env=environment, cwd=cwd, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, start_new_session=True) as process:
+        observer = None
+        if diagnostics:
+            try:
+                from importlib.machinery import SourceFileLoader
+                observer = SourceFileLoader('actor_observation', str(pathlib.Path(__file__).with_name('actor-observation.py'))).load_module().Monitor(process, command, output, prefix)
+            except Exception as error:
+                # Optional observations never replace the real actor or its
+                # deadline. Preserve unavailability without discarding proof.
+                try:
+                    (output / (prefix + '.observation-unavailable.json')).write_text(json.dumps({'reason': str(error)}) + '\n')
+                except OSError:
+                    pass
         try:
             stdout, stderr = process.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
@@ -34,6 +46,9 @@ def execute(command, environment, timeout, output, prefix, cwd=None):
                 'exit_code': process.returncode, 'stdout_bytes': len(stdout),
                 'stderr_bytes': len(stderr)}, indent=2) + '\n')
             raise
+        finally:
+            if observer is not None:
+                observer.close(process.returncode)
         return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 

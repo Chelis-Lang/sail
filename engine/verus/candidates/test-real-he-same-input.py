@@ -62,7 +62,7 @@ def run(args):
             command = [actor, 'tasks/lib.rs', '--crate-type', 'lib', '--crate-name', 'human_eval_verus', '-V', 'use-crate-name',
                        '--output-json', '--time', '--no-report-long-running', '--log', 'air', '--log', 'smt-transcript',
                        '--log-dir', str(work / mode)]
-            process = controls.execute(command, env, args.timeout, work, mode, cwd=source)
+            process = controls.execute(command, env, args.timeout, work, mode, cwd=source, diagnostics=args.actor_observations)
             (work / (mode + '.stdout')).write_bytes(process.stdout)
             (work / (mode + '.stderr')).write_bytes(process.stderr)
             records[mode] = process
@@ -123,4 +123,5 @@ if __name__ == '__main__':
     parser.add_argument('--other-module-edit', action='store_true')
     parser.add_argument('--patch', help='Exact source candidate patch for immutable evidence')
     parser.add_argument('--require-edited-focus', action='store_true', help='Require previous-revision focused restore after the body edit')
+    parser.add_argument('--actor-observations', action='store_true', help='Retain bounded read-only Linux owned actor CPU/I/O/thread samples')
     run(parser.parse_args())

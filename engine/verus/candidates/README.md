@@ -238,3 +238,13 @@ and new runtimes, preserves old entries, checks new keys, then misfiles an
 intact correctly checksummed old payload under new keys and requires a fresh
 proof. These new controls remain unexecuted until the combined ordinarily
 verified runtime is built; Python parsing alone is not qualification.
+
+For the next combined qualification, `qualify-same-input.py` enables bounded
+read-only Linux observations on the real HE actors. The sidecar records the
+owned process group’s start time, argv, CPU ticks, I/O counters, wait channels,
+thread state and actual solver executable hash. It never reads process
+environments or unrelated groups, and it does not alter solver priority, inputs
+or the unchanged 600-second deadline. Samples have an 8 MiB disk limit; process,
+thread, argv and solver-identity inventories are separately bounded and report
+truncation. Unavailable observations cannot authorize a proof or turn a timeout
+into a pass. Non-Linux execution records that `/proc` is unavailable.

@@ -115,9 +115,9 @@ def run(args):
                                         '--project', args.he, '--patch', patch, '--out', out / 'previous-revision-focus'])
     stage('real-he-same-input', ['python3', ROOT / 'candidates/test-real-he-same-input.py', *common,
                                 '--project', args.he, '--out', out / 'real-he-same-input',
-                                '--other-module-edit', '--timeout', '600', '--patch', patch,
+                                '--other-module-edit', '--timeout', '600', '--patch', patch, '--actor-observations',
                                 *(['--require-edited-focus'] if args.private_span_boundary else [])])
-    for name, package, extra in [('vir-tests', 'vir', []), ('air-writer-tests', 'air', ['sail_wire_tests']),
+    for name, package, extra in [('vir-tests', 'vir', ['--', '--test-threads=1']), ('air-writer-tests', 'air', ['sail_wire_tests']),
                                  ('driver-tests', 'rust_verify', [])]:
         stage(name, ['nice', '-n', '19', 'cargo', 'test', '--release', '-p', package, '--lib', *extra], source)
     record['source_gates_passed'] = True
