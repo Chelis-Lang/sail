@@ -7,6 +7,11 @@ See [known issues](known-issues.md) and the
 [acceptance guide](bench/m7-repair-acceptance.md) before relying on performance
 or cross-edit preparation reuse. Stock verification remains the default.
 
+For setup through a focus/full regression, resumable events, cancellation and
+CLI/MCP evidence, follow the [repair walkthrough](proof-repair-walkthrough.md).
+It distinguishes submission from accepted proof and engine identity checks from
+unfinished M7 acceptance.
+
 The optional `interactive` engine is a Sail-managed build of the pinned Verus
 source. It is selected explicitly. Stock verification retains its existing
 behavior. An unavailable or invalid engine returns a setup error; it never
@@ -77,7 +82,7 @@ function or target.
 Resume using the last cursor record:
 
 ```sh
-sail jobs events JOB --stream JOB --after 12 --follow --output jsonl
+sail jobs events JOB --stream STREAM_ID --after 12 --follow --output jsonl
 ```
 
 Identical producer event IDs are delivered once; conflicting duplicates expose a
