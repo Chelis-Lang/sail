@@ -6,7 +6,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use sail_api::jobs::{Currentness, Lifecycle};
+use sail_api::jobs::{Currentness, Lifecycle, Mode};
 use sail_api::project::ProjectResult;
 
 use super::{State, get, lock_error, store};
@@ -97,16 +97,32 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
     let stdout = store::output(&directory.join("stdout"))?;
     let stderr = store::output(&directory.join("stderr"))?;
     store::output(&directory.join("events.jsonl"))?;
+    store::output(&directory.join("proof-source.jsonl"))?;
     let mut command = Command::new(&state.executable);
+    match &job.submission.mode {
+        Mode::Repair(selection) => {
+            command
+                .arg("_repair-worker")
+                .arg("--selection-json")
+                .arg(serde_json::to_string(selection).map_err(io::Error::other)?);
+        }
+        Mode::Stock | Mode::Interactive => {
+            command
+                .arg("verify")
+                .arg("--incremental")
+                .args(["--output", "json"]);
+            if job.submission.mode == Mode::Interactive {
+                command.args(["--engine", "interactive"]);
+            }
+        }
+    }
     command
-        .arg("verify")
-        .arg("--incremental")
-        .args(["--output", "json"])
         .args(&job.submission.args)
         .current_dir(&job.status.project_dir)
         .env_clear()
         .envs(&job.submission.environment)
         .env("SAIL_JOB_EVENTS", directory.join("events.jsonl"))
+        .env("SAIL_PROOF_EVENTS", directory.join("proof-source.jsonl"))
         .env("SAIL_JOB_GUARD_PARENT", "1")
         .stdin(Stdio::piped())
         .stdout(stdout)
@@ -147,8 +163,7 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
         }
         std::thread::sleep(Duration::from_millis(20));
     };
-    let bytes = std::fs::read(directory.join("stdout"))?;
-    let document: ProjectResult = serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+    let document = read_document(&directory, &job.submission.mode)?;
     if document.exit_code != status.code() {
         return Err(io::Error::other(
             "managed report and process exit status disagree",
@@ -165,4 +180,19 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
         return Err(io::Error::other("unsupported or incomplete project result"));
     }
     Ok((status.code(), document))
+}
+
+fn read_document(directory: &std::path::Path, mode: &Mode) -> io::Result<ProjectResult> {
+    let bytes = std::fs::read(directory.join("stdout"))?;
+    let document: ProjectResult = if matches!(mode, Mode::Repair(_)) {
+        let repair: sail_api::repair::ResultDocument =
+            serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+        if repair.version != sail_api::repair::VERSION {
+            return Err(io::Error::other("unsupported repair result version"));
+        }
+        repair.batch.full
+    } else {
+        serde_json::from_slice(&bytes).map_err(io::Error::other)?
+    };
+    Ok(document)
 }

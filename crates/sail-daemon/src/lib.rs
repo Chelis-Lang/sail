@@ -33,3 +33,6 @@ pub use shared::{DEFAULT_SHARED_BACKOFF, DEFAULT_SHARED_TIMEOUT, MAX_IN_FLIGHT, 
 pub mod http_server;
 #[cfg(unix)]
 pub mod remote;
+
+#[cfg(unix)]
+mod proof_journal;
