@@ -73,7 +73,8 @@ writers start at 64 bytes and each aggregate typed lookup table stops at
 32 MiB, including Vec capacity and table metadata. Starting every tiny map key
 and value at 4 KiB previously exhausted this budget for real-project constructor
 graphs despite their small encoded entries; the correction changes allocation
-only, preserving every typed byte and resulting key hash. Source-file provenance, each span-binding map and
+only, preserving every typed byte and resulting key hash. Source-file
+provenance, each span-binding map and
 each converted binding table stop at 16 MiB. Span keys and clones are charged
 with both String/Vec contents and conservative HashMap overhead.
 
@@ -132,8 +133,12 @@ checks. A source build or cache hit count alone is not performance acceptance.
 The source regression `cargo test --release -p vir --lib sail_preparation_tests`
 checks 5,000 small typed lookup entries against their exact reference binary
 encoding; it fails with the former 4 KiB allocation. It is a local source test,
-not a CI source build. Existing qualification JSON records the prior immutable
-variant until the corrected variant completes independent qualification.
+not a CI source build. Current host and Linux qualification JSON records the
+corrected variant. Earlier immutable qualification is retained under
+`qualifications/`. The real human-eval-verus oracle separately records two
+unchanged fresh callbacks with exact full SMT inputs; its edited-source failure
+is retained with stock-to-stock evidence of VI-0001. This does not establish
+real-project reuse across edits or satisfy product performance acceptance.
 
 ## Pinned Linux runtime for CI
 
@@ -144,7 +149,7 @@ uses a BuildKit secret for the private download; it does not retain that
 credential or build Verus from source. The optional runtime is exercised by
 the real repair CLI/MCP end-to-end phase alongside the stock checks.
 
-`qualification-linux.json` records the prior immutable source differential checks in a
+`qualification-linux.json` records the corrected source differential checks in a
 local Linux amd64 container under emulation. It covers nine stock-equivalent
 fixtures, eight prepared-reuse revisions and cancellation/restart. It does
 not substitute for the frozen whole-loop product performance acceptance.

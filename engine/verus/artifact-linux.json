@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "variant": "426d8b01e7ffb910a36c15e1f870ff985bb61eef-741d555a573cb9e8",
+  "variant": "426d8b01e7ffb910a36c15e1f870ff985bb61eef-05cf585f5e90150c",
   "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
   "rust_toolchain": "1.98.1",
   "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
-  "patch_sha256": "45af86262dae49d1155da78ce5d6191dcbba1976ecc8cde8dc02abef239b1807",
+  "patch_sha256": "5eed78f066cd3c6a9761cf216bef24b46946f6d58b8da6f1f837311102dcaa74",
   "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "archive_sha256": "8fb1db5221f666405c20527d439bb7c7b468eab08e540ee85dc55ea512980220",
-  "asset_id": 627886909
+  "archive_sha256": "cb52037010fad94e8eeb75246eca2dd2b245a42cae8ce5c20736cfe311f6fd05",
+  "asset_id": 628062711
 }
