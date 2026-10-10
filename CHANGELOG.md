@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Retain raw partial stdout and stderr for timed-out corpus verification units.
+  The timeout remains an infrastructure error and kills the verifier process
+  group; partial output never becomes a completed proof or conformance result.
+
 - Reuse bounded service clients for MCP job status, result and counterexample
   reads while receiving a fresh reply on every call. Preserve source currentness,
   report schemas, CLI fallback errors and verification/cancellation ownership.
