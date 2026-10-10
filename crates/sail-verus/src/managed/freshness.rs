@@ -500,7 +500,9 @@ impl FreshnessIndex {
                 &request.context,
                 &request.environment,
             )?;
-            snapshot.complete &= plan == after;
+            let _declarations_complete = snapshot.complete;
+            let plan_matches = plan == after;
+            snapshot.complete &= plan_matches;
             let cacheable = snapshot.complete
                 && snapshot
                     .content_paths
@@ -510,6 +512,20 @@ impl FreshnessIndex {
                 && lease.as_mut().is_some_and(ReadLease::clean)
                 && runtime == runner::runtime_identity(&request.cache, &request.context);
             snapshot.complete &= cacheable;
+            #[cfg(test)]
+            if !cacheable {
+                eprintln!(
+                    "freshness establishment incomplete: declarations_complete={_declarations_complete} plan_matches={plan_matches} observer_present={} lease_present={} lease_reason={} observer_reason={}",
+                    observer.is_some(),
+                    lease.is_some(),
+                    lease
+                        .as_ref()
+                        .map_or("owner-unavailable", ReadLease::failure_reason),
+                    observer
+                        .as_ref()
+                        .map_or("owner-unavailable", Observer::failure_reason)
+                );
+            }
             trace(
                 "fill-validation",
                 trace_started,

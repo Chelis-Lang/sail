@@ -29,21 +29,42 @@ impl ReadLease {
         self.process.wait().map(|_| ())
     }
     pub(super) fn acquire(paths: &[PathBuf]) -> Option<Self> {
+        let mut stage = "input-file-limit";
+        #[cfg(test)]
+        let started = std::time::Instant::now();
+        let lease = Self::acquire_at_stage(paths, &mut stage);
+        #[cfg(test)]
+        if lease.is_none() {
+            eprintln!(
+                "lease acquisition unavailable: stage={stage} elapsed={:?}",
+                started.elapsed()
+            );
+        }
+        lease
+    }
+    fn acquire_at_stage(paths: &[PathBuf], stage: &mut &'static str) -> Option<Self> {
         if paths.len() > 4096 {
             return None;
         }
+        *stage = "interpreter-resolution";
         let interpreter = interpreter()?;
+        *stage = "helper-runtime-closure";
         let closure = helper_paths(&interpreter)?;
+        *stage = "helper-native-observer";
         let helper_observer = Observer::begin(&closure, &[])?;
+        *stage = "helper-baseline-digests";
         let baseline = helper_digests(&closure)?;
         let mut paths = paths.to_vec();
         paths.extend(closure.iter().filter(|p| p.is_file()).cloned());
         paths.sort();
         paths.dedup();
+        *stage = "combined-file-limit";
         if paths.len() > 4096 {
             return None;
         }
+        *stage = "mount-inventory";
         let mounts = std::fs::read_to_string("/proc/self/mountinfo").ok()?;
+        *stage = "input-path-bindings";
         let bindings: Vec<_> = paths
             .iter()
             .map(|path| {
@@ -64,7 +85,9 @@ impl ReadLease {
             .iter()
             .map(|(_, p, d, i)| (p.as_os_str().as_encoded_bytes(), d, i))
             .collect();
+        *stage = "helper-path-encoding";
         let runtime: Vec<_> = closure.iter().map(|p| p.to_str()).collect::<Option<_>>()?;
+        *stage = "helper-request-encoding";
         let mut bytes = serde_json::to_vec(&serde_json::json!({
             "files": identities,
             "runtime": runtime,
@@ -74,6 +97,7 @@ impl ReadLease {
         if bytes.len() > 1_048_576 {
             return None;
         }
+        *stage = "helper-socket-setup";
         let (mut socket, child_socket) = UnixStream::pair().ok()?;
         socket.set_read_timeout(Some(Duration::from_secs(2))).ok()?;
         socket
@@ -87,6 +111,7 @@ impl ReadLease {
             include_str!("helper_runtime.py"),
             include_str!("lease.py")
         );
+        *stage = "helper-process-spawn";
         let process = Command::new(&interpreter)
             .args(["-I", "-u", "-c", &helper])
             .stdin(Stdio::from(child_input))
@@ -104,15 +129,21 @@ impl ReadLease {
             helper_observer,
             failure: None,
         };
+        *stage = "helper-request-write";
         socket.write_all(&bytes).ok()?;
+        *stage = "helper-readiness-frame";
         let fds = descriptors(&mut socket)?;
         let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
+        *stage = "kernel-lease-inventory-bind";
         lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
         let validation = if lease.kernel.is_none() {
             Err("kernel-lease-inventory-binding-unavailable")
         } else if !lease.bindings_current() {
             Err("lease-binding-invalidated")
-        } else if helper_digests(&closure)? != baseline {
+        } else if {
+            *stage = "helper-final-digests";
+            helper_digests(&closure)? != baseline
+        } {
             Err("helper-byte-identity-invalidated")
         } else if !lease.helper_observer.clean() {
             Err("helper-observation-invalidated")
@@ -124,7 +155,7 @@ impl ReadLease {
                 .and_then(super::kernel_leases::Inventory::check)
         };
         if let Err(reason) = validation {
-            let _ = reason;
+            *stage = reason;
             #[cfg(test)]
             eprintln!("lease acquisition failed: {reason}");
             return None;
