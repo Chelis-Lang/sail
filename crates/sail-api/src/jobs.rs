@@ -16,6 +16,9 @@ pub const MAX_FRAME: usize = 32 * 1024 * 1024;
 /// A verification request. The environment belongs to its submitting client.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Submission {
+    /// Explicit backend/repair mode; old endpoints are never used for these requests.
+    #[serde(default)]
+    pub mode: Mode,
     /// Absolute Cargo project directory.
     pub project_dir: PathBuf,
     /// Verification arguments, without the `verify` subcommand or output flags.
@@ -26,6 +29,19 @@ pub struct Submission {
     pub environment: BTreeMap<String, String>,
     /// Content revision observed by the submitting client.
     pub input_revision: Option<String>,
+}
+
+/// Verification execution mode, negotiated through the version-two job endpoint.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "selection", rename_all = "snake_case")]
+pub enum Mode {
+    /// Existing stock pinned Verus verification.
+    #[default]
+    Stock,
+    /// Optional explicitly selected Sail-managed interactive engine.
+    Interactive,
+    /// One engine batch containing focus and independent full validation.
+    Repair(crate::repair::Selection),
 }
 
 /// Durable lifecycle, independent of the proof outcome.

@@ -83,6 +83,7 @@ pub(crate) fn submit(client: &Client, args: &[String]) -> Result<Status, String>
     // Unknown revisions cannot safely coalesce across intervening input edits.
     let input_revision = None;
     let submission = Submission {
+        mode: sail_api::jobs::Mode::Stock,
         project_dir,
         args,
         force: std::env::var("SAIL_MANAGED_FORCE").is_ok_and(|value| value == "1"),
