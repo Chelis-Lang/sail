@@ -8,3 +8,4 @@
 .DS_Store
 /.claude/worktrees
 /conformance-out
+__pycache__/
