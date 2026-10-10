@@ -19,7 +19,11 @@ The retained Cargo stderr reached the requested HumanEval crate after dependency
 compilation. Its retained dependency driver report completed `vstd` with
 2,060 verified and zero errors, reporting 371.595 seconds total and seven
 verification threads. This is dependency evidence, not a complete requested
-HumanEval proof. The owned process witness captured a Verus driver and actual Z3
+HumanEval proof. Retained timestamps place dependency report completion at
+approximately 555.33 seconds after ordinary setup began. The HumanEval driver
+was created 559.91 seconds after its owning Sail process, leaving approximately
+40.32 seconds before interruption. This demonstrates that most of the setup
+budget preceded the requested crate; it does not establish a solver hang. The owned process witness captured a Verus driver and actual Z3
 children. Verus-owned SMT transcript logs retained 2,151 completed check responses
 across 454 transcripts. These partial responses are not a sealed whole-target
 proof. Pending logged queries establish log intent, not receipt of bytes by Z3;
