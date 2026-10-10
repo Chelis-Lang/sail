@@ -116,8 +116,8 @@ impl Request {
         }
         super::files::digest(&bytes)
     }
-    fn refresh(&self, runtime: &Mutex<RuntimeSlot>) -> Refresh {
-        self.refresh_outcome(runtime, std::time::Instant::now(), || {}, || {})
+    fn refresh(&self, runtime: &Mutex<RuntimeSlot>, started: std::time::Instant) -> Refresh {
+        self.refresh_outcome(runtime, started, || {}, || {})
     }
     #[cfg(test)]
     fn refresh_started(
@@ -138,7 +138,9 @@ impl Request {
         before_validation: impl FnOnce(),
         before_publish: impl FnOnce(),
     ) -> Refresh {
-        let deadline = started + std::time::Duration::from_millis(100);
+        // The overlap boundary starts at caller entry; the existing bounded
+        // owner-wait budget starts here, after the first namespace barrier.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(100);
         let mut validation = loop {
             let Some(mut slot) = read_projection(runtime) else {
                 trace("runtime-lock", started, "busy");
@@ -286,97 +288,108 @@ impl FreshnessIndex {
         }
         #[cfg(target_os = "linux")]
         {
-            let trace_started = std::time::Instant::now();
+            let started = std::time::Instant::now();
             let request = Self::request(cache, workspace, context, environment).ok()?;
-            let entry = self.entry(&request.key())?;
-            let (generation, runtime) = {
+            self.inspect_started(&request, started, || {})
+        }
+    }
+    #[cfg(target_os = "linux")]
+    fn inspect_started(
+        &self,
+        request: &Request,
+        started: std::time::Instant,
+        before_observer: impl FnOnce(),
+    ) -> Option<InputSnapshot> {
+        before_observer();
+        let entry = self.entry(&request.key())?;
+        let (generation, runtime) = {
+            let mut projection = read_projection(&entry).or_else(|| {
+                trace("projection-lock", started, "busy");
+                None
+            })?;
+            let clean = projection.observer.as_mut().is_some_and(Observer::clean);
+            trace(
+                "namespace-before",
+                started,
+                if clean {
+                    "ready"
+                } else {
+                    namespace_reason(&projection)
+                },
+            );
+            let runtime = clean.then(|| projection.runtime.clone()).flatten();
+            (projection.generation, runtime)
+        };
+        if let Some(runtime) = runtime {
+            let snapshot = match request.refresh(&runtime, started) {
+                Refresh::Ready(snapshot) => Some(snapshot),
+                // A bounded waiter is unavailable for this read, but must
+                // not discard the independent validation owner's leases.
+                Refresh::Busy => return None,
+                Refresh::Invalid => None,
+            };
+            if let Some(snapshot) = snapshot {
                 let mut projection = read_projection(&entry).or_else(|| {
-                    trace("projection-lock", trace_started, "busy");
+                    trace("projection-lock", started, "busy");
                     None
                 })?;
-                let clean = projection.observer.as_mut().is_some_and(Observer::clean);
-                trace(
-                    "namespace-before",
-                    trace_started,
-                    if clean {
-                        "ready"
-                    } else {
-                        namespace_reason(&projection)
-                    },
-                );
-                let runtime = clean.then(|| projection.runtime.clone()).flatten();
-                (projection.generation, runtime)
-            };
-            if let Some(runtime) = runtime {
-                let snapshot = match request.refresh(&runtime) {
-                    Refresh::Ready(snapshot) => Some(snapshot),
-                    // A bounded waiter is unavailable for this read, but must
-                    // not discard the independent validation owner's leases.
-                    Refresh::Busy => return None,
-                    Refresh::Invalid => None,
-                };
-                if let Some(snapshot) = snapshot {
-                    let mut projection = read_projection(&entry).or_else(|| {
-                        trace("projection-lock", trace_started, "busy");
-                        None
-                    })?;
-                    if projection.generation == generation
-                        && projection
-                            .runtime
-                            .as_ref()
-                            .is_some_and(|current| Arc::ptr_eq(current, &runtime))
-                        && projection.observer.as_mut().is_some_and(Observer::clean)
-                    {
-                        trace("namespace-after", trace_started, "ready");
-                        return Some(snapshot);
-                    }
-                    let reason = if projection.generation != generation {
-                        "projection-generation-changed"
-                    } else if !projection
+                if projection.generation == generation
+                    && projection
                         .runtime
                         .as_ref()
                         .is_some_and(|current| Arc::ptr_eq(current, &runtime))
-                    {
-                        "projection-owner-changed"
-                    } else {
-                        namespace_reason(&projection)
-                    };
-                    trace("namespace-after", trace_started, reason);
+                    && projection.observer.as_mut().is_some_and(Observer::clean)
+                {
+                    trace("namespace-after", started, "ready");
+                    return Some(snapshot);
                 }
+                let reason = if projection.generation != generation {
+                    "projection-generation-changed"
+                } else if !projection
+                    .runtime
+                    .as_ref()
+                    .is_some_and(|current| Arc::ptr_eq(current, &runtime))
+                {
+                    "projection-owner-changed"
+                } else {
+                    namespace_reason(&projection)
+                };
+                trace("namespace-after", started, reason);
             }
-            trace("projection-invalidate", trace_started, "unavailable");
-            let mut projection = read_projection(&entry)?;
-            if projection.generation != generation {
-                return None;
-            }
-            projection.observer = None;
-            projection.runtime = None;
-            if projection.refreshing
-                || projection
-                    .retry_after
-                    .is_some_and(|time| std::time::Instant::now() < time)
-            {
-                return None;
-            }
-            let permit = Permit::acquire(&self.active)?;
-            projection.refreshing = true;
-            projection.generation = projection.generation.wrapping_add(1);
-            let generation = projection.generation;
-            drop(projection);
-            let worker_entry = Arc::clone(&entry);
-            if std::thread::Builder::new()
-                .name("sail-freshness-revalidate".to_owned())
-                .spawn(move || {
-                    let _permit = permit;
-                    let _ = Self::fill(&worker_entry, generation, &request);
-                })
-                .is_err()
-                && let Ok(mut projection) = entry.lock()
-            {
-                projection.refreshing = false;
-            }
-            None
         }
+        trace("projection-invalidate", started, "unavailable");
+        let mut projection = read_projection(&entry)?;
+        if projection.generation != generation {
+            return None;
+        }
+        projection.observer = None;
+        projection.runtime = None;
+        if projection.refreshing
+            || projection
+                .retry_after
+                .is_some_and(|time| std::time::Instant::now() < time)
+        {
+            return None;
+        }
+        let permit = Permit::acquire(&self.active)?;
+        projection.refreshing = true;
+        projection.generation = projection.generation.wrapping_add(1);
+        let generation = projection.generation;
+        drop(projection);
+        let worker_entry = Arc::clone(&entry);
+        let request = request.clone();
+        if std::thread::Builder::new()
+            .name("sail-freshness-revalidate".to_owned())
+            .spawn(move || {
+                let _permit = permit;
+                let _ = Self::fill(&worker_entry, generation, &request);
+            })
+            .is_err()
+            && let Ok(mut projection) = entry.lock()
+        {
+            projection.refreshing = false;
+        }
+        None
     }
     /// Establishes a projection before a worker publishes completion, without
     /// service locks. Returns a freshly content-validated snapshot even when the
@@ -413,7 +426,7 @@ impl FreshnessIndex {
                 (state.generation, runtime)
             };
             if let Some(runtime) = runtime {
-                let snapshot = match request.refresh(&runtime) {
+                let snapshot = match request.refresh(&runtime, std::time::Instant::now()) {
                     Refresh::Ready(snapshot) => Some(snapshot),
                     Refresh::Busy => {
                         return Err(Error::new("SAIL3114", "freshness validation busy"));
@@ -511,9 +524,13 @@ impl FreshnessIndex {
             trace(
                 "fill-namespace",
                 trace_started,
-                observer
-                    .as_ref()
-                    .map_or("namespace-owner-unavailable", Observer::failure_reason),
+                if cacheable {
+                    "ready"
+                } else {
+                    observer
+                        .as_ref()
+                        .map_or("namespace-owner-unavailable", Observer::failure_reason)
+                },
             );
             let runtime = if cacheable {
                 runtime.zip(lease).map(|((identity, _), lease)| {
@@ -1233,6 +1250,92 @@ mod tests {
                 .is_none(),
             "a delayed publication must not admit a reader after validation"
         );
+    }
+    #[test]
+    fn delayed_namespace_barrier_coalesces_only_valid_in_call_checkpoints() {
+        for case in ["overlap", "sequential", "write-before", "write-after"] {
+            let fixture = Arc::new(Fixture::new(case));
+            let index = FreshnessIndex::default();
+            assert!(fixture.establish(&index).complete);
+            let request = FreshnessIndex::request(
+                &fixture.cache,
+                &fixture.workspace,
+                &fixture.context,
+                &fixture.environment,
+            )
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            let runtime = index
+                .entry(&request.key())
+                .and_then(|entry| entry.lock().ok().and_then(|s| s.runtime.clone()))
+                .unwrap_or_else(|| unreachable!("fixture"));
+            if case == "sequential" {
+                assert!(
+                    request
+                        .refresh_started(&runtime, Instant::now(), || {})
+                        .is_some()
+                );
+            }
+            let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+            let (continue_tx, continue_rx) = std::sync::mpsc::channel();
+            let reader_index = index.clone();
+            let reader_request = request.clone();
+            let reader = std::thread::spawn(move || {
+                let entered = Instant::now();
+                reader_index.inspect_started(&reader_request, entered, || {
+                    assert!(entered_tx.send(()).is_ok());
+                    assert!(continue_rx.recv_timeout(Duration::from_secs(5)).is_ok());
+                })
+            });
+            assert!(entered_rx.recv_timeout(Duration::from_secs(5)).is_ok());
+            let mutate = || {
+                let source = fixture.workspace.join("src/lib.rs");
+                let file =
+                    std::fs::File::open(&source).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                let modified = file
+                    .metadata()
+                    .and_then(|m| m.modified())
+                    .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                assert!(std::fs::write(&source, b"changed").is_ok());
+                assert!(
+                    file.set_times(std::fs::FileTimes::new().set_modified(modified))
+                        .is_ok()
+                );
+            };
+            if case == "write-before" {
+                mutate();
+            }
+            if case != "sequential" {
+                let checkpoint = request.refresh_started(&runtime, Instant::now(), || {});
+                assert_eq!(checkpoint.is_some(), case != "write-before");
+            }
+            if case == "write-after" {
+                mutate();
+            }
+            // A different overlapping validator may hold the same continuous
+            // lease owner. It has not published a new checkpoint; the queued
+            // reader must use only one certified within its own call interval.
+            let held = {
+                let mut slot = runtime
+                    .lock()
+                    .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                slot.validating = true;
+                slot.runtime.take()
+            };
+            assert!(continue_tx.send(()).is_ok());
+            let result = reader
+                .join()
+                .unwrap_or_else(|e| std::panic::resume_unwind(e));
+            assert_eq!(
+                result.is_some_and(|s| s.complete),
+                case == "overlap",
+                "{case}"
+            );
+            let mut slot = runtime
+                .lock()
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            slot.runtime = held;
+            slot.validating = false;
+        }
     }
     #[test]
     fn four_readers_do_not_wait_behind_unrelated_validation_or_context_locks() {
