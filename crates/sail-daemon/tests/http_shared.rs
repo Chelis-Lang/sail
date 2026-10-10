@@ -298,13 +298,22 @@ fn client_refuses_redirects_encodings_oversize_and_stalled_responses() {
         Duration::from_millis(300),
     );
     let started = std::time::Instant::now();
-    assert!(
-        HttpClient::new(&config, Duration::from_millis(50))
-            .unwrap()
-            .get(&solver(), &KEY)
-            .is_err()
+    let client = HttpClient::new(&config, Duration::from_millis(50)).unwrap();
+    let constructed = started.elapsed();
+    let result = client.get(&solver(), &KEY);
+    let fetched = started.elapsed();
+    assert!(result.is_err());
+    // The original temporary client drops before the following elapsed check.
+    // Keep that runtime join inside the measured scope when naming the client.
+    drop(client);
+    let elapsed = started.elapsed();
+    eprintln!(
+        "cold stalled response: constructor={constructed:?}, request={:?}, drop={:?}, total={elapsed:?}, error={:?}; original request=50ms server=300ms total-bound=250ms",
+        fetched.saturating_sub(constructed),
+        elapsed.saturating_sub(fetched),
+        result.as_ref().err()
     );
-    assert!(started.elapsed() < Duration::from_millis(250));
+    assert!(elapsed < Duration::from_millis(250));
     thread.join().unwrap();
     let _ = std::fs::remove_dir_all(root);
 }

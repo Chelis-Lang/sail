@@ -192,3 +192,11 @@ test, is retained in
 `validation/m7-shared-signature-cpu-diagnosis.md`. It is a development-build
 improvement, not a production-release speedup or an attribution of every earlier
 wall-time delay to cryptography.
+
+The stalled-response integration test measures cold transport construction, the
+original 50 ms request against a 300 ms server delay, and destruction of the
+owned blocking client inside its unchanged 250 ms total bound. Its phase output
+separates those costs without moving initialization or the runtime join outside
+the assertion. HTTP lookup phase diagnostics retain the original signed-entry
+checks and 75 ms response fixture; isolated CPU and TCP controls are diagnostic
+evidence, not substitutes for the complete concurrent lookup checks.
