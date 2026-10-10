@@ -212,3 +212,13 @@ timings cannot be subtracted from a separate socket run to attribute live latenc
 The producer and captured full response remain unchanged in the actual-client
 replay. This diagnostic does not introduce a product buffer pool, alter frame
 validation or reduce returned ownership.
+
+The actual-client replay also has a raw fresh-frame transfer control. It performs
+the same request write and complete bounded frame read, then checks exact bytes
+and parses/compares the entire graph after timing. It is a diagnostic rather
+than a Client option: no product response uses delayed validation. The replay's
+owned fixture accepts and writes one connection at a time; it has no real daemon
+or freshness observer. Four-reader transfer costs therefore include that
+fixture's scheduling and serialized writes. They do not establish that the
+production server has the same bottleneck. Malformed complete JSON still fails
+and shuts down/joins the owned producer.
