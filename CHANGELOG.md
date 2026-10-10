@@ -13,6 +13,9 @@ semantic versioning once the API is published.
   cancellation, diagnostics, and workspace-aware watch and MCP job tools.
 - Add optional authenticated HTTP shared-cache reading and signed publication,
   private connection settings, and a deployable local/private team server.
+- Record complete frontend-reuse acceptance, full local conformance and measured
+  freshness costs. Preserve conservative macOS currentness and explicit bounded
+  failures; default verification and existing SMT verdict policy stay unchanged.
 
 
 - Add feature-scoped Singular source builds, validated runtime identities, and

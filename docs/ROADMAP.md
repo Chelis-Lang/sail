@@ -41,9 +41,9 @@ Milestone M5 and `docs/reports/2026-10-09-initial-product.md` record the
 completion decisions and full local acceptance. The owner kept the unknown
 serving cap at 50%; the later research below remains deferred.
 
-## M6: Live workspace verification and team caching (in progress)
+## M6: Live workspace verification and team caching (implemented)
 
-The next product milestone prioritizes a complete local developer and agent
+This milestone implements a complete local developer and agent
 workflow. Ordinary single-developer use needs no credentials, server setup,
 account, or container. One verification worker runs by default.
 
@@ -60,6 +60,16 @@ account, or container. One verification worker runs by default.
    Read and publish signed SMT entries over authenticated HTTPS, with an
    optional lightweight self-hosted service. Reader signing trust remains
    independent of transport authentication; remote failures cost misses.
+
+Acceptance is retained in `docs/reports/2026-10-10-live-workspace.md`: complete
+unchanged reports with zero verifier invocations, native CLI/MCP and recovery
+checks, exact same-name library/binary solver inputs, full local corpus coverage,
+and three-round secondary-platform resource measurements. Easy synthetic
+fixtures show freshness overhead, not a general wall-time gain. Follow-ups are
+safe freshness-cost reduction ([#69](https://github.com/Chelis-Lang/sail/issues/69))
+and an unresolved emulated verifier wait
+([#68](https://github.com/Chelis-Lang/sail/issues/68)). No deadline or check was
+relaxed to classify a failed attempt as success.
 
 Exit evidence: unchanged eligible workspaces invoke no verifier and return
 complete reports; edits and verification-context changes invalidate correctly;

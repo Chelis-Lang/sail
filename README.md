@@ -2,10 +2,11 @@
 
 **S.A.I.L.** (Satisfiability Analysis & Inference Layer) is a Rust service and toolchain that sits between the [Verus](https://github.com/verus-lang/verus) verifier and its pinned Z3. It caches solver replies and complete target proofs, with durable verification jobs for developers and agents. Default-mode correctness follows the pinned verifier and the charter’s policy for unstable queries; verdict-changing portfolios are explicitly opt-in.
 
-Status: **initial product complete; live workspace features in development.**
-Pass-through, local/shared signed caching, portfolios, attribution and MCP pass
-the retained local acceptance (`docs/reports/2026-10-09-initial-product.md`).
-See `docs/ROADMAP.md` for the current milestone.
+Status: **live workspace verification and team caching implemented.**
+Complete proof receipts, durable jobs/watch/MCP and authenticated HTTP caching
+pass the retained acceptance in [the M6 report](docs/reports/2026-10-10-live-workspace.md).
+The report records performance costs, platform limits and emulation failures.
+See `docs/ROADMAP.md` for follow-up work.
 
 ## Using it
 
