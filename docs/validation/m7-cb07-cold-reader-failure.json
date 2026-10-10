@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "source_sha": "cb07d4124ee873301104dbc41219078a8704245e",
+  "source_archive": {
+    "sha256": "028a41ba40f1a68e3ec703e08ed0abf859075af3bfa9fc2510261adb7c3d4b1f",
+    "bytes": 1294413
+  },
+  "binaries": {
+    "sail": {
+      "sha256": "77caca5e21e930f3eb67468cd3bff2fde8e57db5be5b259e505e1860b07b7248",
+      "bytes": 72150680
+    },
+    "sail-z3": {
+      "sha256": "7477fcfa07d97c6194f49d4c7651b20dedc7c01b9ca8be3d251bea65e242cd68",
+      "bytes": 10288136
+    },
+    "job_read_bench": {
+      "sha256": "00cf86077d55b9f2cb46f1951bc9c699265b0c02d5f7c0d9a717b97cd3568360",
+      "bytes": 12007984
+    }
+  },
+  "collectors": {
+    "rust": {
+      "sha256": "0114cb141769ce13732a22026ccf3c3efa01b108515af28c752746ddad9158bb",
+      "bytes": 12008608
+    },
+    "python": {
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+      "bytes": 11877
+    }
+  },
+  "source_manifest": {
+    "sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+    "bytes": 2107
+  },
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development-machine load",
+  "result": "failed cold baseline establishment; no complete proof or reader acceptance",
+  "proof_bound_seconds": 600,
+  "public_rpc_seconds": 5,
+  "reader_clients": 4,
+  "reader_samples": 200,
+  "reader_p95_limit_ms": 200,
+  "proof_job_id": "1791651402158-121029-0",
+  "state_at_bound": "running",
+  "observed_poll_elapsed_ms": 600134.083,
+  "error": "fresh baseline proof exceeded local600-second bound",
+  "baseline_terminal_report_available": false,
+  "current_full_proof_available": false,
+  "python_census_started": false,
+  "rust_census_started": false,
+  "setup": "fresh source-only copies, empty cache and Cargo target; omitted the catalogue ordinary and exact-repair-context warmup",
+  "dependency_progress": {
+    "requested_crate_started": false,
+    "started_crate": "vstd",
+    "engine_event_count": 10330,
+    "event_counts": {
+      "compiler-started": 2,
+      "focus-unavailable": 1,
+      "prepared-unavailable": 216,
+      "function-started": 2060,
+      "obligation-progress": 4120,
+      "obligation-observed": 2060,
+      "function-observed": 1871
+    },
+    "last_event": {
+      "version": 1,
+      "phase": "full",
+      "event": "compiler-started",
+      "payload": {
+        "role": "exec"
+      }
+    },
+    "meaning": "vstd ghost work produced function evidence; exec phase started, but no complete compiler report or seal was produced before cancellation"
+  },
+  "cleanup": {
+    "only_owned_job_cancelled": true,
+    "state": "cancelled",
+    "only_owned_idle_daemon_stopped": true
+  },
+  "raw_archive": {
+    "name": "sail-m7-final-reader-cb07-retained-raw.tar.gz",
+    "sha256": "a2d4189eb1024cc0e4b2fc48201056c8955f18e88a7d57d8a866e2b720e7eff8",
+    "bytes": 7809875
+  },
+  "raw_files": {
+    "manifest.json": {
+      "sha256": "20568fe3bdbae2c4451bcf4ce973653972ad83d32090ecf0bff00eeca54e1f55",
+      "bytes": 2425
+    },
+    "lifecycle.jsonl": {
+      "sha256": "f636494b5a2cdcf8f0efa21824e6faa9cae9cdd63605b1615bade54a8fa8bc60",
+      "bytes": 421308
+    },
+    "orchestration-error.json": {
+      "sha256": "759ffabd77da60dcb45d8413feb0f0d798f941c43d21ac177925fd70a91a5e7d",
+      "bytes": 102
+    },
+    "owned-baseline-before-cancel.json": {
+      "sha256": "be519eb9c42c743d12e067c8ad3911d16cc20969a9c12b9ec4ffd52748735bb1",
+      "bytes": 692
+    },
+    "owned-baseline-after-cancel.json": {
+      "sha256": "1e4fe74cfb2065fa1a48b1053e4a52aa0cdc69a4ef883e6d7d0ec7520121974b",
+      "bytes": 559
+    },
+    "stderr": {
+      "sha256": "600dac900367abf7d85deea60ef28683873c170d0bd4d11dc4eca10d784212f9",
+      "bytes": 991
+    },
+    "engine.events.jsonl": {
+      "sha256": "4de464bd63e00072beb6fe959250d267a47b041862dbdb7211de538a71108c59",
+      "bytes": 2221279
+    }
+  },
+  "qualification": "No timeout, assertion, freshness or currentness check was relaxed. Subsequent warm setup must retain this cold failure separately."
+}
