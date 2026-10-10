@@ -41,9 +41,11 @@ pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
 /// Returns setup or bounded startup errors, without changing verification inputs.
 pub(crate) fn connect_or_start() -> Result<Client, String> {
     let cache = sail_verus::cache_dir().map_err(|error| error.to_string())?;
-    let socket = std::env::var_os("SAIL_DAEMON_SOCKET")
+    let explicit = std::env::var_os("SAIL_DAEMON_SOCKET")
         .filter(|value| !value.is_empty())
-        .map_or_else(|| crate::default_socket(&cache), PathBuf::from);
+        .map(PathBuf::from);
+    let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
+    let socket = sail_api::jobs::cache_socket(&cache, explicit.as_deref(), &cwd);
     let jobs_socket = sail_api::jobs::socket_path(&socket);
     let client = Client::new(&jobs_socket);
     if client.call(&Request::List { project_dir: None }).is_ok() {

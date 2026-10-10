@@ -172,10 +172,7 @@ fn mcp(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
 /// The default daemon socket: `<cache>/daemon-v<protocol>-workspace-v2-proof-v1.sock`, so clients
 /// of one protocol version never reach a daemon of another.
 pub(crate) fn default_socket(cache: &std::path::Path) -> std::path::PathBuf {
-    cache.join(format!(
-        "daemon-v{}-workspace-v2-proof-v1.sock",
-        sail_api::protocol::PROTOCOL_VERSION
-    ))
+    sail_api::jobs::default_cache_socket(cache)
 }
 
 /// Reads a whole number from the environment variable `name`.
