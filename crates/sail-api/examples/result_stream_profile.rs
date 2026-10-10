@@ -209,6 +209,15 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn malformed_socket_frame_closes_owned_reader_and_joins_producer() -> io::Result<()> {
+        let begin = Instant::now();
+        assert!(socket_read(Decoder::Slice, &framed(b"{bad-json}")?).is_err());
+        assert!(socket_read(Decoder::Stream, &framed(b"{bad-json}")?).is_err());
+        assert!(begin.elapsed() < std::time::Duration::from_secs(2));
+        Ok(())
+    }
     #[test]
     fn bounds_versions_truncation_and_malformed_data_remain_errors() -> io::Result<()> {
         for bytes in [
