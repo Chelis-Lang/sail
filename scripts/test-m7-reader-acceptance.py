@@ -3,6 +3,8 @@
 import copy
 import importlib.util
 import json
+import hashlib
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -23,6 +25,7 @@ class WarmReaderTests(unittest.TestCase):
         document = fixtures.EvidenceAdmissionTests().document()
         document["repair"]["batch"].update(manifest_sha256="manifest", focus={"currentness": "unknown"}, selection_error=None)
         document["result"]["notes"] = []
+        document["job"].update(version=1, id="owned", project_dir="/fixture", args=["--package", "demo", "--lib"])
         return document
 
     def runner(self, root):
@@ -33,9 +36,10 @@ class WarmReaderTests(unittest.TestCase):
         run.cache = root / "cache"
         run.socket = root / "cache.sock"
         run.job_started = {}
+        run.job_scopes = {}
         run.owned = []
         run.args = SimpleNamespace(package="demo", target="demo", kind="lib", function="demo::f", setup_timeout=600)
-        run.summary = {"setup": [], "commands": [], "proofs": {}}
+        run.summary = {"setup": [], "commands": [], "proofs": {}, "worker_archives": {}, "archival_errors": [], "cleanup_errors": []}
         return run
 
     def test_current_independent_full_proof_and_exact_manifest_are_required(self):
@@ -135,19 +139,166 @@ class WarmReaderTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 self.pending(projected, changed)
 
-    def projection_runner(self, root, responses):
+    def projection_runner(self, root, responses, layout="results/projects/jobs"):
         run = self.runner(root)
         run.job_started["owned"] = time.monotonic()
         original, _ = self.projection()
-        output = run.cache / "results/projects/jobs/owned/stdout"
-        output.parent.mkdir(parents=True)
-        output.write_text(json.dumps(original))
+        self.write_job(run.cache, layout, original)
         calls = []
         def call(address, request):
             calls.append(request)
             return next(responses), 1.0, 100
         run.probe = SimpleNamespace(endpoint=lambda socket: "owned-endpoint", call=call)
         return run, calls
+
+    def write_job(self, cache, layout, original=None, state="completed"):
+        original = original or self.document()["repair"]
+        directory = cache / layout / "owned"
+        directory.mkdir(parents=True)
+        payload = json.dumps(original).encode()
+        (directory / "stdout").write_bytes(payload)
+        (directory / "stderr").write_text("actual verifier diagnostic")
+        status = dict(self.document()["job"], state=state)
+        record = {"status": status,
+                  "submission": {"project_dir": status["project_dir"], "args": status["args"],
+                                 "environment": {"DO_NOT_ARCHIVE": "secret-marker"}},
+                  "projection": {"stdout_sha256": hashlib.sha256(payload).hexdigest()}}
+        (directory / "record.json").write_text(json.dumps(record))
+        return directory, record
+
+    def test_both_actual_layouts_retain_exact_owned_files_without_environment(self):
+        for layout in ("projects/jobs", "results/projects/jobs"):
+            with self.subTest(layout=layout), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                directory, _ = self.write_job(root / "cache", layout)
+                original = harness.owned_original(root / "cache", "owned", self.document()["job"])
+                self.assertEqual(original, self.document()["repair"])
+                evidence = harness.archive_owned_job(root / "cache", "owned", root / "archive")
+                self.assertEqual(evidence["layout"], layout)
+                self.assertEqual(evidence["missing"], ["events.jsonl", "proof-source.jsonl"])
+                self.assertEqual((root / "archive/stdout").read_bytes(), (directory / "stdout").read_bytes())
+                self.assertEqual(evidence["files"]["stdout"]["sha256"], hashlib.sha256((directory / "stdout").read_bytes()).hexdigest())
+                self.assertFalse(evidence["files"]["stdout"]["changed_during_copy"])
+                self.assertFalse((root / "archive/record.json").exists())
+                self.assertNotIn("secret-marker", (root / "archive/archive.json").read_text())
+
+    def test_ambiguous_or_missing_layouts_cannot_silently_select_or_omit_output(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.write_job(root / "cache", "projects/jobs")
+            self.write_job(root / "cache", "results/projects/jobs")
+            with self.assertRaisesRegex(AssertionError, "missing or ambiguous"):
+                harness.archive_owned_job(root / "cache", "owned", root / "archive")
+            self.assertFalse((root / "archive").exists())
+            with self.assertRaisesRegex(AssertionError, "missing or ambiguous"):
+                harness.owned_original(root / "cache", "absent", self.document()["job"])
+            shutil = harness.shutil
+            shutil.rmtree(root / "cache/results/projects/jobs/owned")
+            (root / "cache/projects/jobs/owned/stdout").unlink()
+            with self.assertRaisesRegex(AssertionError, "completed owned job output is missing"):
+                harness.archive_owned_job(root / "cache", "owned", root / "missing-output")
+            self.assertIn("stdout", json.loads((root / "missing-output/archive.json").read_text())["missing"])
+
+    def test_mismatched_record_scope_revision_seal_and_duplicate_fields_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory, original = self.write_job(root / "cache", "projects/jobs")
+            for mutation in (lambda d: d["status"].update(id="foreign"),
+                             lambda d: d["submission"].update(project_dir="/different"),
+                             lambda d: d["submission"].update(args=[]),
+                             lambda d: d["status"].update(version=2)):
+                record = copy.deepcopy(original)
+                mutation(record)
+                (directory / "record.json").write_text(json.dumps(record))
+                with self.assertRaises(AssertionError):
+                    harness.archive_owned_job(root / "cache", "owned", root / "not-created")
+                self.assertFalse((root / "not-created").exists())
+            (directory / "record.json").write_text(json.dumps(original))
+            changed = copy.deepcopy(original)
+            changed["status"]["project_dir"] = changed["submission"]["project_dir"] = "/foreign"
+            (directory / "record.json").write_text(json.dumps(changed))
+            with self.assertRaisesRegex(AssertionError, "project_dir"):
+                harness.archive_owned_job(root / "cache", "owned", root / "not-created", self.document()["job"])
+            self.assertFalse((root / "not-created").exists())
+            (directory / "record.json").write_text(json.dumps(original))
+            expected = dict(self.document()["job"], input_revision="another")
+            with self.assertRaisesRegex(AssertionError, "input_revision"):
+                harness.owned_original(root / "cache", "owned", expected)
+            (directory / "stdout").write_text('{"accepted": false}')
+            with self.assertRaisesRegex(AssertionError, "seal mismatch"):
+                harness.owned_original(root / "cache", "owned", self.document()["job"])
+            (directory / "record.json").write_text('{"status": {}, "status": {}}')
+            with self.assertRaisesRegex(AssertionError, "duplicate owned"):
+                harness.archive_owned_job(root / "cache", "owned", root / "not-created")
+
+    def test_unsafe_ids_symlink_directories_files_and_fifo_never_supply_owned_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory, _ = self.write_job(root / "cache", "projects/jobs")
+            for identifier in ("../owned", "owned/child", "/owned", "owned..", "", "owned\\child"):
+                with self.assertRaisesRegex(AssertionError, "unsafe owned job ID"):
+                    harness.archive_owned_job(root / "cache", identifier, root / "not-created")
+            for name in ("record.json", "stdout"):
+                path = directory / name
+                original = path.read_bytes()
+                path.unlink()
+                foreign = root / ("foreign-" + name)
+                foreign.write_bytes(original)
+                path.symlink_to(foreign)
+                with self.assertRaises(OSError):
+                    harness.owned_original(root / "cache", "owned", self.document()["job"])
+                path.unlink()
+                path.write_bytes(original)
+            stdout = directory / "stdout"
+            stdout.unlink()
+            os.mkfifo(stdout)
+            with self.assertRaisesRegex(AssertionError, "not a regular file"):
+                harness.owned_original(root / "cache", "owned", self.document()["job"])
+            stdout.unlink()
+            for relative in ("projects/jobs/owned", "projects/jobs", "projects"):
+                path = root / "cache" / relative
+                moved = path.with_name(path.name + "-moved")
+                path.rename(moved)
+                path.symlink_to(moved, target_is_directory=True)
+                with self.assertRaises(OSError):
+                    harness.archive_owned_job(root / "cache", "owned", root / "not-created")
+                self.assertFalse((root / "not-created").exists())
+                path.unlink()
+                moved.rename(path)
+
+    def test_archival_failure_is_explicit_and_cannot_skip_exact_owned_cancellation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = self.runner(root)
+            run.owned = ["owned"]
+            run.job_scopes["owned"] = {field: self.document()["job"][field] for field in ("id", "project_dir", "args")}
+            self.write_job(run.cache, "projects/jobs")
+            self.write_job(run.cache, "results/projects/jobs")
+            calls = []
+            def call(address, request):
+                calls.append(request)
+                state = "running" if request["operation"] == "status" else "cancelled"
+                return {"response": "status", "value": dict(self.document()["job"], state=state)}, 1.0, 100
+            run.probe = SimpleNamespace(endpoint=lambda socket: "owned-endpoint", call=call)
+            run.finish_jobs()
+            self.assertEqual(calls, [{"operation": "status", "id": "owned"},
+                                     {"operation": "cancel", "id": "owned", "superseded": False}])
+            self.assertEqual(run.summary["worker_archives"], {})
+            self.assertEqual(len(run.summary["archival_errors"]), 1)
+            self.assertIn("missing or ambiguous", run.summary["archival_errors"][0]["message"])
+            self.assertEqual(run.summary["cleanup_errors"], [])
+            self.assertEqual(json.loads((root / "summary.json").read_text())["archival_errors"], run.summary["archival_errors"])
+
+    def test_directory_replacement_cannot_redirect_open_owned_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory, _ = self.write_job(root / "cache", "projects/jobs")
+            with harness.owned_job(root / "cache", "owned", self.document()["job"]) as (descriptor, _, _):
+                directory.rename(directory.with_name("retired"))
+                directory.mkdir()
+                (directory / "stdout").write_text("substituted")
+                with harness.owned_file(descriptor, "stdout") as stream:
+                    self.assertEqual(json.load(stream), self.document()["repair"])
 
     def test_same_job_establishment_retains_unknown_then_requires_public_current(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -167,6 +318,24 @@ class WarmReaderTests(unittest.TestCase):
             self.assertEqual(json.loads((root / "establish-result-1.json").read_text())["value"]["result"]["currentness"], "unknown")
             self.assertTrue(run.summary["setup"][0]["awaited_original_current_projection"])
             self.assertEqual(run.summary["setup"][0]["result_reads"], 2)
+            harness.admit(result, "manifest", "path+file:///fixture#demo@0.0.0", "demo", "lib", "demo::f")
+
+    def test_legacy_layout_still_requires_final_public_current_on_the_same_job(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, projected = self.projection()
+            current = self.document()
+            responses = iter([{"response": "status", "value": projected["job"]},
+                              {"response": "result", "value": projected},
+                              {"response": "status", "value": current["job"]},
+                              {"response": "result", "value": current}])
+            run, calls = self.projection_runner(root, responses, "projects/jobs")
+            with patch.object(harness.time, "sleep"):
+                result = run.wait("legacy", "owned", "manifest", "path+file:///fixture#demo@0.0.0")
+            self.assertEqual(result, current)
+            self.assertTrue(all(request["id"] == "owned" for request in calls))
+            self.assertTrue(run.summary["setup"][0]["awaited_original_current_projection"])
+            self.assertEqual(json.loads((root / "legacy-result-1.json").read_text())["value"]["result"]["currentness"], "unknown")
             harness.admit(result, "manifest", "path+file:///fixture#demo@0.0.0", "demo", "lib", "demo::f")
 
     def test_cancelled_job_during_projection_wait_returns_failure_and_budget_never_resets(self):
