@@ -120,6 +120,9 @@ Subsequent fixed signature CPU controls support package-only development/test
 arithmetic optimization, with all original HTTP serving and forgery assertions
 passing in the affected suite. The complete integrated `5fd7986` gate subsequently
 passed all 439 workspace tests and every documentation/policy check.
+The same frozen source passed all 37 real-solver/fault tests with their original
+limits. Integrated CLI/MCP and fresh real-project reader runs are in progress;
+these suite passes do not establish their acceptance or source-engine qualification.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. Source work
 now closes decoded-allocation and validation-scratch accounting gaps, and routes
@@ -129,8 +132,8 @@ source qualification before activation.
 
 Priority order for completing this milestone:
 
-1. Retain the now-passing HTTP-cache integrated gate, finish the current
-   real-solver/fault and CLI/MCP suites without changing assertions or deadlines,
+1. Retain the now-passing workspace and real-solver/fault gates, finish the current
+   CLI/MCP suite without changing assertions or deadlines,
    and finish full default standard corpus validation. The original shared-entry
    timeout's cause remains unresolved despite the subsequent complete suite pass.
 2. Build and qualify the bounded source candidate with the same-input lowering
