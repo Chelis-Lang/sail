@@ -9,6 +9,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[cfg(unix)]
+mod cancellable;
+#[cfg(unix)]
+pub use cancellable::CancellableError;
+#[cfg(unix)]
 mod decoded;
 #[cfg(unix)]
 mod ownership;

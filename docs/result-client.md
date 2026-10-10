@@ -23,6 +23,26 @@ speedup for those paths. First-result retention adds an independent full graph
 clone; isolated measurements found a cold-client regression. That cost is why
 single-use calls retain the original uncached constructor.
 
+## Cancellable reads
+
+`Client::call_cancellable(request, cancelled)` uses one owned, joined monitor
+and an absolute five-second transport interval, including capability negotiation
+and fragmented frames. Cancellation shuts down both socket directions; normal
+completion wakes the monitor immediately. Every exit joins it, and a response
+arriving after cancellation or expiry is refused, including a cached identical
+body. The callback must return promptly. Kernel operations and OS scheduling
+are not interruptible wall-clock guarantees. Ordinary `Client::call` keeps its
+existing per-I/O five-second limits.
+
+`CancellableError::Connect` means the initial connection failed before any RPC.
+A startup path may fall back only for a missing or refused endpoint in that
+category. `Operation` covers all errors after connecting, including cancellation,
+expiry and negotiation: retrying through another transport after these errors
+could duplicate work. `io_error()` preserves the original error kind and message.
+Cancellation is `Interrupted` (`SAIL0804`); whole-transport expiry is `TimedOut`
+(`SAIL0805`). This API provides the transport seam for persistent MCP readers;
+its existence alone does not establish MCP wiring or a latency acceptance result.
+
 ## Retained ownership bound
 
 Eligible Result frames are at most 8 MiB. A per-client-family budget limits all live
