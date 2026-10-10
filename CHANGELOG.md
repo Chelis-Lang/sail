@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add explicit bounded complete-result decoding reuse for persistent Rust SDK
+  clients. Every call still reads a complete fresh RPC response; single-use
+  clients keep ordinary decoding. Changed or malformed frames cannot reuse a
+  prior success.
+
 - Coalesce overlapping freshness readers from caller entry while retaining exact
   namespace, runtime and lease validation. Currentness remains separate from a
   solver verdict and does not use an age-based grace period.
