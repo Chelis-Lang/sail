@@ -94,9 +94,11 @@ def run(args):
                                       env=environment, stdout=subprocess.DEVNULL, stderr=errors,
                                       start_new_session=True)
             try:
-                code, raw, _, elapsed = execute([str(sail), "repair-check", "--function", "repair_demo::selected",
+                code, raw, _, elapsed = execute([str(sail), "repair-check", "--engine", "interactive", "--function", "repair_demo::selected",
                                                  "--package", "repair_demo", "--lib", "--output", "json"],
                                                 project, environment, args.timeout, output, "actual-cargo")
+                summary.update(actual_cargo_exit_code=code, actual_cargo_elapsed_s=elapsed)
+                assert raw, "actual Cargo repair returned no result; see preserved stderr"
                 document = json.loads(raw)
                 full = document["batch"]["full"]
                 assert code in [0, 1] and full["exit_code"] == 0 and full["error"] is None
@@ -117,7 +119,7 @@ def run(args):
                 direct_environment.update(RUSTC_BOOTSTRAP="1", __VERUS_DRIVER_VIA_CARGO__="1",
                                           VERUS_Z3_PATH=str(launcher.with_name("z3")))
                 direct_environment["__VERUS_DRIVER_VERIFY_" + record["package_id"]] = "1"
-                direct_environment[" __VERUS_DRIVER_ARGS__"] = "".join("__VERUS_DRIVER_ARGS_SEP__" + value for value in record["effective_arguments"])
+                direct_environment.update(record["deferred_environment"])
                 direct_args = [os.fsdecode(bytes(value)) for value in record["launcher_arguments"]]
                 direct_logs = root / "direct-logs"
                 direct_code, direct_raw, direct_errors, direct_elapsed = execute(
@@ -146,13 +148,26 @@ def run(args):
                     actual_bytes, baseline_bytes = pipe(actual_path), pipe(baseline_path)
                     assert actual_bytes == baseline_bytes, "whole full-target SMT input differs"
                     sessions.append({"name": actual_path.name, "bytes": len(actual_bytes), "input_sha256": sha(actual_bytes)})
+                duplicate_environment = dict(direct_environment,
+                                             SAIL_MANAGED_WRAPPER=str(launcher),
+                                             SAIL_MANAGED_RUNTIME=str(sidecar.parents[3] / "runtime.json"))
+                duplicate_environment[" __VERUS_DRIVER_ARGS__"] += "__VERUS_DRIVER_ARGS_SEP__--no-vstd"
+                duplicate_environment[" __VERUS_DRIVER_ARGS_FOR_" + record["package_id"]] = "__VERUS_DRIVER_ARGS_SEP__--no-vstd"
+                adapter = root / "sail-verus-driver"
+                adapter.symlink_to(sail)
+                original_args = [os.fsdecode(bytes(value)) for value in record["original_arguments"]]
+                duplicate_code, duplicate_raw, duplicate_errors, _ = execute(
+                    [str(adapter), *original_args], project, duplicate_environment, 30, output, "duplicate-effective")
+                assert duplicate_code == 2 and not duplicate_raw
+                assert b"SAIL3121" in duplicate_errors and b"duplicate effective" in duplicate_errors
                 # Persist only the owned fixture's exact invocation/allowlisted
                 # identity, never the initiating process's general environment.
                 (output / "launcher-options.json").write_text(json.dumps(record, indent=2) + "\n")
                 summary.update(passed=True, actual_cargo_elapsed_s=elapsed, direct_elapsed_s=direct_elapsed,
                                actual_currentness=full["currentness"], currentness_is_not_oracle_acceptance=True,
                                full_verified=actual["verification-results"], full_function_verdicts=verdicts(actual),
-                               full_sessions=sessions, diagnostics_sha256=sha(actual_errors))
+                               full_sessions=sessions, diagnostics_sha256=sha(actual_errors),
+                               duplicate_effective_refused=True)
             finally:
                 stop_owned(daemon)
                 (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
