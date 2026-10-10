@@ -3,17 +3,20 @@
 use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
-use std::os::unix::fs::OpenOptionsExt as _;
+use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use sail_api::proof::{Cursor, Event, InputEvent, Page, VERSION};
 
 const MAX_EVENT: usize = 4 * 1024 * 1024;
 const INGEST: u64 = 256 * 1024;
+const BUDGET: usize = 16 * 1024 * 1024;
+const MAX_EVENTS: usize = 4096;
+const MAX_ACTIVE_JOURNALS: usize = 8;
 
 #[derive(Default)]
-pub(crate) struct Journals(Mutex<BTreeMap<PathBuf, Journal>>);
+pub(crate) struct Journals(Mutex<BTreeMap<PathBuf, Arc<Mutex<Journal>>>>);
 
 #[derive(Default)]
 struct Journal {
@@ -22,6 +25,9 @@ struct Journal {
     events: Vec<Event>,
     identities: BTreeMap<String, usize>,
     gap: Option<String>,
+    identity: Option<String>,
+    halted: bool,
+    retained_bytes: usize,
 }
 
 impl Journals {
@@ -44,11 +50,25 @@ impl Journals {
             .map_err(|_| io::Error::other("SAIL0902: proof journal lock poisoned"))?;
         journals.retain(|path, _| path.exists());
         if !journals.contains_key(directory) {
-            journals.insert(directory.to_owned(), Journal::load(directory, id)?);
+            if journals.len() >= MAX_ACTIVE_JOURNALS
+                && let Some(oldest) = journals.keys().next().cloned()
+            {
+                journals.remove(&oldest);
+            }
+            journals.insert(
+                directory.to_owned(),
+                Arc::new(Mutex::new(Journal::load(directory, id)?)),
+            );
         }
-        let journal = journals
-            .get_mut(directory)
-            .ok_or_else(|| io::Error::other("SAIL0902: missing journal"))?;
+        let journal = Arc::clone(
+            journals
+                .get(directory)
+                .ok_or_else(|| io::Error::other("SAIL0902: missing journal"))?,
+        );
+        drop(journals);
+        let mut journal = journal
+            .lock()
+            .map_err(|_| io::Error::other("SAIL0902: job proof journal lock poisoned"))?;
         journal.ingest(directory, id, terminal)?;
         let latest = journal.events.last().map_or(0, |event| event.sequence);
         if cursor.after > latest {
@@ -70,6 +90,7 @@ impl Journals {
             .collect();
         let drained = std::fs::metadata(directory.join("proof-source.jsonl"))
             .map_or(true, |metadata| journal.offset >= metadata.len());
+        let exhausted = events.last().map_or(cursor.after, |event| event.sequence) == latest;
         Ok(Page {
             version: VERSION,
             next: Cursor {
@@ -77,17 +98,41 @@ impl Journals {
                 after: events.last().map_or(cursor.after, |event| event.sequence),
             },
             events,
-            terminal: terminal && drained,
+            terminal: terminal && drained && exhausted,
             gap: journal.gap.clone(),
         })
     }
 }
 
 impl Journal {
+    fn record_identity(&mut self, directory: &Path, identity: String) -> io::Result<()> {
+        if self.identity.is_none() {
+            std::fs::write(directory.join("proof-source-identity"), &identity)?;
+            self.identity = Some(identity);
+        }
+        Ok(())
+    }
+    fn halt(&mut self, directory: &Path, message: &str) -> io::Result<()> {
+        self.halted = true;
+        self.tail.clear();
+        self.gap = Some(message.into());
+        std::fs::write(directory.join("proof-halted"), b"1")?;
+        std::fs::write(directory.join("proof-gap.txt"), message)
+    }
     fn load(directory: &Path, id: &str) -> io::Result<Self> {
         let mut journal = Self::default();
-        match std::fs::read(directory.join("proof-journal.jsonl")) {
+        match File::open(directory.join("proof-journal.jsonl")).and_then(|file| {
+            let mut bytes = Vec::new();
+            file.take(BUDGET as u64 + 1).read_to_end(&mut bytes)?;
+            Ok(bytes)
+        }) {
             Ok(bytes) => {
+                if bytes.len() > BUDGET {
+                    journal.halted = true;
+                    journal.gap = Some("SAIL0902: retained journal exceeds budget".into());
+                    return Ok(journal);
+                }
+                journal.retained_bytes = bytes.len();
                 for line in bytes
                     .split(|byte| *byte == b'\n')
                     .filter(|line| !line.is_empty())
@@ -120,6 +165,8 @@ impl Journal {
         if let Ok(gap) = std::fs::read_to_string(directory.join("proof-gap.txt")) {
             journal.gap = Some(gap);
         }
+        journal.identity = std::fs::read_to_string(directory.join("proof-source-identity")).ok();
+        journal.halted |= directory.join("proof-halted").is_file();
         Ok(journal)
     }
 
@@ -136,6 +183,24 @@ impl Journal {
             }
             Err(error) => return Err(error),
         };
+        let metadata = input.metadata()?;
+        let identity = format!("{}:{}", metadata.dev(), metadata.ino());
+        if self
+            .identity
+            .as_ref()
+            .is_some_and(|known| known != &identity)
+            || metadata.len() < self.offset
+        {
+            return self.halt(
+                directory,
+                "SAIL0902: proof producer spool replaced or truncated",
+            );
+        }
+        self.record_identity(directory, identity)?;
+        if self.halted {
+            self.offset = metadata.len();
+            return Ok(());
+        }
         input.seek(SeekFrom::Start(self.offset))?;
         let mut bytes = Vec::new();
         input.take(INGEST).read_to_end(&mut bytes)?;
@@ -172,6 +237,14 @@ impl Journal {
             };
             let mut encoded = serde_json::to_vec(&envelope).map_err(io::Error::other)?;
             encoded.push(b'\n');
+            if self.events.len() >= MAX_EVENTS
+                || self.retained_bytes.saturating_add(encoded.len()) > BUDGET
+            {
+                self.offset = metadata.len();
+                self.tail.clear();
+                return self.halt(directory,"SAIL0902: proof journal retention budget exhausted; later observations unavailable");
+            }
+            self.retained_bytes += encoded.len();
             OpenOptions::new()
                 .append(true)
                 .create(true)

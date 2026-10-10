@@ -21,6 +21,7 @@
 mod args;
 mod job_tools;
 pub mod jsonrpc;
+mod proof_tools;
 mod run;
 pub mod server;
 pub mod store;
