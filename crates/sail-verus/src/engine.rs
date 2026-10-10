@@ -519,6 +519,41 @@ struct PreparationEvent {
     payload: sail_api::repair::PreparationStats,
 }
 
+fn completed_driver(run: &Path, sidecar: &Path) -> bool {
+    let valid = || -> Option<bool> {
+        if sidecar.join("engine.failed.stdout").try_exists().ok()? {
+            return Some(false);
+        }
+        let key = sidecar.file_name()?.to_str()?;
+        let invocation: crate::managed::Invocation = serde_json::from_slice(&bounded_document(
+            &run.join("invocations").join(format!("{key}.json")),
+        )?)
+        .ok()?;
+        if invocation.identity.key() != key || invocation.run_id != run.file_name()?.to_str()? {
+            return Some(false);
+        }
+        let stdout = bounded_document(&sidecar.join("verus.stdout"))?;
+        Some(crate::engine_events::completed(
+            &sidecar.join("engine.events.jsonl"),
+            &stdout,
+            invocation.report.exit_code,
+        ))
+    };
+    valid() == Some(true)
+}
+
+fn bounded_document(path: &Path) -> Option<Vec<u8>> {
+    use std::io::Read as _;
+    const LIMIT: u64 = 32 * 1024 * 1024;
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .ok()?
+        .take(LIMIT + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    (bytes.len() as u64 <= LIMIT).then_some(bytes)
+}
+
 fn preparation(run: &Path) -> Option<Vec<sail_api::repair::PreparationStats>> {
     use std::io::Read as _;
     let mut paths = std::fs::read_dir(run.join("sidecars"))
@@ -529,7 +564,10 @@ fn preparation(run: &Path) -> Option<Vec<sail_api::repair::PreparationStats>> {
     paths.sort();
     let mut stats = Vec::new();
     for path in paths {
-        if !crate::engine_events::sealed(&path) {
+        if !path
+            .parent()
+            .is_some_and(|sidecar| completed_driver(run, sidecar))
+        {
             continue;
         }
         let file = std::fs::File::open(path).ok()?;
@@ -683,20 +721,160 @@ mod tests {
         assert!(serde_json::from_str::<LauncherAdaptation>(&duplicate).is_err());
     }
 
+    fn preparation_fixture(
+        root: &Path,
+    ) -> std::result::Result<PathBuf, Box<dyn std::error::Error>> {
+        let identity = crate::managed::TargetIdentity {
+            manifest: root.join("Cargo.toml"),
+            name: "demo".into(),
+            crate_type: "lib".into(),
+            rustc_args_sha256: "args".into(),
+        };
+        let sidecar = root.join("sidecars").join(identity.key());
+        std::fs::create_dir_all(&sidecar)?;
+        std::fs::create_dir_all(root.join("invocations"))?;
+        let stdout = include_bytes!("../tests/fixtures/engine-terminal/success.json");
+        let (documents, _) = crate::attribution::json_documents(stdout);
+        let attribution = crate::attribution::attribute(
+            &documents,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            None,
+        );
+        let report = crate::report::build(&crate::report::Inputs {
+            args: &[],
+            exit_code: Some(0),
+            solver_path: None,
+            solver_sha256: None,
+            daemon: false,
+            attribution: &attribution,
+            diagnostics: &[],
+        });
+        let invocation = crate::managed::Invocation {
+            run_id: root
+                .file_name()
+                .and_then(|s| s.to_str())
+                .ok_or("missing run id")?
+                .into(),
+            identity,
+            report,
+            success: true,
+            dependencies: std::collections::BTreeMap::new(),
+        };
+        std::fs::write(
+            root.join("invocations")
+                .join(format!("{}.json", invocation.identity.key())),
+            serde_json::to_vec(&invocation)?,
+        )?;
+        std::fs::write(sidecar.join("verus.stdout"), stdout)?;
+        Ok(sidecar)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn real_stock_fallback_never_admits_old_preparation_summary()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-preparation-fallback-{}", std::process::id()));
+        let sidecar = preparation_fixture(&root)?;
+        let summary = r#"{"version":1,"phase":"full","event":"preparation-summary","payload":{"version":1,"enabled":true,"batch_hits":1,"persistent_hits":2,"misses":1,"peak_retained_bytes":123,"memory_budget_bytes":512,"disk_budget_bytes":512}}"#;
+        let seal = include_str!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
+        std::fs::write(
+            sidecar.join("engine.events.jsonl"),
+            format!("{summary}\n{seal}"),
+        )?;
+        assert!(
+            preparation(&root).is_some(),
+            "control completed evidence must admit counters"
+        );
+        let captured = std::process::Command::new("/bin/sh")
+            .args(["-c", "printf 'interrupted'; exit 101"])
+            .output()?;
+        let mut stock = std::process::Command::new("/bin/sh");
+        stock
+            .args(["-c", "cat \"$1\"", "stock"])
+            .arg(sidecar.join("verus.stdout"));
+        let invocations = root.join("invocations");
+        let log = crate::adapter::InvocationLog {
+            directory: &invocations,
+            run_id: root
+                .file_name()
+                .and_then(|s| s.to_str())
+                .ok_or("missing run id")?,
+            target: "demo",
+        };
+        let (output, trusted) = crate::adapter::engine_output(&sidecar, stock, captured, &log)?;
+        assert!(!trusted);
+        assert_eq!(output.status.code(), Some(0));
+        assert_eq!(output.stdout, std::fs::read(sidecar.join("verus.stdout"))?);
+        assert!(sidecar.join("engine.failed.stdout").is_file());
+        assert!(sidecar.join("engine.events.jsonl").is_file());
+        assert!(
+            preparation(&root).is_none(),
+            "valid old terminal/full bytes cannot admit crashed engine counters"
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn preparation_requires_matching_retained_driver_document()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-preparation-document-{}", std::process::id()));
+        let sidecar = preparation_fixture(&root)?;
+        let events = include_str!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
+        std::fs::write(sidecar.join("engine.events.jsonl"), events)?;
+        assert!(completed_driver(&root, &sidecar));
+        let output = sidecar.join("verus.stdout");
+        let valid_output = std::fs::read(&output)?;
+        std::fs::write(&output, b"{\"verification-results\":")?;
+        assert!(!completed_driver(&root, &sidecar));
+        std::fs::remove_file(&output)?;
+        assert!(!completed_driver(&root, &sidecar));
+        std::fs::write(&output, valid_output)?;
+        let key = sidecar
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or("missing sidecar key")?;
+        let record = root.join("invocations").join(format!("{key}.json"));
+        let mut invocation: crate::managed::Invocation =
+            serde_json::from_slice(&std::fs::read(&record)?)?;
+        invocation.run_id = "other-run".into();
+        std::fs::write(&record, serde_json::to_vec(&invocation)?)?;
+        assert!(!completed_driver(&root, &sidecar));
+        invocation.run_id = root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or("missing run id")?
+            .into();
+        invocation.report.exit_code = Some(101);
+        std::fs::write(&record, serde_json::to_vec(&invocation)?)?;
+        assert!(!completed_driver(&root, &sidecar));
+        std::fs::remove_file(record)?;
+        assert!(!completed_driver(&root, &sidecar));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn preparation_requires_one_valid_sealed_summary()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-preparation-{}", std::process::id()));
-        let sidecar = root.join("sidecars/driver");
-        std::fs::create_dir_all(&sidecar)?;
+        let sidecar = preparation_fixture(&root)?;
         let path = sidecar.join("engine.events.jsonl");
-        let seal =
-            r#"{"version":1,"phase":"full","event":"compiler-sealed","payload":{"success":true}}"#;
+        let seal = r#"{"version":1,"phase":"full","event":"compiler-sealed","payload":{"success":true,"normal_termination":true}}"#;
         let summary = r#"{"version":1,"phase":"full","event":"preparation-summary","payload":{"version":1,"enabled":true,"batch_hits":0,"persistent_hits":2,"misses":1,"peak_retained_bytes":123,"memory_budget_bytes":512,"disk_budget_bytes":512}}"#;
         std::fs::write(&path, format!("{seal}\n"))?;
         assert!(
             preparation(&root).is_none(),
             "old source has no fabricated counters"
+        );
+        let legacy = seal.replace(",\"normal_termination\":true", "");
+        std::fs::write(&path, format!("{summary}\n{legacy}\n"))?;
+        assert!(
+            preparation(&root).is_none(),
+            "legacy terminal is not trustworthy completion"
         );
         std::fs::write(&path, format!("{summary}\n{seal}\n"))?;
         let stats = preparation(&root).ok_or("valid counters unavailable")?;

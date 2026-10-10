@@ -200,6 +200,10 @@ document, so a legacy terminal seal without the new marker cannot authorize any
 engine result. Fallback records its actual child invocation and discards focused
 evidence from the interrupted engine. A terminal event's success flag alone
 cannot distinguish a compiler crash from an ordinary failure.
+Preparation counters use the same normal terminal and complete retained full
+result, bound to the matching invocation and run. A retained failed-engine
+marker excludes all summaries from that driver, even if its old event journal
+survives stock fallback. Missing or corrupt evidence reports unavailable counters.
 
 Prepared lowering checkpoints have the local tier's trust boundary: the owned
 engine writes a private user cache. Version, input key, body digest and exact
