@@ -163,6 +163,11 @@ impl ReadLease {
         }
         true
     }
+    #[cfg(test)]
+    pub(super) fn stop_owner_for_test(&mut self) -> std::io::Result<()> {
+        self.process.kill()?;
+        self.process.wait().map(|_| ())
+    }
     pub(super) fn failure_reason(&self) -> &'static str {
         self.failure
             .unwrap_or("kernel-lease-validation-unavailable")

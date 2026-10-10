@@ -222,6 +222,7 @@ impl InputSnapshot {
     // leases covering this inventory from its coherent cold collection through
     // both read barriers. This hashes ALL mutable contents on EVERY invocation;
     // it cannot discover new paths and is not standalone freshness evidence.
+    #[cfg(test)]
     pub(super) fn rehash_guarded_inventory(&self) -> Self {
         let (revision, readable) = contents_revision(&self.content_paths);
         let mut refreshed = self.clone();
