@@ -256,3 +256,25 @@ bytes again and cannot publish a current receipt. Enumeration errors and
 unrepresentable runtime paths also fail closed. This optimization transfers no
 owner or trust to the daemon; completed-result readers establish their own
 freshness evidence. macOS continues to use the full runtime byte check.
+
+Lease barriers read bounded kernel-owned `/proc/locks` state rather than waiting
+for a scheduled Python acknowledgement. At cold acquisition, the helper reports
+its complete descriptor inventory; Sail binds each descriptor to the requested
+device/inode and its kernel lease entry. Read barriers require the exact lease
+multiset for that PID, all `LEASE ACTIVE READ`, plus the same live, non-stopped
+process start time before and after the sweep. Missing, breaking, unexpected,
+malformed, unavailable or over-budget state permanently invalidates that owner.
+The sweep retains a 50 ms work budget and a 2 MiB byte cap. These are fail-closed
+limits, not a promise that a blocked kernel read can be interrupted on that clock.
+Public job RPC and reader acceptance deadlines are unchanged.
+
+The helper acquires every lease once before readiness and never adds or renews a
+lease afterward. Each lease can therefore only cease being active. Although a
+proc seq-file read may span multiple kernel iterations, observing every expected
+lease active proves they were all active at sweep entry: a lease active later
+could not have been broken earlier and restored by this generation. Sail still
+brackets retained bytes with independent namespace, interpreter, mount and inode
+barriers. SIGIO immediately closes the helper's descriptors so writers proceed;
+owner loss never authorizes reuse. This argument follows the kernel's
+[`LEASE ACTIVE`/`BREAKING` status implementation and lease transitions](https://github.com/torvalds/linux/blob/f155f3b3ed1af23884ffaffe8a669722b87ac9d6/fs/locks.c)
+and the documented [`/proc/locks` interface](https://man7.org/linux/man-pages/man5/proc_locks.5.html).

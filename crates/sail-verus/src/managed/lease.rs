@@ -14,7 +14,8 @@ use std::time::Duration;
 
 pub(super) struct ReadLease {
     process: Child,
-    socket: UnixStream,
+    _socket: UnixStream,
+    kernel: Option<super::kernel_leases::Inventory>,
     bindings: Vec<(PathBuf, PathBuf, u64, u64)>,
     mounts: String,
     interpreter: PathBuf,
@@ -95,7 +96,8 @@ impl ReadLease {
             .ok()?;
         let mut lease = Self {
             process,
-            socket: parent_socket,
+            _socket: parent_socket,
+            kernel: None,
             bindings,
             mounts,
             interpreter,
@@ -103,28 +105,35 @@ impl ReadLease {
             failure: None,
         };
         socket.write_all(&bytes).ok()?;
-        let mut reply = [0; 3];
-        socket.read_exact(&mut reply).ok()?;
-        if reply != *b"ok\n"
+        let mut reply = Vec::new();
+        std::io::BufRead::read_until(
+            &mut std::io::BufReader::new(std::io::Read::by_ref(&mut socket).take(65_537)),
+            b'\n',
+            &mut reply,
+        )
+        .ok()?;
+        if reply.len() > 65_536 || !reply.ends_with(b"\n") {
+            return None;
+        }
+        let fds: Vec<u32> = serde_json::from_slice(&reply).ok()?;
+        let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
+        lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
+        if lease.kernel.is_none()
             || !lease.bindings_current()
             || helper_digests(&closure)? != baseline
             || !lease.helper_observer.clean()
+            || !lease
+                .kernel
+                .as_ref()
+                .is_some_and(super::kernel_leases::Inventory::clean)
         {
             return None;
         }
-        lease
-            .socket
-            .set_read_timeout(Some(Duration::from_millis(50)))
-            .ok()?;
-        lease
-            .socket
-            .set_write_timeout(Some(Duration::from_millis(50)))
-            .ok()?;
         Some(lease)
     }
     pub(super) fn clean(&mut self) -> bool {
-        // A timed-out request can leave an old acknowledgement buffered. Never
-        // let a later check certify a previously invalidated owner generation.
+        // No acknowledgement or later successful sweep can recertify an owner
+        // generation that has already failed a kernel or namespace barrier.
         if self.failure.is_some() {
             return false;
         }
@@ -140,25 +149,12 @@ impl ReadLease {
             self.failure.get_or_insert("helper-observation-invalidated");
             return false;
         }
-        let mut reply = [0; 3];
-        if self.socket.write_all(b"check\n").is_err() {
-            self.failure.get_or_insert("lease-owner-unavailable");
-            return false;
-        }
-        if let Err(error) = self.socket.read_exact(&mut reply) {
-            let reason = if matches!(
-                error.kind(),
-                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
-            ) {
-                "lease-check-read-timeout"
-            } else {
-                "lease-owner-unavailable"
-            };
-            self.failure.get_or_insert(reason);
-            return false;
-        }
-        if reply != *b"ok\n" {
-            self.failure.get_or_insert("lease-protocol-unavailable");
+        if !self
+            .kernel
+            .as_ref()
+            .is_some_and(super::kernel_leases::Inventory::clean)
+        {
+            self.failure.get_or_insert("kernel-lease-state-unavailable");
             return false;
         }
         true
@@ -361,76 +357,35 @@ mod tests {
         assert!(lease.clean());
         assert!(std::fs::remove_file(file).is_ok());
     }
-    fn delayed_owner(
-        lease: &mut ReadLease,
-        file: &Path,
-    ) -> std::io::BufReader<std::process::ChildStderr> {
-        let (socket, child_socket) =
-            UnixStream::pair().unwrap_or_else(|e| unreachable!("fixture:{e}"));
-        socket
-            .set_read_timeout(Some(Duration::from_millis(50)))
-            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
-        socket
-            .set_write_timeout(Some(Duration::from_millis(50)))
-            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
-        let input: OwnedFd = child_socket
-            .try_clone()
-            .unwrap_or_else(|e| unreachable!("fixture:{e}"))
-            .into();
-        let output: OwnedFd = child_socket.into();
-        // Widen the legal interval between closing lease descriptors on SIGIO
-        // and process exit. A delayed first acknowledgement remains queued;
-        // the replacement owner never acknowledges the second request.
-        let helper = r"import fcntl,os,signal,sys,time
-fd=os.open(sys.argv[1],os.O_RDONLY)
-def released(_signal,_frame):
- os.close(fd)
- print('released',file=sys.stderr,flush=True)
-signal.signal(signal.SIGIO,released)
-fcntl.fcntl(fd,fcntl.F_SETLEASE,fcntl.F_RDLCK)
-print('ready',file=sys.stderr,flush=True)
-assert sys.stdin.buffer.readline()==b'check\n'
-time.sleep(0.15)
-sys.stdout.buffer.write(b'ok\n');sys.stdout.buffer.flush()
-print('buffered',file=sys.stderr,flush=True)
-sys.stdin.buffer.readline()
-time.sleep(10)
-";
-        lease.process = Command::new("python3")
-            .args(["-I", "-u", "-c", helper])
-            .arg(file)
-            .stdin(Stdio::from(input))
-            .stdout(Stdio::from(output))
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
-        lease.socket = socket;
-        std::io::BufReader::new(
-            lease
-                .process
-                .stderr
-                .take()
-                .unwrap_or_else(|| unreachable!("fixture stderr")),
-        )
-    }
     #[test]
-    fn delayed_acknowledgement_after_mapping_break_cannot_recertify_owner() {
-        use std::io::BufRead as _;
+    fn sleeping_owner_with_kernel_confirmed_leases_needs_no_scheduled_acknowledgement() {
         let file = fixture();
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
             .unwrap_or_else(|| unreachable!("fixture"));
-        assert!(lease.process.kill().is_ok());
-        assert!(lease.process.wait().is_ok());
-        let mut events = delayed_owner(&mut lease, &file);
-        let mut line = String::new();
-        assert!(events.read_line(&mut line).is_ok());
-        assert_eq!(line.trim(), "ready");
+        // The ready helper waits for EOF and deliberately implements no check
+        // acknowledgement. These barriers must use its actual kernel leases.
+        for _ in 0..5 {
+            assert!(lease.clean());
+        }
+        assert!(std::fs::write(&file, b"fail").is_ok());
         assert!(!lease.clean());
-        assert_eq!(lease.failure_reason(), "lease-check-read-timeout");
-        line.clear();
-        assert!(events.read_line(&mut line).is_ok());
-        assert_eq!(line.trim(), "buffered");
-        let mut mapping = Command::new("python3").args(["-I","-u","-c",
+        assert!(!lease.clean());
+        drop(lease);
+        assert!(std::fs::remove_file(file).is_ok());
+    }
+    #[test]
+    fn stale_acknowledgement_cannot_certify_a_broken_writable_mapping() {
+        let file = fixture();
+        let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(lease.clean());
+        let (socket, mut stale) =
+            UnixStream::pair().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        // Preserve the old late-ack attack: bytes remain available, but the
+        // actual owner generation loses its leases through a writable mapping.
+        assert!(stale.write_all(b"ok\n").is_ok());
+        let original = std::mem::replace(&mut lease._socket, socket);
+        let mut mapping = Command::new("python3").args(["-I", "-u", "-c",
             "import mmap,os,sys; f=os.open(sys.argv[1],os.O_RDWR); m=mmap.mmap(f,0); os.close(f); m[:]=b'fail'; m.flush(); m[:]=b'good'; m.flush(); print('mapped',flush=True); sys.stdin.readline(); m.close()"])
             .arg(&file).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()
             .unwrap_or_else(|e| unreachable!("fixture:{e}"));
@@ -442,15 +397,8 @@ time.sleep(10)
                 .is_some_and(|o| o.read_exact(&mut ready).is_ok())
         );
         assert_eq!(&ready, b"mapped\n");
-        line.clear();
-        assert!(events.read_line(&mut line).is_ok());
-        assert_eq!(line.trim(), "released");
+        assert!(!lease.clean());
         assert!(ReadLease::acquire(std::slice::from_ref(&file)).is_none());
-        assert!(
-            !lease.clean(),
-            "late acknowledgement cannot certify a broken owner"
-        );
-        assert_eq!(lease.failure_reason(), "lease-check-read-timeout");
         assert!(
             mapping
                 .stdin
@@ -458,11 +406,47 @@ time.sleep(10)
                 .is_some_and(|i| i.write_all(b"done\n").is_ok())
         );
         assert!(mapping.wait().is_ok_and(|s| s.success()));
+        assert!(
+            !lease.clean(),
+            "buffered acknowledgement cannot revive the owner"
+        );
+        drop(original);
         drop(lease);
         assert!(std::fs::remove_file(file).is_ok());
     }
     #[test]
-    fn paused_owner_reports_bounded_timeout_without_weakening_validation() {
+    fn readiness_inventory_cannot_bind_duplicate_or_wrong_descriptors() {
+        let file = fixture();
+        let lease = ReadLease::acquire(std::slice::from_ref(&file))
+            .unwrap_or_else(|| unreachable!("fixture"));
+        let pid = lease.process.id();
+        let metadata = std::fs::metadata(&file).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let identity = (metadata.dev(), metadata.ino());
+        assert!(
+            super::super::kernel_leases::Inventory::bind(pid, &[0, 0], &[identity, identity])
+                .is_none()
+        );
+        assert!(super::super::kernel_leases::Inventory::bind(pid, &[0], &[identity]).is_none());
+        assert!(super::super::kernel_leases::Inventory::bind(pid, &[], &[identity]).is_none());
+        drop(lease);
+        assert!(std::fs::remove_file(file).is_ok());
+    }
+    #[test]
+    fn distinct_hardlink_descriptors_are_counted_without_missing_any_lease() {
+        let file = fixture();
+        let alias = file.with_extension("lease-alias");
+        assert!(std::fs::hard_link(&file, &alias).is_ok());
+        let mut lease = ReadLease::acquire(&[file.clone(), alias.clone()])
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(lease.clean());
+        assert!(std::fs::write(&alias, b"fail").is_ok());
+        assert!(!lease.clean());
+        drop(lease);
+        assert!(std::fs::remove_file(alias).is_ok());
+        assert!(std::fs::remove_file(file).is_ok());
+    }
+    #[test]
+    fn paused_owner_and_lease_break_remain_sticky_without_scheduling_dependency() {
         let file = fixture();
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
             .unwrap_or_else(|| unreachable!("fixture"));
@@ -474,7 +458,17 @@ time.sleep(10)
                 .is_ok_and(|s| s.success())
         );
         assert!(!lease.clean());
-        assert_eq!(lease.failure_reason(), "lease-check-read-timeout");
+        assert_eq!(lease.failure_reason(), "kernel-lease-state-unavailable");
+        assert!(
+            Command::new("kill")
+                .args(["-s", "CONT", "--", &lease.process.id().to_string()])
+                .status()
+                .is_ok_and(|s| s.success())
+        );
+        assert!(
+            !lease.clean(),
+            "a resumed owner cannot revive an invalidated generation"
+        );
         assert!(lease.process.kill().is_ok());
         assert!(lease.process.wait().is_ok());
         drop(lease);
@@ -489,7 +483,7 @@ time.sleep(10)
         assert!(lease.process.kill().is_ok());
         assert!(lease.process.wait().is_ok());
         assert!(!lease.clean());
-        assert_eq!(lease.failure_reason(), "lease-owner-unavailable");
+        assert_eq!(lease.failure_reason(), "kernel-lease-state-unavailable");
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
             .unwrap_or_else(|| unreachable!("fixture"));
         let replacement = file.with_extension("new");

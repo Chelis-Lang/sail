@@ -8,6 +8,8 @@ mod files;
 mod freshness;
 mod input;
 #[cfg(target_os = "linux")]
+mod kernel_leases;
+#[cfg(target_os = "linux")]
 mod lease;
 mod observe;
 #[cfg(target_os = "linux")]
