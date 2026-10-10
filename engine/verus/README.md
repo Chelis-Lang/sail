@@ -163,6 +163,17 @@ import format. No prepared entry is imported from the signed SMT shared tier.
 
 ## Validation
 
+The current source acceptance contract is the owner-amended
+[ADR 0027](../../docs/decisions/0027-interactive-proof-engine-and-repair-workflow.md):
+compare cached lowering with fresh lowering from the same compiler input using
+independent mutable owners and actual ordered solver writes. Keep independent
+stock verdict/diagnostic checks and report stock transcript instability. The
+separate candidate oracle must execute its positive and adversarial controls;
+its design review is not qualification. Historical independent-stock byte-gate
+failures remain unchanged in their records. See
+[candidate status](candidates/README.md) and
+[product acceptance](../../docs/bench/m7-repair-acceptance.md).
+
 `test-engine.py` and `test-prepared.py` are local-only differential gates using an already built
 variant; it never compiles Verus in CI. They compare stock exit status, exact
 stderr, verification counters, per-function verdicts and full raw SMT sessions.

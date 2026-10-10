@@ -1,5 +1,12 @@
 # Proof events and repair validation
 
+**Experimental (M7):** the CLI/MCP workflow is implemented, with source fixtures
+and small native Linux integration checks. Real-project performance, concurrent
+reader acceptance and the physical preparation-memory bound remain unfinished.
+See [known issues](known-issues.md) and the
+[acceptance guide](bench/m7-repair-acceptance.md) before relying on performance
+or cross-edit preparation reuse. Stock verification remains the default.
+
 The optional `interactive` engine is a Sail-managed build of the pinned Verus
 source. It is selected explicitly. Stock verification retains its existing
 behavior. An unavailable or invalid engine returns a setup error; it never

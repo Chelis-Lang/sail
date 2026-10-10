@@ -120,9 +120,14 @@ compiler arguments or process environments. A process named `rust_verify` alone
 is insufficient: Cargo-Verus also invokes that executable for non-verifying
 dependencies. Both the Python and typed Rust probes require `--active-crate`.
 
-Correctness includes exact solver-input and full diagnostic comparisons,
-full local fast/standard corpus coverage, and affected source tests described
-in ADR 0027. Long runs stay outside CI.
+Correctness includes cached-versus-fresh lowering from the same compiler input,
+comparing actual ordered solver writes, framing and follow-ups with independent
+owners. Stock verdict and diagnostic comparisons remain mandatory; independent
+stock transcript instability is recorded separately. Missing or incomplete
+captures cannot pass. This is the owner-approved ADR 0027 amendment, and the
+original failed independent-stock byte comparison remains retained. Full local
+fast/standard corpus coverage and affected source tests are also required.
+Long runs stay outside CI.
 
 ## Real retained-job CLI/MCP integration
 
@@ -218,6 +223,11 @@ real-project performance and exact-input gates.
 | Established concurrent reads, prior inventory variant | Failed: 82/200 Current reads, status p95 372.334 ms and result p95 454.569 ms; all samples have an actual live verifier | `docs/validation/m7-f111-reader-failure.json` |
 | Frozen whole repair loops | No qualified measured samples yet; the earlier run failed during context warm-up | Whole-loop acceptance remains outstanding |
 | Full default fast tier, earlier frozen variant | Pass-through and fill each match 147/147; warm has 146 Same and one vstd infrastructure timeout | Original timeout remains a failure; the later traced diagnostic does not replace it |
+| Frozen 1dc default fast tier, later complete run | All 147 units / 3,450 functions match in pass-through, fill and warm; standard phase lost its container before completion | [Immutable completed and interrupted phases](../../bench/validation/m7-default-corpus-1dc-interrupted-emulated-2026-10-10.json) |
+| Integrated 62ad Linux workspace gate | Full gate passed, including 436/436 nextest tests with two case workers; internal concurrency fixtures unchanged | [Gate record](../../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
+| Integrated 62ad real solver suite | 36/37 passed; shared-entry forgery test timed out at its original 180-second limit; diagnosis pending | [Failure record](../../bench/validation/m7-linux-solver-62ad-failure-emulated-2026-10-10.json) |
+| Candidate 2459 ordinary source build | Passed build and source controls; independent-stock human-eval byte qualification failed and candidate remains unselected | [Build](../../engine/verus/candidates/qualifications/2459-linux-build.json), [failed qualification](../../engine/verus/candidates/qualifications/2459-linux.json) |
+| Candidate 2459 other-module edit | Stock and engine outcomes and 114 transcripts match, but zero demonstrated reuse across edits; one full hit reused this invocation's focus preparation | [Control](../../engine/verus/candidates/qualifications/2459-other-module-edit.json) |
 
 The human-eval input difference is confined to the already recorded stock
 declaration-order variation in `human_eval_160`. All other 113 full SMT inputs,

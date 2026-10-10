@@ -6,7 +6,8 @@ Status: **live workspace verification and team caching implemented.**
 Complete proof receipts, durable jobs/watch/MCP and authenticated HTTP caching
 pass the retained acceptance in [the M6 report](docs/reports/2026-10-10-live-workspace.md).
 The report records performance costs, platform limits and emulation failures.
-See `docs/ROADMAP.md` for follow-up work.
+See the [documentation index](docs/README.md), [known issues](docs/known-issues.md)
+and [roadmap](docs/ROADMAP.md) for guides, limitations and follow-up work.
 
 ## Using it
 

@@ -19,11 +19,8 @@ filed as is.
 | [VI-0006](VI-0006-release-without-bundled-z3.md) | The 0.2026.09.06 macOS release archive bundles no z3 | open | `corpus/toolchain.toml` secondary pin |
 | [VI-0007](VI-0007-nondeterministic-error-order.md) | Errors from different modules are reported in a run-dependent order | open | `corpus/repros/verus-nondeterministic-error-order/` |
 | [VI-0008](VI-0008-func-details-hash-order.md) | `--output-json` lists `func-details` in hash order | open | `rust_verify_test` `output_json` tests (described) |
-
 | [VI-0009](VI-0009-partial-success-for-skipped-functions.md) | Partial timing success includes skipped functions | open | `corpus/repros/verus-partial-success/` |
-
 | [VI-0010](VI-0010-ambiguous-friendly-function-names.md) | Distinct trait implementations share a friendly function name | open | `corpus/repros/verus-ambiguous-friendly-name/` |
-
 | [VI-0011](VI-0011-cargo-no-vstd-launcher-mode.md) | Cargo no-vstd metadata misses launcher macro-mode selection | open | `corpus/repros/verus-cargo-no-vstd/` |
 
 Z3 behaviour is recorded the same way, as reproductions under

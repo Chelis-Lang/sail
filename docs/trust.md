@@ -240,8 +240,9 @@ A writable mapping, conflicting writer, helper
 loss, timeout or uncertain path coverage makes current evidence unavailable;
 historical proof output remains available and is never relabelled Current.
 The exact sorted input-file inventory can be retained only within that same
-continuous lease and namespace-observer generation. Every read validates its
-owner before and after selecting the captured exact-byte revision. New files,
+continuous lease and namespace-observer generation. Every read brackets selection
+with namespace/generation checks and performs one final complete runtime and
+lease validation, including two independent kernel inventory sweeps. New files,
 removals, replacements, symlink changes, absent configurations and changed
 declaration records invalidate the inventory and require a full recollection
 and content hashing under a new owner. Digests hashed before lease acquisition
@@ -283,7 +284,9 @@ process start time before and after the sweep. Sail validates ownership again
 through a final independently read complete inventory,
 under the same aggregate byte cap. SIGIO can close descriptors before the owner
 process exits, so process liveness cannot stand in for final lease ownership.
-The linearization point is the final confirmation sweep's entry, not its return.
+The kernel inventory is certified at the final confirmation sweep's entry, not
+its return. Combined caller barriers establish a point within the call interval;
+this is not a promise that input evidence remains Current until response return.
 An invalid first sweep is terminal and is never retried by the second one.
 Global seq-file inventory counts
 can change across buffer refills when unrelated owners add or remove leases.
