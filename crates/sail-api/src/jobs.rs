@@ -223,8 +223,10 @@ pub fn read_frame<T: serde::de::DeserializeOwned>(reader: &mut impl Read) -> io:
 }
 
 /// The job endpoint alongside a cache endpoint, without changing cache protocol.
+/// Relative paths and existing filesystem aliases identify the same endpoint.
 #[must_use]
 pub fn socket_path(cache_socket: &Path) -> PathBuf {
+    let cache_socket = endpoint_path(cache_socket);
     let digest = sail_key::sha256(cache_socket.as_os_str().as_encoded_bytes());
     let suffix = digest
         .iter()
@@ -234,6 +236,25 @@ pub fn socket_path(cache_socket: &Path) -> PathBuf {
             value
         });
     cache_socket.with_file_name(format!("jobs-v1-{suffix}.sock"))
+}
+
+fn endpoint_path(path: &Path) -> PathBuf {
+    let absolute = std::path::absolute(path).unwrap_or_else(|_| path.to_owned());
+    // Resolve the socket itself when it exists, including a symlink to a live
+    // endpoint. Before startup, resolve its nearest existing ancestor instead.
+    // This also covers aliases whose socket parent has not been created yet.
+    for ancestor in absolute.ancestors() {
+        if let Ok(resolved) = ancestor.canonicalize()
+            && let Ok(suffix) = absolute.strip_prefix(ancestor)
+        {
+            return if suffix.as_os_str().is_empty() {
+                resolved
+            } else {
+                resolved.join(suffix)
+            };
+        }
+    }
+    absolute
 }
 
 /// A short-lived, timeout-bounded local client. Every call has its own connection.
@@ -273,6 +294,45 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn endpoint_aliases_share_the_same_namespace_before_and_after_startup() {
+        use std::os::unix::fs::symlink;
+        let root = std::env::temp_dir().join(format!("sail-job-socket-{}", std::process::id()));
+        let canonical = root.join("actual");
+        assert!(std::fs::create_dir_all(&canonical).is_ok());
+        let canonical = canonical
+            .canonicalize()
+            .unwrap_or_else(|e| unreachable!("{e}"));
+        let alias = root.join("alias");
+        assert!(symlink(&canonical, &alias).is_ok());
+        let endpoint = canonical.join("nested/cache.sock");
+        assert_eq!(
+            socket_path(&endpoint),
+            socket_path(&alias.join("nested/cache.sock"))
+        );
+        assert!(std::fs::create_dir_all(endpoint.parent().unwrap_or(&canonical)).is_ok());
+        let current = std::env::current_dir().unwrap_or_else(|e| unreachable!("{e}"));
+        let relative = PathBuf::from("../".repeat(current.components().count().saturating_sub(1)))
+            .join(endpoint.strip_prefix("/").unwrap_or(&endpoint));
+        assert_eq!(socket_path(&endpoint), socket_path(&relative));
+        let listener = std::os::unix::net::UnixListener::bind(&endpoint)
+            .unwrap_or_else(|e| unreachable!("{e}"));
+        let socket_alias = root.join("cache-alias.sock");
+        assert!(symlink(&endpoint, &socket_alias).is_ok());
+        assert_eq!(socket_path(&endpoint), socket_path(&socket_alias));
+        let hash = sail_key::sha256(endpoint.as_os_str().as_encoded_bytes());
+        let suffix = hash.iter().take(4).fold(String::new(), |mut s, b| {
+            let _ = write!(s, "{b:02x}");
+            s
+        });
+        assert_eq!(
+            socket_path(&endpoint),
+            endpoint.with_file_name(format!("jobs-v1-{suffix}.sock"))
+        );
+        drop(listener);
+        let _ = std::fs::remove_dir_all(root);
+    }
     #[test]
     fn versions_and_size_are_checked() {
         let mut bytes = Vec::new();
