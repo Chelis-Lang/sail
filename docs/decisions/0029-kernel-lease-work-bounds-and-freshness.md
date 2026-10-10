@@ -45,6 +45,14 @@ Independent namespace, interpreter, mount and inode barriers still bracket the
 retained bytes. Breaking, missing, malformed, unexpected, oversized or unavailable
 state permanently invalidates the owner.
 
+Established projections validate the retained owner once, after cloning the
+captured snapshot. A successful final check of a generation that never reacquires
+leases also proves those leases survived snapshot capture; checking the same
+inventory immediately before cloning duplicates work. The final runtime identity
+comparison, both complete kernel inventories, namespace barriers on both sides,
+and checkpoint recorded before final validation remain required. Changes between
+capture and final validation must discard the owner and its coalesced snapshot.
+
 This argument follows Linux's [lease transitions and ACTIVE/BREAKING status](https://github.com/torvalds/linux/blob/f155f3b3ed1af23884ffaffe8a669722b87ac9d6/fs/locks.c)
 and the documented [kernel lease inventory](https://man7.org/linux/man-pages/man5/proc_locks.5.html).
 In Linux v6.17, a writer sets

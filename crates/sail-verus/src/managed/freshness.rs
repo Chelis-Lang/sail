@@ -77,7 +77,7 @@ impl Request {
         super::files::digest(&bytes)
     }
     fn refresh(&self, runtime: &Mutex<RuntimeSlot>) -> Refresh {
-        self.refresh_outcome(runtime, std::time::Instant::now(), || {})
+        self.refresh_outcome(runtime, std::time::Instant::now(), || {}, || {})
     }
     #[cfg(test)]
     fn refresh_started(
@@ -86,7 +86,7 @@ impl Request {
         started: std::time::Instant,
         before_publish: impl FnOnce(),
     ) -> Option<InputSnapshot> {
-        match self.refresh_outcome(runtime, started, before_publish) {
+        match self.refresh_outcome(runtime, started, || {}, before_publish) {
             Refresh::Ready(snapshot) => Some(snapshot),
             Refresh::Busy | Refresh::Invalid => None,
         }
@@ -95,6 +95,7 @@ impl Request {
         &self,
         runtime: &Mutex<RuntimeSlot>,
         started: std::time::Instant,
+        before_validation: impl FnOnce(),
         before_publish: impl FnOnce(),
     ) -> Refresh {
         let deadline = started + std::time::Duration::from_millis(100);
@@ -128,16 +129,18 @@ impl Request {
             (sha == validation.identity && validation.lease.clean()).then_some(())
         };
         let result = (|| {
-            valid(&mut validation)?;
             // Cold validation bound this exact inventory, declaration files and
             // environment to this owner. Native namespace coverage spans every
             // package/configuration ancestor; the retained leases cover every
             // content inode. Any uncertainty discards the owner and recollects.
             // The cold fill acquired all leases before hashing these exact
-            // input bytes. Both barriers certify that the same native namespace
-            // and inode owner still protects those digests; no timestamp or
-            // elapsed-time cache authorizes their reuse.
+            // input bytes. The final successful check of this nonrenewable
+            // owner proves its leases survived throughout snapshot capture.
+            // Outer observer barriers still bracket the namespace. Checking
+            // these same leases before cloning would duplicate kernel work;
+            // no timestamp or elapsed-time cache authorizes digest reuse.
             let snapshot = validation.inputs.clone();
+            before_validation();
             // Record the conservative overlap boundary before final validation.
             // Publication can be delayed by mutex contention: its later time
             // must never admit a reader that started after this validation.
@@ -1016,6 +1019,63 @@ mod tests {
                 .inspect(&index)
                 .is_some_and(|snapshot| snapshot.complete)
         );
+    }
+    #[test]
+    fn final_validation_rejects_changes_after_snapshot_capture() {
+        for changed in ["source", "runtime-alias", "runtime-identity"] {
+            let fixture = Fixture::new(changed);
+            let index = FreshnessIndex::default();
+            assert!(fixture.establish(&index).complete);
+            let request = FreshnessIndex::request(
+                &fixture.cache,
+                &fixture.workspace,
+                &fixture.context,
+                &fixture.environment,
+            )
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            let runtime = index
+                .entry(&request.key())
+                .and_then(|entry| entry.lock().ok().and_then(|s| s.runtime.clone()))
+                .unwrap_or_else(|| unreachable!("fixture"));
+            let result = request.refresh_outcome(
+                &runtime,
+                Instant::now(),
+                || match changed {
+                    "source" => {
+                        let source = fixture.workspace.join("src/lib.rs");
+                        let modified = std::fs::metadata(&source)
+                            .and_then(|m| m.modified())
+                            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                        assert!(std::fs::write(&source, "modified").is_ok());
+                        let file = std::fs::File::open(source)
+                            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                        assert!(
+                            file.set_times(std::fs::FileTimes::new().set_modified(modified))
+                                .is_ok()
+                        );
+                    }
+                    "runtime-alias" => {
+                        let moved = fixture.root.join("moved-runtime.bin");
+                        assert!(std::fs::rename(&fixture.runtime, &moved).is_ok());
+                        assert!(std::fs::copy(&moved, &fixture.runtime).is_ok());
+                    }
+                    _ => {
+                        let link = fixture
+                            .cache
+                            .join("runtime-identities")
+                            .join(format!("{}.link", fixture.context));
+                        assert!(super::super::files::json(&link, &"e".repeat(64)).is_ok());
+                    }
+                },
+                || {},
+            );
+            assert!(matches!(result, Refresh::Invalid), "{changed}");
+            let slot = runtime
+                .lock()
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            assert!(slot.runtime.is_none(), "invalidated lease is not revived");
+            assert!(slot.coherent.is_none(), "no stale coalesced snapshot");
+        }
     }
     #[test]
     fn late_publication_cannot_coalesce_a_reader_after_validation_and_mmap_break() {
