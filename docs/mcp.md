@@ -37,6 +37,33 @@ Any client that takes a JSON server list (`.mcp.json` and similar):
 The `env` entry is needed only if `cargo-verus` is not on the client's
 `PATH`. Use an absolute path to `sail` if it is not on `PATH` either.
 
+## Reading completed evidence
+
+Job status, completed results, counterexamples and cached-result lookups use
+persistent service clients inside `sail mcp`. Each lookup still opens a bounded
+connection and reads the complete fresh service reply. The service determines
+source currentness; an earlier decoded report cannot authorize a later lookup.
+Changing a model, job ID, currentness or any other reply byte invalidates decoded
+reuse. Historical evidence remains labelled historical.
+
+Relative `SAIL_CACHE_DIR` and `SAIL_DAEMON_SOCKET` settings resolve from each
+operation's project directory, just as they do for the CLI. Switching projects
+or restarting a service does not reuse an earlier authorization. Missing or refused connections use the existing CLI read path, including
+service startup and legacy support. Once a direct request starts, it has an
+absolute five-second transport deadline and is never retried through the CLI.
+Cancellation shuts down the owned read connection and joins its monitor; a late
+response is discarded. Invalid versions, response variants and job IDs fail
+without a retry.
+Verification submission, repair submission and cancellation retain the existing
+CLI process ownership. Proof events and explanation/comparison tools retain
+their current CLI paths.
+
+Eight endpoint handles share one 128 MiB decoded-frame budget, including entries
+still used by concurrent calls after eviction. Replies larger than the cache
+eligibility limit still work normally without retention. No MCP latency gain is
+claimed from the separate client-codec measurements; product measurements remain
+necessary. See [the client contract](result-client.md).
+
 ## Protocol
 
 - **Transport.** Newline-delimited JSON-RPC 2.0 on stdio. stdout carries

@@ -316,7 +316,9 @@ pub fn cache_directory() -> io::Result<PathBuf> {
         .or_else(|| var("XDG_CACHE_HOME").map(|root| PathBuf::from(root).join("sail")))
         .or_else(|| var("HOME").map(|root| PathBuf::from(root).join(".cache/sail")))
         .ok_or_else(|| {
-            io::Error::other("SAIL3001: none of SAIL_CACHE_DIR, XDG_CACHE_HOME or HOME is set")
+            io::Error::other(
+                "error[SAIL3001]: none of SAIL_CACHE_DIR, XDG_CACHE_HOME or HOME is set",
+            )
         })
 }
 

@@ -200,8 +200,29 @@ pub fn serve(
     mut input: impl BufRead,
     output: impl Write + Send + 'static,
 ) -> std::io::Result<()> {
+    serve_context(Context::new(config), &mut input, output)
+}
+
+/// Serves MCP with persistent decoding clients for durable read-only job tools.
+/// Each call still reads a fresh service frame; writes retain cancellable CLI children.
+///
+/// # Errors
+/// Returns an error reading the MCP input.
+pub fn serve_with_job_clients(
+    config: Config,
+    mut input: impl BufRead,
+    output: impl Write + Send + 'static,
+) -> std::io::Result<()> {
+    serve_context(Context::with_job_clients(config), &mut input, output)
+}
+
+fn serve_context(
+    context: Context,
+    mut input: impl BufRead,
+    output: impl Write + Send + 'static,
+) -> std::io::Result<()> {
     let mut server = Server {
-        ctx: Arc::new(Context::new(config)),
+        ctx: Arc::new(context),
         out: Arc::new(Mutex::new(Box::new(output))),
         inflight: Arc::new(Mutex::new(HashMap::new())),
         workers: Vec::new(),
@@ -271,6 +292,94 @@ mod tests {
             .find(|r| r["id"] == json!(id))
             .cloned()
             .unwrap_or_default()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cancelled_notification_closes_direct_read_without_a_tool_response() {
+        use std::io::{BufReader, Read as _};
+        use std::os::unix::net::{UnixListener, UnixStream};
+        use std::time::Duration;
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let socket = std::env::temp_dir().join(format!(
+            "sail-mcp-notify-{}-{}.sock",
+            std::process::id(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let listener = UnixListener::bind(&socket).unwrap_or_else(|error| unreachable!("{error}"));
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let endpoint = crate::test_io::Server::spawn(listener, 1, move |stream| {
+            let _: sail_api::jobs::Request =
+                sail_api::jobs::read_frame(stream).unwrap_or_else(|error| unreachable!("{error}"));
+            assert!(ready_tx.send(()).is_ok());
+            assert_eq!(stream.read(&mut [0]).ok(), Some(0));
+        })
+        .unwrap_or_else(|error| unreachable!("{error}"));
+        let mut context = Context::new(Config {
+            sail: "/nonexistent/sail".into(),
+            store_dir: None,
+            cwd: std::env::temp_dir(),
+        });
+        context.jobs = Some(crate::job_clients::ReadClients::at(socket.clone()));
+        let (mut caller, input) =
+            UnixStream::pair().unwrap_or_else(|error| unreachable!("{error}"));
+        assert!(input.set_read_timeout(Some(Duration::from_secs(2))).is_ok());
+        let retire_input = caller
+            .try_clone()
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let output = Shared::default();
+        let observed = output.clone();
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        let server = crate::test_io::Thread::spawn(
+            move || {
+                let result = serve_context(context, BufReader::new(input), output);
+                let _ = done_tx.send(result);
+            },
+            move || {
+                let _ = retire_input.shutdown(std::net::Shutdown::Both);
+            },
+        );
+        assert!(writeln!(caller, "{}", json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"verification_result","arguments":{"job_id":"owned"}}})).is_ok());
+        assert!(ready_rx.recv_timeout(Duration::from_secs(2)).is_ok());
+        assert!(
+            writeln!(
+                caller,
+                "{}",
+                json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1}})
+            )
+            .is_ok()
+        );
+        assert!(
+            writeln!(
+                caller,
+                "{}",
+                json!({"jsonrpc":"2.0","id":2,"method":"ping"})
+            )
+            .is_ok()
+        );
+        assert!(caller.shutdown(std::net::Shutdown::Write).is_ok());
+        assert!(
+            done_rx
+                .recv_timeout(Duration::from_secs(1))
+                .is_ok_and(|result| result.is_ok())
+        );
+        assert!(server.finish());
+        assert!(endpoint.finish());
+        let bytes = observed
+            .0
+            .lock()
+            .map(|bytes| bytes.clone())
+            .unwrap_or_default();
+        let responses: Vec<Value> = String::from_utf8_lossy(&bytes)
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap_or_default())
+            .collect();
+        assert!(
+            by_id(&responses, 1).is_null(),
+            "cancelled tool must have no response"
+        );
+        assert!(by_id(&responses, 2)["result"].is_object());
+        assert!(std::fs::remove_file(socket).is_ok());
     }
 
     #[test]

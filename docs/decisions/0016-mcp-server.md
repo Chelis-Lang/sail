@@ -151,3 +151,37 @@ permitted to depend only on `sail-api` (`xtask/src/layering.rs`).
   - clients need resources (for example the report as a resource) or
     progress notifications for long runs;
   - legacy clients disappear.
+
+## Read-only job clients (2026-10-10)
+
+The installed MCP server uses a bounded endpoint table for durable `Status`,
+`Result` and `List` reads, including the completed-job lookup behind
+counterexample/cached-result tools. Blocking verification polling stays on the
+original CLI path. This stays
+within the existing `sail-api` dependency edge. The shared endpoint resolver is
+also used by CLI setup; it anchors relative cache and socket settings to the
+operation's original working directory and resolves endpoint aliases on every
+read.
+
+One explicitly cached Client family is shared across at most eight endpoint
+handles. Its aggregate 128 MiB includes retained and in-flight entries. The
+client opens a new connection and consumes the complete fresh v1 frame on every
+call. The new cancellable read path imposes an absolute five-second transport
+deadline; the original Client::call keeps its existing per-I/O deadlines. Only exact fresh bytes permit
+skipping a redundant decode. The MCP layer checks the response variant, protocol
+version and requested job ID, then projects the same complete result once.
+Fresh errors, malformed frames and mismatched job identities cannot select a
+previous success. Only a pre-request connection failure classified as missing or refused follows
+the original read-only CLI startup path. After a request starts, cancellation,
+timeouts and transport errors are projected without a second attempt. The owned
+monitor shuts down the read stream and is joined before return; late replies are
+suppressed. No write operation is retried through this facility.
+
+Verification/repair submissions and cancellation keep the cancellable CLI
+worker boundary. Existing `serve` callers retain the legacy behavior; the
+installed CLI opts into `serve_with_job_clients`. Endpoint handles are not
+socket connections, own no daemon, and disappear with the MCP context. Pool
+locks are released before I/O, so independent callers keep separate deadlines.
+Debug output does not expose cached models or endpoint identities. The change
+requires transport/adversarial and existing MCP protocol tests, not a solver
+verdict baseline change. Client microbenchmarks are not MCP speed claims.

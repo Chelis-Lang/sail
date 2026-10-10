@@ -160,7 +160,7 @@ fn mcp(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         cwd,
     };
     let stdin = std::io::stdin();
-    match sail_mcp::serve(config, stdin.lock(), std::io::stdout()) {
+    match sail_mcp::serve_with_job_clients(config, stdin.lock(), std::io::stdout()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             let _ = writeln!(err, "error[SAIL0302]: sail mcp: cannot read stdin: {e}");

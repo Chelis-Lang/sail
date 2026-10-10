@@ -44,6 +44,7 @@ pub struct Context {
     pub store: Store,
     /// One lock per project: runs in one project are serialised.
     locks: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
+    pub(super) jobs: Option<crate::job_clients::ReadClients>,
 }
 
 impl Context {
@@ -54,7 +55,14 @@ impl Context {
             store: Store::new(config.store_dir.clone()),
             config,
             locks: Mutex::new(HashMap::new()),
+            jobs: None,
         }
+    }
+
+    pub(super) fn with_job_clients(config: Config) -> Self {
+        let mut context = Self::new(config);
+        context.jobs = Some(crate::job_clients::ReadClients::default());
+        context
     }
 
     fn lock(&self, project: &Path) -> Arc<Mutex<()>> {
@@ -213,8 +221,8 @@ pub fn call(
         | "compare_verification"
         | "start_repair_validation" => crate::proof_tools::call(ctx, name, args, cancel),
         "verify" => verify(ctx, args, cancel),
-        "counterexample" => counterexample(ctx, args),
-        "cached_result" => cached_result(ctx, args),
+        "counterexample" => counterexample(ctx, args, cancel),
+        "cached_result" => cached_result(ctx, args, cancel),
         "fragility" => fragility(ctx, args, cancel),
         _ => return None,
     })
@@ -499,7 +507,7 @@ fn find_obligation<'a>(
     })
 }
 
-fn cached_result(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
+fn cached_result(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResult {
     let a = match LookupArgs::parse(args, false) {
         Ok(a) => a,
         Err(e) => return ToolResult::invalid(&e),
@@ -508,8 +516,11 @@ fn cached_result(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
         Ok(p) => p,
         Err(e) => return e,
     };
-    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, false) {
+    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, false, cancel) {
         return result;
+    }
+    if cancel.is_cancelled() {
+        return ToolResult::error("Lookup cancelled.".to_owned(), json!({"cancelled":true}));
     }
     // Return the most recently completed result while a newer run is in flight.
     let now = store::snapshot(&project);
@@ -654,7 +665,7 @@ fn diagnostics_for(report: &Report, f: &FunctionReport) -> Vec<Value> {
         .collect()
 }
 
-fn counterexample(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
+fn counterexample(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResult {
     let a = match LookupArgs::parse(args, true) {
         Ok(a) => a,
         Err(e) => return ToolResult::invalid(&e),
@@ -663,8 +674,11 @@ fn counterexample(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
         Ok(p) => p,
         Err(e) => return e,
     };
-    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, true) {
+    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, true, cancel) {
         return result;
+    }
+    if cancel.is_cancelled() {
+        return ToolResult::error("Lookup cancelled.".to_owned(), json!({"cancelled":true}));
     }
     // Return the most recently completed result while a newer run is in flight.
     let now = store::snapshot(&project);
@@ -868,7 +882,7 @@ mod tests {
         let (sender, receiver) = std::sync::mpsc::channel();
         let worker_context = Arc::clone(&context);
         let worker = std::thread::spawn(move || {
-            let result = cached_result(&worker_context, &Map::new());
+            let result = cached_result(&worker_context, &Map::new(), &Cancel::default());
             let _ = sender.send(result);
         });
         let result = receiver.recv_timeout(std::time::Duration::from_secs(1));
