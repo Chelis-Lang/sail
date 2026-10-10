@@ -200,3 +200,7 @@ separates those costs without moving initialization or the runtime join outside
 the assertion. HTTP lookup phase diagnostics retain the original signed-entry
 checks and 75 ms response fixture; isolated CPU and TCP controls are diagnostic
 evidence, not substitutes for the complete concurrent lookup checks.
+
+[The retained HTTP follow-up](validation/m7-http-7dc-followup.json) records a
+negative small-response TCP control and a fixed strict-signature CPU control.
+Neither establishes the cause of the preserved full-gate failures.
