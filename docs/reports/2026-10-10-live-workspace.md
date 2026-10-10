@@ -59,6 +59,10 @@ for both requested targets. Their entire solver inputs match plain Verus
 byte-for-byte. The observation wrapper is identified explicitly; three separate
 vstd declaration-order differences are preserved under VI-0001. Historical
 currentness in this cold oracle does not count as current reuse.
+A separate frozen emulated Linux oracle also matches both complete target inputs
+exactly and produces a Current report with three fresh verifier invocations.
+Its deliberately unavailable daemon forces pinned-Z3 trace capture; this is
+fresh forwarding acceptance, not cached-reply or performance evidence.
 
 The frozen Linux server deployment probe validates real startup, reader/writer
 authentication, unprivileged UID, private file modes and credentials retained

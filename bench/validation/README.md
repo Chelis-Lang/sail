@@ -174,3 +174,11 @@ final fresh library/binary oracle. Each requested target's full solver input
 matches plain Verus byte-for-byte. The outer observation wrapper and its hash
 are explicit; Historical currentness and three separate vstd ordering
 differences remain recorded. This is proof/byte acceptance, not performance.
+
+`managed-lib-bin-smt-oracle-linux-2026-10-10.json` independently repeats the exact
+requested-target input comparison with the frozen Linux executable. Both
+fresh targets are complete and the project is Current. An unavailable daemon
+forces actual pinned Z3 trace capture; no receipt is reused. Both runs use the
+same diagnostic/transcript flags and source directory. All-session vstd hashes
+remain unequal and are recorded separately. This supplemental emulated oracle
+is not native reference performance or cached-reply acceptance.
