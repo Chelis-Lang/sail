@@ -10,7 +10,17 @@
   "tests": {
     "graph_boundary_audit": "pass",
     "private_span_boundary_audit": "pass",
-    "rust_verify_library": "pending after exact nested-module macro correction; lightweight allocation profile precedes compile"
+    "rust_verify_library": {
+      "source_patch_sha256": "d3cbaf5983023c2e8e71e55857e6355cc481f43bb02f92e0e5b63956a0270dec",
+      "compile_passed": true,
+      "passed": 21,
+      "failed": 1,
+      "failure": "borrowed_map_and_diagnostic_shape_matches_the_existing_bytes: actual pinned serde_json preserve_order differs from sorted typed observer field order",
+      "raw_diagnostics": "target/bounded-private-span-probe/rust-verify-second-tests.log",
+      "raw_sha256": "1d208651766ee30967b3695300a2a7f409232d640c6306fe0f2fe3fdcf35f37b",
+      "assertion_preserved": true,
+      "correction": "pending production field ordering and exact serde feature helper correction"
+    }
   },
   "sources": {
     "vir/src/context.rs": "3cc62bf8b96d9f971e3a329bb22ff2112a331f086a24e28288937a9c772e3477",
