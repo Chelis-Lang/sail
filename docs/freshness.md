@@ -12,9 +12,16 @@ a repair to today's inputs. CLI and MCP clients receive the same classification.
 On Linux, the daemon keeps at most 32 process-local context projections and runs
 at most two background revalidations. A context binds its cache root, workspace
 spelling, runtime identity, invocation configuration and explicit environment.
-Restart begins with no trusted projections. Overlapping readers may share a coherent
-snapshot only when its validation completes within each reader's own call interval;
-sequential reads never reuse it by age. Publication and read completion require
+Restart begins with no trusted projections. Each inspection records its overlap
+boundary at entry, before waiting for the first native namespace barrier.
+Overlapping readers may share a coherent snapshot only when its conservative
+validation checkpoint was recorded after that reader entered and the successful
+validation is published before the read returns. Queueing at the first barrier
+must not turn a genuinely overlapping read into a sequential one. Sequential
+reads never reuse an older checkpoint by age or delayed publication. Both caller
+namespace barriers and final runtime/lease checks remain required. The separate
+100 ms validation-owner wait budget starts after the first namespace barrier;
+recording the earlier overlap boundary does not extend that wait. Publication and read completion require
 the same runtime-generation identity and native barriers. Hash work happens outside job-service
 and verifier-worker locks. Established reads retain the existing five-second RPC
 deadline; uncertain readers return with Unknown and an explanatory note rather
@@ -161,3 +168,12 @@ Earlier failures and interruptions remain in `docs/validation/`, including
 Cheap Running-status polls, an accepted baseline proof, kernel unit tests and a
 static source review each establish their own narrower facts; none substitutes
 for both complete four-reader censuses under an actual selected-target verifier.
+
+For local diagnosis only, `SAIL_FRESHNESS_TRACE=1` records static freshness
+stage/reason labels and elapsed microseconds on daemon stderr. It emits no input
+paths, environment values or report contents. Tracing can change scheduling and
+does not qualify a performance gate. See
+[the diagnostic scope and classified retained-proof profile](validation/m7-reader-freshness-diagnosis.md).
+That separate retained-job run refused 13 of 200 reads through bounded owner
+contention; it does not establish the cause of the earlier live census's
+sustained admission-loss tail. Both failures remain recorded.

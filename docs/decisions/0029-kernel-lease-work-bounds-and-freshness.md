@@ -53,6 +53,21 @@ comparison, both complete kernel inventories, namespace barriers on both sides,
 and checkpoint recorded before final validation remain required. Changes between
 capture and final validation must discard the owner and its coalesced snapshot.
 
+A reader records its overlap boundary at inspection entry, before the first
+namespace barrier or queue wait. An already successful checkpoint may be shared
+only if it was recorded within that reader's own interval. This admits a reader
+that entered before another validation but waited at the first namespace barrier;
+it does not reuse an older sequential certificate or treat delayed publication
+as later validation. Caller namespace barriers on both sides, exact projection
+generation/pointer and runtime identity still bind the shared snapshot. The
+conservative checkpoint remains before final validation; a write before or after
+that checkpoint is checked by the unchanged lease/native barriers. The existing
+100 ms validation-owner wait starts at refresh, after the first namespace barrier,
+and is independent of the earlier overlap timestamp. A delayed-barrier regression
+covers a valid in-call certificate, an old sequential certificate and actual
+restored-mtime writes before and after validation. The original late-publication
+mmap-break regression remains required.
+
 This argument follows Linux's [lease transitions and ACTIVE/BREAKING status](https://github.com/torvalds/linux/blob/f155f3b3ed1af23884ffaffe8a669722b87ac9d6/fs/locks.c)
 and the documented [kernel lease inventory](https://man7.org/linux/man-pages/man5/proc_locks.5.html).
 In Linux v6.17, a writer sets
