@@ -251,13 +251,22 @@ mod tests {
         };
         let mut last = first.clone();
         last.state = "S".into();
-        assert!(super::continuing(&[first.clone()], &[last.clone()]));
+        assert!(super::continuing(
+            std::slice::from_ref(&first),
+            std::slice::from_ref(&last)
+        ));
         last.pid = 23;
-        assert!(!super::continuing(&[first.clone()], &[last.clone()]));
+        assert!(!super::continuing(
+            std::slice::from_ref(&first),
+            std::slice::from_ref(&last)
+        ));
         last.pid = 22;
         last.started_ticks = 51;
-        assert!(!super::continuing(&[first.clone()], &[last]));
-        assert!(!super::continuing(&[first], &[]));
+        assert!(!super::continuing(
+            std::slice::from_ref(&first),
+            std::slice::from_ref(&last)
+        ));
+        assert!(!super::continuing(std::slice::from_ref(&first), &[]));
     }
     #[test]
     fn recycled_ancestor_newer_than_compiler_never_qualifies() {
@@ -287,7 +296,7 @@ mod tests {
         };
         let table =
             std::collections::BTreeMap::from([(20, owner.clone()), (21, parent), (22, child)]);
-        assert!(verifiers(&table, &owner, "human_eval_verus").is_empty());
+        assert_eq!(verifiers(&table, &owner, "human_eval_verus"), []);
     }
     #[test]
     fn exact_crate_selector_rejects_missing_duplicate_and_malformed_values() {
