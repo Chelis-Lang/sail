@@ -135,7 +135,7 @@ These suite passes do not establish product acceptance or source-engine qualific
 The subsequent complete `7dc855d` workspace gate failed two original HTTP
 elapsed checks (437/439 tests passed); the current branch still requires a
 complete passing gate before pushing.
-The newest frozen `f6508ba` attempt passed strict all-target Clippy but failed
+The earlier frozen `f6508ba` attempt passed strict all-target Clippy but failed
 19 of 471 workspace tests: HTTP serving, legacy MCP responsiveness and initial
 freshness/lease coverage. Its full failure record remains
 [retained](../bench/validation/m7-linux-gate-f650-failure-emulated-2026-10-10.json).
@@ -178,8 +178,15 @@ is setup evidence, not runtime qualification. The subsequent source pipeline
 passed graph, migration, actual-hit fault, source-fixture, checkpoint and
 cancellation controls, then refused the required previous-revision focus reuse:
 zero checked hits, with a graph-validation scratch-budget refusal. Full
-human-eval oracle qualification was not reached. Per-query allocation admission
-is being audited under the unchanged allowance; the candidate remains unselected.
+human-eval oracle qualification was not reached; the
+[complete failed scope](../engine/verus/candidates/decode-ownership/c39-qualification-failure.json)
+is retained. Per-query allocation admission now follows the actual owners of
+each query's scratch space under the unchanged 8 MiB allowance. All 37 actual
+VIR controls and strict all-target Clippy pass; the
+[allocation argument](../engine/verus/candidates/decode-ownership/scoped-graph-scratch.md)
+and [source checks](../engine/verus/candidates/decode-ownership/scoped-query-source-checks.json)
+describe the boundary. A new ordinary Linux runtime is building, and complete
+source qualification remains required before selection.
 These checks are bound to the full combined patch in
 [the source record](../engine/verus/candidates/decode-ownership/combined-source-checks.json).
 The reader track now provides an explicit persistent SDK decoding cache and
@@ -206,7 +213,7 @@ were true; status and result p95 were 222.54 and 489.74 ms. The collector did
 not retain exact currentness labels for the other reads. Its original fail-fast
 controller did not reach Rust or CLI/MCP acceptance. See
 [the complete terminal record](validation/m7-reader-prepared-terminal.md).
-The next SDK candidate stages exact-frame reuse in the ordinary persistent
+The implemented SDK candidate stages exact-frame reuse in the ordinary persistent
 client while preserving fresh RPC validation and the frozen collectors; it is
 not yet qualified by a live census.
 
