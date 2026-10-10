@@ -43,6 +43,32 @@ struct RuntimeValidation {
     inputs: InputSnapshot,
 }
 #[cfg(target_os = "linux")]
+impl RuntimeValidation {
+    fn valid(&mut self, request: &Request, started: std::time::Instant) -> Option<()> {
+        let Some((sha, _)) = runner::runtime_identity(&request.cache, &request.context) else {
+            trace("runtime-identity", started, "unavailable");
+            return None;
+        };
+        if sha != self.identity {
+            trace("runtime-identity", started, "changed");
+            return None;
+        }
+        trace("runtime-identity", started, "ready");
+        let clean = self.lease.clean();
+        trace(
+            "runtime-lease",
+            started,
+            if clean {
+                "ready"
+            } else {
+                self.lease.failure_reason()
+            },
+        );
+        clean.then_some(())
+    }
+}
+
+#[cfg(target_os = "linux")]
 struct RuntimeSlot {
     runtime: Option<RuntimeValidation>,
     coherent: Option<(std::time::Instant, InputSnapshot)>,
@@ -142,28 +168,7 @@ impl Request {
             std::thread::sleep(std::time::Duration::from_millis(1));
         };
         // Expensive work owns the lease but holds no shared projection mutex.
-        let valid = |validation: &mut RuntimeValidation| {
-            let Some((sha, _)) = runner::runtime_identity(&self.cache, &self.context) else {
-                trace("runtime-identity", started, "unavailable");
-                return None;
-            };
-            if sha != validation.identity {
-                trace("runtime-identity", started, "changed");
-                return None;
-            }
-            trace("runtime-identity", started, "ready");
-            let clean = validation.lease.clean();
-            trace(
-                "runtime-lease",
-                started,
-                if clean {
-                    "ready"
-                } else {
-                    validation.lease.failure_reason()
-                },
-            );
-            clean.then_some(())
-        };
+
         let result = (|| {
             // Cold validation bound this exact inventory, declaration files and
             // environment to this owner. Native namespace coverage spans every
@@ -181,7 +186,7 @@ impl Request {
             // Publication can be delayed by mutex contention: its later time
             // must never admit a reader that started after this validation.
             let checkpoint = std::time::Instant::now();
-            valid(&mut validation)?;
+            validation.valid(self, started)?;
             Some((checkpoint, snapshot))
         })();
         before_publish();
@@ -202,6 +207,14 @@ impl Request {
         );
         result.map_or(Refresh::Invalid, |(_, snapshot)| Refresh::Ready(snapshot))
     }
+}
+
+#[cfg(target_os = "linux")]
+fn namespace_reason(projection: &Projection) -> &'static str {
+    projection
+        .observer
+        .as_ref()
+        .map_or("namespace-owner-missing", Observer::failure_reason)
 }
 
 /// A process-local bounded freshness index. Inputs are content-hashed after
@@ -288,10 +301,7 @@ impl FreshnessIndex {
                     if clean {
                         "ready"
                     } else {
-                        projection
-                            .observer
-                            .as_ref()
-                            .map_or("namespace-owner-missing", Observer::failure_reason)
+                        namespace_reason(&projection)
                     },
                 );
                 let runtime = clean.then(|| projection.runtime.clone()).flatten();
@@ -329,10 +339,7 @@ impl FreshnessIndex {
                     {
                         "projection-owner-changed"
                     } else {
-                        projection
-                            .observer
-                            .as_ref()
-                            .map_or("namespace-owner-missing", Observer::failure_reason)
+                        namespace_reason(&projection)
                     };
                     trace("namespace-after", trace_started, reason);
                 }
