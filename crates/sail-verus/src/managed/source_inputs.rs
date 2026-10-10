@@ -19,9 +19,10 @@ struct Inputs {
 pub(super) fn load(path: &Path) -> (Vec<PathBuf>, bool) {
     // Older observations do not attribute includes to their consuming package.
     // Establish the scoped declarations before authorizing new current receipts.
-    read::<Inputs>(path).map_or((Vec::new(), true), |v| {
-        (v.paths, v.covered && v.by_package.is_some())
-    })
+    read::<Inputs>(path).map_or_else(
+        || (Vec::new(), !path.exists()),
+        |v| (v.paths, v.covered && v.by_package.is_some()),
+    )
 }
 
 pub(super) fn packages(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
@@ -198,6 +199,8 @@ mod tests {
         assert!(std::fs::write(&path, r#"{"paths":[],"covered":true}"#).is_ok());
         assert!(!load(&path).1);
         assert!(packages(&path).is_none());
+        assert!(std::fs::write(&path, "corrupt source observation").is_ok());
+        assert!(!load(&path).1);
         assert!(std::fs::remove_file(path).is_ok());
     }
 }

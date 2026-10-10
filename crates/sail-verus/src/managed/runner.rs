@@ -1325,6 +1325,12 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
                 .path();
             let mut receipt: Receipt = read(&path)
                 .ok_or_else(|| Error::new("SAIL3107", "staged proof receipt is unreadable"))?;
+            if receipt.clone().seal().checksum != receipt.checksum {
+                return Err(Error::new(
+                    "SAIL3107",
+                    "staged proof receipt checksum failed",
+                ));
+            }
             receipt.input_revision = target_revision(data, &receipt.package_id);
             if receipt.input_revision.is_empty() {
                 return Err(Error::new(
@@ -1340,6 +1346,74 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn rebinding_declared_external_inputs_preserves_seals_and_rejects_corruption() {
+        let root = std::env::temp_dir().join(format!(
+            "sail-receipt-completed-inputs-{}",
+            std::process::id()
+        ));
+        let app = root.join("app");
+        let dependency = root.join("vstd");
+        let run = root.join("run");
+        for path in [&app, &dependency, &run.join("pending-receipts")] {
+            assert!(std::fs::create_dir_all(path).is_ok());
+        }
+        let external = app.join("shared.rs");
+        assert!(std::fs::write(&external, "consumed by vstd").is_ok());
+        assert!(std::fs::write(app.join("Cargo.toml"), "app").is_ok());
+        assert!(std::fs::write(dependency.join("Cargo.toml"), "dependency").is_ok());
+        let mut data = serde_json::json!({"workspace_root":app,
+            "packages":[{"id":"app","manifest_path":app.join("Cargo.toml")},
+                        {"id":"vstd","manifest_path":dependency.join("Cargo.toml")}],
+            "resolve":{"nodes":[{"id":"vstd","dependencies":[]}]}});
+        let before = snapshot_metadata(&data, &[]);
+        let receipt = Receipt {
+            version: 2,
+            checksum: String::new(),
+            package_id: "vstd".to_owned(),
+            name: "vstd".to_owned(),
+            kind: vec!["lib".to_owned()],
+            context: "context".to_owned(),
+            input_revision: target_revision(&data, "vstd"),
+            invocation: Invocation {
+                identity: super::super::receipts::TargetIdentity {
+                    manifest: dependency.join("Cargo.toml"),
+                    name: "vstd".to_owned(),
+                    crate_type: "lib".to_owned(),
+                    rustc_args_sha256: "args".to_owned(),
+                },
+                run_id: "run".to_owned(),
+                report: crate::report::setup_failure(&[], "SAIL3100", "fixture"),
+                success: true,
+                dependencies: BTreeMap::new(),
+            },
+            artifact_hashes: BTreeMap::new(),
+            committed: run.join("committed.json"),
+        }
+        .seal();
+        let path = run.join("pending-receipts/vstd.json");
+        assert!(json(&path, &receipt).is_ok());
+        data["sail_source_inputs"] = serde_json::json!([external]);
+        data["sail_source_inputs_by_package"] = serde_json::json!({"vstd":[external]});
+        assert_eq!(before.revision, snapshot_metadata(&data, &[]).revision);
+        let rebound =
+            completed_receipts(&run, &data).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert_eq!(rebound.len(), 1);
+        assert_ne!(rebound[0].1.input_revision, receipt.input_revision);
+        assert_eq!(rebound[0].1.input_revision, target_revision(&data, "vstd"));
+        assert_eq!(rebound[0].1.clone().seal().checksum, rebound[0].1.checksum);
+        assert_eq!(
+            read::<Receipt>(&path).map(|r| r.checksum),
+            Some(receipt.checksum.clone())
+        );
+        let mut corrupt = receipt;
+        corrupt.invocation.report.mode = "corrupted".to_owned();
+        assert!(json(&path, &corrupt).is_ok());
+        assert!(completed_receipts(&run, &data).is_err());
+        assert!(!run.join("committed.json").exists());
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
     #[test]
     fn discovered_workspace_sources_do_not_dirty_dependency_receipts() {
         let root =
