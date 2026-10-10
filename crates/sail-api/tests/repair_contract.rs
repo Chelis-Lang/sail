@@ -133,3 +133,42 @@ fn exact_target_obligation_comparisons_preserve_scope_and_removal_limits()
     assert!(!sail_api::repair::compare(&before, &after).compatible);
     Ok(())
 }
+
+#[test]
+fn repeated_friendly_names_do_not_invent_order_dependent_regressions()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut before = success(project()?);
+    let mut duplicate = before.targets[0].report.crates[0].functions[0].clone();
+    duplicate.verdict = VerdictName::Failed;
+    let name = duplicate.function.clone();
+    let original_count = before.targets[0].report.crates[0].functions.len();
+    before.targets[0].report.crates[0].functions.push(duplicate);
+    let mut after = before.clone();
+    after.targets[0].report.crates[0].functions.reverse();
+    let compared = sail_api::repair::compare(&before, &after);
+    assert!(compared.compatible);
+    assert_eq!(compared.differences.len(), original_count);
+    let difference = compared
+        .differences
+        .iter()
+        .find(|d| d.function == name)
+        .ok_or("ambiguous function difference missing")?;
+    assert!(
+        compared
+            .differences
+            .iter()
+            .filter(|d| d.function != name)
+            .all(|d| d.change == Change::Unchanged)
+    );
+    assert_eq!(difference.change, sail_api::repair::Change::Incomparable);
+    assert_eq!(difference.before, None);
+    assert_eq!(difference.after, None);
+    assert_eq!(difference.obligations, []);
+    assert!(
+        compared
+            .notes
+            .iter()
+            .any(|n| n.contains("Repeated friendly function names"))
+    );
+    Ok(())
+}

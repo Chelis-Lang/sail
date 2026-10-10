@@ -28,7 +28,7 @@ pub struct BatchResult {
 }
 
 impl BatchResult {
-    /// Whether full validation established successful current complete evidence.
+    /// Whether selection succeeded and full validation established current complete evidence.
     /// Preliminary focus success cannot authorize a repair.
     #[must_use]
     pub fn accepted(&self) -> bool {
@@ -88,7 +88,7 @@ pub struct ResultDocument {
     pub version: u32,
     /// Complete phase evidence.
     pub batch: BatchResult,
-    /// Derived exclusively from the full report after independent finalization.
+    /// Derived from successful selection and the independently finalized full report.
     pub accepted: bool,
 }
 
@@ -274,25 +274,29 @@ pub fn explain(
 
 fn functions(
     result: &ProjectResult,
-) -> std::collections::BTreeMap<(Target, String), &FunctionReport> {
-    result
-        .targets
-        .iter()
-        .filter(|t| t.requested)
-        .flat_map(|target| {
-            let id = Target {
-                package_id: target.package_id.clone(),
-                name: target.target.clone(),
-                kind: target.kind.clone(),
-            };
-            target
-                .report
-                .crates
-                .iter()
-                .flat_map(|c| &c.functions)
-                .map(move |f| ((id.clone(), f.function.clone()), f))
-        })
-        .collect()
+) -> std::collections::BTreeMap<(Target, String), Vec<&FunctionReport>> {
+    let mut records: std::collections::BTreeMap<_, Vec<_>> = std::collections::BTreeMap::new();
+    for target in result.targets.iter().filter(|target| target.requested) {
+        let id = Target {
+            package_id: target.package_id.clone(),
+            name: target.target.clone(),
+            kind: target.kind.clone(),
+        };
+        for function in target.report.crates.iter().flat_map(|c| &c.functions) {
+            records
+                .entry((id.clone(), function.function.clone()))
+                .or_default()
+                .push(function);
+        }
+    }
+    records
+}
+
+fn unique<'a>(records: Option<&Vec<&'a FunctionReport>>) -> Option<&'a FunctionReport> {
+    match records?.as_slice() {
+        [only] => Some(*only),
+        _ => None,
+    }
 }
 
 fn scopes(result: &ProjectResult) -> Vec<(Target, String, Vec<String>)> {
@@ -326,18 +330,25 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
     let left = functions(before);
     let right = functions(after);
     let ids: std::collections::BTreeSet<_> = left.keys().chain(right.keys()).cloned().collect();
+    let ambiguous = left
+        .values()
+        .chain(right.values())
+        .any(|entries| entries.len() > 1);
     let differences = ids
         .into_iter()
         .map(|(target, function)| {
             let key = (target.clone(), function.clone());
-            let obligations = obligations(
-                left.get(&key).copied(),
-                right.get(&key).copied(),
-                compatible,
-            );
-            let before = left.get(&key).map(|f| effective(f));
-            let after = right.get(&key).map(|f| effective(f));
-            let change = if compatible {
+            let obligations =
+                obligations(unique(left.get(&key)), unique(right.get(&key)), compatible);
+            let repeated = left.get(&key).is_some_and(|entries| entries.len() > 1)
+                || right.get(&key).is_some_and(|entries| entries.len() > 1);
+            let before = (!repeated)
+                .then(|| unique(left.get(&key)).map(effective))
+                .flatten();
+            let after = (!repeated)
+                .then(|| unique(right.get(&key)).map(effective))
+                .flatten();
+            let change = if compatible && !repeated {
                 match (before, after) {
                     (Some(a), Some(b)) if a == b => Change::Unchanged,
                     (Some(VerdictName::Verified), Some(VerdictName::Failed)) => Change::Regressed,
@@ -360,7 +371,7 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
                 before,
                 after,
                 change,
-                obligations,
+                obligations: if repeated { Vec::new() } else { obligations },
             }
         })
         .collect();
@@ -371,12 +382,19 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
         after_revision: after.input_revision.clone(),
         after_currentness: after.currentness,
         differences,
-        notes: if compatible {
-            Vec::new()
-        } else {
-            vec!["Requested scope, mode or runtime context differs; transitions are descriptive, not proof regressions.".into()]
-        },
+        notes: comparison_notes(compatible, ambiguous),
     }
+}
+
+fn comparison_notes(compatible: bool, ambiguous: bool) -> Vec<String> {
+    let mut notes = Vec::new();
+    if !compatible {
+        notes.push("Requested scope, mode or runtime context differs; transitions are descriptive, not proof regressions.".into());
+    }
+    if ambiguous {
+        notes.push("Repeated friendly function names cannot identify one implementation; their transitions are incomparable (VI-0010).".into());
+    }
+    notes
 }
 
 fn effective(report: &FunctionReport) -> VerdictName {
