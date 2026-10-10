@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "scope": "Supplementary installed MCP and actual Linux job-service transport; no verifier substitute or fake CLI",
+  "source_commit": "5879cfe433ac9607cc971217a8fccfdedd748f2b",
+  "fixture": "ci/test-mcp-live-service.py",
+  "original_contracts_unchanged": {
+    "verification_s": 120,
+    "collector_s": 30,
+    "cancellable_transport_s": 5,
+    "cancellation_control_s": 1
+  },
+  "test_design": [
+    "Actual independent jobs-only service submits an ordinary stock-mode worker; the owned worker is stopped then cancelled before proof completion",
+    "One installed MCP process retains its read-client family; its owned executable pathname is withdrawn, so successful reads cannot come from CLI fallback",
+    "Same job identifier changes from Running to Cancelled in fresh complete Status/Result replies",
+    "Service absence must return a complete error-only projection, never retained result or evidence fields",
+    "Restart reconnects to the actual service using the same client and durable job identity",
+    "Stopped actual service blocks Result transport; notifications/cancelled closes owned socket and suppresses late replies through joined server EOF",
+    "Private process identities and complete owned process groups are cleaned before temporary directory removal"
+  ],
+  "passed": {
+    "schema_version": 1,
+    "scope": "installed-mcp-live-job-service-transport",
+    "sail_sha256": "32095c04e870dd2c6a246e7c1b39ea090d37cf2caac105f2c04edbadab05747a",
+    "shim_sha256": "7477fcfa07d97c6194f49d4c7651b20dedc7c01b9ca8be3d251bea65e242cd68",
+    "script_sha256": "edaf28cfc595eab90e4227fc9451c5c3fab6991218c76fe8e05978e2dd8f0467",
+    "execution": "linux-x86_64-docker-emulated-sharedload",
+    "proof_qualification": false,
+    "latency_qualification": false,
+    "checks": {
+      "direct_read_without_executable_or_children": true,
+      "fresh_same_id_frame_changes_running_to_cancelled": true,
+      "missing_service_does_not_serve_retained_frame": true,
+      "service_restart_preserves_identity_and_live_reads": true,
+      "actual_notification_cancels_read_and_suppresses_late_response": true
+    },
+    "passed": true,
+    "cancellation_cleanup_s": 0.018658916000276804
+  },
+  "preserved_initial_failure": {
+    "source_commit": "5879cfe",
+    "sail_sha256": "32095c04e870dd2c6a246e7c1b39ea090d37cf2caac105f2c04edbadab05747a",
+    "checks_completed": {
+      "direct_read_without_executable_or_children": true,
+      "fresh_same_id_frame_changes_running_to_cancelled": true
+    },
+    "passed": false,
+    "failed_expectation": "Fixture required service_unavailable after the owned executable pathname was withdrawn",
+    "observed": {
+      "resultType": "complete",
+      "isError": true,
+      "structuredContent": {
+        "exit_code": 127
+      }
+    },
+    "cause": "Fixture assumed one missing-program OS projection; unchanged CLI fallback returned its nonzero-exit projection",
+    "reviewed_correction": "Accept only service_unavailable or exit_code127, retain isError/complete and text/structured equality, and permit no response/result/job/model/currentness/evidence fields",
+    "production_or_deadline_changes": false
+  },
+  "limits": [
+    "No completed proof, Current provenance or counterexample correctness is established by this scenario",
+    "No four-reader census, 200-sample p95 or HE/Vest edit-loop latency qualification",
+    "Source5879 precedes cancellable API hardening88a0a78; integrated final source/global gates and original installed verifier acceptance remain separate"
+  ],
+  "controller_followup": {
+    "script_sha256": "7a77d5ef1b32221417d68dce9f7b41ff06b1ae5669ef5c1773e5149839c36177",
+    "changes": [
+      "Explicit complete cancellation cleanup <1s assertion",
+      "Absolute read/request deadline even for an already buffered response",
+      "Proc comm parsing uses final delimiter"
+    ],
+    "qualification": "Pending final hardened-source installed controller rerun; prior successful5879 run retained with its own exact script hash"
+  }
+}
