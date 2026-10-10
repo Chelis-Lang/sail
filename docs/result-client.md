@@ -1,29 +1,41 @@
 # Complete result decoding in a persistent Rust client
 
-`jobs::Client::with_result_decoding_cache(socket)` opts a persistent SDK client
-into retaining one previously decoded Result response. `Client::new(socket)`
-keeps ordinary single-use decoding behavior. Every call still
-opens its own connection, sends its request, and receives the complete fresh
-frame under the existing five-second I/O deadlines. Its framing limit remains
-32 MiB. Only an exact match of the entire received body to an already validated
-version-one frame reuses decoding. Changed job identifiers, currentness, errors,
-arguments, results, member ordering or any other body bytes use the ordinary
-parser. No report field, dependency result, counterexample or freshness check is
-removed. Truncated, oversized, incompatible, duplicate-envelope and trailing
-input follow the original framing/parser rules.
+`jobs::Client::new(socket)` now stages decoding reuse for persistent SDK
+clients. The first eligible Result response retains its complete validated body
+bytes, without cloning its decoded graph. A second byte-identical response is
+parsed normally and can promote one independent decoded graph. Later identical
+fresh responses can reuse that decoding and return independent complete graphs.
+`with_result_decoding_cache(socket)` keeps immediate first-response promotion;
+`without_result_decoding_cache(socket)` explicitly disables retention.
 
-Keep an opted-in Client, or clones of that Client, across calls to benefit. Each clone
-shares the entry; each returned Response owns an independent complete graph.
+Every call still opens its own connection, sends its request, and receives the
+complete fresh frame under the existing five-second I/O deadlines. Its framing
+limit remains 32 MiB. Only an exact match of the entire received body to an
+already validated version-one frame reuses decoding. Changed job identifiers,
+currentness, errors, arguments, results, member ordering or any other body bytes
+use the ordinary parser. No report field, dependency result, counterexample or
+freshness check is removed. Truncated, oversized, incompatible,
+duplicate-envelope and trailing input follow the original framing/parser rules.
+
+Each call captures its candidate generation at request entry, before connection,
+negotiation or network I/O. Overlapping cold requests cannot accidentally promote
+an entry published during their own reads. Promotion has a nonblocking,
+generation-bound claim: other callers parse normally rather than waiting. A
+late promotion cannot replace a newer candidate. Failed ownership accounting or
+budget admission leaves the correct result uncached; a refused promotion does
+not repeatedly clone the graph on that same generation.
+
+Keep the Client or clones across calls to benefit. Clones and rebound endpoints
+share one family; each returned Response owns an independent complete graph.
 A short mutex only takes/replaces an Arc. Byte comparison, graph cloning,
 parsing and destruction occur outside it; contention falls back to correct
 ordinary parsing. `Debug` prints the socket and a compact storage count, never
-cached frame bytes or model contents. Installed MCP durable read-only tools use a bounded persistent client family;
-status/result and counterexample/cached-result lookups still authorize every
-read through a complete fresh service reply. CLI calls, writes and blocking
-verification polling retain their existing clients or subprocesses. No live MCP
-latency qualification is established by the separate SDK replay measurements. First-result retention adds an independent full graph
-clone; isolated measurements found a cold-client regression. That cost is why
-single-use calls retain the original uncached constructor.
+cached frame bytes or model contents. Installed MCP durable read-only tools use
+a bounded persistent client family; status/result and counterexample/cached-result
+lookups authorize every read through a complete fresh service reply. Single-shot
+CLI processes cannot reuse a prior process's graph. Writes and blocking
+verification polling retain their existing lifecycle rules. This change does
+not by itself establish MCP or live-reader latency acceptance.
 
 ## Cancellable reads
 
@@ -65,7 +77,8 @@ retained entries shared by that Client and its clones, including an old entry
 held by an in-flight caller, to
 128 MiB of conservatively charged requested storage. Replacing the one current
 entry does not release an older entry's reservation until its last Arc drops.
-The count includes raw bytes, Entry/Arc inline storage, boxes, String/PathBuf and
+The count includes each frame-only candidate and decoded entry, raw bytes,
+Entry/Arc inline storage, boxes, String/PathBuf and
 Vec capacities, enum slots, nested schema descendants and map nodes. Returned
 caller-owned graphs, temporary parsing/clone buffers and allocator fragmentation
 are outside this retention bound; it is not an RSS guarantee or a process-wide limit across
@@ -115,7 +128,8 @@ M7 edit-loop performance target. See [freshness](freshness.md),
 The [retained offline profile](validation/m7-result-client-profile.json) includes
 both the first automatic-retention experiment and the explicit opt-in version.
 The first experiment's cold four-reader p95 was 438.93 ms versus 171.88 ms for
-ordinary parsing, motivating the unchanged single-use constructor. In the
+ordinary parsing, motivating the new staged default instead of an eager graph
+clone on the first response. In the
 explicit experiment, the warm four-reader median was 45.61 ms and maximum/p95
 77.68 ms; the ordinary four-reader median was 56.23 ms with a 503.48 ms outlier.
 Eight samples under emulation are diagnostic rather than a stable reference or
@@ -159,3 +173,9 @@ readiness check and full response contract remain intact. The additional bounded
 send-buffer control exercises the same production exchange path; it does not
 replace large-request serialization coverage. These controls qualify transport
 ownership and cancellation behavior, not the live-reader latency gates.
+
+The [original prepared reader attempt](validation/m7-reader-prepared-terminal.md)
+failed the unchanged Python gate despite genuinely established Current full
+proofs. All 200 samples are retained; Rust was not reached. Staged SDK cold,
+second-response and warm controls must be recorded separately and cannot turn
+that failed run into a pass. The frozen Python collector remains untouched.

@@ -163,6 +163,7 @@ impl Client {
         cancelled: &(impl Fn() -> bool + Sync),
         started: Instant,
     ) -> Result<Response, CancellableError> {
+        let admission = self.decoded.as_ref().map(|cache| cache.begin());
         if let Some(stop) = check(cancelled, started) {
             return Err(CancellableError::Operation(stop.error()));
         }
@@ -185,15 +186,33 @@ impl Client {
             CancellableError::Connect(error) if negotiated => CancellableError::Operation(error),
             error => error,
         })?;
-        self.exchange_cancellable(stream, request, cancelled, started)
+        self.exchange_cancellable_at(stream, request, cancelled, started, admission)
     }
 
+    #[cfg(test)]
     fn exchange_cancellable(
+        &self,
+        stream: UnixStream,
+        request: &Request,
+        cancelled: &(impl Fn() -> bool + Sync),
+        started: Instant,
+    ) -> Result<Response, CancellableError> {
+        self.exchange_cancellable_at(
+            stream,
+            request,
+            cancelled,
+            started,
+            self.decoded.as_ref().map(|cache| cache.begin()),
+        )
+    }
+
+    fn exchange_cancellable_at(
         &self,
         mut stream: UnixStream,
         request: &Request,
         cancelled: &(impl Fn() -> bool + Sync),
         started: Instant,
+        admission: Option<super::decoded::Admission>,
     ) -> Result<Response, CancellableError> {
         stream
             .set_read_timeout(Some(TRANSPORT))
@@ -240,7 +259,11 @@ impl Client {
                     ))
                 })?;
             let result = write_frame(&mut stream, request).and_then(|()| match &self.decoded {
-                Some(cache) => cache.read(&mut stream),
+                Some(cache) => cache.read_at(
+                    &mut stream,
+                    admission
+                        .ok_or_else(|| io::Error::other("SAIL0806: missing decode admission"))?,
+                ),
                 None => read_frame(&mut stream),
             });
             let (lock, ready) = &completion;

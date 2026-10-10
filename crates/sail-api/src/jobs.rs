@@ -395,8 +395,8 @@ fn endpoint_path(path: &Path) -> PathBuf {
 
 /// A timeout-bounded local client. Every call receives a complete fresh frame.
 ///
-/// [`Client::with_result_decoding_cache`] opts persistent clients into bounded
-/// decoding reuse for byte-identical Result frames; every returned response is
+/// [`Client::new`] stages bounded decoding reuse after repeated byte-identical
+/// Result frames; every returned response is
 /// independently owned. No RPC or freshness decision is cached. See
 /// `docs/result-client.md` for the retained-storage audit.
 #[cfg(unix)]
@@ -408,18 +408,30 @@ pub struct Client {
 #[cfg(unix)]
 impl Client {
     /// A client for `socket`; no connection or side effect until a call.
+    ///
+    /// The first eligible Result retains its validated frame only. A second
+    /// identical fresh frame can promote decoding reuse; no RPC is cached.
     #[must_use]
     pub fn new(socket: impl Into<PathBuf>) -> Self {
+        Self {
+            socket: socket.into(),
+            decoded: Some(std::sync::Arc::new(decoded::Cache::staged())),
+        }
+    }
+    /// An uncached client; every response is parsed in full.
+    #[must_use]
+    pub fn without_result_decoding_cache(socket: impl Into<PathBuf>) -> Self {
         Self {
             socket: socket.into(),
             decoded: None,
         }
     }
-    /// A persistent client with bounded exact-fresh-frame decoding reuse.
+    /// A persistent client with immediate exact-fresh-frame decoding reuse.
     ///
     /// Clones share one cache; every RPC still receives its complete fresh
     /// frame. The first eligible Result incurs an extra independent graph
-    /// clone, so [`Client::new`] is preferable for single-use calls.
+    /// clone. [`Client::new`] instead retains only the first exact frame and
+    /// promotes decoding reuse after a second identical response.
     #[must_use]
     pub fn with_result_decoding_cache(socket: impl Into<PathBuf>) -> Self {
         Self {
@@ -445,6 +457,7 @@ impl Client {
     /// Returns connection, framing, timeout, or server errors.
     pub fn call(&self, request: &Request) -> io::Result<Response> {
         use std::os::unix::net::UnixStream;
+        let admission = self.decoded.as_ref().map(|cache| cache.begin());
         if matches!(request, Request::Submit { submission } if submission.mode != Mode::Stock)
             && !matches!(
                 self.call(&Request::Capabilities)?,
@@ -464,7 +477,10 @@ impl Client {
         stream.set_write_timeout(timeout)?;
         write_frame(&mut stream, request)?;
         let response = match &self.decoded {
-            Some(cache) => cache.read(&mut stream)?,
+            Some(cache) => cache.read_at(
+                &mut stream,
+                admission.ok_or_else(|| io::Error::other("SAIL0806: missing decode admission"))?,
+            )?,
             None => read_frame(&mut stream)?,
         };
         match response {
