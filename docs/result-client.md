@@ -84,6 +84,11 @@ unaudited layouts and compact Debug output. The optional
 `result_client_profile` example replays a captured full frame through actual
 Client calls and compares the complete decoded graph outside each timed wave.
 This is an offline socket replay, not a proof or live-reader acceptance.
+Its owned producer bounds accept and socket I/O, observes a stop signal on
+normal completion or any warmup/validation failure, and is joined before return.
+The rejected `result_stream_profile` experiment is diagnostic only; its owned
+producer also closes and joins on malformed-frame errors. Neither example is a
+product transport option or a replacement for the frozen reader collectors.
 
 The original Python and Rust reader collectors and their four-reader,
 200-sample, 200 ms p95 and five-second RPC requirements remain unchanged.

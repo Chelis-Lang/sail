@@ -419,5 +419,44 @@
     "rss_guarantee": false,
     "unaudited_layout": "ordinary uncached decoding"
   },
-  "limits": "Offline warm gains and variable cold/control tails do not qualify200sample actual live selected-verifier performance. Existing Python and Rust collector failures remain independent."
+  "limits": "Offline warm gains and variable cold/control tails do not qualify200sample actual live selected-verifier performance. Existing Python and Rust collector failures remain independent.",
+  "endpoint_family_followup": {
+    "source_commit": "919b971",
+    "host_targeted_jobs": 13,
+    "native_targeted_jobs": 13,
+    "host_and_native_all_target_clippy": "pass",
+    "actual_two_endpoint_fresh_reply_and_shared_budget": true,
+    "test_log_sha256": "a5a5d169be60f414b2e8487a3c284198db92053cd21324ebd9404fdd6687c7f9",
+    "clippy_log_sha256": "793f3f609c7f8e59139584333a51a57e57e7f3e23a1644398b51ba61e0d27398",
+    "scope": "Follow-up unit/Clippy validation; offline replay binary/source bundle above predates the unused endpoint-rebinding method."
+  },
+  "owned_producer_lifecycle_followup": {
+    "base_source_commit": "3418c5f",
+    "scope": "Failure cleanup only; original offline sample records and replay hashes above remain unchanged. Linux tests run on native container paths under x86-64 emulation/shared load, not live-reader acceptance.",
+    "host_client_failure_controls": 2,
+    "linux_client_failure_controls": 2,
+    "host_stream_controls": 3,
+    "linux_stream_controls": 3,
+    "host_all_target_clippy": "pass",
+    "linux_all_target_clippy": "pass",
+    "linux_api_tests": 40,
+    "linux_api_doctests": 0,
+    "controls": [
+      "malformed warmup joins stopped accept owner",
+      "full graph validation failure joins owner and retains error",
+      "malformed socket frame closes reader and joins producer"
+    ],
+    "logs_sha256": {
+      "native-api-full-tests.log": "8fbd63bdbd8e163d9201ebd3b8975d2b0bbc5bf268d7b0454f153adb690dfae8",
+      "native-client-lifecycle-tests.log": "3673049886fe25c6649cab238e2236cd138d82071e28826fe2e58a85e0cf733a",
+      "native-stream-lifecycle-tests.log": "dc7a9a0bc3f4f3366942a53f3fabce84ae7c9b2db24e491e96562d6b2246a079",
+      "native-api-clippy.log": "1e724a781c026558c6ea688c2e9bed1f1d751f44b44c6d358e237bab7209c3ac"
+    },
+    "initial_cancellable_fixture_failure": {
+      "host_passed": 4,
+      "host_failed": 2,
+      "cause": "macOS accepted socket inherited nonblocking listener mode; fixture now explicitly restores blocking mode before the unchanged transport controls",
+      "deadlines_or_assertions_changed": false
+    }
+  }
 }

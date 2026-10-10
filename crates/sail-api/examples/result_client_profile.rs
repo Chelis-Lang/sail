@@ -3,6 +3,7 @@
 
 use std::fmt::Write as _;
 use std::io::{self, Read, Write};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Barrier};
 use std::time::{Duration, Instant};
 
@@ -51,6 +52,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Err("Unix socket replay requires Unix".into())
 }
 
+struct StopOnExit(Arc<AtomicBool>);
+impl Drop for StopOnExit {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::Release);
+    }
+}
+struct OwnedSocketRoot(std::path::PathBuf);
+impl Drop for OwnedSocketRoot {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+#[cfg(unix)]
+fn accept_owned(
+    listener: &std::os::unix::net::UnixListener,
+    stop: &AtomicBool,
+) -> io::Result<std::os::unix::net::UnixStream> {
+    let started = Instant::now();
+    loop {
+        if stop.load(Ordering::Acquire) {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "profile cancelled",
+            ));
+        }
+        match listener.accept() {
+            Ok((stream, _)) => return Ok(stream),
+            Err(error)
+                if error.kind() == io::ErrorKind::WouldBlock
+                    && started.elapsed() < Duration::from_secs(5) =>
+            {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 enum Case {
     Generic,
@@ -74,14 +113,19 @@ fn measure(
     expected: &Value,
 ) -> io::Result<Value> {
     use std::os::unix::net::{UnixListener, UnixStream};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
     let root = std::path::Path::new("/tmp").join(format!(
-        "scp-{}-{}-{threads}",
+        "scp-{}-{}-{threads}-{}",
         std::process::id(),
-        case.name()
+        case.name(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
     std::fs::create_dir(&root)?;
+    let owned_root = OwnedSocketRoot(root.clone());
     let socket = root.join("rpc.sock");
     let listener = UnixListener::bind(&socket)?;
+    listener.set_nonblocking(true)?;
+    let stop = Arc::new(AtomicBool::new(false));
     let client = Client::with_result_decoding_cache(&socket);
     let warmup = matches!(case, Case::WarmClient);
     let request = Request::Result {
@@ -90,7 +134,7 @@ fn measure(
     let measured = std::thread::scope(|scope| -> io::Result<Value> {
         let server = scope.spawn(|| -> io::Result<()> {
             for _ in 0..(8 + usize::from(warmup)) {
-                let (mut stream, _) = listener.accept()?;
+                let mut stream = accept_owned(&listener, &stop)?;
                 stream.set_read_timeout(Some(Duration::from_secs(5)))?;
                 stream.set_write_timeout(Some(Duration::from_secs(5)))?;
                 let _: Request = read_frame(&mut stream)?;
@@ -98,6 +142,7 @@ fn measure(
             }
             Ok(())
         });
+        let _stop_on_exit = StopOnExit(Arc::clone(&stop));
         if warmup {
             validate(client.call(&request)?, expected)?;
         }
@@ -150,7 +195,7 @@ fn measure(
             json!({"threads":threads,"samples_ms":samples,"median_ms":samples[3].midpoint(samples[4]),"p95_ms":samples[7]}),
         )
     });
-    std::fs::remove_dir_all(root)?;
+    drop(owned_root);
     measured
 }
 fn validate(reply: Response, expected: &Value) -> io::Result<()> {
@@ -158,4 +203,48 @@ fn validate(reply: Response, expected: &Value) -> io::Result<()> {
         return Err(io::Error::other("entire decoded response graph changed"));
     }
     Ok(())
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    #[test]
+    fn malformed_warmup_cancels_owned_server_instead_of_waiting_for_unused_connections()
+    -> io::Result<()> {
+        let mut bytes = Vec::new();
+        let payload = b"{not-json}";
+        bytes.extend_from_slice(
+            &u32::try_from(payload.len())
+                .map_err(io::Error::other)?
+                .to_be_bytes(),
+        );
+        bytes.extend_from_slice(payload);
+        let started = Instant::now();
+        assert!(measure(Case::WarmClient, 1, &Arc::new(bytes), &Value::Null).is_err());
+        assert!(started.elapsed() < Duration::from_secs(2));
+        Ok(())
+    }
+    #[test]
+    fn graph_validation_failure_signals_owned_server_and_returns_original_error() -> io::Result<()>
+    {
+        let mut bytes = Vec::new();
+        write_frame(
+            &mut bytes,
+            &Response::Capabilities {
+                proof_version: 1,
+                repair: true,
+            },
+        )?;
+        let started = Instant::now();
+        let error = measure(Case::WarmClient, 1, &Arc::new(bytes), &Value::Null)
+            .err()
+            .ok_or_else(|| io::Error::other("expected graph refusal"))?;
+        assert!(
+            error
+                .to_string()
+                .contains("entire decoded response graph changed")
+        );
+        assert!(started.elapsed() < Duration::from_secs(2));
+        Ok(())
+    }
 }
