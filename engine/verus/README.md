@@ -183,6 +183,7 @@ credential or build Verus from source. The optional runtime is exercised by
 the real repair CLI/MCP end-to-end phase alongside the stock checks.
 
 `qualification-linux.json` records the corrected source differential checks in a
-local Linux amd64 container under emulation. It covers nine stock-equivalent
-fixtures, eight prepared-reuse revisions and cancellation/restart. It does
+local Linux amd64 container under emulation. It covers eleven stock-equivalent
+fixtures, eight prepared-reuse revisions, cancellation/restart, normal driver
+termination, worker-span provenance and preparation encoding. It does
 not substitute for the frozen whole-loop product performance acceptance.

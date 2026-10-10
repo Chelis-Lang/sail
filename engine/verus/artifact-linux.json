@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
-  "variant": "426d8b01e7ffb910a36c15e1f870ff985bb61eef-05cf585f5e90150c",
+  "variant": "426d8b01e7ffb910a36c15e1f870ff985bb61eef-bfc6b239222f190b",
   "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
   "rust_toolchain": "1.98.1",
   "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
-  "patch_sha256": "5eed78f066cd3c6a9761cf216bef24b46946f6d58b8da6f1f837311102dcaa74",
+  "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
   "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "archive_sha256": "cb52037010fad94e8eeb75246eca2dd2b245a42cae8ce5c20736cfe311f6fd05",
-  "asset_id": 628062711
+  "archive_sha256": "142478f52e42234e32cbbde4760364744aa2f58ce5a850cbb4763f6069427304",
+  "asset_id": 628264334,
+  "release_tag": "engine-runtime-b34639a5-linux"
 }
