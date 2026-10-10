@@ -1,6 +1,6 @@
 # Exact graph-read candidate
 
-This candidate is uncompiled and unqualified. It does not change
+This candidate has compiled library checks and VIR unit tests, but no qualified runtime. It does not change
 `interactive.patch`, the installer or any qualified runtime. See ADR 0028.
 
 Apply `graph-ledger.patch` to a separate checkout of the primary pinned Verus
@@ -11,7 +11,7 @@ patch including that baseline. Before building, run:
 python3 engine/verus/candidates/audit-graph-ledger.py --source VARIANT/source
 ```
 
-After a separately authorized source build, run the five new ledger tests:
+After a separately authorized source build, run the seven ledger tests:
 
 ```sh
 cargo test --release -p vir --lib sail_graph::tests
