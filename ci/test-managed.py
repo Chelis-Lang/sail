@@ -23,19 +23,22 @@ def bounded_verification(arguments, cwd, env, timeout):
                                start_new_session=True)
     try:
         stdout, stderr = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as failure:
         # Stop the complete owned verification tree before its scratch directory
         # is removed. Killing only Sail leaves Cargo writing into that directory.
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-        process.communicate(timeout=10)
+        failure.stdout, failure.stderr = process.communicate(timeout=10)
         raise
     return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
 with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary:
     root = Path(temporary)
+    evidence = Path(os.environ.get("SAIL_MANAGED_ACCEPTANCE_OUT", str(root / "evidence"))).resolve()
+    evidence.mkdir(mode=0o700, parents=True, exist_ok=True)
+    managed_calls = []
     env = dict(os.environ, SAIL_CACHE_DIR=str(root / "cache"))
     subprocess.run([cargo_verus, "verus", "new", "--lib", "demo"], cwd=root,
                    env=env, check=True, stdout=subprocess.DEVNULL)
@@ -68,9 +71,29 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
     """
         source.write_text(good)
 
+        def diagnostic(document):
+            return {key: document[key] for key in (
+                "run_id", "context_sha256", "input_revision", "currentness",
+                "exit_code", "execution", "notes", "error") } | {
+                    "targets": [{key: target[key] for key in (
+                        "package_id", "target", "kind", "establishing_run",
+                        "requested", "complete", "reused") } | {
+                            "summary": target["report"]["summary"]
+                        } for target in document["targets"]]
+                }
+
         def managed(*args):
-            run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
-                                       project, env, 240)
+            label = f"managed-{len(managed_calls) + 1:02d}"
+            managed_calls.append(label)
+            try:
+                run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
+                                           project, env, 240)
+            except subprocess.TimeoutExpired as failure:
+                (evidence / (label + ".stdout.json")).write_bytes(failure.stdout or b"")
+                (evidence / (label + ".stderr")).write_bytes(failure.stderr or b"")
+                raise
+            (evidence / (label + ".stdout.json")).write_bytes(run.stdout)
+            (evidence / (label + ".stderr")).write_bytes(run.stderr)
             result = json.loads(run.stdout)
             assert result["kind"] == "sail-project-result", result
             assert result["error"] is None, result
@@ -88,12 +111,12 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # Establish a fully observed proof before requiring zero fresh work.
         if cold["currentness"] == "historical":
             established_run, established, target = managed()
-            assert established_run.returncode == 0 and established["currentness"] == "current", established
+            assert established_run.returncode == 0 and established["currentness"] == "current", diagnostic(established)
             assert target["complete"] and not target["reused"], target
             assert established["execution"]["verifier_invocations"] > 0, established
 
         warm_run, warm, reused = managed()
-        assert warm_run.returncode == 0 and reused["reused"] and reused["complete"], warm
+        assert warm_run.returncode == 0 and reused["reused"] and reused["complete"], diagnostic(warm)
         assert warm["execution"]["verifier_invocations"] == 0, warm["execution"]
         assert reused["establishing_run"] == target["establishing_run"], reused
         assert reused["report"] == target["report"], "reuse must preserve establishing report"
