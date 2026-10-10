@@ -58,6 +58,17 @@ A projection combines two independent mechanisms:
   delay is interpreted as absence. Mount-table changes, lost watches, overflow,
   unsupported filesystems or a bounded barrier that cannot complete invalidate it.
 
+Linux namespace classification uses the existing ordered tracked-path set to
+check component ancestors and the first possible descendant. Unrelated events
+no longer scan every tracked input. Empty paths, non-UTF-8 components, missing
+ancestors and explicit inputs beneath excluded output directories retain their
+original classification. The native queue still drains to completion with the
+same event/watch limits and 20 ms pre-batch budget; overflow, lost coverage and
+actual changes still invalidate evidence. The [local filter validation
+record](validation/m7-namespace-indexed-filter.json) retains the initial empty-path
+counterexample and exact native controls. Its isolated queue timings do not
+qualify the complete service reader latency gate.
+
 Inotify alone is insufficient. It cannot see writes through existing shared memory
 mappings. Directory watches also miss writes through an outside hardlink unless
 its inode is watched directly. See the executable reproduction in

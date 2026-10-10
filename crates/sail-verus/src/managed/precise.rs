@@ -8,6 +8,7 @@ mod platform {
     use super::{Path, PathBuf};
     use inotify::{EventMask, Inotify, WatchDescriptor, WatchMask};
     use std::collections::{BTreeSet, HashMap};
+    use std::ops::Bound::{Included, Unbounded};
     use std::os::unix::fs::MetadataExt as _;
     use std::time::{Duration, Instant};
 
@@ -50,6 +51,31 @@ mod platform {
         trusted
     }
 
+    fn tracked_ancestors<'a>(
+        tracked: &'a BTreeSet<PathBuf>,
+        path: &'a Path,
+    ) -> impl Iterator<Item = &'a Path> {
+        // starts_with(empty) is true even for absolute paths, whose ancestors
+        // omit the empty path. Retain that original predicate explicitly.
+        path.ancestors()
+            .chain(std::iter::once(Path::new("")))
+            .filter(|ancestor| tracked.contains(*ancestor))
+    }
+    fn related(tracked: &BTreeSet<PathBuf>, path: &Path) -> bool {
+        // Path Ord and starts_with both compare components. Descendants share
+        // a component prefix and therefore form a contiguous sorted range
+        // beginning at path; the first lower-bound result is sufficient.
+        tracked_ancestors(tracked, path).next().is_some()
+            || tracked
+                .range::<Path, _>((Included(path), Unbounded))
+                .next()
+                .is_some_and(|root| root.starts_with(path))
+    }
+    fn ignored_path(tracked: &BTreeSet<PathBuf>, excluded: &[PathBuf], path: &Path) -> bool {
+        excluded.iter().any(|p| path.starts_with(p))
+            && !tracked_ancestors(tracked, path)
+                .any(|root| excluded.iter().any(|p| root.starts_with(p)))
+    }
     pub(super) struct Observer {
         native: Inotify,
         directories: HashMap<WatchDescriptor, PathBuf>,
@@ -155,10 +181,7 @@ mod platform {
             Some(())
         }
         fn ignored(&self, path: &Path) -> bool {
-            self.excluded.iter().any(|p| path.starts_with(p))
-                && !self.tracked.iter().any(|root| {
-                    self.excluded.iter().any(|p| root.starts_with(p)) && path.starts_with(root)
-                })
+            ignored_path(&self.tracked, &self.excluded, path)
         }
         fn walk(
             &mut self,
@@ -271,12 +294,7 @@ mod platform {
                             let path = event
                                 .name
                                 .map_or_else(|| parent.clone(), |name| parent.join(name));
-                            if !self.ignored(&path)
-                                && self
-                                    .tracked
-                                    .iter()
-                                    .any(|root| path.starts_with(root) || root.starts_with(&path))
-                            {
+                            if !self.ignored(&path) && related(&self.tracked, &path) {
                                 self.failure.get_or_insert("namespace-tracked-input-event");
                                 self.changed = true;
                             }
@@ -296,6 +314,84 @@ mod platform {
         }
         pub(super) fn failure_reason(&self) -> &'static str {
             self.failure.unwrap_or("namespace-coverage-unavailable")
+        }
+    }
+    #[cfg(test)]
+    mod predicate_tests {
+        use super::*;
+        fn linear_related(tracked: &BTreeSet<PathBuf>, path: &Path) -> bool {
+            tracked
+                .iter()
+                .any(|root| path.starts_with(root) || root.starts_with(path))
+        }
+        fn linear_ignored(tracked: &BTreeSet<PathBuf>, excluded: &[PathBuf], path: &Path) -> bool {
+            excluded.iter().any(|p| path.starts_with(p))
+                && !tracked.iter().any(|root| {
+                    excluded.iter().any(|p| root.starts_with(p)) && path.starts_with(root)
+                })
+        }
+        #[test]
+        fn all_component_boundaries_and_missing_ancestor_relations_are_equal() {
+            use std::os::unix::ffi::OsStringExt;
+            let mut paths: Vec<PathBuf> = [
+                "/",
+                "///",
+                "/tmp",
+                "/tmp/source",
+                "/tmp/source/",
+                "/tmp/./source",
+                "/tmp/source/a",
+                "//tmp//source//a",
+                "/tmp/source/a-b",
+                "/tmp/source/ab",
+                "/tmp/source/../sibling",
+                "/tmp/source/target/include.rs",
+                "/tmp/source/.cargo/config",
+                "/tmp/source2",
+                "",
+                ".",
+                "./",
+                "..",
+                "../source",
+                "source",
+                "source/a",
+                "source/a-b",
+                "source/ab",
+            ]
+            .into_iter()
+            .map(PathBuf::from)
+            .collect();
+            paths.push(PathBuf::from(std::ffi::OsString::from_vec(
+                b"/tmp/source/\xff/file".to_vec(),
+            )));
+            let mut state = 21_u64;
+            for trial in 0..3000 {
+                let mut tracked = BTreeSet::new();
+                let mut excluded = Vec::new();
+                for path in &paths {
+                    state = state
+                        .wrapping_mul(6_364_136_223_846_793_005)
+                        .wrapping_add(1);
+                    if state >> 63 != 0 {
+                        tracked.insert(path.clone());
+                    }
+                    if state.is_multiple_of(11) {
+                        excluded.push(path.clone());
+                    }
+                }
+                for path in &paths {
+                    assert_eq!(
+                        linear_related(&tracked, path),
+                        related(&tracked, path),
+                        "relation trial={trial} path={path:?} tracked={tracked:?}"
+                    );
+                    assert_eq!(
+                        linear_ignored(&tracked, &excluded, path),
+                        ignored_path(&tracked, &excluded, path),
+                        "exclusion trial={trial} path={path:?} tracked={tracked:?} excluded={excluded:?}"
+                    );
+                }
+            }
         }
     }
 }

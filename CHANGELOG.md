@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Avoid scanning every tracked input for each Linux namespace event. Preserve
+  exact path relationships, explicit output-directory inputs, complete native
+  coverage and all existing freshness limits.
+
 - Stage complete-result decoding reuse in ordinary persistent Rust SDK clients:
   retain the first validated frame without cloning its graph, then promote after
   an identical fresh response. Keep complete RPC validation and independent
