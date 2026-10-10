@@ -31,9 +31,21 @@ fn package(root: &Path, name: &str, dependencies: &str) {
     assert!(std::fs::write(root.join("src/lib.rs"), "pub fn a() {}\n").is_ok());
 }
 
+fn worker(root: &Path, log: &Path) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt as _;
+    let fake = root.join("worker");
+    let script = format!(
+        "#!/bin/sh\necho start >> '{0}'\necho $$ >> '{1}'\nsleep 30\necho end >> '{0}'\n",
+        log.display(),
+        root.join("pids").display()
+    );
+    assert!(std::fs::write(&fake, script).is_ok());
+    assert!(std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).is_ok());
+    fake
+}
+
 #[test]
 fn edits_cancel_the_run_in_flight_and_restart() {
-    use std::os::unix::fs::PermissionsExt as _;
     // macOS's per-user TMPDIR can exceed the Unix socket limit after the
     // versioned proof endpoint filename is appended. Use the short Unix root.
     let root = Path::new("/tmp").join(format!("sail-watch-{}", std::process::id()));
@@ -51,14 +63,7 @@ fn edits_cancel_the_run_in_flight_and_restart() {
     assert!(std::fs::write(&nested_source, "pub fn a() {}\n").is_ok());
     assert!(std::fs::create_dir_all(krate.join("target")).is_ok());
     let log = root.join("runs.log");
-    let fake = root.join("worker");
-    let script = format!(
-        "#!/bin/sh\necho start >> '{0}'\necho $$ >> '{1}'\nsleep 30\necho end >> '{0}'\n",
-        log.display(),
-        root.join("pids").display()
-    );
-    assert!(std::fs::write(&fake, script).is_ok());
-    assert!(std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).is_ok());
+    let fake = worker(&root, &log);
     let cache_socket = root.join("d.sock");
     let socket = sail_api::jobs::socket_path(&cache_socket);
     let mut daemon = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &fake)
@@ -67,6 +72,10 @@ fn edits_cancel_the_run_in_flight_and_restart() {
     let mut watch = Command::new(env!("CARGO_BIN_EXE_sail"))
         .args(["watch", "--output", "jsonl"])
         .current_dir(&krate)
+        // The gate can inherit an external CARGO_TARGET_DIR. Scope this
+        // fixture's real Cargo output directory to the path tested below;
+        // otherwise crate/target is correctly watched as ordinary input.
+        .env("CARGO_TARGET_DIR", krate.join("target"))
         .env("SAIL_DAEMON_SOCKET", &cache_socket)
         .env("SAIL_CACHE_DIR", root.join("cache"))
         .stdout(
