@@ -1328,6 +1328,31 @@ pub(crate) fn run_engine(
                 ))
             })
             .collect(),
+        target_kinds: data["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|package| {
+                Some((
+                    PathBuf::from(package["manifest_path"].as_str()?),
+                    package["targets"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|target| {
+                            Some((
+                                target["name"].as_str()?.replace('-', "_"),
+                                target["kind"]
+                                    .as_array()?
+                                    .iter()
+                                    .filter_map(|kind| kind.as_str().map(str::to_owned))
+                                    .collect(),
+                            ))
+                        })
+                        .collect(),
+                ))
+            })
+            .collect(),
         engine,
     };
     json(&paths.runtime, &runtime)?;

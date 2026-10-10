@@ -21,6 +21,7 @@ pub(crate) struct Runtime {
     pub context_sha256: String,
     pub input_revision: String,
     pub packages: BTreeMap<PathBuf, String>,
+    pub target_kinds: BTreeMap<PathBuf, BTreeMap<String, Vec<String>>>,
     pub engine: Option<crate::engine::Request>,
 }
 

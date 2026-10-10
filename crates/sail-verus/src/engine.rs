@@ -87,8 +87,9 @@ impl Installed {
             && manifest.artifacts.iter().all(|(path, hash)| {
                 path.components()
                     .all(|part| matches!(part, std::path::Component::Normal(_)))
-                    && source_build::hash_file(&build.join(path)).ok().as_ref() == Some(hash)
+                    && !hash.is_empty()
             })
+            && source_build::artifact_hashes(&build).ok().as_ref() == Some(&manifest.artifacts)
             && pins
                 .assets
                 .get(crate::toolchain::host())
