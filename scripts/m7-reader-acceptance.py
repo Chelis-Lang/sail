@@ -292,7 +292,8 @@ class Run:
                         "setup_invocation_budget_s": args.setup_timeout or None, "cli_budget_s": 30, "rpc_budget_s": 5,
                         "clients": 4, "samples_per_collector": 200, "p95_limit_ms": 200,
                         "setup": [], "commands": [], "proofs": {}, "censuses": {}, "cleanup_errors": [],
-                        "worker_archives": {}, "archival_errors": []}
+                        "worker_archives": {}, "archival_errors": [],
+                        "unmeasured_preparation": {"enabled": args.prepare_contexts, "phases": []}}
         self.save()
 
     def save(self):
@@ -432,6 +433,35 @@ class Run:
                 return job
         raise AssertionError("exact repair context never established genuine Current full evidence")
 
+    def prepare(self, label, workspace, manifest):
+        """Explicit setup phase only; never extend the subsequent bounded checks."""
+        bounded_budget = self.args.setup_timeout
+        assert bounded_budget > 0, "explicit preparation requires a positive subsequent setup budget"
+        phase = {"stage": label + "-unmeasured-preparation", "deadline_s": None,
+                 "subsequent_setup_budget_s": bounded_budget, "measured_reader_latency": False,
+                 "same_owned_workspace": str(workspace), "completed": False}
+        self.summary["unmeasured_preparation"]["phases"].append(phase)
+        began = time.monotonic()
+        try:
+            self.args.setup_timeout = 0
+            phase["job"] = self.warm(phase["stage"], workspace, manifest)
+            phase["completed"] = True
+        except BaseException as error:
+            phase["failure"] = {"type": type(error).__name__, "message": str(error)}
+            raise
+        finally:
+            self.args.setup_timeout = bounded_budget
+            phase["wall_ms"] = (time.monotonic() - began) * 1000
+            self.save()
+
+    def establish_workspaces(self, workspaces, manifest):
+        if self.args.prepare_contexts:
+            for label, workspace in workspaces.items():
+                self.prepare(label, workspace, manifest)
+        baseline = self.warm("baseline", workspaces["baseline"], manifest)
+        self.warm("active", workspaces["active"], manifest)
+        return baseline
+
     def active_worker(self, job, workspace):
         began = time.monotonic()
         while time.monotonic() - began < 600:
@@ -512,8 +542,7 @@ class Run:
             service.start("reader", self.bin / "sail", workspaces["baseline"], self.env)
             self.daemon = service.actors["reader"][0]
             try:
-                baseline = self.warm("baseline", workspaces["baseline"], manifest)
-                self.warm("active", workspaces["active"], manifest)
+                baseline = self.establish_workspaces(workspaces, manifest)
                 active = self.submit("active-measured-proof", workspaces["active"])
                 worker = self.active_worker(active, workspaces["active"])
                 common = ["--socket", str(self.socket), "--job", baseline, "--active-job", active,
@@ -541,10 +570,14 @@ def main():
     parser.add_argument("--kind", choices=("lib", "bin"), required=True)
     parser.add_argument("--setup-timeout", type=float, default=600,
                         help="unmeasured preparation budget per proof; 0 explicitly prepares to completion with owned cancellation, without changing measured bounds")
+    parser.add_argument("--prepare-contexts", action="store_true",
+                        help="record an additional unmeasured complete ordinary/exact-context preparation phase before the original bounded setup checks")
     parser.add_argument("--keep-daemon", action="store_true", help="retain only the successful owned service for real retained-job inspection")
     args = parser.parse_args()
     if not math.isfinite(args.setup_timeout) or args.setup_timeout < 0:
         parser.error("preparation budget must be finite and nonnegative")
+    if args.prepare_contexts and args.setup_timeout == 0:
+        parser.error("explicit context preparation requires a positive subsequent setup budget")
     if os.environ.get("CI"):
         parser.error("long warm-reader acceptance is local-only")
     if platform.system() != "Linux" or not Path("/proc").is_dir():

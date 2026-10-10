@@ -38,8 +38,8 @@ class WarmReaderTests(unittest.TestCase):
         run.job_started = {}
         run.job_scopes = {}
         run.owned = []
-        run.args = SimpleNamespace(package="demo", target="demo", kind="lib", function="demo::f", setup_timeout=600)
-        run.summary = {"setup": [], "commands": [], "proofs": {}, "worker_archives": {}, "archival_errors": [], "cleanup_errors": []}
+        run.args = SimpleNamespace(package="demo", target="demo", kind="lib", function="demo::f", setup_timeout=600, prepare_contexts=False)
+        run.summary = {"setup": [], "commands": [], "proofs": {}, "worker_archives": {}, "archival_errors": [], "cleanup_errors": [], "unmeasured_preparation": {"enabled": False, "phases": []}}
         return run
 
     def test_current_independent_full_proof_and_exact_manifest_are_required(self):
@@ -102,6 +102,51 @@ class WarmReaderTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     run.warm("active", root, "manifest")
                 self.assertEqual(submissions.call_count, 1)
+
+    def test_explicit_preparation_is_separate_and_restores_the_original_budget(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = self.runner(root)
+            observed = []
+            def warm(label, workspace, manifest):
+                observed.append((label, workspace, manifest, run.args.setup_timeout))
+                return label + "-job"
+            workspaces = {"baseline": root / "baseline", "active": root / "active"}
+            with patch.object(run, "warm", side_effect=warm):
+                run.args.prepare_contexts = True
+                self.assertEqual(run.establish_workspaces(workspaces, "manifest"), "baseline-job")
+            self.assertEqual(observed, [
+                ("baseline-unmeasured-preparation", workspaces["baseline"], "manifest", 0),
+                ("active-unmeasured-preparation", workspaces["active"], "manifest", 0),
+                ("baseline", workspaces["baseline"], "manifest", 600),
+                ("active", workspaces["active"], "manifest", 600)])
+            self.assertEqual(run.args.setup_timeout, 600)
+            self.assertTrue(all(phase["completed"] and phase["subsequent_setup_budget_s"] == 600
+                                and phase["deadline_s"] is None and not phase["measured_reader_latency"]
+                                for phase in run.summary["unmeasured_preparation"]["phases"]))
+            observed.clear()
+            run.args.prepare_contexts = False
+            with patch.object(run, "warm", side_effect=warm):
+                run.establish_workspaces(workspaces, "manifest")
+            self.assertEqual([entry[0] for entry in observed], ["baseline", "active"])
+            self.assertTrue(all(entry[3] == 600 for entry in observed))
+
+    def test_preparation_interruption_keeps_failure_and_restores_bounded_policy(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = self.runner(root)
+            with patch.object(run, "warm", side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    run.prepare("baseline", root, "manifest")
+            self.assertEqual(run.args.setup_timeout, 600)
+            phase = run.summary["unmeasured_preparation"]["phases"][0]
+            self.assertFalse(phase["completed"])
+            self.assertEqual(phase["failure"]["type"], "KeyboardInterrupt")
+            self.assertGreaterEqual(phase["wall_ms"], 0)
+            self.assertFalse(run.summary["proofs"])
+            run.args.setup_timeout = 0
+            with self.assertRaises(AssertionError):
+                run.prepare("baseline", root, "manifest")
 
     def projection(self):
         original = self.document()["repair"]

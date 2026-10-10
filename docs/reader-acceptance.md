@@ -23,6 +23,24 @@ are prerequisites. Both independent collectors must pass before the controller
 reports success. `--keep-daemon` retains only a successful owned service for
 subsequent retained-job CLI/MCP inspection.
 
+`--prepare-contexts --setup-timeout 600` explicitly adds a separately recorded,
+unmeasured preparation phase before the original bounded setup checks. In each
+fresh, owned workspace it completes the full ordinary verification and exact
+repair-function context with the same source, arguments, runtime and private
+cache. No receipt or Cargo output is copied from another run. Every preparation
+command, full proof, job ID and total wall time is retained; progress and owned
+cancellation remain active. Preparation is not a latency sample or a performance
+claim, and its cost must accompany any resulting acceptance record.
+
+After preparation, the existing ordinary and repair-context setup checks still
+have their original 600-second bounds. Ordinary `verify --incremental` may reuse
+a legitimately established receipt; it does not claim a new ordinary compiler
+invocation. The repair submission and public complete Current admission remain
+unchanged. Neither collector, the 600-second collector process bound, five-second
+RPC nor p95 threshold changes. The explicit preparation flag requires a positive
+subsequent setup budget: it cannot turn these bounded checks into a whole
+`--setup-timeout 0` run. The earlier cold setup timeout remains a failure.
+
 A completed job may temporarily have an unavailable freshness projection. The
 controller can wait on that same job only when its original owned output was
 accepted, independently complete and Current, and its public Unknown result
