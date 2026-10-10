@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "kind": "actual-cargo-no-vstd-forwarding-oracle",
+  "machine": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+  "environment_label": "linux-x86_64-emulation-devload",
+  "sail_sha256": "c3be1f0bc5fee411b78db5297a2d203df954b8bed709f7069e8a9fd31b126133",
+  "passed": true,
+  "invocation_bound_s": 600.0,
+  "source_sha256": "0f142fa0b516d113c44c54ac3d33561d9d38454a2e6ee5087a9aea188e076fa2",
+  "engine_manifest_sha256": "cfabcbf40e199673ae662c8eee1106202379d969a87464b69a7b69172a1e6b01",
+  "engine_patch_sha256": "45af86262dae49d1155da78ce5d6191dcbba1976ecc8cde8dc02abef239b1807",
+  "engine_launcher_sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+  "rust_toolchain": "1.98.1",
+  "actual_cargo_exit_code": 0,
+  "actual_cargo_elapsed_s": 145.99142006599868,
+  "direct_elapsed_s": 2.4693947099985962,
+  "actual_currentness": "current",
+  "currentness_is_not_oracle_acceptance": true,
+  "full_verified": {
+    "encountered-error": false,
+    "encountered-vir-error": false,
+    "success": true,
+    "verified": 2,
+    "errors": 0,
+    "is-verifying-entire-crate": true
+  },
+  "full_function_verdicts": [
+    [
+      "repair_demo::other",
+      true
+    ],
+    [
+      "repair_demo::selected",
+      true
+    ]
+  ],
+  "full_sessions": [
+    {
+      "name": "root.smt_transcript",
+      "bytes": 24013,
+      "input_sha256": "00abb7ec240acbdab0ff79577444597aec6f3afd5ceb1011bba11aef86a8e5e9"
+    }
+  ],
+  "diagnostics_sha256": "95b57b8e51ac9fbb290b227358a81966dd0478a0398bb919d6ae4a95122ac4e4",
+  "duplicate_effective_refused": true,
+  "actual_accepted": true,
+  "batched": true,
+  "compiler_invocations": 1
+}

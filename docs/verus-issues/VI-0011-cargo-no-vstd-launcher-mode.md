@@ -43,6 +43,11 @@ Its stock fallback preserves the same relocated arguments and environment. The o
 Each adaptation records `launcher-options.json` alongside the target's report,
 with the run, context, exact Cargo package, target, kind and forwarded option.
 The source patch and full focused/independent verification criteria are unchanged.
+Project results also name the adaptation in a run-bound provenance note.
+`corpus/repros/verus-cargo-no-vstd/forwarding-oracle.json` records actual
+Cargo verification against the direct same-option baseline: two complete
+functions, identical diagnostics and 24,013 identical full-target SMT bytes.
+These timings come from Linux x86-64 emulation under development load.
 
 A potential upstream fix would determine macro mode from the same effective
 Cargo driver arguments as rust_verify, while preserving contradictory-mode
