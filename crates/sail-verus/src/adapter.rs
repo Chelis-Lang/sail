@@ -17,6 +17,28 @@ fn required(name: &str) -> Result<OsString> {
         .ok_or_else(|| Error::new("SAIL3110", format!("private adapter missing {name}")))
 }
 
+struct InvocationLog<'a> {
+    directory: &'a Path,
+    run_id: &'a str,
+    target: &'a str,
+}
+
+impl InvocationLog<'_> {
+    fn record(&self, child: &mut std::process::Child) -> Result<()> {
+        let recorded = json(
+            &self.directory.join(format!("{}.started", child.id())),
+            &serde_json::json!({"target":self.target,"run_id":self.run_id}),
+        );
+        if recorded.is_err() {
+            // A child without a durable invocation record cannot contribute
+            // evidence or remain running after adapter setup fails.
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        recorded
+    }
+}
+
 fn status(status: std::process::ExitStatus) -> ExitCode {
     ExitCode::from(
         status
@@ -406,10 +428,12 @@ fn driver() -> Result<ExitCode> {
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    json(
-        &runtime.invocations.join(format!("{}.started", child.id())),
-        &serde_json::json!({"target":identity.name,"run_id":runtime.run_id}),
-    )?;
+    let invocation_log = InvocationLog {
+        directory: &runtime.invocations,
+        run_id: &runtime.run_id,
+        target: &identity.name,
+    };
+    invocation_log.record(&mut child)?;
     event(
         &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
     );
@@ -449,49 +473,30 @@ fn driver() -> Result<ExitCode> {
         relay.finish();
     }
     let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
-        if crate::engine_events::sealed(&source_events) {
+        let mut stock = Command::new(&engine.stock_wrapper);
+        stock
+            .args(&launcher_args)
+            .envs(&launcher_environment)
+            .args([
+                "--output-json",
+                "--time",
+                "--log",
+                "air",
+                "--log",
+                "smt-transcript",
+                "--log-dir",
+            ])
+            .arg(&logs);
+        let captured = std::process::Output {
+            stdout,
+            stderr,
+            status: exit,
+        };
+        let (output, trusted) = engine_output(&dir, stock, captured, &invocation_log)?;
+        if trusted {
             save_focus(&runtime, &identity, &dir)?;
-            (stdout, stderr, exit)
-        } else {
-            // A source worker that did not reach the late EXEC seal contributes
-            // no proof receipt or focused evidence. Stock verification starts
-            // from its original compiler invocation and immutable solver mode.
-            std::fs::write(dir.join("engine.failed.stdout"), &stdout)
-                .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &stderr))
-                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
-            let _ = std::fs::remove_file(dir.join("focus.source.json"));
-            for directory in [&logs, &dir.join("provenance")] {
-                if directory.exists() {
-                    std::fs::remove_dir_all(directory)
-                        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
-                }
-            }
-            std::fs::create_dir_all(dir.join("provenance"))
-                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
-            let output = Command::new(&engine.stock_wrapper)
-                .args(&launcher_args)
-                .envs(&launcher_environment)
-                .args([
-                    "--output-json",
-                    "--time",
-                    "--log",
-                    "air",
-                    "--log",
-                    "smt-transcript",
-                    "--log-dir",
-                ])
-                .arg(&logs)
-                .env_remove("SAIL_ENGINE")
-                .env_remove("SAIL_ENGINE_FUNCTION")
-                .env_remove("SAIL_ENGINE_EVENTS")
-                .env_remove("SAIL_ENGINE_FOCUS_REPORT")
-                .env_remove("SAIL_ENGINE_CONTEXT")
-                .env_remove("SAIL_ENGINE_PREPARED_DIR")
-                .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
-                .output()
-                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
-            (output.stdout, output.stderr, output.status)
         }
+        (output.stdout, output.stderr, output.status)
     } else {
         (stdout, stderr, exit)
     };
@@ -502,6 +507,57 @@ fn driver() -> Result<ExitCode> {
     }
     finish(&runtime, identity, &dir, &stdout, &stderr, exit.code())?;
     Ok(status(exit))
+}
+
+/// Retains interrupted engine evidence and restarts the exact stock compiler
+/// invocation. Engine observations and focused evidence cannot seal a report
+/// without the independent complete full document and normal process exit.
+fn engine_output(
+    dir: &Path,
+    mut stock: Command,
+    captured: std::process::Output,
+    invocation_log: &InvocationLog<'_>,
+) -> Result<(std::process::Output, bool)> {
+    if crate::engine_events::completed(
+        &dir.join("engine.events.jsonl"),
+        &captured.stdout,
+        captured.status.code(),
+    ) {
+        return Ok((captured, true));
+    }
+    std::fs::write(dir.join("engine.failed.stdout"), &captured.stdout)
+        .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &captured.stderr))
+        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    let _ = std::fs::remove_file(dir.join("focus.source.json"));
+    for directory in [dir.join("logs"), dir.join("provenance")] {
+        if directory.exists() {
+            std::fs::remove_dir_all(&directory)
+                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+        }
+    }
+    std::fs::create_dir_all(dir.join("provenance"))
+        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    for key in [
+        "SAIL_ENGINE",
+        "SAIL_ENGINE_FUNCTION",
+        "SAIL_ENGINE_EVENTS",
+        "SAIL_ENGINE_FOCUS_REPORT",
+        "SAIL_ENGINE_CONTEXT",
+        "SAIL_ENGINE_PREPARED_DIR",
+    ] {
+        stock.env_remove(key);
+    }
+    let mut child = stock
+        .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    invocation_log.record(&mut child)?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    Ok((output, false))
 }
 
 fn finish(
@@ -718,6 +774,167 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    fn capture_engine(
+        log: &InvocationLog<'_>,
+        document: &[u8],
+        exit: &str,
+    ) -> std::result::Result<std::process::Output, Box<dyn std::error::Error>> {
+        std::fs::create_dir_all(log.directory)?;
+        let input = log.directory.join("engine.output");
+        std::fs::write(&input, document)?;
+        let mut child = Command::new("/bin/sh")
+            .args([
+                "-c",
+                "cat \"$1\"; printf 'original engine diagnostic\\n' >&2; exit \"$2\"",
+                "engine",
+            ])
+            .arg(input)
+            .arg(exit)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        log.record(&mut child)?;
+        Ok(child.wait_with_output()?)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn interrupted_engine_restarts_exact_stock_args_and_preserves_failure()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-engine-fallback-{}", std::process::id()));
+        let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
+        let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
+        let documents = [
+            b"".as_slice(),
+            b"{broken",
+            &proof[..proof.len() - 2],
+            proof,
+            proof,
+            late,
+        ];
+        for (index, document) in documents.into_iter().enumerate() {
+            let dir = root.join(index.to_string());
+            std::fs::create_dir_all(dir.join("logs"))?;
+            std::fs::create_dir_all(dir.join("provenance"))?;
+            std::fs::write(dir.join("logs/unsealed"), b"old log")?;
+            std::fs::write(dir.join("focus.source.json"), b"focused evidence")?;
+            std::fs::write(
+                dir.join("engine.events.jsonl"),
+                "{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false}}\n",
+            )?;
+            let starts = dir.join("starts");
+            let log = InvocationLog {
+                directory: &starts,
+                run_id: "run",
+                target: "demo",
+            };
+            let captured = capture_engine(&log, document, if index == 3 { "101" } else { "1" })?;
+            let stock_document = if index >= 4 {
+                document
+            } else {
+                b"stock-reply\n"
+            };
+            let reply = dir.join("stock.output");
+            std::fs::write(&reply, stock_document)?;
+            let mut stock = Command::new("/bin/sh");
+            stock.current_dir(&dir).env("SAIL_ENGINE", "interactive").args([
+                "-c",
+                "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
+                "stock",
+            ]).arg(reply).args(["crate path.rs", "--", "literal;$(untouched)"]);
+            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            assert!(!trusted);
+            assert_eq!(output.stdout, stock_document);
+            assert_eq!(output.stderr, b"original engine diagnostic\n");
+            assert_eq!(output.status.code(), Some(1));
+            assert_eq!(
+                std::fs::read(dir.join("stock.argv"))?,
+                b"crate path.rs\0--\0literal;$(untouched)\0"
+            );
+            assert_eq!(std::fs::read(dir.join("stock.engine"))?, b"unset");
+            assert_eq!(std::fs::read(dir.join("engine.failed.stdout"))?, document);
+            assert_eq!(
+                std::fs::read(dir.join("engine.failed.stderr"))?,
+                b"original engine diagnostic\n"
+            );
+            assert!(!dir.join("focus.source.json").exists());
+            assert!(!dir.join("logs/unsealed").exists());
+            assert!(dir.join("engine.events.jsonl").is_file());
+            let markers = std::fs::read_dir(&starts)?.collect::<std::io::Result<Vec<_>>>()?;
+            assert_eq!(
+                markers
+                    .iter()
+                    .filter(|entry| entry
+                        .path()
+                        .extension()
+                        .is_some_and(|extension| extension == "started"))
+                    .count(),
+                2
+            );
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn completed_success_and_solver_failure_do_not_restart_stock()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let dir =
+            std::env::temp_dir().join(format!("sail-engine-normal-failure-{}", std::process::id()));
+        std::fs::create_dir_all(&dir)?;
+        std::fs::write(
+            dir.join("engine.events.jsonl"),
+            "{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false}}\n",
+        )?;
+        let mut solver_failure: serde_json::Value = serde_json::from_slice(include_bytes!(
+            "../tests/fixtures/engine-terminal/failed-proof.json"
+        ))?;
+        solver_failure["verification-results"]["encountered-error"] = serde_json::json!(false);
+        let document = serde_json::to_vec(&solver_failure)?;
+        let starts = dir.join("starts");
+        let log = InvocationLog {
+            directory: &starts,
+            run_id: "run",
+            target: "demo",
+        };
+        let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
+        for (index, (document, code)) in [(document.as_slice(), "1"), (success.as_slice(), "0")]
+            .into_iter()
+            .enumerate()
+        {
+            let captured = capture_engine(&log, document, code)?;
+            let mut stock = Command::new("/bin/sh");
+            stock
+                .current_dir(&dir)
+                .args(["-c", "touch stock.started; exit 2"]);
+            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            assert!(trusted);
+            assert_eq!(output.stdout, document);
+            assert_eq!(output.stderr, b"original engine diagnostic\n");
+            assert_eq!(
+                output.status.code().map(|code| code.to_string()).as_deref(),
+                Some(code)
+            );
+            assert!(!dir.join("stock.started").exists());
+            assert!(!dir.join("engine.failed.stdout").exists());
+            let markers = std::fs::read_dir(&starts)?.collect::<std::io::Result<Vec<_>>>()?;
+            assert_eq!(
+                markers
+                    .iter()
+                    .filter(|entry| entry
+                        .path()
+                        .extension()
+                        .is_some_and(|extension| extension == "started"))
+                    .count(),
+                index + 1
+            );
+        }
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
     #[test]
     fn engine_reflects_only_exact_effective_no_vstd_once_before_separator() {
         let args = vec![OsString::from("crate.rs"), "--".into(), "trailing".into()];

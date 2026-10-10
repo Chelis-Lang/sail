@@ -185,6 +185,19 @@ changed runtime bytes. A prebuilt CI archive additionally binds its archive
 digest to a committed pin; access credentials authorize download, not proof.
 Source builds and artifact validation happen locally before publishing that pin.
 
+A source terminal event is insufficient to finish a verification. The adapter
+requires exactly one complete bounded structured Verus document and normal
+process exit 0 or 1. A panic, signal, missing or malformed document retains the
+engine's failed output and falls back to the stock verifier with the same
+compiler arguments and effective options. The pinned compiler also catches
+internal panics into an ordinary-shaped `encountered-error: true` document;
+these error documents conservatively fall back too, including legitimate late
+EXEC and proof failures that use that field. The stock run preserves their full
+failure evidence and diagnostics. A solver-failure document without a compiler
+error can remain engine evidence. Fallback records its actual child invocation,
+and discards focused evidence from the interrupted engine. A terminal event's
+success flag cannot distinguish a compiler crash from an ordinary failure.
+
 Prepared lowering checkpoints have the local tier's trust boundary: the owned
 engine writes a private user cache. Version, input key, body digest and exact
 current-callback span bindings detect corruption and stale preparation. They do
