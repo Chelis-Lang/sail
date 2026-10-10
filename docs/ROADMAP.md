@@ -111,7 +111,11 @@ concurrency tests; the later `a9dc753` gate still failed one serving check after
 separate transport establishment. The earlier real-solver suite retains
 one unresolved fault test timeout; the complete `d12d4af` real-solver suite now
 passes all 37 cases without changing assertions or limits. The frozen `1dc` default fast tier passed all three cache phases;
-its standard run was interrupted and needs a complete new run. The selected
+its standard run was interrupted. The new complete standard attempt has recorded
+a stock verismo infrastructure timeout at the original 3,600-second unit limit;
+the remaining units are still running, so no complete standard pass is claimed.
+See [the retained observation](validation/m7-standard-verismo-timeout-observation.json).
+The selected
 source baseline still lacks an established physical preparation-memory bound.
 Graph-ledger/oracle candidates remain unselected; `2421` failed its 600-second
 authoritative full-verification deadline despite completed shadow controls. A persistent hit inside one
@@ -147,8 +151,10 @@ refuses 69 of 105 real human-eval preparations. The subsequent unselected
 admits 77 and safely refuses 28 under that same 128 MiB allowance; its 12
 allocation controls pass. This checks allocation admission, not span binding,
 graph validation or reuse after an edit. The combined actual source now passes
-33 VIR and 22 driver tests. Its independent ordinary Linux build has started;
-strict source checks and complete runtime qualification precede selection.
+33 VIR and 22 driver tests, plus strict all-target Clippy in both pinned source
+crates. Its independent ordinary Linux build has started; complete runtime
+qualification precedes selection. These checks are bound to the full combined
+patch in [the source record](../engine/verus/candidates/decode-ownership/combined-source-checks.json).
 The reader track now provides an explicit persistent SDK decoding cache and
 joined cancellable transport. Every call receives the complete fresh frame;
 decoding reuse grants no proof or freshness authority. The integrated API's
@@ -156,8 +162,18 @@ decoding reuse grants no proof or freshness authority. The integrated API's
 read-only tools now use the persistent client family; writes and blocking
 verification polling retain their existing process path. A separate real-service
 smoke checks fresh lifecycle frames, service disappearance/restart and actual
-cancellation. The original live reader gate remains separate from these
+cancellation. That installed Linux smoke passed on its frozen earlier product;
+the final hardened product and stricter controller still need their integrated
+rerun. The same controls now run in managed end-to-end CI, retaining raw evidence
+alongside the unchanged verification checks. The original live reader gate remains separate from these
 transport controls and offline replay measurements.
+Separately prepared ordinary/exact contexts established a genuine Current
+human-eval baseline, with 1,839.532 seconds of setup and three actual verifier
+starts recorded. That preparation is explicitly unmeasured: it does not pass
+the original 600-second verification checks, the reader latency gate or the
+one-driver requirement. The independent active workspace is still being prepared;
+the frozen reader collectors have not run in this attempt. See
+[the preparation record](validation/m7-reader-prepared-baseline.md).
 
 Priority order for completing this milestone:
 
