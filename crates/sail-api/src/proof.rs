@@ -57,6 +57,16 @@ pub struct InputEvent {
     pub observation: Observation,
 }
 
+/// Bounded query progress; not a complete solver answer or proof verdict.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObligationProgress {
+    /// Producer description, limited to 4,096 UTF-8 bytes.
+    pub description: String,
+    /// The source engine finished this query; completion does not imply validity.
+    pub completed: bool,
+}
+
 /// Authoritative producer facts with explicitly preliminary proof interpretation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "value", rename_all = "snake_case")]
@@ -65,6 +75,8 @@ pub enum Observation {
     PhaseStarted,
     /// A function's checks started.
     FunctionStarted,
+    /// Progress for one exactly identified query, without solver evidence claims.
+    ObligationProgress(ObligationProgress),
     /// An obligation's complete solver evidence, including raw model if any.
     ObligationObserved(ObligationReport),
     /// A function report, still preliminary before independent finalization.
@@ -106,6 +118,23 @@ impl InputEvent {
             Observation::FunctionStarted | Observation::FunctionObserved(_) => {
                 if self.function.is_none() {
                     return Err("SAIL0901: function event has no function identity".into());
+                }
+            }
+            Observation::ObligationProgress(progress) => {
+                if progress.description.is_empty() || progress.description.len() > 4096 {
+                    return Err("SAIL0901: invalid bounded obligation progress description".into());
+                }
+                let id = self
+                    .obligation
+                    .as_deref()
+                    .and_then(|id| id.parse::<sail_ledger::ObligationId>().ok());
+                if !id.as_ref().is_some_and(|id| {
+                    Some(id.function.as_str()) == self.function.as_deref()
+                        && sail_ledger::ObligationKind::is_query_kind(&id.kind.0)
+                }) {
+                    return Err(
+                        "SAIL0901: query progress requires an exact obligation identity".into(),
+                    );
                 }
             }
             Observation::ObligationObserved(report)
