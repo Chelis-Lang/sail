@@ -45,8 +45,10 @@ not mistaken for an infrastructure failure; the public repair command exits
 nonzero when the repair is not accepted.
 
 Optional `batch.preparation` records retain source-reported counters separately
-for each observed Verus driver. `batch_hits` measures reuse inside one focused/full
-batch; `persistent_hits` measures validated reuse across batches. Misses, retained
+for each observed Verus driver. `batch_hits` counts restores from the in-memory
+entry; `persistent_hits` counts restores from validated files. A file may have
+been written earlier in the same batch, so this is not an across-edit-only count.
+Across-edit reuse is established by the retained sequence of source revisions. Misses, retained
 byte peaks and configured budgets are source observations, not proof evidence or
 process RSS. Peaks and budgets from independent drivers are not summed. Target
 and phase identities appear only when independently bound. An engine without

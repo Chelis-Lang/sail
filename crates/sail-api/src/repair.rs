@@ -22,9 +22,10 @@ pub struct PreparationStats {
     pub version: u32,
     /// Whether preparation reuse was enabled for this driver.
     pub enabled: bool,
-    /// Hits on prepared state retained inside this focus/full batch.
+    /// Hits restored from the in-memory preparation entry inside this batch.
     pub batch_hits: u64,
-    /// Hits on validated prepared state retained across independent batches.
+    /// Hits restored from validated persistent files. A file may have been
+    /// written earlier in this same batch; this is not an across-edit counter.
     pub persistent_hits: u64,
     /// Source-reported preparation misses, including rejected admission.
     pub misses: u64,
