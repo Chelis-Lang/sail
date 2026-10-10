@@ -109,7 +109,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
     let mut repair = None;
     let result = if status.state == Lifecycle::Completed {
         let mut project = project(state, job)?;
-        let snapshot = refresh(state, job, &project);
+        let snapshot = refresh(job, &project);
         status.currentness = match snapshot {
             Some(snapshot) if snapshot.revision != project.input_revision => {
                 Currentness::Historical

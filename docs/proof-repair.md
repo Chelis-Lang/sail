@@ -5,6 +5,17 @@ source. It is selected explicitly. Stock verification retains its existing
 behavior. An unavailable or invalid engine returns a setup error; it never
 silently claims a batched run.
 
+Inspect or register an already built validated engine:
+
+```sh
+sail engine status --output json
+sail engine install --from PATH --output json
+```
+
+`PATH` is an engine-specific Sail source variant with a valid build manifest;
+installing a stock or modified unrecognized build is rejected. The install
+records provenance and leaves stock pins and installs unchanged.
+
 For a library target:
 
 ```sh
