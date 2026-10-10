@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "kind": "targeted-http-concurrency-regressions",
+  "source_commit": "059e19f5b90558b92dccb59cdf45a62ad11da066",
+  "source_archive_sha256": "9870587a9b2c568afe895c3dd7bd1f2f3d5fd90b288d46081c83de34b817d7b2",
+  "shared_source_sha256": "9faa1f81806cab8a762b3f608129efb92e9eaac8bc3d99040c17a3102bf77a37",
+  "execution_environment": "Linux amd64 Docker emulation on arm64 macOS; concurrent local source qualification and corpus verification",
+  "command": "cargo test --locked -p sail-daemon shared::http_tests -- --nocapture",
+  "build_jobs": 2,
+  "deadline_changed": false,
+  "configured_shared_lookup_timeout_ms": 250,
+  "exit_code": 101,
+  "tests_run": 4,
+  "passed": 1,
+  "failed": 3,
+  "test_elapsed_seconds": 2.46,
+  "failures": [
+    {
+      "test": "concurrent_readers_coalesce_one_http_lookup",
+      "result": "Timeout",
+      "remote_requests": 1,
+      "remote_last_status": null,
+      "coalesced": 7
+    },
+    {
+      "test": "verified_http_reply_reaches_readers_while_initiator_is_paused",
+      "elapsed_ms": 251.663917
+    },
+    {
+      "test": "forged_http_reply_is_refused_while_initiator_is_paused",
+      "elapsed_ms": 254.364833
+    }
+  ],
+  "log_sha256": "37b406f04f1bdf87d6e2b21fb341806e4d00c048bd8ce5aa50779f2edf6c1c26",
+  "log_bytes": 2367,
+  "acceptance": false,
+  "interpretation": "Direct helper publication fixes a demonstrated scheduling defect but does not establish deadline compliance under the concurrent local Linux run. Cause of the remaining delay requires phase measurements."
+}
