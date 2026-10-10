@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; concurrent local development workloads",
+  "gate": "ci/run.sh gate",
+  "runs": [
+    {
+      "source_commit": "cb07d4124ee873301104dbc41219078a8704245e",
+      "source_archive_sha256": "2409a32d93b1c7585cc295a861e6fa4baee68f18e1470169494fbd8ceac39215",
+      "exit_code": 101,
+      "stopped_at": "strict all-target Clippy",
+      "errors": 4,
+      "cause": "Reader identity regression tests used cloned references for singleton slices and an empty-value assertion forbidden by workspace lints.",
+      "correction_commit": "8a96ec78e4cc0f46e54684c2d9cb3b96e3deaaef",
+      "raw_log": {
+        "name": "m7-gate-cb07d41.log",
+        "bytes": 3592,
+        "sha256": "facb6dbe271351b493317e1e7ac00771fcbf065172abc8a23fa5aaf68dd805db"
+      }
+    },
+    {
+      "source_commit": "8a96ec78e4cc0f46e54684c2d9cb3b96e3deaaef",
+      "source_archive_sha256": "b45f0a3af29ca614461bfe3014fb707373c8a97323e37526e6b305a2851e56b7",
+      "build_jobs": 2,
+      "independent_test_threads": 1,
+      "strict_clippy": "PASS, 31.49 seconds",
+      "exit_code": 100,
+      "nextest": {
+        "run": 428,
+        "passed": 426,
+        "failed": 2,
+        "skipped": 37,
+        "elapsed_seconds": 261.423
+      },
+      "failures": [
+        {
+          "test": "sail-daemon shared::http_tests::concurrent_readers_coalesce_one_http_lookup",
+          "failure": "One concurrent worker returned a non-Hit; original assertion did not expose the Lookup variant."
+        },
+        {
+          "test": "sail-verus managed::freshness::tests::four_readers_do_not_wait_behind_unrelated_validation_or_context_locks",
+          "failure": "Three established reads returned None at the 100ms bounded validation wait.",
+          "observed_ms": [
+            100.346375,
+            100.879292,
+            100.806667
+          ]
+        }
+      ],
+      "raw_log": {
+        "name": "m7-gate-8a96ec7.log",
+        "bytes": 52476,
+        "sha256": "8622b40501a8958e376c7595ca46e1e940d6f4b25b5fbcf39895c49eb6e5fb4f"
+      }
+    }
+  ],
+  "outcome": "FAIL. Full workspace gate remains incomplete; targeted 132-test success is not substituted for this failure.",
+  "limits": "Original HTTP timeout, 100ms fixture, 200ms p95 reader acceptance and five-second RPC deadline remain unchanged."
+}
