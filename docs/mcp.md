@@ -290,7 +290,9 @@ demo::max: verified
 Established by run 2 (sail verify --output json) at 2026-10-08T22:41:21.259Z; The sources changed since this run: its results apply to the earlier sources only. Re-run verify to confirm.
 ```
 
-```json
+The structured response below is schematic: ellipses omit nested report fields.
+
+```text
 {
   "project_dir": "/work/demo",
   "function": "demo::max",
@@ -406,11 +408,12 @@ stand in for installed MCP or verifier acceptance. CI retains raw messages,
 stderr and summary under
 `managed-acceptance/mcp-live-service`, alongside the original proof evidence.
 
-The earlier supplemental installed Linux-container run passed its recorded
-controller version; the stricter normal-exit controller and hardened runtime
-await a new installed run. The [portable record](validation/m7-mcp-live-service.json) also retains the initial
-fixture error concerning the missing-program error projection. The source
-revision and binary/script hashes are explicit in that record.
+The [frozen b36 installed run](validation/m7-installed-mcp-b36.md) passed all five
+unchanged controls on the hardened product, including normal EOF exit. Its
+source, product and controller hashes are retained. The earlier
+[portable record](validation/m7-mcp-live-service.json) preserves its older
+controller scope and initial missing-program fixture error; neither is replaced
+by the later pass.
 
 This is supplementary transport evidence. It establishes neither a current
 proof, counterexample correctness, live reader latency, nor the repair-loop
