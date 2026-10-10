@@ -93,6 +93,7 @@ def run(args):
                    "engine_manifest_sha256":engine_status["manifest_sha256"]}
         (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
         operations = []
+        progress_failures = []
         mcp = None
         def remaining(maximum=30):
             value = min(maximum, deadline - time.monotonic())
@@ -167,7 +168,11 @@ def run(args):
             assert any(e["input"]["phase"] == "full" for e in page["events"]), page
             preliminary = [e for e in page["events"] if e["input"]["observation"]["kind"] == "function_observed"]
             seals = [e for e in page["events"] if e["input"]["observation"]["kind"] == "compiler_sealed"]
-            assert preliminary and seals and preliminary[0]["sequence"] < seals[-1]["sequence"], page
+            if not (preliminary and seals and preliminary[0]["sequence"] < seals[-1]["sequence"]):
+                # Retain a strict failed check while exercising the independent
+                # final-report tools too. Older validated engines have no typed
+                # function producer; they must not pass this acceptance script.
+                progress_failures.append("no real provisional function observation before compiler seal")
             assert all(e["input"]["observation"]["value"]["tier"] == "provisional"
                        and e["input"]["observation"]["value"]["verdict"] == "provisional" for e in preliminary), page
             cursor = page["next"]
@@ -246,10 +251,12 @@ def run(args):
             assert not late_document["accepted"] and late_full["exit_code"] != 0 and not late_target["complete"], late
             assert late_document["batch"]["focus"] is not None, late
             assert any("E0499" in json.dumps(t["report"]["diagnostics"]) for t in late_full["targets"]), late
+            assert not progress_failures, progress_failures
             summary["passed"] = True
             print("Real repair CLI/MCP acceptance: success, missing selector, full regression, late EXEC, exact evidence/cursors passed", flush=True)
         finally:
-            summary.update(elapsed_s=time.monotonic()-started, operations=operations)
+            summary.update(elapsed_s=time.monotonic()-started, operations=operations,
+                           progress_failures=progress_failures)
             (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
             if mcp is not None:
                 mcp.stdin.close()
