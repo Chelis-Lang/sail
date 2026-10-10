@@ -34,12 +34,13 @@ can only lose ACTIVE leases. Observing every expected lease ACTIVE, even across
 multiple kernel iterations or a scheduling pause, proves they were all ACTIVE
 at sweep entry: a later ACTIVE observation cannot follow a break and reacquisition
 within this owner. Live, non-stopped owner identity checks bracket the sweep.
-The freshness linearization point is the final confirmation sweep's entry,
+The kernel inventory is certified at the final confirmation sweep's entry,
 not its return or an assumed atomic proc snapshot. Caller namespace/content
-barriers independently bracket the captured bytes and their publication.
-For a reader this point lies within its request's validation interval. A write
-after that point can legitimately precede response delivery; Current describes
-the validated snapshot, not an atomic filesystem state at response return.
+barriers combine that monotonic lease evidence with the captured bytes and their
+publication. The combined freshness check establishes a valid point within the
+reader's validation interval; it need not coincide with the kernel sweep's entry.
+A write after that point can legitimately precede response delivery; Current
+describes the validated snapshot, not an atomic filesystem state at response return.
 Independent namespace, interpreter, mount and inode barriers still bracket the
 retained bytes. Breaking, missing, malformed, unexpected, oversized or unavailable
 state permanently invalidates the owner.
