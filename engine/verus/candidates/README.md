@@ -324,3 +324,10 @@ admission checks.
 An ordinary verified Linux build, genuine old-domain rejection,
 previous-revision focused restore, complete source oracles and both real-project
 performance gates remain pending. It is unselected and unqualified.
+
+The inactive `2421` compiler `deps`, `build` and `.fingerprint` directories were
+removed after checking process references. All 15 sealed direct runtime artifact
+hashes matched before and after; source, runtime, failure records and raw
+qualification data remain. No intermediate seed or qualification receipt was
+copied. The exact resource-only operation is recorded in
+`qualifications/2421-intermediate-cleanup.json`. It does not requalify the runtime.
