@@ -5,10 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
-- Fall back to the stock verifier when an optional engine emits a terminal event
-  without a complete structured full result, or terminates by panic or signal.
-  Conservatively rerun compiler-error documents that can also hide caught panics;
-  preserve failed engine output, stock diagnostics and actual fallback counts.
+- Require an explicit normal-termination marker and complete structured full
+  result before retaining optional-engine output. Panic, signal, malformed or
+  legacy terminal events fall back to stock; preserve ordinary failure reports,
+  failed engine output, stock diagnostics and actual fallback process counts.
 
 - Reuse run-local sysroot byte hashes on Linux only while kernel leases and
   precise namespace observation remain continuously owned from the first hash
