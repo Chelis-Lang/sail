@@ -9,7 +9,7 @@
  static PREPARATION_GATE:std::sync::Mutex<()>=std::sync::Mutex::new(());
  static REPORT_BYTES:AtomicU64=AtomicU64::new(0);
  static ENABLED:AtomicBool=AtomicBool::new(false);
-@@ -182,51 +182,118 @@
+@@ -182,51 +182,120 @@
      match(a.sail_baseline(),b.sail_baseline()){(Some(a),Some(b))=>a==b,_=>false}
  }
  pub(super) fn oracle_enabled()->bool{active() && std::env::var_os("SAIL_ENGINE_ORACLE_DIR").is_some()}
@@ -46,18 +46,20 @@
 +pub(super) struct Field<V,T>(pub &'static str,pub V,pub T);
 +pub(super) trait FieldList {
 +    fn count(&self)->usize;
-+    fn next(&self,previous:Option<&str>)->Option<&'static str>;
-+    fn write_key<M:serde::ser::SerializeMap>(&self,key:&str,map:&mut M)->Result<(),M::Error>;
++    fn contains(&self,key:&str)->bool;
++    fn unique(&self)->bool;
++    fn write<M:serde::ser::SerializeMap>(&self,map:&mut M)->Result<(),M::Error>;
 +}
-+impl FieldList for () {fn count(&self)->usize{0}fn next(&self,_:Option<&str>)->Option<&'static str>{None}fn write_key<M:serde::ser::SerializeMap>(&self,_:&str,_:&mut M)->Result<(),M::Error>{Ok(())}}
++impl FieldList for () {fn count(&self)->usize{0}fn contains(&self,_:&str)->bool{false}fn unique(&self)->bool{true}fn write<M:serde::ser::SerializeMap>(&self,_:&mut M)->Result<(),M::Error>{Ok(())}}
 +impl<V:serde::Serialize,T:FieldList> FieldList for Field<V,T> {
 +    fn count(&self)->usize{1+self.2.count()}
-+    fn next(&self,previous:Option<&str>)->Option<&'static str>{let head=previous.filter(|previous|self.0<=*previous).map_or(Some(self.0),|_|None);match(head,self.2.next(previous)){(Some(a),Some(b))=>Some(a.min(b)),(a,b)=>a.or(b)}}
-+    fn write_key<M:serde::ser::SerializeMap>(&self,key:&str,map:&mut M)->Result<(),M::Error>{if self.0==key{map.serialize_entry(self.0,&self.1)?;}self.2.write_key(key,map)}
++    fn contains(&self,key:&str)->bool{self.0==key || self.2.contains(key)}
++    fn unique(&self)->bool{!self.2.contains(self.0) && self.2.unique()}
++    fn write<M:serde::ser::SerializeMap>(&self,map:&mut M)->Result<(),M::Error>{map.serialize_entry(self.0,&self.1)?;self.2.write(map)}
 +}
-+impl<T:FieldList> serde::Serialize for Fields<T>{fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{let count=self.0.count();let mut map=serializer.serialize_map(Some(count))?;let mut previous=None;for _ in 0..count{let key=self.0.next(previous).ok_or_else(||serde::ser::Error::custom("duplicate observer key"))?;self.0.write_key(key,&mut map)?;previous=Some(key);}serde::ser::SerializeMap::end(map)}}
++impl<T:FieldList> serde::Serialize for Fields<T>{fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{if !self.0.unique(){return Err(serde::ser::Error::custom("duplicate observer key"));}let mut map=serializer.serialize_map(Some(self.0.count()))?;self.0.write(&mut map)?;serde::ser::SerializeMap::end(map)}}
 +#[derive(serde::Serialize)]
-+pub(super) struct Observation<'a,P>{pub event:&'a str,pub payload:P,pub phase:&'a str,pub version:u32}
++pub(super) struct Observation<'a,P>{pub version:u32,pub phase:&'a str,pub event:&'a str,pub payload:P}
 +pub(super) struct ObservedDebug<'a,T>(pub &'a T);
 +impl<T:std::fmt::Debug> serde::Serialize for ObservedDebug<'_,T>{fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{serializer.collect_str(&format_args!("{:?}",self.0))}}
 +pub(super) struct ObservedDisplay<'a,T>(pub &'a T);
@@ -166,7 +168,7 @@
  pub(super) fn bucket_key(v: &Verifier, bucket: &BucketId, krate: &Krate, ctx: &vir::context::Ctx) -> String {
      if !CACHING.load(Ordering::Relaxed) || v.args.no_verify || v.args.debugger || v.args.log_all || v.args.log_args.log_vir_sst || v.args.log_args.log_interpreter || v.args.log_args.log_call_graph { return String::new(); }
      let _gate=match PREPARATION_GATE.lock(){Ok(guard)=>guard,Err(_)=>return String::new()};
-@@ -236,7 +303,7 @@
+@@ -236,7 +305,7 @@
          member_bytes=member_bytes.saturating_add(value.capacity()).saturating_add(64);if member_bytes>32*1024*1024{return String::new();}members.push(value);}
      members.sort();
      let Some(baseline)=ctx.sail_baseline() else{return String::new();};
@@ -175,7 +177,7 @@
      let options=(v.args.no_auto_recommends_check,v.args.no_external_by_default,v.args.allow_inline_air,v.args.rlimit,&v.args.smt_options,v.args.debugger,format!("{:?}",v.args.solver),v.args.check_api_safety,v.args.axiom_usage_info,v.args.no_bv_simplify,v.args.no_cheating,v.args.no_trait_conflicts,v.args.no_lifetime,v.args.no_erasure_check);
      let Some(bytes)=vir::context::sail_encode(&(vir::context::SAIL_PREPARATION_DOMAIN,std::env::var("SAIL_ENGINE_CONTEXT").unwrap_or_default(),members,krate,baseline,options,(v.args.multiple_errors,v.args.expand_errors,v.args.ignore_unexpected_smt,v.args.profile,v.args.profile_all,v.args.capture_profiles,v.args.spinoff_all,v.args.build_sst))) else{return String::new();};
      Sha256::digest(&bytes).iter().map(|byte| format!("{byte:02x}")).collect()
-@@ -294,11 +361,11 @@
+@@ -294,11 +363,11 @@
      }
      let (portable,consumed)=vir::messages::sail_resolve_spans(&bindings,||bincode_next::serde::seed_decode_from_slice(PreparedSeed(&budget),bytes.as_ref(),bincode_next::config::legacy().with_limit::<536870912>())).ok()?;
      if portable.version!=3 || portable.key!=key {return None;}
@@ -191,7 +193,7 @@
      }
      if consumed!=bytes.len() {return None;}
      // PREPARATION_GATE is still held; no decoded ledger survives its release.
-@@ -307,27 +374,27 @@
+@@ -307,27 +376,27 @@
      ctx.sail_restore_effects(portable.effects);
      MISSES.fetch_sub(1,Ordering::Relaxed);
      if batch {BATCH_HITS.fetch_add(1,Ordering::Relaxed);}else{PERSISTENT_HITS.fetch_add(1,Ordering::Relaxed);}
@@ -225,7 +227,7 @@
          converted_bytes=converted_bytes.saturating_add(key.1.capacity().saturating_mul(8)).saturating_add(key.2.capacity()).saturating_add(value.capacity()).saturating_add(128);
          if converted_bytes>16*1024*1024{return;}converted.push((key,value));
      }
-@@ -514,10 +581,10 @@
+@@ -514,10 +583,10 @@
  struct FocusVerus<'a> {#[serde(rename="func-details")] functions:std::collections::BTreeMap<String,&'a FuncDetails>,#[serde(rename="verification-results")] results:FocusResults,#[serde(rename="times-ms")] times:FocusTimes}
  #[derive(serde::Serialize)]
  struct FocusDocument<'a> {version:u32,function:&'a str,confirmed:bool,diagnostics:FocusDiagnostics<'a>,verus:FocusVerus<'a>}
@@ -239,7 +241,7 @@
      for (index,segment) in path.segments.iter().enumerate(){if index!=0{name.push_str("::");}name.push_str(segment);}
      Some(name)
  }
-@@ -531,7 +598,7 @@
+@@ -531,7 +600,7 @@
      }
      let mut times=Vec::new();
      for (bucket,stats) in &focus.func_times {
@@ -248,7 +250,7 @@
          let mut functions=Vec::new();
          for (fun,stats) in stats {
              let function=vir::ast_util::sail_bounded_friendly_name(&fun.path,FOCUS_NAME)?;
-@@ -550,10 +617,10 @@
+@@ -550,10 +619,10 @@
          clear();
          let Ok(name)=std::env::var("SAIL_ENGINE_FUNCTION") else { return; };
          let krate=self.vir_crate.as_ref().unwrap();
@@ -261,7 +263,7 @@
          let Some(selected)=selected else{return;};
          if let Ok(mut inventory)=SOURCES.lock(){*inventory=sources(compiler.sess.source_map()).map(Arc::new);}
          retained_charge();ENABLED.store(true,Ordering::Relaxed);CACHING.store(true,Ordering::Relaxed);
-@@ -563,16 +630,16 @@
+@@ -563,16 +632,16 @@
          let log=self.args.log_dir.as_ref().map(|p|std::path::PathBuf::from(p).join("focus"));
          if let Some(path)=log { let _=std::fs::create_dir_all(&path);focus.created_log_dir=Arc::new(std::sync::Mutex::new(Some(path.clone())));focus.created_solver_log_dir=Arc::new(std::sync::Mutex::new(Some(path))); }
          FOCUS.store(true,Ordering::Relaxed);
@@ -283,7 +285,7 @@
      }
  }
 
-@@ -737,3 +804,50 @@
+@@ -737,3 +806,50 @@
          let mut writer=Bounded {bytes:vec![0;BUFFER_BUDGET]};assert!(writer.write(&[1]).is_err());assert_eq!(writer.bytes.len(),BUFFER_BUDGET);
      }
  }

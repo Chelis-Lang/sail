@@ -26,14 +26,15 @@ Every source `emit` call now uses a borrowed-field macro. The emitter acquires
 its process mutex before evaluating field expressions, converting names, or
 serializing data. Fields serialize directly into a 1 MiB admitted writer.
 Growth, including old/new allocation overlap, is bounded by 2 MiB. There is no
-JSON `Value` tree or final String copy. Fields are sorted by their fixed keys
-without allocating a sorting container; all arrays keep their original order.
+JSON `Value` tree or final String copy. Fields retain their literal insertion order without allocating a sorting
+container. Duplicate keys are rejected before payload writes; all arrays keep
+their original order.
 
-Nested diagnostic objects follow their derived serializer's member order,
-where the earlier `Value` representation sorted object keys. The exact JSON
-graph, diagnostic text, spans and emission levels are preserved; byte-identical
-source event serialization is not claimed. Authoritative Verus stdout/stderr
-and the exact SMT oracle remain unchanged.
+The actual Verus workspace enables serde_json `preserve_order`. Top-level
+fields retain `version`, `phase`, `event`, `payload` ordering; nested diagnostic
+objects retain the same derived insertion order as the original `Value` path.
+The corrected helper uses this exact feature and retains the raw byte assertion.
+Authoritative Verus stdout/stderr and the exact SMT oracle remain unchanged.
 
 Overflow discards the partial record and emits a small `observer-unavailable`
 record. It never changes a proof or turns missing progress into a compiler seal.
@@ -132,3 +133,13 @@ harness uses that exact nested layout and a sibling verifier invocation. All
 six helper tests and strict Clippy pass again. The original source-build failure
 is retained by the engine track; a corrected combined driver build remains
 required before qualification.
+
+## Actual serializer-feature correction
+
+The next combined RustVerify run passed 21 tests and failed the raw observer
+byte golden. Verus enables serde_json `preserve_order`, which the first helper
+harness omitted. Sorted fields therefore changed actual source-event bytes.
+The borrowed list now preserves literal insertion order and checks duplicates
+without a sorting allocation. Its corrected helper enables the exact feature;
+all six tests and strict Clippy pass. The original 21/22 result remains failed,
+and corrected full driver tests remain required. No byte assertion was relaxed.
