@@ -140,7 +140,16 @@ The newest frozen `f6508ba` attempt passed strict all-target Clippy but failed
 freshness/lease coverage. Its full failure record remains
 [retained](../bench/validation/m7-linux-gate-f650-failure-emulated-2026-10-10.json).
 Focused acquisition-stage diagnostics take priority over publishing; no test
-deadline or admission rule changes to hide these failures.
+deadline or admission rule changes to hide these failures. Exact kernel-row
+parsing and per-slot publication notifications now pass 35 focused controls,
+including stale publication, spurious wakes, poisoning, namespace changes,
+restored writes and blocked-worker MCP responsiveness. The
+[notification record](validation/m7-freshness-publication.json) distinguishes
+these scoped passes from full product acceptance. The integrated `44af609`
+workspace gate stopped on a test assertion lint in the new timeout-retention
+control; [the failed scope is retained](validation/m7-integrated-gate-44af609.json).
+The assertion is corrected without changing the tested behavior. A complete
+passing integrated gate remains required.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh
 real-reader attempt failed ordinary human-eval setup at the unchanged
@@ -158,9 +167,17 @@ admits 77 and safely refuses 28 under that same 128 MiB allowance; its 12
 allocation controls pass. This checks allocation admission, not span binding,
 graph validation or reuse after an edit. The combined actual source now passes
 33 VIR and 22 driver tests, plus strict all-target Clippy in both pinned source
-crates. Its independent ordinary Linux build has started; complete runtime
-qualification precedes selection. These checks are bound to the full combined
-patch in [the source record](../engine/verus/candidates/decode-ownership/combined-source-checks.json).
+crates. Its independent ordinary Linux build completed in 3,462.550 seconds,
+including 2,060 verified vstd obligations and a validated 13-artifact manifest.
+That [build record](../engine/verus/candidates/decode-ownership/ordinary-linux-build.json)
+is setup evidence, not runtime qualification. The subsequent source pipeline
+passed graph, migration, actual-hit fault, source-fixture, checkpoint and
+cancellation controls, then refused the required previous-revision focus reuse:
+zero checked hits, with a graph-validation scratch-budget refusal. Full
+human-eval oracle qualification was not reached. Per-query allocation admission
+is being audited under the unchanged allowance; the candidate remains unselected.
+These checks are bound to the full combined patch in
+[the source record](../engine/verus/candidates/decode-ownership/combined-source-checks.json).
 The reader track now provides an explicit persistent SDK decoding cache and
 joined cancellable transport. Every call receives the complete fresh frame;
 decoding reuse grants no proof or freshness authority. The integrated API's
@@ -177,9 +194,17 @@ Separately prepared ordinary/exact contexts established a genuine Current
 human-eval baseline, with 1,839.532 seconds of setup and three actual verifier
 starts recorded. That preparation is explicitly unmeasured: it does not pass
 the original 600-second verification checks, the reader latency gate or the
-one-driver requirement. The independent active workspace is still being prepared;
-the frozen reader collectors have not run in this attempt. See
-[the preparation record](validation/m7-reader-prepared-baseline.md).
+one-driver requirement. The independent active workspace also completed genuine preparation, with
+2,717.788 seconds of setup retained. Both subsequent bounded ordinary and
+repair checks passed. The unchanged live Python census then failed: all 200
+RPCs completed with the same active verifier, but only 13 admission Booleans
+were true; status and result p95 were 222.54 and 489.74 ms. The collector did
+not retain exact currentness labels for the other reads. Its original fail-fast
+controller did not reach Rust or CLI/MCP acceptance. See
+[the complete terminal record](validation/m7-reader-prepared-terminal.md).
+The next SDK candidate stages exact-frame reuse in the ordinary persistent
+client while preserving fresh RPC validation and the frozen collectors; it is
+not yet qualified by a live census.
 
 Priority order for completing this milestone:
 
