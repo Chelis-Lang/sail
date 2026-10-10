@@ -105,17 +105,7 @@ impl ReadLease {
             failure: None,
         };
         socket.write_all(&bytes).ok()?;
-        let mut reply = Vec::new();
-        std::io::BufRead::read_until(
-            &mut std::io::BufReader::new(std::io::Read::by_ref(&mut socket).take(65_537)),
-            b'\n',
-            &mut reply,
-        )
-        .ok()?;
-        if reply.len() > 65_536 || !reply.ends_with(b"\n") {
-            return None;
-        }
-        let fds: Vec<u32> = serde_json::from_slice(&reply).ok()?;
+        let fds = descriptors(&mut socket)?;
         let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
         lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
         if lease.kernel.is_none()
@@ -177,6 +167,19 @@ impl ReadLease {
                             .is_ok_and(|m| m.dev() == *device && m.ino() == *inode)
                 })
     }
+}
+fn descriptors(socket: &mut UnixStream) -> Option<Vec<u32>> {
+    let mut reply = Vec::new();
+    std::io::BufRead::read_until(
+        &mut std::io::BufReader::new(std::io::Read::by_ref(socket).take(65_537)),
+        b'\n',
+        &mut reply,
+    )
+    .ok()?;
+    if reply.len() > 65_536 || !reply.ends_with(b"\n") {
+        return None;
+    }
+    serde_json::from_slice(&reply).ok()
 }
 // PATH is selected once for launch; subsequent barriers also check its exact
 // resolution. No interpreter substitution is hidden by an unchanged PATH value.
