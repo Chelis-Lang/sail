@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "scope": "Per-slot freshness publication notification; no currentness authority or deadlines added",
+  "qualified_product_latency": false,
+  "machine": "Linux x86_64 Docker emulation under shared load",
+  "semantics": [
+    "Same runtime mutex for predicate check, atomic registration and publication",
+    "Ready/invalid publication notify all; notification alone supplies no authority",
+    "Conservative checkpoint remains before complete validation",
+    "Checkpoint must fall inside caller interval, before return",
+    "Original100ms absolute owner wait across spurious notifications and lock retry",
+    "Busy never discards independent owner; poison/invalid publication cannot return Ready",
+    "Unchanged source/runtime/alias/namespace checks and both kernel sweeps"
+  ],
+  "first_controls": {
+    "tests": 10,
+    "passed": 10,
+    "failed": 0,
+    "elapsed_s": 9.757,
+    "live_control_reads": 100,
+    "live_control_p95_ms": 12.293459,
+    "scope": "Four publication-only race/poison/spurious controls and unchanged busy-owner/delayed-publication/mmap/namespace/restored-write/live-reader guards",
+    "limitation": "Single focused result; earlier parser-only and original gate failures retained, no real project reader census or full gate acceptance"
+  },
+  "targeted_clippy": {
+    "initial_status": "failed",
+    "reason": "Large Result error type and explicit-default test lints; ControlFlow expresses ownership/cohort early return without new heap allocation, no lint allowance",
+    "corrected_status": "passed",
+    "packages": [
+      "sail-verus",
+      "sail-mcp"
+    ],
+    "all_targets": true,
+    "warnings_denied": true,
+    "elapsed_s": 11.34
+  },
+  "retained_raw": {
+    "m7-freshness-publication-controls.log": "fb357d35e0ee0f4bdc0a9cc50a3e3d94928c12d0f9f6f7e803892e1953a5abc8",
+    "m7-freshness-publication-clippy.log": "9d86b67fea6375e56c626cdfa0f21c182da89b8ace000dc8a5f87c4beeebc1fa",
+    "m7-freshness-publication-focused.log": "5e2cc77cb69a97dcf161e11934bee5a645dd1d971f80416d8f4538b1b2417a7f",
+    "m7-freshness-publication-clippy-corrected.log": "105de4a2efbbd6db6bace603db413b588c73e86af4a60fd776587525e1330c0b"
+  },
+  "combined_focused_controls": {
+    "tests": 35,
+    "passed": 35,
+    "failed": 0,
+    "elapsed_s": 42.695,
+    "scope": "Original freshness/coherent/lease controls plus four notification controls and original legacy MCP responsiveness scenario; testthreads2, no retries/assertion changes",
+    "limitation": "Focused suite only; original full gate/real reader census failures retained and final installed MCP acceptance pending"
+  }
+}
