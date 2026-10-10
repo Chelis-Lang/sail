@@ -49,7 +49,7 @@ class Monitor:
         if self.truncated:
             return
         encoded = json.dumps(item, separators=(',', ':')).encode() + b'\n'
-        if self.written + len(encoded) > 8 * 1024 * 1024:
+        if self.written + len(encoded) > 8 * 1024 * 1024 - 64:
             encoded = b'{"event":"observation-truncated","limit_bytes":8388608}\n'
             self.truncated = True
         self.file.write(encoded)

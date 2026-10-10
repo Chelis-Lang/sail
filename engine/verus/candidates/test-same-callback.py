@@ -48,7 +48,10 @@ def execute(command, environment, timeout, output, prefix, cwd=None, diagnostics
             raise
         finally:
             if observer is not None:
-                observer.close(process.returncode)
+                try:
+                    observer.close(process.returncode)
+                except Exception:
+                    pass  # Optional diagnostic I/O never replaces actor outcome.
         return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
