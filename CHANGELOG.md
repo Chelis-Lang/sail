@@ -9,6 +9,9 @@ semantic versioning once the API is published.
   The timeout remains an infrastructure error and kills the verifier process
   group; partial output never becomes a completed proof or conformance result.
 
+- Reduce Linux kernel lease inventory parsing work while preserving exact owner,
+  descriptor and row checks, both validation sweeps and all currentness bounds.
+
 - Reuse bounded service clients for MCP job status, result and counterexample
   reads while receiving a fresh reply on every call. Preserve source currentness,
   report schemas, CLI fallback errors and verification/cancellation ownership.

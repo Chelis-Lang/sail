@@ -106,19 +106,8 @@ impl ReadLease {
         let child_input: OwnedFd = child_socket.try_clone().ok()?.into();
         let child_output: OwnedFd = child_socket.into();
         let parent_socket = socket.try_clone().ok()?;
-        let helper = format!(
-            "{}\n{}",
-            include_str!("helper_runtime.py"),
-            include_str!("lease.py")
-        );
         *stage = "helper-process-spawn";
-        let process = Command::new(&interpreter)
-            .args(["-I", "-u", "-c", &helper])
-            .stdin(Stdio::from(child_input))
-            .stdout(Stdio::from(child_output))
-            .stderr(Stdio::null())
-            .spawn()
-            .ok()?;
+        let process = spawn_helper(&interpreter, child_input, child_output)?;
         let mut lease = Self {
             process,
             socket: parent_socket,
@@ -132,14 +121,10 @@ impl ReadLease {
         *stage = "helper-request-write";
         socket.write_all(&bytes).ok()?;
         *stage = "helper-readiness-frame";
-        let fds = descriptors(&mut socket).or_else(|| {
-            #[cfg(test)]
-            eprintln!(
-                "lease readiness unavailable: child_status={:?}",
-                lease.process.try_wait()
-            );
-            None
-        })?;
+        #[cfg(test)]
+        let fds = lease.readiness(&mut socket)?;
+        #[cfg(not(test))]
+        let fds = descriptors(&mut socket)?;
         let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
         *stage = "kernel-lease-inventory-bind";
         lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
@@ -151,6 +136,18 @@ impl ReadLease {
             return None;
         }
         Some(lease)
+    }
+    #[cfg(test)]
+    fn readiness(&mut self, socket: &mut UnixStream) -> Option<Vec<u32>> {
+        let fds = descriptors(socket);
+        #[cfg(test)]
+        if fds.is_none() {
+            eprintln!(
+                "lease readiness unavailable: child_status={:?}",
+                self.process.try_wait()
+            );
+        }
+        fds
     }
     fn validate_initial(
         &mut self,
@@ -254,6 +251,20 @@ fn trace_clean(stage: &'static str, started: std::time::Instant) {
             started.elapsed().as_micros()
         );
     }
+}
+fn spawn_helper(interpreter: &Path, input: OwnedFd, output: OwnedFd) -> Option<Child> {
+    let helper = format!(
+        "{}\n{}",
+        include_str!("helper_runtime.py"),
+        include_str!("lease.py")
+    );
+    Command::new(interpreter)
+        .args(["-I", "-u", "-c", &helper])
+        .stdin(Stdio::from(input))
+        .stdout(Stdio::from(output))
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()
 }
 fn descriptors(socket: &mut UnixStream) -> Option<Vec<u32>> {
     let mut reply = Vec::new();
