@@ -17,7 +17,9 @@ impl Fixture {
         assert!(std::fs::create_dir_all(&root).is_ok());
         let root = root.canonicalize().unwrap_or(root);
         let sail = root.join("sail");
-        let script = "#!/bin/sh\nd=$(dirname \"$0\")\ncase \"$1:$2\" in\nverify:*) cat \"$d/start.json\";;\njobs:list) cat \"$d/list.json\";;\njobs:status) cat \"$d/status.json\";;\njobs:result) if [ \"$3\" = latest ]; then cat \"$d/empty.json\"; else cat \"$d/result.json\"; fi;;\njobs:cancel) cat \"$d/cancel.json\";;\n*) exit 2;;\nesac\n";
+        // Serialized fixtures are single-line JSON; shell builtins preserve the bytes
+        // while avoiding unrelated dirname/cat subprocess scheduling in the timed path.
+        let script = "#!/bin/sh\nd=${0%/*}\nrespond() { IFS= read -r response < \"$1\"; printf '%s' \"$response\"; }\ncase \"$1:$2\" in\nverify:*) respond \"$d/start.json\";;\njobs:list) respond \"$d/list.json\";;\njobs:status) respond \"$d/status.json\";;\njobs:result) if [ \"$3\" = latest ]; then respond \"$d/empty.json\"; else respond \"$d/result.json\"; fi;;\njobs:cancel) respond \"$d/cancel.json\";;\n*) exit 2;;\nesac\n";
         assert!(std::fs::write(&sail, script).is_ok());
         assert!(std::fs::set_permissions(&sail, std::fs::Permissions::from_mode(0o755)).is_ok());
         Self {
@@ -32,6 +34,10 @@ impl Fixture {
     fn write(&self, name: &str, value: &impl serde::Serialize) {
         let bytes = serde_json::to_vec(value).unwrap_or_default();
         assert_ne!(bytes.len(), 0);
+        assert!(
+            !bytes.contains(&b'\n'),
+            "fixture responses must be single-line JSON"
+        );
         assert!(std::fs::write(self.root.join(name), bytes).is_ok());
     }
 }
@@ -40,6 +46,60 @@ impl Drop for Fixture {
         let _ = std::fs::remove_dir_all(&self.root);
     }
 }
+/// A real independently blocked worker, ready before the responsiveness timer.
+struct BlockedWorker(std::process::Child);
+
+impl BlockedWorker {
+    fn ready() -> Self {
+        use std::io::BufRead as _;
+        use std::process::{Command, Stdio};
+        let child = Command::new("/bin/sh")
+            .args(["-c", "printf '%s\\n' \"$$\"; read -r finish"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap_or_else(|error| unreachable!("cannot start blocked worker: {error}"));
+        let mut worker = Self(child);
+        let stdout = worker
+            .0
+            .stdout
+            .take()
+            .unwrap_or_else(|| unreachable!("worker stdout missing"));
+        let (tx, rx) = std::sync::mpsc::channel();
+        let reader = std::thread::spawn(move || {
+            let mut ready = String::new();
+            let result = std::io::BufReader::new(stdout)
+                .read_line(&mut ready)
+                .map(|_| ready);
+            let _ = tx.send(result);
+        });
+        let ready = rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap_or_else(|error| unreachable!("worker startup handshake failed: {error}"))
+            .unwrap_or_else(|error| unreachable!("worker startup read failed: {error}"));
+        assert!(reader.join().is_ok());
+        assert_eq!(ready.trim().parse::<u32>().ok(), Some(worker.0.id()));
+        worker.assert_running();
+        worker
+    }
+
+    fn assert_running(&mut self) {
+        assert!(
+            matches!(self.0.try_wait(), Ok(None)),
+            "owned worker {} must remain blocked",
+            self.0.id()
+        );
+    }
+}
+
+impl Drop for BlockedWorker {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 fn status(root: &Path, state: Lifecycle, id: &str) -> Status {
     Status {
         version: 1,
@@ -133,6 +193,7 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         .as_object()
         .cloned()
         .unwrap_or_default();
+    let mut worker = BlockedWorker::ready();
     let started = std::time::Instant::now();
     let start = call(
         &fixture.context,
@@ -190,11 +251,21 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         lookup(&fixture.context, &fixture.root, &missing, true)
             .is_some_and(|result| result.is_error && result.structured["error"] == "not_found")
     );
+    assert_responsive(&mut worker, started);
+    reject_report_as_job(&fixture);
+}
+
+fn assert_responsive(worker: &mut BlockedWorker, started: std::time::Instant) {
+    worker.assert_running();
+    let elapsed = started.elapsed();
+    eprintln!(
+        "owned worker {} remained blocked throughout job tools ({elapsed:?})",
+        worker.0.id()
+    );
     assert!(
-        started.elapsed() < std::time::Duration::from_secs(2),
+        elapsed < std::time::Duration::from_secs(2),
         "job tools must return while the verifier is running"
     );
-    reject_report_as_job(&fixture);
 }
 
 fn reject_report_as_job(fixture: &Fixture) {
