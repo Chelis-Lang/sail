@@ -204,3 +204,13 @@ evidence, not substitutes for the complete concurrent lookup checks.
 [The retained HTTP follow-up](validation/m7-http-7dc-followup.json) records a
 negative small-response TCP control and a fixed strict-signature CPU control.
 Neither establishes the cause of the preserved full-gate failures.
+
+## Current integration evidence
+
+Local HTTP controls and signature regressions retain the same 250 ms lookup
+bound and every trust check. The latest `749255e` full workspace attempt failed
+two HTTP elapsed/serving cases; separate passing frozen controls do not qualify
+the complete gate. [The phase record](validation/m7-http-749-followup.json)
+separates those facts and retains the unresolved cause. An unavailable or slow
+shared store still falls back to local verification; no timeout, unsigned reply
+or diagnostic timing authorizes a cached proof.

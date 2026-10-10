@@ -48,3 +48,15 @@ corrected. These targeted results do not qualify a full integration gate or
 establish the entire original wall-time failure's cause. Sources, executable/raw
 log hashes, control measurements and exact scope are in
 `m7-shared-signature-cpu-diagnostic.json`.
+
+The later exact `749255e` full gate retained two HTTP failures. The paused-reader
+case again exceeded the unchanged 250 ms bound, with classification taking
+15.683 ms and one CPU tick; substantial intervals preceded classification. The
+status-refresh failure occurred on its first serving lookup, before refresh
+began, and the original assertion lacked result/phase details. That assertion
+now includes the existing bounded diagnostic records without changing its
+required Hit. One later invocation of each exact frozen test passed, but does
+not replace the failed gate or identify transport CPU, scheduling or signature
+work as its cause. [The frozen follow-up record](m7-http-749-followup.json)
+retains each scope and the complete measured phase intervals. No new HTTP
+production change is justified by those two diagnostic passes.
