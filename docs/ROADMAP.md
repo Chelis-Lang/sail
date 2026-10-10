@@ -115,13 +115,21 @@ proof authority. Start with [the walkthrough](proof-repair-walkthrough.md),
 M7 is **not accepted**. The selected source baseline still lacks the required
 physical preparation-memory bound. Corrective graph/decoder/observer candidates
 remain unselected and require complete source qualification and genuine
-previous-revision focus reuse. The latest recorded workspace attempt, frozen
-`749255e`, passed 480/483 tests but failed two HTTP serving controls and the
-original five-second coalescing wait. Subsequent indexed namespace/watch and
-staged SDK changes still need a complete integrated gate. The frozen `b36acc7`
-[installed product build](validation/m7-current-product-build.json) completed and
-the [hardened MCP transport smoke](validation/m7-installed-mcp-b36.md) passed its
-five controls. Its full gate is still running; no gate pass is recorded.
+previous-revision focus reuse. The complete frozen `b36acc7`
+[workspace gate](../bench/validation/m7-linux-gate-b36-emulated-2026-10-11.json)
+passes all 485 tests and the remaining gate steps. The complete
+[solver attempt](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
+passes all 37 real-solver controls but fails the new fixture-dependent timing
+diagnostic; its setup correction still requires a fresh complete run. The
+[installed product build](validation/m7-current-product-build.json) and
+[hardened MCP transport smoke](validation/m7-installed-mcp-b36.md) pass their
+recorded scopes. The bounded source candidate now builds with all 13 runtime
+artifacts and 2,060 vstd obligations, but its original cross-edit test refuses
+span provenance for an unchanged function after an unrelated module body edit.
+All early qualification controls and complete outcomes pass; later full
+human-eval qualification was not reached. See the
+[retained source failure](../engine/verus/candidates/decode-ownership/scoped-query-qualification-failure.json).
+The candidate remains unselected while the mismatch is investigated.
 Complete default standard validation, real-project reader census and both
 twofold repair-loop gains remain pending.
 
@@ -134,7 +142,7 @@ sets the unchanged required gates and artifact provenance.
 
 Priority order for completing this milestone:
 
-1. Regain a complete passing current workspace gate, retain real-solver/fault
+1. Keep the complete workspace gate green, correct the solver fixture seam and retain real-solver/fault
    evidence, finish the current CLI/MCP suite without changing assertions or deadlines,
    and finish full default standard corpus validation. The original shared-entry
    timeout's cause remains unresolved despite the subsequent complete suite pass.

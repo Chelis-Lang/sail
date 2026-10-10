@@ -440,11 +440,15 @@ mod tests {
         );
     }
     #[test]
-    #[ignore = "local diagnostic measurement over an explicitly supplied proc fixture"]
+    #[ignore = "classifier timing diagnostic over retained or explicitly supplied proc bytes"]
     fn measured_frozen_global_rows_preserve_classifier_results() {
-        let path = std::env::var_os("SAIL_LEASE_ROWS_FIXTURE")
-            .unwrap_or_else(|| unreachable!("fixture path required"));
-        let bytes = std::fs::read(path).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        // The solver gate executes all ignored tests. Use the original captured
+        // proc bytes there too; an explicit fixture still supports local census
+        // measurements and must fail if it cannot be read.
+        let bytes = match std::env::var_os("SAIL_LEASE_ROWS_FIXTURE") {
+            Some(path) => std::fs::read(path).unwrap_or_else(|e| unreachable!("fixture:{e}")),
+            None => include_bytes!("../../tests/fixtures/kernel-locks-frozen.txt").to_vec(),
+        };
         assert!(bytes.len() <= usize::try_from(MAX_LOCK_BYTES).unwrap_or(0));
         let text = std::str::from_utf8(&bytes).unwrap_or_else(|e| unreachable!("fixture:{e}"));
         for pid in [0, 7, std::process::id()] {
