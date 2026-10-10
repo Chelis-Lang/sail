@@ -13,6 +13,7 @@ FIXTURES = {
     "success": "proof fn selected(x: int) ensures x + 1 > x { }\nproof fn other(x: int) ensures x == x { }",
     "failed_focus": "proof fn selected(x: int) ensures x > x { }\nproof fn other(x: int) ensures x == x { }",
     "failed_other": "proof fn selected(x: int) ensures x == x { }\nproof fn other(x: int) ensures x > x { }",
+    "rust_frontend_error": "proof fn selected() { }\nfn broken() { let value: u8 = true; }",
     "late_exec": "proof fn selected() { }\n#[verifier::external_body] fn late() { let mut x = 0u64; let a = &mut x; let b = &mut x; *a = *b; }",
     "bitvector": "proof fn selected(x: u64) ensures x & x == x { assert(x & x == x) by(bit_vector); }",
     "recursive": "spec fn count(n: nat) -> nat decreases n { if n == 0 { 0 } else { 1 + count((n-1) as nat) } }\nproof fn selected() ensures count(1) == 1 { }",
@@ -77,9 +78,13 @@ def run(args):
             assert pipe(left) == pipe(right), (name, "full SMT bytes differ", left.name)
         events = [json.loads(line) for line in (work / "events.jsonl").read_text().splitlines()]
         assert events[-1]["event"] == "compiler-sealed", (name, "missing compiler terminal seal")
-        if name not in ["missing_function","ambiguous_function"]:
+        assert events[-1]["payload"]["normal_termination"] is True, (name, "missing normal driver completion")
+        if name not in ["missing_function","ambiguous_function","rust_frontend_error"]:
             assert (work / "focus.json").is_file(), (name, "focused evidence missing")
             assert events.index(next(e for e in events if e["event"] == "phase-finished" and e["phase"] == "focus")) < len(events)-1
+        elif name == "rust_frontend_error":
+            assert not (work / "focus.json").exists(), "frontend failure retained focus evidence"
+            assert engine.returncode != 0 and b"E0308" in engine.stderr, "frontend type error disappeared"
         else:
             assert not (work / "focus.json").exists()
             unavailable = next(e for e in events if e["event"] == "focus-unavailable")
@@ -88,6 +93,7 @@ def run(args):
             assert engine.returncode != 0 and b"E0499" in engine.stderr, "late borrow error disappeared"
         results.append({"fixture": name, "exit_code": engine.returncode, "diagnostics_sha256": hashlib.sha256(engine.stderr).hexdigest(),
                         "full_sessions": [{"name": p.name, "bytes": len(pipe(p)), "input_sha256": hashlib.sha256(pipe(p)).hexdigest()} for p in engine_logs],
+                        "normal_termination": events[-1]["payload"]["normal_termination"],
                         "prepared_hits": sum(e["event"] == "prepared-hit" for e in events)})
         print(name, "matches", "prepared hits", results[-1]["prepared_hits"], flush=True)
     summary = {"version": 1, "machine": platform.platform(), "engine_sha256": sha(pathlib.Path(args.engine)),

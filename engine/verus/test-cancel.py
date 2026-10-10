@@ -69,6 +69,7 @@ child.stdin.close();sys.exit(child.wait())
     assert json.loads(result.stdout)['verification-results']==json.loads(stock.stdout)['verification-results'], 'restart skipped proof'
     frames = [json.loads(line) for line in events.read_text().splitlines()]
     assert frames[-1]['event']=='compiler-sealed', 'restart missing final seal'
+    assert frames[-1]['payload']['normal_termination'] is True, 'restart missing normal completion'
     (root/'summary.json').write_text(json.dumps({'version':1,'engine_verifier_sha256':oracle.sha(pathlib.Path(args.engine).with_name('rust_verify')),'cancel_sealed':False,'restart_exit_code':result.returncode},indent=2)+'\n')
     print('cancel no seal; restart matches stock',flush=True)
 

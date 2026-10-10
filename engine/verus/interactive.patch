@@ -33,10 +33,68 @@ index ca37c9f..e06f253 100644
  indoc = "2.0.7"
  is-terminal = "0.4.17"
 diff --git a/source/rust_verify/src/driver.rs b/source/rust_verify/src/driver.rs
-index 5b4d93a..ff4eac5 100644
+index 5b4d93a..73ed841 100644
 --- a/source/rust_verify/src/driver.rs
 +++ b/source/rust_verify/src/driver.rs
-@@ -302,6 +302,7 @@ pub fn run(
+@@ -26,10 +26,54 @@ fn run_compiler<'a, 'b>(
+         syntax_macro,
+         erase_ghost,
+     );
+-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
++    compiler_result(std::env::var("SAIL_ENGINE").as_deref() == Ok("interactive"), move || {
+         rustc_driver::run_compiler(&rustc_args, verifier)
+-    }));
+-    result.map_err(|_| ())
++    })
++}
++
++// Expected Rust diagnostics unwind with FatalErrorMarker. Internal failures
++// must escape the interactive driver so no completed compiler seal is emitted.
++// The stock driver's historical catch-all behavior remains unchanged.
++fn compiler_result(interactive: bool, run: impl FnOnce()) -> Result<(), ()> {
++    if interactive {
++        rustc_driver::catch_fatal_errors(run).map_err(|_| ())
++    } else {
++        std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)).map_err(|_| ())
++    }
++}
++
++#[cfg(test)]
++mod sail_compiler_result_tests {
++    use super::compiler_result;
++
++    #[test]
++    fn expected_fatal_error_is_a_normal_compiler_failure() {
++        for interactive in [false, true] {
++            let result = compiler_result(interactive, || {
++                std::panic::resume_unwind(Box::new(rustc_errors::FatalErrorMarker));
++            });
++            assert_eq!(result, Err(()));
++        }
++    }
++
++    #[test]
++    fn unexpected_panic_escapes_only_the_interactive_driver() {
++        let stock = compiler_result(false, || panic!("test internal compiler failure"));
++        assert_eq!(stock, Err(()));
++        let mut reached_completion = false;
++        let interactive = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            let _ = compiler_result(true, || panic!("test internal compiler failure"));
++            reached_completion = true;
++        }));
++        assert!(interactive.is_err());
++        assert!(!reached_completion);
++    }
++
++    #[test]
++    fn successful_compiler_returns_normally_in_both_modes() {
++        assert_eq!(compiler_result(false, || {}), Ok(()));
++        assert_eq!(compiler_result(true, || {}), Ok(()));
++    }
+ }
+ 
+ pub fn is_verifying_entire_crate(verifier: &Verifier) -> bool {
+@@ -302,6 +346,7 @@ pub fn run(
          spans: None,
          unresolved_import_deps: std::collections::HashSet::new(),
      };
@@ -44,7 +102,7 @@ index 5b4d93a..ff4eac5 100644
      let status = run_compiler(rustc_args_verify.clone(), true, false, &mut verifier_callbacks);
      let VerifierCallbacksEraseMacro {
          verifier,
-@@ -323,6 +324,7 @@ pub fn run(
+@@ -323,6 +368,7 @@ pub fn run(
      };
  
      if status.is_err() || verifier.encountered_vir_error {
@@ -52,7 +110,7 @@ index 5b4d93a..ff4eac5 100644
          return (
              verifier,
              Stats {
-@@ -340,6 +342,7 @@ pub fn run(
+@@ -340,6 +386,7 @@ pub fn run(
              Ok(())
          } else {
              let do_compile = verifier.compile || verifier.via_cargo_args.is_some();
@@ -60,7 +118,7 @@ index 5b4d93a..ff4eac5 100644
              run_with_erase_macro_compile(rustc_args, do_compile, verifier.args.vstd)
          };
  
-@@ -354,9 +357,11 @@ pub fn run(
+@@ -354,9 +401,11 @@ pub fn run(
  
      // Run borrow checker and compiler with #[exec] (not #[proof])
      if let Err(_) = compile_status {
@@ -73,7 +131,7 @@ index 5b4d93a..ff4eac5 100644
  }
  
 diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
-index 71d4a33..a85d0f4 100644
+index 71d4a33..3881a2c 100644
 --- a/source/rust_verify/src/verifier.rs
 +++ b/source/rust_verify/src/verifier.rs
 @@ -47,6 +47,9 @@ use vir::ast_util::{fun_as_friendly_rust_name, is_visible_to};
@@ -258,7 +316,7 @@ index 71d4a33..a85d0f4 100644
  }
 +
 +pub(crate) fn sail_engine_compiler_started(role:&str) { sail_engine::emit("compiler-started",serde_json::json!({"role":role})); }
-+pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit("phase-finished",serde_json::json!({"success":success})); sail_engine::preparation_summary(); sail_engine::emit("compiler-sealed",serde_json::json!({"success":success})); }
++pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit("phase-finished",serde_json::json!({"success":success})); sail_engine::preparation_summary(); sail_engine::emit("compiler-sealed",serde_json::json!({"success":success,"normal_termination":true})); }
 diff --git a/source/vir/Cargo.toml b/source/vir/Cargo.toml
 index bfc3c2b..636309f 100644
 --- a/source/vir/Cargo.toml

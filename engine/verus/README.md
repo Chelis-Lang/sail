@@ -9,6 +9,18 @@ compiler callback. Each phase creates fresh solver contexts. Full stdout and
 its diagnostics remain authoritative only after deferred errors and the late
 EXEC compilation pass; focused results and progress remain provisional.
 
+The interactive driver catches only the pinned Rust compiler's expected
+`FatalErrorMarker` unwind. Unexpected internal panics resume unwinding and cannot
+reach a compiler seal; ordinary default verification retains its existing
+catch-all behavior. A terminal `compiler-sealed` frame includes
+`payload.normal_termination: true` only on a normal driver path, including
+reported proof, VIR and late EXEC errors. This flag describes completion, not
+success: the full JSON, exit status, selected scope and coherent input checks
+still determine authority. Missing or malformed completion, internal panic,
+signal, or malformed full output requires the stock fallback. The source patch
+and installed runtime identity change; the prepared codec remains version 2
+because no typed lowering representation changed.
+
 ## Prepared lowering checkpoint
 
 The checkpoint sits after fresh global construction, pruning and `Ctx::new`,
