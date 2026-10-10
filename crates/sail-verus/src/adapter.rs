@@ -266,6 +266,14 @@ fn driver() -> Result<ExitCode> {
                 .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &stderr))
                 .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
             let _ = std::fs::remove_file(dir.join("focus.source.json"));
+            for directory in [&logs, &dir.join("provenance")] {
+                if directory.exists() {
+                    std::fs::remove_dir_all(directory)
+                        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+                }
+            }
+            std::fs::create_dir_all(dir.join("provenance"))
+                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
             let output = Command::new(&engine.stock_wrapper)
                 .args(&args)
                 .args([
@@ -455,19 +463,15 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
         &crate::attribution::Provenance::NoCache,
         None,
     );
-    let mut args = runtime.args.clone();
-    args.extend([
-        "--".to_owned(),
-        "--verify-function".to_owned(),
-        function.to_owned(),
-    ]);
-    let report = crate::report::build(&crate::report::Inputs {
-        args: &args,
+    let mut report = crate::report::build(&crate::report::Inputs {
+        args: &runtime.args,
         exit_code: Some(i32::from(
             source["verus"]["verification-results"]["errors"]
                 .as_u64()
                 .unwrap_or(1)
-                > 0,
+                > 0
+                || source["verus"]["verification-results"]["encountered-error"] == true
+                || source["verus"]["verification-results"]["encountered-vir-error"] == true,
         )),
         solver_path: Some(runtime.z3.to_string_lossy().into_owned()),
         solver_sha256: Some(runtime.z3_sha256.clone()),
@@ -475,6 +479,25 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
         attribution: &attr,
         diagnostics: &[],
     });
+    report.diagnostics = source["diagnostics"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(crate::engine_events::diagnostic)
+        .collect();
+    report.command.extend([
+        "--".into(),
+        "--sail-repair-function".into(),
+        function.into(),
+    ]);
+    for krate in &mut report.crates {
+        krate.functions.retain(|item| item.function == function);
+        for item in &mut krate.functions {
+            item.tier = sail_api::output::TierName::Provisional;
+            item.verdict = sail_api::output::VerdictName::Provisional;
+        }
+    }
+    report.summary = sail_api::output::Summary::of(&report.crates);
     json(
         &dir.join("focus.report.json"),
         &crate::engine::FocusTarget {

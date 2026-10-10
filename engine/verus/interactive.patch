@@ -1,8 +1,36 @@
 diff --git a/source/rust_verify/src/driver.rs b/source/rust_verify/src/driver.rs
-index 5b4d93a..de55076 100644
+index 5b4d93a..ff4eac5 100644
 --- a/source/rust_verify/src/driver.rs
 +++ b/source/rust_verify/src/driver.rs
-@@ -357,6 +357,7 @@ pub fn run(
+@@ -302,6 +302,7 @@ pub fn run(
+         spans: None,
+         unresolved_import_deps: std::collections::HashSet::new(),
+     };
++    crate::verifier::sail_engine_compiler_started("ghost");
+     let status = run_compiler(rustc_args_verify.clone(), true, false, &mut verifier_callbacks);
+     let VerifierCallbacksEraseMacro {
+         verifier,
+@@ -323,6 +324,7 @@ pub fn run(
+     };
+ 
+     if status.is_err() || verifier.encountered_vir_error {
++        crate::verifier::sail_engine_sealed(false);
+         return (
+             verifier,
+             Stats {
+@@ -340,6 +342,7 @@ pub fn run(
+             Ok(())
+         } else {
+             let do_compile = verifier.compile || verifier.via_cargo_args.is_some();
++            crate::verifier::sail_engine_compiler_started("exec");
+             run_with_erase_macro_compile(rustc_args, do_compile, verifier.args.vstd)
+         };
+ 
+@@ -354,9 +357,11 @@ pub fn run(
+ 
+     // Run borrow checker and compiler with #[exec] (not #[proof])
+     if let Err(_) = compile_status {
++        crate::verifier::sail_engine_sealed(false);
          return (verifier, stats, Err(()));
      }
  
@@ -11,7 +39,7 @@ index 5b4d93a..de55076 100644
  }
  
 diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
-index 71d4a33..a8e1fb1 100644
+index 71d4a33..bd46051 100644
 --- a/source/rust_verify/src/verifier.rs
 +++ b/source/rust_verify/src/verifier.rs
 @@ -47,6 +47,9 @@ use vir::ast_util::{fun_as_friendly_rust_name, is_visible_to};
@@ -105,15 +133,6 @@ index 71d4a33..a8e1fb1 100644
  
          if self.args.log_all || self.args.log_args.log_vir_simple {
              let mut file = self.create_log_file(None, crate::config::VIR_SIMPLE_FILE_SUFFIX)?;
-@@ -2171,7 +2197,7 @@ impl Verifier {
-                             };
-                             if let Some((_i, bucket_id, task, reporter)) = elm {
-                                 let res = thread_verifier.verify_bucket_outer(
--                                    &reporter,
-+                                    reporter,
-                                     &thread_krate,
-                                     None,
-                                     &bucket_id,
 @@ -2213,7 +2239,6 @@ impl Verifier {
              let mut active_bucket = None;
              let mut num_done = 0;
@@ -176,12 +195,13 @@ index 71d4a33..a8e1fb1 100644
  
          rustc_driver::Compilation::Stop
      }
-@@ -3392,3 +3419,5 @@ impl VerifierCallbacksEraseMacro {
+@@ -3392,3 +3419,6 @@ impl VerifierCallbacksEraseMacro {
          }
      }
  }
 +
-+pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit("compiler-sealed",serde_json::json!({"success":success})); }
++pub(crate) fn sail_engine_compiler_started(role:&str) { sail_engine::emit("compiler-started",serde_json::json!({"role":role})); }
++pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit("phase-finished",serde_json::json!({"success":success})); sail_engine::emit("compiler-sealed",serde_json::json!({"success":success})); }
 diff --git a/source/vir/src/context.rs b/source/vir/src/context.rs
 index eb97120..68f9873 100644
 --- a/source/vir/src/context.rs
@@ -310,9 +330,12 @@ index 860614a..e04dc3f 100644
  pub struct BndInfo {
      pub fun: Fun,
      pub user: Option<BndInfoUser>,
+diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
+new file mode 100644
+index 0000000..a6b7d41
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,149 @@
 +//! Private batch session: all retained spans belong to the active compiler callback.
 +use super::*;
 +use std::cell::RefCell;
@@ -343,8 +366,11 @@ index 860614a..e04dc3f 100644
 +    if !active() { return; }
 +    let Some(path) = std::env::var_os("SAIL_ENGINE_EVENTS") else { return; };
 +    let value = serde_json::json!({"version":1,"phase":if FOCUS.load(Ordering::Relaxed) {"focus"} else {"full"}, "event":kind,"payload":payload});
++    static EMITTER: std::sync::Mutex<()> = std::sync::Mutex::new(());
++    let _guard = EMITTER.lock().unwrap();
 +    if let Ok(mut out) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
-+        let _ = writeln!(out, "{}", value);
++        let mut bytes=serde_json::to_vec(&value).unwrap();bytes.push(b'\n');
++        let _ = out.write_all(&bytes);
 +    }
 +}
 +pub(super) fn diagnostic(message: &ArcDynMessage, level: MessageLevel) {
@@ -373,7 +399,7 @@ index 860614a..e04dc3f 100644
 +    // Cache lifetime is shorter than the live compiler callback; no cross-revision spans.
 +    let bytes = format!("{:p}:{:p}:{:?}:{:?}:{:?}", Arc::as_ptr(v.vir_crate.as_ref().unwrap()),Arc::as_ptr(&v.args),bucket, { let mut funs=v.get_bucket(bucket).funs.iter().map(fun_as_friendly_rust_name).collect::<Vec<_>>();funs.sort();funs }, krate);
 +    let bytes=format!("{bytes}:{}",ctx.sail_baseline());
-+    format!("{:x}", Sha256::digest(bytes.as_bytes()))
++    Sha256::digest(bytes.as_bytes()).iter().map(|byte| format!("{byte:02x}")).collect()
 +}
 +pub(super) fn take_bucket(key: &str) -> Option<(vir::sst::KrateSst,vir::context::Ctx)> {
 +    if key.is_empty() || !active() || !CACHING.load(Ordering::Relaxed) { return None; }
