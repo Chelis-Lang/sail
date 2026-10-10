@@ -429,8 +429,11 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
         ])
         .arg("--target-dir")
         .arg(&paths.target)
-        .arg("--message-format=json-render-diagnostics")
         .args(&config.args[..split])
+        // Cargo-Verus parses relevant selectors only until the first forwarded
+        // Cargo argument. Keep the owned relevant target-dir first and the
+        // irrelevant message format after the caller's unchanged Cargo options.
+        .arg("--message-format=json-render-diagnostics")
         .args(&config.args[split..])
         .env("CARGO", &paths.cargo_alias)
         .env("SAIL_MANAGED_CARGO", &config.cargo)
