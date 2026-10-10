@@ -1,9 +1,9 @@
 {
-  "patch_sha256": "5453ef24613ff2cfc41842568ae34f56632aebaf16b4bd3070559ca23782a8ad",
+  "patch_sha256": "6b367727e3c92468886aed0bb0fa72ac7966ece18f2c85ea95271bc56d2cb758",
   "files": {
     "sail_engine.rs": {
       "before": "130ef2a1fefaa4d211017583d9178cb37a8ed3cf0182e92f3666c87ea4c6ddd5",
-      "after": "aba60b49a48d3b9e11a8265ef8922e9d05ce900779138b635f2e62963489d9a3"
+      "after": "73856e29996420f4b9f9cecccde3c39399a20c8e8ef2ba0a16153ff13d903944"
     },
     "verifier.rs": {
       "before": "55a7af0b6c382e8c65dae74524412c4aa574507a078973a8b43165318c955e53",
@@ -20,10 +20,13 @@
       "serde_json": "1.0.151",
       "macro_before_definition": "compiled",
       "scope": "exact observer helpers; real MessageX fixture pending combined RustVerify build",
-      "test_seconds": 0.26,
+      "test_seconds": 0.21,
       "strict_clippy": "passed",
-      "clippy_seconds": 0.47,
-      "module_layout": "verifier::sail_engine, with sibling verifier macro invocation"
+      "clippy_seconds": 1.67,
+      "module_layout": "verifier::sail_engine, with sibling verifier macro invocation",
+      "serde_json_features": [
+        "preserve_order"
+      ]
     },
     "combined_vir_tests_before_observer": {
       "passed": 26,
@@ -40,6 +43,14 @@
       "source_patch_sha256": "b6da2aaf376c5d43bdb0e0f7da14bd3adb2dcdc3ef45cd5020e931fbe661e585",
       "original_helper_layout": "root sail_engine module; insufficient integration coverage",
       "corrected_driver_validation": "pending"
+    },
+    "second_combined_rust_verify_tests": {
+      "passed": 21,
+      "failed": 1,
+      "source_patch": "d3cbaf",
+      "failure": "borrowed_map_and_diagnostic_shape_matches_the_existing_bytes: actual preserve_order feature exposed sorted-field mismatch",
+      "correction": "borrowed field list preserves literal insertion order, validates duplicate keys before map serialization; top-level declaration order matches original json!",
+      "corrected_combined_tests": "pending"
     }
   },
   "serializer_audit": {
