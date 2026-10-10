@@ -12,7 +12,26 @@ without it:
 SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all
 ```
 
-It takes about 9 seconds on an M-series Mac.
+Earlier host measurements completed this suite in about nine seconds. Current
+runtime depends on the platform and workload; a solver-suite timeout remains
+under investigation below.
+
+## Retained unresolved timeout
+
+The integrated Linux run at source `62ad095` passed 36 of 37 solver checks, but
+`unverifiable_shared_entries_never_change_an_answer` exceeded the unchanged
+180-second CI limit and was terminated after 190.016 seconds. Its cause is not
+yet established; the earlier successful scenario outcomes below do not make
+this latest run a pass.
+
+Read-only inspection of the preserved scratch state showed completed forged,
+untrusted-signer and other-solver stores with local entries. The platform store
+had been rewritten, but its local cache held only the trust key; the truncation
+case had not started. This narrows the unfinished phase without identifying a
+production cause. No bound was raised and no check was removed. The targeted
+diagnostic records case/round boundaries and, if the existing 60-second session
+bound expires, the exact owned child tree, thread wait states and output size.
+It does not read credentials or process environments.
 
 ## How faults are injected
 
