@@ -130,18 +130,19 @@ jobs:
     # Preserve the required check name and reject failed, cancelled or skipped phases.
     name: End to end
     if: ${{ always() }}
-    needs: [e2e-legacy, e2e-managed]
+    needs: [e2e-legacy, e2e-managed, e2e-repair]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Require successful execution of both end-to-end phases
+      - name: Require successful execution of all end-to-end phases
         env:
           LEGACY: ${{ needs.e2e-legacy.result }}
           MANAGED: ${{ needs.e2e-managed.result }}
-        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED"
+          REPAIR: ${{ needs.e2e-repair.result }}
+        run: bash ci/check-e2e.sh "$LEGACY" "$MANAGED" "$REPAIR"
 
   e2e-legacy:
     # `sail verify` against `cargo verus verify` on a fresh project.
@@ -196,6 +197,43 @@ jobs:
         with:
           name: managed-acceptance
           path: ${{ runner.temp }}/managed-acceptance
+          if-no-files-found: ignore
+
+  e2e-repair:
+    # Focused evidence, full acceptance, late compiler errors and CLI/MCP tools.
+    name: End to end (repair)
+    needs: [no-ai-authorship, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Cache pinned fixture dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/sail/corpus
+          key: sail-corpus-${{ hashFiles('corpus/corpus.toml') }}
+      - run: ci/run.sh e2e repair
+        env:
+          SAIL_REPAIR_ACCEPTANCE_OUT: ${{ runner.temp }}/repair-acceptance
+      - name: Retain actual repair evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repair-acceptance
+          path: ${{ runner.temp }}/repair-acceptance
           if-no-files-found: ignore
 
   conformance:

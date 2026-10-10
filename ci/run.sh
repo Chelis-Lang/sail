@@ -7,14 +7,15 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   e2e [legacy|managed] Run both phases by default; CI runs them in parallel.
+#   e2e [legacy|managed|repair] Run all phases by default; CI runs them in parallel.
 #                        `sail verify` vs `cargo verus verify` on a fresh
 #                        project, cold and warm: identical output and exit;
 #                        then `sail verify --output json`: unchanged stderr
 #                        and exit, a schema-v1 document agreeing with
 #                        Verus's own --output-json; then one `verify` call
 #                        through `sail mcp`, agreeing with that document;
-#                        managed receipts, durable jobs and asynchronous MCP
+#                        managed receipts, durable jobs and asynchronous MCP;
+#                        repair CLI/MCP against a validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
 #                        cache on (fill, then warm). `pr` limits the fast
@@ -89,17 +90,17 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|repair' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed" >&2; exit 2 ;;
+      full|legacy|managed|repair) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair" >&2; exit 2 ;;
     esac
     release_build
     sail="$PWD/target/release/sail"
     sail_managed_test="$PWD/ci/test-managed.py"
-    if [ "$phase" != managed ]; then
+    if [ "$phase" = full ] || [ "$phase" = legacy ]; then
       cargo build --release --locked -p sail-cli --example check_output --example check_mcp
       check_output="$PWD/target/release/examples/check_output"
       check_mcp="$PWD/target/release/examples/check_mcp"
@@ -173,10 +174,22 @@ RS
       "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
       bash "$sail_portfolio_test"
     fi
-    if [ "$phase" != legacy ]; then
+    if [ "$phase" = full ] || [ "$phase" = managed ]; then
       # Bounded complete-report receipts: reuse, missing evidence and a failing
       # proof edit with restored timestamps, compared with the pinned Verus.
       python3 "$sail_managed_test" "$sail"
+    fi
+    if [ "$phase" = full ] || [ "$phase" = repair ]; then
+      : "${SAIL_ENGINE_BUILD:?repair acceptance requires the validated prebuilt engine}"
+      release_build -p sail-conformance
+      # Fetch pinned source for Cargo's ordinary builtin/macro dependencies.
+      # The engine runtime comes from the image; this never builds Verus.
+      ./target/release/sail-conformance fetch --tier fast --project verus-examples
+      sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-426d8b01e7ff"
+      python3 "$PWD/ci/test-repair.py" --sail "$sail" --engine-build "$SAIL_ENGINE_BUILD" \
+        --verus-source "$sail_repair_source" \
+        --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}" \
+        --environment-label "Linux x86-64 prebuilt-engine CI/local container"
     fi
     ;;
 
