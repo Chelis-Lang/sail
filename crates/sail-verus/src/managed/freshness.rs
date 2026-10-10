@@ -1,5 +1,5 @@
-//! Bounded freshness projections: mutable contents are rehashed on every read;
-//! expensive runtime digests are reused only under Linux kernel read leases.
+//! Bounded freshness projections: exact input and runtime digests are retained
+//! only within uninterrupted Linux kernel lease and namespace-owner generations.
 
 use super::{InputSnapshot, runner};
 #[cfg(target_os = "linux")]
@@ -133,8 +133,11 @@ impl Request {
             // environment to this owner. Native namespace coverage spans every
             // package/configuration ancestor; the retained leases cover every
             // content inode. Any uncertainty discards the owner and recollects.
-            // Rehash bytes each read, rather than rewalking the guarded namespace.
-            let snapshot = validation.inputs.rehash_guarded_inventory();
+            // The cold fill acquired all leases before hashing these exact
+            // input bytes. Both barriers certify that the same native namespace
+            // and inode owner still protects those digests; no timestamp or
+            // elapsed-time cache authorizes their reuse.
+            let snapshot = validation.inputs.clone();
             // Record the conservative overlap boundary before final validation.
             // Publication can be delayed by mutex contention: its later time
             // must never admit a reader that started after this validation.
@@ -157,9 +160,10 @@ impl Request {
     }
 }
 
-/// A process-local bounded freshness index. Mutable inputs are content-hashed
-/// for every read. Only continuously held kernel read leases authorize runtime
-/// digest reuse; inotify alone cannot observe existing writable mmap mappings.
+/// A process-local bounded freshness index. Inputs are content-hashed after
+/// acquiring native coverage and kernel read leases. Only that uninterrupted
+/// owner generation authorizes digest reuse; inotify alone cannot observe
+/// existing writable mmap mappings.
 /// Restart, unsupported coverage, helper loss and conflicting writers revalidate.
 #[derive(Clone, Default)]
 pub struct FreshnessIndex {
@@ -206,8 +210,9 @@ impl FreshnessIndex {
         entries.insert(key.to_owned(), Arc::clone(&entry));
         Some(entry)
     }
-    /// Reads mutable contents after a synchronous native event barrier, reusing
-    /// only leased runtime digests. Uncertain coverage returns `None` and starts
+    /// Certifies bound input and runtime digests through synchronous native
+    /// barriers and continuously held read leases. Uncertain coverage returns
+    /// `None` and starts
     /// bounded background revalidation. Full runtime hashes never hold service
     /// request locks. Other platforms retain conservative content revalidation.
     #[must_use]
@@ -798,6 +803,96 @@ mod tests {
         );
         assert!(child.wait().is_ok_and(|s| s.success()));
         assert!(fixture.establish(&FreshnessIndex::default()).complete);
+    }
+    #[test]
+    fn transient_source_mmap_restore_invalidates_retained_byte_digests() {
+        let fixture = Fixture::new("transient-source-mmap");
+        let index = FreshnessIndex::default();
+        let original = fixture.establish(&index);
+        assert!(original.complete);
+        assert_eq!(
+            fixture.inspect(&index).map(|s| s.revision),
+            Some(original.revision.clone())
+        );
+        let source = fixture.workspace.join("src/lib.rs");
+        let status = std::process::Command::new("python3")
+            .args(["-I", "-c", "import mmap,os,sys; p=sys.argv[1]; st=os.stat(p); f=os.open(p,os.O_RDWR); m=mmap.mmap(f,0); os.close(f); original=m[:]; m[:]=b'modified'; m.flush(); m[:]=original; m.flush(); m.close(); os.utime(p,ns=(st.st_atime_ns,st.st_mtime_ns))"])
+            .arg(&source).status().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(status.success());
+        assert_eq!(std::fs::read(&source).unwrap_or_default(), b"original");
+        assert!(
+            fixture.inspect(&index).is_none(),
+            "restored bytes cannot revive the broken owner"
+        );
+        let fresh = fixture.establish(&index);
+        assert!(fresh.complete);
+        assert_eq!(
+            fresh.revision, original.revision,
+            "new independent owner hashes restored bytes"
+        );
+    }
+    #[test]
+    fn outside_hardlink_write_invalidates_retained_source_digest() {
+        let fixture = Fixture::new("outside-hardlink");
+        let source = fixture.workspace.join("src/lib.rs");
+        let outside = fixture.root.with_extension("outside.rs");
+        assert!(std::fs::hard_link(&source, &outside).is_ok());
+        let index = FreshnessIndex::default();
+        let original = fixture.establish(&index);
+        assert!(original.complete);
+        let file = std::fs::File::open(&source).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let modified = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(std::fs::write(&outside, b"modified").is_ok());
+        assert!(
+            file.set_times(std::fs::FileTimes::new().set_modified(modified))
+                .is_ok()
+        );
+        assert!(fixture.inspect(&index).is_none());
+        let fresh = fixture.establish(&index);
+        assert!(fresh.complete);
+        assert_ne!(fresh.revision, original.revision);
+        assert!(std::fs::remove_file(outside).is_ok());
+    }
+    #[test]
+    fn helper_loss_never_revives_an_established_source_digest() {
+        let fixture = Fixture::new("helper-loss");
+        let index = FreshnessIndex::default();
+        assert!(fixture.establish(&index).complete);
+        assert!(fixture.inspect(&index).is_some());
+        let request = FreshnessIndex::request(
+            &fixture.cache,
+            &fixture.workspace,
+            &fixture.context,
+            &fixture.environment,
+        )
+        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let entry = index
+            .entry(&request.key())
+            .unwrap_or_else(|| unreachable!("fixture"));
+        let runtime = entry
+            .lock()
+            .ok()
+            .and_then(|s| s.runtime.clone())
+            .unwrap_or_else(|| unreachable!("fixture"));
+        {
+            let mut slot = runtime
+                .lock()
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            assert!(
+                slot.runtime
+                    .as_mut()
+                    .is_some_and(|r| r.lease.stop_owner_for_test().is_ok())
+            );
+        }
+        assert!(fixture.inspect(&index).is_none());
+        let slot = runtime
+            .lock()
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(slot.runtime.is_none());
+        assert!(slot.coherent.is_none());
     }
     #[test]
     fn restored_write_while_readers_wait_never_reuses_previous_coherent_snapshot() {

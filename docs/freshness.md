@@ -25,9 +25,11 @@ A projection combines two independent mechanisms:
 
 - Kernel read leases on every existing declared regular source, configuration,
   build and runtime file. The leases are acquired before baseline hashes and must
-  still be held at each read barrier. Expensive runtime digests can then be reused;
-  mutable source/configuration/build contents are nevertheless rehashed on each
-  inspection. A conflicting write or truncate releases the projection immediately.
+  still be held at each read barrier. Those exact-byte input and runtime digests
+  can then be reused within that same continuously protected owner generation.
+  Digests obtained before lease acquisition are never reused. A conflicting write
+  or truncate releases the projection immediately; a new owner recollects and
+  rehashes the inputs before becoming eligible again.
 - Direct native watches for files, directories, aliases, ancestors and absent
   configuration paths. They detect replacement, newly created inputs and transient
   configuration. Reads drain the kernel queue synchronously; no callback-delivery

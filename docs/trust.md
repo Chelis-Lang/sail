@@ -196,16 +196,19 @@ remain provisional until a complete successful full result is Current.
 ## Retained freshness and kernel lease ownership
 
 On Linux, retaining expensive runtime digests requires continuously held kernel
-read leases, native event coverage, and synchronous barriers. Mutable input
-contents are rehashed for reads. A writable mapping, conflicting writer, helper
+read leases, native event coverage, and synchronous barriers. Input bytes are
+hashed only after those leases are acquired. Their digests can be retained while
+that exact owner continuously protects every content inode and namespace binding.
+A writable mapping, conflicting writer, helper
 loss, timeout or uncertain path coverage makes current evidence unavailable;
 historical proof output remains available and is never relabelled Current.
 The exact sorted input-file inventory can be retained only within that same
-continuous lease and namespace-observer generation. Every mutable file is still
-content-hashed on each read with the original path encoding. New files, removals,
-replacements, symlink changes, absent configurations and changed declaration
-records invalidate the inventory and require a full recollection; no byte digest
-or elapsed-time validity is reused.
+continuous lease and namespace-observer generation. Every read validates its
+owner before and after selecting the captured exact-byte revision. New files,
+removals, replacements, symlink changes, absent configurations and changed
+declaration records invalidate the inventory and require a full recollection
+and content hashing under a new owner. Digests hashed before lease acquisition
+or belonging to a lost owner are never revived; elapsed time grants no validity.
 
 Linux requires the lease holder to own the file or hold the kernel lease
 capability. The helper also leases its resolved Python interpreter, loaded
