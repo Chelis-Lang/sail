@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "scope": "Ordinary compiler-cache setup only, no copied proof receipts or runtime artifacts",
+  "old_feature": "04b4b6a9986621d4",
+  "new_feature": "c05a9b2563347605",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "patch_sha256": "1aae80f1cbf3f476d14bb19587f321d5818749a665c847c9b48046f073cc8808",
+  "bytes": 776608379,
+  "elapsed_seconds": 81.65893595400121,
+  "hardlinks": false,
+  "runtime_files_copied": false,
+  "proof_receipts_copied": false,
+  "vir_rust_verify_forced_recompile": true,
+  "files_count": 2414,
+  "changed_crate_paths_skipped": 46,
+  "all_copied_source_destination_sha256_equal": true,
+  "raw_inventory_sha256": "53e5dab06f84e27de3dfbbb2863118efaaa35314a18d3d5f40229fb4193c2e23",
+  "raw_inventory_bytes": 700827
+}
