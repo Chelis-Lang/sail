@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_commit": "62ad095f0f6b7d6ddda59404582f0bf4552d3ee5",
+  "environment": "Linux amd64 Docker emulation on macOS arm64; concurrent ordinary human-eval dependency/proof setup",
+  "command": "ci/run.sh solver",
+  "build_jobs": 2,
+  "nextest_threads": 2,
+  "tests": 37,
+  "passed": 36,
+  "timed_out": 1,
+  "exit_code": 100,
+  "duration_seconds": 252.541,
+  "failure": {
+    "test": "unverifiable_shared_entries_never_change_an_answer",
+    "status": "TIMEOUT",
+    "elapsed_seconds": 190.016,
+    "configured_test_timeout_seconds": 180
+  },
+  "limits_changed": false,
+  "log": {
+    "sha256": "b2888d4251b0b770a84aebd64ac3d2fc01e44fec2db1f15a0ef6eb320a5b50b6",
+    "bytes": 4816
+  },
+  "acceptance": false,
+  "interpretation": "The workspace gate passed separately; this real-solver suite failed. Cause of the timeout is not established. No Docker interruption was observed for this run; it remains a failure requiring diagnosis."
+}
