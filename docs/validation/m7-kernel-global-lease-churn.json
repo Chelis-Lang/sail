@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load",
+  "kind": "kernel-only availability reproduction; no proof or benchmark claim",
+  "stable_owner_read_leases": 400,
+  "global_owner_rows": 406,
+  "all_initially_bound_fdinfo_active_read": true,
+  "elapsed_s": 0.01632533399993008,
+  "iterations_before_mismatch": 0,
+  "writer_active": false,
+  "stable_owner_reacquired_leases": false,
+  "raw": {
+    "bytes": 82194,
+    "sha256": "77a9816cc18b2d3372be2242c00f2378a7d2c06cf65b2807fd95728f584b279f"
+  },
+  "reason": "Global proc seq-file enumeration changed across buffer refills during unrelated read-lease acquisition/release. Exact global inventory refused reuse safely. Exact fdinfo validation can independently certify the immutable initially bound generation within the original sweep budget."
+}

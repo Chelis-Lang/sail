@@ -262,8 +262,15 @@ for a scheduled Python acknowledgement. At cold acquisition, the helper reports
 its complete descriptor inventory; Sail binds each descriptor to the requested
 device/inode and its kernel lease entry. Read barriers require the exact lease
 multiset for that PID, all `LEASE ACTIVE READ`, plus the same live, non-stopped
-process start time before and after the sweep. Missing, breaking, unexpected,
-malformed, unavailable or over-budget state permanently invalidates that owner.
+process start time before and after the sweep. Global seq-file inventory counts
+can change across buffer refills when unrelated owners add or remove leases.
+If otherwise valid ACTIVE rows disagree with the initial inventory, Sail checks
+each initially bound descriptor through kernel `fdinfo`, whose lease rows are
+produced under the inode lease lock. The fallback shares the same total sweep
+budget and byte cap. Each descriptor must still carry its one exact owner,
+device/inode and ACTIVE READ lease. Known breaking or malformed owner state
+does not use the fallback. Missing, breaking, unexpected, malformed, unavailable
+or over-budget final state permanently invalidates that owner.
 The sweep retains a 50 ms work budget and a 2 MiB byte cap. These are fail-closed
 limits, not a promise that a blocked kernel read can be interrupted on that clock.
 Public job RPC and reader acceptance deadlines are unchanged.
@@ -278,3 +285,12 @@ barriers. SIGIO immediately closes the helper's descriptors so writers proceed;
 owner loss never authorizes reuse. This argument follows the kernel's
 [`LEASE ACTIVE`/`BREAKING` status implementation and lease transitions](https://github.com/torvalds/linux/blob/f155f3b3ed1af23884ffaffe8a669722b87ac9d6/fs/locks.c)
 and the documented [`/proc/locks` interface](https://man7.org/linux/man-pages/man5/proc_locks.5.html).
+
+A local kernel-only churn reproduction held 400 unchanged read leases while an
+unrelated owner repeatedly acquired and released its own leases. A global
+read listed 406 rows for the unchanged owner while all 400 individually bound
+`fdinfo` entries remained ACTIVE READ. This is an availability refusal, not
+a reason to assume global seq-file snapshots are atomic. Exact descriptor
+validation uses the same monotonic-generation argument and never retries a
+generation after it has failed. Real write and mmap mutate-and-restore tests
+force this path and still invalidate reuse.
