@@ -1,0 +1,503 @@
+{
+  "version": 1,
+  "kind": "reader_setup_failure",
+  "scope": "Reader-stage setup only; no latency, proof or overall M7 acceptance",
+  "execution": "Linux amd64 Docker under emulation on macOS arm64; shared development load",
+  "product": {
+    "files": {
+      "sail": {
+        "bytes": 72196512,
+        "sha256": "7e4f771901aa6542bf28ae4dd6b346fab9846e29e66fc06d2f0631e9a12ecd1d"
+      },
+      "sail-z3": {
+        "bytes": 10288096,
+        "sha256": "9259e4eda02fa0c3cf55f4773e788bc3b35fcc38a9f38260b423a16c2bd76623"
+      }
+    },
+    "scope": "Reader-stage evidence only; genuine new proofs; selected b346 runtime. Does not qualify M7 source/physical memory/performance overall.",
+    "source_archive_sha256": "06b0743fce31602c4c608986f282cf2809d10704fda5dc219e98096ce6d6d6f3",
+    "source_commit": "8e09eaa76359ea5c14edfa1bf1825d415b489dfe"
+  },
+  "collectors": {
+    "execution": "Linux amd64 Docker under emulation on macOS arm64; shared development load",
+    "files": {
+      "job_read_bench": {
+        "bytes": 12008608,
+        "sha256": "0114cb141769ce13732a22026ccf3c3efa01b108515af28c752746ddad9158bb"
+      },
+      "python-reader-probe.py": {
+        "bytes": 11877,
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+      }
+    },
+    "scope": "Additive acceptance collectors only; actual product freeze remains1dc. Exact selected proof crate, continuing compiler PID/start identity, monotonic ancestry; original200ms p95 and5sRPC unchanged.",
+    "source_archive_sha256": "70ea39bcaf68792da5be9d926a42c51dac24760bba6f3e5e899444dd1d9eeab0",
+    "source_commit": "6ca0cbef588b6cf1bfafcb9b2308f41016439fd7",
+    "tests": {
+      "host_clippy": true,
+      "host_python": 6,
+      "linux_rust": 10
+    }
+  },
+  "controller": {
+    "source": "5a406b4b64dd5c4e66971be8f47af870fa30c963",
+    "scope": "Reader stage with frozen 8e09eaa product and selected b346 runtime; no overall M7/source qualification claim",
+    "files": {
+      "scripts/m7-reader-acceptance.py": "e96ab8177bb396c9994b3a2681046a434d35d6d32e0723027ea294769288825f",
+      "scripts/m7-repair-bench.py": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33",
+      "scripts/m7-retained-jobs-acceptance.py": "28a3a8abf756c5b7db82f8228f15862fed44da498df45c8e9af0755ad7944bae",
+      "scripts/m7-job-read-bench.py": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+      "corpus/repair-edits.json": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6"
+    },
+    "budgets": {
+      "setup_per_invocation_s": 600,
+      "collector_process_s": 600,
+      "rpc_s": 5,
+      "cli_s": 30,
+      "clients": 4,
+      "samples": 200,
+      "p95_limit_ms": 200
+    }
+  },
+  "runtime": {
+    "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+    "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+    "verifier_sha256": "670e3a437474e7bc0dd53df0f070da5fd48de508954eb58c7c1e5698bfc43e58"
+  },
+  "commands": [
+    {
+      "deadline_s": 30,
+      "exit_code": 0,
+      "measured_reader_latency": false,
+      "stage": "engine-install",
+      "wall_ms": 2768.5502099993755
+    },
+    {
+      "deadline_s": 30,
+      "exit_code": 0,
+      "measured_reader_latency": false,
+      "stage": "source-metadata",
+      "wall_ms": 1043.2957089997217
+    },
+    {
+      "deadline_s": 30,
+      "exit_code": 0,
+      "measured_reader_latency": false,
+      "stage": "baseline-metadata",
+      "wall_ms": 1445.26125000084
+    },
+    {
+      "deadline_s": 600.0,
+      "exit_code": -2,
+      "measured_reader_latency": false,
+      "stage": "baseline-ordinary-full",
+      "wall_ms": 600227.1316899996
+    }
+  ],
+  "failure": {
+    "stage": "baseline-ordinary-full",
+    "type": "TimeoutExpired",
+    "deadline_s": 600,
+    "controller_exit_code": 1,
+    "child_exit_code": -2,
+    "wall_ms": 600227.1316899996
+  },
+  "proofs_admitted": 0,
+  "python_census_attempted": false,
+  "rust_census_attempted": false,
+  "retained_cli_mcp_attempted": false,
+  "cleanup": {
+    "daemon_exit_code": 0,
+    "daemon_stop_wall_ms": 124.52729100004944,
+    "cleanup_errors": [],
+    "original_process_group_live_descendants": 0,
+    "init_owned_zombies": 18
+  },
+  "cpu_witness": {
+    "ticks_per_second": 100,
+    "initial_processes": [
+      {
+        "pid": 112485,
+        "parent": 112296,
+        "state": "S",
+        "start_ticks": 607853,
+        "utime_ticks": 2481,
+        "stime_ticks": 431,
+        "comm": "sail"
+      },
+      {
+        "pid": 112702,
+        "parent": 112485,
+        "state": "S",
+        "start_ticks": 610440,
+        "utime_ticks": 20,
+        "stime_ticks": 1,
+        "comm": "python3"
+      },
+      {
+        "pid": 112723,
+        "parent": 112485,
+        "state": "S",
+        "start_ticks": 612865,
+        "utime_ticks": 44,
+        "stime_ticks": 7,
+        "comm": "python3"
+      },
+      {
+        "pid": 112734,
+        "parent": 112485,
+        "state": "S",
+        "start_ticks": 613096,
+        "utime_ticks": 10,
+        "stime_ticks": 2,
+        "comm": "cargo-verus"
+      },
+      {
+        "pid": 112753,
+        "parent": 112734,
+        "state": "S",
+        "start_ticks": 613253,
+        "utime_ticks": 4,
+        "stime_ticks": 0,
+        "comm": "sail-cargo"
+      },
+      {
+        "pid": 112754,
+        "parent": 112753,
+        "state": "S",
+        "start_ticks": 613261,
+        "utime_ticks": 121,
+        "stime_ticks": 36,
+        "comm": "cargo"
+      },
+      {
+        "pid": 114307,
+        "parent": 112754,
+        "state": "S",
+        "start_ticks": 625647,
+        "utime_ticks": 5,
+        "stime_ticks": 0,
+        "comm": "sail-verus-driv"
+      },
+      {
+        "pid": 114308,
+        "parent": 114307,
+        "state": "S",
+        "start_ticks": 625653,
+        "utime_ticks": 13257,
+        "stime_ticks": 1950,
+        "comm": "rust_verify"
+      },
+      {
+        "pid": 114398,
+        "parent": 114308,
+        "state": "S",
+        "start_ticks": 636594,
+        "utime_ticks": 48,
+        "stime_ticks": 36,
+        "comm": "sail-z3"
+      },
+      {
+        "pid": 114444,
+        "parent": 114398,
+        "state": "R",
+        "start_ticks": 636818,
+        "utime_ticks": 1742,
+        "stime_ticks": 43,
+        "comm": "z3"
+      },
+      {
+        "pid": 115068,
+        "parent": 114308,
+        "state": "S",
+        "start_ticks": 639767,
+        "utime_ticks": 15,
+        "stime_ticks": 15,
+        "comm": "sail-z3"
+      },
+      {
+        "pid": 115076,
+        "parent": 115068,
+        "state": "R",
+        "start_ticks": 639835,
+        "utime_ticks": 104,
+        "stime_ticks": 16,
+        "comm": "z3"
+      },
+      {
+        "pid": 115085,
+        "parent": 114308,
+        "state": "S",
+        "start_ticks": 640051,
+        "utime_ticks": 5,
+        "stime_ticks": 11,
+        "comm": "sail-z3"
+      },
+      {
+        "pid": 115088,
+        "parent": 114308,
+        "state": "S",
+        "start_ticks": 640086,
+        "utime_ticks": 7,
+        "stime_ticks": 15,
+        "comm": "sail-z3"
+      }
+    ],
+    "terminal_processes": [
+      {
+        "pid": 112702,
+        "parent": 1,
+        "state": "Z",
+        "comm": "python3",
+        "user_ticks": 28,
+        "system_ticks": 3,
+        "start_ticks": 610440
+      },
+      {
+        "pid": 112723,
+        "parent": 1,
+        "state": "Z",
+        "comm": "python3",
+        "user_ticks": 63,
+        "system_ticks": 39,
+        "start_ticks": 612865
+      },
+      {
+        "pid": 112734,
+        "parent": 1,
+        "state": "Z",
+        "comm": "cargo-verus",
+        "user_ticks": 10,
+        "system_ticks": 2,
+        "start_ticks": 613096
+      },
+      {
+        "pid": 112753,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-cargo",
+        "user_ticks": 7,
+        "system_ticks": 1,
+        "start_ticks": 613253
+      },
+      {
+        "pid": 112754,
+        "parent": 1,
+        "state": "Z",
+        "comm": "cargo",
+        "user_ticks": 131,
+        "system_ticks": 45,
+        "start_ticks": 613261
+      },
+      {
+        "pid": 118185,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-verus-driv",
+        "user_ticks": 5,
+        "system_ticks": 1,
+        "start_ticks": 663838
+      },
+      {
+        "pid": 118186,
+        "parent": 1,
+        "state": "Z",
+        "comm": "rust_verify",
+        "user_ticks": 2624,
+        "system_ticks": 536,
+        "start_ticks": 663844
+      },
+      {
+        "pid": 118777,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-z3",
+        "user_ticks": 9,
+        "system_ticks": 7,
+        "start_ticks": 667705
+      },
+      {
+        "pid": 118780,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-z3",
+        "user_ticks": 9,
+        "system_ticks": 8,
+        "start_ticks": 667715
+      },
+      {
+        "pid": 118785,
+        "parent": 1,
+        "state": "Z",
+        "comm": "z3",
+        "user_ticks": 57,
+        "system_ticks": 7,
+        "start_ticks": 667727
+      },
+      {
+        "pid": 118790,
+        "parent": 1,
+        "state": "Z",
+        "comm": "z3",
+        "user_ticks": 47,
+        "system_ticks": 7,
+        "start_ticks": 667745
+      },
+      {
+        "pid": 118794,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-z3",
+        "user_ticks": 8,
+        "system_ticks": 3,
+        "start_ticks": 667762
+      },
+      {
+        "pid": 118800,
+        "parent": 1,
+        "state": "Z",
+        "comm": "z3",
+        "user_ticks": 51,
+        "system_ticks": 8,
+        "start_ticks": 667785
+      },
+      {
+        "pid": 118803,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-z3",
+        "user_ticks": 12,
+        "system_ticks": 12,
+        "start_ticks": 667800
+      },
+      {
+        "pid": 118807,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-z3",
+        "user_ticks": 8,
+        "system_ticks": 4,
+        "start_ticks": 667824
+      },
+      {
+        "pid": 118811,
+        "parent": 1,
+        "state": "Z",
+        "comm": "z3",
+        "user_ticks": 8,
+        "system_ticks": 1,
+        "start_ticks": 667832
+      },
+      {
+        "pid": 118814,
+        "parent": 1,
+        "state": "Z",
+        "comm": "sail-z3",
+        "user_ticks": 1,
+        "system_ticks": 2,
+        "start_ticks": 667841
+      },
+      {
+        "pid": 118819,
+        "parent": 1,
+        "state": "Z",
+        "comm": "z3",
+        "user_ticks": 2,
+        "system_ticks": 1,
+        "start_ticks": 667850
+      }
+    ],
+    "scope": "Kernel cumulative counters from owned process identities; not proof of the cause or a whole-run CPU census"
+  },
+  "transcript_observations": {
+    "count": 454,
+    "completed_check_responses": {
+      "sat": 0,
+      "unsat": 2151,
+      "unknown": 0
+    },
+    "lasts": {
+      "vstd": {
+        "module": "std_specs__bitsvstd!std_specs.bits.axiom_u64_leading_ones._04",
+        "bytes": 1867,
+        "mtime": 1791662760.407058,
+        "completed_check_responses": {
+          "sat": 0,
+          "unsat": 1,
+          "unknown": 0
+        },
+        "last_rlimit_count": "33218",
+        "last_configured_rlimit": "0",
+        "last_frame_kind": "RESPONSE",
+        "qualification": "Last observed completed check response, not a sealed whole-target verdict"
+      },
+      "human_eval": {
+        "module": "human_eval_026",
+        "bytes": 373089,
+        "mtime": 1791662848.627452,
+        "completed_check_responses": {
+          "sat": 0,
+          "unsat": 1,
+          "unknown": 0
+        },
+        "last_rlimit_count": "132346",
+        "last_configured_rlimit": "0",
+        "last_frame_kind": "QUERY",
+        "qualification": "Last observed completed check response, not a sealed whole-target verdict"
+      }
+    },
+    "scope": "Verus-owned smt_transcript query/response logs; pending logged queries do not establish actual solver-pipe acceptance. Partial checks are not whole-target proof."
+  },
+  "raw": {
+    "archive_sha256": "5b48c80a2be9a8ce19ca6b3c7cf4ec00106b66a4eddc634332591a50109ed6f8",
+    "archive_bytes": 9256901,
+    "raw_bytes": 110559789,
+    "file_count": 1326,
+    "ordinary_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary_stdout_bytes": 0,
+    "ordinary_stderr_sha256": "2d0b1eee9218857e63ed67124df5b3159ee11295cdd781f3734bb2fc1b6f736f",
+    "ordinary_stderr_bytes": 1075,
+    "controller_stderr_sha256": "f9cf081319a4573e805b020b711aa1cb991e1fa945f402ee57206305fe9bb5e6"
+  },
+  "diagnosis": "Setup reached requested HE verification after dependency compilation/verification but produced no final project document. The retained CPU and response witnesses do not establish pure shared-load delay, rlimit exhaustion or a protocol deadlock. No broad repeat or deadline extension was performed.",
+  "completed_dependency": {
+    "file_sha256": "9a9952d81774483f225c29d748eefa060c547337ac62a93165a7cb0ad09ae2ac",
+    "verification-results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "success": true,
+      "verified": 2060,
+      "errors": 0,
+      "is-verifying-entire-crate": true
+    },
+    "times-ms": {
+      "num-threads": 7,
+      "total": 371595,
+      "estimated-cpu-time": 1470129,
+      "total-verify": 1341332
+    },
+    "time_detail_keys": [
+      "verus-build",
+      "num-threads",
+      "total",
+      "estimated-cpu-time",
+      "rust",
+      "verification",
+      "total-verify",
+      "total-verify-module-times",
+      "air",
+      "smt"
+    ],
+    "verus": {
+      "profile": "release",
+      "version": "0.2026.10.04.426d8b0",
+      "platform": {
+        "os": "linux",
+        "arch": "x86_64"
+      },
+      "toolchain": "1.98.1-x86_64-unknown-linux-gnu (overridden by environment variable RUSTUP_TOOLCHAIN)",
+      "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+    },
+    "scope": "Actual complete vstd driver report, not a Current full requested HumanEval project proof"
+  }
+}

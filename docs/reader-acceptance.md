@@ -73,3 +73,11 @@ are not substitutes for actual CLI/MCP or four-reader acceptance.
 
 See [the proof-repair guide](proof-repair.md) for the public commands exercised
 by these workloads.
+
+## Recorded setup failure
+
+The frozen `8e09eaa` reader-stage attempt timed out during ordinary baseline
+preparation at its unchanged 600-second bound. Neither reader census ran. See
+[the retained setup record](validation/m7-reader-entry-setup-timeout.md); this
+failure remains separate from the older live-census latency failures and idle
+retained-job diagnostics.
