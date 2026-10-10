@@ -7,7 +7,8 @@
 //! It starts `<sail> mcp`, sends `initialize`, `notifications/initialized`,
 //! `tools/list` and `tools/call verify {"project_dir": <project-dir>}`, then
 //! closes stdin. It checks that:
-//! - the handshake succeeds and all compatibility and job tools are listed;
+//! - the handshake succeeds and the exact twelve compatibility, job and proof tools
+//!   have the expected input contracts;
 //! - the call succeeds and returns a schema-v1 report;
 //! - every function's verdict and tier equal those in `<sail.json>` (the
 //!   stdout of `sail verify --output json` on the same project), with the
@@ -64,6 +65,72 @@ fn exchange(sail: &str, project: &str) -> Result<Vec<Value>, String> {
     Ok(out)
 }
 
+const TOOL_NAMES: [&str; 12] = [
+    "verify",
+    "counterexample",
+    "cached_result",
+    "fragility",
+    "start_verification",
+    "verification_status",
+    "verification_result",
+    "cancel_verification",
+    "verification_events",
+    "explain_failure",
+    "compare_verification",
+    "start_repair_validation",
+];
+
+fn proof_schemas() -> [(usize, Value); 4] {
+    let string = || json!({"type":"string","minLength":1});
+    [
+        (
+            8,
+            json!({"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"stream_id":string(),"after":{"type":"integer","minimum":0}}}),
+        ),
+        (
+            9,
+            json!({"type":"object","additionalProperties":false,"required":["job_id","package_id","target","kind","function"],"properties":{"job_id":string(),"package_id":string(),"target":string(),"kind":{"type":"string","enum":["lib","bin"]},"function":string(),"obligation":string()}}),
+        ),
+        (
+            10,
+            json!({"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":string()}}),
+        ),
+        (
+            11,
+            json!({"type":"object","additionalProperties":false,"required":["package","kind","function","engine"],"properties":{"project_dir":string(),"package":string(),"kind":{"type":"string","enum":["lib","bin"]},"target":string(),"function":string(),"engine":{"type":"string","enum":["interactive"]},"cargo_args":{"type":"array","items":{"type":"string"}},"verus_args":{"type":"array","items":{"type":"string"}}}}),
+        ),
+    ]
+}
+
+fn check_tools(value: &Value) -> Result<(), String> {
+    let tools = value
+        .as_array()
+        .ok_or("tools/list did not return an array")?;
+    let names = tools
+        .iter()
+        .map(|tool| tool["name"].as_str().ok_or("tool has no string name"))
+        .collect::<Result<Vec<_>, _>>()?;
+    if names != TOOL_NAMES {
+        return Err(format!("unexpected tools: {names:?}"));
+    }
+    for (index, schema) in proof_schemas() {
+        let tool = tools.get(index).ok_or("proof tool missing")?;
+        if tool["inputSchema"] != schema {
+            return Err(format!(
+                "unexpected {} input schema: {}",
+                TOOL_NAMES[index], tool["inputSchema"]
+            ));
+        }
+    }
+    if tools[4]["inputSchema"]["properties"]["engine"]["enum"] != json!(["stock", "interactive"]) {
+        return Err(
+            "start_verification must declare stock and explicit interactive engine modes"
+                .to_owned(),
+        );
+    }
+    Ok(())
+}
+
 fn check(args: &[String]) -> Result<String, String> {
     let [sail, project, expected, out] = args else {
         return Err("usage: check_mcp <sail> <project-dir> <sail.json> <out.json>".to_owned());
@@ -79,27 +146,7 @@ fn check(args: &[String]) -> Result<String, String> {
     if response(1)?["result"]["serverInfo"]["name"] != "sail" {
         return Err(format!("bad initialize response: {}", response(1)?));
     }
-    let tools = response(2)?;
-    let names: Vec<&str> = tools["result"]["tools"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|t| t["name"].as_str())
-        .collect();
-    if names
-        != [
-            "verify",
-            "counterexample",
-            "cached_result",
-            "fragility",
-            "start_verification",
-            "verification_status",
-            "verification_result",
-            "cancel_verification",
-        ]
-    {
-        return Err(format!("unexpected tools: {names:?}"));
-    }
+    check_tools(&response(2)?["result"]["tools"])?;
     let call = response(3)?;
     let result = &call["result"];
     if result["isError"] != false {
@@ -140,5 +187,50 @@ fn main() -> ExitCode {
             eprintln!("check_mcp: {e}");
             ExitCode::FAILURE
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shipped_tools_match_the_exact_public_contract() {
+        assert!(check_tools(&sail_mcp::tools::definitions()).is_ok());
+    }
+
+    #[test]
+    fn extra_missing_or_nameless_tools_are_rejected() {
+        let original = sail_mcp::tools::definitions();
+        let mut extra = original.clone();
+        if let Some(tools) = extra.as_array_mut() {
+            tools.push(json!({"name":"unexpected_tool"}));
+        }
+        assert!(check_tools(&extra).is_err());
+        let mut missing = original.clone();
+        if let Some(tools) = missing.as_array_mut() {
+            tools.pop();
+        }
+        assert!(check_tools(&missing).is_err());
+        let mut nameless = original;
+        nameless[8]["name"] = Value::Null;
+        assert!(check_tools(&nameless).is_err());
+    }
+
+    #[test]
+    fn scoped_identity_engine_and_cursor_contracts_are_required() {
+        let original = sail_mcp::tools::definitions();
+        let mut unscoped = original.clone();
+        unscoped[9]["inputSchema"]["required"] = json!(["job_id", "function"]);
+        assert!(check_tools(&unscoped).is_err());
+        let mut negative_cursor = original.clone();
+        negative_cursor[8]["inputSchema"]["properties"]["after"]["minimum"] = json!(-1);
+        assert!(check_tools(&negative_cursor).is_err());
+        let mut implicit_engine = original.clone();
+        implicit_engine[11]["inputSchema"]["required"] = json!(["package", "kind", "function"]);
+        assert!(check_tools(&implicit_engine).is_err());
+        let mut engine = original;
+        engine[4]["inputSchema"]["properties"]["engine"]["enum"] = json!(["stock"]);
+        assert!(check_tools(&engine).is_err());
     }
 }
