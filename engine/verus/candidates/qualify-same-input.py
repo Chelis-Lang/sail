@@ -27,7 +27,7 @@ def run(args):
     build = pathlib.Path(args.build).absolute()
     manifest_path = build / 'sail-build.json'
     manifest = json.loads(manifest_path.read_text())
-    patch = ROOT / 'candidates/graph-ledger-oracle.patch'
+    patch = pathlib.Path(args.patch).absolute() if args.patch else ROOT / 'candidates/graph-ledger-oracle.patch'
     assert manifest['commit'] == '426d8b01e7ffb910a36c15e1f870ff985bb61eef'
     assert manifest['rust_toolchain'] == '1.98.1'
     assert manifest['features'][0] == 'sail-interactive:' + sha(patch)
@@ -68,6 +68,12 @@ def run(args):
     save()
     stage('private-graph-audit', ['python3', ROOT / 'candidates/audit-graph-ledger.py', '--source', source])
     common = ['--engine', runtime / 'verus', '--stock', args.stock, '--z3', args.z3]
+    if args.private_span_boundary:
+        stage('private-span-audit', ['python3', ROOT / 'candidates/audit-private-span-boundary.py', '--source', source])
+        assert args.old_engine, 'Explicit sealed old runtime required for migration control'
+        stage('old-domain-migration', ['python3', ROOT / 'candidates/test-private-span-migration.py',
+                                      '--engine', runtime / 'verus', '--old-engine', args.old_engine,
+                                      '--z3', args.z3, '--out', out / 'old-domain-migration'])
     if args.hit_controls:
         # Resume only after a separately completed, explicit control sequence
         # against these exact runtime/solver bytes. Preserve its raw files in
@@ -104,9 +110,13 @@ def run(args):
     stage('first-input-delta', ['python3', ROOT / 'candidates/test-key-delta.py',
                               '--engine', runtime / 'verus', '--z3', args.z3,
                               '--project', args.he, '--out', out / 'first-input-delta'])
+    if args.private_span_boundary:
+        stage('previous-revision-focus', ['python3', ROOT / 'candidates/test-private-span-cross-edit.py', *common,
+                                        '--project', args.he, '--patch', patch, '--out', out / 'previous-revision-focus'])
     stage('real-he-same-input', ['python3', ROOT / 'candidates/test-real-he-same-input.py', *common,
                                 '--project', args.he, '--out', out / 'real-he-same-input',
-                                '--other-module-edit', '--timeout', '600'])
+                                '--other-module-edit', '--timeout', '600', '--patch', patch,
+                                *(['--require-edited-focus'] if args.private_span_boundary else [])])
     for name, package, extra in [('vir-tests', 'vir', []), ('air-writer-tests', 'air', ['sail_wire_tests']),
                                  ('driver-tests', 'rust_verify', [])]:
         stage(name, ['nice', '-n', '19', 'cargo', 'test', '--release', '-p', package, '--lib', *extra], source)
@@ -120,4 +130,7 @@ if __name__ == '__main__':
     for name in ['build', 'stock', 'z3', 'he', 'out', 'execution']:
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--hit-controls', help='Resume using an explicit completed same-runtime raw control tree')
+    parser.add_argument('--patch', help='Exact candidate patch matching the sealed source build manifest')
+    parser.add_argument('--private-span-boundary', action='store_true', help='Require routed span audit, old-domain rejection and prior-revision focus restore')
+    parser.add_argument('--old-engine', help='Sealed old2421 runtime for genuine dependency migration controls')
     run(parser.parse_args())

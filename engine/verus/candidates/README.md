@@ -216,3 +216,14 @@ HE/Vest qualification, mandatory stock checks or the two whole-loop performance
 gates. The retained `2421` primary timeout is not assumed solved by this seam.
 A combined runtime build is deliberately pending the decoded preparation
 allocation fix; no aggregate 512 MiB claim is made from these seam tests.
+
+The combined-candidate source pipeline accepts `--patch CANDIDATE.patch
+--private-span-boundary --old-engine OLD2421/verus`. It validates the exact
+sealed patch identity, runs genuine old-domain migration/misfile controls and
+the prior-revision focused body-edit control before complete HE verification.
+Complete HE also requires a focused persistent restore after the edit. The
+migration control reuses identical source and caller context across actual old
+and new runtimes, preserves old entries, checks new keys, then misfiles an
+intact correctly checksummed old payload under new keys and requires a fresh
+proof. These new controls remain unexecuted until the combined ordinarily
+verified runtime is built; Python parsing alone is not qualification.
