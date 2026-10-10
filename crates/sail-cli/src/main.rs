@@ -35,6 +35,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "repair-check",
         "focus a repair, then independently validate its full target",
     ),
+    (
+        "engine",
+        "install or inspect the optional interactive engine",
+    ),
     ("explain", "show exact failure evidence from a retained job"),
     ("baseline", "save and list immutable verification baselines"),
     ("compare", "compare completed jobs or a saved baseline"),
