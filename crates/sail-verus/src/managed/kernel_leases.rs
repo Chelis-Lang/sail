@@ -40,12 +40,16 @@ fn owner(text: &str) -> Option<u64> {
 fn process(pid: u32) -> Option<u64> {
     owner(&std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?)
 }
-fn row(line: &str, pid: u32) -> Option<Option<Key>> {
+enum Row {
+    Other,
+    Active(Key),
+}
+fn row(line: &str, pid: u32) -> Option<Row> {
     let fields: Vec<_> = line.split_whitespace().collect();
     let offset = usize::from(fields.get(1) == Some(&"->"));
     let fields = fields.get(offset..)?;
     if fields.get(4)?.parse::<i64>().ok()? != i64::from(pid) {
-        return Some(None);
+        return Some(Row::Other);
     }
     // Anything else owned by this private helper is an unbound generation.
     if offset != 0
@@ -58,12 +62,12 @@ fn row(line: &str, pid: u32) -> Option<Option<Key>> {
     {
         return None;
     }
-    key(fields.get(5)?).map(Some)
+    key(fields.get(5)?).map(Row::Active)
 }
 fn inventory(text: &str, pid: u32) -> Option<BTreeMap<Key, usize>> {
     let mut found = BTreeMap::new();
     for line in text.lines() {
-        if let Some(key) = row(line, pid)? {
+        if let Row::Active(key) = row(line, pid)? {
             *found.entry(key).or_insert(0) += 1;
         }
     }
@@ -95,7 +99,9 @@ impl Inventory {
             let rows = info.lines().filter_map(|line| line.strip_prefix("lock:\t"));
             let mut count = 0;
             for line in rows {
-                let key = row(line, pid)??;
+                let Row::Active(key) = row(line, pid)? else {
+                    return None;
+                };
                 if key.inode != *inode {
                     return None;
                 }
