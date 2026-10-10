@@ -63,3 +63,14 @@ do not establish a controlled speedup, and this replay cannot explain the
 earlier live census's sustained admission-loss tail. Exact source, binary, raw
 log hashes and all 200 classified samples are retained in
 `m7-reader-entry-coalescing-diagnostic.json`.
+
+The subsequent frozen `749255e` full gate failed the original five-second
+remembered-context coalescing wait, alongside two HTTP cases (480/483 tests
+passed). Its acquisition stage was not captured. One later invocation of the
+exact frozen test binary with existing static freshness tracing passed in
+4.83 seconds. It retained an interrupted fill after the fixture changed
+compiler declarations and a later complete independent establishment. That
+passing trace neither establishes the cause of the earlier timeout nor replaces
+the failed gate. The [exact diagnostic record](m7-coalescing-749-diagnostic.json)
+retains the original failure and distinct traced scope; limits and assertions
+were unchanged.
