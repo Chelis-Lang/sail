@@ -1,0 +1,82 @@
+{
+  "scope": "Immutable current installed product and unchanged collectors; build/setup evidence only",
+  "status": "build-pass; installed-product and live-reader acceptance pending",
+  "product": {
+    "source_commit": "b36acc7ed234e3169f1b546d48658b2c5c99b75e",
+    "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load",
+    "build_jobs": 2,
+    "build": "cargo build --release --locked -p sail-cli -p sail-shim --bins",
+    "release_build_seconds": 301,
+    "source_archive": {
+      "sha256": "de4954d427e061cbeb90f9651e3a8518bdd6d0f71c4f1fe8d25f6eecb5ec35b7"
+    },
+    "files": {
+      "sail": {
+        "sha256": "bcd85060ecc9ed71b0811611a5a4af753c74cd6657df90da48c3e1fda3742fe0",
+        "bytes": 73066504
+      },
+      "sail-z3": {
+        "sha256": "a337030eec201a11f0b351b55bf2000e3e1f50e28f9a47580461e1af090bb80b",
+        "bytes": 10467160
+      }
+    },
+    "source_update": {
+      "commit": "b36acc7ed234e3169f1b546d48658b2c5c99b75e",
+      "archive_sha256": "de4954d427e061cbeb90f9651e3a8518bdd6d0f71c4f1fe8d25f6eecb5ec35b7",
+      "previous_build_closed": true,
+      "preserved_files": 601,
+      "changed_files": [
+        "CHANGELOG.md",
+        "docs/http-shared-cache.md",
+        "docs/freshness.md",
+        "docs/result-client.md",
+        "docs/ROADMAP.md",
+        "engine/verus/candidates/decode-ownership/scoped-query-source-checks.json",
+        "engine/verus/candidates/decode-ownership/README.md",
+        "engine/verus/candidates/decode-ownership/scoped-graph-scratch.md",
+        "crates/sail-daemon/src/shared.rs",
+        "crates/sail-api/examples/result_client_profile.rs",
+        "crates/sail-verus/src/managed/precise.rs",
+        "docs/validation/m7-http-749-followup.json",
+        "docs/validation/m7-coalescing-749-diagnostic.json",
+        "docs/validation/m7-shared-signature-cpu-diagnosis.md",
+        "docs/validation/m7-native-watch-index.json",
+        "docs/validation/m7-result-client-components.json",
+        "docs/validation/m7-reader-freshness-diagnosis.md"
+      ]
+    }
+  },
+  "reader_probe_bundle": {
+    "source_commit": "02fd1fc",
+    "collector_source_commit": "6ca0cbef588b6cf1bfafcb9b2308f41016439fd7",
+    "collector_source_sha256": "dcfba2d98259c04dd76327196331aeee478656aa81469fd4c09c04af2699eebe",
+    "files": {
+      "job_read_bench": {
+        "sha256": "f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d",
+        "bytes": 12235200
+      },
+      "python-reader-probe.py": {
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+        "bytes": 11877
+      }
+    },
+    "build": "Unchanged Rust collector rebuilt against staged SDK; original unchanged Python collector; original freezes retained",
+    "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load"
+  },
+  "release_build_log": {
+    "sha256": "8934767f90b8d4e17a5a8e2cba9daddde27892e0679bd86c110f218b59f2d192",
+    "text": "   Compiling sail-verus v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-verus)\n   Compiling sail-shim v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-shim)\n   Compiling sail-daemon v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-daemon)\n   Compiling sail-cli v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-cli)\n    Finished `release` profile [optimized + debuginfo] target(s) in 5m 01s\n"
+  },
+  "probe_build_log": {
+    "sha256": "07e001e0f35648a514408a0516c500b90747caa31af42bc5a3e07b4297cf897a",
+    "text": "   Compiling sail-smtlib v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-smtlib)\n   Compiling sail-ledger v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-ledger)\n   Compiling sail-session v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-session)\n   Compiling sail-solver v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-solver)\n   Compiling sail-key v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-key)\n   Compiling sail-portfolio v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-portfolio)\n   Compiling sail-api v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-api)\n   Compiling sail-verus v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-verus)\n   Compiling sail-cache v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-cache)\n   Compiling sail-daemon v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-daemon)\n   Compiling sail-mcp v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-mcp)\n   Compiling sail-cli v0.0.0 (/tmp/sail-m7-core-validation/crates/sail-cli)\n    Finished `release` profile [optimized + debuginfo] target(s) in 6m 26s\n"
+  },
+  "provenance_controls": [
+    "Previous compiler invocation closed before native source update",
+    "Byte-identical files retain original mtime; changed files copied and touched before Cargo",
+    "Actual product built with explicit --bins; prior --example invocation selected collector only",
+    "New immutable product and collector bundles are independent of future common-target writes",
+    "Unchanged Rust collector source rebuilt against staged SDK; original Python bytes unchanged; earlier freezes retained"
+  ],
+  "qualification_limits": "No source-engine, whole workspace gate, real-reader latency or three-round speed claim follows from building or freezing these artifacts."
+}
