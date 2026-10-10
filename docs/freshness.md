@@ -68,3 +68,16 @@ not become trusted because a test happens to pass. Container validation copies
 verification sources, binaries and runtime files onto Linux-local filesystems.
 Container timings under emulation are labeled as such; they are not native Linux
 reference speedups.
+
+Completed status reads use a lightweight projection sealed to the SHA-256 of the
+exact stdout bytes validated by the worker. They hash those bounded bytes on each
+read and perform the same freshness classification as full result reads, without
+allocating the function graph. Full result reads check the same seal. Older
+records without a projection retain full parsing and validation; restored file
+size or timestamps never substitute for checking the output bytes.
+
+On Linux, submission coalescing only uses established bounded inspections. Cold,
+lost or incomplete coverage queues a distinct job promptly while background
+validation proceeds. It never hashes the full runtime before returning a durable
+job id. MacOS retains conservative full revalidation as a secondary platform;
+Linux latency bounds do not describe that fallback.

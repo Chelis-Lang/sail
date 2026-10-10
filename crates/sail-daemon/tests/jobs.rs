@@ -195,3 +195,84 @@ fn interrupted_records_are_not_resumed_or_presented_as_completed() {
     handle.shutdown();
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn sealed_status_matches_full_result_and_refuses_restored_metadata_tampering() {
+    use sail_api::jobs::Currentness;
+    for (original, expected) in [
+        ("unknown", Currentness::Unknown),
+        ("historical", Currentness::Historical),
+        ("current", Currentness::Unknown),
+    ] {
+        let script = REPORT.replace(
+            "\"currentness\":\"unknown\"",
+            &format!("\"currentness\":\"{original}\""),
+        );
+        let (root, executable, socket) = fixture(&script);
+        let jobs = root.join("jobs");
+        let mut handle = sail_daemon::jobs::bind(&socket, &jobs, &executable)
+            .and_then(sail_daemon::jobs::JobServer::spawn)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let client = Client::new(&socket);
+        let job = submit(&client, submission(&root, "seal"));
+        wait(&client, &job.id, |state| state == Lifecycle::Completed);
+        assert_eq!(status(&client, &job.id).currentness, expected);
+        let Ok(Response::Result(document)) = client.call(&Request::Result { id: job.id.clone() })
+        else {
+            unreachable!("completed result")
+        };
+        assert_eq!(document.job.currentness, expected);
+        let directory = jobs.join(&job.id);
+        let record_path = directory.join("record.json");
+        let mut record: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&record_path).unwrap_or_default())
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert_eq!(
+            record["projection"]["stdout_sha256"].as_str().map(str::len),
+            Some(64)
+        );
+        let output = directory.join("stdout");
+        let file = std::fs::File::open(&output).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let modified = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let bytes = std::fs::read_to_string(&output).unwrap_or_default();
+        let changed = bytes.replacen("fixture", "changed", 1);
+        assert_eq!(bytes.len(), changed.len());
+        assert!(std::fs::write(&output, changed).is_ok());
+        assert!(
+            file.set_times(std::fs::FileTimes::new().set_modified(modified))
+                .is_ok()
+        );
+        for request in [
+            Request::Status { id: job.id.clone() },
+            Request::Result { id: job.id.clone() },
+        ] {
+            assert!(
+                matches!(client.call(&request), Err(error) if error.to_string().starts_with("SAIL0816:"))
+            );
+        }
+        assert!(std::fs::write(&output, bytes).is_ok());
+        handle.shutdown();
+        // A legacy record deliberately lacks the seal: full parsing and the
+        // same currentness classification remain mandatory after restart.
+        assert!(
+            record
+                .as_object_mut()
+                .is_some_and(|object| object.remove("projection").is_some())
+        );
+        assert!(std::fs::write(&record_path, record.to_string()).is_ok());
+        let mut legacy = sail_daemon::jobs::bind(&socket, &jobs, &executable)
+            .and_then(sail_daemon::jobs::JobServer::spawn)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let client = Client::new(&socket);
+        assert_eq!(status(&client, &job.id).currentness, expected);
+        let Ok(Response::Result(document)) = client.call(&Request::Result { id: job.id }) else {
+            unreachable!("legacy completed result")
+        };
+        assert_eq!(document.job.currentness, expected);
+        legacy.shutdown();
+        let _ = std::fs::remove_dir_all(root);
+    }
+}
