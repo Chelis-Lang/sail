@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -20,13 +21,18 @@ class Lifecycle(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="m7-lifecycle-", dir="/tmp") as temporary:
             root = Path(temporary)
             cancelled = root / "cancelled"
+            ready = root / "ready"
+            release = root / "release"
             program = root / "cli.py"
             program.write_text(
                 "import pathlib,signal,sys,time\n"
                 "def interrupt(sig,frame):\n"
                 f" pathlib.Path({str(cancelled)!r}).write_text('cancelled'); sys.exit(130)\n"
                 "signal.signal(signal.SIGINT,interrupt)\n"
-                "print('Repair validation job owned-job',file=sys.stderr,flush=True)\n"
+                f"pathlib.Path({str(ready)!r}).touch()\n"
+                f"while not pathlib.Path({str(release)!r}).exists(): time.sleep(0.01)\n"
+                f"with pathlib.Path({str(root / 'evidence/stderr.txt')!r}).open('a') as out:\n"
+                " print('Repair validation job owned-job',file=out,flush=True)\n"
                 "time.sleep(30)\n")
 
             class Observer:
@@ -45,8 +51,33 @@ class Lifecycle(unittest.TestCase):
                 cli = root / "repair-check"
                 cli.write_text(f"#!{sys.executable}\n" + program.read_text())
                 cli.chmod(0o700)
-                with self.assertRaisesRegex(RuntimeError, "original observation failure"):
-                    bench.invoke([str(cli), "repair-check"], root, env, root / "evidence", 2)
+                # This checks interruption after observation fails, rather than
+                # Python startup speed under the full workspace gate. Establish
+                # the real process and installed handler before the unchanged
+                # two-second observation interval, then release it at Popen.
+                child = subprocess.Popen([str(cli), "repair-check"], cwd=root, env=env,
+                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                         start_new_session=True)
+                try:
+                    startup = time.monotonic()
+                    while not ready.is_file():
+                        self.assertIsNone(child.poll(), "fixture exited before installing its handler")
+                        if time.monotonic() - startup > 5:
+                            self.fail("fixture startup handshake timed out")
+                        time.sleep(0.01)
+
+                    def launch(command, **options):
+                        self.assertEqual(Path(command[-2]), cli)
+                        self.assertTrue(options["start_new_session"])
+                        release.touch()
+                        return child
+
+                    with mock.patch.object(bench.subprocess, "Popen", launch):
+                        with self.assertRaisesRegex(RuntimeError, "original observation failure"):
+                            bench.invoke([str(cli), "repair-check"], root, env, root / "evidence", 2)
+                finally:
+                    if child.poll() is None:
+                        child.kill(); child.wait(timeout=5)
                 call.assert_called_once_with(root / "owned-job.sock", {"operation":"cancel", "id":"owned-job", "superseded":False})
             self.assertTrue(cancelled.is_file(), "CLI interrupt cancellation did not execute")
             evidence = json.loads((root / "evidence/interrupted.json").read_text())
