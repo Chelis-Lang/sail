@@ -51,7 +51,9 @@ lifecycle log. Each version-one event includes stream ID, monotonically assigned
 sequence, package ID, target name and kind, run ID, configuration and input
 revision, phase, and optional exact function/obligation identifiers. The daemon
 binds producer headers to the originating worker's context and target inventory.
-Live function observations are provisional; final reports independently establish
+Query progress carries bounded descriptions and completion flags with exact
+function/obligation identities. It supplies no solver answer, model or verdict;
+completion is not verification. Live function observations are provisional; final reports independently establish
 proofs. Solver outcomes in obligation observations do not confirm a whole
 function or target.
 
