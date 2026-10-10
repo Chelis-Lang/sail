@@ -16,7 +16,7 @@ const MAX_EVENTS: usize = 4096;
 const MAX_ACTIVE_JOURNALS: usize = 8;
 
 #[derive(Default)]
-pub(crate) struct Journals(Mutex<BTreeMap<PathBuf, Arc<Mutex<Journal>>>>);
+pub(crate) struct Journals(Mutex<BTreeMap<PathBuf, Arc<Mutex<Option<Journal>>>>>);
 
 #[derive(Default)]
 struct Journal {
@@ -80,25 +80,36 @@ impl Journals {
             .map_err(|_| io::Error::other("SAIL0902: proof journal lock poisoned"))?;
         journals.retain(|path, _| path.exists());
         if !journals.contains_key(directory) {
-            if journals.len() >= MAX_ACTIVE_JOURNALS
-                && let Some(oldest) = journals.keys().next().cloned()
-            {
-                journals.remove(&oldest);
+            if journals.len() >= MAX_ACTIVE_JOURNALS {
+                let idle = journals
+                    .iter()
+                    .find(|(_, journal)| Arc::strong_count(journal) == 1)
+                    .map(|(path, _)| path.clone());
+                if let Some(idle) = idle {
+                    journals.remove(&idle);
+                } else {
+                    return Err(io::Error::other(
+                        "SAIL0902: proof journal readers busy; retry the same cursor",
+                    ));
+                }
             }
-            journals.insert(
-                directory.to_owned(),
-                Arc::new(Mutex::new(Journal::load(directory, id)?)),
-            );
+            journals.insert(directory.to_owned(), Arc::new(Mutex::new(None)));
         }
-        let journal = Arc::clone(
+        let retained = Arc::clone(
             journals
                 .get(directory)
                 .ok_or_else(|| io::Error::other("SAIL0902: missing journal"))?,
         );
         drop(journals);
-        let mut journal = journal
+        let mut retained = retained
             .lock()
             .map_err(|_| io::Error::other("SAIL0902: job proof journal lock poisoned"))?;
+        if retained.is_none() {
+            *retained = Some(Journal::load(directory, id)?);
+        }
+        let journal = retained
+            .as_mut()
+            .ok_or_else(|| io::Error::other("SAIL0902: cannot load journal"))?;
         journal.ingest(directory, id, terminal)?;
         let latest = journal.events.last().map_or(0, |event| event.sequence);
         if cursor.after > latest {
@@ -321,6 +332,9 @@ impl Journal {
         {
             self.tail.clear();
             self.gap = Some("SAIL0902: producer ended with a truncated proof event".into());
+        }
+        if terminal && self.events.is_empty() && self.gap.is_none() {
+            self.gap = Some("SAIL0903: this job produced no interactive proof stream".into());
         }
         if let Some(gap) = &self.gap {
             std::fs::write(directory.join("proof-gap.txt"), gap)?;
