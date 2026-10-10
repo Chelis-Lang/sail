@@ -29,6 +29,8 @@ The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
+The [reader acceptance guide](reader-acceptance.md) explains genuine proof setup,
+owned-job archival, compatible storage layouts and failure handling.
 Long corpus, source-build and benchmark work runs locally in the Linux container;
 required CI remains short.
 
