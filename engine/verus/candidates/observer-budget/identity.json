@@ -1,0 +1,44 @@
+{
+  "patch_sha256": "bbc3970d5bcdcd011ef7086d7a5a54cfc228617993a1236613a74a45c610848f",
+  "files": {
+    "sail_engine.rs": {
+      "before": "130ef2a1fefaa4d211017583d9178cb37a8ed3cf0182e92f3666c87ea4c6ddd5",
+      "after": "5a6f0142eab75b01fdba1aeec09cdbacd0cb47ce81ace0b6c93259f0f82f0b5c"
+    },
+    "verifier.rs": {
+      "before": "55a7af0b6c382e8c65dae74524412c4aa574507a078973a8b43165318c955e53",
+      "after": "b03a077264feb84e40ddba3fba2638a35eb3765720fa4c4bead6a9c7ff5689f4"
+    }
+  },
+  "status": "unselected_unqualified_overlay",
+  "base_overlay_sha256": "8812f5151a19528c014b9d3a8875367fbf0f1c6ec4938f94cbf764ea03e60384",
+  "validation": {
+    "isolated_production_helper_tests": {
+      "passed": 6,
+      "failed": 0,
+      "toolchain": "1.98.1",
+      "serde_json": "1.0.151",
+      "macro_before_definition": "compiled",
+      "scope": "exact observer helpers; real MessageX fixture pending combined RustVerify build",
+      "test_seconds": 0.72,
+      "strict_clippy": "passed",
+      "clippy_seconds": 0.38
+    },
+    "combined_vir_tests_before_observer": {
+      "passed": 26,
+      "failed": 0,
+      "owner": "engine source track"
+    },
+    "combined_rust_verify_tests": "pending",
+    "ordinary_runtime_build": "pending",
+    "previous_revision_hit": "pending",
+    "full_runtime_oracle": "pending"
+  },
+  "serializer_audit": {
+    "version": "1.0.151",
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "serializer_source_sha256": "f2b8cc0b97e30c49dbc58698fa22c14a7d56ea616cdb57b067835a59af49a75f",
+    "method": "Serializer::collect_str override streams fmt::Display into formatter write_string_fragment; no generic Serializer default is used",
+    "scope": "pinned serializer and closed source formatter inventory only"
+  }
+}
