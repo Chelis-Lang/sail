@@ -131,3 +131,41 @@ must pass them, source/cancellation gates and real-project raw SMT oracles befor
 it can replace the current artifact. Global datatype maps, imported source/span
 bindings or other constructor fields may still invalidate every real body-edit
 candidate. Benefit and the twofold product speed gate remain unproven.
+
+## Current candidate evidence and selected byte gate
+
+Candidate `2459` subsequently completed an ordinary verified Linux container
+build (2,060 vstd obligations, zero errors). Its source fixtures, checkpoint,
+semantic, cancellation and library controls passed, but the real HE
+independent-stock exact-byte qualification failed for module 160. That failure
+and both complete byte streams remain in the qualification record. Fixed
+same-binary declaration-order controls matched current pre-lowering IR and
+cached/fresh solver bytes for both observed generated-accessor orders. A
+separate other-module body edit matched stock verdicts, diagnostics and all
+solver streams but achieved **zero previous-revision preparation reuse**; its
+one persistent restore was written earlier in the same invocation.
+
+The owner selected same-compiler-input cached/fresh byte comparison in ADR
+0027, retaining independent stock verdict and diagnostic checks and reporting
+stock transcript instability. `graph-ledger-oracle.patch` implements that
+separate candidate diagnostic gate: independent mutable Ctx/name/global effect,
+reporter, log, verifier and solver owners; ordered actual-written byte streams;
+post-lowering and final effects; grouped/immediate and deferred diagnostics;
+and typed function outcomes. Post-validation spec-body/function-order/latent
+effect corruption controls must reach an actual restored hit and then fail
+comparison. No query normalization or default replay change is authorized.
+
+Candidate `2421` passes host driver (12), AIR writer (2) and VIR (8) library
+regressions plus static graph access coverage. Its distinct ordinary Linux
+runtime build and executable same-input/real-project qualification remain
+pending. Its host record is `candidates/qualifications/2421-host-library.json`.
+The actual-written streams and diagnostic artifacts are separately bounded and
+physically closed before complete capture can be accepted. This expensive
+opt-in diagnostic mode is not a product performance measurement or an
+extension of the production preparation cache's memory claim.
+
+Neither candidate is selected by the installer. The existing runtime is
+unchanged; source qualification, genuine useful cross-edit preparation reuse,
+complete repair/full-validation speed gates on both real projects and final
+product acceptance remain required. `test-key-delta.py` and its bounded exact
+component captures diagnose remaining miss causes without changing admission.
