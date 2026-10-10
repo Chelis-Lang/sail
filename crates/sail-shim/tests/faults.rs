@@ -953,8 +953,12 @@ fn a_verified_shared_store_serves_a_fresh_cache_exactly() {
 #[test]
 #[ignore = "needs SAIL_TEST_Z3"]
 fn unverifiable_shared_entries_never_change_an_answer() {
+    let began = std::time::Instant::now();
+    eprintln!("shared-bad: published/start");
     let (rig, store) = published("shared-bad");
+    eprintln!("shared-bad: published/end {:?}", began.elapsed());
     let want = rig.want(TOY);
+    eprintln!("shared-bad: direct-want/end {:?}", began.elapsed());
     let trusted = publisher();
     let untrusted = SecretKey::from_seed([6; 32]);
     let local = store_solver(&store);
@@ -990,13 +994,25 @@ fn unverifiable_shared_entries_never_change_an_answer() {
     ];
     assert_ne!(trusted.public(), untrusted.public());
     for (tag, f) in cases {
+        eprintln!("shared-bad {tag}: rewrite/start {:?}", began.elapsed());
         let bad = rig.dir.path(&format!("store-{tag}"));
         assert!(rewrite_store(&store, &bad, f) > 12);
+        eprintln!("shared-bad {tag}: rewrite/end {:?}", began.elapsed());
         let (socket, cache) = reader(&rig, tag, &bad, &trusted.public());
-        for _ in 0..2 {
+        eprintln!("shared-bad {tag}: reader/end {:?}", began.elapsed());
+        for round in 0..2 {
+            eprintln!(
+                "shared-bad {tag}: session/{round}/start {:?}",
+                began.elapsed()
+            );
             assert_equivalent(&want, &ok_session(&rig.solver, Some(&socket), TOY));
+            eprintln!(
+                "shared-bad {tag}: session/{round}/end {:?}",
+                began.elapsed()
+            );
         }
         let s = daemon_stats(&socket);
+        eprintln!("shared-bad {tag}: stats/end {:?}: {s:?}", began.elapsed());
         // The forger left the replies before the first check intact and
         // validly signed; those may hit. Every other case rewrote them all.
         if tag != "forged" {
@@ -1010,6 +1026,7 @@ fn unverifiable_shared_entries_never_change_an_answer() {
         }
         // No forged answer reached the local tier.
         assert_cache_correct(&cache, &want);
+        eprintln!("shared-bad {tag}: cache-audit/end {:?}", began.elapsed());
     }
 }
 

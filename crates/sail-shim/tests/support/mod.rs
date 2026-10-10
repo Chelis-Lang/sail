@@ -330,6 +330,76 @@ impl Proxy {
     }
 }
 
+/// Snapshot only this test's child tree when its original deadline expires.
+/// Proc files are bounded and no process environment is read.
+fn deadline_snapshot(owner: u32, bytes: usize, reader_finished: bool) {
+    eprintln!(
+        "fault-session deadline: owner={owner}, stdout_bytes={bytes}, reader_finished={reader_finished}"
+    );
+    let mut table = Vec::new();
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Some(pid) = entry
+            .file_name()
+            .to_str()
+            .and_then(|name| name.parse::<u32>().ok())
+        else {
+            continue;
+        };
+        let dir = entry.path();
+        let Ok(raw) = std::fs::read_to_string(dir.join("stat")) else {
+            continue;
+        };
+        if raw.len() > 4096 {
+            continue;
+        }
+        let Some(end) = raw.rfind(')') else { continue };
+        let columns: Vec<_> = raw[end + 2..].split_whitespace().collect();
+        if columns.len() < 20 {
+            continue;
+        }
+        let Ok(parent) = columns[1].parse::<u32>() else {
+            continue;
+        };
+        table.push((pid, parent, raw));
+    }
+    let mut descendants = vec![owner];
+    for _ in 0..table.len() {
+        let mut added = false;
+        for (pid, parent, _) in &table {
+            if descendants.contains(parent) && !descendants.contains(pid) {
+                descendants.push(*pid);
+                added = true;
+            }
+        }
+        if !added {
+            break;
+        }
+    }
+    for (pid, _, before) in table.iter().filter(|(pid, _, _)| descendants.contains(pid)) {
+        let dir = PathBuf::from(format!("/proc/{pid}"));
+        let wait = std::fs::read_to_string(dir.join("wchan")).unwrap_or_default();
+        let mut tasks = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(dir.join("task")) {
+            for task in entries.flatten().take(32) {
+                let path = task.path();
+                let name = std::fs::read_to_string(path.join("comm")).unwrap_or_default();
+                let wait = std::fs::read_to_string(path.join("wchan")).unwrap_or_default();
+                tasks.push((task.file_name(), name, wait));
+            }
+        }
+        let descriptors: Vec<_> = (0..3)
+            .map(|fd| std::fs::read_link(dir.join(format!("fd/{fd}"))).ok())
+            .collect();
+        let after = std::fs::read_to_string(dir.join("stat")).unwrap_or_default();
+        eprintln!(
+            "fault-session owned process pid={pid}: stat_before={before:?}, stat_after={after:?}, wchan={wait:?}, stdio={descriptors:?}, tasks={tasks:?}"
+        );
+    }
+}
+
 /// A running `sail-z3 -smt2 -in`, with its output collected as it arrives.
 pub struct Shim {
     child: Child,
@@ -422,6 +492,13 @@ impl Shim {
             std::thread::sleep(Duration::from_millis(5));
         }
         if status.is_none() {
+            deadline_snapshot(
+                self.child.id(),
+                self.output().len(),
+                self.reader
+                    .as_ref()
+                    .is_none_or(std::thread::JoinHandle::is_finished),
+            );
             let _ = self.child.kill();
             let _ = self.child.wait();
         }
