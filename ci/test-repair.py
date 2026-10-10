@@ -61,7 +61,10 @@ def run(args):
         def write(body):
             source.write_text("use verus_builtin::*;\nuse verus_builtin_macros::*;\nverus! {\n" + body + "\n}\n")
         write(GOOD)
-        env = dict(os.environ, SAIL_CACHE_DIR=str(root / "cache"),
+        # The pinned macros use this supported selector for a Cargo crate that
+        # deliberately has no vstd dependency. Direct Verus sets it for --no-vstd;
+        # Cargo expands macros separately before the Verus driver runs.
+        env = dict(os.environ, VSTD_KIND="NoVstd", SAIL_CACHE_DIR=str(root / "cache"),
                    SAIL_DAEMON_SOCKET=str(root / "d.sock"))
         setup = execute([sail, "engine", "install", "--from", str(engine), "--output", "json"], project, env, 30)
         (evidence / "engine-install.stdout.json").write_bytes(setup.stdout)
@@ -85,6 +88,7 @@ def run(args):
         summary = {"version":1,"kind":"actual-prebuilt-engine-cli-mcp-acceptance",
                    "machine":platform.platform(),"environment_label":args.environment_label,
                    "source_commit":head,"proof_tool_budget_s":args.timeout,"passed":False,
+                   "fixture_vstd_kind":"NoVstd","fixture_rust_toolchain":engine_status["rust_toolchain"],
                    "sail_sha256":hashlib.sha256(Path(sail).read_bytes()).hexdigest(),
                    "engine_manifest_sha256":engine_status["manifest_sha256"]}
         (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
