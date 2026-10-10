@@ -310,17 +310,24 @@ comparison failed. Verus enables serde_json's `preserve_order` feature; the
 isolated helper omitted it and masked the typed writer's sorted-field change.
 The actual assertion and exact output are retained in
 `qualifications/d3cb-bounded-private-span-observer-order-failure.json`.
-A production ordering correction and exact-feature helper are pending; the
-check remains unchanged.
+The candidate now preserves the original field insertion order and validates
+duplicate fields before serialization. The unchanged actual driver tests pass
+22/22 with the pinned JSON features, including the real MessageX graph, focused
+JSON, reporter/replay disposal races and raw-wire oracle controls. Strict actual
+all-target driver clippy also passes after equivalent lint fixes. These host
+checks do not qualify a runtime or establish previous-revision proof reuse.
 An allocation-only probe of the 105 retained, checksummed actual HE portable
 preparations admitted 36 and refused 69 at the 128 MiB decode budget. Admitted
 entries also decoded with explicit key-matched placeholder raw-span owners;
 this does not establish live provenance, graph/domain validity or a proof hit.
 The majority refusal is a product limitation, not a passing performance gate.
 See `qualifications/bounded-decode-retained-he.json`; raw entries and probe
-output remain preserved. Allocation precision is under review before an
-ordinary combined runtime build, without increasing the allowance or weakening
-admission checks.
+output remain preserved. The unchanged-guard per-type charge profile is in
+`decode-budget/primitive-charge-profile.json`: duplicate primitive dispatch
+charges account for about 6.5 MiB at refusal, so removing that duplication alone
+cannot be assumed to admit the large real preparations. Allocation precision is
+under review before an ordinary combined runtime build, without increasing the
+allowance or weakening admission checks.
 An ordinary verified Linux build, genuine old-domain rejection,
 previous-revision focused restore, complete source oracles and both real-project
 performance gates remain pending. It is unselected and unqualified.

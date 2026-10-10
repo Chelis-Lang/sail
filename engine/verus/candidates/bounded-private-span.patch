@@ -250,10 +250,10 @@ index 9e9fae2..6f917f9 100644
  
          // In an 'exec' function, the req% and ens% definitions conceptually go with
 diff --git a/source/rust_verify/src/driver.rs b/source/rust_verify/src/driver.rs
-index 5b4d93a..73ed841 100644
+index 5b4d93a..6fcd3b6 100644
 --- a/source/rust_verify/src/driver.rs
 +++ b/source/rust_verify/src/driver.rs
-@@ -26,10 +26,54 @@ fn run_compiler<'a, 'b>(
+@@ -26,10 +26,20 @@ fn run_compiler<'a, 'b>(
          syntax_macro,
          erase_ghost,
      );
@@ -274,7 +274,49 @@ index 5b4d93a..73ed841 100644
 +    } else {
 +        std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)).map_err(|_| ())
 +    }
-+}
+ }
+ 
+ pub fn is_verifying_entire_crate(verifier: &Verifier) -> bool {
+@@ -302,6 +312,7 @@ pub fn run(
+         spans: None,
+         unresolved_import_deps: std::collections::HashSet::new(),
+     };
++    crate::verifier::sail_engine_compiler_started("ghost");
+     let status = run_compiler(rustc_args_verify.clone(), true, false, &mut verifier_callbacks);
+     let VerifierCallbacksEraseMacro {
+         verifier,
+@@ -323,6 +334,7 @@ pub fn run(
+     };
+ 
+     if status.is_err() || verifier.encountered_vir_error {
++        crate::verifier::sail_engine_sealed(false);
+         return (
+             verifier,
+             Stats {
+@@ -340,6 +352,7 @@ pub fn run(
+             Ok(())
+         } else {
+             let do_compile = verifier.compile || verifier.via_cargo_args.is_some();
++            crate::verifier::sail_engine_compiler_started("exec");
+             run_with_erase_macro_compile(rustc_args, do_compile, verifier.args.vstd)
+         };
+ 
+@@ -354,9 +367,11 @@ pub fn run(
+ 
+     // Run borrow checker and compiler with #[exec] (not #[proof])
+     if let Err(_) = compile_status {
++        crate::verifier::sail_engine_sealed(false);
+         return (verifier, stats, Err(()));
+     }
+ 
++    crate::verifier::sail_engine_sealed(!verifier.encountered_vir_error && verifier.count_errors == 0);
+     (verifier, stats, Ok(()))
+ }
+ 
+@@ -432,3 +447,38 @@ fn needs_stable_attr<'tcx>(tcx: TyCtxt<'tcx>, owner_id: OwnerId) -> bool {
+         OwnerNode::Synthetic => false,
+     }
+ }
 +
 +#[cfg(test)]
 +mod sail_compiler_result_tests {
@@ -308,51 +350,14 @@ index 5b4d93a..73ed841 100644
 +        assert_eq!(compiler_result(false, || {}), Ok(()));
 +        assert_eq!(compiler_result(true, || {}), Ok(()));
 +    }
- }
- 
- pub fn is_verifying_entire_crate(verifier: &Verifier) -> bool {
-@@ -302,6 +346,7 @@ pub fn run(
-         spans: None,
-         unresolved_import_deps: std::collections::HashSet::new(),
-     };
-+    crate::verifier::sail_engine_compiler_started("ghost");
-     let status = run_compiler(rustc_args_verify.clone(), true, false, &mut verifier_callbacks);
-     let VerifierCallbacksEraseMacro {
-         verifier,
-@@ -323,6 +368,7 @@ pub fn run(
-     };
- 
-     if status.is_err() || verifier.encountered_vir_error {
-+        crate::verifier::sail_engine_sealed(false);
-         return (
-             verifier,
-             Stats {
-@@ -340,6 +386,7 @@ pub fn run(
-             Ok(())
-         } else {
-             let do_compile = verifier.compile || verifier.via_cargo_args.is_some();
-+            crate::verifier::sail_engine_compiler_started("exec");
-             run_with_erase_macro_compile(rustc_args, do_compile, verifier.args.vstd)
-         };
- 
-@@ -354,9 +401,11 @@ pub fn run(
- 
-     // Run borrow checker and compiler with #[exec] (not #[proof])
-     if let Err(_) = compile_status {
-+        crate::verifier::sail_engine_sealed(false);
-         return (verifier, stats, Err(()));
-     }
- 
-+    crate::verifier::sail_engine_sealed(!verifier.encountered_vir_error && verifier.count_errors == 0);
-     (verifier, stats, Ok(()))
- }
- 
++}
++
 diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
 new file mode 100644
-index 0000000..706d025
+index 0000000..aa75347
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,853 @@
+@@ -0,0 +1,855 @@
 +//! Private batch session: all retained spans belong to the active compiler callback.
 +use super::*;
 +use std::cell::{Cell,RefCell};
@@ -494,7 +499,7 @@ index 0000000..706d025
 +    fn write(&mut self,bytes:&[u8])->std::io::Result<usize> {
 +        if self.bytes.len().saturating_add(bytes.len()) > BUFFER_BUDGET {return Err(std::io::Error::other("prepared artifact budget"));}
 +        let needed=self.bytes.len()+bytes.len();
-+        if needed>self.bytes.capacity(){let capacity=needed.max(self.bytes.capacity().saturating_mul(2)).max(4096).min(BUFFER_BUDGET);self.bytes.try_reserve_exact(capacity-self.bytes.len()).map_err(std::io::Error::other)?;}
++        if needed>self.bytes.capacity(){let capacity=needed.max(self.bytes.capacity().saturating_mul(2)).clamp(4096,BUFFER_BUDGET);self.bytes.try_reserve_exact(capacity-self.bytes.len()).map_err(std::io::Error::other)?;}
 +        if self.bytes.capacity()>BUFFER_BUDGET{return Err(std::io::Error::other("prepared allocation budget"));}
 +        self.bytes.extend_from_slice(bytes);Ok(bytes.len())
 +    }
@@ -555,18 +560,20 @@ index 0000000..706d025
 +pub(super) struct Field<V,T>(pub &'static str,pub V,pub T);
 +pub(super) trait FieldList {
 +    fn count(&self)->usize;
-+    fn next(&self,previous:Option<&str>)->Option<&'static str>;
-+    fn write_key<M:serde::ser::SerializeMap>(&self,key:&str,map:&mut M)->Result<(),M::Error>;
++    fn contains(&self,key:&str)->bool;
++    fn unique(&self)->bool;
++    fn write<M:serde::ser::SerializeMap>(&self,map:&mut M)->Result<(),M::Error>;
 +}
-+impl FieldList for () {fn count(&self)->usize{0}fn next(&self,_:Option<&str>)->Option<&'static str>{None}fn write_key<M:serde::ser::SerializeMap>(&self,_:&str,_:&mut M)->Result<(),M::Error>{Ok(())}}
++impl FieldList for () {fn count(&self)->usize{0}fn contains(&self,_:&str)->bool{false}fn unique(&self)->bool{true}fn write<M:serde::ser::SerializeMap>(&self,_:&mut M)->Result<(),M::Error>{Ok(())}}
 +impl<V:serde::Serialize,T:FieldList> FieldList for Field<V,T> {
 +    fn count(&self)->usize{1+self.2.count()}
-+    fn next(&self,previous:Option<&str>)->Option<&'static str>{let head=previous.filter(|previous|self.0<=*previous).map_or(Some(self.0),|_|None);match(head,self.2.next(previous)){(Some(a),Some(b))=>Some(a.min(b)),(a,b)=>a.or(b)}}
-+    fn write_key<M:serde::ser::SerializeMap>(&self,key:&str,map:&mut M)->Result<(),M::Error>{if self.0==key{map.serialize_entry(self.0,&self.1)?;}self.2.write_key(key,map)}
++    fn contains(&self,key:&str)->bool{self.0==key || self.2.contains(key)}
++    fn unique(&self)->bool{!self.2.contains(self.0) && self.2.unique()}
++    fn write<M:serde::ser::SerializeMap>(&self,map:&mut M)->Result<(),M::Error>{map.serialize_entry(self.0,&self.1)?;self.2.write(map)}
 +}
-+impl<T:FieldList> serde::Serialize for Fields<T>{fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{let count=self.0.count();let mut map=serializer.serialize_map(Some(count))?;let mut previous=None;for _ in 0..count{let key=self.0.next(previous).ok_or_else(||serde::ser::Error::custom("duplicate observer key"))?;self.0.write_key(key,&mut map)?;previous=Some(key);}serde::ser::SerializeMap::end(map)}}
++impl<T:FieldList> serde::Serialize for Fields<T>{fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{if !self.0.unique(){return Err(serde::ser::Error::custom("duplicate observer key"));}let mut map=serializer.serialize_map(Some(self.0.count()))?;self.0.write(&mut map)?;serde::ser::SerializeMap::end(map)}}
 +#[derive(serde::Serialize)]
-+pub(super) struct Observation<'a,P>{pub event:&'a str,pub payload:P,pub phase:&'a str,pub version:u32}
++pub(super) struct Observation<'a,P>{pub version:u32,pub phase:&'a str,pub event:&'a str,pub payload:P}
 +pub(super) struct ObservedDebug<'a,T>(pub &'a T);
 +impl<T:std::fmt::Debug> serde::Serialize for ObservedDebug<'_,T>{fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{serializer.collect_str(&format_args!("{:?}",self.0))}}
 +pub(super) struct ObservedDisplay<'a,T>(pub &'a T);
