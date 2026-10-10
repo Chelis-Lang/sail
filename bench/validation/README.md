@@ -96,3 +96,24 @@ python3 bench/validation/anvil_acceptance.py REPORT_DIRECTORY RELEASE_BINARY_DIR
 
 The generator refuses a missing round, disagreement, instability, infrastructure
 error, skip or unexpected coverage. It retains no local paths or credentials.
+
+## Native managed acceptance
+
+`installed-managed-native-linux-2026-10-10.json` retains the native Linux PR
+acceptance at revision `a518a104`: complete cold and unchanged reports,
+missing-receipt recovery, and a failing edit with restored mtime. The workflow
+also exercises the installed CLI jobs and asynchronous MCP tools. All checks
+passed within their original ten-minute job limits. This is acceptance evidence,
+not the separate three-round frontend performance workload.
+
+Regenerate from the downloaded managed artifact, run metadata and workflow log:
+
+```sh
+python3 bench/validation/native_managed_acceptance.py REPORT_DIRECTORY RUN_METADATA_JSON WORKFLOW_LOG > bench/validation/installed-managed-native-linux-2026-10-10.json
+```
+
+The generator rejects failed or skipped checks, unexpected warm verification,
+incomplete reports and invalid recovery outcomes. It retains report hashes and
+controlled fixture summaries without environments or local paths. Separate
+emulation failure artifacts remain recorded; a native pass does not establish
+the cause of an emulated failure.

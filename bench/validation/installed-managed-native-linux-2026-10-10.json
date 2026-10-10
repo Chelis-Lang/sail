@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "scope": "Native Linux managed CLI/MCP acceptance in the pinned CI image",
+  "source_commit": "a518a104c033948127c6e61ab705023907b74ac8",
+  "run_url": "https://github.com/Chelis-Lang/sail/actions/runs/38010701963",
+  "checks": {
+    "all_jobs_successful": true,
+    "installed_cli_and_async_mcp": true,
+    "missing_receipt_refreshes_only_selected_target": true,
+    "restored_mtime_failure_matches_plain_verifier": true
+  },
+  "limits": [
+    "Bounded acceptance, not a three-round performance benchmark",
+    "Cold and unchanged times compare different cache states and are not a speedup claim",
+    "Raw reports contain only the controlled synthetic fixture; no environments are retained"
+  ],
+  "job_duration_seconds": {
+    "No AI authorship markers": 6.0,
+    "image / CI image": 7.0,
+    "End to end (managed)": 348.0,
+    "Conformance": 305.0,
+    "End to end (legacy)": 316.0,
+    "Solver tests": 159.0,
+    "Workspace gate": 183.0,
+    "End to end": 6.0,
+    "CI completion": 4.0
+  },
+  "reports": [
+    {
+      "label": "managed-01",
+      "report_sha256": "c5043836a8dba6bad6ef3b4f42c1b62596247c544a766311a2511a01a66b2388",
+      "stderr_sha256": "a51281c55f8671d6e36c3828d5e44d24bb1b89fa6a3d03b64f3f84d00425d261",
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 2,
+        "reused_targets": 0,
+        "wall_ms": 109191.918156
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "kind": [
+            "lib"
+          ],
+          "requested": true,
+          "complete": true,
+          "reused": false,
+          "summary": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "kind": [
+            "lib"
+          ],
+          "requested": false,
+          "complete": true,
+          "reused": false,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ]
+    },
+    {
+      "label": "managed-02",
+      "report_sha256": "daf5783fe48ad24fbe7d1b0f675e21a22a9dcc8e324586df78dcbccfc608f8cb",
+      "stderr_sha256": "b7c7f73354ae12e322716a42c4e990652df41a2005ad8781345a54ee364dd19e",
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 0,
+        "reused_targets": 2,
+        "wall_ms": 3035.076445
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "kind": [
+            "lib"
+          ],
+          "requested": true,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "kind": [
+            "lib"
+          ],
+          "requested": false,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ]
+    },
+    {
+      "label": "managed-03",
+      "report_sha256": "8a985e5ae3c71853147ae6b186301591b162c76980d0c1d4dc3a56927355e908",
+      "stderr_sha256": "2109809f431633e6f3dbbdd451be2c4d6cdd69610521ff2e89fb4d7e71970404",
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 1,
+        "wall_ms": 4084.9477690000003
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "kind": [
+            "lib"
+          ],
+          "requested": true,
+          "complete": true,
+          "reused": false,
+          "summary": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "kind": [
+            "lib"
+          ],
+          "requested": false,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ]
+    },
+    {
+      "label": "managed-04",
+      "report_sha256": "bd4832606f790f2e3d752b05eeed0f9a98e4afb92775f79d32f141f898996a75",
+      "stderr_sha256": "49136bb6ca060b510ca6f4c52571c42bf94e6b320522c678e4d758425ead157a",
+      "currentness": "current",
+      "exit_code": 101,
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 1,
+        "wall_ms": 3609.6443090000002
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "kind": [
+            "lib"
+          ],
+          "requested": true,
+          "complete": false,
+          "reused": false,
+          "summary": {
+            "functions": 1,
+            "verified": 0,
+            "failed": 1,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "kind": [
+            "lib"
+          ],
+          "requested": false,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ]
+    }
+  ]
+}
