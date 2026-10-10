@@ -202,10 +202,12 @@ impl Inventory {
         // process liveness alone cannot confirm retained lease ownership.
         #[cfg(test)]
         let started = std::time::Instant::now();
-        for _sweep in 0..2 {
+        for sweep in 0..2 {
+            #[cfg(not(test))]
+            let _ = sweep;
             let bytes = kernel_rows(consumed)?;
             #[cfg(test)]
-            trace_sweep("global-read", _sweep, started, bytes.len(), 0);
+            trace_sweep("global-read", sweep, started, bytes.len(), 0);
             consumed += u64::try_from(bytes.len()).unwrap_or(MAX_LOCK_BYTES + 1);
             let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
             if let Some(pause) = after_read.take() {
@@ -213,7 +215,7 @@ impl Inventory {
             }
             consumed = self.check_inventory(text, consumed)?;
             #[cfg(test)]
-            trace_sweep("inventory-checked", _sweep, started, bytes.len(), 0);
+            trace_sweep("inventory-checked", sweep, started, bytes.len(), 0);
             if process(self.pid) != Some(self.started) {
                 return Err("kernel-lease-owner-inactive");
             }

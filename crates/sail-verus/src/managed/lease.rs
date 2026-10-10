@@ -132,28 +132,18 @@ impl ReadLease {
         *stage = "helper-request-write";
         socket.write_all(&bytes).ok()?;
         *stage = "helper-readiness-frame";
-        let fds = descriptors(&mut socket)?;
+        let fds = descriptors(&mut socket).or_else(|| {
+            #[cfg(test)]
+            eprintln!(
+                "lease readiness unavailable: child_status={:?}",
+                lease.process.try_wait()
+            );
+            None
+        })?;
         let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
         *stage = "kernel-lease-inventory-bind";
         lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
-        let validation = if lease.kernel.is_none() {
-            Err("kernel-lease-inventory-binding-unavailable")
-        } else if !lease.bindings_current() {
-            Err("lease-binding-invalidated")
-        } else if {
-            *stage = "helper-final-digests";
-            helper_digests(&closure)? != baseline
-        } {
-            Err("helper-byte-identity-invalidated")
-        } else if !lease.helper_observer.clean() {
-            Err("helper-observation-invalidated")
-        } else {
-            lease
-                .kernel
-                .as_ref()
-                .ok_or("kernel-lease-state-unavailable")
-                .and_then(super::kernel_leases::Inventory::check)
-        };
+        let validation = lease.validate_initial(&closure, &baseline, stage)?;
         if let Err(reason) = validation {
             *stage = reason;
             #[cfg(test)]
@@ -161,6 +151,31 @@ impl ReadLease {
             return None;
         }
         Some(lease)
+    }
+    fn validate_initial(
+        &mut self,
+        closure: &[PathBuf],
+        baseline: &[Option<String>],
+        stage: &mut &'static str,
+    ) -> Option<std::result::Result<(), &'static str>> {
+        let validation = if self.kernel.is_none() {
+            Err("kernel-lease-inventory-binding-unavailable")
+        } else if !self.bindings_current() {
+            Err("lease-binding-invalidated")
+        } else {
+            *stage = "helper-final-digests";
+            if helper_digests(closure)? != baseline {
+                Err("helper-byte-identity-invalidated")
+            } else if !self.helper_observer.clean() {
+                Err("helper-observation-invalidated")
+            } else {
+                self.kernel
+                    .as_ref()
+                    .ok_or("kernel-lease-state-unavailable")
+                    .and_then(super::kernel_leases::Inventory::check)
+            }
+        };
+        Some(validation)
     }
     pub(super) fn clean(&mut self) -> bool {
         // No acknowledgement or later successful sweep can recertify an owner
@@ -242,16 +257,36 @@ fn trace_clean(stage: &'static str, started: std::time::Instant) {
 }
 fn descriptors(socket: &mut UnixStream) -> Option<Vec<u32>> {
     let mut reply = Vec::new();
-    std::io::BufRead::read_until(
+    let read = std::io::BufRead::read_until(
         &mut std::io::BufReader::new(std::io::Read::by_ref(socket).take(65_537)),
         b'\n',
         &mut reply,
-    )
-    .ok()?;
+    );
+    #[cfg(test)]
+    if let Err(error) = &read {
+        eprintln!(
+            "lease readiness read failed: kind={:?} errno={:?} bytes={}",
+            error.kind(),
+            error.raw_os_error(),
+            reply.len()
+        );
+    }
+    read.ok()?;
     if reply.len() > 65_536 || !reply.ends_with(b"\n") {
+        #[cfg(test)]
+        eprintln!(
+            "lease readiness frame invalid: bytes={} terminated={}",
+            reply.len(),
+            reply.ends_with(b"\n")
+        );
         return None;
     }
-    serde_json::from_slice(&reply).ok()
+    let decoded = serde_json::from_slice(&reply);
+    #[cfg(test)]
+    if decoded.is_err() {
+        eprintln!("lease readiness inventory invalid: bytes={}", reply.len());
+    }
+    decoded.ok()
 }
 // PATH is selected once for launch; subsequent barriers also check its exact
 // resolution. No interpreter substitution is hidden by an unchanged PATH value.
