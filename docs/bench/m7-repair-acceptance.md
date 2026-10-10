@@ -67,6 +67,18 @@ Measured M7 batches must use one compiler driver, retain Current full evidence
 and supply source preparation observations within the accepted budget. Missing
 telemetry is unavailable, not a collection of invented zero counters.
 
+The runner starts and owns one daemon per mode and reuses it across projects.
+It refuses an existing socket rather than adopting someone else's service.
+`actor-lifecycle.json` records owned process IDs, binary hashes and shutdown
+outcomes; separate daemon streams are retained. A workload timeout, observation
+error or interruption first sends SIGINT to the owned foreground CLI so its
+handler can cancel its daemon job, then uses a bounded group kill if necessary.
+If a repair job ID was observed, cleanup also cancels that exact ID through the
+unchanged job protocol. Finally, owned daemons receive graceful shutdown and a
+bounded fallback kill. Cleanup never targets discovered or unrelated actors,
+and never replaces the original workload failure. Process ownership tests are
+in `scripts/test-m7-repair-bench-lifecycle.py`.
+
 First actionable M7 evidence is read through the public resumable proof journal,
 using the foreground command's observed job identity. Retained pages include
 their cursors and gaps. A started query alone is not counted as an actionable
