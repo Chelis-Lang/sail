@@ -66,6 +66,11 @@ four-reader latency gate has been established. See the
   p95 was 209.120 ms and result p95 407.420 ms, still above the 200 ms gate.
   It had no active verifier and cannot qualify the original live workload.
   See [the candidate diagnostic](validation/m7-reader-entry-coalescing-diagnostic.json).
+  A fresh `8e09eaa` attempt then timed out during ordinary baseline preparation
+  at its original 600-second limit. No Current baseline or reader census was
+  admitted. Its completed vstd dependency report is partial setup evidence,
+  not a complete human-eval proof; see
+  [the setup failure](validation/m7-reader-entry-setup-timeout.md).
 - The older frozen reader controller assumed the newer `results/projects/jobs`
   storage layout, while a6 stores jobs under `projects/jobs`. Public proof
   evidence remained intact, but automatic raw archival could omit those files.
