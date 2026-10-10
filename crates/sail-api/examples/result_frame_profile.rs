@@ -1,6 +1,7 @@
 //! Offline whole-result profiling; this never validates a live proof or freshness.
 #![forbid(unsafe_code)]
 
+use std::fmt::Write as _;
 use std::hint::black_box;
 use std::io::{self, Cursor, Read};
 use std::sync::Arc;
@@ -27,6 +28,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Decode costs must use the captured bytes, including their member order.
     // Only an unframed JSON input needs a generated protocol envelope.
     let frame = Arc::new(if framed { input } else { encoded });
+    // A distinct full copy prevents comparison from degenerating into an Arc
+    // identity control. Setup is outside measured component waves.
+    let fresh = frame.as_slice().to_vec();
     let mut results = serde_json::Map::new();
     for threads in [1, 4] {
         for stage in [
@@ -35,8 +39,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Stage::Clone,
             Stage::Encode,
             Stage::Cached,
+            Stage::FramedBody,
+            Stage::ExactCompare,
         ] {
-            let measurements = measure(stage, threads, &frame, &body, &expected)?;
+            let measurements = measure(stage, threads, &frame, &fresh, &body, &expected)?;
             results.insert(format!("{}_{}", stage.name(), threads), measurements);
         }
     }
@@ -44,7 +50,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "{}",
         serde_json::to_string_pretty(&json!({
             "kind": "offline_whole_result_rust_profile",
-            "frame_bytes": frame.len(), "samples": 8,
+            "frame_bytes": frame.len(), "frame_sha256":sail_key::sha256(&frame).iter().fold(String::new(), |mut digest, byte| {let _=write!(digest,"{byte:02x}");digest}), "samples": 8,
+            "component_profile_not_network_or_live_client":true,
             "captured_frame_used_for_decode": framed,
             "captured_frame_equals_typed_reencoding": captured_equals_reencoded,
             "complete_graph_equality_checked": true, "live_acceptance": false,
@@ -86,6 +93,8 @@ enum Stage {
     Clone,
     Encode,
     Cached,
+    FramedBody,
+    ExactCompare,
 }
 impl Stage {
     fn name(self) -> &'static str {
@@ -95,9 +104,11 @@ impl Stage {
             Self::Clone => "response_clone",
             Self::Encode => "write_frame",
             Self::Cached => "cached_arc",
+            Self::FramedBody => "zeroed_body_allocation_copy",
+            Self::ExactCompare => "entire_fresh_body_equality",
         }
     }
-    fn run(self, frame: &Arc<Vec<u8>>, body: &Response) -> io::Result<Output> {
+    fn run(self, frame: &Arc<Vec<u8>>, fresh: &[u8], body: &Response) -> io::Result<Output> {
         match self {
             Self::Typed => read_frame(&mut Cursor::new(frame.as_slice())).map(Output::Typed),
             Self::Value => read_frame(&mut Cursor::new(frame.as_slice())).map(Output::Value),
@@ -108,6 +119,10 @@ impl Stage {
                 Ok(Output::Frame(out))
             }
             Self::Cached => Ok(Output::Cached(Arc::clone(frame))),
+            Self::FramedBody => captured_body(frame).map(Output::Body),
+            Self::ExactCompare => Ok(Output::Equal(
+                black_box(frame.get(4..)) == black_box(fresh.get(4..)),
+            )),
         }
     }
 }
@@ -117,6 +132,8 @@ enum Output {
     Value(Value),
     Frame(Vec<u8>),
     Cached(Arc<Vec<u8>>),
+    Body(Vec<u8>),
+    Equal(bool),
 }
 impl Output {
     fn validate(&self, frame: &[u8], expected: &Value) -> io::Result<()> {
@@ -130,6 +147,8 @@ impl Output {
                 decoded == *expected
             }
             Self::Cached(value) => value.as_slice() == frame,
+            Self::Body(value) => Some(value.as_slice()) == frame.get(4..),
+            Self::Equal(value) => *value,
         };
         if equal {
             Ok(())
@@ -137,6 +156,25 @@ impl Output {
             Err(io::Error::other("whole result changed"))
         }
     }
+}
+
+// Mirrors the safe buffer initialization/header/body copy in Cache::read_at,
+// with an in-memory reader instead of a Unix socket. It is a component control,
+// not a substitute for fresh-RPC or full typed-parser validation.
+fn captured_body(frame: &[u8]) -> io::Result<Vec<u8>> {
+    let mut reader = Cursor::new(frame);
+    let mut length = [0; 4];
+    reader.read_exact(&mut length)?;
+    let size = usize::try_from(u32::from_be_bytes(length)).map_err(io::Error::other)?;
+    if size > MAX_FRAME {
+        return Err(io::Error::other("profile body exceeds frame limit"));
+    }
+    let mut bytes = vec![0; size];
+    reader.read_exact(&mut bytes)?;
+    if reader.position() != frame.len() as u64 {
+        return Err(io::Error::other("extra bytes after component frame"));
+    }
+    Ok(bytes)
 }
 
 #[cfg(test)]
@@ -155,10 +193,10 @@ mod tests {
         let (body, expected) = decode_input(&frame, true)?;
         let captured = Arc::new(frame);
         Stage::Typed
-            .run(&captured, &body)?
+            .run(&captured, captured.as_slice(), &body)?
             .validate(&captured, &expected)?;
         Stage::Encode
-            .run(&captured, &body)?
+            .run(&captured, captured.as_slice(), &body)?
             .validate(&captured, &expected)?;
         let mut encoded = Vec::new();
         write_frame(&mut encoded, &body)?;
@@ -181,6 +219,37 @@ mod tests {
             .map_err(io::Error::other)?
             .to_be_bytes();
         assert!(decode_input(&oversized, true).is_err());
+        assert!(captured_body(&oversized).is_err());
+        assert!(captured_body(&frame[..frame.len() - 1]).is_err());
+        assert!(captured_body(&extra).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn components_use_entire_original_bytes_and_detect_changed_tail() -> io::Result<()> {
+        let mut bytes = Vec::new();
+        write_frame(
+            &mut bytes,
+            &Response::Error("SAIL0000: complete tail".into()),
+        )?;
+        let (body, expected) = decode_input(&bytes, true)?;
+        let original = Arc::new(bytes.clone());
+        Stage::FramedBody
+            .run(&original, &bytes, &body)?
+            .validate(&original, &expected)?;
+        Stage::ExactCompare
+            .run(&original, &bytes, &body)?
+            .validate(&original, &expected)?;
+        let last = bytes
+            .last_mut()
+            .ok_or_else(|| io::Error::other("missing frame tail"))?;
+        *last ^= 1;
+        assert!(
+            Stage::ExactCompare
+                .run(&original, &bytes, &body)?
+                .validate(&original, &expected)
+                .is_err()
+        );
         Ok(())
     }
 }
@@ -189,6 +258,7 @@ fn measure(
     stage: Stage,
     threads: usize,
     frame: &Arc<Vec<u8>>,
+    fresh: &[u8],
     body: &Response,
     expected: &Value,
 ) -> io::Result<Value> {
@@ -199,7 +269,7 @@ fn measure(
                 .map(|_| {
                     scope.spawn(|| {
                         let start = Instant::now();
-                        let output = black_box(stage.run(frame, body))?;
+                        let output = black_box(stage.run(frame, fresh, body))?;
                         Ok::<_, io::Error>((start.elapsed().as_secs_f64() * 1000.0, output))
                     })
                 })
@@ -222,5 +292,5 @@ fn measure(
     elapsed.sort_by(f64::total_cmp);
     Ok(json!({"threads":threads, "samples":elapsed.len(),
         "median_ms":elapsed[3].midpoint(elapsed[4]),
-        "p95_ms":elapsed[7], "max_ms":elapsed[7]}))
+        "p95_ms":elapsed[7], "max_ms":elapsed[7],"samples_ms":elapsed}))
 }

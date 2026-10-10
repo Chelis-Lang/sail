@@ -200,3 +200,15 @@ archived source mtimes predated its prior compilation. That replay remains
 recorded as stale provenance. A forced package-only release rebuild produced
 the independently hashed final binary used for the table. Final API tests and
 strict Clippy passed on both platforms.
+
+The `result_frame_profile --frame CAPTURED_FRAME` component diagnostic separates
+safe zero-initialized body allocation/copy, exact comparison against a distinct
+complete captured body, full typed parsing and independent Response cloning.
+Every output is checked after its timing wave; allocation/copy refuses oversized,
+truncated or trailing input and comparison controls detect a changed final byte.
+It retains all eight samples per stage at one and four threads. These in-memory
+components exclude Unix transfer, negotiation and server freshness work, so their
+timings cannot be subtracted from a separate socket run to attribute live latency.
+The producer and captured full response remain unchanged in the actual-client
+replay. This diagnostic does not introduce a product buffer pool, alter frame
+validation or reduce returned ownership.
