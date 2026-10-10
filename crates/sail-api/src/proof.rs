@@ -99,6 +99,9 @@ impl InputEvent {
         if self.obligation.is_some() && self.function.is_none() {
             return Err("SAIL0901: obligation event has no function identity".into());
         }
+        if matches!(self.observation, Observation::CompilerSealed) && self.phase != Phase::Full {
+            return Err("SAIL0901: compiler seal cannot finalize a focused phase".into());
+        }
         match &self.observation {
             Observation::FunctionStarted | Observation::FunctionObserved(_) => {
                 if self.function.is_none() {

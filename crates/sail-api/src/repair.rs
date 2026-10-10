@@ -185,3 +185,169 @@ pub struct Comparison {
     /// Why comparisons cannot be interpreted as proof regressions.
     pub notes: Vec<String>,
 }
+
+/// An explicit earlier evidence source, without guessing a baseline from history.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "id", rename_all = "snake_case")]
+pub enum Reference {
+    /// Completed durable job identity.
+    Job(String),
+    /// Immutable owner-selected baseline name.
+    Baseline(String),
+}
+
+/// Selects exact evidence without guessing diagnostic ownership or model values.
+///
+/// # Errors
+/// Returns a stable missing/ambiguous target, function, or obligation error.
+pub fn explain(
+    result: &ProjectResult,
+    target: &Target,
+    function: &str,
+    obligation: Option<&str>,
+) -> Result<Explanation, String> {
+    let matches: Vec<_> = result
+        .targets
+        .iter()
+        .filter(|t| {
+            t.package_id == target.package_id && t.target == target.name && t.kind == target.kind
+        })
+        .collect();
+    if matches.len() != 1 {
+        return Err("SAIL0904: exact target is missing or ambiguous".into());
+    }
+    let selected = matches[0];
+    let functions: Vec<_> = selected
+        .report
+        .crates
+        .iter()
+        .flat_map(|c| &c.functions)
+        .filter(|f| f.function == function)
+        .collect();
+    if functions.len() != 1 {
+        return Err("SAIL0904: exact function is missing or ambiguous".into());
+    }
+    let mut report = functions[0].clone();
+    if let Some(id) = obligation {
+        let Some(obligations) = report.obligations.as_mut() else {
+            return Err("SAIL0904: obligation attribution is unavailable".into());
+        };
+        if !obligations.iter().any(|o| o.id == id) {
+            return Err("SAIL0904: exact obligation was not observed".into());
+        }
+        obligations.retain(|o| o.id == id);
+    }
+    Ok(Explanation {
+        version: VERSION, target: target.clone(), establishing_run: selected.establishing_run.clone(),
+        currentness: result.currentness, function: report, attributed_diagnostics: Vec::new(),
+        run_diagnostics: selected.report.diagnostics.clone(), diagnostic_attribution_complete: false,
+        notes: vec!["Run diagnostics are retained; no line-window heuristic establishes their function ownership.".into()],
+    })
+}
+
+fn functions(
+    result: &ProjectResult,
+) -> std::collections::BTreeMap<(Target, String), &FunctionReport> {
+    result
+        .targets
+        .iter()
+        .filter(|t| t.requested)
+        .flat_map(|target| {
+            let id = Target {
+                package_id: target.package_id.clone(),
+                name: target.target.clone(),
+                kind: target.kind.clone(),
+            };
+            target
+                .report
+                .crates
+                .iter()
+                .flat_map(|c| &c.functions)
+                .map(move |f| ((id.clone(), f.function.clone()), f))
+        })
+        .collect()
+}
+
+fn scopes(result: &ProjectResult) -> Vec<(Target, String, Vec<String>)> {
+    let mut scopes: Vec<_> = result
+        .targets
+        .iter()
+        .filter(|t| t.requested)
+        .map(|target| {
+            (
+                Target {
+                    package_id: target.package_id.clone(),
+                    name: target.target.clone(),
+                    kind: target.kind.clone(),
+                },
+                target.report.mode.clone(),
+                target.report.command.clone(),
+            )
+        })
+        .collect();
+    scopes.sort();
+    scopes
+}
+
+/// Compares recorded evidence only when exact requested contexts/scopes agree.
+/// Absent functions remain unobserved; a partial run never proves their removal.
+#[must_use]
+pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
+    let compatible =
+        before.context_sha256 == after.context_sha256 && scopes(before) == scopes(after);
+    let left = functions(before);
+    let right = functions(after);
+    let ids: std::collections::BTreeSet<_> = left.keys().chain(right.keys()).cloned().collect();
+    let differences = ids
+        .into_iter()
+        .map(|(target, function)| {
+            let key = (target.clone(), function.clone());
+            let before = left.get(&key).map(|f| effective(f));
+            let after = right.get(&key).map(|f| effective(f));
+            let change = if compatible {
+                match (before, after) {
+                    (Some(a), Some(b)) if a == b => Change::Unchanged,
+                    (Some(VerdictName::Verified), Some(VerdictName::Failed)) => Change::Regressed,
+                    (
+                        Some(VerdictName::Verified),
+                        Some(VerdictName::Unknown | VerdictName::Provisional),
+                    ) => Change::BecameUnknown,
+                    (Some(_), Some(VerdictName::Verified)) => Change::Recovered,
+                    (None, Some(_)) => Change::Added,
+                    (Some(_), None) => Change::NotObserved,
+                    _ => Change::Changed,
+                }
+            } else {
+                Change::Incomparable
+            };
+            Difference {
+                target,
+                function,
+                before,
+                after,
+                change,
+            }
+        })
+        .collect();
+    Comparison {
+        version: VERSION,
+        compatible,
+        before_revision: before.input_revision.clone(),
+        after_revision: after.input_revision.clone(),
+        after_currentness: after.currentness,
+        differences,
+        notes: if compatible {
+            Vec::new()
+        } else {
+            vec!["Requested scope, mode or runtime context differs; transitions are descriptive, not proof regressions.".into()]
+        },
+    }
+}
+
+fn effective(report: &FunctionReport) -> VerdictName {
+    if report.tier == crate::output::TierName::Provisional {
+        VerdictName::Provisional
+    } else {
+        report.verdict
+    }
+}
