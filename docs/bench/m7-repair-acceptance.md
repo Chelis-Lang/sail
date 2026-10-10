@@ -109,6 +109,31 @@ Correctness includes exact solver-input and full diagnostic comparisons,
 full local fast/standard corpus coverage, and affected source tests described
 in ADR 0027. Long runs stay outside CI.
 
+## Real retained-job CLI/MCP integration
+
+`scripts/m7-retained-jobs-acceptance.py` consumes a completed genuine repair job
+from the separate human-eval or Vest workload. It requires accepted Current
+full evidence for exactly one requested package/target/kind and an exact unique
+function; it neither establishes that proof nor edits catalogue sources.
+Pass `--sail`, `--project`, `--cache`, `--socket`, `--job`, `--package`, `--target`,
+`--kind`, `--function`, a fresh `--out` directory and `--environment-label`.
+
+The local Linux scenario checks the actual CLI and stdio MCP result, exact
+explanation, immutable named baseline and comparison, explicit missing-job and
+missing-function errors, and a proof cursor resumed across independent MCP
+connections. A mismatched cursor must report a gap; replaying a completed cursor
+must preserve its exact events. It then submits one explicitly forced owned
+repair, observes its actual worker and descendants through kernel identities,
+cancels that job and requires those processes to stop. The externally supplied
+completed job and its original evidence must survive unchanged. Cleanup cancels
+only the new owned job and closes only this scenario's MCP sessions.
+
+The scenario keeps the 120-second workflow, 30-second command and five-second
+framed RPC limits. All public responses, diagnostics, operation durations and
+cleanup outcomes are retained; private environments are not copied. Passing
+this integration does not replace the three-round performance workload, source
+oracle, full corpus conformance, or concurrent-read latency census.
+
 ## Retained acceptance progress (2026-10-10)
 
 M7 remains in progress. Passing integration checks do not substitute for the
