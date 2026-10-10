@@ -22,6 +22,11 @@ four-reader latency gate has been established. See the
   query decoding and graph-validation scratch allocations. The corrective
   candidate must admit these before allocation and retain ownership until
   physical drop; a serialized-byte limit alone does not bound decoded memory.
+  The [bounded-decoding overlay](../engine/verus/candidates/decode-budget/README.md)
+  has isolated pinned-source tests, but its combined runtime checks are pending.
+  A further audit found unbounded diagnostic-event JSON expansion before the
+  observer lock, which can overlap preparation workers. That path must be
+  bounded before the combined candidate can satisfy the physical budget.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
