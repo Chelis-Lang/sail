@@ -297,14 +297,19 @@ fn completed_cached_reply_is_refused_when_cancelled_at_final_admission() -> io::
         let _: Request = read_frame(&mut stream)?;
         write_frame(&mut stream, &reply)
     })?;
-    let client = Client::with_result_decoding_cache(&server.socket);
+    let client = Client::new(&server.socket);
     let mut seeded = Vec::new();
     write_frame(&mut seeded, &expected)?;
     client
         .decoded
         .as_ref()
         .ok_or_else(|| io::Error::other("cache absent"))?
-        .read(&mut std::io::Cursor::new(seeded))?;
+        .read(&mut std::io::Cursor::new(&seeded))?;
+    client
+        .decoded
+        .as_ref()
+        .ok_or_else(|| io::Error::other("cache absent"))?
+        .read(&mut std::io::Cursor::new(&seeded))?;
     let caller = std::thread::current().id();
     let caller_checks = AtomicUsize::new(0);
     let error = client

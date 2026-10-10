@@ -7,7 +7,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Barrier};
 use std::time::{Duration, Instant};
 
-use sail_api::jobs::{Client, MAX_FRAME, Request, Response, read_frame, write_frame};
+#[cfg(test)]
+use sail_api::jobs::write_frame;
+use sail_api::jobs::{Client, MAX_FRAME, Request, Response, read_frame};
 use serde_json::{Value, json};
 
 #[cfg(unix)]
@@ -29,7 +31,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bytes = Arc::new(bytes);
     let mut results = serde_json::Map::new();
     for threads in [1, 4] {
-        for case in [Case::Generic, Case::ColdClient, Case::WarmClient] {
+        for case in [
+            Case::Generic,
+            Case::ColdClient,
+            Case::WarmClient,
+            Case::StagedCold,
+            Case::StagedSecond,
+            Case::StagedWarm,
+        ] {
             results.insert(
                 format!("{}_{}", case.name(), threads),
                 measure(case, threads, &bytes, &expected)?,
@@ -100,13 +109,19 @@ enum Case {
     Generic,
     ColdClient,
     WarmClient,
+    StagedCold,
+    StagedSecond,
+    StagedWarm,
 }
 impl Case {
     fn name(self) -> &'static str {
         match self {
-            Self::Generic => "generic_frame",
+            Self::Generic => "uncached_client",
             Self::ColdClient => "cold_client",
             Self::WarmClient => "warm_exact_frame_client",
+            Self::StagedCold => "default_cold",
+            Self::StagedSecond => "default_second",
+            Self::StagedWarm => "default_warm",
         }
     }
 }
@@ -117,7 +132,7 @@ fn measure(
     bytes: &Arc<Vec<u8>>,
     expected: &Value,
 ) -> io::Result<Value> {
-    use std::os::unix::net::{UnixListener, UnixStream};
+    use std::os::unix::net::UnixListener;
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let root = std::path::Path::new("/tmp").join(format!(
         "scp-{}-{}-{threads}-{}",
@@ -131,14 +146,23 @@ fn measure(
     let listener = UnixListener::bind(&socket)?;
     listener.set_nonblocking(true)?;
     let stop = Arc::new(AtomicBool::new(false));
-    let client = Client::with_result_decoding_cache(&socket);
-    let warmup = matches!(case, Case::WarmClient);
+    let client = if matches!(case, Case::StagedWarm) {
+        Client::new(&socket)
+    } else {
+        Client::with_result_decoding_cache(&socket)
+    };
+    let warmups = match case {
+        Case::WarmClient => 1,
+        Case::StagedWarm => 2,
+        Case::StagedSecond => 8,
+        _ => 0,
+    };
     let request = Request::Result {
         id: "exact-captured-job".into(),
     };
     let measured = std::thread::scope(|scope| -> io::Result<Value> {
         let server = scope.spawn(|| -> io::Result<()> {
-            for _ in 0..(8 + usize::from(warmup)) {
+            for _ in 0..(8 + warmups) {
                 let mut stream = accept_owned(&listener, &stop)?;
                 stream.set_read_timeout(Some(Duration::from_secs(5)))?;
                 stream.set_write_timeout(Some(Duration::from_secs(5)))?;
@@ -148,8 +172,10 @@ fn measure(
             Ok(())
         });
         let _stop_on_exit = StopOnExit(Arc::clone(&stop));
-        if warmup {
-            validate(client.call(&request)?, expected)?;
+        if matches!(case, Case::WarmClient | Case::StagedWarm) {
+            for _ in 0..warmups {
+                validate(client.call(&request)?, expected)?;
+            }
         }
         let mut samples = Vec::new();
         for _ in 0..(8 / threads) {
@@ -158,19 +184,20 @@ fn measure(
                 let handles: Vec<_> = (0..threads)
                     .map(|_| {
                         inner.spawn(|| -> io::Result<_> {
+                            let staged = Client::new(&socket);
+                            if matches!(case, Case::StagedSecond) {
+                                validate(staged.call(&request)?, expected)?;
+                            }
                             barrier.wait();
                             let started = Instant::now();
                             let reply = match case {
-                                Case::WarmClient => client.call(&request)?,
+                                Case::WarmClient | Case::StagedWarm => client.call(&request)?,
+                                Case::StagedCold | Case::StagedSecond => staged.call(&request)?,
                                 Case::ColdClient => {
                                     Client::with_result_decoding_cache(&socket).call(&request)?
                                 }
                                 Case::Generic => {
-                                    let mut stream = UnixStream::connect(&socket)?;
-                                    stream.set_read_timeout(Some(Duration::from_secs(5)))?;
-                                    stream.set_write_timeout(Some(Duration::from_secs(5)))?;
-                                    write_frame(&mut stream, &request)?;
-                                    read_frame(&mut stream)?
+                                    Client::without_result_decoding_cache(&socket).call(&request)?
                                 }
                             };
                             Ok((started.elapsed().as_secs_f64() * 1000.0, reply))
