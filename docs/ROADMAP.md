@@ -121,8 +121,9 @@ arithmetic optimization, with all original HTTP serving and forgery assertions
 passing in the affected suite. The complete integrated `5fd7986` gate subsequently
 passed all 439 workspace tests and every documentation/policy check.
 The same frozen source passed all 37 real-solver/fault tests with their original
-limits. Integrated CLI/MCP and fresh real-project reader runs are in progress;
-these suite passes do not establish their acceptance or source-engine qualification.
+limits. Its complete end-to-end attempt passed legacy checks, then failed the
+original 240-second cold managed-verification limit; repair was not reached.
+These suite passes do not establish product acceptance or source-engine qualification.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh
 real-reader attempt failed ordinary human-eval setup at the unchanged
