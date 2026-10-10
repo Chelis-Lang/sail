@@ -242,6 +242,11 @@ fn collect_samples(
     })
 }
 pub(super) fn run(args: &Args) -> io::Result<bool> {
+    if !cfg!(target_os = "linux") || std::env::var_os("CI").is_some() {
+        return Err(io::Error::other(
+            "the real reader census is Linux and local-only",
+        ));
+    }
     let client = Client::new(jobs::socket_path(&args.socket));
     let active = status(&client, &args.active_job)?;
     if active.state != Lifecycle::Running {
@@ -379,16 +384,17 @@ mod tests {
         document.job.input_revision = Some("other".into());
         assert!(!valid_result(&document, &expected, "done"));
         document.job.input_revision = Some("revision".into());
-        for case in ["revision", "target", "error", "currentness"] {
+        for case in ["revision", "target", "report", "error", "currentness"] {
             let mut changed = expected.clone();
             match case {
                 "revision" => changed.input_revision = "other".into(),
                 "target" => changed.targets[0].complete = false,
+                "report" => changed.targets[0].report.mode = "different-mode".into(),
                 "error" => {
                     changed.error = Some(sail_api::output::ErrorInfo {
                         code: "SAIL0000".into(),
                         message: "failure".into(),
-                    })
+                    });
                 }
                 _ => changed.currentness = sail_api::project::Currentness::Historical,
             }
