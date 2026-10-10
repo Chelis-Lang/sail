@@ -119,3 +119,14 @@ It preserves both source forms and directly compares each ordered component's
 bytes before reporting the first change. It always restores its private source
 copy. Its result is a miss-cause diagnostic, not conformance, useful cross-edit
 reuse or a speed claim.
+
+`test-real-he-same-input.py` is the newly selected real-source byte gate. It
+retains the original stock exit, full/function verdict and exact diagnostic
+checks, reports each independent stock transcript difference with both raw
+streams and hashes, and requires a completed same-callback raw/effect/diagnostic
+comparison for **every** actual preparation hit. It is separate from the earlier
+`test-real-he.py` and its retained failure. Its unchanged-revision control must
+restore an existing focused preparation; its other-module edit records actual
+reuse without claiming previous-revision reuse from a disk-hit counter alone.
+All actor deadlines remain 600 seconds, and a timed-out owned process group is
+terminated with raw stdout/stderr and deadline metadata retained.
