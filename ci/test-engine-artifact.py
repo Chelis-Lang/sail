@@ -29,7 +29,7 @@ class ArtifactTests(unittest.TestCase):
         manifest = {"schema_version": 1, "commit": "pinned", "rust_toolchain": "pinned",
                     "z3_sha256": artifact.sha(runtime / "z3"), "artifacts": files,
                     "features": ["sail-interactive:" + artifact.sha(artifact.REPO / "engine/verus/interactive.patch"),
-                                 "host:x86-linux", "source-lock:" + artifact.sha(artifact.REPO / "engine/verus/Cargo.lock")]}
+                                 "host:x86_64-unknown-linux-gnu", "source-lock:" + artifact.sha(artifact.REPO / "engine/verus/Cargo.lock")]}
         (build / "sail-build.json").write_text(json.dumps(manifest))
         archive = root / "runtime.tar.gz"
         pin_path = root / "pin.json"
