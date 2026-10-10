@@ -131,8 +131,10 @@ Focus evidence shares this 16 MiB capture budget; overflow marks focus
 unavailable and still runs the independent full proof. No cloned `Ctx`, mutable
 GlobalCtx or duplicate diagnostic-owner vector is retained for preparation.
 
-The intended 512 MiB memory bound covers these cache-owned allocations, not the
-fresh compiler's working AST/SST or its decoded active lowering state. The
+The intended 512 MiB memory bound covers cache-owned allocations and validation
+scratch, including decoded preparations until their validated handoff to the
+active compiler. Fresh compiler working AST/SST after that handoff is reported
+separately. The
 currently selected baseline releases `RecordingReporter` and `FocusReporter`
 diagnostic quota in their `Drop` implementations before Rust drops their message
 vectors and nested cache-owned Arc references. A concurrent reporter can therefore
@@ -143,6 +145,16 @@ drops those allocations before releasing quota; its scope and regression checks
 are described in [the candidate README](candidates/README.md). That candidate
 fix is not part of the selected runtime, and this limitation does not qualify or
 select any candidate.
+
+The subsequent unselected [combined preparation candidate](candidates/README.md#combined-bounded-preparation-candidate)
+also bounds decoded allocation, validation scratch, focused reports and source
+observations. Its [decoder audit](candidates/decode-budget/README.md) and
+[observer audit](candidates/observer-budget/README.md) give a conservative
+492 MiB phase maximum. This is an allocation argument requiring combined
+runtime qualification, not a measured or selected guarantee. An allocation-only
+probe admitted 36 of 105 retained human-eval preparations and safely refused
+69 at its fixed 128 MiB decode allowance. Refining that accounting is necessary
+before demonstrating useful reuse; passing empty fixtures cannot establish it.
 
 The value codec can duplicate shared IR nodes while decoding; it does not promise DAG
 sharing or a bound on total compiler RSS. Interpreter state is never cached,
