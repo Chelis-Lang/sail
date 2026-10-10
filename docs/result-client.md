@@ -92,6 +92,16 @@ M7 edit-loop performance target. See [freshness](freshness.md),
 [the repair workflow](proof-repair-walkthrough.md) and
 [the roadmap](ROADMAP.md) for the separate product contracts.
 
+The [retained offline profile](validation/m7-result-client-profile.json) includes
+both the first automatic-retention experiment and the explicit opt-in version.
+The first experiment's cold four-reader p95 was 438.93 ms versus 171.88 ms for
+ordinary parsing, motivating the unchanged single-use constructor. In the
+explicit experiment, the warm four-reader median was 45.61 ms and maximum/p95
+77.68 ms; the ordinary four-reader median was 56.23 ms with a 503.48 ms outlier.
+Eight samples under emulation are diagnostic rather than a stable reference or
+live acceptance. The full raw samples, complete graph comparison, binary/source
+bundle hashes, cold costs and rejected slower streaming alternative are kept.
+
 ## Calling the SDK
 
 Pass the durable **job** socket, rather than the SMT-cache socket. A configured
@@ -118,4 +128,5 @@ body with `SAIL0801` and an incompatible envelope version with `SAIL0802`;
 malformed JSON and server errors are returned without substituting a prior
 result. The ordinary `call` method retains its existing five-second **per-I/O**
 timeouts; it does not promise a five-second total across arbitrary fragmented
-reads. Cancelling and bounded MCP transport are separate integration work.
+reads. Use `call_cancellable` for the joined cancellation and absolute transport
+budget described above; MCP activation and live acceptance are separate work.
