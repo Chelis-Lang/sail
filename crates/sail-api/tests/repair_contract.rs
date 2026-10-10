@@ -58,7 +58,19 @@ fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits(
         manifest_sha256: "manifest".into(),
         compiler_invocations: 1,
         batched: true,
+        selection_error: None,
     };
+    assert!(batch.accepted());
+    batch.selection_error = Some(sail_api::output::ErrorInfo {
+        code: "SAIL3122".into(),
+        message: "ambiguous exact function".into(),
+    });
+    let document = sail_api::repair::ResultDocument::from(batch.clone());
+    assert!(!document.accepted);
+    assert_eq!(document.batch.full, batch.full);
+    assert_eq!(document.batch.full.exit_code, Some(0));
+    assert!(sail_api::repair::accepted(&document.batch.full));
+    batch.selection_error = None;
     assert!(batch.accepted());
     batch.full.targets[0].report.summary.failed = 1;
     batch.full.targets[0].report.exit_code = Some(1);

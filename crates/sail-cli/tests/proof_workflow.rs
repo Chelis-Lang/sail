@@ -103,6 +103,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         manifest_sha256: "mock-manifest".into(),
         compiler_invocations: 1,
         batched: true,
+        selection_error: None,
     });
     std::fs::write(
         fixture.root.join("result.json"),
