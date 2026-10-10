@@ -212,12 +212,15 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         .unwrap_or_default();
     let mut worker = BlockedWorker::ready();
     let started = std::time::Instant::now();
+    let mut timings = Vec::with_capacity(7);
+    let operation_started = std::time::Instant::now();
     let start = call(
         &fixture.context,
         "start_verification",
         &Map::new(),
         &Cancel::default(),
     );
+    timings.push(("start_verification", operation_started.elapsed()));
     assert!(!start.is_error, "{}", start.text);
     assert_eq!(start.structured["id"], "running");
     for name in [
@@ -225,7 +228,9 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         "verification_result",
         "cancel_verification",
     ] {
+        let operation_started = std::time::Instant::now();
         let response = call(&fixture.context, name, &arguments, &Cancel::default());
+        timings.push((name, operation_started.elapsed()));
         assert!(!response.is_error, "{}", response.text);
         let value = &response.structured["value"];
         assert_eq!(value.get("job").unwrap_or(value)["id"], "running");
@@ -239,6 +244,7 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
     )
     .unwrap_or_else(|error| unreachable!("{error}"));
     for models in [false, true] {
+        let operation_started = std::time::Instant::now();
         let evidence = lookup(
             &fixture.context,
             &fixture.root,
@@ -247,6 +253,14 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
             &Cancel::default(),
         )
         .unwrap_or_else(|| unreachable!("completed job evidence missing"));
+        timings.push((
+            if models {
+                "counterexample"
+            } else {
+                "cached_result"
+            },
+            operation_started.elapsed(),
+        ));
         assert!(!evidence.is_error);
         assert_eq!(evidence.structured["job"]["currentness"], "historical");
         assert_eq!(
@@ -272,6 +286,7 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         true,
     )
     .unwrap_or_else(|error| unreachable!("{error}"));
+    let operation_started = std::time::Instant::now();
     assert!(
         lookup(
             &fixture.context,
@@ -282,15 +297,20 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         )
         .is_some_and(|result| result.is_error && result.structured["error"] == "not_found")
     );
-    assert_responsive(&mut worker, started);
+    timings.push(("missing_obligation", operation_started.elapsed()));
+    assert_responsive(&mut worker, started, &timings);
     reject_report_as_job(&fixture);
 }
 
-fn assert_responsive(worker: &mut BlockedWorker, started: std::time::Instant) {
+fn assert_responsive(
+    worker: &mut BlockedWorker,
+    started: std::time::Instant,
+    timings: &[(&str, std::time::Duration)],
+) {
     worker.assert_running();
     let elapsed = started.elapsed();
     eprintln!(
-        "owned worker {} remained blocked throughout job tools ({elapsed:?})",
+        "owned worker {} remained blocked throughout job tools ({elapsed:?}); operation timings: {timings:?}",
         worker.0.id()
     );
     assert!(
