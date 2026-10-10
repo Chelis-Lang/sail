@@ -1,0 +1,68 @@
+--- a/source/rust_verify/src/sail_engine.rs
++++ b/source/rust_verify/src/sail_engine.rs
+@@ -299,7 +299,14 @@
+     pub fn messages(&self)->std::cell::Ref<'_,Messages>{self.messages.borrow()}
+     pub fn cacheable(&self)->bool{self.valid.get()}
+ }
+-impl<T> Drop for RecordingReporter<'_,T>{fn drop(&mut self){REPORT_BYTES.fetch_sub(self.charge.get(),Ordering::Relaxed);}}
++fn dispose_report_messages(messages:&mut RefCell<Messages>,charge:u64){
++    // Release every cache-owned Arc and the Vec allocation before quota becomes
++    // available to a concurrent reporter. Compiler-owned clones remain outside
++    // preparation ownership and are never counted as a cache allocation.
++    drop(std::mem::take(messages.get_mut()));
++    REPORT_BYTES.fetch_sub(charge,Ordering::Relaxed);
++}
++impl<T> Drop for RecordingReporter<'_,T>{fn drop(&mut self){dispose_report_messages(&mut self.messages,self.charge.get());}}
+ fn message_charge(msg:&ArcDynMessage)->Option<u64>{
+     let msg=msg.downcast_ref::<MessageX>()?;
+     fn span_charge(span:&vir::messages::Span)->Option<usize>{
+@@ -346,7 +353,7 @@
+ }
+ #[derive(Default)]
+ struct FocusReporter { messages: RefCell<Messages>,charge:Cell<u64>,incomplete:Cell<bool> }
+-impl Drop for FocusReporter{fn drop(&mut self){REPORT_BYTES.fetch_sub(self.charge.get(),Ordering::Relaxed);}}
++impl Drop for FocusReporter{fn drop(&mut self){dispose_report_messages(&mut self.messages,self.charge.get());}}
+ impl air::messages::Diagnostics for FocusReporter {
+     fn report_as(&self,msg:&ArcDynMessage,level:MessageLevel){ if let Some(charge)=admit_message(msg){self.charge.set(self.charge.get()+charge);self.messages.borrow_mut().push((msg.clone(),level,Emission::ReportAs));retained_charge();}else{self.incomplete.set(true);}diagnostic(msg,level); }
+     fn report(&self,msg:&ArcDynMessage){self.report_as(msg,msg.downcast_ref::<MessageX>().unwrap().level);}
+@@ -475,3 +482,40 @@
+         assert!(result.is_err());
+     }
+ }
++
++#[cfg(test)] mod reporter_ownership_tests {
++    use super::*;
++    use std::sync::{mpsc,Mutex};
++    struct BlockedSpan { bytes:Option<Vec<u8>>, started:mpsc::Sender<()>, finish:Mutex<mpsc::Receiver<()>> }
++    impl Drop for BlockedSpan {
++        fn drop(&mut self){self.started.send(()).unwrap();self.finish.get_mut().unwrap().recv().unwrap();drop(self.bytes.take());}
++    }
++    #[test]
++    fn both_reporters_dispose_nested_message_ownership_before_racing_admission(){
++        const LIMIT:u64=16*1024*1024;
++        for focus in [false,true]{
++            assert_eq!(REPORT_BYTES.fetch_add(LIMIT,Ordering::SeqCst),0);
++            let (started_tx,started_rx)=mpsc::channel();let (finish_tx,finish_rx)=mpsc::channel();
++            let span=vir::messages::Span{raw_span:Arc::new(BlockedSpan{bytes:Some(vec![0;128]),started:started_tx,finish:Mutex::new(finish_rx)}),id:0,data:vec![],as_string:String::new()};
++            let message:ArcDynMessage=vir::messages::error(&span,"nested retained diagnostic");drop(span);
++            let worker=std::thread::spawn(move||{
++                let messages=RefCell::new(vec![(message,MessageLevel::Error,Emission::Report)]);
++                if focus {drop(FocusReporter{messages,charge:Cell::new(LIMIT),incomplete:Cell::new(false)});}
++                else {drop(RecordingReporter{reporter:&(),messages,charge:Cell::new(LIMIT),valid:Cell::new(true)});}
++            });
++            started_rx.recv().unwrap();
++            assert!(REPORT_BYTES.fetch_update(Ordering::SeqCst,Ordering::SeqCst,|used|used.checked_add(1).filter(|total|*total<=LIMIT)).is_err(),"admitted new diagnostic while old nested span allocation is still live");
++            finish_tx.send(()).unwrap();worker.join().unwrap();
++            assert_eq!(REPORT_BYTES.load(Ordering::SeqCst),0);
++            assert_eq!(REPORT_BYTES.fetch_update(Ordering::SeqCst,Ordering::SeqCst,|used|used.checked_add(LIMIT).filter(|total|*total<=LIMIT)),Ok(0));
++            REPORT_BYTES.fetch_sub(LIMIT,Ordering::SeqCst);
++        }
++    }
++    #[test]
++    fn disposal_releases_only_cache_owned_references(){
++        let message:ArcDynMessage=vir::messages::error_bare("compiler-owned reference remains valid");
++        let reporter=FocusReporter{messages:RefCell::new(vec![(message.clone(),MessageLevel::Error,Emission::Report)]),charge:Cell::new(0),incomplete:Cell::new(false)};
++        assert_eq!(Arc::strong_count(&message),2);drop(reporter);assert_eq!(Arc::strong_count(&message),1);
++        assert_eq!(message.downcast_ref::<MessageX>().unwrap().note,"compiler-owned reference remains valid");
++    }
++}

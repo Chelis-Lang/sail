@@ -30,3 +30,20 @@ function outcomes and solver-input bytes without normalization. It retains
 unchanged-callback, body-edit, stale-span, corrupt/misfiled/oversized checkpoint
 checks. Cancellation and real-project catalogue gates remain separately
 mandatory. Neither the scripts' presence nor static coverage is a runtime pass.
+
+`reporter-ownership.patch` is a narrow overlay for the currently qualified
+baseline or the previous graph candidate. It disposes diagnostic message vectors
+and all cache-owned nested Arc references before releasing their process-wide
+quota. It is not an installer-selected patch. `graph-ledger.patch` already
+includes the overlay; do not apply it a second time. Its blocked-destructor
+regression exercises both recording and focus reporters, while a separate Arc
+lifetime check preserves compiler-owned references.
+
+The allocation-counter destructor audit covers graph Recording, Ledger and final
+Capture ownership plus diagnostic RecordingReporter and FocusReporter. The only
+other decrement is the preparation miss counter, which owns no allocation.
+Span-collection guards restore callback-local state and have no quota to release;
+serialized entry/provenance/source storage uses explicit global gates or direct
+ownership accounting, rather than destructor counters. Compiler-owned message
+clones are working state outside cache ownership; removing cache references does
+not invalidate those clones.

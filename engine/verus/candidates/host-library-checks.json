@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "candidate_patch_sha256": "fac9a02ffb074a3615e0bdb5f1f2458c8ae87c406f29ac1c212db75f9dc0d797",
+  "candidate_patch_sha256": "245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
   "rustc": "1.98.1",
   "rustc_commit": "48a229ceaefd4985c50990b14116b6d856af0985",
   "host": "aarch64-apple-darwin",
@@ -12,28 +12,27 @@
         "test",
         "--release",
         "-p",
-        "vir",
+        "rust_verify",
         "--lib",
-        "sail_graph::tests"
+        "reporter_ownership_tests"
       ],
-      "passed": 7,
-      "elapsed_seconds": 52.95
+      "passed": 2,
+      "compile_elapsed_seconds": 544,
+      "test_elapsed_seconds": 0.02
     },
     {
       "cwd": "variant/source",
       "command": [
         "cargo",
-        "check",
+        "test",
         "--release",
         "-p",
         "rust_verify",
         "--lib"
       ],
-      "success": true,
-      "elapsed_seconds": 33.36,
-      "warnings": [
-        "existing unused verifier spans parameter"
-      ]
+      "passed": 9,
+      "compile_elapsed_seconds": 0.69,
+      "test_elapsed_seconds": 0.37
     },
     {
       "cwd": "variant/source",
@@ -46,7 +45,8 @@
         "--lib"
       ],
       "passed": 8,
-      "elapsed_seconds": 0.48
+      "compile_elapsed_seconds": 0.23,
+      "test_elapsed_seconds": 0.0
     }
   ],
   "environment": {
@@ -64,5 +64,14 @@
   "global_ledger_owned_mib": 16,
   "frame_encoded_mib": 1,
   "frame_encoder_and_finish_conversion_serialized": true,
-  "portable_decode_globally_serialized": true
+  "portable_decode_globally_serialized": true,
+  "reporter_counter_release_after_disposal": true,
+  "allocation_counter_drop_audit": [
+    "graph Recording",
+    "graph Ledger",
+    "final graph Capture",
+    "diagnostic RecordingReporter",
+    "diagnostic FocusReporter"
+  ],
+  "compilation_niceness": 19
 }

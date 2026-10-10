@@ -89,7 +89,10 @@ before charge admission; there is no frame-content copy. One global encoding
 lock covers both frame encoding and finish conversion. Buffer destructors take
 and physically drop all frames before releasing quota. The final capture clone
 consumes its Arc allocation, drops the state and only then releases metadata
-quota. A deterministic two-thread regression blocks physical disposal and
+quota. Recording and focus diagnostic reporters also dispose their message vectors
+and nested cache-owned Arc references before releasing the shared diagnostic
+quota. A separate narrow overlay records that fix for the qualified baseline;
+its original runtime remains unchanged. A deterministic two-thread regression blocks physical disposal and
 checks that racing replacement admission remains refused. Deserialization and
 replay occur under the global preparation gate; decoded frames are explicitly
 dropped before effect restoration and before that gate can be released. Add this conservative
@@ -115,8 +118,8 @@ and exact raw SMT, verdict and diagnostic comparisons, plus recursion, trait,
 bitvector and late EXEC fixtures. No check or baseline is relaxed.
 
 The isolated host candidate passes seven graph-ledger VIR regressions and the
-complete eight-test VIR library suite. The complete `rust_verify` library passes
-release `cargo check`, including raw-field privacy coverage. No runtime binary,
+complete eight-test VIR library suite. The complete `rust_verify` library passes nine release tests, including the
+reporter nested-Arc/racing-admission regressions; raw-field privacy also compiled. No runtime binary,
 vstd verification or source manifest was built by these checks. Runtime source
 oracles and product acceptance remain pending. Static coverage, patch
 applicability and syntax checks also pass. A separately built variant
