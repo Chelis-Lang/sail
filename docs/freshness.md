@@ -21,7 +21,13 @@ must not turn a genuinely overlapping read into a sequential one. Sequential
 reads never reuse an older checkpoint by age or delayed publication. Both caller
 namespace barriers and final runtime/lease checks remain required. The separate
 100 ms validation-owner wait budget starts after the first namespace barrier;
-recording the earlier overlap boundary does not extend that wait. Publication and read completion require
+recording the earlier overlap boundary does not extend that wait. Waiting readers
+register on a per-owner publication condition variable while holding the same
+mutex used to publish success or invalidation. A notification only wakes a
+reader; it never authorizes evidence. Every wake rechecks the reader's entry-time
+checkpoint and owner state. Spurious wakes share the original absolute wait
+deadline, and a Busy reader does not invalidate an independent owner.
+Publication and read completion require
 the same runtime-generation identity and native barriers. Hash work happens outside job-service
 and verifier-worker locks. Established reads retain the existing five-second RPC
 deadline; uncertain readers return with Unknown and an explanatory note rather

@@ -8,6 +8,8 @@ semantic versioning once the API is published.
 - Retain raw partial stdout and stderr for timed-out corpus verification units.
   The timeout remains an infrastructure error and kills the verifier process
   group; partial output never becomes a completed proof or conformance result.
+- Wake waiting freshness readers on owner publication while retaining the same
+  absolute wait limit, entry-time eligibility and complete input/lease checks.
 
 - Reduce Linux kernel lease inventory parsing work while preserving exact owner,
   descriptor and row checks, both validation sweeps and all currentness bounds.

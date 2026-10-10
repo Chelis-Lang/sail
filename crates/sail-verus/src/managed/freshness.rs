@@ -8,12 +8,14 @@ use super::{lease::ReadLease, precise::Observer};
 use crate::Error;
 use crate::Result;
 use std::collections::BTreeMap;
+#[cfg(target_os = "linux")]
+use std::ops::ControlFlow;
 use std::path::Path;
 #[cfg(target_os = "linux")]
 use std::path::PathBuf;
 #[cfg(target_os = "linux")]
 use std::sync::{
-    Arc, Mutex,
+    Arc, Condvar, Mutex,
     atomic::{AtomicUsize, Ordering},
 };
 
@@ -73,6 +75,7 @@ struct RuntimeSlot {
     runtime: Option<RuntimeValidation>,
     coherent: Option<(std::time::Instant, InputSnapshot)>,
     validating: bool,
+    published: Arc<Condvar>,
 }
 #[cfg(target_os = "linux")]
 enum Refresh {
@@ -131,20 +134,17 @@ impl Request {
             Refresh::Busy | Refresh::Invalid => None,
         }
     }
-    fn refresh_outcome(
-        &self,
+    fn await_validation(
         runtime: &Mutex<RuntimeSlot>,
         started: std::time::Instant,
-        before_validation: impl FnOnce(),
-        before_publish: impl FnOnce(),
-    ) -> Refresh {
+    ) -> ControlFlow<Refresh, RuntimeValidation> {
         // The overlap boundary starts at caller entry; the existing bounded
         // owner-wait budget starts here, after the first namespace barrier.
         let deadline = std::time::Instant::now() + std::time::Duration::from_millis(100);
-        let mut validation = loop {
-            let Some(mut slot) = read_projection(runtime) else {
+        loop {
+            let Some(mut slot) = read_projection_until(runtime, deadline) else {
                 trace("runtime-lock", started, "busy");
-                return Refresh::Busy;
+                return ControlFlow::Break(Refresh::Busy);
             };
             // Coalescing is linearizable within this reader's own interval.
             // A sequential reader never inherits a previous read's timestamp.
@@ -152,22 +152,44 @@ impl Request {
                 && *completed >= started
             {
                 trace("runtime-cohort", started, "ready");
-                return Refresh::Ready(snapshot.clone());
+                return ControlFlow::Break(Refresh::Ready(snapshot.clone()));
             }
             if let Some(validation) = slot.runtime.take() {
                 slot.validating = true;
-                break validation;
+                return ControlFlow::Continue(validation);
             }
             if !slot.validating {
                 trace("runtime-owner", started, "missing");
-                return Refresh::Invalid;
+                return ControlFlow::Break(Refresh::Invalid);
             }
-            drop(slot);
-            if std::time::Instant::now() >= deadline {
+            // Registration and publication use the same mutex. A notification
+            // cannot occur between checking the state and atomically waiting.
+            let published = Arc::clone(&slot.published);
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
                 trace("runtime-owner", started, "busy");
-                return Refresh::Busy;
+                return ControlFlow::Break(Refresh::Busy);
             }
-            std::thread::sleep(std::time::Duration::from_millis(1));
+            match published.wait_timeout(slot, remaining) {
+                Ok((_, timeout))
+                    if !timeout.timed_out() && std::time::Instant::now() < deadline => {}
+                _ => {
+                    trace("runtime-owner", started, "busy");
+                    return ControlFlow::Break(Refresh::Busy);
+                }
+            }
+        }
+    }
+    fn refresh_outcome(
+        &self,
+        runtime: &Mutex<RuntimeSlot>,
+        started: std::time::Instant,
+        before_validation: impl FnOnce(),
+        before_publish: impl FnOnce(),
+    ) -> Refresh {
+        let mut validation = match Self::await_validation(runtime, started) {
+            ControlFlow::Continue(validation) => validation,
+            ControlFlow::Break(result) => return result,
         };
         // Expensive work owns the lease but holds no shared projection mutex.
 
@@ -202,6 +224,9 @@ impl Request {
         } else {
             slot.coherent = None;
         }
+        // Notify both successful and invalid publications. Waking confers no
+        // authority: each reader rechecks its own entry-time checkpoint.
+        slot.published.notify_all();
         trace(
             "runtime-publish",
             started,
@@ -533,6 +558,7 @@ impl FreshnessIndex {
                         }),
                         coherent: None,
                         validating: false,
+                        published: Arc::new(Condvar::new()),
                     }))
                 })
             } else {
@@ -605,6 +631,13 @@ fn trace_incomplete(
 #[cfg(target_os = "linux")]
 fn read_projection<T>(entry: &Mutex<T>) -> Option<std::sync::MutexGuard<'_, T>> {
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(100);
+    read_projection_until(entry, deadline)
+}
+#[cfg(target_os = "linux")]
+fn read_projection_until<T>(
+    entry: &Mutex<T>,
+    deadline: std::time::Instant,
+) -> Option<std::sync::MutexGuard<'_, T>> {
     loop {
         match entry.try_lock() {
             Ok(projection) => return Some(projection),
@@ -642,6 +675,122 @@ mod tests {
         atomic::{AtomicU64, Ordering},
     };
     use std::time::{Duration, Instant};
+    // These controls exercise publication only, with no filesystem, proof or
+    // Current evidence. Real lease/source controls remain separate below.
+    fn waiting_slot() -> Mutex<RuntimeSlot> {
+        Mutex::new(RuntimeSlot {
+            runtime: None,
+            coherent: None,
+            validating: true,
+            published: Arc::new(Condvar::new()),
+        })
+    }
+    fn publication_snapshot() -> InputSnapshot {
+        InputSnapshot {
+            workspace: PathBuf::new(),
+            revision: "protocol-control".to_owned(),
+            roots: Vec::new(),
+            excluded: Vec::new(),
+            complete: false,
+            observation_paths: std::collections::BTreeSet::default(),
+            content_paths: std::collections::BTreeSet::default(),
+        }
+    }
+    #[test]
+    fn publication_before_waiter_registration_checks_exact_entry_checkpoint() {
+        let runtime = waiting_slot();
+        let entered = Instant::now();
+        {
+            let mut slot = runtime
+                .lock()
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            slot.coherent = Some((Instant::now(), publication_snapshot()));
+            slot.validating = false;
+            slot.published.notify_all();
+        }
+        assert!(
+            matches!(Request::await_validation(&runtime, entered), ControlFlow::Break(Refresh::Ready(snapshot)) if snapshot.revision == "protocol-control")
+        );
+        assert!(
+            matches!(
+                Request::await_validation(&runtime, Instant::now()),
+                ControlFlow::Break(Refresh::Invalid)
+            ),
+            "later sequential reader cannot inherit earlier checkpoint"
+        );
+    }
+    #[test]
+    fn invalid_publication_wakes_waiter_without_authorizing_snapshot() {
+        let runtime = Arc::new(waiting_slot());
+        let (sent, received) = std::sync::mpsc::channel();
+        let reader_runtime = Arc::clone(&runtime);
+        let reader = std::thread::spawn(move || {
+            assert!(sent.send(()).is_ok());
+            Request::await_validation(&reader_runtime, Instant::now())
+        });
+        let entered = received.recv_timeout(Duration::from_secs(1));
+        // Publication may precede registration; the same-mutex predicate makes
+        // both this order and an already-waiting reader observe Invalid.
+        {
+            let mut slot = runtime
+                .lock()
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            slot.validating = false;
+            slot.coherent = None;
+            slot.published.notify_all();
+        }
+        let result = reader
+            .join()
+            .unwrap_or_else(|e| std::panic::resume_unwind(e));
+        assert!(entered.is_ok());
+        assert!(matches!(result, ControlFlow::Break(Refresh::Invalid)));
+    }
+    #[test]
+    fn spurious_notifications_keep_original_absolute_owner_wait_deadline() {
+        let runtime = waiting_slot();
+        std::thread::scope(|scope| {
+            let notifications = scope.spawn(|| {
+                for _ in 0..6 {
+                    std::thread::sleep(Duration::from_millis(35));
+                    let slot = runtime
+                        .lock()
+                        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                    slot.published.notify_all();
+                }
+            });
+            let started = Instant::now();
+            let result = Request::await_validation(&runtime, started);
+            let elapsed = started.elapsed();
+            assert!(notifications.join().is_ok());
+            assert!(matches!(result, ControlFlow::Break(Refresh::Busy)));
+            assert!(elapsed >= Duration::from_millis(90));
+            assert!(
+                elapsed < Duration::from_millis(200),
+                "spurious wake reset wait deadline: {elapsed:?}"
+            );
+            let slot = runtime
+                .lock()
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            assert!(slot.validating, "Busy must preserve the independent owner");
+            assert!(slot.coherent.is_none());
+        });
+    }
+    #[test]
+    fn poisoned_publication_state_never_returns_ready() {
+        let runtime = waiting_slot();
+        let poisoned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut slot = runtime
+                .lock()
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            slot.coherent = Some((Instant::now(), publication_snapshot()));
+            std::panic::resume_unwind(Box::new("intentional publication poison"));
+        }));
+        assert!(poisoned.is_err());
+        assert!(matches!(
+            Request::await_validation(&runtime, Instant::now()),
+            ControlFlow::Break(Refresh::Busy)
+        ));
+    }
     struct Fixture {
         root: PathBuf,
         cache: PathBuf,
