@@ -10,6 +10,9 @@ semantic versioning once the API is published.
   legacy terminal events fall back to stock; preserve ordinary failure reports,
   failed engine output, stock diagnostics and actual fallback process counts.
 
+- Keep Cargo output exclusions effective when native watch events use canonical
+  paths and configuration uses a symlink alias, including not-yet-created paths.
+
 - Reuse run-local sysroot byte hashes on Linux only while kernel leases and
   precise namespace observation remain continuously owned from the first hash
   through receipt publication. Lost coverage forces fresh byte checks and
