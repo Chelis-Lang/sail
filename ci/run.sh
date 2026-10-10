@@ -76,7 +76,7 @@ case "$step" in
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
-    cargo test --locked -p sail-cli --example check_mcp
+    cargo test --locked -p sail-cli --example check_mcp --example job_read_bench
     cargo test --workspace --doc --locked
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
     cargo xtask check-layering
