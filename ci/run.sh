@@ -71,6 +71,7 @@ case "$step" in
     python3 scripts/test-m7-repair-bench.py
     python3 scripts/test-m7-repair-bench-lifecycle.py
     python3 scripts/test-m7-job-read-bench.py
+    python3 scripts/test-m7-retained-jobs-acceptance.py
     python3 ci/test-engine-artifact.py
     python3 ci/test-repair-lifecycle.py
     cargo fmt --all --check

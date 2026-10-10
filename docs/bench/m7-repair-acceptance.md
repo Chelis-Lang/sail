@@ -114,7 +114,9 @@ in ADR 0027. Long runs stay outside CI.
 `scripts/m7-retained-jobs-acceptance.py` consumes a completed genuine repair job
 from the separate human-eval or Vest workload. It requires accepted Current
 full evidence for exactly one requested package/target/kind and an exact unique
-function; it neither establishes that proof nor edits catalogue sources.
+function. A bounded Cargo metadata query resolves the exact expected package ID;
+job/full revisions must agree and all dependency reports must be complete and
+error-free. It neither establishes that proof nor edits catalogue sources.
 Pass `--sail`, `--project`, `--cache`, `--socket`, `--job`, `--package`, `--target`,
 `--kind`, `--function`, a fresh `--out` directory and `--environment-label`.
 
