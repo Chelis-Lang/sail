@@ -26,6 +26,7 @@ const MAX_REVALIDATIONS: usize = 2;
 struct RuntimeValidation {
     identity: String,
     lease: ReadLease,
+    inputs: InputSnapshot,
 }
 #[cfg(target_os = "linux")]
 struct RuntimeSlot {
@@ -128,14 +129,12 @@ impl Request {
         };
         let result = (|| {
             valid(&mut validation)?;
-            let snapshot = runner::refresh_context_validated(
-                &self.cache,
-                &self.workspace,
-                &self.context,
-                &self.environment,
-                || true,
-            )
-            .ok()?;
+            // Cold validation bound this exact inventory, declaration files and
+            // environment to this owner. Native namespace coverage spans every
+            // package/configuration ancestor; the retained leases cover every
+            // content inode. Any uncertainty discards the owner and recollects.
+            // Rehash bytes each read, rather than rewalking the guarded namespace.
+            let snapshot = validation.inputs.rehash_guarded_inventory();
             // Record the conservative overlap boundary before final validation.
             // Publication can be delayed by mutex contention: its later time
             // must never admit a reader that started after this validation.
@@ -376,11 +375,13 @@ impl FreshnessIndex {
             )?;
             let mut observer = Observer::begin(&plan.0, &plan.1);
             let runtime = runner::runtime_identity(&request.cache, &request.context);
+            let mut leased_paths = std::collections::BTreeSet::new();
             let mut lease = observer.as_ref().and_then(|observer| {
                 let mut paths = observer.files();
                 paths.extend(runtime.as_ref()?.1.iter().cloned());
                 paths.sort();
                 paths.dedup();
+                leased_paths.extend(paths.iter().filter_map(|path| path.canonicalize().ok()));
                 ReadLease::acquire(&paths)
             });
             let mut snapshot = runner::refresh_context_validated(
@@ -398,6 +399,10 @@ impl FreshnessIndex {
             )?;
             snapshot.complete &= plan == after;
             let cacheable = snapshot.complete
+                && snapshot
+                    .content_paths
+                    .iter()
+                    .all(|path| path.canonicalize().is_ok_and(|p| leased_paths.contains(&p)))
                 && observer.as_mut().is_some_and(Observer::clean)
                 && lease.as_mut().is_some_and(ReadLease::clean)
                 && runtime == runner::runtime_identity(&request.cache, &request.context);
@@ -405,7 +410,11 @@ impl FreshnessIndex {
             let runtime = if cacheable {
                 runtime.zip(lease).map(|((identity, _), lease)| {
                     Arc::new(Mutex::new(RuntimeSlot {
-                        runtime: Some(RuntimeValidation { identity, lease }),
+                        runtime: Some(RuntimeValidation {
+                            identity,
+                            lease,
+                            inputs: snapshot.clone(),
+                        }),
                         coherent: None,
                         validating: false,
                     }))
@@ -639,6 +648,106 @@ mod tests {
             );
             std::thread::sleep(Duration::from_millis(10));
         }
+    }
+    #[test]
+    fn guarded_inventory_invalidates_namespace_and_alias_changes() {
+        use std::os::unix::{ffi::OsStringExt as _, fs::symlink};
+        for case in [
+            "replace", "rename", "new", "remove", "config", "non-utf8", "alias",
+        ] {
+            let fixture = Fixture::new(case);
+            let source = fixture.workspace.join("src/lib.rs");
+            let outside = fixture.root.join("outside.rs");
+            if case == "alias" {
+                assert!(std::fs::write(&outside, b"same").is_ok());
+                assert!(symlink(&outside, fixture.workspace.join("alias.rs")).is_ok());
+            }
+            let index = FreshnessIndex::default();
+            let original = fixture.establish(&index);
+            assert!(original.complete, "case:{case}");
+            assert_eq!(
+                fixture.inspect(&index).map(|s| s.revision),
+                Some(original.revision.clone())
+            );
+            match case {
+                "replace" => {
+                    let new = fixture.workspace.join("replacement");
+                    assert!(std::fs::write(&new, b"original").is_ok());
+                    assert!(std::fs::rename(new, &source).is_ok());
+                }
+                "rename" => assert!(
+                    std::fs::rename(&source, fixture.workspace.join("src/other.rs")).is_ok()
+                ),
+                "new" => {
+                    assert!(std::fs::write(fixture.workspace.join("src/new.rs"), b"new").is_ok());
+                }
+                "remove" => assert!(std::fs::remove_file(&source).is_ok()),
+                "config" => {
+                    assert!(std::fs::create_dir_all(fixture.root.join(".cargo")).is_ok());
+                    assert!(
+                        std::fs::write(
+                            fixture.root.join(".cargo/config.toml"),
+                            b"[build]\njobs=1\n"
+                        )
+                        .is_ok()
+                    );
+                }
+                "non-utf8" => assert!(
+                    std::fs::write(
+                        fixture
+                            .workspace
+                            .join(std::ffi::OsString::from_vec(b"source-\xff.rs".to_vec())),
+                        b"new"
+                    )
+                    .is_ok()
+                ),
+                "alias" => {
+                    let replacement = fixture.root.join("other.rs");
+                    assert!(std::fs::write(&replacement, b"same").is_ok());
+                    assert!(std::fs::remove_file(fixture.workspace.join("alias.rs")).is_ok());
+                    assert!(symlink(replacement, fixture.workspace.join("alias.rs")).is_ok());
+                }
+                _ => unreachable!("fixture case"),
+            }
+            assert!(
+                fixture.inspect(&index).is_none(),
+                "old inventory must not certify {case}"
+            );
+            let recollected = fixture.establish(&index);
+            assert!(recollected.complete, "case:{case}");
+            if case != "replace" {
+                assert_ne!(original.revision, recollected.revision, "case:{case}");
+            }
+            assert_eq!(
+                fixture.inspect(&index).map(|s| s.revision),
+                Some(recollected.revision)
+            );
+        }
+    }
+    #[test]
+    fn retained_inventory_cannot_outlive_lost_declared_input_coverage() {
+        let fixture = Fixture::new("coverage-record");
+        let index = FreshnessIndex::default();
+        assert!(fixture.establish(&index).complete);
+        assert!(fixture.inspect(&index).is_some());
+        let source_state = fixture
+            .cache
+            .join("projects")
+            .join(super::super::files::digest(
+                fixture.workspace.as_os_str().as_encoded_bytes(),
+            ))
+            .join(&fixture.context)
+            .join("source-inputs.json");
+        assert!(
+            super::super::files::json(
+                &source_state,
+                &serde_json::json!({"paths":[],"covered":false,"by_package":{}})
+            )
+            .is_ok()
+        );
+        assert!(fixture.inspect(&index).is_none());
+        assert!(!fixture.establish(&index).complete);
+        assert!(fixture.inspect(&index).is_none());
     }
     #[test]
     fn changed_runtime_cannot_be_current_and_restart_revalidates() {

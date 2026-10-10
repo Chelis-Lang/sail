@@ -22,6 +22,8 @@ pub struct InputSnapshot {
     /// False if declared inputs could not be read completely.
     pub complete: bool,
     pub(crate) observation_paths: BTreeSet<PathBuf>,
+    #[cfg(target_os = "linux")]
+    pub(super) content_paths: BTreeSet<PathBuf>,
 }
 
 pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
@@ -179,28 +181,53 @@ pub(super) fn snapshot_metadata_home(
             .filter(|p| !excluded_canonical.contains(p)),
     );
     let stamp_before = stamp_paths(&observation_paths);
+    let (revision, readable) = contents_revision(&files);
+    complete &= readable;
+    complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
+    roots.sort();
+    roots.dedup();
+    InputSnapshot {
+        workspace,
+        revision,
+        roots,
+        excluded,
+        complete,
+        observation_paths,
+        #[cfg(target_os = "linux")]
+        content_paths: files,
+    }
+}
+
+// Preserve the original exact sorted path spelling and digest encoding.
+fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool) {
+    let mut complete = true;
     let mut hasher = Sha256::new();
     for path in files {
         let bytes = path.as_os_str().as_encoded_bytes();
         hasher.update((bytes.len() as u64).to_le_bytes());
         hasher.update(bytes);
-        if let Ok(hash) = file_digest(&path) {
+        if let Ok(hash) = file_digest(path) {
             hasher.update(hash.as_bytes());
         } else {
             complete = false;
             hasher.update(b"unreadable");
         }
     }
-    complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
-    roots.sort();
-    roots.dedup();
-    InputSnapshot {
-        workspace,
-        revision: format!("{:x}", hasher.finalize()),
-        roots,
-        excluded,
-        complete,
-        observation_paths,
+    (format!("{:x}", hasher.finalize()), complete)
+}
+
+#[cfg(target_os = "linux")]
+impl InputSnapshot {
+    // The caller must retain complete native namespace observation plus read
+    // leases covering this inventory from its coherent cold collection through
+    // both read barriers. This hashes ALL mutable contents on EVERY invocation;
+    // it cannot discover new paths and is not standalone freshness evidence.
+    pub(super) fn rehash_guarded_inventory(&self) -> Self {
+        let (revision, readable) = contents_revision(&self.content_paths);
+        let mut refreshed = self.clone();
+        refreshed.revision = revision;
+        refreshed.complete &= readable;
+        refreshed
     }
 }
 
@@ -329,6 +356,48 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn retained_inventory_preserves_exact_non_utf8_sorted_encoding_and_rehashes_bytes() {
+        use std::os::unix::{ffi::OsStringExt as _, fs::symlink};
+        let root = std::env::temp_dir().join(format!("sail-inventory-{}", std::process::id()));
+        let package = root.join("package");
+        assert!(std::fs::create_dir_all(&package).is_ok());
+        let outside = root.join("external.rs");
+        assert!(std::fs::write(&outside, b"outside").is_ok());
+        let odd = package.join(std::ffi::OsString::from_vec(b"source-\xff.rs".to_vec()));
+        assert!(std::fs::write(&odd, b"initial").is_ok());
+        assert!(std::fs::write(package.join("Cargo.toml"), b"manifest").is_ok());
+        assert!(symlink(&outside, package.join("alias.rs")).is_ok());
+        let data = serde_json::json!({"workspace_root":package,
+            "packages":[{"manifest_path":package.join("Cargo.toml")}]});
+        let snapshot = snapshot_metadata_home(&data, &[], None);
+        assert!(snapshot.complete);
+        let mut oracle = Sha256::new();
+        let mut files = vec![outside.clone(), odd.clone(), package.join("Cargo.toml")];
+        files.sort();
+        for path in &files {
+            let bytes = path.as_os_str().as_encoded_bytes();
+            oracle.update((bytes.len() as u64).to_le_bytes());
+            oracle.update(bytes);
+            let contents = std::fs::read(path).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            oracle.update(format!("{:x}", Sha256::digest(contents)).as_bytes());
+        }
+        assert_eq!(snapshot.revision, format!("{:x}", oracle.finalize()));
+        assert_eq!(
+            snapshot.revision,
+            snapshot.rehash_guarded_inventory().revision
+        );
+        assert!(std::fs::write(&odd, b"changed").is_ok());
+        let refreshed = snapshot.rehash_guarded_inventory();
+        assert!(refreshed.complete);
+        assert_ne!(snapshot.revision, refreshed.revision);
+        assert_eq!(
+            refreshed.revision,
+            snapshot_metadata_home(&data, &[], None).revision
+        );
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
     #[test]
     fn relative_cargo_home_resolves_against_recorded_invocation() {
         let root =

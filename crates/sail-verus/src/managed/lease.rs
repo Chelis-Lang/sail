@@ -51,10 +51,17 @@ impl ReadLease {
                 ))
             })
             .collect::<Option<_>>()?;
-        let identities: Vec<_> = bindings.iter().map(|(_, p, d, i)| (p, d, i)).collect();
+        // JSON PathBuf serialization panics inside json! on non-UTF-8 names.
+        // The private Linux helper opens exact native bytes, with no lossy path
+        // conversion. Its imported-runtime report remains fallible UTF-8 JSON.
+        let identities: Vec<_> = bindings
+            .iter()
+            .map(|(_, p, d, i)| (p.as_os_str().as_encoded_bytes(), d, i))
+            .collect();
+        let runtime: Vec<_> = closure.iter().map(|p| p.to_str()).collect::<Option<_>>()?;
         let mut bytes = serde_json::to_vec(&serde_json::json!({
             "files": identities,
-            "runtime": closure,
+            "runtime": runtime,
         }))
         .ok()?;
         bytes.push(b'\n');
