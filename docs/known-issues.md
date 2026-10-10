@@ -18,6 +18,10 @@ four-reader latency gate has been established. See the
   aggregate 512 MiB physical preparation bound. The corrective source candidates
   remain unselected; [engine internals](../engine/verus/README.md) describe the
   boundary. Preparation counters also exclude ordinary compiler working RSS.
+  The physical audit also found uncharged portable binding/message decoding,
+  query decoding and graph-validation scratch allocations. The corrective
+  candidate must admit these before allocation and retain ownership until
+  physical drop; a serialized-byte limit alone does not bound decoded memory.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
@@ -52,6 +56,11 @@ four-reader latency gate has been established. See the
   original job bytes. Its instrumented timings fail the latency target and do
   not explain the original live run's sustained failures. See the
   [classified diagnostic](validation/m7-retained-proof-freshness-profile.json).
+  The subsequent caller-entry candidate returned 200/200 Current reads in a
+  separate retained-job diagnostic, preserving all guards. Its traced status
+  p95 was 209.120 ms and result p95 407.420 ms, still above the 200 ms gate.
+  It had no active verifier and cannot qualify the original live workload.
+  See [the candidate diagnostic](validation/m7-reader-entry-coalescing-diagnostic.json).
 - The older frozen reader controller assumed the newer `results/projects/jobs`
   storage layout, while a6 stores jobs under `projects/jobs`. Public proof
   evidence remained intact, but automatic raw archival could omit those files.
@@ -79,6 +88,7 @@ not change a test deadline or turn observed failures into passes.
 | Check | Latest retained scope and result | Evidence |
 |---|---|---|
 | Latest Linux workspace gate | Source `a9dc753`, 435/436 tests passed. The verified paused-initiator serving check still failed after real transport/trust establishment; response-to-classification took 135.738 ms. CPU versus scheduling cause remains under investigation. Later gate steps were not attempted. | [Failure](../bench/validation/m7-linux-gate-a9-failure-emulated-2026-10-10.json) |
+| Subsequent signature CPU controls | Sixteen strict valid and forged checks took approximately 310/320 ms before package-only dev/test arithmetic optimization, and 4–7 ms afterward. All 10 HTTP cases, five signed-format negative cases and affected strict Clippy checks passed; the full integrated gate is running. This does not identify the original failure's entire cause or establish a release-build speedup. | [Diagnostic](validation/m7-shared-signature-cpu-diagnostic.json) |
 | Earlier cold-lookup gate | Source `d12d4af`, 431/436 passed; five HTTP fixtures failed during cold lookups. Original deadlines and assertions are retained. | [Failure](../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json) |
 | Earlier complete Linux workspace gate | Source `62ad095`, 436/436 tests plus all gate steps passed; two test workers | [Record](../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
 | Latest real solver/fault suite | Source `d12d4af`, all 37 tests passed in 114.446 seconds; the earlier timed-out shared-entry case passed in 9.652 seconds with unchanged assertions | [Record](../bench/validation/m7-linux-solver-d12-emulated-2026-10-10.json) |

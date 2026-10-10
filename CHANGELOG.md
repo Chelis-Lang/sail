@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Coalesce overlapping freshness readers from caller entry while retaining exact
+  namespace, runtime and lease validation. Currentness remains separate from a
+  solver verdict and does not use an age-based grace period.
+
+- Optimize strict shared-signature arithmetic in development and test builds;
+  retain the same trust checks, lookup deadlines and release configuration.
+
 - Keep optional HTTP transport initialization inside bounded lookup helpers;
   client startup and retirement cannot block status or shared lookup callers.
   Preserve trusted-entry checks, credential reloads and the existing deadlines.
