@@ -33,6 +33,11 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
 pub(super) struct FileDigests(BTreeMap<PathBuf, String>);
 
 impl FileDigests {
+    pub(super) fn contains(&self, path: &Path) -> bool {
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
+        self.0.contains_key(&canonical)
+    }
+
     pub(super) fn hash(&mut self, path: &Path) -> Result<String> {
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
         if let Some(hash) = self.0.get(&canonical) {

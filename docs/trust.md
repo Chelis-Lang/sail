@@ -221,3 +221,15 @@ Every read verifies the exact retained stdout bytes against the validated seal
 and checks current input evidence before selecting a frame. Cached frames are
 bounded by 128 MiB and 16 jobs, carry no time-based validity, and are discarded
 on a seal mismatch. Restart establishes freshness again.
+
+The proof worker can reuse sysroot library hashes within its own invocation.
+It installs native namespace observation before enumerating installed targets,
+acquires kernel read leases before the first eligible content hash, and retains
+both owners through the receipt's final commit marker. Digests computed before
+that acquisition remain ineligible, and all other runtime files are hashed
+normally. Target installation, alias replacement, writable mappings, helper
+loss or a failed barrier discard this baseline: the final check reads runtime
+bytes again and cannot publish a current receipt. Enumeration errors and
+unrepresentable runtime paths also fail closed. This optimization transfers no
+owner or trust to the daemon; completed-result readers establish their own
+freshness evidence. macOS continues to use the full runtime byte check.

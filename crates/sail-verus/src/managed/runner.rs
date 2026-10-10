@@ -97,7 +97,7 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     clippy::too_many_lines,
     reason = "The context explicitly enumerates all executable and environment bindings."
 )]
-fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<String> {
+fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<Context> {
     let mut identity = Vec::new();
     let mut hashed = super::files::FileDigests::default();
     if let Some(engine) = engine {
@@ -167,35 +167,16 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<S
             .into_owned(),
         hashed.hash(&wrapper.with_file_name("rust_verify"))?,
     ));
-    for sysroot in sysroots {
-        for path in [sysroot.join("bin/rustc"), sysroot.join("bin/cargo")] {
-            if path.is_file() {
-                identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
-            }
-        }
-        // Include every installed target's implicit standard/compiler libraries.
-        // Cargo may choose its target through ancestor configuration or environment,
-        // so host-only binding would miss cross-target standard library mutations.
-        let mut directories = vec![sysroot.join("lib")];
-        for entry in std::fs::read_dir(sysroot.join("lib/rustlib"))
-            .into_iter()
-            .flatten()
-            .flatten()
-        {
-            let library = entry.path().join("lib");
-            if library.is_dir() {
-                directories.push(library);
-            }
-        }
-        for directory in directories {
-            for item in std::fs::read_dir(directory).into_iter().flatten().flatten() {
-                let path = item.path();
-                if path.is_file() {
-                    identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
-                }
-            }
-        }
+    // Observe all installed-target namespaces before inventory collection and
+    // acquire kernel leases before the first eligible byte read. Earlier hashes
+    // remain ineligible: this owner cannot authorize a pre-guard digest.
+    let mut sysroots = super::sysroot::Baseline::begin(&sysroots, |path| hashed.contains(path));
+    for path in sysroots.paths().to_vec() {
+        let hash = hashed.hash(&path)?;
+        sysroots.capture(&path, &hash);
+        identity.push((path.to_string_lossy().into_owned(), hash));
     }
+    let _ = sysroots.complete();
     // The exact Cargo configuration bytes join the context, not only its path.
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
@@ -264,7 +245,12 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<S
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     json(&state.join(format!("{hash}.link")), &identity_sha)?;
-    Ok(hash)
+    Ok(Context { hash, sysroots })
+}
+
+struct Context {
+    hash: String,
+    sysroots: super::sysroot::Baseline,
 }
 
 fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
@@ -1117,6 +1103,14 @@ fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
 
 pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
     let mut hashed = super::files::FileDigests::default();
+    runtime_matches(cache, context, |path| hashed.hash(path))
+}
+
+fn runtime_matches(
+    cache: &Path,
+    context: &str,
+    mut hash: impl FnMut(&Path) -> Result<String>,
+) -> bool {
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
     let identities = identity_sha
@@ -1128,8 +1122,40 @@ pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
             .is_some_and(|sha| *sha == digest(&serde_json::to_vec(paths).unwrap_or_default()))
             && paths
                 .iter()
-                .all(|(path, hash)| hashed.hash(Path::new(path)).as_ref() == Ok(hash))
+                .all(|(path, expected)| hash(Path::new(path)).as_ref() == Ok(expected))
     })
+}
+
+fn proof_runtime_current(
+    cache: &Path,
+    context: &str,
+    sysroots: &mut super::sysroot::Baseline,
+) -> (bool, bool) {
+    let mut hashed = super::files::FileDigests::default();
+    proof_runtime_current_with(cache, context, sysroots, |path| hashed.hash(path))
+}
+
+fn proof_runtime_current_with(
+    cache: &Path,
+    context: &str,
+    sysroots: &mut super::sysroot::Baseline,
+    mut hash: impl FnMut(&Path) -> Result<String>,
+) -> (bool, bool) {
+    if !sysroots.clean() {
+        return (runtime_current(cache, context), sysroots.complete());
+    }
+    let matches = runtime_matches(cache, context, |path| {
+        sysroots
+            .captured(path)
+            .map_or_else(|| hash(path), |hash| Ok(hash.clone()))
+    });
+    if sysroots.complete() {
+        (matches, true)
+    } else {
+        // A lost barrier never certifies reuse, even if restored bytes happen to
+        // match. Rehash through the original oracle and retain uncertainty.
+        (runtime_current(cache, context), false)
+    }
 }
 
 fn script_roots(data: &Value) -> Vec<PathBuf> {
@@ -1231,7 +1257,7 @@ pub(crate) fn run_engine(
             "no selected Cargo targets declare package.metadata.verus.verify=true",
         ));
     }
-    let hash = context(config, engine.as_ref())?;
+    let Context { hash, mut sysroots } = context(config, engine.as_ref())?;
 
     let run_id = format!(
         "{}-{}",
@@ -1435,13 +1461,19 @@ pub(crate) fn run_engine(
     let stamp_after = super::input::mutation_stamp(&after);
     let absent = absent.finish();
     let coherent_complete = coherent.ready();
+    let mut sysroot_complete = sysroots.complete();
     let currentness = if !before.complete
         || !after.complete
         || !after_coverage
         || !source_coverage
         || !monitor.complete()
         || !absent.complete
-        || !runtime_current(&config.cache, &hash)
+        || {
+            let (runtime_complete, covered) =
+                proof_runtime_current(&config.cache, &hash, &mut sysroots);
+            sysroot_complete = covered;
+            !runtime_complete || !covered
+        }
         || !coherent_complete
         || stamp_before.is_none()
         || stamp_after.is_none()
@@ -1485,6 +1517,9 @@ pub(crate) fn run_engine(
     if !coherent_complete {
         notes.push(format!("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification ({}); no current proof receipt is published", coherent.failure_reason()));
     }
+    if !sysroot_complete {
+        notes.push(format!("SAIL3114: sysroot byte identities lost continuous kernel coverage ({}); no current proof receipt is published", sysroots.failure_reason()));
+    }
     if !script_coverage {
         notes.push("Build-script input declarations were established during this run".to_owned());
     }
@@ -1493,7 +1528,7 @@ pub(crate) fn run_engine(
             "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
         );
     }
-    let result = ProjectResult {
+    let mut result = ProjectResult {
         kind: "sail-project-result".to_owned(),
         schema_version: SCHEMA_VERSION,
         run_id,
@@ -1516,7 +1551,20 @@ pub(crate) fn run_engine(
         for (path, receipt) in pending {
             json(&path, &receipt)?;
         }
-        super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
+        if !super::receipts::publish_guarded(
+            &paths.run,
+            &paths.receipts,
+            &result.context_sha256,
+            || sysroots.complete(),
+        )? {
+            // Coverage may have ended during the marker write, after the
+            // earlier guarded comparison. Recheck actual runtime bytes through
+            // the original oracle; uncertainty remains regardless of equality.
+            let _ = runtime_current(&config.cache, &result.context_sha256);
+            result.currentness = Currentness::Unknown;
+            result.notes.push(format!("SAIL3114: sysroot kernel coverage ended before receipt commit ({}); no current proof receipt is published", sysroots.failure_reason()));
+            json(&paths.run.join("result.json"), &result)?;
+        }
     }
     Ok(result)
 }
@@ -1551,6 +1599,68 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn guarded_sysroot_reads_skip_only_owned_digests_and_fall_back_on_changes()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = PathBuf::from("/tmp").join(format!("sail-runtime-guard-{}", std::process::id()));
+        let sysroot = root.join("sysroot");
+        std::fs::create_dir_all(sysroot.join("bin"))?;
+        std::fs::create_dir_all(sysroot.join("lib/rustlib/host/lib"))?;
+        let rustc = sysroot.join("bin/rustc");
+        let library = sysroot.join("lib/rustlib/host/lib/std.rlib");
+        let other = root.join("z3");
+        for path in [&rustc, &library, &other] {
+            std::fs::write(path, b"good")?;
+        }
+        let mut owner =
+            super::super::sysroot::Baseline::begin(&BTreeSet::from([sysroot]), |path| {
+                path == rustc
+            });
+        assert!(owner.complete());
+        let mut identities = Vec::new();
+        for path in [&rustc, &library, &other] {
+            let hash = file_digest(path)?;
+            owner.capture(path, &hash);
+            identities.push((path.to_string_lossy().into_owned(), hash));
+        }
+        let state = root.join("runtime-identities");
+        std::fs::create_dir_all(&state)?;
+        let sha = digest(&serde_json::to_vec(&identities)?);
+        let identity_path = state.join(format!("{sha}.json"));
+        json(&identity_path, &identities)?;
+        json(&state.join("ctx.link"), &sha)?;
+        let mut read_paths = Vec::new();
+        assert_eq!(
+            proof_runtime_current_with(&root, "ctx", &mut owner, |path| {
+                read_paths.push(path.to_owned());
+                file_digest(path)
+            }),
+            (true, true)
+        );
+        assert_eq!(read_paths, vec![rustc, other]);
+        identities[1].1 = "forged-digest".to_owned();
+        json(&identity_path, &identities)?;
+        assert_eq!(
+            proof_runtime_current(&root, "ctx", &mut owner),
+            (false, true)
+        );
+        identities[1].1 = file_digest(&library)?;
+        json(&identity_path, &identities)?;
+        // Restore the actual bytes after a write, but deliberately poison the
+        // old capture. Lost coverage must read fresh bytes, not this old value.
+        std::fs::write(&library, b"fail")?;
+        std::fs::write(&library, b"good")?;
+        owner.capture(&library, "poisoned-capture");
+        assert_eq!(
+            proof_runtime_current(&root, "ctx", &mut owner),
+            (true, false)
+        );
+        drop(owner);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[cfg(unix)]
     #[test]
     fn corrupt_engine_is_rejected_before_its_version_probe()

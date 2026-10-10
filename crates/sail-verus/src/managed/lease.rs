@@ -22,6 +22,11 @@ pub(super) struct ReadLease {
     failure: Option<&'static str>,
 }
 impl ReadLease {
+    #[cfg(test)]
+    pub(super) fn stop_owner_for_test(&mut self) -> std::io::Result<()> {
+        self.process.kill()?;
+        self.process.wait().map(|_| ())
+    }
     pub(super) fn acquire(paths: &[PathBuf]) -> Option<Self> {
         if paths.len() > 4096 {
             return None;
