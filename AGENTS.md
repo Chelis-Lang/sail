@@ -81,6 +81,16 @@ plus benchmark deltas for any performance change.
 **Parallel agents** work in separate worktrees under `.claude/worktrees/` on
 their own branches. The lead reviews and merges.
 
+**Workspace hygiene.** Retire unused worktrees after their handoff is integrated.
+Preserve branch references, uncommitted source and raw validation evidence first;
+discard regenerable compiler intermediates. Reuse build targets for continuing
+work instead of accumulating a new target for every diagnostic. Before cleanup,
+check the team's active paths and container mounts; recheck ownership before
+each removal, including paths announced after the initial inventory. Keep active
+jobs, pinned runtimes and data volumes; record what was removed and the space
+recovered. See [workspace hygiene](docs/workspace-hygiene.md) for recovery and
+retention rules.
+
 ## Repository layout
 
 ```
