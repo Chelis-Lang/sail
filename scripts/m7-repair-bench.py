@@ -189,7 +189,14 @@ def run(args):
         frozen = json.loads((workspace / ".sail-m7-workload.json").read_text())
         if frozen["catalogue_sha256"] != FROZEN_HASH or frozen["commit"] != project["commit"]:
             raise ValueError("SAIL0940: prepared workspace has incompatible identity")
-        selection = ["--package", project["package"], "--lib"]
+        selection = ["--package", project["package"]]
+        # M6 injects --target-dir after user args; pinned cargo-verus refuses
+        # that after --lib. These frozen packages contain a single library.
+        metadata = json.loads(checked(["cargo", "metadata", "--no-deps", "--format-version", "1"],
+                                      cwd=workspace, env=dict(os.environ, RUSTUP_TOOLCHAIN="1.98.1")))
+        packages = [package for package in metadata["packages"] if package["name"] == project["package"]]
+        if len(packages) != 1 or len(packages[0]["targets"]) != 1 or packages[0]["targets"][0]["kind"] != ["lib"]:
+            raise ValueError("SAIL0940: baseline package selection no longer identifies only the frozen library")
         envs = {}
         for mode in binaries:
             cache = (args.out / ("cache-" + mode)).resolve()
@@ -215,7 +222,9 @@ def run(args):
                     directory = (args.out / project["id"] / str(round_index) / cycle["id"] / mode).resolve()
                     if mode == "m6":
                         common = [str(binaries[mode]), "verify", "--incremental", "--output", "json"] + selection
-                        focus = invoke(common + ["--", "--verify-function", cycle["function"]], workspace,
+                        relative = cycle["function"].split("::", 1)[1]
+                        module, function = relative.rsplit("::", 1)
+                        focus = invoke(common + ["--", "--verify-only-module", module, "--verify-function", function], workspace,
                                        envs[mode], directory / "focus", args.timeout)
                         full = invoke(common, workspace, envs[mode], directory / "full", args.timeout)
                         pair[mode] = {"wall_ms": focus["wall_ms"] + full["wall_ms"],
@@ -224,7 +233,7 @@ def run(args):
                                       "full": selected_report(full["report"])}
                     else:
                         value = invoke([str(binaries[mode]), "repair-check", "--engine", "interactive",
-                                        "--function", cycle["function"], "--output", "json"] + selection,
+                                        "--function", cycle["function"], "--output", "json"] + selection + ["--lib"],
                                        workspace, envs[mode], directory, args.timeout)
                         doc = value["report"]
                         batch = doc["batch"]
