@@ -1,7 +1,7 @@
 //! Optional Linux kernel read leases for expensive runtime digests. A separate
 //! trusted Python 3 process owns descriptors and handles SIGIO without unsafe
 //! Rust. Unsupported kernels/filesystems, conflicting mappings and helper loss
-//! disable reuse. Source/build/config contents are always hashed separately.
+//! disable reuse. Input digests are collected only after these guards are held.
 
 use super::precise::Observer;
 use std::io::{Read, Write};
@@ -162,11 +162,6 @@ impl ReadLease {
             return false;
         }
         true
-    }
-    #[cfg(test)]
-    pub(super) fn stop_owner_for_test(&mut self) -> std::io::Result<()> {
-        self.process.kill()?;
-        self.process.wait().map(|_| ())
     }
     pub(super) fn failure_reason(&self) -> &'static str {
         self.failure
