@@ -216,6 +216,43 @@ fn convert(
     };
     input.function = raw["payload"]["function"].as_str().map(str::to_owned);
     input.observation = match raw["event"].as_str()? {
+        "function-started" => Observation::FunctionStarted,
+        "obligation-progress" => {
+            input.obligation = raw["payload"]["obligation"].as_str().map(str::to_owned);
+            Observation::ObligationProgress(sail_api::proof::ObligationProgress {
+                description: raw["payload"]["description"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned(),
+                completed: raw["payload"]["completed"].as_bool().unwrap_or(false),
+            })
+        }
+        "function-observed" => Observation::FunctionObserved(sail_api::output::FunctionReport {
+            function: input.function.clone().unwrap_or_default(),
+            module: raw["payload"]["module"]
+                .as_str()
+                .unwrap_or_default()
+                .to_owned(),
+            fn_mode: raw["payload"]["mode"].as_str().map(str::to_owned),
+            verdict: sail_api::output::VerdictName::Provisional,
+            tier: sail_api::output::TierName::Provisional,
+            unstable: false,
+            verus_success: raw["payload"]["success"].as_bool(),
+            provenance: sail_api::output::ProvenanceReport {
+                configuration: None,
+                mode: "default".into(),
+                source: sail_api::output::SourceSummaryName::Unrecorded,
+                checks_solved: 0,
+                checks_served: 0,
+                checks_unrecorded: 0,
+            },
+            timing: sail_api::output::Timing {
+                smt_micros: raw["payload"]["smt_micros"].as_u64(),
+                rlimit: raw["payload"]["rlimit"].as_u64(),
+            },
+            fragility: None,
+            obligations: None,
+        }),
         "phase-started" => Observation::PhaseStarted,
         "phase-finished" => Observation::PhaseFinished,
         "compiler-sealed" => Observation::CompilerSealed,
