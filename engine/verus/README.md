@@ -111,10 +111,12 @@ provenance, each span-binding map and
 each converted binding table stop at 16 MiB. Span keys and clones are charged
 with both String/Vec contents and conservative HashMap overhead.
 
-The aggregate allocation audit has separate, non-overlapping preparation
-phases. The bounds below deliberately count conversion overlap:
+The aggregate allocation audit budgets separate, non-overlapping preparation
+phases. The arithmetic below deliberately counts conversion overlap; the
+baseline reporter-release limitation described below prevents treating it as
+a guaranteed bound on physically live allocations:
 
-| Phase | Simultaneously live cache-owned buffers and temporary budgets | Upper bound |
+| Phase | Simultaneously live cache-owned buffers and temporary budgets | Budget arithmetic |
 |---|---|---|
 | Constructor/key | Retained body 128; source inventory 16; all captured diagnostic ownership 16; bucket member keys 32; naming encoding 32; lookup tables 32; completed graph encodings 64; one graph table plus two in-progress map key/value encoders 96; final key/baseline writer 32; directory and fixed metadata 2; callback provenance memo including transient work 8 MiB | 458 MiB |
 | Store | Source inventory 16; captured diagnostics 16; message-reference vector 4; encoder Vec 128; span map and conversion overlap 32; provenance/binding table 16; replacement Arc conversion 128; fixed/directory metadata 2; callback provenance memo including transient work 8 MiB | 350 MiB |
@@ -129,9 +131,20 @@ Focus evidence shares this 16 MiB capture budget; overflow marks focus
 unavailable and still runs the independent full proof. No cloned `Ctx`, mutable
 GlobalCtx or duplicate diagnostic-owner vector is retained for preparation.
 
-The 512 MiB memory bound covers these cache-owned allocations, not the fresh
-compiler's working AST/SST or its decoded active lowering state. The value
-codec can duplicate shared IR nodes while decoding; it does not promise DAG
+The intended 512 MiB memory bound covers these cache-owned allocations, not the
+fresh compiler's working AST/SST or its decoded active lowering state. The
+currently selected baseline releases `RecordingReporter` and `FocusReporter`
+diagnostic quota in their `Drop` implementations before Rust drops their message
+vectors and nested cache-owned Arc references. A concurrent reporter can therefore
+admit new ownership while those old allocations remain physically live. The
+baseline's accounting does not establish the claimed aggregate physical bound.
+The unselected [reporter-ownership overlay](candidates/reporter-ownership.patch)
+drops those allocations before releasing quota; its scope and regression checks
+are described in [the candidate README](candidates/README.md). That candidate
+fix is not part of the selected runtime, and this limitation does not qualify or
+select any candidate.
+
+The value codec can duplicate shared IR nodes while decoding; it does not promise DAG
 sharing or a bound on total compiler RSS. Interpreter state is never cached,
 and pointer-keyed analysis maps are recomputed after the checkpoint. Measured
 RSS includes these ordinary working allocations. The reported
@@ -144,7 +157,7 @@ count alone does not prove reuse across edits.
 Persistent files bind version, exact input key and body digest. A distinct
 shared directory limit of 512 MiB includes committed and temporary files;
 writers reserve under the directory lock and reject excessive directory entry
-counts. This disk allowance is not added to the memory guarantee. The local
+counts. This disk allowance is separate from the intended memory budget. The local
 store trusts its sole owned engine writer; it is not a shared, adversarial IR
 import format. No prepared entry is imported from the signed SMT shared tier.
 
