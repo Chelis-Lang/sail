@@ -18,8 +18,32 @@ use super::State;
 pub(super) struct Stored {
     pub status: Status,
     pub submission: Submission,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection: Option<Projection>,
     #[serde(skip)]
     pub cancel: Arc<AtomicBool>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(super) struct Projection {
+    stdout_sha256: String,
+    workspace: String,
+    context_sha256: String,
+    input_revision: String,
+    currentness: sail_api::project::Currentness,
+}
+impl Projection {
+    pub(super) fn validated(bytes: &[u8], project: &sail_api::project::ProjectResult) -> Self {
+        Self {
+            stdout_sha256: stdout_digest(bytes),
+            workspace: project.workspace.clone(),
+            context_sha256: project.context_sha256.clone(),
+            input_revision: project.input_revision.clone(),
+            currentness: project.currentness,
+        }
+    }
+}
+fn stdout_digest(bytes: &[u8]) -> String {
+    sail_key::QueryKey(sail_key::sha256(bytes)).to_string()
 }
 impl Stored {
     pub fn new(submission: Submission) -> Self {
@@ -45,6 +69,7 @@ impl Stored {
                 error: None,
             },
             submission,
+            projection: None,
             cancel: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -110,21 +135,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
     let result = if status.state == Lifecycle::Completed {
         let mut project = project(state, job)?;
         let snapshot = refresh(state, job, &project);
-        status.currentness = match snapshot {
-            Some(snapshot) if snapshot.revision != project.input_revision => {
-                Currentness::Historical
-            }
-            Some(snapshot)
-                if snapshot.complete
-                    && project.currentness == sail_api::project::Currentness::Current =>
-            {
-                Currentness::Current
-            }
-            _ if project.currentness == sail_api::project::Currentness::Historical => {
-                Currentness::Historical
-            }
-            _ => Currentness::Unknown,
-        };
+        status.currentness = classify(project.currentness, &project.input_revision, snapshot);
         project.currentness = match status.currentness {
             Currentness::Current => sail_api::project::Currentness::Current,
             Currentness::Historical => sail_api::project::Currentness::Historical,
@@ -150,6 +161,43 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
     })
 }
 
+pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
+    if job.status.state != Lifecycle::Completed {
+        return Ok(job.status.clone());
+    }
+    let Some(projection) = &job.projection else {
+        // Older records have no validated projection: retain the complete parse.
+        return result(state, job).map(|document| document.job);
+    };
+    let _validated = project_bytes(state, job)?;
+    let snapshot = cache(job).and_then(|cache| {
+        state.freshness.inspect(
+            &cache,
+            Path::new(&projection.workspace),
+            &projection.context_sha256,
+            &job.submission.environment,
+        )
+    });
+    let mut status = job.status.clone();
+    status.currentness = classify(projection.currentness, &projection.input_revision, snapshot);
+    Ok(status)
+}
+fn classify(
+    original: sail_api::project::Currentness,
+    revision: &str,
+    snapshot: Option<sail_verus::managed::InputSnapshot>,
+) -> Currentness {
+    match snapshot {
+        Some(snapshot) if snapshot.revision != revision => Currentness::Historical,
+        Some(snapshot)
+            if snapshot.complete && original == sail_api::project::Currentness::Current =>
+        {
+            Currentness::Current
+        }
+        _ if original == sail_api::project::Currentness::Historical => Currentness::Historical,
+        _ => Currentness::Unknown,
+    }
+}
 fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
     let bytes = project_bytes(state, job)?;
     if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
@@ -164,13 +212,29 @@ fn repair_project(state: &State, job: &Stored) -> io::Result<sail_api::repair::R
     serde_json::from_slice(&project_bytes(state, job)?).map_err(io::Error::other)
 }
 fn project_bytes(state: &State, job: &Stored) -> io::Result<Vec<u8>> {
-    let path = state.root.join(&job.status.id).join("stdout");
-    if std::fs::metadata(&path)?.len() > sail_api::jobs::MAX_FRAME as u64 {
+    let bytes = read_bytes(&state.root.join(&job.status.id).join("stdout"))?;
+    if job
+        .projection
+        .as_ref()
+        .is_some_and(|projection| stdout_digest(&bytes) != projection.stdout_sha256)
+    {
+        return Err(io::Error::other(
+            "SAIL0816: retained result differs from its validated output seal",
+        ));
+    }
+    Ok(bytes)
+}
+pub(super) fn read_bytes(path: &Path) -> io::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    File::open(path)?
+        .take(sail_api::jobs::MAX_FRAME as u64 + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > sail_api::jobs::MAX_FRAME {
         return Err(io::Error::other(
             "SAIL0814: result exceeds RPC limit; retained output is available in the private job store",
         ));
     }
-    std::fs::read(path)
+    Ok(bytes)
 }
 
 fn refresh(
@@ -222,15 +286,12 @@ pub(super) fn establish_freshness(state: &State, job: &Stored) {
 
 pub(super) fn known_revision(state: &State, job: &Stored) -> Option<String> {
     let project = project(state, job).ok()?;
-    let snapshot = state
-        .freshness
-        .establish(
-            &cache(job)?,
-            Path::new(&project.workspace),
-            &project.context_sha256,
-            &job.submission.environment,
-        )
-        .ok()?;
+    let snapshot = state.freshness.inspect(
+        &cache(job)?,
+        Path::new(&project.workspace),
+        &project.context_sha256,
+        &job.submission.environment,
+    )?;
     snapshot.complete.then_some(snapshot.revision)
 }
 
@@ -252,15 +313,12 @@ pub(super) fn running_revision(state: &State, job: &Stored) -> Option<(String, S
             continue;
         }
         let original = event["input_revision"].as_str()?.to_owned();
-        let snapshot = state
-            .freshness
-            .establish(
-                &cache(job)?,
-                Path::new(event["workspace"].as_str()?),
-                event["context_sha256"].as_str()?,
-                &job.submission.environment,
-            )
-            .ok()?;
+        let snapshot = state.freshness.inspect(
+            &cache(job)?,
+            Path::new(event["workspace"].as_str()?),
+            event["context_sha256"].as_str()?,
+            &job.submission.environment,
+        )?;
         return snapshot.complete.then_some((original, snapshot.revision));
     }
     None

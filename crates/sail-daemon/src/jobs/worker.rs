@@ -54,7 +54,8 @@ pub(super) fn run(state: &State) {
             {
                 job.status.finished_at_ms = Some(store::now());
                 match result {
-                    Ok((code, document)) => {
+                    Ok((code, document, projection)) => {
+                        job.projection = Some(projection);
                         job.status.exit_code = code;
                         job.status.state = Lifecycle::Completed;
                         job.status.input_revision = Some(document.input_revision);
@@ -91,7 +92,7 @@ fn next(state: &State) -> Option<String> {
         queue = state.ready.wait(queue).ok()?;
     }
 }
-fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> {
+fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, store::Projection)> {
     let job = get(state, id)?;
     if job.cancel.load(Ordering::SeqCst) {
         return Err(io::Error::other("cancelled"));
@@ -166,7 +167,7 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
         }
         std::thread::sleep(Duration::from_millis(20));
     };
-    let document = read_document(&directory, &job.submission.mode)?;
+    let (document, projection) = read_document(&directory, &job.submission.mode)?;
     if document.exit_code != status.code() {
         return Err(io::Error::other(
             "managed report and process exit status disagree",
@@ -182,11 +183,14 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
     {
         return Err(io::Error::other("unsupported or incomplete project result"));
     }
-    Ok((status.code(), document))
+    Ok((status.code(), document, projection))
 }
 
-fn read_document(directory: &std::path::Path, mode: &Mode) -> io::Result<ProjectResult> {
-    let bytes = std::fs::read(directory.join("stdout"))?;
+fn read_document(
+    directory: &std::path::Path,
+    mode: &Mode,
+) -> io::Result<(ProjectResult, store::Projection)> {
+    let bytes = store::read_bytes(&directory.join("stdout"))?;
     let document: ProjectResult = if matches!(mode, Mode::Repair(_)) {
         let repair: sail_api::repair::ResultDocument =
             serde_json::from_slice(&bytes).map_err(io::Error::other)?;
@@ -197,5 +201,6 @@ fn read_document(directory: &std::path::Path, mode: &Mode) -> io::Result<Project
     } else {
         serde_json::from_slice(&bytes).map_err(io::Error::other)?
     };
-    Ok(document)
+    let projection = store::Projection::validated(&bytes, &document);
+    Ok((document, projection))
 }

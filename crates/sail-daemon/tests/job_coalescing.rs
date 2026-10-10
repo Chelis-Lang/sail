@@ -96,6 +96,26 @@ fn cancel(client: &Client, id: &str) {
             .is_ok()
     );
 }
+fn await_coalescing(
+    client: &Client,
+    root: &Path,
+    environment: &BTreeMap<String, String>,
+    expected: &str,
+) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let duplicate = submit(client, root, environment);
+        if duplicate.id == expected {
+            return;
+        }
+        cancel(client, &duplicate.id);
+        assert!(
+            Instant::now() < deadline,
+            "complete observed inputs must eventually coalesce"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
 fn context_event(
     cache: &Path,
     project: &Path,
@@ -149,6 +169,41 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     context_event(&cache, &project, &event, &environment, true);
     let warm = submit(&client, &root, &environment);
     ready(&client, &root, &warm.id);
+    let started = Instant::now();
+    let unestablished = submit(&client, &root, &environment);
+    #[cfg(target_os = "linux")]
+    assert_ne!(
+        warm.id, unestablished.id,
+        "compiler declarations alone cannot attest daemon lease coverage"
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "cold submission must not synchronously hash runtime"
+    );
+    if unestablished.id != warm.id {
+        cancel(&client, &unestablished.id);
+    }
+    await_coalescing(&client, &root, &environment, &warm.id);
+    assert_eq!(warm.id, submit(&client, &root, &environment).id);
+    // Losing complete declarations invalidates even an established projection.
+    write(
+        &context.join("source-inputs.json"),
+        &serde_json::json!({"paths":[],"covered":false,"by_package":{"fixture":[]}}),
+    );
+    let lost = submit(&client, &root, &environment);
+    assert_ne!(warm.id, lost.id);
+    let still_lost = submit(&client, &root, &environment);
+    assert_ne!(
+        lost.id, still_lost.id,
+        "incomplete contexts cannot share jobs"
+    );
+    cancel(&client, &lost.id);
+    cancel(&client, &still_lost.id);
+    write(
+        &context.join("source-inputs.json"),
+        &serde_json::json!({"paths":[],"covered":true,"by_package":{"fixture":[]}}),
+    );
+    await_coalescing(&client, &root, &environment, &warm.id);
     assert_eq!(warm.id, submit(&client, &root, &environment).id);
     let source = project.join("source.rs");
     let modified = std::fs::metadata(&source).and_then(|m| m.modified()).ok();

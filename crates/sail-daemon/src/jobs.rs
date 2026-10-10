@@ -240,13 +240,9 @@ fn dispatch(state: &State, request: Request) -> Response {
             statuses.sort_by_key(|status| status.submitted_at_ms);
             Response::List(statuses)
         }),
-        Request::Status { id } => get(state, &id).and_then(|job| {
-            if job.status.state == Lifecycle::Completed {
-                store::result(state, &job).map(|document| Response::Status(document.job))
-            } else {
-                Ok(Response::Status(job.status))
-            }
-        }),
+        Request::Status { id } => get(state, &id)
+            .and_then(|job| store::status(state, &job))
+            .map(Response::Status),
         Request::Result { id } => get(state, &id)
             .and_then(|job| store::result(state, &job))
             .map(Response::Result),
