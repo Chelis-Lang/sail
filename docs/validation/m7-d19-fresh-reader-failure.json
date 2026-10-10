@@ -129,10 +129,18 @@
       ],
       "raw_terminal": {
         "name": "baseline-terminal-1.json",
-        "artifact": null
+        "artifact": {
+          "sha256": "d1b2057d6b70fa43690cda3d38297cad56c971fa88d2e5d218a0bf207e93d5ad",
+          "bytes": 10725321
+        }
       }
     }
   ],
   "outcome": "FAIL: Neither genuine final-source proof established Current accepted evidence; no reader latency acceptance",
-  "raw_evidence_recovery": "Native container evidence retained before Docker API/backend interruption; archive transfer failed with HTTP500. First terminal result recovered on host; second hashes pending recovery."
+  "raw_evidence_recovery": "Both terminal results, retained raw jobs, lifecycle, provenance and raw-hash manifest recovered after backend interruption; no retry or acceptance claim. The pre-interruption tar was0bytes and is not used.",
+  "raw_archive": {
+    "sha256": "7f9207635705eac5efb3de6ce371267e452b69398abf0a86f080c70af7693b18",
+    "bytes": 1975690,
+    "contents": "terminal/results/lifecycle/provenance/retained-jobs/raw-hashes; excludes live cache and source trees"
+  }
 }
