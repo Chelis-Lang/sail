@@ -181,3 +181,22 @@ failed the unchanged Python gate despite genuinely established Current full
 proofs. All 200 samples are retained; Rust was not reached. Staged SDK cold,
 second-response and warm controls must be recorded separately and cannot turn
 that failed run into a pass. The frozen Python collector remains untouched.
+
+The [staged default controls](validation/m7-staged-result-client.json) retain
+all cold, second-response and warm samples for the final recovery fix. The
+complete 4.315 MB captured frame includes every dependency and both full-report
+copies. Four-reader medians in milliseconds were:
+
+| Offline environment | Uncached | Default cold | Second response | Default warm |
+| --- | ---: | ---: | ---: | ---: |
+| Native macOS arm64, developer load | 91.19 | 108.30 | 152.96 | 48.07 |
+| Emulated Linux amd64, developer load | 280.17 | 195.83 | 229.64 | 126.33 |
+
+These eight-sample controls show the second-response promotion cost and a warm
+median improvement; they do not establish a stable reference speedup. The final
+emulated warm p95 was 209.76 ms, above the separate 200 ms live-reader threshold.
+The first final-source Linux release replay reused an older binary because
+archived source mtimes predated its prior compilation. That replay remains
+recorded as stale provenance. A forced package-only release rebuild produced
+the independently hashed final binary used for the table. Final API tests and
+strict Clippy passed on both platforms.
