@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "source_commit": "d12d4afea318b7ac6915eb33370c0b773101aeea",
+  "environment": "Linux amd64 Docker emulation on macOS arm64; eight CPU, 8 GiB VM RAM, 1 GiB swap; concurrent local source qualification and standard corpus",
+  "command": "ci/run.sh gate",
+  "build_jobs": 2,
+  "nextest_threads": 2,
+  "test_internal_concurrency_unchanged": true,
+  "limits_changed": false,
+  "exit_code": 100,
+  "tests": 436,
+  "passed": 431,
+  "failed": 5,
+  "skipped_solver_tests": 37,
+  "nextest_duration_seconds": 151.15,
+  "whole_duration_seconds": 205.596444761,
+  "completed_checks": [
+    "Python contract/lifecycle suites (7, 4, 6, 6, 16, 3, 2 cases)",
+    "fmt",
+    "strict workspace all-target Clippy",
+    "nextest workspace (failed)"
+  ],
+  "not_attempted_after_failure": [
+    "CLI probe examples",
+    "workspace doctests",
+    "strict Rustdoc",
+    "layering",
+    "cargo deny",
+    "generated benchmarks page"
+  ],
+  "failed_tests": [
+    "concurrent_readers_coalesce_one_http_lookup",
+    "disconnect_hides_cached_transport_without_initializing_or_waiting_for_drop",
+    "forged_http_reply_is_refused_while_initiator_is_paused",
+    "status_reads_existing_metrics_during_owned_transport_refresh",
+    "verified_http_reply_reaches_readers_while_initiator_is_paused"
+  ],
+  "verified_paused_trace": {
+    "unit": "microseconds from first lookup",
+    "client_construction_start": 20122,
+    "client_construction_end": 172345,
+    "request_start": 175778,
+    "server_accepted": 237348,
+    "server_read": 253587,
+    "server_sent": 329369,
+    "response_body_completed": 352953,
+    "classified": 398452,
+    "published": 398656,
+    "caller_elapsed_ms": 250.609458
+  },
+  "cause": "Unresolved. The retained trace shows constructor/dispatch work consuming the deadline before the delayed response; it does not establish a production defect or justify weakening the serving assertions.",
+  "log": {
+    "sha256": "fd1a8eca0411defd33917e6504c9372e57dc5dcbbd87a6f43e5bbd8e09ba8d98",
+    "bytes": 61805
+  },
+  "scope": "Failed complete local gate on frozen integrated source. Prior 62ad gate pass is retained separately. No push or merge on this result.",
+  "product_acceptance": false
+}

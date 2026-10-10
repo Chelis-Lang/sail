@@ -66,13 +66,16 @@ not change a test deadline or turn observed failures into passes.
 
 | Check | Latest retained scope and result | Evidence |
 |---|---|---|
-| Linux workspace gate | Source `62ad095`, 436/436 tests plus all gate steps passed; two test workers | [Record](../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
+| Latest Linux workspace gate | Source `d12d4af`, 431/436 tests passed; five HTTP-cache concurrency tests failed. Cold construction/dispatch exhausted the serving interval in recorded traces; cause and correction remain under review. Later gate steps were not attempted. | [Failure](../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json) |
+| Earlier complete Linux workspace gate | Source `62ad095`, 436/436 tests plus all gate steps passed; two test workers | [Record](../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
 | Real solver/fault suite | Same source, 36/37 passed; `unverifiable_shared_entries_never_change_an_answer` timed out at the unchanged 180-second test limit; cause unresolved | [Failure](../bench/validation/m7-linux-solver-62ad-failure-emulated-2026-10-10.json) |
 | Isolated shared-entry fault diagnostic | All five corruption cases and both sessions passed in 11.340 seconds; this does not explain or erase the full-suite timeout | [Diagnostic](../bench/validation/shared-signature-fault-diagnostic-linux-emulated-2026-10-10.json) |
 | Full default corpus | Frozen `1dc` passed all 147 fast units in pass-through, fill and warm; standard phase interrupted by container loss and lacks a complete report | [Record](../bench/validation/m7-default-corpus-1dc-interrupted-emulated-2026-10-10.json) |
 
 These records cover their frozen artifacts, not every later source candidate.
-The complete solver suite is being checked with retained phase diagnostics.
+The complete current solver suite is being checked with retained phase diagnostics.
+HTTP serving/coalescing assertions and their original deadlines remain unchanged;
+the earlier gate pass does not cover the latest failed run.
 A complete standard run and the
 remaining M7 source/product gates are still required before merge acceptance.
 
