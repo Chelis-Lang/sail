@@ -499,5 +499,11 @@
       "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
     },
     "scope": "Actual complete vstd driver report, not a Current full requested HumanEval project proof"
+  },
+  "stage_timing": {
+    "vstd_report_completed_after_ordinary_start_estimate_s": 555.328895,
+    "human_eval_driver_created_after_sail_creation_s": 559.91,
+    "human_eval_remaining_before_interrupt_estimate_s": 40.317132,
+    "method": "Dependency completion estimate uses retained command-file modification time minus recorded monotonic duration; driver creation uses kernel start ticks relative to owned Sail creation at 100Hz. These observations do not establish a protocol hang or resource-exhaustion cause."
   }
 }
