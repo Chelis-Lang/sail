@@ -157,8 +157,14 @@ comparison. No query normalization or default replay change is authorized.
 
 Candidate `2421` passes host driver (12), AIR writer (2) and VIR (8) library
 regressions plus static graph access coverage. Its distinct ordinary Linux
-runtime build and executable same-input/real-project qualification remain
-pending. Its host record is `candidates/qualifications/2421-host-library.json`.
+runtime build passed in 1,071 seconds, with 2,060 vstd obligations verified and
+zero errors. The first order-fault fixture had only one observable spec
+declaration and failed its mandatory negative assertion; that failure remains
+recorded. A fixture-only correction supplied two reachable declarations, after
+which the real-hit positive and order/body/effect negatives all passed without
+changing the runtime or assertions. Source fixtures, checkpoint and cancellation
+controls also pass. Complete real-project/source qualification is still running.
+Its records are under `candidates/qualifications/2421-*`.
 The actual-written streams and diagnostic artifacts are separately bounded and
 physically closed before complete capture can be accepted. This expensive
 opt-in diagnostic mode is not a product performance measurement or an
@@ -169,3 +175,31 @@ unchanged; source qualification, genuine useful cross-edit preparation reuse,
 complete repair/full-validation speed gates on both real projects and final
 product acceptance remain required. `test-key-delta.py` and its bounded exact
 component captures diagnose remaining miss causes without changing admission.
+
+## Proposed removal of an unused pre-lowering span dependency
+
+The actual `2421` diagnostic around a module 023 body refactor found only one
+changed baseline field for unchanged module 013:
+`global.datatype_graph_span_infos`, 801,177 versus 801,178 encoded bytes. All
+other 30 complete components compared byte for byte. Both focused callbacks
+verified nine functions without errors. This is input dependency evidence, not
+a cross-edit cache hit or a performance result.
+
+Despite its name, the vector includes spans gathered during complete call-graph
+construction. Its sole ordinary reader is `recursive_types::check_traits`,
+which runs fresh before bucket lowering. AST-to-SST and polymorphic lowering do
+not read it. A separately qualified candidate may remove this unused field from
+the preparation baseline while preserving every other field, full pruned IR,
+stock graph/order and current span provenance. The field must become private.
+Its routed accessor must invalidate an active lowering capture; unexpected
+future reads then cost a miss. The current-span seed registration used by the
+decoder must follow the same guard, without weakening any stored-span identity
+or provenance check. Constructor and same-callback oracle copies retain fresh
+current ownership and cannot make the vector a restored mutable effect.
+
+That candidate needs an explicit new key/capsule domain, actual old-domain
+rejection, unsupported-read and fresh trait-cycle controls, and the complete
+same-input/stock diagnostic qualification. A body-edit test must demonstrate a
+focus hit from the **previous revision's** preparation, separately from a full
+phase restore written in the same invocation. No such key change or product
+activation has happened; `2421` is immutable while its qualification runs.
