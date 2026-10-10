@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "scope": "unselected source ownership prototype; no ordinary runtime/HIT qualification",
+  "patch_sha256": "d85268f27326c83e996661f08908e8c86edf4802847352adf1fc4afd6af388b9",
+  "base_source_sha256": "8a03c34f2ec755feffa034bbb57f015ab6bd4d7a4ee433f6d03a6aa028976dc8",
+  "source_sha256": {
+    "sail_decode.rs": "4e475763d56e03a2b684fc0d268bc067c4f05ede45b619a7b252fb9f35be0a57",
+    "sail_decode_schema.rs": "223a796ee6bc92c6fc9cc2787e2a03c7223b7ca6d211d84154237a6977c2ddf1"
+  },
+  "helper_tests": 12,
+  "original_tests_preserved": 5,
+  "helper_result": "PASS",
+  "helper_strict_all_target_clippy": "PASS",
+  "helper_toolchain": "1.98.1",
+  "helper_raw_sha256": {
+    "helper.stdout": "2e2cdfe00cdc74b018836153a676ba1011600c7e804cf120b3e5567892d14a83",
+    "helper.stderr": "17c164818ea798cde3ea2358525b44aa50e1b6b933419d32b53e764d527e3cc3",
+    "clippy.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "clippy.stderr": "f3d41dc880af845611abfabd0a37332c0b90526bafd6f17a585b251aa41e5dee"
+  }
+}
