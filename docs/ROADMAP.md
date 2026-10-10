@@ -128,6 +128,9 @@ original 120-second total deadline while waiting for the first job. The default
 managed evidence directory now lives outside temporary fixture scratch so
 future timeout output survives cleanup. Every e2e phase is still required.
 These suite passes do not establish product acceptance or source-engine qualification.
+The subsequent complete `7dc855d` workspace gate failed two original HTTP
+elapsed checks (437/439 tests passed); the current branch still requires a
+complete passing gate before pushing.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh
 real-reader attempt failed ordinary human-eval setup at the unchanged
