@@ -69,6 +69,7 @@ case "$step" in
     bash ci/test-completion.sh
     python3 scripts/test-m7-repair-bench.py
     python3 scripts/test-m7-job-read-bench.py
+    python3 ci/test-engine-artifact.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
