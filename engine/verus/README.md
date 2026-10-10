@@ -122,3 +122,17 @@ report, and verifies the restart against stock.
 Final performance acceptance uses the frozen repair catalogue and the complete
 focused-plus-full loop, including input/runtime validation and late compiler
 checks. A source build or cache hit count alone is not performance acceptance.
+
+## Pinned Linux runtime for CI
+
+`artifact-linux.json` binds the private release asset, archive digest, source
+commit, patch, lockfile, Rust toolchain and solver. `ci/engine-artifact.py`
+checks those pins and every runtime file before installation. The Docker image
+uses a BuildKit secret for the private download; it does not retain that
+credential or build Verus from source. The optional runtime is exercised by
+the real repair CLI/MCP end-to-end phase alongside the stock checks.
+
+`qualification-linux.json` records the final source differential checks in a
+local Linux amd64 container under emulation. It covers nine stock-equivalent
+fixtures, eight prepared-reuse revisions and cancellation/restart. It does
+not substitute for the frozen whole-loop product performance acceptance.

@@ -147,10 +147,15 @@ Verus for host runs.
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates two parallel
-phases, legacy and managed, and succeeds only when both complete successfully.
-`ci/local.sh e2e` still runs both; `e2e legacy` or `e2e managed` selects a phase
-for diagnosis. Neither phase may be skipped to authorize a merge.
+with `main` before merging. The `End to end` check aggregates three parallel
+phases, legacy, managed and repair, and succeeds only when all complete successfully.
+`ci/local.sh e2e` runs all three; `e2e legacy`, `e2e managed` or `e2e repair`
+selects a phase for diagnosis. No phase may be skipped to authorize a merge.
+The optional repair engine is a locally qualified prebuilt runtime pinned in
+`engine/verus/artifact-linux.json`. The CI image validates its archive, source
+patch, source lock and every runtime file; CI never compiles Verus from source.
+Local image builds obtain private artifact access from `gh auth token` or
+`SAIL_ENGINE_ARTIFACT_TOKEN`, supplied only through a BuildKit secret.
 
 **Testing tiers** (charter §Engineering practice). CI runs only the fast
 tier, and every CI job must finish well inside 10 minutes. Anything longer
