@@ -66,14 +66,11 @@ def run(args):
                        CARGO_BUILD_JOBS='2')
     save()
     stage('private-graph-audit', ['python3', ROOT / 'candidates/audit-graph-ledger.py', '--source', source])
-    for name, package, extra in [('vir-tests', 'vir', []), ('air-writer-tests', 'air', ['sail_wire_tests']),
-                                 ('driver-tests', 'rust_verify', [])]:
-        stage(name, ['nice', '-n', '19', 'cargo', 'test', '--release', '-p', package, '--lib', *extra], source)
     common = ['--engine', runtime / 'verus', '--stock', args.stock, '--z3', args.z3]
-    for name, script in [('source-fixtures', ROOT / 'test-engine.py'),
+    for name, script in [('same-input-hit-controls', ROOT / 'candidates/test-same-callback.py'),
+                         ('source-fixtures', ROOT / 'test-engine.py'),
                          ('graph-checkpoint', ROOT / 'candidates/test-graph-ledger.py'),
-                         ('cancel-restart', ROOT / 'test-cancel.py'),
-                         ('same-input-hit-controls', ROOT / 'candidates/test-same-callback.py')]:
+                         ('cancel-restart', ROOT / 'test-cancel.py')]:
         stage(name, ['python3', script, *common, '--out', out / name])
     stage('first-input-delta', ['python3', ROOT / 'candidates/test-key-delta.py',
                               '--engine', runtime / 'verus', '--z3', args.z3,
@@ -81,6 +78,9 @@ def run(args):
     stage('real-he-same-input', ['python3', ROOT / 'candidates/test-real-he-same-input.py', *common,
                                 '--project', args.he, '--out', out / 'real-he-same-input',
                                 '--other-module-edit', '--timeout', '600'])
+    for name, package, extra in [('vir-tests', 'vir', []), ('air-writer-tests', 'air', ['sail_wire_tests']),
+                                 ('driver-tests', 'rust_verify', [])]:
+        stage(name, ['nice', '-n', '19', 'cargo', 'test', '--release', '-p', package, '--lib', *extra], source)
     record['source_gates_passed'] = True
     save()
     print('Source gates passed; product acceptance remains pending', flush=True)
