@@ -80,7 +80,8 @@ case "$step" in
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
     cargo test --locked -p sail-cli --example check_mcp --example job_read_bench
-    cargo test --locked -p sail-api --example result_frame_profile
+    cargo test --locked -p sail-api --example result_frame_profile \
+      --example result_client_profile --example result_stream_profile
     cargo test --workspace --doc --locked
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
     cargo xtask check-layering
