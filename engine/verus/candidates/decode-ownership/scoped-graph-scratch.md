@@ -77,3 +77,8 @@ receipts or seals were copied. VIR and RustVerify intermediates were excluded so
 changed source must recompile. The normal builder still performs fresh vstd
 verification and creates an independently validated complete runtime manifest.
 This is build-cache setup, not copied proof acceptance or source qualification.
+
+After the new ordinary build sealed, bounded [closed-intermediate cleanup](scoped-query-closed-intermediates.json)
+reclaimed 1,635,057,439 bytes of owned host/compiler-cache files. Test executables,
+source identities, all thirteen old runtime artifacts and raw evidence were
+retained and revalidated. The active new source target was excluded.
