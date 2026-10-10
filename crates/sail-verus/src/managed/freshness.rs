@@ -47,15 +47,21 @@ struct Request {
 #[cfg(target_os = "linux")]
 impl Request {
     fn key(&self) -> String {
-        super::files::digest(
-            &serde_json::to_vec(&(
-                &self.cache,
-                &self.workspace,
-                &self.context,
-                &self.environment,
-            ))
-            .unwrap_or_default(),
-        )
+        // Paths can contain non-UTF-8 bytes. Hash their exact platform spelling
+        // with lengths rather than falling back after JSON serialization errors.
+        let mut bytes = b"sail-freshness-request-v1".to_vec();
+        let mut append = |value: &[u8]| {
+            bytes.extend_from_slice(&(value.len() as u64).to_le_bytes());
+            bytes.extend_from_slice(value);
+        };
+        append(self.cache.as_os_str().as_encoded_bytes());
+        append(self.workspace.as_os_str().as_encoded_bytes());
+        append(self.context.as_bytes());
+        for (name, value) in &self.environment {
+            append(name.as_bytes());
+            append(value.as_bytes());
+        }
+        super::files::digest(&bytes)
     }
     fn refresh(&self, runtime: &Mutex<RuntimeValidation>) -> Option<InputSnapshot> {
         let valid = || {
@@ -465,6 +471,28 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.root);
         }
+    }
+    #[test]
+    fn non_utf8_path_spellings_and_environment_keep_requests_isolated() {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt as _;
+        let mut request = Request {
+            cache: PathBuf::from(OsString::from_vec(b"/cache-\xff".to_vec())),
+            workspace: PathBuf::from("/workspace"),
+            context: "context".to_owned(),
+            environment: BTreeMap::new(),
+        };
+        let initial = request.key();
+        request.cache = PathBuf::from(OsString::from_vec(b"/cache-\xfe".to_vec()));
+        assert_ne!(initial, request.key());
+        let previous = request.key();
+        request.workspace = PathBuf::from(OsString::from_vec(b"/workspace-\xff".to_vec()));
+        assert_ne!(previous, request.key());
+        let previous = request.key();
+        request
+            .environment
+            .insert("PATH".to_owned(), "/other".to_owned());
+        assert_ne!(previous, request.key());
     }
     #[test]
     fn established_reads_invalidate_true_content_changes_with_restored_mtime() {
