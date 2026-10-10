@@ -13,8 +13,8 @@ SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all
 ```
 
 Earlier host measurements completed this suite in about nine seconds. Current
-runtime depends on the platform and workload; a solver-suite timeout remains
-under investigation below.
+runtime depends on the platform and workload. The latest full solver suite
+passes; an earlier timeout remains unexplained and retained below.
 
 ## Retained unresolved timeout
 
@@ -22,7 +22,7 @@ The integrated Linux run at source `62ad095` passed 36 of 37 solver checks, but
 `unverifiable_shared_entries_never_change_an_answer` exceeded the unchanged
 180-second CI limit and was terminated after 190.016 seconds. Its cause is not
 yet established; the earlier successful scenario outcomes below do not make
-this latest run a pass.
+that frozen run a pass.
 
 Read-only inspection of the preserved scratch state showed completed forged,
 untrusted-signer and other-solver stores with local entries. The platform store
@@ -42,6 +42,15 @@ the original integrated timeout. The
 retains both outcomes, the diagnostic invocation's initial solver-path setup
 failure, and the executed source, binary and log hashes. No production fix or
 deadline change is claimed.
+
+The later complete `d12d4af` Linux solver suite passed all 37 cases in 114.446
+seconds, including this shared-entry case in 9.652 seconds. It uses the original
+assertions and deadlines with the phase diagnostics above. This is a complete
+suite pass for those frozen artifacts, not an identified cause or causal fix
+for the earlier timeout. The normal workspace gate on the same source failed
+HTTP-cache concurrency tests and remains a separate blocker. See the
+[complete solver record](../bench/validation/m7-linux-solver-d12-emulated-2026-10-10.json)
+and [failed gate](../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json).
 
 ## How faults are injected
 
