@@ -203,3 +203,14 @@ same-input/stock diagnostic qualification. A body-edit test must demonstrate a
 focus hit from the **previous revision's** preparation, separately from a full
 phase restore written in the same invocation. No such key change or product
 activation has happened; `2421` is immutable while its qualification runs.
+
+The resumed `2421` pipeline failed the unchanged 600-second HE actor deadline
+on revision 1 after all 106 independent restored/fresh bucket solver comparisons
+completed. The separate authoritative primary had not returned its full report
+or normal terminal seal. The edited revision and final Linux library stages
+were not reached. The retained source record is
+`engine/verus/candidates/qualifications/2421-linux-resumed-failure.json`.
+The proposed span-vector dependency seam addresses the measured overbroad key;
+it is not an established remedy for the primary solver timeout or a performance
+qualification. Candidate preparation decode-allocation accounting also remains
+under independent review before an aggregate memory-bound claim.
