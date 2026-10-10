@@ -232,3 +232,10 @@ product buffer-pool or unsafe-initialization change. Full-response ownership
 and every fresh-frame validation remain intact. The record keeps the separate
 raw-transfer replay's variation rather than assigning a live bottleneck from
 these component timings.
+
+The [installed b36 transport smoke](validation/m7-installed-mcp-b36.md) passed
+on independently frozen production binaries using the unchanged hardened MCP
+controller. It checked direct live reads, same-ID state changes, service loss
+and restart, notification cancellation, socket cleanup and normal EOF exit.
+The worker was stopped before any proof; it does not establish Current-result
+latency or the separate real-reader acceptance.
