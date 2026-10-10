@@ -49,3 +49,15 @@ Full transport, trust, deployment, resource bounds and acceptance tests are
 documented in `docs/http-shared-cache.md`. New external dependencies retain the
 workspace MSRV and license checks; narrowly scoped license exceptions are recorded
 separately in ADR 0026.
+
+Development and test profiles optimize only `curve25519-dalek` arithmetic at
+level 3, matching the existing production release optimization. They retain
+debug assertions and overflow checks. Every entry still runs the same
+`ed25519-dalek::verify_strict` implementation and all binding, trust, hash, mode
+and shape checks; no signature trust is cached. This targets measured unoptimized
+arithmetic CPU cost within the unchanged serving deadline. Cargo's
+[package profile overrides](https://doc.rust-lang.org/cargo/reference/profiles.html#overrides)
+change compiler optimization, without changing the dependency or algorithm.
+The original failed HTTP deadline and fixed authentic/forged CPU control are
+retained in `docs/validation/m7-shared-signature-cpu-diagnosis.md`; they do not
+establish why the entire original wall-time gap occurred.

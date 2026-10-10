@@ -181,3 +181,14 @@ client construction consumed 152 ms before a paused-initiator test's network
 request, and the validated result was published after 398 ms. The 250 ms serving
 assertion failed as recorded. That run remains failed; establishing future
 fixtures does not reinterpret it as a pass or change a production deadline.
+
+Dev/test builds compile `curve25519-dalek` arithmetic with the production release
+optimization level, while retaining debug assertions and overflow checks. The
+same strict signature verification and all negative trust/binding checks run on
+every entry. This removes measured unoptimized arithmetic work from the serving
+budget; the 250 ms deadline and 75 ms delayed-server assertions remain unchanged.
+CPU and wall-time evidence, including the original failed established-transport
+test, is retained in
+`validation/m7-shared-signature-cpu-diagnosis.md`. It is a development-build
+improvement, not a production-release speedup or an attribution of every earlier
+wall-time delay to cryptography.

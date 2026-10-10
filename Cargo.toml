@@ -76,6 +76,15 @@ debug = "line-tables-only"
 [profile.test]
 debug = "line-tables-only"
 
+# The shared serving deadline includes strict Ed25519 verification. Use the
+# production arithmetic optimization in dev/test too, retaining their debug
+# assertions and overflow checks; all trust/signature checks remain unchanged.
+[profile.dev.package.curve25519-dalek]
+opt-level = 3
+
+[profile.test.package.curve25519-dalek]
+opt-level = 3
+
 [profile.release]
 debug = "line-tables-only"
 
