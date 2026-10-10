@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "kind": "real-reader-separately-prepared-baseline",
+  "scope": "Genuine fresh complete Current baseline established by separately recorded preparation for exact 8e/b346 reader-stage diagnosis. Subsequent original bounded checks and both frozen four-reader collectors are still pending; no overall M7, source-budget, one-driver or latency acceptance.",
+  "environment": "Linux amd64 Docker emulation on macOS arm64; shared development load",
+  "product": {
+    "source_sha": "8e09eaa76359ea5c14edfa1bf1825d415b489dfe",
+    "sail_sha256": "7e4f771901aa6542bf28ae4dd6b346fab9846e29e66fc06d2f0631e9a12ecd1d",
+    "shim_sha256": "9259e4eda02fa0c3cf55f4773e788bc3b35fcc38a9f38260b423a16c2bd76623"
+  },
+  "controller": {
+    "source_sha": "88df10ba9b32ce1ab425aac883fd7310c29cbc02",
+    "archive_sha256": "44403bd5f162d08aab9601f220ec58be91711254b1687abcf0c81e5b8ab788cd",
+    "sha256": "f0d9f6c7f9b4ee64a5ac219728d7b998428d16d6cc8dd3403677287effb681fe",
+    "prepare_contexts": true,
+    "ordinary_and_exact_context_preparation": "separate unmeasured phase with explicitly selected setup 0 and exact-owned lifecycle; all subsequent original warm checks retain 600 seconds"
+  },
+  "runtime": {
+    "upstream_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+    "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+    "verifier_sha256": "670e3a437474e7bc0dd53df0f070da5fd48de508954eb58c7c1e5698bfc43e58"
+  },
+  "collector": {
+    "source_sha": "6ca0cbef588b6cf1bfafcb9b2308f41016439fd7",
+    "rust_sha256": "0114cb141769ce13732a22026ccf3c3efa01b108515af28c752746ddad9158bb",
+    "python_sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+    "clients": 4,
+    "samples": 200,
+    "rpc_seconds": 5,
+    "p95_limit_ms": 200,
+    "process_seconds": 600,
+    "origin_note": "Sealed collector freeze contains historical product-origin metadata for 1dc. That metadata is unchanged and is not the product identity of this run; actual 8e product hashes are separately recorded above."
+  },
+  "selection": {
+    "package": "human_eval_verus",
+    "target": "human_eval_verus",
+    "kind": "lib",
+    "args": [
+      "--package",
+      "human_eval_verus",
+      "--lib"
+    ],
+    "function": "human_eval_verus::human_eval_013::compute_gcd",
+    "fresh_independent_workspace": true,
+    "copied_receipts": false,
+    "copied_compiled_targets": false
+  },
+  "preparation": {
+    "total_baseline_wall_ms": 1839531.6419660011,
+    "ordinary": {
+      "wall_ms": 632425.6492479999,
+      "exit_code": 0,
+      "currentness": "current",
+      "compiler_invocations": 2
+    },
+    "first_exact_context": {
+      "job": "1791667709449-170881-0",
+      "wall_ms": 565515.8409679988,
+      "exit_code": 0,
+      "currentness": "unknown",
+      "accepted": false,
+      "compiler_invocations": 2,
+      "notes": [
+        "native-observation-invalidated",
+        "Build-script input declarations were established during this run",
+        "Current input validation was unavailable or still running"
+      ],
+      "retry": "Existing sole declarations-establishment retry; first Unknown result remains retained."
+    },
+    "final_exact_context": {
+      "job": "1791668275108-170881-1",
+      "run_id": "184891-1791668300087201844",
+      "wall_ms": 640149.904124999,
+      "exit_code": 0,
+      "error": null,
+      "currentness": "current",
+      "accepted": true,
+      "input_revision": "5f50284e667d2ac178d2de33dd4685c15c88d0fc492edcc5ed10db87e53932c4",
+      "context_sha256": "2a20595124a61c517918dfec1c82810d378e8ec2a8a309959aeed61a3c422e1f",
+      "compiler_invocations": 3,
+      "batched": true,
+      "optional_preparation_telemetry": "not present; no source preparation-hit or fallback claim",
+      "cargo_execution_stderr": [
+        "Finished dev profile in 1m57s",
+        "Compiling vstd; checking human_eval_verus; finished dev profile in 7m35s"
+      ],
+      "started_records": [
+        {
+          "file": "185220.started",
+          "bytes": 67,
+          "sha256": "99e5bba8852526eef7210afd3bc792c7d367d25d212c7b0ea0dbbdb8c2cccb7b",
+          "record": {
+            "run_id": "184891-1791668300087201844",
+            "target": "human_eval_verus"
+          }
+        },
+        {
+          "file": "186428.started",
+          "bytes": 55,
+          "sha256": "f30f6025a616aed7ed25891e07f4f5191b50c82a2835fc4156b2b5a01a07c5ae",
+          "record": {
+            "run_id": "184891-1791668300087201844",
+            "target": "vstd"
+          }
+        },
+        {
+          "file": "190217.started",
+          "bytes": 67,
+          "sha256": "99e5bba8852526eef7210afd3bc792c7d367d25d212c7b0ea0dbbdb8c2cccb7b",
+          "record": {
+            "run_id": "184891-1791668300087201844",
+            "target": "human_eval_verus"
+          }
+        }
+      ]
+    }
+  },
+  "targets": [
+    {
+      "name": "vstd",
+      "requested": false,
+      "complete": true,
+      "reused": false,
+      "attributed_function_summary": {
+        "functions": 1871,
+        "verified": 1871,
+        "failed": 0,
+        "unknown": 0
+      },
+      "verus_structured_total": {
+        "verified": 2060,
+        "errors": 0,
+        "success": true
+      }
+    },
+    {
+      "name": "human_eval_verus",
+      "requested": true,
+      "complete": true,
+      "reused": false,
+      "attributed_function_summary": {
+        "functions": 331,
+        "verified": 331,
+        "failed": 0,
+        "unknown": 0
+      },
+      "verus_structured_total": {
+        "verified": 441,
+        "errors": 0,
+        "success": true
+      }
+    }
+  ],
+  "count_reconciliation": "The same complete responses contain both metrics. Earlier a6/b346 and source controls quoted crate.verus.verified 2060/441; report.summary quotes attributed FunctionReport totals 1871/331. These are not competing proof-scope counts.",
+  "raw_sha256": {
+    "ordinary_stdout": "11533cd27c816d8538e88a610a442ff7830536c373f081a6f7a2b01ecc8fc294",
+    "first_unknown_public_result": "db836a33504c0cd6df19d4aa60cfe8988a31bf6cda715de0717813f93dac7a96",
+    "current_public_result": "e51782b0d68d54b533530733b25317f6050f538a74bd9cd045da44cc1a1b784e"
+  },
+  "pending": [
+    "Fresh independent active workspace preparation",
+    "Original 600-second bounded ordinary and exact-context full checks",
+    "Both original selected-crate four-reader collectors",
+    "Retained actual CLI/MCP 120/30/5 workflow"
+  ],
+  "prior_failures_erased": false,
+  "original_limits_changed": false,
+  "reader_acceptance_established": false,
+  "performance_acceptance_established": false
+}
