@@ -127,6 +127,18 @@ fn thread_cpu_ticks() -> Option<u64> {
         .flatten()
 }
 
+#[cfg(test)]
+fn classification_cpu(started: Instant, before: Option<u64>) {
+    let elapsed = started.elapsed();
+    let ticks = before
+        .zip(thread_cpu_ticks())
+        .and_then(|(before, after)| after.checked_sub(before));
+    eprintln!(
+        "shared classification: wall_us={} thread_cpu_ticks={ticks:?}",
+        elapsed.as_micros()
+    );
+}
+
 pub(crate) struct SharedTier {
     #[cfg(test)]
     phases: Phases,
@@ -416,17 +428,7 @@ impl SharedTier {
                 #[cfg(test)]
                 phase(&phases, "classified");
                 #[cfg(test)]
-                {
-                    let elapsed = validation_started.elapsed();
-                    let cpu_after = thread_cpu_ticks();
-                    let ticks = cpu_before
-                        .zip(cpu_after)
-                        .and_then(|(before, after)| after.checked_sub(before));
-                    eprintln!(
-                        "shared classification: wall_us={} thread_cpu_ticks={ticks:?}",
-                        elapsed.as_micros()
-                    );
-                }
+                classification_cpu(validation_started, cpu_before);
                 in_flight.fetch_sub(1, Ordering::SeqCst);
                 // Coalesced readers need not wait for the initiating client to
                 // be scheduled again after this independently verified result.
@@ -508,7 +510,7 @@ mod http_tests {
         let mut fixture = http_fixture("signature-cpu", false);
         let secret = SecretKey::from_seed([8; 32]);
         let (trusted, problems) = fixture.tier.trusted();
-        assert!(problems.is_empty());
+        assert_eq!(problems, [] as [String; 0]);
         let valid = sign_entry(
             &secret,
             &fixture.key,
