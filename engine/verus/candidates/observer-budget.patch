@@ -94,9 +94,9 @@
 +        let mut out=std::fs::OpenOptions::new().create(true).append(true).open(path)?;out.write_all(bytes)
 +    });
 +}
-+macro_rules! fields {()=>{()};($key:literal:$value:expr $(,$tail_key:literal:$tail_value:expr)* $(,)?)=>{$crate::sail_engine::Field($key,&$value,$crate::sail_engine::fields!($($tail_key:$tail_value),*))};}
++macro_rules! fields {()=>{()};($key:literal:$value:expr $(,$tail_key:literal:$tail_value:expr)* $(,)?)=>{$crate::verifier::sail_engine::Field($key,&$value,$crate::verifier::sail_engine::fields!($($tail_key:$tail_value),*))};}
 +pub(super) use fields;
-+macro_rules! emit {($kind:expr,{$($key:literal:$value:expr),* $(,)?})=>{$crate::sail_engine::observe(|phase,writer|serde_json::to_writer(writer,&$crate::sail_engine::Observation {version:1,phase,event:$kind,payload:$crate::sail_engine::Fields($crate::sail_engine::fields!($($key:$value),*))}))};}
++macro_rules! emit {($kind:expr,{$($key:literal:$value:expr),* $(,)?})=>{$crate::verifier::sail_engine::observe(|phase,writer|serde_json::to_writer(writer,&$crate::verifier::sail_engine::Observation {version:1,phase,event:$kind,payload:$crate::verifier::sail_engine::Fields($crate::verifier::sail_engine::fields!($($key:$value),*))}))};}
 +pub(super) use emit;
 +pub(super) fn diagnostic(message:&ArcDynMessage,level:MessageLevel){if let Some(msg)=message.downcast_ref::<MessageX>(){emit!("diagnostic",{"message":msg,"level":level});}}
 +struct Ordinals {values:HashMap<(bool,String,String),u32>,charged:usize}
