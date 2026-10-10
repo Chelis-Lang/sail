@@ -116,6 +116,15 @@ source baseline still lacks an established physical preparation-memory bound.
 Graph-ledger/oracle candidates remain unselected; `2421` failed its 600-second
 authoritative full-verification deadline despite completed shadow controls. A persistent hit inside one
 focus/full invocation is not demonstrated reuse across edits.
+Subsequent fixed signature CPU controls support package-only development/test
+arithmetic optimization, with all original HTTP serving and forgery assertions
+passing in the affected suite; its complete integrated gate is still running.
+The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
+but exceeded the original latency target and had no active verifier. Source work
+now closes decoded-allocation and validation-scratch accounting gaps, and routes
+private span reads through guards covering compiler clones created before a
+capture begins. These candidates require a combined ordinary build and complete
+source qualification before activation.
 
 Priority order for completing this milestone:
 
