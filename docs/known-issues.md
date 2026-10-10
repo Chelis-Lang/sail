@@ -56,8 +56,13 @@ four-reader latency gate has been established. See the
   owners for each query under the unchanged 8 MiB cap, with 37 pinned VIR
   controls and strict Clippy passing. The
   [allocation argument](../engine/verus/candidates/decode-ownership/scoped-graph-scratch.md)
-  covers simultaneous ownership and retained vector capacity. A new ordinary
-  runtime is building; no runtime or genuine cross-edit hit is qualified.
+  covers simultaneous ownership and retained vector capacity. The new ordinary runtime builds with all 13 sealed artifacts and 2,060 vstd
+  obligations. Its unchanged cross-edit gate now reaches decoding and graph
+  validation, but refuses span provenance for the unchanged focused function
+  after an unrelated body edit. Complete full outcomes and early controls pass;
+  the required edited-revision persistent focus hit does not. The candidate
+  remains unselected; see the
+  [full failure record](../engine/verus/candidates/decode-ownership/scoped-query-qualification-failure.json).
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
@@ -196,3 +201,13 @@ describe unstable outcomes. Process history also affects models and effort, so
 default SMT keys bind the exact process prefix. Seed-dependent proof discovery
 is exposed through named opt-in portfolios, with separate keys and provenance;
 it is never silently substituted into default verification.
+
+## Current complete solver test setup
+
+The frozen b36 workspace gate passes all 485 tests. Its complete solver step
+passes 37 real-Z3 and fault controls, but the new classifier timing diagnostic
+fails before assertions because its external fixture was absent. The original
+captured bytes are now retained as its default; explicit fixture selection and
+all bounds/equality assertions remain. A fresh complete run is required.
+[The failed attempt](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
+retains the entire log. This is a test setup defect, not a solver disagreement.
