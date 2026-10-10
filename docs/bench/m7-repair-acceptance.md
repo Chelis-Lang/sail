@@ -61,6 +61,8 @@ does not establish that repair context's build-script declarations. Exactly one
 retry is permitted when a successful, complete first result explicitly reports
 newly established declarations. The next result must be Current and accepted;
 missing freshness coverage is never counted as initialization success.
+M6's distinct focused contexts are warmed on the same original source as well;
+both modes enter the measured edits with their dependencies and contexts set up.
 
 Run with scratch projects, runtime, caches and output on the container's native
 Linux filesystem (for example under `/tmp`), then copy the retained output to
