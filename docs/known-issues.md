@@ -25,8 +25,15 @@ four-reader latency gate has been established. See the
   The [bounded-decoding overlay](../engine/verus/candidates/decode-budget/README.md)
   has isolated pinned-source tests, but its combined runtime checks are pending.
   A further audit found unbounded diagnostic-event JSON expansion before the
-  observer lock, which can overlap preparation workers. That path must be
-  bounded before the combined candidate can satisfy the physical budget.
+  observer lock, which can overlap preparation workers. The unselected
+  [observer overlay](../engine/verus/candidates/observer-budget/README.md) now
+  bounds that path, formatting and progress ownership. The combined allocation
+  argument reaches 492 MiB; exact driver tests and ordinary runtime qualification
+  remain pending. Its guarded decoder admitted only 36 of 105 retained actual
+  human-eval preparations and safely refused 69 under its fixed allowance.
+  This is a reuse limitation requiring more precise allocation accounting,
+  rather than evidence that empty-fixture passes establish product performance.
+  See the [retained entry probe](../engine/verus/candidates/qualifications/bounded-decode-retained-he.json).
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
