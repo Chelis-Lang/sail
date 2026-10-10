@@ -9,6 +9,7 @@ import platform
 import subprocess
 
 FIXTURES = {
+    "long_worker_span": "proof fn selected() { /*" + "x" * 40000 + "*/ assert(true); }\nproof fn other() { }",
     "success": "proof fn selected(x: int) ensures x + 1 > x { }\nproof fn other(x: int) ensures x == x { }",
     "failed_focus": "proof fn selected(x: int) ensures x > x { }\nproof fn other(x: int) ensures x == x { }",
     "failed_other": "proof fn selected(x: int) ensures x == x { }\nproof fn other(x: int) ensures x > x { }",

@@ -64,12 +64,22 @@ content hash and raw SpanData hygiene/parent ownership. Imported spans bind the
 current foreign-file table. Missing, ambiguous or stale bindings miss; a saved
 raw rustc span is never reused across compiler callbacks.
 
-Provenance hashing also keeps a memo owned by this callback's immutable
-`Sources` inventory. Imported entries bind both exact packed span values; local
-entries bind the complete raw SpanData Debug encoding. Every miss executes the
-original hash algorithm over the same ordered SourceOwner records, and every
-checkpoint hit still resolves and validates every current span binding. The
-memo never survives `finish_cache` or a compiler callback. Its fixed table never
+Provenance hashing keeps a memo owned by this callback's immutable ordered
+source-owner inventory. Imported entries bind both packed span words. Local
+entries bind all owned raw SpanData fields: lo, hi, syntax-context identity, and
+optional parent definition index. The pinned public SyntaxContext API does not
+expose its numeric field; its audited Debug implementation writes only `#<u32>`.
+We bound and validate that token before encoding it. Neither SpanData Debug nor
+`.span()` runs on a verification worker: both can access compiler thread-local
+interners for long or complex spans. The minimal reproduction is in
+`corpus/repros/engine-span-data-worker/`.
+
+Local provenance has a new `local/raw-fields/v2` domain, the complete constructor
+key has a v2 domain, and portable checkpoints require version 2. Older entries
+cannot be restored. Every miss runs the same exact field/owner hashing as a memo
+hit, and every current span binding is still resolved and checked. No raw Span,
+TyCtxt, or SourceMap is retained across callbacks. The memo never survives
+`finish_cache` or a compiler callback. Its fixed table never
 resizes after the initial reservation; HashMap capacity, owned key/result String
 capacities, metadata, and a 4 KiB allowance for bounded transient work all count
 against 8 MiB. A full table merely recomputes hashes. Unknown or oversized span

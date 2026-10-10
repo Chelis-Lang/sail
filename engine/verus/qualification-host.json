@@ -1,16 +1,29 @@
 {
   "version": 1,
-  "patch_sha256": "c13ef5435842dcebdbfb578a2fd13d95376c81f914e7f925b2f2c5ed90ddbae4",
+  "patch_sha256": "cd40e16ef31f469064a93b538868e9ae80d3b638fbc418dadbdfac571573797e",
   "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "scope": "Host source qualification; 9 small differential fixtures, 8 checkpoint revisions, cancellation, and 2 exact provenance memo tests. Linux and real repair performance qualification pending.",
+  "scope": "Host source qualification; 10 small differential fixtures including long worker span, 8 checkpoint revisions, cancellation, and 3 exact owned-field provenance/memo tests. Linux and real repair performance qualification pending.",
   "source_fixtures": {
     "version": 1,
     "machine": "macOS-26.5-arm64-arm-64bit",
     "engine_sha256": "a5219f1ac8477cdd78e430bb21461135d94407279d651b0da007bed8f0439e67",
-    "engine_verifier_sha256": "43c4c5228ede2c453afac72fc70d05691e7f5b8d429f71135851625824a56887",
+    "engine_verifier_sha256": "a6544ff21b9ef878a666b701d35f88cedffa616ee280f4b2c4b76fcf8a256875",
     "stock_sha256": "fc13e79bb3c13d93bc05b37e9b1b6518fde7f4687b3d442ce5c6318c5737c668",
     "z3_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
     "results": [
+      {
+        "fixture": "long_worker_span",
+        "exit_code": 0,
+        "diagnostics_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "full_sessions": [
+          {
+            "name": "root.smt_transcript",
+            "bytes": 23314,
+            "input_sha256": "98a8602d0505754222fc43384752f8b0b5148821fe0233d40a7956629a6d12f3"
+          }
+        ],
+        "prepared_hits": 1
+      },
       {
         "fixture": "success",
         "exit_code": 0,
@@ -27,7 +40,7 @@
       {
         "fixture": "failed_focus",
         "exit_code": 1,
-        "diagnostics_sha256": "c81c9c7b886702115d694997bc6d4fb258dfdac77b40a8e56d2b5b35f51fc0ab",
+        "diagnostics_sha256": "490ff27431435382336cf208b3a146c24e2050140be4f04c251d8bdb91e66197",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -40,7 +53,7 @@
       {
         "fixture": "failed_other",
         "exit_code": 1,
-        "diagnostics_sha256": "ff322285d4bd2da80b53d498e3d6c036df3da453b763db85e23119c915691ee0",
+        "diagnostics_sha256": "b496f97e1f696d56f9d859c7cceae567f20d0e95d4d542ae40d58a9d54eb583d",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -53,7 +66,7 @@
       {
         "fixture": "late_exec",
         "exit_code": 1,
-        "diagnostics_sha256": "f982893bf4b586e81d39326aeedf98db3f54c1c0d3e792086283568217d47e5f",
+        "diagnostics_sha256": "a3b21051d633ccbc7b64a007166087f30967825da68d79b6d3b742d946efdf0a",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -84,7 +97,7 @@
       {
         "fixture": "recursive",
         "exit_code": 1,
-        "diagnostics_sha256": "0c683343349bb9e040fb637f6a94d42e9e3ca974fcf2e0c9173a06dc0d34b7ca",
+        "diagnostics_sha256": "fb8326d1158f79b68f4f94bf11fb422d48f118bcd595eb427f18ba11b1cf71c2",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -97,7 +110,7 @@
       {
         "fixture": "macro_spans",
         "exit_code": 1,
-        "diagnostics_sha256": "4df5f3378d48b3d8397b4a74279fa29daccebcddd3e9c12a767a520748430c0d",
+        "diagnostics_sha256": "2580f4404c579a2aa6aeb6be79a4acd74b57794a78ca9c4f265a58a9715a52c7",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -138,7 +151,7 @@
   "prepared_checkpoints": {
     "version": 1,
     "engine_sha256": "a5219f1ac8477cdd78e430bb21461135d94407279d651b0da007bed8f0439e67",
-    "engine_verifier_sha256": "43c4c5228ede2c453afac72fc70d05691e7f5b8d429f71135851625824a56887",
+    "engine_verifier_sha256": "a6544ff21b9ef878a666b701d35f88cedffa616ee280f4b2c4b76fcf8a256875",
     "results": [
       {
         "revision": 0,
@@ -285,13 +298,14 @@
   },
   "cancellation": {
     "version": 1,
-    "engine_verifier_sha256": "43c4c5228ede2c453afac72fc70d05691e7f5b8d429f71135851625824a56887",
+    "engine_verifier_sha256": "a6544ff21b9ef878a666b701d35f88cedffa616ee280f4b2c4b76fcf8a256875",
     "cancel_sealed": false,
     "restart_exit_code": 0
   },
   "provenance_memo_tests": {
-    "passed": 2,
+    "passed": 3,
     "failed": 0,
-    "scope": "Complete local/imported original hash equality, source owner isolation, fixed table and dynamic allocation refusal, oversize fallback."
-  }
+    "scope": "Owned long/nonroot/parent spans on worker; independent lo/hi/ctxt/parent perturbations; complete uncached equality; owner isolation; fixed table/dynamic allocation cap refusal."
+  },
+  "superseded_source_defect": "corpus/repros/engine-span-data-worker/"
 }
