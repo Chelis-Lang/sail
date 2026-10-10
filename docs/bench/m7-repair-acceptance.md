@@ -144,6 +144,7 @@ real-project performance and exact-input gates.
 | Check | Observed result | Evidence |
 |---|---|---|
 | Native Linux CI repair CLI/MCP integration | Passed 215 operations with unchanged deadlines, including cancellation and baseline comparison; uses the small no-vstd fixture | `bench/validation/m7-repair-cli-mcp-native-linux-2026-10-10.json` |
+| Final d19/b346 local CLI/MCP integration | Failed unchanged 120-second bound on the first cold no-vstd job; Cargo printed Finished in 82 seconds, no managed result before cleanup; final phase unresolved | `docs/validation/m7-d19-b346-repair-cli-mcp-local-failure.json` |
 | Corrected source variant, host differential tests | Eleven exact fixtures, eight prepared revisions, cancellation/restart, three provenance regressions, three driver-termination regressions and the preserved worker-TLS reproduction pass | `engine/verus/qualification-host.json` |
 | Corrected source variant, Linux qualification | Eleven exact fixtures, eight prepared revisions, cancellation/restart, driver and provenance regressions, and preparation encoding pass; vstd verifies 2,060 obligations | `engine/verus/qualification-linux.json` |
 | Corrected source variant, real human-eval | Two full callbacks each verify 441 obligations without the worker TLS panic; exact differential and selected persistent-restore assertions fail | `engine/verus/qualifications/cd40e16e-real-he-failure.json` |

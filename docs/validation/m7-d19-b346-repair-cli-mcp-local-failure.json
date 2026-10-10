@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "kind": "final-optional-engine-cli-mcp-local-failure",
+  "passed": false,
+  "qualification": "Actual unchanged small supported no-vstd CLI/MCP scenario in local Linux x86-64 container under arm64 emulation and shared development load. Not native CI or whole-project performance acceptance.",
+  "product": {
+    "source_commit": "d19f6358f19593d1601e874605cdbf50c904eb0a",
+    "sail_sha256": "6658d8bc11c3a35b9b39307076a2ecdb3fdb0abeba271f36fcc45110114ca1e7",
+    "sail_z3_sha256": "c1c6ee7a8cbf1721012206696845280dea52dcde5c55239450c983725875bece"
+  },
+  "engine": {
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
+  },
+  "machine": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+  "environment_label": "linux-x86_64-container-arm64-emulation-shared-development-load",
+  "deadlines_seconds": {
+    "workflow": 120,
+    "command": 30,
+    "rpc": 5,
+    "dependency_fetch_setup_outside_workflow": 60
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "stage": "engine-install-before-proof-workflow",
+      "passed": false,
+      "exit_code": 2,
+      "code": "SAIL3120",
+      "message": "interactive engine identity or runtime artifact validation failed",
+      "proof_started": false,
+      "cause": "Root source tests had added two unbound empty Cargo lock files after runtime qualification. The installer rejected the changed inventory. Those files were preserved outside the runtime and its original 13-artifact manifest revalidated before the single permitted retry."
+    },
+    {
+      "attempt": 2,
+      "stage": "first-cold-success-job",
+      "passed": false,
+      "elapsed_s": 120.55493347099991,
+      "failure": "real repair CLI/MCP acceptance exceeded 120 seconds",
+      "job": {
+        "id": "1791645200756-40882-0",
+        "state": "running",
+        "currentness": "unknown",
+        "error": null,
+        "input_revision": null,
+        "started_at_ms": 1791645200781,
+        "finished_at_ms": null
+      },
+      "result_present": false,
+      "operations": 288,
+      "last_operation": {
+        "operation": "success-result-286",
+        "elapsed_s": 0.08779349999986152,
+        "exit_code": 0
+      },
+      "worker_stdout_bytes": 0,
+      "cargo_observation": "Public stderr records the actual builtin/macros/dependency build and Finished dev profile in 1m 22s.",
+      "unresolved_phase": "The unchanged script did not record a process or phase inventory. Cargo Finished followed by job Running/result None does not distinguish continued verifier work from final receipt/currentness establishment.",
+      "cleanup_errors": [],
+      "progress_failures": [],
+      "checks_reached": [
+        "engine-install",
+        "dependency-fetch-setup",
+        "durable-repair-submit",
+        "nonblocking-result-polling"
+      ],
+      "checks_not_reached": [
+        "Current full result",
+        "one-driver accepted repair",
+        "live proof events",
+        "missing-selector preservation",
+        "full regression",
+        "explanations/models",
+        "immutable baselines/comparison",
+        "real MCP calls",
+        "late EXEC failure"
+      ]
+    }
+  ],
+  "policy": "No further retry, deadline extension, synthetic verifier, receipt reuse from another context or waived assertion. The failure and all public streams remain retained; private environments and runtime contexts are not copied.",
+  "raw_evidence": [
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run01.log",
+      "bytes": 596,
+      "sha256": "8bb3b4e52a0001c43de405442d19828719122bcaf01f701885c22a9cd09a7c49"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run01/engine-install.stderr",
+      "bytes": 83,
+      "sha256": "baa930111fe22b42faa133858d253ef87981df4e61b5e4e3f34c0ceb4831d98a"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run01/engine-install.stdout.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run02.log",
+      "bytes": 721,
+      "sha256": "51aaad177cd912eabadad09feedb085a70aaa643560c5bf09d6849fc20620000"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run02/summary.json",
+      "bytes": 33698,
+      "sha256": "65fb8f2f79046082a4f90b30988021ae91991bc98471a9f91c4237a9b392ae64"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run02/operations.json",
+      "bytes": 30046,
+      "sha256": "a9ffbe65efcb79effe5f6d7ed14c773ccb13e9931210003dff75aa5848840361"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run02/engine-install.stdout.json",
+      "bytes": 596,
+      "sha256": "a8025fa7a783b8929475c8c7ba992262588fa74d8ef46049d449fedf3bc9b66f"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run02/success-result-286.stdout.json",
+      "bytes": 516,
+      "sha256": "e15b5d9b1f6e547039d2fbd878e9ab026ed85a323749f59b0ac61fa6b28017dd"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run02/1791645200756-40882-0.worker.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/final-repair-cli-mcp-evidence/run02/1791645200756-40882-0.worker.stderr",
+      "bytes": 793,
+      "sha256": "03137ec2685090b35a3f033c40bccd1695c15cad40fab513064d1d47e43542e6"
+    }
+  ]
+}
