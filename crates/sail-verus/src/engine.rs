@@ -238,7 +238,9 @@ pub fn verify(
     err: &mut dyn std::io::Write,
 ) -> Result<sail_api::project::ProjectResult> {
     let (request, _) = request(config, None)?;
-    crate::managed::run_engine(config, err, Some(request))
+    let mut result = crate::managed::run_engine(config, err, Some(request))?;
+    launcher_notes(&run_directory(config, &result), &mut result);
+    Ok(result)
 }
 
 /// Runs one focused repair pass and independent full validation in compiler batches.
@@ -261,17 +263,9 @@ pub fn repair(
     let (request, manifest_sha256) = request(config, Some(function.to_owned()))?;
     let mut config = config.clone();
     config.force = true;
-    let full = crate::managed::run_engine(&config, err, Some(request))?;
-    let run = config
-        .workspace
-        .join(&config.cache)
-        .join("projects")
-        .join(crate::managed::digest(
-            Path::new(&full.workspace).as_os_str().as_encoded_bytes(),
-        ))
-        .join(&full.context_sha256)
-        .join("runs")
-        .join(&full.run_id);
+    let mut full = crate::managed::run_engine(&config, err, Some(request))?;
+    let run = run_directory(&config, &full);
+    launcher_notes(&run, &mut full);
     let mut selected = Vec::new();
     let mut selection_error = None;
     let gathered = (|| -> Result<()> {
@@ -349,6 +343,81 @@ pub fn repair(
         manifest_sha256,
         preparation: preparation(&run),
     })
+}
+
+fn run_directory(
+    config: &crate::managed::Config,
+    result: &sail_api::project::ProjectResult,
+) -> PathBuf {
+    config
+        .workspace
+        .join(&config.cache)
+        .join("projects")
+        .join(crate::managed::digest(
+            Path::new(&result.workspace).as_os_str().as_encoded_bytes(),
+        ))
+        .join(&result.context_sha256)
+        .join("runs")
+        .join(&result.run_id)
+}
+
+#[derive(serde::Deserialize)]
+struct LauncherAdaptation {
+    version: u32,
+    run_id: String,
+    context_sha256: String,
+    project_package_id: String,
+    target: String,
+    kind: String,
+    forwarded: Vec<String>,
+    engine_only: bool,
+    adaptation: String,
+}
+
+impl LauncherAdaptation {
+    fn matches(&self, run: &str, context: &str) -> bool {
+        self.version == 1
+            && self.run_id == run
+            && self.context_sha256 == context
+            && !self.project_package_id.is_empty()
+            && !self.target.is_empty()
+            && !self.kind.is_empty()
+            && self.engine_only
+            && self.forwarded == ["--no-vstd"]
+            && self.adaptation == "relocate-exact-effective-token"
+    }
+}
+
+fn launcher_notes(run: &Path, result: &mut sail_api::project::ProjectResult) {
+    use std::io::Read as _;
+    let Ok(entries) = std::fs::read_dir(run.join("sidecars")) else {
+        return;
+    };
+    for entry in entries.filter_map(std::result::Result::ok) {
+        let Ok(file) = std::fs::File::open(entry.path().join("launcher-options.json")) else {
+            continue;
+        };
+        let mut bytes = Vec::new();
+        if file.take(1024 * 1024 + 1).read_to_end(&mut bytes).is_err() || bytes.len() > 1024 * 1024
+        {
+            continue;
+        }
+        let Ok(record) = serde_json::from_slice::<LauncherAdaptation>(&bytes) else {
+            continue;
+        };
+        if record.matches(&result.run_id, &result.context_sha256)
+            && result.targets.iter().any(|target| {
+                target.package_id == record.project_package_id
+                    && target.target.replace('-', "_") == record.target
+                    && target.kind.contains(&record.kind)
+            })
+        {
+            result
+                .notes
+                .push("Engine applies the requested no-vstd macro mode (VI-0011).".into());
+            return;
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -429,6 +498,36 @@ fn preparation(run: &Path) -> Option<Vec<sail_api::repair::PreparationStats>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn launcher_note_requires_exact_run_context_and_relocation_provenance() {
+        let value = serde_json::json!({"version":1,"run_id":"r","context_sha256":"c", "project_package_id":"p", "target":"demo", "kind":"lib", "forwarded":["--no-vstd"], "engine_only":true, "adaptation":"relocate-exact-effective-token"});
+        let parsed = serde_json::from_value::<LauncherAdaptation>(value.clone()).ok();
+        assert!(
+            parsed
+                .as_ref()
+                .is_some_and(|record| record.matches("r", "c"))
+        );
+        for (key, wrong) in [
+            ("run_id", serde_json::json!("another")),
+            ("context_sha256", serde_json::json!("other")),
+            ("engine_only", serde_json::json!(false)),
+            ("adaptation", serde_json::json!("unrecognized")),
+            ("project_package_id", serde_json::json!("")),
+            ("forwarded", serde_json::json!(["--is-vstd"])),
+        ] {
+            let mut invalid = value.clone();
+            invalid[key] = wrong;
+            assert!(
+                !serde_json::from_value::<LauncherAdaptation>(invalid)
+                    .is_ok_and(|record| record.matches("r", "c"))
+            );
+        }
+        let duplicate = serde_json::to_string(&value)
+            .unwrap_or_default()
+            .replace("\"version\":1", "\"version\":1,\"version\":1");
+        assert!(serde_json::from_str::<LauncherAdaptation>(&duplicate).is_err());
+    }
 
     #[test]
     fn preparation_requires_one_valid_sealed_summary()

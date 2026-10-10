@@ -358,7 +358,8 @@ fn driver() -> Result<ExitCode> {
             &dir.join("launcher-options.json"),
             &serde_json::json!({
                 "version":1,"run_id":runtime.run_id,"context_sha256":runtime.context_sha256,
-                "package_id":cargo_package_id(),"target":identity.name,"kind":identity.crate_type,
+                "package_id":cargo_package_id(),"project_package_id":runtime.packages.get(&identity.manifest),
+                "target":identity.name,"kind":identity.crate_type,
                 "forwarded":["--no-vstd"],"source":"effective-cargo-driver-options","engine_only":true,
                 "original_arguments":args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
                 "launcher_arguments":launcher_args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
