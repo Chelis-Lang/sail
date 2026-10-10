@@ -114,6 +114,7 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
     fixture.write(
         "empty.json",
         &Response::Result(ResultDocument {
+            repair: None,
             job: latest.clone(),
             result: None,
         }),
@@ -123,6 +124,7 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
         &Response::List(vec![completed.clone(), running.clone(), latest]),
     );
     let document = ResultDocument {
+        repair: None,
         job: completed,
         result: serde_json::to_value(project(&fixture.root)).ok(),
     };

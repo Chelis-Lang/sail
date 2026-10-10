@@ -113,6 +113,9 @@ pub struct Status {
 /// A job result preserving the managed runner's versioned document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResultDocument {
+    /// Independent focus/full repair evidence, when this was an engine batch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repair: Option<Box<crate::repair::ResultDocument>>,
     /// Job status and provenance.
     pub job: Status,
     /// Managed project result, only after a complete worker output.
@@ -134,6 +137,44 @@ pub struct Chunk {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 pub enum Request {
+    /// Fail-closed negotiation before any non-stock submission.
+    Capabilities,
+    /// Read bounded version-one proof observations using a resumable cursor.
+    ProofEvents {
+        /// Durable job identity.
+        id: String,
+        /// Last consumed event; stream identity must match on reconnect.
+        cursor: crate::proof::Cursor,
+        /// Maximum event count, clamped by the service.
+        limit: usize,
+    },
+    /// Explain an exact reported target/function, preserving raw evidence.
+    Explain {
+        /// Durable completed job identity.
+        id: String,
+        /// Complete Cargo target identity.
+        target: crate::proof::Target,
+        /// Exact crate-qualified function.
+        function: String,
+        /// Optional exact obligation id.
+        obligation: Option<String>,
+    },
+    /// Save independent immutable proof evidence outside job retention.
+    SaveBaseline {
+        /// Completed evidence source.
+        id: String,
+        /// Immutable owner-selected name.
+        name: String,
+    },
+    /// List retained immutable named baselines.
+    Baselines,
+    /// Compare explicit completed evidence with an earlier job or baseline.
+    Compare {
+        /// Earlier named baseline or durable job.
+        before: crate::repair::Reference,
+        /// Later completed job identity.
+        after: String,
+    },
     /// Submit or coalesce an identical in-flight request.
     Submit {
         /// Requested verification.
@@ -181,6 +222,23 @@ pub enum Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "response", content = "value", rename_all = "snake_case")]
 pub enum Response {
+    /// Supported product contracts; does not claim an optional engine is installed.
+    Capabilities {
+        /// Independent proof stream version.
+        proof_version: u32,
+        /// Non-stock submission modes are understood and never ignored.
+        repair: bool,
+    },
+    /// Ordered, resumable proof observations.
+    ProofEvents(crate::proof::Page),
+    /// Exact establishing evidence for a failure or proof.
+    Explanation(Box<crate::repair::Explanation>),
+    /// Independently retained immutable evidence.
+    Baseline(Box<crate::repair::Baseline>),
+    /// Immutable baseline names.
+    Baselines(Vec<String>),
+    /// Scoped, configuration-aware proof comparison.
+    Comparison(crate::repair::Comparison),
     /// One status.
     Status(Status),
     /// Retained jobs, oldest first.
@@ -251,7 +309,7 @@ pub fn socket_path(cache_socket: &Path) -> PathBuf {
             let _ = write!(value, "{byte:02x}");
             value
         });
-    cache_socket.with_file_name(format!("jobs-v1-{suffix}.sock"))
+    cache_socket.with_file_name(format!("jobs-v1-proof-v1-{suffix}.sock"))
 }
 
 fn endpoint_path(path: &Path) -> PathBuf {
@@ -294,6 +352,19 @@ impl Client {
     /// Returns connection, framing, timeout, or server errors.
     pub fn call(&self, request: &Request) -> io::Result<Response> {
         use std::os::unix::net::UnixStream;
+        if matches!(request, Request::Submit { submission } if submission.mode != Mode::Stock)
+            && !matches!(
+                self.call(&Request::Capabilities)?,
+                Response::Capabilities {
+                    proof_version: crate::proof::VERSION,
+                    repair: true
+                }
+            )
+        {
+            return Err(io::Error::other(
+                "SAIL0903: endpoint does not support proof/repair contracts",
+            ));
+        }
         let mut stream = UnixStream::connect(&self.socket)?;
         let timeout = Some(std::time::Duration::from_secs(5));
         stream.set_read_timeout(timeout)?;
@@ -344,7 +415,7 @@ mod tests {
         });
         assert_eq!(
             socket_path(&endpoint),
-            endpoint.with_file_name(format!("jobs-v1-{suffix}.sock"))
+            endpoint.with_file_name(format!("jobs-v1-proof-v1-{suffix}.sock"))
         );
         drop(listener);
         let _ = std::fs::remove_dir_all(root);
