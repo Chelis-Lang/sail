@@ -121,7 +121,14 @@ a process killed abruptly may leave private `upload-*` files that an operator ca
 remove while the server is stopped.
 
 The daemon's entire shared lookup remains bounded by its existing 250 ms default.
-Concurrent same-key requests share one in-flight lookup. Missing entries are
+Concurrent same-key requests share one in-flight lookup and receive the helper's
+validated result without waiting for the initiating caller to resume. A helper
+that finishes late cannot overwrite a published timeout. Optional transport
+initialization also runs inside that bounded helper; a stalled constructor costs
+a miss, while other lookups can skip initialization in progress. `sail status`
+reads cached transport metrics without constructing or retiring an HTTP runtime.
+Credential reload still invalidates old backoff and negative-cache state before
+using the new configuration. Missing entries are
 negative-cached for 60 seconds. Authentication errors, throttling, server errors,
 transport failures and timeouts cause misses and 30-second backoff; rejected signed
 entries remain misses. A remote failure never changes a verdict or prevents the
