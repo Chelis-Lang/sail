@@ -48,8 +48,20 @@ fn configuration(root: &Path, config: &SharedConfig) -> Option<RemoteConfig> {
 }
 
 impl State {
-    pub(super) fn client(&self) -> Option<HttpClient> {
-        self.current.lock().ok()?.as_ref()?.client.clone()
+    /// Inspect while the cache retains ownership; a foreground reader must
+    /// never own the final transport clone when a helper retires it.
+    pub(super) fn info(&self) -> Option<sail_api::protocol::RemoteInfo> {
+        let current = self.current.lock().ok()?;
+        Some(current.as_ref()?.client.as_ref()?.info())
+    }
+
+    #[cfg(test)]
+    pub(super) fn phases(&self) -> Vec<(&'static str, Instant)> {
+        self.current
+            .lock()
+            .ok()
+            .and_then(|current| current.as_ref()?.client.as_ref().map(HttpClient::phases))
+            .unwrap_or_default()
     }
 
     pub(super) fn endpoint(&self) -> Option<String> {

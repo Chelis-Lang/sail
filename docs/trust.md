@@ -90,8 +90,10 @@ and status reads never construct a runtime. A stalled initializer costs a bounde
 miss; concurrent lookups can safely skip initialization already in progress.
 Configuration changes still clear old backoff and negative-cache state before
 consulting the new transport. Invalid credentials and disconnected stores cannot
-serve through the retired transport. No request begins after its lookup has
-already published a fallback.
+serve through the retired transport. A constructor that completes after the
+lookup has published its fallback skips that obsolete network request. Status
+reads borrow cached metrics while the cache retains transport ownership, so
+retirement cannot make a status reader join the last transport runtime.
 
 **What a trusted key can do.** Anything: a trusted signer is trusted
 completely. Whoever holds the secret key can publish wrong answers that

@@ -184,7 +184,7 @@ impl SharedTier {
         if !self.configured() {
             return None;
         }
-        let mut info = self.remote.client()?.info();
+        let mut info = self.remote.info()?;
         info.coalesced = self.coalesced.load(Ordering::Relaxed);
         Some(info)
     }
@@ -505,9 +505,7 @@ mod http_tests {
     impl HttpFixture {
         fn phase_report(&self) -> Vec<(&'static str, u128)> {
             let mut records = self.phases.lock().unwrap().clone();
-            if let Some(client) = self.tier.remote.client() {
-                records.extend(client.phases());
-            }
+            records.extend(self.tier.remote.phases());
             records.sort_by_key(|(_, time)| *time);
             let first = records.iter().map(|(_, time)| *time).min().unwrap();
             records
@@ -780,6 +778,40 @@ mod http_tests {
             fixture.tier.lookup(&fixture.key, &fixture.solver),
             Lookup::Skipped
         ));
+        fixture.close();
+    }
+
+    #[test]
+    fn status_reads_existing_metrics_during_owned_transport_refresh() {
+        let mut fixture = http_fixture("status-refresh", false);
+        assert!(matches!(
+            fixture.tier.lookup(&fixture.key, &fixture.solver),
+            Lookup::Hit(_)
+        ));
+        fixture.tier.remote.expire();
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Mutex::new(release_rx);
+        *fixture.tier.remote.before_constructor.lock().unwrap() = Some(Arc::new(move || {
+            entered_tx.send(()).unwrap();
+            let _ = release_rx.lock().unwrap().recv();
+        }));
+        let tier = Arc::clone(&fixture.tier);
+        let refreshing =
+            std::thread::spawn(move || tier.remote.resolve(&tier.root, &tier.config, || {}));
+        entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(!refreshing.is_finished());
+        let started = Instant::now();
+        let info = fixture.tier.remote_info().unwrap();
+        assert_eq!(info.requests, 1);
+        assert!(fixture.tier.description().is_some());
+        assert!(started.elapsed() < DEFAULT_SHARED_TIMEOUT);
+        release_tx.send(()).unwrap();
+        assert!(matches!(
+            refreshing.join().unwrap(),
+            initialization::Resolution::Ready(Some(_))
+        ));
+        assert_eq!(fixture.tier.remote_info().unwrap().requests, 1);
         fixture.close();
     }
 
