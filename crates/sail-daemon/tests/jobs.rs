@@ -25,6 +25,7 @@ fn fixture(script: &str) -> (PathBuf, PathBuf, PathBuf) {
 }
 fn submission(root: &Path, revision: &str) -> Submission {
     Submission {
+        mode: sail_api::jobs::Mode::Stock,
         project_dir: root.join("project"),
         args: vec![],
         force: false,

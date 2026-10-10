@@ -24,6 +24,7 @@ fn human_and_json_inspection_preserve_lifecycle_and_reject_non_utf8_environment(
         .unwrap_or_else(|error| unreachable!("{error}"));
     let client = Client::new(&socket);
     let submission = Submission {
+        mode: sail_api::jobs::Mode::Stock,
         project_dir: root.join("project"),
         args: vec![],
         force: false,
