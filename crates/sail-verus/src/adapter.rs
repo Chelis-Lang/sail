@@ -824,6 +824,12 @@ mod tests {
                 dir.join("engine.events.jsonl"),
                 "{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false}}\n",
             )?;
+            if index == 3 {
+                std::fs::write(
+                    dir.join("engine.events.jsonl"),
+                    include_bytes!("../tests/fixtures/engine-terminal/terminal-failure.jsonl"),
+                )?;
+            }
             let starts = dir.join("starts");
             let log = InvocationLog {
                 directory: &starts,
@@ -880,7 +886,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn completed_success_and_solver_failure_do_not_restart_stock()
+    fn normal_completed_success_and_exact_failures_do_not_restart_stock()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let dir =
             std::env::temp_dir().join(format!("sail-engine-normal-failure-{}", std::process::id()));
@@ -889,11 +895,8 @@ mod tests {
             dir.join("engine.events.jsonl"),
             "{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false}}\n",
         )?;
-        let mut solver_failure: serde_json::Value = serde_json::from_slice(include_bytes!(
-            "../tests/fixtures/engine-terminal/failed-proof.json"
-        ))?;
-        solver_failure["verification-results"]["encountered-error"] = serde_json::json!(false);
-        let document = serde_json::to_vec(&solver_failure)?;
+        let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
+        let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
         let starts = dir.join("starts");
         let log = InvocationLog {
             directory: &starts,
@@ -901,10 +904,24 @@ mod tests {
             target: "demo",
         };
         let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
-        for (index, (document, code)) in [(document.as_slice(), "1"), (success.as_slice(), "0")]
-            .into_iter()
-            .enumerate()
+        for (index, (document, code)) in [
+            (proof.as_slice(), "1"),
+            (late.as_slice(), "1"),
+            (success.as_slice(), "0"),
+        ]
+        .into_iter()
+        .enumerate()
         {
+            std::fs::write(
+                dir.join("engine.events.jsonl"),
+                if code == "0" {
+                    include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl")
+                        .as_slice()
+                } else {
+                    include_bytes!("../tests/fixtures/engine-terminal/terminal-failure.jsonl")
+                        .as_slice()
+                },
+            )?;
             let captured = capture_engine(&log, document, code)?;
             let mut stock = Command::new("/bin/sh");
             stock

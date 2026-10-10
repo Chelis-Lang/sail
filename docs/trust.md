@@ -186,17 +186,20 @@ digest to a committed pin; access credentials authorize download, not proof.
 Source builds and artifact validation happen locally before publishing that pin.
 
 A source terminal event is insufficient to finish a verification. The adapter
-requires exactly one complete bounded structured Verus document and normal
-process exit 0 or 1. A panic, signal, missing or malformed document retains the
-engine's failed output and falls back to the stock verifier with the same
-compiler arguments and effective options. The pinned compiler also catches
-internal panics into an ordinary-shaped `encountered-error: true` document;
-these error documents conservatively fall back too, including legitimate late
-EXEC and proof failures that use that field. The stock run preserves their full
-failure evidence and diagnostics. A solver-failure document without a compiler
-error can remain engine evidence. Fallback records its actual child invocation,
-and discards focused evidence from the interrupted engine. A terminal event's
-success flag cannot distinguish a compiler crash from an ordinary failure.
+requires exactly one complete bounded structured Verus document, normal process
+exit 0 or 1, and an explicit typed `payload.normal_termination: true` marker.
+The optional source distinguishes expected compiler-error termination from an
+internal unwind before emitting that marker. Complete failed-proof and late EXEC
+documents retain their original engine output and focused provisional evidence.
+
+A panic, signal, missing or malformed document, or absent/false/malformed normal
+termination marker retains the engine's failed output and falls back to the
+stock verifier with the same compiler arguments and effective options. Older
+producers could catch internal panics into an ordinary-shaped compiler-error
+document, so a legacy terminal seal without the new marker cannot authorize any
+engine result. Fallback records its actual child invocation and discards focused
+evidence from the interrupted engine. A terminal event's success flag alone
+cannot distinguish a compiler crash from an ordinary failure.
 
 Prepared lowering checkpoints have the local tier's trust boundary: the owned
 engine writes a private user cache. Version, input key, body digest and exact

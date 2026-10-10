@@ -271,34 +271,65 @@ fn convert(
 /// emit it after a caught compiler panic, so it cannot establish compiler
 /// completion, current inputs or a successful full proof by itself.
 pub(crate) fn sealed(path: &Path) -> bool {
-    if std::fs::metadata(path).map_or(true, |metadata| metadata.len() > MAX_SOURCE) {
-        return false;
+    terminal(path).is_some()
+}
+
+#[derive(serde::Deserialize)]
+struct Terminal {
+    version: u32,
+    event: String,
+    phase: String,
+    payload: Termination,
+}
+
+#[derive(serde::Deserialize)]
+struct Termination {
+    normal_termination: Option<bool>,
+    success: Option<bool>,
+}
+
+fn terminal(path: &Path) -> Option<Terminal> {
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .ok()?
+        .take(MAX_SOURCE + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    if bytes.len() as u64 > MAX_SOURCE {
+        return None;
     }
-    std::fs::read_to_string(path).is_ok_and(|text| {
-        if !text.ends_with('\n') {
-            return false;
-        }
-        let events: Option<Vec<Value>> = text
-            .lines()
-            .map(|line| serde_json::from_str::<Value>(line).ok())
-            .collect();
-        events.is_some_and(|events| {
-            events.iter().all(|event| event["version"] == 1)
-                && events.last().is_some_and(|event| {
-                    event["event"] == "compiler-sealed" && event["phase"] == "full"
-                })
-        })
-    })
+    let text = String::from_utf8(bytes).ok()?;
+    if !text.ends_with('\n') {
+        return None;
+    }
+    let events: Vec<Value> = text
+        .lines()
+        .map(serde_json::from_str)
+        .collect::<std::result::Result<_, _>>()
+        .ok()?;
+    if !events.iter().all(|event| event["version"] == 1) {
+        return None;
+    }
+    // Decode the original terminal line again through typed fields, so duplicate
+    // normal-termination/success fields cannot be silently overwritten by Value.
+    let last: Terminal = serde_json::from_str(text.lines().last()?).ok()?;
+    (last.version == 1 && last.event == "compiler-sealed" && last.phase == "full").then_some(last)
 }
 
 /// A terminal observation alone is not a completed verifier invocation. The
 /// pinned driver prints its structured result before normal exit 0 or 1;
 /// a panic (101), signal, missing document or partial document needs fallback.
-/// This validates completion, not successful proof. Compiler-error documents
-/// need conservative fallback because the pinned driver also catches internal
-/// panics into that same result shape. Stock retains the full failure outcome.
+/// This validates completion, not successful proof. The source must explicitly
+/// distinguish normal compiler errors from caught internal panics. Older source
+/// events without that distinction need conservative stock fallback.
 pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
-    if !matches!(exit, Some(0 | 1)) || stdout.len() > MAX_RESULT || !sealed(path) {
+    if !matches!(exit, Some(0 | 1)) || stdout.len() > MAX_RESULT {
+        return false;
+    }
+    let Some(terminal) = terminal(path) else {
+        return false;
+    };
+    if terminal.payload.normal_termination != Some(true) || terminal.payload.success.is_none() {
         return false;
     }
     let (documents, remainder) = crate::attribution::json_documents(stdout);
@@ -326,10 +357,10 @@ pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
     let Some(vir_error) = results["encountered-vir-error"].as_bool() else {
         return false;
     };
-    // The pinned driver catches arbitrary compiler panics and can print a
-    // normal-shaped error document with exit 1. Without an explicit internal
-    // failure distinction, compiler-error documents also need stock fallback.
-    if results["encountered-error"].as_bool() != Some(false)
+    // Normal compiler errors and ordinary failed proofs retain their exact
+    // document. The terminal marker, not diagnostic text, excludes internal
+    // panic termination that older producers folded into this same shape.
+    if results["encountered-error"].as_bool().is_none()
         || results
             .get("success")
             .is_some_and(|value| !value.is_boolean())
@@ -401,8 +432,29 @@ mod tests {
         )?;
         let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
         let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
+        assert!(!completed(&path, proof, Some(1)));
+        for payload in [
+            r#"{"success":false,"normal_termination":false}"#,
+            r#"{"success":false,"normal_termination":"true"}"#,
+            r#"{"success":false,"normal_termination":null}"#,
+            r#"{"success":false,"normal_termination":true,"normal_termination":false}"#,
+            r#"{"success":false,"normal_termination":false,"normal_termination":true}"#,
+            r#"{"normal_termination":true}"#,
+        ] {
+            std::fs::write(
+                &path,
+                format!(
+                    "{{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{payload}}}\n"
+                ),
+            )?;
+            assert!(!completed(&path, proof, Some(1)));
+        }
+        std::fs::write(
+            &path,
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-failure.jsonl"),
+        )?;
         for document in [proof.as_slice(), late.as_slice()] {
-            assert!(!completed(&path, document, Some(1)));
+            assert!(completed(&path, document, Some(1)));
             assert!(!completed(&path, document, Some(101)));
             assert!(!completed(&path, document, None));
             assert!(!completed(&path, &document[..document.len() - 2], Some(1)));
@@ -419,7 +471,7 @@ mod tests {
         invalid["verification-results"]["errors"] = serde_json::json!(-1);
         assert!(!completed(&path, &serde_json::to_vec(&invalid)?, Some(1)));
         invalid["verification-results"] = serde_json::json!({"encountered-error":true,"encountered-vir-error":true,"success":false});
-        assert!(!completed(&path, &serde_json::to_vec(&invalid)?, Some(1)));
+        assert!(completed(&path, &serde_json::to_vec(&invalid)?, Some(1)));
         let mut repeated = proof.to_vec();
         repeated.extend_from_slice(late);
         assert!(!completed(&path, &repeated, Some(1)));
