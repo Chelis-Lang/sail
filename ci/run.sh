@@ -73,12 +73,14 @@ case "$step" in
     python3 scripts/test-m7-job-read-bench.py
     python3 scripts/test-m7-retained-jobs-acceptance.py
     python3 scripts/test-m7-reader-acceptance.py
+    python3 scripts/test-m7-result-frame-profile.py
     python3 ci/test-engine-artifact.py
     python3 ci/test-repair-lifecycle.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
     cargo test --locked -p sail-cli --example check_mcp --example job_read_bench
+    cargo test --locked -p sail-api --example result_frame_profile
     cargo test --workspace --doc --locked
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
     cargo xtask check-layering
