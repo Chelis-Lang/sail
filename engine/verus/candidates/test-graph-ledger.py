@@ -14,6 +14,9 @@ def run(args):
     # Keep the original checkpoint checks: unchanged callback, other-module edit,
     # stale spans, corruption, misfiling and oversized files; exact raw SMT bytes.
     base.run(args)
+    frames = [json.loads(line) for path in pathlib.Path(args.out).glob('*/events.jsonl')
+              for line in path.read_text().splitlines()]
+    assert any(frame['event'] == 'prepared-key-components' for frame in frames), 'runtime did not execute candidate graph-ledger code'
     original = source.FIXTURES
     source.FIXTURES = {
         'recursive': original['recursive'],
