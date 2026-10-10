@@ -22,6 +22,8 @@ for entry in manifest['reports']:
     assert count == summary['same'] + summary['unstable'], entry['label']
     assert count == entry['expected_count'], entry['label']
     assert summary.get('projects_skipped', 0) == entry.get('expected_skips', 0), entry['label']
+    if 'expected_functions' in entry:
+        assert summary['functions'] == entry['expected_functions'], entry['label']
     record = {
         'label': entry['label'],
         'report_sha256': hashlib.sha256(raw).hexdigest(),
@@ -33,6 +35,8 @@ for entry in manifest['reports']:
         'platform_note': entry['platform_note'],
         'summary': summary,
     }
+    if report.get('skipped'):
+        record['skipped_requirements'] = report['skipped']
     if 'verus_commit' in report:
         record['verus_commit'] = report['verus_commit']
         record['features'] = report['features']
