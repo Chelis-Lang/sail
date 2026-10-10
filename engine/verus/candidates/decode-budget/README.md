@@ -206,3 +206,9 @@ counters are outside the physical preparation claim. At refusal, duplicate
 primitive dispatcher charges account for only 5.69–7.62 MB. Larger string,
 span and inline/pointer-owner charges need a closed-schema allocation audit;
 this evidence does not authorize higher caps or smaller generic constants.
+
+The complete counting-only analysis is retained in `full-charge-profile.json`.
+Its private analysis cap is not production admission: it measures cumulative
+charges through two complete decodes, with counters outside the claimed quota.
+The unchanged production result remains 36 admitted and 69 refused. The first
+closed ownership prototype is described in `../decode-ownership/README.md`.
