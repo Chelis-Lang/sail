@@ -76,3 +76,39 @@ validates a proof. Genuine previous-revision focused reuse, actual full driver
 checks, source oracles and normal runtime qualification remain required before
 selection. The remaining 28 refusals are retained; fitting every largest body is
 not a requirement that justifies weakening admission.
+
+## Combined source checks
+
+The source application uses the preceding bounded private-span candidate and
+this exact production overlay. The actual VIR namespace differs from the
+standalone harness name; its test-only Arc/Box `Large` inventory therefore uses
+the exact `type_name` of those fixture types. This changes no production registry
+entry or admission rule. The original prototype identity remains retained.
+
+The combined pinned VIR suite passes 33/33 tests, including the actual
+span/message/SST schema, all ownership controls and the graph lineage checks.
+Compilation uses two jobs at niceness 19; bounded driver and source-oracle
+execution runs at ordinary priority. The actual driver passes 22/22 tests, and
+both VIR and driver strict all-target Clippy pass. The complete unselected
+[combined patch](../ownership-private-span.patch) and
+[source check record](combined-source-checks.json) retain the identities and
+preceding failures. The direct driver launch failed before any test because
+macOS required Cargo's rustc-driver library setup; its ordinary Cargo test
+invocation then passed. An untracked allocation-only example also failed strict
+Clippy for an unread decoded effects field. Reading its inline owner size in
+diagnostic output fixes that example without changing the candidate, admission
+or assertions.
+
+The physical phase accounting remains the
+[decode allocation audit](../decode-budget/README.md#aggregate-phase-accounting)
+plus the [complete observer allowance](../observer-budget/README.md). The largest
+simultaneous allowance remains 492 MiB under the unchanged 512 MiB limit. The
+ownership tokens and registry add borrowed static names and bounded stack state,
+not retained heap buffers. Dynamic collection/pointee/string admission and
+physical drop ordering remain unchanged. This is a closed-source allocation
+argument, not an allocator-arena, compiler RSS or telemetry-peak measurement.
+
+The independent ordinary Linux build runs at ordinary priority with both Cargo
+and source compiler job limits set to two; its source and full proof gates remain
+pending. A source unit-test pass does not establish a restored proof or select
+this runtime.
