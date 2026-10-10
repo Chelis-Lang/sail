@@ -114,6 +114,24 @@ fn kernel_rows(already_read: u64) -> Result<Vec<u8>, &'static str> {
     Ok(bytes)
 }
 
+#[cfg(test)]
+fn trace_sweep(
+    stage: &'static str,
+    sweep: usize,
+    started: std::time::Instant,
+    bytes: usize,
+    descriptors: usize,
+) {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *ENABLED.get_or_init(|| std::env::var_os("SAIL_FRESHNESS_TRACE").is_some_and(|v| v == "1")) {
+        eprintln!(
+            "sail-kernel-lease thread={:?} elapsed_us={} stage={stage} sweep={sweep} bytes={bytes} descriptors={descriptors}",
+            std::thread::current().id(),
+            started.elapsed().as_micros()
+        );
+    }
+}
+
 pub(super) struct Inventory {
     pid: u32,
     started: u64,
@@ -182,14 +200,20 @@ impl Inventory {
         // Confirm a final independent inventory after processing the first one.
         // SIGIO can close all descriptors before the helper process exits;
         // process liveness alone cannot confirm retained lease ownership.
-        for _ in 0..2 {
+        #[cfg(test)]
+        let started = std::time::Instant::now();
+        for _sweep in 0..2 {
             let bytes = kernel_rows(consumed)?;
+            #[cfg(test)]
+            trace_sweep("global-read", _sweep, started, bytes.len(), 0);
             consumed += u64::try_from(bytes.len()).unwrap_or(MAX_LOCK_BYTES + 1);
             let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
             if let Some(pause) = after_read.take() {
                 pause();
             }
             consumed = self.check_inventory(text, consumed)?;
+            #[cfg(test)]
+            trace_sweep("inventory-checked", _sweep, started, bytes.len(), 0);
             if process(self.pid) != Some(self.started) {
                 return Err("kernel-lease-owner-inactive");
             }
@@ -222,6 +246,8 @@ impl Inventory {
         // cannot replace/add descriptors or reacquire leases after readiness.
         // Confirm this initially-bound descriptor inventory independently before
         // declaring failure; never revive an already-invalidated generation.
+        #[cfg(test)]
+        let started = std::time::Instant::now();
         for (fd, expected) in &self.descriptors {
             let file = std::fs::File::open(format!("/proc/{}/fdinfo/{fd}", self.pid))
                 .map_err(|_| "kernel-lease-descriptor-unavailable")?;
@@ -239,6 +265,8 @@ impl Inventory {
                 return Err("kernel-lease-inventory-invalidated");
             }
         }
+        #[cfg(test)]
+        trace_sweep("descriptor-fallback", 0, started, 0, self.descriptors.len());
         Ok(MAX_LOCK_BYTES - remaining)
     }
     #[cfg(test)]
