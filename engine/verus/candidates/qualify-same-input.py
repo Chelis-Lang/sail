@@ -10,6 +10,7 @@ import json
 import os
 import pathlib
 import platform
+import shutil
 import subprocess
 import time
 
@@ -67,8 +68,36 @@ def run(args):
     save()
     stage('private-graph-audit', ['python3', ROOT / 'candidates/audit-graph-ledger.py', '--source', source])
     common = ['--engine', runtime / 'verus', '--stock', args.stock, '--z3', args.z3]
-    for name, script in [('same-input-hit-controls', ROOT / 'candidates/test-same-callback.py'),
-                         ('source-fixtures', ROOT / 'test-engine.py'),
+    if args.hit_controls:
+        # Resume only after a separately completed, explicit control sequence
+        # against these exact runtime/solver bytes. Preserve its raw files in
+        # this pipeline instead of rerunning a failed earlier pipeline blindly.
+        previous = pathlib.Path(args.hit_controls).absolute()
+        controls = json.loads((previous / 'summary.json').read_text())
+        assert controls['all_controls_completed'] is True
+        assert controls['engine_verifier_sha256'] == sha(runtime / 'rust_verify')
+        assert controls['z3_sha256'] == sha(pathlib.Path(args.z3))
+        cases = controls['records']
+        assert [case['case'] for case in cases] == ['fill', 'positive', 'order', 'body', 'effects']
+        assert all(case['assertions_completed'] is True for case in cases)
+        assert cases[0]['stock_verdicts_and_diagnostics_equal'] is True
+        assert cases[1]['exit_code'] == 0 and cases[1]['actual_hits'] > 0
+        assert cases[1]['oracle_summaries'] and all(x['passed'] for x in cases[1]['oracle_summaries'])
+        for case in cases[2:]:
+            assert case['exit_code'] != 0 and case['actual_hits'] > 0
+            summaries = case['oracle_summaries']
+            assert any(not x['passed'] and x['restored_hit'] for x in summaries)
+            field = 'lowering_effects_equal' if case['case'] == 'effects' else 'ordered_wire_equal'
+            assert any(not x[field] and x['fresh_sessions'] > 0 for x in summaries)
+        shutil.copytree(previous, out / 'same-input-hit-controls')
+        record['stages'].append({'name': 'same-input-hit-controls', 'status': 'passed',
+                                 'evidence': 'Explicit completed controls copied with raw files',
+                                 'summary_sha256': sha(previous / 'summary.json')})
+        save()
+    else:
+        stage('same-input-hit-controls', ['python3', ROOT / 'candidates/test-same-callback.py',
+                                         *common, '--out', out / 'same-input-hit-controls'])
+    for name, script in [('source-fixtures', ROOT / 'test-engine.py'),
                          ('graph-checkpoint', ROOT / 'candidates/test-graph-ledger.py'),
                          ('cancel-restart', ROOT / 'test-cancel.py')]:
         stage(name, ['python3', script, *common, '--out', out / name])
@@ -90,4 +119,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ['build', 'stock', 'z3', 'he', 'out', 'execution']:
         parser.add_argument('--' + name, required=True)
+    parser.add_argument('--hit-controls', help='Resume using an explicit completed same-runtime raw control tree')
     run(parser.parse_args())

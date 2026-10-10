@@ -43,7 +43,8 @@ def run(args):
     source = root / 'lib.rs'
     source.write_text('use verus_builtin::*;\nuse verus_builtin_macros::*;\nverus! {\n'
                       'spec fn flag() -> bool { true }\n'
-                      'proof fn selected() { assert(flag()); }\n'
+                      'spec fn another() -> bool { false }\n'
+                      'proof fn selected() { assert(flag() && !another()); }\n'
                       'proof fn other() { assert(true); }\n}\nfn main() {}\n')
     records = []
     for index, fault in enumerate([None, '', 'order', 'body', 'effects']):
