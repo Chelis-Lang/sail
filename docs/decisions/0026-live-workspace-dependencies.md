@@ -45,7 +45,9 @@ Existing content and mutation stamps still protect present inputs.
 Unavailable, incomplete or overflowing observation prevents currentness.
 macOS retains conservative directory mutation stamps for missing configuration
 paths. FSEvents notifications, cookies and synchronous flush alone cannot prove
-delivery of every prior change. Unrelated Cargo journal or ancestor-directory
+delivery of every prior change, as documented in
+[Watchman's synchronization limitations](https://facebook.github.io/watchman/docs/cookies#limitation-macos-fsevents).
+Unrelated Cargo journal or ancestor-directory
 activity can therefore make a macOS result historical and prevent reuse.
 Workspace code remains safe Rust.
 
