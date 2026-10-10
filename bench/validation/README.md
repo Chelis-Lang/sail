@@ -160,3 +160,17 @@ python3 bench/validation/acceptance.py bench/validation/live-workspace-conforman
 
 The generator checks exact unit/function coverage, explicit skips and zero
 infra/disagreement counts. Published summaries retain no report paths.
+
+The `frontend-reuse-2` and `frontend-reuse-300` macOS artifacts retain three
+complete paired rounds, spread, RSS, exact frozen binary identity and proof-edit
+results. Every reused report was current and complete with zero verifier
+invocations. These easy synthetic fixtures were slower than ordinary verification
+with its SMT cache warm: managed medians were 2.14 and 2.05 seconds, versus 0.75
+and 1.05 seconds. They establish report reuse and resource observations, not a
+general wall-time improvement. Historical attempts are retained separately.
+
+`bench/acceptance/exact-smt-same-name-aarch64-macos-2026-10-10.json` retains the
+final fresh library/binary oracle. Each requested target's full solver input
+matches plain Verus byte-for-byte. The outer observation wrapper and its hash
+are explicit; Historical currentness and three separate vstd ordering
+differences remain recorded. This is proof/byte acceptance, not performance.
