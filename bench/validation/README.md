@@ -182,3 +182,15 @@ forces actual pinned Z3 trace capture; no receipt is reused. Both runs use the
 same diagnostic/transcript flags and source directory. All-session vstd hashes
 remain unequal and are recorded separately. This supplemental emulated oracle
 is not native reference performance or cached-reply acceptance.
+
+`managed-frontend-2-linux-emulated-2026-10-10.json` and
+`managed-frontend-300-linux-emulated-2026-10-10.json` retain final uninstrumented
+runs of `live_workspace.py` with the frozen `a518a104` Linux executable and the
+unchanged 600-second invocation deadline. Both pass three Current complete
+reuse rounds with zero verifier invocations and two reused targets, then a real
+proof edit with one fresh verifier and one reused target. Raw report hashes,
+machine load, spread, RSS and binary identity are retained. Managed medians
+are 13.01 and 10.41 seconds, versus 4.11 and 3.55 seconds plain. These emulated
+observations establish receipt reuse, not native reference performance or a
+speedup. They are distinct successful retries; earlier timeout and job-result
+failure artifacts remain recorded with unresolved causes.

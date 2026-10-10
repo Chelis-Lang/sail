@@ -1,0 +1,1577 @@
+{
+  "schema_version": 1,
+  "scope": "Unwrapped final-binary complete-report receipt reuse, three paired rounds and proof edit; supplemental emulated Linux measurement",
+  "machine": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "cpu_count": 8,
+    "load_average": [
+      1.7568359375,
+      4.1962890625,
+      4.025390625
+    ],
+    "execution_environment": "Linux/amd64 emulation on Apple Silicon shared development host"
+  },
+  "toolchain": {
+    "rust": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "sail_sha256": "e32ceb3ec7b0d75f7c398645dcc8f306dd3010dcc9b708e24a7dafa3b943715f",
+    "sail_bytes": 58964288,
+    "cargo_verus_sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+  },
+  "limits": [
+    "Development machine under concurrent compilation and conformance load",
+    "RSS is the largest single process measured by time, not summed tree memory",
+    "Synthetic successful 300-function fixture; real projects may have different costs",
+    "Baseline cleans its selected caller artifact before timed verification to obtain a complete fresh report; dependency artifacts and SMT entries stay warm",
+    "This is a distinct successful retry; the earlier unwrapped600-second timeout remains a recorded failure with unresolved causal wait",
+    "Emulated Linux timings are supplementary under shared development load and are not native reference numbers",
+    "Synthetic fixture costs favor fresh verification over complete runtime and build-artifact identity checking; no speedup claim is made"
+  ],
+  "functions": [
+    [
+      "identity",
+      "verified"
+    ],
+    [
+      "identity_0",
+      "verified"
+    ],
+    [
+      "identity_1",
+      "verified"
+    ],
+    [
+      "identity_10",
+      "verified"
+    ],
+    [
+      "identity_100",
+      "verified"
+    ],
+    [
+      "identity_101",
+      "verified"
+    ],
+    [
+      "identity_102",
+      "verified"
+    ],
+    [
+      "identity_103",
+      "verified"
+    ],
+    [
+      "identity_104",
+      "verified"
+    ],
+    [
+      "identity_105",
+      "verified"
+    ],
+    [
+      "identity_106",
+      "verified"
+    ],
+    [
+      "identity_107",
+      "verified"
+    ],
+    [
+      "identity_108",
+      "verified"
+    ],
+    [
+      "identity_109",
+      "verified"
+    ],
+    [
+      "identity_11",
+      "verified"
+    ],
+    [
+      "identity_110",
+      "verified"
+    ],
+    [
+      "identity_111",
+      "verified"
+    ],
+    [
+      "identity_112",
+      "verified"
+    ],
+    [
+      "identity_113",
+      "verified"
+    ],
+    [
+      "identity_114",
+      "verified"
+    ],
+    [
+      "identity_115",
+      "verified"
+    ],
+    [
+      "identity_116",
+      "verified"
+    ],
+    [
+      "identity_117",
+      "verified"
+    ],
+    [
+      "identity_118",
+      "verified"
+    ],
+    [
+      "identity_119",
+      "verified"
+    ],
+    [
+      "identity_12",
+      "verified"
+    ],
+    [
+      "identity_120",
+      "verified"
+    ],
+    [
+      "identity_121",
+      "verified"
+    ],
+    [
+      "identity_122",
+      "verified"
+    ],
+    [
+      "identity_123",
+      "verified"
+    ],
+    [
+      "identity_124",
+      "verified"
+    ],
+    [
+      "identity_125",
+      "verified"
+    ],
+    [
+      "identity_126",
+      "verified"
+    ],
+    [
+      "identity_127",
+      "verified"
+    ],
+    [
+      "identity_128",
+      "verified"
+    ],
+    [
+      "identity_129",
+      "verified"
+    ],
+    [
+      "identity_13",
+      "verified"
+    ],
+    [
+      "identity_130",
+      "verified"
+    ],
+    [
+      "identity_131",
+      "verified"
+    ],
+    [
+      "identity_132",
+      "verified"
+    ],
+    [
+      "identity_133",
+      "verified"
+    ],
+    [
+      "identity_134",
+      "verified"
+    ],
+    [
+      "identity_135",
+      "verified"
+    ],
+    [
+      "identity_136",
+      "verified"
+    ],
+    [
+      "identity_137",
+      "verified"
+    ],
+    [
+      "identity_138",
+      "verified"
+    ],
+    [
+      "identity_139",
+      "verified"
+    ],
+    [
+      "identity_14",
+      "verified"
+    ],
+    [
+      "identity_140",
+      "verified"
+    ],
+    [
+      "identity_141",
+      "verified"
+    ],
+    [
+      "identity_142",
+      "verified"
+    ],
+    [
+      "identity_143",
+      "verified"
+    ],
+    [
+      "identity_144",
+      "verified"
+    ],
+    [
+      "identity_145",
+      "verified"
+    ],
+    [
+      "identity_146",
+      "verified"
+    ],
+    [
+      "identity_147",
+      "verified"
+    ],
+    [
+      "identity_148",
+      "verified"
+    ],
+    [
+      "identity_149",
+      "verified"
+    ],
+    [
+      "identity_15",
+      "verified"
+    ],
+    [
+      "identity_150",
+      "verified"
+    ],
+    [
+      "identity_151",
+      "verified"
+    ],
+    [
+      "identity_152",
+      "verified"
+    ],
+    [
+      "identity_153",
+      "verified"
+    ],
+    [
+      "identity_154",
+      "verified"
+    ],
+    [
+      "identity_155",
+      "verified"
+    ],
+    [
+      "identity_156",
+      "verified"
+    ],
+    [
+      "identity_157",
+      "verified"
+    ],
+    [
+      "identity_158",
+      "verified"
+    ],
+    [
+      "identity_159",
+      "verified"
+    ],
+    [
+      "identity_16",
+      "verified"
+    ],
+    [
+      "identity_160",
+      "verified"
+    ],
+    [
+      "identity_161",
+      "verified"
+    ],
+    [
+      "identity_162",
+      "verified"
+    ],
+    [
+      "identity_163",
+      "verified"
+    ],
+    [
+      "identity_164",
+      "verified"
+    ],
+    [
+      "identity_165",
+      "verified"
+    ],
+    [
+      "identity_166",
+      "verified"
+    ],
+    [
+      "identity_167",
+      "verified"
+    ],
+    [
+      "identity_168",
+      "verified"
+    ],
+    [
+      "identity_169",
+      "verified"
+    ],
+    [
+      "identity_17",
+      "verified"
+    ],
+    [
+      "identity_170",
+      "verified"
+    ],
+    [
+      "identity_171",
+      "verified"
+    ],
+    [
+      "identity_172",
+      "verified"
+    ],
+    [
+      "identity_173",
+      "verified"
+    ],
+    [
+      "identity_174",
+      "verified"
+    ],
+    [
+      "identity_175",
+      "verified"
+    ],
+    [
+      "identity_176",
+      "verified"
+    ],
+    [
+      "identity_177",
+      "verified"
+    ],
+    [
+      "identity_178",
+      "verified"
+    ],
+    [
+      "identity_179",
+      "verified"
+    ],
+    [
+      "identity_18",
+      "verified"
+    ],
+    [
+      "identity_180",
+      "verified"
+    ],
+    [
+      "identity_181",
+      "verified"
+    ],
+    [
+      "identity_182",
+      "verified"
+    ],
+    [
+      "identity_183",
+      "verified"
+    ],
+    [
+      "identity_184",
+      "verified"
+    ],
+    [
+      "identity_185",
+      "verified"
+    ],
+    [
+      "identity_186",
+      "verified"
+    ],
+    [
+      "identity_187",
+      "verified"
+    ],
+    [
+      "identity_188",
+      "verified"
+    ],
+    [
+      "identity_189",
+      "verified"
+    ],
+    [
+      "identity_19",
+      "verified"
+    ],
+    [
+      "identity_190",
+      "verified"
+    ],
+    [
+      "identity_191",
+      "verified"
+    ],
+    [
+      "identity_192",
+      "verified"
+    ],
+    [
+      "identity_193",
+      "verified"
+    ],
+    [
+      "identity_194",
+      "verified"
+    ],
+    [
+      "identity_195",
+      "verified"
+    ],
+    [
+      "identity_196",
+      "verified"
+    ],
+    [
+      "identity_197",
+      "verified"
+    ],
+    [
+      "identity_198",
+      "verified"
+    ],
+    [
+      "identity_199",
+      "verified"
+    ],
+    [
+      "identity_2",
+      "verified"
+    ],
+    [
+      "identity_20",
+      "verified"
+    ],
+    [
+      "identity_200",
+      "verified"
+    ],
+    [
+      "identity_201",
+      "verified"
+    ],
+    [
+      "identity_202",
+      "verified"
+    ],
+    [
+      "identity_203",
+      "verified"
+    ],
+    [
+      "identity_204",
+      "verified"
+    ],
+    [
+      "identity_205",
+      "verified"
+    ],
+    [
+      "identity_206",
+      "verified"
+    ],
+    [
+      "identity_207",
+      "verified"
+    ],
+    [
+      "identity_208",
+      "verified"
+    ],
+    [
+      "identity_209",
+      "verified"
+    ],
+    [
+      "identity_21",
+      "verified"
+    ],
+    [
+      "identity_210",
+      "verified"
+    ],
+    [
+      "identity_211",
+      "verified"
+    ],
+    [
+      "identity_212",
+      "verified"
+    ],
+    [
+      "identity_213",
+      "verified"
+    ],
+    [
+      "identity_214",
+      "verified"
+    ],
+    [
+      "identity_215",
+      "verified"
+    ],
+    [
+      "identity_216",
+      "verified"
+    ],
+    [
+      "identity_217",
+      "verified"
+    ],
+    [
+      "identity_218",
+      "verified"
+    ],
+    [
+      "identity_219",
+      "verified"
+    ],
+    [
+      "identity_22",
+      "verified"
+    ],
+    [
+      "identity_220",
+      "verified"
+    ],
+    [
+      "identity_221",
+      "verified"
+    ],
+    [
+      "identity_222",
+      "verified"
+    ],
+    [
+      "identity_223",
+      "verified"
+    ],
+    [
+      "identity_224",
+      "verified"
+    ],
+    [
+      "identity_225",
+      "verified"
+    ],
+    [
+      "identity_226",
+      "verified"
+    ],
+    [
+      "identity_227",
+      "verified"
+    ],
+    [
+      "identity_228",
+      "verified"
+    ],
+    [
+      "identity_229",
+      "verified"
+    ],
+    [
+      "identity_23",
+      "verified"
+    ],
+    [
+      "identity_230",
+      "verified"
+    ],
+    [
+      "identity_231",
+      "verified"
+    ],
+    [
+      "identity_232",
+      "verified"
+    ],
+    [
+      "identity_233",
+      "verified"
+    ],
+    [
+      "identity_234",
+      "verified"
+    ],
+    [
+      "identity_235",
+      "verified"
+    ],
+    [
+      "identity_236",
+      "verified"
+    ],
+    [
+      "identity_237",
+      "verified"
+    ],
+    [
+      "identity_238",
+      "verified"
+    ],
+    [
+      "identity_239",
+      "verified"
+    ],
+    [
+      "identity_24",
+      "verified"
+    ],
+    [
+      "identity_240",
+      "verified"
+    ],
+    [
+      "identity_241",
+      "verified"
+    ],
+    [
+      "identity_242",
+      "verified"
+    ],
+    [
+      "identity_243",
+      "verified"
+    ],
+    [
+      "identity_244",
+      "verified"
+    ],
+    [
+      "identity_245",
+      "verified"
+    ],
+    [
+      "identity_246",
+      "verified"
+    ],
+    [
+      "identity_247",
+      "verified"
+    ],
+    [
+      "identity_248",
+      "verified"
+    ],
+    [
+      "identity_249",
+      "verified"
+    ],
+    [
+      "identity_25",
+      "verified"
+    ],
+    [
+      "identity_250",
+      "verified"
+    ],
+    [
+      "identity_251",
+      "verified"
+    ],
+    [
+      "identity_252",
+      "verified"
+    ],
+    [
+      "identity_253",
+      "verified"
+    ],
+    [
+      "identity_254",
+      "verified"
+    ],
+    [
+      "identity_255",
+      "verified"
+    ],
+    [
+      "identity_256",
+      "verified"
+    ],
+    [
+      "identity_257",
+      "verified"
+    ],
+    [
+      "identity_258",
+      "verified"
+    ],
+    [
+      "identity_259",
+      "verified"
+    ],
+    [
+      "identity_26",
+      "verified"
+    ],
+    [
+      "identity_260",
+      "verified"
+    ],
+    [
+      "identity_261",
+      "verified"
+    ],
+    [
+      "identity_262",
+      "verified"
+    ],
+    [
+      "identity_263",
+      "verified"
+    ],
+    [
+      "identity_264",
+      "verified"
+    ],
+    [
+      "identity_265",
+      "verified"
+    ],
+    [
+      "identity_266",
+      "verified"
+    ],
+    [
+      "identity_267",
+      "verified"
+    ],
+    [
+      "identity_268",
+      "verified"
+    ],
+    [
+      "identity_269",
+      "verified"
+    ],
+    [
+      "identity_27",
+      "verified"
+    ],
+    [
+      "identity_270",
+      "verified"
+    ],
+    [
+      "identity_271",
+      "verified"
+    ],
+    [
+      "identity_272",
+      "verified"
+    ],
+    [
+      "identity_273",
+      "verified"
+    ],
+    [
+      "identity_274",
+      "verified"
+    ],
+    [
+      "identity_275",
+      "verified"
+    ],
+    [
+      "identity_276",
+      "verified"
+    ],
+    [
+      "identity_277",
+      "verified"
+    ],
+    [
+      "identity_278",
+      "verified"
+    ],
+    [
+      "identity_279",
+      "verified"
+    ],
+    [
+      "identity_28",
+      "verified"
+    ],
+    [
+      "identity_280",
+      "verified"
+    ],
+    [
+      "identity_281",
+      "verified"
+    ],
+    [
+      "identity_282",
+      "verified"
+    ],
+    [
+      "identity_283",
+      "verified"
+    ],
+    [
+      "identity_284",
+      "verified"
+    ],
+    [
+      "identity_285",
+      "verified"
+    ],
+    [
+      "identity_286",
+      "verified"
+    ],
+    [
+      "identity_287",
+      "verified"
+    ],
+    [
+      "identity_288",
+      "verified"
+    ],
+    [
+      "identity_289",
+      "verified"
+    ],
+    [
+      "identity_29",
+      "verified"
+    ],
+    [
+      "identity_290",
+      "verified"
+    ],
+    [
+      "identity_291",
+      "verified"
+    ],
+    [
+      "identity_292",
+      "verified"
+    ],
+    [
+      "identity_293",
+      "verified"
+    ],
+    [
+      "identity_294",
+      "verified"
+    ],
+    [
+      "identity_295",
+      "verified"
+    ],
+    [
+      "identity_296",
+      "verified"
+    ],
+    [
+      "identity_297",
+      "verified"
+    ],
+    [
+      "identity_3",
+      "verified"
+    ],
+    [
+      "identity_30",
+      "verified"
+    ],
+    [
+      "identity_31",
+      "verified"
+    ],
+    [
+      "identity_32",
+      "verified"
+    ],
+    [
+      "identity_33",
+      "verified"
+    ],
+    [
+      "identity_34",
+      "verified"
+    ],
+    [
+      "identity_35",
+      "verified"
+    ],
+    [
+      "identity_36",
+      "verified"
+    ],
+    [
+      "identity_37",
+      "verified"
+    ],
+    [
+      "identity_38",
+      "verified"
+    ],
+    [
+      "identity_39",
+      "verified"
+    ],
+    [
+      "identity_4",
+      "verified"
+    ],
+    [
+      "identity_40",
+      "verified"
+    ],
+    [
+      "identity_41",
+      "verified"
+    ],
+    [
+      "identity_42",
+      "verified"
+    ],
+    [
+      "identity_43",
+      "verified"
+    ],
+    [
+      "identity_44",
+      "verified"
+    ],
+    [
+      "identity_45",
+      "verified"
+    ],
+    [
+      "identity_46",
+      "verified"
+    ],
+    [
+      "identity_47",
+      "verified"
+    ],
+    [
+      "identity_48",
+      "verified"
+    ],
+    [
+      "identity_49",
+      "verified"
+    ],
+    [
+      "identity_5",
+      "verified"
+    ],
+    [
+      "identity_50",
+      "verified"
+    ],
+    [
+      "identity_51",
+      "verified"
+    ],
+    [
+      "identity_52",
+      "verified"
+    ],
+    [
+      "identity_53",
+      "verified"
+    ],
+    [
+      "identity_54",
+      "verified"
+    ],
+    [
+      "identity_55",
+      "verified"
+    ],
+    [
+      "identity_56",
+      "verified"
+    ],
+    [
+      "identity_57",
+      "verified"
+    ],
+    [
+      "identity_58",
+      "verified"
+    ],
+    [
+      "identity_59",
+      "verified"
+    ],
+    [
+      "identity_6",
+      "verified"
+    ],
+    [
+      "identity_60",
+      "verified"
+    ],
+    [
+      "identity_61",
+      "verified"
+    ],
+    [
+      "identity_62",
+      "verified"
+    ],
+    [
+      "identity_63",
+      "verified"
+    ],
+    [
+      "identity_64",
+      "verified"
+    ],
+    [
+      "identity_65",
+      "verified"
+    ],
+    [
+      "identity_66",
+      "verified"
+    ],
+    [
+      "identity_67",
+      "verified"
+    ],
+    [
+      "identity_68",
+      "verified"
+    ],
+    [
+      "identity_69",
+      "verified"
+    ],
+    [
+      "identity_7",
+      "verified"
+    ],
+    [
+      "identity_70",
+      "verified"
+    ],
+    [
+      "identity_71",
+      "verified"
+    ],
+    [
+      "identity_72",
+      "verified"
+    ],
+    [
+      "identity_73",
+      "verified"
+    ],
+    [
+      "identity_74",
+      "verified"
+    ],
+    [
+      "identity_75",
+      "verified"
+    ],
+    [
+      "identity_76",
+      "verified"
+    ],
+    [
+      "identity_77",
+      "verified"
+    ],
+    [
+      "identity_78",
+      "verified"
+    ],
+    [
+      "identity_79",
+      "verified"
+    ],
+    [
+      "identity_8",
+      "verified"
+    ],
+    [
+      "identity_80",
+      "verified"
+    ],
+    [
+      "identity_81",
+      "verified"
+    ],
+    [
+      "identity_82",
+      "verified"
+    ],
+    [
+      "identity_83",
+      "verified"
+    ],
+    [
+      "identity_84",
+      "verified"
+    ],
+    [
+      "identity_85",
+      "verified"
+    ],
+    [
+      "identity_86",
+      "verified"
+    ],
+    [
+      "identity_87",
+      "verified"
+    ],
+    [
+      "identity_88",
+      "verified"
+    ],
+    [
+      "identity_89",
+      "verified"
+    ],
+    [
+      "identity_9",
+      "verified"
+    ],
+    [
+      "identity_90",
+      "verified"
+    ],
+    [
+      "identity_91",
+      "verified"
+    ],
+    [
+      "identity_92",
+      "verified"
+    ],
+    [
+      "identity_93",
+      "verified"
+    ],
+    [
+      "identity_94",
+      "verified"
+    ],
+    [
+      "identity_95",
+      "verified"
+    ],
+    [
+      "identity_96",
+      "verified"
+    ],
+    [
+      "identity_97",
+      "verified"
+    ],
+    [
+      "identity_98",
+      "verified"
+    ],
+    [
+      "identity_99",
+      "verified"
+    ],
+    [
+      "maximum",
+      "verified"
+    ]
+  ],
+  "fill": {
+    "plain": {
+      "label": "plain-fill",
+      "wall_ms": 97864.61258599957,
+      "load_average_start": [
+        5.88525390625,
+        5.86669921875,
+        4.32470703125
+      ],
+      "load_average_end": [
+        5.0458984375,
+        5.6279296875,
+        4.39111328125
+      ],
+      "max_single_process_rss_bytes": 2092957696,
+      "report_sha256": "47972fca4aa0e1746d0f4b732fbdbf5a93805edbc84eccf41caf1797196b1767",
+      "execution": null
+    },
+    "managed": {
+      "label": "managed-fill",
+      "wall_ms": 68354.36228100116,
+      "load_average_start": [
+        5.0458984375,
+        5.6279296875,
+        4.39111328125
+      ],
+      "load_average_end": [
+        3.0654296875,
+        4.9111328125,
+        4.23046875
+      ],
+      "max_single_process_rss_bytes": 2096242688,
+      "report_sha256": "ac68e7705dafab4fb8dc31fc0e09ea52a0e826f55a03e2e6227e6f8945d0eb41",
+      "execution": {
+        "verifier_invocations": 2,
+        "reused_targets": 0,
+        "wall_ms": 68298.298197
+      }
+    }
+  },
+  "fully_observed_establishment": null,
+  "rounds": [
+    {
+      "round": 1,
+      "plain_warm_smt_cache": {
+        "label": "plain-warm-1",
+        "wall_ms": 3470.6834179996804,
+        "load_average_start": [
+          3.0654296875,
+          4.9111328125,
+          4.23046875
+        ],
+        "load_average_end": [
+          2.89990234375,
+          4.84619140625,
+          4.212890625
+        ],
+        "max_single_process_rss_bytes": 373903360,
+        "report_sha256": "5e721336ffad2bd0d334633554e2f5c2ce8a3c06d01e45314111addfc3cb8e2b",
+        "execution": null
+      },
+      "managed_complete_report_reuse": {
+        "label": "managed-reuse-1",
+        "wall_ms": 10432.946254999479,
+        "load_average_start": [
+          2.89990234375,
+          4.84619140625,
+          4.212890625
+        ],
+        "load_average_end": [
+          2.607421875,
+          4.71923828125,
+          4.177734375
+        ],
+        "max_single_process_rss_bytes": 62775296,
+        "report_sha256": "d1645a4989dfb0473b63ed2ad31877c2bbb39a1d511a406b2863cb70bd62bb53",
+        "execution": {
+          "verifier_invocations": 0,
+          "reused_targets": 2,
+          "wall_ms": 10391.810297
+        }
+      }
+    },
+    {
+      "round": 2,
+      "plain_warm_smt_cache": {
+        "label": "plain-warm-2",
+        "wall_ms": 3574.961460999475,
+        "load_average_start": [
+          2.607421875,
+          4.71923828125,
+          4.177734375
+        ],
+        "load_average_end": [
+          2.607421875,
+          4.71923828125,
+          4.177734375
+        ],
+        "max_single_process_rss_bytes": 374079488,
+        "report_sha256": "9f6a78d8f48660feebc5c7e44d728a8c01f5b7dfa11ee523f3d2a4ec38deb1de",
+        "execution": null
+      },
+      "managed_complete_report_reuse": {
+        "label": "managed-reuse-2",
+        "wall_ms": 10407.944462998785,
+        "load_average_start": [
+          2.607421875,
+          4.71923828125,
+          4.177734375
+        ],
+        "load_average_end": [
+          2.25048828125,
+          4.5361328125,
+          4.12646484375
+        ],
+        "max_single_process_rss_bytes": 62775296,
+        "report_sha256": "467a7597243af51d12cc56b24f163153ae03ea1105261b251fddd6aa0b2a6551",
+        "execution": {
+          "verifier_invocations": 0,
+          "reused_targets": 2,
+          "wall_ms": 10369.840338
+        }
+      }
+    },
+    {
+      "round": 3,
+      "plain_warm_smt_cache": {
+        "label": "plain-warm-3",
+        "wall_ms": 3552.6115840002603,
+        "load_average_start": [
+          2.25048828125,
+          4.5361328125,
+          4.12646484375
+        ],
+        "load_average_end": [
+          2.25048828125,
+          4.5361328125,
+          4.12646484375
+        ],
+        "max_single_process_rss_bytes": 373772288,
+        "report_sha256": "78f4d6a250c6c84282abd5311319dcc268886f8ace64036de79b85b8e22d8c78",
+        "execution": null
+      },
+      "managed_complete_report_reuse": {
+        "label": "managed-reuse-3",
+        "wall_ms": 10356.646004998765,
+        "load_average_start": [
+          2.25048828125,
+          4.5361328125,
+          4.12646484375
+        ],
+        "load_average_end": [
+          2.0576171875,
+          4.4189453125,
+          4.09228515625
+        ],
+        "max_single_process_rss_bytes": 62767104,
+        "report_sha256": "89286a75049c43ec15eb64acada469c5d33c0992481be701585e2ca8598cfb88",
+        "execution": {
+          "verifier_invocations": 0,
+          "reused_targets": 2,
+          "wall_ms": 10319.554963
+        }
+      }
+    }
+  ],
+  "proof_edit": {
+    "plain": {
+      "label": "plain-edited",
+      "wall_ms": 3813.139668000076,
+      "load_average_start": [
+        2.0576171875,
+        4.4189453125,
+        4.09228515625
+      ],
+      "load_average_end": [
+        1.97265625,
+        4.36181640625,
+        4.0751953125
+      ],
+      "max_single_process_rss_bytes": 386916352,
+      "report_sha256": "bcbaf284745e2fd9f65c169d989792c0810ba336b54c65fce456a797c8424b64",
+      "execution": null
+    },
+    "managed": {
+      "label": "managed-edited",
+      "wall_ms": 13657.315880998794,
+      "load_average_start": [
+        1.97265625,
+        4.36181640625,
+        4.0751953125
+      ],
+      "load_average_end": [
+        1.7568359375,
+        4.1962890625,
+        4.025390625
+      ],
+      "max_single_process_rss_bytes": 386727936,
+      "report_sha256": "55f82bab0dc0596e6a0985a5048c886d759419d09a16112735edc3031c63787b",
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 1,
+        "wall_ms": 13617.945713
+      }
+    }
+  },
+  "summary": {
+    "plain": {
+      "median_ms": 3552.6115840002603,
+      "min_ms": 3470.6834179996804,
+      "max_ms": 3574.961460999475
+    },
+    "managed": {
+      "median_ms": 10407.944462998785,
+      "min_ms": 10356.646004998765,
+      "max_ms": 10432.946254999479
+    },
+    "median_speedup": 0.3413365239053808
+  },
+  "source_commit": "a518a104c033948127c6e61ab705023907b74ac8",
+  "proof_deadline_seconds": 600,
+  "process_exit_code": 0,
+  "raw_reports": {
+    "managed-edited.json": {
+      "bytes": 2157414,
+      "sha256": "55f82bab0dc0596e6a0985a5048c886d759419d09a16112735edc3031c63787b"
+    },
+    "managed-edited.stderr": {
+      "bytes": 138,
+      "sha256": "949908f8c6dbb8788cc369dd1443aa59d5c2e8a5e6094b86450c4a810153eeb0"
+    },
+    "managed-edited.time": {
+      "bytes": 803,
+      "sha256": "68547b8741b8961e38b7cacfc9700120ac0edee5f2b454d08fb7b7f3a57469e0"
+    },
+    "managed-fill.json": {
+      "bytes": 2157415,
+      "sha256": "ac68e7705dafab4fb8dc31fc0e09ea52a0e826f55a03e2e6227e6f8945d0eb41"
+    },
+    "managed-fill.stderr": {
+      "bytes": 733,
+      "sha256": "1e2369ea2b90404fbceb50240f79bf2f0406bd9849af5738a4ff91c03a250886"
+    },
+    "managed-fill.time": {
+      "bytes": 815,
+      "sha256": "3094512aa5b185f1c36f776af52092ed5850b3caede691aaced9a0e690b08a08"
+    },
+    "managed-reuse-1.json": {
+      "bytes": 2157413,
+      "sha256": "d1645a4989dfb0473b63ed2ad31877c2bbb39a1d511a406b2863cb70bd62bb53"
+    },
+    "managed-reuse-1.stderr": {
+      "bytes": 72,
+      "sha256": "4f27ac380b22e1d975eee20ce727fa8cbc09061177f6253af0777fd4de7b7506"
+    },
+    "managed-reuse-1.time": {
+      "bytes": 797,
+      "sha256": "49b86e4e88275d01a63d3548c8f0ea91bdd4379c4a9e988608ffb4e6ac6fb54d"
+    },
+    "managed-reuse-2.json": {
+      "bytes": 2157413,
+      "sha256": "467a7597243af51d12cc56b24f163153ae03ea1105261b251fddd6aa0b2a6551"
+    },
+    "managed-reuse-2.stderr": {
+      "bytes": 72,
+      "sha256": "2b34696728dc82b03cbf6311d7e3a6a41658bbde097834c3010a78bc82842c1a"
+    },
+    "managed-reuse-2.time": {
+      "bytes": 797,
+      "sha256": "9bf5d4f82049a22babf53b47782f708bebd0039bf6213d0ffbb85f1f6bdde99d"
+    },
+    "managed-reuse-3.json": {
+      "bytes": 2157413,
+      "sha256": "89286a75049c43ec15eb64acada469c5d33c0992481be701585e2ca8598cfb88"
+    },
+    "managed-reuse-3.stderr": {
+      "bytes": 72,
+      "sha256": "2b34696728dc82b03cbf6311d7e3a6a41658bbde097834c3010a78bc82842c1a"
+    },
+    "managed-reuse-3.time": {
+      "bytes": 797,
+      "sha256": "2dcb6073616a45162441b8f6056696edea83cf4a12417aca0584f9cc1e5d512b"
+    },
+    "plain-edited.json": {
+      "bytes": 437252,
+      "sha256": "bcbaf284745e2fd9f65c169d989792c0810ba336b54c65fce456a797c8424b64"
+    },
+    "plain-edited.stderr": {
+      "bytes": 138,
+      "sha256": "8c39bf2573906f57ac9c6ba8f696e439c6dbe9c1e3880686659d6a491753f420"
+    },
+    "plain-edited.time": {
+      "bytes": 786,
+      "sha256": "46a6d49146ee41760f44b75088feb6ef5bcb7ed11e72eb38749ae07fc83fa9e5"
+    },
+    "plain-fill.json": {
+      "bytes": 1642935,
+      "sha256": "47972fca4aa0e1746d0f4b732fbdbf5a93805edbc84eccf41caf1797196b1767"
+    },
+    "plain-fill.stderr": {
+      "bytes": 733,
+      "sha256": "f1621937ed8518d33c609bf1c12523966e40b5ce58e37ef3f24e30f4edb029b1"
+    },
+    "plain-fill.time": {
+      "bytes": 803,
+      "sha256": "d0943c6bb922e1ad2d4fcba48c6fb98ef07188471d71a338c5d3ef92c11ad088"
+    },
+    "plain-warm-1.json": {
+      "bytes": 436988,
+      "sha256": "5e721336ffad2bd0d334633554e2f5c2ce8a3c06d01e45314111addfc3cb8e2b"
+    },
+    "plain-warm-1.stderr": {
+      "bytes": 138,
+      "sha256": "7612b1c350539d56bd67217f57930825b05abea79b3edcba64c87336b9004eec"
+    },
+    "plain-warm-1.time": {
+      "bytes": 785,
+      "sha256": "977b4852d20ae5fc3fdeafb93db757ca7c12f59b54e3c1da2272ff6319aa2086"
+    },
+    "plain-warm-2.json": {
+      "bytes": 436987,
+      "sha256": "9f6a78d8f48660feebc5c7e44d728a8c01f5b7dfa11ee523f3d2a4ec38deb1de"
+    },
+    "plain-warm-2.stderr": {
+      "bytes": 138,
+      "sha256": "be3623b59344ccfecdccd68f06da5b6e6415b6d271dd49681d76ec8618f61512"
+    },
+    "plain-warm-2.time": {
+      "bytes": 785,
+      "sha256": "0a17ca32f8751db143ae412380841f1a55721e0b6fc036dd42d52ce25011445a"
+    },
+    "plain-warm-3.json": {
+      "bytes": 436988,
+      "sha256": "78f4d6a250c6c84282abd5311319dcc268886f8ace64036de79b85b8e22d8c78"
+    },
+    "plain-warm-3.stderr": {
+      "bytes": 138,
+      "sha256": "88c015a38a97bccb2fe4014f1aacfaefbdbbd4db4a2e45111e17565ffe9bdbc0"
+    },
+    "plain-warm-3.time": {
+      "bytes": 786,
+      "sha256": "30de2ac1f5f80ab61ba7028d85f8844959c89da2b57b887ae4a5bed53162f785"
+    }
+  }
+}
