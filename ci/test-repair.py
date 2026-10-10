@@ -70,7 +70,6 @@ def run(args):
     head = subprocess.check_output(["git", "-C", str(source_tree), "rev-parse", "HEAD"], text=True).strip()
     builtin = source_tree / "source/builtin"
     macros = source_tree / "source/builtin_macros"
-    vstd = source_tree / "source/vstd"
     assert (builtin / "Cargo.toml").is_file() and (macros / "Cargo.toml").is_file()
     with tempfile.TemporaryDirectory(prefix="sr-", dir="/tmp") as temporary:
         root = Path(temporary)
@@ -78,10 +77,9 @@ def run(args):
         (project / "src").mkdir(parents=True)
         (project / "Cargo.toml").write_text(
             '[package]\nname="repair_demo"\nversion="0.1.0"\nedition="2021"\n'
-            '[package.metadata.verus]\nverify=true\n[dependencies]\n'
+            '[package.metadata.verus]\nverify=true\nno-vstd=true\n[dependencies]\n'
             f'verus_builtin={{path={json.dumps(str(builtin))}}}\n'
-            f'verus_builtin_macros={{path={json.dumps(str(macros))}}}\n'
-            f'vstd={{path={json.dumps(str(vstd))}}}\n')
+            f'verus_builtin_macros={{path={json.dumps(str(macros))}}}\n')
         source = project / "src/lib.rs"
         def write(body):
             source.write_text("use verus_builtin::*;\nuse verus_builtin_macros::*;\nverus! {\n" + body + "\n}\n")
@@ -111,7 +109,7 @@ def run(args):
         summary = {"version":1,"kind":"actual-prebuilt-engine-cli-mcp-acceptance",
                    "machine":platform.platform(),"environment_label":args.environment_label,
                    "source_commit":head,"proof_tool_budget_s":args.timeout,"passed":False,
-                   "fixture_vstd":"pinned-source-path","fixture_rust_toolchain":engine_status["rust_toolchain"],
+                   "fixture_vstd":"supported-no-vstd-metadata", "fixture_dependency_verification":"ordinary-full-cargo-plan","fixture_rust_toolchain":engine_status["rust_toolchain"],
                    "sail_sha256":hashlib.sha256(Path(sail).read_bytes()).hexdigest(),
                    "engine_manifest_sha256":engine_status["manifest_sha256"]}
         (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
