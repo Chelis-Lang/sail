@@ -27,6 +27,14 @@ M7 runs one explicitly selected repair batch. Both use warm SMT caches and
 the same selected package/library, full scope, dependencies and solver flags.
 Warm-up and installation/build time are separate from measured cycles.
 
+M6's managed command places its injected `--target-dir` after the user's
+`--lib`; pinned cargo-verus rejects that argument ordering. The frozen M6
+comparison uses explicit package selection after asserting Cargo metadata
+contains exactly one library and no other target. M7 uses `--lib` explicitly.
+This preserves the same actual library scope without modifying the M6 binary.
+The M6 focus passes the source module and function separately, as required by
+the pinned Verus filter; the public M7 selector remains crate-qualified.
+
 Retain raw phase reports and diagnostics, process identity, source/catalogue
 hashes, wall time, first actionable evidence, peak RSS, cache counters and
 preparation statistics. Full M7 outcomes must equal full M6 outcomes. A
