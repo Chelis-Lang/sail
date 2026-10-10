@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "source_commit": "1dc732e841427c14da0a39e322c04ee5874a8ca2",
+  "environment": "Linux amd64 Docker under emulation on macOS arm64; shared development load",
+  "command": "ci/run.sh gate",
+  "build_jobs": 2,
+  "nextest_threads": 2,
+  "exit_code": 100,
+  "workspace": {
+    "clippy": true,
+    "tests": 422,
+    "passed": 413,
+    "failed": 9,
+    "skipped": 37,
+    "duration_seconds": 154.318,
+    "failed_tests": [
+      "sail-daemon::job_coalescing remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edits",
+      "sail-verus managed::freshness::tests::existing_source_mapping_is_unknown_until_mapping_is_gone",
+      "sail-verus managed::freshness::tests::restored_write_while_readers_wait_never_reuses_previous_coherent_snapshot",
+      "sail-verus managed::freshness::tests::retained_inventory_cannot_outlive_lost_declared_input_coverage",
+      "sail-verus managed::freshness::tests::guarded_inventory_invalidates_namespace_and_alias_changes",
+      "sail-verus managed::lease::tests::omitted_global_rows_require_live_exact_descriptor_leases_before_failure",
+      "sail-verus managed::lease::tests::readiness_inventory_cannot_bind_duplicate_or_wrong_descriptors",
+      "sail-verus managed::lease::tests::replacing_selected_interpreter_under_unchanged_path_invalidates_projection",
+      "sail-verus managed::lease::tests::stale_acknowledgement_cannot_certify_a_broken_writable_mapping"
+    ]
+  },
+  "log": {
+    "sha256": "4059a65dbd2141bcc4e2e53ec644a4482ab83cfffad6e300ba430c7f14ec652d",
+    "bytes": 64456
+  },
+  "deadlines_changed": false,
+  "acceptance": false,
+  "remaining_steps": "Gate stopped at Nextest; example tests, doctests, rustdoc, layering, dependency checks and generated report were not executed in this invocation.",
+  "observation": "Seven failures explicitly report kernel-lease-sweep-over-budget. Two further failures are coalescing and selected-interpreter fixture assertions; their exact causes remain under investigation. Safe refusal is not a passing acceptance case."
+}
