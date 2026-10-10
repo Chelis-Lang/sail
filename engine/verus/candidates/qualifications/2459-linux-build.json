@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "candidate_patch_sha256": "245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "host": "x86_64-unknown-linux-gnu",
+  "execution": "Linux x86-64 container emulated on aarch64 macOS",
+  "container_image_sha256": "4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+  "command": [
+    "cargo",
+    "xtask",
+    "build-verus-engine",
+    "--keep-intermediates"
+  ],
+  "source_compile_jobs": 2,
+  "source_compile_niceness": 19,
+  "verifier_and_solver_niceness": 0,
+  "manifest_sha256": "de3e16d36506b3403f919e2f6a22c12ad5761986ecf625ad305fe989ec6ab8cb",
+  "manifest": {
+    "schema_version": 1,
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+    "features": [
+      "sail-interactive:245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
+      "host:x86_64-unknown-linux-gnu",
+      "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    ],
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "c943b575ef32b7996c0bb50de8bb09486cc4b41c3aeaccfef2727e52b32eb0af",
+      "verus/source/target-verus/release/cargo-verus": "397065559f2057a0c36dd6e5a2594057f5fe0cbfea860d6e5e1eb1c413ad7c69",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "13813444ce81f14c15da339b54ef9afa67bfc89f4503f88f8bd3a6bfbdc93dd1",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "0657522b99c7e3eab2509d8375c48964d7f0802b5b2108fcefc16352eeee5530",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "da052181a91dcefc1ecc15ae022015d9a0b43c2938c94e7e7185a8bacb3470a5",
+      "verus/source/target-verus/release/libvstd.rlib": "bf7de77539c3fdeb6eca5cfa0e0adfd2f6c3798ee91684ae0635321ab3e3e029",
+      "verus/source/target-verus/release/rust_verify": "dfce812041c4bf88d60b33cd60f87754b38c5a0f339cffb8216732556dda9c63",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "8d1474e0eb0d36b24051838bcb3b644a5d2305b3b2f97835df4836f2298e6818",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "build_seconds": 2499,
+    "test_binaries": []
+  },
+  "ordinary_vstd_verified": 2060,
+  "ordinary_vstd_errors": 0,
+  "build_exit_code": 0,
+  "raw_build_log_sha256": "c8fb1b94547bf7557ed47b902d9a6157767adedddf9df5a901a70192045a8b5b",
+  "runtime_qualification": false,
+  "library_and_runtime_oracles": "pending separate qualification pipeline",
+  "reporter_counter_release_after_physical_disposal": true,
+  "graph_counter_release_after_physical_disposal": true,
+  "raw_graph_access_audit": "passed against actual built candidate checkout",
+  "existing_qualified_engine_mutated": false,
+  "product_speed_acceptance": false,
+  "activated": false
+}
