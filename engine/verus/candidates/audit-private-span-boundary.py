@@ -27,9 +27,13 @@ def audit(source):
     method = production.split('fn datatype_graph_span_infos(&self)', 1)[1].split('\n    }', 1)[0]
     assert method.index('sail_graph_capture.unsupported()') < method.index('&self.datatype_graph_span_infos')
     factory = production.split('pub fn from_self_with_log', 1)[1].split('pub(crate) fn datatype_graph_span_infos', 1)[0]
-    assert factory.index('sail_graph_capture.unsupported()') < factory.index('sail_graph_capture: Default::default()')
+    assert factory.index('sail_graph_capture.unsupported()') < factory.index('sail_graph_capture: self.sail_graph_capture.fork()')
     fork = production.split('pub fn sail_oracle_fork', 1)[1].split('pub fn sail_oracle_effect_fault', 1)[0]
     assert fork.index('sail_graph_capture.unsupported()') < fork.index('global.sail_graph_capture=')
+    assert 'global.sail_graph_capture=self.global.sail_graph_capture.fork()' in fork
+    graph = (source / 'vir/src/sail_graph.rs').read_text()
+    assert 'struct ReadGuard' in graph and 'guard_epoch' in graph and 'const GUARD_DEPTH: usize = 64' in graph
+    assert 'guard.notify(false)' in graph and 'guard.notify(true)' in graph
     baseline = production.split('pub fn sail_baseline', 1)[1].split('pub(crate) fn checking_spec_preconditions', 1)[0]
     assert 'datatype_graph_span_infos' not in baseline
     components = production.split('pub fn sail_oracle_components', 1)[1].split('pub fn sail_baseline', 1)[0]

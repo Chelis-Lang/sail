@@ -163,7 +163,8 @@ declaration and failed its mandatory negative assertion; that failure remains
 recorded. A fixture-only correction supplied two reachable declarations, after
 which the real-hit positive and order/body/effect negatives all passed without
 changing the runtime or assertions. Source fixtures, checkpoint and cancellation
-controls also pass. Complete real-project/source qualification is still running.
+controls also pass. The resumed real HE qualification failed its unchanged actor deadline, as
+recorded below; complete source qualification did not pass.
 Its records are under `candidates/qualifications/2421-*`.
 The actual-written streams and diagnostic artifacts are separately bounded and
 physically closed before complete capture can be accepted. This expensive
@@ -228,3 +229,14 @@ complete source/project qualification and performance remain pending. The
 prototype will be combined with the separately reviewed decoded-allocation
 correction before a new runtime build; it does not fix or reinterpret the
 retained `2421` primary timeout by assumption.
+
+The follow-up lineage guard closes the pre-created-clone boundary without
+sharing compiler mutable state or graph ledgers. Capture owners retain at most
+64 tiny ancestor epochs; routed descendant span/graph reads invalidate any
+ancestor capture that began after cloning. Destroyed intermediates do not remove
+the guard, while sibling captures remain independent. Allocation refusal, depth
+overflow and epoch overflow fail closed. Epoch nodes use the same bounded graph
+quota and release charge only after physical final-owner destruction. All 17 host
+VIR tests passed, including these ownership boundaries. This is candidate library
+evidence only, recorded in `private-span-epoch-host.json`; ordinary build and
+complete runtime qualification await the independently reviewed allocation repair.

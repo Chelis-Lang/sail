@@ -72,9 +72,8 @@ wire. The failed control and its raw streams are retained in
 two reachable spec declarations without changing the runtime, assertion or
 deadline. The positive and all three genuine restored-hit negative controls
 then passed; AIR confirms both declarations and the order fault changes actual
-wire bytes. See `qualifications/2421-linux-hit-controls.json`. The remaining
-qualification stages are running. It is not selected by the installer or the
-public runtime pin.
+wire bytes. See `qualifications/2421-linux-hit-controls.json`. The resumed qualification later failed the unchanged HE actor deadline, as
+recorded below. It is not selected by the installer or the public runtime pin.
 
 The diagnostic oracle runs only when `SAIL_ENGINE_ORACLE_DIR` is set and a
 preparation has passed the normal key, provenance and graph-ledger validation.
@@ -184,9 +183,14 @@ still runs against the fresh complete graph and vector before bucket lowering.
 The accessor invalidates an active preparation capture. Current callback span
 registration uses that same accessor before capture, so current raw-span owners,
 used-span bindings and provenance remain exact. The interpreter clone factory
-and diagnostic oracle fork explicitly invalidate any active parent capture
-before creating a new capture owner. An unexpected future read therefore costs
-a miss; it does not broaden cache equivalence silently.
+and diagnostic oracle fork invalidate active parent capture and retain a small
+bounded read-epoch lineage when creating independent capture owners. This
+lineage catches routed span or graph reads through a clone created before its
+parent begins lowering, even if an intermediate owner has already been dropped.
+It retains epochs only, with no ancestor ledger or mutable compiler effects.
+Sibling owners remain independent. Unknown allocation, depth above 64 or epoch
+overflow disables admission. An unexpected future routed read therefore costs a
+miss; this does not claim coverage of arbitrary unguarded compiler data.
 
 The new dependency domain is
 `sail-prepared/graph-ledger/private-span-seed/v4`. The portable representation
@@ -194,9 +198,16 @@ remains version 3; its data representation has not changed. All other 30 baselin
 components, pruned IR, ordered graph answers/function schedule, options and
 mutable effects remain bound. `audit-private-span-boundary.py` checks privacy,
 the closed raw-read inventory, both clone-escape guards and fresh trait-check
-ordering. Host release VIR regressions passed 12/12; see
-`qualifications/private-span-host.json`. This is library evidence, not a built
-or qualified runtime.
+ordering. The initial 12-test prototype record remains in
+`qualifications/private-span-host.json`. The epoch-lineage revision passed all
+17 host release VIR regressions, including pre-created clones, destroyed
+intermediates, sibling isolation, admission refusal, depth/epoch overflow and
+last-owner physical quota release; see
+`qualifications/private-span-epoch-host.json`. This is library evidence, not a
+built or qualified runtime. Tiny lineage nodes share the existing 16 MiB graph
+allocation quota, and their nested ancestry is physically dropped before charge
+is released. The quota regressions run serially because they inspect that
+process-wide counter.
 
 After combining the independently reviewed decoded-allocation correction and
 ordinarily building a separately sealed runtime, run:
