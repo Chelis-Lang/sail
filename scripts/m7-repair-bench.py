@@ -16,6 +16,7 @@ import re
 import signal
 import statistics
 import subprocess
+import sys
 import time
 
 REPO = Path(__file__).resolve().parent.parent
@@ -147,6 +148,97 @@ class ProofObserver:
         return any(actionable_event(event) for event in page["events"])
 
 
+def signal_owned(process, signal_number):
+    if process.poll() is None:
+        try:
+            os.killpg(process.pid, signal_number)
+        except ProcessLookupError:
+            pass
+
+
+def interrupt_owned(process):
+    """Give the CLI's interrupt handler time to cancel its separate daemon job."""
+    signal_owned(process, signal.SIGINT)
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        signal_owned(process, signal.SIGKILL)
+        process.wait(timeout=5)
+
+
+class OwnedDaemons:
+    """Private workload daemons, never a discovered or pre-existing service."""
+    def __init__(self, output):
+        self.output = output
+        self.actors = {}
+        self.records = []
+
+    def __enter__(self):
+        return self
+
+    def start(self, mode, binary, workspace, environment):
+        address = Path(environment["SAIL_DAEMON_SOCKET"])
+        identity = (str(binary), str(address), environment["SAIL_CACHE_DIR"])
+        if mode in self.actors:
+            if self.actors[mode][3] != identity or self.actors[mode][0].poll() is not None:
+                raise ValueError("SAIL0941: owned daemon identity changed or daemon exited")
+            return
+        if address.exists() or address.is_symlink():
+            raise ValueError("SAIL0941: refusing a pre-existing workload daemon socket")
+        stdout = (self.output / ("daemon-" + mode + ".stdout")).open("wb")
+        try:
+            stderr = (self.output / ("daemon-" + mode + ".stderr")).open("wb")
+        except BaseException:
+            stdout.close()
+            raise
+        try:
+            actor = subprocess.Popen([str(binary), "serve", "--cache", environment["SAIL_CACHE_DIR"],
+                                      "--socket", str(address), "--idle-timeout", "0"],
+                                     cwd=workspace, env=environment, stdout=stdout, stderr=stderr,
+                                     start_new_session=True)
+        except BaseException:
+            stdout.close()
+            stderr.close()
+            raise
+        self.actors[mode] = (actor, stdout, stderr, identity)
+        self.records.append({"mode":mode,"pid":actor.pid,"binary_sha256":sha(binary),"started":True})
+        write_json(self.output / "actor-lifecycle.json", {"actors":self.records,"cleanup_errors":[]})
+        deadline = time.monotonic() + 5
+        while not address.exists():
+            if actor.poll() is not None or time.monotonic() >= deadline:
+                raise ValueError("SAIL0941: private workload daemon did not become ready")
+            time.sleep(.01)
+
+    def __exit__(self, failure_type, failure, traceback):
+        errors = []
+        for mode, (actor, stdout, stderr, _) in reversed(list(self.actors.items())):
+            started = time.monotonic()
+            try:
+                # SIGTERM runs Sail's owned-job shutdown before the cache server exits.
+                signal_owned(actor, signal.SIGTERM)
+                try:
+                    actor.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    signal_owned(actor, signal.SIGKILL)
+                    actor.wait(timeout=10)
+                self.records.append({"mode":mode,"pid":actor.pid,"stopped":True,
+                                     "exit_code":actor.returncode,"elapsed_s":time.monotonic()-started})
+            except (OSError, subprocess.SubprocessError) as error:
+                errors.append(f"{mode} daemon cleanup: {error}")
+            finally:
+                stdout.close()
+                stderr.close()
+        try:
+            write_json(self.output / "actor-lifecycle.json", {"actors":self.records,"cleanup_errors":errors})
+        except OSError as error:
+            errors.append(f"daemon lifecycle evidence: {error}")
+        if errors:
+            print("SAIL0941: " + "; ".join(errors), file=sys.stderr)
+            if failure_type is None:
+                raise ValueError("SAIL0941: private workload daemon cleanup failed")
+        return False
+
+
 def invoke(command, workspace, env, directory, timeout):
     directory.mkdir(parents=True, exist_ok=False)
     observer = ProofObserver(env) if command[1] == "repair-check" else None
@@ -157,30 +249,39 @@ def invoke(command, workspace, env, directory, timeout):
     actionable = None
     with (directory / "stdout.json").open("wb") as out, (directory / "stderr.txt").open("wb") as err:
         child = subprocess.Popen(args, cwd=workspace, env=env, stdout=out, stderr=err, start_new_session=True)
+        timed_out = False
         try:
             while child.poll() is None:
                 elapsed = time.monotonic() - started
                 if elapsed > timeout:
-                    # Foreground repair owns a daemon job in another process
-                    # group. Let its interrupt handler cancel that owned job
-                    # before forcibly ending an unresponsive CLI process.
-                    os.killpg(child.pid, signal.SIGINT)
-                    try:
-                        child.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(child.pid, signal.SIGKILL)
-                        child.wait()
-                    write_json(directory / "timeout.json", {"timed_out": True, "deadline_s": timeout,
-                                                            "elapsed_s": time.monotonic() - started,
-                                                            "exit_code": child.returncode})
+                    timed_out = True
                     raise ValueError("SAIL0941: repair workload timed out: " + str(directory))
                 if actionable is None and observer is not None and observer.poll(directory / "stderr.txt", directory):
                     actionable = (time.monotonic() - started) * 1000
                 time.sleep(0.01)
-        except BaseException:
-            if child.poll() is None:
-                os.killpg(child.pid, signal.SIGKILL)
-                child.wait()
+        except BaseException as failure:
+            cleanup_errors = []
+            try:
+                interrupt_owned(child)
+            except (OSError, subprocess.SubprocessError) as error:
+                cleanup_errors.append(f"CLI interrupt cleanup: {error}")
+            if observer is not None and observer.job is not None:
+                try:
+                    # Interrupt cancellation is the normal product path. This
+                    # exact owned ID also covers an unresponsive/killed CLI.
+                    protocol.call(observer.address, {"operation":"cancel", "id":observer.job,
+                                                     "superseded":False})
+                except (OSError, ValueError) as error:
+                    cleanup_errors.append(f"owned job cancellation: {error}")
+            evidence = {"exception":type(failure).__name__,"timed_out":timed_out,
+                        "deadline_s":timeout,"elapsed_s":time.monotonic()-started,
+                        "exit_code":child.returncode,"cleanup_errors":cleanup_errors}
+            try:
+                write_json(directory / ("timeout.json" if timed_out else "interrupted.json"), evidence)
+            except OSError as error:
+                cleanup_errors.append(f"interruption evidence: {error}")
+            if cleanup_errors:
+                print("SAIL0941: " + "; ".join(cleanup_errors), file=sys.stderr)
             raise
     wall = (time.monotonic() - started) * 1000
     report = json.loads((directory / "stdout.json").read_text())
@@ -253,6 +354,11 @@ def distribution(values):
 
 
 def run(args):
+    with OwnedDaemons(args.out) as daemons:
+        return run_owned(args, daemons)
+
+
+def run_owned(args, daemons):
     data = catalogue()
     if args.rounds < data["minimum_rounds"]:
         raise ValueError("SAIL0940: acceptance requires at least three rounds")
@@ -288,6 +394,7 @@ def run(args):
                                              str(args.engine_install.resolve()), "--output", "json"],
                                             env=envs[mode]))
                 write_json(args.out / "engine-install.json", install)
+            daemons.start(mode, binaries[mode], workspace, envs[mode])
             # Dependency build and complete SMT-cache fill are not measured.
             warm = invoke([str(binaries[mode]), "verify", "--incremental", "--output", "json"] + selection,
                           workspace, envs[mode], (args.out / project["id"] / ("warm-" + mode)).resolve(), args.timeout)
