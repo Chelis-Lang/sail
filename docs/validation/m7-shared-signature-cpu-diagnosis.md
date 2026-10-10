@@ -11,7 +11,9 @@ classification path, alongside its wall time. On Linux the sample reads at most
 4,097 bytes from `/proc/thread-self/stat` and refuses data over 4,096 bytes,
 malformed fields and arithmetic overflow. It locates fields after the command
 name's final closing parenthesis. The actual `getconf CLK_TCK` value is recorded
-separately during fixture setup. Unavailable CPU evidence remains explicit.
+separately during fixture setup, through an owned `timeout 2s getconf CLK_TCK`
+utility invocation. Hosts without that optional utility report unavailable
+evidence explicitly.
 These diagnostics print no credential, payload or environment contents.
 
 The fixture's 75 ms response delay, 250 ms serving deadline, transport/trust

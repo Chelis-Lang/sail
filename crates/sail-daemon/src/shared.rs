@@ -632,8 +632,10 @@ mod http_tests {
                 "HTTP transport/trust setup: {elapsed:?}; serving timeout: {:?}",
                 self.tier.config.timeout
             );
-            let clock_ticks = std::process::Command::new("getconf")
-                .arg("CLK_TCK")
+            // This optional Linux diagnostic owns its utility subprocess and
+            // must not add an unbounded setup wait. Other hosts report None.
+            let clock_ticks = std::process::Command::new("timeout")
+                .args(["2s", "getconf", "CLK_TCK"])
                 .output()
                 .ok()
                 .filter(|output| output.status.success())
