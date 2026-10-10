@@ -1,3 +1,37 @@
+diff --git a/source/Cargo.lock b/source/Cargo.lock
+index dd49483..3428b4d 100644
+--- a/source/Cargo.lock
++++ b/source/Cargo.lock
+@@ -1279,6 +1279,8 @@ checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
+ dependencies = [
+  "equivalent",
+  "hashbrown 0.17.1",
++ "serde",
++ "serde_core",
+ ]
+ 
+ [[package]]
+@@ -3306,6 +3308,7 @@ name = "vir"
+ version = "0.1.0"
+ dependencies = [
+  "air",
++ "bincode-next",
+  "im",
+  "indexmap 2.14.0",
+  "num-bigint 0.5.1",
+diff --git a/source/Cargo.toml b/source/Cargo.toml
+index ca37c9f..e06f253 100644
+--- a/source/Cargo.toml
++++ b/source/Cargo.toml
+@@ -43,7 +43,7 @@ git2 = { version = "0.21", default-features = false, features = [] }
+ hex = "0.4.3"
+ html5ever = "0.26" # TODO: kuchikiki depends on 0.26
+ im = "15.1.0"
+-indexmap = "2"
++indexmap = { version = "2", features = ["serde"] }
+ indicatif = "0.18"
+ indoc = "2.0.7"
+ is-terminal = "0.4.17"
 diff --git a/source/rust_verify/src/driver.rs b/source/rust_verify/src/driver.rs
 index 5b4d93a..ff4eac5 100644
 --- a/source/rust_verify/src/driver.rs
@@ -39,7 +73,7 @@ index 5b4d93a..ff4eac5 100644
  }
  
 diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
-index 71d4a33..bd46051 100644
+index 71d4a33..a85d0f4 100644
 --- a/source/rust_verify/src/verifier.rs
 +++ b/source/rust_verify/src/verifier.rs
 @@ -47,6 +47,9 @@ use vir::ast_util::{fun_as_friendly_rust_name, is_visible_to};
@@ -71,14 +105,54 @@ index 71d4a33..bd46051 100644
          RunCommandQueriesResult {
              used_axioms,
              invalidity,
-@@ -1969,9 +1977,16 @@ impl Verifier {
+@@ -1063,6 +1071,7 @@ impl Verifier {
+         bucket_id: &BucketId,
+         function_name: &Fun,
+         comment: &str,
++        sail_spinoff: Option<usize>,
+         desc_prefix: Option<&str>,
+         default_prover_failed_assert_ids: &mut Vec<AssertId>,
+     ) -> RunCommandQueriesResult {
+@@ -1092,6 +1101,7 @@ impl Verifier {
+             air_context.comment(&context.span.as_string);
+         }
+         for command in commands.iter() {
++            let progress=if matches!(**command,CommandX::CheckValid(_)) { sail_engine::progress_start(self,&context.fun,comment,&context.desc,sail_spinoff,commands.iter().filter(|command|matches!(***command,CommandX::CheckValid(_))).count()) } else {None};
+             result = result
+                 + self.check_result_validity(
+                     bucket_id,
+@@ -1107,6 +1117,7 @@ impl Verifier {
+                     *prover_choice,
+                     default_prover_failed_assert_ids,
+                 );
++            if let Some(progress)=progress {sail_engine::emit("obligation-progress",serde_json::json!({"function":fun_as_friendly_rust_name(&context.fun),"obligation":progress,"description":context.desc,"completed":true}));}
+         }
+ 
+         result
+@@ -1560,6 +1571,7 @@ impl Verifier {
+                                 None
+                             };
+ 
++                            let sail_spinoff=do_spinoff.then_some(spinoff_context_counter);
+                             let mut query_air_context = if do_spinoff {
+                                 let spinoff_reason = if cmds.prover_choice
+                                     == vir::def::ProverChoice::Nonlinear
+@@ -1633,6 +1645,7 @@ impl Verifier {
+                                 bucket_id,
+                                 &function.x.name,
+                                 &op.to_air_comment(),
++                                sail_spinoff,
+                                 None,
+                                 &mut default_prover_failed_assert_ids,
+                             );
+@@ -1969,9 +1982,16 @@ impl Verifier {
              vir::printer::write_krate(&mut file, &pruned_krate, &self.args.log_args.vir_log_option);
          }
  
 +        let checkpoint_key = sail_engine::bucket_key(self, bucket_id, &pruned_krate, &ctx);
-+        let (krate_sst, cached_ctx) = if let Some(cached) = sail_engine::take_bucket(&checkpoint_key) {
++        let krate_sst = if let Some((cached,messages)) = sail_engine::take_bucket(&checkpoint_key,&pruned_krate,source_map,&mut ctx) {
 +            sail_engine::emit("prepared-hit", serde_json::json!({"bucket":bucket_name}));
-+            sail_engine::replay_bucket_diagnostics(&checkpoint_key, reporter);
++            for (message,level,emission) in messages {match emission{sail_engine::Emission::Report=>reporter.report(&message),sail_engine::Emission::ReportAs=>reporter.report_as(&message,level),sail_engine::Emission::ReportNow=>reporter.report_now(&message),sail_engine::Emission::ReportAsNow=>reporter.report_as_now(&message,level)}}
 +            cached
 +        } else {
 +        let collector = sail_engine::RecordingReporter::new(reporter);
@@ -89,18 +163,22 @@ index 71d4a33..bd46051 100644
              &self.get_bucket(bucket_id).funs,
              &pruned_krate,
          )?;
-@@ -1988,6 +2003,10 @@ impl Verifier {
+@@ -1988,10 +2008,14 @@ impl Verifier {
              return Ok(ctx.free());
          }
          let krate_sst = vir::poly::poly_krate_for_module(&mut ctx, &krate_sst);
-+        sail_engine::store_bucket(checkpoint_key.clone(), &krate_sst, &ctx, collector.messages());
-+        (krate_sst, ctx.clone())
++        if collector.cacheable(){sail_engine::store_bucket(checkpoint_key.clone(), &krate_sst, &ctx, source_map, collector.messages());}
++        krate_sst
 +        };
-+        ctx = cached_ctx;
  
          let VerifyBucketOut { time_smt_init, time_smt_run, rlimit_count } =
              self.verify_bucket(reporter, &krate_sst, source_map, bucket_id, &mut ctx)?;
-@@ -2016,10 +2035,10 @@ impl Verifier {
+ 
++        sail_engine::functions_observed(self,bucket_id);
+         global_ctx = ctx.free();
+ 
+         let time_verify_end = Instant::now();
+@@ -2016,10 +2040,10 @@ impl Verifier {
          &mut self,
          compiler: &Compiler,
          spans: &SpanContext,
@@ -112,28 +190,7 @@ index 71d4a33..bd46051 100644
          let krate = self.vir_crate.clone().expect("vir_crate should be initialized");
          let air_no_span = self.air_no_span.clone().expect("air_no_span should be initialized");
  
-@@ -2039,6 +2058,10 @@ impl Verifier {
-             None
-         };
- 
-+        let cached_common = sail_engine::take_common(self);
-+        let (mut global_ctx, krate) = if let Some(common) = cached_common {
-+            common
-+        } else {
-         let mut global_ctx = vir::context::GlobalCtx::new(
-             &krate,
-             self.crate_id.clone().expect("crate_id"),
-@@ -2056,6 +2079,9 @@ impl Verifier {
-         )?;
-         vir::recursive_types::check_traits(&krate, &global_ctx)?;
-         let krate = vir::ast_simplify::simplify_krate(&mut global_ctx, &krate)?;
-+        sail_engine::store_common(self, &global_ctx, &krate);
-+        (global_ctx, krate)
-+        };
- 
-         if self.args.log_all || self.args.log_args.log_vir_simple {
-             let mut file = self.create_log_file(None, crate::config::VIR_SIMPLE_FILE_SUFFIX)?;
-@@ -2213,7 +2239,6 @@ impl Verifier {
+@@ -2213,7 +2237,6 @@ impl Verifier {
              let mut active_bucket = None;
              let mut num_done = 0;
              let mut local_msgs: VecDeque<ReporterMessage> = VecDeque::new();
@@ -141,7 +198,7 @@ index 71d4a33..bd46051 100644
              loop {
                  let msg = match local_msgs.pop_front() {
                      Some(msg) => msg,
-@@ -2526,7 +2551,7 @@ impl Verifier {
+@@ -2526,7 +2549,7 @@ impl Verifier {
  
              for bucket_id in &bucket_ids {
                  global_ctx = self.verify_bucket_outer(
@@ -150,7 +207,7 @@ index 71d4a33..bd46051 100644
                      &krate,
                      Some(source_map),
                      bucket_id,
-@@ -2563,20 +2588,20 @@ impl Verifier {
+@@ -2563,20 +2586,20 @@ impl Verifier {
                  chosen.manual,
              ) {
                  (ShowTriggers::Selective, true, false) if chosen.low_confidence => {
@@ -176,7 +233,7 @@ index 71d4a33..bd46051 100644
                  }
                  (
                      ShowTriggers::Selective
-@@ -2619,7 +2644,7 @@ impl Verifier {
+@@ -2619,7 +2642,7 @@ impl Verifier {
          let time_verify_crate_start = Instant::now();
  
          let result = if !self.args.no_verify || self.args.build_sst {
@@ -185,27 +242,57 @@ index 71d4a33..bd46051 100644
          } else {
              Ok(())
          };
-@@ -3313,7 +3338,9 @@ impl rustc_driver::Callbacks for VerifierCallbacksEraseMacro {
+@@ -3313,7 +3336,9 @@ impl rustc_driver::Callbacks for VerifierCallbacksEraseMacro {
          }
  
          self.spans = Some(spans);
 +        self.verifier.sail_focus(compiler, self.spans.as_ref().unwrap());
          self.finish_verus(compiler);
-+        sail_engine::clear();
++        sail_engine::finish_cache();
  
          rustc_driver::Compilation::Stop
      }
-@@ -3392,3 +3419,6 @@ impl VerifierCallbacksEraseMacro {
+@@ -3392,3 +3417,6 @@ impl VerifierCallbacksEraseMacro {
          }
      }
  }
 +
 +pub(crate) fn sail_engine_compiler_started(role:&str) { sail_engine::emit("compiler-started",serde_json::json!({"role":role})); }
-+pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit("phase-finished",serde_json::json!({"success":success})); sail_engine::emit("compiler-sealed",serde_json::json!({"success":success})); }
++pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit("phase-finished",serde_json::json!({"success":success})); sail_engine::preparation_summary(); sail_engine::emit("compiler-sealed",serde_json::json!({"success":success})); }
+diff --git a/source/vir/Cargo.toml b/source/vir/Cargo.toml
+index bfc3c2b..636309f 100644
+--- a/source/vir/Cargo.toml
++++ b/source/vir/Cargo.toml
+@@ -8,6 +8,7 @@ edition = "2024"
+ # Note: do not add any dependencies on rustc -- VIR deliberately abstracts away from rustc's internals
+ [dependencies]
+ air = { workspace = true }
++bincode-next = { workspace = true }
+ im = { workspace = true }
+ indexmap = { workspace = true }
+ num-bigint = { workspace = true }
 diff --git a/source/vir/src/context.rs b/source/vir/src/context.rs
-index eb97120..68f9873 100644
+index eb97120..448a47d 100644
 --- a/source/vir/src/context.rs
 +++ b/source/vir/src/context.rs
+@@ -25,7 +25,7 @@ use std::sync::Arc;
+ pub(crate) const DECORATE: bool = true;
+ 
+ pub type ChosenTrigger = Vec<(Span, String)>;
+-#[derive(Debug, Clone)]
++#[derive(Debug, Clone,serde::Serialize,serde::Deserialize)]
+ pub struct ChosenTriggers {
+     pub module: Path,
+     pub span: Span,
+@@ -34,7 +34,7 @@ pub struct ChosenTriggers {
+     pub manual: bool,
+ }
+ 
+-#[derive(Debug, Clone)]
++#[derive(Debug, Clone,serde::Serialize)]
+ pub struct WarningConfig(pub Vec<WarningAllow>);
+ 
+ impl crate::messages::CheckAllowForWarning for WarningConfig {
 @@ -52,6 +52,7 @@ pub struct WarningCtx {
  }
  
@@ -231,130 +318,700 @@ index eb97120..68f9873 100644
  pub struct Ctx {
      pub(crate) module: Module,
      pub(crate) datatype_is_transparent: HashMap<Dt, bool>,
-@@ -139,6 +141,15 @@ pub struct Ctx {
+@@ -138,7 +140,102 @@ pub struct Ctx {
+     pub arch_word_bits: ArchWordBits,
  }
  
++#[derive(serde::Serialize,serde::Deserialize)]
++pub struct SailEffects {
++    functions:HashMap<Fun,crate::sst::FunctionSst>,
++    datatypes:HashMap<Dt,Datatype>,
++    names:(HashMap<String,u32>,HashMap<u64,String>),
++    chosen:Vec<ChosenTriggers>,
++    qids:HashMap<String,BndInfo>,
++    quantifiers:HashMap<Arc<String>,u64>,
++    ensure_predicates:HashMap<Fun,bool>,
++    strings:HashMap<BigUint,Arc<String>>,
++    byte_strings:HashMap<BigUint,Arc<Vec<u8>>>,
++}
++
++pub struct SailEffectsView<'a>(pub &'a Ctx);
++impl serde::Serialize for SailEffectsView<'_> {
++    fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{
++        use serde::ser::SerializeStruct;
++        let ctx=self.0;
++        let mut out=serializer.serialize_struct("SailEffects",9)?;
++        out.serialize_field("functions",&ctx.func_sst_map)?;
++        out.serialize_field("datatypes",&ctx.datatype_map)?;
++        out.serialize_field("names",&crate::def::SailNames(&ctx.name_ctxt))?;
++        out.serialize_field("chosen",&*ctx.global.chosen_triggers.borrow())?;
++        out.serialize_field("qids",&*ctx.global.qid_map.borrow())?;
++        out.serialize_field("quantifiers",&*ctx.quantifier_count.borrow())?;
++        out.serialize_field("ensure_predicates",&ctx.funcs_with_ensure_predicate)?;
++        out.serialize_field("strings",&*ctx.string_hashes.borrow())?;
++        out.serialize_field("byte_strings",&*ctx.byte_string_hashes.borrow())?;
++        out.end()
++    }
++}
++
++// Encode complete typed lookup entries. Ordering belongs only to ordered IR,
++// vectors and graph edges; these tables are consumed by keyed lookup.
++const SAIL_KEY_LIMIT:usize=32*1024*1024;
++struct SailKeyWriter(Vec<u8>);
++impl std::io::Write for SailKeyWriter {
++    fn write(&mut self,bytes:&[u8])->std::io::Result<usize>{
++        let needed=self.0.len().checked_add(bytes.len()).ok_or_else(||std::io::Error::other("prepared key budget"))?;
++        if needed>SAIL_KEY_LIMIT{return Err(std::io::Error::other("prepared key budget"));}
++        if needed>self.0.capacity(){let capacity=needed.max(self.0.capacity().saturating_mul(2)).max(4096).min(SAIL_KEY_LIMIT);self.0.try_reserve_exact(capacity-self.0.len()).map_err(std::io::Error::other)?;}
++        if self.0.capacity()>SAIL_KEY_LIMIT{return Err(std::io::Error::other("prepared key allocation budget"));}
++        self.0.extend_from_slice(bytes);Ok(bytes.len())
++    }
++    fn flush(&mut self)->std::io::Result<()>{Ok(())}
++}
++pub fn sail_encode<T:serde::Serialize>(value:&T)->Option<Vec<u8>> {
++    let mut out=SailKeyWriter(Vec::new());
++    bincode_next::serde::encode_into_std_write(value,&mut out,bincode_next::config::legacy()).ok()?;Some(out.0)
++}
++fn sail_map<K:serde::Serialize,V:serde::Serialize>(map:&HashMap<K,V>,budget:&mut usize)->Option<Vec<(Vec<u8>,Vec<u8>)>> {
++    let overhead=map.len().checked_mul(std::mem::size_of::<(Vec<u8>,Vec<u8>)>())?;
++    *budget=budget.checked_add(overhead)?;if *budget>SAIL_KEY_LIMIT{return None;}
++    let mut entries=Vec::new();entries.try_reserve_exact(map.len()).ok()?;
++    for (key,value) in map {let key=sail_encode(key)?;let value=sail_encode(value)?;
++        *budget=budget.checked_add(key.capacity())?.checked_add(value.capacity())?;
++        if *budget>SAIL_KEY_LIMIT{return None;}entries.push((key,value));}
++    entries.sort();Some(entries)
++}
++fn sail_set<K:serde::Serialize>(set:&HashSet<K>,budget:&mut usize)->Option<Vec<Vec<u8>>> {
++    *budget=budget.checked_add(set.len().checked_mul(std::mem::size_of::<Vec<u8>>())?)?;if *budget>SAIL_KEY_LIMIT{return None;}
++    let mut entries=Vec::new();entries.try_reserve_exact(set.len()).ok()?;
++    for key in set {let value=sail_encode(key)?;*budget=budget.checked_add(value.capacity())?;
++        if *budget>SAIL_KEY_LIMIT{return None;}entries.push(value);}
++    entries.sort();Some(entries)
++}
++pub fn sail_name_encoding(first:&HashMap<String,u32>,second:&HashMap<u64,String>)->Option<Vec<u8>> {
++    let mut budget=0; sail_encode(&(sail_map(first,&mut budget)?,sail_map(second,&mut budget)?))
++}
  impl Ctx {
-+    pub fn sail_baseline(&self) -> String {
-+        // Globals are shared from the exact original preparation; this captures
-+        // every mutable pre-lowering effect plus the complete pruning side data.
-+        format!("{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}:{:?}",
-+            self.global.chosen_triggers.borrow(),self.global.qid_map.borrow(),
-+            self.mono_types,self.spec_fn_types,self.reached_dyn_traits,self.used_builtins,
-+            self.fndef_types,self.resolved_typs,self.debug)
++    pub fn sail_seed_spans(&self)->(&Span,&Vec<Span>) {(&self.global.no_span,&self.global.datatype_graph_span_infos)}
++    pub fn sail_effects(&self)->Option<SailEffects>{
++        if self.fun.is_some() {return None;}
++        Some(SailEffects {functions:self.func_sst_map.clone(),datatypes:self.datatype_map.clone(),names:self.name_ctxt.sail_export(),chosen:self.global.chosen_triggers.borrow().clone(),qids:self.global.qid_map.borrow().clone(),quantifiers:self.quantifier_count.borrow().clone(),ensure_predicates:self.funcs_with_ensure_predicate.clone(),strings:self.string_hashes.borrow().clone(),byte_strings:self.byte_string_hashes.borrow().clone()})
++    }
++    pub fn sail_restore_effects(&mut self,effects:SailEffects){
++        self.func_sst_map=effects.functions;self.datatype_map=effects.datatypes;self.name_ctxt.sail_restore(effects.names);*self.global.chosen_triggers.borrow_mut()=effects.chosen;*self.global.qid_map.borrow_mut()=effects.qids;*self.quantifier_count.borrow_mut()=effects.quantifiers;self.funcs_with_ensure_predicate=effects.ensure_predicates;*self.string_hashes.borrow_mut()=effects.strings;*self.byte_string_hashes.borrow_mut()=effects.byte_strings;
++    }
++
++    pub fn sail_baseline(&self) -> Option<Vec<u8>> {
++        if self.fun.is_some() {return None;}
++        let names=self.name_ctxt.sail_baseline()?;
++        let mut budget=0usize;
++        let immutable=(
++            (sail_map(&self.global.datatypes,&mut budget)?,sail_map(&self.global.fun_bounds,&mut budget)?,sail_map(&self.global.fun_attrs,&mut budget)?,&self.global.no_span,
++             self.global.func_call_graph.sail_encoding()?,&self.global.func_call_sccs,self.global.datatype_graph.sail_encoding()?,&self.global.datatype_graph_span_infos,
++             sail_map(&self.global.trait_impl_to_extensions,&mut budget)?,sail_map(&self.global.extension_to_trait,&mut budget)?,sail_map(&self.global.warning_ctx.fun_warn_configs,&mut budget)?),
++            (self.global.rlimit,self.global.arch,self.global.crate_name.clone(),format!("{:?}",self.global.solver),self.global.check_api_safety,self.global.axiom_usage_info,self.global.no_bv_simplify,self.global.report_long_running),
++            (&self.mono_types,&self.spec_fn_types,sail_set(&self.reached_dyn_traits,&mut budget)?,&self.used_builtins,&self.fndef_types,&self.resolved_typs,self.debug,self.arch_word_bits,&self.module),
++            (sail_map(&self.datatype_is_transparent,&mut budget)?,sail_set(&self.datatypes_with_invariant,&mut budget)?,sail_set(&self.fndef_type_set,&mut budget)?,sail_set(&self.reveal_group_set,&mut budget)?,sail_map(&self.funcs_with_ensure_predicate,&mut budget)?),
++            (sail_map(&self.func_map,&mut budget)?,sail_map(&self.func_sst_map,&mut budget)?,sail_map(&self.fun_ident_map,&mut budget)?,sail_map(&self.opaque_type_map,&mut budget)?,&self.reveal_groups,sail_map(&self.datatype_map,&mut budget)?,sail_map(&self.trait_map,&mut budget)?,sail_map(&self.impl_map,&mut budget)?),
++            (&*self.global.chosen_triggers.borrow(),sail_map(&self.global.qid_map.borrow(),&mut budget)?,names,sail_map(&self.quantifier_count.borrow(),&mut budget)?,sail_map(&self.string_hashes.borrow(),&mut budget)?,sail_map(&self.byte_string_hashes.borrow(),&mut budget)?)
++        );
++        sail_encode(&immutable)
 +    }
 +
      pub(crate) fn checking_spec_preconditions(&self) -> bool {
          match self.fun {
              Some(FunctionCtx { checking_spec_preconditions: true, .. }) => true,
 diff --git a/source/vir/src/def.rs b/source/vir/src/def.rs
-index fa66348..d3cdd5d 100644
+index fa66348..dba3a57 100644
 --- a/source/vir/src/def.rs
 +++ b/source/vir/src/def.rs
-@@ -329,6 +329,7 @@ fn krate_ident_to_string(krate: &str) -> String {
- //   but if two crates have the same name, we have to disambiguate them
- // - for simplicity, we handle this disambiguation on demand so that we don't
- //   do any more renaming than necessary in each AIR file
-+#[derive(Clone)]
- struct NameCtxtImpl {
-     duplicate_name_counter: HashMap<String, u32>,
-     stable_id_map: HashMap<u64, String>,
-@@ -351,7 +352,13 @@ impl NameCtxtImpl {
+@@ -350,11 +350,23 @@ impl NameCtxtImpl {
+     }
  }
  
++#[derive(Clone)]
  pub struct NameCtxt {
--    imp: std::rc::Rc<std::cell::RefCell<NameCtxtImpl>>,
-+    imp: std::sync::Arc<std::sync::Mutex<NameCtxtImpl>>,
+     imp: std::rc::Rc<std::cell::RefCell<NameCtxtImpl>>,
+ }
+ 
++pub struct SailNames<'a>(pub &'a NameCtxt);
++impl serde::Serialize for SailNames<'_> {
++    fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error>{
++        let names=self.0.imp.borrow();
++        serde::Serialize::serialize(&(&names.duplicate_name_counter,&names.stable_id_map),serializer)
++    }
++}
+ impl NameCtxt {
++    pub fn sail_baseline(&self)->Option<Vec<u8>>{let state=self.imp.borrow();crate::context::sail_name_encoding(&state.duplicate_name_counter,&state.stable_id_map)}
++    pub fn sail_export(&self)->(HashMap<String,u32>,HashMap<u64,String>){ let state=self.imp.borrow();(state.duplicate_name_counter.clone(),state.stable_id_map.clone()) }
++    pub fn sail_restore(&self,state:(HashMap<String,u32>,HashMap<u64,String>)){let mut names=self.imp.borrow_mut();names.duplicate_name_counter=state.0;names.stable_id_map=state.1;}
++
+     // Warning: NameCtxt is meant to capture shared decisions about naming that should be
+     // consistent across an entire AIR file.
+     // Therefore, code generating AIR should use the existing NameCtxt from the Ctx struct
+diff --git a/source/vir/src/interpreter.rs b/source/vir/src/interpreter.rs
+index 80bfeb7..4c4bdf2 100644
+--- a/source/vir/src/interpreter.rs
++++ b/source/vir/src/interpreter.rs
+@@ -224,16 +224,20 @@ impl<'a> Ctx<'a> {
+ }
+ 
+ /// Interpreter-internal expressions
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum InterpExp {
+     /// Track free variables (those not introduced inside an assert_by_compute),
+     /// so they don't get confused with bound variables.
++    #[serde(skip)]
+     FreeVar(UniqueIdent),
+     /// Optimized representation of intermediate sequence results
++    #[serde(skip)]
+     Seq(Vector<Exp>),
+     /// A lambda expression that carries with it the original context
++    #[serde(skip)]
+     Closure(Exp, HashMap<UniqueIdent, Exp>),
+     /// Optimized representation of intermediate array values
++    #[serde(skip)]
+     Array(Vector<Exp>),
+ }
+ 
+diff --git a/source/vir/src/messages.rs b/source/vir/src/messages.rs
+index 97f290c..9bdb15d 100644
+--- a/source/vir/src/messages.rs
++++ b/source/vir/src/messages.rs
+@@ -11,16 +11,81 @@ fn empty_raw_span() -> RawSpan {
+ pub type RawSpan =
+     Arc<dyn std::any::Any + std::marker::Sync + std::marker::Send + std::panic::RefUnwindSafe>;
+ pub type AstId = u64;
+-#[derive(Clone, Serialize, Deserialize)] // for Debug, see ast_util
++#[derive(Clone)] // for Debug, see ast_util
+ pub struct Span {
+-    #[serde(skip)]
+-    #[serde(default = "crate::messages::empty_raw_span")]
+     pub raw_span: RawSpan,
+     pub id: AstId, // arbitrary integer identifier that may be set and used in any way (e.g. as unique id, or just left as 0)
+     pub data: Vec<u64>, // arbitrary integers (e.g. for serialization/deserialization)
+     pub as_string: String, // if we can't print (description, raw_span), print as_string instead
+ }
+ 
++// Private prepared-artifact span binding is scoped to one current worker callback.
++// Normal VIR import/export retains its existing three-field wire representation.
++pub type SailSpanKey = (AstId, Vec<u64>, String);
++pub type SailSpanBindings = std::collections::HashMap<SailSpanKey, Span>;
++struct SailCollected {bindings:std::collections::HashMap<SailSpanKey,Option<Span>>,charge:usize,valid:bool}
++impl Default for SailCollected {fn default()->Self{Self{bindings:std::collections::HashMap::new(),charge:0,valid:true}}}
++thread_local! {
++    static SAIL_COLLECT: std::cell::RefCell<Option<SailCollected>> = const { std::cell::RefCell::new(None) };
++    static SAIL_RESOLVE: std::cell::RefCell<Option<SailSpanBindings>> = const { std::cell::RefCell::new(None) };
++}
++enum SailSpanScope { Collect(Option<SailCollected>), Resolve(Option<SailSpanBindings>) }
++impl Drop for SailSpanScope {
++    fn drop(&mut self) {
++        match self {
++            Self::Collect(previous)=>SAIL_COLLECT.with(|state| *state.borrow_mut()=previous.take()),
++            Self::Resolve(previous)=>SAIL_RESOLVE.with(|state| *state.borrow_mut()=previous.take()),
++        }
++    }
++}
++pub fn sail_collect_spans<T>(f:impl FnOnce()->T)->(T,Option<SailSpanBindings>) {
++    let previous=SAIL_COLLECT.with(|state|state.replace(Some(SailCollected::default())));
++    let _scope=SailSpanScope::Collect(previous);
++    let result=f();
++    let bindings=SAIL_COLLECT.with(|state|{let state=state.borrow_mut().take().unwrap_or_default();if state.valid {state.bindings.into_iter().map(|(key,span)|span.map(|span|(key,span))).collect()}else{None}});
++    (result,bindings)
++}
++pub fn sail_resolve_spans<T>(bindings:&SailSpanBindings,f:impl FnOnce()->T)->T {
++    let previous=SAIL_RESOLVE.with(|state|state.replace(Some(bindings.clone())));
++    let _scope=SailSpanScope::Resolve(previous);f()
++}
++impl Serialize for Span {
++    fn serialize<S:serde::Serializer>(&self,serializer:S)->Result<S::Ok,S::Error> {
++        SAIL_COLLECT.with(|state| {if let Some(state)=state.borrow_mut().as_mut(){
++            if !state.valid{return;}
++            let charge=self.data.len().saturating_mul(16).saturating_add(self.as_string.len().saturating_mul(2)).saturating_add(1024);
++            if state.charge.saturating_add(charge)>16*1024*1024 {state.valid=false;return;}
++            let bindings=&mut state.bindings;
++            use std::collections::hash_map::Entry;
++            match bindings.entry((self.id,self.data.clone(),self.as_string.clone())) {
++                Entry::Vacant(entry)=>{entry.insert(Some(self.clone()));state.charge+=charge;},
++                Entry::Occupied(mut entry)=>{if entry.get().as_ref().is_some_and(|span|!Arc::ptr_eq(&span.raw_span,&self.raw_span) && !(((&*span.raw_span) as &dyn std::any::Any).is::<()>() && ((&*self.raw_span) as &dyn std::any::Any).is::<()>())){entry.insert(None);}},
++            }
++        }});
++        use serde::ser::SerializeStruct;
++        let mut encoded=serializer.serialize_struct("Span",3)?;
++        encoded.serialize_field("id",&self.id)?;
++        encoded.serialize_field("data",&self.data)?;
++        encoded.serialize_field("as_string",&self.as_string)?;
++        encoded.end()
++    }
++}
++impl<'de> Deserialize<'de> for Span {
++    fn deserialize<D:serde::Deserializer<'de>>(deserializer:D)->Result<Self,D::Error> {
++        #[derive(Deserialize)] struct Encoded {id:AstId,data:Vec<u64>,as_string:String}
++        let encoded=Encoded::deserialize(deserializer)?;
++        let raw_span=SAIL_RESOLVE.with(|state| {
++            let bindings=state.borrow();
++            match bindings.as_ref() {
++                None=>Ok(empty_raw_span()),
++                Some(bindings)=>bindings.get(&(encoded.id,encoded.data.clone(),encoded.as_string.clone()))
++                    .map(|span|span.raw_span.clone()).ok_or_else(||serde::de::Error::custom("prepared span has no exact current callback binding")),
++            }
++        })?;
++        Ok(Self {raw_span,id:encoded.id,data:encoded.data,as_string:encoded.as_string})
++    }
 +}
 +
-+impl Clone for NameCtxt {
-+    fn clone(&self) -> Self {
-+        Self { imp: std::sync::Arc::new(std::sync::Mutex::new(self.imp.lock().unwrap().clone())) }
-+    }
- }
- 
- impl NameCtxt {
-@@ -360,11 +367,11 @@ impl NameCtxt {
-     // Therefore, code generating AIR should use the existing NameCtxt from the Ctx struct
-     // for that AIR file, rather than allocating additional NameCtxt values.
-     pub(crate) fn new() -> Self {
--        Self { imp: std::rc::Rc::new(std::cell::RefCell::new(NameCtxtImpl::new())) }
-+        Self { imp: std::sync::Arc::new(std::sync::Mutex::new(NameCtxtImpl::new())) }
-     }
- 
-     fn krate_id_to_string(&self, id: u64, name: &str) -> String {
--        self.imp.borrow_mut().krate_id_to_string(id, name)
-+        self.imp.lock().unwrap().krate_id_to_string(id, name)
+ impl std::fmt::Debug for Span {
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+         f.debug_struct("Span")
+@@ -32,7 +97,7 @@ impl std::fmt::Debug for Span {
      }
  }
  
+-#[derive(Debug, Clone, PartialEq, Eq)]
++#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+ pub enum WarningAllow {
+     UndeclaredExternalTrait,
+     AssertForallImplication,
+diff --git a/source/vir/src/poly.rs b/source/vir/src/poly.rs
+index 2046ca2..4d9cbc9 100644
+--- a/source/vir/src/poly.rs
++++ b/source/vir/src/poly.rs
+@@ -105,7 +105,7 @@ use std::sync::Arc;
+ 
+ pub type MonoTyp = Arc<MonoTypX>;
+ pub type MonoTyps = Arc<Vec<MonoTyp>>;
+-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
++#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+ pub enum MonoTypX {
+     Bool,
+     Int(IntRange),
 diff --git a/source/vir/src/prune.rs b/source/vir/src/prune.rs
-index 75afda7..084f04a 100644
+index 75afda7..d1e654c 100644
 --- a/source/vir/src/prune.rs
 +++ b/source/vir/src/prune.rs
 @@ -898,6 +898,7 @@ fn collect_broadcast_triggers(
  }
  
  #[derive(Debug)]
-+#[derive(Clone)]
++#[derive(Clone,serde::Serialize)]
  pub struct UsedBuiltins {
      pub uses_array: bool,
      pub uses_bytestr: bool,
+diff --git a/source/vir/src/recursion.rs b/source/vir/src/recursion.rs
+index d267b64..11fff1b 100644
+--- a/source/vir/src/recursion.rs
++++ b/source/vir/src/recursion.rs
+@@ -25,7 +25,7 @@ use air::messages::Diagnostics;
+ use std::collections::{HashMap, HashSet};
+ use std::sync::Arc;
+ 
+-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
++#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize)]
+ pub enum Node {
+     Fun(Fun),
+     Datatype(Dt),
+diff --git a/source/vir/src/recursive_types.rs b/source/vir/src/recursive_types.rs
+index b9b3704..1929d3b 100644
+--- a/source/vir/src/recursive_types.rs
++++ b/source/vir/src/recursive_types.rs
+@@ -158,7 +158,7 @@ fn check_well_founded_typ(
+     }
+ }
+ 
+-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
++#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize)]
+ // REVIEW: should we also have Trait(Path) here?
+ pub(crate) enum TypNode {
+     Datatype(Dt),
 diff --git a/source/vir/src/resolve_axioms.rs b/source/vir/src/resolve_axioms.rs
-index 56b98e9..0879206 100644
+index 56b98e9..f1a072f 100644
 --- a/source/vir/src/resolve_axioms.rs
 +++ b/source/vir/src/resolve_axioms.rs
 @@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet};
  use std::sync::Arc;
  
  #[derive(Hash, PartialEq, Eq, Clone)]
-+#[derive(Debug)]
++#[derive(Debug, serde::Serialize)]
  pub enum ResolvableType {
      Datatype(Dt),
      Decoration(TypDecoration),
+diff --git a/source/vir/src/scc.rs b/source/vir/src/scc.rs
+index b547c6b..0fa977c 100644
+--- a/source/vir/src/scc.rs
++++ b/source/vir/src/scc.rs
+@@ -26,13 +26,13 @@ pub struct Graph<T: std::cmp::Eq + std::hash::Hash + Clone> {
+     mapping: HashMap<T, SccId>,
+ }
+ 
+-#[derive(Clone)]
++#[derive(Clone,Debug,serde::Serialize)]
+ struct SCC /* <T> */ {
+     id: SccId,
+     nodes: Vec<NodeIndex>,
+ }
+ 
+-#[derive(Clone)]
++#[derive(Clone,Debug,serde::Serialize)]
+ struct Node<T: std::cmp::Eq + std::hash::Hash + Clone> {
+     t: T,
+     edges: Vec<NodeIndex>,
+@@ -57,6 +57,18 @@ impl SCC {
+ }
+ 
+ impl<T: std::cmp::Eq + std::hash::Hash + Clone> Graph<T> {
++    pub fn sail_encoding(&self)->Option<Vec<u8>> where T:serde::Serialize {
++        fn table<K:serde::Serialize,V:serde::Serialize>(map:&HashMap<K,V>,budget:&mut usize)->Option<Vec<(Vec<u8>,Vec<u8>)>> {
++            *budget=budget.checked_add(map.len().checked_mul(std::mem::size_of::<(Vec<u8>,Vec<u8>)>())?)?;
++            if *budget>32*1024*1024{return None;}
++            let mut items=Vec::new();items.try_reserve_exact(map.len()).ok()?;
++            for (key,value) in map {let key=crate::context::sail_encode(key)?;let value=crate::context::sail_encode(value)?;
++                *budget=budget.checked_add(key.capacity())?.checked_add(value.capacity())?;if *budget>32*1024*1024{return None;}items.push((key,value));}
++            items.sort();Some(items)
++        }
++        let mut budget=0;
++        crate::context::sail_encode(&(table(&self.h,&mut budget)?,&self.nodes,self.has_run,&self.stack,self.stack_len,self.index,&self.sccs,table(&self.mapping,&mut budget)?))
++    }
+     pub fn new() -> Graph<T> {
+         Graph {
+             h: HashMap::new(),
 diff --git a/source/vir/src/sst.rs b/source/vir/src/sst.rs
-index 860614a..e04dc3f 100644
+index 860614a..c239fcd 100644
 --- a/source/vir/src/sst.rs
 +++ b/source/vir/src/sst.rs
 @@ -21,11 +21,13 @@ use vir_macros::ToDebugSNode;
  pub type Trig = Exps;
  pub type Trigs = Arc<Vec<Trig>>;
  
-+# [derive(Clone, Debug)]
++#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
  pub struct BndInfoUser {
      pub span: Span,
      pub trigs: Trigs,
  }
  
-+# [derive(Clone, Debug)]
++#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
  pub struct BndInfo {
      pub fun: Fun,
      pub user: Option<BndInfoUser>,
+@@ -36,7 +38,7 @@ pub struct BndInfo {
+ pub type AssertByLocals = Option<Arc<Vec<VarIdent>>>;
+ 
+ pub type Bnd = Arc<Spanned<BndX>>;
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum BndX {
+     Let(VarBinders<Exp>),
+     Quant(Quant, VarBinders<Typ>, Trigs, AssertByLocals),
+@@ -47,7 +49,7 @@ pub enum BndX {
+ // TODO: remove UniqueIdent
+ pub type UniqueIdent = VarIdent;
+ 
+-#[derive(Debug, Clone, Hash, PartialEq, Eq, ToDebugSNode)]
++#[derive(Debug, Clone, Hash, PartialEq, Eq, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum InternalFun {
+     ClosureReq,
+     ClosureEns,
+@@ -56,7 +58,7 @@ pub enum InternalFun {
+     OpenInvariantMask(Fun, usize),
+ }
+ 
+-#[derive(Debug, Clone, Hash, ToDebugSNode)]
++#[derive(Debug, Clone, Hash, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum CallFun {
+     // static/method Fun, plus an optional resolved Fun for methods
+     Fun(Fun, Option<(Fun, Typs)>),
+@@ -65,7 +67,7 @@ pub enum CallFun {
+ }
+ 
+ /// Arithmetic operation
+-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, ToDebugSNode)]
++#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum ArithOp {
+     /// IntRange::Int +
+     Add,
+@@ -80,7 +82,7 @@ pub enum ArithOp {
+ }
+ 
+ /// Primitive binary operations, all are pure functions on 2 inputs
+-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, ToDebugSNode)]
++#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum BinaryOp {
+     /// boolean and (no short-circuiting: Exps are pure)
+     And,
+@@ -117,7 +119,7 @@ pub enum BinaryOp {
+ 
+ pub type Exp = Arc<SpannedTyped<ExpX>>;
+ pub type Exps = Arc<Vec<Exp>>;
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum ExpX {
+     /// Literal constant (integers, booleans, etc.)
+     Const(Constant),
+@@ -173,21 +175,21 @@ pub enum ExpX {
+ /// Function parameter
+ pub type Par = Arc<Spanned<ParX>>;
+ pub type Pars = Arc<Vec<Par>>;
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct ParX {
+     pub name: VarIdent,
+     pub typ: Typ,
+     pub mode: Mode,
+ }
+ 
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct Dest {
+     pub dest: Exp,
+     pub is_init: bool,
+ }
+ 
+ pub type LoopInvs = Arc<Vec<LoopInv>>;
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct LoopInv {
+     // "invariant_except_break": at_entry = true, at_exit = false
+     // "invariant": at_entry = true, at_exit = true
+@@ -200,7 +202,7 @@ pub struct LoopInv {
+ pub type AssertId = air::ast::AssertId;
+ 
+ // A subset of ast::CallTarget
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum CallTarget {
+     Fun(Fun),
+     AssumeExternal,
+@@ -208,7 +210,7 @@ pub enum CallTarget {
+ 
+ pub type Stm = Arc<Spanned<StmX>>;
+ pub type Stms = Arc<Vec<Stm>>;
+-#[derive(Debug, ToDebugSNode, Clone)]
++#[derive(Debug, ToDebugSNode, Clone, serde::Serialize, serde::Deserialize)]
+ pub enum StmX {
+     /// Call to exec/proof function (or spec function when checking preconditions).
+     /// Unlike `ExpX::Call`, this has side effects and may modify state.
+@@ -319,7 +321,7 @@ pub enum StmX {
+ }
+ 
+ // poly.rs uses the specific kind of each local to decide on a poly/native type for the local
+-#[derive(Debug, Clone, Copy, ToDebugSNode)]
++#[derive(Debug, Clone, Copy, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum LocalDeclKind {
+     Param { mutable: bool },
+     Return,
+@@ -343,21 +345,21 @@ pub enum LocalDeclKind {
+ }
+ 
+ pub type LocalDecl = Arc<LocalDeclX>;
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct LocalDeclX {
+     pub ident: UniqueIdent,
+     pub typ: Typ,
+     pub kind: LocalDeclKind,
+ }
+ 
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum UnwindSst {
+     MayUnwind,
+     NoUnwind,
+     NoUnwindWhen(Exp),
+ }
+ 
+-#[derive(Debug, Clone, Copy, ToDebugSNode)]
++#[derive(Debug, Clone, Copy, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub enum PostConditionKind {
+     Ensures,
+     DecreasesImplicitLemma,
+@@ -365,7 +367,7 @@ pub enum PostConditionKind {
+     EnsuresSafeApiCheck,
+ }
+ 
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct PostConditionSst {
+     /// Identifier that holds the return value.
+     /// May be referenced by `ens_exprs` or `ens_spec_precondition_stms`.
+@@ -378,7 +380,7 @@ pub struct PostConditionSst {
+     pub kind: PostConditionKind,
+ }
+ 
+-#[derive(Debug, ToDebugSNode)]
++#[derive(Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct FuncDeclSst {
+     pub req_inv_pars: Pars,
+     pub ens_pars: Pars,
+@@ -390,7 +392,7 @@ pub struct FuncDeclSst {
+     pub fndef_axioms: Exps,
+ }
+ 
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct FuncCheckSst {
+     pub reqs: Exps,
+     pub post_condition: Arc<PostConditionSst>,
+@@ -402,20 +404,20 @@ pub struct FuncCheckSst {
+     pub statics: Arc<Vec<Fun>>,
+ }
+ 
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct FuncSpecBodySst {
+     pub decrease_when: Option<Exp>,
+     pub termination_check: Option<FuncCheckSst>,
+     pub body_exp: Exp,
+ }
+ 
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct FuncAxiomsSst {
+     pub spec_axioms: Option<FuncSpecBodySst>,
+     pub proof_exec_axioms: Option<(Pars, Exp, Trigs)>,
+ }
+ 
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct FunctionSstHas {
+     pub has_body: bool,
+     pub has_requires: bool,
+@@ -427,7 +429,7 @@ pub struct FunctionSstHas {
+ }
+ 
+ pub type FunctionSst = Arc<Spanned<FunctionSstX>>;
+-#[derive(Debug, Clone, ToDebugSNode)]
++#[derive(Debug, Clone, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct FunctionSstX {
+     pub name: Fun,
+     pub kind: crate::ast::FunctionKind,
+@@ -453,7 +455,7 @@ pub struct FunctionSstX {
+ }
+ 
+ pub type KrateSst = Arc<KrateSstX>;
+-#[derive(Debug)]
++#[derive(Debug, serde::Serialize, serde::Deserialize)]
+ pub struct KrateSstX {
+     pub functions: Vec<FunctionSst>,
+     pub datatypes: Vec<crate::ast::Datatype>,
+diff --git a/source/vir/src/sst_vars.rs b/source/vir/src/sst_vars.rs
+index 14be689..e3df26c 100644
+--- a/source/vir/src/sst_vars.rs
++++ b/source/vir/src/sst_vars.rs
+@@ -644,19 +644,19 @@ fn stms_mutations(param_typs: &[(VarIdent, Typ)], mutations: &mut HavocSet, stms
+ }
+ 
+ /// Represents a set of locations that need to be havoc'ed
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct HavocSet {
+     pub vars: IndexMap<VarIdent, SublocationTree>,
+ }
+ 
+ /// Represents, for a given local, the set of sublocations that need havocing
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct SublocationTree {
+     local: VarIdent,
+     root: SublocationNode,
+ }
+ 
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ pub struct SublocationNode {
+     typ: Typ,
+     /// None means havoc this entire location
+@@ -664,20 +664,20 @@ pub struct SublocationNode {
+ }
+ 
+ /// A single sublocation
+-#[derive(Clone, Debug)]
++#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+ pub struct Sublocation {
+     local: VarIdent,
+     local_typ: Typ,
+     projections: Vec<Projection>,
+ }
+ 
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ struct Projection {
+     typ: Typ,
+     kind: ProjectionKind,
+ }
+ 
+-#[derive(Clone, Debug, ToDebugSNode)]
++#[derive(Clone, Debug, ToDebugSNode, serde::Serialize, serde::Deserialize)]
+ enum ProjectionKind {
+     MutRefCurrent,
+     Field(FieldOpr),
 diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
 new file mode 100644
-index 0000000..a6b7d41
+index 0000000..687ae7f
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,340 @@
 +//! Private batch session: all retained spans belong to the active compiler callback.
 +use super::*;
-+use std::cell::RefCell;
-+use std::sync::atomic::{AtomicBool, Ordering};
++use std::cell::{Cell,RefCell};
++use std::io::Read;
++use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 +use sha2::{Digest, Sha256};
 +static FOCUS: AtomicBool = AtomicBool::new(false);
 +static CACHING: AtomicBool = AtomicBool::new(false);
 +const BUDGET: usize = 512 * 1024 * 1024;
-+type Messages = Vec<(ArcDynMessage, MessageLevel)>;
-+struct Entry { sst: vir::sst::KrateSst, ctx: vir::context::Ctx, messages: Messages, charge: usize }
++static BATCH_HITS:AtomicU64=AtomicU64::new(0);
++static PERSISTENT_HITS:AtomicU64=AtomicU64::new(0);
++static MISSES:AtomicU64=AtomicU64::new(0);
++static PEAK_RETAINED:AtomicU64=AtomicU64::new(0);
++pub(super) fn preparation_summary(){if active(){emit("preparation-summary",serde_json::json!({"version":1,"enabled":ENABLED.load(Ordering::Relaxed),"batch_hits":BATCH_HITS.load(Ordering::Relaxed),"persistent_hits":PERSISTENT_HITS.load(Ordering::Relaxed),"misses":MISSES.load(Ordering::Relaxed),"peak_retained_bytes":PEAK_RETAINED.load(Ordering::Relaxed),"memory_budget_bytes":BUDGET,"disk_budget_bytes":BUDGET}));}}
++static PREPARATION_GATE:std::sync::Mutex<()>=std::sync::Mutex::new(());
++static REPORT_BYTES:AtomicU64=AtomicU64::new(0);
++static ENABLED:AtomicBool=AtomicBool::new(false);
++struct SourceOwner {index:usize,name:String,start:u32,length:u32,hash:String,foreign:bool}
++struct Sources(Vec<SourceOwner>,usize);
++static SOURCES:std::sync::Mutex<Option<Arc<Sources>>>=std::sync::Mutex::new(None);
++fn sources(source_map:&SourceMap)->Option<Sources> {
++    let files=source_map.files();if files.len()>4096{return None;}
++    let mut owners=Vec::new();let mut charge=0usize;
++    for (index,file) in files.iter().enumerate(){
++        let name=format!("{:?}",file.name);let hash=format!("{:?}",file.src_hash.hash_bytes());
++        charge=charge.saturating_add(name.capacity()).saturating_add(hash.capacity()).saturating_add(256);
++        if charge>16*1024*1024{return None;}
++        owners.push(SourceOwner {index,name,start:file.start_pos.0,length:file.normalized_source_len.0,hash,foreign:matches!(*file.external_src.borrow(),rustc_span::ExternalSource::Foreign{..})});
++    }
++    Some(Sources(owners,charge.saturating_add(256)))
++}
++fn retained_charge(){
++    let sources=SOURCES.lock().ok().and_then(|sources|sources.as_ref().map(|sources|sources.1)).unwrap_or(0);
++    let cache=with_cache(|cache|cache.borrow_mut().bucket.as_ref().map_or(0,|(_,entry)|entry._charge));
++    let charge=(sources as u64).saturating_add(cache as u64).saturating_add(REPORT_BYTES.load(Ordering::Relaxed)).saturating_add(256);
++    PEAK_RETAINED.fetch_max(charge,Ordering::Relaxed);
++}
++pub(super) fn finish_cache(){CACHING.store(false,Ordering::Relaxed);with_cache(|cache|*cache.borrow_mut()=Cache::default());if let Ok(mut sources)=SOURCES.lock(){*sources=None;}}
++#[derive(Clone,Copy,serde::Serialize,serde::Deserialize)]
++pub(super) enum Emission {Report,ReportAs,ReportNow,ReportAsNow}
++type Messages = Vec<(ArcDynMessage, MessageLevel,Emission)>;
++struct Entry { bytes: Arc<[u8]>, _charge: usize }
 +#[derive(Default)]
-+struct Cache {
-+    common: Option<(usize, usize, GlobalCtx, Krate)>,
-+    buckets: HashMap<String, Entry>,
-+    charged: usize,
++struct Cache { bucket: Option<(String,Entry)> }
++#[derive(serde::Serialize,serde::Deserialize)]
++struct Portable { version:u32, key:String, bindings:Vec<(vir::messages::SailSpanKey,String)>, sst: vir::sst::KrateSst, effects: vir::context::SailEffects, messages: Vec<(MessageX,MessageLevel,Emission)> }
++#[derive(serde::Serialize)]
++struct PortableView<'a> { version:u32,key:&'a str,bindings:Vec<(vir::messages::SailSpanKey,String)>,sst:&'a vir::sst::KrateSst,effects:vir::context::SailEffectsView<'a>,messages:Vec<(&'a MessageX,MessageLevel,Emission)> }
++const BUFFER_BUDGET:usize=128*1024*1024;
++struct Bounded { bytes: Vec<u8> }
++impl Write for Bounded {
++    fn write(&mut self,bytes:&[u8])->std::io::Result<usize> {
++        if self.bytes.len().saturating_add(bytes.len()) > BUFFER_BUDGET {return Err(std::io::Error::other("prepared artifact budget"));}
++        let needed=self.bytes.len()+bytes.len();
++        if needed>self.bytes.capacity(){let capacity=needed.max(self.bytes.capacity().saturating_mul(2)).max(4096).min(BUFFER_BUDGET);self.bytes.try_reserve_exact(capacity-self.bytes.len()).map_err(std::io::Error::other)?;}
++        if self.bytes.capacity()>BUFFER_BUDGET{return Err(std::io::Error::other("prepared allocation budget"));}
++        self.bytes.extend_from_slice(bytes);Ok(bytes.len())
++    }
++    fn flush(&mut self)->std::io::Result<()>{Ok(())}
 +}
 +struct CacheCell(std::sync::Mutex<Cache>);
 +impl CacheCell {
-+    fn borrow(&self) -> std::sync::MutexGuard<'_, Cache> { self.0.lock().unwrap() }
 +    fn borrow_mut(&self) -> std::sync::MutexGuard<'_, Cache> { self.0.lock().unwrap() }
 +}
 +fn with_cache<T>(f: impl FnOnce(&CacheCell)->T)->T {
@@ -378,62 +1035,208 @@ index 0000000..a6b7d41
 +        emit("diagnostic", serde_json::json!({"message":msg,"level":level}));
 +    }
 +}
-+pub(super) fn clear() { CACHING.store(false,Ordering::Relaxed); with_cache(|cache| *cache.borrow_mut() = Cache::default()); }
-+pub(super) fn take_common(v: &Verifier) -> Option<(GlobalCtx, Krate)> {
-+    if !active() || !CACHING.load(Ordering::Relaxed) { return None; }
-+    with_cache(|cache| {
-+        let cache=cache.borrow();
-+        let (krate,args,global,simplified)=cache.common.as_ref()?;
-+        if *krate != Arc::as_ptr(v.vir_crate.as_ref()?) as usize || *args != Arc::as_ptr(&v.args) as usize { return None; }
-+        // No mutations from SMT are shared back into this immutable baseline.
-+        Some((global.clone(), simplified.clone()))
-+    })
++fn unique(v:&Verifier,fun:&Fun)->bool {
++    let name=fun_as_friendly_rust_name(fun);
++    v.vir_crate.as_ref().is_some_and(|krate|krate.functions.iter().filter(|function|fun_as_friendly_rust_name(&function.x.name)==name).count()==1)
 +}
-+pub(super) fn store_common(v: &Verifier, global: &GlobalCtx, simplified: &Krate) {
-+    if !active() || !CACHING.load(Ordering::Relaxed) { return; }
-+    with_cache(|cache| cache.borrow_mut().common=Some((Arc::as_ptr(v.vir_crate.as_ref().unwrap()) as usize, Arc::as_ptr(&v.args) as usize, global.clone(), simplified.clone())));
++pub(super) fn progress_start(v:&Verifier,fun:&Fun,comment:&str,description:&str,spinoff:Option<usize>,checks:usize)->Option<String> {
++    if !active() || !unique(v,fun) {return None;}
++    let function=fun_as_friendly_rust_name(fun);
++    let kind=comment.split_once(' ')?.0;
++    if description.len()>4096 {return None;}
++    emit("function-started",serde_json::json!({"function":function}));
++    static ORDINALS:std::sync::Mutex<Option<HashMap<(bool,String,String),u32>>>=std::sync::Mutex::new(None);
++    let identity=if let Some(index)=spinoff {
++        if checks!=1 {return None;}format!("{function}#{kind}/spinoff-{index}")
++    } else {
++        let mut ordinals=ORDINALS.lock().ok()?;
++        let count=ordinals.get_or_insert_with(HashMap::new).entry((FOCUS.load(Ordering::Relaxed),function.clone(),kind.to_owned())).or_insert(0);
++        let id=format!("{function}#{kind}/{count}");*count+=1;id
++    };
++    emit("obligation-progress",serde_json::json!({"function":function,"obligation":identity,"description":description,"completed":false}));Some(identity)
 +}
++pub(super) fn functions_observed(v:&Verifier,bucket:&BucketId) {
++    if !active(){return;}
++    if let Some(stats)=v.func_times.get(bucket){
++        for (fun,stats) in stats {if unique(v,fun) && v.user_filter.as_ref().is_some_and(|filter| filter.includes_function(fun)){
++            emit("function-observed",serde_json::json!({"function":fun_as_friendly_rust_name(fun),"module":module_name(bucket.module()),"mode":v.get_function_mode(fun).map(|mode|mode.to_string()),"success":!v.func_fails.contains(fun),"smt_micros":stats.smt_time.as_micros(),"rlimit":stats.rlimit_count}));
++        }}
++    }
++}
++pub(super) fn clear() { ENABLED.store(false,Ordering::Relaxed);BATCH_HITS.store(0,Ordering::Relaxed);PERSISTENT_HITS.store(0,Ordering::Relaxed);MISSES.store(0,Ordering::Relaxed);PEAK_RETAINED.store(0,Ordering::Relaxed);CACHING.store(false,Ordering::Relaxed); with_cache(|cache| *cache.borrow_mut() = Cache::default()); }
 +pub(super) fn bucket_key(v: &Verifier, bucket: &BucketId, krate: &Krate, ctx: &vir::context::Ctx) -> String {
-+    if !CACHING.load(Ordering::Relaxed) || v.args.log_all || v.args.log_args.log_vir_sst || v.args.log_args.log_interpreter || v.args.log_args.log_call_graph { return String::new(); }
-+    // The shared baseline supplies the *same* exact globals, graph order and options.
-+    // Cache lifetime is shorter than the live compiler callback; no cross-revision spans.
-+    let bytes = format!("{:p}:{:p}:{:?}:{:?}:{:?}", Arc::as_ptr(v.vir_crate.as_ref().unwrap()),Arc::as_ptr(&v.args),bucket, { let mut funs=v.get_bucket(bucket).funs.iter().map(fun_as_friendly_rust_name).collect::<Vec<_>>();funs.sort();funs }, krate);
-+    let bytes=format!("{bytes}:{}",ctx.sail_baseline());
-+    Sha256::digest(bytes.as_bytes()).iter().map(|byte| format!("{byte:02x}")).collect()
++    if !CACHING.load(Ordering::Relaxed) || v.args.no_verify || v.args.debugger || v.args.log_all || v.args.log_args.log_vir_sst || v.args.log_args.log_interpreter || v.args.log_args.log_call_graph { return String::new(); }
++    let _gate=match PREPARATION_GATE.lock(){Ok(guard)=>guard,Err(_)=>return String::new()};
++    // Complete typed representations preserve crate ids and exact span data.
++    let mut members=Vec::new();let mut member_bytes=0usize;
++    for fun in &v.get_bucket(bucket).funs {let Some(value)=vir::context::sail_encode(fun)else{return String::new();};
++        member_bytes=member_bytes.saturating_add(value.capacity()).saturating_add(64);if member_bytes>32*1024*1024{return String::new();}members.push(value);}
++    members.sort();
++    let Some(baseline)=ctx.sail_baseline() else{return String::new();};
++    let options=(v.args.no_auto_recommends_check,v.args.no_external_by_default,v.args.allow_inline_air,v.args.rlimit,&v.args.smt_options,v.args.debugger,format!("{:?}",v.args.solver),v.args.check_api_safety,v.args.axiom_usage_info,v.args.no_bv_simplify,v.args.no_cheating,v.args.no_trait_conflicts,v.args.no_lifetime,v.args.no_erasure_check);
++    let Some(bytes)=vir::context::sail_encode(&(std::env::var("SAIL_ENGINE_CONTEXT").unwrap_or_default(),members,krate,baseline,options,(v.args.multiple_errors,v.args.expand_errors,v.args.ignore_unexpected_smt,v.args.profile,v.args.profile_all,v.args.capture_profiles,v.args.spinoff_all,v.args.build_sst))) else{return String::new();};
++    Sha256::digest(&bytes).iter().map(|byte| format!("{byte:02x}")).collect()
 +}
-+pub(super) fn take_bucket(key: &str) -> Option<(vir::sst::KrateSst,vir::context::Ctx)> {
-+    if key.is_empty() || !active() || !CACHING.load(Ordering::Relaxed) { return None; }
-+    with_cache(|cache| cache.borrow().buckets.get(key).map(|e|(e.sst.clone(),e.ctx.clone())))
-+}
-+pub(super) fn store_bucket(key: String, sst: &vir::sst::KrateSst, ctx: &vir::context::Ctx, messages: Messages) {
-+    if key.is_empty() || !active() || !CACHING.load(Ordering::Relaxed) { return; }
-+    // Conservative charge includes expanded debug representation; saturation avoids overflow.
-+    let charge=format!("{:?}",sst).len().saturating_mul(8).saturating_add(1024*1024);
-+    if charge>BUDGET { return; }
-+    with_cache(|cache| {
-+        let mut cache=cache.borrow_mut();
-+        if cache.charged.saturating_add(charge)>BUDGET { cache.buckets.clear();cache.charged=0; }
-+        if let Some(previous)=cache.buckets.insert(key,Entry{sst:sst.clone(),ctx:ctx.clone(),messages,charge}) { cache.charged=cache.charged.saturating_sub(previous.charge); }
-+        cache.charged+=charge;
-+    });
-+}
-+pub(super) fn replay_bucket_diagnostics(key: &str, reporter: &impl Diagnostics) {
-+    with_cache(|cache| {
-+        if let Some(entry)=cache.borrow().buckets.get(key) {
-+            for (message,level) in &entry.messages { reporter.report_as(message,*level); }
++fn provenance(span:&vir::messages::Span, sources:&Sources)->Option<String> {
++    struct HashWriter(Sha256);
++    impl Write for HashWriter{fn write(&mut self,bytes:&[u8])->std::io::Result<usize>{self.0.update(bytes);Ok(bytes.len())}fn flush(&mut self)->std::io::Result<()>{Ok(())}}
++    let mut writer=HashWriter(Sha256::new());
++    fn owner(writer:&mut HashWriter,file:&SourceOwner)->Option<()>{bincode_next::serde::encode_into_std_write(&(file.index,&file.name,file.start,file.length,&file.hash,file.foreign),writer,bincode_next::config::legacy()).ok()?;Some(())}
++    if let Some(raw)=((&*span.raw_span) as &(dyn std::any::Any+Send+Sync)).downcast_ref::<rustc_span::SpanData>() {
++        bincode_next::serde::encode_into_std_write(&("local",format!("{:?}",raw)),&mut writer,bincode_next::config::legacy()).ok()?;
++        if raw.lo.0!=0 || raw.hi.0!=0 {
++            let mut count=0;for file in &sources.0{if raw.lo.0>=file.start && raw.hi.0<=file.start.saturating_add(file.length){owner(&mut writer,file)?;count+=1;}}
++            if count!=1{return None;}
 +        }
-+    });
++    }else{
++        if span.data.len()!=2{return None;}
++        bincode_next::serde::encode_into_std_write(&("imported",&span.data),&mut writer,bincode_next::config::legacy()).ok()?;
++        for file in &sources.0{if file.foreign{owner(&mut writer,file)?;}}
++    }
++    Some(writer.0.finalize().iter().map(|byte|format!("{byte:02x}")).collect())
 +}
-+pub(super) struct RecordingReporter<'a,T> { reporter: &'a T, messages: RefCell<Messages> }
++fn current_bindings(krate:&Krate,ctx:&vir::context::Ctx)->Option<vir::messages::SailSpanBindings> {
++    struct Sink;impl Write for Sink {fn write(&mut self,bytes:&[u8])->std::io::Result<usize>{Ok(bytes.len())}fn flush(&mut self)->std::io::Result<()>{Ok(())}}
++    let (result,bindings)=vir::messages::sail_collect_spans(||bincode_next::serde::encode_into_std_write(&(krate,ctx.sail_seed_spans()),&mut Sink,bincode_next::config::legacy()));
++    result.ok()?;bindings
++}
++pub(super) fn take_bucket(key: &str, krate:&Krate, source_map:Option<&SourceMap>, ctx: &mut vir::context::Ctx) -> Option<(vir::sst::KrateSst,Messages)> {
++    if !active() || !CACHING.load(Ordering::Relaxed) { return None; }
++    let _gate=PREPARATION_GATE.lock().ok()?;
++    MISSES.fetch_add(1,Ordering::Relaxed);
++    if key.is_empty(){return None;}
++    // One cache preparation operation and retained serialized buffer globally.
++    // Moving it out releases all cache ownership before allocating/decoding a miss.
++    let bytes=with_cache(|cache|cache.borrow_mut().bucket.take().filter(|(stored,_)|stored==key).map(|(_,entry)|entry.bytes));
++    let batch=bytes.is_some();
++    let bytes=match bytes.or_else(||read_disk(key)){Some(bytes)=>bytes,None=>return None};
++    let source_inventory=SOURCES.lock().ok()?.clone()?;
++    let _=source_map;
++    let bindings=current_bindings(krate,ctx)?;
++    let mut reader=std::io::Cursor::new(bytes.as_ref());
++    let portable:Portable=vir::messages::sail_resolve_spans(&bindings,||bincode_next::serde::decode_from_std_read(&mut reader,bincode_next::config::legacy().with_limit::<536870912>())).ok()?;
++    if portable.version!=1 || portable.key!=key {return None;}
++    for (identity,expected) in &portable.bindings {
++        if provenance(bindings.get(identity)?,&source_inventory)?.as_str()!=expected {return None;}
++    }
++    if reader.position()!=bytes.len() as u64 {return None;}
++    ctx.sail_restore_effects(portable.effects);
++    MISSES.fetch_sub(1,Ordering::Relaxed);
++    if batch {BATCH_HITS.fetch_add(1,Ordering::Relaxed);}else{PERSISTENT_HITS.fetch_add(1,Ordering::Relaxed);}
++    emit("prepared-restored",serde_json::json!({"source":if batch{"batch"}else{"persistent"},"bytes":bytes.len()}));
++    Some((portable.sst,portable.messages.into_iter().map(|(message,level,immediate)|(Arc::new(message) as ArcDynMessage,level,immediate)).collect()))
++}
++pub(super) fn store_bucket(key: String, sst: &vir::sst::KrateSst, ctx: &vir::context::Ctx, source_map:Option<&SourceMap>, messages: std::cell::Ref<'_,Messages>) {
++    if key.is_empty() || !active() || !CACHING.load(Ordering::Relaxed) {emit("prepared-unavailable",serde_json::json!({"stage":"key"})); return; }
++    let Ok(_gate)=PREPARATION_GATE.lock()else{return;};
++    with_cache(|cache|cache.borrow_mut().bucket=None);
++    if ctx.fun.is_some(){return;}
++    let effects=vir::context::SailEffectsView(ctx);
++    if messages.len()>131072 {return;}
++    let Some(messages)=messages.iter().map(|(message,level,immediate)|Some((message.downcast_ref::<MessageX>()?,*level,*immediate))).collect::<Option<Vec<_>>>() else{return;};
++    let Some(source_inventory)=SOURCES.lock().ok().and_then(|sources|sources.clone()) else{emit("prepared-unavailable",serde_json::json!({"stage":"sources"}));return;};
++    let _=source_map;
++    let mut portable=PortableView {version:1,key:&key,bindings:Vec::new(),sst,effects,messages};
++    let mut writer=Bounded {bytes:Vec::new()};
++    let (encoded,bindings)=vir::messages::sail_collect_spans(||bincode_next::serde::encode_into_std_write(&portable,&mut writer,bincode_next::config::legacy()));
++    if let Err(error)=encoded {emit("prepared-unavailable",serde_json::json!({"stage":"serialize","reason":error.to_string()}));return;}
++    let Some(bindings)=bindings else{emit("prepared-unavailable",serde_json::json!({"stage":"bindings"}));return;};
++    let mut converted=Vec::new();let mut converted_bytes=0usize;
++    for (key,span) in bindings{
++        let Some(value)=provenance(&span,&source_inventory)else{emit("prepared-unavailable",serde_json::json!({"stage":"provenance"}));return;};
++        converted_bytes=converted_bytes.saturating_add(key.1.capacity().saturating_mul(8)).saturating_add(key.2.capacity()).saturating_add(value.capacity()).saturating_add(128);
++        if converted_bytes>16*1024*1024{return;}converted.push((key,value));
++    }
++    portable.bindings=converted;portable.bindings.sort_by(|a,b|a.0.cmp(&b.0));
++    writer.bytes.clear();
++    if bincode_next::serde::encode_into_std_write(&portable,&mut writer,bincode_next::config::legacy()).is_err(){return;}
++    let bytes:Arc<[u8]>=writer.bytes.into();
++    let charge=bytes.len().saturating_add(key.capacity()).saturating_add(std::mem::size_of::<Entry>()).saturating_add(256);
++    if charge>BUDGET {return;}
++    write_disk(&key,&bytes);
++    with_cache(|cache| cache.borrow_mut().bucket=Some((key,Entry {bytes,_charge:charge})));retained_charge();
++}
++fn disk_root()->Option<std::path::PathBuf>{std::env::var_os("SAIL_ENGINE_PREPARED_DIR").map(std::path::PathBuf::from)}
++fn read_disk(key:&str)->Option<Arc<[u8]>> {
++    let root=disk_root()?;let path=root.join(format!("{key}.prepared"));
++    let file=std::fs::File::open(&path).ok()?;
++    let metadata=file.metadata().ok()?;
++    if metadata.len()>(BUFFER_BUDGET+64) as u64 || metadata.len()<64 {return None;}
++    let size=usize::try_from(metadata.len()).ok()?;
++    let mut bytes=Vec::new();bytes.try_reserve_exact(size).ok()?;
++    if bytes.capacity()>BUFFER_BUDGET+64{return None;}
++    bytes.resize(size,0);let mut file=file;
++    file.read_exact(&mut bytes).ok()?;
++    let mut extra=[0u8;1];if file.read(&mut extra).ok()?!=0{return None;}
++    if bytes.len()>BUFFER_BUDGET+64 || bytes.len()<64 {return None;}
++    let (expected,body)=bytes.split_at(64);
++    let actual=Sha256::digest(body).iter().map(|byte|format!("{byte:02x}")).collect::<String>();
++    if expected!=actual.as_bytes(){return None;}
++    Some(Arc::from(body))
++}
++fn write_disk(key:&str,bytes:&[u8]) {
++    let Some(root)=disk_root() else{return;};
++    if std::fs::create_dir_all(&root).is_err(){return;}
++    let Ok(lock)=std::fs::OpenOptions::new().create(true).read(true).write(true).truncate(false).open(root.join("cache.lock")) else{return;};
++    if lock.lock().is_err(){return;}
++    // Reserve temporary bytes under the same lock; count both committed and abandoned
++    // temporary buffers. Never retain a per-entry independent 512 MiB allowance.
++    let files=std::fs::read_dir(&root).into_iter().flatten().flatten().filter(|entry|entry.file_name()!="cache.lock").take(4097).collect::<Vec<_>>();
++    if files.len()>4096{return;}
++    let total=files.iter().filter_map(|entry|entry.metadata().ok().map(|metadata|metadata.len())).fold(0u64,u64::saturating_add);
++    if total.saturating_add(bytes.len() as u64+64)>BUDGET as u64 {for entry in files {let _=std::fs::remove_file(entry.path());}}
++    let remaining=std::fs::read_dir(&root).into_iter().flatten().flatten().filter(|entry|entry.file_name()!="cache.lock").filter_map(|entry|entry.metadata().ok().map(|metadata|metadata.len())).fold(0u64,u64::saturating_add);
++    if remaining.saturating_add(bytes.len() as u64+64)>BUDGET as u64 {return;}
++    let digest=Sha256::digest(bytes).iter().map(|byte|format!("{byte:02x}")).collect::<String>();
++    let temporary=root.join(format!("{key}.{}.tmp",std::process::id()));
++    if let Ok(mut file)=std::fs::File::create(&temporary) {if file.write_all(digest.as_bytes()).and_then(|()|file.write_all(bytes)).is_ok(){let _=std::fs::rename(&temporary,root.join(format!("{key}.prepared")));}}
++    let _=std::fs::remove_file(temporary);
++}
++pub(super) struct RecordingReporter<'a,T> { reporter: &'a T, messages: RefCell<Messages>,charge:Cell<u64>,valid:Cell<bool> }
 +impl<'a,T:Diagnostics> RecordingReporter<'a,T> {
-+    pub fn new(reporter:&'a T)->Self{Self{reporter,messages:RefCell::new(Vec::new())}}
-+    pub fn messages(&self)->Messages{self.messages.borrow().clone()}
++    pub fn new(reporter:&'a T)->Self{Self{reporter,messages:RefCell::new(Vec::new()),charge:Cell::new(0),valid:Cell::new(true)}}
++    pub fn messages(&self)->std::cell::Ref<'_,Messages>{self.messages.borrow()}
++    pub fn cacheable(&self)->bool{self.valid.get()}
++}
++impl<T> Drop for RecordingReporter<'_,T>{fn drop(&mut self){REPORT_BYTES.fetch_sub(self.charge.get(),Ordering::Relaxed);}}
++fn message_charge(msg:&ArcDynMessage)->Option<u64>{
++    let msg=msg.downcast_ref::<MessageX>()?;
++    fn span_charge(span:&vir::messages::Span)->Option<usize>{
++        let raw=(&*span.raw_span) as &(dyn std::any::Any+Send+Sync);
++        let raw_size=if raw.is::<()>(){0}else if raw.is::<rustc_span::SpanData>(){std::mem::size_of::<rustc_span::SpanData>()}else{return None;};
++        Some(span.data.capacity().checked_mul(8)?.checked_add(span.as_string.capacity())?.checked_add(raw_size)?.checked_add(64)?)
++    }
++    // Count reachable allocations even when the original reporter releases its Arc.
++    // Duplicate/shared spans are deliberately overcharged; unknown raw owners miss.
++    let mut charge=std::mem::size_of::<MessageX>().checked_add(128)?.checked_add(msg.note.capacity())?
++        .checked_add(msg.spans.capacity().checked_mul(std::mem::size_of::<vir::messages::Span>())?)?
++        .checked_add(msg.labels.capacity().checked_mul(std::mem::size_of::<vir::messages::MessageLabel>())?)?
++        .checked_add(msg.help.capacity().checked_mul(std::mem::size_of::<String>())?)?;
++    if let Some(note)=&msg.fancy_note{charge=charge.checked_add(note.capacity())?;}
++    for span in &msg.spans{charge=charge.checked_add(span_charge(span)?)?;}
++    for label in &msg.labels{charge=charge.checked_add(label.note.capacity())?.checked_add(span_charge(&label.span)?)?;}
++    for help in &msg.help{charge=charge.checked_add(help.capacity())?;}
++    u64::try_from(charge).ok()
++}
++fn admit_message(msg:&ArcDynMessage)->Option<u64>{
++    let charge=message_charge(msg)?;
++    REPORT_BYTES.fetch_update(Ordering::Relaxed,Ordering::Relaxed,|used|used.checked_add(charge).filter(|used|*used<=16*1024*1024)).ok()?;
++    Some(charge)
++}
++impl<T:Diagnostics> RecordingReporter<'_,T> {
++    fn record(&self,msg:&ArcDynMessage,level:MessageLevel,immediate:Emission){
++        if CACHING.load(Ordering::Relaxed) && self.valid.get(){
++            if let Some(charge)=admit_message(msg){
++                self.charge.set(self.charge.get()+charge);self.messages.borrow_mut().push((msg.clone(),level,immediate));retained_charge();
++            }else{self.valid.set(false);}
++        }
++    }
 +}
 +impl<T:Diagnostics> air::messages::Diagnostics for RecordingReporter<'_,T> {
-+    fn report_as(&self,msg:&ArcDynMessage,level:MessageLevel){self.messages.borrow_mut().push((msg.clone(),level));self.reporter.report_as(msg,level);}
-+    fn report(&self,msg:&ArcDynMessage){self.report_as(msg,msg.downcast_ref::<MessageX>().unwrap().level);}
-+    fn report_now(&self,msg:&ArcDynMessage){self.report(msg);}
-+    fn report_as_now(&self,msg:&ArcDynMessage,level:MessageLevel){self.report_as(msg,level);}
++    fn report_as(&self,msg:&ArcDynMessage,level:MessageLevel){self.record(msg,level,Emission::ReportAs);self.reporter.report_as(msg,level);}
++    fn report(&self,msg:&ArcDynMessage){if let Some(message)=msg.downcast_ref::<MessageX>(){self.record(msg,message.level,Emission::Report);}else{self.valid.set(false);}self.reporter.report(msg);}
++    fn report_now(&self,msg:&ArcDynMessage){if let Some(message)=msg.downcast_ref::<MessageX>(){self.record(msg,message.level,Emission::ReportNow);}else{self.valid.set(false);}self.reporter.report_now(msg);}
++    fn report_as_now(&self,msg:&ArcDynMessage,level:MessageLevel){self.record(msg,level,Emission::ReportAsNow);self.reporter.report_as_now(msg,level);}
 +}
 +impl<T:Diagnostics> Diagnostics for RecordingReporter<'_,T> {
 +    fn use_progress_bars(&self)->bool{false}
@@ -441,9 +1244,10 @@ index 0000000..a6b7d41
 +    fn complete_progress_bar(&self,_:CommandContext){}
 +}
 +#[derive(Default)]
-+struct FocusReporter { messages: RefCell<Messages> }
++struct FocusReporter { messages: RefCell<Messages>,charge:Cell<u64>,incomplete:Cell<bool> }
++impl Drop for FocusReporter{fn drop(&mut self){REPORT_BYTES.fetch_sub(self.charge.get(),Ordering::Relaxed);}}
 +impl air::messages::Diagnostics for FocusReporter {
-+    fn report_as(&self,msg:&ArcDynMessage,level:MessageLevel){ self.messages.borrow_mut().push((msg.clone(),level));diagnostic(msg,level); }
++    fn report_as(&self,msg:&ArcDynMessage,level:MessageLevel){ if let Some(charge)=admit_message(msg){self.charge.set(self.charge.get()+charge);self.messages.borrow_mut().push((msg.clone(),level,Emission::ReportAs));retained_charge();}else{self.incomplete.set(true);}diagnostic(msg,level); }
 +    fn report(&self,msg:&ArcDynMessage){self.report_as(msg,msg.downcast_ref::<MessageX>().unwrap().level);}
 +    fn report_now(&self,msg:&ArcDynMessage){self.report(msg);}
 +    fn report_as_now(&self,msg:&ArcDynMessage,level:MessageLevel){self.report_as(msg,level);}
@@ -461,11 +1265,11 @@ index 0000000..a6b7d41
 +        let krate=self.vir_crate.as_ref().unwrap();
 +        let matches=krate.functions.iter().filter(|f| fun_as_friendly_rust_name(&f.x.name)==name).collect::<Vec<_>>();
 +        if matches.len()!=1 { emit("focus-unavailable",serde_json::json!({"function":name,"matches":matches.len()}));return; }
-+        CACHING.store(true,Ordering::Relaxed);
++        if let Ok(mut inventory)=SOURCES.lock(){*inventory=sources(compiler.sess.source_map()).map(Arc::new);}
++        retained_charge();ENABLED.store(true,Ordering::Relaxed);CACHING.store(true,Ordering::Relaxed);
 +        let selected=matches[0];
 +        let module=selected.x.owning_module.clone().unwrap();
 +        let mut focus=self.from_self();
-+        focus.num_threads=1;
 +        focus.user_filter=Some(UserFilter::Function(module.segments.clone(),name.clone(),HashSet::from([selected.x.name.clone()])));
 +        let log=self.args.log_dir.as_ref().map(|p|std::path::PathBuf::from(p).join("focus"));
 +        if let Some(path)=log { let _=std::fs::create_dir_all(&path);focus.created_log_dir=Arc::new(std::sync::Mutex::new(Some(path.clone())));focus.created_solver_log_dir=Arc::new(std::sync::Mutex::new(Some(path))); }
@@ -477,9 +1281,10 @@ index 0000000..a6b7d41
 +        for (fun,details) in &focus.func_details { functions.insert(fun_as_friendly_rust_name(fun),details.to_json()); }
 +        let mut times=Vec::new();
 +        for (bucket, stats) in &focus.func_times { let mut fns=Vec::new(); for (fun,stats) in stats { fns.push(serde_json::json!({"function":fun_as_friendly_rust_name(fun),"mode:":focus.get_function_mode(fun).map(|m|m.to_string()),"time-micros":stats.smt_time.as_micros(),"rlimit":stats.rlimit_count,"success":!focus.func_fails.contains(fun)})); } times.push(serde_json::json!({"module":module_name(bucket.module()),"function-breakdown":fns})); }
-+        let diagnostics=reporter.messages.borrow().iter().filter_map(|(msg,level)|msg.downcast_ref::<MessageX>().map(|msg|serde_json::json!({"message":msg,"level":level}))).collect::<Vec<_>>();
++        let diagnostics=reporter.messages.borrow().iter().filter_map(|(msg,level,_)|msg.downcast_ref::<MessageX>().map(|msg|serde_json::json!({"message":msg,"level":level}))).collect::<Vec<_>>();
 +        let document=serde_json::json!({"version":1,"function":name,"confirmed":false,"diagnostics":diagnostics,"verus":{"func-details":functions,"verification-results":{"encountered-error":status.is_err(),"encountered-vir-error":focus.encountered_vir_error,"verified":focus.count_verified,"errors":focus.count_errors,"is-verifying-entire-crate":false},"times-ms":{"smt":{"smt-run-module-times":times}}}});
-+        if let Some(path)=std::env::var_os("SAIL_ENGINE_FOCUS_REPORT") { let _=std::fs::write(path,document.to_string()); }
++        if reporter.incomplete.get(){emit("focus-unavailable",serde_json::json!({"function":name,"reason":"focus diagnostic retention budget"}));}
++        else if let Some(path)=std::env::var_os("SAIL_ENGINE_FOCUS_REPORT") { let _=std::fs::write(path,document.to_string()); }
 +        emit("phase-finished",serde_json::json!({"function":name,"errors":focus.count_errors,"confirmed":false}));
 +        FOCUS.store(false,Ordering::Relaxed);
 +        emit("phase-started",serde_json::json!({}));
