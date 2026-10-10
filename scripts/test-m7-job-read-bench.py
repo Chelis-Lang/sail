@@ -30,6 +30,10 @@ class ReadAcceptanceTests(unittest.TestCase):
         result = self.result()
         self.assertFalse(bench.valid_established(result, "other", "r"))
         self.assertFalse(bench.valid_established(result, "proof", "new"))
+        for field in ("job", "result"):
+            changed = copy.deepcopy(result)
+            changed["value"][field]["input_revision"] = "other"
+            self.assertFalse(bench.valid_established(changed, "proof", "r"))
         for state in ("running", "cancelled", "infrastructure_error"):
             changed = copy.deepcopy(result)
             changed["value"]["job"]["state"] = state

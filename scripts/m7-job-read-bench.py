@@ -106,7 +106,8 @@ def status(response):
 
 def valid_established(response, job, revision):
     evidence = status(response)
-    if evidence["id"] != job or evidence["state"] != "completed" or evidence["currentness"] != "current":
+    if (evidence["id"] != job or evidence["state"] != "completed"
+            or evidence["currentness"] != "current" or evidence["input_revision"] != revision):
         return False
     if response["response"] == "result":
         result = response["value"]["result"]
