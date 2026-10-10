@@ -106,9 +106,10 @@ pub(super) fn load(root: &Path) -> io::Result<BTreeMap<String, Stored>> {
 }
 pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
     let mut status = job.status.clone();
+    let mut repair = None;
     let result = if status.state == Lifecycle::Completed {
         let mut project = project(state, job)?;
-        let snapshot = refresh(job, &project);
+        let snapshot = refresh(state, job, &project);
         status.currentness = match snapshot {
             Some(snapshot) if snapshot.revision != project.input_revision => {
                 Currentness::Historical
@@ -129,26 +130,49 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
             Currentness::Historical => sail_api::project::Currentness::Historical,
             Currentness::Unknown => sail_api::project::Currentness::Unknown,
         };
+        if status.currentness == Currentness::Unknown {
+            project.notes.push("SAIL3114: current input validation is unavailable or still running; native coverage and kernel read leases must be established before claiming Current".to_owned());
+        }
+        if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+            let mut envelope = repair_project(state, job)?;
+            envelope.batch.full = project.clone();
+            envelope.accepted = envelope.batch.accepted();
+            repair = Some(Box::new(envelope));
+        }
         Some(serde_json::to_value(project).map_err(io::Error::other)?)
     } else {
         None
     };
     Ok(ResultDocument {
-        repair: None,
+        repair,
         job: status,
         result,
     })
 }
 
 fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
+    let bytes = project_bytes(state, job)?;
+    if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+        let envelope: sail_api::repair::ResultDocument =
+            serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+        Ok(envelope.batch.full)
+    } else {
+        serde_json::from_slice(&bytes).map_err(io::Error::other)
+    }
+}
+fn repair_project(state: &State, job: &Stored) -> io::Result<sail_api::repair::ResultDocument> {
+    serde_json::from_slice(&project_bytes(state, job)?).map_err(io::Error::other)
+}
+fn project_bytes(state: &State, job: &Stored) -> io::Result<Vec<u8>> {
     let path = state.root.join(&job.status.id).join("stdout");
     if std::fs::metadata(&path)?.len() > sail_api::jobs::MAX_FRAME as u64 {
         return Err(io::Error::other(
             "SAIL0814: result exceeds RPC limit; retained output is available in the private job store",
         ));
     }
-    serde_json::from_slice(&std::fs::read(path)?).map_err(io::Error::other)
+    std::fs::read(path)
 }
+
 fn refresh(
     job: &Stored,
     project: &sail_api::project::ProjectResult,
