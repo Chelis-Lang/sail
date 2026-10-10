@@ -76,8 +76,8 @@ keys and new SMT backends remain deferred.
    - **Done:** key v2; a disk tier, a 256 MiB memory tier and write-behind
      stores (ADR 0011, 0015); serving far-from-limit `unknown` answers
      (ADR 0009); effort recording; fault injection; a shared tier of
-     signed entries in a directory store (ADR 0017).
-   - **Designed, not built:** read-only HTTP(S) shared stores (ADR 0017).
+     signed entries in a directory store (ADR 0017); optional authenticated
+     HTTP(S) reading and publication with a self-hosted server (ADR 0025).
    - **Deferred:** warm solver pools (measured; see below) and the opt-in
      stack-key mode (ADR 0008 update).
 2. **CLI.**

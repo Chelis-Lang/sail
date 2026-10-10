@@ -32,8 +32,12 @@ its report describes that requested scope. Managed mode owns its target and
 observation logs, and does not accept an external `--target-dir`, direct Verus
 source selection, tests/benches/examples, a chained workspace rustc wrapper,
 portfolio, fragility measurement, custom sysroots or JSON target specifications.
-Ordinary Cargo library and binary targets
-are supported.
+Ordinary Cargo library and binary targets are supported. Cargo `--config`,
+configuration includes, and compiler, wrapper, loader or sysroot overrides that
+cannot be bound safely are rejected with `SAIL3112`. Use ordinary `sail verify`
+for those unsupported managed configurations. Cargo configuration discovery
+uses the original invocation directory, including member-directory ancestors;
+relative Cargo/cache homes are resolved against that directory.
 
 Linux is the reference platform for frontend proof reuse. Its ordered native
 event queue tracks transient creation and removal of missing Cargo configuration
@@ -97,7 +101,11 @@ sail mcp
 ```
 
 Watch follows the workspace, local path dependencies and configuration inputs.
-It debounces edits, cancels superseded work and submits the latest revision.
+It debounces edits for 300 ms, cancels superseded work and submits the latest
+revision. Native events are preferred. If event observation becomes unavailable,
+it announces a five-second content-scan fallback using remembered input roots;
+unchanged inputs do not trigger another verification. A settled native watcher
+does not poll completed jobs or rehash the verifier runtime.
 Its JSON-lines stream carries job lifecycle and target completion/reuse events.
 It verifies the requested Cargo scope; it does not guess semantic function
 independence.

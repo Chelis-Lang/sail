@@ -1,6 +1,6 @@
 # sail
 
-**S.A.I.L.** (Satisfiability Analysis & Inference Layer) is a Rust service and toolchain that sits between the [Verus](https://github.com/verus-lang/verus) verifier and its pinned Z3. Its goal is to return verification results as fast as possible, through caching, warm solver pools and function-level scheduling, without ever returning a result plain Verus would not have returned.
+**S.A.I.L.** (Satisfiability Analysis & Inference Layer) is a Rust service and toolchain that sits between the [Verus](https://github.com/verus-lang/verus) verifier and its pinned Z3. It caches solver replies and complete target proofs, with durable verification jobs for developers and agents. Default-mode correctness follows the pinned verifier and the charter’s policy for unstable queries; verdict-changing portfolios are explicitly opt-in.
 
 Status: **initial product complete; live workspace features in development.**
 Pass-through, local/shared signed caching, portfolios, attribution and MCP pass
@@ -40,7 +40,8 @@ results with stable identities, effort and counterexample models. Diagnostics
 still go to stderr unchanged. See `docs/output-schema.md`.
 
 The daemon keeps replies in memory in front of the disk cache, stops after
-30 minutes without connections, and logs to `daemon.log` in the cache root.
+30 minutes without connections or active jobs, and logs to `daemon.log` in the
+cache root.
 `sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
 inspects, checks, shrinks or empties the cache (ADR 0015).
 

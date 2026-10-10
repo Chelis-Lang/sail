@@ -60,8 +60,8 @@ The `env` entry is needed only if `cargo-verus` is not on the client's
   that ignore `structuredContent`).
 - **Concurrency and cancellation.** Tool calls run on their own threads, so
   `ping` and cancellation are served while a verification runs. Runs in one
-  project are serialised through the local job service. Lookups return the
-  latest completed evidence immediately while a newer job runs.
+  project are serialised through the local job service in default mode. Lookups
+  inspect completed evidence without waiting for a newer verifier to finish.
   `notifications/cancelled` kills the run's whole process group (`cargo
   verus`, Verus, shims, solvers), as `sail watch` does, and the call gets no
   response. Cancelling is always safe: the cache stores only complete
@@ -137,22 +137,22 @@ Counterexamples (use the counterexample tool): demo::bad#Function-Def/0.
 First of 1 error(s): postcondition not satisfied at src/lib.rs:10:13.
 ```
 
-`structuredContent`:
+Default `structuredContent` contains `project_dir`, `sail_args`, `exit_code`,
+`duration_ms`, `stored`, `summary` and the schema-v1 `report`, together with:
 
-```json
-{
-  "project_dir": "/work/demo",
-  "sail_args": ["verify", "--output", "json"],
-  "exit_code": 1,
-  "duration_ms": 6238,
-  "sources": {"files": 2, "changed_during_run": false},
-  "run": 2,
-  "finished_at": "2026-10-08T22:41:21.259Z",
-  "stored": true,
-  "summary": "sail verify: 3 functions: …",
-  "report": {"schema_version": 1, "crates": [ … ], "diagnostics": [ … ], "summary": { … }, …}
-}
-```
+- `job`: the durable job status, including its id, lifecycle and currentness;
+- `project_result`: the complete version-1 project envelope, including requested
+  targets, execution counters and their establishing reports;
+- `sources`: `input_revision`, `currentness` and `changed_during_run`. The last
+  value is `false` for current evidence and `null` when historical or unknown
+  currentness cannot establish when an input changed.
+
+The summary also identifies the job and its currentness. If Cargo fails before
+any verification target produces a report, the response contains `job` and
+`project_result` with its diagnostics rather than inventing a function report.
+Explicit portfolio/fragility paths and older Sail installations retain their
+existing report response; their legacy source snapshots cannot establish complete
+workspace/runtime freshness.
 
 **Complete reports.** Default blocking verification forces the requested
 verification targets fresh, so Cargo's unchanged-target shortcut cannot produce
@@ -166,8 +166,10 @@ printed no report, the result has `isError: true` and the end of its stderr.
 
 ### `counterexample`
 
-Returns the counterexample models and diagnostics for a function or
-obligation, from the latest recorded run. Nothing is re-run.
+Returns counterexample evidence for a function or obligation from the latest
+matching completed job, falling back to older MCP records. Nothing is re-run.
+The full establishing report, including diagnostics, is available through
+`verification_result`.
 
 | Argument | Meaning |
 |---|---|
@@ -176,6 +178,35 @@ obligation, from the latest recorded run. Nothing is re-run.
 | `obligation` | An obligation id (`demo::bad#Function-Def/0`). The function part may be a suffix too. |
 
 At least one of `function` and `obligation` is required.
+
+Both `counterexample` and `cached_result` return this shape for job-backed
+lookups, including when only one function is selected:
+
+```json
+{
+  "project_dir": "/work/demo",
+  "job": {"version": 1, "id": "JOB", "state": "completed", "currentness": "historical", "…": "remaining status fields"},
+  "functions": [{
+    "package_id": "…", "target": "demo", "establishing_run": "RUN", "reused": false,
+    "function": "demo::bad", "verdict": "failed", "tier": "confirmed",
+    "mode": "default", "configuration": null,
+    "function_report": {"…": "complete schema-v1 function report"},
+    "obligations": [], "counterexamples": []
+  }]
+}
+```
+
+The example abbreviates the job and report fields. Read `job.currentness` to
+assess whether the evidence applies to current inputs. `establishing_run` names
+the original proof run even when a later job reused its target. Counterexample
+lookups populate `obligations` and `counterexamples`; compact verdict lookups
+set those two fields to `null` and retain the full `function_report`. Obligation
+selectors restrict counterexample evidence to that obligation. A missing
+obligation or ambiguous function is an error, rather than an empty model.
+
+Older MCP records use the following legacy format. Its `freshness` remains
+unknown unless tracked source changes establish that it is stale; those records
+cannot prove complete workspace/runtime currentness.
 
 ```json
 {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
@@ -212,14 +243,18 @@ Compact lookup responses and counterexample responses retain each function's
 label opt-in modes and seeds too. Run freshness includes the originating mode
 and winning seed; recalling a portfolio proof never relabels it as default.
 
-Looks up the latest known verdict for a function or obligation, or for every
-recorded function when given neither. Nothing is re-run. Arguments are as for
+Looks up the latest matching completed job for a function or obligation, or
+its requested functions when given neither. If no completed job matches, it
+falls back to an older MCP record. Nothing is re-run. Arguments are as for
 `counterexample`, all optional.
 
 ```json
 {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
  "params": {"name": "cached_result", "arguments": {"function": "demo::max"}}}
 ```
+
+The following example shows the legacy-record fallback; job-backed responses
+use the `job` and `functions` shape above.
 
 ```text
 demo::max: verified
