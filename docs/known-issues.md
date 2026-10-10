@@ -32,8 +32,20 @@ four-reader latency gate has been established. See the
   selection; static review is insufficient.
 - Earlier real reader and cold repair attempts exceeded their original limits
   or could not establish Current evidence. Their records remain in
-  `docs/validation/`. A fresh diagnostic on the baseline is in progress;
-  inexpensive lifecycle RPC samples do not satisfy the real reader census.
+  `docs/validation/`. The a6/b346 diagnostic established genuine public Current
+  baseline and active-copy proofs, then failed its Python reader census:
+  125/200 samples satisfied the complete freshness/revision admission checks;
+  result p95 was 402.821 ms against the unchanged 200 ms limit. All samples
+  retained the same actual selected verifier. The frozen collector did not record
+  the failed samples' exact freshness labels or reasons; their cause is being
+  profiled. Rust and retained CLI/MCP scenarios were not attempted after this
+  failure. See [all retained samples](validation/m7-a6-b346-reader-census-failure.json).
+- The older frozen reader controller assumed the newer `results/projects/jobs`
+  storage layout, while a6 stores jobs under `projects/jobs`. Public proof
+  evidence remained intact, but automatic raw archival could omit those files.
+  Future controllers now resolve exactly one supported layout and reject
+  missing, ambiguous or substituted evidence. The original run remains frozen;
+  its raw evidence was archived separately. See [reader acceptance](reader-acceptance.md).
 
 ## Freshness and platforms
 
@@ -56,10 +68,12 @@ not change a test deadline or turn observed failures into passes.
 |---|---|---|
 | Linux workspace gate | Source `62ad095`, 436/436 tests plus all gate steps passed; two test workers | [Record](../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
 | Real solver/fault suite | Same source, 36/37 passed; `unverifiable_shared_entries_never_change_an_answer` timed out at the unchanged 180-second test limit; cause unresolved | [Failure](../bench/validation/m7-linux-solver-62ad-failure-emulated-2026-10-10.json) |
+| Isolated shared-entry fault diagnostic | All five corruption cases and both sessions passed in 11.340 seconds; this does not explain or erase the full-suite timeout | [Diagnostic](../bench/validation/shared-signature-fault-diagnostic-linux-emulated-2026-10-10.json) |
 | Full default corpus | Frozen `1dc` passed all 147 fast units in pass-through, fill and warm; standard phase interrupted by container loss and lacks a complete report | [Record](../bench/validation/m7-default-corpus-1dc-interrupted-emulated-2026-10-10.json) |
 
 These records cover their frozen artifacts, not every later source candidate.
-The solver failure is under staged diagnosis. A complete standard run and the
+The complete solver suite is being checked with retained phase diagnostics.
+A complete standard run and the
 remaining M7 source/product gates are still required before merge acceptance.
 
 ## Verus and Z3
