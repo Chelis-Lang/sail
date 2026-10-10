@@ -168,28 +168,41 @@ impl ReadLease {
         if self.failure.is_some() {
             return false;
         }
-        if !self.bindings_current() {
+        #[cfg(test)]
+        let started = std::time::Instant::now();
+        let bindings_current = self.bindings_current();
+        #[cfg(test)]
+        trace_clean("bindings", started);
+        if !bindings_current {
             self.failure.get_or_insert("lease-binding-invalidated");
             #[cfg(test)]
             eprintln!("lease barrier failed: lease-binding-invalidated");
             return false;
         }
-        if interpreter().as_ref() != Some(&self.interpreter) {
+        let interpreter_current = interpreter().as_ref() == Some(&self.interpreter);
+        #[cfg(test)]
+        trace_clean("interpreter", started);
+        if !interpreter_current {
             self.failure.get_or_insert("helper-interpreter-changed");
             return false;
         }
-        if !self.helper_observer.clean() {
+        let helper_clean = self.helper_observer.clean();
+        #[cfg(test)]
+        trace_clean("helper-native", started);
+        if !helper_clean {
             self.failure.get_or_insert("helper-observation-invalidated");
             #[cfg(test)]
             eprintln!("lease barrier failed: helper-observation-invalidated");
             return false;
         }
-        if let Err(reason) = self
+        let kernel = self
             .kernel
             .as_ref()
             .ok_or("kernel-lease-state-unavailable")
-            .and_then(super::kernel_leases::Inventory::check)
-        {
+            .and_then(super::kernel_leases::Inventory::check);
+        #[cfg(test)]
+        trace_clean("kernel-inventory", started);
+        if let Err(reason) = kernel {
             self.failure.get_or_insert(reason);
             #[cfg(test)]
             eprintln!("lease barrier failed: {reason}");
@@ -214,6 +227,17 @@ impl ReadLease {
                         && std::fs::metadata(path)
                             .is_ok_and(|m| m.dev() == *device && m.ino() == *inode)
                 })
+    }
+}
+#[cfg(test)]
+fn trace_clean(stage: &'static str, started: std::time::Instant) {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *ENABLED.get_or_init(|| std::env::var_os("SAIL_FRESHNESS_TRACE").is_some_and(|v| v == "1")) {
+        eprintln!(
+            "sail-lease thread={:?} elapsed_us={} stage={stage}",
+            std::thread::current().id(),
+            started.elapsed().as_micros()
+        );
     }
 }
 fn descriptors(socket: &mut UnixStream) -> Option<Vec<u32>> {
