@@ -49,8 +49,13 @@ four-reader latency gate has been established. See the
   The following runtime pipeline passed its early controls but failed the
   required previous-revision focus gate: zero checked hits after a graph scratch
   admission refusal. Full human-eval qualification was not reached. Allocation
-  bounds are being refined by query operation under the unchanged allowance;
-  no runtime or genuine cross-edit hit is qualified.
+  [The failed source pipeline](../engine/verus/candidates/decode-ownership/c39-qualification-failure.json)
+  retains every reached gate. Allocation bounds now follow the actual scratch
+  owners for each query under the unchanged 8 MiB cap, with 37 pinned VIR
+  controls and strict Clippy passing. The
+  [allocation argument](../engine/verus/candidates/decode-ownership/scoped-graph-scratch.md)
+  covers simultaneous ownership and retained vector capacity. A new ordinary
+  runtime is building; no runtime or genuine cross-edit hit is qualified.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
@@ -104,8 +109,9 @@ four-reader latency gate has been established. See the
   ms. Exact currentness labels for failed admissions were not retained. The
   original fail-fast controller did not reach Rust or retained CLI/MCP checks.
   See [the complete record](validation/m7-reader-prepared-terminal.md).
-  Staged ordinary SDK decoding reuse is being implemented; it cannot retroactively
-  qualify this failed run.
+  Staged ordinary SDK decoding reuse is implemented, with allocation and
+  promotion-recovery controls. Its final live census remains pending; it cannot
+  retroactively qualify this failed run.
 - The older frozen reader controller assumed the newer `results/projects/jobs`
   storage layout, while a6 stores jobs under `projects/jobs`. Public proof
   evidence remained intact, but automatic raw archival could omit those files.
