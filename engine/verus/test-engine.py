@@ -13,6 +13,9 @@ FIXTURES = {
     "failed_focus": "proof fn selected(x: int) ensures x > x { }\nproof fn other(x: int) ensures x == x { }",
     "failed_other": "proof fn selected(x: int) ensures x == x { }\nproof fn other(x: int) ensures x > x { }",
     "late_exec": "proof fn selected() { }\n#[verifier::external_body] fn late() { let mut x = 0u64; let a = &mut x; let b = &mut x; *a = *b; }",
+    "bitvector": "proof fn selected(x: u64) ensures x & x == x { assert(x & x == x) by(bit_vector); }",
+    "recursive": "spec fn count(n: nat) -> nat decreases n { if n == 0 { 0 } else { 1 + count((n-1) as nat) } }\nproof fn selected() ensures count(1) == 1 { }",
+    "macro_spans": "proof fn selected() { assert(identity!(false)); }",
     "missing_function": "proof fn other() { }",
 }
 
@@ -32,7 +35,7 @@ def run(args):
         work = out / name
         work.mkdir(exist_ok=True)
         source = work / "lib.rs"
-        source.write_text("use verus_builtin::*;\nuse verus_builtin_macros::*;\nverus! {\n" + body + "\n}\nfn main() {}\n")
+        source.write_text("use verus_builtin::*;\nuse verus_builtin_macros::*;\n" + ("macro_rules! identity {($x:expr)=>{$x}}\n" if name == "macro_spans" else "") + "verus! {\n" + body + "\n}\nfn main() {}\n")
         records = {}
         for mode, executable in [("stock", args.stock), ("engine", args.engine)]:
             environment = os.environ.copy()
