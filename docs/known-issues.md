@@ -28,8 +28,14 @@ four-reader latency gate has been established. See the
   [ADR 0027's amendment](decisions/0027-interactive-proof-engine-and-repair-workflow.md)
   explain the owner-approved comparison: cached and fresh lowering from the same
   compiler input, with stock verdict/diagnostic checks and separately reported
-  stock transcript instability. A new candidate must execute this gate before
-  selection; static review is insufficient.
+  stock transcript instability. Candidate `2421` completed all 106 independent
+  cached/fresh bucket solver comparisons, but its separate authoritative primary
+  did not finish before the unchanged 600-second human-eval deadline. The full
+  report and terminal seal are absent; edited revision and trailing library
+  gates were not reached. It remains unqualified and unselected. See the
+  [retained failure](../engine/verus/candidates/qualifications/2421-linux-resumed-failure.json).
+  A new candidate must complete this gate before selection; static review is
+  insufficient.
 - Earlier real reader and cold repair attempts exceeded their original limits
   or could not establish Current evidence. Their records remain in
   `docs/validation/`. The a6/b346 diagnostic established genuine public Current
@@ -72,7 +78,8 @@ not change a test deadline or turn observed failures into passes.
 
 | Check | Latest retained scope and result | Evidence |
 |---|---|---|
-| Latest Linux workspace gate | Source `d12d4af`, 431/436 tests passed; five HTTP-cache concurrency tests failed. Cold construction/dispatch exhausted the serving interval in recorded traces; cause and correction remain under review. Later gate steps were not attempted. | [Failure](../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json) |
+| Latest Linux workspace gate | Source `a9dc753`, 435/436 tests passed. The verified paused-initiator serving check still failed after real transport/trust establishment; response-to-classification took 135.738 ms. CPU versus scheduling cause remains under investigation. Later gate steps were not attempted. | [Failure](../bench/validation/m7-linux-gate-a9-failure-emulated-2026-10-10.json) |
+| Earlier cold-lookup gate | Source `d12d4af`, 431/436 passed; five HTTP fixtures failed during cold lookups. Original deadlines and assertions are retained. | [Failure](../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json) |
 | Earlier complete Linux workspace gate | Source `62ad095`, 436/436 tests plus all gate steps passed; two test workers | [Record](../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
 | Latest real solver/fault suite | Source `d12d4af`, all 37 tests passed in 114.446 seconds; the earlier timed-out shared-entry case passed in 9.652 seconds with unchanged assertions | [Record](../bench/validation/m7-linux-solver-d12-emulated-2026-10-10.json) |
 | Earlier real solver/fault suite | Source `62ad095`, 36/37 passed; `unverifiable_shared_entries_never_change_an_answer` timed out at the unchanged 180-second test limit; original cause remains unresolved | [Failure](../bench/validation/m7-linux-solver-62ad-failure-emulated-2026-10-10.json) |
