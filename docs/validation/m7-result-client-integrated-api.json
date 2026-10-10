@@ -15,5 +15,17 @@
     "bytes": 5099
   },
   "transport": "Joined cancellation monitor and absolute five-second transport deadline; complete fresh frames and unchanged ordinary per-I/O client",
-  "limits": "No product latency, source-engine reuse, full gate, or original frozen collector acceptance is inferred"
+  "limits": "No product latency, source-engine reuse, full gate, or original frozen collector acceptance is inferred",
+  "profile_cleanup_followup": {
+    "source_commit": "77da3e4",
+    "scope": "Integrated profiling examples and strict all-target sail-api Clippy only",
+    "result": "PASS",
+    "client_failure_controls": 2,
+    "stream_controls": 3,
+    "original_replay_samples_unchanged": true,
+    "raw_log": {
+      "sha256": "1170fc5d7320cc14967e735a4c0a27202d96151c2b4fbca84e4fdee953b72cbf",
+      "bytes": 1227
+    }
+  }
 }
