@@ -20,21 +20,18 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
         }
     }
 }
-fn command(args: &[String]) -> sail_verus::Result<sail_verus::engine::Status> {
+fn command(args: &[String]) -> Result<sail_verus::engine::Status, String> {
     let mut args = args.to_vec();
     if args.ends_with(&["--output".into(), "json".into()]) {
         args.truncate(args.len() - 2);
     }
-    let cache = sail_verus::cache_dir()?;
-    let pins = sail_verus::toolchain::Pins::embedded()?;
+    let cache = sail_verus::cache_dir().map_err(|error| error.to_string())?;
+    let pins = sail_verus::toolchain::Pins::embedded().map_err(|error| error.to_string())?;
     match args.as_slice() {
-        [command] if command == "status" => sail_verus::engine::status(&cache, &pins),
+        [command] if command == "status" => sail_verus::engine::status(&cache, &pins).map_err(|error| error.to_string()),
         [command, from, path] if command == "install" && from == "--from" => {
-            sail_verus::engine::import(&cache, &pins, Path::new(path))
+            sail_verus::engine::import(&cache, &pins, Path::new(path)).map_err(|error| error.to_string())
         }
-        _ => Err(sail_verus::Error::new(
-            "SAIL3120",
-            "usage: sail engine status [--output json] | sail engine install --from PATH [--output json]; build with cargo xtask build-verus-engine",
-        )),
+        _ => Err("error[SAIL3120]: usage: sail engine status [--output json] | sail engine install --from PATH [--output json]; build with cargo xtask build-verus-engine".into()),
     }
 }
