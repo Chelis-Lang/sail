@@ -78,7 +78,12 @@ fn accept_owned(
             ));
         }
         match listener.accept() {
-            Ok((stream, _)) => return Ok(stream),
+            Ok((stream, _)) => {
+                // macOS inherits O_NONBLOCK from the listener. Each replay
+                // connection uses the original blocking Client I/O semantics.
+                stream.set_nonblocking(false)?;
+                return Ok(stream);
+            }
             Err(error)
                 if error.kind() == io::ErrorKind::WouldBlock
                     && started.elapsed() < Duration::from_secs(5) =>
