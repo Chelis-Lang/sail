@@ -35,7 +35,7 @@
   "pending_executable_requirements": {
     "positive": "Actual validated prepared HIT, nonempty physical solver capture, exact same-input raw comparison, unchanged primary obligation identities/order, and equal stock verdicts/diagnostics.",
     "negative": "Postvalidated body/order/effect corruption reaches an actual HIT and fails the appropriate raw-byte or exact-effect comparison.",
-    "evidence_capture": "Persist assertion completion and stock control flags after checks; retain stdout/stderr and exact deadline/exit metadata on timeout.",
+    "evidence_capture": "Code review confirmed per-case assertions_completed and final all_controls_completed flags saved after checks, plus drained stdout/stderr/deadline metadata on timeout. Executable behavior still awaits runtime qualification.",
     "scope": "Executable tests and full actual-workload qualification remain separate from this static review."
   },
   "reported_component_tests": {

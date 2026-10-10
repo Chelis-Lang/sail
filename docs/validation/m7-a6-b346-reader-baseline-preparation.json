@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "kind": "real-reader-baseline-preparation",
+  "scope": "A genuine complete Current baseline proof established for the older exact a6/b346 latency/lifecycle diagnostic. This preparation does not qualify final M7, source selection, speedup, the one-driver measured workload, or either four-reader census.",
+  "environment": "Linux amd64 Docker emulation on arm64 macOS; shared development load",
+  "product_source_sha": "a6a909334b71782771e23be693709b316a535956",
+  "product_source_archive_sha256": "bc0b894a8396edb74ca10b782ba3d26b7f436e35069f837775403fb2a0fab9bb",
+  "binary_sha256": {
+    "sail": "6f256e4d5157c6a857582faa33c07262e5cff87e0cbc4165e6dda9f30b249cac",
+    "sail-z3": "7477fcfa07d97c6194f49d4c7651b20dedc7c01b9ca8be3d251bea65e242cd68"
+  },
+  "controller_source_sha": "f45620009b7d55be6d31e302f8057bb830aa955f",
+  "controller_archive_sha256": "3fbee86da6b1ca889ea2f09e823e0508dc719e3bf759867744a0d7f19edd8def",
+  "controller_scripts_sha256": {
+    "m7-reader-acceptance.py": "a916531c139af9fb990ffb3c404489de0ef921fac2989b0282a1aa585d75583e",
+    "m7-repair-bench.py": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33",
+    "m7-retained-jobs-acceptance.py": "28a3a8abf756c5b7db82f8228f15862fed44da498df45c8e9af0755ad7944bae",
+    "m7-job-read-bench.py": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+  },
+  "source_runtime": {
+    "upstream_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+    "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+    "verifier_sha256": "670e3a437474e7bc0dd53df0f070da5fd48de508954eb58c7c1e5698bfc43e58"
+  },
+  "collector": {
+    "source_sha": "6ca0cbef588b6cf1bfafcb9b2308f41016439fd7",
+    "rust_sha256": "0114cb141769ce13732a22026ccf3c3efa01b108515af28c752746ddad9158bb",
+    "python_sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+    "required_active_crate": "human_eval_verus",
+    "clients": 4,
+    "samples_per_collector": 200,
+    "public_rpc_seconds": 5,
+    "p95_limit_ms": 200,
+    "collector_process_limit_seconds": 600
+  },
+  "job": "1791656910005-5620-0",
+  "job_state": "completed",
+  "job_error": null,
+  "public_currentness": "current",
+  "accepted": true,
+  "input_revision": "9d99e7569a4a55f79565ca6520d987f313ca5087212bf22ef38517a3511b0919",
+  "exact_function": "human_eval_verus::human_eval_013::compute_gcd",
+  "preparation": {
+    "ordinary_full_wall_ms": 373272.145129,
+    "ordinary_full_exit": 0,
+    "ordinary_full_currentness": "current",
+    "exact_repair_context_wall_ms": 445589.4854940001,
+    "unmeasured": true,
+    "setup_timeout_seconds": null,
+    "new_baseline_source_and_cache": true,
+    "copied_prior_receipt": false,
+    "declaration_establishment_note": true
+  },
+  "batch": {
+    "batched": true,
+    "selection_error": null,
+    "compiler_invocations": 2,
+    "requested_target_compiler_invocations": 1,
+    "dependency_compiler_invocations": 1,
+    "focus_verified": 2,
+    "focus_complete": false,
+    "full_targets": [
+      {
+        "name": "vstd",
+        "kind": [
+          "lib"
+        ],
+        "requested": false,
+        "complete": true,
+        "verified": 2060,
+        "errors": 0,
+        "success": true
+      },
+      {
+        "name": "human_eval_verus",
+        "kind": [
+          "lib"
+        ],
+        "requested": true,
+        "complete": true,
+        "verified": 441,
+        "errors": 0,
+        "success": true
+      }
+    ],
+    "one_driver_acceptance": "The two actual started records identify vstd and human_eval_verus. This is separate cold/setup cost; it does not satisfy the one-driver criterion for measured M7 edit loops.",
+    "source_preparation_drivers": [
+      {
+        "enabled": true,
+        "persistent_hits": 1,
+        "batch_hits": 0,
+        "misses": 105
+      },
+      {
+        "enabled": false,
+        "persistent_hits": 0,
+        "batch_hits": 0,
+        "misses": 0
+      }
+    ]
+  },
+  "raw_reports": {
+    "ordinary_stdout": {
+      "bytes": 2159175,
+      "sha256": "2f88cfc9b7b18714674913bb56209243ee24e1b1f97d6d420d529a240ad7c544"
+    },
+    "ordinary_stderr": {
+      "bytes": 1152,
+      "sha256": "6f3ca95a7fcdbedf1615ec9706be80ebf9b69dca473baf2d5ca0b62507ac2f78"
+    },
+    "repair_worker_stdout": {
+      "bytes": 2159020,
+      "sha256": "a90d6beca58dde7948b30493e85c8e8ee3b614787436964db3b3307edb056449"
+    },
+    "repair_worker_stderr": {
+      "bytes": 1152,
+      "sha256": "529acf51669309f886d5f51f14d51c1643ecd65b049402de63cd8a078d563a41"
+    },
+    "public_result": {
+      "bytes": 10726619,
+      "sha256": "f6bb15ccc300f2265e12717a93329ea23db4a69dda3f6c71c6bc71b812e682d0"
+    }
+  },
+  "independent_active_preparation": "Still running when this baseline record was captured. It uses a distinct source copy and exact context; no census outcome is implied.",
+  "reader_acceptance_established": false,
+  "performance_acceptance_established": false,
+  "original_limits_changed": false,
+  "prior_failures_erased": false
+}
