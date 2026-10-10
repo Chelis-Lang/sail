@@ -395,6 +395,38 @@ mod tests {
         assert!(std::fs::remove_file(file).is_ok());
     }
     #[test]
+    fn paused_reader_keeps_unbroken_generation_but_rejects_writer_and_mapping_breaks() {
+        for change in [0, 1, 2] {
+            let file = fixture();
+            let alias = file.with_extension("reader-pause");
+            assert!(std::fs::hard_link(&file, &alias).is_ok());
+            let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
+                .unwrap_or_else(|| unreachable!("fixture"));
+            let checked = lease
+                .kernel
+                .as_ref()
+                .unwrap_or_else(|| unreachable!("kernel fixture"))
+                .check_after_pause_for_test(|| {
+                    // The kernel rows have already been read. Retain them
+                    // across a pause longer than the removed timing heuristic.
+                    std::thread::sleep(Duration::from_millis(100));
+                    if change == 1 {
+                        assert!(std::fs::write(&alias, b"fail").is_ok());
+                    } else if change == 2 {
+                        assert!(Command::new("python3").args(["-I", "-c",
+                            "import mmap,os,sys; f=os.open(sys.argv[1],os.O_RDWR); m=mmap.mmap(f,0); os.close(f); original=m[:]; m[:]=b'fail'; m.flush(); m[:]=original; m.flush(); m.close()"])
+                            .arg(&alias).status().is_ok_and(|s|s.success()));
+                        assert_eq!(std::fs::read(&file).unwrap_or_default(), b"good");
+                    }
+                });
+            assert_eq!(checked.is_ok(), change == 0, "change={change}");
+            assert_eq!(lease.clean(), change == 0, "change={change}");
+            drop(lease);
+            assert!(std::fs::remove_file(alias).is_ok());
+            assert!(std::fs::remove_file(file).is_ok());
+        }
+    }
+    #[test]
     fn stale_acknowledgement_cannot_certify_a_broken_writable_mapping() {
         let file = fixture();
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))

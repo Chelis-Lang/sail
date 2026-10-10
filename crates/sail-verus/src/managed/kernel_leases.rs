@@ -4,16 +4,16 @@
 //! renews a lease afterward. ACTIVE therefore only transitions to BREAKING or
 //! disappearance. A bounded sequential sweep observing every expected ACTIVE
 //! lease proves they were all ACTIVE when that sweep began; it does not assume
-//! that the proc seq-file is an atomic snapshot.
+//! that the proc seq-file is an atomic snapshot. Descheduling a reader cannot
+//! renew the generation: validity depends on these kernel and namespace checks,
+//! not the wall time between them. Public consumers enforce their own deadlines.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read as _;
 use std::os::unix::fs::MetadataExt as _;
 use std::path::Path;
-use std::time::{Duration, Instant};
 
 const MAX_LOCK_BYTES: u64 = 2 * 1024 * 1024;
-const SWEEP_BUDGET: Duration = Duration::from_millis(50);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Key {
@@ -73,6 +73,7 @@ fn row(line: &str, pid: u32) -> Option<Row> {
     }
     key(identity).map(Row::Active)
 }
+#[cfg(test)]
 fn inventory(text: &str, pid: u32) -> Option<BTreeMap<Key, usize>> {
     let mut found = BTreeMap::new();
     for line in text.lines() {
@@ -98,6 +99,7 @@ pub(super) struct Inventory {
     pid: u32,
     started: u64,
     expected: BTreeMap<Key, usize>,
+    expected_rows: Vec<Key>,
     descriptors: Vec<(u32, Key)>,
 }
 impl Inventory {
@@ -111,6 +113,7 @@ impl Inventory {
         }
         let started = process(pid)?;
         let mut expected = BTreeMap::new();
+        let mut expected_rows = Vec::with_capacity(fds.len());
         let mut descriptors = Vec::new();
         for (fd, (device, inode)) in fds.iter().zip(identities) {
             let metadata = std::fs::metadata(format!("/proc/{pid}/fd/{fd}")).ok()?;
@@ -128,6 +131,7 @@ impl Inventory {
                     return None;
                 }
                 *expected.entry(key).or_insert(0) += 1;
+                expected_rows.push(key);
                 descriptors.push((*fd, key));
                 count += 1;
             }
@@ -135,20 +139,25 @@ impl Inventory {
                 return None;
             }
         }
+        expected_rows.sort_unstable();
         (process(pid)? == started).then_some(Self {
             pid,
             started,
             expected,
+            expected_rows,
             descriptors,
         })
     }
     pub(super) fn check(&self) -> Result<(), &'static str> {
-        let began = Instant::now();
+        self.check_with(|| {})
+    }
+    fn check_with(&self, after_read: impl FnOnce()) -> Result<(), &'static str> {
         if process(self.pid) != Some(self.started) {
             return Err("kernel-lease-owner-inactive");
         }
-        // A size/work budget is fail-closed, not a claim that proc filesystem
-        // reads can be forcibly interrupted within this interval.
+        // The byte cap bounds inventory work; kernel proc reads are not
+        // interruptible wall-clock deadlines. A late read cannot restore an
+        // invalidated owner generation, regardless of elapsed scheduling time.
         let mut bytes = Vec::new();
         let file = std::fs::File::open(Path::new("/proc/locks"))
             .map_err(|_| "kernel-lease-state-read-unavailable")?;
@@ -162,26 +171,28 @@ impl Inventory {
             return Err("kernel-lease-state-truncated");
         }
         let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
-        self.check_inventory(text, bytes.len(), began)?;
+        after_read();
+        self.check_inventory(text, bytes.len())?;
         if process(self.pid) != Some(self.started) {
             return Err("kernel-lease-owner-inactive");
         }
-        if began.elapsed() > SWEEP_BUDGET {
-            return Err("kernel-lease-sweep-over-budget");
-        }
         Ok(())
     }
-    fn check_inventory(
-        &self,
-        text: &str,
-        bytes_read: usize,
-        began: Instant,
-    ) -> Result<(), &'static str> {
-        let found = inventory(text, self.pid).ok_or("kernel-lease-state-invalid")?;
-        if found == self.expected {
+    fn check_inventory(&self, text: &str, bytes_read: usize) -> Result<(), &'static str> {
+        // Keep the exact hardlink multiplicity while avoiding a tree node
+        // allocation for each owned inode on every read. The bounded proc input
+        // also bounds the observed rows; sorting never changes their identity.
+        let mut found = Vec::with_capacity(self.expected_rows.len());
+        for line in text.lines() {
+            if let Row::Active(key) = row(line, self.pid).ok_or("kernel-lease-state-invalid")? {
+                found.push(key);
+            }
+        }
+        found.sort_unstable();
+        if found == self.expected_rows {
             return Ok(());
         }
-        if found.keys().any(|key| !self.expected.contains_key(key)) {
+        if found.iter().any(|key| !self.expected.contains_key(key)) {
             return Err("kernel-lease-inventory-invalidated");
         }
         // The global seq-file may repeat/omit unchanged rows if unrelated
@@ -192,9 +203,6 @@ impl Inventory {
         // declaring failure; never revive an already-invalidated generation.
         let mut remaining = MAX_LOCK_BYTES.saturating_sub(bytes_read as u64);
         for (fd, expected) in &self.descriptors {
-            if began.elapsed() > SWEEP_BUDGET {
-                return Err("kernel-lease-sweep-over-budget");
-            }
             let file = std::fs::File::open(format!("/proc/{}/fdinfo/{fd}", self.pid))
                 .map_err(|_| "kernel-lease-descriptor-unavailable")?;
             let mut bytes = Vec::new();
@@ -214,17 +222,20 @@ impl Inventory {
         Ok(())
     }
     #[cfg(test)]
+    pub(super) fn check_after_pause_for_test(
+        &self,
+        after_read: impl FnOnce(),
+    ) -> Result<(), &'static str> {
+        self.check_with(after_read)
+    }
+    #[cfg(test)]
     pub(super) fn check_omitted_global_for_test(&self) -> Result<(), &'static str> {
-        let began = Instant::now();
         if process(self.pid) != Some(self.started) {
             return Err("kernel-lease-owner-inactive");
         }
-        self.check_inventory("", 0, began)?;
+        self.check_inventory("", 0)?;
         if process(self.pid) != Some(self.started) {
             return Err("kernel-lease-owner-inactive");
-        }
-        if began.elapsed() > SWEEP_BUDGET {
-            return Err("kernel-lease-sweep-over-budget");
         }
         Ok(())
     }
