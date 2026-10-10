@@ -46,6 +46,11 @@
     "failed": 0,
     "elapsed_s": 42.695,
     "scope": "Original freshness/coherent/lease controls plus four notification controls and original legacy MCP responsiveness scenario; testthreads2, no retries/assertion changes",
-    "limitation": "Focused suite only; original full gate/real reader census failures retained and final installed MCP acceptance pending"
+    "limitation": "Focused suite only; original full gate/real reader census failures retained and final installed MCP acceptance pending",
+    "live_control_reads": 100,
+    "live_control_p95_ms": 68.621875,
+    "legacy_mcp_blocked_worker_ms": 927.454668,
+    "legacy_mcp_worker_remained_blocked": true,
+    "timing_note": "The12.293459ms first-control and68.621875ms combined-control p95 differ under shared load. Neither is a stable service/real-project speedup or a replacement for the frozen complete reader census."
   }
 }
