@@ -30,9 +30,16 @@ Linux x86-64 emulation. A body-only `assert(true)` probe reproduced the same
 macro failure. Setting `VSTD_KIND=NoVstd` outside the launcher does not solve
 this ordering problem because the launcher replaces that environment value.
 
-Sail keeps the repair CLI acceptance fixture on ordinary pinned-source vstd.
-It does not skip dependency verification or change its full-proof acceptance
-criteria. The native CI 120-second repair workflow budget remains to be measured
-against the final source variant. A potential upstream fix would determine
-macro mode from the same effective Cargo driver arguments as rust_verify,
-while preserving contradictory-mode rejection.
+The explicitly selected optional engine reflects an already effective exact
+`--no-vstd` Cargo driver token into the launcher arguments before `--`. It reads
+only the common options and the current package's options using the pinned
+separator decoding; it does not scan another package's flags or match a
+substring. It inserts the literal option once, and its stock fallback preserves
+that same effective option. The ordinary stock/default adapter is unchanged.
+Each adaptation records `launcher-options.json` alongside the target's report,
+with the run, context, exact Cargo package, target, kind and forwarded option.
+The source patch and full focused/independent verification criteria are unchanged.
+
+A potential upstream fix would determine macro mode from the same effective
+Cargo driver arguments as rust_verify, while preserving contradictory-mode
+rejection. No upstream issue has been filed.
