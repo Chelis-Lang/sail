@@ -6,7 +6,9 @@ semantic versioning once the API is published.
 ## Unreleased
 
 - Add explicit managed workspace verification with complete per-target reports,
-  successful proof receipts, and verification-context isolation.
+  successful proof receipts, and verification-context isolation. Linux supports
+  precise missing-configuration observation; macOS remains conservative and may
+  reverify after unrelated directory activity.
 - Add persistent local verification jobs, background submission, status/results,
   cancellation, diagnostics, and workspace-aware watch and MCP job tools.
 - Add optional authenticated HTTP shared-cache reading and signed publication,

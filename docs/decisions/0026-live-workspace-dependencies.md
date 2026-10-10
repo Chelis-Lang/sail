@@ -35,6 +35,20 @@ transcript tests must pass with the feature enabled.
 
 ## Validation
 
+Managed verification also uses the safe inotify 0.11.5 API on Linux for
+precise observation of absent configuration files.
+Cargo creates and removes usage-database journals in its home directory;
+stamping that entire directory would incorrectly invalidate every proof.
+The observer must distinguish those writes from a transient configuration
+file and synchronously drain the ordered kernel queue before publishing receipts.
+Existing content and mutation stamps still protect present inputs.
+Unavailable, incomplete or overflowing observation prevents currentness.
+macOS retains conservative directory mutation stamps for missing configuration
+paths. FSEvents notifications, cookies and synchronous flush alone cannot prove
+delivery of every prior change. Unrelated Cargo journal or ancestor-directory
+activity can therefore make a macOS result historical and prevent reuse.
+Workspace code remains safe Rust.
+
 Run the complete workspace gate, including cargo-deny, on every feature PR.
 Measure CLI size, daemon memory and idle CPU with networking disabled, and
 keep every required CI job below its existing ten-minute bound. Fast tests

@@ -35,6 +35,15 @@ portfolio, fragility measurement, custom sysroots or JSON target specifications.
 Ordinary Cargo library and binary targets
 are supported.
 
+Linux is the reference platform for frontend proof reuse. Its ordered native
+event queue tracks transient creation and removal of missing Cargo configuration
+files before receipts are published. On macOS, present inputs retain content
+and mutation checks, and missing configuration paths retain conservative parent
+directory checks. Unrelated directory activity can make a completed result
+historical and require another proof run. Sail does not relax those checks to
+claim current evidence. Ordinary verification and the SMT cache remain available
+on both platforms.
+
 The ordinary `sail verify` path keeps its existing drop-in output and behavior.
 The explicit managed JSON format is a `sail-project-result` envelope, version 1,
 containing per-target schema-v1 reports. Its JSON Schema is

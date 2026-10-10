@@ -1245,6 +1245,7 @@ dependencies = [
 name = "sail-verus"
 version = "0.0.0"
 dependencies = [
+ "inotify",
  "notify",
  "sail-api",
  "sail-ledger",

@@ -12,6 +12,7 @@ repository = "https://github.com/Chelis-Lang/sail"
 # License is deliberately unset until the owner decides (docs/open-questions.md).
 
 [workspace.dependencies]
+inotify = { version = "=0.11.5", default-features = false }
 sail-smtlib = { path = "crates/sail-smtlib" }
 sail-session = { path = "crates/sail-session" }
 sail-key = { path = "crates/sail-key" }

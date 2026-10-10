@@ -30,7 +30,9 @@ sail watch                            # follow workspace and path-dependency edi
 
 One verifier worker runs by default. Completed target reports record which run
 established them; current execution counters stay separate. Ordinary local use
-needs no server configuration or credentials. See [live workspace verification](docs/workspace-verification.md).
+needs no server configuration or credentials. Frontend receipt reuse targets
+Linux; macOS uses conservative currentness checks that can require fresh proofs.
+See [live workspace verification](docs/workspace-verification.md).
 
 `sail verify --output json [ARGS...]` also prints one JSON document on stdout.
 It holds per-function verdicts, with tier and provenance, and per-obligation
