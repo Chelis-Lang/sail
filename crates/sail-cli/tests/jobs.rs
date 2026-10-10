@@ -11,7 +11,8 @@ use sail_api::jobs::{Client, Lifecycle, Request, Response, Submission};
 fn human_and_json_inspection_preserve_lifecycle_and_reject_non_utf8_environment() {
     use std::os::unix::ffi::OsStringExt as _;
     use std::os::unix::fs::PermissionsExt as _;
-    let root = std::env::temp_dir().join(format!("sail-cli-jobs-{}", std::process::id()));
+    // Keep the complete versioned proof socket below macOS's SUN_LEN limit.
+    let root = std::path::Path::new("/tmp").join(format!("sail-cli-jobs-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     assert!(std::fs::create_dir_all(root.join("project")).is_ok());
     let executable = root.join("worker");

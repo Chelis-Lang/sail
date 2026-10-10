@@ -204,6 +204,11 @@ def run(args):
             socket = "/tmp/sail-m7-" + hashlib.sha256(str(cache).encode()).hexdigest()[:12] + ".sock"
             envs[mode] = dict(os.environ, SAIL_CACHE_DIR=str(cache), SAIL_DAEMON_SOCKET=socket,
                               RUSTUP_TOOLCHAIN="1.98.1", SAIL_MANAGED_FORCE="1")
+            if mode == "m7":
+                install = json.loads(checked([str(binaries[mode]), "engine", "install", "--from",
+                                             str(args.engine_install.resolve()), "--output", "json"],
+                                            env=envs[mode]))
+                write_json(args.out / "engine-install.json", install)
             # Dependency build and complete SMT-cache fill are not measured.
             warm = invoke([str(binaries[mode]), "verify", "--incremental", "--output", "json"] + selection,
                           workspace, envs[mode], (args.out / project["id"] / ("warm-" + mode)).resolve(), args.timeout)
@@ -292,6 +297,8 @@ def main():
     runner = commands.add_parser("run")
     runner.add_argument("--m6", type=Path, required=True)
     runner.add_argument("--m7", type=Path, required=True)
+    runner.add_argument("--engine-install", type=Path, required=True,
+                        help="Validated Linux source variant; installed into the private M7 cache")
     runner.add_argument("--scratch", type=Path, required=True)
     runner.add_argument("--out", type=Path, required=True)
     runner.add_argument("--rounds", type=int, default=3)
