@@ -9,6 +9,9 @@ semantic versioning once the API is published.
   clients. Every call still reads a complete fresh RPC response; single-use
   clients keep ordinary decoding. Changed or malformed frames cannot reuse a
   prior success.
+- Add an SDK job-call path with joined cancellation and an absolute five-second
+  transport budget. Refuse late responses and distinguish pre-RPC connection
+  failures from failures that must not trigger another transport attempt.
 
 - Coalesce overlapping freshness readers from caller entry while retaining exact
   namespace, runtime and lease validation. Currentness remains separate from a
