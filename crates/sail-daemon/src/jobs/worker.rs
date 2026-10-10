@@ -45,6 +45,9 @@ pub(super) fn run(state: &State) {
         let Ok(job) = get(state, &id) else { continue };
         if !job.status.state.terminal() {
             let result = execute(state, &id);
+            if result.is_ok() {
+                store::establish_freshness(state, &job);
+            }
             if let Ok(mut jobs) = state.jobs.lock()
                 && let Some(job) = jobs.get_mut(&id)
                 && !job.status.state.terminal()
