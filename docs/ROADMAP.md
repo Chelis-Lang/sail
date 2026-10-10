@@ -92,7 +92,8 @@ The approved contract is [ADR 0027](decisions/0027-interactive-proof-engine-and-
   cancellation/reconnect handling.
 - Shared complete input observation and responsive job reads, addressing #69.
 
-Exit: exact full-result/diagnostic/solver-input conformance; full local corpus
+Exit: exact stock full-result/diagnostic conformance and cached-versus-fresh
+solver bytes from the same compiler input (ADR 0027 amendment); full local corpus
 and affected source tests; established reads below 200 ms p95 during active
 verification; and at least **2× median improvement on each** of frozen
 human-eval-verus and Vest repair catalogues in the local Linux container.
