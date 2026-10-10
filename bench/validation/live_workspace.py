@@ -148,7 +148,7 @@ if managed['currentness'] == 'historical':
     managed, establishment = run('managed-establish', True)
     assert functions(plain) == requested(managed)
     assert managed['execution']['verifier_invocations'] > 0
-establishing_reports = {target['package_id'] + '/' + target['target']: target['report']
+establishing_reports = {(target['package_id'], target['target'], tuple(target['kind'])): target['report']
                        for target in managed['targets'] if target['requested']}
 rounds = []
 for round_number in range(1, 4):
@@ -157,7 +157,7 @@ for round_number in range(1, 4):
     assert requested(managed) == functions(plain)
     assert managed['execution']['verifier_invocations'] == 0
     assert managed['execution']['reused_targets'] > 0
-    reused_reports = {target['package_id'] + '/' + target['target']: target['report']
+    reused_reports = {(target['package_id'], target['target'], tuple(target['kind'])): target['report']
                       for target in managed['targets'] if target['requested']}
     assert reused_reports == establishing_reports, 'reuse must preserve establishing reports'
     rounds.append({'round': round_number, 'plain_warm_smt_cache': p,
