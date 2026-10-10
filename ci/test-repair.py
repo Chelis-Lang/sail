@@ -150,8 +150,9 @@ def run(args):
             document, result, target = full(good)
             cold_declarations = "Build-script input declarations were established during this run" in result["notes"]
             if cold_declarations:
-                # Cold dep-info discovery must not authorize acceptance. One
-                # subsequent observed full invocation must establish current inputs.
+                # Newly discovered declarations can leave cold evidence uncertain
+                # and include dependency drivers. One subsequent observed full
+                # invocation must establish current inputs; all cost is timed.
                 assert result["exit_code"] == 0 and target["complete"], good
                 if result["currentness"] != "current":
                     assert not document["accepted"], good
@@ -159,6 +160,24 @@ def run(args):
                 document, result, target = full(good)
             assert result["currentness"] == "current" and document["accepted"], good
             assert result["exit_code"] == 0 and target["complete"], good
+            if document["batch"]["compiler_invocations"] != 1:
+                # A current cold invocation can still establish dependency receipts.
+                # Measure one additional forced stable batch; keep prior counters
+                # in raw evidence and never retry again if this contract fails.
+                prior_job = good_job
+                prior_force = env.get("SAIL_MANAGED_FORCE")
+                env["SAIL_MANAGED_FORCE"] = "1"
+                try:
+                    good_job, good = submit("success-single-driver")
+                finally:
+                    if prior_force is None:
+                        env.pop("SAIL_MANAGED_FORCE", None)
+                    else:
+                        env["SAIL_MANAGED_FORCE"] = prior_force
+                document, result, target = full(good)
+                assert good_job != prior_job, "forced validation must start a distinct observed batch"
+                assert result["currentness"] == "current" and document["accepted"], good
+                assert result["exit_code"] == 0 and target["complete"], good
             assert document["batch"]["batched"] and document["batch"]["compiler_invocations"] == 1, document
             focus = document["batch"]["focus"]
             assert focus is not None and all(not t["complete"] for t in focus["targets"]), focus
