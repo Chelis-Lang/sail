@@ -6,6 +6,11 @@ engine, and the original `6ca` Python/Rust collectors. This is Linux amd64
 Docker execution under emulation on macOS arm64 with shared development load.
 It establishes no latency, proof or overall M7 acceptance.
 
+The sealed collector-origin metadata retains its historical reference to product
+`1dc`. That reference describes the original collector freeze. This run executed
+the independently frozen `8e09eaa` product recorded with its source archive and
+both binary hashes; it did not mix product binaries.
+
 The current reader controller created fresh independent HumanEval source copies
 and a private cache. It copied neither prior receipts nor Cargo output. Engine
 import and metadata succeeded. Ordinary full baseline preparation exceeded its

@@ -505,5 +505,6 @@
     "human_eval_driver_created_after_sail_creation_s": 559.91,
     "human_eval_remaining_before_interrupt_estimate_s": 40.317132,
     "method": "Dependency completion estimate uses retained command-file modification time minus recorded monotonic duration; driver creation uses kernel start ticks relative to owned Sail creation at 100Hz. These observations do not establish a protocol hang or resource-exhaustion cause."
-  }
+  },
+  "collector_metadata_interpretation": "The collectors object preserves the original 6ca freeze metadata verbatim. Its historical scope mentioning product 1dc describes the collector origin, not the product executed in this run. The actual executed product was independently frozen 8e09eaa, with source archive and both binary hashes recorded in product."
 }
