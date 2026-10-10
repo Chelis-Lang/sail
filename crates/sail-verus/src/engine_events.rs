@@ -267,13 +267,6 @@ fn convert(
     Some(input)
 }
 
-/// Checks only for a terminal full-phase observation. The pinned producer can
-/// emit it after a caught compiler panic, so it cannot establish compiler
-/// completion, current inputs or a successful full proof by itself.
-pub(crate) fn sealed(path: &Path) -> bool {
-    terminal(path).is_some()
-}
-
 #[derive(serde::Deserialize)]
 struct Terminal {
     version: u32,
@@ -411,13 +404,13 @@ mod tests {
         let sealed_line =
             r#"{"version":1,"event":"compiler-sealed","phase":"full","payload":{"success":false}}"#;
         std::fs::write(&path, format!("{sealed_line}\n"))?;
-        assert!(sealed(&path));
+        assert!(terminal(&path).is_some());
         std::fs::write(&path, sealed_line)?;
-        assert!(!sealed(&path));
+        assert!(terminal(&path).is_none());
         std::fs::write(&path, format!("broken\n{sealed_line}\n"))?;
-        assert!(!sealed(&path));
+        assert!(terminal(&path).is_none());
         std::fs::write(&path, format!("{sealed_line}\n{{\n"))?;
-        assert!(!sealed(&path));
+        assert!(terminal(&path).is_none());
         std::fs::remove_file(path)?;
         Ok(())
     }

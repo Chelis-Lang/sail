@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Bind preparation counters to complete normally terminated engine evidence;
+  exclude failed attempts and retained journals after stock fallback.
+
 - Require an explicit normal-termination marker and complete structured full
   result before retaining optional-engine output. Panic, signal, malformed or
   legacy terminal events fall back to stock; preserve ordinary failure reports,

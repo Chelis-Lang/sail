@@ -17,10 +17,10 @@ fn required(name: &str) -> Result<OsString> {
         .ok_or_else(|| Error::new("SAIL3110", format!("private adapter missing {name}")))
 }
 
-struct InvocationLog<'a> {
-    directory: &'a Path,
-    run_id: &'a str,
-    target: &'a str,
+pub(crate) struct InvocationLog<'a> {
+    pub(crate) directory: &'a Path,
+    pub(crate) run_id: &'a str,
+    pub(crate) target: &'a str,
 }
 
 impl InvocationLog<'_> {
@@ -512,7 +512,7 @@ fn driver() -> Result<ExitCode> {
 /// Retains interrupted engine evidence and restarts the exact stock compiler
 /// invocation. Engine observations and focused evidence cannot seal a report
 /// without the independent complete full document and normal process exit.
-fn engine_output(
+pub(crate) fn engine_output(
     dir: &Path,
     mut stock: Command,
     captured: std::process::Output,
