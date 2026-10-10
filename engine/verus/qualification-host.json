@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "patch_sha256": "45af86262dae49d1155da78ce5d6191dcbba1976ecc8cde8dc02abef239b1807",
+  "patch_sha256": "5eed78f066cd3c6a9761cf216bef24b46946f6d58b8da6f1f837311102dcaa74",
   "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "scope": "host source differential qualification; product performance and Linux qualification pending",
+  "scope": "Host source qualification; 9 small differential fixtures, 8 checkpoint revisions, cancellation. Linux, real edit qualification and product performance pending.",
   "source_fixtures": {
     "version": 1,
     "machine": "macOS-26.5-arm64-arm-64bit",
     "engine_sha256": "a5219f1ac8477cdd78e430bb21461135d94407279d651b0da007bed8f0439e67",
-    "engine_verifier_sha256": "def338df1bd51f3dd970c27fceff4531bcd750c523054bd467491f36737a1616",
+    "engine_verifier_sha256": "d67fddf57a5682bec019a995fa6a807f2e465609318ab89ded788559adcb0c1b",
     "stock_sha256": "fc13e79bb3c13d93bc05b37e9b1b6518fde7f4687b3d442ce5c6318c5737c668",
     "z3_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
     "results": [
@@ -27,7 +27,7 @@
       {
         "fixture": "failed_focus",
         "exit_code": 1,
-        "diagnostics_sha256": "4ee6e0b4e0edff6a3df2aded05c9a5f5d46df78f15947c713d8a199e4860a2cf",
+        "diagnostics_sha256": "26819b2a009ae64e56a12138738bddc25bc74def33ead700321da9e8679bd9a5",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -40,7 +40,7 @@
       {
         "fixture": "failed_other",
         "exit_code": 1,
-        "diagnostics_sha256": "82879a7501422a3f373029bd07737e509b57ad77a8d1da6e31fc4f8d2c3254fa",
+        "diagnostics_sha256": "3ac37ac96a8328733c998fb1b2d4aedfbc0e992fab31fc95e09893703dfffa1f",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -53,7 +53,7 @@
       {
         "fixture": "late_exec",
         "exit_code": 1,
-        "diagnostics_sha256": "9d37cdc126806648862aeb034046fa5b14afb73be9da270db2efac5cc6336931",
+        "diagnostics_sha256": "35db400929a35a601bdc2ed16a0fd3d34d2ffa6acde9d6dfbb9c5e318793243f",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -84,7 +84,7 @@
       {
         "fixture": "recursive",
         "exit_code": 1,
-        "diagnostics_sha256": "f96416d2aee173d2b574039a65b5b5179962d41007efd5abb4c95cc8303ee36c",
+        "diagnostics_sha256": "a7b06994f4f18d3e5c5a9e94ee497296983878e74fcc88bf49c8b9bcf464ffb8",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -97,7 +97,7 @@
       {
         "fixture": "macro_spans",
         "exit_code": 1,
-        "diagnostics_sha256": "16f6934cab8aa592d9672e9eb121d201b9b0906a757912e30c12da9567773f07",
+        "diagnostics_sha256": "ef353dc358b2eccf26644db99d647559ac69cc046b28662b8aade61939f787ce",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -135,9 +135,10 @@
       }
     ]
   },
-  "prepared_edits": {
+  "prepared_checkpoints": {
     "version": 1,
     "engine_sha256": "a5219f1ac8477cdd78e430bb21461135d94407279d651b0da007bed8f0439e67",
+    "engine_verifier_sha256": "d67fddf57a5682bec019a995fa6a807f2e465609318ab89ded788559adcb0c1b",
     "results": [
       {
         "revision": 0,
@@ -280,13 +281,13 @@
           }
         ]
       }
-    ],
-    "engine_verifier_sha256": "def338df1bd51f3dd970c27fceff4531bcd750c523054bd467491f36737a1616"
+    ]
   },
   "cancellation": {
     "version": 1,
-    "engine_verifier_sha256": "def338df1bd51f3dd970c27fceff4531bcd750c523054bd467491f36737a1616",
+    "engine_verifier_sha256": "d67fddf57a5682bec019a995fa6a807f2e465609318ab89ded788559adcb0c1b",
     "cancel_sealed": false,
     "restart_exit_code": 0
-  }
+  },
+  "real_project_callbacks": "qualifications/5eed78f0-real-he.json"
 }
