@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "kind": "reader-baseline-interruption-recovery",
+  "original_record": "docs/validation/m7-a6-reader-diagnostic-interruption.json",
+  "original_native_artifacts_recovered": true,
+  "original_pid_exists": false,
+  "matching_original_owned_processes": [],
+  "raw_files": 566,
+  "raw_archive": {
+    "bytes": 375067,
+    "sha256": "7616fd1c8091e5b1324f8cf5561a1523feadc913febf23432c52269b234b1115"
+  },
+  "native_recovery_json_sha256": "283c16604524df18260da7fb3817dc64263f7d173d6a14ac50c55e98feb52dd2",
+  "original_last_compile_stage": "Compiling vstd; no full proof result or reader census",
+  "recovery_attempt": {
+    "reason": "Fresh attempt authorized after infrastructure recovery, stopped for the lead\u2019s targeted failure sequencing when its hold arrived",
+    "controller_exit": 130,
+    "ordinary_process_exit": -2,
+    "ordinary_wall_ms": 38114.978017,
+    "ordinary_pid": 62,
+    "daemon_pid": 47,
+    "daemon_exit": 0,
+    "daemon_stop_ms": 32.25504100001331,
+    "cleanup_errors": [],
+    "ordinary_pid_exists_after_cleanup": false,
+    "reader_samples": 0,
+    "complete_current_baseline": false
+  },
+  "runtime_or_baseline_changed": false,
+  "checks_or_deadlines_changed": false,
+  "proof_service_active": false,
+  "further_proof_setup": "Held until the integrated gate completes; both attempts remain separate evidence."
+}
