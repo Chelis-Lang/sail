@@ -12,6 +12,8 @@ use crate::{Error, Result};
 pub const PATCH: &str = include_str!("../../../engine/verus/interactive.patch");
 /// Source-event sidecar contract version.
 pub const EVENT_VERSION: u32 = 1;
+/// Exact dependency resolution used for the optional source worker.
+pub const SOURCE_LOCK: &str = include_str!("../../../engine/verus/Cargo.lock");
 
 /// Exact source patch identifier; part of build and execution identities.
 #[must_use]
@@ -22,7 +24,14 @@ pub fn patch_sha256() -> String {
 /// Features identifying this distinct source variant.
 #[must_use]
 pub fn features() -> Vec<String> {
-    vec![format!("sail-interactive:{}", patch_sha256())]
+    vec![
+        format!("sail-interactive:{}", patch_sha256()),
+        format!("host:{}", crate::toolchain::host()),
+        format!(
+            "source-lock:{}",
+            crate::managed::digest(SOURCE_LOCK.as_bytes())
+        ),
+    ]
 }
 
 /// Engine-specific source directory; never a stock source build directory.
@@ -74,8 +83,8 @@ impl Installed {
             })
             && pins
                 .assets
-                .values()
-                .any(|asset| asset.z3_sha256 == manifest.z3_sha256);
+                .get(crate::toolchain::host())
+                .is_some_and(|asset| asset.z3_sha256 == manifest.z3_sha256);
         let runtime = source_build::checkout_dir(&build).join("source/target-verus/release");
         if !valid
             || !["cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"]
@@ -103,6 +112,7 @@ pub(crate) struct Request {
     pub cargo_verus: PathBuf,
     pub manifest: PathBuf,
     pub stock_wrapper: PathBuf,
+    pub artifacts: Vec<PathBuf>,
 }
 
 fn request(config: &crate::managed::Config, function: Option<String>) -> Result<(Request, String)> {
@@ -117,6 +127,11 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
         cargo_verus: installed.cargo_verus,
         manifest: installed.build.join(source_build::MANIFEST),
         stock_wrapper,
+        artifacts: Manifest::load(&installed.build)?
+            .artifacts
+            .keys()
+            .map(|path| installed.build.join(path))
+            .collect(),
     };
     Ok((request, installed.manifest_sha256))
 }
@@ -204,11 +219,11 @@ pub fn repair(
         Some(result)
     };
     Ok(sail_api::repair::BatchResult {
+        batched: focus.is_some(),
         focus,
         compiler_invocations: full.execution.verifier_invocations,
         full,
         manifest_sha256,
-        batched: true,
     })
 }
 

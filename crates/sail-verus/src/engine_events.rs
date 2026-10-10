@@ -170,20 +170,7 @@ fn convert(
             "exact function has {} matches in this target",
             raw["payload"]["matches"]
         )),
-        "diagnostic" => {
-            let message = &raw["payload"]["message"];
-            Observation::Diagnostic(sail_api::output::Diagnostic {
-                level: raw["payload"]["level"]
-                    .as_str()
-                    .unwrap_or("Note")
-                    .to_lowercase(),
-                code: None,
-                message: message["note"].as_str().unwrap_or_default().into(),
-                spans: Vec::new(),
-                // Structured source messages are not a rendered stderr block.
-                rendered: String::new(),
-            })
-        }
+        "diagnostic" => Observation::Diagnostic(diagnostic(&raw["payload"])),
         _ => return None,
     };
     Some(input)
@@ -197,4 +184,29 @@ pub(crate) fn sealed(path: &Path) -> bool {
             .filter_map(|line| serde_json::from_str::<Value>(line).ok())
             .any(|event| event["version"] == 1 && event["event"] == "compiler-sealed")
     })
+}
+
+/// Converts exact source message text while preserving locations when supplied.
+pub(crate) fn diagnostic(raw: &Value) -> sail_api::output::Diagnostic {
+    let message = &raw["message"];
+    sail_api::output::Diagnostic {
+        level: raw["level"].as_str().unwrap_or("Note").to_lowercase(),
+        code: None,
+        message: message["note"].as_str().unwrap_or_default().into(),
+        spans: message["spans"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|span| {
+                let parsed = sail_api::output::SourceSpan::parse(span["as_string"].as_str()?);
+                Some(sail_api::output::DiagnosticSpan {
+                    file: parsed.file?,
+                    line: parsed.line?,
+                    column: parsed.column?,
+                    primary: true,
+                })
+            })
+            .collect(),
+        rendered: String::new(),
+    }
 }

@@ -364,6 +364,13 @@ pub fn build(args: &[String]) -> Result<()> {
                 .arg(&patch))?;
         }
     }
+    if o.engine {
+        std::fs::write(
+            checkout.join("source/Cargo.lock"),
+            sail_verus::engine::SOURCE_LOCK,
+        )
+        .map_err(|e| e.to_string())?;
+    }
     let channel = toolchain_channel(&checkout.join("rust-toolchain.toml"))?;
     if channel != *toolchain {
         return Err(format!(

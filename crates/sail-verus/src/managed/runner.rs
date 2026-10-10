@@ -108,7 +108,10 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<S
         identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
     }
     if let Some(engine) = engine {
-        for path in [&engine.manifest, &engine.stock_wrapper] {
+        for path in [&engine.manifest, &engine.stock_wrapper]
+            .into_iter()
+            .chain(engine.artifacts.iter())
+        {
             identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
         }
     }
@@ -1154,7 +1157,8 @@ pub(crate) fn run_engine(
         &data,
     )?;
     event(&serde_json::json!({
-        "kind":"context-ready", "workspace":before.workspace,
+        "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
+        "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
         "context_sha256":hash, "input_revision":before.revision,
         "complete":before.complete && script_coverage && monitor.complete() && absent.ready(),
         "source_observation":source_state.is_file()
