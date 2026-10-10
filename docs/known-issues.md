@@ -41,7 +41,9 @@ four-reader latency gate has been established. See the
   It removes duplicate inline charges only for exact audited value/visitor
   pairs; dynamic growth, pointer pointees and unknown/custom visitors retain
   admission before allocation. Its 12 helper controls and the combined actual source
-  suites (33 VIR and 22 driver tests) pass. An independent ordinary Linux build
+  suites (33 VIR and 22 driver tests) and both strict all-target Clippy gates pass.
+  [The complete source record](../engine/verus/candidates/decode-ownership/combined-source-checks.json)
+  binds these checks to the full combined patch. An independent ordinary Linux build
   is underway; no runtime or genuine cross-edit hit is yet qualified.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
@@ -87,6 +89,11 @@ four-reader latency gate has been established. See the
   admitted. Its completed vstd dependency report is partial setup evidence,
   not a complete human-eval proof; see
   [the setup failure](validation/m7-reader-entry-setup-timeout.md).
+  A later, explicitly unmeasured preparation established genuine Current full
+  baseline evidence after 1,839.532 seconds and three actual verifier starts.
+  The independent active workspace preparation and frozen reader collectors
+  are still pending. This is useful setup evidence, not a passed timed proof,
+  one-driver batch or latency census; see [the preparation record](validation/m7-reader-prepared-baseline.md).
 - The older frozen reader controller assumed the newer `results/projects/jobs`
   storage layout, while a6 stores jobs under `projects/jobs`. Public proof
   evidence remained intact, but automatic raw archival could omit those files.
@@ -127,6 +134,7 @@ not change a test deadline or turn observed failures into passes.
 | Earlier real solver/fault suite | Source `62ad095`, 36/37 passed; `unverifiable_shared_entries_never_change_an_answer` timed out at the unchanged 180-second test limit; original cause remains unresolved | [Failure](../bench/validation/m7-linux-solver-62ad-failure-emulated-2026-10-10.json) |
 | Isolated shared-entry fault diagnostic | All five corruption cases and both sessions passed in 11.340 seconds; this does not explain or erase the full-suite timeout | [Diagnostic](../bench/validation/shared-signature-fault-diagnostic-linux-emulated-2026-10-10.json) |
 | Full default corpus | Frozen `1dc` passed all 147 fast units in pass-through, fill and warm; standard phase interrupted by container loss and lacks a complete report | [Record](../bench/validation/m7-default-corpus-1dc-interrupted-emulated-2026-10-10.json) |
+| Complete standard retry, still running | Frozen `1dc`, default mode: plain stock Verus on verismo exceeded the unchanged 3,600-second unit limit and was killed by the harness. Remaining units are still running; cache phases have not started. Retained sleeping-thread observations do not establish a cause or an upstream defect. | [Observation](validation/m7-standard-verismo-timeout-observation.json) |
 
 These records cover their frozen artifacts, not every later source candidate.
 The complete current solver suite passes with retained phase diagnostics; this
