@@ -170,6 +170,13 @@ def run(args):
                                duplicate_effective_refused=True)
             finally:
                 stop_owned(daemon)
+                # Keep actual worker errors before the owned temporary cache is
+                # removed. Never retain general environment/runtime documents.
+                for job in (root / "cache/projects/jobs").glob("*"):
+                    for name in ["stdout", "stderr"]:
+                        path = job / name
+                        if path.is_file():
+                            (output / (job.name + ".worker-" + name)).write_bytes(path.read_bytes())
                 (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
 
