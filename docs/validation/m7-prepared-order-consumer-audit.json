@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "kind": "read-only-prepared-order-consumer-audit",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "candidate_patch_sha256": "245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
+  "candidate_patch": "engine/verus/candidates/graph-ledger.patch",
+  "scope": "Applied candidate source consumers and preparation key bindings. Static inspection only; this is not runtime qualification, conformance, Current proof evidence or performance acceptance.",
+  "activation": false,
+  "tests_or_baselines_changed": false,
+  "normalization_performed": false,
+  "inspected_files_sha256": {
+    "verus/source/vir/src/context.rs": "77f95bcdf057a468e1511304fad1c0908dcef7b40824186f7d644b56a24a0f3d",
+    "verus/source/vir/src/def.rs": "80051ba6b4122b713cf044355ad189c05fa352d7a57596a8b68e3d803e75dcf3",
+    "verus/source/vir/src/ast_to_sst_crate.rs": "42cb015193c3ed821bf1c9c7704f7d340e80d06cb2245d048fc3c6c0537c9e98",
+    "verus/source/vir/src/poly.rs": "1b5c1b79b8fccd2ee333b058041d26e5de80eb6f4f34f81b006b98b68510f3c5",
+    "verus/source/vir/src/sail_graph.rs": "b0d5e614359e07231b4c1fc5a8201796ff62f26118974fc265d83838f337b5e7",
+    "verus/source/rust_verify/src/sail_engine.rs": "5ee65df0ee97f9804883ead3edfe8a1ec156cd3c8947d0d7f5c647c6b24ac1a3",
+    "verus/source/rust_verify/src/verifier.rs": "63d476ad12e1d44af3bf83caa9da2d3c75ff4ce592f2ef3b377f122e781aa4f3",
+    "verus/source/rust_verify/src/commands.rs": "92b9ad5156337ecc679f4bae8713fac1887de08ae0760933508d4a819353340b"
+  },
+  "restored_effects": [
+    {
+      "field": "functions / Ctx.func_sst_map",
+      "ordering_observation": "AIR, poly and expansion consumers use keyed get/index/contains_key; rebuilding the map loops over an already ordered SST function vector. No AIR emission iteration over the restored map was found.",
+      "references": ["verus/source/vir/src/ast_to_sst.rs:588", "verus/source/vir/src/poly.rs:482", "verus/source/vir/src/poly.rs:1417", "verus/source/vir/src/sst_to_air.rs:2170", "verus/source/vir/src/expand_errors.rs:1021"]
+    },
+    {
+      "field": "datatypes / Ctx.datatype_map",
+      "ordering_observation": "Consumers index or get the exact datatype. Poly reconstructs the map from the ordered datatype vector; AIR datatype emission receives that vector separately.",
+      "references": ["verus/source/vir/src/datatype_to_air.rs:88", "verus/source/vir/src/sst_to_air.rs:497", "verus/source/vir/src/poly.rs:1421", "verus/source/rust_verify/src/verifier.rs:1400"]
+    },
+    {
+      "field": "names / NameCtxt duplicate_name_counter and stable_id_map",
+      "ordering_observation": "Name allocation uses entry by exact stable id and name, not map iteration. The baseline encodes exact keyed contents; restoration does not independently reorder a function vector.",
+      "references": ["verus/source/vir/src/def.rs:343", "verus/source/vir/src/def.rs:366", "verus/source/vir/src/def.rs:368"]
+    },
+    {
+      "field": "chosen / GlobalCtx.chosen_triggers",
+      "ordering_observation": "This is an ordered Vec, serialized and restored in order. The baseline also binds its ordered initial contents. Reporter iteration is over that Vec, not a newly seeded HashMap.",
+      "references": ["verus/source/vir/src/context.rs:166", "verus/source/vir/src/context.rs:236", "verus/source/vir/src/context.rs:917", "verus/source/rust_verify/src/verifier.rs:2584"]
+    },
+    {
+      "field": "qids / GlobalCtx.qid_map",
+      "ordering_observation": "Quantifier metadata is inserted by qid and retrieved by qid in profiling/diagnostics. No AIR command-order iteration over this restored map was found.",
+      "references": ["verus/source/vir/src/def.rs:942", "verus/source/vir/src/sst_to_air.rs:901", "verus/source/rust_verify/src/profiler.rs:26", "verus/source/rust_verify/src/verifier.rs:718"]
+    },
+    {
+      "field": "quantifiers / Ctx.quantifier_count",
+      "ordering_observation": "The per-function counter is accessed with entry(fun_name); restored key/value contents, not hash iteration order, determine subsequent qids.",
+      "references": ["verus/source/vir/src/sst_to_air.rs:876", "verus/source/vir/src/context.rs:236"]
+    },
+    {
+      "field": "ensure_predicates / Ctx.funcs_with_ensure_predicate",
+      "ordering_observation": "Functions are looked up/indexed by exact name. The static-function emission filter iterates a separate ordered function collection and performs keyed predicate lookup.",
+      "references": ["verus/source/vir/src/sst_to_air_func.rs:618", "verus/source/vir/src/sst_to_air_func.rs:775", "verus/source/vir/src/sst_to_air.rs:2036", "verus/source/vir/src/sst_to_air.rs:3079"]
+    },
+    {
+      "field": "strings and byte_strings",
+      "ordering_observation": "These maps detect hash collisions using insertion of exact encoded string/byte contents. They do not enumerate restored entries to emit AIR declarations.",
+      "references": ["verus/source/vir/src/sst_to_air.rs:735", "verus/source/vir/src/sst_to_air.rs:765", "verus/source/vir/src/sst_to_air.rs:777"]
+    }
+  ],
+  "ordered_consumers": [
+    {
+      "consumer": "Fuel declaration and distinct-id sequence",
+      "ordering_source": "Ctx.functions Vec, built fresh from the pruned Krate.functions Vec. SailEffects does not replace this Vec. Ordered reveal_groups are separate and preserved.",
+      "key_binding": "The entire exact typed pruned Krate is encoded in bucket_key; the standalone baseline's omission of Ctx.functions is redundant for this field because Ctx::new copies that exact Krate vector before key calculation.",
+      "references": ["verus/source/vir/src/context.rs:954", "verus/source/vir/src/context.rs:1043", "verus/source/rust_verify/src/verifier.rs:1967", "verus/source/rust_verify/src/sail_engine.rs:166"]
+    },
+    {
+      "consumer": "Initial function declarations",
+      "ordering_source": "KrateSst.functions Vec. Lowering builds this Vec by ordered call-graph SCC groups; poly maps it in order. A prepared hit returns that ordered vector.",
+      "key_binding": "FunctionOrder ledger records selected input Vec and complete ordered Vec<Vec<Fun>> answer; hit validation recomputes and compares the ordered answer before restoring the SST.",
+      "references": ["verus/source/vir/src/ast_to_sst_crate.rs:34", "verus/source/vir/src/poly.rs:1409", "verus/source/vir/src/sail_graph.rs:294", "verus/source/vir/src/sail_graph.rs:347", "verus/source/rust_verify/src/verifier.rs:1434", "verus/source/rust_verify/src/sail_engine.rs:213"]
+    },
+    {
+      "consumer": "Spec definitions and proof operation schedule",
+      "ordering_source": "Fresh GlobalCtx.call_graph_all_sccs and call_graph_scc_nodes, then an ordered local scc_functions Vec. OpGenerator's maps are keyed lookup tables created from the supplied SST; the operation queue itself is freshly generated after a cache hit.",
+      "key_binding": "Prepared graph reads are checked before restoration; full AIR scheduling is not restored from a cached operation queue. GlobalCtx.func_call_graph and func_call_sccs are not SailEffects fields.",
+      "references": ["verus/source/rust_verify/src/commands.rs:83", "verus/source/rust_verify/src/commands.rs:100", "verus/source/rust_verify/src/commands.rs:177", "verus/source/rust_verify/src/commands.rs:206", "verus/source/rust_verify/src/commands.rs:214", "verus/source/vir/src/context.rs:888", "verus/source/vir/src/context.rs:902"]
+    }
+  ],
+  "conclusion": "The inspected code does not demonstrate arrow declaration/definition reordering caused by fresh HashMap seeds in SailEffects restoration. This excludes that specific proposed mechanism, not every possible preparation defect. Cross-process stock self-differences and an empty-prepared control must remain distinct from a same-input cache causality test.",
+  "recommended_same_input_oracle": {
+    "scope": "Design feedback only; not implemented or executed by this audit.",
+    "inputs": "One compiler callback's exact immutable pruned Krate, initial typed state, source/span owners and ordered graph answers.",
+    "arms": ["Decode and restore one genuine prepared artifact", "Perform fresh lowering of those exact same inputs"],
+    "independent_state": "Reconstruct independent Ctx::new values and independent mutable graph capture/chosen/qid owners. Do not merely clone Ctx: NameCtxt::clone aliases Rc<RefCell<NameCtxtImpl>> and could let the first arm's naming decisions contaminate the second.",
+    "comparison": "Ordered SST vectors and exact resulting AIR/SMT command bytes under the same fresh graph schedule; no sorting or normalization of solver inputs.",
+    "references": ["verus/source/vir/src/def.rs:354", "verus/source/vir/src/context.rs:934", "verus/source/rust_verify/src/verifier.rs:1985"]
+  }
+}
