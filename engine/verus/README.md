@@ -99,7 +99,10 @@ sharing or a bound on total compiler RSS. Interpreter state is never cached,
 and pointer-keyed analysis maps are recomputed after the checkpoint. Measured
 RSS includes these ordinary working allocations. The reported
 `peak_retained_bytes` is charged retained ownership, **not** peak allocation or
-process RSS; temporary budget arithmetic above is separate.
+process RSS; temporary budget arithmetic above is separate. `batch_hits` counts
+RAM-entry restores, and `persistent_hits` counts validated file restores. Parallel
+workers can restore files written earlier in the same batch, so the persistent
+count alone does not prove reuse across edits.
 
 Persistent files bind version, exact input key and body digest. A distinct
 shared directory limit of 512 MiB includes committed and temporary files;
