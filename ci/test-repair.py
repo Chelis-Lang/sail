@@ -13,8 +13,8 @@ import subprocess
 import tempfile
 import time
 
-GOOD = "proof fn selected(x: int) ensures x + 1 > x { }\nproof fn other(x: int) ensures x == x { }"
-REGRESSION = "proof fn selected(x: int) ensures x == x { }\nproof fn other(x: int) ensures x > x { }"
+GOOD = "proof fn selected(x: bool) ensures x || !x { }\nproof fn other(x: bool) ensures x == x { }"
+REGRESSION = "proof fn selected(x: bool) ensures x == x { }\nproof fn other(x: bool) ensures x { }"
 LATE = "proof fn selected() { }\n#[verifier::external_body] fn late() { let mut x = 0u64; let a = &mut x; let b = &mut x; *a = *b; }"
 
 
@@ -35,6 +35,8 @@ def execute(command, cwd, environment, timeout):
 
 
 def run(args):
+    assert args.timeout > 0, "acceptance timeout must be positive"
+    assert os.environ.get("CI", "").lower() != "true" or args.timeout <= 120, "CI proof/tool budget cannot exceed 120 seconds"
     sail = str(Path(args.sail).resolve())
     engine = Path(args.engine_build).resolve()
     source_tree = Path(args.verus_source).resolve()
@@ -66,6 +68,7 @@ def run(args):
         (evidence / "engine-install.stderr").write_bytes(setup.stderr)
         setup.check_returncode()
         engine_status = json.loads(setup.stdout)
+        env["RUSTUP_TOOLCHAIN"] = engine_status["rust_toolchain"]
         assert head == engine_status["commit"], "fixture source does not match validated primary engine pin"
         # Resolve ordinary Cargo packages once before the 120-second proof/tool
         # budget. This is dependency setup, not a source-engine compilation.
@@ -78,12 +81,18 @@ def run(args):
                                   env=env, stdout=subprocess.DEVNULL, stderr=daemon_errors,
                                   start_new_session=True)
         started = time.monotonic()
-        deadline = started + 120
+        deadline = started + args.timeout
+        summary = {"version":1,"kind":"actual-prebuilt-engine-cli-mcp-acceptance",
+                   "machine":platform.platform(),"environment_label":args.environment_label,
+                   "source_commit":head,"proof_tool_budget_s":args.timeout,"passed":False,
+                   "sail_sha256":hashlib.sha256(Path(sail).read_bytes()).hexdigest(),
+                   "engine_manifest_sha256":engine_status["manifest_sha256"]}
+        (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
         operations = []
         mcp = None
         def remaining(maximum=30):
             value = min(maximum, deadline - time.monotonic())
-            assert value > 0, "real repair CLI/MCP acceptance exceeded 120 seconds"
+            assert value > 0, f"real repair CLI/MCP acceptance exceeded {args.timeout:g} seconds"
             return value
         def cli(label, arguments, expected=0):
             before = time.monotonic()
@@ -113,7 +122,7 @@ def run(args):
                 assert value["job"]["state"] in ("queued", "running"), value
                 remaining()
                 attempt += 1
-                time.sleep(.05)
+                time.sleep(.25)
         def submit(label, function="repair_demo::selected"):
             status = cli(label + "-submit", ["repair-check", "--engine", "interactive",
                          "--package", "repair_demo", "--lib", "--function", function,
@@ -134,10 +143,11 @@ def run(args):
                 time.sleep(.02)
             good_job, good = submit("success")
             document, result, target = full(good)
-            if result["currentness"] == "historical":
+            cold_declarations = "Build-script input declarations were established during this run" in result["notes"]
+            if result["currentness"] == "historical" or (result["currentness"] == "unknown" and cold_declarations):
                 # Cold dep-info discovery must not authorize acceptance. One
                 # subsequent observed full invocation must establish current inputs.
-                assert not document["accepted"] and target["complete"], good
+                assert not document["accepted"] and result["exit_code"] == 0 and target["complete"], good
                 good_job, good = submit("success-established")
                 document, result, target = full(good)
             assert result["currentness"] == "current" and document["accepted"], good
@@ -183,6 +193,8 @@ def run(args):
             assert explanation["response"] == "explanation", explanation
             function = explanation["value"]["function"]
             assert function["verdict"] == "failed" and function["obligations"], function
+            counterexamples = [o["counterexample"] for o in function["obligations"] if o["counterexample"] is not None]
+            assert counterexamples and all(model["model"].strip() for model in counterexamples), function
             assert explanation["value"]["run_diagnostics"], explanation
             compared = cli("compare-regression", ["compare", failed_job, "--baseline", "before-repair", "--output", "json"])
             assert compared["response"] == "comparison", compared
@@ -230,14 +242,11 @@ def run(args):
             assert not late_document["accepted"] and late_full["exit_code"] != 0 and not late_target["complete"], late
             assert late_document["batch"]["focus"] is not None, late
             assert any("E0499" in json.dumps(t["report"]["diagnostics"]) for t in late_full["targets"]), late
-            summary = {"version":1,"kind":"actual-prebuilt-engine-cli-mcp-acceptance",
-                       "machine":platform.platform(),"source_commit":head,
-                       "sail_sha256":hashlib.sha256(Path(sail).read_bytes()).hexdigest(),
-                       "engine_manifest_sha256":document["batch"]["manifest_sha256"],
-                       "elapsed_s":time.monotonic()-started,"operations":operations}
-            (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
+            summary["passed"] = True
             print("Real repair CLI/MCP acceptance: success, missing selector, full regression, late EXEC, exact evidence/cursors passed", flush=True)
         finally:
+            summary.update(elapsed_s=time.monotonic()-started, operations=operations)
+            (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
             if mcp is not None:
                 mcp.stdin.close()
                 try:
@@ -253,10 +262,24 @@ def run(args):
                     os.killpg(daemon.pid, signal.SIGKILL)
                     daemon.wait(timeout=10)
             daemon_errors.close()
+            # Preserve public worker streams only, never private submissions or
+            # environment/context/runtime files, before the scratch cache disappears.
+            jobs = root / "cache/projects/jobs"
+            if jobs.is_dir():
+                for job in jobs.iterdir():
+                    if job.is_dir():
+                        for name in ("stdout", "stderr"):
+                            path = job / name
+                            if path.is_file():
+                                (evidence / (job.name + ".worker." + name)).write_bytes(path.read_bytes())
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("sail", "engine-build", "verus-source", "out"):
         parser.add_argument("--" + flag, required=True)
+    parser.add_argument("--timeout", type=float, default=120,
+                        help="local proof/tool scenario deadline; CI cannot exceed 120 seconds")
+    parser.add_argument("--environment-label", default="unspecified",
+                        help="explicit native/emulated platform and load qualification")
     run(parser.parse_args())
