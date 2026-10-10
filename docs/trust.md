@@ -78,6 +78,12 @@ the v2 key binds the whole process prefix and the solver identity
 
 They cannot make a reader serve a wrong answer.
 
+Concurrent lookups of the same shared entry receive the helper's verified
+result directly. The initiating caller does not need to resume before other
+readers can receive it. Publication follows the same signature, key, reply
+shape and solver checks; it does not extend lookup deadlines, and a late helper
+cannot overwrite a timeout already published to that lookup.
+
 **What a trusted key can do.** Anything: a trusted signer is trusted
 completely. Whoever holds the secret key can publish wrong answers that
 every trusting reader serves. Hence:
