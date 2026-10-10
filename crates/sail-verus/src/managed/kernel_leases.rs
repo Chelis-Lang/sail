@@ -31,11 +31,11 @@ fn key(text: &str) -> Option<Key> {
     fields.next().is_none().then_some(key)
 }
 fn owner(text: &str) -> Option<u64> {
-    let fields: Vec<_> = text.rsplit_once(')')?.1.split_whitespace().collect();
+    let mut fields = text.rsplit_once(')')?.1.split_whitespace();
     // Starttime is field 22, state field 3. Stopped/zombie owners cannot certify
     // progress, even if their kernel leases still happen to block a writer.
-    ["R", "S", "D"].contains(fields.first()?).then_some(())?;
-    fields.get(19)?.parse().ok()
+    matches!(fields.next()?, "R" | "S" | "D").then_some(())?;
+    fields.nth(18)?.parse().ok()
 }
 fn process(pid: u32) -> Option<u64> {
     owner(&std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?)
@@ -45,24 +45,33 @@ enum Row {
     Active(Key),
 }
 fn row(line: &str, pid: u32) -> Option<Row> {
-    let fields: Vec<_> = line.split_whitespace().collect();
-    let offset = usize::from(fields.get(1) == Some(&"->"));
-    let fields = fields.get(offset..)?;
-    if fields.get(4)?.parse::<i64>().ok()? != i64::from(pid) {
+    let mut fields = line.split_whitespace();
+    fields.next()?;
+    let mut kind = fields.next()?;
+    let blocked = kind == "->";
+    if blocked {
+        kind = fields.next()?;
+    }
+    let state = fields.next()?;
+    let access = fields.next()?;
+    if fields.next()?.parse::<i64>().ok()? != i64::from(pid) {
         return Some(Row::Other);
     }
+    let identity = fields.next()?;
+    let start = fields.next()?;
+    let end = fields.next()?;
     // Anything else owned by this private helper is an unbound generation.
-    if offset != 0
-        || fields.len() != 8
-        || fields.get(1) != Some(&"LEASE")
-        || fields.get(2) != Some(&"ACTIVE")
-        || fields.get(3) != Some(&"READ")
-        || fields.get(6) != Some(&"0")
-        || fields.get(7) != Some(&"EOF")
+    if blocked
+        || kind != "LEASE"
+        || state != "ACTIVE"
+        || access != "READ"
+        || start != "0"
+        || end != "EOF"
+        || fields.next().is_some()
     {
         return None;
     }
-    key(fields.get(5)?).map(Row::Active)
+    key(identity).map(Row::Active)
 }
 fn inventory(text: &str, pid: u32) -> Option<BTreeMap<Key, usize>> {
     let mut found = BTreeMap::new();
@@ -248,6 +257,35 @@ mod tests {
         assert!(descriptor(&active.replace("ACTIVE READ", "ACTIVE WRITE"), 7).is_none());
         assert!(descriptor(&(active.to_owned() + active), 7).is_none());
         assert!(descriptor(active.trim_end(), 7).is_none());
+    }
+    #[test]
+    fn streaming_rows_preserve_foreign_and_owned_field_boundaries() {
+        let expected = key("00:2a:100");
+        for row in [
+            "1: LEASE ACTIVE READ 7 00:2a:100 0 EOF",
+            "  1:\tLEASE\tACTIVE READ 7\t00:2a:100 0 EOF  ",
+        ] {
+            assert!(matches!(super::row(row, 7), Some(Row::Active(k)) if Some(k) == expected));
+        }
+        for row in [
+            "1: LEASE ACTIVE READ 7 00:2a:100 0",
+            "1: LEASE ACTIVE READ 7 00:2a:100 0 EOF extra",
+            "1: -> LEASE ACTIVE READ 7 00:2a:100 0 EOF",
+            "1: LEASE ACTIVE READ 7 00:2a:100:extra 0 EOF",
+            "1: LEASE ACTIVE READ not-a-pid 00:2a:100 0 EOF",
+            "1: LEASE ACTIVE READ",
+        ] {
+            assert!(super::row(row, 7).is_none(), "{row}");
+        }
+        // Unrelated owners remain irrelevant even if their lease shape is not
+        // ours; own blocked rows must still fail the complete inventory above.
+        for row in [
+            "1: POSIX ADVISORY WRITE 8",
+            "1: -> LEASE BREAKER WRITE 8 malformed",
+            "1: LEASE ACTIVE READ -1",
+        ] {
+            assert!(matches!(super::row(row, 7), Some(Row::Other)), "{row}");
+        }
     }
     #[test]
     fn process_binding_rejects_stopped_zombie_and_changed_starttime() {
