@@ -58,9 +58,12 @@ host port, captures credentials privately and removes its containers and volume.
 Docker is needed for this deployment probe, not normal Sail verification.
 
 `http-cache-runtime-linux-2026-10-10.json` repeats this deployment probe using
-the frozen Linux executable from M6 acceptance (core revision `44339db`). Its
-binary hash matches the installed CLI/MCP and frontend-reuse measurements.
+the frozen Linux executable from M6 acceptance (revision `a518a104`). It uses
+the same executable as the fixed CLI/MCP and frontend-reuse acceptance.
 Both test containers and their private credential volume were removed afterward.
+The `before-source-fix` artifact retains the earlier `44339db` deployment probe;
+that build's separate frontend-reuse failure is preserved in
+`managed-reuse-defect-linux-2026-10-10.json`.
 
 After building `deploy/cache/Dockerfile` with the Linux release binary, run:
 

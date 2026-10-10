@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "recorded_at": "2026-10-10T00:28:53.001461+00:00",
+  "recorded_at": "2026-10-10T00:50:53.633627+00:00",
   "artifact": "runtime-only HTTP shared-cache container",
   "platform": "linux/amd64",
-  "image_id": "sha256:34ebb3ca117bf1bdc7893438dcc171b7b324b3ac7584038fc635040f08c596f9",
+  "image_id": "sha256:b1c9f61f89ea6a386e5644620f73ba6da0852544825ed3965b63880ccd961127",
   "runtime_user": 10001,
   "glibc": "glibc 2.39",
   "binary": {
-    "sha256": "a4dd04771f29304211bb6b35a1224b330aebd7b6d131e0368fd3b39576b556c5",
-    "bytes": 58543912
+    "sha256": "e32ceb3ec7b0d75f7c398645dcc8f306dd3010dcc9b708e24a7dafa3b943715f",
+    "bytes": 58964288
   },
   "credential_modes": [
     "700",
