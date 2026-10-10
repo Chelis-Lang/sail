@@ -57,6 +57,11 @@ credential persistence after replacement. The test publishes only a loopback
 host port, captures credentials privately and removes its containers and volume.
 Docker is needed for this deployment probe, not normal Sail verification.
 
+`http-cache-runtime-linux-2026-10-10.json` repeats this deployment probe using
+the frozen Linux executable from M6 acceptance (core revision `44339db`). Its
+binary hash matches the installed CLI/MCP and frontend-reuse measurements.
+Both test containers and their private credential volume were removed afterward.
+
 After building `deploy/cache/Dockerfile` with the Linux release binary, run:
 
 ```sh
