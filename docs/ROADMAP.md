@@ -107,12 +107,14 @@ Current acceptance status and unresolved defects are in
 [known issues](known-issues.md) and the
 [retained acceptance guide](bench/m7-repair-acceptance.md). The complete `62ad095`
 Linux workspace gate passed; the later `d12d4af` gate failed five HTTP-cache
-concurrency tests and requires diagnosis. The earlier real-solver suite retains
+concurrency tests; the later `a9dc753` gate still failed one serving check after
+separate transport establishment. The earlier real-solver suite retains
 one unresolved fault test timeout; the complete `d12d4af` real-solver suite now
 passes all 37 cases without changing assertions or limits. The frozen `1dc` default fast tier passed all three cache phases;
 its standard run was interrupted and needs a complete new run. The selected
 source baseline still lacks an established physical preparation-memory bound.
-Graph-ledger/oracle candidates remain unselected, and a persistent hit inside one
+Graph-ledger/oracle candidates remain unselected; `2421` failed its 600-second
+authoritative full-verification deadline despite completed shadow controls. A persistent hit inside one
 focus/full invocation is not demonstrated reuse across edits.
 
 Priority order for completing this milestone:

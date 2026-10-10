@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "source_commit": "a9dc7531264de092297d2b793267913f3200b943",
+  "environment": "Linux amd64 Docker emulation on macOS arm64; eight CPU, 8 GiB VM RAM, 1 GiB swap; concurrent local source qualification and standard corpus",
+  "command": "ci/run.sh gate",
+  "build_jobs": 2,
+  "nextest_threads": 2,
+  "test_internal_concurrency_unchanged": true,
+  "limits_changed": false,
+  "exit_code": 100,
+  "tests": 436,
+  "passed": 435,
+  "failed": 1,
+  "skipped_solver_tests": 37,
+  "nextest_duration_seconds": 144.168,
+  "completed_checks": [
+    "Python contract/lifecycle suites (7, 4, 6, 6, 16, 3, 2 cases)",
+    "fmt",
+    "strict workspace all-target Clippy",
+    "nextest workspace (failed)"
+  ],
+  "not_attempted_after_failure": [
+    "CLI probe examples",
+    "workspace doctests",
+    "strict Rustdoc",
+    "layering",
+    "cargo deny",
+    "generated benchmarks page"
+  ],
+  "failed_tests": [
+    "verified_http_reply_reaches_readers_while_initiator_is_paused"
+  ],
+  "verified_paused_trace": {
+    "unit": "microseconds from constructor start, including separate setup",
+    "lookup_start": 63427,
+    "helper_start": 65823,
+    "second_lookup_start": 67209,
+    "server_read": 109123,
+    "server_sent": 189770,
+    "response_body_completed": 208783,
+    "classified": 344521,
+    "published": 344639,
+    "caller_elapsed_ms": 251.170042,
+    "body_to_classification_ms": 135.738
+  },
+  "cause": "Unresolved. Transport/trust establishment completed separately; the recorded response body to classification interval is 135.738 ms. Actual signature-verification CPU cost versus scheduling is being measured before another change.",
+  "log": {
+    "sha256": "4ff9cfa9d271b899e61c543d8ec7003acc5490724ea4ce36d2eb06aca37286c3",
+    "bytes": 52948
+  },
+  "scope": "Failed complete local gate after actual transport/trust fixture establishment. All serving deadlines, delay, trust/count assertions and cold constructor fallback unchanged. Four former failures pass, one remains. Prior failures are retained separately.",
+  "product_acceptance": false,
+  "source_archive_sha256": "d8d059e2a477db52b47be0d21f3fb91194165e1736bd1a402b6611bad27398e9",
+  "transport_trust_setup_ms": 66.900875,
+  "preceding_setup_failure": {
+    "exit_code": 127,
+    "checks_attempted": 0,
+    "reason": "The first launch preceded completed creation of the immutable source overlay; ci/run.sh was not yet present. The source overlay completed before the actual gate launch.",
+    "log_sha256": "907317b53cd8cee9e946d8d2090e04a5d08c0e54071d904fc65a247d8e288681",
+    "log_bytes": 43
+  }
+}
