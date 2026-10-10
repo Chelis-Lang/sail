@@ -135,8 +135,18 @@ def invoke(command, workspace, env, directory, timeout):
             while child.poll() is None:
                 elapsed = time.monotonic() - started
                 if elapsed > timeout:
-                    os.killpg(child.pid, signal.SIGKILL)
-                    child.wait()
+                    # Foreground repair owns a daemon job in another process
+                    # group. Let its interrupt handler cancel that owned job
+                    # before forcibly ending an unresponsive CLI process.
+                    os.killpg(child.pid, signal.SIGINT)
+                    try:
+                        child.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        os.killpg(child.pid, signal.SIGKILL)
+                        child.wait()
+                    write_json(directory / "timeout.json", {"timed_out": True, "deadline_s": timeout,
+                                                            "elapsed_s": time.monotonic() - started,
+                                                            "exit_code": child.returncode})
                     raise ValueError("SAIL0941: repair workload timed out: " + str(directory))
                 if actionable is None and provisional_event(events):
                     actionable = elapsed * 1000
