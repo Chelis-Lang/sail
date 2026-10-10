@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "kind": "http_established_serving_fixture_validation",
+  "source_base": "d12d4afea318b7ac6915eb33370c0b773101aeea",
+  "original_integrated_run": {
+    "result": "failed",
+    "http_cases": 5,
+    "platform": "Linux x86_64 container under emulation",
+    "log_excerpt_sha256": "ab26c8229835613044c849044b4f234e31839a2124f1fed198f91a505bb7c656",
+    "verified_paused_trace_us": {
+      "constructor_start": 20122,
+      "constructor_end": 172345,
+      "request_start": 175778,
+      "server_accepted": 237348,
+      "server_read": 253587,
+      "delay_ended": 329132,
+      "sent": 329369,
+      "published": 398656
+    },
+    "verified_paused_foreground_ms": 250.609458
+  },
+  "host_validation": {
+    "platform": "macOS-26.5-arm64-arm-64bit",
+    "http_cases": 8,
+    "passed": 8,
+    "failed": 0,
+    "test_threads": 2,
+    "summary_seconds": 0.433,
+    "log_sha256": "587b346c1508b975ee20df7943fac59cd4509fb87a20d119ed6245feb54f32ba",
+    "strict_clippy": "passed"
+  },
+  "preserved_checks": {
+    "lookup_timeout_ms": 250,
+    "server_delay_ms": 75,
+    "warm_test_assertions": "unchanged Hit/Rejected, signature, single request, paused initiator, status, credential and disconnect checks",
+    "cold_constructor_regression": "unchanged bounded follower/status and zero-request assertions"
+  },
+  "separate_setup": {
+    "transport": "actual configured HTTP client",
+    "trust": "actual trusted key directory",
+    "helper_ready_timeout_seconds": 2,
+    "must_send_requests": 0,
+    "actual_duration": "reported by each fixture, outside serving interval"
+  },
+  "production_changes": false,
+  "live_reader_acceptance": false,
+  "qualification": "Host fixture validation is not a replay or pass of the failed integrated Linux run. Native integrated validation remains pending."
+}

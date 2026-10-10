@@ -503,6 +503,32 @@ mod http_tests {
     }
 
     impl HttpFixture {
+        fn establish_transport_and_trust(&self) {
+            // These regressions exercise serving on an established transport.
+            // Cold construction remains independently covered by the paused
+            // constructor test, with the original foreground bound intact.
+            let tier = Arc::clone(&self.tier);
+            let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+            let setup = std::thread::spawn(move || {
+                let started = Instant::now();
+                let resolved = tier.remote.resolve(&tier.root, &tier.config, || {});
+                let (trusted, problems) = tier.trusted();
+                let established = matches!(resolved, initialization::Resolution::Ready(Some(_)))
+                    && !trusted.is_empty()
+                    && problems.is_empty();
+                ready_tx.send((established, started.elapsed())).unwrap();
+            });
+            let (established, elapsed) = ready_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+            setup.join().unwrap();
+            assert!(established, "actual HTTP transport and trust must be ready");
+            assert_eq!(self.count.load(Ordering::Relaxed), 0);
+            assert_eq!(self.tier.remote_info().unwrap().requests, 0);
+            eprintln!(
+                "HTTP transport/trust setup: {elapsed:?}; serving timeout: {:?}",
+                self.tier.config.timeout
+            );
+        }
+
         fn phase_report(&self) -> Vec<(&'static str, u128)> {
             let mut records = self.phases.lock().unwrap().clone();
             records.extend(self.tier.remote.phases());
@@ -625,6 +651,7 @@ mod http_tests {
     #[test]
     fn concurrent_readers_coalesce_one_http_lookup() {
         let mut fixture = http_fixture("readers", false);
+        fixture.establish_transport_and_trust();
         let (tier, solver, key) = (&fixture.tier, &fixture.solver, fixture.key);
         let barrier = Arc::new(std::sync::Barrier::new(8));
         let workers = (0..8)
@@ -700,6 +727,7 @@ mod http_tests {
     #[test]
     fn verified_http_reply_reaches_readers_while_initiator_is_paused() {
         let mut fixture = http_fixture("paused", false);
+        fixture.establish_transport_and_trust();
         let (result, initiating_result) = paused_initiator_lookup(&mut fixture);
         assert!(matches!(result, Lookup::Hit(_)), "lookup: {result:?}");
         assert!(matches!(initiating_result, Lookup::Hit(_)));
@@ -708,6 +736,7 @@ mod http_tests {
     #[test]
     fn forged_http_reply_is_refused_while_initiator_is_paused() {
         let mut fixture = http_fixture("forged", true);
+        fixture.establish_transport_and_trust();
         let (result, initiating_result) = paused_initiator_lookup(&mut fixture);
         assert!(matches!(result, Lookup::Rejected(_)), "lookup: {result:?}");
         assert!(matches!(initiating_result, Lookup::Rejected(_)));
@@ -761,6 +790,7 @@ mod http_tests {
     #[test]
     fn invalid_credentials_and_disconnect_do_not_reuse_old_transport() {
         let mut fixture = http_fixture("disconnect", false);
+        fixture.establish_transport_and_trust();
         assert!(matches!(
             fixture.tier.lookup(&fixture.key, &fixture.solver),
             Lookup::Hit(_)
@@ -784,6 +814,7 @@ mod http_tests {
     #[test]
     fn status_reads_existing_metrics_during_owned_transport_refresh() {
         let mut fixture = http_fixture("status-refresh", false);
+        fixture.establish_transport_and_trust();
         assert!(matches!(
             fixture.tier.lookup(&fixture.key, &fixture.solver),
             Lookup::Hit(_)
@@ -818,6 +849,7 @@ mod http_tests {
     #[test]
     fn disconnect_hides_cached_transport_without_initializing_or_waiting_for_drop() {
         let mut fixture = http_fixture("cached-disconnect", false);
+        fixture.establish_transport_and_trust();
         assert!(matches!(
             fixture.tier.lookup(&fixture.key, &fixture.solver),
             Lookup::Hit(_)
