@@ -329,3 +329,29 @@ a snapshot of the project's sources taken just before the run.
   dependencies elsewhere, the toolchain) are not tracked.
 - **Never the source of a verdict.** The store only reports what a recorded
   `sail verify` run said, with its provenance.
+
+## Proof repair tools
+
+The optional interactive engine is selected explicitly and must be installed as a
+validated Sail-managed pinned build. `start_verification` accepts `engine: stock`
+or `engine: interactive`; stock is the default.
+
+- `start_repair_validation` requires `package`, `kind` (`lib` or `bin`), exact
+  crate-qualified `function`, and `engine: interactive`. A binary also requires
+  `target`; a library omits it. Optional `project_dir`, `cargo_args` and
+  `verus_args` preserve verification configuration. It returns a durable job ID
+  immediately. Read the independent focused/full bundle with
+  `verification_result`; a focus success never authorizes the repair.
+- `verification_events` takes `job_id`, optional `stream_id` and unsigned
+  `after`. It returns one bounded page and a reconnect cursor. Observe `gap` and
+  `terminal`; provisional observations are not confirmed proofs.
+- `explain_failure` takes exact `job_id`, `package_id`, `target`, `kind` and
+  `function`, optionally `obligation`. It preserves verifier reports, raw models,
+  diagnostics and provenance without generating proof edits.
+- `compare_verification` takes `after_job` and exactly one `before_job` or
+  immutable `baseline`. Context/scope mismatches and unobserved functions stay
+  explicit; they are not labelled proof regressions.
+
+Save named baselines through `sail baseline save NAME --job JOB`. See
+[`proof-repair.md`](proof-repair.md) for currentness, compiler-seal and journal
+retention contracts.

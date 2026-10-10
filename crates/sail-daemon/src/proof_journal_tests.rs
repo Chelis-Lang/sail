@@ -19,6 +19,7 @@ impl Root {
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir(&root)?;
+        std::fs::write(root.join("events.jsonl"),serde_json::to_vec(&serde_json::json!({"kind":"context-ready","run_id":"run1","context_sha256":"context1","input_revision":"revision1","targets":[{"package_id":"demo@1.0.0","name":"demo","kind":["lib"]},{"package_id":"demo@1.0.0","name":"demo","kind":["bin"]}]})).map_err(std::io::Error::other)?)?;
         Ok(Self(root))
     }
     fn append(&self, bytes: &[u8]) -> std::io::Result<()> {
@@ -118,5 +119,86 @@ fn terminal_truncated_event_never_becomes_observed_evidence() -> TestResult {
     assert_eq!(final_page.events.len(), 0);
     assert!(final_page.gap.is_some());
     assert!(final_page.terminal);
+    Ok(())
+}
+
+#[test]
+fn terminal_pages_drain_all_events_and_spool_replacement_is_explicitly_incomplete() -> TestResult {
+    let root = Root::new()?;
+    let journals = Journals::default();
+    for ordinal in 0..3 {
+        root.append(&line(&event(&format!("event-{ordinal}"), "lib"))?)?;
+    }
+    let first = journals.page(&root.0, "job1", &Cursor::default(), 1, true)?;
+    assert!(!first.terminal);
+    let second = journals.page(&root.0, "job1", &first.next, 1, true)?;
+    assert!(!second.terminal);
+    let last = journals.page(&root.0, "job1", &second.next, 1, true)?;
+    assert!(last.terminal);
+    assert_eq!(last.next.after, 3);
+    std::fs::rename(root.0.join("proof-source.jsonl"), root.0.join("old-source"))?;
+    root.append(&line(&event("replacement", "lib"))?)?;
+    let replaced = journals.page(&root.0, "job1", &last.next, 10, true)?;
+    assert_eq!(replaced.events.len(), 0);
+    assert!(replaced.gap.is_some());
+    let restarted = Journals::default().page(&root.0, "job1", &last.next, 10, true)?;
+    assert_eq!(restarted.events.len(), 0);
+    assert!(restarted.gap.is_some());
+    Ok(())
+}
+
+#[test]
+fn retention_budget_reports_gap_without_reassigning_or_inventing_event_ids() -> TestResult {
+    let root = Root::new()?;
+    let journals = Journals::default();
+    let mut bytes = Vec::new();
+    for ordinal in 0..super::MAX_EVENTS + 2 {
+        bytes.extend(line(&event(&format!("event-{ordinal}"), "lib"))?);
+    }
+    root.append(&bytes)?;
+    let mut cursor = Cursor::default();
+    let mut count = 0;
+    let mut gap = None;
+    for _ in 0..200 {
+        let page = journals.page(&root.0, "job1", &cursor, 64, true)?;
+        count += page.events.len();
+        gap = gap.or(page.gap);
+        cursor = page.next;
+        if page.terminal {
+            break;
+        }
+    }
+    assert_eq!(count, super::MAX_EVENTS);
+    assert_eq!(cursor.after, super::MAX_EVENTS as u64);
+    assert!(gap.is_some());
+    let restarted = Journals::default().page(&root.0, "job1", &cursor, 64, true)?;
+    assert_eq!(restarted.events.len(), 0);
+    assert!(restarted.terminal);
+    assert!(restarted.gap.is_some());
+    Ok(())
+}
+
+#[test]
+fn producer_events_must_match_the_worker_context_and_exact_target_inventory() -> TestResult {
+    let root = Root::new()?;
+    let journals = Journals::default();
+    let valid = event("valid", "lib");
+    let mut other = valid.clone();
+    other.event_id = "wrong-run".into();
+    other.run_id = "unrelated-run".into();
+    root.append(&line(&other)?)?;
+    other = valid.clone();
+    other.event_id = "wrong-target".into();
+    other.target.name = "other".into();
+    root.append(&line(&other)?)?;
+    root.append(&line(&valid)?)?;
+    let page = journals.page(&root.0, "job1", &Cursor::default(), 10, true)?;
+    assert_eq!(page.events.len(), 1);
+    assert_eq!(page.events[0].input.event_id, "valid");
+    assert!(page.gap.is_some());
+    let restarted = Journals::default().page(&root.0, "job1", &Cursor::default(), 10, true)?;
+    assert_eq!(restarted.events.len(), 1);
+    assert_eq!(restarted.events[0].sequence, 1);
+    assert!(restarted.gap.is_some());
     Ok(())
 }

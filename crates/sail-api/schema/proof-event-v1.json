@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sail.invalid/schema/proof-event-v1.json",
+  "title": "Sail proof observation envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "stream_id",
+    "sequence",
+    "input"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "stream_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "event_id",
+        "run_id",
+        "context_sha256",
+        "input_revision",
+        "target",
+        "phase",
+        "function",
+        "obligation",
+        "observation"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context_sha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "package_id",
+            "name",
+            "kind"
+          ],
+          "properties": {
+            "package_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "phase": {
+          "enum": [
+            "focus",
+            "full"
+          ]
+        },
+        "function": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "obligation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "observation": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "phase_started"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "function_started"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "phase_finished"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "compiler_sealed"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "value"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "obligation_observed"
+                },
+                "value": {
+                  "$ref": "verify-output-v1.json#/$defs/obligation"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "value"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "function_observed"
+                },
+                "value": {
+                  "allOf": [
+                    {
+                      "$ref": "verify-output-v1.json#/$defs/function"
+                    },
+                    {
+                      "properties": {
+                        "tier": {
+                          "const": "provisional"
+                        },
+                        "verdict": {
+                          "const": "provisional"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "value"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "diagnostic"
+                },
+                "value": {
+                  "$ref": "verify-output-v1.json#/$defs/diagnostic"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "value"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "unavailable"
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "observation": {
+                "properties": {
+                  "kind": {
+                    "const": "compiler_sealed"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "phase": {
+                "const": "full"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$comment": "Runtime validation additionally binds headers to worker context-ready, enforces exact function/obligation identity and rejects conflicting event IDs. This observation never authorizes a final proof."
+}

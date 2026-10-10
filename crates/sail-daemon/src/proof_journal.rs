@@ -7,7 +7,7 @@ use std::os::unix::fs::{MetadataExt as _, OpenOptionsExt as _};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use sail_api::proof::{Cursor, Event, InputEvent, Page, VERSION};
+use sail_api::proof::{Cursor, Event, InputEvent, Page, Target, VERSION};
 
 const MAX_EVENT: usize = 4 * 1024 * 1024;
 const INGEST: u64 = 256 * 1024;
@@ -28,6 +28,36 @@ struct Journal {
     identity: Option<String>,
     halted: bool,
     retained_bytes: usize,
+    origin: Option<Origin>,
+}
+
+#[derive(serde::Deserialize)]
+struct Origin {
+    run_id: String,
+    context_sha256: String,
+    input_revision: String,
+    targets: Vec<Target>,
+}
+impl Origin {
+    fn accepts(&self, input: &InputEvent) -> bool {
+        self.run_id == input.run_id
+            && self.context_sha256 == input.context_sha256
+            && self.input_revision == input.input_revision
+            && self.targets.contains(&input.target)
+    }
+    fn load(directory: &Path) -> Option<Self> {
+        let mut bytes = Vec::new();
+        File::open(directory.join("events.jsonl"))
+            .ok()?
+            .take(INGEST)
+            .read_to_end(&mut bytes)
+            .ok()?;
+        bytes
+            .split(|byte| *byte == b'\n')
+            .filter_map(|line| serde_json::from_slice::<serde_json::Value>(line).ok())
+            .find(|event| event["kind"] == "context-ready")
+            .and_then(|event| serde_json::from_value(event).ok())
+    }
 }
 
 impl Journals {
@@ -120,7 +150,10 @@ impl Journal {
         std::fs::write(directory.join("proof-gap.txt"), message)
     }
     fn load(directory: &Path, id: &str) -> io::Result<Self> {
-        let mut journal = Self::default();
+        let mut journal = Self {
+            origin: Origin::load(directory),
+            ..Self::default()
+        };
         match File::open(directory.join("proof-journal.jsonl")).and_then(|file| {
             let mut bytes = Vec::new();
             file.take(BUDGET as u64 + 1).read_to_end(&mut bytes)?;
@@ -147,6 +180,10 @@ impl Journal {
                         || event.stream_id != id
                         || event.sequence != journal.events.len() as u64 + 1
                         || event.input.validate().is_err()
+                        || journal
+                            .origin
+                            .as_ref()
+                            .is_none_or(|origin| !origin.accepts(&event.input))
                     {
                         journal.gap = Some(
                             "SAIL0902: retained proof journal identity/sequence is invalid".into(),
@@ -170,7 +207,44 @@ impl Journal {
         Ok(journal)
     }
 
+    fn decode(&mut self, line: &[u8]) -> Option<InputEvent> {
+        let event = serde_json::from_slice::<InputEvent>(line)
+            .ok()
+            .filter(|event| event.validate().is_ok());
+        if line.len() > MAX_EVENT || event.is_none() {
+            self.gap =
+                Some("SAIL0902: malformed, oversized or incomplete proof event rejected".into());
+            return None;
+        }
+        let event = event?;
+        if self
+            .origin
+            .as_ref()
+            .is_none_or(|origin| !origin.accepts(&event))
+        {
+            self.gap = Some(
+                "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
+                    .into(),
+            );
+            return None;
+        }
+        if let Some(index) = self.identities.get(&event.event_id) {
+            if self
+                .events
+                .get(*index)
+                .is_none_or(|known| known.input != event)
+            {
+                self.gap =
+                    Some("SAIL0902: producer event id reused with different evidence".into());
+            }
+            return None;
+        }
+        Some(event)
+    }
     fn ingest(&mut self, directory: &Path, id: &str, terminal: bool) -> io::Result<()> {
+        if self.origin.is_none() {
+            self.origin = Origin::load(directory);
+        }
         let source = directory.join("proof-source.jsonl");
         let mut input = match File::open(source) {
             Ok(file) => file,
@@ -208,27 +282,9 @@ impl Journal {
         self.tail.extend(bytes);
         while let Some(end) = self.tail.iter().position(|byte| *byte == b'\n') {
             let line: Vec<_> = self.tail.drain(..=end).collect();
-            let event = serde_json::from_slice::<InputEvent>(&line)
-                .ok()
-                .filter(|event| event.validate().is_ok());
-            if line.len() > MAX_EVENT || event.is_none() {
-                self.gap = Some(
-                    "SAIL0902: malformed, oversized or incomplete proof event rejected".into(),
-                );
+            let Some(event) = self.decode(&line) else {
                 continue;
-            }
-            let Some(event) = event else { continue };
-            if let Some(index) = self.identities.get(&event.event_id) {
-                if self
-                    .events
-                    .get(*index)
-                    .is_none_or(|known| known.input != event)
-                {
-                    self.gap =
-                        Some("SAIL0902: producer event id reused with different evidence".into());
-                }
-                continue;
-            }
+            };
             let envelope = Event {
                 version: VERSION,
                 stream_id: id.into(),

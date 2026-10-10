@@ -87,7 +87,9 @@ fn valid_name(name: &str) -> io::Result<()> {
 
 pub(super) fn save_baseline(state: &State, id: &str, name: &str) -> io::Result<Baseline> {
     valid_name(name)?;
-    let result = completed(state, id)?;
+    let mut result = completed(state, id)?;
+    result.currentness = sail_api::project::Currentness::Historical;
+    result.notes.push("Immutable baseline evidence applies only to its recorded input revision, not current workspace inputs.".into());
     let baseline = Baseline {
         version: VERSION,
         name: name.into(),
