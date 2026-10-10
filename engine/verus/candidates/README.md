@@ -258,3 +258,55 @@ payload reads and sample publication, and uses fd-relative process payloads so
 numeric PID reuse cannot redirect reads. Leader exit, disappearance or identity
 change stops sampling. Optional diagnostic shutdown cannot prevent killing and
 draining the real actor at its deadline.
+
+## Combined bounded preparation candidate
+
+`bounded-private-span.patch` combines the private span-seed read boundary and
+its epoch lineage with the independently reviewed decoded-allocation, focused
+report and source-observer bounds. It is a complete patch for the pinned source,
+not an overlay to apply to `interactive.patch`. The selected `b346` runtime and
+the immutable failed `2421` qualification remain unchanged.
+
+The guarded serde decoder admits allocations before visiting each nested value,
+owned string, sequence or map, and suppresses untrusted collection size hints.
+It covers the complete portable SST/effects/bindings/diagnostics schema, not just
+the outer file size. Graph frames retain their independently bounded decoder;
+each supported replay query admits conservative scratch before executing the
+original graph algorithm. Replayed diagnostics keep their admitted owner through
+oracle comparison and replay, and physically drop their vectors and nested Arc
+references before releasing quota. Unsupported schemas, depth, malformed input
+or insufficient admission cause a preparation miss.
+
+Focused reports serialize borrowed typed diagnostics directly into a bounded
+writer after focus workers have joined. Source observations likewise serialize
+borrowed fields only under the single emitter lock. The observation writer,
+name formatting, progress owners and ordinal table have separate bounds; an
+oversized observation publishes an unavailable record rather than a partial
+JSON frame. The original full diagnostic text and JSON graph remain unchanged.
+Nested diagnostic object-member ordering may differ from the former temporary
+JSON value map; ordered arrays and diagnostic contents remain exact.
+
+The decoder/focus allocation argument is documented in
+`decode-budget/README.md`. The observer adds a separately bounded 8 MiB allowance
+to those phase maxima, yielding a conservative largest preparation-phase bound
+of 492 MiB. This is an audited allocation argument, not a measured RSS or runtime
+qualification claim. Compiler working IR after a validated handoff and the
+explicit diagnostic-oracle arms remain separately reported working memory;
+replay bindings, diagnostics and validation scratch cannot be excluded as
+compiler working IR before that handoff.
+
+The combined source passed all 26 host release VIR tests, strict all-target
+VIR clippy and the private graph/span boundary audits. Full RustVerify library
+compilation and its exact focus/observer/physical-owner tests are in progress.
+An allocation-only probe of the 105 retained, checksummed actual HE portable
+preparations admitted 36 and refused 69 at the 128 MiB decode budget. Admitted
+entries also decoded with explicit key-matched placeholder raw-span owners;
+this does not establish live provenance, graph/domain validity or a proof hit.
+The majority refusal is a product limitation, not a passing performance gate.
+See `qualifications/bounded-decode-retained-he.json`; raw entries and probe
+output remain preserved. Allocation precision is under review before an
+ordinary combined runtime build, without increasing the allowance or weakening
+admission checks.
+An ordinary verified Linux build, genuine old-domain rejection,
+previous-revision focused restore, complete source oracles and both real-project
+performance gates remain pending. It is unselected and unqualified.
