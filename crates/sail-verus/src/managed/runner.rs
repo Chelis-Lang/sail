@@ -1478,7 +1478,7 @@ pub(crate) fn run_engine(
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = Vec::new();
     if !coherent_complete {
-        notes.push("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification; no current proof receipt is published".to_owned());
+        notes.push(format!("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification ({}); no current proof receipt is published", coherent.failure_reason()));
     }
     if !script_coverage {
         notes.push("Build-script input declarations were established during this run".to_owned());
