@@ -159,3 +159,17 @@ every completed case and each required positive/negative comparison. It copies
 that tree's raw files into the new pipeline. The original failed pipeline stays
 unchanged. A passing source pipeline still does not constitute real-project
 product or performance qualification.
+
+The resumed `2421` source pipeline passed the eleven stock fixture controls,
+graph/checkpoint controls, cancellation and exact first-input capture. Its full
+HE unchanged-revision run then reached the unchanged 600-second actor deadline.
+All 106 restored-hit shadow comparisons completed with equal actual ordered
+wire bytes, effects, diagnostics and per-bucket solver outcomes, but the separate
+authoritative primary was still solving `human_eval_129::min_path`. Its sent
+input is an exact prefix of the completed stock input, ending at a 600,000,000
+rlimit `check-sat`; no response or full compiler seal was available. These
+shadow results do not establish a completed authoritative proof. The body edit
+and final Linux library stages were not reached. Raw streams and deadline
+metadata are retained; see `qualifications/2421-linux-resumed-failure.json`.
+The candidate remains unqualified and unselected. Narrowing the measured unused
+span-vector dependency does not establish a remedy for this solver timeout.
