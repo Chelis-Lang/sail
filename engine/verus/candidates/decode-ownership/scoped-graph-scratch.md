@@ -64,3 +64,14 @@ qualification stages remain required. A scoped allocation argument or
 passing unit control does not establish a prior-revision preparation restore.
 The candidate must still pass the unchanged checked-HIT and full real HE gates
 before any product qualification or runtime selection.
+
+## Ordinary build setup
+
+The next feature-isolated runtime is built from the pinned commit and this exact
+patch. A narrow [compiler-cache setup record](scoped-query-compiler-seed.json)
+retains the identities and cost of copying inactive third-party intermediates.
+Each source/destination byte hash was checked; no hard links, runtime files,
+receipts or seals were copied. VIR and RustVerify intermediates were excluded so
+changed source must recompile. The normal builder still performs fresh vstd
+verification and creates an independently validated complete runtime manifest.
+This is build-cache setup, not copied proof acceptance or source qualification.
