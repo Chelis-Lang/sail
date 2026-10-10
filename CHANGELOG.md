@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Fall back to the stock verifier when an optional engine emits a terminal event
+  without a complete structured full result, or terminates by panic or signal.
+  Conservatively rerun compiler-error documents that can also hide caught panics;
+  preserve failed engine output, stock diagnostics and actual fallback counts.
+
 - Reuse run-local sysroot byte hashes on Linux only while kernel leases and
   precise namespace observation remain continuously owned from the first hash
   through receipt publication. Lost coverage forces fresh byte checks and

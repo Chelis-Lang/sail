@@ -11,6 +11,7 @@ use crate::managed::{Runtime, TargetIdentity};
 
 const MAX_SOURCE: u64 = 16 * 1024 * 1024;
 const MAX_EVENT: usize = 4 * 1024 * 1024;
+const MAX_RESULT: usize = 32 * 1024 * 1024;
 
 pub(crate) struct Relay {
     done: Arc<AtomicBool>,
@@ -266,8 +267,9 @@ fn convert(
     Some(input)
 }
 
-/// Checks that the source completed the late compiler pass. It does not prove
-/// current inputs or a successful full proof; those belong to the managed runner.
+/// Checks only for a terminal full-phase observation. The pinned producer can
+/// emit it after a caught compiler panic, so it cannot establish compiler
+/// completion, current inputs or a successful full proof by itself.
 pub(crate) fn sealed(path: &Path) -> bool {
     if std::fs::metadata(path).map_or(true, |metadata| metadata.len() > MAX_SOURCE) {
         return false;
@@ -287,6 +289,60 @@ pub(crate) fn sealed(path: &Path) -> bool {
                 })
         })
     })
+}
+
+/// A terminal observation alone is not a completed verifier invocation. The
+/// pinned driver prints its structured result before normal exit 0 or 1;
+/// a panic (101), signal, missing document or partial document needs fallback.
+/// This validates completion, not successful proof. Compiler-error documents
+/// need conservative fallback because the pinned driver also catches internal
+/// panics into that same result shape. Stock retains the full failure outcome.
+pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
+    if !matches!(exit, Some(0 | 1)) || stdout.len() > MAX_RESULT || !sealed(path) {
+        return false;
+    }
+    let (documents, remainder) = crate::attribution::json_documents(stdout);
+    let [document] = documents.as_slice() else {
+        return false;
+    };
+    if !remainder.iter().all(u8::is_ascii_whitespace)
+        || !document["func-details"].is_object()
+        || !["version", "profile", "toolchain", "commit"]
+            .iter()
+            .all(|key| {
+                document["verus"][key]
+                    .as_str()
+                    .is_some_and(|value| !value.is_empty())
+            })
+        || !["os", "arch"].iter().all(|key| {
+            document["verus"]["platform"][key]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        })
+    {
+        return false;
+    }
+    let results = &document["verification-results"];
+    let Some(vir_error) = results["encountered-vir-error"].as_bool() else {
+        return false;
+    };
+    // The pinned driver catches arbitrary compiler panics and can print a
+    // normal-shaped error document with exit 1. Without an explicit internal
+    // failure distinction, compiler-error documents also need stock fallback.
+    if results["encountered-error"].as_bool() != Some(false)
+        || results
+            .get("success")
+            .is_some_and(|value| !value.is_boolean())
+    {
+        return false;
+    }
+    // The pinned JSON producer deliberately omits counts and scope after VIR
+    // errors. Such a document is a legitimate compiler failure, not a crash.
+    vir_error
+        || (results["verified"].as_u64().is_some()
+            && results["errors"].as_u64().is_some()
+            && results["is-verifying-entire-crate"].as_bool().is_some()
+            && (results["is-verifying-entire-crate"] != true || results["success"].is_boolean()))
 }
 
 /// Converts exact source message text while preserving locations when supplied.
@@ -331,6 +387,43 @@ mod tests {
         assert!(!sealed(&path));
         std::fs::write(&path, format!("{sealed_line}\n{{\n"))?;
         assert!(!sealed(&path));
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
+    #[test]
+    fn terminal_seal_requires_complete_full_document_and_normal_exit()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let path =
+            std::env::temp_dir().join(format!("sail-engine-result-{}.jsonl", std::process::id()));
+        std::fs::write(
+            &path,
+            "{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false}}\n",
+        )?;
+        let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
+        let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
+        for document in [proof.as_slice(), late.as_slice()] {
+            assert!(!completed(&path, document, Some(1)));
+            assert!(!completed(&path, document, Some(101)));
+            assert!(!completed(&path, document, None));
+            assert!(!completed(&path, &document[..document.len() - 2], Some(1)));
+            let mut trailing = document.to_vec();
+            trailing.extend_from_slice(b"{\"verification-results\":");
+            assert!(!completed(&path, &trailing, Some(1)));
+        }
+        for document in [b"".as_slice(), b"{broken", b"{}", b"null", b"{\"func-details\":{},\"verus\":{},\"verification-results\":{\"encountered-error\":true}}"] {
+            assert!(!completed(&path, document, Some(1)));
+        }
+        let mut invalid: Value = serde_json::from_slice(proof)?;
+        invalid["verification-results"]["encountered-error"] = serde_json::json!(false);
+        assert!(completed(&path, &serde_json::to_vec(&invalid)?, Some(1)));
+        invalid["verification-results"]["errors"] = serde_json::json!(-1);
+        assert!(!completed(&path, &serde_json::to_vec(&invalid)?, Some(1)));
+        invalid["verification-results"] = serde_json::json!({"encountered-error":true,"encountered-vir-error":true,"success":false});
+        assert!(!completed(&path, &serde_json::to_vec(&invalid)?, Some(1)));
+        let mut repeated = proof.to_vec();
+        repeated.extend_from_slice(late);
+        assert!(!completed(&path, &repeated, Some(1)));
+        assert!(!completed(&path, &vec![b' '; MAX_RESULT + 1], Some(1)));
         std::fs::remove_file(path)?;
         Ok(())
     }
