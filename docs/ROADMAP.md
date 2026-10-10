@@ -118,7 +118,8 @@ authoritative full-verification deadline despite completed shadow controls. A pe
 focus/full invocation is not demonstrated reuse across edits.
 Subsequent fixed signature CPU controls support package-only development/test
 arithmetic optimization, with all original HTTP serving and forgery assertions
-passing in the affected suite; its complete integrated gate is still running.
+passing in the affected suite. The complete integrated `5fd7986` gate subsequently
+passed all 439 workspace tests and every documentation/policy check.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. Source work
 now closes decoded-allocation and validation-scratch accounting gaps, and routes
@@ -128,9 +129,10 @@ source qualification before activation.
 
 Priority order for completing this milestone:
 
-1. Resolve the HTTP-cache gate failures and diagnose the shared-entry fault
-   timeout without relaxing assertions or deadlines; finish the interrupted full
-   default standard corpus validation.
+1. Retain the now-passing HTTP-cache integrated gate, finish the current
+   real-solver/fault and CLI/MCP suites without changing assertions or deadlines,
+   and finish full default standard corpus validation. The original shared-entry
+   timeout's cause remains unresolved despite the subsequent complete suite pass.
 2. Build and qualify the bounded source candidate with the same-input lowering
    oracle, independent stock outcomes, adversarial controls and physical budget.
 3. Establish genuine Current real-project results and execute the original live
