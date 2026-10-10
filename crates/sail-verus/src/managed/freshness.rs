@@ -500,7 +500,8 @@ impl FreshnessIndex {
                 &request.context,
                 &request.environment,
             )?;
-            let _declarations_complete = snapshot.complete;
+            #[cfg(test)]
+            let refresh_complete = snapshot.complete;
             let plan_matches = plan == after;
             snapshot.complete &= plan_matches;
             let cacheable = snapshot.complete
@@ -514,40 +515,14 @@ impl FreshnessIndex {
             snapshot.complete &= cacheable;
             #[cfg(test)]
             if !cacheable {
-                eprintln!(
-                    "freshness establishment incomplete: declarations_complete={_declarations_complete} plan_matches={plan_matches} observer_present={} lease_present={} lease_reason={} observer_reason={}",
-                    observer.is_some(),
-                    lease.is_some(),
-                    lease
-                        .as_ref()
-                        .map_or("owner-unavailable", ReadLease::failure_reason),
-                    observer
-                        .as_ref()
-                        .map_or("owner-unavailable", Observer::failure_reason)
+                trace_incomplete(
+                    refresh_complete,
+                    plan_matches,
+                    observer.as_ref(),
+                    lease.as_ref(),
                 );
             }
-            trace(
-                "fill-validation",
-                trace_started,
-                if cacheable {
-                    "ready"
-                } else {
-                    lease
-                        .as_ref()
-                        .map_or("lease-owner-unavailable", ReadLease::failure_reason)
-                },
-            );
-            trace(
-                "fill-namespace",
-                trace_started,
-                if cacheable {
-                    "ready"
-                } else {
-                    observer
-                        .as_ref()
-                        .map_or("namespace-owner-unavailable", Observer::failure_reason)
-                },
-            );
+            trace_fill(trace_started, cacheable, lease.as_ref(), observer.as_ref());
             let runtime = if cacheable {
                 runtime.zip(lease).map(|((identity, _), lease)| {
                     Arc::new(Mutex::new(RuntimeSlot {
@@ -585,6 +560,47 @@ impl FreshnessIndex {
             Err(error) => Err(error),
         }
     }
+}
+#[cfg(target_os = "linux")]
+fn trace_fill(
+    trace_started: std::time::Instant,
+    cacheable: bool,
+    lease: Option<&ReadLease>,
+    observer: Option<&Observer>,
+) {
+    trace(
+        "fill-validation",
+        trace_started,
+        if cacheable {
+            "ready"
+        } else {
+            lease.map_or("lease-owner-unavailable", ReadLease::failure_reason)
+        },
+    );
+    trace(
+        "fill-namespace",
+        trace_started,
+        if cacheable {
+            "ready"
+        } else {
+            observer.map_or("namespace-owner-unavailable", Observer::failure_reason)
+        },
+    );
+}
+#[cfg(all(test, target_os = "linux"))]
+fn trace_incomplete(
+    refresh_complete: bool,
+    plan_matches: bool,
+    observer: Option<&Observer>,
+    lease: Option<&ReadLease>,
+) {
+    eprintln!(
+        "freshness establishment incomplete: refresh_complete_before_plan={refresh_complete} plan_matches={plan_matches} observer_present={} lease_present={} lease_reason={} observer_reason={}",
+        observer.is_some(),
+        lease.is_some(),
+        lease.map_or("owner-unavailable", ReadLease::failure_reason),
+        observer.map_or("owner-unavailable", Observer::failure_reason)
+    );
 }
 #[cfg(target_os = "linux")]
 fn read_projection<T>(entry: &Mutex<T>) -> Option<std::sync::MutexGuard<'_, T>> {
