@@ -46,11 +46,7 @@ pub(super) fn parse(values: impl Iterator<Item = String>) -> io::Result<Args> {
         environment: get("--environment")?,
         out: PathBuf::from(get("--out")?),
     };
-    if args.worker == 0
-        || args.job == args.active_job
-        || !cfg!(target_os = "linux")
-        || std::env::var_os("CI").is_some()
-    {
+    if args.worker == 0 || args.job == args.active_job {
         return Err(io::Error::other(
             "local Linux census requires distinct completed/active jobs and nonzero worker PID",
         ));
@@ -82,6 +78,34 @@ mod tests {
             "--out",
             "out",
         ];
+        assert!(super::parse(values.into_iter().map(str::to_owned)).is_err());
+    }
+}
+
+#[cfg(test)]
+mod valid_tests {
+    #[test]
+    fn distinct_job_selectors_are_parsed_without_environment_dependency() {
+        let mut values = [
+            "--socket",
+            "s",
+            "--job",
+            "done",
+            "--active-job",
+            "active",
+            "--active-worker",
+            "7",
+            "--environment",
+            "test",
+            "--out",
+            "out",
+        ];
+        let args = super::parse(values.into_iter().map(str::to_owned))
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert_eq!(args.worker, 7);
+        assert_eq!(args.job, "done");
+        assert_eq!(args.active_job, "active");
+        values[5] = "done";
         assert!(super::parse(values.into_iter().map(str::to_owned)).is_err());
     }
 }

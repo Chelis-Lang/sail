@@ -116,18 +116,18 @@ mod tests {
         if let Some(v) = t.get_mut(&11) {
             v.state = "Z".into();
         }
-        assert!(verifiers(&t, &owner).is_empty());
+        assert_eq!(verifiers(&t, &owner), Vec::<Process>::new());
         if let Some(v) = t.get_mut(&11) {
             v.state = "S".into();
             v.parent = 20;
         }
-        assert!(verifiers(&t, &owner).is_empty());
+        assert_eq!(verifiers(&t, &owner), Vec::<Process>::new());
         if let Some(v) = t.get_mut(&11) {
             v.parent = 10;
         }
         if let Some(v) = t.get_mut(&10) {
             v.started_ticks = 101;
         }
-        assert!(verifiers(&t, &owner).is_empty());
+        assert_eq!(verifiers(&t, &owner), Vec::<Process>::new());
     }
 }
