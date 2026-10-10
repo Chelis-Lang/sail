@@ -10,6 +10,7 @@ import platform
 import select
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -32,6 +33,28 @@ def execute(command, cwd, environment, timeout):
         failure.stdout, failure.stderr = process.communicate(timeout=10)
         raise
     return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def stop_owned(process, timeout, close_stdin=False):
+    """Reap an owned session, including children when graceful shutdown stalls."""
+    if close_stdin:
+        try:
+            process.stdin.close()
+        except (BrokenPipeError, OSError):
+            pass
+    elif process.poll() is None:
+        try:
+            process.terminate()
+        except ProcessLookupError:
+            pass
+    try:
+        process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=timeout)
 
 
 def run(args):
@@ -95,6 +118,7 @@ def run(args):
         operations = []
         progress_failures = []
         mcp = None
+        mcp_errors = None
         def remaining(maximum=30):
             value = min(maximum, deadline - time.monotonic())
             assert value > 0, f"real repair CLI/MCP acceptance exceeded {args.timeout:g} seconds"
@@ -231,8 +255,10 @@ def run(args):
             assert any(d["function"] == "repair_demo::other" and d["change"] == "regressed"
                        for d in compared["value"]["differences"]), compared
             # Real stdio MCP, same durable jobs/evidence; no synthetic worker.
+            mcp_errors = (evidence / "mcp.stderr").open("wb")
             mcp = subprocess.Popen([sail, "mcp"], cwd=project, env=env, stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                                   stdout=subprocess.PIPE, stderr=mcp_errors, text=True,
+                                   start_new_session=True)
             request_id = 0
             def exchange(method, parameters):
                 nonlocal request_id
@@ -274,36 +300,47 @@ def run(args):
             assert any("E0499" in json.dumps(t["report"]["diagnostics"]) for t in late_full["targets"]), late
             assert not progress_failures, progress_failures
             summary["passed"] = True
-            print("Real repair CLI/MCP acceptance: success, missing selector, full regression, late EXEC, exact evidence/cursors passed", flush=True)
         finally:
-            summary.update(elapsed_s=time.monotonic()-started, operations=operations,
-                           progress_failures=progress_failures)
-            (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
-            if mcp is not None:
-                mcp.stdin.close()
-                try:
-                    mcp.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    mcp.kill()
-                    mcp.wait(timeout=5)
-            if daemon.poll() is None:
-                daemon.terminate()
-                try:
-                    daemon.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    os.killpg(daemon.pid, signal.SIGKILL)
-                    daemon.wait(timeout=10)
+            original_failure = sys.exc_info()[0] is not None
+            cleanup_errors = []
+            # Stop owned actors before copying streams. An evidence write failure
+            # must never skip cleanup or replace the original proof/test failure.
+            for process, timeout, close_stdin in ((mcp, 5, True), (daemon, 10, False)):
+                if process is not None:
+                    try:
+                        stop_owned(process, timeout, close_stdin)
+                    except (OSError, subprocess.SubprocessError) as failure:
+                        cleanup_errors.append(f"actor cleanup: {failure}")
             daemon_errors.close()
-            # Preserve public worker streams only, never private submissions or
-            # environment/context/runtime files, before the scratch cache disappears.
-            jobs = root / "cache/projects/jobs"
-            if jobs.is_dir():
-                for job in jobs.iterdir():
-                    if job.is_dir():
-                        for name in ("stdout", "stderr"):
-                            path = job / name
-                            if path.is_file():
-                                (evidence / (job.name + ".worker." + name)).write_bytes(path.read_bytes())
+            if mcp_errors is not None:
+                mcp_errors.close()
+            try:
+                # Public worker streams only: never private submissions or
+                # environment/context/runtime files from the scratch cache.
+                jobs = root / "cache/projects/jobs"
+                if jobs.is_dir():
+                    for job in jobs.iterdir():
+                        if job.is_dir():
+                            for name in ("stdout", "stderr"):
+                                path = job / name
+                                if path.is_file():
+                                    (evidence / (job.name + ".worker." + name)).write_bytes(path.read_bytes())
+            except OSError as failure:
+                cleanup_errors.append(f"public worker evidence: {failure}")
+            summary.update(elapsed_s=time.monotonic()-started, operations=operations,
+                           progress_failures=progress_failures, cleanup_errors=cleanup_errors)
+            if cleanup_errors:
+                summary["passed"] = False
+            try:
+                (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
+            except OSError as failure:
+                cleanup_errors.append(f"summary evidence: {failure}")
+            if cleanup_errors:
+                print("Acceptance cleanup/evidence failed: " + "; ".join(cleanup_errors), file=sys.stderr)
+                if not original_failure:
+                    raise RuntimeError("acceptance cleanup or evidence retention failed")
+        print("Real repair CLI/MCP acceptance: success, missing selector, full regression, late EXEC, exact evidence/cursors passed", flush=True)
+
 
 
 if __name__ == "__main__":
