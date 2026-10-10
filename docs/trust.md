@@ -266,14 +266,18 @@ process start time before and after the sweep. Global seq-file inventory counts
 can change across buffer refills when unrelated owners add or remove leases.
 If otherwise valid ACTIVE rows disagree with the initial inventory, Sail checks
 each initially bound descriptor through kernel `fdinfo`, whose lease rows are
-produced under the inode lease lock. The fallback shares the same total sweep
-budget and byte cap. Each descriptor must still carry its one exact owner,
+produced under the inode lease lock. The fallback shares the same aggregate
+byte cap. Each descriptor must still carry its one exact owner,
 device/inode and ACTIVE READ lease. Known breaking or malformed owner state
 does not use the fallback. Missing, breaking, unexpected, malformed, unavailable
-or over-budget final state permanently invalidates that owner.
-The sweep retains a 50 ms work budget and a 2 MiB byte cap. These are fail-closed
-limits, not a promise that a blocked kernel read can be interrupted on that clock.
-Public job RPC and reader acceptance deadlines are unchanged.
+or oversized final state permanently invalidates that owner.
+The sweep retains a 2 MiB aggregate byte cap and at most 4,096 initially bound
+descriptors. Kernel reads do not promise an interruptible wall-clock bound.
+Elapsed scheduling time does not determine freshness: the owner cannot restore
+a broken lease during a pause. The former 50 ms elapsed-time refusal was removed
+after it rejected genuine unbroken generations under concurrent work. Public
+five-second job RPC and actual 200 ms p95 reader acceptance deadlines remain
+unchanged, and slow reads must still fail those acceptance gates.
 
 The helper acquires every lease once before readiness and never adds or renews a
 lease afterward. Each lease can therefore only cease being active. Although a
