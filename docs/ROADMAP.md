@@ -146,13 +146,18 @@ refuses 69 of 105 real human-eval preparations. The subsequent unselected
 [closed ownership overlay](../engine/verus/candidates/decode-ownership/README.md)
 admits 77 and safely refuses 28 under that same 128 MiB allowance; its 12
 allocation controls pass. This checks allocation admission, not span binding,
-graph validation or reuse after an edit. Combined actual-source checks, a
-complete ordinary build and runtime qualification precede selection.
+graph validation or reuse after an edit. The combined actual source now passes
+33 VIR and 22 driver tests. Its independent ordinary Linux build has started;
+strict source checks and complete runtime qualification precede selection.
 The reader track now provides an explicit persistent SDK decoding cache and
 joined cancellable transport. Every call receives the complete fresh frame;
 decoding reuse grants no proof or freshness authority. The integrated API's
-41 library/contract tests pass in the local Linux container. MCP activation and
-the original live reader gate remain separate from offline replay measurements.
+41 library/contract tests pass in the local Linux container. Installed MCP
+read-only tools now use the persistent client family; writes and blocking
+verification polling retain their existing process path. A separate real-service
+smoke checks fresh lifecycle frames, service disappearance/restart and actual
+cancellation. The original live reader gate remains separate from these
+transport controls and offline replay measurements.
 
 Priority order for completing this milestone:
 
