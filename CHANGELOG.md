@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Index current canonical native watches during Linux observer setup. Preserve
+  descriptor replacement across hardlink aliases, coverage checks and watch caps.
+
 - Avoid scanning every tracked input for each Linux namespace event. Preserve
   exact path relationships, explicit output-directory inputs, complete native
   coverage and all existing freshness limits.

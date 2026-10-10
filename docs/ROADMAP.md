@@ -166,8 +166,11 @@ and overflow controls plus generated old/new path equivalence. A local emulated
 4,097-path queue control dropped from 14.44 seconds and incomplete coverage to
 8.38 ms with complete coverage under the unchanged drain budget. Its
 [isolated record](validation/m7-namespace-indexed-filter.json) does not establish
-real reader latency or erase any failed full gate; watch acquisition remains a
-separate unoptimized cost.
+real reader latency or erase any failed full gate. A separate canonical watch
+membership index removes quadratic setup scans and passes native hardlink
+replacement and all original namespace controls. Its [setup record](validation/m7-native-watch-index.json)
+retains shared-load measurements separately from service qualification; mount,
+lease acquisition and original elapsed acceptance checks remain required.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh
 real-reader attempt failed ordinary human-eval setup at the unchanged

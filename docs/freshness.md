@@ -69,6 +69,16 @@ record](validation/m7-namespace-indexed-filter.json) retains the initial empty-p
 counterexample and exact native controls. Its isolated queue timings do not
 qualify the complete service reader latency gate.
 
+Watch acquisition also indexes canonical membership while retaining the original
+watch-descriptor map as authority. A native descriptor reused for another
+hardlink spelling replaces the old index membership; aliases are not accumulated
+as permanently watched paths. Canonicalization, local-filesystem validation,
+native masks and the 8,192-watch bound retain their original order. The additional
+index holds at most one path/count entry per current descriptor value. See
+[the acquisition controls](validation/m7-native-watch-index.json) for the exact
+native alias regression and local setup measurements; faster lookup alone does
+not establish lease coverage or meet the complete product latency gates.
+
 Inotify alone is insufficient. It cannot see writes through existing shared memory
 mappings. Directory watches also miss writes through an outside hardlink unless
 its inode is watched directly. See the executable reproduction in

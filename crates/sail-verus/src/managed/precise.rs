@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 mod platform {
     use super::{Path, PathBuf};
     use inotify::{EventMask, Inotify, WatchDescriptor, WatchMask};
-    use std::collections::{BTreeSet, HashMap};
+    use std::collections::{BTreeMap, BTreeSet, HashMap};
     use std::ops::Bound::{Included, Unbounded};
     use std::os::unix::fs::MetadataExt as _;
     use std::time::{Duration, Instant};
@@ -79,6 +79,7 @@ mod platform {
     pub(super) struct Observer {
         native: Inotify,
         directories: HashMap<WatchDescriptor, PathBuf>,
+        canonical_watches: BTreeMap<PathBuf, usize>,
         tracked: BTreeSet<PathBuf>,
         excluded: Vec<PathBuf>,
         complete: bool,
@@ -93,6 +94,7 @@ mod platform {
             let mut observer = Self {
                 native: Inotify::init().ok()?,
                 directories: HashMap::new(),
+                canonical_watches: BTreeMap::new(),
                 tracked: roots.iter().cloned().collect(),
                 excluded: excluded.to_vec(),
                 complete: true,
@@ -116,7 +118,7 @@ mod platform {
             if !local_filesystem(&canonical, &self.mounts) {
                 return None;
             }
-            if self.directories.values().any(|p| *p == canonical) {
+            if self.canonical_watches.contains_key(&canonical) {
                 return Some(());
             }
             if self.directories.len() >= MAX_WATCHES {
@@ -137,7 +139,19 @@ mod platform {
                         | WatchMask::MOVE_SELF,
                 )
                 .ok()?;
-            self.directories.insert(descriptor, canonical);
+            // Inotify may reuse a descriptor for a different hardlink spelling.
+            // Match the descriptor map's current values, rather than retaining
+            // every canonical path ever supplied to add(). Counts preserve the
+            // exact membership invariant even if multiple descriptors share one.
+            if let Some(previous) = self.directories.insert(descriptor, canonical.clone()) {
+                let count = self.canonical_watches.get_mut(&previous)?;
+                *count = count.checked_sub(1)?;
+                if *count == 0 {
+                    self.canonical_watches.remove(&previous);
+                }
+            }
+            let count = self.canonical_watches.entry(canonical).or_default();
+            *count = count.checked_add(1)?;
             Some(())
         }
         fn binding(&mut self, path: &Path) -> Option<()> {
@@ -329,6 +343,37 @@ mod platform {
                 && !tracked.iter().any(|root| {
                     excluded.iter().any(|p| root.starts_with(p)) && path.starts_with(root)
                 })
+        }
+        #[test]
+        fn hardlink_descriptor_replacement_preserves_current_canonical_membership() {
+            let root = std::env::temp_dir().join(format!(
+                "sail-precise-canonical-index-{}",
+                std::process::id()
+            ));
+            assert!(std::fs::create_dir_all(root.join("source")).is_ok());
+            let first = root.join("source/first");
+            let second = root.join("source/second");
+            assert!(std::fs::write(&first, b"input").is_ok());
+            assert!(std::fs::hard_link(&first, &second).is_ok());
+            let source = root.join("source");
+            let mut observer = Observer::begin(std::slice::from_ref(&source), &[])
+                .unwrap_or_else(|| unreachable!("fixture"));
+            for path in [&first, &second, &first, &second, &second] {
+                assert!(observer.watch(path).is_some());
+                let mut original = BTreeMap::<PathBuf, usize>::new();
+                for current in observer.directories.values() {
+                    *original.entry(current.clone()).or_default() += 1;
+                }
+                assert_eq!(observer.canonical_watches, original);
+                assert!(observer.canonical_watches.contains_key(path));
+                let other = if path == &first { &second } else { &first };
+                assert!(!observer.canonical_watches.contains_key(other));
+            }
+            assert!(observer.clean());
+            assert!(std::fs::write(&first, b"changed").is_ok());
+            assert!(!observer.clean());
+            drop(observer);
+            assert!(std::fs::remove_dir_all(root).is_ok());
         }
         #[test]
         fn all_component_boundaries_and_missing_ancestor_relations_are_equal() {

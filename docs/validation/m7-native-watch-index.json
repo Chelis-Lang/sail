@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "scope": "Canonical native watch membership index; no authority or setup/deadline extension",
+  "qualified_product_latency": false,
+  "base_source": "eceb94d",
+  "machine": "Linux x86_64 Docker emulation under shared load",
+  "toolchain": "rustc/clippy1.99.0 b940084d7",
+  "candidate_precise_sha256": "9889869d36de6d09442601dcb0551820bf4bcb0105ea5646880af62b428280ac",
+  "invariant": "canonical_watches[path] equals multiplicity of path in authoritative directories.values(); never a set of previously submitted aliases",
+  "semantics": [
+    "Canonicalize and validate local filesystem before index lookup as before",
+    "MAX_WATCHES still applies to authoritative descriptor map before native.add",
+    "Update counts only after successful native.add and descriptor insert",
+    "If descriptor replacement changes canonical spelling, remove previous spelling membership",
+    "Checked count failure disables observer establishment",
+    "Masks, descriptor-to-event path association and all event handling unchanged"
+  ],
+  "retained_index_bound": "At most8192 path/count entries, one per current descriptor value; existing bound unchanged. This is separate observer state, not prepared-engine memory.",
+  "actual_source_controls": {
+    "passed": 8,
+    "failed": 0,
+    "elapsed_s": 4.56,
+    "scope": "Original six namespace/restored-write/hardlink/symlink/exclusion/overflow tests; generated exact event predicate equivalence; new actual native hardlink descriptor replacement compares canonical index against original descriptor-value multiplicities and observes later write"
+  },
+  "strict_private_clippy": {
+    "status": "passed",
+    "warnings_denied": true,
+    "all_and_pedantic": true,
+    "workspace_extra_clippy_denies": true,
+    "scope": "Actual candidate source linked to existing inotify; not full workspace gate"
+  },
+  "startup_measurement": {
+    "runs_per_implementation": 1,
+    "fixture": "64/1024/4096 regular source inputs; observer acquisition then actual unrelated native queue",
+    "original": [
+      {
+        "files": 64,
+        "watch_calls": 327,
+        "watches": 68,
+        "duplicate_comparisons": 6355,
+        "dedup_us": 79538,
+        "mount_us": 574091,
+        "canonical_us": 3529,
+        "total_us": 947475
+      },
+      {
+        "files": 1024,
+        "watch_calls": 5127,
+        "watches": 1028,
+        "duplicate_comparisons": 1399444,
+        "dedup_us": 1277926,
+        "mount_us": 1891709,
+        "canonical_us": 13877,
+        "total_us": 4023109
+      },
+      {
+        "files": 4096,
+        "watch_calls": 20487,
+        "watches": 4100,
+        "duplicate_comparisons": 25410704,
+        "dedup_us": 20957554,
+        "mount_us": 5803340,
+        "canonical_us": 198304,
+        "total_us": 29196437
+      }
+    ],
+    "indexed": [
+      {
+        "files": 64,
+        "watch_calls": 327,
+        "watches": 68,
+        "membership_queries": 327,
+        "dedup_us": 247,
+        "mount_us": 27445,
+        "canonical_us": 1040,
+        "total_us": 44170
+      },
+      {
+        "files": 1024,
+        "watch_calls": 5127,
+        "watches": 1028,
+        "membership_queries": 5127,
+        "dedup_us": 5321,
+        "mount_us": 650484,
+        "canonical_us": 6335,
+        "total_us": 884063
+      },
+      {
+        "files": 4096,
+        "watch_calls": 20487,
+        "watches": 4100,
+        "membership_queries": 20487,
+        "dedup_us": 32978,
+        "mount_us": 2369247,
+        "canonical_us": 45921,
+        "total_us": 3187934
+      }
+    ],
+    "limitations": [
+      "Local diagnostic-only counter/time observers; shared load differs between invocations",
+      "Mount/canonicalization times vary even though those operations are unchanged",
+      "Comparison counts establish eliminated quadratic scanning; single timings do not qualify general speed or real reader latency",
+      "No acquisition deadline or lease coverage change; full integrated gate remains required"
+    ]
+  },
+  "retained_raw_sha256": {
+    "startup-original-diagnostic.rs": "abd9862a79ee30fa49bb4c621fd5f4815395aec9acb82f13d1fbbcc5f5b432c6",
+    "startup-original.log": "a3a1c77c36feaa6e3b55888e0e3386880c1bad82be3d786445641ff01c97aca8",
+    "startup-indexed-diagnostic.rs": "b4322c01bfa0ee05a76979a9c53aae25abcdde12223c8159ab9c4b8e02de684a",
+    "startup-indexed.log": "4aa6fad8dc54b5b2e475aaf4a3e5b04460f329c4dadba1ec21ddf7085bc9236d",
+    "startup-indexed-probe": "424111b62f39fb9b72a9817fe802860e17e4a10e1daf9220e72c8971d8ff9e01",
+    "precise-watch-indexed.rs": "9889869d36de6d09442601dcb0551820bf4bcb0105ea5646880af62b428280ac",
+    "watch-clippy.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "watch-controls.log": "c644bba0554ae7e59332a49cd110b8ecdd35e3f9d50cd0dc2bac248bd8c6be4f",
+    "watch-clippy-controls": "a25c49f3c4809af12d4beea1168af127db9ce9b6c1d9f96938c22dff0cbf5954"
+  },
+  "remaining": [
+    "Original749 coalescing5s fixture failure requires distinct stage diagnosis",
+    "Final current installed MCP/controller and original120/30/5 acceptance pending",
+    "Selected engine runtime unchanged"
+  ]
+}
