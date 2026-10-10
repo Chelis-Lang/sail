@@ -1715,7 +1715,7 @@ index cb6c959..d4dc5c3 100644
      // don't check recommends during decreases checking; these are separate passes:
      check_state.disable_recommends = 1;
 diff --git a/source/vir/src/context.rs b/source/vir/src/context.rs
-index eb97120..338c6a6 100644
+index eb97120..8b65357 100644
 --- a/source/vir/src/context.rs
 +++ b/source/vir/src/context.rs
 @@ -25,7 +25,7 @@ use std::sync::Arc;
@@ -1873,7 +1873,7 @@ index eb97120..338c6a6 100644
 +        // any future lowering call must not escape reads through this fork.
 +        self.global.sail_graph_capture.unsupported();
 +        let mut global=self.global.clone(); // immutable graphs keep exact stock order
-+        global.sail_graph_capture=crate::sail_graph::Capture::default();
++        global.sail_graph_capture=self.global.sail_graph_capture.fork();
 +        global.interpreter_log=Arc::new(std::sync::Mutex::new(None));
 +        global.func_call_graph_log=Arc::new(std::sync::Mutex::new(None));
 +        // RefCell Clone above copies chosen/qid values, not a shared RefCell owner.
@@ -1961,7 +1961,7 @@ index eb97120..338c6a6 100644
              fun_attrs: self.fun_attrs.clone(),
              no_span: self.no_span.clone(),
              func_call_graph: self.func_call_graph.clone(),
-+            sail_graph_capture: Default::default(),
++            sail_graph_capture: self.sail_graph_capture.fork(),
              datatype_graph: self.datatype_graph.clone(),
              datatype_graph_span_infos: self.datatype_graph_span_infos.clone(),
              func_call_sccs: self.func_call_sccs.clone(),
@@ -2011,7 +2011,7 @@ index eb97120..338c6a6 100644
      pub fn merge(&mut self, other: Self) {
          self.qid_map.borrow_mut().extend(other.qid_map.into_inner());
          self.chosen_triggers.borrow_mut().extend(other.chosen_triggers.into_inner());
-@@ -937,3 +1139,101 @@ impl Ctx {
+@@ -937,3 +1139,122 @@ impl Ctx {
          Arc::new(commands)
      }
  }
@@ -2087,6 +2087,27 @@ index eb97120..338c6a6 100644
 +        clone.datatype_graph_span_infos();
 +        assert!(clone.sail_finish_graph_reads().is_none());
 +        assert_eq!(clone.datatype_graph_span_infos()[0].data,global.datatype_graph_span_infos()[0].data);
++    }
++
++    #[test]
++    fn clones_created_before_begin_still_guard_parent_and_dead_intermediates() {
++        let (krate, global) = empty_context();
++        let child = global.from_self_with_log(Arc::new(std::sync::Mutex::new(None)));
++        let grandchild = child.from_self_with_log(Arc::new(std::sync::Mutex::new(None)));
++        drop(child);
++        global.sail_begin_graph_reads();
++        grandchild.datatype_graph_span_infos();
++        assert!(global.sail_finish_graph_reads().is_none(), "pre-created descendant escaped parent boundary");
++        let module = crate::def::Spanned::new(global.no_span.clone(), crate::ast::ModuleX {
++            path: Arc::new(crate::ast::PathX {krate: CrateId::Internal, segments: Arc::new(Vec::new())}), reveals: None,
++        });
++        let ctx = Ctx::new(&krate, global, module, Vec::new(), Vec::new(), HashSet::new(),
++            crate::prune::UsedBuiltins {uses_array: false, uses_bytestr: false, uses_pointee_metadata: false, uses_ieee_float: false},
++            Vec::new(), Vec::new(), false).unwrap();
++        let fork = ctx.sail_oracle_fork(&krate).unwrap();
++        ctx.global.sail_begin_graph_reads();
++        fork.sail_seed_spans();
++        assert!(ctx.global.sail_finish_graph_reads().is_none(), "pre-created oracle fork escaped boundary");
 +    }
 +
 +    #[test]
@@ -2401,17 +2422,17 @@ index 56b98e9..f1a072f 100644
      Decoration(TypDecoration),
 diff --git a/source/vir/src/sail_graph.rs b/source/vir/src/sail_graph.rs
 new file mode 100644
-index 0000000..cbed1fa
+index 0000000..e901514
 --- /dev/null
 +++ b/source/vir/src/sail_graph.rs
-@@ -0,0 +1,564 @@
+@@ -0,0 +1,719 @@
 +//! Exact observed call-graph dependencies of one prepared lowering.
 +use crate::ast::Fun;
 +use crate::recursion::Node;
 +use crate::scc::Graph;
 +use std::collections::LinkedList;
 +use std::io::Write;
-+use std::sync::atomic::{AtomicUsize, Ordering};
++use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 +use std::sync::{Arc, Mutex};
 +const LIMIT: usize = 16 * 1024 * 1024;
 +const FRAME_LIMIT: usize = 1024 * 1024;
@@ -2488,9 +2509,72 @@ index 0000000..cbed1fa
 +struct State {
 +    active: bool,
 +    recording: Option<Recording>,
++    guard_epoch: u64,
++}
++const CAPTURE_CHARGE: usize = 128;
++const GUARD_CHARGE: usize = 128;
++const GUARD_DEPTH: usize = 64;
++// Ancestor ownership is only a small read epoch, never another ledger or
++// mutable compiler effect. The strong, bounded lineage survives an intermediate
++// clone being dropped before its ancestor starts capturing.
++struct GuardNode {
++    epoch: AtomicU64,
++    disabled: AtomicBool,
++    parent: Option<ReadGuard>,
++    depth: usize,
 +}
 +#[derive(Clone)]
-+pub struct Capture(Option<Arc<Mutex<State>>>);
++struct ReadGuard(Option<Arc<GuardNode>>);
++impl Drop for ReadGuard {
++    fn drop(&mut self) {
++        if let Some(inner) = self.0.take() {
++            if let Some(node) = Arc::into_inner(inner) {
++                // No weak owners: Arc allocation is gone. Drop every retained
++                // ancestor guard before admitting replacement quota.
++                release_after_drop(node, || { OWNED.fetch_sub(GUARD_CHARGE, Ordering::Relaxed); });
++            }
++        }
++    }
++}
++impl ReadGuard {
++    fn new(parent: Option<&Self>) -> Option<Self> {
++        Self::new_with_admission(parent, charge)
++    }
++    fn new_with_admission(parent: Option<&Self>, admit: impl FnOnce(usize)->bool) -> Option<Self> {
++        let depth = parent.and_then(|p|p.0.as_ref()).map_or(1, |p|p.depth + 1);
++        if depth > GUARD_DEPTH || !admit(GUARD_CHARGE) {
++            if let Some(parent) = parent {parent.disable();}
++            return None;
++        }
++        Some(Self(Some(Arc::new(GuardNode {
++            epoch: AtomicU64::new(0), disabled: AtomicBool::new(false),
++            parent: parent.cloned(), depth,
++        }))))
++    }
++    fn disable(&self) {
++        let mut node = self.0.as_deref();
++        while let Some(current) = node {
++            current.disabled.store(true, Ordering::SeqCst);
++            node = current.parent.as_ref().and_then(|p|p.0.as_deref());
++        }
++    }
++    fn notify(&self, include_self: bool) {
++        let mut node = self.0.as_deref();
++        if !include_self {node = node.and_then(|n|n.parent.as_ref()).and_then(|p|p.0.as_deref());}
++        while let Some(current) = node {
++            if current.epoch.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |old|old.checked_add(1)).is_err() {
++                current.disabled.store(true, Ordering::SeqCst);
++            }
++            node = current.parent.as_ref().and_then(|p|p.0.as_deref());
++        }
++    }
++    fn epoch(&self) -> Option<u64> {
++        let node = self.0.as_ref()?;
++        if node.disabled.load(Ordering::SeqCst) {None} else {Some(node.epoch.load(Ordering::SeqCst))}
++    }
++}
++#[derive(Clone)]
++pub struct Capture(Option<Arc<Mutex<State>>>, Option<ReadGuard>);
 +impl Drop for Capture {
 +    fn drop(&mut self) {
 +        if let Some(inner) = self.0.take() {
@@ -2498,7 +2582,7 @@ index 0000000..cbed1fa
 +            // its value. Only the final clone releases the capture allocation.
 +            if let Some(state) = Arc::into_inner(inner) {
 +                release_after_drop(state, || {
-+                    OWNED.fetch_sub(128, Ordering::Relaxed);
++                    OWNED.fetch_sub(CAPTURE_CHARGE, Ordering::Relaxed);
 +                });
 +            }
 +        }
@@ -2506,7 +2590,7 @@ index 0000000..cbed1fa
 +}
 +impl Default for Capture {
 +    fn default() -> Self {
-+        Self(if charge(128) { Some(Arc::new(Mutex::new(State::default()))) } else { None })
++        Self::with_parent(None)
 +    }
 +}
 +pub struct Ledger {
@@ -2526,15 +2610,37 @@ index 0000000..cbed1fa
 +    }
 +}
 +impl Capture {
++    fn with_parent(parent: Option<&ReadGuard>) -> Self {
++        Self::with_parent_admission(parent, charge)
++    }
++    fn with_parent_admission(parent: Option<&ReadGuard>, admit: impl FnOnce(usize)->bool) -> Self {
++        let Some(guard) = ReadGuard::new(parent) else {return Self(None, None);};
++        if !admit(CAPTURE_CHARGE) {
++            guard.disable();
++            return Self(None, None);
++        }
++        Self(Some(Arc::new(Mutex::new(State::default()))), Some(guard))
++    }
++    pub fn fork(&self) -> Self {
++        self.unsupported();
++        if self.0.is_none() {return Self(None, None);}
++        Self::with_parent(self.1.as_ref())
++    }
 +    pub fn begin(&self) {
 +        if let Some(inner) = &self.0 {
 +            if let Ok(mut state) = inner.lock() {
 +                state.active = true;
-+                state.recording = Some(Recording { frames: LinkedList::new(), bytes: 0 });
++                state.recording = self.1.as_ref().and_then(|guard|guard.epoch()).map(|epoch| {
++                    state.guard_epoch = epoch;
++                    Recording { frames: LinkedList::new(), bytes: 0 }
++                });
 +            }
 +        }
 +    }
 +    pub fn unsupported(&self) {
++        // Notify before returning the guarded input to the caller. A read
++        // before begin is harmless; a read during lowering changes its epoch.
++        if let Some(guard) = &self.1 {guard.notify(true);}
 +        if let Some(inner) = &self.0 {
 +            if let Ok(mut state) = inner.lock() {
 +                if state.active {
@@ -2544,6 +2650,9 @@ index 0000000..cbed1fa
 +        }
 +    }
 +    pub fn record(&self, query: QueryRef<'_>) {
++        // Independent child owners cannot silently supply graph reads to an
++        // ancestor capture, even when cloned before that capture started.
++        if let Some(guard) = &self.1 {guard.notify(false);}
 +        let Some(inner) = &self.0 else {
 +            return;
 +        };
@@ -2585,6 +2694,10 @@ index 0000000..cbed1fa
 +            return None;
 +        }
 +        state.active = false;
++        if self.1.as_ref().and_then(|guard|guard.epoch()) != Some(state.guard_epoch) {
++            state.recording = None;
++            return None;
++        }
 +        let mut recording = state.recording.take()?;
 +        // Conversion metadata cannot overlap another conversion or frame encoder.
 +        let _gate = ENCODE.lock().ok()?;
@@ -2944,6 +3057,69 @@ index 0000000..cbed1fa
 +            Ok(0)
 +        );
 +    }
++    #[test]
++    fn independent_forks_guard_precreated_ancestors_without_sibling_misses() {
++        assert!(std::mem::size_of::<Mutex<State>>() + 2*std::mem::size_of::<usize>() <= CAPTURE_CHARGE);
++        assert!(std::mem::size_of::<GuardNode>() + 2*std::mem::size_of::<usize>() <= GUARD_CHARGE);
++        let parent = Capture::default();
++        let child = parent.fork();
++        let grandchild = child.fork();
++        drop(child);
++        parent.begin();
++        grandchild.unsupported();
++        assert!(parent.finish().is_none());
++        parent.begin();
++        grandchild.record(QueryRef::IsCycle(&node("not-in-own-active-capture"),false));
++        assert!(parent.finish().is_none(), "precreated child graph read escaped");
++        let a = parent.fork();
++        let b = parent.fork();
++        a.begin();
++        b.unsupported();
++        assert!(a.finish().is_some(), "independent sibling read must not dirty this capture");
++    }
++
++    #[test]
++    fn refused_guard_or_state_allocation_disables_precreated_ancestry() {
++        let parent = Capture::default();
++        assert!(ReadGuard::new_with_admission(parent.1.as_ref(), |_|false).is_none());
++        parent.begin();
++        assert!(parent.finish().is_none());
++        let parent = Capture::default();
++        let refused = Capture::with_parent_admission(parent.1.as_ref(), |_|false);
++        assert!(refused.0.is_none());
++        parent.begin();
++        assert!(parent.finish().is_none());
++    }
++
++    #[test]
++    fn ancestor_guard_charge_survives_until_final_descendant_physically_drops() {
++        let initial = retained_bytes();
++        let parent = ReadGuard::new(None).unwrap();
++        let child = ReadGuard::new(Some(&parent)).unwrap();
++        let cloned = child.clone();
++        assert_eq!(retained_bytes(),initial+2*GUARD_CHARGE);
++        drop(parent);
++        drop(child);
++        assert_eq!(retained_bytes(),initial+2*GUARD_CHARGE, "last descendant still owns both actual allocations");
++        drop(cloned);
++        assert_eq!(retained_bytes(),initial, "physical lineage drop must release exact owner quota");
++    }
++
++    #[test]
++    fn guard_depth_and_epoch_overflow_permanently_disable_ancestry() {
++        let parent = Capture::default();
++        let mut child = parent.clone();
++        for _ in 0..GUARD_DEPTH {child=child.fork();}
++        assert!(child.0.is_none(), "unbounded lineage was admitted");
++        parent.begin();
++        assert!(parent.finish().is_none(), "dropped ancestor boundary could be reused after depth refusal");
++        let capture = Capture::default();
++        capture.1.as_ref().unwrap().0.as_ref().unwrap().epoch.store(u64::MAX,Ordering::SeqCst);
++        capture.unsupported();
++        capture.begin();
++        assert!(capture.finish().is_none(), "wrapping epoch could authorize reuse");
++    }
++
 +    #[test]
 +    fn final_capture_clone_keeps_recording_owned_until_drop() {
 +        let capture = Capture::default();
