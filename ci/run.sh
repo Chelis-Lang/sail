@@ -82,6 +82,7 @@ case "$step" in
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
     cargo xtask check-layering
     cargo deny --locked check
+    mkdir -p target
     cargo run -q --locked -p sail-bench -- report --out target/benchmarks.md bench/results/*.json
     diff -u docs/benchmarks.md target/benchmarks.md
     ;;
