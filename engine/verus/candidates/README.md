@@ -62,9 +62,14 @@ not invalidate those clones.
 selected a byte comparison between restored and fresh lowering from the same
 compiler input, retaining independent stock verdict and diagnostic checks and
 reporting stock transcript instability. The historical `2459` qualification
-failure remains preserved. This new candidate has host library regressions;
-its ordinary runtime build and executable qualification are pending. It is not
-selected by the installer or the public runtime pin.
+failure remains preserved. This new candidate passed an ordinary Linux build
+with 2,060 vstd functions verified and no errors, plus host library regressions.
+Its first executable qualification passed a real restored-hit positive, then
+failed the mandatory order-fault control: the tiny fixture had only one spec
+declaration, so swapping a spec and an empty proof function did not change the
+wire. The failed control and its raw streams are retained in
+`qualifications/2421-linux-first-attempt.json`. Complete executable qualification
+is pending. It is not selected by the installer or the public runtime pin.
 
 The diagnostic oracle runs only when `SAIL_ENGINE_ORACLE_DIR` is set and a
 preparation has passed the normal key, provenance and graph-ledger validation.
