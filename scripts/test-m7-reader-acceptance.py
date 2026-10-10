@@ -2,6 +2,7 @@
 """Preparation/admission/lifecycle regressions, not substitutes for real reader acceptance."""
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -29,6 +30,9 @@ class WarmReaderTests(unittest.TestCase):
         run.out = root
         run.bin = root / "bin"
         run.env = {}
+        run.cache = root / "cache"
+        run.socket = root / "cache.sock"
+        run.job_started = {}
         run.owned = []
         run.args = SimpleNamespace(package="demo", target="demo", kind="lib", function="demo::f", setup_timeout=600)
         run.summary = {"setup": [], "commands": [], "proofs": {}}
@@ -94,6 +98,97 @@ class WarmReaderTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     run.warm("active", root, "manifest")
                 self.assertEqual(submissions.call_count, 1)
+
+    def projection(self):
+        original = self.document()["repair"]
+        projected = self.document()
+        projected["job"]["currentness"] = "unknown"
+        projected["result"].update(currentness="unknown", notes=[harness.PROJECTION_NOTE])
+        projected["repair"]["accepted"] = False
+        return original, projected
+
+    def pending(self, public, original):
+        return harness.pending_projection(public, original, "manifest",
+            "path+file:///fixture#demo@0.0.0", "demo", "lib", "demo::f")
+
+    def test_only_exact_owned_current_evidence_authorizes_projection_wait_not_admission(self):
+        original, projected = self.projection()
+        self.assertTrue(self.pending(projected, original))
+        with self.assertRaises(AssertionError):
+            harness.admit(projected, "manifest", "path+file:///fixture#demo@0.0.0", "demo", "lib", "demo::f")
+        for currentness in ("unknown", "historical"):
+            changed = copy.deepcopy(original)
+            changed["batch"]["full"]["currentness"] = currentness
+            self.assertFalse(self.pending(projected, changed))
+        for mutation in (lambda d: d["job"].update(input_revision="other"),
+                         lambda d: d["result"].update(notes=[]),
+                         lambda d: d["result"]["targets"][0].update(package_id="another")):
+            changed = copy.deepcopy(projected)
+            mutation(changed)
+            with self.assertRaises(AssertionError):
+                self.pending(changed, original)
+        for mutation in (lambda d: d["batch"].update(manifest_sha256="other"),
+                         lambda d: d["batch"]["full"]["targets"][0].update(complete=False),
+                         lambda d: d["batch"]["full"]["targets"][0]["report"]["crates"][0]["functions"][0].update(tier="provisional")):
+            changed = copy.deepcopy(original)
+            mutation(changed)
+            with self.assertRaises(AssertionError):
+                self.pending(projected, changed)
+
+    def projection_runner(self, root, responses):
+        run = self.runner(root)
+        run.job_started["owned"] = time.monotonic()
+        original, _ = self.projection()
+        output = run.cache / "results/projects/jobs/owned/stdout"
+        output.parent.mkdir(parents=True)
+        output.write_text(json.dumps(original))
+        calls = []
+        def call(address, request):
+            calls.append(request)
+            return next(responses), 1.0, 100
+        run.probe = SimpleNamespace(endpoint=lambda socket: "owned-endpoint", call=call)
+        return run, calls
+
+    def test_same_job_establishment_retains_unknown_then_requires_public_current(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, projected = self.projection()
+            current = self.document()
+            unknown_status = {"response": "status", "value": projected["job"]}
+            ready_status = {"response": "status", "value": current["job"]}
+            responses = iter([unknown_status, {"response": "result", "value": projected},
+                              unknown_status, ready_status, {"response": "result", "value": current}])
+            run, calls = self.projection_runner(root, responses)
+            with patch.object(harness.time, "sleep"):
+                result = run.wait("establish", "owned", "manifest", "path+file:///fixture#demo@0.0.0")
+            self.assertEqual(result, current)
+            self.assertEqual([request["operation"] for request in calls], ["status", "result", "status", "status", "result"])
+            self.assertTrue(all(request["id"] == "owned" for request in calls))
+            self.assertEqual(json.loads((root / "establish-result-1.json").read_text())["value"]["result"]["currentness"], "unknown")
+            self.assertTrue(run.summary["setup"][0]["awaited_original_current_projection"])
+            self.assertEqual(run.summary["setup"][0]["result_reads"], 2)
+            harness.admit(result, "manifest", "path+file:///fixture#demo@0.0.0", "demo", "lib", "demo::f")
+
+    def test_cancelled_job_during_projection_wait_returns_failure_and_budget_never_resets(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, projected = self.projection()
+            cancelled = copy.deepcopy(projected)
+            cancelled["job"]["state"] = "cancelled"
+            cancelled["result"] = None
+            responses = iter([{"response": "status", "value": projected["job"]},
+                              {"response": "result", "value": projected},
+                              {"response": "status", "value": cancelled["job"]},
+                              {"response": "result", "value": cancelled}])
+            run, calls = self.projection_runner(root, responses)
+            with patch.object(harness.time, "sleep"):
+                self.assertEqual(run.wait("cancelled", "owned", "manifest", "path+file:///fixture#demo@0.0.0"), cancelled)
+            self.assertEqual(len(calls), 4)
+            run.job_started["owned"] = 0
+            with patch.object(harness.time, "monotonic", return_value=600):
+                with self.assertRaisesRegex(AssertionError, "preparation budget exceeded"):
+                    run.wait("exhausted", "owned", "manifest", "path+file:///fixture#demo@0.0.0")
+            self.assertEqual(len(calls), 4, "expired per-job budget cannot start another RPC")
 
     def test_source_copy_excludes_actual_output_and_preserves_nested_target_source(self):
         with tempfile.TemporaryDirectory() as temporary:

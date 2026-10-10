@@ -73,6 +73,47 @@ def admit(document, manifest, package_id, target, kind, function):
     return result
 
 
+PROJECTION_NOTE = "SAIL3114: current input validation is unavailable or still running; native coverage and kernel read leases must be established before claiming Current"
+
+
+def pending_projection(document, original, manifest, package_id, target, kind, function):
+    """Authorize waiting, never proof admission, from exact owned original evidence."""
+    job, public = document["job"], document["result"]
+    if (job["state"] != "completed" or job["error"] is not None or public is None
+            or public["currentness"] != "unknown" or original.get("accepted") is not True):
+        return False
+    batch = original["batch"]
+    full = batch["full"]
+    if full["currentness"] != "current":
+        return False
+    assert batch["manifest_sha256"] == manifest and batch["selection_error"] is None
+    assert batch["batched"] and batch["focus"] is not None
+    whole_success(full)
+    same_scope(full, package_id, target, kind)
+    assert job["input_revision"] == full["input_revision"]
+    projected = dict(full, currentness="unknown", notes=full["notes"] + [PROJECTION_NOTE])
+    assert public == projected, "Unknown must be the projection of this exact owned Current report"
+    functions = [item for target in full["targets"] if target["requested"]
+                 for crate in target["report"]["crates"] for item in crate["functions"]
+                 if item["function"] == function]
+    assert len(functions) == 1 and functions[0]["verdict"] == "verified" and functions[0]["tier"] == "confirmed"
+    return True
+
+
+def owned_original(path):
+    """Bounded original output is used only to distinguish async projection setup."""
+    with path.open("rb") as stream:
+        payload = stream.read(32 * 1024 * 1024 + 1)
+    assert len(payload) <= 32 * 1024 * 1024, "owned worker document exceeds protocol bound"
+    def unique(pairs):
+        value = {}
+        for key, item in pairs:
+            assert key not in value, "duplicate owned worker document field"
+            value[key] = item
+        return value
+    return json.loads(payload, object_pairs_hook=unique)
+
+
 def wait_process(child, timeout, stage):
     """Report preparation progress while preserving the selected process deadline."""
     began = time.monotonic()
@@ -143,6 +184,7 @@ class Run:
         self.env = dict(os.environ, SAIL_CACHE_DIR=str(self.cache),
                         SAIL_DAEMON_SOCKET=str(self.socket), SAIL_MANAGED_FORCE="1")
         self.owned = []
+        self.job_started = {}
         self.daemon = None
         self.summary = {"version": 1, "kind": "real-warm-reader-acceptance", "passed": False,
                         "platform": platform.platform(), "environment_label": args.environment_label,
@@ -210,18 +252,22 @@ class Run:
         return ["--package", self.args.package, *suffix]
 
     def submit(self, label, workspace):
+        began = time.monotonic()
         env = dict(self.env, CARGO_TARGET_DIR=str(workspace / "target"))
         job = self.command(label + "-submit", [str(self.bin / "sail"), "repair-check",
                            "--engine", "interactive", "--function", self.args.function,
                            "--background", "--output", "json", *self.selection()], workspace, env)
         self.owned.append(job["id"])
+        self.job_started[job["id"]] = began
         return job["id"]
 
-    def wait(self, label, job):
-        began = time.monotonic()
+    def wait(self, label, job, manifest, package_id):
+        began = self.job_started[job]
         address = self.probe.endpoint(self.socket)
         poll = 0
         next_progress = 0
+        awaiting_projection = False
+        result_reads = 0
         while not self.args.setup_timeout or time.monotonic() - began < self.args.setup_timeout:
             if time.monotonic() - began >= next_progress:
                 print(f"setup {label}: {time.monotonic() - began:.1f}s; job {job}", flush=True)
@@ -232,11 +278,28 @@ class Run:
                 stream.write(json.dumps({"at_unix": time.time(), "elapsed_s": time.monotonic() - began,
                                          "rpc_ms": elapsed, "bytes": length, "response": response}) + "\n")
             if response["value"]["state"] in ("completed", "cancelled", "infrastructure_error", "superseded"):
+                if (awaiting_projection and response["value"]["state"] == "completed"
+                        and response["value"]["currentness"] == "unknown"):
+                    poll += 1
+                    time.sleep(.25)
+                    continue
                 result, _, _ = self.probe.call(address, {"operation": "result", "id": job})
+                result_reads += 1
+                bench.write_json(self.out / (label + f"-result-{result_reads}.json"), result)
                 bench.write_json(self.out / (label + "-result.json"), result)
                 assert result["response"] == "result", result
+                document = result["value"]
+                if document["result"] is not None and document["result"]["currentness"] == "unknown":
+                    original = owned_original(self.cache / "results/projects/jobs" / job / "stdout")
+                    if pending_projection(document, original, manifest, package_id, self.args.target,
+                                          self.args.kind, self.args.function):
+                        awaiting_projection = True
+                        poll += 1
+                        time.sleep(.25)
+                        continue
                 self.summary["setup"].append({"stage": label, "job": job,
                     "wall_ms": (time.monotonic() - began) * 1000, "status_reads": poll + 1,
+                    "result_reads": result_reads, "awaited_original_current_projection": awaiting_projection,
                     "measured_reader_latency": False})
                 self.save()
                 return result["value"]
@@ -256,7 +319,7 @@ class Run:
         for attempt in range(2):
             name = label + "-repair-context-" + str(attempt)
             job = self.submit(name, workspace)
-            document = self.wait(name, job)
+            document = self.wait(name, job, manifest, package_id)
             state = setup_state(document["repair"], manifest, attempt == 0)
             same_scope(document["result"], package_id, self.args.target, self.args.kind)
             if state == "ready":

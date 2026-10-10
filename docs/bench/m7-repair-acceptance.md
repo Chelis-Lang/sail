@@ -176,11 +176,17 @@ each copy it first runs ordinary independent full verification, then establishes
 the exact interactive repair-function context. It records every preparation
 invocation, result, elapsed time and failure. Only the catalogue's explicit
 first-run input-declaration transition permits one establishment rerun. Other
-Unknown, Historical, incomplete, wrong-scope or failed reports reject admission.
+Unknown, Historical, incomplete, wrong-scope or failed original reports reject
+admission. When the exact owned worker output records an independently complete,
+successful Current full proof but the public daemon projection is temporarily
+Unknown, preparation waits on that same completed job. It records every public
+status and result read and requires eventual public Current; it neither rewrites
+Unknown evidence nor starts another proof for projection establishment.
 
 `--setup-timeout 0` explicitly permits this unmeasured dependency and context
 preparation to finish, with progress output and owned-process cancellation.
-The default preparation budget is 600 seconds per invocation. Preparation is
+The default preparation budget is 600 seconds per job, covering submission,
+terminal completion and any projection establishment together. Preparation is
 separate from read-latency acceptance: both workspaces must have independently
 complete, successful Current full reports before the measured actor starts.
 The original Python and Rust collectors each retain four clients, 200 samples,
