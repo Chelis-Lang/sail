@@ -1,0 +1,329 @@
+{
+  "schema_version": 1,
+  "kind": "native-ci-current-engine-repair-cli-mcp-acceptance",
+  "passed": true,
+  "qualification": "Actual small supported no-vstd Cargo CLI and stdio MCP integration on native Linux x86-64 CI. Independent of the preserved d19 local emulation failure; not real-project speed or concurrent-read acceptance.",
+  "ci": {
+    "run_id": 38062894546,
+    "job_id": 114245144610,
+    "job_name": "End to end (repair)",
+    "conclusion": "success",
+    "head_sha": "2cce01f8f4ffb9e03c48c50c0164f1e898fd6e10",
+    "checkout_merge_sha": "4c64eb37833582d11ca9c1c77bced907c8fcd71f",
+    "merge_base_sha": "0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca",
+    "url": "https://github.com/Chelis-Lang/sail/actions/runs/38062894546/job/114245144610",
+    "started_at": "2026-10-10T15:18:43Z",
+    "completed_at": "2026-10-10T15:23:04Z",
+    "artifact": {
+      "id": 11673843596,
+      "name": "repair-acceptance",
+      "server_archive_digest": "sha256:906c855957e039630172caf9615561363919fafa5b0787277da239ed1b730e0b",
+      "size_bytes": 148665
+    }
+  },
+  "product": {
+    "sail_sha256": "af2dcbfc4b000c1d89055d41085400d14fe457785c65da00ec13eecf1e397dfe",
+    "acceptance_script_sha256": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7"
+  },
+  "engine": {
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
+  },
+  "machine": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "environment_label": "Linux x86-64 prebuilt-engine CI/local container",
+  "fixture": {
+    "package": "repair_demo",
+    "target": "repair_demo",
+    "kind": [
+      "lib"
+    ],
+    "mode": "supported-no-vstd-metadata",
+    "dependency_verification": "ordinary-full-cargo-plan",
+    "rust_toolchain": "1.98.1"
+  },
+  "deadlines_seconds": {
+    "proof_tool_workflow": 120,
+    "command": 30,
+    "local_rpc": 5,
+    "dependency_fetch_setup_outside_workflow": 60
+  },
+  "elapsed_s": 46.79034044000002,
+  "cli_operation_count": 169,
+  "longest_cli_operation": {
+    "operation": "missing-foreground",
+    "elapsed_s": 3.7130459030000225,
+    "exit_code": 1
+  },
+  "cases": [
+    {
+      "scenario": "success",
+      "job_id": "1791645733466-2794-0",
+      "lifecycle": "completed",
+      "accepted": true,
+      "full_exit_code": 0,
+      "full_currentness": "current",
+      "requested_targets_complete": [
+        true
+      ],
+      "compiler_invocations": 1,
+      "batched": true,
+      "focus_exit_code": 0,
+      "selection_error": null,
+      "input_revision": "b667dc022dd5baeef84f767c6ca2422e4688dc97fa6e235e3329450fde44db1e",
+      "context_sha256": "b956734bf7f1f42d31f1feafaf1c20c97973864e7a3435bd059e1ea1537e246b"
+    },
+    {
+      "scenario": "success-established",
+      "job_id": "1791645747833-2794-1",
+      "lifecycle": "completed",
+      "accepted": true,
+      "full_exit_code": 0,
+      "full_currentness": "current",
+      "requested_targets_complete": [
+        true
+      ],
+      "compiler_invocations": 1,
+      "batched": true,
+      "focus_exit_code": 0,
+      "selection_error": null,
+      "input_revision": "b667dc022dd5baeef84f767c6ca2422e4688dc97fa6e235e3329450fde44db1e",
+      "context_sha256": "b956734bf7f1f42d31f1feafaf1c20c97973864e7a3435bd059e1ea1537e246b"
+    },
+    {
+      "scenario": "missing",
+      "job_id": "1791645751629-2794-2",
+      "lifecycle": "completed",
+      "accepted": false,
+      "full_exit_code": 0,
+      "full_currentness": "current",
+      "requested_targets_complete": [
+        true
+      ],
+      "compiler_invocations": 1,
+      "batched": false,
+      "focus_exit_code": null,
+      "selection_error": {
+        "code": "SAIL3122",
+        "message": "exact repair function was not established in the selected target"
+      },
+      "input_revision": "b667dc022dd5baeef84f767c6ca2422e4688dc97fa6e235e3329450fde44db1e",
+      "context_sha256": "223684c743053b51d518f54c43600f821850b96799af7a328e0fbc24bca88a44"
+    },
+    {
+      "scenario": "full-regression",
+      "job_id": "1791645768926-2794-4",
+      "lifecycle": "completed",
+      "accepted": false,
+      "full_exit_code": 101,
+      "full_currentness": "current",
+      "requested_targets_complete": [
+        false
+      ],
+      "compiler_invocations": 1,
+      "batched": true,
+      "focus_exit_code": 0,
+      "selection_error": null,
+      "input_revision": "eb799d608904eb7c5be56e36f654945adb09b471ba9dfba260229d93dab4f74d",
+      "context_sha256": "b956734bf7f1f42d31f1feafaf1c20c97973864e7a3435bd059e1ea1537e246b"
+    },
+    {
+      "scenario": "mcp-repair",
+      "job_id": "1791645772949-2794-5",
+      "lifecycle": "completed",
+      "accepted": false,
+      "full_exit_code": 101,
+      "full_currentness": "current",
+      "requested_targets_complete": [
+        false
+      ],
+      "compiler_invocations": 1,
+      "batched": true,
+      "focus_exit_code": 0,
+      "selection_error": null,
+      "input_revision": "eb799d608904eb7c5be56e36f654945adb09b471ba9dfba260229d93dab4f74d",
+      "context_sha256": "b956734bf7f1f42d31f1feafaf1c20c97973864e7a3435bd059e1ea1537e246b"
+    },
+    {
+      "scenario": "late-exec",
+      "job_id": "1791645776570-2794-6",
+      "lifecycle": "completed",
+      "accepted": false,
+      "full_exit_code": 101,
+      "full_currentness": "current",
+      "requested_targets_complete": [
+        false
+      ],
+      "compiler_invocations": 1,
+      "batched": true,
+      "focus_exit_code": 0,
+      "selection_error": null,
+      "input_revision": "ffab59f6d61a3d76d7b472c81fa808db8ed0d555aad9e02e37b5502c22647e55",
+      "context_sha256": "b956734bf7f1f42d31f1feafaf1c20c97973864e7a3435bd059e1ea1537e246b"
+    }
+  ],
+  "live_evidence": {
+    "event_count": 18,
+    "gap": null,
+    "first_function_observation_sequence": 6,
+    "terminal_compiler_seal_sequence": 18,
+    "function_observations_provisional": true,
+    "resume_events": 0,
+    "resume_gap": null
+  },
+  "failure_evidence": {
+    "function": "repair_demo::other",
+    "verdict": "failed",
+    "raw_counterexample_models": [
+      {
+        "bytes": 6150,
+        "sha256": "79d08b97846f0624008c3312250549ba72d3b4d015c147a11855f1904c712ea0"
+      }
+    ],
+    "comparison_transitions": [
+      {
+        "function": "repair_demo::other",
+        "change": "regressed"
+      },
+      {
+        "function": "repair_demo::selected",
+        "change": "became_unknown"
+      }
+    ]
+  },
+  "mcp": {
+    "response_frames": 5,
+    "checked_operations": [
+      "initialize",
+      "verification_events with retained cursor",
+      "explain_failure",
+      "compare_verification against saved baseline",
+      "start_repair_validation with independently completed result"
+    ]
+  },
+  "preparation": [
+    {
+      "version": 1,
+      "enabled": true,
+      "batch_hits": 0,
+      "persistent_hits": 2,
+      "misses": 0,
+      "peak_retained_bytes": 1213648,
+      "memory_budget_bytes": 536870912,
+      "disk_budget_bytes": 536870912
+    }
+  ],
+  "cleanup_errors": [],
+  "progress_failures": [],
+  "not_qualified": [
+    "real HE/Vest complete Current workflow",
+    "owned cancellation and reconnect against a real-project job",
+    "three-round repair speedup",
+    "established concurrent-read latency",
+    "unprivileged host lease ownership"
+  ],
+  "raw_artifact_files": [
+    {
+      "file": "success-result-52.stdout.json",
+      "bytes": 20349,
+      "sha256": "3ec2bf4022658e1142a0fc3134ed9a373fcbacf639a558655c75f52438040c9c"
+    },
+    {
+      "file": "success-established-result-13.stdout.json",
+      "bytes": 20108,
+      "sha256": "69302addb3bcd74351426a368e370476a26900b2df835f7988fba0e5e8455429"
+    },
+    {
+      "file": "missing-result-48.stdout.json",
+      "bytes": 14765,
+      "sha256": "a3daddf8aec1486b3f5787f196ff7fd38f1fc9eddd6ae6ff48018230d1ea9c89"
+    },
+    {
+      "file": "full-regression-result-13.stdout.json",
+      "bytes": 46246,
+      "sha256": "1b30694f2fa00a9f5d31c0b81d1b9a1248e6703da1a8e4f66a8f55ece1b0b1eb"
+    },
+    {
+      "file": "mcp-repair-result-13.stdout.json",
+      "bytes": 46241,
+      "sha256": "305dcaf5e3e186265eb1a61f370d5b9a4e8eec8369b63722eebba86fb65ecad7"
+    },
+    {
+      "file": "late-exec-result-13.stdout.json",
+      "bytes": 18626,
+      "sha256": "8174eea6b44b9cd754f6c8d78099ea7e83a598754be2e5ff4b9e77ce92293c0e"
+    },
+    {
+      "file": "summary.json",
+      "bytes": 20417,
+      "sha256": "4b85cb43871dd7e513442d3ce53e34edcb42660287740ca0e5ab242f749aec44"
+    },
+    {
+      "file": "operations.json",
+      "bytes": 17970,
+      "sha256": "c96abe230cad9ce4de4d4c4e9fc9886fc00c354e3d26c6fd98b0f57eab8fcac6"
+    },
+    {
+      "file": "engine-install.stdout.json",
+      "bytes": 601,
+      "sha256": "48b09841c28e8d6d0f8ddf69192493313e973242ade179517b7fb4f5a1665adf"
+    },
+    {
+      "file": "success-events.stdout.json",
+      "bytes": 12940,
+      "sha256": "75f9259eb7b94d91d3414c097b62ef6cb495f438f1aa39fcf09f450ed7bd2a15"
+    },
+    {
+      "file": "success-resume.stdout.json",
+      "bytes": 108,
+      "sha256": "6c9a04f0fa7c7f88d44e7be91fd6802053f7bac6fec47aea647be366b7412367"
+    },
+    {
+      "file": "baseline-save.stdout.json",
+      "bytes": 6637,
+      "sha256": "ebf1a71761d470bfd8d3354237c82bfdf332b8e888fb43706d0b533e8560a33d"
+    },
+    {
+      "file": "missing-foreground.stdout.json",
+      "bytes": 3246,
+      "sha256": "e5937f50e0db038cbb1b0368a4fd0088af16e69126ce828486ab0d85a8eba5b8"
+    },
+    {
+      "file": "explain-regression.stdout.json",
+      "bytes": 12464,
+      "sha256": "5b76a02d2f235fd65c9d91b7b7395bedadbf00d7adb9522eb82c9269abff615b"
+    },
+    {
+      "file": "compare-regression.stdout.json",
+      "bytes": 1739,
+      "sha256": "9ebcd0486fb745d77d2e6026ca692fc14400eb2610289ceab85c064fda0b62de"
+    },
+    {
+      "file": "mcp-01.json",
+      "bytes": 738,
+      "sha256": "6b561690b317c34d860df3c8bde6cc483807a85ea25ff3128e5daa073f5067fd"
+    },
+    {
+      "file": "mcp-02.json",
+      "bytes": 496,
+      "sha256": "9070ddb08f55140256dea5627dda55626c794b934c61d7056333c2a06b18c2c4"
+    },
+    {
+      "file": "mcp-03.json",
+      "bytes": 20360,
+      "sha256": "dac686976449ec1a0748b10239def0d9c6cd105b3bc229e2b811160de5553e61"
+    },
+    {
+      "file": "mcp-04.json",
+      "bytes": 2671,
+      "sha256": "de46c9e022634456614b1f50aa3861db47e33034e43a9ad906c8490ee1d30662"
+    },
+    {
+      "file": "mcp-05.json",
+      "bytes": 1029,
+      "sha256": "ea1c326671e12bd7bf5c35042a773ebfb0bb4155107fc1f97d2435be365dbb0d"
+    }
+  ]
+}
