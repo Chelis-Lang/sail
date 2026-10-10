@@ -11,6 +11,7 @@ pub(super) struct Guard {
     observer: Option<Observer>,
     #[cfg(target_os = "linux")]
     lease: Option<ReadLease>,
+    failure: Option<&'static str>,
 }
 impl Guard {
     pub(super) fn begin(snapshot: &InputSnapshot) -> Self {
@@ -20,25 +21,51 @@ impl Guard {
             let lease = observer
                 .as_ref()
                 .and_then(|o| ReadLease::acquire(&o.files()));
-            Self { observer, lease }
+            let failure = if observer.is_none() {
+                Some("native-observer-setup-unavailable")
+            } else if lease.is_none() {
+                Some("kernel-lease-acquisition-unavailable")
+            } else {
+                None
+            };
+            Self {
+                observer,
+                lease,
+                failure,
+            }
         }
         #[cfg(not(target_os = "linux"))]
         {
             let _ = snapshot;
-            Self {}
+            Self { failure: None }
         }
     }
     pub(super) fn ready(&mut self) -> bool {
         #[cfg(target_os = "linux")]
         {
-            self.observer.as_mut().is_some_and(Observer::clean)
-                && self.lease.as_mut().is_some_and(ReadLease::clean)
+            if !self.observer.as_mut().is_some_and(Observer::clean) {
+                self.failure.get_or_insert("native-observation-invalidated");
+                return false;
+            }
+            let Some(lease) = self.lease.as_mut() else {
+                self.failure
+                    .get_or_insert("kernel-lease-acquisition-unavailable");
+                return false;
+            };
+            if !lease.clean() {
+                self.failure.get_or_insert(lease.failure_reason());
+                return false;
+            }
+            true
         }
         #[cfg(not(target_os = "linux"))]
         {
             let _ = self;
             true
         }
+    }
+    pub(super) fn failure_reason(&self) -> &'static str {
+        self.failure.unwrap_or("coherent-validation-unavailable")
     }
 }
 
@@ -76,6 +103,10 @@ mod tests {
         );
         let mut guard = Guard::begin(&snapshot(&root));
         assert!(!guard.ready());
+        assert_eq!(
+            guard.failure_reason(),
+            "kernel-lease-acquisition-unavailable"
+        );
         assert!(
             writer
                 .stdin
@@ -88,6 +119,9 @@ mod tests {
         assert!(std::fs::write(&file, b"fail").is_ok());
         assert!(std::fs::write(&file, b"good").is_ok());
         assert!(!guard.ready());
+        assert_eq!(guard.failure_reason(), "native-observation-invalidated");
+        assert!(!guard.ready());
+        assert_eq!(guard.failure_reason(), "native-observation-invalidated");
         drop(guard);
         assert!(std::fs::remove_dir_all(root).is_ok());
     }

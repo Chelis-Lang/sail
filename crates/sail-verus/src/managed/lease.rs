@@ -19,6 +19,7 @@ pub(super) struct ReadLease {
     mounts: String,
     interpreter: PathBuf,
     helper_observer: Observer,
+    failure: Option<&'static str>,
 }
 impl ReadLease {
     pub(super) fn acquire(paths: &[PathBuf]) -> Option<Self> {
@@ -87,6 +88,7 @@ impl ReadLease {
             mounts,
             interpreter,
             helper_observer,
+            failure: None,
         };
         socket.write_all(&bytes).ok()?;
         let mut reply = [0; 3];
@@ -109,16 +111,44 @@ impl ReadLease {
         Some(lease)
     }
     pub(super) fn clean(&mut self) -> bool {
-        if !self.bindings_current()
-            || interpreter().as_ref() != Some(&self.interpreter)
-            || !self.helper_observer.clean()
-        {
+        if !self.bindings_current() {
+            self.failure.get_or_insert("lease-binding-invalidated");
+            return false;
+        }
+        if interpreter().as_ref() != Some(&self.interpreter) {
+            self.failure.get_or_insert("helper-interpreter-changed");
+            return false;
+        }
+        if !self.helper_observer.clean() {
+            self.failure.get_or_insert("helper-observation-invalidated");
             return false;
         }
         let mut reply = [0; 3];
-        self.socket.write_all(b"check\n").is_ok()
-            && self.socket.read_exact(&mut reply).is_ok()
-            && reply == *b"ok\n"
+        if self.socket.write_all(b"check\n").is_err() {
+            self.failure.get_or_insert("lease-owner-unavailable");
+            return false;
+        }
+        if let Err(error) = self.socket.read_exact(&mut reply) {
+            let reason = if matches!(
+                error.kind(),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+            ) {
+                "lease-check-read-timeout"
+            } else {
+                "lease-owner-unavailable"
+            };
+            self.failure.get_or_insert(reason);
+            return false;
+        }
+        if reply != *b"ok\n" {
+            self.failure.get_or_insert("lease-protocol-unavailable");
+            return false;
+        }
+        true
+    }
+    pub(super) fn failure_reason(&self) -> &'static str {
+        self.failure
+            .unwrap_or("kernel-lease-validation-unavailable")
     }
     fn bindings_current(&self) -> bool {
         std::fs::read_to_string("/proc/self/mountinfo")
@@ -315,6 +345,25 @@ mod tests {
         assert!(std::fs::remove_file(file).is_ok());
     }
     #[test]
+    fn paused_owner_reports_bounded_timeout_without_weakening_validation() {
+        let file = fixture();
+        let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(lease.clean());
+        assert!(
+            Command::new("kill")
+                .args(["-s", "STOP", "--", &lease.process.id().to_string()])
+                .status()
+                .is_ok_and(|s| s.success())
+        );
+        assert!(!lease.clean());
+        assert_eq!(lease.failure_reason(), "lease-check-read-timeout");
+        assert!(lease.process.kill().is_ok());
+        assert!(lease.process.wait().is_ok());
+        drop(lease);
+        assert!(std::fs::remove_file(file).is_ok());
+    }
+    #[test]
     fn helper_death_and_replaced_path_never_reuse() {
         let file = fixture();
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
@@ -323,12 +372,14 @@ mod tests {
         assert!(lease.process.kill().is_ok());
         assert!(lease.process.wait().is_ok());
         assert!(!lease.clean());
+        assert_eq!(lease.failure_reason(), "lease-owner-unavailable");
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
             .unwrap_or_else(|| unreachable!("fixture"));
         let replacement = file.with_extension("new");
         assert!(std::fs::write(&replacement, b"fail").is_ok());
         assert!(std::fs::rename(replacement, &file).is_ok());
         assert!(!lease.clean());
+        assert_eq!(lease.failure_reason(), "lease-binding-invalidated");
         assert!(std::fs::remove_file(file).is_ok());
     }
 }
