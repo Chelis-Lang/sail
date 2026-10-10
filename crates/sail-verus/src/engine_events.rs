@@ -1,5 +1,5 @@
 //! Source-engine observation relay. It never participates in solver output.
-use std::io::Write;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -8,6 +8,9 @@ use sail_api::proof::{InputEvent, Observation, Phase, Target, VERSION};
 use serde_json::Value;
 
 use crate::managed::{Runtime, TargetIdentity};
+
+const MAX_SOURCE: u64 = 16 * 1024 * 1024;
+const MAX_EVENT: usize = 4 * 1024 * 1024;
 
 pub(crate) struct Relay {
     done: Arc<AtomicBool>,
@@ -28,10 +31,56 @@ impl Relay {
             let mut offset = 0;
             let mut ordinal = 0u64;
             loop {
-                if let Ok(bytes) = std::fs::read(&path) {
-                    if bytes.len() >= offset {
-                        buffer.extend_from_slice(&bytes[offset..]);
-                        offset = bytes.len();
+                if let Ok(mut source) = std::fs::File::open(&path) {
+                    let length = source
+                        .metadata()
+                        .map_or(MAX_SOURCE + 1, |metadata| metadata.len());
+                    if length < offset || length > MAX_SOURCE {
+                        let input = unavailable(
+                            &runtime,
+                            &identity,
+                            ordinal + 1,
+                            "source observation file truncated or exceeds 16 MiB",
+                        );
+                        let _ = append(&destination, &input);
+                        return;
+                    }
+                    if source.seek(SeekFrom::Start(offset)).is_err() {
+                        let input = unavailable(
+                            &runtime,
+                            &identity,
+                            ordinal + 1,
+                            "cannot seek source observation stream",
+                        );
+                        let _ = append(&destination, &input);
+                        return;
+                    }
+                    let mut bytes = Vec::new();
+                    if source
+                        .take((MAX_EVENT + 1 - buffer.len()) as u64)
+                        .read_to_end(&mut bytes)
+                        .is_err()
+                    {
+                        let input = unavailable(
+                            &runtime,
+                            &identity,
+                            ordinal + 1,
+                            "cannot read source observation stream",
+                        );
+                        let _ = append(&destination, &input);
+                        return;
+                    }
+                    offset += bytes.len() as u64;
+                    buffer.extend_from_slice(&bytes);
+                    if buffer.len() > MAX_EVENT && !buffer[..MAX_EVENT].contains(&b'\n') {
+                        let input = unavailable(
+                            &runtime,
+                            &identity,
+                            ordinal + 1,
+                            "source observation exceeds 4 MiB",
+                        );
+                        let _ = append(&destination, &input);
+                        return;
                     }
                     while let Some(end) = buffer.iter().position(|b| *b == b'\n') {
                         let line = buffer.drain(..=end).collect::<Vec<_>>();
@@ -44,6 +93,9 @@ impl Relay {
                     }
                 }
                 if stop.load(Ordering::Acquire) {
+                    if std::fs::metadata(&path).is_ok_and(|metadata| metadata.len() > offset) {
+                        continue;
+                    }
                     if !buffer.is_empty() {
                         let input = unavailable(
                             &runtime,
@@ -104,11 +156,12 @@ fn identity(runtime: &Runtime, target: &TargetIdentity, ordinal: u64) -> InputEv
                 .cloned()
                 .unwrap_or_default(),
             name: target.name.clone(),
-            kind: vec![if target.crate_type == "rlib" {
-                "lib".into()
-            } else {
-                target.crate_type.clone()
-            }],
+            kind: runtime
+                .target_kinds
+                .get(&target.manifest)
+                .and_then(|targets| targets.get(&target.name))
+                .cloned()
+                .unwrap_or_default(),
         },
         phase: Phase::Full,
         function: None,
@@ -179,6 +232,9 @@ fn convert(
 /// Checks that the source completed the late compiler pass. It does not prove
 /// current inputs or a successful full proof; those belong to the managed runner.
 pub(crate) fn sealed(path: &Path) -> bool {
+    if std::fs::metadata(path).map_or(true, |metadata| metadata.len() > MAX_SOURCE) {
+        return false;
+    }
     std::fs::read_to_string(path).is_ok_and(|text| {
         if !text.ends_with('\n') {
             return false;
