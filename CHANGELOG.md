@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Decline ambiguous trait-implementation obligation joins when Verus repeats a
+  friendly function name; preserve full results and partial-attribution evidence.
+
 - Add explicit optional-engine focused repair checks with independent full-target
   evidence, resumable scoped proof journals, exact failure explanations, immutable
   verification baselines and regression comparisons through CLI and MCP.
