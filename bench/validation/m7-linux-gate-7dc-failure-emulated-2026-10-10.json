@@ -38,11 +38,6 @@
   "trust_checks": "strict signature and all query/hash/solver/platform/mode/shape bindings retained",
   "raw_log_sha256": "3b7f4a747d3c09ee574dee4114f5f74aa10fde813ca9560c8b59fe1748374701",
   "raw_log_bytes": 54811,
-  "preceding_failures_retained": [
-    "m7-linux-gate-d12-failure-emulated-2026-10-10.json",
-    "m7-linux-gate-a9-failure-emulated-2026-10-10.json",
-    "m7-linux-gate-5fd-emulated-2026-10-10.json"
-  ],
   "qualification": "This complete frozen attempt failed two original HTTP bounds after all 439 tests executed. The 5fd complete pass remains an earlier separate scope. No assertions, serving bounds, cryptographic checks or fixture concurrency were weakened. Phase timings and thread ticks do not establish the entire cause; further scoped diagnosis is required. Long source, reader and performance acceptance remains incomplete.",
   "failures": [
     {
@@ -87,5 +82,10 @@
       "actual_elapsed": "not emitted by original assertion",
       "result": "request correctly refused, elapsed assertion failed"
     }
+  ],
+  "preceding_attempts_retained": [
+    "m7-linux-gate-d12-failure-emulated-2026-10-10.json",
+    "m7-linux-gate-a9-failure-emulated-2026-10-10.json",
+    "m7-linux-gate-5fd-emulated-2026-10-10.json"
   ]
 }
