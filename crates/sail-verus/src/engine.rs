@@ -204,6 +204,7 @@ pub(crate) struct Request {
     pub manifest: PathBuf,
     pub stock_wrapper: PathBuf,
     pub artifacts: Vec<PathBuf>,
+    pub prepared: PathBuf,
 }
 
 fn request(config: &crate::managed::Config, function: Option<String>) -> Result<(Request, String)> {
@@ -215,6 +216,7 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
         .with_file_name("verus");
     let request = Request {
         function,
+        prepared: config.workspace.join(&config.cache).join("engine-prepared"),
         cargo_verus: installed.cargo_verus,
         manifest: installed.build.join(source_build::MANIFEST),
         stock_wrapper,
@@ -347,6 +349,7 @@ pub fn repair(
         compiler_invocations: full.execution.verifier_invocations,
         full,
         manifest_sha256,
+        preparation: preparation(&run),
     })
 }
 
@@ -357,4 +360,119 @@ pub(crate) struct FocusTarget {
     pub target: String,
     pub kind: String,
     pub report: sail_api::output::Report,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PreparationEvent {
+    version: u32,
+    phase: String,
+    event: String,
+    payload: sail_api::repair::PreparationStats,
+}
+
+fn preparation(run: &Path) -> Option<Vec<sail_api::repair::PreparationStats>> {
+    use std::io::Read as _;
+    let mut paths = std::fs::read_dir(run.join("sidecars"))
+        .ok()?
+        .filter_map(std::result::Result::ok)
+        .map(|entry| entry.path().join("engine.events.jsonl"))
+        .collect::<Vec<_>>();
+    paths.sort();
+    let mut stats = Vec::new();
+    for path in paths {
+        if !crate::engine_events::sealed(&path) {
+            continue;
+        }
+        let file = std::fs::File::open(path).ok()?;
+        if file.metadata().ok()?.len() > 16 * 1024 * 1024 {
+            return None;
+        }
+        let mut bytes = Vec::new();
+        file.take(16 * 1024 * 1024 + 1)
+            .read_to_end(&mut bytes)
+            .ok()?;
+        if bytes.len() > 16 * 1024 * 1024 {
+            return None;
+        }
+        let mut summary = None;
+        for line in bytes
+            .split(|byte| *byte == b'\n')
+            .filter(|line| !line.is_empty())
+        {
+            let value: serde_json::Value = serde_json::from_slice(line).ok()?;
+            if value["event"] != "preparation-summary" {
+                continue;
+            }
+            if summary.is_some() {
+                return None;
+            }
+            let event: PreparationEvent = serde_json::from_slice(line).ok()?;
+            if event.version != 1
+                || event.phase != "full"
+                || event.event != "preparation-summary"
+                || event.payload.peak_retained_bytes > event.payload.memory_budget_bytes
+                || (!event.payload.enabled
+                    && (event.payload.batch_hits != 0 || event.payload.persistent_hits != 0))
+                || event.payload.target.is_some()
+                || event.payload.phase.is_some()
+            {
+                return None;
+            }
+            summary = Some(event.payload);
+        }
+        if let Some(summary) = summary {
+            stats.push(summary);
+        }
+    }
+    (!stats.is_empty()).then_some(stats)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preparation_requires_one_valid_sealed_summary()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-preparation-{}", std::process::id()));
+        let sidecar = root.join("sidecars/driver");
+        std::fs::create_dir_all(&sidecar)?;
+        let path = sidecar.join("engine.events.jsonl");
+        let seal =
+            r#"{"version":1,"phase":"full","event":"compiler-sealed","payload":{"success":true}}"#;
+        let summary = r#"{"version":1,"phase":"full","event":"preparation-summary","payload":{"version":1,"enabled":true,"batch_hits":0,"persistent_hits":2,"misses":1,"peak_retained_bytes":123,"memory_budget_bytes":512,"disk_budget_bytes":512}}"#;
+        std::fs::write(&path, format!("{seal}\n"))?;
+        assert!(
+            preparation(&root).is_none(),
+            "old source has no fabricated counters"
+        );
+        std::fs::write(&path, format!("{summary}\n{seal}\n"))?;
+        let stats = preparation(&root).ok_or("valid counters unavailable")?;
+        assert_eq!(stats.len(), 1);
+        assert_eq!(stats[0].persistent_hits, 2);
+        assert!(stats[0].target.is_none());
+        std::fs::write(&path, format!("{summary}\n"))?;
+        assert!(
+            preparation(&root).is_none(),
+            "interrupted source cannot report counters"
+        );
+        std::fs::write(&path, format!("{summary}\n{summary}\n{seal}\n"))?;
+        assert!(
+            preparation(&root).is_none(),
+            "duplicate summaries are ambiguous"
+        );
+        let duplicate = summary.replace("\"misses\":1", "\"misses\":1,\"misses\":2");
+        std::fs::write(&path, format!("{duplicate}\n{seal}\n"))?;
+        assert!(
+            preparation(&root).is_none(),
+            "duplicate fields cannot be hidden by Value parsing"
+        );
+        let excessive =
+            summary.replace("\"peak_retained_bytes\":123", "\"peak_retained_bytes\":513");
+        std::fs::write(&path, format!("{excessive}\n{seal}\n"))?;
+        assert!(preparation(&root).is_none());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 }

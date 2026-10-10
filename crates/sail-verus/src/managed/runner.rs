@@ -55,6 +55,8 @@ fn input_environment_key(key: &std::ffi::OsStr) -> bool {
         "SAIL_ENGINE_FOCUS_REPORT",
         "SAIL_ENGINE",
         "SAIL_ENGINE_FUNCTION",
+        "SAIL_ENGINE_CONTEXT",
+        "SAIL_ENGINE_PREPARED_DIR",
         "SAIL_JOB_EVENTS",
         "SAIL_JOB_GUARD_PARENT",
         "SAIL_MANAGED_FORCE",
@@ -447,6 +449,8 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
         .env_remove("SAIL_ENGINE_FUNCTION")
         .env_remove("SAIL_ENGINE_EVENTS")
         .env_remove("SAIL_ENGINE_FOCUS_REPORT")
+        .env_remove("SAIL_ENGINE_CONTEXT")
+        .env_remove("SAIL_ENGINE_PREPARED_DIR")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
