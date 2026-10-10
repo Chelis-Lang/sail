@@ -7,6 +7,7 @@ a timed-out or incomplete invocation for a verdict. See docs/bench/m7-repair-acc
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -20,6 +21,9 @@ import time
 REPO = Path(__file__).resolve().parent.parent
 CATALOGUE = REPO / "corpus/repair-edits.json"
 FROZEN_HASH = "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6"
+spec = importlib.util.spec_from_file_location("m7_job_protocol", REPO / "scripts/m7-job-read-bench.py")
+protocol = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(protocol)
 
 
 def sha(path):
@@ -102,28 +106,50 @@ def prepare(args):
         print("prepared " + str(dest), flush=True)
 
 
-def provisional_event(path):
-    if not path.exists():
-        return False
-    # A partially appended final line is retried, never accepted as an event.
-    for line in path.read_text(errors="replace").splitlines():
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        event = event.get("input", event)
-        kind = event.get("observation", {}).get("kind")
-        if event.get("phase") == "focus" and kind in (
-            "diagnostic", "function_observed", "obligation_observed", "phase_finished"
-        ):
-            return True
-    return False
+def actionable_event(event):
+    event = event.get("input", event)
+    return event.get("phase") == "focus" and event.get("observation", {}).get("kind") in (
+        "diagnostic", "function_observed", "obligation_observed", "phase_finished"
+    )
+
+
+class ProofObserver:
+    """Observe the public journal; the daemon owns its private producer path."""
+    def __init__(self, env):
+        self.address = protocol.endpoint(Path(env["SAIL_DAEMON_SOCKET"]))
+        self.job = None
+        self.cursor = {"stream_id": "", "after": 0}
+        self.reads = 0
+        self.next_read = 0
+
+    def poll(self, stderr, directory):
+        now = time.monotonic()
+        if now < self.next_read:
+            return False
+        self.next_read = now + 0.1
+        if self.job is None:
+            match = re.search(r"^Repair validation job ([^\s]+)$", stderr.read_text(errors="replace"), re.M)
+            if match is None:
+                return False
+            self.job = match.group(1)
+            self.cursor["stream_id"] = self.job
+        response, wall, _ = protocol.call(self.address, {
+            "operation": "proof_events", "id": self.job, "cursor": self.cursor, "limit": 64,
+        })
+        if response["response"] != "proof_events":
+            raise ValueError("SAIL0941: unexpected proof observation response")
+        page = response["value"]
+        self.reads += 1
+        if page["events"] or page.get("gap") or page["terminal"] or self.reads == 1:
+            write_json(directory / ("proof-page-%06d.json" % self.reads),
+                       {"read_ms": wall, "page": page})
+        self.cursor = page["next"]
+        return any(actionable_event(event) for event in page["events"])
 
 
 def invoke(command, workspace, env, directory, timeout):
     directory.mkdir(parents=True, exist_ok=False)
-    events = directory / "proof.jsonl"
-    env = dict(env, SAIL_PROOF_EVENTS=str(events))
+    observer = ProofObserver(env) if command[1] == "repair-check" else None
     timer = Path("/usr/bin/time")
     timed = platform.system() == "Linux" and timer.is_file()
     args = [str(timer), "-v", "-o", str(directory / "time.txt")] + command if timed else command
@@ -148,8 +174,8 @@ def invoke(command, workspace, env, directory, timeout):
                                                             "elapsed_s": time.monotonic() - started,
                                                             "exit_code": child.returncode})
                     raise ValueError("SAIL0941: repair workload timed out: " + str(directory))
-                if actionable is None and provisional_event(events):
-                    actionable = elapsed * 1000
+                if actionable is None and observer is not None and observer.poll(directory / "stderr.txt", directory):
+                    actionable = (time.monotonic() - started) * 1000
                 time.sleep(0.01)
         except BaseException:
             if child.poll() is None:
@@ -165,6 +191,7 @@ def invoke(command, workspace, env, directory, timeout):
             raise ValueError("SAIL0941: missing GNU time RSS")
         rss = int(match.group(1)) * 1024
     return {"wall_ms": wall, "first_actionable_ms": actionable, "max_rss_bytes": rss,
+            "proof_reads": observer.reads if observer is not None else None,
             "exit_code": child.returncode, "report": report}
 
 
@@ -202,6 +229,27 @@ def warm_repair_state(doc, allow_setup):
             and "Build-script input declarations were established during this run" in full.get("notes", [])):
         return "declarations-established"
     raise ValueError("SAIL0942: repair warmup lacks Current accepted full evidence")
+
+
+def checked_preparation(batch):
+    records = batch.get("preparation")
+    if not records or not any(record.get("enabled") is True for record in records):
+        raise ValueError("SAIL0942: final engine preparation telemetry is unavailable")
+    budget = 512 * 1024 * 1024
+    for record in records:
+        if (record.get("version") != 1
+                or not 0 < record["memory_budget_bytes"] <= budget
+                or not 0 < record["disk_budget_bytes"] <= budget
+                or not 0 <= record["peak_retained_bytes"] <= record["memory_budget_bytes"]):
+            raise ValueError("SAIL0942: preparation observation exceeds the accepted budget")
+    return records
+
+
+def distribution(values):
+    observed = [value for value in values if value is not None]
+    return {"observed": len(observed), "median": statistics.median(observed) if observed else None,
+            "p95": protocol.p95(observed) if observed else None,
+            "max": max(observed) if observed else None}
 
 
 def run(args):
@@ -295,6 +343,8 @@ def run(args):
                         focus = invoke(common + ["--", "--verify-only-module", module, "--verify-function", function], workspace,
                                        envs[mode], directory / "focus", args.timeout)
                         full = invoke(common, workspace, envs[mode], directory / "full", args.timeout)
+                        if full["report"]["currentness"] != "current":
+                            raise ValueError("SAIL0942: measured baseline full evidence is not Current")
                         pair[mode] = {"wall_ms": focus["wall_ms"] + full["wall_ms"],
                                       "first_actionable_ms": focus["wall_ms"],
                                       "max_rss_bytes": max(focus["max_rss_bytes"] or 0, full["max_rss_bytes"] or 0),
@@ -307,9 +357,15 @@ def run(args):
                         batch = doc["batch"]
                         if not batch["batched"] or not batch["manifest_sha256"] or batch["focus"] is None:
                             raise ValueError("SAIL0942: invocation did not produce a real source-engine batch")
+                        if batch["full"]["currentness"] != "current":
+                            raise ValueError("SAIL0942: measured full evidence is not Current")
+                        if batch["compiler_invocations"] != 1:
+                            raise ValueError("SAIL0942: established repair did not use one compiler driver")
+                        checked_preparation(batch)
                         pair[mode] = {key: value[key] for key in ("wall_ms", "first_actionable_ms", "max_rss_bytes")}
                         pair[mode].update(full=selected_report(batch["full"]),
                                           compiler_invocations=batch["compiler_invocations"], accepted=doc["accepted"],
+                                          proof_reads=value["proof_reads"],
                                           batch_metadata={key: value for key, value in batch.items()
                                                           if key not in ("focus", "full")})
                 pair["same"] = pair["m6"]["full"] == pair["m7"]["full"]
@@ -345,6 +401,11 @@ def summarize(result):
             "round_totals_ms": totals,
             "spread_ms": {mode: [min(values), max(values)] if values else None for mode, values in totals.items()},
             "same": all(sample.get("same") and sample.get("expected_observed") for sample in samples) and bool(samples),
+            "cycle_distributions": {
+                mode: {metric: distribution([sample[mode].get(metric) for sample in samples])
+                       for metric in ("wall_ms", "first_actionable_ms", "max_rss_bytes")}
+                for mode in ("m6", "m7")
+            },
         }
     passed = complete and all(value["same"] and value["speedup"] is not None
                               and value["speedup"] >= data["minimum_median_speedup"] for value in summaries.values())

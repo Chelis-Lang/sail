@@ -63,6 +63,15 @@ newly established declarations. The next result must be Current and accepted;
 missing freshness coverage is never counted as initialization success.
 M6's distinct focused contexts are warmed on the same original source as well;
 both modes enter the measured edits with their dependencies and contexts set up.
+Measured M7 batches must use one compiler driver, retain Current full evidence
+and supply source preparation observations within the accepted budget. Missing
+telemetry is unavailable, not a collection of invented zero counters.
+
+First actionable M7 evidence is read through the public resumable proof journal,
+using the foreground command's observed job identity. Retained pages include
+their cursors and gaps. A started query alone is not counted as an actionable
+result. Reports include nearest-rank p95 and maximum cycle wall time, actionable
+evidence latency and GNU-time peak RSS alongside medians and round spreads.
 
 Run with scratch projects, runtime, caches and output on the container's native
 Linux filesystem (for example under `/tmp`), then copy the retained output to
