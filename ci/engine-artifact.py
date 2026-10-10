@@ -39,7 +39,7 @@ def safe_path(path):
 
 def validate(build, pin):
     manifest = json.loads((build / "sail-build.json").read_text())
-    expected = ["sail-interactive:" + pin["patch_sha256"], "host:x86-linux",
+    expected = ["sail-interactive:" + pin["patch_sha256"], "host:x86_64-unknown-linux-gnu",
                 "source-lock:" + pin["source_lock_sha256"]]
     if (manifest["schema_version"] != 1 or manifest["commit"] != pin["commit"]
             or manifest["rust_toolchain"] != pin["rust_toolchain"]
