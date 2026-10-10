@@ -71,6 +71,30 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
     """
         source.write_text(good)
 
+        def recorded_cli(label, arguments):
+            # Retain only this fixture's public CLI output and operation timing.
+            # Capture before check_returncode so a service error survives scratch
+            # cleanup; never persist the subprocess environment or runtime config.
+            started = time.monotonic()
+            try:
+                run = subprocess.run(arguments, cwd=project, env=env,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     timeout=30)
+            except subprocess.TimeoutExpired as failure:
+                (evidence / (label + ".stdout.json")).write_bytes(failure.stdout or b"")
+                (evidence / (label + ".stderr")).write_bytes(failure.stderr or b"")
+                (evidence / (label + ".operation.json")).write_text(json.dumps({
+                    "operation": label, "duration_s": time.monotonic() - started,
+                    "returncode": None, "timed_out": True}))
+                raise
+            (evidence / (label + ".stdout.json")).write_bytes(run.stdout)
+            (evidence / (label + ".stderr")).write_bytes(run.stderr)
+            (evidence / (label + ".operation.json")).write_text(json.dumps({
+                "operation": label, "duration_s": time.monotonic() - started,
+                "returncode": run.returncode, "timed_out": False}))
+            run.check_returncode()
+            return run
+
         def diagnostic(document):
             return {key: document[key] for key in (
                 "run_id", "context_sha256", "input_revision", "currentness",
@@ -123,16 +147,12 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
 
         # The installed CLI and MCP must use that same complete evidence through
         # durable jobs, rather than substitute a Cargo 'fresh' message for proof.
-        submitted = subprocess.run([sail, "verify", "--background", "--output", "json"],
-                                   cwd=project, env=env, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, timeout=30, check=True)
+        submitted = recorded_cli("cli-submit", [sail, "verify", "--background", "--output", "json"])
         job = json.loads(submitted.stdout)
         assert job["id"] and job["state"] in ("queued", "running", "completed"), job
         deadline = time.monotonic() + 120
         while True:
-            inspected = subprocess.run([sail, "jobs", "result", job["id"], "--output", "json"],
-                                       cwd=project, env=env, stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE, timeout=30, check=True)
+            inspected = recorded_cli("cli-result", [sail, "jobs", "result", job["id"], "--output", "json"])
             response = json.loads(inspected.stdout)
             assert response["response"] == "result", response
             if response["value"]["result"] is not None:
