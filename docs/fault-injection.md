@@ -108,6 +108,13 @@ Disabling the signature check makes the forged-answer case fail with a
 wrong `check-sat` reply, so the test does exercise the signature.
 
 Daemon-side cases that need no solver run in the fast gate:
+- **`crates/sail-daemon/src/shared.rs` HTTP regressions:** serving tests
+  establish the actual transport and trust separately, record that setup cost,
+  then retain their 250 ms lookup and 75 ms server-delay assertions. The cold
+  constructor test independently pauses construction and requires bounded
+  followers/status with zero network requests. See the
+  [HTTP guide](http-shared-cache.md#developer-serving-tests) for the retained
+  integrated cold-lookup failures and precise fixture scope.
 - **`crates/sail-daemon/tests/tiers.rs`:**
   - memory hits against outside changes to the disk;
   - write-behind: acknowledgement before the write, a full queue dropping

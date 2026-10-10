@@ -121,6 +121,9 @@ a process killed abruptly may leave private `upload-*` files that an operator ca
 remove while the server is stopped.
 
 The daemon's entire shared lookup remains bounded by its existing 250 ms default.
+This is a fallback deadline, not a promise that a cold connection will produce a
+hit. Client construction, transport scheduling, signature validation and request
+I/O can consume that budget; a timeout safely falls back to the local solver.
 Concurrent same-key requests share one in-flight lookup and receive the helper's
 validated result without waiting for the initiating caller to resume. A helper
 that finishes late cannot overwrite a published timeout. Optional transport
@@ -156,3 +159,25 @@ SAIL_TEST_Z3=<pinned-z3> cargo nextest run -p sail-shim \
 Long corpus validation remains local-only. Test CA and private-key fixtures under
 `crates/sail-daemon/tests/fixtures/` are exclusively for loopback tests; renew their
 leaf certificate before October 2027. They must never be used in a deployment.
+
+## Developer serving tests
+
+The concurrent-reader, paused-initiator, status-refresh and disconnect regressions
+establish their real HTTP transport and signing trust on an owned setup helper
+before testing serving. Setup has its own two-second bound, records its actual
+duration, and must send zero requests. Serving still uses the original 250 ms
+lookup deadline, the server's 75 ms response delay, and the original exact
+Hit/Rejected, one-request, signature and initiator-state assertions. Credential
+rotation and invalid-credential rejection still run against the real transport.
+
+Cold construction is tested independently by pausing the actual constructor.
+Followers and status must remain bounded, no request may start while it is paused,
+and a constructor completing after published fallback must skip that obsolete
+request. A timeout is a safe miss; it never authorizes an unverified entry.
+
+This separation follows the retained integrated run at source `d12d4af`, where
+five HTTP fixtures failed before or during their first cold lookup. For example,
+client construction consumed 152 ms before a paused-initiator test's network
+request, and the validated result was published after 398 ms. The 250 ms serving
+assertion failed as recorded. That run remains failed; establishing future
+fixtures does not reinterpret it as a pass or change a production deadline.
