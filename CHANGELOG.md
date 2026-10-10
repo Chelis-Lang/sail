@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add explicit optional-engine focused repair checks with independent full-target
+  evidence, resumable scoped proof journals, exact failure explanations, immutable
+  verification baselines and regression comparisons through CLI and MCP.
+
 - Add explicit managed workspace verification with complete per-target reports,
   successful proof receipts, and verification-context isolation. Linux supports
   precise missing-configuration observation; macOS remains conservative and may

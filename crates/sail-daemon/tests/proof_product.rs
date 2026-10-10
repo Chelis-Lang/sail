@@ -123,6 +123,7 @@ fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenanc
         return Err("baseline response".into());
     };
     assert_eq!(saved.result.run_id, "establishing");
+    assert_eq!(saved.result.currentness, Currentness::Historical);
     assert!(
         matches!(client.call(&Request::SaveBaseline{id:first.id.clone(),name:"release".into()}),Err(error) if error.to_string().contains("immutable"))
     );
