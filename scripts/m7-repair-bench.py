@@ -17,6 +17,7 @@ import signal
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 
 REPO = Path(__file__).resolve().parent.parent
@@ -38,8 +39,25 @@ def catalogue():
 
 
 def write_json(path, value):
+    payload = json.dumps(value, indent=2, sort_keys=True) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix="." + path.name + ".", delete=False) as output:
+            temporary = Path(output.name)
+            output.write(payload)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def checked(args, cwd=None, env=None):
