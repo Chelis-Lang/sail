@@ -351,7 +351,10 @@ impl HttpClient {
             self.record("oversized-response", true);
             return Err(failure("shared response exceeds entry limit"));
         }
-        let mut bytes = Vec::new();
+        // Small entries fit in one read rather than growing from the default
+        // tiny buffer. Reserve a fixed bounded amount, never a server-provided
+        // Content-Length; the existing MAX+1 stream bound remains authoritative.
+        let mut bytes = Vec::with_capacity(8 * 1024);
         response
             .take(MAX_ENTRY_BYTES + 1)
             .read_to_end(&mut bytes)
