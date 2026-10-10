@@ -229,7 +229,7 @@ fn endpoint_policy_and_private_settings_do_not_expose_credentials() {
 }
 
 fn fake_response(
-    text: &'static [u8],
+    text: impl AsRef<[u8]> + Send + 'static,
     delay: Duration,
 ) -> (RemoteConfig, std::thread::JoinHandle<()>, PathBuf) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -256,9 +256,23 @@ fn fake_response(
         let mut input = [0u8; 4096];
         let _ = stream.read(&mut input);
         std::thread::sleep(delay);
-        let _ = stream.write_all(text);
+        let _ = stream.write_all(text.as_ref());
     });
     (config, thread, root)
+}
+
+#[test]
+fn response_without_length_keeps_exact_bytes_across_initial_buffer_boundary() {
+    let payload: Vec<_> = (0..13_000)
+        .map(|index| u8::try_from(index % 251).unwrap())
+        .collect();
+    let mut wire = b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n".to_vec();
+    wire.extend_from_slice(&payload);
+    let (config, thread, root) = fake_response(wire, Duration::ZERO);
+    let result = Fixture::client(&config).get(&solver(), &KEY).unwrap();
+    assert_eq!(result.as_deref(), Some(payload.as_slice()));
+    thread.join().unwrap();
+    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
