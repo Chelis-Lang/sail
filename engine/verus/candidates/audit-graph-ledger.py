@@ -36,7 +36,11 @@ def audit(source):
             assert len(re.findall(r'\b' + method + r'\(', actual)) == count, (name, method)
     engine = (source / 'rust_verify/src/sail_engine.rs').read_text()
     assert engine.index('sail_validate_graph_reads(portable.graph_reads.frames())') < engine.index('ctx.sail_restore_effects')
-    assert 'portable.version!=3' in engine and 'sail-prepared/graph-ledger/v3' in engine
+    assert 'portable.version!=3' in engine
+    if 'vir::context::SAIL_PREPARATION_DOMAIN' in engine:
+        assert 'sail-prepared/graph-ledger/private-span-seed/v4' in context
+    else:
+        assert 'sail-prepared/graph-ledger/v3' in engine
     assert 'self.global.func_call_graph.sail_encoding()' not in context
     assert 'self.global.datatype_graph.sail_encoding()' in context
     verifier = (source / 'rust_verify/src/verifier.rs').read_text()

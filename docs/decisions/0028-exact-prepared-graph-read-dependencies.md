@@ -214,3 +214,17 @@ The proposed span-vector dependency seam addresses the measured overbroad key;
 it is not an established remedy for the primary solver timeout or a performance
 qualification. Candidate preparation decode-allocation accounting also remains
 under independent review before an aggregate memory-bound claim.
+
+The separate `private-span-boundary.patch` prototype now makes the measured
+span-seed vector private and removes only that unused baseline dependency. Its
+accessor, callback seed registration and both capture-resetting clone factories
+fail closed on active lowering reads. Fresh complete trait checks remain before
+lowering. The dependency domain is explicitly `private-span-seed/v4`, with the
+unchanged portable version-3 representation; old dependency keys cannot match.
+Host release VIR tests passed 12/12, including interpreter/oracle clone escape,
+active seed reads and exact remaining semantic bindings. The static closed-read
+audit passed. Genuine previous-revision focused reuse, ordinary runtime build,
+complete source/project qualification and performance remain pending. The
+prototype will be combined with the separately reviewed decoded-allocation
+correction before a new runtime build; it does not fix or reinterpret the
+retained `2421` primary timeout by assumption.
