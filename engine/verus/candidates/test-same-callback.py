@@ -19,8 +19,8 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def execute(command, environment, timeout, output, prefix):
-    with subprocess.Popen(command, env=environment, stdout=subprocess.PIPE,
+def execute(command, environment, timeout, output, prefix, cwd=None):
+    with subprocess.Popen(command, env=environment, cwd=cwd, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, start_new_session=True) as process:
         try:
             stdout, stderr = process.communicate(timeout=timeout)
