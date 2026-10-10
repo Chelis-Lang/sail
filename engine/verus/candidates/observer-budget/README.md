@@ -121,3 +121,14 @@ No ordinary runtime or real proof/performance qualification is claimed by these
 isolated tests. In particular, the same-input exact oracle and the genuine
 previous-revision HIT must still pass after combining this overlay with the
 private span boundary and epoch lineage changes.
+
+## Actual module-layout correction
+
+The first combined RustVerify test build failed with 132 E0433 errors. The
+initial helper harness put `sail_engine` at the crate root, while Verus nests it
+under `verifier`. That helper pass did not establish actual macro integration.
+The macro paths now use `crate::verifier::sail_engine`; the corrected helper
+harness uses that exact nested layout and a sibling verifier invocation. All
+six helper tests and strict Clippy pass again. The original source-build failure
+is retained by the engine track; a corrected combined driver build remains
+required before qualification.

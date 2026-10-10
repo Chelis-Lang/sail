@@ -1,9 +1,9 @@
 {
-  "patch_sha256": "bbc3970d5bcdcd011ef7086d7a5a54cfc228617993a1236613a74a45c610848f",
+  "patch_sha256": "5453ef24613ff2cfc41842568ae34f56632aebaf16b4bd3070559ca23782a8ad",
   "files": {
     "sail_engine.rs": {
       "before": "130ef2a1fefaa4d211017583d9178cb37a8ed3cf0182e92f3666c87ea4c6ddd5",
-      "after": "5a6f0142eab75b01fdba1aeec09cdbacd0cb47ce81ace0b6c93259f0f82f0b5c"
+      "after": "aba60b49a48d3b9e11a8265ef8922e9d05ce900779138b635f2e62963489d9a3"
     },
     "verifier.rs": {
       "before": "55a7af0b6c382e8c65dae74524412c4aa574507a078973a8b43165318c955e53",
@@ -20,9 +20,10 @@
       "serde_json": "1.0.151",
       "macro_before_definition": "compiled",
       "scope": "exact observer helpers; real MessageX fixture pending combined RustVerify build",
-      "test_seconds": 0.72,
+      "test_seconds": 0.26,
       "strict_clippy": "passed",
-      "clippy_seconds": 0.38
+      "clippy_seconds": 0.47,
+      "module_layout": "verifier::sail_engine, with sibling verifier macro invocation"
     },
     "combined_vir_tests_before_observer": {
       "passed": 26,
@@ -32,7 +33,14 @@
     "combined_rust_verify_tests": "pending",
     "ordinary_runtime_build": "pending",
     "previous_revision_hit": "pending",
-    "full_runtime_oracle": "pending"
+    "full_runtime_oracle": "pending",
+    "first_combined_rust_verify_compile": {
+      "status": "failed",
+      "error": "132 E0433 macro references to wrong root module; corrected to actual verifier::sail_engine",
+      "source_patch_sha256": "b6da2aaf376c5d43bdb0e0f7da14bd3adb2dcdc3ef45cd5020e931fbe661e585",
+      "original_helper_layout": "root sail_engine module; insufficient integration coverage",
+      "corrected_driver_validation": "pending"
+    }
   },
   "serializer_audit": {
     "version": "1.0.151",
