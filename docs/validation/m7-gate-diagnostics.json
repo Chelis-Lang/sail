@@ -34,8 +34,85 @@
     "machine": "Linux x86_64 Docker emulation under shared load",
     "source": "Committed frozen native source82f9870",
     "test_threads": 2,
-    "status": "running; no result inferred",
-    "retained_log": "target/m7-gate-diagnostics-82f9870-verus.log"
+    "status": "finished;29passed/1failed, not repaired full gate",
+    "retained_log": "target/m7-gate-diagnostics-82f9870-verus.log",
+    "tests": 30,
+    "passed": 29,
+    "failed": 1,
+    "failed_case": "four_readers_do_not_wait_behind_unrelated_validation_or_context_locks"
   },
-  "qualified": false
+  "qualified": false,
+  "followups": [
+    {
+      "source": "82f9870",
+      "scope": "Original two failed cases with opt-in stage trace; diagnostic, not acceptance",
+      "tests": 2,
+      "passed": 1,
+      "failed": 1,
+      "mcp_elapsed_s": 1.165136626,
+      "mcp_original_failure_retained_s": 2.274769585,
+      "freshness": "Waiters busy100.211\u2013103.283ms; independent successful lease owner completed154.969ms"
+    },
+    {
+      "source": "5412d2b",
+      "scope": "Lease component timing, unchanged case",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "reads": 100,
+      "p95_ms": 91.921125,
+      "owner_validations": 46,
+      "stage_us": {
+        "bindings": {
+          "count": 46,
+          "median_us": 383.0,
+          "max_us": 733,
+          "sum_us": 19703
+        },
+        "interpreter": {
+          "count": 46,
+          "median_us": 32.0,
+          "max_us": 458,
+          "sum_us": 2257
+        },
+        "helper-native": {
+          "count": 46,
+          "median_us": 98.5,
+          "max_us": 724,
+          "sum_us": 5834
+        },
+        "kernel-inventory": {
+          "count": 46,
+          "median_us": 36792.0,
+          "max_us": 56132,
+          "sum_us": 1761624
+        }
+      },
+      "limitation": "One diagnostic pass does not repair earlier failures or qualify runtime"
+    },
+    {
+      "source": "c99dd17",
+      "scope": "Exact unchanged global sweeps with diagnostic timing",
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "bytes_per_global_sweep": 257778,
+      "descriptor_fallback": false,
+      "waiter_failure_ms": 100.3305,
+      "observation": "Two unchanged global reads+row validation dominate clean lease time; repeated successful owners also delay queued readers. Alias/interpreter/native checks were submillisecond in the prior component run."
+    }
+  ],
+  "retained_raw": {
+    "m7-gate-diagnostics-lease-stages.log": "2d00e798819efafca1fa91542764c83aa2ef278059d110b10a581741d19f32e8",
+    "m7-gate-diagnostics-verus.log": "e7cae4e30eaf3fd7af1e7f3982de01e137287531cbaa6c1daab3ae170c33c23c",
+    "m7-gate-diagnostics-kernel-sweeps.log": "3b639e3e04fdcf4b38a3d3c23dd63c6f7aa89e0939a9768354185788aa6f37ad",
+    "m7-gate-diagnostics-lease-stage-summary.json": "ba307e21652cc1ecb923199538cdc6c095667cc5af30153278c5304b408447a9",
+    "m7-gate-diagnostics-82f9870-verus.log": "7ec4f11119bf05c0f172015a56f4bd160c0459750ebd6aefc2fba2a42a2ea79f",
+    "m7-gate-diagnostics-82f9870-traced.log": "933e3d83195d1d0a3d26e281e39b764365527239a4cbcdec8f05511caee16c02"
+  },
+  "open_causes": [
+    "Original initial-complete failures did not reproduce in the single30-test diagnostic run; acquisition-stage labels are now available, original failures remain",
+    "Safe global-row parse/fairness optimization pending design review; no production fix applied",
+    "Original full aggregate gate remains failed, final hardened installed MCP/controller qualification deferred"
+  ]
 }
