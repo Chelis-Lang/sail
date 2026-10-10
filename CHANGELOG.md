@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Retain optional per-driver preparation counters with separate batch-local and
+  persistent reuse; unavailable telemetry is distinct from observed zero hits.
+
 - Decline ambiguous trait-implementation obligation joins when Verus repeats a
   friendly function name; preserve full results and partial-attribution evidence.
 

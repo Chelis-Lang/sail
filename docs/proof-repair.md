@@ -44,6 +44,14 @@ The private worker exits with the full phase's status so a completed proof is
 not mistaken for an infrastructure failure; the public repair command exits
 nonzero when the repair is not accepted.
 
+Optional `batch.preparation` records retain source-reported counters separately
+for each observed Verus driver. `batch_hits` measures reuse inside one focused/full
+batch; `persistent_hits` measures validated reuse across batches. Misses, retained
+byte peaks and configured budgets are source observations, not proof evidence or
+process RSS. Peaks and budgets from independent drivers are not summed. Target
+and phase identities appear only when independently bound. An engine without
+this telemetry reports it unavailable, rather than supplying invented zeroes.
+
 ## Resumable observations
 
 `jobs events` reads a separate proof journal, independent of the existing target
