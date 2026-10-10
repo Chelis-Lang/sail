@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "scope": "Host transport/protocol integration only; no solver differential or live MCP latency qualification",
+  "platform": {
+    "os": "Darwin",
+    "arch": "arm64",
+    "rust_toolchain": "1.99.0"
+  },
+  "api_prerequisites": [
+    "7147775",
+    "919b971",
+    "098f0df"
+  ],
+  "contracts": {
+    "endpoints": 8,
+    "aggregate_decoded_retention_bytes": 134217728,
+    "fresh_complete_service_frame_required": true,
+    "transport_seconds": 5,
+    "post_request_retry": false,
+    "write_and_blocking_poll_cli_ownership_unchanged": true
+  },
+  "passed": [
+    {
+      "command": "cargo test -p sail-mcp --lib",
+      "tests": 37,
+      "elapsed_seconds": 1.07
+    },
+    {
+      "command": "cargo test -p sail-mcp --lib job_tools::tests::cancellation_interrupts_owned_read_and_does_not_retry_cli",
+      "tests": 1,
+      "elapsed_seconds": 0.05,
+      "note": "After final RAII read-worker cleanup change"
+    },
+    {
+      "command": "cargo test -p sail-cli --test mcp",
+      "tests": 1,
+      "elapsed_seconds": 50.59,
+      "note": "Actual installed CLI protocol smoke, fixture solver; not stock solver conformance"
+    },
+    {
+      "command": "cargo clippy -p sail-api -p sail-mcp -p sail-verus -p sail-cli --all-targets -- -D warnings",
+      "status": "passed",
+      "elapsed_seconds": 45.01
+    },
+    {
+      "command": "cargo test -p sail-mcp --lib test_io::tests::early_fixture_retirement_closes_accept_and_active_reads_before_join",
+      "tests": 1,
+      "elapsed_seconds": 0.01,
+      "note": "Explicit owned fixture retirement with no client and blocked read"
+    },
+    {
+      "command": "cargo clippy -p sail-mcp --all-targets -- -D warnings",
+      "status": "passed",
+      "elapsed_seconds": 3.88,
+      "note": "After final fixture cleanup regression"
+    }
+  ],
+  "preserved_failures": [
+    {
+      "scope": "Initial MCP37-test run",
+      "passed": 36,
+      "failed": 1,
+      "cause": "Fake CLI requested running but returned completed job identity; fixture corrected to exact running result, wrong-id negative retained"
+    },
+    {
+      "scope": "MCP suite invoked with nice19",
+      "passed": 36,
+      "failed": 1,
+      "assertion_seconds": 2,
+      "observed_seconds": 4.345204666,
+      "cause": "Blocked-worker responsiveness assertion failed; no threshold change; ordinary-priority complete suite later passed"
+    },
+    {
+      "scope": "Final combined API/MCP invocation stopped in API",
+      "passed": 27,
+      "failed": 1,
+      "test": "jobs::cancellable::tests::blocked_read_and_write_cancel_and_leave_no_polling_monitor",
+      "error": "ready_rx timeout",
+      "note": "8MiB request serialized before fake peer receives length prefix; reported to API owner; no deadline or payload changes by MCP track"
+    }
+  ],
+  "binary_sha256": {
+    "target/debug/sail": "b6545169351db30ca6d3ab84e83ed4483b8cbe5955c69818a4a1314a68f33893",
+    "target/debug/deps/mcp-3144cda41d84a6e0": "fcc301e5aa6638820d93b55337a3cc50f49e8d717e463d8f310f069bdf98d640"
+  },
+  "acceptance_pending": [
+    "Required CI/global gates",
+    "Actual pinned solver CLI/MCP differential acceptance",
+    "Live persistent MCP latency measurements"
+  ]
+}

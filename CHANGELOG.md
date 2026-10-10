@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Reuse bounded service clients for MCP job status, result and counterexample
+  reads while receiving a fresh reply on every call. Preserve source currentness,
+  report schemas, CLI fallback errors and verification/cancellation ownership.
+
 - Add explicit bounded complete-result decoding reuse for persistent Rust SDK
   clients. Every call still reads a complete fresh RPC response; single-use
   clients keep ordinary decoding. Changed or malformed frames cannot reuse a

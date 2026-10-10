@@ -17,9 +17,11 @@ shares the entry; each returned Response owns an independent complete graph.
 A short mutex only takes/replaces an Arc. Byte comparison, graph cloning,
 parsing and destruction occur outside it; contention falls back to correct
 ordinary parsing. `Debug` prints the socket and a compact storage count, never
-cached frame bytes or model contents. Existing CLI and MCP commands create
-fresh clients or subprocesses: this change does not establish a cross-call
-speedup for those paths. First-result retention adds an independent full graph
+cached frame bytes or model contents. Installed MCP durable read-only tools use a bounded persistent client family;
+status/result and counterexample/cached-result lookups still authorize every
+read through a complete fresh service reply. CLI calls, writes and blocking
+verification polling retain their existing clients or subprocesses. No live MCP
+latency qualification is established by the separate SDK replay measurements. First-result retention adds an independent full graph
 clone; isolated measurements found a cold-client regression. That cost is why
 single-use calls retain the original uncached constructor.
 
@@ -40,8 +42,10 @@ category. `Operation` covers all errors after connecting, including cancellation
 expiry and negotiation: retrying through another transport after these errors
 could duplicate work. `io_error()` preserves the original error kind and message.
 Cancellation is `Interrupted` (`SAIL0804`); whole-transport expiry is `TimedOut`
-(`SAIL0805`). This API provides the transport seam for persistent MCP readers;
-its existence alone does not establish MCP wiring or a latency acceptance result.
+(`SAIL0805`). Installed MCP durable read-only tools use this API. Missing/refused pre-RPC
+connections may fall back to the existing CLI startup path; operations already
+started are never retried. Transport/adversarial tests cover the integration,
+while live MCP latency acceptance remains unmeasured.
 
 ## Retained ownership bound
 
