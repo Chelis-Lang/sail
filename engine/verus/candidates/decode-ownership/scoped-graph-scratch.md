@@ -82,3 +82,15 @@ After the new ordinary build sealed, bounded [closed-intermediate cleanup](scope
 reclaimed 1,635,057,439 bytes of owned host/compiler-cache files. Test executables,
 source identities, all thirteen old runtime artifacts and raw evidence were
 retained and revalidated. The active new source target was excluded.
+
+## Unchanged cross-edit gate failure
+
+The [full qualification attempt](scoped-query-qualification-failure.json) passes
+the first eight stages and restores FOCUS from a prior completed invocation when
+inputs are unchanged. Its third invocation edits only task023 while the selected
+task013 function remains unchanged. That invocation refuses the persisted FOCUS
+entry at `span-provenance`, then performs fresh preparation and a checked
+same-callback FULL restore. Both stock and engine module proofs succeed (nine
+verified, zero errors), but the required previous-revision FOCUS assertion fails.
+The full HE stage was not reached. The candidate remains unselected and
+unqualified; exact span ownership must be investigated before any narrowing.

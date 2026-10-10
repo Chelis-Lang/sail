@@ -1,0 +1,444 @@
+{
+  "version": 1,
+  "scope": "Failed unselected scoped-query cross-edit qualification; prior unchanged-input persistent restoration passes but edited task023 does not restore unaffected task013 focus",
+  "patch_sha256": "1aae80f1cbf3f476d14bb19587f321d5818749a665c847c9b48046f073cc8808",
+  "manifest_sha256": "053517f54421abb7f23e0c9fcbdcf59bfb9050901b04b3bd243cd90dbca8b00a",
+  "execution": "linux-x86_64-container-emulated-sharedload",
+  "pipeline": {
+    "version": 1,
+    "exit_code": 1,
+    "elapsed_seconds": 245.5023351109994,
+    "scope": "Original unselected source qualification; product qualification independent"
+  },
+  "stages": [
+    {
+      "name": "private-graph-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 1.1590397930012841
+    },
+    {
+      "name": "private-span-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 0.46027925000089454
+    },
+    {
+      "name": "old-domain-migration",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 10.078728586999205
+    },
+    {
+      "name": "same-input-hit-controls",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 15.396352006999223
+    },
+    {
+      "name": "source-fixtures",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 34.3441319329977
+    },
+    {
+      "name": "graph-checkpoint",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 64.35977502800233
+    },
+    {
+      "name": "cancel-restart",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 7.262155087002611
+    },
+    {
+      "name": "first-input-delta",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 37.32279468399793
+    },
+    {
+      "name": "previous-revision-focus",
+      "status": "failed",
+      "exit_code": 1,
+      "elapsed_seconds": 74.07362940899839
+    }
+  ],
+  "failed_stage": {
+    "version": 1,
+    "scope": "Module013 source proof and genuine prior-revision focused preparation; not whole-project or product qualification",
+    "engine_verifier_sha256": "3914eb9dfdfbacd3c117f4359e4c6781d0f51faee6590353f7243d07700bb1bd",
+    "patch_sha256": "1aae80f1cbf3f476d14bb19587f321d5818749a665c847c9b48046f073cc8808",
+    "results": [
+      {
+        "revision": 0,
+        "prior_preparations": [],
+        "edited_source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+        "assertions_completed": true,
+        "exit_code": 0,
+        "full_module_verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "actual_hits": 1,
+        "focus_restores": [],
+        "same_callback_checks": [
+          {
+            "version": 1,
+            "same_callback": true,
+            "restored_hit": true,
+            "passed": true,
+            "ordered_wire_equal": true,
+            "diagnostics_equal": true,
+            "outcomes_equal": true,
+            "lowering_effects_equal": true,
+            "final_effects_equal": true,
+            "fresh_sessions": 1,
+            "restored_sessions": 1,
+            "fresh_verified": 6,
+            "fresh_errors": 0,
+            "restored_verified": 6,
+            "restored_errors": 0,
+            "fault": "",
+            "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))"
+          }
+        ],
+        "preparation": {
+          "version": 1,
+          "enabled": true,
+          "batch_hits": 1,
+          "persistent_hits": 0,
+          "misses": 3,
+          "peak_retained_bytes": 3483110,
+          "memory_budget_bytes": 536870912,
+          "disk_budget_bytes": 536870912
+        }
+      },
+      {
+        "revision": 1,
+        "prior_preparations": [
+          {
+            "name": "34e907192c0eb165ebe32eea00073fc3703128a58a7c9370d9ae0d1aa7ec9124.prepared",
+            "sha256": "e77a2ee5cc7224e7e09a5d4c1760d82f0bbaabdc8efac070b106fbbbff765416"
+          },
+          {
+            "name": "cache.lock",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "name": "dcf831c9ab3cf2cc75cff83d36eee9965af49747416d9c9bc48425c931c2c323.prepared",
+            "sha256": "d1bb3fa36a9336c9d44838caa7d1b227fe4a0c007208da7aafab2a9f75f1330a"
+          },
+          {
+            "name": "fa065b9b5154a90ff3c5b27dd1f241ab06084f18b7b694333b273fee3b763445.prepared",
+            "sha256": "3cd83de8f37c99597e81669edc1bb40a227a52fd5500506754cb573b49b219d1"
+          }
+        ],
+        "edited_source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+        "assertions_completed": true,
+        "exit_code": 0,
+        "full_module_verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "actual_hits": 4,
+        "focus_restores": [
+          {
+            "version": 1,
+            "phase": "focus",
+            "event": "prepared-restored",
+            "payload": {
+              "source": "persistent",
+              "bytes": 1756888
+            }
+          }
+        ],
+        "same_callback_checks": [
+          {
+            "version": 1,
+            "same_callback": true,
+            "restored_hit": true,
+            "passed": true,
+            "ordered_wire_equal": true,
+            "diagnostics_equal": true,
+            "outcomes_equal": true,
+            "lowering_effects_equal": true,
+            "final_effects_equal": true,
+            "fresh_sessions": 1,
+            "restored_sessions": 1,
+            "fresh_verified": 2,
+            "fresh_errors": 0,
+            "restored_verified": 2,
+            "restored_errors": 0,
+            "fault": "",
+            "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))"
+          },
+          {
+            "version": 1,
+            "same_callback": true,
+            "restored_hit": true,
+            "passed": true,
+            "ordered_wire_equal": true,
+            "diagnostics_equal": true,
+            "outcomes_equal": true,
+            "lowering_effects_equal": true,
+            "final_effects_equal": true,
+            "fresh_sessions": 2,
+            "restored_sessions": 2,
+            "fresh_verified": 2,
+            "fresh_errors": 0,
+            "restored_verified": 2,
+            "restored_errors": 0,
+            "fault": "",
+            "bucket": "Fun(Path(human_eval_verus, [\"human_eval_013\"]), Fun(Path(human_eval_verus, [\"human_eval_013\" :: \"lemma_div\"])))"
+          },
+          {
+            "version": 1,
+            "same_callback": true,
+            "restored_hit": true,
+            "passed": true,
+            "ordered_wire_equal": true,
+            "diagnostics_equal": true,
+            "outcomes_equal": true,
+            "lowering_effects_equal": true,
+            "final_effects_equal": true,
+            "fresh_sessions": 1,
+            "restored_sessions": 1,
+            "fresh_verified": 1,
+            "fresh_errors": 0,
+            "restored_verified": 1,
+            "restored_errors": 0,
+            "fault": "",
+            "bucket": "Fun(Path(human_eval_verus, [\"human_eval_013\"]), Fun(Path(human_eval_verus, [\"human_eval_013\" :: \"lemma_div_converse\"])))"
+          },
+          {
+            "version": 1,
+            "same_callback": true,
+            "restored_hit": true,
+            "passed": true,
+            "ordered_wire_equal": true,
+            "diagnostics_equal": true,
+            "outcomes_equal": true,
+            "lowering_effects_equal": true,
+            "final_effects_equal": true,
+            "fresh_sessions": 1,
+            "restored_sessions": 1,
+            "fresh_verified": 6,
+            "fresh_errors": 0,
+            "restored_verified": 6,
+            "restored_errors": 0,
+            "fault": "",
+            "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))"
+          }
+        ],
+        "preparation": {
+          "version": 1,
+          "enabled": true,
+          "batch_hits": 0,
+          "persistent_hits": 4,
+          "misses": 0,
+          "peak_retained_bytes": 1702182,
+          "memory_budget_bytes": 536870912,
+          "disk_budget_bytes": 536870912
+        }
+      },
+      {
+        "revision": 2,
+        "prior_preparations": [
+          {
+            "name": "34e907192c0eb165ebe32eea00073fc3703128a58a7c9370d9ae0d1aa7ec9124.prepared",
+            "sha256": "e77a2ee5cc7224e7e09a5d4c1760d82f0bbaabdc8efac070b106fbbbff765416"
+          },
+          {
+            "name": "cache.lock",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "name": "dcf831c9ab3cf2cc75cff83d36eee9965af49747416d9c9bc48425c931c2c323.prepared",
+            "sha256": "d1bb3fa36a9336c9d44838caa7d1b227fe4a0c007208da7aafab2a9f75f1330a"
+          },
+          {
+            "name": "fa065b9b5154a90ff3c5b27dd1f241ab06084f18b7b694333b273fee3b763445.prepared",
+            "sha256": "3cd83de8f37c99597e81669edc1bb40a227a52fd5500506754cb573b49b219d1"
+          }
+        ],
+        "edited_source_sha256": "4d405b2fdfd44734e91685de1d542648ebdfb0cb78ad25e6190465ab7e7636ff",
+        "assertions_completed": false,
+        "exit_code": 0,
+        "full_module_verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "actual_hits": 1,
+        "focus_restores": [],
+        "same_callback_checks": [
+          {
+            "version": 1,
+            "same_callback": true,
+            "restored_hit": true,
+            "passed": true,
+            "ordered_wire_equal": true,
+            "diagnostics_equal": true,
+            "outcomes_equal": true,
+            "lowering_effects_equal": true,
+            "final_effects_equal": true,
+            "fresh_sessions": 1,
+            "restored_sessions": 1,
+            "fresh_verified": 6,
+            "fresh_errors": 0,
+            "restored_verified": 6,
+            "restored_errors": 0,
+            "fault": "",
+            "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))"
+          }
+        ],
+        "preparation": {
+          "version": 1,
+          "enabled": true,
+          "batch_hits": 1,
+          "persistent_hits": 0,
+          "misses": 3,
+          "peak_retained_bytes": 3483110,
+          "memory_budget_bytes": 536870912,
+          "disk_budget_bytes": 536870912
+        }
+      }
+    ],
+    "controls_completed": false
+  },
+  "edit": {
+    "file": "tasks/human_eval_023.rs",
+    "original": "    string.len()\n",
+    "replacement": "    let length = string.len();\n    length\n",
+    "focused_function": "human_eval_verus::human_eval_013::compute_gcd",
+    "focused_source_unchanged": true
+  },
+  "observed_revision2_misses": [
+    {
+      "version": 1,
+      "phase": "focus",
+      "event": "prepared-miss",
+      "payload": {
+        "stage": "span-provenance",
+        "key": "dcf831c9ab3cf2cc75cff83d36eee9965af49747416d9c9bc48425c931c2c323"
+      }
+    },
+    {
+      "version": 1,
+      "phase": "full",
+      "event": "prepared-miss",
+      "payload": {
+        "stage": "span-provenance",
+        "key": "fa065b9b5154a90ff3c5b27dd1f241ab06084f18b7b694333b273fee3b763445"
+      }
+    },
+    {
+      "version": 1,
+      "phase": "full",
+      "event": "prepared-miss",
+      "payload": {
+        "stage": "span-provenance",
+        "key": "34e907192c0eb165ebe32eea00073fc3703128a58a7c9370d9ae0d1aa7ec9124"
+      }
+    }
+  ],
+  "retained_artifacts": {
+    "qualification.log": {
+      "sha256": "534589717a91971966c3f5633a8915908389e3ad14e2dc02f9172be9963d5119",
+      "bytes": 237
+    },
+    "qualification/previous-revision-focus.log": {
+      "sha256": "4eecb56b3afcec9a2511b3790149dc08dbff402582eae2aafb3259cf8ec8bf0f",
+      "bytes": 588
+    },
+    "qualification/previous-revision-focus/summary.json": {
+      "sha256": "f578f23f492f36392ee892cdaa8b3c881648a22b923b351d9365d61206029b39",
+      "bytes": 8401
+    },
+    "qualification/previous-revision-focus/0/engine.stdout": {
+      "sha256": "d8667f979e09f6af3b50fa2fe7f4661eebc045bfc8064932e318fec1498feb54",
+      "bytes": 7721
+    },
+    "qualification/previous-revision-focus/0/engine.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/0/stock.stdout": {
+      "sha256": "26cace11bbc1ad8070663eb8ad80a6e4fa75fc54c9b3811299a1637953e0cb2e",
+      "bytes": 7773
+    },
+    "qualification/previous-revision-focus/0/stock.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/0/events.jsonl": {
+      "sha256": "140cf361ecce0a04e63df4eb7c9c1d1e9f9fe741d0d79dda8c3e68d54f150801",
+      "bytes": 14447
+    },
+    "qualification/previous-revision-focus/1/engine.stdout": {
+      "sha256": "ad958a85db437909efff5eaadb9743744e319f0ecbba7cdfc317653b5e5a08a9",
+      "bytes": 7728
+    },
+    "qualification/previous-revision-focus/1/engine.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/1/stock.stdout": {
+      "sha256": "abf89c31ab81c19ec4d9c4f2e655f06fbad6844fc06b82a0e96f9c6be7a52491",
+      "bytes": 7769
+    },
+    "qualification/previous-revision-focus/1/stock.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/1/events.jsonl": {
+      "sha256": "caa84930c7fdf5c348e2c7f8d5a8dd8a268afb581226b21fe5a1ce715891eb51",
+      "bytes": 15183
+    },
+    "qualification/previous-revision-focus/2/engine.stdout": {
+      "sha256": "02129e79b1a1524e2af7f9b223a0a336bfbe92ddff7b7da18206dff327fd3baf",
+      "bytes": 7719
+    },
+    "qualification/previous-revision-focus/2/engine.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/2/stock.stdout": {
+      "sha256": "9af67cb5449b302f039d66b063ca88a12258e491f5be0fbbc8698ec881b870c1",
+      "bytes": 7762
+    },
+    "qualification/previous-revision-focus/2/stock.stderr": {
+      "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "bytes": 234
+    },
+    "qualification/previous-revision-focus/2/events.jsonl": {
+      "sha256": "cd64327bd6926449d289984a1cce492266b994db84734109ca3b7f52ca5a5131",
+      "bytes": 14940
+    }
+  },
+  "raw_archive": {
+    "sha256": "12061f36650f5500ba06798c3a86ebd9ec21706ad9fcec67caf67fdd0d30e2cd",
+    "bytes": 3336182
+  },
+  "checks_unchanged": true,
+  "full_he_stage_run": false,
+  "prior_completed_unchanged_input_focus_restore_confirmed": true,
+  "previous_revision_cross_edit_focus_restore_confirmed": false,
+  "selected_runtime_changed": false,
+  "source_gates_passed": false,
+  "product_qualified": false
+}
