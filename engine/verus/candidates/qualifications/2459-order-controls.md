@@ -24,8 +24,9 @@ answer. Raw records and hashes are in `2459-order-controls.json`.
 
 A separate `human_eval_023` local-binding refactor passed exit, diagnostics,
 function results, session inventory and all 114 raw solver-stream comparisons
-against stock. It retained one focused GCD preparation but missed all 105 full
-buckets. That demonstrates correctness for this pair, not effective cross-edit
+against stock. Its focused check was fresh; the one disk-source GCD restore reused that
+new focused preparation during the same invocation. All 105 full-bucket
+baselines changed, so there was no reuse from the previous source revision. That demonstrates correctness for this pair, not effective cross-edit
 preparation reuse. Source-only shared emulation timings were 126.4 seconds for
 stock and 185.5 seconds for the candidate; these are not the frozen product-loop
 performance acceptance. See `2459-other-module-edit.json`.
