@@ -1,0 +1,397 @@
+{
+  "version": 1,
+  "scope": "Fixed four-attempt diagnosis; independent processes, not same-callback qualification",
+  "execution": "Linux x86_64 Docker emulated on aarch64 macOS",
+  "candidate_patch_sha256": "245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
+  "engine_verifier_sha256": "dfce812041c4bf88d60b33cd60f87754b38c5a0f339cffb8216732556dda9c63",
+  "qualified": false,
+  "activation": false,
+  "full_empty_prepared_control": {
+    "diagnostic_only": true,
+    "qualification_remains_failed": true,
+    "engine_verifier_sha256": "dfce812041c4bf88d60b33cd60f87754b38c5a0f339cffb8216732556dda9c63",
+    "exit_code": 0,
+    "elapsed_seconds": 119.4664053460001,
+    "full": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "success": true,
+      "verified": 441,
+      "errors": 0,
+      "is-verifying-entire-crate": true
+    },
+    "preparation": [
+      {
+        "version": 1,
+        "enabled": true,
+        "batch_hits": 0,
+        "persistent_hits": 1,
+        "misses": 105,
+        "peak_retained_bytes": 11819586,
+        "memory_budget_bytes": 536870912,
+        "disk_budget_bytes": 536870912
+      }
+    ],
+    "human_eval_160_input_sha256": "79de268eb3a2899a6d8a8ec99da3430ecd49dbd14c6c446cc4847d6b8d38f8fd",
+    "human_eval_160_prepared_keys": [
+      {
+        "bucket": "Module(Path(human_eval_verus, [\"human_eval_160\"]))",
+        "baseline_sha256": "1832f5c00d1ce32a39cbd8751a9bf22dca4c8d199279a747804ece900c3872e8"
+      }
+    ],
+    "seal": {
+      "version": 1,
+      "phase": "full",
+      "event": "compiler-sealed",
+      "payload": {
+        "success": true,
+        "normal_termination": true
+      }
+    },
+    "cached_unchanged_control_session_counts": [
+      114,
+      114
+    ],
+    "cached_unchanged_control_mismatches": []
+  },
+  "module160_controls": {
+    "diagnostic_only": true,
+    "qualification_remains_failed": true,
+    "fixed_attempt_count": 4,
+    "rows": [
+      {
+        "index": 0,
+        "mode": "cached",
+        "exit_code": 0,
+        "elapsed_seconds": 29.963643389000026,
+        "verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 25,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "sessions": [
+          {
+            "name": "human_eval_160.smt_transcript",
+            "sha256": "3035cc9925fbbf6cf1648d34b5cbcaa00761746cf0e7956d8402cab94b5e529f"
+          }
+        ],
+        "prepared": [
+          {
+            "version": 1,
+            "phase": "focus",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))",
+              "baseline_sha256": "38456ea06ac9306d1dbf799d98572934ff33675ade19c2ecfbbc70aebef1da7d"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "focus",
+            "event": "prepared-restored",
+            "payload": {
+              "source": "persistent",
+              "bytes": 1198312
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_160\"]))",
+              "baseline_sha256": "4c5386323b582bfed58946570b1e2bcf9f061cdcb2c7ff7ad297fa7e53e5f9c8"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "preparation-summary",
+            "payload": {
+              "version": 1,
+              "enabled": true,
+              "batch_hits": 0,
+              "persistent_hits": 1,
+              "misses": 1,
+              "peak_retained_bytes": 11684694,
+              "memory_budget_bytes": 536870912,
+              "disk_budget_bytes": 536870912
+            }
+          }
+        ],
+        "current_pre_key_accessor_order": [
+          "arrow_1",
+          "arrow_2"
+        ],
+        "current_pre_key_vir_sha256": "06ec60c5525eb8835ef7459b4f91d28f8c7878ad44dfe976aa8d7b4be79fef75",
+        "diagnostics_sha256": "b47c52f710f6f40159ba478b8b71431b17b84557094d3dc1ce57d8608a733a08",
+        "SMT_bytes": 1179077,
+        "terminal": {
+          "version": 1,
+          "phase": "full",
+          "event": "compiler-sealed",
+          "payload": {
+            "success": true,
+            "normal_termination": true
+          }
+        },
+        "module160_persistent_hit": false
+      },
+      {
+        "index": 1,
+        "mode": "empty",
+        "exit_code": 0,
+        "elapsed_seconds": 22.68471413500083,
+        "verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 25,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "sessions": [
+          {
+            "name": "human_eval_160.smt_transcript",
+            "sha256": "3035cc9925fbbf6cf1648d34b5cbcaa00761746cf0e7956d8402cab94b5e529f"
+          }
+        ],
+        "prepared": [
+          {
+            "version": 1,
+            "phase": "focus",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))",
+              "baseline_sha256": "38456ea06ac9306d1dbf799d98572934ff33675ade19c2ecfbbc70aebef1da7d"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_160\"]))",
+              "baseline_sha256": "4c5386323b582bfed58946570b1e2bcf9f061cdcb2c7ff7ad297fa7e53e5f9c8"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "preparation-summary",
+            "payload": {
+              "version": 1,
+              "enabled": true,
+              "batch_hits": 0,
+              "persistent_hits": 0,
+              "misses": 2,
+              "peak_retained_bytes": 11684694,
+              "memory_budget_bytes": 536870912,
+              "disk_budget_bytes": 536870912
+            }
+          }
+        ],
+        "current_pre_key_accessor_order": [
+          "arrow_1",
+          "arrow_2"
+        ],
+        "current_pre_key_vir_sha256": "06ec60c5525eb8835ef7459b4f91d28f8c7878ad44dfe976aa8d7b4be79fef75",
+        "diagnostics_sha256": "b47c52f710f6f40159ba478b8b71431b17b84557094d3dc1ce57d8608a733a08",
+        "SMT_bytes": 1179077,
+        "terminal": {
+          "version": 1,
+          "phase": "full",
+          "event": "compiler-sealed",
+          "payload": {
+            "success": true,
+            "normal_termination": true
+          }
+        },
+        "module160_persistent_hit": false
+      },
+      {
+        "index": 2,
+        "mode": "cached",
+        "exit_code": 0,
+        "elapsed_seconds": 23.080050344000483,
+        "verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 25,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "sessions": [
+          {
+            "name": "human_eval_160.smt_transcript",
+            "sha256": "79de268eb3a2899a6d8a8ec99da3430ecd49dbd14c6c446cc4847d6b8d38f8fd"
+          }
+        ],
+        "prepared": [
+          {
+            "version": 1,
+            "phase": "focus",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))",
+              "baseline_sha256": "38456ea06ac9306d1dbf799d98572934ff33675ade19c2ecfbbc70aebef1da7d"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "focus",
+            "event": "prepared-restored",
+            "payload": {
+              "source": "persistent",
+              "bytes": 1198312
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_160\"]))",
+              "baseline_sha256": "1832f5c00d1ce32a39cbd8751a9bf22dca4c8d199279a747804ece900c3872e8"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "prepared-restored",
+            "payload": {
+              "source": "persistent",
+              "bytes": 9494020
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "preparation-summary",
+            "payload": {
+              "version": 1,
+              "enabled": true,
+              "batch_hits": 0,
+              "persistent_hits": 2,
+              "misses": 0,
+              "peak_retained_bytes": 1940699,
+              "memory_budget_bytes": 536870912,
+              "disk_budget_bytes": 536870912
+            }
+          }
+        ],
+        "current_pre_key_accessor_order": [
+          "arrow_2",
+          "arrow_1"
+        ],
+        "current_pre_key_vir_sha256": "860e043ad676324eb3ca5c69886d2478e631521e8d6b597b68dc93c5ca3a07dc",
+        "diagnostics_sha256": "b47c52f710f6f40159ba478b8b71431b17b84557094d3dc1ce57d8608a733a08",
+        "SMT_bytes": 1179077,
+        "terminal": {
+          "version": 1,
+          "phase": "full",
+          "event": "compiler-sealed",
+          "payload": {
+            "success": true,
+            "normal_termination": true
+          }
+        },
+        "module160_persistent_hit": true
+      },
+      {
+        "index": 3,
+        "mode": "empty",
+        "exit_code": 0,
+        "elapsed_seconds": 29.681322054999328,
+        "verification": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 25,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        },
+        "sessions": [
+          {
+            "name": "human_eval_160.smt_transcript",
+            "sha256": "79de268eb3a2899a6d8a8ec99da3430ecd49dbd14c6c446cc4847d6b8d38f8fd"
+          }
+        ],
+        "prepared": [
+          {
+            "version": 1,
+            "phase": "focus",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_013\"]))",
+              "baseline_sha256": "38456ea06ac9306d1dbf799d98572934ff33675ade19c2ecfbbc70aebef1da7d"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "prepared-key-components",
+            "payload": {
+              "bucket": "Module(Path(human_eval_verus, [\"human_eval_160\"]))",
+              "baseline_sha256": "1832f5c00d1ce32a39cbd8751a9bf22dca4c8d199279a747804ece900c3872e8"
+            }
+          },
+          {
+            "version": 1,
+            "phase": "full",
+            "event": "preparation-summary",
+            "payload": {
+              "version": 1,
+              "enabled": true,
+              "batch_hits": 0,
+              "persistent_hits": 0,
+              "misses": 2,
+              "peak_retained_bytes": 11684694,
+              "memory_budget_bytes": 536870912,
+              "disk_budget_bytes": 536870912
+            }
+          }
+        ],
+        "current_pre_key_accessor_order": [
+          "arrow_2",
+          "arrow_1"
+        ],
+        "current_pre_key_vir_sha256": "860e043ad676324eb3ca5c69886d2478e631521e8d6b597b68dc93c5ca3a07dc",
+        "diagnostics_sha256": "b47c52f710f6f40159ba478b8b71431b17b84557094d3dc1ce57d8608a733a08",
+        "SMT_bytes": 1179077,
+        "terminal": {
+          "version": 1,
+          "phase": "full",
+          "event": "compiler-sealed",
+          "payload": {
+            "success": true,
+            "normal_termination": true
+          }
+        },
+        "module160_persistent_hit": false
+      }
+    ]
+  },
+  "paired_checks": [
+    {
+      "cached_index": 0,
+      "fresh_index": 1,
+      "same_current_pruned_VIR": true,
+      "same_raw_SMT": true,
+      "same_diagnostics": true,
+      "same_full_verification": true
+    },
+    {
+      "cached_index": 2,
+      "fresh_index": 3,
+      "same_current_pruned_VIR": true,
+      "same_raw_SMT": true,
+      "same_diagnostics": true,
+      "same_full_verification": true
+    }
+  ]
+}
