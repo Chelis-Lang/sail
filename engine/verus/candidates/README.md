@@ -130,6 +130,17 @@ bytes before reporting the first change. It always restores its private source
 copy. Its result is a miss-cause diagnostic, not conformance, useful cross-edit
 reuse or a speed claim.
 
+The first actual `2421` component capture around that edit changed only
+`global.datatype_graph_span_infos` (801,177 to 801,178 encoded bytes). The
+remaining 30 baseline components compared byte for byte. Both bounded focused
+runs verified nine functions without errors. This vector contains spans from
+the complete call-graph construction as well as datatype checks; its sole
+ordinary reader is the fresh, pre-lowering trait check. See
+`qualifications/2421-first-input-delta.json`. The evidence identifies an
+overbroad preparation dependency; it does not change the key or establish
+cross-edit reuse. A private, routed accessor with unsupported-read misses and
+new exact oracle qualification would be required before narrowing it.
+
 `test-real-he-same-input.py` is the newly selected real-source byte gate. It
 retains the original stock exit, full/function verdict and exact diagnostic
 checks, reports each independent stock transcript difference with both raw
