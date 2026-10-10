@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "scope": "Inactive owned Cargo intermediates only; no selected/runtime/source/raw/active Linux files removed",
+  "available_before_bytes": 1776902144,
+  "available_after_bytes": 3444613120,
+  "available_difference_bytes": 1667710976,
+  "historical_check_record": "combined-source-checks.json",
+  "intermediate_sets": [
+    {
+      "label": "initial-decode-helper",
+      "logical_bytes_before": 139432079,
+      "files_before": 1126,
+      "retained_executable_and_loader_files": 40,
+      "retained_inventory_sha256": "e9a9ead2b3122b80fb470bfa29f46da8f0fa4e64f6993c77da5cc8c0786d2221"
+    },
+    {
+      "label": "ownership-helper",
+      "logical_bytes_before": 137412219,
+      "files_before": 1548,
+      "retained_executable_and_loader_files": 25,
+      "retained_inventory_sha256": "479a3f8f02381c1060126f8fa77ff516b70230060785beceaf62ed328e20c0f1"
+    },
+    {
+      "label": "observer-helper",
+      "logical_bytes_before": 128840439,
+      "files_before": 1647,
+      "retained_executable_and_loader_files": 29,
+      "retained_inventory_sha256": "ad9c902d85729738fb288b6f1299372c37b6881d9ad7fe0c1472003084553fce"
+    },
+    {
+      "label": "combined-pinned-host-source-tests",
+      "logical_bytes_before": 1619055178,
+      "files_before": 5555,
+      "retained_executable_and_loader_files": 163,
+      "retained_inventory_sha256": "bc449e14ea910a0d8733e6c07ac72eb768569bf51b9b42e972d1883c62821ed9"
+    }
+  ]
+}

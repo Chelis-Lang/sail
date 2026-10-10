@@ -112,3 +112,14 @@ The independent ordinary Linux build runs at ordinary priority with both Cargo
 and source compiler job limits set to two; its source and full proof gates remain
 pending. A source unit-test pass does not establish a restored proof or select
 this runtime.
+
+## Retained checks and disposable intermediates
+
+After the completed host checks, low disk capacity required reclaiming only the
+owned, inactive Cargo intermediates. Exact test/probe executables and dynamic
+loader files were retained and verified before removal; source, raw output,
+prepared entries, sealed runtimes and the active Linux build were left intact.
+[The cleanup record](intermediate-cleanup.json) preserves the original logical
+sizes, retained inventories and measured available-space change. The historical
+check results remain in `combined-source-checks.json`; recompiling host compiler
+objects requires rebuilding those disposable intermediates.
