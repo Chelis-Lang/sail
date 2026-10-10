@@ -88,7 +88,8 @@ history limit. Their establishing run and revision remain unchanged. They are
 historical reference evidence, not a new proof of today's inputs. Comparisons
 show function and exact obligation-ID transitions. Different runtime contexts,
 modes or requested scopes are marked incomparable. Partial scopes cannot prove
-function removal; removal requires a finalized whole-target function inventory.
+function removal; removal describes absence from a successful sealed whole-target
+verification inventory, not inferred deletion from source text.
 Obligation IDs are matched exactly, with no inferred semantic correspondence
 between changed or reordered obligations.
 

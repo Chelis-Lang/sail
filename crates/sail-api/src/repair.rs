@@ -385,16 +385,20 @@ fn effective(report: &FunctionReport) -> VerdictName {
 }
 
 fn inventory(project: &ProjectResult, id: &Target) -> bool {
-    project.targets.iter().any(|target| {
-        target.package_id == id.package_id
-            && target.target == id.name
-            && target.kind == id.kind
-            && target.report.error.is_none()
-            && !target.report.crates.is_empty()
-            && target.report.crates.iter().all(|report| {
-                report.verus.success.is_some() && report.verus.encountered_vir_error != Some(true)
-            })
-    })
+    project.error.is_none()
+        && project.exit_code == Some(0)
+        && project.targets.iter().any(|target| {
+            target.complete
+                && target.package_id == id.package_id
+                && target.target == id.name
+                && target.kind == id.kind
+                && target.report.error.is_none()
+                && !target.report.crates.is_empty()
+                && target.report.crates.iter().all(|report| {
+                    report.verus.success == Some(true)
+                        && report.verus.encountered_vir_error != Some(true)
+                })
+        })
 }
 
 fn obligations(
