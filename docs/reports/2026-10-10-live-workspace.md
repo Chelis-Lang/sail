@@ -93,6 +93,14 @@ parents and serialized proof setup reduce test-induced namespace changes;
 currentness checks and deadlines remain unchanged. Safe freshness-cost work is
 tracked in [#69](https://github.com/Chelis-Lang/sail/issues/69).
 
+Separate final uninstrumented Linux/amd64 emulated runs also pass all three
+Current complete reuse rounds and the proof edits for both fixtures. They use
+the frozen `a518a104` executable and the unchanged 600-second invocation limit.
+Two-function medians are 4.11 s plain versus 13.01 s managed; 300-function medians
+are 3.55 s versus 10.41 s. These supplementary observations establish receipt
+reuse, not native Linux reference performance or a wall-time improvement. Their
+success leaves the earlier emulated wait's cause unresolved.
+
 ## Defects found during acceptance
 
 A native Linux check exposed unnecessary reverification after declaration
