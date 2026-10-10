@@ -68,8 +68,13 @@ Its first executable qualification passed a real restored-hit positive, then
 failed the mandatory order-fault control: the tiny fixture had only one spec
 declaration, so swapping a spec and an empty proof function did not change the
 wire. The failed control and its raw streams are retained in
-`qualifications/2421-linux-first-attempt.json`. Complete executable qualification
-is pending. It is not selected by the installer or the public runtime pin.
+`qualifications/2421-linux-first-attempt.json`. A fixture-only correction added
+two reachable spec declarations without changing the runtime, assertion or
+deadline. The positive and all three genuine restored-hit negative controls
+then passed; AIR confirms both declarations and the order fault changes actual
+wire bytes. See `qualifications/2421-linux-hit-controls.json`. The remaining
+qualification stages are running. It is not selected by the installer or the
+public runtime pin.
 
 The diagnostic oracle runs only when `SAIL_ENGINE_ORACLE_DIR` is set and a
 preparation has passed the normal key, provenance and graph-ledger validation.
@@ -135,3 +140,11 @@ restore an existing focused preparation; its other-module edit records actual
 reuse without claiming previous-revision reuse from a disk-hit counter alone.
 All actor deadlines remain 600 seconds, and a timed-out owned process group is
 terminated with raw stdout/stderr and deadline metadata retained.
+
+`qualify-same-input.py` runs all source stages against a sealed ordinary build.
+Its optional `--hit-controls OUTPUT` resumes from an explicitly completed
+control tree only after checking the exact verifier and solver identities,
+every completed case and each required positive/negative comparison. It copies
+that tree's raw files into the new pipeline. The original failed pipeline stays
+unchanged. A passing source pipeline still does not constitute real-project
+product or performance qualification.
