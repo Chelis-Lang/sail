@@ -18,7 +18,9 @@ pub struct BatchResult {
     pub full: ProjectResult,
     /// Hash of the validated optional engine build manifest.
     pub manifest_sha256: String,
-    /// Number of compiler invocations actually started by this batch.
+    /// Number of Verus driver subprocesses actually started by this batch.
+    /// An engine batch can run ghost verification and final executable checks
+    /// inside one driver; this is not the number of internal Rust sessions.
     pub compiler_invocations: u64,
     /// True only for engine-supported focus/full batching within compiler calls.
     pub batched: bool,
