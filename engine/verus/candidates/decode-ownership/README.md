@@ -133,3 +133,20 @@ owned evidence set. Worktree source, other raw output and runtime freezes were
 preserved. [This second record](prior-worktree-cleanup.json) distinguishes
 original logical size from observed filesystem availability; concurrent activity
 prevents attributing the availability change solely to this cleanup.
+
+## First combined runtime qualification failure
+
+The ordinary c39 runtime passes graph/private-span audits, old-domain migration,
+actual same-input HIT and order/body/effect fault controls, eleven source fixtures,
+checkpoints and cancellation/restart. The real HE input-component comparison
+finds no changed baseline component after the other-module body edit.
+
+Qualification then stops at revision zero of the previous-revision FOCUS gate.
+Stock and engine both prove all nine module-013 obligations with identical
+diagnostics, but the engine restores no preparation, so the required checked-HIT
+assertion fails. The actual producer identifies `ledger-scratch-budget`; it does
+not identify a decode allocation refusal. The whole-graph scratch estimate
+charged unrelated nodes and owned span text even for scalar and single-component
+queries. [The immutable failure record](c39-qualification-failure.json) retains
+that result. Full HE qualification did not run. The candidate remains unselected;
+no previous-revision proof reuse or product qualification is established.
