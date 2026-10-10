@@ -2132,5 +2132,21 @@
     "stock_sha256": "ff10c55b0acfb0a58ceb4e39e5c8b2da1790a89e31d1524a25533286373ba43a",
     "primary_sha256": "a89c921c75320207a34cb7217e744ec98c927e5c9372a57a140cee4cb3b6ad2e",
     "primary_is_stock_prefix": true
-  }
+  },
+  "min_path_shadow_input": [
+    {
+      "arm": "fresh",
+      "bytes": 388298,
+      "sha256": "ff10c55b0acfb0a58ceb4e39e5c8b2da1790a89e31d1524a25533286373ba43a",
+      "primary_prefix_equal": true,
+      "remaining_bytes": "(set-option :rlimit 0)\n(get-info :all-statistics)\n\n(echo \"<<DONE>>\")\n"
+    },
+    {
+      "arm": "restored",
+      "bytes": 388298,
+      "sha256": "ff10c55b0acfb0a58ceb4e39e5c8b2da1790a89e31d1524a25533286373ba43a",
+      "primary_prefix_equal": true,
+      "remaining_bytes": "(set-option :rlimit 0)\n(get-info :all-statistics)\n\n(echo \"<<DONE>>\")\n"
+    }
+  ]
 }
