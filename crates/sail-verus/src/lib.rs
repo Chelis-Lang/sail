@@ -11,6 +11,8 @@ pub mod adapter;
 pub mod attribution;
 pub mod corpus;
 pub mod diagnostics;
+pub mod engine;
+mod engine_events;
 pub mod managed;
 pub mod patch;
 pub mod report;

@@ -50,6 +50,11 @@ struct Paths {
 
 fn input_environment_key(key: &std::ffi::OsStr) -> bool {
     ![
+        "SAIL_PROOF_EVENTS",
+        "SAIL_ENGINE_EVENTS",
+        "SAIL_ENGINE_FOCUS_REPORT",
+        "SAIL_ENGINE",
+        "SAIL_ENGINE_FUNCTION",
         "SAIL_JOB_EVENTS",
         "SAIL_JOB_GUARD_PARENT",
         "SAIL_MANAGED_FORCE",
@@ -90,7 +95,7 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     clippy::too_many_lines,
     reason = "The context explicitly enumerates all executable and environment bindings."
 )]
-fn context(config: &Config) -> Result<String> {
+fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<String> {
     let mut identity = Vec::new();
     let mut hashed = super::files::FileDigests::default();
     for path in [
@@ -101,6 +106,11 @@ fn context(config: &Config) -> Result<String> {
         &config.shim,
     ] {
         identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
+    }
+    if let Some(engine) = engine {
+        for path in [&engine.manifest, &engine.stock_wrapper] {
+            identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
+        }
     }
     let wrapper = actual_wrapper(&config.cargo_verus)?;
     identity.push((
@@ -230,6 +240,7 @@ fn context(config: &Config) -> Result<String> {
         &serde_json::to_vec(&(
             1,
             &config.args,
+            engine,
             identity,
             environment.into_iter().collect::<Vec<_>>(),
         ))
@@ -406,10 +417,10 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
                 "verify"
             },
         ])
-        .args(&config.args[..split])
         .arg("--target-dir")
         .arg(&paths.target)
         .arg("--message-format=json-render-diagnostics")
+        .args(&config.args[..split])
         .args(&config.args[split..])
         .env("CARGO", &paths.cargo_alias)
         .env("SAIL_MANAGED_CARGO", &config.cargo)
@@ -419,6 +430,10 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
         .env("VERUS_Z3_PATH", &config.shim)
         .env("SAIL_Z3_PATH", &config.z3)
         .env("SAIL_SOLVER_MODE", "default")
+        .env_remove("SAIL_ENGINE")
+        .env_remove("SAIL_ENGINE_FUNCTION")
+        .env_remove("SAIL_ENGINE_EVENTS")
+        .env_remove("SAIL_ENGINE_FOCUS_REPORT")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
@@ -1020,10 +1035,25 @@ fn script_roots(data: &Value) -> Vec<PathBuf> {
     reason = "The top-level lifecycle keeps locking and input validation visibly scoped together."
 )]
 pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
+    run_engine(config, err, None)
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "The complete proof lifecycle and final input sealing remain together."
+)]
+pub(crate) fn run_engine(
+    config: &Config,
+    err: &mut dyn Write,
+    engine: Option<crate::engine::Request>,
+) -> Result<ProjectResult> {
     let mut owned = config.clone();
     owned.workspace =
         std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
     owned.cache = owned.workspace.join(&owned.cache);
+    if let Some(engine) = &engine {
+        owned.cargo_verus.clone_from(&engine.cargo_verus);
+    }
     let config = &owned;
     if config.args.iter().any(|s| {
         [
@@ -1072,7 +1102,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             "no selected Cargo targets declare package.metadata.verus.verify=true",
         ));
     }
-    let hash = context(config)?;
+    let hash = context(config, engine.as_ref())?;
 
     let run_id = format!(
         "{}-{}",
@@ -1173,6 +1203,20 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         invocations: paths.run.join("invocations"),
         original_wrapper: actual_wrapper(&config.cargo_verus)?,
         receipts: paths.receipts.clone(),
+        context_sha256: hash.clone(),
+        input_revision: before.revision.clone(),
+        packages: data["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| {
+                Some((
+                    PathBuf::from(p["manifest_path"].as_str()?),
+                    p["id"].as_str()?.to_owned(),
+                ))
+            })
+            .collect(),
+        engine,
     };
     json(&paths.runtime, &runtime)?;
     let mut exit = invoke(config, &paths, err)?;
