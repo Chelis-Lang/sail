@@ -272,7 +272,7 @@ index bfc3c2b..636309f 100644
  indexmap = { workspace = true }
  num-bigint = { workspace = true }
 diff --git a/source/vir/src/context.rs b/source/vir/src/context.rs
-index eb97120..448a47d 100644
+index eb97120..3b80998 100644
 --- a/source/vir/src/context.rs
 +++ b/source/vir/src/context.rs
 @@ -25,7 +25,7 @@ use std::sync::Arc;
@@ -318,7 +318,7 @@ index eb97120..448a47d 100644
  pub struct Ctx {
      pub(crate) module: Module,
      pub(crate) datatype_is_transparent: HashMap<Dt, bool>,
-@@ -138,7 +140,102 @@ pub struct Ctx {
+@@ -138,7 +140,103 @@ pub struct Ctx {
      pub arch_word_bits: ArchWordBits,
  }
  
@@ -362,7 +362,8 @@ index eb97120..448a47d 100644
 +    fn write(&mut self,bytes:&[u8])->std::io::Result<usize>{
 +        let needed=self.0.len().checked_add(bytes.len()).ok_or_else(||std::io::Error::other("prepared key budget"))?;
 +        if needed>SAIL_KEY_LIMIT{return Err(std::io::Error::other("prepared key budget"));}
-+        if needed>self.0.capacity(){let capacity=needed.max(self.0.capacity().saturating_mul(2)).max(4096).min(SAIL_KEY_LIMIT);self.0.try_reserve_exact(capacity-self.0.len()).map_err(std::io::Error::other)?;}
++        // Small lookup entries must not each reserve a page; capacity remains charged.
++        if needed>self.0.capacity(){let capacity=needed.max(self.0.capacity().saturating_mul(2)).max(64).min(SAIL_KEY_LIMIT);self.0.try_reserve_exact(capacity-self.0.len()).map_err(std::io::Error::other)?;}
 +        if self.0.capacity()>SAIL_KEY_LIMIT{return Err(std::io::Error::other("prepared key allocation budget"));}
 +        self.0.extend_from_slice(bytes);Ok(bytes.len())
 +    }
@@ -421,6 +422,31 @@ index eb97120..448a47d 100644
      pub(crate) fn checking_spec_preconditions(&self) -> bool {
          match self.fun {
              Some(FunctionCtx { checking_spec_preconditions: true, .. }) => true,
+@@ -937,3 +1035,24 @@ impl Ctx {
+         Arc::new(commands)
+     }
+ }
++
++#[cfg(test)]
++mod sail_preparation_tests {
++    use super::*;
++
++    #[test]
++    fn small_lookup_entries_do_not_exhaust_capacity_budget() {
++        let map = (0u32..5000).map(|key| (key, key + 7)).collect::<HashMap<_, _>>();
++        let mut budget = 0;
++        let actual = sail_map(&map, &mut budget).expect("small typed entries fit the key budget");
++        assert!(budget < 2 * 1024 * 1024, "capacity charge is {budget}");
++        let mut expected = map.iter().map(|(key, value)| {
++            (bincode_next::serde::encode_to_vec(key, bincode_next::config::legacy()).unwrap(),
++             bincode_next::serde::encode_to_vec(value, bincode_next::config::legacy()).unwrap())
++        }).collect::<Vec<_>>();
++        expected.sort();
++        assert_eq!(actual, expected);
++        assert_eq!(sail_encode(&actual).unwrap(),
++            bincode_next::serde::encode_to_vec(&expected, bincode_next::config::legacy()).unwrap());
++    }
++}
 diff --git a/source/vir/src/def.rs b/source/vir/src/def.rs
 index fa66348..dba3a57 100644
 --- a/source/vir/src/def.rs

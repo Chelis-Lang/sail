@@ -69,8 +69,11 @@ A single global admission lock covers key construction, encoding, span binding,
 decoding and cache replacement across every bucket and context. Stock solver
 worker concurrency remains unchanged. The retained buffer cap is 128 MiB;
 serialization and disk-read buffers also stop at 128 MiB before growth. Key
-writers and each aggregate typed lookup table stop at 32 MiB, including Vec
-capacity and table metadata. Source-file provenance, each span-binding map and
+writers start at 64 bytes and each aggregate typed lookup table stops at
+32 MiB, including Vec capacity and table metadata. Starting every tiny map key
+and value at 4 KiB previously exhausted this budget for real-project constructor
+graphs despite their small encoded entries; the correction changes allocation
+only, preserving every typed byte and resulting key hash. Source-file provenance, each span-binding map and
 each converted binding table stop at 16 MiB. Span keys and clones are charged
 with both String/Vec contents and conservative HashMap overhead.
 
@@ -126,6 +129,12 @@ Final performance acceptance uses the frozen repair catalogue and the complete
 focused-plus-full loop, including input/runtime validation and late compiler
 checks. A source build or cache hit count alone is not performance acceptance.
 
+The source regression `cargo test --release -p vir --lib sail_preparation_tests`
+checks 5,000 small typed lookup entries against their exact reference binary
+encoding; it fails with the former 4 KiB allocation. It is a local source test,
+not a CI source build. Existing qualification JSON records the prior immutable
+variant until the corrected variant completes independent qualification.
+
 ## Pinned Linux runtime for CI
 
 `artifact-linux.json` binds the private release asset, archive digest, source
@@ -135,7 +144,7 @@ uses a BuildKit secret for the private download; it does not retain that
 credential or build Verus from source. The optional runtime is exercised by
 the real repair CLI/MCP end-to-end phase alongside the stock checks.
 
-`qualification-linux.json` records the final source differential checks in a
+`qualification-linux.json` records the prior immutable source differential checks in a
 local Linux amd64 container under emulation. It covers nine stock-equivalent
 fixtures, eight prepared-reuse revisions and cancellation/restart. It does
 not substitute for the frozen whole-loop product performance acceptance.
