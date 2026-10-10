@@ -304,8 +304,14 @@ exact diagnostics are retained in
 The candidate now uses the actual nested macro path, independently checked with
 a matching helper layout, and renames the unused parameter without suppressing
 its lint. The corrected complete source identity is recorded in
-`qualifications/bounded-private-span-host.json`; its actual driver regressions
-remain pending while the allocation profile runs.
+`qualifications/bounded-private-span-host.json`. The corrected source compiled
+and ran all 22 actual driver library tests: 21 passed, while the observer byte
+comparison failed. Verus enables serde_json's `preserve_order` feature; the
+isolated helper omitted it and masked the typed writer's sorted-field change.
+The actual assertion and exact output are retained in
+`qualifications/d3cb-bounded-private-span-observer-order-failure.json`.
+A production ordering correction and exact-feature helper are pending; the
+check remains unchanged.
 An allocation-only probe of the 105 retained, checksummed actual HE portable
 preparations admitted 36 and refused 69 at the 128 MiB decode budget. Admitted
 entries also decoded with explicit key-matched placeholder raw-span owners;
