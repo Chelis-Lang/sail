@@ -84,6 +84,15 @@ readers can receive it. Publication follows the same signature, key, reply
 shape and solver checks; it does not extend lookup deadlines, and a late helper
 cannot overwrite a timeout already published to that lookup.
 
+Optional HTTP client initialization runs inside a bounded lookup helper.
+Constructing or retiring a transport cannot hold the foreground snapshot mutex,
+and status reads never construct a runtime. A stalled initializer costs a bounded
+miss; concurrent lookups can safely skip initialization already in progress.
+Configuration changes still clear old backoff and negative-cache state before
+consulting the new transport. Invalid credentials and disconnected stores cannot
+serve through the retired transport. No request begins after its lookup has
+already published a fallback.
+
 **What a trusted key can do.** Anything: a trusted signer is trusted
 completely. Whoever holds the secret key can publish wrong answers that
 every trusting reader serves. Hence:

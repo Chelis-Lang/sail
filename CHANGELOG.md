@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Keep optional HTTP transport initialization inside bounded lookup helpers;
+  client startup and retirement cannot block status or shared lookup callers.
+  Preserve trusted-entry checks, credential reloads and the existing deadlines.
+
 - Deliver verified shared-cache replies directly to concurrent readers, without
   waiting for the initiating caller to resume; retain bounded misses and all
   signature, query and solver identity checks.
