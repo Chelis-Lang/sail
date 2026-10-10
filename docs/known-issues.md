@@ -23,13 +23,15 @@ four-reader latency gate has been established. See the
   candidate must admit these before allocation and retain ownership until
   physical drop; a serialized-byte limit alone does not bound decoded memory.
   The [bounded-decoding overlay](../engine/verus/candidates/decode-budget/README.md)
-  has isolated pinned-source tests, but its combined runtime checks are pending.
+  has pinned-source tests, but ordinary runtime qualification is pending.
   A further audit found unbounded diagnostic-event JSON expansion before the
   observer lock, which can overlap preparation workers. The unselected
   [observer overlay](../engine/verus/candidates/observer-budget/README.md) now
   bounds that path, formatting and progress ownership. The combined allocation
-  argument reaches 492 MiB; exact driver tests and ordinary runtime qualification
-  remain pending. Its guarded decoder admitted only 36 of 105 retained actual
+  argument reaches 492 MiB. The combined candidate passes all 22 actual
+  RustVerify driver tests and strict all-target Clippy with the pinned module
+  layout and serialization features; ordinary runtime qualification remains
+  pending. See [the source test record](../engine/verus/candidates/qualifications/bounded-private-span-host.json). Its guarded decoder admitted only 36 of 105 retained actual
   human-eval preparations and safely refused 69 under its fixed allowance.
   This is a reuse limitation requiring more precise allocation accounting,
   rather than evidence that empty-fixture passes establish product performance.
@@ -104,7 +106,7 @@ not change a test deadline or turn observed failures into passes.
 
 | Check | Latest retained scope and result | Evidence |
 |---|---|---|
-| Latest complete Linux workspace gate | Source `5fd7986`, all 439 workspace tests and every gate step passed, including the original HTTP concurrency/serving checks. It covers caller-entry coalescing and the dev/test arithmetic optimization; real-reader and source-candidate acceptance remain separate. | [Gate record](../bench/validation/m7-linux-gate-5fd-emulated-2026-10-10.json) |
+| Latest passing complete Linux workspace gate | Source `5fd7986`, all 439 workspace tests and every gate step passed, including the original HTTP concurrency/serving checks. It covers caller-entry coalescing and the dev/test arithmetic optimization; real-reader and source-candidate acceptance remain separate. | [Gate record](../bench/validation/m7-linux-gate-5fd-emulated-2026-10-10.json) |
 | Preceding established-transport gate | Source `a9dc753`, 435/436 tests passed. The verified paused-initiator serving check failed after real transport/trust establishment; response-to-classification took 135.738 ms. Its entire CPU versus scheduling cause remains unknown. Later gate steps were not attempted. | [Failure](../bench/validation/m7-linux-gate-a9-failure-emulated-2026-10-10.json) |
 | Subsequent signature CPU controls | Sixteen strict valid and forged checks took approximately 310/320 ms before package-only dev/test arithmetic optimization, and 4–7 ms afterward. All 10 HTTP cases, five signed-format negative cases and affected strict Clippy checks passed, followed by the complete `5fd7986` gate. This does not identify the original failure's entire cause or establish a release-build speedup. | [Diagnostic](validation/m7-shared-signature-cpu-diagnostic.json) |
 | Earlier cold-lookup gate | Source `d12d4af`, 431/436 passed; five HTTP fixtures failed during cold lookups. Original deadlines and assertions are retained. | [Failure](../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json) |
@@ -124,6 +126,11 @@ does not identify the cause of the earlier timeout.
 HTTP serving/coalescing assertions and their original deadlines remain unchanged;
 the subsequent `5fd7986` gate passed those assertions while both earlier failed
 runs remain recorded as failures.
+The separate HTTP follow-up retains signature CPU controls and a negative
+TCP_NODELAY control; neither establishes the full cause of the two `7dc855d`
+failures. The stalled-request fixture now records constructor, request and
+client destruction costs within its original elapsed bound. See
+[the follow-up record](validation/m7-http-7dc-followup.json).
 A complete standard run and the
 remaining M7 source/product gates are still required before merge acceptance.
 

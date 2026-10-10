@@ -140,7 +140,13 @@ private span reads through guards covering compiler clones created before a
 capture begins. These candidates require a combined ordinary build and complete
 source qualification before activation. The physical audit also found
 diagnostic-event JSON expansion that can overlap preparation; its bounded
-observer fix and exact combined-source tests precede the next ordinary build.
+observer fix now passes all 22 actual RustVerify driver tests and strict
+all-target Clippy in the combined candidate. Its fixed 128 MiB decoder allowance
+still refuses 69 of 105 real human-eval preparations; precise ownership
+accounting, a complete ordinary build and runtime qualification precede selection.
+The reader track is measuring complete fresh-frame decoding and persistent
+client reuse. It preserves the full result schema, freshness checks and RPC
+bounds; replay measurements are separate from the original live reader gate.
 
 Priority order for completing this milestone:
 
