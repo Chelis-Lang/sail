@@ -36,6 +36,12 @@ four-reader latency gate has been established. See the
   This is a reuse limitation requiring more precise allocation accounting,
   rather than evidence that empty-fixture passes establish product performance.
   See the [retained entry probe](../engine/verus/candidates/qualifications/bounded-decode-retained-he.json).
+  The subsequent [closed ownership prototype](../engine/verus/candidates/decode-ownership/README.md)
+  admits 77 and safely refuses 28 of those 105 bodies under the same allowance.
+  It removes duplicate inline charges only for exact audited value/visitor
+  pairs; dynamic growth, pointer pointees and unknown/custom visitors retain
+  admission before allocation. Its 12 helper controls pass, but no ordinary
+  runtime or genuine cross-edit hit is yet qualified.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
