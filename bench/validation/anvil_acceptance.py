@@ -21,9 +21,11 @@ assert args.cache_entries > 0, 'the three-round run must populate its cache'
 
 
 def fingerprint(path):
+    digest = hashlib.sha256()
     with path.open('rb') as stream:
-        digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-    return {'sha256': digest, 'bytes': path.stat().st_size}
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(block)
+    return {'sha256': digest.hexdigest(), 'bytes': path.stat().st_size}
 
 
 reports = []
