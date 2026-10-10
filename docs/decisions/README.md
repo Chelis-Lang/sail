@@ -30,3 +30,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0025: HTTP shared cache and local-first team workflow](0025-http-shared-cache-and-local-first-team-workflow.md)
 - [0026: Live workspace dependencies](0026-live-workspace-dependencies.md)
 - [0027: Interactive proof engine and repair workflow](0027-interactive-proof-engine-and-repair-workflow.md)
+- [0028: Exact prepared graph-read dependencies (proposed candidate)](0028-exact-prepared-graph-read-dependencies.md)
+- [0029: Kernel lease work bounds and freshness](0029-kernel-lease-work-bounds-and-freshness.md)
