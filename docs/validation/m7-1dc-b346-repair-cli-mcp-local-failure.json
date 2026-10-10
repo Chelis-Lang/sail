@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "kind": "corrected-kernel-candidate-repair-cli-mcp-local-failure",
+  "passed": false,
+  "qualification": "Actual unchanged small supported no-vstd Cargo CLI/MCP workflow on Linux x86-64 Docker emulation on arm64 macOS under shared development load. Candidate has independent gate failures; no overall acceptance or native CI claim.",
+  "product": {
+    "source_commit": "1dc732e841427c14da0a39e322c04ee5874a8ca2",
+    "sail_sha256": "e6dcdaeec80e18fb064a7e2e44f7e49ab278662331b7e16ad0ee1c3d4c28557b",
+    "sail_z3_sha256": "7477fcfa07d97c6194f49d4c7651b20dedc7c01b9ca8be3d251bea65e242cd68",
+    "source_archive_sha256": "23647fa19502c671cddc2f244265b7d2ceac72c99a1e4cc51be33850a5bbf6c3",
+    "acceptance_script_sha256": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7"
+  },
+  "engine": {
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
+  },
+  "machine": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+  "environment_label": "Linux x86-64 Docker emulation on arm64 macOS; shared development load; corrected kernel candidate 1dc; original 120/30/5 bounds",
+  "deadlines_seconds": {
+    "workflow": 120,
+    "command": 30,
+    "rpc": 5,
+    "dependency_fetch_setup_outside_workflow": 60
+  },
+  "elapsed_s": 120.14884580399985,
+  "failure": "real repair CLI/MCP acceptance exceeded 120 seconds",
+  "stage": "first-cold-success-job",
+  "job": {
+    "id": "1791648874221-54309-0",
+    "state": "running",
+    "currentness": "unknown",
+    "error": null,
+    "input_revision": null,
+    "started_at_ms": 1791648874247,
+    "finished_at_ms": null
+  },
+  "result_present": false,
+  "operation_count": 305,
+  "last_operation": {
+    "operation": "success-result-303",
+    "elapsed_s": 0.1249767909998809,
+    "exit_code": 0
+  },
+  "worker_stdout_bytes": 0,
+  "cargo_observation": "Public worker stderr records ordinary builtin/macros/dependency compilation and stops after Compiling verus_builtin_macros. No Cargo Finished line is present.",
+  "pre_cleanup_process_sample": {
+    "observed_at_ms": 1791648981326,
+    "job_id": "1791648874221-54309-0",
+    "latest_result_file": "success-result-267.stdout.json",
+    "job_state": "running",
+    "owned_worker_pids": [
+      54335
+    ],
+    "processes": [
+      {
+        "pid": 54335,
+        "parent_pid": 54309,
+        "name": "sail",
+        "state": "S",
+        "wchan": "anon_pipe_read"
+      },
+      {
+        "pid": 55710,
+        "parent_pid": 54335,
+        "name": "python3",
+        "state": "S",
+        "wchan": "unix_stream_read_generic"
+      },
+      {
+        "pid": 55782,
+        "parent_pid": 54335,
+        "name": "cargo-verus",
+        "state": "S",
+        "wchan": "do_wait"
+      },
+      {
+        "pid": 55850,
+        "parent_pid": 55782,
+        "name": "sail-cargo",
+        "state": "S",
+        "wchan": "anon_pipe_read"
+      },
+      {
+        "pid": 55852,
+        "parent_pid": 55850,
+        "name": "cargo",
+        "state": "S",
+        "wchan": "futex_do_wait"
+      },
+      {
+        "pid": 58892,
+        "parent_pid": 55852,
+        "name": "sail-verus-driv",
+        "state": "S",
+        "wchan": "do_wait"
+      },
+      {
+        "pid": 58894,
+        "parent_pid": 58892,
+        "name": "rust_verify",
+        "state": "S",
+        "wchan": "futex_do_wait"
+      }
+    ]
+  },
+  "phase_evidence": "At approximately 107 seconds, the bound owned worker had live Cargo-Verus, Cargo, Sail driver and rust_verify descendants. The rust_verify child was waiting in futex_do_wait. This rules out a purely post-process completed-result projection at the sampled instant, but names alone do not identify whether that child handled the selected target or a dependency.",
+  "unresolved_phase": "The unchanged acceptance script retained public worker stdout/stderr but not private engine phase files or invocation argv. Scratch cleanup removed those paths; no claim of a protocol deadlock or final callback completion is justified.",
+  "cleanup_errors": [],
+  "progress_failures": [],
+  "checks_reached": [
+    "validated engine install",
+    "ordinary dependency fetch",
+    "durable repair submission",
+    "nonblocking result polling"
+  ],
+  "checks_not_reached": [
+    "Current full result",
+    "one-driver accepted batch",
+    "live proof event oracle",
+    "missing-selector preservation",
+    "full regression",
+    "explanations/models",
+    "baseline/comparison",
+    "actual MCP calls",
+    "late EXEC failure"
+  ],
+  "policy": "No further identical retry, deadline extension, synthetic verifier or waived assertion. Earlier d19 local failure and current native CI success remain independently recorded. Only public streams and a sanitized process inventory were copied; no private environments or runtime contexts.",
+  "raw_evidence": [
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc/summary.json",
+      "bytes": 35739,
+      "sha256": "16a16fcee069fedb77a43f6127790d6c736177dce0452932dbc90f4823179e66"
+    },
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc/operations.json",
+      "bytes": 31852,
+      "sha256": "16aaecb34afe67884153b6b26ecbb8818c2fe2979df90c00987e04a07cc8d539"
+    },
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc/engine-install.stdout.json",
+      "bytes": 596,
+      "sha256": "654e94483de9ed169847c036d7b3f2092eadfe21cf249a25305db1412abbf42e"
+    },
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc/phase-process-sample.json",
+      "bytes": 1187,
+      "sha256": "244289f90eab8904bb783006affa16dff4619e632dd646aa2042bc2624fbc4ba"
+    },
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc/success-result-303.stdout.json",
+      "bytes": 516,
+      "sha256": "ebb17336fb90c7e01d3285148ee9a550376628174a011fc2162a2f624a01a8fd"
+    },
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc/1791648874221-54309-0.worker.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc/1791648874221-54309-0.worker.stderr",
+      "bytes": 661,
+      "sha256": "61a4f38fd041519251764d36f2beb8f87f1454fbb97597468646ef9ace0030a4"
+    },
+    {
+      "path": "target/ca1412c-repair-acceptance/actual-1dc.log",
+      "bytes": 761,
+      "sha256": "7af8a3c9b72d960cbc495891b46af6b4b57d0399b2c9aadafaa4595d8235002a"
+    }
+  ]
+}
