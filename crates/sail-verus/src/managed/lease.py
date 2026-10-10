@@ -27,7 +27,10 @@ try:
     line = sys.stdin.buffer.readline(1_048_577)
     if len(line) > 1_048_576 or not line.endswith(b"\n"):
         release()
-    identities = json.loads(line)
+    request = json.loads(line)
+    identities = request["files"]
+    if request["runtime"] != support_paths():
+        release()
     if not isinstance(identities, list) or len(identities) > 4096:
         release()
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -41,6 +44,8 @@ try:
         if not stat.S_ISREG(metadata.st_mode) or (metadata.st_dev, metadata.st_ino) != (device, inode):
             release()
         fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_RDLCK)
+    if request["runtime"] != support_paths():
+        release()
     while True:
         if not all(fcntl.fcntl(fd, fcntl.F_GETLEASE) == fcntl.F_RDLCK for fd in fds):
             release()
@@ -48,5 +53,5 @@ try:
         sys.stdout.buffer.flush()
         if sys.stdin.buffer.readline(8) != b"check\n":
             release()
-except (OSError, ValueError, TypeError, AttributeError):
+except (OSError, ValueError, TypeError, AttributeError, KeyError):
     release()

@@ -28,10 +28,15 @@ struct RuntimeValidation {
     lease: ReadLease,
 }
 #[cfg(target_os = "linux")]
+struct RuntimeSlot {
+    runtime: Option<RuntimeValidation>,
+    coherent: Option<(std::time::Instant, InputSnapshot)>,
+}
+#[cfg(target_os = "linux")]
 #[derive(Default)]
 struct Projection {
     observer: Option<Observer>,
-    runtime: Option<Arc<Mutex<RuntimeValidation>>>,
+    runtime: Option<Arc<Mutex<RuntimeSlot>>>,
     refreshing: bool,
     generation: u64,
     retry_after: Option<std::time::Instant>,
@@ -63,23 +68,55 @@ impl Request {
         }
         super::files::digest(&bytes)
     }
-    fn refresh(&self, runtime: &Mutex<RuntimeValidation>) -> Option<InputSnapshot> {
-        let valid = || {
-            let mut lease = read_projection(runtime)?;
-            let (sha, _) = runner::runtime_identity(&self.cache, &self.context)?;
-            (sha == lease.identity && lease.lease.clean()).then_some(())
+    fn refresh(&self, runtime: &Mutex<RuntimeSlot>) -> Option<InputSnapshot> {
+        let started = std::time::Instant::now();
+        let deadline = started + std::time::Duration::from_millis(100);
+        let mut validation = loop {
+            let mut slot = read_projection(runtime)?;
+            // Coalescing is linearizable within this reader's own interval.
+            // A sequential reader never inherits a previous read's timestamp.
+            if let Some((completed, snapshot)) = &slot.coherent
+                && *completed >= started
+            {
+                return Some(snapshot.clone());
+            }
+            if let Some(validation) = slot.runtime.take() {
+                break validation;
+            }
+            drop(slot);
+            if std::time::Instant::now() >= deadline {
+                return None;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
         };
-        valid()?;
-        let snapshot = runner::refresh_context_validated(
-            &self.cache,
-            &self.workspace,
-            &self.context,
-            &self.environment,
-            || true,
-        )
-        .ok()?;
-        valid()?;
-        Some(snapshot)
+        // Expensive work owns the lease but holds no shared projection mutex.
+        let valid = |validation: &mut RuntimeValidation| {
+            let (sha, _) = runner::runtime_identity(&self.cache, &self.context)?;
+            (sha == validation.identity && validation.lease.clean()).then_some(())
+        };
+        let result = (|| {
+            valid(&mut validation)?;
+            let snapshot = runner::refresh_context_validated(
+                &self.cache,
+                &self.workspace,
+                &self.context,
+                &self.environment,
+                || true,
+            )
+            .ok()?;
+            valid(&mut validation)?;
+            Some(snapshot)
+        })();
+        let mut slot = read_projection(runtime)?;
+        if let Some(snapshot) = &result {
+            slot.runtime = Some(validation);
+            slot.coherent = snapshot
+                .complete
+                .then(|| (std::time::Instant::now(), snapshot.clone()));
+        } else {
+            slot.coherent = None;
+        }
+        result
     }
 }
 
@@ -152,23 +189,33 @@ impl FreshnessIndex {
         {
             let request = Self::request(cache, workspace, context, environment).ok()?;
             let entry = self.entry(&request.key())?;
-            let runtime = {
+            let (generation, runtime) = {
                 let mut projection = read_projection(&entry)?;
-                if projection.observer.as_mut().is_some_and(Observer::clean) {
+                let runtime = if projection.observer.as_mut().is_some_and(Observer::clean) {
                     projection.runtime.clone()
                 } else {
                     None
-                }
+                };
+                (projection.generation, runtime)
             };
             if let Some(runtime) = runtime
                 && let Some(snapshot) = request.refresh(&runtime)
             {
                 let mut projection = read_projection(&entry)?;
-                if projection.observer.as_mut().is_some_and(Observer::clean) {
+                if projection.generation == generation
+                    && projection
+                        .runtime
+                        .as_ref()
+                        .is_some_and(|current| Arc::ptr_eq(current, &runtime))
+                    && projection.observer.as_mut().is_some_and(Observer::clean)
+                {
                     return Some(snapshot);
                 }
             }
             let mut projection = read_projection(&entry)?;
+            if projection.generation != generation {
+                return None;
+            }
             projection.observer = None;
             projection.runtime = None;
             if projection.refreshing
@@ -222,21 +269,28 @@ impl FreshnessIndex {
             let entry = self
                 .entry(&request.key())
                 .ok_or_else(|| Error::new("SAIL3114", "freshness state unavailable"))?;
-            let runtime = {
+            let (generation, runtime) = {
                 let mut state = read_projection(&entry)
                     .ok_or_else(|| Error::new("SAIL3114", "freshness state busy"))?;
-                if state.observer.as_mut().is_some_and(Observer::clean) {
+                let runtime = if state.observer.as_mut().is_some_and(Observer::clean) {
                     state.runtime.clone()
                 } else {
                     None
-                }
+                };
+                (state.generation, runtime)
             };
             if let Some(runtime) = runtime
                 && let Some(snapshot) = request.refresh(&runtime)
             {
                 let mut state = read_projection(&entry)
                     .ok_or_else(|| Error::new("SAIL3114", "freshness state busy"))?;
-                if state.observer.as_mut().is_some_and(Observer::clean) {
+                if state.generation == generation
+                    && state
+                        .runtime
+                        .as_ref()
+                        .is_some_and(|current| Arc::ptr_eq(current, &runtime))
+                    && state.observer.as_mut().is_some_and(Observer::clean)
+                {
                     return Ok(snapshot);
                 }
             }
@@ -298,7 +352,10 @@ impl FreshnessIndex {
             snapshot.complete &= cacheable;
             let runtime = if cacheable {
                 runtime.zip(lease).map(|((identity, _), lease)| {
-                    Arc::new(Mutex::new(RuntimeValidation { identity, lease }))
+                    Arc::new(Mutex::new(RuntimeSlot {
+                        runtime: Some(RuntimeValidation { identity, lease }),
+                        coherent: None,
+                    }))
                 })
             } else {
                 None
@@ -579,6 +636,66 @@ mod tests {
         );
         assert!(child.wait().is_ok_and(|s| s.success()));
         assert!(fixture.establish(&FreshnessIndex::default()).complete);
+    }
+    #[test]
+    fn restored_write_while_readers_wait_never_reuses_previous_coherent_snapshot() {
+        let fixture = Arc::new(Fixture::new("cohort-write"));
+        let index = FreshnessIndex::default();
+        assert!(fixture.establish(&index).complete);
+        assert!(fixture.inspect(&index).is_some());
+        let request = FreshnessIndex::request(
+            &fixture.cache,
+            &fixture.workspace,
+            &fixture.context,
+            &fixture.environment,
+        )
+        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let entry = index
+            .entry(&request.key())
+            .unwrap_or_else(|| unreachable!("fixture"));
+        let runtime = entry
+            .lock()
+            .ok()
+            .and_then(|s| s.runtime.clone())
+            .unwrap_or_else(|| unreachable!("fixture"));
+        let held = runtime
+            .lock()
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let start = Arc::new(Barrier::new(5));
+        let readers: Vec<_> = (0..4)
+            .map(|_| {
+                let fixture = Arc::clone(&fixture);
+                let index = index.clone();
+                let start = Arc::clone(&start);
+                std::thread::spawn(move || {
+                    start.wait();
+                    fixture.inspect(&index)
+                })
+            })
+            .collect();
+        start.wait();
+        std::thread::sleep(Duration::from_millis(10));
+        let source = fixture.workspace.join("src/lib.rs");
+        let file = std::fs::File::open(&source).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let modified = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(std::fs::write(&source, "modified").is_ok());
+        assert!(std::fs::write(&source, "original").is_ok());
+        assert!(
+            file.set_times(std::fs::FileTimes::new().set_modified(modified))
+                .is_ok()
+        );
+        drop(held);
+        for reader in readers {
+            assert!(
+                reader
+                    .join()
+                    .unwrap_or_else(|e| std::panic::resume_unwind(e))
+                    .is_none()
+            );
+        }
     }
     #[test]
     fn four_readers_do_not_wait_behind_unrelated_validation_or_context_locks() {
