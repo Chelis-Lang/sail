@@ -118,32 +118,37 @@ impl Inventory {
             expected,
         })
     }
-    pub(super) fn clean(&self) -> bool {
+    pub(super) fn check(&self) -> Result<(), &'static str> {
         let began = Instant::now();
         if process(self.pid) != Some(self.started) {
-            return false;
+            return Err("kernel-lease-owner-inactive");
         }
         // A size/work budget is fail-closed, not a claim that proc filesystem
         // reads can be forcibly interrupted within this interval.
         let mut bytes = Vec::new();
-        let Ok(file) = std::fs::File::open(Path::new("/proc/locks")) else {
-            return false;
-        };
-        if file
-            .take(MAX_LOCK_BYTES + 1)
+        let file = std::fs::File::open(Path::new("/proc/locks"))
+            .map_err(|_| "kernel-lease-state-read-unavailable")?;
+        file.take(MAX_LOCK_BYTES + 1)
             .read_to_end(&mut bytes)
-            .is_err()
-            || u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_LOCK_BYTES
-            || !bytes.is_empty() && !bytes.ends_with(b"\n")
-        {
-            return false;
+            .map_err(|_| "kernel-lease-state-read-unavailable")?;
+        if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_LOCK_BYTES {
+            return Err("kernel-lease-state-too-large");
         }
-        let found = std::str::from_utf8(&bytes)
-            .ok()
-            .and_then(|text| inventory(text, self.pid));
-        found.as_ref() == Some(&self.expected)
-            && process(self.pid) == Some(self.started)
-            && began.elapsed() <= SWEEP_BUDGET
+        if !bytes.is_empty() && !bytes.ends_with(b"\n") {
+            return Err("kernel-lease-state-truncated");
+        }
+        let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
+        let found = inventory(text, self.pid).ok_or("kernel-lease-state-invalid")?;
+        if found != self.expected {
+            return Err("kernel-lease-inventory-invalidated");
+        }
+        if process(self.pid) != Some(self.started) {
+            return Err("kernel-lease-owner-inactive");
+        }
+        if began.elapsed() > SWEEP_BUDGET {
+            return Err("kernel-lease-sweep-over-budget");
+        }
+        Ok(())
     }
 }
 

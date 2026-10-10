@@ -108,15 +108,25 @@ impl ReadLease {
         let fds = descriptors(&mut socket)?;
         let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
         lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
-        if lease.kernel.is_none()
-            || !lease.bindings_current()
-            || helper_digests(&closure)? != baseline
-            || !lease.helper_observer.clean()
-            || !lease
+        let validation = if lease.kernel.is_none() {
+            Err("kernel-lease-inventory-binding-unavailable")
+        } else if !lease.bindings_current() {
+            Err("lease-binding-invalidated")
+        } else if helper_digests(&closure)? != baseline {
+            Err("helper-byte-identity-invalidated")
+        } else if !lease.helper_observer.clean() {
+            Err("helper-observation-invalidated")
+        } else {
+            lease
                 .kernel
                 .as_ref()
-                .is_some_and(super::kernel_leases::Inventory::clean)
-        {
+                .ok_or("kernel-lease-state-unavailable")
+                .and_then(super::kernel_leases::Inventory::check)
+        };
+        if let Err(reason) = validation {
+            let _ = reason;
+            #[cfg(test)]
+            eprintln!("lease acquisition failed: {reason}");
             return None;
         }
         Some(lease)
@@ -129,6 +139,8 @@ impl ReadLease {
         }
         if !self.bindings_current() {
             self.failure.get_or_insert("lease-binding-invalidated");
+            #[cfg(test)]
+            eprintln!("lease barrier failed: lease-binding-invalidated");
             return false;
         }
         if interpreter().as_ref() != Some(&self.interpreter) {
@@ -137,14 +149,19 @@ impl ReadLease {
         }
         if !self.helper_observer.clean() {
             self.failure.get_or_insert("helper-observation-invalidated");
+            #[cfg(test)]
+            eprintln!("lease barrier failed: helper-observation-invalidated");
             return false;
         }
-        if !self
+        if let Err(reason) = self
             .kernel
             .as_ref()
-            .is_some_and(super::kernel_leases::Inventory::clean)
+            .ok_or("kernel-lease-state-unavailable")
+            .and_then(super::kernel_leases::Inventory::check)
         {
-            self.failure.get_or_insert("kernel-lease-state-unavailable");
+            self.failure.get_or_insert(reason);
+            #[cfg(test)]
+            eprintln!("lease barrier failed: {reason}");
             return false;
         }
         true
@@ -500,7 +517,7 @@ mod tests {
             )
         );
         assert!(!lease.clean());
-        assert_eq!(lease.failure_reason(), "kernel-lease-state-unavailable");
+        assert_eq!(lease.failure_reason(), "kernel-lease-owner-inactive");
         assert!(
             Command::new("kill")
                 .args(["-s", "CONT", "--", &lease.process.id().to_string()])
