@@ -124,7 +124,9 @@ The same frozen source passed all 37 real-solver/fault tests with their original
 limits. Integrated CLI/MCP and fresh real-project reader runs are in progress;
 these suite passes do not establish their acceptance or source-engine qualification.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
-but exceeded the original latency target and had no active verifier. Source work
+but exceeded the original latency target and had no active verifier. A fresh
+real-reader attempt failed ordinary human-eval setup at the unchanged
+600-second deadline, before either collector could run. Source work
 now closes decoded-allocation and validation-scratch accounting gaps, and routes
 private span reads through guards covering compiler clones created before a
 capture begins. These candidates require a combined ordinary build and complete
