@@ -542,7 +542,7 @@ mod tests {
         assert!(lease.process.kill().is_ok());
         assert!(lease.process.wait().is_ok());
         assert!(!lease.clean());
-        assert_eq!(lease.failure_reason(), "kernel-lease-state-unavailable");
+        assert_eq!(lease.failure_reason(), "kernel-lease-owner-inactive");
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
             .unwrap_or_else(|| unreachable!("fixture"));
         let replacement = file.with_extension("new");
