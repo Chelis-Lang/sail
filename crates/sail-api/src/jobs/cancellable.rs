@@ -49,10 +49,12 @@ impl std::error::Error for CancellableError {
 enum Stop {
     Cancelled,
     Deadline,
+    CallbackFailed,
 }
 impl Stop {
     fn error(self) -> io::Error {
         match self {
+            Self::CallbackFailed => io::Error::other("SAIL0806: cancellation callback failed"),
             Self::Cancelled => io::Error::new(
                 io::ErrorKind::Interrupted,
                 "SAIL0804: job transport cancelled",
@@ -71,12 +73,60 @@ struct Completion {
 }
 
 fn check(cancelled: &impl Fn() -> bool, started: Instant) -> Option<Stop> {
-    if cancelled() {
+    let Ok(is_cancelled) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(cancelled)) else {
+        return Some(Stop::CallbackFailed);
+    };
+    if is_cancelled {
         Some(Stop::Cancelled)
     } else if started.elapsed() >= TRANSPORT {
         Some(Stop::Deadline)
     } else {
         None
+    }
+}
+
+// Socket2 uses nonblocking connect/poll rather than an uninterruptible backlog
+// wait. Short bounded attempts permit cancellation during connection setup; a
+// timed-out socket is dropped before retrying, and no RPC bytes have been sent.
+fn connect(
+    path: &std::path::Path,
+    cancelled: &impl Fn() -> bool,
+    started: Instant,
+) -> Result<UnixStream, CancellableError> {
+    let address = socket2::SockAddr::unix(path).map_err(CancellableError::Connect)?;
+    loop {
+        if let Some(stop) = check(cancelled, started) {
+            return Err(CancellableError::Operation(stop.error()));
+        }
+        let socket = socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None)
+            .map_err(CancellableError::Connect)?;
+        let remaining = TRANSPORT.saturating_sub(started.elapsed());
+        match socket.connect_timeout(&address, POLL.min(remaining)) {
+            Ok(()) => {
+                // Refuse a platform's false writable/poll-success indication
+                // unless this socket really has a connected Unix peer.
+                socket.peer_addr().map_err(CancellableError::Connect)?;
+                let descriptor: std::os::fd::OwnedFd = socket.into();
+                return Ok(UnixStream::from(descriptor));
+            }
+            Err(error) => {
+                if let Some(stop) = check(cancelled, started) {
+                    return Err(CancellableError::Operation(stop.error()));
+                }
+                if error.kind() != io::ErrorKind::TimedOut {
+                    return Err(CancellableError::Connect(error));
+                }
+            }
+        }
+    }
+}
+
+// A failed/unwinding monitor must break blocked reads/writes too. Normal
+// completion exits the monitor only after I/O, so shutdown also remains safe.
+struct ShutdownOnExit<'a>(&'a UnixStream);
+impl Drop for ShutdownOnExit<'_> {
+    fn drop(&mut self) {
+        let _ = self.0.shutdown(Shutdown::Both);
     }
 }
 
@@ -97,6 +147,8 @@ impl Client {
     /// Returns [`CancellableError::Connect`] only before any RPC. Startup fallback
     /// may inspect that category and its I/O kind; errors after opening a socket,
     /// cancellation, and timeout must never trigger another RPC attempt.
+    /// Monitor creation failure or callback unwind is reported as `SAIL0806`
+    /// without admitting a response; a failed monitor closes its owned socket.
     pub fn call_cancellable(
         &self,
         request: &Request,
@@ -129,13 +181,20 @@ impl Client {
                 "SAIL0903: endpoint does not support proof/repair contracts",
             )));
         }
-        let mut stream = UnixStream::connect(&self.socket).map_err(|error| {
-            if negotiated {
-                CancellableError::Operation(error)
-            } else {
-                CancellableError::Connect(error)
-            }
+        let stream = connect(&self.socket, cancelled, started).map_err(|error| match error {
+            CancellableError::Connect(error) if negotiated => CancellableError::Operation(error),
+            error => error,
         })?;
+        self.exchange_cancellable(stream, request, cancelled, started)
+    }
+
+    fn exchange_cancellable(
+        &self,
+        mut stream: UnixStream,
+        request: &Request,
+        cancelled: &(impl Fn() -> bool + Sync),
+        started: Instant,
+    ) -> Result<Response, CancellableError> {
         stream
             .set_read_timeout(Some(TRANSPORT))
             .map_err(CancellableError::Operation)?;
@@ -148,29 +207,38 @@ impl Client {
         }
         let completion = (Mutex::new(Completion::default()), Condvar::new());
         std::thread::scope(|scope| {
-            let monitor = scope.spawn(|| -> io::Result<()> {
-                loop {
-                    // Callback and shutdown run outside the completion mutex.
-                    let stopped = check(cancelled, started);
-                    let (lock, ready) = &completion;
-                    let mut state = lock
-                        .lock()
-                        .map_err(|_| io::Error::other("SAIL0806: cancellation monitor failed"))?;
-                    if let Some(stop) = stopped {
-                        state.stopped = Some(stop);
-                        drop(state);
-                        let _ = shutdown.shutdown(Shutdown::Both);
-                        return Ok(());
+            let monitor = std::thread::Builder::new()
+                .name("sail-job-cancellation".into())
+                .spawn_scoped(scope, || -> io::Result<()> {
+                    let _shutdown_on_exit = ShutdownOnExit(&shutdown);
+                    loop {
+                        // Callback and shutdown run outside the completion mutex.
+                        let stopped = check(cancelled, started);
+                        let (lock, ready) = &completion;
+                        let mut state = lock.lock().map_err(|_| {
+                            io::Error::other("SAIL0806: cancellation monitor failed")
+                        })?;
+                        if let Some(stop) = stopped {
+                            state.stopped = Some(stop);
+                            drop(state);
+                            let _ = shutdown.shutdown(Shutdown::Both);
+                            return Ok(());
+                        }
+                        if state.finished {
+                            return Ok(());
+                        }
+                        let wait = POLL.min(TRANSPORT.saturating_sub(started.elapsed()));
+                        let _ = ready.wait_timeout(state, wait).map_err(|_| {
+                            io::Error::other("SAIL0806: cancellation monitor failed")
+                        })?;
                     }
-                    if state.finished {
-                        return Ok(());
-                    }
-                    let wait = POLL.min(TRANSPORT.saturating_sub(started.elapsed()));
-                    let _ = ready
-                        .wait_timeout(state, wait)
-                        .map_err(|_| io::Error::other("SAIL0806: cancellation monitor failed"))?;
-                }
-            });
+                })
+                .map_err(|error| {
+                    CancellableError::Operation(io::Error::new(
+                        error.kind(),
+                        format!("SAIL0806: cancellation monitor could not start: {error}"),
+                    ))
+                })?;
             let result = write_frame(&mut stream, request).and_then(|()| match &self.decoded {
                 Some(cache) => cache.read(&mut stream),
                 None => read_frame(&mut stream),

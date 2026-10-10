@@ -29,7 +29,15 @@ single-use calls retain the original uncached constructor.
 
 `Client::call_cancellable(request, cancelled)` uses one owned, joined monitor
 and an absolute five-second transport interval, including capability negotiation
-and fragmented frames. Cancellation shuts down both socket directions; normal
+and fragmented frames. Socket2 0.6.5 provides safe nonblocking Unix connection
+setup, using short bounded connect/poll attempts and dropping each timed-out
+socket before a pre-RPC retry. Cancellation and the shared remaining budget are
+checked between attempts; a successful socket must also have an actual peer.
+A full listener backlog therefore cannot hold a blocking `UnixStream::connect`
+before the monitor exists. No request bytes are sent during these attempts.
+[Socket2's connect contract](https://docs.rs/socket2/0.6.5/socket2/struct.Socket.html#method.connect_timeout)
+binds the implementation; ordinary `call` connection behavior is unchanged.
+Cancellation shuts down both socket directions; normal
 completion wakes the monitor immediately. Every exit joins it, and a response
 arriving after cancellation or expiry is refused, including a cached identical
 body. The callback must return promptly. Kernel operations and OS scheduling
@@ -42,10 +50,13 @@ category. `Operation` covers all errors after connecting, including cancellation
 expiry and negotiation: retrying through another transport after these errors
 could duplicate work. `io_error()` preserves the original error kind and message.
 Cancellation is `Interrupted` (`SAIL0804`); whole-transport expiry is `TimedOut`
-(`SAIL0805`). Installed MCP durable read-only tools use this API. Missing/refused pre-RPC
-connections may fall back to the existing CLI startup path; operations already
-started are never retried. Transport/adversarial tests cover the integration,
-while live MCP latency acceptance remains unmeasured.
+(`SAIL0805`). Monitor creation failure or a cancellation callback unwind is
+reported as `SAIL0806`; a failed monitor closes its socket before its owner joins.
+The monitor uses fallible thread creation before sending the RPC. Installed MCP
+durable read-only tools use this API. Missing/refused pre-RPC connections may
+fall back to the existing CLI startup path; operations already started are never
+retried. Transport/adversarial tests cover the integration, while live MCP
+latency acceptance remains unmeasured.
 
 ## Retained ownership bound
 
@@ -138,4 +149,13 @@ malformed JSON and server errors are returned without substituting a prior
 result. The ordinary `call` method retains its existing five-second **per-I/O**
 timeouts; it does not promise a five-second total across arbitrary fragmented
 reads. Use `call_cancellable` for the joined cancellation and absolute transport
-budget described above; MCP activation and live acceptance are separate work.
+budget described above. Installed MCP uses that path; live acceptance remains
+a separate gate.
+
+The [cancellable transport controls](validation/m7-cancellable-client.json)
+record the original large-request readiness failures alongside the final ten-case
+macOS and Linux results. The original 8 MiB public request, two-second fixture
+readiness check and full response contract remain intact. The additional bounded
+send-buffer control exercises the same production exchange path; it does not
+replace large-request serialization coverage. These controls qualify transport
+ownership and cancellation behavior, not the live-reader latency gates.
