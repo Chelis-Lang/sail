@@ -64,6 +64,17 @@ content hash and raw SpanData hygiene/parent ownership. Imported spans bind the
 current foreign-file table. Missing, ambiguous or stale bindings miss; a saved
 raw rustc span is never reused across compiler callbacks.
 
+Provenance hashing also keeps a memo owned by this callback's immutable
+`Sources` inventory. Imported entries bind both exact packed span values; local
+entries bind the complete raw SpanData Debug encoding. Every miss executes the
+original hash algorithm over the same ordered SourceOwner records, and every
+checkpoint hit still resolves and validates every current span binding. The
+memo never survives `finish_cache` or a compiler callback. Its fixed table never
+resizes after the initial reservation; HashMap capacity, owned key/result String
+capacities, metadata, and a 4 KiB allowance for bounded transient work all count
+against 8 MiB. A full table merely recomputes hashes. Unknown or oversized span
+encodings refuse preparation, leaving ordinary lowering intact.
+
 The cache retains one serialized buffer, not a cloned compiler/global context.
 A single global admission lock covers key construction, encoding, span binding,
 decoding and cache replacement across every bucket and context. Stock solver
@@ -83,9 +94,9 @@ phases. The bounds below deliberately count conversion overlap:
 
 | Phase | Simultaneously live cache-owned buffers and temporary budgets | Upper bound |
 |---|---|---|
-| Constructor/key | Retained body 128; source inventory 16; all captured diagnostic ownership 16; bucket member keys 32; naming encoding 32; lookup tables 32; completed graph encodings 64; one graph table plus two in-progress map key/value encoders 96; final key/baseline writer 32; directory and fixed metadata 2 MiB | 450 MiB |
-| Store | Source inventory 16; captured diagnostics 16; message-reference vector 4; encoder Vec 128; span map and conversion overlap 32; provenance/binding table 16; replacement Arc conversion 128; fixed/directory metadata 2 MiB | 342 MiB |
-| Read/restore | Source inventory 16; captured diagnostics 16; read Vec and Arc overlap 256; current and resolver span maps 32; decoded provenance table 16; fixed metadata 2 MiB | 338 MiB |
+| Constructor/key | Retained body 128; source inventory 16; all captured diagnostic ownership 16; bucket member keys 32; naming encoding 32; lookup tables 32; completed graph encodings 64; one graph table plus two in-progress map key/value encoders 96; final key/baseline writer 32; directory and fixed metadata 2; callback provenance memo including transient work 8 MiB | 458 MiB |
+| Store | Source inventory 16; captured diagnostics 16; message-reference vector 4; encoder Vec 128; span map and conversion overlap 32; provenance/binding table 16; replacement Arc conversion 128; fixed/directory metadata 2; callback provenance memo including transient work 8 MiB | 350 MiB |
+| Read/restore | Source inventory 16; captured diagnostics 16; read Vec and Arc overlap 256; current and resolver span maps 32; decoded provenance table 16; fixed metadata 2; callback provenance memo including transient work 8 MiB | 346 MiB |
 
 The source cap checks reject an uncertain/oversized owner before retaining it.
 Diagnostic admission counts the entire reachable `MessageX`: note, help and

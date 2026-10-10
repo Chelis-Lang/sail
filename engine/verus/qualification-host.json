@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "patch_sha256": "5eed78f066cd3c6a9761cf216bef24b46946f6d58b8da6f1f837311102dcaa74",
+  "patch_sha256": "c13ef5435842dcebdbfb578a2fd13d95376c81f914e7f925b2f2c5ed90ddbae4",
   "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "scope": "Host source qualification; 9 small differential fixtures, 8 checkpoint revisions, cancellation. Linux, real edit qualification and product performance pending.",
+  "scope": "Host source qualification; 9 small differential fixtures, 8 checkpoint revisions, cancellation, and 2 exact provenance memo tests. Linux and real repair performance qualification pending.",
   "source_fixtures": {
     "version": 1,
     "machine": "macOS-26.5-arm64-arm-64bit",
     "engine_sha256": "a5219f1ac8477cdd78e430bb21461135d94407279d651b0da007bed8f0439e67",
-    "engine_verifier_sha256": "d67fddf57a5682bec019a995fa6a807f2e465609318ab89ded788559adcb0c1b",
+    "engine_verifier_sha256": "43c4c5228ede2c453afac72fc70d05691e7f5b8d429f71135851625824a56887",
     "stock_sha256": "fc13e79bb3c13d93bc05b37e9b1b6518fde7f4687b3d442ce5c6318c5737c668",
     "z3_sha256": "edae32f9e37ea4b5bb35310d72f0e352d0dc07626cac4e9e30bc1ea9a5bc8efb",
     "results": [
@@ -27,7 +27,7 @@
       {
         "fixture": "failed_focus",
         "exit_code": 1,
-        "diagnostics_sha256": "26819b2a009ae64e56a12138738bddc25bc74def33ead700321da9e8679bd9a5",
+        "diagnostics_sha256": "c81c9c7b886702115d694997bc6d4fb258dfdac77b40a8e56d2b5b35f51fc0ab",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -40,7 +40,7 @@
       {
         "fixture": "failed_other",
         "exit_code": 1,
-        "diagnostics_sha256": "3ac37ac96a8328733c998fb1b2d4aedfbc0e992fab31fc95e09893703dfffa1f",
+        "diagnostics_sha256": "ff322285d4bd2da80b53d498e3d6c036df3da453b763db85e23119c915691ee0",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -53,7 +53,7 @@
       {
         "fixture": "late_exec",
         "exit_code": 1,
-        "diagnostics_sha256": "35db400929a35a601bdc2ed16a0fd3d34d2ffa6acde9d6dfbb9c5e318793243f",
+        "diagnostics_sha256": "f982893bf4b586e81d39326aeedf98db3f54c1c0d3e792086283568217d47e5f",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -84,7 +84,7 @@
       {
         "fixture": "recursive",
         "exit_code": 1,
-        "diagnostics_sha256": "a7b06994f4f18d3e5c5a9e94ee497296983878e74fcc88bf49c8b9bcf464ffb8",
+        "diagnostics_sha256": "0c683343349bb9e040fb637f6a94d42e9e3ca974fcf2e0c9173a06dc0d34b7ca",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -97,7 +97,7 @@
       {
         "fixture": "macro_spans",
         "exit_code": 1,
-        "diagnostics_sha256": "ef353dc358b2eccf26644db99d647559ac69cc046b28662b8aade61939f787ce",
+        "diagnostics_sha256": "4df5f3378d48b3d8397b4a74279fa29daccebcddd3e9c12a767a520748430c0d",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -138,7 +138,7 @@
   "prepared_checkpoints": {
     "version": 1,
     "engine_sha256": "a5219f1ac8477cdd78e430bb21461135d94407279d651b0da007bed8f0439e67",
-    "engine_verifier_sha256": "d67fddf57a5682bec019a995fa6a807f2e465609318ab89ded788559adcb0c1b",
+    "engine_verifier_sha256": "43c4c5228ede2c453afac72fc70d05691e7f5b8d429f71135851625824a56887",
     "results": [
       {
         "revision": 0,
@@ -285,9 +285,13 @@
   },
   "cancellation": {
     "version": 1,
-    "engine_verifier_sha256": "d67fddf57a5682bec019a995fa6a807f2e465609318ab89ded788559adcb0c1b",
+    "engine_verifier_sha256": "43c4c5228ede2c453afac72fc70d05691e7f5b8d429f71135851625824a56887",
     "cancel_sealed": false,
     "restart_exit_code": 0
   },
-  "real_project_callbacks": "qualifications/5eed78f0-real-he.json"
+  "provenance_memo_tests": {
+    "passed": 2,
+    "failed": 0,
+    "scope": "Complete local/imported original hash equality, source owner isolation, fixed table and dynamic allocation refusal, oversize fallback."
+  }
 }

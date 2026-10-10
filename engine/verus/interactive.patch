@@ -972,10 +972,10 @@ index 14be689..e3df26c 100644
      Field(FieldOpr),
 diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
 new file mode 100644
-index 0000000..687ae7f
+index 0000000..2e67aa8
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,340 @@
+@@ -0,0 +1,439 @@
 +//! Private batch session: all retained spans belong to the active compiler callback.
 +use super::*;
 +use std::cell::{Cell,RefCell};
@@ -994,7 +994,42 @@ index 0000000..687ae7f
 +static REPORT_BYTES:AtomicU64=AtomicU64::new(0);
 +static ENABLED:AtomicBool=AtomicBool::new(false);
 +struct SourceOwner {index:usize,name:String,start:u32,length:u32,hash:String,foreign:bool}
-+struct Sources(Vec<SourceOwner>,usize);
++const PROVENANCE_BUDGET:usize=8*1024*1024;
++const PROVENANCE_TRANSIENT:usize=4096;
++#[derive(Hash,PartialEq,Eq)]
++enum ProvenanceKey {Local(String),Imported([u64;2])}
++impl ProvenanceKey {fn bytes(&self)->usize{match self{Self::Local(value)=>value.capacity(),Self::Imported(_)=>0}}}
++#[derive(Default)]
++struct ProvenanceMemo {values:HashMap<ProvenanceKey,String>,owned:usize,allocated:bool}
++impl ProvenanceMemo {
++    fn charge(&self)->usize{self.values.capacity().saturating_mul(128).saturating_add(self.owned).saturating_add(512)}
++    fn insert(&mut self,key:ProvenanceKey,value:&str){
++        if key.bytes()>1024 || value.len()!=64 || !value.bytes().all(|byte|byte.is_ascii_hexdigit()){return;}
++        // Allocate one table, never resize it; no old/new table overlap exists.
++        if !self.allocated {self.allocated=true;if self.values.try_reserve(4096).is_err(){return;}}
++        if self.values.len()==self.values.capacity(){return;}
++        let value=value.to_owned();let extra=key.bytes().saturating_add(value.capacity());
++        if self.charge().saturating_add(extra).saturating_add(PROVENANCE_TRANSIENT)>PROVENANCE_BUDGET{return;}
++        self.owned=self.owned.saturating_add(extra);self.values.insert(key,value);
++    }
++}
++struct Sources(Vec<SourceOwner>,usize,std::sync::Mutex<ProvenanceMemo>);
++struct SpanDebug(String);
++impl std::fmt::Write for SpanDebug {
++    fn write_str(&mut self,value:&str)->std::fmt::Result{
++        let needed=self.0.len().checked_add(value.len()).ok_or(std::fmt::Error)?;
++        if needed>1024{return Err(std::fmt::Error);}
++        if needed>self.0.capacity(){self.0.try_reserve_exact(needed-self.0.len()).map_err(|_|std::fmt::Error)?;}
++        if self.0.capacity()>1024{return Err(std::fmt::Error);}
++        self.0.push_str(value);Ok(())
++    }
++}
++fn provenance_key(span:&vir::messages::Span)->Option<ProvenanceKey>{
++    if let Some(raw)=((&*span.raw_span) as &(dyn std::any::Any+Send+Sync)).downcast_ref::<rustc_span::SpanData>(){
++        use std::fmt::Write as _;
++        let mut text=SpanDebug(String::new());write!(&mut text,"{raw:?}").ok()?;Some(ProvenanceKey::Local(text.0))
++    }else{Some(ProvenanceKey::Imported(span.data.as_slice().try_into().ok()?))}
++}
 +static SOURCES:std::sync::Mutex<Option<Arc<Sources>>>=std::sync::Mutex::new(None);
 +fn sources(source_map:&SourceMap)->Option<Sources> {
 +    let files=source_map.files();if files.len()>4096{return None;}
@@ -1005,10 +1040,10 @@ index 0000000..687ae7f
 +        if charge>16*1024*1024{return None;}
 +        owners.push(SourceOwner {index,name,start:file.start_pos.0,length:file.normalized_source_len.0,hash,foreign:matches!(*file.external_src.borrow(),rustc_span::ExternalSource::Foreign{..})});
 +    }
-+    Some(Sources(owners,charge.saturating_add(256)))
++    Some(Sources(owners,charge.saturating_add(256),std::sync::Mutex::new(ProvenanceMemo::default())))
 +}
 +fn retained_charge(){
-+    let sources=SOURCES.lock().ok().and_then(|sources|sources.as_ref().map(|sources|sources.1)).unwrap_or(0);
++    let sources=SOURCES.lock().ok().and_then(|sources|sources.as_ref().map(|sources|sources.1.saturating_add(sources.2.lock().ok().map_or(PROVENANCE_BUDGET,|memo|memo.charge())))).unwrap_or(0);
 +    let cache=with_cache(|cache|cache.borrow_mut().bucket.as_ref().map_or(0,|(_,entry)|entry._charge));
 +    let charge=(sources as u64).saturating_add(cache as u64).saturating_add(REPORT_BYTES.load(Ordering::Relaxed)).saturating_add(256);
 +    PEAK_RETAINED.fetch_max(charge,Ordering::Relaxed);
@@ -1103,7 +1138,14 @@ index 0000000..687ae7f
 +    let Some(bytes)=vir::context::sail_encode(&(std::env::var("SAIL_ENGINE_CONTEXT").unwrap_or_default(),members,krate,baseline,options,(v.args.multiple_errors,v.args.expand_errors,v.args.ignore_unexpected_smt,v.args.profile,v.args.profile_all,v.args.capture_profiles,v.args.spinoff_all,v.args.build_sst))) else{return String::new();};
 +    Sha256::digest(&bytes).iter().map(|byte| format!("{byte:02x}")).collect()
 +}
-+fn provenance(span:&vir::messages::Span, sources:&Sources)->Option<String> {
++fn provenance(span:&vir::messages::Span,sources:&Sources)->Option<String>{
++    let key=provenance_key(span)?;
++    if let Some(value)=sources.2.lock().ok().and_then(|memo|memo.values.get(&key).cloned()){return Some(value);}
++    let value=provenance_uncached(span,sources)?;
++    if let Ok(mut memo)=sources.2.lock(){memo.insert(key,&value);}
++    retained_charge();Some(value)
++}
++fn provenance_uncached(span:&vir::messages::Span, sources:&Sources)->Option<String> {
 +    struct HashWriter(Sha256);
 +    impl Write for HashWriter{fn write(&mut self,bytes:&[u8])->std::io::Result<usize>{self.0.update(bytes);Ok(bytes.len())}fn flush(&mut self)->std::io::Result<()>{Ok(())}}
 +    let mut writer=HashWriter(Sha256::new());
@@ -1314,5 +1356,62 @@ index 0000000..687ae7f
 +        emit("phase-finished",serde_json::json!({"function":name,"errors":focus.count_errors,"confirmed":false}));
 +        FOCUS.store(false,Ordering::Relaxed);
 +        emit("phase-started",serde_json::json!({}));
++    }
++}
++
++#[cfg(test)]
++mod provenance_memo_tests {
++    use super::*;
++    fn inventory(hash:&str)->Sources {
++        Sources(vec![SourceOwner{index:0,name:"local.rs".into(),start:0,length:100,hash:"localhash".into(),foreign:false},SourceOwner{index:1,name:"foreign.rs".into(),start:100,length:100,hash:hash.into(),foreign:true}],512,std::sync::Mutex::new(ProvenanceMemo::default()))
++    }
++    fn imported(data:Vec<u64>)->vir::messages::Span{vir::messages::Span{raw_span:Arc::new(()),id:1,data,as_string:"same diagnostic".into()}}
++    fn local()->vir::messages::Span{
++        vir::messages::Span{raw_span:Arc::new(rustc_span::SpanData{lo:rustc_span::BytePos(10),hi:rustc_span::BytePos(20),ctxt:rustc_span::SyntaxContext::root(),parent:None}),id:2,data:vec![10,20],as_string:"local diagnostic".into()}
++    }
++    #[test]
++    fn memo_preserves_complete_original_hash_and_owner_binding(){
++        let sources=inventory("one");
++        for span in [local(),imported(vec![1,2])]{
++            let original=provenance_uncached(&span,&sources).unwrap();
++            assert_eq!(provenance(&span,&sources).unwrap(),original);
++            assert_eq!(provenance(&span,&sources).unwrap(),original);
++        }
++        assert_eq!(sources.2.lock().unwrap().values.len(),2);
++        let changed=imported(vec![1,3]);
++        assert_ne!(provenance(&changed,&sources),provenance(&imported(vec![1,2]),&sources));
++        let other=inventory("two");
++        assert_ne!(provenance(&imported(vec![1,2]),&other),provenance(&imported(vec![1,2]),&sources));
++        let mut changed_local_owner=inventory("one");changed_local_owner.0[0].hash="changed-local-file".into();
++        assert_ne!(provenance(&local(),&changed_local_owner),provenance(&local(),&sources));
++        let mut altered=local();altered.raw_span=Arc::new(rustc_span::SpanData{lo:rustc_span::BytePos(11),hi:rustc_span::BytePos(21),ctxt:rustc_span::SyntaxContext::root(),parent:None});
++        assert_ne!(provenance(&altered,&sources),provenance(&local(),&sources));
++        assert_eq!(provenance(&imported(vec![1]),&sources),None);
++    }
++    #[test]
++    fn fixed_table_and_dynamic_ownership_refuse_growth_without_changing_hash(){
++        assert!(std::mem::size_of::<(ProvenanceKey,String)>()<=96);
++        let mut memo=ProvenanceMemo::default();
++        for n in 0..20000{memo.insert(ProvenanceKey::Imported([n,n+1]),"0123456789012345678901234567890123456789012345678901234567890123");}
++        assert!(memo.values.len()<20000);
++        let capacity=memo.values.capacity();assert!(capacity>=4096 && capacity<=8192);
++        assert!(memo.charge()+PROVENANCE_TRANSIENT<=PROVENANCE_BUDGET);
++        memo.insert(ProvenanceKey::Local("x".repeat(PROVENANCE_BUDGET)),"oversized");
++        assert_eq!(memo.values.capacity(),capacity);
++        assert!(memo.charge()+PROVENANCE_TRANSIENT<=PROVENANCE_BUDGET);
++        let mut dynamic=ProvenanceMemo::default();
++        for n in 0..10000{dynamic.insert(ProvenanceKey::Local(format!("{n:01024}")),"0123456789012345678901234567890123456789012345678901234567890123");}
++        assert!(dynamic.values.len()<dynamic.values.capacity(),"dynamic key ownership must refuse before table fills");
++        assert!(dynamic.charge()+PROVENANCE_TRANSIENT<=PROVENANCE_BUDGET);
++        let mut text=SpanDebug(String::new());
++        assert!(std::fmt::Write::write_str(&mut text,&"x".repeat(1024)).is_ok());
++        assert!(std::fmt::Write::write_str(&mut text,"x").is_err());
++        assert!(text.0.capacity()<=1024);
++        let sources=inventory("fresh");
++        for n in 0..20000{let _=provenance(&imported(vec![n,n+1]),&sources);}
++        assert!(sources.2.lock().unwrap().values.len()<20000);
++        let span=imported(vec![90000,90001]);
++        assert_eq!(provenance(&span,&sources),provenance_uncached(&span,&sources));
++        assert!(!sources.2.lock().unwrap().values.contains_key(&ProvenanceKey::Imported([90000,90001])));
 +    }
 +}
