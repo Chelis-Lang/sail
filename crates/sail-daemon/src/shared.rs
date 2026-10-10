@@ -104,6 +104,29 @@ fn phase(phases: &Phases, label: &'static str) {
     }
 }
 
+#[cfg(test)]
+fn thread_cpu_fields(bytes: &[u8]) -> Option<u64> {
+    // The comm field may contain spaces and parentheses. Field 3 starts after
+    // its final closing parenthesis; fields 14/15 are user/system CPU ticks.
+    let text = std::str::from_utf8(bytes).ok()?;
+    let (_, fields) = text.rsplit_once(')')?;
+    let mut fields = fields.split_whitespace();
+    let user = fields.nth(11)?.parse::<u64>().ok()?;
+    let system = fields.next()?.parse::<u64>().ok()?;
+    user.checked_add(system)
+}
+
+#[cfg(test)]
+fn thread_cpu_ticks() -> Option<u64> {
+    use std::io::Read as _;
+    let file = std::fs::File::open("/proc/thread-self/stat").ok()?;
+    let mut bytes = Vec::with_capacity(512);
+    file.take(4097).read_to_end(&mut bytes).ok()?;
+    (bytes.len() <= 4096)
+        .then(|| thread_cpu_fields(&bytes))
+        .flatten()
+}
+
 pub(crate) struct SharedTier {
     #[cfg(test)]
     phases: Phases,
@@ -376,6 +399,10 @@ impl SharedTier {
                 };
                 #[cfg(test)]
                 phase(&phases, "transport-returned");
+                #[cfg(test)]
+                let cpu_before = thread_cpu_ticks();
+                #[cfg(test)]
+                let validation_started = Instant::now();
                 let result = match data {
                     None => Lookup::Skipped,
                     Some(Ok(Some(data))) => match verify_entry(&data, &key_c, &trusted, &local_c) {
@@ -388,6 +415,18 @@ impl SharedTier {
                 };
                 #[cfg(test)]
                 phase(&phases, "classified");
+                #[cfg(test)]
+                {
+                    let elapsed = validation_started.elapsed();
+                    let cpu_after = thread_cpu_ticks();
+                    let ticks = cpu_before
+                        .zip(cpu_after)
+                        .and_then(|(before, after)| after.checked_sub(before));
+                    eprintln!(
+                        "shared classification: wall_us={} thread_cpu_ticks={ticks:?}",
+                        elapsed.as_micros()
+                    );
+                }
                 in_flight.fetch_sub(1, Ordering::SeqCst);
                 // Coalesced readers need not wait for the initiating client to
                 // be scheduled again after this independently verified result.
@@ -444,6 +483,25 @@ mod http_tests {
     use super::*;
     use sail_cache::shared::{SecretKey, add_trusted, sign_entry};
     use std::io::{Read as _, Write as _};
+
+    #[test]
+    fn cpu_tick_parser_handles_comm_boundaries_truncation_and_overflow() {
+        let fields = "S 0 0 0 0 0 0 0 0 0 0 13 7 0";
+        assert_eq!(
+            thread_cpu_fields(format!("123 (a ) name) {fields}").as_bytes()),
+            Some(20)
+        );
+        assert_eq!(thread_cpu_fields(b"123 (name) S 0"), None);
+        assert_eq!(
+            thread_cpu_fields(b"123 (name) S 0 0 0 0 0 0 0 0 0 0 x 7"),
+            None
+        );
+        assert_eq!(
+            thread_cpu_fields(b"123 (name) S 0 0 0 0 0 0 0 0 0 0 18446744073709551615 1"),
+            None
+        );
+        assert_eq!(thread_cpu_fields(b"\xff"), None);
+    }
 
     #[test]
     fn credential_rotation_clears_previous_transport_backoff() {
@@ -527,6 +585,14 @@ mod http_tests {
                 "HTTP transport/trust setup: {elapsed:?}; serving timeout: {:?}",
                 self.tier.config.timeout
             );
+            let clock_ticks = std::process::Command::new("getconf")
+                .arg("CLK_TCK")
+                .output()
+                .ok()
+                .filter(|output| output.status.success())
+                .and_then(|output| String::from_utf8(output.stdout).ok())
+                .and_then(|text| text.trim().parse::<u64>().ok());
+            eprintln!("shared diagnostic clock_ticks_per_second={clock_ticks:?}");
         }
 
         fn phase_report(&self) -> Vec<(&'static str, u128)> {
