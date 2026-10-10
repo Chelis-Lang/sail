@@ -140,6 +140,11 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
         &context.join("source-inputs.json"),
         &serde_json::json!({"paths":[],"covered":true}),
     );
+    context_event(&cache, &project, &event, &environment, false);
+    write(
+        &context.join("source-inputs.json"),
+        &serde_json::json!({"paths":[],"covered":true,"by_package":{"fixture":[]}}),
+    );
     context_event(&cache, &project, &event, &environment, true);
     let warm = submit(&client, &root, &environment);
     ready(&client, &root, &warm.id);
