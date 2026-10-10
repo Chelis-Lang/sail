@@ -43,8 +43,14 @@ four-reader latency gate has been established. See the
   admission before allocation. Its 12 helper controls and the combined actual source
   suites (33 VIR and 22 driver tests) and both strict all-target Clippy gates pass.
   [The complete source record](../engine/verus/candidates/decode-ownership/combined-source-checks.json)
-  binds these checks to the full combined patch. An independent ordinary Linux build
-  is underway; no runtime or genuine cross-edit hit is yet qualified.
+  binds these checks to the full combined patch. The independent ordinary Linux
+  build now passes, including 2,060 vstd obligations and its complete artifact
+  manifest; see [the build record](../engine/verus/candidates/decode-ownership/ordinary-linux-build.json).
+  The following runtime pipeline passed its early controls but failed the
+  required previous-revision focus gate: zero checked hits after a graph scratch
+  admission refusal. Full human-eval qualification was not reached. Allocation
+  bounds are being refined by query operation under the unchanged allowance;
+  no runtime or genuine cross-edit hit is qualified.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
@@ -91,9 +97,15 @@ four-reader latency gate has been established. See the
   [the setup failure](validation/m7-reader-entry-setup-timeout.md).
   A later, explicitly unmeasured preparation established genuine Current full
   baseline evidence after 1,839.532 seconds and three actual verifier starts.
-  The independent active workspace preparation and frozen reader collectors
-  are still pending. This is useful setup evidence, not a passed timed proof,
-  one-driver batch or latency census; see [the preparation record](validation/m7-reader-prepared-baseline.md).
+  The independent active workspace also completed preparation in 2,717.788
+  seconds. Both subsequent original bounded proof checks passed, but the frozen
+  Python collector failed: all 200 RPCs completed with the same active verifier;
+  only 13 admission Booleans were true, and status/result p95 were 222.54/489.74
+  ms. Exact currentness labels for failed admissions were not retained. The
+  original fail-fast controller did not reach Rust or retained CLI/MCP checks.
+  See [the complete record](validation/m7-reader-prepared-terminal.md).
+  Staged ordinary SDK decoding reuse is being implemented; it cannot retroactively
+  qualify this failed run.
 - The older frozen reader controller assumed the newer `results/projects/jobs`
   storage layout, while a6 stores jobs under `projects/jobs`. Public proof
   evidence remained intact, but automatic raw archival could omit those files.

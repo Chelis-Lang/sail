@@ -755,7 +755,7 @@ mod tests {
             Some(b"failure\0\xfe".to_vec())
         );
         let pid = std::fs::read_to_string(pid_file).unwrap_or_default();
-        assert!(!pid.is_empty());
+        assert_ne!(pid, "");
         assert!(
             std::process::Command::new("kill")
                 .args(["-0", "--", &pid])
