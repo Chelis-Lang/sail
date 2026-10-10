@@ -67,6 +67,7 @@ start_daemon() {
 case "$step" in
   gate)
     bash ci/test-completion.sh
+    python3 scripts/test-m7-repair-bench.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
