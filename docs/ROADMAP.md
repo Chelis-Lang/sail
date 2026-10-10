@@ -148,8 +148,12 @@ restored writes and blocked-worker MCP responsiveness. The
 these scoped passes from full product acceptance. The integrated `44af609`
 workspace gate stopped on a test assertion lint in the new timeout-retention
 control; [the failed scope is retained](validation/m7-integrated-gate-44af609.json).
-The assertion is corrected without changing the tested behavior. A complete
-passing integrated gate remains required.
+The assertion is corrected without changing the tested behavior. The subsequent
+`7fcb720` full attempt passed strict Clippy and 469/478 workspace tests; seven
+HTTP/reload cases, legacy MCP and the four-reader elapsed bound failed. Its
+[complete failure](../bench/validation/m7-linux-gate-7fcb-failure-emulated-2026-10-11.json)
+retains default inter-case scheduling separately from the earlier two-case local
+gates. A complete passing integrated gate remains required.
 The caller-entry freshness candidate returned 200/200 Current diagnostic reads,
 but exceeded the original latency target and had no active verifier. A fresh
 real-reader attempt failed ordinary human-eval setup at the unchanged
