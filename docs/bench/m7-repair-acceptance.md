@@ -117,7 +117,7 @@ real-project performance and exact-input gates.
 | Check | Observed result | Evidence |
 |---|---|---|
 | Native Linux CI repair CLI/MCP integration | Passed 215 operations with unchanged deadlines, including cancellation and baseline comparison; uses the small no-vstd fixture | `bench/validation/m7-repair-cli-mcp-native-linux-2026-10-10.json` |
-| Corrected source variant, host differential tests | Eleven exact fixtures, eight prepared revisions, cancellation/restart, three provenance regressions, three driver-termination regressions and the preparation encoding regression pass | `engine/verus/qualification-host.json` |
+| Corrected source variant, host differential tests | Eleven exact fixtures, eight prepared revisions, cancellation/restart, three provenance regressions, three driver-termination regressions and the preserved worker-TLS reproduction pass | `engine/verus/qualification-host.json` |
 | Corrected source variant, real human-eval | Two full callbacks each verify 441 obligations without the worker TLS panic; exact differential and selected persistent-restore assertions fail | `engine/verus/qualifications/cd40e16e-real-he-failure.json` |
 | Established concurrent reads, prior inventory variant | Failed: 82/200 Current reads, status p95 372.334 ms and result p95 454.569 ms; all samples have an actual live verifier | `docs/validation/m7-f111-reader-failure.json` |
 | Frozen whole repair loops | No qualified measured samples yet; the earlier run failed during context warm-up | Whole-loop acceptance remains outstanding |
