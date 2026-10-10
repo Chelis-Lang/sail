@@ -342,8 +342,6 @@ pub fn repair(
     }
     Ok(sail_api::repair::BatchResult {
         batched: focus.is_some(),
-        // Older validated source variants do not report preparation summaries.
-        preparation: None,
         selection_error,
         focus,
         compiler_invocations: full.execution.verifier_invocations,
