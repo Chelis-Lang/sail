@@ -22,6 +22,20 @@ const MAX_CONTEXTS: usize = 32;
 #[cfg(target_os = "linux")]
 const MAX_REVALIDATIONS: usize = 2;
 
+// Opt-in local diagnosis only: never used to admit a projection or establish a
+// performance claim. Static labels carry no paths, environment or report data.
+#[cfg(target_os = "linux")]
+fn trace(stage: &'static str, started: std::time::Instant, reason: &'static str) {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *ENABLED.get_or_init(|| std::env::var_os("SAIL_FRESHNESS_TRACE").is_some_and(|v| v == "1")) {
+        eprintln!(
+            "sail-freshness thread={:?} elapsed_us={} stage={stage} reason={reason}",
+            std::thread::current().id(),
+            started.elapsed().as_micros()
+        );
+    }
+}
+
 #[cfg(target_os = "linux")]
 struct RuntimeValidation {
     identity: String,
@@ -101,6 +115,7 @@ impl Request {
         let deadline = started + std::time::Duration::from_millis(100);
         let mut validation = loop {
             let Some(mut slot) = read_projection(runtime) else {
+                trace("runtime-lock", started, "busy");
                 return Refresh::Busy;
             };
             // Coalescing is linearizable within this reader's own interval.
@@ -108,6 +123,7 @@ impl Request {
             if let Some((completed, snapshot)) = &slot.coherent
                 && *completed >= started
             {
+                trace("runtime-cohort", started, "ready");
                 return Refresh::Ready(snapshot.clone());
             }
             if let Some(validation) = slot.runtime.take() {
@@ -115,18 +131,38 @@ impl Request {
                 break validation;
             }
             if !slot.validating {
+                trace("runtime-owner", started, "missing");
                 return Refresh::Invalid;
             }
             drop(slot);
             if std::time::Instant::now() >= deadline {
+                trace("runtime-owner", started, "busy");
                 return Refresh::Busy;
             }
             std::thread::sleep(std::time::Duration::from_millis(1));
         };
         // Expensive work owns the lease but holds no shared projection mutex.
         let valid = |validation: &mut RuntimeValidation| {
-            let (sha, _) = runner::runtime_identity(&self.cache, &self.context)?;
-            (sha == validation.identity && validation.lease.clean()).then_some(())
+            let Some((sha, _)) = runner::runtime_identity(&self.cache, &self.context) else {
+                trace("runtime-identity", started, "unavailable");
+                return None;
+            };
+            if sha != validation.identity {
+                trace("runtime-identity", started, "changed");
+                return None;
+            }
+            trace("runtime-identity", started, "ready");
+            let clean = validation.lease.clean();
+            trace(
+                "runtime-lease",
+                started,
+                if clean {
+                    "ready"
+                } else {
+                    validation.lease.failure_reason()
+                },
+            );
+            clean.then_some(())
         };
         let result = (|| {
             // Cold validation bound this exact inventory, declaration files and
@@ -159,6 +195,11 @@ impl Request {
         } else {
             slot.coherent = None;
         }
+        trace(
+            "runtime-publish",
+            started,
+            if result.is_some() { "ready" } else { "invalid" },
+        );
         result.map_or(Refresh::Invalid, |(_, snapshot)| Refresh::Ready(snapshot))
     }
 }
@@ -232,15 +273,28 @@ impl FreshnessIndex {
         }
         #[cfg(target_os = "linux")]
         {
+            let trace_started = std::time::Instant::now();
             let request = Self::request(cache, workspace, context, environment).ok()?;
             let entry = self.entry(&request.key())?;
             let (generation, runtime) = {
-                let mut projection = read_projection(&entry)?;
-                let runtime = if projection.observer.as_mut().is_some_and(Observer::clean) {
-                    projection.runtime.clone()
-                } else {
+                let mut projection = read_projection(&entry).or_else(|| {
+                    trace("projection-lock", trace_started, "busy");
                     None
-                };
+                })?;
+                let clean = projection.observer.as_mut().is_some_and(Observer::clean);
+                trace(
+                    "namespace-before",
+                    trace_started,
+                    if clean {
+                        "ready"
+                    } else {
+                        projection
+                            .observer
+                            .as_ref()
+                            .map_or("namespace-owner-missing", Observer::failure_reason)
+                    },
+                );
+                let runtime = clean.then(|| projection.runtime.clone()).flatten();
                 (projection.generation, runtime)
             };
             if let Some(runtime) = runtime {
@@ -252,7 +306,10 @@ impl FreshnessIndex {
                     Refresh::Invalid => None,
                 };
                 if let Some(snapshot) = snapshot {
-                    let mut projection = read_projection(&entry)?;
+                    let mut projection = read_projection(&entry).or_else(|| {
+                        trace("projection-lock", trace_started, "busy");
+                        None
+                    })?;
                     if projection.generation == generation
                         && projection
                             .runtime
@@ -260,10 +317,27 @@ impl FreshnessIndex {
                             .is_some_and(|current| Arc::ptr_eq(current, &runtime))
                         && projection.observer.as_mut().is_some_and(Observer::clean)
                     {
+                        trace("namespace-after", trace_started, "ready");
                         return Some(snapshot);
                     }
+                    let reason = if projection.generation != generation {
+                        "projection-generation-changed"
+                    } else if !projection
+                        .runtime
+                        .as_ref()
+                        .is_some_and(|current| Arc::ptr_eq(current, &runtime))
+                    {
+                        "projection-owner-changed"
+                    } else {
+                        projection
+                            .observer
+                            .as_ref()
+                            .map_or("namespace-owner-missing", Observer::failure_reason)
+                    };
+                    trace("namespace-after", trace_started, reason);
                 }
             }
+            trace("projection-invalidate", trace_started, "unavailable");
             let mut projection = read_projection(&entry)?;
             if projection.generation != generation {
                 return None;
@@ -374,6 +448,7 @@ impl FreshnessIndex {
         generation: u64,
         request: &Request,
     ) -> Result<InputSnapshot> {
+        let trace_started = std::time::Instant::now();
         let result: Result<_> = (|| {
             let plan = runner::observation_plan(
                 &request.cache,
@@ -415,6 +490,24 @@ impl FreshnessIndex {
                 && lease.as_mut().is_some_and(ReadLease::clean)
                 && runtime == runner::runtime_identity(&request.cache, &request.context);
             snapshot.complete &= cacheable;
+            trace(
+                "fill-validation",
+                trace_started,
+                if cacheable {
+                    "ready"
+                } else {
+                    lease
+                        .as_ref()
+                        .map_or("lease-owner-unavailable", ReadLease::failure_reason)
+                },
+            );
+            trace(
+                "fill-namespace",
+                trace_started,
+                observer
+                    .as_ref()
+                    .map_or("namespace-owner-unavailable", Observer::failure_reason),
+            );
             let runtime = if cacheable {
                 runtime.zip(lease).map(|((identity, _), lease)| {
                     Arc::new(Mutex::new(RuntimeSlot {
