@@ -46,12 +46,12 @@ try:
         fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_RDLCK)
     if request["runtime"] != support_paths():
         release()
-    while True:
-        if not all(fcntl.fcntl(fd, fcntl.F_GETLEASE) == fcntl.F_RDLCK for fd in fds):
-            release()
-        sys.stdout.buffer.write(b"ok\n")
-        sys.stdout.buffer.flush()
-        if sys.stdin.buffer.readline(8) != b"check\n":
-            release()
+    # This inventory is final: no lease acquisition or renewal is allowed after
+    # readiness. Rust inspects kernel lease state directly, independently of
+    # this process being scheduled to acknowledge another request.
+    sys.stdout.buffer.write(json.dumps(fds).encode("ascii") + b"\n")
+    sys.stdout.buffer.flush()
+    sys.stdin.buffer.read(1)
+    release()
 except (OSError, ValueError, TypeError, AttributeError, KeyError):
     release()
