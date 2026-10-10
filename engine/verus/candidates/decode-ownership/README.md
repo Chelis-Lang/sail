@@ -108,10 +108,12 @@ not retained heap buffers. Dynamic collection/pointee/string admission and
 physical drop ordering remain unchanged. This is a closed-source allocation
 argument, not an allocator-arena, compiler RSS or telemetry-peak measurement.
 
-The independent ordinary Linux build runs at ordinary priority with both Cargo
-and source compiler job limits set to two; its source and full proof gates remain
-pending. A source unit-test pass does not establish a restored proof or select
-this runtime.
+The independent ordinary Linux build passes at ordinary priority with both Cargo
+and source compiler job limits set to two. Its vstd verification reports 2,060
+verified and zero errors. The [build record](ordinary-linux-build.json) binds the
+sealed runtime, source patch, solver, source lock and raw build log. Independent
+source and full proof gates are running; this build does not establish a restored
+proof or select the runtime.
 
 ## Retained checks and disposable intermediates
 
