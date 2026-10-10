@@ -2,6 +2,7 @@
 
 mod absent;
 mod build_inputs;
+mod configuration;
 mod files;
 mod input;
 mod observe;

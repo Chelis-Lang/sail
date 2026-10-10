@@ -112,14 +112,19 @@ pub(super) fn snapshot_metadata_home(
     cargo_home: Option<&Path>,
 ) -> InputSnapshot {
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
+    let invocation = Path::new(
+        data["sail_invocation_directory"]
+            .as_str()
+            .unwrap_or_else(|| workspace.to_str().unwrap_or_default()),
+    );
     let mut files = BTreeSet::new();
     let mut visited = BTreeSet::new();
     let mut excluded: Vec<PathBuf> = ["sail_cache_directory", "target_directory"]
         .into_iter()
-        .filter_map(|name| data[name].as_str().map(PathBuf::from))
+        .filter_map(|name| data[name].as_str().map(|p| invocation.join(p)))
         .collect();
     if let Ok(path) = crate::cache_dir() {
-        excluded.push(path);
+        excluded.push(invocation.join(path));
     }
     let excluded_canonical: BTreeSet<_> = excluded
         .iter()
@@ -150,22 +155,12 @@ pub(super) fn snapshot_metadata_home(
             files.insert(path);
         }
     }
-    for parent in workspace.ancestors() {
-        for name in [".cargo/config", ".cargo/config.toml"] {
-            let path = parent.join(name);
-            if path.is_file() {
-                files.insert(path);
-            }
-        }
-    }
-    if let Some(home) = cargo_home {
-        for name in ["config", "config.toml"] {
-            let path = home.join(name);
-            if path.is_file() {
-                files.insert(path);
-            }
-        }
-    }
+
+    files.extend(
+        configuration_paths(invocation, cargo_home)
+            .into_iter()
+            .filter(|p| p.is_file()),
+    );
     let source_inputs: Vec<PathBuf> = data["sail_source_inputs"]
         .as_array()
         .into_iter()
@@ -286,7 +281,21 @@ fn stamp_paths(_paths: &BTreeSet<PathBuf>) -> Option<String> {
 /// # Errors
 /// Returns `SAIL3103` when Cargo metadata cannot be obtained.
 pub fn snapshot(workspace: &Path, args: &[String], cargo: &Path) -> Result<InputSnapshot> {
-    Ok(snapshot_metadata(&metadata(workspace, args, cargo)?, &[]))
+    let invocation =
+        std::path::absolute(workspace).map_err(|e| Error::new("SAIL3103", e.to_string()))?;
+    let mut data = metadata(workspace, args, cargo)?;
+    data["sail_invocation_directory"] =
+        serde_json::Value::String(invocation.to_string_lossy().into_owned());
+    let mut snapshot = snapshot_metadata(&data, &[]);
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    snapshot
+        .roots
+        .extend(configuration_paths(&invocation, home.as_deref()));
+    snapshot.roots.sort();
+    snapshot.roots.dedup();
+    Ok(snapshot)
 }
 
 // Used for build-script paths outside the package/workspace root.
@@ -311,6 +320,7 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
         );
     }
     if let Some(home) = cargo_home {
+        let home = workspace.join(home);
         files.extend([home.join("config"), home.join("config.toml")]);
     }
     files
@@ -319,6 +329,47 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn relative_cargo_home_resolves_against_recorded_invocation() {
+        let root =
+            std::env::temp_dir().join(format!("sail-relative-cargo-home-{}", std::process::id()));
+        let invocation = root.join("client");
+        let package = root.join("package");
+        assert!(std::fs::create_dir_all(invocation.join("cargo-home")).is_ok());
+        assert!(std::fs::create_dir_all(&package).is_ok());
+        assert!(std::fs::write(package.join("Cargo.toml"), "manifest").is_ok());
+        let path = invocation.join("cargo-home/config.toml");
+        assert!(std::fs::write(&path, "[build]\njobs=1\n").is_ok());
+        let data = serde_json::json!({"workspace_root":root,"sail_invocation_directory":invocation,
+            "packages":[{"manifest_path":package.join("Cargo.toml")}]});
+        let before = snapshot_metadata_home(&data, &[], Some(Path::new("cargo-home")));
+        assert!(std::fs::write(&path, "[build]\njobs=2\n").is_ok());
+        let after = snapshot_metadata_home(&data, &[], Some(Path::new("cargo-home")));
+        assert!(before.complete && after.complete);
+        assert_ne!(before.revision, after.revision);
+        assert!(configuration_paths(&invocation, Some(Path::new("cargo-home"))).contains(&path));
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+    #[test]
+    fn invoking_member_cwd_configuration_participates_in_revision() {
+        let root = std::env::temp_dir().join(format!("sail-cwd-config-{}", std::process::id()));
+        let group = root.join("groups");
+        let member = group.join("member");
+        assert!(std::fs::create_dir_all(group.join(".cargo")).is_ok());
+        assert!(std::fs::create_dir_all(&member).is_ok());
+        assert!(std::fs::write(member.join("Cargo.toml"), "manifest").is_ok());
+        let config = group.join(".cargo/config.toml");
+        assert!(std::fs::write(&config, "[build]\njobs=1\n").is_ok());
+        let data = serde_json::json!({"workspace_root":root,"sail_invocation_directory":member,
+            "packages":[{"manifest_path":member.join("Cargo.toml")}]});
+        let before = snapshot_metadata_home(&data, &[], None);
+        assert!(std::fs::write(&config, "[build]\njobs=2\n").is_ok());
+        let after = snapshot_metadata_home(&data, &[], None);
+        assert!(before.complete && after.complete);
+        assert_ne!(before.revision, after.revision);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
     use std::fs::{File, FileTimes};
 
     #[test]

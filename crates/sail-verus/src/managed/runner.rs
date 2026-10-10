@@ -90,7 +90,7 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     clippy::too_many_lines,
     reason = "The context explicitly enumerates all executable and environment bindings."
 )]
-fn context(config: &Config, data: &Value) -> Result<String> {
+fn context(config: &Config) -> Result<String> {
     let mut identity = Vec::new();
     let mut hashed = super::files::FileDigests::default();
     for path in [
@@ -170,8 +170,18 @@ fn context(config: &Config, data: &Value) -> Result<String> {
         }
     }
     // The exact Cargo configuration bytes join the context, not only its path.
-    let workspace = Path::new(data["workspace_root"].as_str().unwrap_or_default());
-    for parent in workspace.ancestors() {
+    let invocation = std::path::absolute(&config.workspace)
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".cargo")));
+    for path in super::input::configuration_paths(&invocation, home.as_deref())
+        .into_iter()
+        .filter(|p| p.is_file())
+    {
+        identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
+    }
+    for parent in invocation.ancestors() {
         for file in [
             ".cargo/config",
             ".cargo/config.toml",
@@ -921,9 +931,14 @@ pub fn refresh_context(
                 .map(|h| PathBuf::from(h).join(".cargo"))
         });
     let mut snapshot = super::input::snapshot_metadata_home(&data, &extras, home.as_deref());
+    let invocation = Path::new(
+        data["sail_invocation_directory"]
+            .as_str()
+            .unwrap_or_else(|| workspace.to_str().unwrap_or_default()),
+    );
     snapshot.roots.extend(extras);
     snapshot.roots.extend(super::input::configuration_paths(
-        workspace,
+        invocation,
         home.as_deref(),
     ));
     snapshot.roots.extend(runtime_paths(cache, context_sha256));
@@ -995,6 +1010,11 @@ fn script_roots(data: &Value) -> Vec<PathBuf> {
     reason = "The top-level lifecycle keeps locking and input validation visibly scoped together."
 )]
 pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
+    let mut owned = config.clone();
+    owned.workspace =
+        std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
+    owned.cache = owned.workspace.join(&owned.cache);
+    let config = &owned;
     if config.args.iter().any(|s| {
         [
             "--tests",
@@ -1022,7 +1042,11 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
         ));
     }
     let started = Instant::now();
+    let invocation = std::path::absolute(&config.workspace)
+        .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
+    super::configuration::check(&invocation, &config.args)?;
     let mut data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    data["sail_invocation_directory"] = Value::String(invocation.to_string_lossy().into_owned());
     data["sail_cache_directory"] = Value::String(config.cache.to_string_lossy().into_owned());
     let workspace_root = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     if std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some() {
@@ -1038,7 +1062,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
             "no selected Cargo targets declare package.metadata.verus.verify=true",
         ));
     }
-    let hash = context(config, &data)?;
+    let hash = context(config)?;
 
     let run_id = format!(
         "{}-{}",
@@ -1058,7 +1082,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     let mut before = snapshot_metadata(&data, &extras);
     before.complete &= source_coverage;
     before.roots.extend(super::input::configuration_paths(
-        &before.workspace,
+        &invocation,
         std::env::var_os("CARGO_HOME")
             .map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
@@ -1077,6 +1101,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     before.observation_paths = monitored.observation_paths;
     before.complete &= monitored.complete;
     let stamp_before = super::input::mutation_stamp(&before);
+    super::configuration::check(&invocation, &config.args)?;
     json(
         &paths
             .run
@@ -1173,6 +1198,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     after_extras.extend(script_roots);
     let mut after_data = metadata(&config.workspace, &config.args, &config.cargo)?;
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
+    after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
     after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
     json(
         &paths.build_inputs.with_file_name("input-state.json"),
@@ -1180,7 +1206,7 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     )?;
     let mut after = snapshot_metadata(&after_data, &after_extras);
     after.roots.extend(super::input::configuration_paths(
-        &after.workspace,
+        &invocation,
         std::env::var_os("CARGO_HOME")
             .map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))

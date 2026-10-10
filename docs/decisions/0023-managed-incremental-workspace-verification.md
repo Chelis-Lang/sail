@@ -115,3 +115,13 @@ cache journals may therefore make a macOS incremental run historical and prevent
 whole-target receipt publication. Existing/default SMT caching remains available.
 This limitation is explicit until a sound targeted observation or configuration
 isolation mechanism preserves Cargo semantics.
+
+Cargo configuration lookup starts at the original invoking directory, including
+member-directory ancestors, and this directory is persisted for later freshness
+checks. Relative Cargo homes resolve against it. `SAIL3112` explicitly refuses
+Cargo `--config` overrides, included config files, config-injected compiler or
+loader selectors, custom sysroots, and JSON target specifications whose runtime
+identity v1 cannot establish. Ordinary configuration such as relative OpenSSL
+paths, flags, job counts and network settings retains its Cargo semantics. These
+checks apply only to managed incremental execution; ordinary verification remains
+available.
