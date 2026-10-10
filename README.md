@@ -35,6 +35,27 @@ needs no server configuration or credentials. Frontend receipt reuse targets
 Linux; macOS uses conservative currentness checks that can require fresh proofs.
 See [live workspace verification](docs/workspace-verification.md).
 
+An optional source engine adds a repair workflow for one exact function:
+
+```sh
+cargo xtask build-verus-engine                       # local pinned source build
+sail engine install --from PATH --output json       # validated build directory
+sail repair-check --package demo --lib --function demo::arith::lemma \
+  --engine interactive --background --output json
+sail jobs events JOB --follow --output jsonl
+sail explain JOB --package-id PACKAGE_ID --target demo --kind lib \
+  --function demo::arith::lemma --output json
+sail baseline save before-repair --job JOB
+sail compare LATER_JOB --baseline before-repair --output json
+```
+
+The focused result is provisional. Acceptance requires independent, complete
+full-target verification after compiler completion, with Current input evidence.
+CLI and MCP share resumable proof events, failure evidence and immutable
+baselines. The M7 implementation is undergoing source and real-project acceptance;
+see [proof repair](docs/proof-repair.md) and
+[the frozen acceptance workload](docs/bench/m7-repair-acceptance.md).
+
 `sail verify --output json [ARGS...]` also prints one JSON document on stdout.
 It holds per-function verdicts, with tier and provenance, and per-obligation
 results with stable identities, effort and counterexample models. Diagnostics
