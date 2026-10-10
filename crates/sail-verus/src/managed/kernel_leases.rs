@@ -40,12 +40,22 @@ fn owner(text: &str) -> Option<u64> {
 fn process(pid: u32) -> Option<u64> {
     owner(&std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?)
 }
+#[derive(Debug, PartialEq, Eq)]
 enum Row {
     Other,
     Active(Key),
 }
 fn row(line: &str, pid: u32) -> Option<Row> {
-    let mut fields = line.split_whitespace();
+    // Kernel proc rows are normally ASCII. Preserve the former tokenizer for
+    // every non-ASCII line and vertical tab: split_ascii_whitespace excludes
+    // ASCII 0x0b, whereas split_whitespace accepts it.
+    if line.is_ascii() && !line.as_bytes().contains(&0x0b) {
+        row_fields(line.split_ascii_whitespace(), pid)
+    } else {
+        row_fields(line.split_whitespace(), pid)
+    }
+}
+fn row_fields<'a>(mut fields: impl Iterator<Item = &'a str>, pid: u32) -> Option<Row> {
     fields.next()?;
     let mut kind = fields.next()?;
     let blocked = kind == "->";
@@ -366,6 +376,108 @@ mod tests {
             "1: LEASE ACTIVE READ -1",
         ] {
             assert!(matches!(super::row(row, 7), Some(Row::Other)), "{row}");
+        }
+    }
+    #[test]
+    fn ascii_fast_path_matches_original_tokenizer_for_all_separator_and_row_classes() {
+        let rows = [
+            "1: LEASE ACTIVE READ 7 00:2a:100 0 EOF",
+            "2: LEASE ACTIVE READ 7 00:2a:100 0 EOF",
+            "1: -> LEASE ACTIVE READ 7 00:2a:100 0 EOF",
+            "1: LEASE BREAKING READ 7 00:2a:100 0 EOF",
+            "1: LEASE ACTIVE WRITE 7 00:2a:100 0 EOF",
+            "1: POSIX ADVISORY WRITE 8 malformed",
+            "1: -> LEASE BREAKER WRITE 8 malformed",
+            "1: LEASE ACTIVE READ -1",
+            "1: LEASE ACTIVE READ invalid 00:2a:100 0 EOF",
+            "1: LEASE ACTIVE READ 7 00:2a:100 0",
+            "1: LEASE ACTIVE READ 7 00:2a:100 0 EOF extra",
+            "1: LEASE ACTIVE READ 7 00:2a:100:extra 0 EOF",
+            "1: LEASE ACTIVE READ 7 00:2a:bad 0 EOF",
+            "1: LEASE ACTIVE READ 7 00:2a:100 1 EOF",
+            "1: LEASE ACTIVE READ",
+            "",
+        ];
+        // Include every ASCII separator accepted by the old tokenizer, plus
+        // Unicode White_Space and non-whitespace bytes. Truncated prefixes and
+        // foreign owners preserve the old early-return behavior too.
+        let separators = [
+            ' ', '\t', '\n', '\r', '\x0b', '\x0c', '\u{85}', '\u{a0}', '\u{1680}', '\u{2000}',
+            '\u{2001}', '\u{2002}', '\u{2003}', '\u{2004}', '\u{2005}', '\u{2006}', '\u{2007}',
+            '\u{2008}', '\u{2009}', '\u{200a}', '\u{2028}', '\u{2029}', '\u{202f}', '\u{205f}',
+            '\u{3000}', '\0', '\x1c', '\u{200b}',
+        ];
+        for raw in rows {
+            for separator in separators {
+                let line = format!(
+                    "{separator}{}{separator}",
+                    raw.replace(' ', &separator.to_string())
+                );
+                for pid in [0, 7, 8, u32::MAX] {
+                    for boundary in line
+                        .char_indices()
+                        .map(|(index, _)| index)
+                        .chain([line.len()])
+                    {
+                        let prefix = &line[..boundary];
+                        assert_eq!(
+                            row(prefix, pid),
+                            row_fields(prefix.split_whitespace(), pid),
+                            "{prefix:?} pid={pid}"
+                        );
+                    }
+                }
+            }
+        }
+        // A Unicode whitespace token embedded in otherwise ASCII data must
+        // never be parsed differently from the original classifier.
+        assert_eq!(
+            row("1:\u{a0}LEASE ACTIVE READ 7 00:2a:100 0 EOF", 7),
+            row_fields(
+                "1:\u{a0}LEASE ACTIVE READ 7 00:2a:100 0 EOF".split_whitespace(),
+                7
+            )
+        );
+    }
+    #[test]
+    #[ignore = "local diagnostic measurement over an explicitly supplied proc fixture"]
+    fn measured_frozen_global_rows_preserve_classifier_results() {
+        let path = std::env::var_os("SAIL_LEASE_ROWS_FIXTURE")
+            .unwrap_or_else(|| unreachable!("fixture path required"));
+        let bytes = std::fs::read(path).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(bytes.len() <= usize::try_from(MAX_LOCK_BYTES).unwrap_or(0));
+        let text = std::str::from_utf8(&bytes).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        for pid in [0, 7, std::process::id()] {
+            let old: Vec<_> = text
+                .lines()
+                .map(|line| row_fields(line.split_whitespace(), pid))
+                .collect();
+            let new: Vec<_> = text.lines().map(|line| row(line, pid)).collect();
+            assert_eq!(new, old);
+            let mut times = [Vec::new(), Vec::new()];
+            for iteration in 0..20 {
+                for arm in [iteration % 2, (iteration + 1) % 2] {
+                    let started = std::time::Instant::now();
+                    for line in text.lines() {
+                        std::hint::black_box(if arm == 0 {
+                            row_fields(line.split_whitespace(), pid)
+                        } else {
+                            row(line, pid)
+                        });
+                    }
+                    times[arm].push(started.elapsed().as_micros());
+                }
+            }
+            for values in &mut times {
+                values.sort_unstable();
+            }
+            eprintln!(
+                "kernel row classifier bytes={} lines={} pid={pid} rounds=20 old_median_us={} new_median_us={}",
+                bytes.len(),
+                old.len(),
+                times[0][10],
+                times[1][10]
+            );
         }
     }
     #[test]

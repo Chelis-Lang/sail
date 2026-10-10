@@ -87,7 +87,13 @@ then requires two complete ACTIVE READ inventories with live, non-stopped owner
 checks. A global inventory affected by unrelated lease enumeration can fall back
 to every initially bound descriptor's kernel `fdinfo`; known breaking or malformed
 owner state cannot. Both sweeps share a 2 MiB byte cap and the 4,096-descriptor
-limit. No failed owner is retried or revived.
+limit. No failed owner is retried or revived. ASCII kernel rows use a faster
+whitespace tokenizer; Unicode and vertical-tab rows retain the original parser.
+The exact row classifier, malformed-owner rejection, foreign-owner behavior and
+both complete sweeps are unchanged. Local classifier measurements and retained
+failed reader controls are recorded in
+[the parser validation record](validation/m7-kernel-ascii-parser.json); parsing
+speed alone does not establish a Current result or meet the reader latency gate.
 
 The helper never acquires or renews a lease after readiness. A final intact
 inventory therefore proves continuous protection of digests collected after
