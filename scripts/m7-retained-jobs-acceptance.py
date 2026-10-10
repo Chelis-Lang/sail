@@ -26,15 +26,33 @@ protocol = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(protocol)
 
 
-def selected(document, package, target, kind, function):
+def package_identity(metadata, package, target, kind):
+    """Resolve an exact expected package/target from the caller's real metadata."""
+    packages = [entry for entry in metadata["packages"]
+                if package in (entry["name"], entry["id"])]
+    assert len(packages) == 1, "package must resolve uniquely in actual Cargo metadata"
+    entry = packages[0]
+    targets = [item for item in entry["targets"] if item["name"] == target and item["kind"] == [kind]]
+    assert len(targets) == 1, "requested target/kind is absent or ambiguous in the expected package"
+    return entry["id"]
+
+
+def selected(document, package_id, target, kind, function):
     """Require genuine independent full evidence and one exact requested scope."""
     job = document["job"]
     result = document["result"]
     repair = document["repair"]
-    assert job["state"] == "completed" and job["currentness"] == "current", job
+    assert job["state"] == "completed" and job["currentness"] == "current" and job["error"] is None, job
     assert result is not None and result["currentness"] == "current" and result["error"] is None
+    assert job["input_revision"] == result["input_revision"], "job status and full result must bind the same input revision"
     assert result["exit_code"] == 0 and repair is not None and repair["accepted"]
     assert repair["batch"]["full"] == result and repair["batch"]["batched"]
+    for dependency in result["targets"]:
+        report = dependency["report"]
+        assert dependency["complete"] and report["error"] is None and report["exit_code"] == 0, dependency
+        assert report["crates"] and all(crate["verus"]["errors"] == 0
+               and crate["verus"]["success"] is True
+               and crate["verus"]["encountered_vir_error"] is False for crate in report["crates"]), dependency
     requested = [entry for entry in result["targets"] if entry["requested"]]
     assert len(requested) == 1, "real integration requires one exact requested Cargo target"
     entry = requested[0]
@@ -43,7 +61,7 @@ def selected(document, package, target, kind, function):
                  if item["function"] == function]
     assert len(functions) == 1, "exact function must be uniquely present in the actual full inventory"
     assert functions[0]["verdict"] == "verified" and functions[0]["tier"] == "confirmed", "provisional function evidence cannot qualify retained full proof"
-    assert package and entry["package_id"], "package selection and full package identity are required"
+    assert package_id and entry["package_id"] == package_id, "full proof must bind the exact expected Cargo package ID"
     return result, entry, functions[0]
 
 
@@ -81,8 +99,11 @@ class Acceptance:
         return remaining
 
     def cli(self, name, arguments, expected=0):
+        return self.command(name, [self.sail, *arguments], expected)
+
+    def command(self, name, command, expected=0):
         before = time.monotonic()
-        process = subprocess.Popen([self.sail, *arguments], cwd=self.project, env=self.environment,
+        process = subprocess.Popen(command, cwd=self.project, env=self.environment,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
         try:
             stdout, stderr = process.communicate(timeout=self.remaining())
@@ -212,13 +233,16 @@ class Acceptance:
         self.owned_job = None
 
     def run(self):
+        cargo = self.environment.get("SAIL_CARGO", "cargo")
+        metadata = self.command("cargo-metadata", [cargo, "metadata", "--format-version", "1", "--no-deps"])
+        package_id = package_identity(metadata, self.args.package, self.args.target, self.args.kind)
         # Explicit read over the original five-second framed protocol is kept
         # separately from CLI/MCP process startup and serialization overhead.
         response, elapsed, size = protocol.call(protocol.endpoint(self.args.socket),
                                                {"operation": "result", "id": self.args.job})
         self.retain("initial-rpc", {"response": response, "elapsed_ms": elapsed, "response_bytes": size})
         assert response["response"] == "result", response
-        original, target, function = selected(response["value"], self.args.package, self.args.target,
+        original, target, function = selected(response["value"], package_id, self.args.target,
                                              self.args.kind, self.args.function)
         self.summary.update(input_revision=original["input_revision"],
                             context_sha256=original["context_sha256"], run_id=original["run_id"],
