@@ -30,12 +30,16 @@ Linux x86-64 emulation. A body-only `assert(true)` probe reproduced the same
 macro failure. Setting `VSTD_KIND=NoVstd` outside the launcher does not solve
 this ordering problem because the launcher replaces that environment value.
 
-The explicitly selected optional engine reflects an already effective exact
+The explicitly selected optional engine relocates an already effective exact
 `--no-vstd` Cargo driver token into the launcher arguments before `--`. It reads
 only the common options and the current package's options using the pinned
 separator decoding; it does not scan another package's flags or match a
-substring. It inserts the literal option once, and its stock fallback preserves
-that same effective option. The ordinary stock/default adapter is unchanged.
+substring. It removes only that delimited token from the child's two selected
+packed environment values, preserving every other token and byte, and inserts
+the literal option once. Simply duplicating the option was experimentally
+rejected by rust_verify with `Option 'no-vstd' given more than once`. Duplicate
+effective requests and contradictory macro modes fail closed with `SAIL3121`.
+Its stock fallback preserves the same relocated arguments and environment. The ordinary stock/default adapter is unchanged.
 Each adaptation records `launcher-options.json` alongside the target's report,
 with the run, context, exact Cargo package, target, kind and forwarded option.
 The source patch and full focused/independent verification criteria are unchanged.

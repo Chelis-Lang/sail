@@ -129,8 +129,8 @@ fn cargo_package_id() -> Option<String> {
     ))
 }
 
-fn cargo_driver_args(id: &str) -> Result<Vec<String>> {
-    cargo_driver_args_with(id, |key| match std::env::var(key) {
+fn cargo_driver_options(id: &str) -> Result<DriverOptions> {
+    cargo_driver_options_with(id, |key| match std::env::var(key) {
         Ok(value) => Ok(Some(value)),
         Err(std::env::VarError::NotPresent) => Ok(None),
         Err(error) => Err(Error::new(
@@ -140,11 +140,17 @@ fn cargo_driver_args(id: &str) -> Result<Vec<String>> {
     })
 }
 
-fn cargo_driver_args_with(
+struct DriverOptions {
+    arguments: Vec<String>,
+    environment: std::collections::BTreeMap<String, String>,
+}
+
+fn cargo_driver_options_with(
     id: &str,
     mut lookup: impl FnMut(&str) -> Result<Option<String>>,
-) -> Result<Vec<String>> {
+) -> Result<DriverOptions> {
     let mut arguments = Vec::new();
+    let mut environment = std::collections::BTreeMap::new();
     for key in [
         " __VERUS_DRIVER_ARGS__".to_owned(),
         format!(" __VERUS_DRIVER_ARGS_FOR_{id}"),
@@ -158,9 +164,94 @@ fn cargo_driver_args_with(
                     .skip(1)
                     .map(str::to_owned),
             );
+            environment.insert(key, value);
         }
     }
-    Ok(arguments)
+    let effective: Vec<_> = arguments
+        .iter()
+        .take_while(|argument| *argument != "--")
+        .collect();
+    if effective.iter().any(|argument| *argument == "--no-vstd")
+        && effective.iter().any(|argument| {
+            matches!(
+                argument.as_str(),
+                "--is-vstd" | "--is-core" | "--is-stdlib-outside-of-core"
+            )
+        })
+    {
+        return Err(Error::new(
+            "SAIL3121",
+            "contradictory effective Cargo launcher modes",
+        ));
+    }
+    if effective
+        .iter()
+        .filter(|argument| argument.as_str() == "--no-vstd")
+        .count()
+        > 1
+    {
+        return Err(Error::new(
+            "SAIL3121",
+            "duplicate effective Cargo no-vstd mode",
+        ));
+    }
+    Ok(DriverOptions {
+        arguments,
+        environment,
+    })
+}
+
+fn relocate_no_vstd(
+    options: &DriverOptions,
+    arguments: &[OsString],
+) -> Result<std::collections::BTreeMap<String, String>> {
+    if !options
+        .arguments
+        .iter()
+        .take_while(|argument| *argument != "--")
+        .any(|argument| argument == "--no-vstd")
+    {
+        return Ok(std::collections::BTreeMap::new());
+    }
+    if arguments
+        .iter()
+        .take_while(|argument| *argument != "--")
+        .any(|argument| argument == "--no-vstd")
+    {
+        return Err(Error::new(
+            "SAIL3121",
+            "duplicate literal and effective Cargo no-vstd mode",
+        ));
+    }
+    let separator = "__VERUS_DRIVER_ARGS_SEP__";
+    let mut relocated = options.environment.clone();
+    let mut removed = false;
+    // Decoder order matters when a later `--` hides positional tokens. Remove
+    // only the one effective token; preserve even identical positional bytes.
+    let keys = std::iter::once(" __VERUS_DRIVER_ARGS__").chain(
+        options
+            .environment
+            .keys()
+            .map(String::as_str)
+            .filter(|key| *key != " __VERUS_DRIVER_ARGS__"),
+    );
+    for key in keys {
+        let Some(value) = options.environment.get(key) else {
+            continue;
+        };
+        let mut parts = value.split(separator);
+        let mut replacement = parts.next().unwrap_or_default().to_owned();
+        for part in parts {
+            if !removed && part == "--no-vstd" {
+                removed = true;
+            } else {
+                replacement.push_str(separator);
+                replacement.push_str(part);
+            }
+        }
+        relocated.insert(key.to_owned(), replacement);
+    }
+    Ok(relocated)
 }
 
 fn launcher_arguments(args: &[OsString], engine: bool, effective: &[String]) -> Vec<OsString> {
@@ -244,20 +335,24 @@ fn driver() -> Result<ExitCode> {
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let logs = dir.join("logs");
     // VI-0011: the pinned launcher chooses macro mode before decoding Cargo's
-    // effective per-package options. Reflect only an already requested mode,
+    // effective per-package options. Relocate only an already requested mode,
     // and only for the explicitly selected optional engine. Stock is unchanged.
-    let effective = if runtime.engine.is_some() {
+    let options = if runtime.engine.is_some() {
         let id = cargo_package_id().ok_or_else(|| {
             Error::new(
                 "SAIL3121",
                 "engine invocation lacks its Cargo package identity",
             )
         })?;
-        cargo_driver_args(&id)?
+        cargo_driver_options(&id)?
     } else {
-        Vec::new()
+        DriverOptions {
+            arguments: Vec::new(),
+            environment: std::collections::BTreeMap::new(),
+        }
     };
-    let launcher_args = launcher_arguments(&args, runtime.engine.is_some(), &effective);
+    let launcher_environment = relocate_no_vstd(&options, &args)?;
+    let launcher_args = launcher_arguments(&args, runtime.engine.is_some(), &options.arguments);
     if launcher_args != args {
         json(
             &dir.join("launcher-options.json"),
@@ -267,7 +362,9 @@ fn driver() -> Result<ExitCode> {
                 "forwarded":["--no-vstd"],"source":"effective-cargo-driver-options","engine_only":true,
                 "original_arguments":args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
                 "launcher_arguments":launcher_args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
-                "effective_arguments":effective,
+                "effective_arguments":options.arguments,
+                "deferred_environment":launcher_environment,
+                "adaptation":"relocate-exact-effective-token",
                 "cargo_identity": (["CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR", "CARGO_CRATE_NAME", "CARGO_PRIMARY_PACKAGE"]
                     .into_iter().filter_map(|key|std::env::var(key).ok().map(|value|(key,value)))
                     .collect::<std::collections::BTreeMap<_,_>>())
@@ -276,6 +373,7 @@ fn driver() -> Result<ExitCode> {
     }
     let mut cmd = Command::new(&wrapper);
     cmd.args(&launcher_args)
+        .envs(&launcher_environment)
         .args([
             "--output-json",
             "--time",
@@ -371,6 +469,7 @@ fn driver() -> Result<ExitCode> {
                 .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
             let output = Command::new(&engine.stock_wrapper)
                 .args(&launcher_args)
+                .envs(&launcher_environment)
                 .args([
                     "--output-json",
                     "--time",
@@ -621,7 +720,7 @@ mod tests {
     #[test]
     fn engine_reflects_only_exact_effective_no_vstd_once_before_separator() {
         let args = vec![OsString::from("crate.rs"), "--".into(), "trailing".into()];
-        let effective = vec!["--no-vstd".into(), "--no-vstd".into()];
+        let effective = vec!["--no-vstd".into()];
         assert_eq!(
             launcher_arguments(&args, true, &effective),
             vec![
@@ -658,12 +757,12 @@ mod tests {
             ),
         ]);
         let mut looked_up = Vec::new();
-        let arguments = cargo_driver_args_with("this", |key| {
+        let arguments = cargo_driver_options_with("this", |key| {
             looked_up.push(key.to_owned());
             Ok(values.get(key).map(|value| (*value).to_owned()))
         });
         assert_eq!(
-            arguments.ok(),
+            arguments.ok().map(|options| options.arguments),
             Some(vec!["--time".into(), "--no-vstd".into()])
         );
         assert_eq!(
@@ -671,7 +770,9 @@ mod tests {
             [" __VERUS_DRIVER_ARGS__", " __VERUS_DRIVER_ARGS_FOR_this"]
         );
         assert_eq!(
-            cargo_driver_args_with("other", |_| Ok(Some("--no-vstd".into()))).ok(),
+            cargo_driver_options_with("other", |_| Ok(Some("--no-vstd".into())))
+                .ok()
+                .map(|options| options.arguments),
             Some(Vec::new())
         );
         let args = vec![OsString::from("crate.rs")];
@@ -680,11 +781,94 @@ mod tests {
             args
         );
         assert!(
-            cargo_driver_args_with("this", |_| Err(Error::new(
+            cargo_driver_options_with("this", |_| Err(Error::new(
                 "SAIL3121",
                 "invalid argument encoding"
             )))
             .is_err()
+        );
+    }
+
+    #[test]
+    fn contradictory_effective_macro_modes_fail_closed() {
+        for conflicting in ["--is-vstd", "--is-core", "--is-stdlib-outside-of-core"] {
+            let result = cargo_driver_options_with("this", |key| {
+                Ok(Some(if key.ends_with("this") {
+                    "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+                } else {
+                    format!("__VERUS_DRIVER_ARGS_SEP__{conflicting}")
+                }))
+            });
+            assert_eq!(result.err().map(|error| error.code), Some("SAIL3121"));
+        }
+    }
+
+    #[test]
+    fn relocation_preserves_other_packed_bytes_and_rejects_duplicate_modes() {
+        let common = "prefix__VERUS_DRIVER_ARGS_SEP__--time__VERUS_DRIVER_ARGS_SEP____VERUS_DRIVER_ARGS_SEP__other-token";
+        let options = cargo_driver_options_with("this", |key| {
+            Ok(Some(if key.ends_with("this") {
+                "prefix__VERUS_DRIVER_ARGS_SEP__--no-vstd__VERUS_DRIVER_ARGS_SEP__--other-option"
+                    .into()
+            } else {
+                common.into()
+            }))
+        })
+        .ok();
+        assert!(options.is_some());
+        let Some(options) = options else { return };
+        let relocated = relocate_no_vstd(&options, &["crate.rs".into()]).ok();
+        assert_eq!(
+            relocated,
+            Some(std::collections::BTreeMap::from([
+                (" __VERUS_DRIVER_ARGS__".into(), common.into()),
+                (
+                    " __VERUS_DRIVER_ARGS_FOR_this".into(),
+                    "prefix__VERUS_DRIVER_ARGS_SEP__--other-option".into()
+                ),
+            ]))
+        );
+        assert_eq!(
+            relocate_no_vstd(&options, &["--no-vstd".into()])
+                .err()
+                .map(|error| error.code),
+            Some("SAIL3121")
+        );
+        assert_eq!(
+            cargo_driver_options_with("this", |_| Ok(Some(
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+            )))
+            .err()
+            .map(|error| error.code),
+            Some("SAIL3121")
+        );
+    }
+
+    #[test]
+    fn relocation_keeps_identical_positional_tokens_after_option_boundary() {
+        let options = cargo_driver_options_with("this", |key| {
+            Ok(Some(if key.ends_with("this") {
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+            } else {
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd__VERUS_DRIVER_ARGS_SEP__--".into()
+            }))
+        })
+        .ok();
+        assert!(options.is_some());
+        let Some(options) = options else { return };
+        let relocated = relocate_no_vstd(&options, &["crate.rs".into()]).ok();
+        assert_eq!(
+            relocated,
+            Some(std::collections::BTreeMap::from([
+                (
+                    " __VERUS_DRIVER_ARGS__".into(),
+                    "__VERUS_DRIVER_ARGS_SEP__--".into()
+                ),
+                (
+                    " __VERUS_DRIVER_ARGS_FOR_this".into(),
+                    "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+                ),
+            ]))
         );
     }
 
