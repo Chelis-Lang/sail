@@ -1,0 +1,412 @@
+{
+  "version": 1,
+  "kind": "offline_whole_job_result_phase_diagnostic",
+  "profile_source_base": "d12d4afea318b7ac6915eb33370c0b773101aeea",
+  "original_job": "1791656910005-5620-0",
+  "engine_manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+  "artifact_scope": "Actual archived complete public result; offline decode and local socketpair only. No daemon, active verifier or live-reader acceptance.",
+  "field_sizes": {
+    "kind": "exact_archived_full_response_field_sizes",
+    "frame_sha256": "e620323a453103af7d5c04a5e3b4836dd41c9d46e0b5cbdba01b9c946f1325ed",
+    "payload_bytes": 4314946,
+    "job_bytes": 402,
+    "result_bytes": 2155446,
+    "repair_bytes": 2159019,
+    "repair_full_bytes": 2155446,
+    "repair_focus_bytes": 3044,
+    "result_equals_repair_full": true,
+    "full_targets": [
+      {
+        "target_name": "vstd",
+        "target_kind": [
+          "lib"
+        ],
+        "requested": false,
+        "complete": true,
+        "target_bytes": 1827990,
+        "report_bytes": 1827747,
+        "report_fields": {
+          "schema_version": 1,
+          "sail_version": 7,
+          "mode": 9,
+          "command": 40,
+          "exit_code": 1,
+          "solver": 147,
+          "cache": 15,
+          "attribution": 55,
+          "crates": 1827234,
+          "diagnostics": 2,
+          "summary": 86,
+          "error": 4
+        }
+      },
+      {
+        "target_name": "human_eval_verus",
+        "target_kind": [
+          "lib"
+        ],
+        "requested": true,
+        "complete": true,
+        "target_bytes": 326915,
+        "report_bytes": 326667,
+        "report_fields": {
+          "schema_version": 1,
+          "sail_version": 7,
+          "mode": 9,
+          "command": 40,
+          "exit_code": 1,
+          "solver": 147,
+          "cache": 15,
+          "attribution": 130,
+          "crates": 326081,
+          "diagnostics": 2,
+          "summary": 84,
+          "error": 4
+        }
+      }
+    ]
+  },
+  "native_rust": {
+    "complete_graph_equality_checked": true,
+    "frame_bytes": 4314950,
+    "kind": "offline_whole_result_rust_profile",
+    "live_acceptance": false,
+    "results": {
+      "cached_arc_1": {
+        "max_ms": 0.032332999999999994,
+        "median_ms": 0.001125,
+        "p95_ms": 0.032332999999999994,
+        "samples": 8,
+        "threads": 1
+      },
+      "cached_arc_4": {
+        "max_ms": 0.0011250000000000001,
+        "median_ms": 0.0006670000000000001,
+        "p95_ms": 0.0011250000000000001,
+        "samples": 8,
+        "threads": 4
+      },
+      "response_clone_1": {
+        "max_ms": 126.824083,
+        "median_ms": 24.9738745,
+        "p95_ms": 126.824083,
+        "samples": 8,
+        "threads": 1
+      },
+      "response_clone_4": {
+        "max_ms": 95.678792,
+        "median_ms": 41.547208499999996,
+        "p95_ms": 95.678792,
+        "samples": 8,
+        "threads": 4
+      },
+      "typed_read_frame_1": {
+        "max_ms": 81.40587500000001,
+        "median_ms": 37.1434165,
+        "p95_ms": 81.40587500000001,
+        "samples": 8,
+        "threads": 1
+      },
+      "typed_read_frame_4": {
+        "max_ms": 398.122584,
+        "median_ms": 117.34570799999999,
+        "p95_ms": 398.122584,
+        "samples": 8,
+        "threads": 4
+      },
+      "value_read_frame_1": {
+        "max_ms": 149.859083,
+        "median_ms": 57.916604500000005,
+        "p95_ms": 149.859083,
+        "samples": 8,
+        "threads": 1
+      },
+      "value_read_frame_4": {
+        "max_ms": 156.086708,
+        "median_ms": 118.8166255,
+        "p95_ms": 156.086708,
+        "samples": 8,
+        "threads": 4
+      },
+      "write_frame_1": {
+        "max_ms": 46.318667,
+        "median_ms": 16.6729375,
+        "p95_ms": 46.318667,
+        "samples": 8,
+        "threads": 1
+      },
+      "write_frame_4": {
+        "max_ms": 32.73125,
+        "median_ms": 24.2329375,
+        "p95_ms": 32.73125,
+        "samples": 8,
+        "threads": 4
+      }
+    },
+    "samples": 8
+  },
+  "native_python_actual_frame": {
+    "kind": "offline_archived_whole_result_phase_profile",
+    "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "payload_bytes": 4314946,
+    "frame_sha256": "e620323a453103af7d5c04a5e3b4836dd41c9d46e0b5cbdba01b9c946f1325ed",
+    "complete_graph_equality_checked": true,
+    "live_acceptance": false,
+    "socket_timeout_seconds": 5,
+    "socketpair_includes_owned_producer_startup": true,
+    "experimental_transport_is_not_a_product_change": true,
+    "results": {
+      "full_json_decode_1": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 127.51624999987143,
+        "p95_ms": 423.9680840000801,
+        "max_ms": 423.9680840000801
+      },
+      "current_exact_transfer_full_decode_1": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 261.7809590001343,
+        "p95_ms": 532.4485000001005,
+        "max_ms": 532.4485000001005
+      },
+      "experimental_recv_into_transfer_full_decode_1": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 238.25433349998093,
+        "p95_ms": 888.4356260000459,
+        "max_ms": 888.4356260000459
+      },
+      "full_json_decode_4": {
+        "samples": 8,
+        "threads": 4,
+        "median_ms": 314.42891649976445,
+        "p95_ms": 604.1077499999119,
+        "max_ms": 604.1077499999119
+      },
+      "current_exact_transfer_full_decode_4": {
+        "samples": 8,
+        "threads": 4,
+        "median_ms": 750.8537085000171,
+        "p95_ms": 1238.5777500003314,
+        "max_ms": 1238.5777500003314
+      },
+      "experimental_recv_into_transfer_full_decode_4": {
+        "samples": 8,
+        "threads": 4,
+        "median_ms": 531.0132709998925,
+        "p95_ms": 708.9246670002467,
+        "max_ms": 708.9246670002467
+      },
+      "sealed_stdout_sha256": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 14.855562999855465,
+        "p95_ms": 70.96787499995116,
+        "max_ms": 70.96787499995116
+      },
+      "sealed_stdout_read": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 0.9933960000125808,
+        "p95_ms": 2.3826669998925354,
+        "max_ms": 2.3826669998925354
+      }
+    },
+    "sealed_stdout_bytes": 2159020,
+    "sealed_stdout_sha256": "a90d6beca58dde7948b30493e85c8e8ee3b614787436964db3b3307edb056449"
+  },
+  "preliminary_python_reconstructed_same_graph": {
+    "kind": "offline_actual_archived_result_phase_profile",
+    "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+    "python": "3.12.3",
+    "payload_bytes": 4314946,
+    "payload_sha256": "d2e018e54f0ed3dbfeb92397468842e741c3eabd138864b5b61be5a41d0002be",
+    "sealed_stdout_bytes": 2159020,
+    "sealed_stdout_sha256": "a90d6beca58dde7948b30493e85c8e8ee3b614787436964db3b3307edb056449",
+    "input_public_sha256": "f6bb15ccc300f2265e12717a93329ea23db4a69dda3f6c71c6bc71b812e682d0",
+    "complete_graph_equality_checked": true,
+    "live_acceptance": false,
+    "socket_timeout_seconds": 5,
+    "results": {
+      "sealed_stdout_read": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 0.7784369997807516,
+        "p95_ms": 1.4718339998580632,
+        "max_ms": 1.4718339998580632
+      },
+      "sealed_stdout_sha256": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 6.237583500023902,
+        "p95_ms": 7.341249999626598,
+        "max_ms": 7.341249999626598
+      },
+      "bytearray_to_bytes": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 0.9831039999426139,
+        "p95_ms": 1.3446250000015425,
+        "max_ms": 1.3446250000015425
+      },
+      "full_json_decode_1": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 72.76700050010732,
+        "p95_ms": 278.4575419996145,
+        "max_ms": 278.4575419996145
+      },
+      "full_json_decode_4": {
+        "samples": 8,
+        "threads": 4,
+        "median_ms": 166.00241700007246,
+        "p95_ms": 457.5420420001137,
+        "max_ms": 457.5420420001137
+      },
+      "current_exact_transfer_full_decode_1": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 86.89616699984981,
+        "p95_ms": 167.70933299994795,
+        "max_ms": 167.70933299994795
+      },
+      "current_exact_transfer_full_decode_4": {
+        "samples": 8,
+        "threads": 4,
+        "median_ms": 273.89041699984773,
+        "p95_ms": 486.7064170002777,
+        "max_ms": 486.7064170002777
+      },
+      "recv_into_transfer_full_decode_1": {
+        "samples": 8,
+        "threads": 1,
+        "median_ms": 153.25083349989654,
+        "p95_ms": 301.13870800005316,
+        "max_ms": 301.13870800005316
+      },
+      "recv_into_transfer_full_decode_4": {
+        "samples": 8,
+        "threads": 4,
+        "median_ms": 218.63839599996027,
+        "p95_ms": 303.3981250000579,
+        "max_ms": 303.3981250000579
+      }
+    }
+  },
+  "host_rust": {
+    "platform": "macOS-26.5-arm64-arm-64bit",
+    "measurement": {
+      "complete_graph_equality_checked": true,
+      "frame_bytes": 4314950,
+      "kind": "offline_whole_result_rust_profile",
+      "live_acceptance": false,
+      "results": {
+        "cached_arc_1": {
+          "max_ms": 0.00025,
+          "median_ms": 6.25e-05,
+          "p95_ms": 0.00025,
+          "samples": 8,
+          "threads": 1
+        },
+        "cached_arc_4": {
+          "max_ms": 0.000417,
+          "median_ms": 8.35e-05,
+          "p95_ms": 0.000417,
+          "samples": 8,
+          "threads": 4
+        },
+        "response_clone_1": {
+          "max_ms": 6.5031669999999995,
+          "median_ms": 3.7864785,
+          "p95_ms": 6.5031669999999995,
+          "samples": 8,
+          "threads": 1
+        },
+        "response_clone_4": {
+          "max_ms": 12.913958999999998,
+          "median_ms": 9.4060415,
+          "p95_ms": 12.913958999999998,
+          "samples": 8,
+          "threads": 4
+        },
+        "typed_read_frame_1": {
+          "max_ms": 15.832333,
+          "median_ms": 13.0343545,
+          "p95_ms": 15.832333,
+          "samples": 8,
+          "threads": 1
+        },
+        "typed_read_frame_4": {
+          "max_ms": 31.700625000000002,
+          "median_ms": 20.903146,
+          "p95_ms": 31.700625000000002,
+          "samples": 8,
+          "threads": 4
+        },
+        "value_read_frame_1": {
+          "max_ms": 36.892917,
+          "median_ms": 20.716688,
+          "p95_ms": 36.892917,
+          "samples": 8,
+          "threads": 1
+        },
+        "value_read_frame_4": {
+          "max_ms": 27.48525,
+          "median_ms": 23.603291499999997,
+          "p95_ms": 27.48525,
+          "samples": 8,
+          "threads": 4
+        },
+        "write_frame_1": {
+          "max_ms": 9.386624999999999,
+          "median_ms": 6.635187,
+          "p95_ms": 9.386624999999999,
+          "samples": 8,
+          "threads": 1
+        },
+        "write_frame_4": {
+          "max_ms": 8.588459,
+          "median_ms": 6.3986035,
+          "p95_ms": 8.588459,
+          "samples": 8,
+          "threads": 4
+        }
+      },
+      "samples": 8
+    }
+  },
+  "native_machine_after_profile": {
+    "rust_example_sha256": "d4a0b5e960e40cdf8b7557f83146443da77159012f88884e300da8c75efe4377",
+    "logical_cpus": 8,
+    "load_after": [
+      10.568359375,
+      9.13134765625,
+      7.994140625
+    ],
+    "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+    "kernel": "7.0.12-linuxkit",
+    "rust_version": "rustc 1.99.0 (b940084d7 2026-09-28)"
+  },
+  "provenance": {
+    "rust_example_source_sha256": "9239d16388a094a1e67679ce62f97b5bbe30471a75717e7c717ce687ce764566",
+    "executed_python_actual_source_sha256": "5ae325c918c92452848995992d2d54deddeabb9e8bebd6238c6a93417b948bda",
+    "native_source_archive_sha256": "efc366210f6e6e8484d9c250e24bcfd31d3dab3e3d63cf5b700f315561b07e43",
+    "actual_frame_sha256": "e620323a453103af7d5c04a5e3b4836dd41c9d46e0b5cbdba01b9c946f1325ed",
+    "native_rust_log_sha256": "0256df00911839356b0c599587078bb13c5e5eb19590a1fd8dcf12ee31e1a8d1",
+    "native_rust_build_log_sha256": "899971fff702f74baeec7289bd64bf0b32ac4140f7a944a674d9da2bf5d48bc2",
+    "actual_python_log_sha256": "3b2700a7098b3c1e381be762b6436ef6ce06c8c0143f24d744516fe9a0e5c9f8"
+  },
+  "qualification": [
+    "Eight samples per stage; p95 is the maximum of eight, not the required live 200-sample census.",
+    "Linux x86-64 ran under emulation on the shared macOS development machine. Stage sequencing, build/other workload and scheduling differ; no quiet-host assumption.",
+    "Load averages were captured after profiling only; before/per-stage load was not captured.",
+    "The preliminary Python run reconstructed a compact frame from the same original full public graph, so its frame hash differs from the later actual captured compact frame.",
+    "The executed Python revision used Path.read_bytes for stdout; the tracked utility now bounds that report read without changing decode or socketpair operations.",
+    "Socketpair stages include producer-thread startup and complete client JSON decoding, not daemon freshness or currentness checks.",
+    "Generic Value vs typed Rust results are separate implementations and not a controlled proof of an optimization.",
+    "Recv_into results are mixed; no production or frozen collector transport change is justified.",
+    "No payload fields or dependencies were removed, no schema/deadline changed, and no performance improvement or live acceptance is claimed."
+  ]
+}
