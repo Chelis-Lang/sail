@@ -83,6 +83,15 @@ struct Trust {
 /// The shared tier as the daemon uses it.
 type Pending = Arc<(Mutex<Option<Lookup>>, Condvar)>;
 
+fn publish(pending: &Pending, result: Lookup) {
+    if let Ok(mut value) = pending.0.lock()
+        && value.is_none()
+    {
+        *value = Some(result);
+        pending.1.notify_all();
+    }
+}
+
 struct Remote {
     loaded: Instant,
     client: Option<crate::remote::HttpClient>,
@@ -275,6 +284,10 @@ impl SharedTier {
 
     /// Looks `key` up for a session whose solver is `local`.
     pub fn lookup(&self, key: &QueryKey, local: &Solver) -> Lookup {
+        self.lookup_with(key, local, || {})
+    }
+
+    fn lookup_with(&self, key: &QueryKey, local: &Solver, after_spawn: impl FnOnce()) -> Lookup {
         // Reload before backoff checks so disconnect or changed configuration takes effect.
         let _ = self.remote_client();
         if self.description().is_none() {
@@ -309,18 +322,21 @@ impl SharedTier {
             };
             return value.clone().unwrap_or(Lookup::Timeout);
         }
-        let result = self.lookup_one(key, local);
-        if let Ok(mut value) = pending.0.lock() {
-            *value = Some(result.clone());
-        }
-        pending.1.notify_all();
+        let result = self.lookup_one(key, local, &pending, after_spawn);
+        publish(&pending, result.clone());
         if let Ok(mut active) = self.pending.lock() {
             active.remove(&id);
         }
         result
     }
 
-    fn lookup_one(&self, key: &QueryKey, local: &Solver) -> Lookup {
+    fn lookup_one(
+        &self,
+        key: &QueryKey,
+        local: &Solver,
+        pending: &Pending,
+        after_spawn: impl FnOnce(),
+    ) -> Lookup {
         if self.backing_off() || self.recently_missed(key) {
             return Lookup::Skipped;
         }
@@ -340,6 +356,7 @@ impl SharedTier {
         let (key_c, local_c) = (*key, local.clone());
         let remote = self.remote_client();
         let store = self.config.store.to_string_lossy();
+        let publication = Arc::clone(pending);
         let directory =
             !store.is_empty() && !store.starts_with("http://") && !store.starts_with("https://");
         let spawned = std::thread::Builder::new()
@@ -354,22 +371,32 @@ impl SharedTier {
                 } else {
                     Ok(None)
                 };
-                let result =
-                    data.map(|data| data.map(|d| verify_entry(&d, &key_c, &trusted, &local_c)));
+                let result = match data {
+                    Ok(Some(data)) => match verify_entry(&data, &key_c, &trusted, &local_c) {
+                        Ok(verified) => Lookup::Hit(verified),
+                        Err(reason) => Lookup::Rejected(reason),
+                    },
+                    Ok(None) => Lookup::Miss,
+                    Err(Rejection::Unreadable) => Lookup::Unavailable,
+                    Err(reason) => Lookup::Rejected(reason),
+                };
                 in_flight.fetch_sub(1, Ordering::SeqCst);
+                // Coalesced readers need not wait for the initiating client to
+                // be scheduled again after this independently verified result.
+                publish(&publication, result.clone());
                 let _ = tx.send(result);
             });
         if spawned.is_err() {
             self.in_flight.fetch_sub(1, Ordering::SeqCst);
             return Lookup::Skipped;
         }
+        after_spawn();
         match rx.recv_timeout(self.config.timeout) {
-            Ok(Ok(Some(Ok(v)))) => Lookup::Hit(v),
-            Ok(Ok(None)) => {
+            Ok(Lookup::Miss) => {
                 self.remember_miss(key);
                 Lookup::Miss
             }
-            Ok(Err(Rejection::Unreadable)) => {
+            Ok(Lookup::Unavailable) => {
                 if let Ok(mut b) = self.backoff_until.lock() {
                     *b = Some(Instant::now() + self.config.backoff);
                 }
@@ -381,10 +408,11 @@ impl SharedTier {
                 }
                 Lookup::Timeout
             }
-            Ok(Ok(Some(Err(r))) | Err(r)) => {
+            Ok(Lookup::Rejected(r)) => {
                 self.remember_miss(key);
                 Lookup::Rejected(r)
             }
+            Ok(result) => result,
             Err(RecvTimeoutError::Disconnected) => Lookup::Miss,
         }
     }
@@ -435,10 +463,37 @@ mod http_tests {
         let _ = std::fs::remove_dir_all(root);
     }
 
-    #[test]
-    fn concurrent_readers_coalesce_one_http_lookup() {
+    struct HttpFixture {
+        root: PathBuf,
+        tier: Arc<SharedTier>,
+        solver: Solver,
+        key: QueryKey,
+        stop: Arc<std::sync::atomic::AtomicBool>,
+        count: Arc<AtomicUsize>,
+        server: Option<std::thread::JoinHandle<()>>,
+    }
+
+    impl HttpFixture {
+        fn close(&mut self) {
+            self.stop.store(true, Ordering::Relaxed);
+            self.server.take().unwrap().join().unwrap();
+        }
+    }
+
+    impl Drop for HttpFixture {
+        fn drop(&mut self) {
+            self.stop.store(true, Ordering::Relaxed);
+            if let Some(server) = self.server.take() {
+                let _ = server.join();
+            }
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    fn http_fixture(label: &str, tampered: bool) -> HttpFixture {
         use std::os::unix::fs::PermissionsExt as _;
-        let root = std::env::temp_dir().join(format!("sail-coalesce-{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("sail-coalesce-{label}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).unwrap();
         let secret = SecretKey::from_seed([8; 32]);
@@ -450,7 +505,10 @@ mod http_tests {
             platform: "linux-x86_64".to_owned(),
         };
         let key = QueryKey([3; 32]);
-        let data = sign_entry(&secret, &key, b"unsat\n", "check-sat", &solver, None, 1);
+        let mut data = sign_entry(&secret, &key, b"unsat\n", "check-sat", &solver, None, 1);
+        if tampered {
+            *data.last_mut().unwrap() = b'x';
+        }
         let token = root.join("read.token");
         std::fs::write(&token, "0123456789abcdef0123456789abcdef").unwrap();
         std::fs::set_permissions(&token, std::fs::Permissions::from_mode(0o600)).unwrap();
@@ -488,11 +546,25 @@ mod http_tests {
                 let _ = stream.write_all(&data);
             }
         });
-        let tier = Arc::new(SharedTier::auto(None, &root));
+        HttpFixture {
+            tier: Arc::new(SharedTier::auto(None, &root)),
+            root,
+            solver,
+            key,
+            stop,
+            count,
+            server: Some(server),
+        }
+    }
+
+    #[test]
+    fn concurrent_readers_coalesce_one_http_lookup() {
+        let mut fixture = http_fixture("readers", false);
+        let (tier, solver, key) = (&fixture.tier, &fixture.solver, fixture.key);
         let barrier = Arc::new(std::sync::Barrier::new(8));
         let workers = (0..8)
             .map(|_| {
-                let tier = Arc::clone(&tier);
+                let tier = Arc::clone(tier);
                 let barrier = Arc::clone(&barrier);
                 let solver = solver.clone();
                 std::thread::spawn(move || {
@@ -502,11 +574,62 @@ mod http_tests {
             })
             .collect::<Vec<_>>();
         for worker in workers {
-            assert!(matches!(worker.join().unwrap(), Lookup::Hit(_)));
+            let result = worker.join().unwrap();
+            assert!(
+                matches!(result, Lookup::Hit(_)),
+                "lookup: {result:?}; remote: {:?}",
+                tier.remote_info()
+            );
         }
-        stop.store(true, Ordering::Relaxed);
-        server.join().unwrap();
-        assert_eq!(count.load(Ordering::Relaxed), 1);
-        let _ = std::fs::remove_dir_all(root);
+        fixture.close();
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
+    }
+
+    fn paused_initiator_lookup(fixture: &mut HttpFixture) -> (Lookup, Lookup) {
+        let tier = Arc::clone(&fixture.tier);
+        let solver = fixture.solver.clone();
+        let key = fixture.key;
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let (resume_tx, resume_rx) = std::sync::mpsc::channel();
+        let initiator = std::thread::spawn(move || {
+            tier.lookup_with(&key, &solver, || {
+                ready_tx.send(()).unwrap();
+                // Dropping the sender also releases this owned worker on a
+                // failed assertion; no process or detached waiter is leaked.
+                let _ = resume_rx.recv();
+            })
+        });
+        ready_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(!initiator.is_finished());
+        let started = Instant::now();
+        let result = fixture.tier.lookup(&key, &fixture.solver);
+        let elapsed = started.elapsed();
+        let still_paused = !initiator.is_finished();
+        resume_tx.send(()).unwrap();
+        let initiating_result = initiator.join().unwrap();
+        fixture.close();
+        assert!(still_paused, "initiator must remain blocked during lookup");
+        assert!(
+            elapsed < fixture.tier.config.timeout,
+            "elapsed: {elapsed:?}"
+        );
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
+        (result, initiating_result)
+    }
+
+    #[test]
+    fn verified_http_reply_reaches_readers_while_initiator_is_paused() {
+        let mut fixture = http_fixture("paused", false);
+        let (result, initiating_result) = paused_initiator_lookup(&mut fixture);
+        assert!(matches!(result, Lookup::Hit(_)), "lookup: {result:?}");
+        assert!(matches!(initiating_result, Lookup::Hit(_)));
+    }
+
+    #[test]
+    fn forged_http_reply_is_refused_while_initiator_is_paused() {
+        let mut fixture = http_fixture("forged", true);
+        let (result, initiating_result) = paused_initiator_lookup(&mut fixture);
+        assert!(matches!(result, Lookup::Rejected(_)), "lookup: {result:?}");
+        assert!(matches!(initiating_result, Lookup::Rejected(_)));
     }
 }
