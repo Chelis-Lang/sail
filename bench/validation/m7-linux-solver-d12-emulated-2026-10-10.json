@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "source_commit": "d12d4afea318b7ac6915eb33370c0b773101aeea",
+  "environment": "Linux amd64 Docker emulation on macOS arm64; eight CPU, 8 GiB VM RAM, 1 GiB swap; concurrent local source qualification and standard corpus",
+  "command": "ci/run.sh solver",
+  "build_jobs": 2,
+  "nextest_threads": 2,
+  "limits_changed": false,
+  "test_internal_concurrency_unchanged": true,
+  "exit_code": 0,
+  "tests": 37,
+  "passed": 37,
+  "skipped_normal_tests": 436,
+  "nextest_duration_seconds": 114.446,
+  "pinned_z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+  "previously_timed_out_case": {
+    "name": "unverifiable_shared_entries_never_change_an_answer",
+    "status": "passed",
+    "elapsed_seconds": 9.652,
+    "scope": "Original five shared-entry faults with two actual solver sessions per fault and unchanged exact-answer assertions; only failure diagnostics were added."
+  },
+  "prior_failure_retained": "m7-linux-solver-62ad-failure-emulated-2026-10-10.json",
+  "cause_of_prior_timeout": "Unresolved; this complete-suite pass does not establish a cause or a causal product fix.",
+  "log": {
+    "sha256": "1b8015fd1736fc83641b79219c6fe7ca6dead4c3ed7100892ab8404af4a1c7b4",
+    "bytes": 4218
+  },
+  "scope": "Complete real-solver/fault suite on frozen d12 integrated source. Does not override the failed d12 normal gate, source qualification or real-product acceptance.",
+  "product_acceptance": false
+}

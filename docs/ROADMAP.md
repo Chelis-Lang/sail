@@ -108,7 +108,8 @@ Current acceptance status and unresolved defects are in
 [retained acceptance guide](bench/m7-repair-acceptance.md). The complete `62ad095`
 Linux workspace gate passed; the later `d12d4af` gate failed five HTTP-cache
 concurrency tests and requires diagnosis. The earlier real-solver suite retains
-one unresolved fault test timeout. The frozen `1dc` default fast tier passed all three cache phases;
+one unresolved fault test timeout; the complete `d12d4af` real-solver suite now
+passes all 37 cases without changing assertions or limits. The frozen `1dc` default fast tier passed all three cache phases;
 its standard run was interrupted and needs a complete new run. The selected
 source baseline still lacks an established physical preparation-memory bound.
 Graph-ledger/oracle candidates remain unselected, and a persistent hit inside one
