@@ -11,7 +11,7 @@ patch including that baseline. Before building, run:
 python3 engine/verus/candidates/audit-graph-ledger.py --source VARIANT/source
 ```
 
-After a separately authorized source build, run the seven ledger tests:
+After building the candidate in a separate source variant, run the seven ledger tests:
 
 ```sh
 cargo test --release -p vir --lib sail_graph::tests
