@@ -31,7 +31,7 @@ def run(args):
     assert (source / 'tasks/lib.rs').is_file(), 'The corpus-generated library wrapper is required'
     results = []
     summary = {'version': 1, 'machine': platform.platform(), 'scope': 'Source callback oracle, not product performance',
-               'patch_sha256': oracle.sha(pathlib.Path(__file__).with_name('graph-ledger-oracle.patch')),
+               'patch_sha256': oracle.sha(pathlib.Path(args.patch) if args.patch else pathlib.Path(__file__).with_name('graph-ledger-oracle.patch')),
                'engine_sha256': oracle.sha(pathlib.Path(args.engine)),
                'engine_verifier_sha256': oracle.sha(pathlib.Path(args.engine).with_name('rust_verify')),
                'stock_sha256': oracle.sha(pathlib.Path(args.stock)), 'z3_sha256': oracle.sha(pathlib.Path(args.z3)),
@@ -46,6 +46,8 @@ def run(args):
             edited.write_text(original.replace('    string.len()\n', '    let length = string.len();\n    length\n'))
         work = root / str(revision)
         work.mkdir()
+        prior_preparations = [{'name': str(p.relative_to(root / 'prepared')), 'sha256': oracle.sha(p)}
+                              for p in sorted((root / 'prepared').rglob('*')) if p.is_file()]
         records = {}
         for mode, actor in [('stock', args.stock), ('engine', args.engine)]:
             env = {key: value for key, value in os.environ.items() if not key.startswith('SAIL_ENGINE')}
@@ -82,6 +84,7 @@ def run(args):
                     'stock_sha256': hashlib.sha256(oracle.pipe(x)).hexdigest(),
                     'engine_bytes': len(oracle.pipe(y)), 'engine_sha256': hashlib.sha256(oracle.pipe(y)).hexdigest()}
                     for x, y in zip(left, right) if oracle.pipe(x) != oracle.pipe(y)]}
+        item['prior_preparations'] = prior_preparations
         results.append(item)
         (root / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
         assert stock.returncode == engine.returncode, (revision, 'exit')
@@ -97,9 +100,12 @@ def run(args):
                    for check in callback_checks), (revision, 'same-input raw/effect/diagnostic comparison')
         assert any(check['fresh_sessions'] > 0 for check in callback_checks), (revision, 'no actual captured solver session')
         assert stats['batch_hits'] + stats['persistent_hits'] > 0, (revision, 'no preparation restore')
-        if revision == 1:
+        if revision == 1 or (revision == 2 and args.require_edited_focus):
+            assert prior_preparations, 'Missing completed previous-revision preparation'
             assert any(event['event'] == 'prepared-restored' and event['phase'] == 'focus'
                        and event['payload']['source'] == 'persistent' for event in events), 'Focused persistent restore missing'
+            first_restore = next(event for event in events if event['event'] == 'prepared-restored')
+            assert first_restore['phase'] == 'focus', 'Same-invocation FULL restore is not prior-revision focus reuse'
         assert events[-1]['event'] == 'compiler-sealed', 'Full compiler terminal seal missing'
         assert events[-1]['payload']['normal_termination'] is True
         item['assertions_completed'] = True
@@ -115,4 +121,6 @@ if __name__ == '__main__':
     parser.add_argument('--toolchain', default='1.98.1')
     parser.add_argument('--timeout', type=int, default=600)
     parser.add_argument('--other-module-edit', action='store_true')
+    parser.add_argument('--patch', help='Exact source candidate patch for immutable evidence')
+    parser.add_argument('--require-edited-focus', action='store_true', help='Require previous-revision focused restore after the body edit')
     run(parser.parse_args())
