@@ -37,7 +37,9 @@ semantic global inputs, exact bucket membership and order, settings, source
 and span bindings, and naming/counter state. Entries restore all mutable
 lowering and diagnostic effects. Unknown coverage, changed spans or incomplete
 checkpoint support cause a miss. The global preparation budget is 512 MiB,
-with one active verification worker. Batch-local reuse and reuse across edits
+with one active workspace verification worker. The engine preserves stock Verus
+bucket concurrency; a global preparation gate serializes cache admission,
+encoding and restoration. Batch-local reuse and reuse across edits
 are reported separately: an ephemeral Cargo driver must not claim persistent
 cross-edit cache hits.
 
