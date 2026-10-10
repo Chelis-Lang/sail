@@ -47,3 +47,19 @@ times before and after validation. The former late-publication/mmap-break and
 concurrent restored-write tests remain required. This change is a candidate
 optimization until real workload validation demonstrates its latency and
 admission behavior.
+
+The single caller-entry candidate replay independently established coverage in
+16.398 seconds and returned Current for all 200 requests with both recorded input
+revisions unchanged. It observed 45 ready cohorts and no bounded owner refusal.
+The same delayed-barrier regression fails when the previous post-barrier
+timestamp is substituted, then passes with the candidate. Native strict Clippy
+and all 16 freshness cases passed; the remaining library cases and integration
+gate are outside this targeted qualification.
+
+This is not a live-reader acceptance result. It performed no new proof and had
+no active verifier. Traced status p95 was 209.120 ms and full-result p95 was
+407.420 ms, so latency remains unmet. Separate runs under changing shared load
+do not establish a controlled speedup, and this replay cannot explain the
+earlier live census's sustained admission-loss tail. Exact source, binary, raw
+log hashes and all 200 classified samples are retained in
+`m7-reader-entry-coalescing-diagnostic.json`.
