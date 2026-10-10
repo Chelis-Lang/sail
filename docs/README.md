@@ -11,6 +11,7 @@ experimental features and validation limits are identified explicitly.
 | Verify, reuse complete reports, watch edits, inspect and cancel jobs | [Workspace verification](workspace-verification.md) |
 | Check one repair, follow proof events, explain failures and compare saved baselines | [Proof repair](proof-repair.md) — M7 remains experimental |
 | Integrate an agent through stdio MCP | [MCP tools](mcp.md) |
+| Reuse complete fresh-frame decoding in a persistent Rust SDK client | [Result client](result-client.md) |
 | Consume structured reports and provenance | [Output schema](output-schema.md) |
 | Share signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
 | Interpret Current, Historical and Unknown evidence | [Freshness](freshness.md) |
