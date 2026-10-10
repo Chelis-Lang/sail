@@ -17,6 +17,7 @@ FIXTURES = {
     "recursive": "spec fn count(n: nat) -> nat decreases n { if n == 0 { 0 } else { 1 + count((n-1) as nat) } }\nproof fn selected() ensures count(1) == 1 { }",
     "macro_spans": "proof fn selected() { assert(identity!(false)); }",
     "missing_function": "proof fn other() { }",
+    "ambiguous_function": "struct Holder<T> { value:T } impl Holder<u8> { proof fn selected(&self) {} } impl Holder<u16> { proof fn selected(&self) {} }",
 }
 
 def pipe(path):
@@ -47,7 +48,7 @@ def run(args):
                 events = work / "events.jsonl"
                 events.unlink(missing_ok=True)
                 (work / "focus.json").unlink(missing_ok=True)
-                environment.update(SAIL_ENGINE="interactive", SAIL_ENGINE_FUNCTION="demo::selected",
+                environment.update(SAIL_ENGINE="interactive", SAIL_ENGINE_FUNCTION="demo::Holder::selected" if name == "ambiguous_function" else "demo::selected",
                                    SAIL_ENGINE_EVENTS=str(events), SAIL_ENGINE_FOCUS_REPORT=str(work / "focus.json"))
             command = [executable, str(source), "--no-vstd", "--crate-name", "demo", "-V", "use-crate-name",
                        "--output-json", "--time", "--log", "air", "--log", "smt-transcript",
@@ -75,11 +76,13 @@ def run(args):
             assert pipe(left) == pipe(right), (name, "full SMT bytes differ", left.name)
         events = [json.loads(line) for line in (work / "events.jsonl").read_text().splitlines()]
         assert events[-1]["event"] == "compiler-sealed", (name, "missing compiler terminal seal")
-        if name != "missing_function":
+        if name not in ["missing_function","ambiguous_function"]:
             assert (work / "focus.json").is_file(), (name, "focused evidence missing")
             assert events.index(next(e for e in events if e["event"] == "phase-finished" and e["phase"] == "focus")) < len(events)-1
         else:
             assert not (work / "focus.json").exists()
+            unavailable = next(e for e in events if e["event"] == "focus-unavailable")
+            assert unavailable["payload"]["matches"] == (2 if name == "ambiguous_function" else 0)
         if name == "late_exec":
             assert engine.returncode != 0 and b"E0499" in engine.stderr, "late borrow error disappeared"
         results.append({"fixture": name, "exit_code": engine.returncode, "diagnostics_sha256": hashlib.sha256(engine.stderr).hexdigest(),

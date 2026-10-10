@@ -27,7 +27,7 @@
       {
         "fixture": "failed_focus",
         "exit_code": 1,
-        "diagnostics_sha256": "e937244f7ae68804cb039cbd7daae39ac10e86a5ff944e522f8f776c65f8167f",
+        "diagnostics_sha256": "4ee6e0b4e0edff6a3df2aded05c9a5f5d46df78f15947c713d8a199e4860a2cf",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -40,7 +40,7 @@
       {
         "fixture": "failed_other",
         "exit_code": 1,
-        "diagnostics_sha256": "c33bbf723112552b823622d7a806ab6c37f17c178e9da6daa132c60881ad7e3d",
+        "diagnostics_sha256": "82879a7501422a3f373029bd07737e509b57ad77a8d1da6e31fc4f8d2c3254fa",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -53,7 +53,7 @@
       {
         "fixture": "late_exec",
         "exit_code": 1,
-        "diagnostics_sha256": "4254212f6db20ebe6fd657f4d9978ba0faa5701038955dca05e4111cd05da584",
+        "diagnostics_sha256": "9d37cdc126806648862aeb034046fa5b14afb73be9da270db2efac5cc6336931",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -84,7 +84,7 @@
       {
         "fixture": "recursive",
         "exit_code": 1,
-        "diagnostics_sha256": "58a3da9c98c1295e96aab7e380ba77d1ec2be1e797a24f48f9601cdad76d0904",
+        "diagnostics_sha256": "f96416d2aee173d2b574039a65b5b5179962d41007efd5abb4c95cc8303ee36c",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -97,7 +97,7 @@
       {
         "fixture": "macro_spans",
         "exit_code": 1,
-        "diagnostics_sha256": "32a61926f50aa67882ac9cf0af5702fd2757a1946e3173e855c08cfea2803ad2",
+        "diagnostics_sha256": "16f6934cab8aa592d9672e9eb121d201b9b0906a757912e30c12da9567773f07",
         "full_sessions": [
           {
             "name": "root.smt_transcript",
@@ -116,6 +116,19 @@
             "name": "root.smt_transcript",
             "bytes": 22892,
             "input_sha256": "f306a7df2915d1ec5ea1f7350b96d77625527734fafc4e6ad2aa662c98d7728b"
+          }
+        ],
+        "prepared_hits": 0
+      },
+      {
+        "fixture": "ambiguous_function",
+        "exit_code": 0,
+        "diagnostics_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "full_sessions": [
+          {
+            "name": "root.smt_transcript",
+            "bytes": 25817,
+            "input_sha256": "89a4af42d148659e462fb6dc5c397b071dfd932c4b9ff0ddb5aedff30fd41d20"
           }
         ],
         "prepared_hits": 0

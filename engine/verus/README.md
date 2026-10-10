@@ -114,7 +114,7 @@ import format. No prepared entry is imported from the signed SMT shared tier.
 variant; it never compiles Verus in CI. They compare stock exit status, exact
 stderr, verification counters, per-function verdicts and full raw SMT sessions.
 Fixtures cover bitvectors, termination, failed focus, failed other functions,
-macro diagnostic spans and late EXEC errors. The edit sequence checks real
+macro diagnostic spans, missing/ambiguous exact selectors and late EXEC errors. The edit sequence checks real
 persistent hits, other-module edits, stale-span misses, corrupt and misfiled
 checkpoints, and bounded refusal of oversized files. `test-cancel.py` kills a worker at an
 actual blocked solver check, requires no terminal seal or unfinished focus
