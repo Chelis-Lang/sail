@@ -41,6 +41,9 @@ impl Guard {
         }
     }
     pub(super) fn ready(&mut self) -> bool {
+        if self.failure.is_some() {
+            return false;
+        }
         #[cfg(target_os = "linux")]
         {
             if !self.observer.as_mut().is_some_and(Observer::clean) {
