@@ -418,6 +418,26 @@ mod tests {
         assert!(std::fs::remove_file(file).is_ok());
     }
     #[test]
+    fn malformed_and_truncated_readiness_cannot_authorize_inventory() {
+        for bytes in [
+            &b"ok\n"[..],
+            &b"[3,\"wrong\"]\n"[..],
+            &b"[3]"[..],
+            &b"[-1]\n"[..],
+        ] {
+            let (mut socket, mut owner) =
+                UnixStream::pair().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            assert!(owner.write_all(bytes).is_ok());
+            drop(owner);
+            assert!(descriptors(&mut socket).is_none());
+        }
+        let (mut socket, mut owner) =
+            UnixStream::pair().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert!(owner.write_all(&vec![b' '; 65_537]).is_ok());
+        drop(owner);
+        assert!(descriptors(&mut socket).is_none());
+    }
+    #[test]
     fn readiness_inventory_cannot_bind_duplicate_or_wrong_descriptors() {
         let file = fixture();
         let lease = ReadLease::acquire(std::slice::from_ref(&file))
