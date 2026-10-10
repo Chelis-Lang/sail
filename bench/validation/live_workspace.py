@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import signal
 import statistics
 import subprocess
 import sys
@@ -89,6 +90,22 @@ def requested(document):
     return sorted(pair for target in targets for pair in functions(target['report']))
 
 
+def bounded_verification(arguments):
+    process = subprocess.Popen(arguments, cwd=project, env=env,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=600)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.communicate(timeout=10)
+        raise
+    return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
+
+
 def run(label, managed):
     if not managed:
         # Obtain a fresh complete report, with the SMT cache already warm.
@@ -101,8 +118,8 @@ def run(label, managed):
     timer = ['/usr/bin/time', '-l' if platform.system() == 'Darwin' else '-v',
              '-o', str(timing)]
     start = time.monotonic()
-    result = subprocess.run(timer + args, cwd=project, env=env,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600)
+    load_start = os.getloadavg()
+    result = bounded_verification(timer + args)
     elapsed = time.monotonic() - start
     (raw / (label + '.json')).write_bytes(result.stdout)
     (raw / (label + '.stderr')).write_bytes(result.stderr)
@@ -116,6 +133,8 @@ def run(label, managed):
         if 'maximum resident set size' in line.lower():
             resident = int(line.split()[0]) if platform.system() == 'Darwin' else int(line.split(':')[-1]) * 1024
     return document, {'label': label, 'wall_ms': elapsed * 1000,
+                      'load_average_start': load_start,
+                      'load_average_end': os.getloadavg(),
                       'max_single_process_rss_bytes': resident,
                       'report_sha256': hashlib.sha256(result.stdout).hexdigest(),
                       'execution': document.get('execution')}
@@ -129,6 +148,8 @@ if managed['currentness'] == 'historical':
     managed, establishment = run('managed-establish', True)
     assert functions(plain) == requested(managed)
     assert managed['execution']['verifier_invocations'] > 0
+establishing_reports = {target['package_id'] + '/' + target['target']: target['report']
+                       for target in managed['targets'] if target['requested']}
 rounds = []
 for round_number in range(1, 4):
     plain, p = run(f'plain-warm-{round_number}', False)
@@ -136,6 +157,9 @@ for round_number in range(1, 4):
     assert requested(managed) == functions(plain)
     assert managed['execution']['verifier_invocations'] == 0
     assert managed['execution']['reused_targets'] > 0
+    reused_reports = {target['package_id'] + '/' + target['target']: target['report']
+                      for target in managed['targets'] if target['requested']}
+    assert reused_reports == establishing_reports, 'reuse must preserve establishing reports'
     rounds.append({'round': round_number, 'plain_warm_smt_cache': p,
                    'managed_complete_report_reuse': m})
 # A real proof-body edit must invoke a verifier, retain complete scope and agree.
@@ -156,6 +180,7 @@ record = {
                 'load_average': os.getloadavg()},
     'toolchain': {'rust': subprocess.check_output(['rustc', '--version'], env=env).decode().strip(),
                   'sail_sha256': hashlib.sha256(sail.read_bytes()).hexdigest(),
+                  'sail_bytes': sail.stat().st_size,
                   'cargo_verus_sha256': hashlib.sha256(Path(cargo_verus).read_bytes()).hexdigest()},
     'limits': ['Development machine under concurrent compilation and conformance load',
                'RSS is the largest single process measured by time, not summed tree memory',

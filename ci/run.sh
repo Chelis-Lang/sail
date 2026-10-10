@@ -48,7 +48,7 @@ step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|bench|build-verus-source
 shift
 
 release_build() {
-  cargo build --release --locked -p sail-cli -p sail-shim -p sail-conformance -p sail-bench
+  cargo build --release --locked -p sail-cli -p sail-shim "$@"
 }
 
 # Starts a cache daemon on a fresh cache; sets $sock, $cache and $daemon.
@@ -166,7 +166,7 @@ RS
     tier="${1:-fast}"
     shift || true
     [ "$tier" = fast ] && [ "${1:-}" = pr ] || local_only conformance "$tier" "$@"
-    release_build
+    release_build -p sail-conformance
     select=(--tier "$tier" "$@")
     if [ "${1:-}" = pr ]; then
       select=(--tier fast --project verus-examples --filter /guide/)
@@ -189,7 +189,7 @@ RS
     workload="${1:?bench needs a workload: cold|warm|edit}"
     tier="${2:-fast}"
     rounds="${3:-3}"
-    release_build
+    release_build -p sail-bench
     name="${workload}-${tier}-x86_64-linux-${SAIL_BENCH_LABEL:-ci}-$(date -u +%Y-%m-%d)"
     case "$workload" in
       cold|warm) ./target/release/sail-bench "$workload" --tier "$tier" --rounds "$rounds" --name "$name" ;;
@@ -216,7 +216,7 @@ RS
     with_cache=false
     if [ "${1:-}" = cache ]; then with_cache=true; shift; fi
     cargo xtask build-verus-source
-    release_build
+    release_build -p sail-conformance
     out="${SAIL_CONFORMANCE_OUT:-conformance-out}/rust-verify-test"
     # Keep local parallelism modest: 4 tests at a time unless --jobs says so.
     ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/pass-through" "$@"
