@@ -136,14 +136,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
         let mut project = project(state, job)?;
         let snapshot = refresh(state, job, &project);
         status.currentness = classify(project.currentness, &project.input_revision, snapshot);
-        project.currentness = match status.currentness {
-            Currentness::Current => sail_api::project::Currentness::Current,
-            Currentness::Historical => sail_api::project::Currentness::Historical,
-            Currentness::Unknown => sail_api::project::Currentness::Unknown,
-        };
-        if status.currentness == Currentness::Unknown {
-            project.notes.push("SAIL3114: current input validation is unavailable or still running; native coverage and kernel read leases must be established before claiming Current".to_owned());
-        }
+        apply_currentness(&mut project, status.currentness);
         if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
             let mut envelope = repair_project(state, job)?;
             envelope.batch.full = project.clone();
@@ -161,6 +154,93 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
     })
 }
 
+/// Immutable frames avoid rebuilding large function graphs. The persisted
+/// stdout contents and live freshness are still checked on every RPC.
+pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8>>> {
+    use super::result_cache::Frames;
+    if job.status.state != Lifecycle::Completed || job.projection.is_none() {
+        return encode_result(result(state, job)?);
+    }
+    let key = stdout_digest(&serde_json::to_vec(job).map_err(io::Error::other)?);
+    let bytes = match project_bytes(state, job) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            state.result_cache.remove(&key);
+            return Err(error);
+        }
+    };
+    let projection = job
+        .projection
+        .as_ref()
+        .ok_or_else(|| io::Error::other("SAIL0816: missing result seal"))?;
+    let currentness = projected_currentness(state, job, projection);
+    if let Some(frames) = state.result_cache.get(&key) {
+        return Ok(frames.select(currentness));
+    }
+    // This parse uses the same bytes whose exact seal was checked above.
+    let (project, repair) = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+        let envelope: sail_api::repair::ResultDocument =
+            serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+        (envelope.batch.full.clone(), Some(Box::new(envelope)))
+    } else {
+        (
+            serde_json::from_slice(&bytes).map_err(io::Error::other)?,
+            None,
+        )
+    };
+    let frame = |currentness| {
+        let mut project = project.clone();
+        let mut status = job.status.clone();
+        status.currentness = currentness;
+        apply_currentness(&mut project, currentness);
+        let mut repair = repair.clone();
+        if let Some(envelope) = &mut repair {
+            envelope.batch.full = project.clone();
+            envelope.accepted = envelope.batch.accepted();
+        }
+        encode_result(ResultDocument {
+            job: status,
+            result: Some(serde_json::to_value(project).map_err(io::Error::other)?),
+            repair,
+        })
+    };
+    let frames = state.result_cache.insert(
+        key,
+        Frames {
+            current: frame(Currentness::Current)?,
+            historical: frame(Currentness::Historical)?,
+            unknown: frame(Currentness::Unknown)?,
+        },
+    );
+    Ok(frames.select(currentness))
+}
+fn encode_result(document: ResultDocument) -> io::Result<Arc<Vec<u8>>> {
+    let mut bytes = Vec::new();
+    sail_api::jobs::write_frame(&mut bytes, &sail_api::jobs::Response::Result(document))?;
+    Ok(Arc::new(bytes))
+}
+fn apply_currentness(project: &mut sail_api::project::ProjectResult, currentness: Currentness) {
+    project.currentness = match currentness {
+        Currentness::Current => sail_api::project::Currentness::Current,
+        Currentness::Historical => sail_api::project::Currentness::Historical,
+        Currentness::Unknown => sail_api::project::Currentness::Unknown,
+    };
+    if currentness == Currentness::Unknown {
+        project.notes.push("SAIL3114: current input validation is unavailable or still running; native coverage and kernel read leases must be established before claiming Current".to_owned());
+    }
+}
+fn projected_currentness(state: &State, job: &Stored, projection: &Projection) -> Currentness {
+    let snapshot = cache(job).and_then(|cache| {
+        state.freshness.inspect(
+            &cache,
+            Path::new(&projection.workspace),
+            &projection.context_sha256,
+            &job.submission.environment,
+        )
+    });
+    classify(projection.currentness, &projection.input_revision, snapshot)
+}
+
 pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
     if job.status.state != Lifecycle::Completed {
         return Ok(job.status.clone());
@@ -170,16 +250,8 @@ pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
         return result(state, job).map(|document| document.job);
     };
     let _validated = project_bytes(state, job)?;
-    let snapshot = cache(job).and_then(|cache| {
-        state.freshness.inspect(
-            &cache,
-            Path::new(&projection.workspace),
-            &projection.context_sha256,
-            &job.submission.environment,
-        )
-    });
     let mut status = job.status.clone();
-    status.currentness = classify(projection.currentness, &projection.input_revision, snapshot);
+    status.currentness = projected_currentness(state, job, projection);
     Ok(status)
 }
 fn classify(

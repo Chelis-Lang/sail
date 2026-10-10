@@ -1,11 +1,12 @@
 //! Durable, FIFO project verification jobs on a separate local endpoint.
 
 mod product;
+mod result_cache;
 mod store;
 mod worker;
 
 use std::collections::{BTreeMap, VecDeque};
-use std::io;
+use std::io::{self, Write as _};
 use std::os::unix::fs::PermissionsExt as _;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
@@ -28,6 +29,7 @@ struct State {
     activity: Arc<AtomicU64>,
     proofs: crate::proof_journal::Journals,
     freshness: sail_verus::managed::FreshnessIndex,
+    result_cache: result_cache::ResultCache,
 }
 
 /// A bound project endpoint; it owns one FIFO verification worker.
@@ -84,6 +86,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             activity: Arc::new(AtomicU64::new(0)),
             proofs: crate::proof_journal::Journals::default(),
             freshness: sail_verus::managed::FreshnessIndex::default(),
+            result_cache: result_cache::ResultCache::default(),
         }),
     })
 }
@@ -172,11 +175,29 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                     let timeout = Some(Duration::from_secs(5));
                     let _ = stream.set_read_timeout(timeout);
                     let _ = stream.set_write_timeout(timeout);
-                    let response = sail_api::jobs::read_frame(&mut stream).map_or_else(
-                        |error| Response::Error(format!("SAIL0801: {error}")),
-                        |request| dispatch(&state, request),
-                    );
-                    if sail_api::jobs::write_frame(&mut stream, &response).is_err() {
+                    let outcome = match sail_api::jobs::read_frame(&mut stream) {
+                        Ok(Request::Result { id }) => get(&state, &id)
+                            .and_then(|job| store::result_frame(&state, &job))
+                            .map(|frame| (None, Some(frame))),
+                        Ok(request) => Ok((Some(dispatch(&state, request)), None)),
+                        Err(error) => {
+                            Ok((Some(Response::Error(format!("SAIL0801: {error}"))), None))
+                        }
+                    };
+                    let write = match outcome {
+                        Ok((_, Some(frame))) => {
+                            stream.write_all(&frame).and_then(|()| stream.flush())
+                        }
+                        Ok((Some(response), _)) => {
+                            sail_api::jobs::write_frame(&mut stream, &response)
+                        }
+                        Err(error) => sail_api::jobs::write_frame(
+                            &mut stream,
+                            &Response::Error(error.to_string()),
+                        ),
+                        Ok((None, None)) => Err(io::Error::other("SAIL0814: missing RPC response")),
+                    };
+                    if write.is_err() {
                         let _ = sail_api::jobs::write_frame(&mut stream, &Response::Error("SAIL0814: result exceeds RPC limit; retained files are available in the private job store".to_owned()));
                     }
                     clients.fetch_sub(1, Ordering::SeqCst);
