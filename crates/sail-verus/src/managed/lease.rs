@@ -14,7 +14,7 @@ use std::time::Duration;
 
 pub(super) struct ReadLease {
     process: Child,
-    _socket: UnixStream,
+    socket: UnixStream,
     kernel: Option<super::kernel_leases::Inventory>,
     bindings: Vec<(PathBuf, PathBuf, u64, u64)>,
     mounts: String,
@@ -96,7 +96,7 @@ impl ReadLease {
             .ok()?;
         let mut lease = Self {
             process,
-            _socket: parent_socket,
+            socket: parent_socket,
             kernel: None,
             bindings,
             mounts,
@@ -253,6 +253,7 @@ fn helper_paths(interpreter: &Path) -> Option<Vec<PathBuf>> {
 }
 impl Drop for ReadLease {
     fn drop(&mut self) {
+        let _ = self.socket.shutdown(std::net::Shutdown::Both);
         let _ = self.process.kill();
         let _ = self.process.wait();
     }
@@ -387,7 +388,7 @@ mod tests {
         // Preserve the old late-ack attack: bytes remain available, but the
         // actual owner generation loses its leases through a writable mapping.
         assert!(stale.write_all(b"ok\n").is_ok());
-        let original = std::mem::replace(&mut lease._socket, socket);
+        let original = std::mem::replace(&mut lease.socket, socket);
         let mut mapping = Command::new("python3").args(["-I", "-u", "-c",
             "import mmap,os,sys; f=os.open(sys.argv[1],os.O_RDWR); m=mmap.mmap(f,0); os.close(f); m[:]=b'fail'; m.flush(); m[:]=b'good'; m.flush(); print('mapped',flush=True); sys.stdin.readline(); m.close()"])
             .arg(&file).stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()

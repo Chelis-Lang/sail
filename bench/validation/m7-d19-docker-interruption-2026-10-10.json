@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "source_commit": "d19f6358f19593d1601e874605cdbf50c904eb0a",
+  "platform": "Linux x86-64 under Docker emulation on macOS arm64",
+  "status": "interrupted; no acceptance conclusion",
+  "interruption": {
+    "backend_evidence": "Docker VM stopped gracefully; subsequent backend reported disk-full and commands saw read-only filesystem",
+    "cause_attribution": "No responsible user or process established",
+    "recovery": "Restarted stopped Docker controls; resumed only owned acceptance container. No pruning of other project data."
+  },
+  "repair_benchmark": {
+    "qualified_measured_cycles": 0,
+    "results_file_recovery": "918 bytes, all null; not parseable and not reconstructed",
+    "controller_exit": 120,
+    "exit_classification": "VM/filesystem interruption, not evidence of a verifier verdict or normal proof timeout",
+    "daemon_lifecycle_file_valid": true,
+    "cleanup_evidence": "Actor file only recorded startup; old processes ended with VM. No completed cleanup inferred."
+  },
+  "default_fast": {
+    "same_lines_retained": 146,
+    "complete_summary_retained": false,
+    "full_tier_pass": false,
+    "standard_controller": "queued; dependent fast exit file was not written, no standard run established"
+  },
+  "raw_artifacts": [
+    {
+      "name": "actor-lifecycle.json",
+      "bytes": 377,
+      "sha256": "bd685df9a32b5ebbc7fa67d23c4a1e5bf26c6320ea69065eb0534ad2cf841388",
+      "null_bytes": 0
+    },
+    {
+      "name": "default-fast.log",
+      "bytes": 13347,
+      "sha256": "65af1df470e029360a4bbfa8b015c4c50b3a24851f417cb2f863328437bca642",
+      "null_bytes": 0
+    },
+    {
+      "name": "repair-results.json",
+      "bytes": 918,
+      "sha256": "18ab23ec73d7d9205e40b75e9be69489a52d95bf246aad27da05c280d6516e74",
+      "null_bytes": 918
+    },
+    {
+      "name": "repair.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "null_bytes": 0
+    }
+  ],
+  "next_run": "Fresh frozen corrected code and fresh output directories; preserve old failures and original bounds."
+}
