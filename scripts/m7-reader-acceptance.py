@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """Local warm-reader acceptance: real setup, authoritative proof, then unchanged censuses.
 
+See docs/reader-acceptance.md for invocation, archival layouts and failure handling.
 Setup follows the frozen repair workload: ordinary independent full verification,
 then the exact repair-function context on unchanged source. Every setup cost and
 failure is retained separately from reader latency. No prior receipt is copied.
 """
 import argparse
+from contextlib import contextmanager
+import hashlib
 import importlib.util
 import json
 import math
 import os
 from pathlib import Path
 import platform
+import re
+import stat
 import shutil
 import subprocess
 import time
@@ -100,18 +105,112 @@ def pending_projection(document, original, manifest, package_id, target, kind, f
     return True
 
 
-def owned_original(path):
-    """Bounded original output is used only to distinguish async projection setup."""
-    with path.open("rb") as stream:
-        payload = stream.read(32 * 1024 * 1024 + 1)
-    assert len(payload) <= 32 * 1024 * 1024, "owned worker document exceeds protocol bound"
+def original_json(stream):
+    """Bounded, duplicate-free owned evidence; never a replacement for public admission."""
+    payload = stream.read(32 * 1024 * 1024 + 1)
+    assert len(payload) <= 32 * 1024 * 1024, "owned document exceeds protocol bound"
     def unique(pairs):
         value = {}
         for key, item in pairs:
-            assert key not in value, "duplicate owned worker document field"
+            assert key not in value, "duplicate owned document field"
             value[key] = item
         return value
-    return json.loads(payload, object_pairs_hook=unique)
+    return json.loads(payload, object_pairs_hook=unique), payload
+
+
+def owned_file(directory, name):
+    """Open one regular retained file without following a substituted symlink."""
+    descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+    try:
+        assert stat.S_ISREG(os.fstat(descriptor).st_mode), "owned evidence is not a regular file: " + name
+        stream = os.fdopen(descriptor, "rb")
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return stream
+
+
+@contextmanager
+def owned_job(cache, job, expected=None):
+    """Resolve exactly one known layout through pinned, non-symlink directory descriptors."""
+    assert isinstance(job, str) and re.fullmatch(r"[A-Za-z0-9_-]+", job), "unsafe owned job ID"
+    directories = []
+    anchor = os.open(cache.resolve(strict=True), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for layout in ("projects/jobs", "results/projects/jobs"):
+            descriptor = os.dup(anchor)
+            try:
+                for part in (*layout.split("/"), job):
+                    child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+                    os.close(descriptor)
+                    descriptor = child
+            except FileNotFoundError:
+                os.close(descriptor)
+                continue
+            except BaseException:
+                os.close(descriptor)
+                raise
+            directories.append((descriptor, layout))
+        assert len(directories) == 1, "owned job layout is missing or ambiguous: " + job
+        descriptor, layout = directories[0]
+        with owned_file(descriptor, "record.json") as stream:
+            record, _ = original_json(stream)
+        status, submission = record["status"], record["submission"]
+        assert status["version"] == 1 and status["id"] == job, "owned record identity mismatch"
+        assert status["state"] in ("queued", "running", "completed", "cancelled", "superseded", "infrastructure_error"), "owned record lifecycle mismatch"
+        assert (isinstance(status["project_dir"], str) and Path(status["project_dir"]).is_absolute()
+                and status["project_dir"] == submission["project_dir"]
+                and status["args"] == submission["args"]), "owned record scope mismatch"
+        if expected is not None:
+            for field in ("id", "project_dir", "args"):
+                assert status[field] == expected[field], "owned public/record mismatch: " + field
+            if "input_revision" in expected:
+                assert status["input_revision"] == expected["input_revision"], "owned public/record mismatch: input_revision"
+        yield descriptor, record, layout
+    finally:
+        for descriptor, _ in directories:
+            os.close(descriptor)
+        os.close(anchor)
+
+
+def owned_original(cache, job, expected):
+    """Read only the requested owned job, with exact sealed bytes when a seal exists."""
+    with owned_job(cache, job, expected) as (directory, record, _):
+        with owned_file(directory, "stdout") as stream:
+            document, payload = original_json(stream)
+        projection = record.get("projection")
+        if projection is not None:
+            assert hashlib.sha256(payload).hexdigest() == projection["stdout_sha256"], "owned output seal mismatch"
+        return document
+
+
+def archive_owned_job(cache, job, destination, expected=None):
+    """Retain raw known files and explicit missing-file evidence, excluding secret record fields."""
+    with owned_job(cache, job, expected) as (directory, record, layout):
+        destination.mkdir(parents=True, exist_ok=False)
+        copied, missing = {}, []
+        for name in ("stdout", "stderr", "events.jsonl", "proof-source.jsonl"):
+            try:
+                stream = owned_file(directory, name)
+            except FileNotFoundError:
+                missing.append(name)
+                continue
+            with stream, (destination / name).open("xb") as output:
+                digest, length = hashlib.sha256(), 0
+                before = os.fstat(stream.fileno())
+                while chunk := stream.read(1024 * 1024):
+                    output.write(chunk)
+                    digest.update(chunk)
+                    length += len(chunk)
+                after = os.fstat(stream.fileno())
+            copied[name] = {"bytes": length, "sha256": digest.hexdigest(),
+                            "changed_during_copy": (before.st_size, before.st_mtime_ns, before.st_ctime_ns)
+                            != (after.st_size, after.st_mtime_ns, after.st_ctime_ns)}
+        evidence = {"job": job, "layout": layout, "state": record["status"]["state"],
+                    "files": copied, "missing": missing}
+        bench.write_json(destination / "archive.json", evidence)
+        assert record["status"]["state"] != "completed" or "stdout" not in missing, "completed owned job output is missing"
+        return evidence
 
 
 def wait_process(child, timeout, stage):
@@ -185,13 +284,15 @@ class Run:
                         SAIL_DAEMON_SOCKET=str(self.socket), SAIL_MANAGED_FORCE="1")
         self.owned = []
         self.job_started = {}
+        self.job_scopes = {}
         self.daemon = None
         self.summary = {"version": 1, "kind": "real-warm-reader-acceptance", "passed": False,
                         "platform": platform.platform(), "environment_label": args.environment_label,
                         "setup_contract": "ordinary complete full proof, then exact repair-function context",
                         "setup_invocation_budget_s": args.setup_timeout or None, "cli_budget_s": 30, "rpc_budget_s": 5,
                         "clients": 4, "samples_per_collector": 200, "p95_limit_ms": 200,
-                        "setup": [], "commands": [], "proofs": {}, "censuses": {}, "cleanup_errors": []}
+                        "setup": [], "commands": [], "proofs": {}, "censuses": {}, "cleanup_errors": [],
+                        "worker_archives": {}, "archival_errors": []}
         self.save()
 
     def save(self):
@@ -258,6 +359,7 @@ class Run:
                            "--engine", "interactive", "--function", self.args.function,
                            "--background", "--output", "json", *self.selection()], workspace, env)
         self.owned.append(job["id"])
+        self.job_scopes[job["id"]] = {field: job[field] for field in ("id", "project_dir", "args")}
         self.job_started[job["id"]] = began
         return job["id"]
 
@@ -290,7 +392,7 @@ class Run:
                 assert result["response"] == "result", result
                 document = result["value"]
                 if document["result"] is not None and document["result"]["currentness"] == "unknown":
-                    original = owned_original(self.cache / "results/projects/jobs" / job / "stdout")
+                    original = owned_original(self.cache, job, document["job"])
                     if pending_projection(document, original, manifest, package_id, self.args.target,
                                           self.args.kind, self.args.function):
                         awaiting_projection = True
@@ -376,6 +478,26 @@ class Run:
         self.summary["censuses"][label] = value
         self.save()
 
+    def finish_jobs(self):
+        """Archive failures never skip cancellation of exact owned jobs."""
+        for job in self.owned:
+            try:
+                evidence = archive_owned_job(self.cache, job, self.out / "worker-output" / job, self.job_scopes[job])
+                self.summary["worker_archives"][job] = evidence
+            except (OSError, ValueError, AssertionError, KeyError, TypeError) as error:
+                self.summary["archival_errors"].append({"job": job, "type": type(error).__name__, "message": str(error)})
+        for job in self.owned:
+            try:
+                response, _, _ = self.probe.call(self.probe.endpoint(self.socket), {"operation": "status", "id": job})
+                assert response["response"] == "status", response
+                if response["value"]["state"] in ("queued", "running"):
+                    cancelled, _, _ = self.probe.call(self.probe.endpoint(self.socket), {"operation": "cancel", "id": job, "superseded": False})
+                    bench.write_json(self.out / ("owned-cancel-" + job + ".json"), cancelled)
+                    assert cancelled["response"] == "status" and cancelled["value"]["state"] not in ("queued", "running"), cancelled
+            except (OSError, ValueError, AssertionError) as error:
+                self.summary["cleanup_errors"].append(str(error))
+        self.save()
+
     def run(self):
         self.freeze()
         imported = self.command("engine-install", [str(self.bin / "sail"), "engine", "install", "--from",
@@ -404,25 +526,9 @@ class Run:
                 self.summary["passed"] = True
                 self.summary["retained_daemon_pid"] = self.daemon.pid if self.args.keep_daemon else None
             finally:
-                for job in self.owned:
-                    destination = self.out / "worker-output" / job
-                    destination.mkdir(parents=True, exist_ok=True)
-                    for name in ("stdout", "stderr", "events.jsonl", "proof-source.jsonl"):
-                        source = self.cache / "results/projects/jobs" / job / name
-                        if source.is_file():
-                            shutil.copyfile(source, destination / name)
-                for job in self.owned:
-                    try:
-                        response, _, _ = self.probe.call(self.probe.endpoint(self.socket), {"operation": "status", "id": job})
-                        assert response["response"] == "status", response
-                        if response["value"]["state"] in ("queued", "running"):
-                            cancelled, _, _ = self.probe.call(self.probe.endpoint(self.socket), {"operation": "cancel", "id": job, "superseded": False})
-                            bench.write_json(self.out / ("owned-cancel-" + job + ".json"), cancelled)
-                            assert cancelled["response"] == "status" and cancelled["value"]["state"] not in ("queued", "running"), cancelled
-                    except (OSError, ValueError, AssertionError) as error:
-                        self.summary["cleanup_errors"].append(str(error))
-                self.save()
+                self.finish_jobs()
             assert not self.summary["cleanup_errors"], self.summary["cleanup_errors"]
+            assert not self.summary["archival_errors"], self.summary["archival_errors"]
         self.save()
 
 
