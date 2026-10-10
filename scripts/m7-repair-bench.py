@@ -251,6 +251,19 @@ def run(args):
         # Repair selection is part of context identity. A stock verify warmup
         # cannot establish the build/source declarations for those contexts.
         for index, function in enumerate(dict.fromkeys(cycle["function"] for cycle in project["cycles"])):
+            # M6's focused scope also has its own context. Give both modes
+            # the same original-source setup before any measured edits.
+            relative = function.split("::", 1)[1]
+            module, leaf = relative.rsplit("::", 1)
+            warm = invoke([str(binaries["m6"]), "verify", "--incremental", "--output", "json"]
+                          + selection + ["--", "--verify-only-module", module, "--verify-function", leaf],
+                          workspace, envs["m6"],
+                          (args.out / project["id"] / ("warm-focus-%d" % index)).resolve(), args.timeout)
+            if selected_report(warm["report"])["exit_code"] != 0:
+                raise ValueError("SAIL0942: original M6 focused warmup did not verify")
+            result["warmups"].append({"project": project["id"], "mode": "m6", "kind": "focused-context",
+                                      "function": function, "wall_ms": warm["wall_ms"]})
+            write_json(args.out / "results.json", result)
             for attempt in range(2):
                 warm = invoke([str(binaries["m7"]), "repair-check", "--engine", "interactive",
                                "--function", function, "--output", "json"] + selection + ["--lib"],
