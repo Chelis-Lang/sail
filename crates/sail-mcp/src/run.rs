@@ -74,6 +74,20 @@ pub fn run(
     dir: &Path,
     cancel: &Cancel,
 ) -> std::io::Result<Outcome> {
+    run_with_environment(program, args, dir, cancel, &[])
+}
+
+/// Runs a child with explicit extra environment settings.
+///
+/// # Errors
+/// Returns startup, I/O, or cancellation errors.
+pub fn run_with_environment(
+    program: &Path,
+    args: &[String],
+    dir: &Path,
+    cancel: &Cancel,
+    environment: &[(&str, &str)],
+) -> std::io::Result<Outcome> {
     if cancel.is_cancelled() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Interrupted,
@@ -83,6 +97,7 @@ pub fn run(
     let start = Instant::now();
     let mut cmd = Command::new(program);
     cmd.args(args)
+        .envs(environment.iter().copied())
         .current_dir(dir)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

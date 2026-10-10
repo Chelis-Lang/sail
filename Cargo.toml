@@ -12,6 +12,7 @@ repository = "https://github.com/Chelis-Lang/sail"
 # License is deliberately unset until the owner decides (docs/open-questions.md).
 
 [workspace.dependencies]
+inotify = { version = "=0.11.5", default-features = false }
 sail-smtlib = { path = "crates/sail-smtlib" }
 sail-session = { path = "crates/sail-session" }
 sail-key = { path = "crates/sail-key" }
@@ -28,6 +29,16 @@ sail-cli = { path = "crates/sail-cli" }
 sail-conformance = { path = "crates/sail-conformance" }
 sail-bench = { path = "crates/sail-bench" }
 
+# Live workspace events and optional HTTP shared-cache service (ADRs 0024/0025).
+notify = "8.2"
+bytes = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "sync", "io-util"] }
+
 ctrlc = "3.5"
 # Shared-tier entry signatures (ADR 0017). Default features: `std`, `fast`
 # (precomputed tables) and `zeroize` (secret keys are wiped on drop).
@@ -35,7 +46,9 @@ ed25519-dalek = "2.2"
 proptest = { version = "1", default-features = false, features = ["std"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sha2 = "0.10"
+# Enable the dependency's CPU-dispatched SHA implementation on arm64 as well
+# as x86: complete content binding otherwise dominates managed verification.
+sha2 = { version = "0.10", features = ["asm"] }
 signal-hook = { version = "0.3", default-features = false, features = ["iterator"] }
 toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
 toml_edit = { version = "0.23", default-features = false, features = ["parse", "display"] }

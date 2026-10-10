@@ -27,7 +27,7 @@ use sail_verus::attribution::{self, Provenance};
 /// Exit code when `sail verify` cannot set up (stable, `SAIL01xx`).
 const EXIT_SETUP: u8 = 2;
 
-fn on_path(name: &str) -> Option<PathBuf> {
+pub(crate) fn on_path(name: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     std::env::split_paths(&path)
         .map(|dir| dir.join(name))
@@ -63,7 +63,7 @@ pub(crate) fn real_z3(cargo_verus: &Path, shim: &Path) -> Option<PathBuf> {
 /// Connects to the daemon at `socket`, starting `sail serve` if nothing is
 /// listening. Returns whether a daemon is available.
 #[cfg(unix)]
-fn ensure_daemon(socket: &Path) -> bool {
+pub(crate) fn ensure_daemon(socket: &Path) -> bool {
     use std::os::unix::net::UnixStream;
     use std::os::unix::process::CommandExt as _;
     if UnixStream::connect(socket).is_ok() {
@@ -95,7 +95,7 @@ fn ensure_daemon(socket: &Path) -> bool {
 }
 
 #[cfg(not(unix))]
-fn ensure_daemon(_socket: &Path) -> bool {
+pub(crate) fn ensure_daemon(_socket: &Path) -> bool {
     false
 }
 
@@ -247,6 +247,9 @@ pub fn verify(
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
+    if let Some(exit) = crate::managed_cli::verify(args, out, err) {
+        return exit;
+    }
     let fail = |err: &mut dyn std::io::Write, e: &SetupError| {
         let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
         ExitCode::from(EXIT_SETUP)

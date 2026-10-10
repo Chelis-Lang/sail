@@ -23,6 +23,17 @@ allow = [
 ]
 confidence-threshold = 0.8
 
+# Explicit, version-scoped dependency review (ADR 0026). No general allowance.
+[[licenses.exceptions]]
+name = "notify"
+version = "=8.2.0"
+allow = ["CC0-1.0"]
+
+[[licenses.exceptions]]
+name = "webpki-root-certs"
+version = "=1.0.9"
+allow = ["CDLA-Permissive-2.0"]
+
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"

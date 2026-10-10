@@ -1,10 +1,12 @@
 # sail
 
-**S.A.I.L.** (Satisfiability Analysis & Inference Layer) is a Rust service and toolchain that sits between the [Verus](https://github.com/verus-lang/verus) verifier and its pinned Z3. Its goal is to return verification results as fast as possible, through caching, warm solver pools and function-level scheduling, without ever returning a result plain Verus would not have returned.
+**S.A.I.L.** (Satisfiability Analysis & Inference Layer) is a Rust service and toolchain that sits between the [Verus](https://github.com/verus-lang/verus) verifier and its pinned Z3. It caches solver replies and complete target proofs, with durable verification jobs for developers and agents. Default-mode correctness follows the pinned verifier and the charter’s policy for unstable queries; verdict-changing portfolios are explicitly opt-in.
 
-Status: **early.** Pass-through and local result caching work and pass the
-conformance harness (`docs/reports/2026-10-08-bootstrap.md`). See
-`docs/ROADMAP.md` for what comes next.
+Status: **live workspace verification and team caching implemented.**
+Complete proof receipts, durable jobs/watch/MCP and authenticated HTTP caching
+pass the retained acceptance in [the M6 report](docs/reports/2026-10-10-live-workspace.md).
+The report records performance costs, platform limits and emulation failures.
+See `docs/ROADMAP.md` for follow-up work.
 
 ## Using it
 
@@ -18,8 +20,20 @@ Its only change is putting `sail-z3` in front of the Z3 your Verus already
 uses. It starts the cache daemon (`sail serve`) on demand. To switch back,
 run `cargo verus verify` again.
 
-`sail watch [ARGS...]` re-verifies whenever sources change, cancelling the
-run in flight. With the cache warm, only edited buckets are re-solved.
+The managed workflow adds complete incremental reports and durable local jobs:
+
+```sh
+sail verify --incremental --output json  # complete reports, including reused targets
+sail verify --background                # submit and keep working
+sail jobs list                         # status, result, logs and cancel also available
+sail watch                            # follow workspace and path-dependency edits
+```
+
+One verifier worker runs by default. Completed target reports record which run
+established them; current execution counters stay separate. Ordinary local use
+needs no server configuration or credentials. Frontend receipt reuse targets
+Linux; macOS uses conservative currentness checks that can require fresh proofs.
+See [live workspace verification](docs/workspace-verification.md).
 
 `sail verify --output json [ARGS...]` also prints one JSON document on stdout.
 It holds per-function verdicts, with tier and provenance, and per-obligation
@@ -27,7 +41,8 @@ results with stable identities, effort and counterexample models. Diagnostics
 still go to stderr unchanged. See `docs/output-schema.md`.
 
 The daemon keeps replies in memory in front of the disk cache, stops after
-30 minutes without connections, and logs to `daemon.log` in the cache root.
+30 minutes without connections or active jobs, and logs to `daemon.log` in the
+cache root.
 `sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
 inspects, checks, shrinks or empties the cache (ADR 0015).
 
@@ -43,10 +58,18 @@ sail cache trust add ci.key.pub                         # on each reader
 SAIL_SHARED_STORE=/shared/sail sail verify [ARGS...]    # or: sail serve --shared DIR
 ```
 
+An optional HTTP server shares the same signed entries over HTTPS:
+`sail cache serve`, `sail cache connect`, and `sail cache publish --to URL`.
+Readers configure signing trust separately from access credentials. See
+[HTTP team caching](docs/http-shared-cache.md) for a local trial and deployment.
+
 `sail mcp` is an MCP server on stdio for agents that verify after every
 edit. Its tools are `verify` (a crate, module or function, returning the
 JSON document above), `counterexample`, `cached_result` (latest verdicts,
 saying whether sources changed since) and `fragility` (local solver replay measurement).
+The asynchronous tools `start_verification`, `verification_status`,
+`verification_result` and `cancel_verification` use the same durable jobs as
+the CLI, so an agent can inspect results while verification continues.
 Register it as the stdio command `sail mcp`, for example
 `claude mcp add --transport stdio sail -- sail mcp`. See `docs/mcp.md`.
 

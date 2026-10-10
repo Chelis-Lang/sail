@@ -7,7 +7,7 @@
 //! It starts `<sail> mcp`, sends `initialize`, `notifications/initialized`,
 //! `tools/list` and `tools/call verify {"project_dir": <project-dir>}`, then
 //! closes stdin. It checks that:
-//! - the handshake succeeds and the four tools are listed;
+//! - the handshake succeeds and all compatibility and job tools are listed;
 //! - the call succeeds and returns a schema-v1 report;
 //! - every function's verdict and tier equal those in `<sail.json>` (the
 //!   stdout of `sail verify --output json` on the same project), with the
@@ -86,7 +86,18 @@ fn check(args: &[String]) -> Result<String, String> {
         .flatten()
         .filter_map(|t| t["name"].as_str())
         .collect();
-    if names != ["verify", "counterexample", "cached_result", "fragility"] {
+    if names
+        != [
+            "verify",
+            "counterexample",
+            "cached_result",
+            "fragility",
+            "start_verification",
+            "verification_status",
+            "verification_result",
+            "cancel_verification",
+        ]
+    {
         return Err(format!("unexpected tools: {names:?}"));
     }
     let call = response(3)?;

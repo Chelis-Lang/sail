@@ -242,6 +242,26 @@ pub struct SharedInfo {
     pub trusted_keys: Vec<String>,
     /// How long one lookup may take, in milliseconds.
     pub timeout_ms: u64,
+    /// Optional HTTP transport state; absent for directory stores and older daemons.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote: Option<RemoteInfo>,
+}
+
+/// Sanitized optional HTTP transport state, with no credentials or response bodies.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RemoteInfo {
+    /// Sanitized endpoint, without URL credentials or query strings.
+    pub endpoint: String,
+    /// Most recent result category (for example `ok`, `http-401`, `timeout`).
+    pub last_status: Option<String>,
+    /// HTTP requests attempted since this endpoint was configured.
+    pub requests: u64,
+    /// Requests refused for authentication or authorization.
+    pub auth_refused: u64,
+    /// Requests that could not deliver usable bytes.
+    pub unavailable: u64,
+    /// Concurrent same-key readers joined to an existing lookup.
+    pub coalesced: u64,
 }
 
 /// A decoded request.
@@ -594,6 +614,7 @@ mod tests {
                 trust_dir: "/tmp/c/trust".to_owned(),
                 trusted_keys: vec!["0123456789abcdef".to_owned()],
                 timeout_ms: 250,
+                remote: None,
             }),
         };
         let mut buf = Vec::new();

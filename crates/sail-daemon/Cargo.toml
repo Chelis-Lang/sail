@@ -8,11 +8,22 @@ publish.workspace = true
 repository.workspace = true
 
 [dependencies]
+bytes.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+reqwest.workspace = true
+rustls.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 sail-api.workspace = true
+sail-verus.workspace = true
 sail-cache.workspace = true
 sail-key.workspace = true
 
 [dev-dependencies]
+sha2.workspace = true
 sail-cache.workspace = true
 serde_json.workspace = true
 

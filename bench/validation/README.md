@@ -47,3 +47,138 @@ The generator refuses incomplete coverage, a disagreement, an infrastructure
 error or an unexpected skip. Deep instability additionally requires that the
 entire Sail result match one complete observed plain result. Preserved plain
 failures and ignored upstream cases do not count as successful proofs.
+
+## HTTP shared-cache runtime
+
+`http-cache-runtime-linux-2026-10-09.json` records the tested runtime image and
+Sail binary hashes, Linux platform, glibc and unprivileged user. It checks actual
+server startup, reader/writer authentication, private credential permissions and
+credential persistence after replacement. The test publishes only a loopback
+host port, captures credentials privately and removes its containers and volume.
+Docker is needed for this deployment probe, not normal Sail verification.
+
+`http-cache-runtime-linux-2026-10-10.json` repeats this deployment probe using
+the frozen Linux executable from M6 acceptance (revision `a518a104`). It uses
+the same executable as the fixed CLI/MCP and frontend-reuse acceptance.
+Both test containers and their private credential volume were removed afterward.
+The `before-source-fix` artifact retains the earlier `44339db` deployment probe;
+that build's separate frontend-reuse failure is preserved in
+`managed-reuse-defect-linux-2026-10-10.json`.
+
+After building `deploy/cache/Dockerfile` with the Linux release binary, run:
+
+```sh
+python3 bench/validation/http_runtime.py --image sail-team-cache --out bench/validation/http-cache-runtime-linux-2026-10-09.json
+```
+
+Signed publication, conflicting writes, certificate-based full-session reuse and
+a fresh HTTP reader's exact equality with pinned Z3 are covered by the daemon
+and ignored real-solver integration suites. The runtime probe complements those
+checks and does not claim to validate TLS termination in an operator's proxy.
+
+## Linux Anvil acceptance
+
+`anvil-cache-acceptance-linux-2026-10-10.json` retains Anvil's pass-through,
+cache-fill and cache-warm differential results, raw report hashes and exact
+tested binary and solver hashes. Every round compares 143 structured functions;
+Verus itself reports 144 verified and zero errors. No projects are skipped.
+
+This is a long local-only run of `ci/run.sh conformance standard --project anvil`
+inside the CI image, with OpenSSL available. Linux x86-64 runs under emulation
+on the shared development machine. Wall times and RSS are retained observations,
+and do not establish reference performance claims.
+
+With raw reports and the unchanged tested binaries available, regenerate with:
+
+```sh
+python3 bench/validation/anvil_acceptance.py REPORT_DIRECTORY RELEASE_BINARY_DIRECTORY --solver PINNED_Z3 --cache-entries ENTRY_COUNT > bench/validation/anvil-cache-acceptance-linux-2026-10-10.json
+```
+
+The generator refuses a missing round, disagreement, instability, infrastructure
+error, skip or unexpected coverage. It retains no local paths or credentials.
+
+## Native managed acceptance
+
+`installed-managed-native-linux-2026-10-10.json` retains the native Linux PR
+acceptance at revision `a518a104`: complete cold and unchanged reports,
+missing-receipt recovery, and a failing edit with restored mtime. The workflow
+also exercises the installed CLI jobs and asynchronous MCP tools. All checks
+passed within their original ten-minute job limits. This is acceptance evidence,
+not the separate three-round frontend performance workload.
+
+Regenerate from the downloaded managed artifact, run metadata and workflow log:
+
+```sh
+python3 bench/validation/native_managed_acceptance.py REPORT_DIRECTORY RUN_METADATA_JSON WORKFLOW_LOG > bench/validation/installed-managed-native-linux-2026-10-10.json
+```
+
+The generator rejects failed or skipped checks, unexpected warm verification,
+incomplete reports and invalid recovery outcomes. It retains report hashes and
+controlled fixture summaries without environments or local paths. Separate
+emulation failure artifacts remain recorded; a native pass does not establish
+the cause of an emulated failure.
+
+## Frontend reuse measurements
+
+`live_workspace.py` runs three paired rounds against a warm SMT cache and
+checks complete requested reports, zero verifier invocations on eligible reuse,
+and fresh verification after a real proof edit. Invocation deadlines and
+currentness assertions remain fixed. Select an existing private fixture parent
+with `--work-root FIXTURE_PARENT` to reduce unrelated namespace mutations on
+platforms with conservative absent-configuration checks. This does not bypass
+those checks or guarantee currentness.
+
+The native Linux installed acceptance is retained separately from incomplete
+emulated and macOS measurement attempts. No incomplete attempt establishes a
+speedup or passes the three-round workload. The synthetic RPC contention probe
+in `bench/acceptance/workspace-jobs-rpc-x86_64-linux-emulated-2026-10-10.json`
+records actual bounded errors without claiming proof acceptance. Its idle and
+two-concurrent controls succeeded, while four concurrent freshness reads under
+emulation reached the existing five-second deadline.
+
+## M6 default solver conformance
+
+`live-workspace-conformance-2026-10-10.json` retains twelve report summaries and
+hashes. Full fast coverage is 147 units and 3,450 compared functions in each
+pass-through, fill and warm round. Native standard coverage is 157 units and
+11,446 functions, with two explicit requirement skips. Separate zero-skip
+verismo-main and Linux Anvil runs recover those requirements: combined standard
+coverage is 159 units and 12,726 compared functions per round. No round has a
+verdict/diagnostic disagreement, instability or infrastructure error. Expected
+plain verification failures remain failures.
+
+The native integration runs overlapped frontend fixes; these summaries do not
+claim one frozen executable throughout the corpus. Default SMT policy and key
+formats were unchanged. The separate Anvil artifact retains its exact tested
+binaries. Long tiers ran locally only.
+
+With raw reports arranged under `REPORT_DIRECTORY` as named by the manifest:
+
+```sh
+python3 bench/validation/acceptance.py bench/validation/live-workspace-conformance-input.json REPORT_DIRECTORY > bench/validation/live-workspace-conformance-2026-10-10.json
+```
+
+The generator checks exact unit/function coverage, explicit skips and zero
+infra/disagreement counts. Published summaries retain no report paths.
+
+The `frontend-reuse-2` and `frontend-reuse-300` macOS artifacts retain three
+complete paired rounds, spread, RSS, exact frozen binary identity and proof-edit
+results. Every reused report was current and complete with zero verifier
+invocations. These easy synthetic fixtures were slower than ordinary verification
+with its SMT cache warm: managed medians were 2.14 and 2.05 seconds, versus 0.75
+and 1.05 seconds. They establish report reuse and resource observations, not a
+general wall-time improvement. Historical attempts are retained separately.
+
+`bench/acceptance/exact-smt-same-name-aarch64-macos-2026-10-10.json` retains the
+final fresh library/binary oracle. Each requested target's full solver input
+matches plain Verus byte-for-byte. The outer observation wrapper and its hash
+are explicit; Historical currentness and three separate vstd ordering
+differences remain recorded. This is proof/byte acceptance, not performance.
+
+`managed-lib-bin-smt-oracle-linux-2026-10-10.json` independently repeats the exact
+requested-target input comparison with the frozen Linux executable. Both
+fresh targets are complete and the project is Current. An unavailable daemon
+forces actual pinned Z3 trace capture; no receipt is reused. Both runs use the
+same diagnostic/transcript flags and source directory. All-session vstd hashes
+remain unequal and are recorded separately. This supplemental emulated oracle
+is not native reference performance or cached-reply acceptance.

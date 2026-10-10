@@ -41,14 +41,53 @@ Milestone M5 and `docs/reports/2026-10-09-initial-product.md` record the
 completion decisions and full local acceptance. The owner kept the unknown
 serving cap at 50%; the later research below remains deferred.
 
+## M6: Live workspace verification and team caching (implemented)
+
+This milestone implements a complete local developer and agent
+workflow. Ordinary single-developer use needs no credentials, server setup,
+account, or container. One verification worker runs by default.
+
+1. **Managed workspace verification** ([#64](https://github.com/Chelis-Lang/sail/issues/64)).
+   Always invoke Cargo; retain complete successful per-target proof receipts in
+   Sail-owned artifacts. Bind them to the exact verification context and actual
+   artifacts. Return complete reports when Cargo reuses verified targets, and
+   refresh missing or incompatible evidence.
+2. **Persistent jobs, watch and MCP** ([#65](https://github.com/Chelis-Lang/sail/issues/65)).
+   Submit, inspect, follow and cancel verification across sessions. Watch the
+   workspace and local path dependencies; distinguish current results from
+   historical or superseded work. Result lookups stay responsive during runs.
+3. **Optional HTTP team cache** ([#66](https://github.com/Chelis-Lang/sail/issues/66)).
+   Read and publish signed SMT entries over authenticated HTTPS, with an
+   optional lightweight self-hosted service. Reader signing trust remains
+   independent of transport authentication; remote failures cost misses.
+
+Acceptance is retained in `docs/reports/2026-10-10-live-workspace.md`: complete
+unchanged reports with zero verifier invocations, native CLI/MCP and recovery
+checks, exact same-name library/binary solver inputs, full local corpus coverage,
+and three-round secondary-platform resource measurements. Easy synthetic
+fixtures show freshness overhead, not a general wall-time gain. Follow-ups are
+safe freshness-cost reduction ([#69](https://github.com/Chelis-Lang/sail/issues/69))
+and an unresolved emulated verifier wait
+([#68](https://github.com/Chelis-Lang/sail/issues/68)). No deadline or check was
+relaxed to classify a failed attempt as success.
+
+Exit evidence: unchanged eligible workspaces invoke no verifier and return
+complete reports; edits and verification-context changes invalidate correctly;
+job cancellation/restart/currentness work across CLI and MCP; a fresh remote
+reader consumes verified signed replies and silence certificates. Run full
+local gates and affected conformance, with three-round performance and resource
+measurements. Long tests stay local-only; every required CI job remains below
+ten minutes. Persistent Verus internals, solver pools, normalization, stack-only
+keys and new SMT backends remain deferred.
+
 ## Later waves (from the charter's initial scope)
 
 1. **Caching.**
    - **Done:** key v2; a disk tier, a 256 MiB memory tier and write-behind
      stores (ADR 0011, 0015); serving far-from-limit `unknown` answers
      (ADR 0009); effort recording; fault injection; a shared tier of
-     signed entries in a directory store (ADR 0017).
-   - **Designed, not built:** read-only HTTP(S) shared stores (ADR 0017).
+     signed entries in a directory store (ADR 0017); optional authenticated
+     HTTP(S) reading and publication with a self-hosted server (ADR 0025).
    - **Deferred:** warm solver pools (measured; see below) and the opt-in
      stack-key mode (ADR 0008 update).
 2. **CLI.**

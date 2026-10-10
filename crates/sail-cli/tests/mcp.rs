@@ -1,43 +1,61 @@
-//! `sail mcp` over stdio: the handshake, then every tool, against a stand-in
-//! for `cargo-verus` that replays a recorded Verus run (the attribution
-//! fixture: its JSON on stdout, its diagnostics on stderr, and its logs
-//! copied into the `--log-dir` sail asks for). No real Verus or Z3 runs.
+//! MCP's legacy compatibility path over a local duplex stream.
+//! A configured older-Sail adapter delegates ordinary verification to the CLI,
+//! replaying recorded Verus diagnostics/models/logs through fake cargo-verus.
+//! Current managed jobs are tested separately by `job_tools` and real CI acceptance.
+//! No real Verus or Z3 runs here.
 #![cfg(unix)]
 
+use std::fmt::Write as _;
 use std::io::{BufRead as _, BufReader, Write as _};
+use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::Command;
 use std::sync::mpsc::{Receiver, channel};
+use std::thread::JoinHandle;
 use std::time::Duration;
 
 use serde_json::{Value, json};
 
 struct Client {
-    child: Child,
-    stdin: Option<ChildStdin>,
+    server: Option<JoinHandle<std::io::Result<()>>>,
+    stdin: Option<UnixStream>,
     lines: Receiver<String>,
     next: i64,
 }
 
 impl Client {
     fn start(dir: &Path, env: &[(&str, PathBuf)]) -> Self {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail"));
-        cmd.arg("mcp")
-            .current_dir(dir)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
-        for (k, v) in env {
-            cmd.env(k, v);
+        let legacy = dir.parent().unwrap_or(dir).join("legacy-sail");
+        let executable = legacy.with_file_name("real-sail");
+        if !executable.is_file() {
+            assert!(std::fs::copy(env!("CARGO_BIN_EXE_sail"), &executable).is_ok());
+            // The replay backend never invokes a solver. This private guard
+            // makes the fixture independent of workspace binary build ordering.
+            write_exec(&legacy.with_file_name("sail-z3"), "#!/bin/sh\nexit 2\n");
         }
-        let mut child = match cmd.spawn() {
-            Ok(c) => c,
-            Err(e) => unreachable!("cannot start sail mcp: {e}"),
+        let mut script = String::from("#!/bin/sh\n");
+        for (key, value) in env {
+            let _ = writeln!(script, "export {key}='{}'", value.display());
+        }
+        let _ = write!(
+            script,
+            "if [ \"$1\" = jobs ]; then exit 2; fi\nif [ \"$1\" = verify ] && [ \"$2\" = --background ]; then shift 2; set -- verify \"$@\"; fi\nexec '{}' \"$@\"\n",
+            executable.display()
+        );
+        write_exec(&legacy, &script);
+        let (server, stdout) = UnixStream::pair().unwrap_or_else(|error| unreachable!("{error}"));
+        let input = server
+            .try_clone()
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let stdin = stdout.try_clone().ok();
+        let config = sail_mcp::Config {
+            sail: legacy,
+            store_dir: dir.parent().map(|root| root.join("cache/mcp")),
+            cwd: dir.to_path_buf(),
         };
+        let server =
+            std::thread::spawn(move || sail_mcp::serve(config, BufReader::new(input), server));
         let (tx, lines) = channel();
-        let Some(stdout) = child.stdout.take() else {
-            unreachable!("no stdout")
-        };
         std::thread::spawn(move || {
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
@@ -46,9 +64,8 @@ impl Client {
                 }
             }
         });
-        let stdin = child.stdin.take();
         Self {
-            child,
+            server: Some(server),
             stdin,
             lines,
             next: 1,
@@ -92,10 +109,19 @@ impl Client {
     }
 }
 
+impl Client {
+    fn close_input(&mut self) {
+        if let Some(stdin) = self.stdin.take() {
+            let _ = stdin.shutdown(std::net::Shutdown::Write);
+        }
+    }
+}
 impl Drop for Client {
     fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
+        self.close_input();
+        if let Some(server) = self.server.take() {
+            let _ = server.join();
+        }
     }
 }
 
@@ -180,7 +206,16 @@ exit 1
         .collect();
     assert_eq!(
         names,
-        ["verify", "counterexample", "cached_result", "fragility"]
+        [
+            "verify",
+            "counterexample",
+            "cached_result",
+            "fragility",
+            "start_verification",
+            "verification_status",
+            "verification_result",
+            "cancel_verification",
+        ]
     );
 
     // verify (the project defaults to the server's working directory).
@@ -229,7 +264,9 @@ exit 1
             .any(|d| d["message"] == "postcondition not satisfied")),
         "{ce}"
     );
-    assert_eq!(ce["freshness"]["status"], "current");
+    // Legacy source hashes omit dependencies/configuration/runtime identity.
+    // ADR 0024 requires unknown coverage even when those local files match.
+    assert_eq!(ce["freshness"]["status"], "unknown");
 
     // cached_result, by obligation id.
     let id = obligations
@@ -349,9 +386,9 @@ exit 1
     assert!(std::fs::remove_file(root.join("slow")).is_ok());
 
     // Closing stdin ends the server.
-    c.stdin = None;
-    let status = c.child.wait();
-    assert!(status.is_ok_and(|s| s.success()));
+    c.close_input();
+    let status = c.server.take().map(JoinHandle::join);
+    assert!(matches!(status, Some(Ok(Ok(())))));
 
     // A new server finds the recorded results on disk.
     let mut c = Client::start(&project, &env);

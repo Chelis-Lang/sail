@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "scope": "Durable job RPC latency diagnosis using synthetic zero-target Completed records; no verifier ran and no proof acceptance is claimed.",
+  "observed_at_utc": "2026-10-10T01:11:19.033263+00:00",
+  "source_revision": "a518a104c033948127c6e61ab705023907b74ac8",
+  "sail_sha256": "e32ceb3ec7b0d75f7c398645dcc8f306dd3010dcc9b708e24a7dafa3b943715f",
+  "machine": {
+    "system": "Linux",
+    "architecture": "x86_64",
+    "execution": "Linux x86-64 container under emulation on a macOS arm64 development host",
+    "container_cpu_count": 8,
+    "load_average_after_four_concurrent": [
+      0.8037109375,
+      0.61962890625,
+      2.1552734375
+    ]
+  },
+  "protocol": {
+    "jobs_version": 1,
+    "rpc_read_deadline_s": 5,
+    "frame_limit_bytes": 33554432
+  },
+  "runtime_observation": {
+    "file_count": 150,
+    "declared_file_bytes": 1408156032,
+    "control_bytes": 24
+  },
+  "synthetic_payload_bytes": {
+    "diagnostic-small-minimal": 573,
+    "diagnostic-small-large": 1940575,
+    "diagnostic-actual-minimal": 574,
+    "diagnostic-actual-large": 1940576
+  },
+  "operations": [
+    {
+      "operation": "list-before",
+      "duration_s": 0.0591022080006951,
+      "exit_code": 0,
+      "stdout_bytes": 1740,
+      "stderr": "",
+      "concurrency": 1,
+      "stdout_sha256": "804208cdb1043aebf1777d37317240541edec6be592acb6eedfe0cd0cd86c865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "efca6c007203bda6db3db9a91acc6f2973080e6d81dbaa52a545af448978d934"
+    },
+    {
+      "operation": "diagnostic-small-minimal",
+      "duration_s": 0.13997762500002864,
+      "exit_code": 0,
+      "stdout_bytes": 1223,
+      "stderr": "",
+      "concurrency": 1,
+      "stdout_sha256": "aebf03aa82db275a4118cd24b47965d98a72e67e9cc18088794fcd1ed74a150f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "e2479b78f229ed4074a1e71f60bbd05018a240ce409e78dbc312ed107070a9e2"
+    },
+    {
+      "operation": "diagnostic-small-large",
+      "duration_s": 0.2056815000014467,
+      "exit_code": 0,
+      "stdout_bytes": 1941231,
+      "stderr": "",
+      "concurrency": 1,
+      "stdout_sha256": "f9aa679804aa7fdff88c1edc3a5c16fe63407a4dc52f709318e8cf77044b4a31",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "13ed9a7d4deb8817c30d65cdd6baaca221fcf7743f65b5033c2c08d9d0780db0"
+    },
+    {
+      "operation": "diagnostic-actual-minimal",
+      "duration_s": 5.199645126998803,
+      "exit_code": 0,
+      "stdout_bytes": 1225,
+      "stderr": "",
+      "concurrency": 1,
+      "stdout_sha256": "c5753b2945d6fcdb7ab34a34cac8a919c33e46105b6a588e044b88aa7cf52a58",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "74e1caa9f2b594a73014ad840ee78cc11f5505e6ee88b40b4fe22e192da0e46f"
+    },
+    {
+      "operation": "diagnostic-actual-large",
+      "duration_s": 4.085779586001081,
+      "exit_code": 0,
+      "stdout_bytes": 1941233,
+      "stderr": "",
+      "concurrency": 1,
+      "stdout_sha256": "7bb1de7c387d935e3492c93bc04912793ae4ea8c78fe65e4802ba841fa3d323f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "db9da7e7bbe02717a7d68f95aeeea6935823ffc877b5e91add30b6dd48c101f7"
+    },
+    {
+      "operation": "actual-status",
+      "duration_s": 3.8611680009998963,
+      "exit_code": 0,
+      "stdout_bytes": 437,
+      "stderr": "",
+      "concurrency": 1,
+      "stdout_sha256": "ac7fd8e64ade6bd5815ca51ba7ca694660d87063d6833e77382c40dd2fbef5a1",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "6de5a6256b7e1b51ce80181dfabdddea9b558aa8bff0b1341a17a78f282f714f"
+    },
+    {
+      "operation": "list-after",
+      "duration_s": 0.04214883299937355,
+      "exit_code": 0,
+      "stdout_bytes": 1740,
+      "stderr": "",
+      "concurrency": 1,
+      "stdout_sha256": "804208cdb1043aebf1777d37317240541edec6be592acb6eedfe0cd0cd86c865",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "f4215b0cc667b959d9da2b9a737d0c7344ad52af9a720236fded9a3ca9c8ac73"
+    },
+    {
+      "operation": "concurrent-1",
+      "duration_s": 4.820456378000017,
+      "exit_code": 0,
+      "stdout_bytes": 1941233,
+      "stderr": "",
+      "concurrency": 2,
+      "stdout_sha256": "7bb1de7c387d935e3492c93bc04912793ae4ea8c78fe65e4802ba841fa3d323f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "643428536eb81c0da4f03c2ae9ff832303fc1e6cb0a66d69a610a6c120cd6d41"
+    },
+    {
+      "operation": "concurrent-2",
+      "duration_s": 4.820052876999398,
+      "exit_code": 0,
+      "stdout_bytes": 1941233,
+      "stderr": "",
+      "concurrency": 2,
+      "stdout_sha256": "7bb1de7c387d935e3492c93bc04912793ae4ea8c78fe65e4802ba841fa3d323f",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "record_sha256": "805f4b7e0b97c368f49a279e9e74361b13de225b8ce5c6b7ff2fe640b56159c6"
+    },
+    {
+      "operation": "four-concurrent-1",
+      "duration_s": 5.142391335999491,
+      "exit_code": 2,
+      "stdout_bytes": 0,
+      "stderr": "error[SAIL0811]: Resource temporarily unavailable (os error 11)\n",
+      "concurrency": 4,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "1e9bac0a1939f2c7a4d235c04ec1241718f71268e897f5d160ddebb4b71bb02b",
+      "record_sha256": "6751c7f380be700042a761657a026a42c0518c09f98f3bee53d1338864e1dc52"
+    },
+    {
+      "operation": "four-concurrent-2",
+      "duration_s": 5.128024669998922,
+      "exit_code": 2,
+      "stdout_bytes": 0,
+      "stderr": "error[SAIL0811]: Resource temporarily unavailable (os error 11)\n",
+      "concurrency": 4,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "1e9bac0a1939f2c7a4d235c04ec1241718f71268e897f5d160ddebb4b71bb02b",
+      "record_sha256": "43637735d2d6e44560ac6d7dfb90678b24939a8d4fe40b8f0f410e87ad2d6158"
+    },
+    {
+      "operation": "four-concurrent-3",
+      "duration_s": 5.119905420000578,
+      "exit_code": 2,
+      "stdout_bytes": 0,
+      "stderr": "error[SAIL0811]: Resource temporarily unavailable (os error 11)\n",
+      "concurrency": 4,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "1e9bac0a1939f2c7a4d235c04ec1241718f71268e897f5d160ddebb4b71bb02b",
+      "record_sha256": "cdcc8eb613c014685ac3a204596ef88d2f5702acbb13d7ce9d5b6eab452c5fb9"
+    },
+    {
+      "operation": "four-concurrent-4",
+      "duration_s": 5.127919085998656,
+      "exit_code": 2,
+      "stdout_bytes": 0,
+      "stderr": "error[SAIL0811]: Resource temporarily unavailable (os error 11)\n",
+      "concurrency": 4,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "1e9bac0a1939f2c7a4d235c04ec1241718f71268e897f5d160ddebb4b71bb02b",
+      "record_sha256": "cc89e74f06ef21a712a151458aea9bc2339a2699afadd8c9d37c2af58adadb69"
+    }
+  ],
+  "conclusion": "Idle and two-concurrent reads succeed; four concurrent reads return the bounded five-second RPC error while the small-runtime payload controls remain fast.",
+  "limits": [
+    "The reports contain no verification targets; large payloads are approximately 1.94 MB of diagnostic note padding, not real proof reports.",
+    "The original emulated installed-job failure did not retain its subprocess stderr; this reproduces the same exit code but does not prove that original failure had the same cause.",
+    "Native Linux CI passed the real managed, jobs and MCP assertions with unchanged deadlines.",
+    "This is an availability/resource diagnostic under explicitly controlled contention, not a performance benchmark or verdict disagreement.",
+    "No runtime identities, environment values, credentials or local paths are included. Stdio digests refer to private retained diagnostic files; record digests cover compact sorted JSON before the record digest field."
+  ]
+}

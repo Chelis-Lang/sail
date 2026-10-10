@@ -32,7 +32,7 @@ pub const LEGACY_VERSIONS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26",
 
 const VERSION_KEY: &str = "io.modelcontextprotocol/protocolVersion";
 
-const INSTRUCTIONS: &str = "sail verifies Verus crates with the same verdicts as `cargo verus verify`, serving unchanged solver work from a cache. After each edit, call `verify` (optionally with `module` or `function`) for per-function verdicts; `provisional` and `unknown` are never `verified`. Use `counterexample` for the models behind a failure and `cached_result` to recall verdicts without re-running (it says whether sources changed since).";
+const INSTRUCTIONS: &str = "sail verifies Verus crates with the same verdicts as `cargo verus verify`, serving unchanged solver work from a cache. After each edit, call `start_verification` and inspect `verification_status`/`verification_result`, or call blocking `verify` (optionally with `module` or `function`) for per-function verdicts; `provisional` and `unknown` are never `verified`. Use `counterexample` for the models behind a failure and `cached_result` to recall verdicts without re-running (it says whether sources changed since).";
 
 /// Every revision the server speaks.
 fn supported() -> Vec<&'static str> {
@@ -302,7 +302,16 @@ mod tests {
             .collect();
         assert_eq!(
             names,
-            ["verify", "counterexample", "cached_result", "fragility"]
+            [
+                "verify",
+                "counterexample",
+                "cached_result",
+                "fragility",
+                "start_verification",
+                "verification_status",
+                "verification_result",
+                "cancel_verification"
+            ]
         );
         assert!(by_id(&r, 3)["result"].is_object());
         assert_eq!(

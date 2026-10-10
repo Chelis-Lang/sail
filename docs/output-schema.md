@@ -3,7 +3,9 @@
 `sail verify --output json [cargo verus verify arguments…]` verifies exactly
 as `sail verify` does and then prints one JSON document describing every
 verified function. This page is the reference for that document. The decisions
-behind it are in ADR 0014.
+behind it are in ADR 0014. Managed `--incremental` verification instead wraps
+these per-target reports in the independently versioned project envelope; see
+[workspace verification](workspace-verification.md).
 
 - JSON Schema: `crates/sail-api/schema/verify-output-v1.json` (draft 2020-12).
 - Rust types: `sail_api::output` (`Report` and the types it contains).

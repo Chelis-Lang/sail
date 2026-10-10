@@ -94,3 +94,21 @@ Failure, cancellation, skipping and missing results fail the guard. It is
 the sixth required check. Branch protection also requires branches to be
 updated with `main`, so independently passing changes are tested together.
 The guard's negative cases run in the local and CI workspace gate.
+
+## Update 2026-10-10: complete end-to-end phases run in parallel
+
+Managed workspace acceptance adds cold proof establishment, unchanged complete
+report reuse, durable CLI/MCP jobs, missing-receipt recovery and restored-mtime
+failure checks. CI runs the existing legacy suite and the new managed suite in
+parallel within their original ten-minute job limits. The required `End to end`
+aggregate runs even after a failure and requires both phases to succeed.
+Failure, cancellation, skipping or a missing phase fails the aggregate; its
+negative cases run in the workspace gate. The six protected check names and
+completion guard stay unchanged.
+
+Local `ci/run.sh e2e` continues to execute both complete phases. Explicit
+`legacy` and `managed` selection supports diagnosis. This split changes
+scheduling, not proof deadlines, acceptance assertions or coverage. At revision
+`a518a104`, native Linux legacy and managed jobs completed in 316 and 348 seconds;
+all required checks passed. Long corpus runs and performance measurements remain
+local-only.
