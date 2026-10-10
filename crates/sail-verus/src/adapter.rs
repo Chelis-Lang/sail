@@ -200,6 +200,8 @@ fn driver() -> Result<ExitCode> {
     if let Some(engine) = &runtime.engine {
         cmd.env("SAIL_ENGINE", "interactive")
             .env("SAIL_ENGINE_EVENTS", &source_events)
+            .env("SAIL_ENGINE_CONTEXT", &runtime.context_sha256)
+            .env("SAIL_ENGINE_PREPARED_DIR", &engine.prepared)
             .env("SAIL_ENGINE_FOCUS_REPORT", dir.join("focus.source.json"));
         if let Some(function) = &engine.function {
             cmd.env("SAIL_ENGINE_FUNCTION", function);
@@ -290,6 +292,8 @@ fn driver() -> Result<ExitCode> {
                 .env_remove("SAIL_ENGINE_FUNCTION")
                 .env_remove("SAIL_ENGINE_EVENTS")
                 .env_remove("SAIL_ENGINE_FOCUS_REPORT")
+                .env_remove("SAIL_ENGINE_CONTEXT")
+                .env_remove("SAIL_ENGINE_PREPARED_DIR")
                 .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
                 .output()
                 .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
