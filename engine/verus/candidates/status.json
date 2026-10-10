@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "status": "candidate-uncompiled-unqualified",
+  "verus_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "baseline_patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+  "candidate_patch_sha256": "ceb96eae711ba1bc5f56169c230ad752bb876592634e79730d453118a71f0d86",
+  "checks": {
+    "pin_apply": true,
+    "rustfmt_syntax": true,
+    "static_read_coverage": true,
+    "python_syntax": true
+  },
+  "source_build": false,
+  "executable_source_tests": false,
+  "runtime_oracle": false,
+  "product_acceptance": false
+}
