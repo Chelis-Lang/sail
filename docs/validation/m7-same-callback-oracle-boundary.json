@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "kind": "same-callback-oracle-design-review",
+  "scope": "Static review of the independent-state and raw-byte comparison boundary for an additive diagnostic source candidate. This document does not record an executed oracle, qualify a runtime, select a candidate, change a baseline or establish performance acceptance.",
+  "upstream_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "reviewed_candidate_patch_sha256": "245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
+  "source_inventory": "docs/validation/m7-prepared-order-consumer-audit.json",
+  "activation": false,
+  "original_stock_comparison": "The existing failed stock raw-input comparison remains failed. This diagnostic cannot replace that result or select a baseline.",
+  "initial_state": {
+    "capture_point": "Before take_bucket restores any prepared effects, within the same compiler callback and bucket, after the exact original typed pruned Krate and Ctx::new inputs exist.",
+    "shared_immutable_inputs": ["Exact pruned Krate and its ordered vectors", "Current graph and SCC vectors", "Current source and span owners", "Exact verification options and selected bucket"],
+    "construction": "Construct independent Ctx::new owners from the same inputs, with explicitly forked GlobalCtx mutable owners. Validate equal initial state before either arm runs. Never start fresh lowering from an already restored Ctx."
+  },
+  "mutable_boundaries": [
+    {
+      "owner": "NameCtxt",
+      "risk": "Clone shares Rc<RefCell<NameCtxtImpl>>; the first arm could change the second arm's names.",
+      "requirement": "Allocate a new name owner and restore an independent copy of exact initial name contents.",
+      "reference": "verus/source/vir/src/def.rs:354"
+    },
+    {
+      "owner": "GlobalCtx chosen_triggers and qid_map",
+      "risk": "from_self_with_log clears their contents instead of preserving the exact initial state.",
+      "requirement": "Copy exact initial contents into independent RefCells; do not share cells or silently reset baseline contents.",
+      "reference": "verus/source/vir/src/context.rs:846"
+    },
+    {
+      "owner": "GlobalCtx sail_graph_capture",
+      "risk": "Capture clone shares Arc<Mutex<State>> and can contaminate graph recording.",
+      "requirement": "Use an independent capture owner; do not modify the primary ledger, preparation counters or cache.",
+      "reference": "verus/source/vir/src/sail_graph.rs:86"
+    },
+    {
+      "owner": "Interpreter and function-call graph log owners",
+      "risk": "GlobalCtx clones share mutable Arc<Mutex<Option<File>>> owners.",
+      "requirement": "Reject unsupported active logging or allocate independently owned private logs. No shadow writes to primary log files.",
+      "reference": "verus/source/vir/src/context.rs:74"
+    },
+    {
+      "owner": "Verifier counters, bucket statistics and log paths",
+      "risk": "Verifier::from_self clears statistics but shares created_log_dir and created_solver_log_dir Arcs.",
+      "requirement": "Initialize independent bucket statistics, replace both log-directory owners with private arm paths, preserve exact options, and never merge a shadow Verifier into the primary.",
+      "reference": "verus/source/rust_verify/src/verifier.rs:547"
+    },
+    {
+      "owner": "Engine events and obligation ordinals",
+      "risk": "Suppressing emit alone does not suppress progress_start's mutation of the global ORDINALS map.",
+      "requirement": "Return before all shadow event-related state mutations, including progress_start. Do not clear, initialize, finish or access the primary prepared cache from a shadow arm.",
+      "reference": "verus/source/rust_verify/src/sail_engine.rs:130"
+    },
+    {
+      "owner": "Diagnostics",
+      "risk": "Using the primary Reporter or QueuedReporter emits ordinary diagnostics and changes visible ordering.",
+      "requirement": "Collect independently with exact emission class, level, message and grouped report_as_multi boundaries. Compare preparation and verification diagnostics without forwarding shadow messages."
+    },
+    {
+      "owner": "AIR and solver state",
+      "risk": "Reusing an AIR context, solver process or cached reply makes the two arms depend on each other.",
+      "requirement": "Create fresh independent AIR contexts and direct pinned solver processes with identical options. Avoid process-global environment changes while bucket workers run."
+    }
+  ],
+  "comparison": {
+    "ordered_solver_requests": "Compare the ordered sequence of exact actual request bytes for each arm's solver-launch ordinal. Do not sort sessions, commands or declarations, and do not normalize bytes.",
+    "framing": "SmtProcess::writer_thread writes each request, one LF, then the exact echo marker command and LF. A transcript log with QUERY delimiters is not the raw request stream.",
+    "capture_ownership": "Pass the arm-local capture owner into each spawned writer explicitly; thread-local state does not propagate to spawned threads.",
+    "completion": "Require complete captures, all actual writes accounted for, solver termination, complete diagnostics and final bucket outcomes. Missing, failed, overbudget or truncated captures are unavailable or failed, never equal.",
+    "independent_evidence": "Ordered SST and exact effects comparisons may localize a failure, but cannot substitute for the raw solver-byte and outcome comparison."
+  },
+  "required_adversarial_cases": [
+    "Mutating one arm's naming, qid, quantifier or chosen-trigger state does not change another arm or the primary.",
+    "Changing a prepared function body is detected even when preparation metadata still appears valid.",
+    "Changing restored naming or quantifier effects is detected by actual emitted solver bytes.",
+    "Reordering prepared functions or fuel declarations is detected; solver inputs are not sorted to hide it.",
+    "Duplicating, dropping or reordering a solver session is detected by ordered session capture.",
+    "Changing diagnostic emission class, level or message grouping is detected.",
+    "Truncated capture, solver failure or unavailable initial-state equality never produces an oracle pass.",
+    "Running the diagnostic does not alter primary obligation identifiers, preparation counters, ordinary diagnostics or report seals."
+  ],
+  "performance_scope": "Two shadow proofs and their independent working state are diagnostic overhead. Retained preparation budgets remain unchanged; shadow wall time and RSS must be recorded separately and cannot establish the M7 performance goal."
+}
