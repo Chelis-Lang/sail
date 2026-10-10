@@ -276,3 +276,34 @@ fn renaming_or_moving_a_function_changes_its_identity() {
     assert!(!now.contains_key("input::bad#Function-Def/0"));
     assert!(now.contains_key("input::worse#Function-Def/0"));
 }
+
+#[test]
+#[ignore = "needs the pinned Verus"]
+fn trait_implementation_collisions_preserve_plain_verdicts_without_guessing() {
+    let source = include_str!("../../../corpus/repros/verus-ambiguous-friendly-name/input.rs");
+    let plain = run("trait-collision-plain", source, false);
+    let logged = run("trait-collision-logged", source, true);
+    assert_eq!(plain.exit, Some(0));
+    assert_eq!(logged.exit, plain.exit);
+    assert_eq!(logged.stderr, plain.stderr);
+    assert_eq!(logged.inputs, plain.inputs);
+    assert_eq!(logged.attribution.status, Status::Partial);
+    let records: Vec<_> = logged
+        .attribution
+        .crates
+        .iter()
+        .flat_map(|c| &c.functions)
+        .filter(|f| f.function == "input::S::check")
+        .collect();
+    assert_eq!(records.len(), 2);
+    assert!(records.iter().all(|f| f.obligations.is_none()
+        && f.verus_success == Some(true)
+        && f.verdict() == sail_ledger::Verdict::Verified));
+    assert!(
+        logged
+            .attribution
+            .notes
+            .iter()
+            .any(|n| n.contains("does not distinguish implementations"))
+    );
+}

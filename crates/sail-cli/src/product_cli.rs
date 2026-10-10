@@ -113,6 +113,9 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
                         repair.batch.batched
                     );
                 }
+                if let Some(error) = &repair.batch.selection_error {
+                    let _ = writeln!(err, "error[{}]: {}", error.code, error.message);
+                }
                 return ExitCode::from(u8::from(!repair.accepted));
             }
             Ok(Response::Result(_)) => std::thread::sleep(Duration::from_millis(100)),

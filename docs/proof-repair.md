@@ -96,7 +96,9 @@ modes or requested scopes are marked incomparable. Partial scopes cannot prove
 function removal; removal describes absence from a successful sealed whole-target
 verification inventory, not inferred deletion from source text.
 Obligation IDs are matched exactly, with no inferred semantic correspondence
-between changed or reordered obligations.
+between changed or reordered obligations. Repeated Verus friendly function names
+are also incomparable: Sail cannot identify one implementation from that name
+and never lets timing-entry order select a regression.
 
 The corresponding MCP tools are `start_repair_validation`,
 `verification_events`, `explain_failure` and `compare_verification`. Existing
