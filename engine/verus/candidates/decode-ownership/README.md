@@ -150,3 +150,10 @@ charged unrelated nodes and owned span text even for scalar and single-component
 queries. [The immutable failure record](c39-qualification-failure.json) retains
 that result. Full HE qualification did not run. The candidate remains unselected;
 no previous-revision proof reuse or product qualification is established.
+
+The follow-up [scoped-query allocation audit](scoped-graph-scratch.md) binds a
+[separate combined patch](../scoped-query-private-span.patch). It retains the
+8 MiB scratch limit and all preceding source identities and failures. The
+actual pinned VIR suite passes 37/37 plus strict all-target Clippy. Driver and
+ordinary-runtime qualification remain separate; no checked real cross-edit hit
+has yet been established by this follow-up.
