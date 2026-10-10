@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "kind": "whole-workspace-gate",
+  "source_commit": "aa71d8f9968fbc7e213e58e628577d2f5e0b909a",
+  "source_archive_sha256": "caab9bec87b010c97ce5362c7a15afe960d8b36f9b87be8d2059a0aaaa9591ed",
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; concurrent local source qualification and default corpus verification",
+  "command": "ci/run.sh gate",
+  "build_jobs": 2,
+  "exit_code": 100,
+  "strict_clippy": {
+    "passed": true,
+    "seconds": 146
+  },
+  "nextest": {
+    "run": 431,
+    "passed": 425,
+    "failed": 6,
+    "skipped": 37,
+    "seconds": 84.914
+  },
+  "failures": [
+    {
+      "test": "sail-daemon shared::http_tests::concurrent_readers_coalesce_one_http_lookup",
+      "result": "Timeout",
+      "remote_requests": 1,
+      "coalesced": 7
+    },
+    {
+      "test": "sail-daemon shared::http_tests::forged_http_reply_is_refused_while_initiator_is_paused",
+      "result": "Timeout"
+    },
+    {
+      "test": "sail-daemon shared::http_tests::verified_http_reply_reaches_readers_while_initiator_is_paused",
+      "result": "Unavailable"
+    },
+    {
+      "test": "sail-daemon::http_shared client_refuses_redirects_encodings_oversize_and_stalled_responses",
+      "result": "original whole-operation 250ms assertion failed"
+    },
+    {
+      "test": "sail-daemon::job_coalescing remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edits",
+      "result": "complete observed inputs did not coalesce inside original five-second polling bound"
+    },
+    {
+      "test": "sail-mcp job_tools::tests::async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs",
+      "observed_seconds": 2.610210251,
+      "result": "original two-second aggregate responsiveness assertion failed while independently blocked worker stayed alive"
+    }
+  ],
+  "kernel_freshness_tests": "All passed, including established four-reader fixture and final-validation invalidation regression; not a substitute for real-crate reader acceptance.",
+  "later_gate_steps": "Not run after Nextest failed; prior separately run documentation/layering/deny/report checks are recorded independently.",
+  "raw_log": {
+    "name": "sail-m7-gate-aa71d8f.log",
+    "bytes": 61548,
+    "sha256": "2db186cf8cdd2e700465f0874be0ac2b5bd28491fe6f2fc604eb44d7458fc702"
+  },
+  "acceptance": false,
+  "limits_changed": false
+}
