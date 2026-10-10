@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "scope": "Unselected scoped-query ordinary Linux runtime build; full source and product qualification remain independent",
+  "patch_sha256": "1aae80f1cbf3f476d14bb19587f321d5818749a665c847c9b48046f073cc8808",
+  "execution": "linux-x86_64-container-emulated-sharedload",
+  "compilation_nice": 0,
+  "cargo_jobs": 2,
+  "source_jobs": 2,
+  "builder": {
+    "version": 1,
+    "exit_code": 0,
+    "elapsed_seconds": 1894.5116374480021,
+    "scope": "Unselected scoped-scratch ordinary build; source and product qualification independent"
+  },
+  "vstd": {
+    "verified": 2060,
+    "errors": 0
+  },
+  "manifest": {
+    "schema_version": 1,
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+    "features": [
+      "sail-interactive:1aae80f1cbf3f476d14bb19587f321d5818749a665c847c9b48046f073cc8808",
+      "host:x86_64-unknown-linux-gnu",
+      "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    ],
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "9af0a0d28133b8d60aa3aa80c874da67f6ce629b3a8c7e632949c9ce3bd8d716",
+      "verus/source/target-verus/release/cargo-verus": "97024e2fca5bee532a70fc50472b27e88448d1d88c8f5ae604e4a52ac4056121",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "e07f90f0ec4bbba51a02709fade522d3d59be0f49f2627ca39b9e3e0f2ca6b20",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "680c0a4d2de39557d19dcfeb71461326eeea7e2c1988312f48787083dd4a11e8",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "e51e37ffd3c3f023d5bf6a65e3f840504628401698025321f057b2b6ca470a8e",
+      "verus/source/target-verus/release/libvstd.rlib": "5f9793136414d48710c832013438d76e536a011dfad826159c8ad963268db22d",
+      "verus/source/target-verus/release/rust_verify": "3914eb9dfdfbacd3c117f4359e4c6781d0f51faee6590353f7243d07700bb1bd",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "10a218b968cd18ca8da12e7ba2a6633958a948a6ac61791bcf3282b85f50e9af",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "build_seconds": 1846,
+    "test_binaries": []
+  },
+  "manifest_sha256": "053517f54421abb7f23e0c9fcbdcf59bfb9050901b04b3bd243cd90dbca8b00a",
+  "runtime_inventory": [
+    {
+      "path": "verus/source/target-verus/release/.cargo-build-lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "verus/source/target-verus/release/.vstd-fingerprint",
+      "sha256": "9af0a0d28133b8d60aa3aa80c874da67f6ce629b3a8c7e632949c9ce3bd8d716",
+      "bytes": 156
+    },
+    {
+      "path": "verus/source/target-verus/release/cargo-verus",
+      "sha256": "97024e2fca5bee532a70fc50472b27e88448d1d88c8f5ae604e4a52ac4056121",
+      "bytes": 2754984
+    },
+    {
+      "path": "verus/source/target-verus/release/libverus_builtin.rlib",
+      "sha256": "e07f90f0ec4bbba51a02709fade522d3d59be0f49f2627ca39b9e3e0f2ca6b20",
+      "bytes": 928246
+    },
+    {
+      "path": "verus/source/target-verus/release/libverus_builtin_macros.so",
+      "sha256": "680c0a4d2de39557d19dcfeb71461326eeea7e2c1988312f48787083dd4a11e8",
+      "bytes": 13801064
+    },
+    {
+      "path": "verus/source/target-verus/release/libverus_state_machines_macros.so",
+      "sha256": "e51e37ffd3c3f023d5bf6a65e3f840504628401698025321f057b2b6ca470a8e",
+      "bytes": 8568304
+    },
+    {
+      "path": "verus/source/target-verus/release/libvstd.rlib",
+      "sha256": "5f9793136414d48710c832013438d76e536a011dfad826159c8ad963268db22d",
+      "bytes": 10236586
+    },
+    {
+      "path": "verus/source/target-verus/release/rust_verify",
+      "sha256": "3914eb9dfdfbacd3c117f4359e4c6781d0f51faee6590353f7243d07700bb1bd",
+      "bytes": 29775128
+    },
+    {
+      "path": "verus/source/target-verus/release/version.txt",
+      "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "bytes": 26
+    },
+    {
+      "path": "verus/source/target-verus/release/verus",
+      "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "bytes": 4705336
+    },
+    {
+      "path": "verus/source/target-verus/release/verus-root",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "verus/source/target-verus/release/vstd.vir",
+      "sha256": "10a218b968cd18ca8da12e7ba2a6633958a948a6ac61791bcf3282b85f50e9af",
+      "bytes": 30076214
+    },
+    {
+      "path": "verus/source/target-verus/release/z3",
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+      "bytes": 34954456
+    }
+  ],
+  "raw_log": {
+    "sha256": "3f2d272b454665f6c6144d843a71a8f019f0f6a2f42fd2104923b09cee1855f3",
+    "bytes": 6356
+  },
+  "qualification_scripts": {
+    "archive_sha256": "74113be77d3e0832033d6a42243f4666df3e679dc495c88ac09804c18afbdbad",
+    "count": 14,
+    "scheduling_copy_sha256": "f7ddcf603e2ff7c52a2a107ce97139ee2ccc43c75f558b61d14642762d92cc62",
+    "change": "Final source Cargo tests run at ordinary priority; no assertion, command selection or 600-second proof bound changed"
+  },
+  "selected_runtime_changed": false,
+  "source_gates_passed": false,
+  "product_qualified": false
+}
