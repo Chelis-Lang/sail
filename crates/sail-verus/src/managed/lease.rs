@@ -534,6 +534,41 @@ mod tests {
         assert!(std::fs::remove_file(file).is_ok());
     }
     #[test]
+    fn omitted_global_rows_require_live_exact_descriptor_leases_before_failure() {
+        for mapping in [false, true] {
+            let file = fixture();
+            let mut lease = ReadLease::acquire(std::slice::from_ref(&file))
+                .unwrap_or_else(|| unreachable!("fixture"));
+            assert!(lease.clean());
+            assert!(
+                lease
+                    .kernel
+                    .as_ref()
+                    .is_some_and(|kernel| kernel.check_omitted_global_for_test().is_ok())
+            );
+            if mapping {
+                assert!(Command::new("python3").args(["-I", "-c",
+                    "import mmap,os,sys; f=os.open(sys.argv[1],os.O_RDWR); m=mmap.mmap(f,0); os.close(f); original=m[:]; m[:]=b'fail'; m.flush(); m[:]=original; m.flush(); m.close()"])
+                    .arg(&file).status().is_ok_and(|s|s.success()));
+                assert_eq!(std::fs::read(&file).unwrap_or_default(), b"good");
+            } else {
+                assert!(std::fs::write(&file, b"fail").is_ok());
+            }
+            assert!(
+                lease
+                    .kernel
+                    .as_ref()
+                    .is_some_and(|kernel| kernel.check_omitted_global_for_test().is_err())
+            );
+            assert!(
+                !lease.clean(),
+                "independent kernel validation cannot revive a break"
+            );
+            drop(lease);
+            assert!(std::fs::remove_file(file).is_ok());
+        }
+    }
+    #[test]
     fn helper_death_and_replaced_path_never_reuse() {
         let file = fixture();
         let mut lease = ReadLease::acquire(std::slice::from_ref(&file))

@@ -74,10 +74,22 @@ fn inventory(text: &str, pid: u32) -> Option<BTreeMap<Key, usize>> {
     Some(found)
 }
 
+fn descriptor(text: &str, pid: u32) -> Option<Key> {
+    if !text.ends_with('\n') {
+        return None;
+    }
+    let mut leases = text.lines().filter_map(|line| line.strip_prefix("lock:\t"));
+    let Row::Active(key) = row(leases.next()?, pid)? else {
+        return None;
+    };
+    leases.next().is_none().then_some(key)
+}
+
 pub(super) struct Inventory {
     pid: u32,
     started: u64,
     expected: BTreeMap<Key, usize>,
+    descriptors: Vec<(u32, Key)>,
 }
 impl Inventory {
     pub(super) fn bind(pid: u32, fds: &[u32], identities: &[(u64, u64)]) -> Option<Self> {
@@ -90,6 +102,7 @@ impl Inventory {
         }
         let started = process(pid)?;
         let mut expected = BTreeMap::new();
+        let mut descriptors = Vec::new();
         for (fd, (device, inode)) in fds.iter().zip(identities) {
             let metadata = std::fs::metadata(format!("/proc/{pid}/fd/{fd}")).ok()?;
             if metadata.dev() != *device || metadata.ino() != *inode || !metadata.is_file() {
@@ -106,6 +119,7 @@ impl Inventory {
                     return None;
                 }
                 *expected.entry(key).or_insert(0) += 1;
+                descriptors.push((*fd, key));
                 count += 1;
             }
             if count != 1 {
@@ -116,6 +130,7 @@ impl Inventory {
             pid,
             started,
             expected,
+            descriptors,
         })
     }
     pub(super) fn check(&self) -> Result<(), &'static str> {
@@ -138,10 +153,64 @@ impl Inventory {
             return Err("kernel-lease-state-truncated");
         }
         let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
+        self.check_inventory(text, bytes.len(), began)?;
+        if process(self.pid) != Some(self.started) {
+            return Err("kernel-lease-owner-inactive");
+        }
+        if began.elapsed() > SWEEP_BUDGET {
+            return Err("kernel-lease-sweep-over-budget");
+        }
+        Ok(())
+    }
+    fn check_inventory(
+        &self,
+        text: &str,
+        bytes_read: usize,
+        began: Instant,
+    ) -> Result<(), &'static str> {
         let found = inventory(text, self.pid).ok_or("kernel-lease-state-invalid")?;
-        if found != self.expected {
+        if found == self.expected {
+            return Ok(());
+        }
+        if found.keys().any(|key| !self.expected.contains_key(key)) {
             return Err("kernel-lease-inventory-invalidated");
         }
+        // The global seq-file may repeat/omit unchanged rows if unrelated
+        // owners mutate the list between seq buffer refills. Each fdinfo is
+        // instead produced under the inode's lease lock. The immutable helper
+        // cannot replace/add descriptors or reacquire leases after readiness.
+        // Confirm this initially-bound descriptor inventory independently before
+        // declaring failure; never revive an already-invalidated generation.
+        let mut remaining = MAX_LOCK_BYTES.saturating_sub(bytes_read as u64);
+        for (fd, expected) in &self.descriptors {
+            if began.elapsed() > SWEEP_BUDGET {
+                return Err("kernel-lease-sweep-over-budget");
+            }
+            let file = std::fs::File::open(format!("/proc/{}/fdinfo/{fd}", self.pid))
+                .map_err(|_| "kernel-lease-descriptor-unavailable")?;
+            let mut bytes = Vec::new();
+            file.take(remaining.saturating_add(1))
+                .read_to_end(&mut bytes)
+                .map_err(|_| "kernel-lease-descriptor-unavailable")?;
+            let size = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
+            if size > remaining {
+                return Err("kernel-lease-state-too-large");
+            }
+            remaining -= size;
+            let text = std::str::from_utf8(&bytes).map_err(|_| "kernel-lease-state-malformed")?;
+            if descriptor(text, self.pid) != Some(*expected) {
+                return Err("kernel-lease-inventory-invalidated");
+            }
+        }
+        Ok(())
+    }
+    #[cfg(test)]
+    pub(super) fn check_omitted_global_for_test(&self) -> Result<(), &'static str> {
+        let began = Instant::now();
+        if process(self.pid) != Some(self.started) {
+            return Err("kernel-lease-owner-inactive");
+        }
+        self.check_inventory("", 0, began)?;
         if process(self.pid) != Some(self.started) {
             return Err("kernel-lease-owner-inactive");
         }
@@ -169,6 +238,16 @@ mod tests {
             Some(found)
         );
         assert!(inventory("1: -> LEASE BREAKER WRITE 7 00:2a:100 0 EOF", 7).is_none());
+    }
+    #[test]
+    fn descriptor_requires_one_complete_exact_owner_active_row() {
+        let active = "pos:\t0\nlock:\t1: LEASE ACTIVE READ 7 00:2a:100 0 EOF\n";
+        assert_eq!(descriptor(active, 7), key("00:2a:100"));
+        assert!(descriptor(&active.replace("ACTIVE", "BREAKING"), 7).is_none());
+        assert!(descriptor(&active.replace("READ 7", "READ 8"), 7).is_none());
+        assert!(descriptor(&active.replace("ACTIVE READ", "ACTIVE WRITE"), 7).is_none());
+        assert!(descriptor(&(active.to_owned() + active), 7).is_none());
+        assert!(descriptor(active.trim_end(), 7).is_none());
     }
     #[test]
     fn process_binding_rejects_stopped_zombie_and_changed_starttime() {
