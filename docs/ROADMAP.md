@@ -154,6 +154,13 @@ HTTP/reload cases, legacy MCP and the four-reader elapsed bound failed. Its
 [complete failure](../bench/validation/m7-linux-gate-7fcb-failure-emulated-2026-10-11.json)
 retains default inter-case scheduling separately from the earlier two-case local
 gates. A complete passing integrated gate remains required.
+The next frozen `749255e` attempt passed strict Clippy and 480/483 workspace
+tests using two independent test cases and two compiler jobs. The original
+four-reader and blocked-worker MCP fixtures passed; two HTTP serving checks and
+the five-second job-coalescing control failed. The
+[full failed scope](../bench/validation/m7-linux-gate-749-failure-emulated-2026-10-11.json)
+retains every test and raw output. These failures remain unresolved; later gate
+steps were not reached.
 An indexed Linux namespace predicate now passes the original six native mutation
 and overflow controls plus generated old/new path equivalence. A local emulated
 4,097-path queue control dropped from 14.44 seconds and incomplete coverage to
