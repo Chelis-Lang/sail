@@ -95,6 +95,7 @@ cargo build --release -p sail-cli --example job_read_bench
 target/release/examples/job_read_bench \
   --socket CACHE_SOCKET --job COMPLETED_JOB --active-job RUNNING_JOB \
   --active-worker OWNED_REPAIR_WORKER_PID \
+  --active-crate human_eval_verus \
   --environment 'Linux container; record architecture, emulation and load' \
   --out reader-census.json
 ```

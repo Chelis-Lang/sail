@@ -21,6 +21,27 @@ MAX_FRAME = 32 * 1024 * 1024
 DEADLINE = 5
 
 
+def proof_crate(command):
+    """Retain only the exact crate selector, never arbitrary compiler arguments."""
+    names = []
+    for index, value in enumerate(command):
+        if value == b"--":
+            break
+        if value == b"--crate-name":
+            if index + 1 >= len(command):
+                return None
+            names.append(command[index + 1])
+        elif value.startswith(b"--crate-name="):
+            names.append(value.split(b"=", 1)[1])
+    if len(names) != 1:
+        return None
+    try:
+        name = names[0].decode("ascii")
+    except UnicodeError:
+        return None
+    return name if name and name.isidentifier() else None
+
+
 def process_table(proc=Path("/proc")):
     """Capture kernel identities without reading process environment variables."""
     result = {}
@@ -31,11 +52,25 @@ def process_table(proc=Path("/proc")):
             raw = (directory / "stat").read_text()
             closing = raw.rindex(")")
             fields = raw[closing + 2:].split()
-            result[int(directory.name)] = {
+            candidate = {
                 "pid": int(directory.name), "parent": int(fields[1]),
                 "name": raw[raw.index("(") + 1:closing], "state": fields[0],
                 "started_ticks": int(fields[19]),
             }
+            if candidate["name"] == "rust_verify":
+                with (directory / "cmdline").open("rb") as command:
+                    arguments = command.read(65537)
+                after = (directory / "stat").read_text()
+                end = after.rindex(")")
+                check = after[end + 2:].split()
+                if (len(arguments) > 65536 or int(check[19]) != candidate["started_ticks"]
+                        or int(check[1]) != candidate["parent"] or check[0] not in ("R", "S", "D")
+                        or after[after.index("(") + 1:end] != "rust_verify"):
+                    # CPU counters and R/S state may change during real work;
+                    # PID identity, ancestry and exact executable name may not.
+                    continue
+                candidate["crate_name"] = proof_crate(arguments.split(b"\0"))
+            result[int(directory.name)] = candidate
         except (OSError, ValueError, IndexError):
             # A process may exit during enumeration; an absent verifier cannot
             # satisfy the acceptance contract.
@@ -43,24 +78,36 @@ def process_table(proc=Path("/proc")):
     return result
 
 
-def active_verifiers(table, worker, started_ticks):
+def active_verifiers(table, worker, started_ticks, crate):
     """Only live Rust verifiers descended from the exact worker qualify."""
     owner = table.get(worker)
-    if owner is None or owner["started_ticks"] != started_ticks or owner["state"] == "Z":
+    if owner is None or owner["started_ticks"] != started_ticks or owner["state"] not in ("R", "S", "D"):
         return []
     verified = []
     for candidate in table.values():
-        if candidate["name"] != "rust_verify" or candidate["state"] == "Z":
+        if (candidate["name"] != "rust_verify" or candidate["state"] not in ("R", "S", "D")
+                or candidate.get("crate_name") != crate):
             continue
         parent = candidate["parent"]
+        child_started = candidate["started_ticks"]
         seen = set()
         while parent in table and parent not in seen:
+            if table[parent]["started_ticks"] > child_started:
+                break
             if parent == worker:
                 verified.append(candidate)
                 break
             seen.add(parent)
+            child_started = table[parent]["started_ticks"]
             parent = table[parent]["parent"]
     return sorted(verified, key=lambda item: item["pid"])
+
+
+def continuing_verifier(before, after):
+    """One immutable compiler identity must span the timed RPC."""
+    def identity(process):
+        return (process["pid"], process["started_ticks"], process["parent"], process["crate_name"])
+    return bool({identity(process) for process in before} & {identity(process) for process in after})
 
 
 def exact(stream, count):
@@ -149,14 +196,15 @@ def measure(args):
     def sample(index):
         active, _, _ = call(address, {"operation": "status", "id": args.active_job})
         active_before = status(active)["state"]
-        verifiers_before = active_verifiers(process_table(), args.active_worker, worker_started)
+        verifiers_before = active_verifiers(process_table(), args.active_worker, worker_started, args.active_crate)
         operation = "status" if index % 2 == 0 else "result"
         response, elapsed, length = call(address, {"operation": operation, "id": args.job})
-        verifiers_after = active_verifiers(process_table(), args.active_worker, worker_started)
+        verifiers_after = active_verifiers(process_table(), args.active_worker, worker_started, args.active_crate)
         active, _, _ = call(address, {"operation": "status", "id": args.active_job})
         return {"operation": operation, "wall_ms": elapsed, "response_bytes": length,
                 "current": valid_established(response, args.job, revision),
                 "active_before": active_before, "active_after": status(active)["state"],
+                "verifier_continued": continuing_verifier(verifiers_before, verifiers_after),
                 "verifiers_before": verifiers_before, "verifiers_after": verifiers_after}
 
     with ThreadPoolExecutor(max_workers=args.clients) as readers:
@@ -168,13 +216,14 @@ def measure(args):
         summary[operation] = {"count": len(values), "median_ms": statistics.median(values),
                               "p95_ms": p95(values), "max_ms": max(values)}
     passed = (len(samples) == args.samples and all(sample["current"]
-              and sample["verifiers_before"] and sample["verifiers_after"]
+              and sample["verifier_continued"]
               and sample["active_before"] == sample["active_after"] == "running" for sample in samples)
               and all(value["p95_ms"] < 200 for value in summary.values()))
     result = {"schema_version": 1, "platform": platform.platform(),
               "execution_environment": args.environment, "clients": args.clients,
               "deadline_seconds": DEADLINE, "job": args.job, "active_job": args.active_job,
               "active_worker": worker,
+              "active_crate": args.active_crate,
               "input_revision": revision, "establishment_ms": establishment_ms,
               "establishment_reads": establishment_reads, "samples": samples,
               "summary": summary, "passed": passed}
@@ -191,13 +240,16 @@ def main():
     parser.add_argument("--active-job", required=True, help="Another currently running verification")
     parser.add_argument("--active-worker", type=int, required=True,
                         help="Linux PID of that job's _repair-worker; live descendant verifier required")
+    parser.add_argument("--active-crate", required=True,
+                        help="Exact Cargo library crate being verified, excluding ordinary dependency compilation")
     parser.add_argument("--clients", type=int, default=4)
     parser.add_argument("--samples", type=int, default=200)
     parser.add_argument("--establish-timeout", type=float, default=600)
     parser.add_argument("--environment", required=True)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    if os.environ.get("CI") or not 2 <= args.clients <= 16 or args.samples < 100:
+    if (os.environ.get("CI") or not 2 <= args.clients <= 16 or args.samples < 100
+            or proof_crate([b"--crate-name", args.active_crate.encode()]) != args.active_crate):
         raise ValueError("SAIL0943: local acceptance requires 2–16 clients and at least 100 samples")
     return measure(args)
 

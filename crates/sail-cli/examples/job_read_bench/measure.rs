@@ -44,6 +44,7 @@ struct Evidence<'a> {
     job: &'a str,
     active_job: &'a str,
     active_worker: Process,
+    active_crate: &'a str,
     input_revision: String,
     establishment_ms: f64,
     establishment_reads: usize,
@@ -128,7 +129,7 @@ fn sample(
     client_id: usize,
 ) -> io::Result<Sample> {
     let active_before = status(client, &args.active_job)?.state == Lifecycle::Running;
-    let verifiers_before = process::verifiers(&process::table()?, owner);
+    let verifiers_before = process::verifiers(&process::table()?, owner, &args.active_crate);
     let start = Instant::now();
     let operation = if index.is_multiple_of(2) {
         "status"
@@ -148,7 +149,7 @@ fn sample(
         }
     })?;
     let wall_ms = start.elapsed().as_secs_f64() * 1000.0;
-    let verifiers_after = process::verifiers(&process::table()?, owner);
+    let verifiers_after = process::verifiers(&process::table()?, owner, &args.active_crate);
     let active_after = status(client, &args.active_job)?.state == Lifecycle::Running;
     let current = match response {
         Response::Status(status) => valid_status(&status, &args.job, &expected.input_revision),
@@ -264,8 +265,7 @@ pub(super) fn run(args: &Args) -> io::Result<bool> {
             s.current
                 && s.active_before
                 && s.active_after
-                && !s.verifiers_before.is_empty()
-                && !s.verifiers_after.is_empty()
+                && process::continuing(&s.verifiers_before, &s.verifiers_after)
         })
         && summary.values().all(|s| s.p95_ms < 200.0);
     let evidence = Evidence {
@@ -277,6 +277,7 @@ pub(super) fn run(args: &Args) -> io::Result<bool> {
         job: &args.job,
         active_job: &args.active_job,
         active_worker: owner,
+        active_crate: &args.active_crate,
         input_revision: expected.input_revision,
         establishment_ms,
         establishment_reads,

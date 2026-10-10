@@ -46,17 +46,48 @@ class ReadAcceptanceTests(unittest.TestCase):
 
     def test_running_job_without_live_descendant_verifier_does_not_qualify(self):
         owner = {"pid": 20, "parent": 1, "name": "sail", "state": "S", "started_ticks": 40}
-        compiler = {"pid": 22, "parent": 21, "name": "rust_verify", "state": "R", "started_ticks": 50}
+        compiler = {"pid": 22, "parent": 21, "name": "rust_verify", "state": "R", "started_ticks": 50,
+                    "crate_name": "human_eval_verus"}
         table = {20: owner, 21: {"pid": 21, "parent": 20, "name": "cargo",
                                 "state": "S", "started_ticks": 45}, 22: compiler}
-        self.assertEqual(bench.active_verifiers(table, 20, 40), [compiler])
-        self.assertEqual(bench.active_verifiers(table, 20, 41), [])
-        self.assertEqual(bench.active_verifiers({20: owner}, 20, 40), [])
-        compiler["state"] = "Z"
-        self.assertEqual(bench.active_verifiers(table, 20, 40), [])
+        def live(values=table, started=40):
+            return bench.active_verifiers(values, 20, started, "human_eval_verus")
+        self.assertEqual(live(), [compiler])
+        self.assertEqual(live(started=41), [])
+        self.assertEqual(live({20: owner}), [])
+        for name in (None, "verus_builtin_macros", "vstd", "other_project"):
+            compiler["crate_name"] = name
+            self.assertEqual(live(), [])
+        compiler["crate_name"] = "human_eval_verus"
+        for state in ("Z", "T", "t"):
+            compiler["state"] = state
+            self.assertEqual(live(), [])
         compiler["state"] = "R"
         table[21]["parent"] = 1
-        self.assertEqual(bench.active_verifiers(table, 20, 40), [])
+        self.assertEqual(live(), [])
+        table[21]["parent"] = 20
+        table[21]["started_ticks"] = 51
+        self.assertEqual(live(), [])
+
+    def test_same_compiler_must_span_rpc_but_state_can_change(self):
+        before = {"pid": 22, "parent": 21, "name": "rust_verify", "state": "R",
+                  "started_ticks": 50, "crate_name": "human_eval_verus"}
+        after = dict(before, state="S")
+        self.assertTrue(bench.continuing_verifier([before], [after]))
+        for changed in (dict(after, pid=23), dict(after, started_ticks=51), dict(after, parent=24),
+                        dict(after, crate_name="vstd")):
+            self.assertFalse(bench.continuing_verifier([before], [changed]))
+        self.assertFalse(bench.continuing_verifier([before], []))
+
+    def test_exact_crate_selector_rejects_ambiguous_or_missing_arguments(self):
+        self.assertEqual(bench.proof_crate([b"rust_verify", b"--crate-name", b"human_eval_verus"]), "human_eval_verus")
+        self.assertEqual(bench.proof_crate([b"--crate-name=vest_lib"]), "vest_lib")
+        self.assertEqual(bench.proof_crate([b"--crate-name=vest_lib", b"--", b"--crate-name=other"]), "vest_lib")
+        for command in ([b"--crate-name"], [], [b"--crate-name="],
+                        [b"--crate-name", b"one", b"--crate-name=two"],
+                        [b"--crate-name", b"not-a-crate"], [b"--crate-name", b"\xff"],
+                        [b"--", b"--crate-name=human_eval_verus"]):
+            self.assertIsNone(bench.proof_crate(command))
 
 
 if __name__ == "__main__":
