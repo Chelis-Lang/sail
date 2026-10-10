@@ -101,8 +101,22 @@ def main():
         print(json.dumps(result, indent=2))
     finally:
         for name in containers:
-            subprocess.run(["docker", "stop", name], capture_output=True, check=False)
-        subprocess.run(["docker", "volume", "rm", volume], capture_output=True, check=False)
+            # Explicit removal also waits for the --rm container's asynchronous
+            # cleanup before removing its private credential volume.
+            subprocess.run(["docker", "rm", "-f", name], capture_output=True, check=False)
+        deadline = time.monotonic() + 5
+        while True:
+            removed = subprocess.run(["docker", "volume", "rm", volume],
+                                     capture_output=True, check=False)
+            if removed.returncode == 0:
+                break
+            exists = subprocess.run(["docker", "volume", "inspect", volume],
+                                    capture_output=True, check=False)
+            if exists.returncode != 0:
+                break
+            if time.monotonic() >= deadline:
+                raise RuntimeError("runtime probe could not remove its private test volume")
+            time.sleep(.1)
 
 
 if __name__ == "__main__":
