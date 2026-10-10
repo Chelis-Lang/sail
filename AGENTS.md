@@ -151,6 +151,9 @@ with `main` before merging. The `End to end` check aggregates three parallel
 phases, legacy, managed and repair, and succeeds only when all complete successfully.
 `ci/local.sh e2e` runs all three; `e2e legacy`, `e2e managed` or `e2e repair`
 selects a phase for diagnosis. No phase may be skipped to authorize a merge.
+The managed phase includes installed MCP/live-service read controls with separate
+retained evidence before the unchanged proof-receipt and pinned-verifier checks.
+Those transport controls establish no proof or reader/performance qualification.
 The optional repair engine is a locally qualified prebuilt runtime pinned in
 `engine/verus/artifact-linux.json`. The CI image validates its archive, source
 patch, source lock and every runtime file; CI never compiles Verus from source.
