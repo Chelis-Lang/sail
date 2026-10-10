@@ -57,6 +57,7 @@ mod platform {
         excluded: Vec<PathBuf>,
         complete: bool,
         changed: bool,
+        failure: Option<&'static str>,
         mounts: String,
         bindings: Vec<(PathBuf, Option<(u64, u64)>)>,
     }
@@ -70,6 +71,7 @@ mod platform {
                 excluded: excluded.to_vec(),
                 complete: true,
                 changed: false,
+                failure: None,
                 mounts,
                 bindings: Vec::new(),
             };
@@ -212,12 +214,19 @@ mod platform {
                 .as_ref()
                 .ok()
                 != Some(&self.mounts)
-                || self
-                    .bindings
-                    .iter()
-                    .any(|(p, old)| identity(p).as_ref().ok() != Some(old))
             {
                 self.complete = false;
+                self.failure
+                    .get_or_insert("namespace-mount-inventory-changed");
+                return false;
+            }
+            if self
+                .bindings
+                .iter()
+                .any(|(p, old)| identity(p).as_ref().ok() != Some(old))
+            {
+                self.complete = false;
+                self.failure.get_or_insert("namespace-root-binding-changed");
                 return false;
             }
             let deadline = Instant::now() + Duration::from_millis(20);
@@ -225,6 +234,8 @@ mod platform {
             let mut count = 0;
             loop {
                 if count >= MAX_EVENTS {
+                    self.failure
+                        .get_or_insert("namespace-event-count-exhausted");
                     self.complete = false;
                     return false;
                 }
@@ -234,6 +245,8 @@ mod platform {
                         // cannot turn an already empty native queue into lost
                         // coverage. Bound actual nonempty drain work instead.
                         if Instant::now() >= deadline {
+                            self.failure
+                                .get_or_insert("namespace-event-drain-budget-exhausted");
                             self.complete = false;
                             return false;
                         }
@@ -246,9 +259,12 @@ mod platform {
                                     | EventMask::DELETE_SELF
                                     | EventMask::MOVE_SELF,
                             ) {
+                                self.failure
+                                    .get_or_insert("namespace-native-watch-coverage-lost");
                                 self.complete = false;
                             }
                             let Some(parent) = self.directories.get(&event.wd) else {
+                                self.failure.get_or_insert("namespace-event-watch-unbound");
                                 self.complete = false;
                                 continue;
                             };
@@ -261,6 +277,7 @@ mod platform {
                                     .iter()
                                     .any(|root| path.starts_with(root) || root.starts_with(&path))
                             {
+                                self.failure.get_or_insert("namespace-tracked-input-event");
                                 self.changed = true;
                             }
                         }
@@ -270,11 +287,15 @@ mod platform {
                     }
                     Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
                     Err(_) => {
+                        self.failure.get_or_insert("namespace-event-read-failed");
                         self.complete = false;
                         return false;
                     }
                 }
             }
+        }
+        pub(super) fn failure_reason(&self) -> &'static str {
+            self.failure.unwrap_or("namespace-coverage-unavailable")
         }
     }
 }
@@ -304,6 +325,9 @@ impl Observer {
     }
     pub(super) fn files(&self) -> Vec<PathBuf> {
         self.0.files()
+    }
+    pub(super) fn failure_reason(&self) -> &'static str {
+        self.0.failure_reason()
     }
 }
 
