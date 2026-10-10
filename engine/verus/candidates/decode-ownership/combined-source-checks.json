@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "identity": {
+    "version": 1,
+    "scope": "Unselected combined source; host source checks passed; ordinary Linux build and proof qualification pending",
+    "base_patch_sha256": "58e36323191c9cab209cfaf19e51c8dae4094feff06f74a7d3247f96f7268959",
+    "ownership_overlay_sha256": "d85268f27326c83e996661f08908e8c86edf4802847352adf1fc4afd6af388b9",
+    "combined_patch_sha256": "c39c47bf8472603b5a8c5084c89ccc00ec1137a3ea180cf4c876bf3e7ef92f7a",
+    "patch_bytes": 319928,
+    "files": {
+      "source/vir/src/sail_decode.rs": "4e475763d56e03a2b684fc0d268bc067c4f05ede45b619a7b252fb9f35be0a57",
+      "source/vir/src/sail_decode_schema.rs": "6fa3eb2aa95663e9c103cfa146339339d3323798ed538d5d0c28b208e0d654d7",
+      "source/rust_verify/src/sail_engine.rs": "fccf779c6972494495e229326019bce08aa200942e050444dd254cbc93a4c75f",
+      "source/vir/src/sail_graph.rs": "28ee57057ce60b3f07be20667b89b0bf6334fb2863346142bf13c745f2b37290"
+    },
+    "test_only_adjustment": "Exact Arc/Box Large type names use type_name so actual VIR namespace is tested; production registry unchanged",
+    "source_sha256": {
+      "source/vir/src/sail_decode.rs": "4e475763d56e03a2b684fc0d268bc067c4f05ede45b619a7b252fb9f35be0a57",
+      "source/vir/src/sail_decode_schema.rs": "6fa3eb2aa95663e9c103cfa146339339d3323798ed538d5d0c28b208e0d654d7",
+      "source/vir/src/sail_graph.rs": "28ee57057ce60b3f07be20667b89b0bf6334fb2863346142bf13c745f2b37290",
+      "source/rust_verify/src/sail_engine.rs": "fccf779c6972494495e229326019bce08aa200942e050444dd254cbc93a4c75f",
+      "source/vir/src/context.rs": "3cc62bf8b96d9f971e3a329bb22ff2112a331f086a24e28288937a9c772e3477"
+    }
+  },
+  "checks": {
+    "vir_tests": {
+      "version": 1,
+      "scope": "actual pinned VIR library tests, not runtime qualification",
+      "combined_patch_sha256": "c39c47bf8472603b5a8c5084c89ccc00ec1137a3ea180cf4c876bf3e7ef92f7a",
+      "tests_passed": 33,
+      "tests_failed": 0,
+      "compilation_nice": 19,
+      "build_jobs": 2,
+      "compiler_reported_elapsed": "8m21s",
+      "test_reported_elapsed_seconds": 0.03,
+      "stdout_sha256": "50c945bebf766060baefd8a96a7538625b3ea92084b054bf7b99577df9c9acf1",
+      "stderr_sha256": "e6f88cc3be8ea3d3065216f6459213f0d08424d9e2a87dfa69fc910ec9fc6462"
+    },
+    "vir_ordinary_execution": {
+      "version": 1,
+      "scope": "ordinary-priority execution of actual pinned VIR tests",
+      "binary_sha256": "05de14b63001497cb5b5a1d0b5e6fc42593baa88eadd29e53a011cc10453bb74",
+      "parent_nice": 0,
+      "exit_code": 0,
+      "elapsed_seconds": 0.124250292,
+      "stdout_sha256": "09172e7e4ad2d13847e6043bc8744f298c3ac690fdd7b45604fb613671cee837",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "driver_compilation": {
+      "version": 1,
+      "command": [
+        "nice",
+        "-n",
+        "19",
+        "cargo",
+        "test",
+        "-p",
+        "rust_verify",
+        "--lib",
+        "--release",
+        "sail_",
+        "--no-run"
+      ],
+      "compilation_nice": 19,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 1097.8337092499999,
+      "test_execution": "separate ordinary-priority invocation after successful compilation"
+    },
+    "driver_tests": {
+      "version": 1,
+      "scope": "actual pinned RustVerify tests through Cargo rustc-driver loader setup",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "rust_verify",
+        "--lib",
+        "--release",
+        "sail_",
+        "--",
+        "--test-threads=1"
+      ],
+      "parent_nice": 0,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 5.756699334,
+      "stdout_sha256": "cdb62200dc542b4f7b47b451d4828a7dd07a7fb943561c843900328406a248fe",
+      "stderr_sha256": "f3cc71947479cb6d15a5feff5a759157ec49101add4a83d1058b75d480696791",
+      "preceding_direct_binary_attempt": "retained dyld missing-rpath failure before any test; no assertion changed",
+      "tests_passed": 22,
+      "tests_failed": 0,
+      "test_reported_elapsed_seconds": 2.93
+    },
+    "vir_strict_clippy": {
+      "version": 1,
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "vir",
+        "--all-targets",
+        "--release",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "parent_nice": 0,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 10.840812292,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "d9524d7b6d953906893c341d3d3320bef0534c761e116cd77465e3fa17024422"
+    },
+    "driver_strict_clippy": {
+      "version": 1,
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "rust_verify",
+        "--all-targets",
+        "--release",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "parent_nice": 0,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 102.659938458,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "ec53a0f164f4f5b9e284c6e276a046524ee808d4fa15277ba0d925aee491920f"
+    },
+    "failures_retained": {
+      "direct_driver_without_cargo_loader": {
+        "version": 1,
+        "scope": "ordinary-priority execution of actual pinned RustVerify tests",
+        "binary_sha256": "3e3c95ce52edaa130fb147d84c83f21908d9567477d3e567d7bee2ab66d63b64",
+        "parent_nice": 0,
+        "exit_code": -6,
+        "elapsed_seconds": 0.33276170800000004,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "361bc9993b6c42ab3ea3ea64ceba88e2ef21d1d7fe610b185fc081fff06c1038"
+      },
+      "untracked_allocation_example_clippy": {
+        "version": 1,
+        "command": [
+          "cargo",
+          "clippy",
+          "-p",
+          "vir",
+          "--all-targets",
+          "--release",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "parent_nice": 0,
+        "jobs": 2,
+        "exit_code": 101,
+        "elapsed_seconds": 115.937610083,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "4c32d693650641aadfa1529962bcb77a800b64da73c7d2254d0585347247021a"
+      },
+      "diagnostic_example_fix": {
+        "version": 1,
+        "scope": "untracked standalone allocation-only example, excluded from combined candidate patch",
+        "before_sha256": "1473735eb65dcab22245afcd77cc9e54dcf2c1c829e86e98662ee3c06527cf77",
+        "after_sha256": "476e43953928a7b23c7336785e8141c6deedf6c4604a282755de4df5472d0cc3",
+        "change": "read decoded effects inline size in diagnostic output; no lint allowance, cap/schema/admission or test change"
+      }
+    },
+    "scheduling": {
+      "host_initial_compilation_nice": 19,
+      "ordinary_test_and_clippy_nice": 0,
+      "renice_ordinary_attempt": "owned Cargo/rustc only; macOS permission denied; healthy compilation retained",
+      "linux_ordinary_build_nice": 0,
+      "linux_cargo_and_source_jobs": 2,
+      "concurrent_host_and_linux_builds": "explicitly authorized; no quiet-machine precondition"
+    },
+    "static_boundary_audits": [
+      "private graph routed-read/replay/capture audit passed",
+      "private unused-span accessor/clone guards/30 remaining baseline components audit passed"
+    ],
+    "ordinary_runtime_qualified": false,
+    "previous_revision_proof_reuse_confirmed": false,
+    "selected_runtime_changed": false
+  }
+}
