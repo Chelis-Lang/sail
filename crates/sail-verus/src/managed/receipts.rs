@@ -102,7 +102,17 @@ struct Commit {
     receipt_checksums: BTreeSet<String>,
 }
 
+#[cfg(test)]
 pub(super) fn publish(run: &Path, destination: &Path, context: &str) -> Result<()> {
+    publish_guarded(run, destination, context, || true).map(|_| ())
+}
+
+pub(super) fn publish_guarded(
+    run: &Path,
+    destination: &Path,
+    context: &str,
+    mut current: impl FnMut() -> bool,
+) -> Result<bool> {
     let mut commit = Commit {
         context: context.to_owned(),
         run_id: run
@@ -139,7 +149,16 @@ pub(super) fn publish(run: &Path, destination: &Path, context: &str) -> Result<(
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
     }
-    json(&run.join("committed.json"), &commit)
+    if !current() {
+        return Ok(false);
+    }
+    json(&run.join("committed.json"), &commit)?;
+    if !current() {
+        std::fs::remove_file(run.join("committed.json"))
+            .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
+        return Ok(false);
+    }
+    Ok(true)
 }
 
 /// A fresh verifier must retire the prior proof before rewriting its artifact.
@@ -257,6 +276,58 @@ mod tests {
         assert!(std::fs::remove_file(&receipt.committed).is_ok());
         assert!(std::fs::remove_file(path).is_ok());
     }
+    #[test]
+    fn lost_guard_before_commit_never_authorizes_copied_receipts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-receipt-guard-{}", std::process::id()));
+        let run = root.join("run");
+        let destination = root.join("receipts");
+        std::fs::create_dir_all(run.join("pending-receipts"))?;
+        std::fs::create_dir_all(&destination)?;
+        let receipt = fixture(&root.join("artifact"), run.join("committed.json"));
+        json(&run.join("pending-receipts/fixture.json"), &receipt)?;
+        let mut checked_after_copy = false;
+        assert!(!publish_guarded(&run, &destination, "ctx", || {
+            checked_after_copy = destination.join("fixture.json").is_file();
+            false
+        })?);
+        assert!(checked_after_copy);
+        assert!(!run.join("committed.json").exists());
+        assert!(!receipt.valid("ctx"));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn guard_loss_during_commit_retires_the_new_marker()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-receipt-mid-guard-{}", std::process::id()));
+        let run = root.join("run");
+        let destination = root.join("receipts");
+        std::fs::create_dir_all(run.join("pending-receipts"))?;
+        std::fs::create_dir_all(&destination)?;
+        let receipt = fixture(&root.join("artifact"), run.join("committed.json"));
+        json(&run.join("pending-receipts/fixture.json"), &receipt)?;
+        let mut observed_marker = false;
+        assert!(!publish_guarded(&run, &destination, "ctx", || {
+            if run.join("committed.json").is_file() {
+                observed_marker = receipt.valid("ctx");
+                false
+            } else {
+                true
+            }
+        })?);
+        assert!(
+            observed_marker,
+            "publication seam did not observe the new marker"
+        );
+        assert!(!run.join("committed.json").exists());
+        assert!(!receipt.valid("ctx"));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn interrupted_publisher_helper() {
         let Some(path) = std::env::var_os("SAIL_TEST_MANAGED_RECEIPT_CHECKPOINT") else {

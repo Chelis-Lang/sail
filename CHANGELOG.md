@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Reuse run-local sysroot byte hashes on Linux only while kernel leases and
+  precise namespace observation remain continuously owned from the first hash
+  through receipt publication. Lost coverage forces fresh byte checks and
+  unavailable current evidence.
+
 - Validate optional-engine artifacts in the same byte-hashing phase as the
   verification context, retaining complete inventory and manifest checks before
   any engine executable starts.
