@@ -202,13 +202,20 @@ pub(crate) struct Request {
     pub function: Option<String>,
     pub cargo_verus: PathBuf,
     pub manifest: PathBuf,
+    #[serde(default)]
+    pub manifest_sha256: String,
     pub stock_wrapper: PathBuf,
     pub artifacts: Vec<PathBuf>,
     pub prepared: PathBuf,
 }
 
 fn request(config: &crate::managed::Config, function: Option<String>) -> Result<(Request, String)> {
-    let installed = Installed::locate(&config.workspace.join(&config.cache), &Pins::embedded()?)?;
+    let pins = Pins::embedded()?;
+    let build = build_dir(&config.workspace.join(&config.cache), &pins);
+    // This private request has not authorized execution. The context phase
+    // validates every artifact's bytes before probing an engine executable.
+    let (manifest, manifest_sha256) = preflight(&build, &pins)?;
+    let manifest_path = build.join(source_build::MANIFEST);
     let stock_wrapper = config
         .cargo_verus
         .canonicalize()
@@ -217,16 +224,90 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
     let request = Request {
         function,
         prepared: config.workspace.join(&config.cache).join("engine-prepared"),
-        cargo_verus: installed.cargo_verus,
-        manifest: installed.build.join(source_build::MANIFEST),
+        cargo_verus: source_build::checkout_dir(&build)
+            .join("source/target-verus/release/cargo-verus"),
+        manifest: manifest_path,
+        manifest_sha256: manifest_sha256.clone(),
         stock_wrapper,
-        artifacts: Manifest::load(&installed.build)?
+        artifacts: manifest
             .artifacts
             .keys()
-            .map(|path| installed.build.join(path))
+            .map(|path| build.join(path))
             .collect(),
     };
-    Ok((request, installed.manifest_sha256))
+    Ok((request, manifest_sha256))
+}
+
+fn preflight(build: &Path, pins: &Pins) -> Result<(Manifest, String)> {
+    let bytes = std::fs::read(build.join(source_build::MANIFEST)).map_err(|e| {
+        Error::new(
+            "SAIL3120",
+            format!("{e}; run cargo xtask build-verus-engine"),
+        )
+    })?;
+    let manifest: Manifest = serde_json::from_slice(&bytes)
+        .map_err(|e| Error::new("SAIL3120", format!("invalid engine manifest: {e}")))?;
+    let runtime = source_build::checkout_dir(build).join("source/target-verus/release");
+    if manifest.schema_version != source_build::SCHEMA_VERSION
+        || manifest.commit != pins.verus.commit
+        || manifest.rust_toolchain != pins.verus.rust_toolchain
+        || manifest.features != features()
+        || manifest.artifacts.is_empty()
+        || manifest.artifacts.iter().any(|(path, hash)| {
+            path.components()
+                .any(|part| !matches!(part, std::path::Component::Normal(_)))
+                || hash.is_empty()
+        })
+        || pins
+            .assets
+            .get(crate::toolchain::host())
+            .is_none_or(|asset| asset.z3_sha256 != manifest.z3_sha256)
+        || ["cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"]
+            .iter()
+            .any(|name| !runtime.join(name).is_file())
+    {
+        return Err(Error::new(
+            "SAIL3120",
+            "interactive engine identity or runtime artifact validation failed",
+        ));
+    }
+    Ok((manifest, crate::managed::digest(&bytes)))
+}
+
+/// Validates the complete engine inventory using the context's exact byte reads.
+/// This must precede every engine executable probe, including version/sysroot.
+pub(crate) fn validate_request(
+    request: &Request,
+    mut hash: impl FnMut(&Path) -> Result<String>,
+) -> Result<()> {
+    let build = request
+        .manifest
+        .parent()
+        .ok_or_else(|| Error::new("SAIL3120", "invalid engine manifest path"))?;
+    let manifest_hash = hash(&request.manifest)?;
+    let (manifest, parsed_sha256) = preflight(build, &Pins::embedded()?)?;
+    let artifacts: Vec<_> = manifest
+        .artifacts
+        .keys()
+        .map(|path| build.join(path))
+        .collect();
+    let runtime = source_build::checkout_dir(build).join("source/target-verus/release");
+    let valid = request
+        .manifest
+        .file_name()
+        .is_some_and(|name| name == source_build::MANIFEST)
+        && manifest_hash == request.manifest_sha256
+        && manifest_hash == parsed_sha256
+        && request.cargo_verus == runtime.join("cargo-verus")
+        && request.artifacts == artifacts
+        && source_build::artifact_hashes_with(build, &mut hash)? == manifest.artifacts;
+    if !valid {
+        return Err(Error::new(
+            "SAIL3120",
+            "interactive engine identity or runtime artifact validation failed",
+        ));
+    }
+    Ok(())
 }
 
 /// Performs explicit interactive whole-target verification using the optional build.
@@ -498,6 +579,79 @@ fn preparation(run: &Path) -> Option<Vec<sail_api::repair::PreparationStats>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn context_validation_checks_inventory_and_request_manifest()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-engine-phase-{}", std::process::id()));
+        let runtime = source_build::checkout_dir(&root).join("source/target-verus/release");
+        std::fs::create_dir_all(&runtime)?;
+        for name in ["cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"] {
+            std::fs::write(runtime.join(name), name)?;
+        }
+        let pins = Pins::embedded()?;
+        let manifest = Manifest {
+            schema_version: source_build::SCHEMA_VERSION,
+            commit: pins.verus.commit.clone(),
+            rust_toolchain: pins.verus.rust_toolchain.clone(),
+            z3_sha256: pins
+                .assets
+                .get(crate::toolchain::host())
+                .ok_or("host pin")?
+                .z3_sha256
+                .clone(),
+            features: features(),
+            artifacts: source_build::artifact_hashes(&root)?,
+            build_seconds: 0,
+            test_binaries: Vec::new(),
+        };
+        manifest.save(&root)?;
+        let path = root.join(source_build::MANIFEST);
+        let request = Request {
+            function: Some("demo::selected".to_owned()),
+            cargo_verus: runtime.join("cargo-verus"),
+            manifest: path.clone(),
+            manifest_sha256: source_build::hash_file(&path)?,
+            stock_wrapper: PathBuf::new(),
+            artifacts: manifest.artifacts.keys().map(|p| root.join(p)).collect(),
+            prepared: root.join("prepared"),
+        };
+        let mut reads = std::collections::BTreeMap::new();
+        validate_request(&request, |path| {
+            *reads.entry(path.to_owned()).or_insert(0u32) += 1;
+            source_build::hash_file(path)
+        })?;
+        assert_eq!(reads.len(), 6);
+        assert!(reads.values().all(|count| *count == 1));
+        std::fs::write(runtime.join("z3"), b"corrupt")?;
+        assert!(validate_request(&request, source_build::hash_file).is_err());
+        std::fs::write(runtime.join("z3"), b"z3")?;
+        std::fs::write(runtime.join("unexpected"), b"not declared")?;
+        assert!(validate_request(&request, source_build::hash_file).is_err());
+        std::fs::remove_file(runtime.join("unexpected"))?;
+        std::fs::remove_file(runtime.join("vstd.vir"))?;
+        assert!(validate_request(&request, source_build::hash_file).is_err());
+        std::fs::write(runtime.join("vstd.vir"), b"vstd.vir")?;
+        let mut changed = manifest.clone();
+        changed.build_seconds = 1;
+        changed.save(&root)?;
+        assert!(validate_request(&request, source_build::hash_file).is_err());
+        manifest.save(&root)?;
+        // A manifest changed between its context hash and parsing cannot
+        // authorize new artifact bytes under the original request digest.
+        assert!(
+            validate_request(&request, |candidate| {
+                let hash = source_build::hash_file(candidate)?;
+                if candidate == path {
+                    changed.save(&root)?;
+                }
+                Ok(hash)
+            })
+            .is_err()
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn launcher_note_requires_exact_run_context_and_relocation_provenance() {
