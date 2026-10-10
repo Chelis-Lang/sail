@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "source_commit": "d19f6358f19593d1601e874605cdbf50c904eb0a",
+  "environment": "Linux amd64 Docker under emulation on macOS arm64; shared development load",
+  "scope": "local workspace and real-solver checks; product measurements and corpus coverage remain separate",
+  "workspace": {
+    "tests": 414,
+    "passed": 414,
+    "clippy": true,
+    "doctests": true,
+    "rustdoc": true,
+    "examples": true,
+    "layering": true,
+    "dependency_checks": true,
+    "log": {
+      "sha256": "6053e6d85bd2b803c52ad587e263ae39e7c6f18a9a3bf7fb00f10dea8564ff84",
+      "bytes": 92280
+    },
+    "initial_step_exit": 2,
+    "initial_failure": "Generated benchmark output parent target directory was absent in frozen checkout with external CARGO_TARGET_DIR. All preceding checks passed.",
+    "correction": "ci/run.sh creates report output directory. Same report generation rerun produced exact committed page from ten result files; diff exit zero.",
+    "generated_report_matches": true
+  },
+  "solver": {
+    "tests": 37,
+    "passed": 37,
+    "exit_code": 0,
+    "log": {
+      "sha256": "fd5ad617a03f23796859b9c13ab1559bc6fe055ecd88adee253aef2303eb218d",
+      "bytes": 4218
+    }
+  },
+  "additive_retained_job_admission_tests": {
+    "tests": 6,
+    "passed": 6
+  }
+}
