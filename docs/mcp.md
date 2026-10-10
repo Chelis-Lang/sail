@@ -59,7 +59,9 @@ CLI process ownership. Proof events and explanation/comparison tools retain
 their current CLI paths.
 
 Eight endpoint handles share one 128 MiB decoded-frame budget, including entries
-still used by concurrent calls after eviction. Replies larger than the cache
+still used by concurrent calls after eviction. This bounds retained cache entry
+ownership; returned tool graphs, temporary parsing/serialization and process RSS
+are outside that budget. Replies larger than the cache
 eligibility limit still work normally without retention. No MCP latency gain is
 claimed from the separate client-codec measurements; product measurements remain
 necessary. See [the client contract](result-client.md).
@@ -394,6 +396,9 @@ pathname after MCP starts makes subprocess fallback unavailable during the read
 checks. It checks the same job's changed running/cancelled replies, restart
 identity, and cancellation of a blocked service read through MCP notifications.
 All owned actors are stopped before their scratch directory is removed.
+`ci/local.sh e2e managed` includes this control before the unchanged managed
+proof acceptance. CI retains its raw messages, stderr and summary under
+`managed-acceptance/mcp-live-service`, alongside the original proof evidence.
 
 The supplemental installed Linux-container run passed these controls; its
 [portable record](validation/m7-mcp-live-service.json) also retains the initial

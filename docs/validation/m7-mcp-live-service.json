@@ -70,5 +70,13 @@
       "Proc comm parsing uses final delimiter"
     ],
     "qualification": "Pending final hardened-source installed controller rerun; prior successful5879 run retained with its own exact script hash"
+  },
+  "ci_integration": {
+    "phase": "ci/run.sh e2e managed (also full)",
+    "order": "Transport control before unchanged managed proof acceptance",
+    "evidence": "managed-acceptance/mcp-live-service in the existing always-retained managed artifact",
+    "shell_syntax": "bash -n PASS",
+    "production_or_deadline_changes": false,
+    "final_hardened_runtime_controller": "Pending after parent-owned full gate and explicit common-target handoff"
   }
 }

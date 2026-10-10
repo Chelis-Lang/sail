@@ -14,7 +14,8 @@
 #                        and exit, a schema-v1 document agreeing with
 #                        Verus's own --output-json; then one `verify` call
 #                        through `sail mcp`, agreeing with that document;
-#                        managed receipts, durable jobs and asynchronous MCP;
+#                        managed receipts, durable jobs, asynchronous MCP and
+#                        supplementary installed read-transport controls;
 #                        repair CLI/MCP against a validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
@@ -192,11 +193,18 @@ RS
       bash "$sail_portfolio_test"
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ]; then
+      # Actual installed MCP and job-service transport, without proving anything.
+      # Separate raw evidence shares the managed artifact's retained directory.
+      # It supplements the unchanged pinned-verifier acceptance below.
+      sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
+      python3 "$sail_checkout/ci/test-mcp-live-service.py" "$sail" \
+        --out "$sail_managed_evidence/mcp-live-service" \
+        --execution "Linux x86-64 CI/local container transport control"
       # Bounded complete-report receipts: reuse, missing evidence and a failing
       # proof edit with restored timestamps, compared with the pinned Verus.
       # Keep timeout/error output outside the fixture's TemporaryDirectory.
       # Use the checkout path because the full legacy phase changes cwd.
-      SAIL_MANAGED_ACCEPTANCE_OUT="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}" \
+      SAIL_MANAGED_ACCEPTANCE_OUT="$sail_managed_evidence" \
         python3 "$sail_managed_test" "$sail"
     fi
     if [ "$phase" = full ] || [ "$phase" = repair ]; then
