@@ -22,8 +22,10 @@ negotiation or network I/O. Overlapping cold requests cannot accidentally promot
 an entry published during their own reads. Promotion has a nonblocking,
 generation-bound claim: other callers parse normally rather than waiting. A
 late promotion cannot replace a newer candidate. Failed ownership accounting or
-budget admission leaves the correct result uncached; a refused promotion does
-not repeatedly clone the graph on that same generation.
+budget admission leaves the correct result uncached. An owned promotion claim
+is released on failure, so a later fresh RPC can try once after resource pressure
+clears; there is no wait or retry inside the refused call. Successful publication
+changes generation, preventing delayed old admissions from promoting again.
 
 Keep the Client or clones across calls to benefit. Clones and rebound endpoints
 share one family; each returned Response owns an independent complete graph.
