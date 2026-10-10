@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "scope": "Final frozen Linux two-function warm receipt reuse defect baseline",
+  "source_commit": "44339db890aa197e3ee2cb998f0008d5934b222d",
+  "binaries": {
+    "sail": {
+      "sha256": "a4dd04771f29304211bb6b35a1224b330aebd7b6d131e0368fd3b39576b556c5",
+      "bytes": 58543912
+    },
+    "sail-z3": {
+      "sha256": "e3b09d12d271645fb76340e5f783341ae6b69d0a39b29103818051d6fb68f264",
+      "bytes": 7681880
+    }
+  },
+  "machine": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "execution_environment": "Pinned CI image under Linux/amd64 emulation on shared development host"
+  },
+  "result": {
+    "passed": false,
+    "benchmark_exit_code": 1,
+    "failure": "AssertionError: verifier_invocations must equal zero on first warm receipt reuse",
+    "invocation_deadline_seconds": 600,
+    "completed_paired_rounds": 0,
+    "requested_target_verdict_equivalence_checked": true
+  },
+  "fill": {
+    "currentness": "current",
+    "context_sha256": "1da9a0b47b590d42cff895fc4941d1b93448ff98c4ad8e084e8c85c0438f6b7d",
+    "execution": {
+      "verifier_invocations": 2,
+      "reused_targets": 0,
+      "wall_ms": 92374.01420800001
+    }
+  },
+  "first_warm": {
+    "currentness": "current",
+    "context_sha256": "1da9a0b47b590d42cff895fc4941d1b93448ff98c4ad8e084e8c85c0438f6b7d",
+    "execution": {
+      "verifier_invocations": 2,
+      "reused_targets": 0,
+      "wall_ms": 84718.259664
+    },
+    "targets": [
+      {
+        "target": "demo",
+        "kind": [
+          "lib"
+        ],
+        "requested": true,
+        "reused": false,
+        "complete": true,
+        "establishing_run": "8716-1791592727252865796"
+      },
+      {
+        "target": "vstd",
+        "kind": [
+          "lib"
+        ],
+        "requested": false,
+        "reused": false,
+        "complete": true,
+        "establishing_run": "8716-1791592727252865796"
+      }
+    ]
+  },
+  "raw_evidence": {
+    "frontend-2-raw/managed-fill.json": {
+      "bytes": 1944132,
+      "sha256": "9509d28453c80f80ef3bf16c108afcdd6ed2caf0bc91e48b659ab326a689f27f"
+    },
+    "frontend-2-raw/managed-fill.stderr": {
+      "bytes": 733,
+      "sha256": "337fb320954c7a6e529e493a7719041aafbbfbbb876f1fe858afac53609369b1"
+    },
+    "frontend-2-raw/managed-fill.time": {
+      "bytes": 817,
+      "sha256": "9cd1dd0ebb666d57fe8e74ac240916f3aabce7ed6c1df0b7dc1efeb8ced9c6ad"
+    },
+    "frontend-2-raw/managed-reuse-1.json": {
+      "bytes": 1943893,
+      "sha256": "1c49cfc48220220059a3bba028f2db42c2038bd8e33cd058737a4f03b4cefd2c"
+    },
+    "frontend-2-raw/managed-reuse-1.stderr": {
+      "bytes": 180,
+      "sha256": "f9aee29f7d864039bea052b8512be488e7b0c5651a2d519b8f8985624c0193a3"
+    },
+    "frontend-2-raw/managed-reuse-1.time": {
+      "bytes": 814,
+      "sha256": "14798c7e94e86d62e7aac68bc726257287ce5ed5bea2094290c77cef443141ec"
+    },
+    "frontend-2-raw/plain-fill.json": {
+      "bytes": 1209859,
+      "sha256": "fc548bde000c8531248fff6c087457b06f7ba866bf06d1974b4d3e8bc9a9a5d2"
+    },
+    "frontend-2-raw/plain-fill.stderr": {
+      "bytes": 733,
+      "sha256": "3acc490b88b9e64f57301f9b01f97c35d278aefdbc55bfcb4b4036cc6214e62a"
+    },
+    "frontend-2-raw/plain-fill.time": {
+      "bytes": 807,
+      "sha256": "a0cdcdcfde18f77aab0bcb425cb750aac28beb63145bcd568ae6992a91cbc802"
+    },
+    "frontend-2-raw/plain-warm-1.json": {
+      "bytes": 3699,
+      "sha256": "75d2b0aa2622d2cdc445a8c8559d9b35d0cb312c2121135c1745dffdd99acece"
+    },
+    "frontend-2-raw/plain-warm-1.stderr": {
+      "bytes": 138,
+      "sha256": "e7dc3f329293e1214399276c045de6d9735a5c14e90730a53f791068dac46bf2"
+    },
+    "frontend-2-raw/plain-warm-1.time": {
+      "bytes": 785,
+      "sha256": "8ccf73a5131bf8fe0fa6eeb87d60c6089e5bc87a55157d3f9fe8d184bb34361f"
+    },
+    "frontend-2.exit-code": {
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "frontend-2.stderr": {
+      "bytes": 745,
+      "sha256": "72ba6b25c48f7efb277b52b1067e929e36cb3b2b7cdaaf032d1784dc6c78a656"
+    },
+    "frontend-2.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "frontend-2.total.time": {
+      "bytes": 959,
+      "sha256": "d14f9bff59ab6834d5849d9a63bd1d375c4146ff94847063170d74b7f003f988"
+    },
+    "frontend-300.stderr": {
+      "bytes": 1496,
+      "sha256": "d237cad084f7dc380a7f313e892e569fecac03b8cbfac5bbb8fc5b6188d4a60f"
+    },
+    "frontend-300.total.time": {
+      "bytes": 944,
+      "sha256": "7c4f312b5a4eba73eeb9705b4889bbb7d73af0f10639de09bd08c9a921c2545d"
+    },
+    "frontend-300.exit-code": {
+      "bytes": 2,
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    "measurement-pipeline.json": {
+      "bytes": 3148,
+      "sha256": "6c68651458a3a5131a63faba150dad9af74f70135a33b88989e1bc8cd858fb56"
+    },
+    "oracle-not-run-known-core-defect.txt": {
+      "bytes": 80,
+      "sha256": "7937e1f49f121614dbcbad97e815e19da3964b20420531a807b5b73c3919a6f5"
+    }
+  },
+  "limits": [
+    "The unchanged benchmark failed on receipt reuse; this is defect evidence, not a successful benchmark or speedup claim",
+    "The complete requested-target verdict comparison passed before the first warm zero-invocation assertion failed",
+    "Proof-body edit and later paired rounds were not executed",
+    "Same frozen final binaries used throughout; no production freshness or timeout check was weakened",
+    "Paths, full environments and raw report contents remain local; portable summary binds their exact hashes"
+  ],
+  "receipt_state": {
+    "frontend-2-receipt-state": {
+      "files": 762,
+      "bytes": 13907909,
+      "manifest_sha256": "8e358d7cbcbdfe1ee12155ac322e0cb33c849827cfdabd3a5072219f4fd1adb0",
+      "manifest_encoding": "sorted relative names, byte counts, SHA-256; JSON sorted keys without whitespace"
+    },
+    "frontend-2-before-warm-complete": {
+      "files": 5,
+      "bytes": 156336,
+      "manifest_sha256": "00784f4a14ae422c5b9b1f349d079b9af58567c375e57faba62f8638ba604237",
+      "manifest_encoding": "sorted relative names, byte counts, SHA-256; JSON sorted keys without whitespace"
+    }
+  },
+  "diagnosis": {
+    "observed": "Current complete fill and warm reports used the same whole-project context; first warm re-ran both requested demo and dependency vstd",
+    "cause": "Globally appended compiler-discovered source inputs changed the dependency target input revision after its establishing verification; vstd receipt eligibility then changed on the next run",
+    "fix_status_at_recording": "Scoped per-package source input declarations under implementation; this frozen failing build is retained unchanged"
+  },
+  "followup_phases": {
+    "three_hundred_functions": {
+      "status": "cancelled_by_lead_instruction",
+      "reason": "Same frozen core defect already reproduced; reserve CPU and disk for fixed acceptance",
+      "completed_paired_rounds": 0,
+      "cancellation": "Only the owned plain-fill verification process group was killed; benchmark then exited 1 at its unchanged process-success assertion"
+    },
+    "raw_smt_oracle": {
+      "status": "not_run",
+      "reason": "Await fixed final binary; prepared oracle script deferred after confirmed receipt defect"
+    }
+  }
+}
