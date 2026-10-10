@@ -386,7 +386,7 @@ time.sleep(10)
 ";
         lease.process = Command::new("python3")
             .args(["-I", "-u", "-c", helper])
-            .arg(&file)
+            .arg(file)
             .stdin(Stdio::from(input))
             .stdout(Stdio::from(output))
             .stderr(Stdio::piped())
