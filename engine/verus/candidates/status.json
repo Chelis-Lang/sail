@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "candidate-library-compiled-runtime-unqualified",
+  "status": "candidate-runtime-built-oracles-unqualified",
   "verus_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
   "baseline_patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
   "candidate_patch_sha256": "245994d456f459b4310b6696df12c573a34e344575a5df32410cfc87c4e8ee25",
@@ -15,7 +15,8 @@
   "source_library_check": true,
   "vir_regressions_passed": 7,
   "vir_suite_passed": 8,
-  "runtime_binary_build": false,
+  "runtime_binary_build": true,
+  "ordinary_build_evidence": "qualifications/2459-linux-build.json",
   "executable_source_oracles": false,
   "reporter_ownership_followup": "two racing/nested-Arc regressions passed; qualified baseline unchanged",
   "driver_suite_passed": 9

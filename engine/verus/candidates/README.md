@@ -1,6 +1,10 @@
 # Exact graph-read candidate
 
-This candidate has compiled library checks and VIR unit tests, but no qualified runtime. It does not change
+This candidate has compiled library checks, VIR unit tests and an ordinary Linux
+source build, but no qualified runtime. The build verified 2,060 vstd obligations
+with zero errors; its exact manifest and artifacts are retained in
+`qualifications/2459-linux-build.json`. Runtime source oracles and product
+acceptance remain pending. It does not change
 `interactive.patch`, the installer or any qualified runtime. See ADR 0028.
 
 Apply `graph-ledger.patch` to a separate checkout of the primary pinned Verus
