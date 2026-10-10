@@ -24,6 +24,8 @@ parser.add_argument('sail', type=Path)
 parser.add_argument('output', type=Path)
 parser.add_argument('--functions', type=int, default=2,
                     help='total functions in the explicit synthetic fixture (minimum 2)')
+parser.add_argument('--work-root', type=Path, default=Path('/tmp'),
+                    help='existing private fixture parent, useful for conservative filesystem observation')
 options = parser.parse_args()
 assert 2 <= options.functions <= 2000, 'fixture size must be between 2 and 2000'
 sail = options.sail.resolve()
@@ -31,7 +33,9 @@ output = options.output.resolve()
 output.parent.mkdir(parents=True, exist_ok=True)
 raw = output.parent / (output.stem + '-raw')
 raw.mkdir(exist_ok=True)
-workspace = Path(tempfile.mkdtemp(prefix='sail-live-benchmark-', dir='/tmp'))
+work_root = options.work_root.resolve(strict=True)
+assert work_root.is_dir(), 'fixture parent must be an existing directory'
+workspace = Path(tempfile.mkdtemp(prefix='sail-live-benchmark-', dir=work_root))
 env = os.environ.copy()
 env['SAIL_CACHE_DIR'] = str(workspace / 'cache')
 env['SAIL_DAEMON_SOCKET'] = str(workspace / 'daemon.sock')

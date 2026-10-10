@@ -117,3 +117,21 @@ incomplete reports and invalid recovery outcomes. It retains report hashes and
 controlled fixture summaries without environments or local paths. Separate
 emulation failure artifacts remain recorded; a native pass does not establish
 the cause of an emulated failure.
+
+## Frontend reuse measurements
+
+`live_workspace.py` runs three paired rounds against a warm SMT cache and
+checks complete requested reports, zero verifier invocations on eligible reuse,
+and fresh verification after a real proof edit. Invocation deadlines and
+currentness assertions remain fixed. Select an existing private fixture parent
+with `--work-root FIXTURE_PARENT` to reduce unrelated namespace mutations on
+platforms with conservative absent-configuration checks. This does not bypass
+those checks or guarantee currentness.
+
+The native Linux installed acceptance is retained separately from incomplete
+emulated and macOS measurement attempts. No incomplete attempt establishes a
+speedup or passes the three-round workload. The synthetic RPC contention probe
+in `bench/acceptance/workspace-jobs-rpc-x86_64-linux-emulated-2026-10-10.json`
+records actual bounded errors without claiming proof acceptance. Its idle and
+two-concurrent controls succeeded, while four concurrent freshness reads under
+emulation reached the existing five-second deadline.
