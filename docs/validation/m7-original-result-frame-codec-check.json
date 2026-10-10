@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "scope": "Exact captured whole-result frame versus production typed reencoding; host offline diagnostic, no live latency acceptance",
+  "source_parent": "976539ef7d4b659939121e132ead4cb77559e059",
+  "example_source_sha256": "2bca19404b875c01b05b93866155410d72a88b9b8d0495aca1c5667e166175b4",
+  "example_binary_sha256": "a2a5b3072daa3c01dc588972cf7c5b9553b9fdbe7aab73a57fb4d831db626b40",
+  "historical_profile_commit": "29f78c0",
+  "production_codec_manifest_lock_unchanged_since_historical_profile": true,
+  "environment": "macOS arm64 shared development machine, host release build",
+  "rust": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "frame_bytes": 4314950,
+  "original_frame_sha256": "e620323a453103af7d5c04a5e3b4836dd41c9d46e0b5cbdba01b9c946f1325ed",
+  "typed_reencoding_equals_original_bytes": true,
+  "typed_reencoded_frame_sha256": "e620323a453103af7d5c04a5e3b4836dd41c9d46e0b5cbdba01b9c946f1325ed",
+  "complete_original_graph_checked": true,
+  "offline_output_sha256": "fef7b55bc059ad431fcd4253626c85f9e9c5aa00d76e1c67f8e8a79b1eee8001",
+  "acceptance_claim": false,
+  "qualification": "Current production codec produces exactly the archived frame bytes on this host. The historical profiler implementation reencoded its input; its original measurements and executed identities remain retained. This supplemental equality check does not replay the original native timing run or satisfy the live-reader gate."
+}

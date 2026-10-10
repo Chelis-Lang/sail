@@ -23,6 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (body, expected) = decode_input(&input, framed)?;
     let mut encoded = Vec::new();
     write_frame(&mut encoded, &body)?;
+    let captured_equals_reencoded = framed.then(|| input == encoded);
     // Decode costs must use the captured bytes, including their member order.
     // Only an unframed JSON input needs a generated protocol envelope.
     let frame = Arc::new(if framed { input } else { encoded });
@@ -45,6 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "kind": "offline_whole_result_rust_profile",
             "frame_bytes": frame.len(), "samples": 8,
             "captured_frame_used_for_decode": framed,
+            "captured_frame_equals_typed_reencoding": captured_equals_reencoded,
             "complete_graph_equality_checked": true, "live_acceptance": false,
             "results": results,
         }))?
