@@ -200,6 +200,22 @@ Their own process bound remains 600 seconds. A passing collector cannot replace
 missing or stale full evidence, and the earlier cold 600-second failure remains
 in the acceptance record.
 
+For a new acceptance attempt requiring cold dependency/context preparation,
+use `--prepare-contexts --setup-timeout 600`. It records a distinct unmeasured
+preparation phase in those same owned workspaces, then restores the original
+600-second ordinary and exact-context checks before either frozen collector.
+Ordinary incremental checks may use receipts legitimately established in that
+workspace; the repair submission still completes its independent full proof.
+Retain every preparation job and its total cost. This option cannot change the
+collector bounds or turn the entire acceptance into a zero-timeout run. See
+the [reader guide](../reader-acceptance.md).
+
+`ci/local.sh e2e` retains managed-phase evidence under
+`target/managed-acceptance` and repair evidence under `target/repair-acceptance`;
+set `SAIL_MANAGED_ACCEPTANCE_OUT` and `SAIL_REPAIR_ACCEPTANCE_OUT` to fresh
+directories for separately archived attempts. All three phases remain required.
+An isolated phase is useful for diagnosis and cannot replace a failed aggregate.
+
 On failure the controller retains public job output and cancels only jobs and
 the private service it created. On success `--keep-daemon` leaves that exact
 service available for the retained CLI/MCP scenario above, with its actual PID,
