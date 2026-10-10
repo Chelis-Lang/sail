@@ -331,6 +331,72 @@ mod tests {
         assert!(client.clone().decoded.is_none());
     }
     #[test]
+    fn rebound_endpoints_share_budget_but_read_each_actual_fresh_reply() -> io::Result<()> {
+        use std::os::unix::net::UnixListener;
+        use std::time::{Duration, Instant};
+        let root = std::path::Path::new("/tmp").join(format!("sail-rebind-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let first_socket = root.join("first.sock");
+        let second_socket = root.join("second.sock");
+        let first_listener = UnixListener::bind(&first_socket)?;
+        let second_listener = UnixListener::bind(&second_socket)?;
+        first_listener.set_nonblocking(true)?;
+        second_listener.set_nonblocking(true)?;
+        let first = super::super::Client::with_result_decoding_cache(&first_socket);
+        let second = first.with_socket(&second_socket);
+        assert!(Arc::ptr_eq(
+            first
+                .decoded
+                .as_ref()
+                .ok_or_else(|| io::Error::other("missing first cache"))?,
+            second
+                .decoded
+                .as_ref()
+                .ok_or_else(|| io::Error::other("missing second cache"))?
+        ));
+        let expected_first = response("current", json!({"endpoint":"first"}))?;
+        let expected_second = response("historical", json!({"endpoint":"second"}))?;
+        let replies = [frame(&expected_first)?, frame(&expected_second)?];
+        let checked = std::thread::scope(|scope| -> io::Result<()> {
+            let servers: Vec<_> = [first_listener, second_listener]
+                .into_iter()
+                .zip(replies)
+                .map(|(listener, reply)| {
+                    scope.spawn(move || -> io::Result<()> {
+                        let started = Instant::now();
+                        let mut stream = loop {
+                            match listener.accept() {
+                                Ok((stream, _)) => break stream,
+                                Err(error)
+                                    if error.kind() == io::ErrorKind::WouldBlock
+                                        && started.elapsed() < Duration::from_secs(2) =>
+                                {
+                                    std::thread::sleep(Duration::from_millis(1));
+                                }
+                                Err(error) => return Err(error),
+                            }
+                        };
+                        stream.set_read_timeout(Some(Duration::from_secs(5)))?;
+                        stream.set_write_timeout(Some(Duration::from_secs(5)))?;
+                        let _: super::super::Request = super::super::read_frame(&mut stream)?;
+                        std::io::Write::write_all(&mut stream, &reply)
+                    })
+                })
+                .collect();
+            let request = super::super::Request::Result { id: "owned".into() };
+            equal(&first.call(&request)?, &expected_first)?;
+            equal(&second.call(&request)?, &expected_second)?;
+            for server in servers {
+                server
+                    .join()
+                    .map_err(|_| io::Error::other("server failed"))??;
+            }
+            Ok(())
+        });
+        std::fs::remove_dir_all(root)?;
+        checked
+    }
+    #[test]
     fn client_debug_never_contains_cached_frame_or_model_contents() -> io::Result<()> {
         let client = super::super::Client::with_result_decoding_cache("/private/rpc.sock");
         let original = response(
