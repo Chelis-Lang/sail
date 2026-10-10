@@ -13,7 +13,7 @@ import threading
 import time
 
 
-MAX_ROWS = 4096
+MAX_ROWS = 256
 MAX_THREADS = 4096
 MAX_ARGV_BYTES = 65536
 MAX_SOLVER_IDENTITIES = 64
@@ -29,9 +29,17 @@ class Monitor:
         self.solver_hashes = {}
         self.started = time.monotonic_ns()
         self.file = self.output.open('wb')
+        arguments = []
+        available = MAX_ARGV_BYTES
+        for argument in command:
+            encoded = str(argument).encode()
+            arguments.append(encoded[:available].decode(errors='replace'))
+            available = max(0, available - len(encoded))
+            if available == 0:
+                break
         self.write({'event': 'actor-started', 'unix_ns': time.time_ns(), 'monotonic_ns': self.started,
                     'pid': process.pid, 'process_group': self.group,
-                    'argv': str(command)[:MAX_ARGV_BYTES], 'argv_truncated': len(str(command)) > MAX_ARGV_BYTES,
+                    'argv': arguments, 'argv_truncated': available == 0,
                     'clock_ticks_per_second': os.sysconf('SC_CLK_TCK') if pathlib.Path('/proc').is_dir() else None,
                     'linux_proc_available': pathlib.Path('/proc').is_dir()})
         self.thread = threading.Thread(target=self.loop, daemon=True)
@@ -58,6 +66,7 @@ class Monitor:
 
     def sample(self):
         rows = []
+        thread_count = 0
         for directory in pathlib.Path('/proc').iterdir():
             if not directory.name.isdigit():
                 continue
@@ -76,13 +85,14 @@ class Monitor:
                              (line.split(':', 1) for line in (directory / 'io').read_text().splitlines())}
                 row['threads'] = []
                 for task in (directory / 'task').iterdir():
-                    if len(row['threads']) == MAX_THREADS:
+                    if thread_count == MAX_THREADS:
                         row['threads_truncated'] = True
                         break
                     try:
                         thread = self.stat(task / 'stat')
                         thread.update(tid=int(task.name), wchan=(task / 'wchan').read_text().strip())
                         row['threads'].append(thread)
+                        thread_count += 1
                     except (OSError, ValueError, IndexError):
                         pass  # A thread exited between these read-only observations.
                 if pathlib.Path(row['exe']).name == 'z3':
