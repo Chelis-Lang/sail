@@ -349,7 +349,7 @@ index 5b4d93a..73ed841 100644
  
 diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
 new file mode 100644
-index 0000000..a4cb5ca
+index 0000000..706d025
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
 @@ -0,0 +1,853 @@
@@ -603,9 +603,9 @@ index 0000000..a4cb5ca
 +        let mut out=std::fs::OpenOptions::new().create(true).append(true).open(path)?;out.write_all(bytes)
 +    });
 +}
-+macro_rules! fields {()=>{()};($key:literal:$value:expr $(,$tail_key:literal:$tail_value:expr)* $(,)?)=>{$crate::sail_engine::Field($key,&$value,$crate::sail_engine::fields!($($tail_key:$tail_value),*))};}
++macro_rules! fields {()=>{()};($key:literal:$value:expr $(,$tail_key:literal:$tail_value:expr)* $(,)?)=>{$crate::verifier::sail_engine::Field($key,&$value,$crate::verifier::sail_engine::fields!($($tail_key:$tail_value),*))};}
 +pub(super) use fields;
-+macro_rules! emit {($kind:expr,{$($key:literal:$value:expr),* $(,)?})=>{$crate::sail_engine::observe(|phase,writer|serde_json::to_writer(writer,&$crate::sail_engine::Observation {version:1,phase,event:$kind,payload:$crate::sail_engine::Fields($crate::sail_engine::fields!($($key:$value),*))}))};}
++macro_rules! emit {($kind:expr,{$($key:literal:$value:expr),* $(,)?})=>{$crate::verifier::sail_engine::observe(|phase,writer|serde_json::to_writer(writer,&$crate::verifier::sail_engine::Observation {version:1,phase,event:$kind,payload:$crate::verifier::sail_engine::Fields($crate::verifier::sail_engine::fields!($($key:$value),*))}))};}
 +pub(super) use emit;
 +pub(super) fn diagnostic(message:&ArcDynMessage,level:MessageLevel){if let Some(msg)=message.downcast_ref::<MessageX>(){emit!("diagnostic",{"message":msg,"level":level});}}
 +struct Ordinals {values:HashMap<(bool,String,String),u32>,charged:usize}
@@ -1724,7 +1724,7 @@ index 0000000..7a17e2d
 +    }
 +}
 diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
-index 71d4a33..9d6f24f 100644
+index 71d4a33..0e681f2 100644
 --- a/source/rust_verify/src/verifier.rs
 +++ b/source/rust_verify/src/verifier.rs
 @@ -47,6 +47,11 @@ use vir::ast_util::{fun_as_friendly_rust_name, is_visible_to};
@@ -1872,10 +1872,12 @@ index 71d4a33..9d6f24f 100644
          global_ctx = ctx.free();
  
          let time_verify_end = Instant::now();
-@@ -2016,10 +2055,10 @@ impl Verifier {
+@@ -2015,11 +2054,11 @@ impl Verifier {
+     fn verify_crate_inner(
          &mut self,
          compiler: &Compiler,
-         spans: &SpanContext,
+-        spans: &SpanContext,
++        _spans: &SpanContext,
 +        reporter: &impl Diagnostics,
      ) -> Result<(), VerifyErr> {
          let time_verify_sequential_start = Instant::now();

@@ -298,11 +298,14 @@ compiler working IR before that handoff.
 The combined source passed all 26 host release VIR tests, strict all-target
 VIR clippy and the private graph/span boundary audits. The first full RustVerify library compile failed before tests with 132 repeated
 macro-resolution errors: the helper tests had placed `sail_engine` at crate root,
-but the real source nests it under `verifier`. Exact diagnostics and source
-identities are retained in `qualifications/bounded-private-span-host.json`.
-The nested-layout correction and actual driver regressions remain pending;
-the separate unused-parameter warning will also be corrected before strict
-checks, without suppressing the lint.
+but the real source nests it under `verifier`. That failed source identity and
+exact diagnostics are retained in
+`qualifications/b6da-bounded-private-span-first-compile.json`.
+The candidate now uses the actual nested macro path, independently checked with
+a matching helper layout, and renames the unused parameter without suppressing
+its lint. The corrected complete source identity is recorded in
+`qualifications/bounded-private-span-host.json`; its actual driver regressions
+remain pending while the allocation profile runs.
 An allocation-only probe of the 105 retained, checksummed actual HE portable
 preparations admitted 36 and refused 69 at the 128 MiB decode budget. Admitted
 entries also decoded with explicit key-matched placeholder raw-span owners;

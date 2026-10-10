@@ -1,0 +1,60 @@
+{
+  "status": "unselected_unqualified_combined_candidate",
+  "patch": "engine/verus/candidates/bounded-private-span.patch",
+  "patch_sha256": "b6da2aaf376c5d43bdb0e0f7da14bd3adb2dcdc3ef45cd5020e931fbe661e585",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "host": "aarch64-apple-darwin",
+  "toolchain": "1.98.1",
+  "build_jobs": 2,
+  "compiler_niceness": 19,
+  "tests": {
+    "vir": {
+      "release": true,
+      "serial": true,
+      "passed": 26,
+      "failed": 0
+    },
+    "vir_clippy": {
+      "all_targets": true,
+      "warnings": "deny",
+      "passed": true
+    },
+    "graph_boundary_audit": "pass",
+    "private_span_boundary_audit": "pass",
+    "rust_verify_library": {
+      "compile_exit_code": 101,
+      "tests_run": false,
+      "error_count": 132,
+      "first_error": "E0433: macros refer to $crate::sail_engine, actual module is $crate::verifier::sail_engine",
+      "raw_diagnostics": "target/bounded-private-span-probe/rust-verify-first-compile-errors.jsonl",
+      "raw_sha256": "9ca76e500bff61b532e7ac32adee52e2b9eba4ab8458bea3a2e0bf4c4209ec33",
+      "diagnostic_counts": {
+        "error/E0433": 132,
+        "warning/unused_macros": 1,
+        "warning/unused_imports": 1,
+        "warning/unused_variables": 1,
+        "error/None": 1,
+        "failure-note/None": 1
+      },
+      "correction": "pending exact nested-layout observer fix; unused spans parameter warning also retained"
+    }
+  },
+  "sources": {
+    "vir/src/context.rs": "3cc62bf8b96d9f971e3a329bb22ff2112a331f086a24e28288937a9c772e3477",
+    "vir/src/sail_graph.rs": "28ee57057ce60b3f07be20667b89b0bf6334fb2863346142bf13c745f2b37290",
+    "vir/src/sail_decode.rs": "8a03c34f2ec755feffa034bbb57f015ab6bd4d7a4ee433f6d03a6aa028976dc8",
+    "vir/src/scc.rs": "7fd1ed14834d5a864d5d80b0e7a6e78bc6859e2f2af1ac42bd26f3fa9be7ddfc",
+    "vir/src/ast_util.rs": "f873a89805dc7a8ce6c40aa8fc15b0d7eb68061fe1ff66a0de8b6e5e81a18054",
+    "vir/src/recursive_types.rs": "02612663db276cdd85c5184835db1c81567ba774ab3bfb1cd1640bda14b22716",
+    "rust_verify/src/sail_engine.rs": "5a6f0142eab75b01fdba1aeec09cdbacd0cb47ce81ace0b6c93259f0f82f0b5c",
+    "rust_verify/src/verifier.rs": "b03a077264feb84e40ddba3fba2638a35eb3765720fa4c4bead6a9c7ff5689f4"
+  },
+  "observer_overlay_sha256": "bbc3970d5bcdcd011ef7086d7a5a54cfc228617993a1236613a74a45c610848f",
+  "decoder_overlay_sha256": "8812f5151a19528c014b9d3a8875367fbf0f1c6ec4938f94cbf764ea03e60384",
+  "retained_he_decode_probe": "engine/verus/candidates/qualifications/bounded-decode-retained-he.json",
+  "ordinary_runtime_build": "not started; allocation precision review required after69real entry refusals",
+  "runtime_qualified": false,
+  "previous_revision_hit": false,
+  "product_qualified": false,
+  "source_patch_commit": "1e3a01f"
+}
