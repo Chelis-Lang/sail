@@ -282,14 +282,12 @@ mod metadata_tests {
         json_metadata(&path, &value)?;
         assert_eq!(std::fs::read(&path)?, serde_json::to_vec(&value)?);
         let missing = root.0.join("absent/state.json");
-        let original = json(&missing, &value).err().map(|error| error.to_string());
-        let candidate = json_metadata(&missing, &value)
-            .err()
-            .map(|error| error.to_string());
+        let original = json(&missing, &value).err();
+        let candidate = json_metadata(&missing, &value).err();
         assert!(
             original
                 .as_ref()
-                .is_some_and(|message| message.starts_with("SAIL3102:"))
+                .is_some_and(|error| error.code == "SAIL3102")
         );
         assert_eq!(candidate, original);
         Ok(())

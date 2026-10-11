@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "base_commit": "db4c65fe8221884983326c8259a7c2f065df7693",
-  "status": "source-only; uncompiled; unselected",
+  "status": "first native scope FAIL; cfg(test) Error expectation corrected; corrected scope uncompiled and unselected",
   "sources": {
-    "crates/sail-verus/src/managed/files.rs": "16d9c3c8d4e718f0c845e3c1153776db8bf84367736dff20c7664340cb3b09f7",
+    "crates/sail-verus/src/managed/files.rs": "50da6958dfa7e890f690a5ffc2c739048ce6f02d943830db1784b87e831ec874",
     "crates/sail-verus/src/managed/freshness.rs": "e80e42f7c4920d655bd49449250c6306ba198dd7f9a7abb33205c66d5322b281",
     "crates/sail-verus/src/managed/runner.rs": "9fd31bf5d551107f8c0a23ffafbedaf18f2ee64412f8bd5681cab253a8388731",
     "crates/sail-verus/src/managed/source_inputs.rs": "62dfc13bc015777aab3fc74dce5bd457240873579f18b50e7a62d3b166221d34",
@@ -16,11 +16,13 @@
   "additional_open_descriptors": 1,
   "controls": {
     "new_source_only": 9,
-    "native_compilation": "not run",
+    "native_compilation": "first source build PASS; corrected fixture uncompiled",
     "strict": "not run",
     "counterfactual": "not run",
     "original_120_30_5_fixture": "not run",
-    "reader_census": "not run"
+    "reader_census": "not run",
+    "first_native_metadata": "7/8 PASS; one cfg(test) Error display expectation FAIL",
+    "native_complete_freshness": "not run"
   },
   "freshness_publication": "synchronous unchanged",
   "currentness_authority": "existing independent native owner and original barriers",

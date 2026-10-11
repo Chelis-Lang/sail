@@ -1,13 +1,9 @@
 {
   "schema": 1,
-  "status": "prepare-only; execution requires root handoff and completed grant",
-  "source_commit": "8b3e4f61296669bb8621f1e85a3d9f1b41a2625b",
-  "source_archive_bytes": 26193920,
-  "source_archive_sha256": "fbffe640ffe54daca5ba2e0f02a27415483c5ab6bb48912125b32ecf4867a3e1",
+  "status": "first native scope FAIL preserved; corrected fixture requires a new root grant and fresh source binding",
   "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
   "controller_sha256": "097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2",
   "pure_controls_sha256": "daccb308718eba2a92a2dc6924b97c2f9fed784d06f638d5f2b2a49b788edbe0",
-  "source_record_sha256": "715a0357cf5949042368419911b6093036129baf652435932f5d4562c3f855ac",
   "counterfactual_sha256": "2de9811d37b2cccbe0328e203dc00d4fb3a0748ed56b64bb56243a0c320c65db",
   "profile": "release",
   "toolchain": "1.99.0",
@@ -28,6 +24,16 @@
   },
   "source_staging": "Exact source Git archive; controller, source record and counterfactual installed separately by their frozen hashes",
   "protected_images": "All six B HTTP images and C tested images remain outside the reused target; root engine thirteen artifacts and installed products are independently inventoried before and after",
-  "native_reads_or_actors_started": false,
-  "verification_or_acceptance_credit": false
+  "native_reads_or_actors_started": true,
+  "verification_or_acceptance_credit": false,
+  "first_failed_scope": {
+    "source_commit": "8b3e4f61296669bb8621f1e85a3d9f1b41a2625b",
+    "source_archive_bytes": 26193920,
+    "source_archive_sha256": "fbffe640ffe54daca5ba2e0f02a27415483c5ab6bb48912125b32ecf4867a3e1",
+    "source_record_sha256": "715a0357cf5949042368419911b6093036129baf652435932f5d4562c3f855ac",
+    "result_sha256": "f4ada37047fbf14a01525f8cd1a1699ed2e26709fdeed82ccd3f46b5671c702c"
+  },
+  "corrected_source_commit": null,
+  "corrected_source_archive_sha256": null,
+  "source_record_sha256": "9321b90eb8153c948013254253e42b942ea0db1424ff2431e2708c4de94c255c"
 }

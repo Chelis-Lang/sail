@@ -1,11 +1,17 @@
 # Metadata publication integration checklist
 
-Source-only candidate `8b3e4f61296669bb8621f1e85a3d9f1b41a2625b` remains
-uncompiled and unselected. Original controller `867a2944` remains in Git;
-the corrected controller adds owned cleanup and phase caps before execution.
+Candidate `8b3e4f61296669bb8621f1e85a3d9f1b41a2625b` remains unselected.
+Its first native scope built successfully, then stopped at one fixture error:
+seven of eight metadata cases passed, including the same-owner case. The complete
+freshness set, strict checks and counterfactual remain unattempted. The
+[first failure record](m7-preserve-freshness-metadata-first-failure.json) binds
+raw logs, the actual tested executable and independent closure. The corrected
+fixture checks the original stable error code and full Error equality; production
+bytes are unchanged and the corrected fixture is uncompiled. Original controller
+`867a2944` remains in Git; controller `3007b8f` retains owned cleanup and phase caps.
 The six exact Rust source hashes are in
 [m7-preserve-freshness-metadata-source.json](m7-preserve-freshness-metadata-source.json).
-No compiler, daemon or proof actor ran for this checklist.
+No daemon, verifier proof or acceptance actor ran for these component controls.
 
 1. After the lead grants an exclusively owned **private Linux** source/target,
    use the frozen [control runner](m7-preserve-freshness-metadata-controls.py),
