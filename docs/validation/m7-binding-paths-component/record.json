@@ -1,0 +1,837 @@
+{
+  "scope": "Offline native syscall component; synthetic healthy paths, no live proof/currentness/latency acceptance",
+  "execution": "Local Linux amd64 Docker emulation; concurrent development work",
+  "compiler_command": [
+    "docker",
+    "exec",
+    "sail-m7-handoff-validation",
+    "cc",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-pthread",
+    "/tmp/sail-m7-binding-paths-profile/profile-strict.c",
+    "-o",
+    "/tmp/sail-m7-binding-paths-profile/profile-strict"
+  ],
+  "elapsed_seconds": 0.400129666,
+  "exit_code": 0,
+  "source_sha256": "286e249559575d52a29b37aef8f73084adddea16dbc655d1bd9697d1efefcc4c",
+  "samples": {
+    "scope": "Offline native syscall component; synthetic healthy paths, no live proof/currentness/latency acceptance",
+    "files": 327,
+    "threads": 4,
+    "waves": 32,
+    "samples": [
+      {
+        "thread": 0,
+        "wave": 0,
+        "canonical_stat_ms": 5.912874997,
+        "descriptor_ms": 0.868832998
+      },
+      {
+        "thread": 0,
+        "wave": 1,
+        "canonical_stat_ms": 2.796374999,
+        "descriptor_ms": 0.763624996
+      },
+      {
+        "thread": 0,
+        "wave": 2,
+        "canonical_stat_ms": 2.637208,
+        "descriptor_ms": 20.154124998
+      },
+      {
+        "thread": 0,
+        "wave": 3,
+        "canonical_stat_ms": 10.281874999,
+        "descriptor_ms": 1.828457996
+      },
+      {
+        "thread": 0,
+        "wave": 4,
+        "canonical_stat_ms": 3.869540997,
+        "descriptor_ms": 1.112499997
+      },
+      {
+        "thread": 0,
+        "wave": 5,
+        "canonical_stat_ms": 2.980958,
+        "descriptor_ms": 0.887292005
+      },
+      {
+        "thread": 0,
+        "wave": 6,
+        "canonical_stat_ms": 2.823124997,
+        "descriptor_ms": 1.681957997
+      },
+      {
+        "thread": 0,
+        "wave": 7,
+        "canonical_stat_ms": 2.831583001,
+        "descriptor_ms": 0.860749997
+      },
+      {
+        "thread": 0,
+        "wave": 8,
+        "canonical_stat_ms": 6.142125003,
+        "descriptor_ms": 0.927124999
+      },
+      {
+        "thread": 0,
+        "wave": 9,
+        "canonical_stat_ms": 3.107540995,
+        "descriptor_ms": 0.909833007
+      },
+      {
+        "thread": 0,
+        "wave": 10,
+        "canonical_stat_ms": 3.190458,
+        "descriptor_ms": 0.940875001
+      },
+      {
+        "thread": 0,
+        "wave": 11,
+        "canonical_stat_ms": 3.170832999,
+        "descriptor_ms": 1.139707997
+      },
+      {
+        "thread": 0,
+        "wave": 12,
+        "canonical_stat_ms": 4.383957997,
+        "descriptor_ms": 0.862209
+      },
+      {
+        "thread": 0,
+        "wave": 13,
+        "canonical_stat_ms": 2.662124999,
+        "descriptor_ms": 0.789999999
+      },
+      {
+        "thread": 0,
+        "wave": 14,
+        "canonical_stat_ms": 10.789416999,
+        "descriptor_ms": 1.310125001
+      },
+      {
+        "thread": 0,
+        "wave": 15,
+        "canonical_stat_ms": 10.345166996,
+        "descriptor_ms": 1.743166998
+      },
+      {
+        "thread": 0,
+        "wave": 16,
+        "canonical_stat_ms": 4.467416003,
+        "descriptor_ms": 1.132082999
+      },
+      {
+        "thread": 0,
+        "wave": 17,
+        "canonical_stat_ms": 4.942584001,
+        "descriptor_ms": 0.890666999
+      },
+      {
+        "thread": 0,
+        "wave": 18,
+        "canonical_stat_ms": 3.069541998,
+        "descriptor_ms": 0.8605
+      },
+      {
+        "thread": 0,
+        "wave": 19,
+        "canonical_stat_ms": 3.089542001,
+        "descriptor_ms": 0.839542001
+      },
+      {
+        "thread": 0,
+        "wave": 20,
+        "canonical_stat_ms": 3.000375003,
+        "descriptor_ms": 3.369416006
+      },
+      {
+        "thread": 0,
+        "wave": 21,
+        "canonical_stat_ms": 4.145333007,
+        "descriptor_ms": 1.542625003
+      },
+      {
+        "thread": 0,
+        "wave": 22,
+        "canonical_stat_ms": 3.002708003,
+        "descriptor_ms": 0.851416998
+      },
+      {
+        "thread": 0,
+        "wave": 23,
+        "canonical_stat_ms": 5.041542001,
+        "descriptor_ms": 2.218959004
+      },
+      {
+        "thread": 0,
+        "wave": 24,
+        "canonical_stat_ms": 2.760541998,
+        "descriptor_ms": 0.884792
+      },
+      {
+        "thread": 0,
+        "wave": 25,
+        "canonical_stat_ms": 3.894584,
+        "descriptor_ms": 0.870292
+      },
+      {
+        "thread": 0,
+        "wave": 26,
+        "canonical_stat_ms": 4.443958007,
+        "descriptor_ms": 1.431208998
+      },
+      {
+        "thread": 0,
+        "wave": 27,
+        "canonical_stat_ms": 5.112584002,
+        "descriptor_ms": 1.330000006
+      },
+      {
+        "thread": 0,
+        "wave": 28,
+        "canonical_stat_ms": 4.230165996,
+        "descriptor_ms": 1.114500001
+      },
+      {
+        "thread": 0,
+        "wave": 29,
+        "canonical_stat_ms": 3.480540998,
+        "descriptor_ms": 1.404875003
+      },
+      {
+        "thread": 0,
+        "wave": 30,
+        "canonical_stat_ms": 2.944750004,
+        "descriptor_ms": 0.954582997
+      },
+      {
+        "thread": 0,
+        "wave": 31,
+        "canonical_stat_ms": 2.780542001,
+        "descriptor_ms": 0.935084
+      },
+      {
+        "thread": 1,
+        "wave": 0,
+        "canonical_stat_ms": 4.520499997,
+        "descriptor_ms": 2.133834004
+      },
+      {
+        "thread": 1,
+        "wave": 1,
+        "canonical_stat_ms": 5.587416999,
+        "descriptor_ms": 20.020125002
+      },
+      {
+        "thread": 1,
+        "wave": 2,
+        "canonical_stat_ms": 3.046290994,
+        "descriptor_ms": 1.248916
+      },
+      {
+        "thread": 1,
+        "wave": 3,
+        "canonical_stat_ms": 2.926708996,
+        "descriptor_ms": 0.800167002
+      },
+      {
+        "thread": 1,
+        "wave": 4,
+        "canonical_stat_ms": 2.826292001,
+        "descriptor_ms": 0.787958004
+      },
+      {
+        "thread": 1,
+        "wave": 5,
+        "canonical_stat_ms": 2.820625,
+        "descriptor_ms": 1.861040995
+      },
+      {
+        "thread": 1,
+        "wave": 6,
+        "canonical_stat_ms": 2.911624998,
+        "descriptor_ms": 7.091166005
+      },
+      {
+        "thread": 1,
+        "wave": 7,
+        "canonical_stat_ms": 2.865082994,
+        "descriptor_ms": 0.854374997
+      },
+      {
+        "thread": 1,
+        "wave": 8,
+        "canonical_stat_ms": 3.106415994,
+        "descriptor_ms": 0.876125
+      },
+      {
+        "thread": 1,
+        "wave": 9,
+        "canonical_stat_ms": 12.283666998,
+        "descriptor_ms": 6.943792
+      },
+      {
+        "thread": 1,
+        "wave": 10,
+        "canonical_stat_ms": 2.708999999,
+        "descriptor_ms": 0.873792
+      },
+      {
+        "thread": 1,
+        "wave": 11,
+        "canonical_stat_ms": 5.580541998,
+        "descriptor_ms": 2.209125005
+      },
+      {
+        "thread": 1,
+        "wave": 12,
+        "canonical_stat_ms": 4.828833006,
+        "descriptor_ms": 1.527208
+      },
+      {
+        "thread": 1,
+        "wave": 13,
+        "canonical_stat_ms": 2.998833001,
+        "descriptor_ms": 3.987666003
+      },
+      {
+        "thread": 1,
+        "wave": 14,
+        "canonical_stat_ms": 5.172875002,
+        "descriptor_ms": 0.8935
+      },
+      {
+        "thread": 1,
+        "wave": 15,
+        "canonical_stat_ms": 6.087040998,
+        "descriptor_ms": 3.449249998
+      },
+      {
+        "thread": 1,
+        "wave": 16,
+        "canonical_stat_ms": 3.034625001,
+        "descriptor_ms": 0.88425
+      },
+      {
+        "thread": 1,
+        "wave": 17,
+        "canonical_stat_ms": 4.380374998,
+        "descriptor_ms": 1.186125003
+      },
+      {
+        "thread": 1,
+        "wave": 18,
+        "canonical_stat_ms": 3.622957997,
+        "descriptor_ms": 2.275792003
+      },
+      {
+        "thread": 1,
+        "wave": 19,
+        "canonical_stat_ms": 3.060833998,
+        "descriptor_ms": 1.256415993
+      },
+      {
+        "thread": 1,
+        "wave": 20,
+        "canonical_stat_ms": 4.168709002,
+        "descriptor_ms": 1.026916996
+      },
+      {
+        "thread": 1,
+        "wave": 21,
+        "canonical_stat_ms": 5.359333999,
+        "descriptor_ms": 1.605875
+      },
+      {
+        "thread": 1,
+        "wave": 22,
+        "canonical_stat_ms": 3.457417004,
+        "descriptor_ms": 3.688999996
+      },
+      {
+        "thread": 1,
+        "wave": 23,
+        "canonical_stat_ms": 2.693583995,
+        "descriptor_ms": 0.927207999
+      },
+      {
+        "thread": 1,
+        "wave": 24,
+        "canonical_stat_ms": 2.949209005,
+        "descriptor_ms": 0.831333995
+      },
+      {
+        "thread": 1,
+        "wave": 25,
+        "canonical_stat_ms": 8.595749997,
+        "descriptor_ms": 1.645625003
+      },
+      {
+        "thread": 1,
+        "wave": 26,
+        "canonical_stat_ms": 2.971499994,
+        "descriptor_ms": 3.503249995
+      },
+      {
+        "thread": 1,
+        "wave": 27,
+        "canonical_stat_ms": 14.398249999,
+        "descriptor_ms": 0.930833004
+      },
+      {
+        "thread": 1,
+        "wave": 28,
+        "canonical_stat_ms": 2.917208001,
+        "descriptor_ms": 0.888708003
+      },
+      {
+        "thread": 1,
+        "wave": 29,
+        "canonical_stat_ms": 2.779834002,
+        "descriptor_ms": 0.898457997
+      },
+      {
+        "thread": 1,
+        "wave": 30,
+        "canonical_stat_ms": 5.840375006,
+        "descriptor_ms": 0.850624993
+      },
+      {
+        "thread": 1,
+        "wave": 31,
+        "canonical_stat_ms": 5.228749998,
+        "descriptor_ms": 0.906000003
+      },
+      {
+        "thread": 2,
+        "wave": 0,
+        "canonical_stat_ms": 16.66375,
+        "descriptor_ms": 0.900458001
+      },
+      {
+        "thread": 2,
+        "wave": 1,
+        "canonical_stat_ms": 3.221999995,
+        "descriptor_ms": 0.821082994
+      },
+      {
+        "thread": 2,
+        "wave": 2,
+        "canonical_stat_ms": 3.038249999,
+        "descriptor_ms": 1.830750003
+      },
+      {
+        "thread": 2,
+        "wave": 3,
+        "canonical_stat_ms": 3.236207999,
+        "descriptor_ms": 0.837666005
+      },
+      {
+        "thread": 2,
+        "wave": 4,
+        "canonical_stat_ms": 3.095582999,
+        "descriptor_ms": 1.273957998
+      },
+      {
+        "thread": 2,
+        "wave": 5,
+        "canonical_stat_ms": 6.014707997,
+        "descriptor_ms": 1.093791001
+      },
+      {
+        "thread": 2,
+        "wave": 6,
+        "canonical_stat_ms": 2.985624999,
+        "descriptor_ms": 0.800209001
+      },
+      {
+        "thread": 2,
+        "wave": 7,
+        "canonical_stat_ms": 2.931000002,
+        "descriptor_ms": 0.778333001
+      },
+      {
+        "thread": 2,
+        "wave": 8,
+        "canonical_stat_ms": 7.860875003,
+        "descriptor_ms": 2.044709004
+      },
+      {
+        "thread": 2,
+        "wave": 9,
+        "canonical_stat_ms": 2.892583005,
+        "descriptor_ms": 0.848624997
+      },
+      {
+        "thread": 2,
+        "wave": 10,
+        "canonical_stat_ms": 16.238583997,
+        "descriptor_ms": 1.226417005
+      },
+      {
+        "thread": 2,
+        "wave": 11,
+        "canonical_stat_ms": 5.550875001,
+        "descriptor_ms": 1.248084001
+      },
+      {
+        "thread": 2,
+        "wave": 12,
+        "canonical_stat_ms": 2.723042004,
+        "descriptor_ms": 0.785875
+      },
+      {
+        "thread": 2,
+        "wave": 13,
+        "canonical_stat_ms": 2.735083006,
+        "descriptor_ms": 0.775915995
+      },
+      {
+        "thread": 2,
+        "wave": 14,
+        "canonical_stat_ms": 2.985666998,
+        "descriptor_ms": 0.976041995
+      },
+      {
+        "thread": 2,
+        "wave": 15,
+        "canonical_stat_ms": 3.085709006,
+        "descriptor_ms": 1.121333994
+      },
+      {
+        "thread": 2,
+        "wave": 16,
+        "canonical_stat_ms": 3.105167001,
+        "descriptor_ms": 0.881082997
+      },
+      {
+        "thread": 2,
+        "wave": 17,
+        "canonical_stat_ms": 7.348000005,
+        "descriptor_ms": 0.864458002
+      },
+      {
+        "thread": 2,
+        "wave": 18,
+        "canonical_stat_ms": 5.500207998,
+        "descriptor_ms": 1.074584
+      },
+      {
+        "thread": 2,
+        "wave": 19,
+        "canonical_stat_ms": 6.649457999,
+        "descriptor_ms": 0.926708005
+      },
+      {
+        "thread": 2,
+        "wave": 20,
+        "canonical_stat_ms": 6.469124995,
+        "descriptor_ms": 1.813083999
+      },
+      {
+        "thread": 2,
+        "wave": 21,
+        "canonical_stat_ms": 4.697915994,
+        "descriptor_ms": 1.0955
+      },
+      {
+        "thread": 2,
+        "wave": 22,
+        "canonical_stat_ms": 3.306666002,
+        "descriptor_ms": 2.613625005
+      },
+      {
+        "thread": 2,
+        "wave": 23,
+        "canonical_stat_ms": 2.998875,
+        "descriptor_ms": 0.843291998
+      },
+      {
+        "thread": 2,
+        "wave": 24,
+        "canonical_stat_ms": 4.089082994,
+        "descriptor_ms": 2.359624997
+      },
+      {
+        "thread": 2,
+        "wave": 25,
+        "canonical_stat_ms": 4.724167004,
+        "descriptor_ms": 1.636957996
+      },
+      {
+        "thread": 2,
+        "wave": 26,
+        "canonical_stat_ms": 8.276083,
+        "descriptor_ms": 1.271582998
+      },
+      {
+        "thread": 2,
+        "wave": 27,
+        "canonical_stat_ms": 4.704042003,
+        "descriptor_ms": 1.300750002
+      },
+      {
+        "thread": 2,
+        "wave": 28,
+        "canonical_stat_ms": 2.881125003,
+        "descriptor_ms": 1.195166998
+      },
+      {
+        "thread": 2,
+        "wave": 29,
+        "canonical_stat_ms": 2.877875,
+        "descriptor_ms": 0.973875001
+      },
+      {
+        "thread": 2,
+        "wave": 30,
+        "canonical_stat_ms": 2.977958001,
+        "descriptor_ms": 0.912625
+      },
+      {
+        "thread": 2,
+        "wave": 31,
+        "canonical_stat_ms": 2.924041003,
+        "descriptor_ms": 12.278625004
+      },
+      {
+        "thread": 3,
+        "wave": 0,
+        "canonical_stat_ms": 9.849417001,
+        "descriptor_ms": 13.156500004
+      },
+      {
+        "thread": 3,
+        "wave": 1,
+        "canonical_stat_ms": 15.678375006,
+        "descriptor_ms": 10.942042001
+      },
+      {
+        "thread": 3,
+        "wave": 2,
+        "canonical_stat_ms": 2.964999996,
+        "descriptor_ms": 1.443500005
+      },
+      {
+        "thread": 3,
+        "wave": 3,
+        "canonical_stat_ms": 11.437041,
+        "descriptor_ms": 1.443750001
+      },
+      {
+        "thread": 3,
+        "wave": 4,
+        "canonical_stat_ms": 5.562041998,
+        "descriptor_ms": 1.370082997
+      },
+      {
+        "thread": 3,
+        "wave": 5,
+        "canonical_stat_ms": 3.790749997,
+        "descriptor_ms": 2.193667002
+      },
+      {
+        "thread": 3,
+        "wave": 6,
+        "canonical_stat_ms": 3.132458001,
+        "descriptor_ms": 2.331209004
+      },
+      {
+        "thread": 3,
+        "wave": 7,
+        "canonical_stat_ms": 11.394083999,
+        "descriptor_ms": 1.679874994
+      },
+      {
+        "thread": 3,
+        "wave": 8,
+        "canonical_stat_ms": 4.908583999,
+        "descriptor_ms": 1.313166
+      },
+      {
+        "thread": 3,
+        "wave": 9,
+        "canonical_stat_ms": 3.164500006,
+        "descriptor_ms": 0.843291998
+      },
+      {
+        "thread": 3,
+        "wave": 10,
+        "canonical_stat_ms": 2.903124996,
+        "descriptor_ms": 0.797415994
+      },
+      {
+        "thread": 3,
+        "wave": 11,
+        "canonical_stat_ms": 2.911334001,
+        "descriptor_ms": 0.839458004
+      },
+      {
+        "thread": 3,
+        "wave": 12,
+        "canonical_stat_ms": 2.806417003,
+        "descriptor_ms": 0.810833998
+      },
+      {
+        "thread": 3,
+        "wave": 13,
+        "canonical_stat_ms": 2.794334002,
+        "descriptor_ms": 0.897708997
+      },
+      {
+        "thread": 3,
+        "wave": 14,
+        "canonical_stat_ms": 3.067041002,
+        "descriptor_ms": 3.026959002
+      },
+      {
+        "thread": 3,
+        "wave": 15,
+        "canonical_stat_ms": 2.965084001,
+        "descriptor_ms": 0.875749998
+      },
+      {
+        "thread": 3,
+        "wave": 16,
+        "canonical_stat_ms": 3.486500002,
+        "descriptor_ms": 0.865083002
+      },
+      {
+        "thread": 3,
+        "wave": 17,
+        "canonical_stat_ms": 5.662083,
+        "descriptor_ms": 1.489332996
+      },
+      {
+        "thread": 3,
+        "wave": 18,
+        "canonical_stat_ms": 9.071459003,
+        "descriptor_ms": 2.073209003
+      },
+      {
+        "thread": 3,
+        "wave": 19,
+        "canonical_stat_ms": 2.840333998,
+        "descriptor_ms": 1.595667005
+      },
+      {
+        "thread": 3,
+        "wave": 20,
+        "canonical_stat_ms": 2.908832997,
+        "descriptor_ms": 0.884084001
+      },
+      {
+        "thread": 3,
+        "wave": 21,
+        "canonical_stat_ms": 3.364834003,
+        "descriptor_ms": 0.868916005
+      },
+      {
+        "thread": 3,
+        "wave": 22,
+        "canonical_stat_ms": 2.905874997,
+        "descriptor_ms": 0.977125004
+      },
+      {
+        "thread": 3,
+        "wave": 23,
+        "canonical_stat_ms": 2.925750002,
+        "descriptor_ms": 0.821332999
+      },
+      {
+        "thread": 3,
+        "wave": 24,
+        "canonical_stat_ms": 6.917957999,
+        "descriptor_ms": 2.004292004
+      },
+      {
+        "thread": 3,
+        "wave": 25,
+        "canonical_stat_ms": 5.004708998,
+        "descriptor_ms": 2.659667
+      },
+      {
+        "thread": 3,
+        "wave": 26,
+        "canonical_stat_ms": 2.802666001,
+        "descriptor_ms": 0.902291998
+      },
+      {
+        "thread": 3,
+        "wave": 27,
+        "canonical_stat_ms": 2.681125,
+        "descriptor_ms": 0.876791
+      },
+      {
+        "thread": 3,
+        "wave": 28,
+        "canonical_stat_ms": 5.729959004,
+        "descriptor_ms": 0.843332998
+      },
+      {
+        "thread": 3,
+        "wave": 29,
+        "canonical_stat_ms": 4.379083,
+        "descriptor_ms": 0.891291998
+      },
+      {
+        "thread": 3,
+        "wave": 30,
+        "canonical_stat_ms": 2.902084,
+        "descriptor_ms": 0.922125004
+      },
+      {
+        "thread": 3,
+        "wave": 31,
+        "canonical_stat_ms": 3.212209001,
+        "descriptor_ms": 0.907833003
+      }
+    ]
+  },
+  "p95_ms": {
+    "canonical_stat": 11.394083999,
+    "descriptor": 6.943792
+  },
+  "limitations": [
+    "Synthetic healthy327 files, ten nested native directory components, four threads32 alternating waves; actual syscall component only",
+    "C fixture uses preallocated realpath/decimal buffers; not a compiled Rust implementation benchmark",
+    "No selected source runtime, live verifier, actual proof inputs, Current admission, report seal, transport, parsing or reader acceptance",
+    "Original first component attempt and its compiler warnings retained"
+  ],
+  "raw": {
+    "stdout-strict.json": {
+      "bytes": 10891,
+      "sha256": "37443373f6f0659e3150ac1c71d9d8ae28067042bf6f53d4b0581fba7c9a0b8f"
+    },
+    "compiler.log": {
+      "bytes": 2030,
+      "sha256": "0519270a657efe18f9d5dd6844d21f0f9683d60e6e501c9f80de9e100c643afb"
+    },
+    "stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "controller.json": {
+      "bytes": 717,
+      "sha256": "d430edc61e19e01ee4af1701b21cdcedda37a09aecabfa6019ae538dbee70e7e"
+    },
+    "compiler-strict.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stderr-strict": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout.json": {
+      "bytes": 10918,
+      "sha256": "19b718d57a54d0eb6a532382a881ccf47274c79bf402fbbc8e7dfd6afb911306"
+    }
+  }
+}
