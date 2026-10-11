@@ -49,9 +49,12 @@ cancellation remain active. Preparation is not a latency sample or a performance
 claim, and its cost must accompany any resulting acceptance record.
 
 After preparation, the existing ordinary and repair-context setup checks still
-have their original 600-second bounds. Ordinary `verify --incremental` may reuse
-a legitimately established receipt; it does not claim a new ordinary compiler
-invocation. The repair submission and public complete Current admission remain
+have their original 600-second bounds. This frozen controller sets
+`SAIL_MANAGED_FORCE=1`, so the ordinary `verify --incremental` check cleans the
+selected target and invokes its compiler again. Preparation warms dependencies
+and establishes contexts; it does not turn this forced check into receipt-only
+reuse. Ordinary and repair contexts keep separate target/receipt directories.
+The repair submission and public complete Current admission remain
 unchanged. Neither collector, the 600-second collector process bound, five-second
 RPC nor p95 threshold changes. The explicit preparation flag requires a positive
 subsequent setup budget: it cannot turn these bounded checks into a whole
