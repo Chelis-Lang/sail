@@ -23,7 +23,7 @@ References below name files in the sealed pinned source, not selected Sail APIs.
 | --- | --- | --- |
 | Original metadata imported | `rust_verify/src/verifier.rs:3259` | `SpanContextX::new` consumes original crate/file metadata. |
 | Early optional classification | `rust_verify/src/spans.rs:207` | Captures complete Loaded/Deferred/OriginalDescriptor role against the then-current SourceMap. |
-| Frontend work | `rust_verify/src/verifier.rs:3272` | VIR construction, trait checks and lifetime checks can still access rustc metadata/source information. |
+| Frontend HIR→VIR work | `rust_verify/src/verifier.rs:3272` | VIR construction, trait checks and lifetime checks can still access rustc metadata/source information. |
 | Natural compiler-thread handoff | `rust_verify/src/verifier.rs:3364` | `tcx` is still available; `sail_focus` starts only after all successful frontend checks. |
 | Source inventory and late demotion | `rust_verify/src/sail_engine.rs:813` | Takes early owner and revalidates it against the later SourceMap before any focus worker. |
 | Preparation consumption | `rust_verify/src/sail_engine.rs:524` and `:539` | Current bindings are collected from current VIR/seed spans; take/store use the published source owner. |
@@ -166,12 +166,35 @@ an automatically accepted role; all exact classifier checks still apply.
   original fourteen stages/600 seconds, strict stock diagnostics, same-input
   oracle and genuine previous-revision FOCUS remain separate mandatory gates.
 
-## Open implementation review points
+## Reviewed API and publication boundaries
 
-The stable-crate association at the late handoff must use the still-live compiler
-context or a separately bounded compiler-derived association; a filename cannot
-substitute for crate authority. Any newly triggered metadata allocation from
-this lookup needs an explicit existing-query/API argument, not an RSS exclusion.
+Here “frontend lowering” means HIR→VIR plus frontend/trait/lifetime checks.
+It does not mean fresh `ast_to_sst`/`poly`: those run only after the attempted
+preparation lookup (`verifier.rs:2008–2036`). Waiting for fresh SST would defeat
+the restoration path. Current span rebinding and ReplayMessages do not depend
+on the seed timing.
+
+Pinned rustc 1.98.1 closes the stable-crate allocation question: `TyCtxt::stable_crate_id`
+(`rustc_middle/src/ty/context.rs:1168`) reads the local stored field or delegates
+to the already-loaded cstore; `cstore_untracked` (`:1398`) borrows that store.
+Its implementation (`rustc_metadata/src/rmeta/decoder/cstore_impl.rs:709`) reads
+`get_crate_data(cnum).root.stable_crate_id`; `creader.rs:230` borrows the existing
+metadata slot. This exact path is not an external query, metadata decode, source
+loader or proportional allocation. It assumes cnum belongs to an already-loaded
+crate, as SourceMap Foreign cnum does; unsupported association still refuses.
+A filename never substitutes for that compiler-owned identity.
+
+For publication coherence, prefer one borrowed `source_map.files()` read guard
+for late classification, source inventory construction and final namespace
+barrier before publishing SOURCES. Pass the already-borrowed file slice to
+helpers rather than acquiring a nested guard or cloning SourceFile Arcs. This
+blocks namespace insertion during that transaction without retaining a guard in
+worker state. The current resolver recipe is still checked by its bounded mutex
+reads; no resolver lock is retained or written. If a concurrent state mutation
+invalidates the final barrier, classify failure is not reset or published. All
+name/hash inventory buffers remain under their existing source-family budget.
+This is a proposed API shape; actual compiler controls must validate it.
+
 
 SourceMap can still grow later through untouched stock diagnostic resolution.
 The handoff does not assert permanent namespace immutability. Prepared diagnostic

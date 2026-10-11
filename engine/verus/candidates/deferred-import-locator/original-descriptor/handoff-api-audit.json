@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "scope": "Read-only pinned compiler API audit; no source/proof actor",
+  "rust_toolchain": "1.98.1",
+  "compiler_commit_prefix": "48a229",
+  "files": {
+    "rustc_middle/src/ty/context.rs": "2b2c93cf6b882090b3a86ad43b131e64a6f02c5f963c464ce87b31099f2f30ac",
+    "rustc_metadata/src/rmeta/decoder/cstore_impl.rs": "f0b8bef3d76b39a06924947be0344b896dca1eca204a4bd114480536ecb483f1",
+    "rustc_metadata/src/creader.rs": "10fa19db5f68873b48fca3c15440ebe7997951926f6a79a427032beac4fabe19"
+  },
+  "path": "TyCtxt::stable_crate_id -> borrowed cstore -> existing metadata.root.stable_crate_id",
+  "no_source_loader_or_decode_called_on_this_path": true,
+  "assumption": "Current Foreign SourceFile cnum belongs to an already-loaded crate; no filename-derived cnum or invented stable identity",
+  "current_candidate_modified": false
+}
