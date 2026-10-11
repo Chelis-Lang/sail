@@ -30,5 +30,17 @@
   },
   "corrected_observer_sha256": "2b8366ce4e2577371516696b693c08f6b5a986ab4dfe26afbd7cceb567455c2e",
   "corrected_controls_sha256": "f5da35a662b65cb78aab03d1fbcccfbff93174059360aae1f40b7cd66ba6d701",
-  "supplementary_observation": "pending separately frozen attachment; original output/failure remains unchanged"
+  "supplementary_observation": {
+    "scope": "Independent metadata attachment only; no proof or conformance acceptance",
+    "observer_source_commit": "2210a3d",
+    "observer_sha256": "2b8366ce4e2577371516696b693c08f6b5a986ab4dfe26afbd7cceb567455c2e",
+    "leader_pid": 453116,
+    "leader_starttime_ticks": 2858550,
+    "observer_pid": 486289,
+    "observer_starttime_ticks": 3065923,
+    "started_unix_ns": 1791686829894033010,
+    "first_complete_sample_elapsed_s": 0.020777624999027466,
+    "terminal": "pending",
+    "raw_evidence_role": "separate task-owned supplementary directory; original output unchanged"
+  }
 }
