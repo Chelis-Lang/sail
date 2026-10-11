@@ -3,8 +3,10 @@
 This is a prepared plan, not an executed reader qualification. The workflow is
 already authorized. Exact current product `0f31c1d` passed the complete 564-test
 workspace gate and 39 solver tests; its byte and installation identities were
-verified and the one observation-only workflow has now started. Its setup and
-reader outcome remain pending. The
+verified. The single observation-only workflow is now closed: complete Current
+setup passed, then the original Python Result p95 failed.
+[Terminal evidence](m7-rpc-stage-workflow.md) retains all samples and the bounded
+stage tail. Rust and retained integration were unattempted in this workflow. The
 [original447 workflow](m7-current-reader-workflow.md) remains a failed Result
 latency gate, with Rust and retained CLI/MCP unattempted. The subsequent
 [offline reconstruction](m7-current-result-components.md) was not captured wire
