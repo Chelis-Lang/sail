@@ -5,6 +5,14 @@ of the [unchanged original wrapper](../../engine/verus/candidates/preparation-na
 to the combined product's build and owned-installation record. Preparation of
 this launcher is not benchmark execution or performance evidence.
 
+Use `--run-id NAME` for an explicitly separate fresh attempt after an
+interruption. Names contain at most 32 lowercase letters, digits or hyphens;
+existing output paths are still refused. The namespace changes the original
+runner's work and cache paths, and therefore its private socket selection.
+It transfers no cache, receipt or prepared target from a failed scope. Every
+attempt retains its own result; this option performs no automatic retry and
+does not change the original wrapper, rounds, limits or oracles.
+
 The original wrapper remains byte-identical (`477508a1…`). It owns the existing
 separately recorded ordinary/focus/repair preparation, three measured rounds,
 600-second invocation limits, exact verdict/diagnostic oracles, per-project

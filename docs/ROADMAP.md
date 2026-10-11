@@ -157,6 +157,24 @@ coalesced readers are recorded; all callers fail to receive the signed entry in
 time. Later gate steps and the solver suite are unattempted. The team is
 investigating this failure without changing the deadline or hit oracle.
 
+The separate [cleanup-fixed solver attempt](../bench/validation/m7-linux-combined-core-solver-b63af10-failure-2026-10-11.json)
+passes 39 of 41 cases, including GC/clear in 20.404 seconds. Two attribution
+cases fail while the Linux filesystem enters emergency read-only mode; their
+precise failure causes are not established. The first
+[frozen benchmark attempt](../bench/validation/m7-linux-repair-benchmark-a9609e9-storage-failure-2026-10-11.json)
+also stops on `EROFS`, without measured samples. After the authorized Docker
+restart, private write/fsync checks pass in both containers. A recovered
+benchmark setup then correctly refuses a leftover socket when its old pathname
+is reused; [that failed scope](../bench/validation/m7-linux-repair-benchmark-a9609e9-stale-socket-2026-10-11.json)
+is retained. A fresh explicitly named benchmark namespace now isolates work,
+caches and socket selection without copying prior proof state. Reader and
+repair diagnostics also use fresh scopes. These runs remain pending acceptance.
+
+[Additional closed build cleanup](validation/m7-closed-core-build-retirement.json)
+retires 758 MB of compiler intermediates, preserving and rehashing every
+discovered ELF image and all raw evidence. Active targets and runtimes remain
+untouched.
+
 M7 is **not accepted**. PR #74 remains draft until the required product,
 reader, conformance and performance gates pass. Emulated local Linux runs are
 authorized and labelled; native-host reference reruns are for later. Limits,

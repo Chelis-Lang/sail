@@ -229,15 +229,25 @@ def container_identity(container):
     return {'id': data['Id'], 'created': data['Created'], 'started_at': data['State']['StartedAt'], 'image': data['Image']}
 
 
-def host(revision, precheck_only):
+def output_path(revision, precheck_only, run_id=None):
+    require(re.fullmatch('[0-9a-f]{7}', revision), 'Use the product short revision')
+    suffix = ''
+    if run_id is not None:
+        require(re.fullmatch('[a-z0-9][a-z0-9-]{0,31}', run_id), 'Invalid fresh run identifier')
+        suffix = '-' + run_id
+    return Path('/tmp/sail-m7-current-benchmark-' + revision + suffix + ('-precheck' if precheck_only else ''))
+
+
+def host(revision, precheck_only, run_id=None):
     require(re.fullmatch('[0-9a-f]{7}', revision), 'Use the product short revision')
     grant_path, grant = execution_grant(Path('/tmp/sail-m7-core-product-' + revision), revision)
-    output = Path('/tmp/sail-m7-current-benchmark-' + revision + ('-precheck' if precheck_only else ''))
+    output = output_path(revision, precheck_only, run_id)
     output.mkdir(mode=0o700, exist_ok=False)
     native = str(output)
     container = grant['container']
     record = {'version': 1, 'status': 'running', 'scope': 'Read-only input precheck' if precheck_only else 'One original three-round whole-loop benchmark; readers separate', 'grant_sha256': sha(grant_path), 'controller_sha256': sha(__file__), 'source_commit': grant['source_commit'], 'source_archive_sha256': grant['source_archive_sha256'], 'phases': [], 'started_unix_ns': time.time_ns(), 'original_rounds': 3, 'original_invocation_seconds': 600, 'original_minimum_speedup_each_project': 2}
     actor = None
+    record['run_id'] = run_id
     base = ['python3', native + '/launcher.py', '--native-grant', native + '/product-grant.json', '--native-output', native]
     started = time.monotonic()
     checkpoint(output / 'controller.json', record)
@@ -321,6 +331,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('revision', nargs='?')
     parser.add_argument('--precheck-only', action='store_true')
+    parser.add_argument('--run-id', help='Fresh isolated run namespace; never reuses caches, work or sockets')
     parser.add_argument('--native-grant', type=Path)
     parser.add_argument('--native-output', type=Path)
     parser.add_argument('--native-mode', choices=('seals', 'execute', 'closure', 'interrupt'))
@@ -342,7 +353,7 @@ def main():
             print(json.dumps({'signal': 'SIGTERM', 'owner': owner}))
         return 0
     require(args.revision is not None, 'Revision required')
-    return host(args.revision, args.precheck_only)
+    return host(args.revision, args.precheck_only, args.run_id)
 
 
 if __name__ == '__main__':

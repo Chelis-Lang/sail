@@ -1,0 +1,498 @@
+{
+  "version": 1,
+  "status": "FAIL",
+  "scope": "One original three-round whole-loop benchmark; readers separate",
+  "grant_sha256": "c7735a4988682b5eca3f1056bc8a6938007a7976064e732472032d0113b06d4f",
+  "controller_sha256": "0277dc0ca5e3bf2b1c336b1f7d6c97e4ff76c5503f100481075e89e247318453",
+  "source_commit": "a9609e91af593d97dfc8830958527a4e54dedfc8",
+  "source_archive_sha256": "d98312ba27888b93cf78415a8fafae84936c60a5050818ee1eef1feb160673a8",
+  "phases": [],
+  "started_unix_ns": 1791736465112648000,
+  "original_rounds": 3,
+  "original_invocation_seconds": 600,
+  "original_minimum_speedup_each_project": 2,
+  "container_before": {
+    "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+    "created": "2026-10-10T10:11:57.931137676Z",
+    "started_at": "2026-10-11T16:31:00.073144137Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "before": {
+    "files": {
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/.cargo-build-lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/.vstd-fingerprint": {
+        "sha256": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655",
+        "bytes": 156,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/cargo-verus": {
+        "sha256": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e",
+        "bytes": 2754984,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libverus_builtin.rlib": {
+        "sha256": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902",
+        "bytes": 928246,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libverus_builtin_macros.so": {
+        "sha256": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf",
+        "bytes": 13801320,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libverus_state_machines_macros.so": {
+        "sha256": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6",
+        "bytes": 8565760,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libvstd.rlib": {
+        "sha256": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2",
+        "bytes": 10236586,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/rust_verify": {
+        "sha256": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55",
+        "bytes": 29811368,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/version.txt": {
+        "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+        "bytes": 26,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/verus": {
+        "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+        "bytes": 4705336,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/verus-root": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/vstd.vir": {
+        "sha256": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27",
+        "bytes": 30076214,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/z3": {
+        "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+        "bytes": 34954456,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_deferred_import_tests.rs": {
+        "sha256": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+        "bytes": 53794,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_engine.rs": {
+        "sha256": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+        "bytes": 107289,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_namespace.rs": {
+        "sha256": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+        "bytes": 19018,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_owned_imports.rs": {
+        "sha256": "7955d2ccf62699d59fd7e1d4aeda727dcb3539c8fff2fcf32421e3dc9a8aa597",
+        "bytes": 54618,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_owned_imports_tests.rs": {
+        "sha256": "a0ce98125d8e14b85d05e805d7455e126088afa34e49246606a1163b47cb34d2",
+        "bytes": 51720,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/spans.rs": {
+        "sha256": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+        "bytes": 17055,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/verifier.rs": {
+        "sha256": "88c714168ffb02cdb4a4d166813eba5506a4ac5f16d1453fa918158a03cc42ac",
+        "bytes": 154124,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/vir/src/context.rs": {
+        "sha256": "c4672b093f7307f4aec248d75fc57381c454253bd948bc6a69141da981bc8f60",
+        "bytes": 66703,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/Cargo.lock": {
+        "sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+        "bytes": 92808,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/tmp/sail-m7-core-product-source-a9609e9/scripts/m7-repair-bench.py": {
+        "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33",
+        "bytes": 31040,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0664"
+      },
+      "/tmp/sail-m7-core-product-source-a9609e9/scripts/m7-job-read-bench.py": {
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+        "bytes": 11877,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0664"
+      },
+      "/tmp/sail-m7-core-product-source-a9609e9/corpus/repair-edits.json": {
+        "sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6",
+        "bytes": 5510,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0664"
+      },
+      "/opt/sail-m6-0fde/sail": {
+        "sha256": "69288597f5f5c0d0a81a66b00a6b0f174ba17bf6a878447050a2d7f75c0c36d8",
+        "bytes": 58964632,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0555"
+      },
+      "/opt/sail-m6-0fde/sail-z3": {
+        "sha256": "aaa7e3c43ee6282b575b615ad87a4c964bae14c2f6a56787c98f03d1159582bd",
+        "bytes": 7681904,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0555"
+      },
+      "/opt/sail-m7-core-product-a9609e9/sail": {
+        "sha256": "36d018f1a52b95a5df158c58f7f66adabfa2b4979003eae45927b7f3ea0fbf53",
+        "bytes": 76147424,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      },
+      "/opt/sail-m7-core-product-a9609e9/sail-z3": {
+        "sha256": "ef2f6cb3e333a257194afcf5683b0670b34f498e46e5a68acd49b37d6df14f9a",
+        "bytes": 11000896,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      }
+    },
+    "corpus": {
+      "human-eval-verus": "bbe93f73b0a5802c438501f9a2106f9126bd2eea",
+      "vest": "11af01ddaef76cceded03517cd48764adb9d35b1"
+    },
+    "wrapper_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
+    "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d"
+  },
+  "command": [
+    "docker",
+    "exec",
+    "sail-m7-acceptance",
+    "python3",
+    "/tmp/sail-m7-current-benchmark-a9609e9/launcher.py",
+    "--native-grant",
+    "/tmp/sail-m7-current-benchmark-a9609e9/product-grant.json",
+    "--native-output",
+    "/tmp/sail-m7-current-benchmark-a9609e9",
+    "--native-mode",
+    "execute"
+  ],
+  "exit_code": 1,
+  "elapsed_seconds": 12.362950249999999,
+  "after": {
+    "files": {
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/.cargo-build-lock": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/.vstd-fingerprint": {
+        "sha256": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655",
+        "bytes": 156,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/cargo-verus": {
+        "sha256": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e",
+        "bytes": 2754984,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libverus_builtin.rlib": {
+        "sha256": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902",
+        "bytes": 928246,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libverus_builtin_macros.so": {
+        "sha256": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf",
+        "bytes": 13801320,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libverus_state_machines_macros.so": {
+        "sha256": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6",
+        "bytes": 8565760,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/libvstd.rlib": {
+        "sha256": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2",
+        "bytes": 10236586,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/rust_verify": {
+        "sha256": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55",
+        "bytes": 29811368,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/version.txt": {
+        "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+        "bytes": 26,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/verus": {
+        "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+        "bytes": 4705336,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/verus-root": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/vstd.vir": {
+        "sha256": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27",
+        "bytes": 30076214,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/target-verus/release/z3": {
+        "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+        "bytes": 34954456,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0755"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_deferred_import_tests.rs": {
+        "sha256": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+        "bytes": 53794,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_engine.rs": {
+        "sha256": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+        "bytes": 107289,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_namespace.rs": {
+        "sha256": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+        "bytes": 19018,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_owned_imports.rs": {
+        "sha256": "7955d2ccf62699d59fd7e1d4aeda727dcb3539c8fff2fcf32421e3dc9a8aa597",
+        "bytes": 54618,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/sail_owned_imports_tests.rs": {
+        "sha256": "a0ce98125d8e14b85d05e805d7455e126088afa34e49246606a1163b47cb34d2",
+        "bytes": 51720,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/spans.rs": {
+        "sha256": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+        "bytes": 17055,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/rust_verify/src/verifier.rs": {
+        "sha256": "88c714168ffb02cdb4a4d166813eba5506a4ac5f16d1453fa918158a03cc42ac",
+        "bytes": 154124,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/vir/src/context.rs": {
+        "sha256": "c4672b093f7307f4aec248d75fc57381c454253bd948bc6a69141da981bc8f60",
+        "bytes": 66703,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06/verus/source/Cargo.lock": {
+        "sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+        "bytes": 92808,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0644"
+      },
+      "/tmp/sail-m7-core-product-source-a9609e9/scripts/m7-repair-bench.py": {
+        "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33",
+        "bytes": 31040,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0664"
+      },
+      "/tmp/sail-m7-core-product-source-a9609e9/scripts/m7-job-read-bench.py": {
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+        "bytes": 11877,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0664"
+      },
+      "/tmp/sail-m7-core-product-source-a9609e9/corpus/repair-edits.json": {
+        "sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6",
+        "bytes": 5510,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0664"
+      },
+      "/opt/sail-m6-0fde/sail": {
+        "sha256": "69288597f5f5c0d0a81a66b00a6b0f174ba17bf6a878447050a2d7f75c0c36d8",
+        "bytes": 58964632,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0555"
+      },
+      "/opt/sail-m6-0fde/sail-z3": {
+        "sha256": "aaa7e3c43ee6282b575b615ad87a4c964bae14c2f6a56787c98f03d1159582bd",
+        "bytes": 7681904,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0555"
+      },
+      "/opt/sail-m7-core-product-a9609e9/sail": {
+        "sha256": "36d018f1a52b95a5df158c58f7f66adabfa2b4979003eae45927b7f3ea0fbf53",
+        "bytes": 76147424,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      },
+      "/opt/sail-m7-core-product-a9609e9/sail-z3": {
+        "sha256": "ef2f6cb3e333a257194afcf5683b0670b34f498e46e5a68acd49b37d6df14f9a",
+        "bytes": 11000896,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      }
+    },
+    "corpus": {
+      "human-eval-verus": "bbe93f73b0a5802c438501f9a2106f9126bd2eea",
+      "vest": "11af01ddaef76cceded03517cd48764adb9d35b1"
+    },
+    "wrapper_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
+    "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d"
+  },
+  "closure": {
+    "scope": "Bounded post-cleanup metadata census; no environment or signals",
+    "candidates": [
+      {
+        "pid": 201,
+        "state": "R",
+        "ppid": 0,
+        "pgid": 201,
+        "start_ticks": 30542
+      }
+    ],
+    "unreadable": [],
+    "complete": true,
+    "scanned": 2,
+    "elapsed_seconds": 0.002260458000023391
+  },
+  "closure_complete": false,
+  "container_after": {
+    "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+    "created": "2026-10-10T10:11:57.931137676Z",
+    "started_at": "2026-10-11T16:31:00.073144137Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "archive_exclusions": [
+    "work/scratch",
+    "work/results/cache-m6",
+    "work/results/cache-m7"
+  ],
+  "native_work_preserved": true,
+  "raw_archive": {
+    "bytes": 10384,
+    "sha256": "730a7ab390a23a4c4f6b57c72685b237d9313c56f8ea5cf980f2451ef920edf5"
+  },
+  "failure": "SAIL0941: pre-existing workload daemon socket. Root reused original work pathname after filesystem restart; original runner correctly refused the leftover external socket. No actor started and no warmup or measured sample completed.",
+  "acceptance": "FAIL setup; no performance credit",
+  "verified_raw_members": 10,
+  "correction": "Explicit fresh --run-id namespace; no socket deletion, workload cache or receipt reuse, automatic retry, deadline or oracle changes"
+}
