@@ -24,6 +24,7 @@ unchanged; no other retry is allowed.
 Preparation is not an acceptance result. This attempt has no proof, collector
 or retained pass claim while running. It does not qualify the optional source
 physical budget, 2× edit-loop performance or M7 overall. The root full local
-gate runs concurrently in its own target; concurrent work is recorded without
-asserting a cause for any outcome. See [native setup](../native-product-setup.md)
+gate runs concurrently from a separate frozen source tree as the sole writer to
+the common Cargo target; this scenario uses only its private project targets.
+Concurrent work is recorded without asserting a cause for any outcome. See [native setup](../native-product-setup.md)
 and [the reader guide](../reader-acceptance.md) for the contract.
