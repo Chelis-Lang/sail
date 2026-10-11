@@ -122,6 +122,12 @@ fresh input/output checks across that compiler family. The daemon constructs
 retained-result output owners through a bounded background service; foreground
 reads can fall back to full byte validation. These are implemented changes,
 not measured real-project speedups.
+The [rebuilt combined release](../bench/validation/m7-linux-combined-product-a9609e9-emulated-2026-10-11.json)
+compiles and installs as private byte-identical copies. Its production source
+matches the passing gate; installation is preparatory while the solver failure
+remains open. After all common-target actors closed, [1.59 GB of incremental
+compiler scratch](validation/m7-closed-incremental-retirement-a9609e9.json) was
+retired without removing binaries, runtime files or raw evidence.
 
 | Workstream | Current evidence | Required next result |
 |---|---|---|
