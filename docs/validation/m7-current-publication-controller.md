@@ -1,8 +1,11 @@
 # Current-product publication diagnostic controller
 
-Status: prepared and tested with pure mocked controls only. No Docker,
-compiler, verifier, daemon or acceptance actor ran during preparation. The
-next execution follows the combined product's normal build and input seals;
+The current closure/classification correction is tested with pure controls only.
+No Docker, compiler, verifier, daemon or acceptance actor ran during its preparation.
+The root-owned original 730a scope remains `UNCERTAIN`: the unchanged fixture
+passed in 100.685 seconds, while the controller observed its own census process
+and did not recognize the wrapper's partial timing-capture exit. That historical
+controller outcome is unchanged. The next execution follows the combined product's normal build and input seals;
 this controller adds no separate approval step or qualification claim.
 
 [The host controller](../../scripts/m7-current-publication-controller.py)
@@ -73,10 +76,21 @@ terminating or losing a
 Docker client does not prove the native actor stopped. The controller never
 retries the fixture, restarts Docker, signals guessed descendants or asserts
 universal native closure. The reused bounded post-cleanup census reports
-actual candidate holders and incompleteness separately. It can examine up to
+actual candidate holders and incompleteness separately. It excludes only the
+current census process with the same PID and kernel birth in two observations;
+other processes, recycled births and unreadable identities are never excluded.
+A Z/X leader uses the same bounded stable all-task guard as local gate/product
+closure. Complete all-dead evidence is retained as `terminated_unreaped`; live
+siblings, unknown states and incomplete or changing task membership refuse
+closure. The sealed source includes that shared helper. It can examine up to
 8,192 process entries for one second and at most 64 descriptor names per process;
 its original OS-read limitations remain. An empty later scan cannot upgrade
-an uncertain execution to success. Root must resolve any surviving owned
+an uncertain execution to success. A bound native terminal with a passed
+fixture, unchanged fixture/product hashes and explicitly partial timing capture
+explains wrapper exit one. It is recorded as `FAIL` with
+`diagnostic_outcome=passed-fixture-partial-capture`, never acceptance. Missing or
+unbound terminal evidence, lost transport and unavailable closure remain sticky
+`UNCERTAIN`; the partial label cannot clear those reasons. Root must resolve any surviving owned
 actor before another heavy workload. Original cleanup errors and missing,
 dropped or overwritten timing observations stay visible.
 
@@ -104,3 +118,10 @@ This prepared controller has no publication-performance evidence. The original
 [failed timing scope](m7-publication-timing-plan.md), repair bounds and full
 reader acceptance remain unchanged. See the [worker freshness review](m7-worker-freshness-publication-review.md)
 for the unchanged terminal publication and Current-readiness contract.
+
+The corrected pure scope has 16 common-controller controls and 15 publication
+controls. It includes self versus live child, recycled/unreadable self identity,
+true all-dead task groups versus live siblings, expected partial-capture exit,
+invalid capture/seals and transport loss after a matching partial terminal.
+The existing shared guard/product controls remain unchanged. No original
+fixture, recorder ring, collector, assertion or deadline changed.
