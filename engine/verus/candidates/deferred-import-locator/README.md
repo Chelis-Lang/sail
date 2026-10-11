@@ -2,20 +2,26 @@
 
 Status: unselected implementation for independent review under proposed
 [ADR 0033](../../../../docs/decisions/0033-deferred-import-diagnostic-locators.md).
-The [candidate patch](../deferred-import-locator.patch) has not had a full source
-build or qualification. Its helper controls pass against pinned rustc APIs;
+The [candidate patch](../deferred-import-locator.patch) has passed its private
+ordinary source build with fresh vstd verification (2060 verified, 0 errors).
+Full source-control and original qualification gates remain pending. Its helper
+controls pass against pinned rustc APIs;
 [identity](identity.json) and [evidence](helper-controls.json) distinguish those
 controls from the pending actual source and original fourteen-stage gates. The
 `50667954` candidate and its failed qualification remain immutable and
 unselected. This candidate introduces no eager source loading or resolver
 mutation. The existing full standard conformance attempt is independent.
 
-The independently reviewed committed bytes now have an authorized private
-ordinary build in progress. [Launch evidence](build-launch.json) records the
+The independently reviewed committed bytes have a closed private ordinary
+build. [Launch evidence](build-launch.json) records the
 exact builder/archive/patch/features, ordinary-priority two-job actor, private
 target ownership, compiler-only seed inventory and corrected pre-compiler
-archive-transfer setup failure. This launch is not a successful build or source
-qualification, and changes no selected runtime.
+archive-transfer setup failure. That historical launch record remains unchanged.
+[Build evidence](ordinary-build.json) records the successful 1720.396-second
+build, exact thirteen-artifact manifest, source/lock identities and closed owner
+before source tests. Actual full library controls and strict Clippy are running
+in the private target; no source or product qualification is claimed, and no
+selected runtime changed.
 
 The [actual first refusal](../loaded-foreign-authority/delayed-role-review.md)
 is an imported raw-unit span for `vstd/function.rs:151:20: 151:65 (#0)`.
