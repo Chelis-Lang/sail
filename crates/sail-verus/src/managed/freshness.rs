@@ -40,6 +40,8 @@ fn trace(stage: &'static str, started: std::time::Instant, reason: &'static str)
 
 #[cfg(target_os = "linux")]
 struct RuntimeValidation {
+    #[cfg(test)]
+    identity_guarded: bool,
     identity: String,
     lease: ReadLease,
     inputs: InputSnapshot,
@@ -47,13 +49,24 @@ struct RuntimeValidation {
 #[cfg(target_os = "linux")]
 impl RuntimeValidation {
     fn valid(&mut self, request: &Request, started: std::time::Instant) -> Option<()> {
-        let Some((sha, _)) = runner::runtime_identity(&request.cache, &request.context) else {
-            trace("runtime-identity", started, "unavailable");
-            return None;
-        };
-        if sha != self.identity {
-            trace("runtime-identity", started, "changed");
-            return None;
+        // Candidate remains unselected in production pending whole-path
+        // controls/profile. Exact raw sidecar membership was certified only
+        // after the cold independent reads and all successful final barriers.
+        #[cfg(test)]
+        let guarded = self.identity_guarded && runtime_identity_guard::enabled();
+        #[cfg(not(test))]
+        let guarded = false;
+        if !guarded {
+            #[cfg(test)]
+            runtime_identity_guard::record_parse();
+            let Some((sha, _)) = runner::runtime_identity(&request.cache, &request.context) else {
+                trace("runtime-identity", started, "unavailable");
+                return None;
+            };
+            if sha != self.identity {
+                trace("runtime-identity", started, "changed");
+                return None;
+            }
         }
         trace("runtime-identity", started, "ready");
         let clean = self.lease.clean();
@@ -552,6 +565,13 @@ impl FreshnessIndex {
                 runtime.zip(lease).map(|((identity, _), lease)| {
                     Arc::new(Mutex::new(RuntimeSlot {
                         runtime: Some(RuntimeValidation {
+                            #[cfg(test)]
+                            identity_guarded: runtime_identity_guard::eligible(
+                                &request.cache,
+                                &request.context,
+                                &identity,
+                                &lease,
+                            ),
                             identity,
                             lease,
                             inputs: snapshot.clone(),
@@ -587,6 +607,10 @@ impl FreshnessIndex {
         }
     }
 }
+
+#[cfg(all(test, target_os = "linux"))]
+#[path = "freshness_identity_guard.rs"]
+mod runtime_identity_guard;
 #[cfg(target_os = "linux")]
 fn trace_fill(
     trace_started: std::time::Instant,
@@ -669,6 +693,9 @@ impl Drop for Permit {
 }
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
+    mod identity_guard_tests {
+        include!("freshness_identity_guard_tests.rs");
+    }
     use super::*;
     use std::sync::{
         Barrier,
