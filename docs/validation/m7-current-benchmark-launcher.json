@@ -1,17 +1,17 @@
 {
   "version": 1,
   "scope": "Launcher preparation and read-only native inventory only; no benchmark, build, proof or performance admission",
-  "status": "prepared; combined product identity pending",
+  "status": "Acceptance installation and read-only original benchmark precheck PASS; benchmark not executed",
   "controller": {
     "file": "m7-current-benchmark-controller.py",
-    "bytes": 18881,
-    "sha256": "2fd351a3b12a1126b18998af09e157d990abf6d2b270786cb4c631c69c01eb72"
+    "bytes": 20193,
+    "sha256": "0277dc0ca5e3bf2b1c336b1f7d6c97e4ff76c5503f100481075e89e247318453"
   },
   "pure_controls": {
     "file": "test-m7-current-benchmark-controller.py",
-    "bytes": 4865,
-    "sha256": "12b7325ff301a5e70bba2bae27de9761861f38049f06af06dc9f7e604136c2bb",
-    "passed": 8,
+    "bytes": 5485,
+    "sha256": "29b440baab14f228e4e021091e6663cd48bfb8ee3757524eb2aeb560465c5828",
+    "passed": 9,
     "actors_launched": false
   },
   "unchanged_wrapper_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
@@ -95,5 +95,127 @@
       "bytes": 3174,
       "sha256": "1337a4ae244cf17b47c47f724978a2084281ec1b0239d8bd2a65a8a6f7d342c0"
     }
+  },
+  "acceptance_installation": {
+    "status": "PASS",
+    "controller": {
+      "file": "m7-current-benchmark-install.py",
+      "bytes": 16668,
+      "sha256": "ef90e9218050f0a77f911fd951fd359ecd095a4668f805217d07f0d89dcf126f"
+    },
+    "controls": {
+      "file": "test-m7-current-benchmark-install.py",
+      "passed": 8,
+      "bytes": 7001,
+      "sha256": "98bfc68091f759e93e5bd26d87d6f31ce90f59e4412ac399d315322073f24cec"
+    },
+    "authority": "installation-only; no Cargo/proof/prewarm/cache/receipt copies",
+    "producer_record_mutated": false,
+    "execution_record_name": "product-grant-acceptance.json",
+    "complete_source_inventory_before_after": true,
+    "source_commit": "a9609e91af593d97dfc8830958527a4e54dedfc8",
+    "producer_grant": {
+      "bytes": 2923,
+      "sha256": "0be65a39b15c6f380a489e115111ff3c15d0747258b0783bcf4b0f5578448a20"
+    },
+    "execution_grant": {
+      "bytes": 3403,
+      "sha256": "593a1058f35dfe7236a69114b812bb545b68daa87e9824388e68f4741e92551b"
+    },
+    "source_archive": {
+      "sha256": "d98312ba27888b93cf78415a8fafae84936c60a5050818ee1eef1feb160673a8",
+      "bytes": 25610240,
+      "members": 1434,
+      "expanded_regular_bytes": 24538568,
+      "installer_sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+    },
+    "source_inventory_sha256": "9e280d0bcce1c3883c82d43d8ef6cfae710dffb18bcef5e995003bf3eaa3d466",
+    "actual_installation": {
+      "authority": "installation-only",
+      "credentials": {
+        "cap_eff": "00000000a80425fb",
+        "cap_lease": false,
+        "fsuid": 0,
+        "gids": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uids": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "directory_mode": "0700",
+      "files": {
+        "sail": {
+          "bytes": 76147424,
+          "gid": 0,
+          "mode": "0700",
+          "sha256": "36d018f1a52b95a5df158c58f7f66adabfa2b4979003eae45927b7f3ea0fbf53",
+          "uid": 0
+        },
+        "sail-z3": {
+          "bytes": 11000896,
+          "gid": 0,
+          "mode": "0700",
+          "sha256": "ef2f6cb3e333a257194afcf5683b0670b34f498e46e5a68acd49b37d6df14f9a",
+          "uid": 0
+        }
+      },
+      "source_modified": false,
+      "version": 1
+    },
+    "container_birth_before": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "created": "2026-10-10T10:11:57.931137676Z",
+      "started_at": "2026-10-11T13:43:50.934382337Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "container_birth_after": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "created": "2026-10-10T10:11:57.931137676Z",
+      "started_at": "2026-10-11T13:43:50.934382337Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "original_producer_binary_seals_match": true,
+    "source_post_precheck": {
+      "scope": "Read-only complete source postseal after benchmark precheck; no proof/build/preparation actor",
+      "exit_code": 0,
+      "elapsed_seconds": 0.714615416,
+      "source_inventory_sha256": "9e280d0bcce1c3883c82d43d8ef6cfae710dffb18bcef5e995003bf3eaa3d466",
+      "stdout_sha256": "aa43aadaab0ccf95d1fce91002bbd62aa84da4d93f83abe96683c7940f54485d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "raw_controller": {
+      "bytes": 11927,
+      "sha256": "3c8abf406e77721b595532442d39672582182a58e2c7c2ce9c35295e25516a0a"
+    },
+    "installation_helper_sha256_as_executed": "af72e7400623d2706825d8a4f228e0da00fbc46c34b8700a7dc0bbb9b1e5e137",
+    "recorded_transaction_seconds": 18.350846917000002,
+    "elapsed_scope": "Transfer/install transaction after initial producer-record read and output directory creation; outer CLI duration not retained",
+    "docker_native_installer_command_seconds": 1.2866705420000013
+  },
+  "current_product_precheck": {
+    "status": "PRECHECK_PASS",
+    "execution_grant_sha256": "593a1058f35dfe7236a69114b812bb545b68daa87e9824388e68f4741e92551b",
+    "launcher_sha256": "0277dc0ca5e3bf2b1c336b1f7d6c97e4ff76c5503f100481075e89e247318453",
+    "all_before_after_seals_match": true,
+    "container_birth_unchanged": true,
+    "original_wrapper_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
+    "raw_archive": {
+      "bytes": 7544,
+      "sha256": "7f2096ce82fbf8ee8d76d17e1a7a02313bdbcf2aa84cf7ff2fd783543e33dea0"
+    },
+    "raw_controller": {
+      "bytes": 19999,
+      "sha256": "4a48086e534064ce7a790be63c4462e7e4c8bc8b45dc3586bff7a8db00006dc9"
+    },
+    "proof_preparation_or_cargo_launched": false,
+    "recorded_primary_elapsed_seconds": 4.199344333,
+    "elapsed_scope": "Precheck through primary result, before final postseals/archive; outer CLI duration not retained"
   }
 }

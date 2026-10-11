@@ -3,7 +3,6 @@
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -13,6 +12,7 @@ import stat
 import subprocess
 import sys
 import time
+import types
 
 BUNDLE = Path('engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/ordinary')
 ORIGINAL = BUNDLE / 'repair-benchmark/run-original.py'
@@ -80,12 +80,31 @@ def validate_grant(grant, revision):
     return grant
 
 
+def execution_grant(directory, revision):
+    """Prefer the acceptance execution record, bound to its unchanged producer."""
+    directory = Path(directory)
+    producer_path = directory / 'product-grant.json'
+    producer = validate_grant(read_json(producer_path), revision)
+    path = directory / 'product-grant-acceptance.json'
+    if not path.exists():
+        return producer_path, producer
+    execution = validate_grant(read_json(path), revision)
+    require(execution['container'] == 'sail-m7-acceptance', 'Unexpected execution container')
+    require(execution['producer_grant_sha256'] == sha(producer_path), 'Producer record changed')
+    for key in ('source_commit', 'source_archive_sha256', 'artifacts'):
+        require(execution[key] == producer[key], 'Execution/producer identity differs')
+    require(execution['installation']['credentials']['fsuid'] == execution['execution_fsuid'], 'Execution service identity differs')
+    return path, execution
+
+
 def original_module(repo):
     path = Path(repo) / ORIGINAL
     require(sha(path) == ORIGINAL_SHA, 'Original wrapper changed')
-    spec = importlib.util.spec_from_file_location('original_benchmark', path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # Execute the sealed definition without import's incidental __pycache__
+    # write into the otherwise byte-identical source extraction.
+    module = types.ModuleType('original_benchmark')
+    module.__file__ = str(path)
+    exec(compile(path.read_bytes(), str(path), 'exec'), module.__dict__)
     return module
 
 
@@ -211,8 +230,8 @@ def container_identity(container):
 
 
 def host(revision, precheck_only):
-    grant_path = Path('/tmp/sail-m7-core-product-' + revision) / 'product-grant.json'
-    grant = validate_grant(read_json(grant_path), revision)
+    require(re.fullmatch('[0-9a-f]{7}', revision), 'Use the product short revision')
+    grant_path, grant = execution_grant(Path('/tmp/sail-m7-core-product-' + revision), revision)
     output = Path('/tmp/sail-m7-current-benchmark-' + revision + ('-precheck' if precheck_only else ''))
     output.mkdir(mode=0o700, exist_ok=False)
     native = str(output)
@@ -230,6 +249,8 @@ def host(revision, precheck_only):
     signal.signal(signal.SIGHUP, interrupted)
     try:
         record['container_before'] = container_identity(container)
+        if 'execution_container_birth' in grant:
+            require(record['container_before'] == grant['execution_container_birth'], 'Execution installation container birth changed')
         archive = grant_path.with_name('source.tar')
         require(sha(archive) == grant['source_archive_sha256'], 'Product source archive differs')
         subprocess.run(['docker', 'exec', container, 'mkdir', '-m', '700', native], check=True, timeout=15)
