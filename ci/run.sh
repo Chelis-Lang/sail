@@ -76,6 +76,7 @@ case "$step" in
     python3 scripts/test-m7-reader-acceptance.py
     python3 scripts/test-m7-result-frame-profile.py
     python3 scripts/test-managed-timeout-evidence.py
+    python3 scripts/test-m7-conformance-observation.py
     python3 ci/test-engine-artifact.py
     python3 ci/test-repair-lifecycle.py
     cargo fmt --all --check
