@@ -33,8 +33,10 @@ or digest reuse. The helper neither renews a dirty owner nor skips those barrier
 
 Freshness establishment already attempts the same retained RuntimeValidation Arc
 and clean observer before cold fill. Avoiding needless same-byte replacements
-can preserve that continuous owner for the same exact context/environment. Any
-changed declaration, input, runtime, namespace or helper state still invalidates
+can preserve that continuous owner for the same exact context/environment and
+unchanged inputs. A real source edit still invalidates the previous owner;
+preserving metadata alone cannot establish repair-edit speed or avoid its cold
+fill. Any changed declaration, input, runtime, namespace or helper state still invalidates
 it; a new context remains cold. No metadata-only Current shortcut, parsed graph
 cache, asynchronous Completed status or detached fill is added. Completion still
 waits for original synchronous independent freshness establishment.
@@ -74,3 +76,13 @@ Affected Linux controls and strict checks require the lead's exclusive private
 compiler slot. Preserve the first failure and actual tested images. Later original
 120/30/5 fixture and full reader measurements retain their original bounds; no
 speed claim follows from source inspection or a synthetic owner control.
+
+The adjacent source-control controller is prepare-only unless passed `--execute`.
+The lead supplies an exclusively owned private source/target and independent
+closure census. It validates all frozen source hashes before target mutation,
+runs affected metadata/native-freshness controls and strict checks, retains each
+actual tested image before a later rebuild, then removes only the no-op branch
+and requires the unchanged one-case owner assertion failure. It always restores
+the positive source and requires the same targeted case to pass again. This
+controller grants no compiler ownership or acceptance credit. Its pure assertion
+classifier control runs without starting Cargo, helpers or verification.
