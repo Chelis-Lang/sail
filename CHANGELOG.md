@@ -16,14 +16,15 @@ semantic versioning once the API is published.
   parse; all per-read freshness checks remain. No live reader latency gain is
   claimed from the component comparison.
 
-- A candidate retained-result output owner uses one bounded daemon constructor,
+- Retained-result output owners use one bounded daemon constructor,
   shared frame-cache admission and original complete read/hash fallback. Exact
-  input/runtime freshness remains independent; source controls and the original
-  live reader acceptance are pending.
+  input/runtime freshness remains independent. The implementation passed 35
+  affected native tests and strict checks; installed activation and the original
+  live reader acceptance remain pending.
 
-- Add an unselected Linux library prototype for continuously guarded retained
-  output digests. It certifies complete output bytes only; the daemon still uses
-  its original read/hash and input freshness checks. No live reader gain is
+- Add a Linux primitive for continuously guarded retained output digests. It
+  certifies complete output bytes only; the daemon retains its original read/hash
+  fallback and independent input freshness checks. No live reader gain is
   claimed until complete validation costs and original gates pass.
 - Share managed Cargo dependency artifacts across source-engine focus selectors,
   while keeping exact proof contexts and receipts separate. Serialize shared

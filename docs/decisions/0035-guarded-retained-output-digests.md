@@ -1,6 +1,6 @@
 # 0035: Guarded retained output digests
 
-- **Status:** proposed; daemon integration implemented for review, source controls and live reader acceptance pending
+- **Status:** proposed; daemon integration and affected source controls complete, installed reader acceptance pending
 - **Date:** 2026-10-11
 
 ## Context
@@ -132,7 +132,9 @@ exec environment is the existing trusted OS/helper bootstrap; production does
 not mutate that process environment, and its clone storage is charged in the
 construction envelope. Native kernel/helper resources remain separately bounded.
 
-The candidate includes source lifecycle, resource and real output mutation
-controls. They have not yet compiled or executed. All original complete payload,
+The corrected candidate passed 35 affected native source controls and strict
+all-target checks for both affected packages; see the
+[exact source validation](../validation/m7-guarded-output-source-controls.md).
+The initial strict failures and tested images remain retained. All original complete payload,
 collector, four-client/200-sample and five-second bounds remain required; prior
 component measurements are not daemon acceptance or performance qualification.
