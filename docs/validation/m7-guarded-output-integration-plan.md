@@ -1,11 +1,11 @@
 # Daemon output-owner integration plan
 
-Status: initial native source scope ran 35 passing tests and failed the strict
-startup style check. A strict preflight then exposed one test-only semicolon
-style error. Both exact results and tested images are retained in
-`m7-guarded-output-first-source-controls.json`. Equivalent corrections are under
-private validation; installed activation and reader acceptance remain pending.
-There is no RPC benchmark or Currentness claim. Base is `a136edb`; the compiler-family controls and cleanup
+Status: daemon integration implemented; corrected native source controls passed
+35 tests and both affected packages' strict all-target checks. The initial strict
+failures remain retained. Exact results and scopes are in
+[`m7-guarded-output-source-controls.json`](m7-guarded-output-source-controls.json).
+Installed activation and original reader acceptance remain pending; no RPC
+benchmark or Currentness claim follows from these controls. Base is `a136edb`; the compiler-family controls and cleanup
 remain retained on `fix/m7-compilation-context`.
 
 The new path belongs only to the retained Result wire-frame cache. The worker's
@@ -111,8 +111,8 @@ output/helper paths. It retains binding/ancestor watches and refuses a directory
 replacement instead of recursively walking it. The general Observer path is
 unchanged. Bounded ReadLease construction now reads each fdinfo with a 64 KiB
 limit and cancellation between descriptors, rather than unbounded read_to_string.
-Both new source controls passed in the initial native scope. Complete strict
-validation of the corrected candidate remains pending.
+Both new source controls and complete strict validation passed in the corrected
+native scope. Product activation and reader acceptance remain separate.
 
 The interpreter selection uses the explicit supported Linux exec bootstrap
 boundary. Initial daemon process environment storage is bounded by that kernel's
@@ -143,7 +143,9 @@ bindings/readiness/initial inventory 4 MiB; global/fdinfo inventory overlap
 11 MiB; initial Linux exec PATH/interpreter transient 2 MiB; remaining bounded
 path/hash/helper-command/OS-command storage 1 MiB. This totals 64 MiB and already
 counts owner contents; the separately reserved retained 16 MiB overcounts them.
-The proposed source controls must verify collection element/layout assumptions.
+Actual fixed-service and frame-margin layout/admission controls passed. The
+64 MiB construction envelope is independently reviewed requested Rust storage,
+not an RSS measurement or live reader acceptance.
 
 OutputOwner is boxed so the existing tiny frame-budget controls still exercise
 frame admission. Its fields dispose the GuardedOutput before refunding charge;

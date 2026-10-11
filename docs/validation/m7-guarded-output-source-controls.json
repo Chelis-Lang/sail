@@ -1,0 +1,334 @@
+{
+  "authority_scope": {
+    "existing_independent_freshness_unchanged": true,
+    "fallback_complete_read_and_hash_repeated": true,
+    "foreground_constructs_owner": false,
+    "full_result_wire_bytes_equal": true,
+    "installed_daemon_acceptance": false,
+    "performance_claim": false,
+    "proof_or_reader_workload": false,
+    "restored_write_freshness_calls": 2,
+    "restored_write_full_reads": 1
+  },
+  "closures": {
+    "protected_equal": true,
+    "source_equal": true
+  },
+  "limitations": [
+    "Source/component controls do not establish installed reader acceptance, latency improvement or Currentness from output alone.",
+    "Actual normal startup/shutdown/restart and constructor join are exercised; an operating-system thread-spawn error is reviewed but not injected.",
+    "Target/source process census is scoped closure evidence, not a global orphan-absence certificate."
+  ],
+  "prior_failures": "docs/validation/m7-guarded-output-first-source-controls.json",
+  "process_closures": {
+    "acceptance": {
+      "examined": 1,
+      "holders": [],
+      "unix_ns": 1791732295370373879,
+      "unreadable": []
+    },
+    "handoff": {
+      "examined": 4,
+      "holders": [],
+      "unix_ns": 1791732295366929254,
+      "unreadable": []
+    }
+  },
+  "protected_handoff_files": 204,
+  "raw_artifacts": {
+    "acceptance-process-closure.json": {
+      "bytes": 81,
+      "mode": 420,
+      "sha256": "8444424ba6870a3015ecb95c96e832e0d640ef9a2325ab710dc8265e3979d0ea"
+    },
+    "affected-strict.log": {
+      "bytes": 829,
+      "mode": 420,
+      "sha256": "65108c1d1d8f220f758fa4d62b51c18c66b32abaa36f0033fcafcff677d561bf"
+    },
+    "closure.json": {
+      "bytes": 47,
+      "mode": 420,
+      "sha256": "e8aee79bf5a849da379aa5855c51148dd7b12f0a461a7e0d19f3f5caf2309f2c"
+    },
+    "controller.py": {
+      "bytes": 4341,
+      "mode": 420,
+      "sha256": "72edd2efcbea4688b43aca8fe682a59a05bcbfb03c65bf315fa8ce25b706f014"
+    },
+    "daemon-jobs-integration.log": {
+      "bytes": 859,
+      "mode": 420,
+      "sha256": "ab04b62e6e0a575a902dceb460122828b35f07bd674a22ec94c974a7d93902f3"
+    },
+    "daemon-jobs-unit.log": {
+      "bytes": 2943,
+      "mode": 420,
+      "sha256": "ef24292aae1362b107e2b8261bb50847b95ee2a2cc8a629142858ef9ac8e15a1"
+    },
+    "execution.json": {
+      "bytes": 370,
+      "mode": 420,
+      "sha256": "e3602cde71d3c0bb83d0989e34b351b8b672af691fd76081232a5adb0f500308"
+    },
+    "fdinfo-bound.log": {
+      "bytes": 415,
+      "mode": 420,
+      "sha256": "4a2c3098b5064c8dbf43d46b2ba17f2862010b264978b39ccfb61a3ff436ea30"
+    },
+    "file-only-bound.log": {
+      "bytes": 402,
+      "mode": 420,
+      "sha256": "c58663fabd18152c56883fc8626336e36bcd4ee3514dcbb4f0c069f5c6db1c8b"
+    },
+    "guarded-output.log": {
+      "bytes": 1557,
+      "mode": 420,
+      "sha256": "46c99ba2249e565c2e045bcdd90a5d05b52c889cfb344576122ff1e321b50ad8"
+    },
+    "handoff-process-closure.json": {
+      "bytes": 81,
+      "mode": 420,
+      "sha256": "ec9bcf5164b22f79b2e93d3cb3e6d4538bbc772eb96c064bae64bddcae0f6c84"
+    },
+    "progress.json": {
+      "bytes": 195,
+      "mode": 420,
+      "sha256": "caab501ef33b348c15a5cbae3ccc4a6b1abe53c9d5accd484340f9546df83cfd"
+    },
+    "protected-after.json": {
+      "bytes": 33056,
+      "mode": 420,
+      "sha256": "990bf258ea2f5381760f8010347a4b7ba536bfc3d2193624af628f8ce5feec09"
+    },
+    "protected-before.json": {
+      "bytes": 33056,
+      "mode": 420,
+      "sha256": "990bf258ea2f5381760f8010347a4b7ba536bfc3d2193624af628f8ce5feec09"
+    },
+    "result.json": {
+      "bytes": 1779,
+      "mode": 420,
+      "sha256": "2b0a6eeb813f6796da2528dbef9ca8a209b39836f4f9a61e40c3221af278b429"
+    },
+    "source.json": {
+      "bytes": 193839,
+      "mode": 420,
+      "sha256": "e8b4b5aa5557c133bcf8969450c0a45012ec85e9d747428896209aa4546cfeeb"
+    },
+    "tested-binaries/jobs-0500c33f3b72842d-817a0bf938872da9": {
+      "bytes": 53616584,
+      "mode": 493,
+      "sha256": "817a0bf938872da9a71269402a2612ecf1749a5eeb53b2f2be652939c6066503"
+    },
+    "tested-binaries/jobs-0500c33f3b72842d-8d1e7a040622cf34": {
+      "bytes": 53616176,
+      "mode": 493,
+      "sha256": "8d1e7a040622cf34f69bd2c96dd307b8c4884b84dc555bdfae969ef88302527e"
+    },
+    "tested-binaries/sail_daemon-7df407ca02aaedbe-0235b95afdf8a9b2": {
+      "bytes": 59448216,
+      "mode": 493,
+      "sha256": "0235b95afdf8a9b2856a730e19d479b0658fb396d926e5835e99bfeff9ba59ca"
+    },
+    "tested-binaries/sail_daemon-7df407ca02aaedbe-c136241d2e75b32e": {
+      "bytes": 59447008,
+      "mode": 493,
+      "sha256": "c136241d2e75b32ed64524acba0fcf4ceb65734ce6964f8933a09b3beeeb4fd2"
+    },
+    "tested-binaries/sail_verus-00709776d1fabf40-b7a88681b57503cc": {
+      "bytes": 32937920,
+      "mode": 493,
+      "sha256": "b7a88681b57503ccc44ad7a3b07a5181afaf1526ddce3d94b4937c7d8efeafc2"
+    }
+  },
+  "resource_code_bounds": {
+    "constructor_envelope_independently_reviewed": true,
+    "fixed_service_control_allowance_bytes": 65536,
+    "foreground_inspection_scratch_bytes": 16777216,
+    "requested_rust_storage_not_rss": true,
+    "retained_owner_reservation_bytes": 16777216,
+    "retiring_owner_limit": 33,
+    "same_frame_family_ceiling_bytes": 134217728,
+    "single_constructor_scratch_bytes": 67108864,
+    "single_constructor_stack_bytes": 1048576
+  },
+  "resource_execution": {
+    "cargo_jobs": 1,
+    "independent_cases_serial": true,
+    "internal_fixture_concurrency_and_deadlines_unchanged": true,
+    "nice": 0,
+    "private_release_target": true
+  },
+  "result": {
+    "elapsed_seconds": 525.6319957400001,
+    "phases": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--release",
+          "-p",
+          "sail-verus",
+          "--lib",
+          "guarded_output",
+          "--",
+          "--test-threads=1"
+        ],
+        "elapsed_seconds": 171.17636199499975,
+        "exit_code": 0,
+        "log_sha256": "46c99ba2249e565c2e045bcdd90a5d05b52c889cfb344576122ff1e321b50ad8",
+        "name": "guarded-output"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--release",
+          "-p",
+          "sail-verus",
+          "--lib",
+          "bounded_constructor_fdinfo",
+          "--",
+          "--test-threads=1"
+        ],
+        "elapsed_seconds": 0.7485143759995481,
+        "exit_code": 0,
+        "log_sha256": "4a2c3098b5064c8dbf43d46b2ba17f2862010b264978b39ccfb61a3ff436ea30",
+        "name": "fdinfo-bound"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--release",
+          "-p",
+          "sail-verus",
+          "--lib",
+          "exact_file_construction",
+          "--",
+          "--test-threads=1"
+        ],
+        "elapsed_seconds": 0.7305065419996026,
+        "exit_code": 0,
+        "log_sha256": "c58663fabd18152c56883fc8626336e36bcd4ee3514dcbb4f0c069f5c6db1c8b",
+        "name": "file-only-bound"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--release",
+          "-p",
+          "sail-daemon",
+          "--lib",
+          "jobs::",
+          "--",
+          "--test-threads=1"
+        ],
+        "elapsed_seconds": 216.22860897300052,
+        "exit_code": 0,
+        "log_sha256": "ef24292aae1362b107e2b8261bb50847b95ee2a2cc8a629142858ef9ac8e15a1",
+        "name": "daemon-jobs-unit"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--release",
+          "-p",
+          "sail-daemon",
+          "--test",
+          "jobs",
+          "--",
+          "--test-threads=1"
+        ],
+        "elapsed_seconds": 80.8140154949997,
+        "exit_code": 0,
+        "log_sha256": "ab04b62e6e0a575a902dceb460122828b35f07bd674a22ec94c974a7d93902f3",
+        "name": "daemon-jobs-integration"
+      },
+      {
+        "command": [
+          "cargo",
+          "clippy",
+          "--release",
+          "-p",
+          "sail-verus",
+          "-p",
+          "sail-daemon",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "elapsed_seconds": 51.71954094100056,
+        "exit_code": 0,
+        "log_sha256": "65108c1d1d8f220f758fa4d62b51c18c66b32abaa36f0033fcafcff677d561bf",
+        "name": "affected-strict"
+      }
+    ],
+    "status": "PASS"
+  },
+  "result_sha256": "2b0a6eeb813f6796da2528dbef9ca8a209b39836f4f9a61e40c3221af278b429",
+  "schema_version": 1,
+  "scope": "guarded-output-daemon-affected-native-controls",
+  "source_archive_sha256": "0ab27aa639f3b56a0a9e71a13fd86da22bcdb9e0db8c42b873d2437b20049ed5",
+  "source_commit": "169d6d7178de7044cbf4e28590f2907b82581c2d",
+  "source_files": {
+    "Cargo.lock": {
+      "bytes": 53548,
+      "sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb"
+    },
+    "crates/sail-daemon/src/jobs.rs": {
+      "bytes": 20912,
+      "sha256": "a1601a724b2d8698237666605a0485975a53f56f1f446bd50f012829893f6210"
+    },
+    "crates/sail-daemon/src/jobs/output_service.rs": {
+      "bytes": 13490,
+      "sha256": "fa3e87641470cfb9167b4b9df7901fbc7badc74d32b511aac14c47a8844a9ece"
+    },
+    "crates/sail-daemon/src/jobs/result_cache.rs": {
+      "bytes": 17749,
+      "sha256": "8a045421be63be72fc73d3609f9d6f22adc7f166200410671c4e7eb8d52788cc"
+    },
+    "crates/sail-daemon/src/jobs/rpc_diagnostics.rs": {
+      "bytes": 15610,
+      "sha256": "e9ef23bce19ea59955a2acb1104cb3d6315971625f4f536193face235b562aa2"
+    },
+    "crates/sail-daemon/src/jobs/store.rs": {
+      "bytes": 27239,
+      "sha256": "4dae151920bab6b220674e29444fa55990ec0f8ca70b643112507f0c5ef2f7e9"
+    },
+    "crates/sail-verus/src/managed/guarded_output.rs": {
+      "bytes": 14282,
+      "sha256": "ebba8216cf275b88a92b19815ebde3907d2a67bfb6a5d62eaf8d5bb9d44ef030"
+    },
+    "crates/sail-verus/src/managed/kernel_leases.rs": {
+      "bytes": 22930,
+      "sha256": "fe0f38f7b0fe155d50b5baeb98c557f2e10a6405cbdcf5fa45fbc5b96452de8d"
+    },
+    "crates/sail-verus/src/managed/lease.rs": {
+      "bytes": 47364,
+      "sha256": "46bc3059152f5dd551b3cddca5f25bd64c02c6c06cead8750617e855c77cdabb"
+    },
+    "crates/sail-verus/src/managed/precise.rs": {
+      "bytes": 34865,
+      "sha256": "facbd27a09fa5dac1e8bbaf55eb612a8052fe5857eb06c48cfc9718a7a8a0b5c"
+    }
+  },
+  "status": "PASS",
+  "strict_all_targets_packages": [
+    "sail-verus",
+    "sail-daemon"
+  ],
+  "strict_warnings_denied": true,
+  "test_counts": {
+    "bounded_constructor_fdinfo": 1,
+    "daemon_jobs_unit": 21,
+    "exact_file_construction": 1,
+    "guarded_output": 6,
+    "original_daemon_jobs_integration": 6,
+    "total": 35
+  }
+}

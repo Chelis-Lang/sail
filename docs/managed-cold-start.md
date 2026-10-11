@@ -131,5 +131,7 @@ persisted stdout bytes, not verification or input Currentness. One background
 constructor may establish continuous output coverage within the existing frame
 budget; foreground requests use that coverage only around their independent
 input/runtime freshness check. Missing, busy, refused or invalid coverage retains
-the full read/hash fallback. This candidate has not yet passed source controls or
-the original live reader gate, and establishes no latency or reuse benchmark.
+the full read/hash fallback. The candidate passed
+[35 affected native source controls and strict checks](validation/m7-guarded-output-source-controls.md).
+Installed activation and the original live reader gate remain pending; these
+controls establish no latency or reuse benchmark.
