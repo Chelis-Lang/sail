@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "scope": "Four superseded private compiler API-test executables only; selected/unselected source runtimes and latest ninth-control executable preserved",
+  "removed": [
+    {
+      "path": "target/owned-import-mapping/corrected/probe",
+      "sha256": "8310e7cc4262bb2f6082c79bc2aff5440edaf8974e87cbde9e3deaa94feb6eef",
+      "bytes": 1040024,
+      "allocated_bytes": 1040384,
+      "device": 16777233,
+      "inode": 73964899,
+      "preserved_raw_record": "target/owned-import-mapping/corrected"
+    },
+    {
+      "path": "target/owned-import-mapping/final-corrected/probe",
+      "sha256": "bde016677b490af3ba84101f49bd3ea2d3ac435ff8a7a0c7d2e67d55a4d93ef0",
+      "bytes": 1228600,
+      "allocated_bytes": 1228800,
+      "device": 16777233,
+      "inode": 74271851,
+      "preserved_raw_record": "target/owned-import-mapping/final-corrected"
+    },
+    {
+      "path": "target/owned-import-mapping/frozen/probe",
+      "sha256": "6513d68d4bf16198a254e17599988da2a079c2af0ee5efdd32fbbc0bda72fc60",
+      "bytes": 1273896,
+      "allocated_bytes": 1277952,
+      "device": 16777233,
+      "inode": 74288855,
+      "preserved_raw_record": "target/owned-import-mapping/frozen"
+    },
+    {
+      "path": "target/owned-import-mapping/final-evidence/probe",
+      "sha256": "20fc752551de8bdcde5def4e72250773956ceea78f99a656a286ec8cf4515995",
+      "bytes": 1273896,
+      "allocated_bytes": 1277952,
+      "device": 16777233,
+      "inode": 74308750,
+      "preserved_raw_record": "target/owned-import-mapping/final-evidence"
+    }
+  ],
+  "reclaimed_allocated_bytes": 4825088,
+  "ownership_checks": {
+    "full_command_snapshot": true,
+    "cwd_snapshot": true,
+    "exact_open_file_scan": true,
+    "matches": 0,
+    "before_each_delete_device_inode_sha256_check": true
+  },
+  "protected_count": 88,
+  "protected_manifest_sha256": "9d2aff19a26f69bfea6472278b1e35286b264d95796c3d24a2d9b733a9714f21",
+  "protected_before_after_equal": true,
+  "latest_executable": {
+    "path": "target/owned-import-mapping/timing-evidence/probe",
+    "sha256": "269d35a398cd1d4f31e3f119f381221b4b9bcfbf674160a688f8bde408145009"
+  },
+  "no_shared_targets_or_runtime_source_modified": true
+}
