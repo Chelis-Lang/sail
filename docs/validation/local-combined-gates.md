@@ -34,8 +34,10 @@ a test image. The record does not infer execution from file presence or claim
 to archive every Cargo artifact.
 
 The helper archives an exact Git commit, binds its own committed bytes, and
-checks all archived file bytes/modes, symlinks and membership before and after
-each phase. Only the intentional external-target symlink is added. Python
+checks all archived file bytes/modes, directory modes, symlinks and membership before and after
+each phase. Safe tar extraction restores only the admitted ordinary Git permission bits
+after the data filter; special bits, unsafe links and unsupported types refuse.
+Only the intentional external-target symlink is added. Python
 bytecode writes are disabled for the native controller and both phases. A
 container ID, image and Docker birth check surrounds setup and execution;
 the native controller also binds PID 1's birth. Protected files must match their
@@ -64,7 +66,8 @@ PASS requires both original phases to exit zero with matching input identity and
 closed recorded ownership. A failed, interrupted or unattempted phase receives
 no skipped-gate credit; earlier failed scopes remain separate.
 
-`python3 scripts/test-local-combined-gates.py` currently passes 21 pure controls
+`python3 scripts/test-local-combined-gates.py` currently passes 23 pure controls on Python 3.12 (the actual extraction control requires
+the standard-library data filter)
 using fake processes and temporary files. They exercise stopping, timeout and
 signal cleanup, sticky uncertainty, transport capture bounds, input substitution,
 exact image retention and full two-phase PASS validation. No native gate, solver,
