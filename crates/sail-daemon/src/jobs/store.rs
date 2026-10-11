@@ -13,6 +13,7 @@ use sail_api::jobs::{Chunk, Currentness, Lifecycle, ResultDocument, Status, Subm
 use serde::{Deserialize, Serialize};
 
 use super::State;
+use super::rpc_diagnostics::{Stage, Trace};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Stored {
@@ -159,13 +160,18 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
 pub(super) fn result_frame(
     state: &State,
     job: &Stored,
+    trace: &mut Trace<'_>,
 ) -> io::Result<super::result_cache::WireFrame> {
     use super::result_cache::Frames;
     if job.status.state != Lifecycle::Completed || job.projection.is_none() {
         return encode_result(result(state, job)?).map(Into::into);
     }
-    let key = stdout_digest(&serde_json::to_vec(job).map_err(io::Error::other)?);
-    let bytes = match project_bytes(state, job) {
+    let key = trace.measure(Stage::FrameKey, || {
+        serde_json::to_vec(job)
+            .map(|bytes| stdout_digest(&bytes))
+            .map_err(io::Error::other)
+    })?;
+    let bytes = match trace.measure(Stage::OutputSeal, || project_bytes(state, job)) {
         Ok(bytes) => bytes,
         Err(error) => {
             state.result_cache.remove(&key);
@@ -176,10 +182,16 @@ pub(super) fn result_frame(
         .projection
         .as_ref()
         .ok_or_else(|| io::Error::other("SAIL0816: missing result seal"))?;
-    let currentness = projected_currentness(state, job, projection);
-    if let Some(frames) = state.result_cache.get(&key) {
+    let currentness = trace.measure(Stage::Freshness, || {
+        projected_currentness(state, job, projection)
+    });
+    trace.currentness(currentness);
+    if let Some(frames) = trace.measure(Stage::FrameLookup, || state.result_cache.get(&key)) {
+        trace.frame_hit(true);
         return Ok(frames.select(currentness));
     }
+    trace.frame_hit(false);
+    let encode_started = trace.begin();
     // This parse uses the same bytes whose exact seal was checked above.
     let (project, repair) = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
         let envelope: sail_api::repair::ResultDocument =
@@ -215,7 +227,9 @@ pub(super) fn result_frame(
             frame(Currentness::Unknown)?,
         ),
     );
-    Ok(frames.select(currentness))
+    let selected = frames.select(currentness);
+    trace.end(Stage::Encode, encode_started);
+    Ok(selected)
 }
 fn encode_result(document: ResultDocument) -> io::Result<Arc<Vec<u8>>> {
     let mut bytes = Vec::new();
@@ -246,6 +260,13 @@ fn projected_currentness(state: &State, job: &Stored, projection: &Projection) -
 }
 
 pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
+    status_traced(state, job, &mut Trace::disabled())
+}
+pub(super) fn status_traced(
+    state: &State,
+    job: &Stored,
+    trace: &mut Trace<'_>,
+) -> io::Result<Status> {
     if job.status.state != Lifecycle::Completed {
         return Ok(job.status.clone());
     }
@@ -253,9 +274,12 @@ pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
         // Older records have no validated projection: retain the complete parse.
         return result(state, job).map(|document| document.job);
     };
-    let _validated = project_bytes(state, job)?;
+    let _validated = trace.measure(Stage::OutputSeal, || project_bytes(state, job))?;
     let mut status = job.status.clone();
-    status.currentness = projected_currentness(state, job, projection);
+    status.currentness = trace.measure(Stage::Freshness, || {
+        projected_currentness(state, job, projection)
+    });
+    trace.currentness(status.currentness);
     Ok(status)
 }
 fn classify(

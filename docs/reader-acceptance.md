@@ -7,6 +7,10 @@ copying prior receipts or Cargo output. Preparation verifies the full project
 ordinarily, then establishes the exact repair-function context. Preparation
 costs and failed attempts are retained separately from measured reader latency.
 
+[Optional RPC stage diagnostics](result-rpc-diagnostics.md) can attribute server
+costs in a separate owned diagnostic scope. They do not change frozen collectors,
+admit proofs or replace the original latency acceptance checks.
+
 Pass the frozen product and probe directories, qualified source-runtime root,
 prepared source workspace, exact package/target/kind/function, Python probe,
 output directory and environment label. `--help` lists the required arguments.

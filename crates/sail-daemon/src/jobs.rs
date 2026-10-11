@@ -2,6 +2,7 @@
 
 mod product;
 mod result_cache;
+mod rpc_diagnostics;
 mod store;
 mod worker;
 
@@ -30,6 +31,7 @@ struct State {
     proofs: crate::proof_journal::Journals,
     freshness: sail_verus::managed::FreshnessIndex,
     result_cache: result_cache::ResultCache,
+    rpc_diagnostics: rpc_diagnostics::Recorder,
 }
 
 /// A bound project endpoint; it owns one FIFO verification worker.
@@ -87,6 +89,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             proofs: crate::proof_journal::Journals::default(),
             freshness: sail_verus::managed::FreshnessIndex::default(),
             result_cache: result_cache::ResultCache::default(),
+            rpc_diagnostics: rpc_diagnostics::Recorder::new(),
         }),
     })
 }
@@ -148,6 +151,7 @@ impl JobHandle {
         if let Some(thread) = self.worker.take() {
             let _ = thread.join();
         }
+        let _ = self.state.rpc_diagnostics.export(&self.state.root);
         let _ = std::fs::remove_file(&self.socket);
     }
 }
@@ -166,26 +170,44 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                     clients.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }
+                let accepted = state.rpc_diagnostics.accepted();
                 let state = Arc::clone(state);
                 let clients = Arc::clone(&clients);
                 let _ = std::thread::spawn(move || {
+                    use rpc_diagnostics::{Operation, Stage};
+                    let mut trace = state.rpc_diagnostics.start_at(accepted);
                     // Accepted sockets inherit nonblocking mode on macOS.
                     // RPC frames must use bounded blocking I/O, including large results.
                     let _ = stream.set_nonblocking(false);
                     let timeout = Some(Duration::from_secs(5));
                     let _ = stream.set_read_timeout(timeout);
                     let _ = stream.set_write_timeout(timeout);
-                    let outcome = match sail_api::jobs::read_frame(&mut stream) {
-                        Ok(Request::Result { id }) => get(&state, &id)
-                            .and_then(|job| store::result_frame(&state, &job))
-                            .map(|frame| (None, Some(frame))),
+                    let request =
+                        trace.measure(Stage::Read, || sail_api::jobs::read_frame(&mut stream));
+                    let outcome = match request {
+                        Ok(Request::Result { id }) => {
+                            trace.operation(Operation::Result);
+                            trace
+                                .measure(Stage::Lookup, || get(&state, &id))
+                                .and_then(|job| store::result_frame(&state, &job, &mut trace))
+                                .map(|frame| (None, Some(frame)))
+                        }
+                        Ok(Request::Status { id }) => {
+                            trace.operation(Operation::Status);
+                            trace
+                                .measure(Stage::Lookup, || get(&state, &id))
+                                .and_then(|job| store::status_traced(&state, &job, &mut trace))
+                                .map(|status| (Some(Response::Status(status)), None))
+                        }
                         Ok(request) => Ok((Some(dispatch(&state, request)), None)),
                         Err(error) => {
                             Ok((Some(Response::Error(format!("SAIL0801: {error}"))), None))
                         }
                     };
+                    let write_started = trace.begin();
                     let write = match outcome {
                         Ok((_, Some(frame))) => {
+                            trace.frame_bytes(frame.len());
                             stream.write_all(&frame).and_then(|()| stream.flush())
                         }
                         Ok((Some(response), _)) => {
@@ -200,6 +222,8 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                     if write.is_err() {
                         let _ = sail_api::jobs::write_frame(&mut stream, &Response::Error("SAIL0814: result exceeds RPC limit; retained files are available in the private job store".to_owned()));
                     }
+                    trace.end(Stage::Write, write_started);
+                    trace.finish(write.is_ok());
                     clients.fetch_sub(1, Ordering::SeqCst);
                 });
             }
@@ -385,4 +409,77 @@ fn cancel(state: &State, id: &str, superseded: bool) -> io::Result<Status> {
         store::save(&state.root, job)?;
     }
     Ok(job.status.clone())
+}
+
+#[cfg(test)]
+mod rpc_diagnostic_tests {
+    use super::*;
+
+    #[test]
+    fn optional_metadata_preserves_complete_socket_responses_without_worker_work() -> io::Result<()>
+    {
+        let root = std::env::temp_dir().join(format!("sail-rpc-protocol-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let outcome = (|| {
+            let mut stored = Stored::new(Submission {
+                mode: sail_api::jobs::Mode::Stock,
+                project_dir: root.clone(),
+                args: vec![],
+                force: false,
+                environment: BTreeMap::new(),
+                input_revision: None,
+            });
+            stored.status.state = Lifecycle::Cancelled;
+            let jobs = root.join("jobs");
+            store::save(&jobs, &stored)?;
+            let socket = root.join("jobs.sock");
+            let executable = std::env::current_exe()?;
+            for enabled in [false, true] {
+                let mut server = bind(&socket, &jobs, &executable)?;
+                Arc::get_mut(&mut server.state)
+                    .ok_or_else(|| io::Error::other("shared fixture state"))?
+                    .rpc_diagnostics = rpc_diagnostics::Recorder::for_test(enabled);
+                let mut handle = server.spawn()?;
+                let client = sail_api::jobs::Client::new(&socket);
+                for request in [
+                    Request::Status {
+                        id: stored.status.id.clone(),
+                    },
+                    Request::Result {
+                        id: stored.status.id.clone(),
+                    },
+                    Request::Status {
+                        id: "absent".to_owned(),
+                    },
+                ] {
+                    let expected = dispatch(&handle.state, request.clone());
+                    let actual = client.call(&request);
+                    if let Response::Error(error) = expected {
+                        // Client projects a service Error to the same stable
+                        // io::Error; negative replies are not successful models.
+                        assert_eq!(actual.err().map(|error| error.to_string()), Some(error));
+                    } else {
+                        assert_eq!(
+                            serde_json::to_value(actual?).map_err(io::Error::other)?,
+                            serde_json::to_value(expected).map_err(io::Error::other)?
+                        );
+                    }
+                }
+                if enabled {
+                    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+                    while handle.state.rpc_diagnostics.row_count() < 3
+                        && std::time::Instant::now() < deadline
+                    {
+                        std::thread::sleep(Duration::from_millis(1));
+                    }
+                    assert_eq!(handle.state.rpc_diagnostics.row_count(), 3);
+                }
+                handle.shutdown();
+                assert_eq!(jobs.join("rpc-timings.json").exists(), enabled);
+            }
+            Ok(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        outcome
+    }
 }
