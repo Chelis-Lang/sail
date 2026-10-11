@@ -1,14 +1,16 @@
 # Prepared original reader workflow on current product 4472279
 
 This records a reviewed launch plan and the subsequent frozen attempt. The
-one original workflow has started; no terminal result has been admitted. The preceding
+one original workflow is closed: the [terminal evidence](m7-current-reader-workflow.md)
+records successful complete setup and a failed full-Result p95 gate. The preceding
 [single proof diagnosis](m7-sysroot-proof-diagnostic.md) establishes only its own
 new complete Current proof. It supplies no receipt, baseline job, digest owner or
 prepared Cargo directory to this plan. The concrete [wrapper](m7-current-reader-workflow.py),
 [ten no-proof lifecycle controls](test-m7-current-reader-workflow.py) and
 [prepared input record](m7-current-reader-workflow-prepared.json) are sealed.
 Root granted the source-only copy, new byte-verified installation and one
-original workflow. It is now running; no terminal acceptance result exists.
+original workflow. That attempt is now terminal: Python Result latency failed;
+Rust and retained CLI/MCP were not attempted.
 
 ## Exact product, compiler and controller inputs
 
