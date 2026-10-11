@@ -559,3 +559,15 @@ mutation, and checks all output units after native guard acquisition. Incomplete
 or unavailable contracts still clean. This is a product optimization awaiting
 whole-loop validation, not an explanation or erasure of the original 120-second
 failure, a transferred proof receipt, or a measured M7 speedup.
+
+## Combined solver cache-maintenance timeout
+
+The [current combined solver suite](../bench/validation/m7-linux-combined-core-solver-c97de63-failure-2026-10-11.json)
+runs all 41 original cases: 40 pass and `gc_and_clear_during_sessions_only_cost_misses`
+times out. Its cold and warm sessions and maintenance join finish within about
+7.174 seconds; final concurrent sessions do not finish before the original
+nextest timeout. The reported case duration includes termination grace. An
+observation sees one shim stdout thread waiting on pipe output, but it does not
+establish the underlying cause or attribute it to the new result-serving path.
+Raw logs and the failure are retained; diagnosis is required before claiming a
+green solver gate or product qualification.

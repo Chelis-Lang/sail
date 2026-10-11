@@ -170,6 +170,14 @@ native fixture success is separate from the earlier emulated whole-workflow
 timeout and does not accept reader latency, full standard/cache coverage or
 three-round HumanEval/Vest performance. Later daemon output-owner and Cargo
 build-script generation changes require their own combined validation.
+The new [combined source gate](../bench/validation/m7-linux-combined-core-gate-c97de63-emulated-2026-10-11.json)
+passes all 605 workspace tests and the remaining checks in 661.582 seconds
+under local emulation, covering both daemon output owners and guarded script
+generations. Its [pinned-solver suite](../bench/validation/m7-linux-combined-core-solver-c97de63-failure-2026-10-11.json)
+fails: 40/41 pass; the cache-maintenance fault case times out during its final
+concurrent sessions after cold, warm and maintenance phases complete. The
+original timeout remains unchanged; cause is under investigation. Fixing this
+solver gate precedes product benchmarking and any merge.
 The [candidate history](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
 and [retained workstream history](validation/m7-workstream-history-cc0898e.md)
 preserve the earlier migration, zero-hit and test-fixture failures.
