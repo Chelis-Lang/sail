@@ -17,8 +17,10 @@ For current experimental repair use:
   identifies this mechanism. The branch now retains ordinary contracts only
   after fully observed normal negative verification; its
   [fifteen affected Linux controls](validation/m7-negative-compiler-generation-first-controls.md)
-  pass, while complete workspace and installed-product validation remain
-  pending. Proof acceptance and successful receipts remain independent.
+  pass. The [complete current gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json)
+  also passes 609 workspace tests and all 41 original solver controls;
+  installed-product validation remains pending. Proof acceptance and successful
+  receipts remain independent.
 - Full-result reader latency and real-project repair speed remain unqualified.
   Original workflow scopes are retained with their original bounds; use the
   [roadmap](ROADMAP.md) for current acceptance status.
