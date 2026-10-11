@@ -167,6 +167,7 @@
     }
   },
   "full_result_seal": {
+    "archive_member": "prepared/execution/run-sidecars/result.json",
     "bytes": 2158274,
     "sha256": "227c1c5470454ff499d39d7ec40ab83ac92e293430260d85bdea81ad683241d3"
   },
@@ -220,6 +221,7 @@
     }
   ],
   "outcome": "PASS in this separately scoped diagnostic; historical timeout not reproduced",
+  "output_byte_rule": "Persisted result.json and raw CLI stdout are independent verbatim retained files, each sealed. Stdout includes its CLI trailing LF; no normalization is used for either seal.",
   "owned_daemon_lifecycle": {
     "actors": [
       {
@@ -255,6 +257,12 @@
     "private_environment_values_retained_locally": true,
     "repo_relative_path": "target/ordinary-wait-46-reviewed/retained-raw.tar.gz",
     "sha256": "4fc764ee73cce88cbbe038e2020bf2fec1cb7cbf427afee1a14b9fd3aa3e6db8"
+  },
+  "raw_stdout_seal": {
+    "archive_member": "prepared/execution/stdout",
+    "bytes": 2158275,
+    "sha256": "e072aa00045e50863f62a478a93bcb75458afdbbef3b6af7c52a29a7a96aaacc",
+    "trailing_lf": true
   },
   "reader_workflows": 0,
   "root_headers": {
