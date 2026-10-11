@@ -54,7 +54,9 @@ attribution. In particular, the I/O runtime body CPU did not decrease.
 The exact candidate source (1355 regular files and one symlink), source/lock
 pins, both container births and protected bytes/modes were rechecked. Independent
 postflight cmd/cwd/fd/maps scans in both containers found zero holders or
-unreadable live processes. The 4154 acceptance-container protected files and
+unreadable live processes. A separate fixed-PGID stat-only scan found zero
+survivors or unreadable rows for the 15 actual command groups in both containers;
+it did not access the returned source or target. The 4154 acceptance-container protected files and
 20 handoff-container protected files, including installed products, complete
 13-artifact engine inventory/manifest, six C tested images and all outside-target
 C evidence, matched their preflight inventories. No selected runtime or product

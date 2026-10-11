@@ -276,9 +276,11 @@ fixtures passed the original 250 ms deadline and 75 ms response delay. Those
 separate passes do not erase the failed full gate or qualify live readers.
 No trust, signature, TLS, payload, timeout or fallback contract changed.
 
-An additional unselected source candidate reads an exact small HTTP body within
-the existing 8 KiB application buffer, avoiding the extra read used only to
-observe EOF. Larger and unknown bodies keep the capped streaming path. Its
-component controls and original eight-reader deadline still require execution;
-it does not establish a cause or improvement for the retained failures. See the
-[small-body plan](validation/m7-http-small-known-body-plan.md).
+The selected source implementation reads an exact small HTTP body within the
+existing 8 KiB application buffer, avoiding the extra read used only to observe
+EOF. Larger and unknown bodies keep capped streaming. All 38 affected controls
+and strict checks passed, along with the read-count counterfactual/restored
+control and both original eight-reader comparison arms at the unchanged 250 ms
+deadline. Complete workspace and installed-product acceptance remain pending.
+The single observed pair supplies no stable speedup or historical failure cause;
+see the [actual controls](validation/m7-http-small-known-body-actual-controls.md).

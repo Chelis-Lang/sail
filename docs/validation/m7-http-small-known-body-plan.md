@@ -1,9 +1,13 @@
 # Small known HTTP body candidate
 
-Status: file-only, unselected and uncompiled. This change does not qualify the
-original eight-reader 250 ms control, establish a latency cause or replace its
-retained failure. No compiler, server, verification or Docker lifecycle actor
-has run for this candidate.
+Status: selected source integration `827fecd` after the
+[actual controls](m7-http-small-known-body-actual-controls.md): 38 affected tests,
+strict checks, exact read-count sensitivity/restoration and one unchanged
+baseline/candidate eight-reader pair passed. The original source freeze remains
+immutable historical preparation. Complete workspace and installed-product
+acceptance are pending. No historical failure cause or stable speedup is
+established, and all prior failed scopes remain retained. No proof or Docker
+lifecycle actor ran in this HTTP-only scope.
 
 ## Boundary and allocation
 
@@ -56,13 +60,13 @@ the eventual actual compiled feature/layout controls.
 
 ## Required controls
 
-New source-only unit controls count real Read calls: small complete bodies have
+Executed unit controls count real Read calls: small complete bodies have
 no EOF read, zero length has no reads, their Vec capacity stays 8192, and short
 input fails UnexpectedEof. Returning to the old EOF stream would fail that count
 assertion. Large and unknown lengths must still read EOF. These are mechanism
 controls, not elapsed-time qualification.
 
-New loopback controls cover exact zero/small/8192/8193 bodies, small truncation
+Executed loopback controls cover exact zero/small/8192/8193 bodies, small truncation
 with the original interrupted-response classification, invalid/conflicting
 lengths, chunked bytes, and a missing final byte exceeding the unchanged request
 timeout. Existing known-oversize, unknown 13000-byte, abrupt termination,
@@ -70,8 +74,10 @@ encoding, redirect, TLS, signature/trust and eight-reader controls are unchanged
 Their original deadlines and assertions remain mandatory. New server threads
 are joined and fixtures removed before outcome assertions.
 
-After independent review and an explicit sole-slot grant, compile the affected
-remote unit controls and complete HTTP integration suite, then strict all-target
-checks. Preserve any first failure and actual tested images. The exact original
-eight-reader case and its baseline must be measured before selecting this
-candidate; no speed claim follows from eliminating one possible EOF Read.
+The root-granted single native scope executed the complete affected sets and
+strict checks, preserving all actual images and first outcomes without retries.
+Both matched original cases passed under their original limits. The control
+record retains bounded whole lookup, caller, transport/body and helper/I/O CPU
+observations. This pair is not a distribution or acceptance for the complete
+workspace, installed product or genuine readers. The remaining gates belong to
+the combined production source; component passes do not erase earlier failures.
