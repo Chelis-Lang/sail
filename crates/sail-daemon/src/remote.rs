@@ -31,6 +31,24 @@ fn failure(message: &str) -> String {
     format!("SAIL0650: {message}")
 }
 
+const INITIAL_BODY_BYTES: usize = 8 * 1024;
+
+fn read_body(mut response: impl std::io::Read, length: Option<u64>) -> std::io::Result<Vec<u8>> {
+    // Only the pinned transport's exact body size hint enters here. Its HTTP1
+    // decoder enforces this message boundary; early EOF remains an error.
+    // The fast path uses the same fixed allocation as the streaming path and
+    // skips the additional blocking response Read used to observe EOF.
+    let mut bytes = Vec::with_capacity(INITIAL_BODY_BYTES);
+    if let Some(length) = length.filter(|length| *length <= INITIAL_BODY_BYTES as u64) {
+        let length = usize::try_from(length).map_err(std::io::Error::other)?;
+        bytes.resize(length, 0);
+        response.read_exact(&mut bytes)?;
+    } else {
+        response.take(MAX_ENTRY_BYTES + 1).read_to_end(&mut bytes)?;
+    }
+    Ok(bytes)
+}
+
 /// Validates an endpoint without accepting URL credentials, queries or fragments.
 /// HTTP is permitted only for literal loopback IP addresses.
 ///
@@ -377,24 +395,15 @@ impl HttpClient {
             self.record(&format!("http-{}", status.as_u16()), true);
             return Err(failure("shared store rejected lookup"));
         }
-        if response
-            .content_length()
-            .is_some_and(|n| n > MAX_ENTRY_BYTES)
-        {
+        let length = response.content_length();
+        if length.is_some_and(|n| n > MAX_ENTRY_BYTES) {
             self.record("oversized-response", true);
             return Err(failure("shared response exceeds entry limit"));
         }
-        // Small entries fit in one read rather than growing from the default
-        // tiny buffer. Reserve a fixed bounded amount, never a server-provided
-        // Content-Length; the existing MAX+1 stream bound remains authoritative.
-        let mut bytes = Vec::with_capacity(8 * 1024);
-        response
-            .take(MAX_ENTRY_BYTES + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|_| {
-                self.record("interrupted-response", true);
-                failure("shared response interrupted")
-            })?;
+        let bytes = read_body(response, length).map_err(|_| {
+            self.record("interrupted-response", true);
+            failure("shared response interrupted")
+        })?;
         if bytes.len() as u64 > MAX_ENTRY_BYTES {
             self.record("oversized-response", true);
             return Err(failure("shared response exceeds entry limit"));
@@ -452,6 +461,62 @@ mod refresh_tests {
     use std::os::unix::fs::PermissionsExt as _;
 
     static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    struct CountedRead<'a> {
+        remaining: &'a [u8],
+        calls: usize,
+        eof: usize,
+    }
+    impl std::io::Read for CountedRead<'_> {
+        fn read(&mut self, destination: &mut [u8]) -> std::io::Result<usize> {
+            self.calls += 1;
+            let read = self.remaining.read(destination)?;
+            self.eof += usize::from(read == 0);
+            Ok(read)
+        }
+    }
+
+    #[test]
+    fn small_exact_body_avoids_eof_read_with_only_existing_fixed_capacity() {
+        for length in [0, 5, INITIAL_BODY_BYTES] {
+            let expected = vec![7; length];
+            let mut input = CountedRead {
+                remaining: &expected,
+                calls: 0,
+                eof: 0,
+            };
+            let result = read_body(&mut input, Some(length as u64)).unwrap();
+            assert_eq!(result, expected);
+            assert_eq!(result.capacity(), INITIAL_BODY_BYTES);
+            assert_eq!(input.calls, usize::from(length != 0));
+            assert_eq!(input.eof, 0);
+        }
+        let mut short = CountedRead {
+            remaining: b"short",
+            calls: 0,
+            eof: 0,
+        };
+        assert_eq!(
+            read_body(&mut short, Some(6)).unwrap_err().kind(),
+            std::io::ErrorKind::UnexpectedEof
+        );
+    }
+
+    #[test]
+    fn large_and_unknown_length_keep_original_stream_and_eof() {
+        for length in [None, Some(INITIAL_BODY_BYTES as u64 + 1)] {
+            let expected = vec![11; INITIAL_BODY_BYTES + 1];
+            let mut input = CountedRead {
+                remaining: &expected,
+                calls: 0,
+                eof: 0,
+            };
+            let result = read_body(&mut input, length).unwrap();
+            assert_eq!(result, expected);
+            assert_eq!(input.eof, 1);
+            assert!(input.calls >= 2);
+        }
+    }
 
     struct Fixture {
         root: PathBuf,

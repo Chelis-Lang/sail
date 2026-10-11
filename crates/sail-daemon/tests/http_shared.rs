@@ -276,6 +276,102 @@ fn response_without_length_keeps_exact_bytes_across_initial_buffer_boundary() {
 }
 
 #[test]
+fn known_length_zero_small_boundary_and_large_keep_complete_exact_body() {
+    for length in [0, 5, 8192, 8193] {
+        let payload: Vec<_> = (0..length)
+            .map(|index| u8::try_from(index % 251).unwrap())
+            .collect();
+        let mut wire =
+            format!("HTTP/1.1 200 OK\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n")
+                .into_bytes();
+        wire.extend_from_slice(&payload);
+        let (config, thread, root) = fake_response(wire, Duration::ZERO);
+        let client = Fixture::client(&config);
+        let result = client.get(&solver(), &KEY);
+        thread.join().unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+        assert_eq!(result.unwrap().as_deref(), Some(payload.as_slice()));
+        assert_eq!(client.info().last_status.as_deref(), Some("ok"));
+    }
+}
+
+#[test]
+fn small_known_length_truncation_keeps_interrupted_response_classification() {
+    let (config, thread, root) = fake_response(
+        b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\nshort",
+        Duration::ZERO,
+    );
+    let client = Fixture::client(&config);
+    let result = client.get(&solver(), &KEY);
+    thread.join().unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+    assert_eq!(result.unwrap_err(), "SAIL0650: shared response interrupted");
+    assert_eq!(
+        client.info().last_status.as_deref(),
+        Some("interrupted-response")
+    );
+    assert_eq!(client.info().unavailable, 1);
+}
+
+#[test]
+fn known_length_missing_final_byte_still_obeys_original_request_timeout() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let (mut config, unused, root) = fake_response(
+        b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n",
+        Duration::ZERO,
+    );
+    // Finish the existing helper's owned listener before using this deliberate
+    // body stall; no test thread is left waiting for a request.
+    let setup = Fixture::client(&config).get(&solver(), &KEY);
+    unused.join().unwrap();
+    config.endpoint = format!("http://{}/", listener.local_addr().unwrap());
+    let thread = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut request = [0; 4096];
+        let _ = stream.read(&mut request);
+        let _ = stream
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nabc");
+        std::thread::sleep(Duration::from_millis(200));
+        let _ = stream.write_all(b"d");
+    });
+    let client = HttpClient::new(&config, Duration::from_millis(50)).unwrap();
+    let result = client.get(&solver(), &KEY);
+    thread.join().unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+    assert_eq!(setup.unwrap(), None);
+    assert_eq!(result.unwrap_err(), "SAIL0650: shared response interrupted");
+    assert_eq!(
+        client.info().last_status.as_deref(),
+        Some("interrupted-response")
+    );
+    assert_eq!(client.info().unavailable, 1);
+}
+
+#[test]
+fn ambiguous_or_invalid_length_remains_unavailable_and_chunked_stays_streamed() {
+    for wire in [
+        &b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\nContent-Length: 4\r\nConnection: close\r\n\r\nbody"[..],
+        &b"HTTP/1.1 200 OK\r\nContent-Length: invalid\r\nConnection: close\r\n\r\nbody"[..],
+    ] {
+        let (config, thread, root) = fake_response(wire, Duration::ZERO);
+        let client = Fixture::client(&config);
+        let result = client.get(&solver(), &KEY);
+        thread.join().unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+        assert!(result.is_err());
+        assert_eq!(client.info().unavailable, 1);
+    }
+    let (config, thread, root) = fake_response(
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n3\r\nabc\r\n2\r\nde\r\n0\r\n\r\n",
+        Duration::ZERO,
+    );
+    let result = Fixture::client(&config).get(&solver(), &KEY);
+    thread.join().unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+    assert_eq!(result.unwrap(), Some(b"abcde".to_vec()));
+}
+
+#[test]
 fn client_refuses_redirects_encodings_oversize_and_stalled_responses() {
     for response in [
         &b"HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:1/\r\nContent-Length: 0\r\n\r\n"[..],
