@@ -145,8 +145,17 @@ waits within its existing budget. Its frozen `cbd6d60`
 [complete local workspace gate](../bench/validation/m7-linux-gate-cbd6-emulated-2026-10-11.json)
 passes all 491 tests and every remaining step, and the
 [original solver suite](../bench/validation/m7-linux-solver-cbd6-emulated-2026-10-11.json)
-passes all 38 controls. Current native revalidation is pending. The failed
-native invocation lacks a phase trace, so its exact cause remains unknown.
+passes all 38 controls. The subsequent frozen `190d4d2`
+[native run](../bench/validation/m7-linux-ci-190d-native-2026-10-11.json)
+passes every required check, including all three end-to-end phases and the
+original solver replay control; its longest job is 339 seconds. The later
+`012707a` [local gate](../bench/validation/m7-linux-gate-0127-emulated-2026-10-11.json)
+passes all 498 tests and every gate step, and its
+[solver suite](../bench/validation/m7-linux-solver-0127-emulated-2026-10-11.json)
+passes all 38 controls after adding bounded opt-in setup timings. Native CI uses
+the existing prebuilt source baseline. These scopes do not qualify the corrective
+source, real readers or repair performance. The failed native invocation lacks a
+phase trace, so its exact cause remains unknown.
 The complete default standard attempt also fails: 156 Same, one diagnostic-order
 Unstable and two unchanged unit timeouts, with no Different verdicts. See
 [the terminal scope](../bench/validation/m7-linux-default-standard-1dc-failure-2026-10-11.json).
