@@ -1,0 +1,13 @@
+   Compiling sail-session v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-session)
+   Compiling sail-ledger v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-ledger)
+   Compiling sail-key v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-key)
+   Compiling sail-solver v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-solver)
+   Compiling sail-api v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-api)
+   Compiling sail-cache v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-cache)
+   Compiling sail-verus v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-verus)
+   Compiling sail-daemon v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-daemon)
+   Compiling sail-mcp v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-mcp)
+   Compiling sail-shim v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-shim)
+   Compiling sail-portfolio v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-portfolio)
+   Compiling sail-cli v0.0.0 (/tmp/sail-m7-combined-core-46e1da6/crates/sail-cli)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1m 48s
