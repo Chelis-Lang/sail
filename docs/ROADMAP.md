@@ -122,8 +122,12 @@ all runtime, source, lock and frozen-script seals. Local packaging and a fresh
 installation match all thirteen runtime files and modes; the
 [delivery record](../bench/validation/m7-linux-engine-aaa3b2e4-delivery-2026-10-11.json)
 binds the private prebuilt artifact. The patch and pin select that correction
-together on this in-progress branch. Rebuilt Sail product checks and the frozen
-repair benchmarks are next; source qualification alone does not accept M7.
+together on this in-progress branch. The rebuilt Sail release and owned installations pass. Its original repair
+CLI/MCP workflow fails the 120-second budget during the missing-function case
+after the successful proof and declaration-establishment follow-up; later cases
+are unattempted. The failure and reduced diagnostic stay separate from the
+passing source gates. Complete product integration and the frozen repair
+benchmarks remain next; source qualification alone does not accept M7.
 The [candidate history](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
 and [retained workstream history](validation/m7-workstream-history-cc0898e.md)
 preserve the earlier migration, zero-hit and test-fixture failures.

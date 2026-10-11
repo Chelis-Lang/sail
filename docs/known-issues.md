@@ -474,3 +474,21 @@ Actual tested binaries and raw phase clocks are retained. These observations
 do not establish a scheduling, transport or implementation cause; no assertion,
 timeout, payload or admission rule has changed. The previous native CI passes
 remain separate from this local failure.
+
+## Rebuilt selected-engine repair integration deadline
+
+The [original real CLI/MCP repair workflow on `071b778`](../bench/validation/m7-linux-repair-071b778-failure-2026-10-11.json)
+fails its unchanged 120-second whole-workflow budget. The successful proof takes
+50.807 seconds and its successful declaration-establishment follow-up takes
+12.247 seconds. The missing-function job remains Running during the remaining
+approximately 56 seconds. Regression and later cases are not reached. Its
+Running projection has no input revision or repair result; that does not locate
+the internal wait or establish a deadlock.
+
+All 728 retained operation/summary/stream files are archived. The original
+fixture removes its temporary project during cleanup, so unavailable worker
+state cannot be reconstructed from that attempt. A separate reduced diagnostic
+will preserve the same fixture and worker streams under the original relevant
+limits. The full integration remains failed, separate from the passing
+thirteen-stage source qualification and artifact installation. No deadline or
+assertion was changed.
