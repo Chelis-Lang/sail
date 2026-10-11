@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Optimize Linux managed input path checks using owned descriptors, with exact
+  pathname/inode checks and the existing conservative fallback. Reader latency
+  acceptance remains under validation.
+
 - Charge cached complete-result frame families by retained buffer capacity, and
   keep their charge through an in-flight response after eviction. When the
   128 MiB quota is unavailable, return the complete response without caching it.
@@ -311,7 +315,3 @@ semantic versioning once the API is published.
 - `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
   patched to the pinned source in a scratch copy), project requirements
   (skipped and reported when unavailable), and the standard-tier corpus.
-
-- Optimize Linux managed input path checks using owned descriptors, with exact
-  pathname/inode checks and the existing conservative fallback. Reader latency
-  acceptance remains under validation.

@@ -18,8 +18,9 @@ vstd obligations, but fails the original migration qualification because it
 publishes no prepared lowering. Both fixture proofs succeed. Parallel workers
 correctly omit a diagnostic source map; the candidate mistakenly required that
 optional map for preparation. The [preparation-only namespace correction](../engine/verus/candidates/preparation-namespace/README.md)
-now passes ten reduced controls and [independent static review](validation/m7-preparation-namespace-independent-review.md).
-Actual pinned compiler tests and strict checks are running. Stock diagnostic
+now passes 41 VIR and 88 driver tests, both strict compiler checks and an ordinary
+build with fresh vstd, plus [independent review](validation/m7-preparation-namespace-independent-review.md).
+The unchanged fourteen-stage qualification remains required. Stock diagnostic
 routing and parallelism remain unchanged; this candidate is unselected. See the
 [retained qualification](../engine/verus/candidates/deferred-import-locator/late-handoff/qualification-failure.json).
 
@@ -27,9 +28,13 @@ The daemon's [retained-frame accounting](validation/m7-result-frame-admission-ma
 now covers Vec capacity, evicted live writes and fixed retirement metadata
 within its existing 128 MiB ceiling. All 89 daemon controls pass. This bound
 excludes uncached encoding and process RSS; it does not establish the live
-Result latency target. The retained 394.713 ms p95 failure remains open, and
-bounded optional [stage timing](result-rpc-diagnostics.md) is observing the
-current unchanged live workload.
+Result latency target. The retained 394.713 ms p95 failure remains open. The current
+[stage workflow](validation/m7-rpc-stage-workflow.md) fails complete Result p95
+at 403.341 ms with all 200 samples valid and live; its 43-row Result tail has
+cached frames without encoding. Freshness and socket-write costs are under
+investigation. The [retained CLI/MCP scope](validation/m7-rpc-retained-functional.md)
+also preserves a wrong-stream assertion conflicting with the documented explicit
+error contract; reconnect and cancellation remain unattempted.
 
 An Unknown proof and unavailable validation during a later job read are distinct
 conditions. Earlier managed reports collapsed precise namespace failures to
