@@ -235,9 +235,9 @@ no historical receipt supplies authority. The provisional focus remains
 provisional. One Current diagnostic proof establishes neither sustained live
 reader availability nor the original four-reader latency requirement.
 
-## Runtime identity parsing prototype
+## Guarded runtime identity parsing
 
-A test-only candidate retains one eligibility boolean on the existing runtime
+Linux retains one eligibility boolean on the existing runtime
 validation owner. It can skip the hot identity-sidecar parse only when the same
 original lease binds the exact raw context `.link` and selected identity `.json`
 paths. Canonical aliases or missing membership retain the original parse. The
@@ -251,10 +251,13 @@ checks, outer namespace barriers and request-entry/generation/pointer controls.
 A restored write, outside hardlink or mmap break, sidecar replacement, ancestor
 redirect or helper loss must reject that owner. Index eviction alone does not
 invalidate a still-held original native owner; its unchanged fresh barriers must
-continue to pass. This prototype is unselected in production. Component controls
-and fixed-order timing comparisons are separate from the original complete
-four-reader census and cannot establish its 200 ms latency requirement.
+continue to pass. The comparison switch is test-only; ordinary unit fixtures use
+the same enabled path as production. Component controls and fixed-order timing
+comparisons are separate from the original complete four-reader census and cannot establish its 200 ms latency requirement.
 
 The [sidecar component record](validation/m7-runtime-sidecar-components.md)
-retains the passing mutation controls, initial Clippy failure and small complete-
-inspection timing reduction. Production remains unchanged.
+retains the passing mutation controls, initial Clippy failure and small reduction in complete inspection time. The initial comparison was test-only; the enabled
+path uses the same eligibility and complete barriers.
+
+The [enabled-path checks](validation/m7-runtime-sidecar-production.md) retain
+the same mutation controls and strict validation after production selection.

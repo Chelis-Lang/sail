@@ -1,4 +1,4 @@
-//! Test-only candidate for avoiding repeated identity sidecar decoding.
+//! Exact original lease eligibility for avoiding repeated sidecar decoding.
 //!
 //! No parsed tree or extra Arc is retained. Eligibility is one boolean on the
 //! existing validation owner, set only after its successful cold transaction.
@@ -8,19 +8,24 @@
 use super::ReadLease;
 use std::path::Path;
 
+#[cfg(test)]
 thread_local! {
-    static ENABLED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static ENABLED: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
     static PARSES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
+#[cfg(test)]
 pub(super) fn enabled() -> bool {
     ENABLED.with(std::cell::Cell::get)
 }
+#[cfg(test)]
 pub(super) fn record_parse() {
     PARSES.with(|parses| parses.set(parses.get().saturating_add(1)));
 }
+#[cfg(test)]
 pub(super) fn parses() -> usize {
     PARSES.with(std::cell::Cell::get)
 }
+#[cfg(test)]
 pub(super) fn with_enabled<T>(enabled: bool, f: impl FnOnce() -> T) -> T {
     struct Restore(bool);
     impl Drop for Restore {

@@ -25,7 +25,6 @@ pub(super) struct ReadLease {
 impl ReadLease {
     // Membership alone is not authority. The caller must independently read
     // under this owner and still run its entire fresh clean barrier.
-    #[cfg(test)]
     pub(super) fn covers_exact_path(&self, path: &Path) -> bool {
         self.bindings
             .iter()

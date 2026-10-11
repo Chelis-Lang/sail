@@ -42,4 +42,6 @@ or establish the original full four-reader latency target. The complete
 The [machine-readable record](m7-runtime-sidecar-components.json) retains all
 samples, exact source and binary hashes, original failure, corrected checks and
 raw archive inventory. No proof, live reader census or acceptance run was added.
-Production remains on its original identity parse.
+At this initial component revision, production remained on its original parse.
+The [later production selection](m7-runtime-sidecar-production.md) retains the
+same eligibility and barriers; it does not repeat this timing comparison.

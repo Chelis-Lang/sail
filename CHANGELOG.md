@@ -5,9 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
-- Add test-only controls for avoiding repeated runtime identity parsing under
-  exact original sidecar leases. Production parsing and all per-read freshness
-  checks remain unchanged pending complete-operation measurements.
+- Avoid repeated Linux runtime identity parsing when the original continuous
+  lease binds both exact sidecar paths. Missing coverage retains the original
+  parse; all per-read freshness checks remain. No live reader latency gain is
+  claimed from the component comparison.
 
 - Add an unselected Linux library prototype for continuously guarded retained
   output digests. It certifies complete output bytes only; the daemon still uses
