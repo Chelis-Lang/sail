@@ -6,6 +6,8 @@ combined `c97de63` solver attempt remains failed at 40 of 41; these scoped passe
 do not replace it or identify its historical cause. The
 [machine record](m7-fault-session-cleanup-controls.json) binds all commands,
 source hashes, tested images, earlier failures and the verified retained archive.
+The archive contains 25 listed artifacts plus its `inventory.json` member, for
+26 regular members in total.
 
 The actual paused-sink control returns after killing/reaping its directly owned
 child while the real reader buffer is still locked. It reports unavailable bytes
