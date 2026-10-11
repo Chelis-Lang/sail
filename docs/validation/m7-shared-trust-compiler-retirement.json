@@ -1,0 +1,4174 @@
+{
+  "version": 1,
+  "scope": "only closed task-owned shared-trust private compiler intermediates; no common/source/standard targets",
+  "checked_processes": 616,
+  "holders": [],
+  "errors": [],
+  "protected_before_after": {
+    "initial-draft-evidence/sail_daemon-7120b36803901174": {
+      "bytes": 46845880,
+      "sha256": "d05dff704f922b7417c3934ae945d374d22390ff54530119448f5bb99087ab80"
+    },
+    "initial-draft-evidence/tests.log": {
+      "bytes": 8093,
+      "sha256": "0339f98dd44825bb7795834486d91e5aaf037e663aa1795c812d9d54bac61d50"
+    },
+    "initial-draft-evidence/identity.json": {
+      "bytes": 522,
+      "sha256": "7b8532b55eb0ac1b65fc5cbd4ef0da27180a2325929228499092c6f244e26ff0"
+    },
+    "initial-draft-evidence/tests.exit": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "positive-frozen/identity.json": {
+      "bytes": 803,
+      "sha256": "3d5bf13a4031a99647811121a4bf5074a457d685620e7cb7f2c8da9bf451976f"
+    },
+    "positive-frozen/tested-elf": {
+      "bytes": 47338728,
+      "sha256": "d9df4238b5f3fd72e99898fe2750562815340403a26116854d4cec8d9c6802ca"
+    },
+    "positive-frozen/source/remote.rs": {
+      "bytes": 21345,
+      "sha256": "e99a242c4a2d0bb7104bf8f40a1264f6fd931600fa7d154c45445a171c7391e4"
+    },
+    "positive-frozen/source/shared.rs": {
+      "bytes": 55556,
+      "sha256": "91e7c81517408a8020d4f53fd59502bcb38f7536ed3627208b8b4acf369c7875"
+    },
+    "positive-frozen/source/server.rs": {
+      "bytes": 28867,
+      "sha256": "961cfc9c87a1f7aa4193028bda71f16db20510c5a74678317866faba1ddc8f7b"
+    },
+    "positive-frozen/source/shared/presence.rs": {
+      "bytes": 7645,
+      "sha256": "7cd68f0c9fe55666bfc5c3702add9ac6c71721747b5fb2d7805e06f56febbcf5"
+    },
+    "positive-frozen/source/shared/initialization.rs": {
+      "bytes": 19151,
+      "sha256": "0b03be8fe706820c90825306b05a4ca6bca4337ed2c286e8448a868339f12903"
+    },
+    "final-unit-failure/final-unit-tests.log": {
+      "bytes": 8375,
+      "sha256": "632050c6838870c4c0fac9893cd439d998eb1cc9120156160a5269e42a90ca60"
+    },
+    "final-unit-failure/identity.json": {
+      "bytes": 715,
+      "sha256": "cab05c19365b359c085f67b5aa8f3e409659d9d81d5e53726975967d87926fb2"
+    },
+    "final-unit-failure/final-unit-tests.exit": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "final-unit-failure/tested-elf": {
+      "bytes": 47371288,
+      "sha256": "49c320517c84fd46954a5205f5f6e8c37a46d582b26a725cb3f1a86515ba85ea"
+    },
+    "final-unit-failure/source/remote.rs": {
+      "bytes": 21345,
+      "sha256": "e99a242c4a2d0bb7104bf8f40a1264f6fd931600fa7d154c45445a171c7391e4"
+    },
+    "final-unit-failure/source/shared.rs": {
+      "bytes": 57293,
+      "sha256": "11da87f6adf2de710b74858eca5f99536b61db096c405348b19f00e6619d837d"
+    },
+    "final-unit-failure/source/server.rs": {
+      "bytes": 28867,
+      "sha256": "961cfc9c87a1f7aa4193028bda71f16db20510c5a74678317866faba1ddc8f7b"
+    },
+    "final-unit-failure/source/shared/presence.rs": {
+      "bytes": 7645,
+      "sha256": "7cd68f0c9fe55666bfc5c3702add9ac6c71721747b5fb2d7805e06f56febbcf5"
+    },
+    "final-unit-failure/source/shared/initialization.rs": {
+      "bytes": 19151,
+      "sha256": "0b03be8fe706820c90825306b05a4ca6bca4337ed2c286e8448a868339f12903"
+    },
+    "negative-controls/0.stdout": {
+      "bytes": 345,
+      "sha256": "70a5c9ae6b33597d93eeb2c406c0d45f72f1b59d2d9bbea657aad35d4e8a1c6b"
+    },
+    "negative-controls/2.stdout": {
+      "bytes": 339,
+      "sha256": "4916f110558022bbaba038e34ce042df8db605a46b54619f7d37c338934069d6"
+    },
+    "negative-controls/1.stdout": {
+      "bytes": 337,
+      "sha256": "044c1a09babf35b466279fbeb35f3aab0820d3ff2e649c91e0a428e3fedc388e"
+    },
+    "negative-controls/0.stderr": {
+      "bytes": 474,
+      "sha256": "79cb4dd63cf7176b5e06e6e480a90817a4217c0637ea135812eac2b649adcec7"
+    },
+    "negative-controls/tested-elf": {
+      "bytes": 47339896,
+      "sha256": "ffd81bef37c0ca49f9a12d99f880fb3af43484a7fcc2d208ec70a4b19d262762"
+    },
+    "negative-controls/2.stderr": {
+      "bytes": 308,
+      "sha256": "003a81acdad3a584addf7bc41db00d59f961566dce1da10bde19118eb85e4673"
+    },
+    "negative-controls/1.stderr": {
+      "bytes": 408,
+      "sha256": "6d473cccbb078edc920c6442ca2eb67e127580bca8f98b558057a17d4cdfc29c"
+    },
+    "negative-controls/source-identity.json": {
+      "bytes": 442,
+      "sha256": "136e52c1f65569aa36087404f526e62ee51c1f7564a230f84748bd0bd94b0fec"
+    },
+    "negative-controls/summary.json": {
+      "bytes": 651,
+      "sha256": "d69fb235429ef57ff768d8c7413b74a127a74acf5aebf7d28b91fd9a651658ae"
+    },
+    "negative-controls/source/remote.rs": {
+      "bytes": 21345,
+      "sha256": "e99a242c4a2d0bb7104bf8f40a1264f6fd931600fa7d154c45445a171c7391e4"
+    },
+    "negative-controls/source/shared.rs": {
+      "bytes": 55648,
+      "sha256": "c6d1cb1b76f73edf580894627e50e7098db83fba65b19e44497e81c440ee8b32"
+    },
+    "negative-controls/source/server.rs": {
+      "bytes": 28867,
+      "sha256": "961cfc9c87a1f7aa4193028bda71f16db20510c5a74678317866faba1ddc8f7b"
+    },
+    "negative-controls/source/shared/presence.rs": {
+      "bytes": 7645,
+      "sha256": "7cd68f0c9fe55666bfc5c3702add9ac6c71721747b5fb2d7805e06f56febbcf5"
+    },
+    "negative-controls/source/shared/initialization.rs": {
+      "bytes": 19244,
+      "sha256": "9b8c55803e5d17788dcc54c81c93f21920b6277f9dd44812c6b361acc2bf296b"
+    },
+    "final-freeze/final-integration-tests.log": {
+      "bytes": 2826,
+      "sha256": "98c8fd828fa6f7348a39cd206cd87203df8b4bd015a822bfd08c768b3ce735ec"
+    },
+    "final-freeze/final-strict.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "final-freeze/caller-diagnostic-tests.log": {
+      "bytes": 8016,
+      "sha256": "b9a2d8f3576068de7553c6a76f3d9e334626237feeaf24e1b26c8efc0971443e"
+    },
+    "final-freeze/caller-diagnostic-tests.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "final-freeze/identity.json": {
+      "bytes": 2254,
+      "sha256": "37e3cbf49f0340d85445ace0d1f31ec4d8068a11f69e22c3cb29a6620f97ea5b"
+    },
+    "final-freeze/final-integration-tests.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "final-freeze/tested-elf": {
+      "bytes": 47438000,
+      "sha256": "2e87e9863aef089da83e009f383d913118cc1499ff2c4b0f61e57159f89fea17"
+    },
+    "final-freeze/final-strict.log": {
+      "bytes": 163,
+      "sha256": "3d93de95f82a237b8eec9b4117150ee98938fc0fafd54ddf84c48dd213cfc8e4"
+    },
+    "final-freeze/tested-integration-binaries/shared-c3ad79145d906f4e": {
+      "bytes": 43792304,
+      "sha256": "635f206a23bb2a96cafeab2d28bfd3050d07e5368bec3f44e79b29489b512390"
+    },
+    "final-freeze/tested-integration-binaries/stats-69d6c7554c0f8d7e": {
+      "bytes": 43328664,
+      "sha256": "aeb46056c05824fabc9079109b231609ef4d0305d6dfda2fdf1fb8210885fa6a"
+    },
+    "final-freeze/tested-integration-binaries/http_shared-795c3654587625bb": {
+      "bytes": 45631792,
+      "sha256": "278e6fee5be61fb121c1af42d30bdab4a7eb3c46cfe16d6a7921175028f74a76"
+    },
+    "final-freeze/tested-integration-binaries/tiers-c17f9e17cb6a30dd": {
+      "bytes": 43808080,
+      "sha256": "92280a6105284d35ed893edabadc79cdb0663bd2450ac72810ceaba0303d3cd7"
+    },
+    "final-freeze/source/remote.rs": {
+      "bytes": 21345,
+      "sha256": "e99a242c4a2d0bb7104bf8f40a1264f6fd931600fa7d154c45445a171c7391e4"
+    },
+    "final-freeze/source/shared.rs": {
+      "bytes": 58274,
+      "sha256": "a955718db7fca2027a6a01cb6e6a24b17943ac0d894f5df38ffa0fd17402cc87"
+    },
+    "final-freeze/source/server.rs": {
+      "bytes": 28867,
+      "sha256": "961cfc9c87a1f7aa4193028bda71f16db20510c5a74678317866faba1ddc8f7b"
+    },
+    "final-freeze/source/shared/presence.rs": {
+      "bytes": 7621,
+      "sha256": "d3ed6ad3bce667500467d5298700d336e96628a6aac0bdbc646f1d112003723d"
+    },
+    "final-freeze/source/shared/initialization.rs": {
+      "bytes": 19136,
+      "sha256": "abb73e03a3fc5521c21652d8d5160a33d5479d1dd531db0d2a5b060d70a315db"
+    }
+  },
+  "removed": [
+    {
+      "path": "target/debug/incremental",
+      "files": 2453,
+      "allocated_bytes": 416169984,
+      "logical_bytes": 411379402
+    },
+    {
+      "path": "target/debug/build",
+      "files": 163,
+      "allocated_bytes": 169467904,
+      "logical_bytes": 169120342
+    },
+    {
+      "path": "target/debug/.fingerprint",
+      "files": 1174,
+      "allocated_bytes": 4816896,
+      "logical_bytes": 229858
+    },
+    {
+      "path": "target/debug/deps/cfg_if-adcd45c8d068377f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 566
+    },
+    {
+      "path": "target/debug/deps/same_file-551e267c236e2a3c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 928
+    },
+    {
+      "path": "target/debug/deps/toml_writer-730342480fc163ab.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1954
+    },
+    {
+      "path": "target/debug/deps/try_lock-317c394c8c61de3d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 413
+    },
+    {
+      "path": "target/debug/deps/icu_locale_core-a4805789699630b4.d",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 28320
+    },
+    {
+      "path": "target/debug/deps/libutf8_iter-0f2b24b9215af183.rmeta",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27098
+    },
+    {
+      "path": "target/debug/deps/zerotrie-5bb9c6aaf10803b5.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4282
+    },
+    {
+      "path": "target/debug/deps/libindexmap-5334738b62a07fcf.rmeta",
+      "files": 1,
+      "allocated_bytes": 933888,
+      "logical_bytes": 933632
+    },
+    {
+      "path": "target/debug/deps/openssl_probe-4bc42af26f5fd6d6.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 615
+    },
+    {
+      "path": "target/debug/deps/zerotrie-7081f0520bdeb342.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5734
+    },
+    {
+      "path": "target/debug/deps/libfutures_task-ad460ae60b604ef2.rmeta",
+      "files": 1,
+      "allocated_bytes": 98304,
+      "logical_bytes": 94413
+    },
+    {
+      "path": "target/debug/deps/libfutures_util-5d77ae410b8ebb77.rlib",
+      "files": 1,
+      "allocated_bytes": 6287360,
+      "logical_bytes": 6286676
+    },
+    {
+      "path": "target/debug/deps/http_body_util-b961f2f37126a940.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7451
+    },
+    {
+      "path": "target/debug/deps/same_file-06ba798a7539efc2.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 674
+    },
+    {
+      "path": "target/debug/deps/sail_api-a68b246a6d87b5fb.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2238
+    },
+    {
+      "path": "target/debug/deps/libsail_cache-498f3aa9ef986dd5.rmeta",
+      "files": 1,
+      "allocated_bytes": 425984,
+      "logical_bytes": 423378
+    },
+    {
+      "path": "target/debug/deps/libsail_verus-17b30ba8b218a68b.rmeta",
+      "files": 1,
+      "allocated_bytes": 1527808,
+      "logical_bytes": 1525645
+    },
+    {
+      "path": "target/debug/deps/libsynstructure-a68625120be1d093.rmeta",
+      "files": 1,
+      "allocated_bytes": 233472,
+      "logical_bytes": 229855
+    },
+    {
+      "path": "target/debug/deps/libsail_session-b7b5d92b2e734d02.rmeta",
+      "files": 1,
+      "allocated_bytes": 32768,
+      "logical_bytes": 30275
+    },
+    {
+      "path": "target/debug/deps/libtoml_writer-d8efd8473e6c2a70.rlib",
+      "files": 1,
+      "allocated_bytes": 225280,
+      "logical_bytes": 224378
+    },
+    {
+      "path": "target/debug/deps/libdigest-69d101d3b861e92f.rmeta",
+      "files": 1,
+      "allocated_bytes": 176128,
+      "logical_bytes": 174758
+    },
+    {
+      "path": "target/debug/deps/displaydoc-c3d20f6596139939.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1200
+    },
+    {
+      "path": "target/debug/deps/libring-cf4dd3b95d0a8baf.rlib",
+      "files": 1,
+      "allocated_bytes": 7720960,
+      "logical_bytes": 7717192
+    },
+    {
+      "path": "target/debug/deps/webpki-8d5161586c0fe854.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 8429
+    },
+    {
+      "path": "target/debug/deps/libzerofrom-3c06da05305a1312.rlib",
+      "files": 1,
+      "allocated_bytes": 98304,
+      "logical_bytes": 97894
+    },
+    {
+      "path": "target/debug/deps/libwalkdir-89754639f7ce5887.rmeta",
+      "files": 1,
+      "allocated_bytes": 106496,
+      "logical_bytes": 103534
+    },
+    {
+      "path": "target/debug/deps/libtoml-046d0221459ce9ad.rmeta",
+      "files": 1,
+      "allocated_bytes": 831488,
+      "logical_bytes": 827643
+    },
+    {
+      "path": "target/debug/deps/libed25519-e59696273164129c.rmeta",
+      "files": 1,
+      "allocated_bytes": 40960,
+      "logical_bytes": 38120
+    },
+    {
+      "path": "target/debug/deps/libtower_http-37343d71fce16043.rlib",
+      "files": 1,
+      "allocated_bytes": 733184,
+      "logical_bytes": 733022
+    },
+    {
+      "path": "target/debug/deps/slab-c158a5b5988934b1.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 649
+    },
+    {
+      "path": "target/debug/deps/libproc_macro2-378d9a773d1eff57.rlib",
+      "files": 1,
+      "allocated_bytes": 1257472,
+      "logical_bytes": 1254426
+    },
+    {
+      "path": "target/debug/deps/inotify_sys-3ef1543a28879ada.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 428
+    },
+    {
+      "path": "target/debug/deps/libcpufeatures-8093525e45d468bc.rmeta",
+      "files": 1,
+      "allocated_bytes": 40960,
+      "logical_bytes": 39276
+    },
+    {
+      "path": "target/debug/deps/libwriteable-e8fd1d038e528d69.rmeta",
+      "files": 1,
+      "allocated_bytes": 253952,
+      "logical_bytes": 250842
+    },
+    {
+      "path": "target/debug/deps/tokio_rustls-ddcfa9d3bdf732aa.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1574
+    },
+    {
+      "path": "target/debug/deps/sail_verus-d11c659d2b735d98.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6852
+    },
+    {
+      "path": "target/debug/deps/libfutures_task-963184b4b343a85b.rmeta",
+      "files": 1,
+      "allocated_bytes": 77824,
+      "logical_bytes": 74164
+    },
+    {
+      "path": "target/debug/deps/ipnet-30666244b719be7b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1401
+    },
+    {
+      "path": "target/debug/deps/icu_provider-4927c05daa3b28a6.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5056
+    },
+    {
+      "path": "target/debug/deps/tokio-10703cb225d69bc8.d",
+      "files": 1,
+      "allocated_bytes": 69632,
+      "logical_bytes": 68364
+    },
+    {
+      "path": "target/debug/deps/libtoml-9eac1fe14c3077d0.rmeta",
+      "files": 1,
+      "allocated_bytes": 589824,
+      "logical_bytes": 588706
+    },
+    {
+      "path": "target/debug/deps/rustls_platform_verifier-81d0ddce6f3847fe.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1492
+    },
+    {
+      "path": "target/debug/deps/libfutures_sink-1d79fd733cc1bd6c.rmeta",
+      "files": 1,
+      "allocated_bytes": 20480,
+      "logical_bytes": 18254
+    },
+    {
+      "path": "target/debug/deps/synstructure-a68625120be1d093.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 977
+    },
+    {
+      "path": "target/debug/deps/icu_properties_data-ad8bcf5a5bf66b44.d",
+      "files": 1,
+      "allocated_bytes": 77824,
+      "logical_bytes": 77387
+    },
+    {
+      "path": "target/debug/deps/winnow-4c2ea6d1fb1f5507.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10609
+    },
+    {
+      "path": "target/debug/deps/libcurve25519_dalek-6cf28831814a0285.rmeta",
+      "files": 1,
+      "allocated_bytes": 937984,
+      "logical_bytes": 935533
+    },
+    {
+      "path": "target/debug/deps/libsail_ledger-68e5b142d696124e.rmeta",
+      "files": 1,
+      "allocated_bytes": 94208,
+      "logical_bytes": 93111
+    },
+    {
+      "path": "target/debug/deps/libnotify-2fe476982c9bf783.rlib",
+      "files": 1,
+      "allocated_bytes": 3194880,
+      "logical_bytes": 3194098
+    },
+    {
+      "path": "target/debug/deps/libhttparse-41279a38706f2123.rmeta",
+      "files": 1,
+      "allocated_bytes": 167936,
+      "logical_bytes": 166636
+    },
+    {
+      "path": "target/debug/deps/sail_verus-17b30ba8b218a68b.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5412
+    },
+    {
+      "path": "target/debug/deps/libtower-38ec67e2b808a78e.rmeta",
+      "files": 1,
+      "allocated_bytes": 909312,
+      "logical_bytes": 906682
+    },
+    {
+      "path": "target/debug/deps/libhttp-8a80178997f5a27f.rmeta",
+      "files": 1,
+      "allocated_bytes": 1101824,
+      "logical_bytes": 1097921
+    },
+    {
+      "path": "target/debug/deps/libgetrandom-85590020fd624480.rmeta",
+      "files": 1,
+      "allocated_bytes": 61440,
+      "logical_bytes": 60443
+    },
+    {
+      "path": "target/debug/deps/libicu_properties_data-ad8bcf5a5bf66b44.rlib",
+      "files": 1,
+      "allocated_bytes": 1859584,
+      "logical_bytes": 1859444
+    },
+    {
+      "path": "target/debug/deps/toml_edit-679a50c1e2348c29.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6937
+    },
+    {
+      "path": "target/debug/deps/toml_datetime-658d4ea4ff7ffd25.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1866
+    },
+    {
+      "path": "target/debug/deps/libzerofrom-3dc8f23cc23f24be.rmeta",
+      "files": 1,
+      "allocated_bytes": 57344,
+      "logical_bytes": 53395
+    },
+    {
+      "path": "target/debug/deps/libcc-f9cf0defc85b158a.rmeta",
+      "files": 1,
+      "allocated_bytes": 573440,
+      "logical_bytes": 572092
+    },
+    {
+      "path": "target/debug/deps/icu_provider-a7cac5d759f93236.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3772
+    },
+    {
+      "path": "target/debug/deps/libsame_file-551e267c236e2a3c.rlib",
+      "files": 1,
+      "allocated_bytes": 122880,
+      "logical_bytes": 122362
+    },
+    {
+      "path": "target/debug/deps/toml-9eac1fe14c3077d0.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7493
+    },
+    {
+      "path": "target/debug/deps/libtoml-046d0221459ce9ad.rlib",
+      "files": 1,
+      "allocated_bytes": 3198976,
+      "logical_bytes": 3195708
+    },
+    {
+      "path": "target/debug/deps/libsail_daemon-d1903a3dee052454.rmeta",
+      "files": 1,
+      "allocated_bytes": 778240,
+      "logical_bytes": 774705
+    },
+    {
+      "path": "target/debug/deps/http_body-b2f5dc77f3842ceb.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 948
+    },
+    {
+      "path": "target/debug/deps/futures_io-da7afa72027c9663.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 426
+    },
+    {
+      "path": "target/debug/deps/icu_properties-de57ba41d08256fe.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5170
+    },
+    {
+      "path": "target/debug/deps/potential_utf-5deb48806139dc49.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1333
+    },
+    {
+      "path": "target/debug/deps/semver-a0bfbc604dd7adb3.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2616
+    },
+    {
+      "path": "target/debug/deps/libtower_layer-e06e53ebaf0e99a3.rlib",
+      "files": 1,
+      "allocated_bytes": 86016,
+      "logical_bytes": 84304
+    },
+    {
+      "path": "target/debug/deps/libzeroize-7bc49eb360c1d590.rmeta",
+      "files": 1,
+      "allocated_bytes": 409600,
+      "logical_bytes": 408279
+    },
+    {
+      "path": "target/debug/deps/tinystr-0ef55be2d027cbaf.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2976
+    },
+    {
+      "path": "target/debug/deps/winnow-3845a5ae9dca508c.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7942
+    },
+    {
+      "path": "target/debug/deps/librustls_platform_verifier-cd1b24047bc970ab.rlib",
+      "files": 1,
+      "allocated_bytes": 229376,
+      "logical_bytes": 225376
+    },
+    {
+      "path": "target/debug/deps/libbytes-2834c99ab0317d22.rmeta",
+      "files": 1,
+      "allocated_bytes": 884736,
+      "logical_bytes": 884700
+    },
+    {
+      "path": "target/debug/deps/httparse-41279a38706f2123.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3091
+    },
+    {
+      "path": "target/debug/deps/reqwest-d14292fd91e7dc9b.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10103
+    },
+    {
+      "path": "target/debug/deps/libversion_check-371b5f2dedfc9d12.rlib",
+      "files": 1,
+      "allocated_bytes": 466944,
+      "logical_bytes": 463344
+    },
+    {
+      "path": "target/debug/deps/libhttp_body-603497276061dc38.rlib",
+      "files": 1,
+      "allocated_bytes": 73728,
+      "logical_bytes": 70846
+    },
+    {
+      "path": "target/debug/deps/liblitemap-1b248baa1e534a7b.rmeta",
+      "files": 1,
+      "allocated_bytes": 212992,
+      "logical_bytes": 210715
+    },
+    {
+      "path": "target/debug/deps/libtoml_parser-aac63463b35afa37.rmeta",
+      "files": 1,
+      "allocated_bytes": 270336,
+      "logical_bytes": 267103
+    },
+    {
+      "path": "target/debug/deps/libzmij-5dfdf0edc2c1989a.rmeta",
+      "files": 1,
+      "allocated_bytes": 421888,
+      "logical_bytes": 421529
+    },
+    {
+      "path": "target/debug/deps/liblibc-e8e43fa3aaba1ffc.rmeta",
+      "files": 1,
+      "allocated_bytes": 4378624,
+      "logical_bytes": 4376098
+    },
+    {
+      "path": "target/debug/deps/libblock_buffer-5aba6c0377a7b53c.rlib",
+      "files": 1,
+      "allocated_bytes": 57344,
+      "logical_bytes": 55958
+    },
+    {
+      "path": "target/debug/deps/stats-75d3b207701d9db1.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 538
+    },
+    {
+      "path": "target/debug/deps/toml_datetime-c62d8041e09f6877.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1377
+    },
+    {
+      "path": "target/debug/deps/libfutures_io-81cc2479e765a64d.rlib",
+      "files": 1,
+      "allocated_bytes": 131072,
+      "logical_bytes": 128952
+    },
+    {
+      "path": "target/debug/deps/liblog-61a0e759cb576717.rmeta",
+      "files": 1,
+      "allocated_bytes": 167936,
+      "logical_bytes": 165940
+    },
+    {
+      "path": "target/debug/deps/libpin_project_lite-d93ea9e0ecd9bd9f.rmeta",
+      "files": 1,
+      "allocated_bytes": 98304,
+      "logical_bytes": 94714
+    },
+    {
+      "path": "target/debug/deps/ed25519-e59696273164129c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1255
+    },
+    {
+      "path": "target/debug/deps/indexmap-5334738b62a07fcf.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5005
+    },
+    {
+      "path": "target/debug/deps/pin_project_lite-2fdcfdc370041b65.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 456
+    },
+    {
+      "path": "target/debug/deps/libwebpki-35f193f1d1e65bb4.rmeta",
+      "files": 1,
+      "allocated_bytes": 495616,
+      "logical_bytes": 494947
+    },
+    {
+      "path": "target/debug/deps/liburl-9ae39320793b7e1f.rlib",
+      "files": 1,
+      "allocated_bytes": 1626112,
+      "logical_bytes": 1623440
+    },
+    {
+      "path": "target/debug/deps/libtoml_parser-8fbb16fac25c1a40.rmeta",
+      "files": 1,
+      "allocated_bytes": 315392,
+      "logical_bytes": 312192
+    },
+    {
+      "path": "target/debug/deps/httparse-2c5fd75f233985e7.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2298
+    },
+    {
+      "path": "target/debug/deps/libindexmap-07e9634ed7e20131.rmeta",
+      "files": 1,
+      "allocated_bytes": 1306624,
+      "logical_bytes": 1306441
+    },
+    {
+      "path": "target/debug/deps/libzeroize-ec10c5b8f79e99a3.rmeta",
+      "files": 1,
+      "allocated_bytes": 430080,
+      "logical_bytes": 428179
+    },
+    {
+      "path": "target/debug/deps/libzerovec-6bf487bbef4ead59.rmeta",
+      "files": 1,
+      "allocated_bytes": 1114112,
+      "logical_bytes": 1112051
+    },
+    {
+      "path": "target/debug/deps/libcrypto_common-88638586647b8244.rmeta",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 28260
+    },
+    {
+      "path": "target/debug/deps/libicu_locale_core-a4805789699630b4.rlib",
+      "files": 1,
+      "allocated_bytes": 3108864,
+      "logical_bytes": 3106540
+    },
+    {
+      "path": "target/debug/deps/http-2859e8748c226e64.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7003
+    },
+    {
+      "path": "target/debug/deps/librustls_native_certs-445cef36f996a934.rmeta",
+      "files": 1,
+      "allocated_bytes": 32768,
+      "logical_bytes": 32627
+    },
+    {
+      "path": "target/debug/deps/icu_normalizer_data-76c90e5e6c2b8a74.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3455
+    },
+    {
+      "path": "target/debug/deps/libidna_adapter-71fa572e9bc3ff5b.rmeta",
+      "files": 1,
+      "allocated_bytes": 32768,
+      "logical_bytes": 32656
+    },
+    {
+      "path": "target/debug/deps/libicu_provider-4927c05daa3b28a6.rmeta",
+      "files": 1,
+      "allocated_bytes": 430080,
+      "logical_bytes": 428269
+    },
+    {
+      "path": "target/debug/deps/shlex-7000c8965d055859.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 888
+    },
+    {
+      "path": "target/debug/deps/libcrypto_common-c1680b0b9e3e3b06.rmeta",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 23474
+    },
+    {
+      "path": "target/debug/deps/libtoml_datetime-c62d8041e09f6877.rmeta",
+      "files": 1,
+      "allocated_bytes": 102400,
+      "logical_bytes": 99888
+    },
+    {
+      "path": "target/debug/deps/sail_key-ae1d5b9e5ac161f3.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 523
+    },
+    {
+      "path": "target/debug/deps/librustls_pki_types-24d40dbcd67fe046.rmeta",
+      "files": 1,
+      "allocated_bytes": 339968,
+      "logical_bytes": 336175
+    },
+    {
+      "path": "target/debug/deps/tracing_core-a390a68cf665c0a2.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2920
+    },
+    {
+      "path": "target/debug/deps/http-8a80178997f5a27f.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5236
+    },
+    {
+      "path": "target/debug/deps/librustix-d19387ff59020013.rmeta",
+      "files": 1,
+      "allocated_bytes": 4476928,
+      "logical_bytes": 4475423
+    },
+    {
+      "path": "target/debug/deps/atomic_waker-a1a26e55539d7244.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 433
+    },
+    {
+      "path": "target/debug/deps/libsha2-4f74e9393f409a4d.rmeta",
+      "files": 1,
+      "allocated_bytes": 634880,
+      "logical_bytes": 632287
+    },
+    {
+      "path": "target/debug/deps/libsyn-3e178ba1e25ac716.rlib",
+      "files": 1,
+      "allocated_bytes": 8208384,
+      "logical_bytes": 8204690
+    },
+    {
+      "path": "target/debug/deps/libwriteable-e8fd1d038e528d69.rlib",
+      "files": 1,
+      "allocated_bytes": 356352,
+      "logical_bytes": 352716
+    },
+    {
+      "path": "target/debug/deps/libed25519_dalek-280d2f05b5c4cb7d.rmeta",
+      "files": 1,
+      "allocated_bytes": 110592,
+      "logical_bytes": 110390
+    },
+    {
+      "path": "target/debug/deps/try_lock-707fb18d6d6f221a.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 580
+    },
+    {
+      "path": "target/debug/deps/libsyn-4b21d6d355c29d99.rlib",
+      "files": 1,
+      "allocated_bytes": 9265152,
+      "logical_bytes": 9263784
+    },
+    {
+      "path": "target/debug/deps/liblibc-93ff8fac5268ae02.rmeta",
+      "files": 1,
+      "allocated_bytes": 3891200,
+      "logical_bytes": 3889997
+    },
+    {
+      "path": "target/debug/deps/futures_io-81cc2479e765a64d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 598
+    },
+    {
+      "path": "target/debug/deps/libbitflags-b2a0dd750e3e37ce.rlib",
+      "files": 1,
+      "allocated_bytes": 356352,
+      "logical_bytes": 353704
+    },
+    {
+      "path": "target/debug/deps/libhashbrown-7bc7cb14015bbcfb.rmeta",
+      "files": 1,
+      "allocated_bytes": 1232896,
+      "logical_bytes": 1231279
+    },
+    {
+      "path": "target/debug/deps/icu_properties_data-f54071672940736d.d",
+      "files": 1,
+      "allocated_bytes": 61440,
+      "logical_bytes": 58050
+    },
+    {
+      "path": "target/debug/deps/libhyper_rustls-55c87eefed272786.rmeta",
+      "files": 1,
+      "allocated_bytes": 73728,
+      "logical_bytes": 70282
+    },
+    {
+      "path": "target/debug/deps/libnotify_types-a893cb153680d6a2.rlib",
+      "files": 1,
+      "allocated_bytes": 618496,
+      "logical_bytes": 616404
+    },
+    {
+      "path": "target/debug/deps/serde_core-485476259d0d7abc.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5632
+    },
+    {
+      "path": "target/debug/deps/liblinux_raw_sys-66bfd52fdf5dcf1c.rmeta",
+      "files": 1,
+      "allocated_bytes": 1183744,
+      "logical_bytes": 1182915
+    },
+    {
+      "path": "target/debug/deps/libsail_verus-d11c659d2b735d98.rlib",
+      "files": 1,
+      "allocated_bytes": 30339072,
+      "logical_bytes": 30337188
+    },
+    {
+      "path": "target/debug/deps/libbytes-2834c99ab0317d22.rlib",
+      "files": 1,
+      "allocated_bytes": 1388544,
+      "logical_bytes": 1387868
+    },
+    {
+      "path": "target/debug/deps/sail_daemon-dcac26230faae340.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2246
+    },
+    {
+      "path": "target/debug/deps/liburl-9ae39320793b7e1f.rmeta",
+      "files": 1,
+      "allocated_bytes": 372736,
+      "logical_bytes": 370663
+    },
+    {
+      "path": "target/debug/deps/memchr-c2d4bde33d1ef6c1.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10380
+    },
+    {
+      "path": "target/debug/deps/libform_urlencoded-598524208856a6c1.rlib",
+      "files": 1,
+      "allocated_bytes": 135168,
+      "logical_bytes": 132968
+    },
+    {
+      "path": "target/debug/deps/libsail_daemon-15f5df3b56918e73.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/libnotify_types-4915ffecbb1d3964.rmeta",
+      "files": 1,
+      "allocated_bytes": 225280,
+      "logical_bytes": 224187
+    },
+    {
+      "path": "target/debug/deps/libsha2-f176e5a4e3e9d428.rmeta",
+      "files": 1,
+      "allocated_bytes": 618496,
+      "logical_bytes": 615043
+    },
+    {
+      "path": "target/debug/deps/libdigest-8daba607cc2d3a2c.rmeta",
+      "files": 1,
+      "allocated_bytes": 118784,
+      "logical_bytes": 117490
+    },
+    {
+      "path": "target/debug/deps/librustls-8f6c66f2d8f3823c.rmeta",
+      "files": 1,
+      "allocated_bytes": 4239360,
+      "logical_bytes": 4238461
+    },
+    {
+      "path": "target/debug/deps/libhyper-f581eb3ef7a21d7f.rlib",
+      "files": 1,
+      "allocated_bytes": 3436544,
+      "logical_bytes": 3434740
+    },
+    {
+      "path": "target/debug/deps/libfutures_core-3e62f280ba54111d.rmeta",
+      "files": 1,
+      "allocated_bytes": 57344,
+      "logical_bytes": 56473
+    },
+    {
+      "path": "target/debug/deps/tokio_rustls-c628301c4d102796.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2128
+    },
+    {
+      "path": "target/debug/deps/form_urlencoded-598524208856a6c1.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 629
+    },
+    {
+      "path": "target/debug/deps/libcurve25519_dalek-664c5e07e5b285ac.rlib",
+      "files": 1,
+      "allocated_bytes": 2572288,
+      "logical_bytes": 2568626
+    },
+    {
+      "path": "target/debug/deps/webpki-35f193f1d1e65bb4.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6305
+    },
+    {
+      "path": "target/debug/deps/libserde_json-8a80f5badb86a99f.rlib",
+      "files": 1,
+      "allocated_bytes": 2924544,
+      "logical_bytes": 2920924
+    },
+    {
+      "path": "target/debug/deps/icu_collections-983afd78c3257afb.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4315
+    },
+    {
+      "path": "target/debug/deps/unicode_ident-1e23094c28f51ebc.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 988
+    },
+    {
+      "path": "target/debug/deps/stable_deref_trait-63272b7a7bcae8c6.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 650
+    },
+    {
+      "path": "target/debug/deps/indexmap-07e9634ed7e20131.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6697
+    },
+    {
+      "path": "target/debug/deps/rustls_platform_verifier-cd1b24047bc970ab.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2023
+    },
+    {
+      "path": "target/debug/deps/libzeroize-ec10c5b8f79e99a3.rlib",
+      "files": 1,
+      "allocated_bytes": 483328,
+      "logical_bytes": 481086
+    },
+    {
+      "path": "target/debug/deps/proof_product-c1e45c23cfd04d44.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 816
+    },
+    {
+      "path": "target/debug/deps/hyper-03c928be45c0be5e.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 12241
+    },
+    {
+      "path": "target/debug/deps/libpercent_encoding-4b41cea287cc581b.rmeta",
+      "files": 1,
+      "allocated_bytes": 49152,
+      "logical_bytes": 45787
+    },
+    {
+      "path": "target/debug/deps/libsail_key-9e1fa162296c7dae.rlib",
+      "files": 1,
+      "allocated_bytes": 413696,
+      "logical_bytes": 412712
+    },
+    {
+      "path": "target/debug/deps/sha2-f176e5a4e3e9d428.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1926
+    },
+    {
+      "path": "target/debug/deps/libatomic_waker-68c2354ffc75cecb.rlib",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 51384
+    },
+    {
+      "path": "target/debug/deps/litemap-1b248baa1e534a7b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1206
+    },
+    {
+      "path": "target/debug/deps/yoke_derive-11fb5030789a3683.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 973
+    },
+    {
+      "path": "target/debug/deps/libsail_smtlib-19a534129ce5c59d.rmeta",
+      "files": 1,
+      "allocated_bytes": 151552,
+      "logical_bytes": 148884
+    },
+    {
+      "path": "target/debug/deps/ipnet-af4b83f9b7164f8e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1895
+    },
+    {
+      "path": "target/debug/deps/libhyper_util-34d2895ff1da5b84.rmeta",
+      "files": 1,
+      "allocated_bytes": 1490944,
+      "logical_bytes": 1488712
+    },
+    {
+      "path": "target/debug/deps/sail_ledger-8171b76bf6f4e7a7.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 377
+    },
+    {
+      "path": "target/debug/deps/libtower_service-bf171286e0862a78.rmeta",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 22031
+    },
+    {
+      "path": "target/debug/deps/libitoa-2ec34da1e245bc15.rmeta",
+      "files": 1,
+      "allocated_bytes": 65536,
+      "logical_bytes": 61568
+    },
+    {
+      "path": "target/debug/deps/bitflags-b2a0dd750e3e37ce.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2686
+    },
+    {
+      "path": "target/debug/deps/libtoml_edit-679a50c1e2348c29.rmeta",
+      "files": 1,
+      "allocated_bytes": 528384,
+      "logical_bytes": 524553
+    },
+    {
+      "path": "target/debug/deps/linux_raw_sys-75cec239f10c583c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2560
+    },
+    {
+      "path": "target/debug/deps/libipnet-30666244b719be7b.rmeta",
+      "files": 1,
+      "allocated_bytes": 233472,
+      "logical_bytes": 231988
+    },
+    {
+      "path": "target/debug/deps/liblitemap-0e36d49cb5f4576c.rlib",
+      "files": 1,
+      "allocated_bytes": 290816,
+      "logical_bytes": 289094
+    },
+    {
+      "path": "target/debug/deps/ring-cf4dd3b95d0a8baf.d",
+      "files": 1,
+      "allocated_bytes": 57344,
+      "logical_bytes": 56340
+    },
+    {
+      "path": "target/debug/deps/sha2-4f74e9393f409a4d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2594
+    },
+    {
+      "path": "target/debug/deps/libhttp_body_util-71eb74e8e36c34f9.rmeta",
+      "files": 1,
+      "allocated_bytes": 319488,
+      "logical_bytes": 317804
+    },
+    {
+      "path": "target/debug/deps/libopenssl_probe-28a753ff7f834869.rmeta",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 11371
+    },
+    {
+      "path": "target/debug/deps/libidna_adapter-71fa572e9bc3ff5b.rlib",
+      "files": 1,
+      "allocated_bytes": 81920,
+      "logical_bytes": 81604
+    },
+    {
+      "path": "target/debug/deps/cpufeatures-8093525e45d468bc.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 693
+    },
+    {
+      "path": "target/debug/deps/libinotify_sys-847b790ec9dfd432.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 35998
+    },
+    {
+      "path": "target/debug/deps/libsocket2-3285872f22f4d997.rmeta",
+      "files": 1,
+      "allocated_bytes": 417792,
+      "logical_bytes": 417459
+    },
+    {
+      "path": "target/debug/deps/sail_cache-498f3aa9ef986dd5.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 821
+    },
+    {
+      "path": "target/debug/deps/librustls_pki_types-c5d35678c771abdd.rmeta",
+      "files": 1,
+      "allocated_bytes": 405504,
+      "logical_bytes": 404275
+    },
+    {
+      "path": "target/debug/deps/yoke-99c51c3ff154175d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2450
+    },
+    {
+      "path": "target/debug/deps/libed25519_dalek-287371affc42443e.rmeta",
+      "files": 1,
+      "allocated_bytes": 94208,
+      "logical_bytes": 93806
+    },
+    {
+      "path": "target/debug/deps/liblibc-e8e43fa3aaba1ffc.rlib",
+      "files": 1,
+      "allocated_bytes": 4427776,
+      "logical_bytes": 4427254
+    },
+    {
+      "path": "target/debug/deps/curve25519_dalek_derive-76e82c58a3b767d0.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 798
+    },
+    {
+      "path": "target/debug/deps/utf8_iter-903be50ffd3c2406.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1289
+    },
+    {
+      "path": "target/debug/deps/getrandom-d62dc3da75372eeb.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2793
+    },
+    {
+      "path": "target/debug/deps/librustc_version-e1e2c931ef714523.rlib",
+      "files": 1,
+      "allocated_bytes": 413696,
+      "logical_bytes": 410820
+    },
+    {
+      "path": "target/debug/deps/libed25519_dalek-280d2f05b5c4cb7d.rlib",
+      "files": 1,
+      "allocated_bytes": 425984,
+      "logical_bytes": 425448
+    },
+    {
+      "path": "target/debug/deps/libfutures_sink-1d79fd733cc1bd6c.rlib",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 20502
+    },
+    {
+      "path": "target/debug/deps/libsignature-7f55bcad3b117430.rmeta",
+      "files": 1,
+      "allocated_bytes": 45056,
+      "logical_bytes": 41756
+    },
+    {
+      "path": "target/debug/deps/libsha2_asm-1490e7ddb716c5ca.rmeta",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5765
+    },
+    {
+      "path": "target/debug/deps/libsail_session-a5fecb90042ef5b7.rmeta",
+      "files": 1,
+      "allocated_bytes": 49152,
+      "logical_bytes": 46567
+    },
+    {
+      "path": "target/debug/deps/stable_deref_trait-30a5ae317cabf070.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 463
+    },
+    {
+      "path": "target/debug/deps/libsubtle-36033e5dee04adfd.rmeta",
+      "files": 1,
+      "allocated_bytes": 73728,
+      "logical_bytes": 72442
+    },
+    {
+      "path": "target/debug/deps/libfind_msvc_tools-3db4d81764298103.rmeta",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 52662
+    },
+    {
+      "path": "target/debug/deps/base64-70ed84debb944be7.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4904
+    },
+    {
+      "path": "target/debug/deps/libcc-f9cf0defc85b158a.rlib",
+      "files": 1,
+      "allocated_bytes": 3796992,
+      "logical_bytes": 3794024
+    },
+    {
+      "path": "target/debug/deps/libhyper_util-897227fdb43036e3.rmeta",
+      "files": 1,
+      "allocated_bytes": 1224704,
+      "logical_bytes": 1223581
+    },
+    {
+      "path": "target/debug/deps/libjob_coalescing-bb5b9c62e08de087.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/libwant-41014dffe465e1a2.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 33779
+    },
+    {
+      "path": "target/debug/deps/libuntrusted-60a3a325394691e0.rmeta",
+      "files": 1,
+      "allocated_bytes": 32768,
+      "logical_bytes": 30774
+    },
+    {
+      "path": "target/debug/deps/once_cell-362ea2305185adec.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1293
+    },
+    {
+      "path": "target/debug/deps/inotify-0bad836de4305a38.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2310
+    },
+    {
+      "path": "target/debug/deps/libserde_spanned-6827d994617de2ec.rlib",
+      "files": 1,
+      "allocated_bytes": 61440,
+      "logical_bytes": 59326
+    },
+    {
+      "path": "target/debug/deps/libtiers-1347db2b12d7ddc4.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/libitoa-1e4014ba8d232f08.rmeta",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 50279
+    },
+    {
+      "path": "target/debug/deps/libinotify-0bad836de4305a38.rmeta",
+      "files": 1,
+      "allocated_bytes": 548864,
+      "logical_bytes": 545838
+    },
+    {
+      "path": "target/debug/deps/libsemver-a0bfbc604dd7adb3.rmeta",
+      "files": 1,
+      "allocated_bytes": 143360,
+      "logical_bytes": 139268
+    },
+    {
+      "path": "target/debug/deps/libserde-a4c0eb41f76e633d.rmeta",
+      "files": 1,
+      "allocated_bytes": 528384,
+      "logical_bytes": 526048
+    },
+    {
+      "path": "target/debug/deps/percent_encoding-b4716ccddebb7f2c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1025
+    },
+    {
+      "path": "target/debug/deps/ed25519_dalek-280d2f05b5c4cb7d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2845
+    },
+    {
+      "path": "target/debug/deps/digest-69d101d3b861e92f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2828
+    },
+    {
+      "path": "target/debug/deps/zerovec-19bd46bc030960ba.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6761
+    },
+    {
+      "path": "target/debug/deps/libtry_lock-707fb18d6d6f221a.rlib",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27214
+    },
+    {
+      "path": "target/debug/deps/base64-104dc6516140ee60.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6562
+    },
+    {
+      "path": "target/debug/deps/libfutures_io-da7afa72027c9663.rmeta",
+      "files": 1,
+      "allocated_bytes": 57344,
+      "logical_bytes": 55858
+    },
+    {
+      "path": "target/debug/deps/libicu_properties-de57ba41d08256fe.rlib",
+      "files": 1,
+      "allocated_bytes": 4636672,
+      "logical_bytes": 4635842
+    },
+    {
+      "path": "target/debug/deps/tracing-4f47e89ded9c9537.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3056
+    },
+    {
+      "path": "target/debug/deps/bitflags-654920972b441c96.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1994
+    },
+    {
+      "path": "target/debug/deps/sail_daemon-d1903a3dee052454.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2639
+    },
+    {
+      "path": "target/debug/deps/libfutures_util-636800ac0dc4f5fe.rmeta",
+      "files": 1,
+      "allocated_bytes": 4739072,
+      "logical_bytes": 4736127
+    },
+    {
+      "path": "target/debug/deps/tower_http-9674f6accbfc292d.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5352
+    },
+    {
+      "path": "target/debug/deps/signature-7f55bcad3b117430.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3058
+    },
+    {
+      "path": "target/debug/deps/hyper_rustls-e46882d33bda2122.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2148
+    },
+    {
+      "path": "target/debug/deps/sha2_asm-d01eb8d8d69020eb.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 413
+    },
+    {
+      "path": "target/debug/deps/libbitflags-654920972b441c96.rmeta",
+      "files": 1,
+      "allocated_bytes": 180224,
+      "logical_bytes": 177437
+    },
+    {
+      "path": "target/debug/deps/libsynstructure-a68625120be1d093.rlib",
+      "files": 1,
+      "allocated_bytes": 1101824,
+      "logical_bytes": 1100968
+    },
+    {
+      "path": "target/debug/deps/libgetrandom-d62dc3da75372eeb.rmeta",
+      "files": 1,
+      "allocated_bytes": 65536,
+      "logical_bytes": 65298
+    },
+    {
+      "path": "target/debug/deps/libmio-55ada03d3d9eee9f.rmeta",
+      "files": 1,
+      "allocated_bytes": 413696,
+      "logical_bytes": 412579
+    },
+    {
+      "path": "target/debug/deps/libsail_cache-b827575c0fce1c00.rmeta",
+      "files": 1,
+      "allocated_bytes": 892928,
+      "logical_bytes": 890447
+    },
+    {
+      "path": "target/debug/deps/libutf8_iter-903be50ffd3c2406.rlib",
+      "files": 1,
+      "allocated_bytes": 86016,
+      "logical_bytes": 85656
+    },
+    {
+      "path": "target/debug/deps/reqwest-c74240494a0b29c5.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7562
+    },
+    {
+      "path": "target/debug/deps/ed25519_dalek-287371affc42443e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2112
+    },
+    {
+      "path": "target/debug/deps/libsail_api-7b2bf72f07224d45.rmeta",
+      "files": 1,
+      "allocated_bytes": 1863680,
+      "logical_bytes": 1860777
+    },
+    {
+      "path": "target/debug/deps/libsail_ledger-8171b76bf6f4e7a7.rmeta",
+      "files": 1,
+      "allocated_bytes": 139264,
+      "logical_bytes": 139097
+    },
+    {
+      "path": "target/debug/deps/icu_properties-2f7e54e113bf06c2.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3857
+    },
+    {
+      "path": "target/debug/deps/liblitemap-0e36d49cb5f4576c.rmeta",
+      "files": 1,
+      "allocated_bytes": 282624,
+      "logical_bytes": 282335
+    },
+    {
+      "path": "target/debug/deps/libfutures_task-ad460ae60b604ef2.rlib",
+      "files": 1,
+      "allocated_bytes": 151552,
+      "logical_bytes": 148630
+    },
+    {
+      "path": "target/debug/deps/atomic_waker-68c2354ffc75cecb.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 608
+    },
+    {
+      "path": "target/debug/deps/libblock_buffer-d2a37ee323575c1c.rmeta",
+      "files": 1,
+      "allocated_bytes": 32768,
+      "logical_bytes": 28738
+    },
+    {
+      "path": "target/debug/deps/libidna-9be981da45e8621a.rmeta",
+      "files": 1,
+      "allocated_bytes": 147456,
+      "logical_bytes": 143952
+    },
+    {
+      "path": "target/debug/deps/libproof_product-c1e45c23cfd04d44.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/liburl-405a76c7cb79e440.rmeta",
+      "files": 1,
+      "allocated_bytes": 299008,
+      "logical_bytes": 298530
+    },
+    {
+      "path": "target/debug/deps/librustls_pki_types-c5d35678c771abdd.rlib",
+      "files": 1,
+      "allocated_bytes": 958464,
+      "logical_bytes": 957912
+    },
+    {
+      "path": "target/debug/deps/icu_collections-8319ac1db737a7c5.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5781
+    },
+    {
+      "path": "target/debug/deps/libhyper_util-34d2895ff1da5b84.rlib",
+      "files": 1,
+      "allocated_bytes": 3141632,
+      "logical_bytes": 3140968
+    },
+    {
+      "path": "target/debug/deps/libserde_core-485476259d0d7abc.rmeta",
+      "files": 1,
+      "allocated_bytes": 2727936,
+      "logical_bytes": 2724692
+    },
+    {
+      "path": "target/debug/deps/libzmij-5dfdf0edc2c1989a.rlib",
+      "files": 1,
+      "allocated_bytes": 585728,
+      "logical_bytes": 582498
+    },
+    {
+      "path": "target/debug/deps/curve25519_dalek-664c5e07e5b285ac.d",
+      "files": 1,
+      "allocated_bytes": 20480,
+      "logical_bytes": 17381
+    },
+    {
+      "path": "target/debug/deps/libhttp_shared-145c884d63217137.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/sail_key-9e1fa162296c7dae.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 356
+    },
+    {
+      "path": "target/debug/deps/libshlex-7000c8965d055859.rmeta",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 49702
+    },
+    {
+      "path": "target/debug/deps/libfutures_channel-9cca7591468cf600.rlib",
+      "files": 1,
+      "allocated_bytes": 282624,
+      "logical_bytes": 281026
+    },
+    {
+      "path": "target/debug/deps/libed25519-e59696273164129c.rlib",
+      "files": 1,
+      "allocated_bytes": 155648,
+      "logical_bytes": 153024
+    },
+    {
+      "path": "target/debug/deps/libwebpki-8d5161586c0fe854.rmeta",
+      "files": 1,
+      "allocated_bytes": 598016,
+      "logical_bytes": 595426
+    },
+    {
+      "path": "target/debug/deps/libonce_cell-362ea2305185adec.rlib",
+      "files": 1,
+      "allocated_bytes": 249856,
+      "logical_bytes": 247726
+    },
+    {
+      "path": "target/debug/deps/libsail_ledger-8171b76bf6f4e7a7.rlib",
+      "files": 1,
+      "allocated_bytes": 749568,
+      "logical_bytes": 747478
+    },
+    {
+      "path": "target/debug/deps/equivalent-cbd4da8309b68df8.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 423
+    },
+    {
+      "path": "target/debug/deps/libtoml_parser-8fbb16fac25c1a40.rlib",
+      "files": 1,
+      "allocated_bytes": 1372160,
+      "logical_bytes": 1368942
+    },
+    {
+      "path": "target/debug/deps/libmemchr-c2d4bde33d1ef6c1.rmeta",
+      "files": 1,
+      "allocated_bytes": 1310720,
+      "logical_bytes": 1309163
+    },
+    {
+      "path": "target/debug/deps/libhashbrown-7bc7cb14015bbcfb.rlib",
+      "files": 1,
+      "allocated_bytes": 1298432,
+      "logical_bytes": 1297248
+    },
+    {
+      "path": "target/debug/deps/smallvec-d7fe5e5714a6738f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 416
+    },
+    {
+      "path": "target/debug/deps/libicu_provider-a7cac5d759f93236.rmeta",
+      "files": 1,
+      "allocated_bytes": 360448,
+      "logical_bytes": 356774
+    },
+    {
+      "path": "target/debug/deps/libtypenum-4e537d2f01be10da.rmeta",
+      "files": 1,
+      "allocated_bytes": 2785280,
+      "logical_bytes": 2782435
+    },
+    {
+      "path": "target/debug/deps/libpin_project_lite-2fdcfdc370041b65.rmeta",
+      "files": 1,
+      "allocated_bytes": 94208,
+      "logical_bytes": 93557
+    },
+    {
+      "path": "target/debug/deps/libtracing-709d787010098b6e.rmeta",
+      "files": 1,
+      "allocated_bytes": 557056,
+      "logical_bytes": 554750
+    },
+    {
+      "path": "target/debug/deps/serde_json-8a80f5badb86a99f.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6065
+    },
+    {
+      "path": "target/debug/deps/curve25519_dalek-6cf28831814a0285.d",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 13021
+    },
+    {
+      "path": "target/debug/deps/libsync_wrapper-909c0210a0fa6d94.rlib",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 26046
+    },
+    {
+      "path": "target/debug/deps/toml_edit-e185f6c199b7daea.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 9272
+    },
+    {
+      "path": "target/debug/deps/libwalkdir-89754639f7ce5887.rlib",
+      "files": 1,
+      "allocated_bytes": 618496,
+      "logical_bytes": 614646
+    },
+    {
+      "path": "target/debug/deps/idna-11550a3857ee792f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1559
+    },
+    {
+      "path": "target/debug/deps/rustls_pki_types-c5d35678c771abdd.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10599
+    },
+    {
+      "path": "target/debug/deps/libmemchr-c2d4bde33d1ef6c1.rlib",
+      "files": 1,
+      "allocated_bytes": 2072576,
+      "logical_bytes": 2070458
+    },
+    {
+      "path": "target/debug/deps/libhyper_rustls-e46882d33bda2122.rlib",
+      "files": 1,
+      "allocated_bytes": 229376,
+      "logical_bytes": 229224
+    },
+    {
+      "path": "target/debug/deps/libjob_activity-31225474b65ec5c4.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/libfutures_core-0a277619a03dcc31.rlib",
+      "files": 1,
+      "allocated_bytes": 102400,
+      "logical_bytes": 101394
+    },
+    {
+      "path": "target/debug/deps/libsail_key-9e1fa162296c7dae.rmeta",
+      "files": 1,
+      "allocated_bytes": 40960,
+      "logical_bytes": 37393
+    },
+    {
+      "path": "target/debug/deps/sail_session-b7b5d92b2e734d02.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 543
+    },
+    {
+      "path": "target/debug/deps/libpotential_utf-5deb48806139dc49.rmeta",
+      "files": 1,
+      "allocated_bytes": 45056,
+      "logical_bytes": 44772
+    },
+    {
+      "path": "target/debug/deps/libbase64-104dc6516140ee60.rmeta",
+      "files": 1,
+      "allocated_bytes": 704512,
+      "logical_bytes": 700751
+    },
+    {
+      "path": "target/debug/deps/libhashbrown-fe0f3a6371dfccdd.rmeta",
+      "files": 1,
+      "allocated_bytes": 905216,
+      "logical_bytes": 904287
+    },
+    {
+      "path": "target/debug/deps/libsignature-7f55bcad3b117430.rlib",
+      "files": 1,
+      "allocated_bytes": 73728,
+      "logical_bytes": 71726
+    },
+    {
+      "path": "target/debug/deps/typenum-ec81f5ed1898d70d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3570
+    },
+    {
+      "path": "target/debug/deps/walkdir-89754639f7ce5887.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1576
+    },
+    {
+      "path": "target/debug/deps/winnow-9d65ab95a9701de1.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5347
+    },
+    {
+      "path": "target/debug/deps/libform_urlencoded-598524208856a6c1.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 36117
+    },
+    {
+      "path": "target/debug/deps/libicu_normalizer-b0a6a0c0c226fd1e.rmeta",
+      "files": 1,
+      "allocated_bytes": 442368,
+      "logical_bytes": 440812
+    },
+    {
+      "path": "target/debug/deps/zmij-5dfdf0edc2c1989a.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1242
+    },
+    {
+      "path": "target/debug/deps/http_shared-795c3654587625bb.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 716
+    },
+    {
+      "path": "target/debug/deps/memchr-b80b62a389ef9e02.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7770
+    },
+    {
+      "path": "target/debug/deps/libhttpdate-7ddc41f34d522dfb.rmeta",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 24314
+    },
+    {
+      "path": "target/debug/deps/tiers-c17f9e17cb6a30dd.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 251
+    },
+    {
+      "path": "target/debug/deps/libring-4e8a3ea00812082b.rmeta",
+      "files": 1,
+      "allocated_bytes": 1814528,
+      "logical_bytes": 1813672
+    },
+    {
+      "path": "target/debug/deps/libsmallvec-22e0dbe6b4b6721f.rmeta",
+      "files": 1,
+      "allocated_bytes": 225280,
+      "logical_bytes": 221898
+    },
+    {
+      "path": "target/debug/deps/libsyn-3e178ba1e25ac716.rmeta",
+      "files": 1,
+      "allocated_bytes": 3403776,
+      "logical_bytes": 3402989
+    },
+    {
+      "path": "target/debug/deps/bytes-3df303902f9e41d3.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4858
+    },
+    {
+      "path": "target/debug/deps/libserde_core-35a01c183a84aef5.rmeta",
+      "files": 1,
+      "allocated_bytes": 4849664,
+      "logical_bytes": 4847397
+    },
+    {
+      "path": "target/debug/deps/sail_daemon-7120b36803901174.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2259
+    },
+    {
+      "path": "target/debug/deps/toml_writer-d8efd8473e6c2a70.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2634
+    },
+    {
+      "path": "target/debug/deps/tinystr-9ee2ab155179fd13.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2212
+    },
+    {
+      "path": "target/debug/deps/libtower_service-07676441d9b94d77.rlib",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 25464
+    },
+    {
+      "path": "target/debug/deps/libyoke-c7d3c7aead1f06ff.rmeta",
+      "files": 1,
+      "allocated_bytes": 241664,
+      "logical_bytes": 239768
+    },
+    {
+      "path": "target/debug/deps/libtinystr-0ef55be2d027cbaf.rlib",
+      "files": 1,
+      "allocated_bytes": 372736,
+      "logical_bytes": 372476
+    },
+    {
+      "path": "target/debug/deps/libinotify_sys-3ef1543a28879ada.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 34803
+    },
+    {
+      "path": "target/debug/deps/libinotify-0bad836de4305a38.rlib",
+      "files": 1,
+      "allocated_bytes": 974848,
+      "logical_bytes": 973758
+    },
+    {
+      "path": "target/debug/deps/subtle-ed64daba68bae69d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 566
+    },
+    {
+      "path": "target/debug/deps/libsemver-a0bfbc604dd7adb3.rlib",
+      "files": 1,
+      "allocated_bytes": 393216,
+      "logical_bytes": 390528
+    },
+    {
+      "path": "target/debug/deps/smallvec-22e0dbe6b4b6721f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 584
+    },
+    {
+      "path": "target/debug/deps/libproc_macro2-378d9a773d1eff57.rmeta",
+      "files": 1,
+      "allocated_bytes": 352256,
+      "logical_bytes": 350918
+    },
+    {
+      "path": "target/debug/deps/libutf8_iter-903be50ffd3c2406.rmeta",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 51134
+    },
+    {
+      "path": "target/debug/deps/libzmij-b8579238a5c0fa8f.rmeta",
+      "files": 1,
+      "allocated_bytes": 413696,
+      "logical_bytes": 412167
+    },
+    {
+      "path": "target/debug/deps/rustls_native_certs-cb300673918313aa.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 754
+    },
+    {
+      "path": "target/debug/deps/libring-cf4dd3b95d0a8baf.rmeta",
+      "files": 1,
+      "allocated_bytes": 1982464,
+      "logical_bytes": 1980585
+    },
+    {
+      "path": "target/debug/deps/notify-2fe476982c9bf783.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2235
+    },
+    {
+      "path": "target/debug/deps/icu_normalizer_data-02e053b8888cbe31.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4637
+    },
+    {
+      "path": "target/debug/deps/libstable_deref_trait-63272b7a7bcae8c6.rlib",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 12602
+    },
+    {
+      "path": "target/debug/deps/equivalent-ac5854c84fdc00e4.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 594
+    },
+    {
+      "path": "target/debug/deps/libzerovec-19bd46bc030960ba.rmeta",
+      "files": 1,
+      "allocated_bytes": 839680,
+      "logical_bytes": 836981
+    },
+    {
+      "path": "target/debug/deps/libicu_normalizer_data-02e053b8888cbe31.rmeta",
+      "files": 1,
+      "allocated_bytes": 438272,
+      "logical_bytes": 436189
+    },
+    {
+      "path": "target/debug/deps/zerovec-6bf487bbef4ead59.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 9036
+    },
+    {
+      "path": "target/debug/deps/writeable-af7e698caf090380.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2294
+    },
+    {
+      "path": "target/debug/deps/futures_util-5d77ae410b8ebb77.d",
+      "files": 1,
+      "allocated_bytes": 73728,
+      "logical_bytes": 70028
+    },
+    {
+      "path": "target/debug/deps/version_check-371b5f2dedfc9d12.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1710
+    },
+    {
+      "path": "target/debug/deps/libequivalent-ac5854c84fdc00e4.rmeta",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 8238
+    },
+    {
+      "path": "target/debug/deps/tower_service-bf171286e0862a78.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 438
+    },
+    {
+      "path": "target/debug/deps/libicu_provider-4927c05daa3b28a6.rlib",
+      "files": 1,
+      "allocated_bytes": 643072,
+      "logical_bytes": 640230
+    },
+    {
+      "path": "target/debug/deps/libidna-11550a3857ee792f.rlib",
+      "files": 1,
+      "allocated_bytes": 1921024,
+      "logical_bytes": 1919596
+    },
+    {
+      "path": "target/debug/deps/winnow-c4e2434180a26caf.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3992
+    },
+    {
+      "path": "target/debug/deps/serde_json-0afc3f27a8f7d92d.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4530
+    },
+    {
+      "path": "target/debug/deps/rustls_native_certs-445cef36f996a934.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1038
+    },
+    {
+      "path": "target/debug/deps/libwinnow-3845a5ae9dca508c.rmeta",
+      "files": 1,
+      "allocated_bytes": 1777664,
+      "logical_bytes": 1777373
+    },
+    {
+      "path": "target/debug/deps/idna_adapter-71fa572e9bc3ff5b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 608
+    },
+    {
+      "path": "target/debug/deps/libtokio-10703cb225d69bc8.rmeta",
+      "files": 1,
+      "allocated_bytes": 6438912,
+      "logical_bytes": 6438156
+    },
+    {
+      "path": "target/debug/deps/libwebpki-8d5161586c0fe854.rlib",
+      "files": 1,
+      "allocated_bytes": 2560000,
+      "logical_bytes": 2556764
+    },
+    {
+      "path": "target/debug/deps/libsha2_asm-d01eb8d8d69020eb.rmeta",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4331
+    },
+    {
+      "path": "target/debug/deps/libtower-38ec67e2b808a78e.rlib",
+      "files": 1,
+      "allocated_bytes": 1032192,
+      "logical_bytes": 1030280
+    },
+    {
+      "path": "target/debug/deps/libicu_properties_data-ad8bcf5a5bf66b44.rmeta",
+      "files": 1,
+      "allocated_bytes": 1859584,
+      "logical_bytes": 1857162
+    },
+    {
+      "path": "target/debug/deps/generic_array-339354c0b7cb42f3.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2821
+    },
+    {
+      "path": "target/debug/deps/utf8_iter-0f2b24b9215af183.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 945
+    },
+    {
+      "path": "target/debug/deps/libhttparse-2c5fd75f233985e7.rmeta",
+      "files": 1,
+      "allocated_bytes": 122880,
+      "logical_bytes": 120629
+    },
+    {
+      "path": "target/debug/deps/futures_channel-5272c2f3c7bd33be.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1905
+    },
+    {
+      "path": "target/debug/deps/libtokio-e2ef1e852898bc58.rlib",
+      "files": 1,
+      "allocated_bytes": 14544896,
+      "logical_bytes": 14544508
+    },
+    {
+      "path": "target/debug/deps/libipnet-af4b83f9b7164f8e.rmeta",
+      "files": 1,
+      "allocated_bytes": 270336,
+      "logical_bytes": 268357
+    },
+    {
+      "path": "target/debug/deps/liblog-ae375a9b293df0ed.rmeta",
+      "files": 1,
+      "allocated_bytes": 192512,
+      "logical_bytes": 192305
+    },
+    {
+      "path": "target/debug/deps/libwinnow-c4e2434180a26caf.rmeta",
+      "files": 1,
+      "allocated_bytes": 503808,
+      "logical_bytes": 502420
+    },
+    {
+      "path": "target/debug/deps/once_cell-a9a9c83727fc8629.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 948
+    },
+    {
+      "path": "target/debug/deps/libpotential_utf-1ecd005406735548.rmeta",
+      "files": 1,
+      "allocated_bytes": 40960,
+      "logical_bytes": 38202
+    },
+    {
+      "path": "target/debug/deps/socket2-28dee6ac857ba495.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1447
+    },
+    {
+      "path": "target/debug/deps/libsync_wrapper-909c0210a0fa6d94.rmeta",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 23795
+    },
+    {
+      "path": "target/debug/deps/librustls-8f6c66f2d8f3823c.rlib",
+      "files": 1,
+      "allocated_bytes": 15740928,
+      "logical_bytes": 15738300
+    },
+    {
+      "path": "target/debug/deps/tower_layer-e06e53ebaf0e99a3.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2037
+    },
+    {
+      "path": "target/debug/deps/futures_util-636800ac0dc4f5fe.d",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 52540
+    },
+    {
+      "path": "target/debug/deps/job_coalescing-bb5b9c62e08de087.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 583
+    },
+    {
+      "path": "target/debug/deps/rustls-419942101a65a58c.d",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 25348
+    },
+    {
+      "path": "target/debug/deps/libtracing-4f47e89ded9c9537.rlib",
+      "files": 1,
+      "allocated_bytes": 684032,
+      "logical_bytes": 683846
+    },
+    {
+      "path": "target/debug/deps/libhttp_body_util-b961f2f37126a940.rlib",
+      "files": 1,
+      "allocated_bytes": 409600,
+      "logical_bytes": 409130
+    },
+    {
+      "path": "target/debug/deps/libgeneric_array-339354c0b7cb42f3.rmeta",
+      "files": 1,
+      "allocated_bytes": 819200,
+      "logical_bytes": 817746
+    },
+    {
+      "path": "target/debug/deps/libsail_smtlib-82c040722aa75094.rmeta",
+      "files": 1,
+      "allocated_bytes": 110592,
+      "logical_bytes": 106602
+    },
+    {
+      "path": "target/debug/deps/librustc_version-e1e2c931ef714523.rmeta",
+      "files": 1,
+      "allocated_bytes": 65536,
+      "logical_bytes": 65456
+    },
+    {
+      "path": "target/debug/deps/walkdir-46a43ff32274e0da.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1161
+    },
+    {
+      "path": "target/debug/deps/libhttp_body-603497276061dc38.rmeta",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 50727
+    },
+    {
+      "path": "target/debug/deps/quote-31403cb87be77403.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2625
+    },
+    {
+      "path": "target/debug/deps/libcfg_if-adcd45c8d068377f.rmeta",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5856
+    },
+    {
+      "path": "target/debug/deps/serde-a852991c5bff1d57.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2447
+    },
+    {
+      "path": "target/debug/deps/librustls_native_certs-445cef36f996a934.rlib",
+      "files": 1,
+      "allocated_bytes": 618496,
+      "logical_bytes": 617668
+    },
+    {
+      "path": "target/debug/deps/libcfg_if-adcd45c8d068377f.rlib",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 8066
+    },
+    {
+      "path": "target/debug/deps/libsail_cache-b827575c0fce1c00.rlib",
+      "files": 1,
+      "allocated_bytes": 4259840,
+      "logical_bytes": 4259094
+    },
+    {
+      "path": "target/debug/deps/sail_smtlib-19a534129ce5c59d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1022
+    },
+    {
+      "path": "target/debug/deps/libuntrusted-6abbee0483258579.rmeta",
+      "files": 1,
+      "allocated_bytes": 45056,
+      "logical_bytes": 43017
+    },
+    {
+      "path": "target/debug/deps/libbase64-104dc6516140ee60.rlib",
+      "files": 1,
+      "allocated_bytes": 1114112,
+      "logical_bytes": 1110662
+    },
+    {
+      "path": "target/debug/deps/libmio-82596c909dc838ae.rlib",
+      "files": 1,
+      "allocated_bytes": 1220608,
+      "logical_bytes": 1216566
+    },
+    {
+      "path": "target/debug/deps/libnotify_types-a893cb153680d6a2.rmeta",
+      "files": 1,
+      "allocated_bytes": 282624,
+      "logical_bytes": 282495
+    },
+    {
+      "path": "target/debug/deps/libblock_buffer-5aba6c0377a7b53c.rmeta",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 51456
+    },
+    {
+      "path": "target/debug/deps/notify_types-a893cb153680d6a2.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1751
+    },
+    {
+      "path": "target/debug/deps/block_buffer-d2a37ee323575c1c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 710
+    },
+    {
+      "path": "target/debug/deps/libgeneric_array-339354c0b7cb42f3.rlib",
+      "files": 1,
+      "allocated_bytes": 827392,
+      "logical_bytes": 825184
+    },
+    {
+      "path": "target/debug/deps/libversion_check-371b5f2dedfc9d12.rmeta",
+      "files": 1,
+      "allocated_bytes": 77824,
+      "logical_bytes": 76337
+    },
+    {
+      "path": "target/debug/deps/libserde_json-0afc3f27a8f7d92d.rmeta",
+      "files": 1,
+      "allocated_bytes": 966656,
+      "logical_bytes": 964632
+    },
+    {
+      "path": "target/debug/deps/tower_service-07676441d9b94d77.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 615
+    },
+    {
+      "path": "target/debug/deps/rustix-d19387ff59020013.d",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27306
+    },
+    {
+      "path": "target/debug/deps/libhttpdate-060e89508a6221e8.rlib",
+      "files": 1,
+      "allocated_bytes": 274432,
+      "logical_bytes": 273618
+    },
+    {
+      "path": "target/debug/deps/libbase64-70ed84debb944be7.rmeta",
+      "files": 1,
+      "allocated_bytes": 606208,
+      "logical_bytes": 603436
+    },
+    {
+      "path": "target/debug/deps/libtypenum-4e537d2f01be10da.rlib",
+      "files": 1,
+      "allocated_bytes": 2801664,
+      "logical_bytes": 2799230
+    },
+    {
+      "path": "target/debug/deps/libtinystr-0ef55be2d027cbaf.rmeta",
+      "files": 1,
+      "allocated_bytes": 315392,
+      "logical_bytes": 313366
+    },
+    {
+      "path": "target/debug/deps/libsubtle-ed64daba68bae69d.rmeta",
+      "files": 1,
+      "allocated_bytes": 122880,
+      "logical_bytes": 119584
+    },
+    {
+      "path": "target/debug/deps/libatomic_waker-68c2354ffc75cecb.rmeta",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 14129
+    },
+    {
+      "path": "target/debug/deps/icu_normalizer-b0a6a0c0c226fd1e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1289
+    },
+    {
+      "path": "target/debug/deps/libstats-75d3b207701d9db1.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/serde_spanned-7d43f5a1a2d33864.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 977
+    },
+    {
+      "path": "target/debug/deps/libonce_cell-a9a9c83727fc8629.rmeta",
+      "files": 1,
+      "allocated_bytes": 143360,
+      "logical_bytes": 140898
+    },
+    {
+      "path": "target/debug/deps/libslab-c158a5b5988934b1.rmeta",
+      "files": 1,
+      "allocated_bytes": 81920,
+      "logical_bytes": 80557
+    },
+    {
+      "path": "target/debug/deps/libitoa-2ec34da1e245bc15.rlib",
+      "files": 1,
+      "allocated_bytes": 159744,
+      "logical_bytes": 158502
+    },
+    {
+      "path": "target/debug/deps/libtypenum-ec81f5ed1898d70d.rmeta",
+      "files": 1,
+      "allocated_bytes": 2551808,
+      "logical_bytes": 2549649
+    },
+    {
+      "path": "target/debug/deps/sail_ledger-68e5b142d696124e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 538
+    },
+    {
+      "path": "target/debug/deps/futures_channel-9cca7591468cf600.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2570
+    },
+    {
+      "path": "target/debug/deps/zmij-b8579238a5c0fa8f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 911
+    },
+    {
+      "path": "target/debug/deps/libslab-39f8c566895ab09b.rmeta",
+      "files": 1,
+      "allocated_bytes": 147456,
+      "logical_bytes": 145639
+    },
+    {
+      "path": "target/debug/deps/zerovec_derive-28b475caa60fb80f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1852
+    },
+    {
+      "path": "target/debug/deps/libserde_core-35a01c183a84aef5.rlib",
+      "files": 1,
+      "allocated_bytes": 5111808,
+      "logical_bytes": 5109670
+    },
+    {
+      "path": "target/debug/deps/zerofrom-3dc8f23cc23f24be.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 955
+    },
+    {
+      "path": "target/debug/deps/tower-788d9277c9645bca.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 12276
+    },
+    {
+      "path": "target/debug/deps/libstable_deref_trait-30a5ae317cabf070.rmeta",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10326
+    },
+    {
+      "path": "target/debug/deps/toml-046d0221459ce9ad.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10011
+    },
+    {
+      "path": "target/debug/deps/libquote-31403cb87be77403.rlib",
+      "files": 1,
+      "allocated_bytes": 516096,
+      "logical_bytes": 516024
+    },
+    {
+      "path": "target/debug/deps/libicu_normalizer_data-02e053b8888cbe31.rlib",
+      "files": 1,
+      "allocated_bytes": 442368,
+      "logical_bytes": 438468
+    },
+    {
+      "path": "target/debug/deps/libsame_file-06ba798a7539efc2.rmeta",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27193
+    },
+    {
+      "path": "target/debug/deps/openssl_probe-28a753ff7f834869.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 438
+    },
+    {
+      "path": "target/debug/deps/libonce_cell-362ea2305185adec.rmeta",
+      "files": 1,
+      "allocated_bytes": 200704,
+      "logical_bytes": 196764
+    },
+    {
+      "path": "target/debug/deps/libinotify-f1867833a5c04ed3.rmeta",
+      "files": 1,
+      "allocated_bytes": 466944,
+      "logical_bytes": 466378
+    },
+    {
+      "path": "target/debug/deps/libicu_collections-983afd78c3257afb.rmeta",
+      "files": 1,
+      "allocated_bytes": 303104,
+      "logical_bytes": 301148
+    },
+    {
+      "path": "target/debug/deps/zerofrom-3c06da05305a1312.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1302
+    },
+    {
+      "path": "target/debug/deps/libpercent_encoding-b4716ccddebb7f2c.rmeta",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 51653
+    },
+    {
+      "path": "target/debug/deps/librustix-e1c9184f0dc15889.rmeta",
+      "files": 1,
+      "allocated_bytes": 3567616,
+      "logical_bytes": 3565318
+    },
+    {
+      "path": "target/debug/deps/libbytes-3df303902f9e41d3.rmeta",
+      "files": 1,
+      "allocated_bytes": 602112,
+      "logical_bytes": 598596
+    },
+    {
+      "path": "target/debug/deps/libtokio_rustls-ddcfa9d3bdf732aa.rmeta",
+      "files": 1,
+      "allocated_bytes": 131072,
+      "logical_bytes": 130734
+    },
+    {
+      "path": "target/debug/deps/libequivalent-ac5854c84fdc00e4.rlib",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10474
+    },
+    {
+      "path": "target/debug/deps/getrandom-85590020fd624480.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2074
+    },
+    {
+      "path": "target/debug/deps/ed25519-57509ed82b2f7ddf.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 920
+    },
+    {
+      "path": "target/debug/deps/zeroize-ec10c5b8f79e99a3.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1937
+    },
+    {
+      "path": "target/debug/deps/libserde_spanned-6827d994617de2ec.rmeta",
+      "files": 1,
+      "allocated_bytes": 49152,
+      "logical_bytes": 45180
+    },
+    {
+      "path": "target/debug/deps/rustls_pki_types-24d40dbcd67fe046.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7931
+    },
+    {
+      "path": "target/debug/deps/libicu_normalizer-f647378e21caf02c.rlib",
+      "files": 1,
+      "allocated_bytes": 1757184,
+      "logical_bytes": 1754606
+    },
+    {
+      "path": "target/debug/deps/libsmallvec-22e0dbe6b4b6721f.rlib",
+      "files": 1,
+      "allocated_bytes": 245760,
+      "logical_bytes": 243778
+    },
+    {
+      "path": "target/debug/deps/linux_raw_sys-66bfd52fdf5dcf1c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1898
+    },
+    {
+      "path": "target/debug/deps/httpdate-7ddc41f34d522dfb.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 666
+    },
+    {
+      "path": "target/debug/deps/sail_cache-b827575c0fce1c00.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 753
+    },
+    {
+      "path": "target/debug/deps/potential_utf-1ecd005406735548.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 977
+    },
+    {
+      "path": "target/debug/deps/libwant-0da2da5922291b2a.rmeta",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 26010
+    },
+    {
+      "path": "target/debug/deps/libnotify-2fe476982c9bf783.rmeta",
+      "files": 1,
+      "allocated_bytes": 233472,
+      "logical_bytes": 232017
+    },
+    {
+      "path": "target/debug/deps/sync_wrapper-c6c3525036211f7a.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 433
+    },
+    {
+      "path": "target/debug/deps/tower_http-37343d71fce16043.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7161
+    },
+    {
+      "path": "target/debug/deps/rustc_version-e1e2c931ef714523.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 615
+    },
+    {
+      "path": "target/debug/deps/libicu_collections-8319ac1db737a7c5.rmeta",
+      "files": 1,
+      "allocated_bytes": 425984,
+      "logical_bytes": 425359
+    },
+    {
+      "path": "target/debug/deps/socket2-3285872f22f4d997.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1957
+    },
+    {
+      "path": "target/debug/deps/libwinnow-9d65ab95a9701de1.rlib",
+      "files": 1,
+      "allocated_bytes": 761856,
+      "logical_bytes": 759296
+    },
+    {
+      "path": "target/debug/deps/libidna_adapter-de35c85717c31eee.rmeta",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27811
+    },
+    {
+      "path": "target/debug/deps/libicu_normalizer_data-76c90e5e6c2b8a74.rmeta",
+      "files": 1,
+      "allocated_bytes": 438272,
+      "logical_bytes": 436189
+    },
+    {
+      "path": "target/debug/deps/libmio-82596c909dc838ae.rmeta",
+      "files": 1,
+      "allocated_bytes": 450560,
+      "logical_bytes": 449925
+    },
+    {
+      "path": "target/debug/deps/libtracing_core-a390a68cf665c0a2.rmeta",
+      "files": 1,
+      "allocated_bytes": 503808,
+      "logical_bytes": 501857
+    },
+    {
+      "path": "target/debug/deps/serde-a4c0eb41f76e633d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1839
+    },
+    {
+      "path": "target/debug/deps/idna-9be981da45e8621a.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1149
+    },
+    {
+      "path": "target/debug/deps/libsail_api-a68b246a6d87b5fb.rmeta",
+      "files": 1,
+      "allocated_bytes": 4292608,
+      "logical_bytes": 4292071
+    },
+    {
+      "path": "target/debug/deps/libsha2_asm-1490e7ddb716c5ca.rlib",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 34672
+    },
+    {
+      "path": "target/debug/deps/libwalkdir-46a43ff32274e0da.rmeta",
+      "files": 1,
+      "allocated_bytes": 90112,
+      "logical_bytes": 87201
+    },
+    {
+      "path": "target/debug/deps/libunicode_ident-1e23094c28f51ebc.rlib",
+      "files": 1,
+      "allocated_bytes": 57344,
+      "logical_bytes": 56638
+    },
+    {
+      "path": "target/debug/deps/libtokio_rustls-c628301c4d102796.rlib",
+      "files": 1,
+      "allocated_bytes": 249856,
+      "logical_bytes": 247460
+    },
+    {
+      "path": "target/debug/deps/libdigest-69d101d3b861e92f.rlib",
+      "files": 1,
+      "allocated_bytes": 184320,
+      "logical_bytes": 180944
+    },
+    {
+      "path": "target/debug/deps/liblinux_raw_sys-75cec239f10c583c.rmeta",
+      "files": 1,
+      "allocated_bytes": 1368064,
+      "logical_bytes": 1368007
+    },
+    {
+      "path": "target/debug/deps/notify_types-4915ffecbb1d3964.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1291
+    },
+    {
+      "path": "target/debug/deps/libserde_json-8a80f5badb86a99f.rmeta",
+      "files": 1,
+      "allocated_bytes": 1454080,
+      "logical_bytes": 1452211
+    },
+    {
+      "path": "target/debug/deps/libsail_daemon-dcac26230faae340.rmeta",
+      "files": 1,
+      "allocated_bytes": 516096,
+      "logical_bytes": 512547
+    },
+    {
+      "path": "target/debug/deps/icu_locale_core-f424fce469169a9c.d",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 21231
+    },
+    {
+      "path": "target/debug/deps/librustls_platform_verifier-81d0ddce6f3847fe.rmeta",
+      "files": 1,
+      "allocated_bytes": 45056,
+      "logical_bytes": 41682
+    },
+    {
+      "path": "target/debug/deps/libindexmap-07e9634ed7e20131.rlib",
+      "files": 1,
+      "allocated_bytes": 1318912,
+      "logical_bytes": 1315320
+    },
+    {
+      "path": "target/debug/deps/libtoml_writer-d8efd8473e6c2a70.rmeta",
+      "files": 1,
+      "allocated_bytes": 192512,
+      "logical_bytes": 188805
+    },
+    {
+      "path": "target/debug/deps/libatomic_waker-a1a26e55539d7244.rmeta",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 14023
+    },
+    {
+      "path": "target/debug/deps/ring-4e8a3ea00812082b.d",
+      "files": 1,
+      "allocated_bytes": 45056,
+      "logical_bytes": 42314
+    },
+    {
+      "path": "target/debug/deps/libpercent_encoding-b4716ccddebb7f2c.rlib",
+      "files": 1,
+      "allocated_bytes": 167936,
+      "logical_bytes": 167336
+    },
+    {
+      "path": "target/debug/deps/tower_layer-21a69698670aebdc.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1506
+    },
+    {
+      "path": "target/debug/deps/libsync_wrapper-c6c3525036211f7a.rmeta",
+      "files": 1,
+      "allocated_bytes": 20480,
+      "logical_bytes": 19785
+    },
+    {
+      "path": "target/debug/deps/libsail_api-a68b246a6d87b5fb.rlib",
+      "files": 1,
+      "allocated_bytes": 19755008,
+      "logical_bytes": 19754176
+    },
+    {
+      "path": "target/debug/deps/icu_normalizer-f647378e21caf02c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1749
+    },
+    {
+      "path": "target/debug/deps/libtokio-e2ef1e852898bc58.rmeta",
+      "files": 1,
+      "allocated_bytes": 7610368,
+      "logical_bytes": 7607174
+    },
+    {
+      "path": "target/debug/deps/want-0da2da5922291b2a.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 393
+    },
+    {
+      "path": "target/debug/deps/tracing_core-53066e1b419816a0.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3921
+    },
+    {
+      "path": "target/debug/deps/libtower_layer-21a69698670aebdc.rmeta",
+      "files": 1,
+      "allocated_bytes": 65536,
+      "logical_bytes": 61474
+    },
+    {
+      "path": "target/debug/deps/libed25519-57509ed82b2f7ddf.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 35529
+    },
+    {
+      "path": "target/debug/deps/pin_project_lite-d93ea9e0ecd9bd9f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 640
+    },
+    {
+      "path": "target/debug/deps/tower-38ec67e2b808a78e.d",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 16382
+    },
+    {
+      "path": "target/debug/deps/libpotential_utf-5deb48806139dc49.rlib",
+      "files": 1,
+      "allocated_bytes": 106496,
+      "logical_bytes": 106386
+    },
+    {
+      "path": "target/debug/deps/libyoke-99c51c3ff154175d.rmeta",
+      "files": 1,
+      "allocated_bytes": 192512,
+      "logical_bytes": 191070
+    },
+    {
+      "path": "target/debug/deps/libgeneric_array-a076202f82edd331.rmeta",
+      "files": 1,
+      "allocated_bytes": 651264,
+      "logical_bytes": 650111
+    },
+    {
+      "path": "target/debug/deps/libsail_key-ae1d5b9e5ac161f3.rmeta",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27335
+    },
+    {
+      "path": "target/debug/deps/futures_task-963184b4b343a85b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2113
+    },
+    {
+      "path": "target/debug/deps/libfutures_io-81cc2479e765a64d.rmeta",
+      "files": 1,
+      "allocated_bytes": 69632,
+      "logical_bytes": 68960
+    },
+    {
+      "path": "target/debug/deps/libsame_file-551e267c236e2a3c.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 33674
+    },
+    {
+      "path": "target/debug/deps/job_activity-31225474b65ec5c4.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 573
+    },
+    {
+      "path": "target/debug/deps/log-61a0e759cb576717.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1150
+    },
+    {
+      "path": "target/debug/deps/libtoml_edit-e185f6c199b7daea.rmeta",
+      "files": 1,
+      "allocated_bytes": 671744,
+      "logical_bytes": 668306
+    },
+    {
+      "path": "target/debug/deps/bytes-2834c99ab0317d22.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6500
+    },
+    {
+      "path": "target/debug/deps/libtoml_datetime-658d4ea4ff7ffd25.rlib",
+      "files": 1,
+      "allocated_bytes": 434176,
+      "logical_bytes": 433322
+    },
+    {
+      "path": "target/debug/deps/want-41014dffe465e1a2.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 552
+    },
+    {
+      "path": "target/debug/deps/libsail_verus-d11c659d2b735d98.rmeta",
+      "files": 1,
+      "allocated_bytes": 2551808,
+      "logical_bytes": 2548149
+    },
+    {
+      "path": "target/debug/deps/librustls_platform_verifier-cd1b24047bc970ab.rmeta",
+      "files": 1,
+      "allocated_bytes": 57344,
+      "logical_bytes": 55998
+    },
+    {
+      "path": "target/debug/deps/jobs-0b2c112037323f34.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 533
+    },
+    {
+      "path": "target/debug/deps/libserde_spanned-7d43f5a1a2d33864.rmeta",
+      "files": 1,
+      "allocated_bytes": 32768,
+      "logical_bytes": 29085
+    },
+    {
+      "path": "target/debug/deps/libwinnow-4c2ea6d1fb1f5507.rlib",
+      "files": 1,
+      "allocated_bytes": 3858432,
+      "logical_bytes": 3857274
+    },
+    {
+      "path": "target/debug/deps/sync_wrapper-909c0210a0fa6d94.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 608
+    },
+    {
+      "path": "target/debug/deps/libsocket2-28dee6ac857ba495.rmeta",
+      "files": 1,
+      "allocated_bytes": 397312,
+      "logical_bytes": 395259
+    },
+    {
+      "path": "target/debug/deps/libtracing_core-53066e1b419816a0.rlib",
+      "files": 1,
+      "allocated_bytes": 1425408,
+      "logical_bytes": 1424514
+    },
+    {
+      "path": "target/debug/deps/libhyper-f581eb3ef7a21d7f.rmeta",
+      "files": 1,
+      "allocated_bytes": 1298432,
+      "logical_bytes": 1294632
+    },
+    {
+      "path": "target/debug/deps/futures_task-ad460ae60b604ef2.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2846
+    },
+    {
+      "path": "target/debug/deps/libtoml_edit-e185f6c199b7daea.rlib",
+      "files": 1,
+      "allocated_bytes": 3899392,
+      "logical_bytes": 3899344
+    },
+    {
+      "path": "target/debug/deps/liblinux_raw_sys-75cec239f10c583c.rlib",
+      "files": 1,
+      "allocated_bytes": 1388544,
+      "logical_bytes": 1386880
+    },
+    {
+      "path": "target/debug/deps/shared-c3ad79145d906f4e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 256
+    },
+    {
+      "path": "target/debug/deps/libicu_locale_core-f424fce469169a9c.rmeta",
+      "files": 1,
+      "allocated_bytes": 1376256,
+      "logical_bytes": 1375101
+    },
+    {
+      "path": "target/debug/deps/libtracing_core-53066e1b419816a0.rmeta",
+      "files": 1,
+      "allocated_bytes": 598016,
+      "logical_bytes": 594175
+    },
+    {
+      "path": "target/debug/deps/libsmallvec-d7fe5e5714a6738f.rmeta",
+      "files": 1,
+      "allocated_bytes": 122880,
+      "logical_bytes": 121257
+    },
+    {
+      "path": "target/debug/deps/libquote-31403cb87be77403.rmeta",
+      "files": 1,
+      "allocated_bytes": 278528,
+      "logical_bytes": 275421
+    },
+    {
+      "path": "target/debug/deps/stats-69d6c7554c0f8d7e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 251
+    },
+    {
+      "path": "target/debug/deps/log-ae375a9b293df0ed.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1560
+    },
+    {
+      "path": "target/debug/deps/tokio-e2ef1e852898bc58.d",
+      "files": 1,
+      "allocated_bytes": 94208,
+      "logical_bytes": 91102
+    },
+    {
+      "path": "target/debug/deps/libfutures_channel-9cca7591468cf600.rmeta",
+      "files": 1,
+      "allocated_bytes": 262144,
+      "logical_bytes": 260137
+    },
+    {
+      "path": "target/debug/deps/typenum-4e537d2f01be10da.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4785
+    },
+    {
+      "path": "target/debug/deps/hyper-f581eb3ef7a21d7f.d",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 16335
+    },
+    {
+      "path": "target/debug/deps/digest-8daba607cc2d3a2c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2101
+    },
+    {
+      "path": "target/debug/deps/untrusted-6abbee0483258579.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1638
+    },
+    {
+      "path": "target/debug/deps/libhttp_body-b2f5dc77f3842ceb.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 36806
+    },
+    {
+      "path": "target/debug/deps/hyper_util-897227fdb43036e3.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10300
+    },
+    {
+      "path": "target/debug/deps/inotify-f1867833a5c04ed3.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1712
+    },
+    {
+      "path": "target/debug/deps/libsyn-4b21d6d355c29d99.rmeta",
+      "files": 1,
+      "allocated_bytes": 2805760,
+      "logical_bytes": 2805380
+    },
+    {
+      "path": "target/debug/deps/libtower_http-9674f6accbfc292d.rmeta",
+      "files": 1,
+      "allocated_bytes": 401408,
+      "logical_bytes": 398823
+    },
+    {
+      "path": "target/debug/deps/tiers-1347db2b12d7ddc4.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 538
+    },
+    {
+      "path": "target/debug/deps/libinotify_sys-847b790ec9dfd432.rlib",
+      "files": 1,
+      "allocated_bytes": 40960,
+      "logical_bytes": 38236
+    },
+    {
+      "path": "target/debug/deps/libtoml_datetime-658d4ea4ff7ffd25.rmeta",
+      "files": 1,
+      "allocated_bytes": 151552,
+      "logical_bytes": 149154
+    },
+    {
+      "path": "target/debug/deps/sail_session-a5fecb90042ef5b7.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 384
+    },
+    {
+      "path": "target/debug/deps/httpdate-060e89508a6221e8.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 917
+    },
+    {
+      "path": "target/debug/deps/libtracing-4f47e89ded9c9537.rmeta",
+      "files": 1,
+      "allocated_bytes": 585728,
+      "logical_bytes": 584394
+    },
+    {
+      "path": "target/debug/deps/libicu_properties-2f7e54e113bf06c2.rmeta",
+      "files": 1,
+      "allocated_bytes": 2531328,
+      "logical_bytes": 2527701
+    },
+    {
+      "path": "target/debug/deps/libipnet-af4b83f9b7164f8e.rlib",
+      "files": 1,
+      "allocated_bytes": 1122304,
+      "logical_bytes": 1118572
+    },
+    {
+      "path": "target/debug/deps/libequivalent-cbd4da8309b68df8.rmeta",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7678
+    },
+    {
+      "path": "target/debug/deps/libsignature-6983303e4b1f5532.rmeta",
+      "files": 1,
+      "allocated_bytes": 40960,
+      "logical_bytes": 38424
+    },
+    {
+      "path": "target/debug/deps/sail_api-7b2bf72f07224d45.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1938
+    },
+    {
+      "path": "target/debug/deps/libzerofrom-3c06da05305a1312.rmeta",
+      "files": 1,
+      "allocated_bytes": 98304,
+      "logical_bytes": 95672
+    },
+    {
+      "path": "target/debug/deps/itoa-2ec34da1e245bc15.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 897
+    },
+    {
+      "path": "target/debug/deps/libtokio_rustls-c628301c4d102796.rmeta",
+      "files": 1,
+      "allocated_bytes": 241664,
+      "logical_bytes": 240694
+    },
+    {
+      "path": "target/debug/deps/libfutures_core-0a277619a03dcc31.rmeta",
+      "files": 1,
+      "allocated_bytes": 65536,
+      "logical_bytes": 62128
+    },
+    {
+      "path": "target/debug/deps/libwant-41014dffe465e1a2.rlib",
+      "files": 1,
+      "allocated_bytes": 114688,
+      "logical_bytes": 114282
+    },
+    {
+      "path": "target/debug/deps/libc-e8e43fa3aaba1ffc.d",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27592
+    },
+    {
+      "path": "target/debug/deps/libtower-788d9277c9645bca.rmeta",
+      "files": 1,
+      "allocated_bytes": 749568,
+      "logical_bytes": 746069
+    },
+    {
+      "path": "target/debug/deps/crypto_common-c1680b0b9e3e3b06.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 438
+    },
+    {
+      "path": "target/debug/deps/futures_sink-1d79fd733cc1bd6c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 612
+    },
+    {
+      "path": "target/debug/deps/libshlex-7000c8965d055859.rlib",
+      "files": 1,
+      "allocated_bytes": 139264,
+      "logical_bytes": 137896
+    },
+    {
+      "path": "target/debug/deps/cc-f9cf0defc85b158a.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4939
+    },
+    {
+      "path": "target/debug/deps/libsubtle-ed64daba68bae69d.rlib",
+      "files": 1,
+      "allocated_bytes": 131072,
+      "logical_bytes": 127102
+    },
+    {
+      "path": "target/debug/deps/libzerotrie-7081f0520bdeb342.rmeta",
+      "files": 1,
+      "allocated_bytes": 454656,
+      "logical_bytes": 453214
+    },
+    {
+      "path": "target/debug/deps/tracing-709d787010098b6e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2272
+    },
+    {
+      "path": "target/debug/deps/libopenssl_probe-4bc42af26f5fd6d6.rmeta",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 14239
+    },
+    {
+      "path": "target/debug/deps/libzerovec-6bf487bbef4ead59.rlib",
+      "files": 1,
+      "allocated_bytes": 1187840,
+      "logical_bytes": 1187628
+    },
+    {
+      "path": "target/debug/deps/libjobs-0b2c112037323f34.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/libzerotrie-7081f0520bdeb342.rlib",
+      "files": 1,
+      "allocated_bytes": 573440,
+      "logical_bytes": 572660
+    },
+    {
+      "path": "target/debug/deps/libunicode_ident-1e23094c28f51ebc.rmeta",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 34592
+    },
+    {
+      "path": "target/debug/deps/libfutures_channel-5272c2f3c7bd33be.rmeta",
+      "files": 1,
+      "allocated_bytes": 163840,
+      "logical_bytes": 159986
+    },
+    {
+      "path": "target/debug/deps/url-405a76c7cb79e440.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1870
+    },
+    {
+      "path": "target/debug/deps/futures_core-3e62f280ba54111d.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2200
+    },
+    {
+      "path": "target/debug/deps/libhttp-2859e8748c226e64.rlib",
+      "files": 1,
+      "allocated_bytes": 2715648,
+      "logical_bytes": 2711684
+    },
+    {
+      "path": "target/debug/deps/inotify_sys-847b790ec9dfd432.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 601
+    },
+    {
+      "path": "target/debug/deps/libicu_properties-de57ba41d08256fe.rmeta",
+      "files": 1,
+      "allocated_bytes": 2736128,
+      "logical_bytes": 2734436
+    },
+    {
+      "path": "target/debug/deps/subtle-36033e5dee04adfd.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 403
+    },
+    {
+      "path": "target/debug/deps/untrusted-60a3a325394691e0.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1207
+    },
+    {
+      "path": "target/debug/deps/futures_core-0a277619a03dcc31.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2962
+    },
+    {
+      "path": "target/debug/deps/mio-55ada03d3d9eee9f.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 9157
+    },
+    {
+      "path": "target/debug/deps/libreqwest-c74240494a0b29c5.rmeta",
+      "files": 1,
+      "allocated_bytes": 1032192,
+      "logical_bytes": 1030505
+    },
+    {
+      "path": "target/debug/deps/litemap-0e36d49cb5f4576c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1636
+    },
+    {
+      "path": "target/debug/deps/serde_core-35a01c183a84aef5.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 7500
+    },
+    {
+      "path": "target/debug/deps/libreqwest-d14292fd91e7dc9b.rmeta",
+      "files": 1,
+      "allocated_bytes": 1323008,
+      "logical_bytes": 1320335
+    },
+    {
+      "path": "target/debug/deps/libcpufeatures-5af5d37854fd254e.rmeta",
+      "files": 1,
+      "allocated_bytes": 40960,
+      "logical_bytes": 39276
+    },
+    {
+      "path": "target/debug/deps/find_msvc_tools-3db4d81764298103.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1395
+    },
+    {
+      "path": "target/debug/deps/libwinnow-4c2ea6d1fb1f5507.rmeta",
+      "files": 1,
+      "allocated_bytes": 3477504,
+      "logical_bytes": 3473671
+    },
+    {
+      "path": "target/debug/deps/libicu_collections-8319ac1db737a7c5.rlib",
+      "files": 1,
+      "allocated_bytes": 1134592,
+      "logical_bytes": 1131610
+    },
+    {
+      "path": "target/debug/deps/libpin_project_lite-d93ea9e0ecd9bd9f.rlib",
+      "files": 1,
+      "allocated_bytes": 98304,
+      "logical_bytes": 96982
+    },
+    {
+      "path": "target/debug/deps/itoa-1e4014ba8d232f08.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 652
+    },
+    {
+      "path": "target/debug/deps/libcrypto_common-88638586647b8244.rlib",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 32778
+    },
+    {
+      "path": "target/debug/deps/libwriteable-af7e698caf090380.rmeta",
+      "files": 1,
+      "allocated_bytes": 184320,
+      "logical_bytes": 181772
+    },
+    {
+      "path": "target/debug/deps/libcpufeatures-5af5d37854fd254e.rlib",
+      "files": 1,
+      "allocated_bytes": 45056,
+      "logical_bytes": 41516
+    },
+    {
+      "path": "target/debug/deps/libbitflags-b2a0dd750e3e37ce.rmeta",
+      "files": 1,
+      "allocated_bytes": 225280,
+      "logical_bytes": 225025
+    },
+    {
+      "path": "target/debug/deps/rustix-e1c9184f0dc15889.d",
+      "files": 1,
+      "allocated_bytes": 20480,
+      "logical_bytes": 20476
+    },
+    {
+      "path": "target/debug/deps/libwinnow-9d65ab95a9701de1.rmeta",
+      "files": 1,
+      "allocated_bytes": 671744,
+      "logical_bytes": 667661
+    },
+    {
+      "path": "target/debug/deps/libuntrusted-6abbee0483258579.rlib",
+      "files": 1,
+      "allocated_bytes": 53248,
+      "logical_bytes": 50122
+    },
+    {
+      "path": "target/debug/deps/sail_daemon-15f5df3b56918e73.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2545
+    },
+    {
+      "path": "target/debug/deps/libtinystr-9ee2ab155179fd13.rmeta",
+      "files": 1,
+      "allocated_bytes": 258048,
+      "logical_bytes": 257630
+    },
+    {
+      "path": "target/debug/deps/libhttp-2859e8748c226e64.rmeta",
+      "files": 1,
+      "allocated_bytes": 1441792,
+      "logical_bytes": 1440074
+    },
+    {
+      "path": "target/debug/deps/cpufeatures-5af5d37854fd254e.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 954
+    },
+    {
+      "path": "target/debug/deps/form_urlencoded-d12c6a50d54285e9.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 448
+    },
+    {
+      "path": "target/debug/deps/libtower_service-07676441d9b94d77.rmeta",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 23213
+    },
+    {
+      "path": "target/debug/deps/libgetrandom-d62dc3da75372eeb.rlib",
+      "files": 1,
+      "allocated_bytes": 159744,
+      "logical_bytes": 156306
+    },
+    {
+      "path": "target/debug/deps/mio-82596c909dc838ae.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 12226
+    },
+    {
+      "path": "target/debug/deps/libnotify-a01d21a8d2eb2fe9.rmeta",
+      "files": 1,
+      "allocated_bytes": 143360,
+      "logical_bytes": 139522
+    },
+    {
+      "path": "target/debug/deps/idna_adapter-de35c85717c31eee.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 433
+    },
+    {
+      "path": "target/debug/deps/sail_smtlib-82c040722aa75094.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1023
+    },
+    {
+      "path": "target/debug/deps/libsocket2-3285872f22f4d997.rlib",
+      "files": 1,
+      "allocated_bytes": 1187840,
+      "logical_bytes": 1183804
+    },
+    {
+      "path": "target/debug/deps/writeable-e8fd1d038e528d69.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3086
+    },
+    {
+      "path": "target/debug/deps/libzerotrie-5bb9c6aaf10803b5.rmeta",
+      "files": 1,
+      "allocated_bytes": 356352,
+      "logical_bytes": 352437
+    },
+    {
+      "path": "target/debug/deps/librustix-d19387ff59020013.rlib",
+      "files": 1,
+      "allocated_bytes": 6406144,
+      "logical_bytes": 6402534
+    },
+    {
+      "path": "target/debug/deps/rustls-8f6c66f2d8f3823c.d",
+      "files": 1,
+      "allocated_bytes": 36864,
+      "logical_bytes": 33796
+    },
+    {
+      "path": "target/debug/deps/libreqwest-d14292fd91e7dc9b.rlib",
+      "files": 1,
+      "allocated_bytes": 13643776,
+      "logical_bytes": 13643708
+    },
+    {
+      "path": "target/debug/deps/percent_encoding-4b41cea287cc581b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 745
+    },
+    {
+      "path": "target/debug/deps/liblog-ae375a9b293df0ed.rlib",
+      "files": 1,
+      "allocated_bytes": 274432,
+      "logical_bytes": 273898
+    },
+    {
+      "path": "target/debug/deps/libtry_lock-317c394c8c61de3d.rmeta",
+      "files": 1,
+      "allocated_bytes": 20480,
+      "logical_bytes": 17009
+    },
+    {
+      "path": "target/debug/deps/libslab-39f8c566895ab09b.rlib",
+      "files": 1,
+      "allocated_bytes": 151552,
+      "logical_bytes": 150612
+    },
+    {
+      "path": "target/debug/deps/proc_macro2-378d9a773d1eff57.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4443
+    },
+    {
+      "path": "target/debug/deps/toml_parser-8fbb16fac25c1a40.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5661
+    },
+    {
+      "path": "target/debug/deps/url-9ae39320793b7e1f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2519
+    },
+    {
+      "path": "target/debug/deps/libhyper-03c928be45c0be5e.rmeta",
+      "files": 1,
+      "allocated_bytes": 946176,
+      "logical_bytes": 942161
+    },
+    {
+      "path": "target/debug/deps/sha2_asm-1490e7ddb716c5ca.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 580
+    },
+    {
+      "path": "target/debug/deps/block_buffer-5aba6c0377a7b53c.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 977
+    },
+    {
+      "path": "target/debug/deps/hashbrown-fe0f3a6371dfccdd.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4549
+    },
+    {
+      "path": "target/debug/deps/libfind_msvc_tools-3db4d81764298103.rlib",
+      "files": 1,
+      "allocated_bytes": 331776,
+      "logical_bytes": 328470
+    },
+    {
+      "path": "target/debug/deps/notify-a01d21a8d2eb2fe9.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1656
+    },
+    {
+      "path": "target/debug/deps/libmemchr-b80b62a389ef9e02.rmeta",
+      "files": 1,
+      "allocated_bytes": 991232,
+      "logical_bytes": 990244
+    },
+    {
+      "path": "target/debug/deps/libopenssl_probe-4bc42af26f5fd6d6.rlib",
+      "files": 1,
+      "allocated_bytes": 159744,
+      "logical_bytes": 156366
+    },
+    {
+      "path": "target/debug/deps/libsail_session-a5fecb90042ef5b7.rlib",
+      "files": 1,
+      "allocated_bytes": 667648,
+      "logical_bytes": 666744
+    },
+    {
+      "path": "target/debug/deps/http_shared-145c884d63217137.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1003
+    },
+    {
+      "path": "target/debug/deps/libfutures_sink-0d1d3a5ba85a980b.rmeta",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 14900
+    },
+    {
+      "path": "target/debug/deps/libstable_deref_trait-63272b7a7bcae8c6.rmeta",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 10326
+    },
+    {
+      "path": "target/debug/deps/futures_sink-0d1d3a5ba85a980b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 436
+    },
+    {
+      "path": "target/debug/deps/libhttp_body_util-b961f2f37126a940.rmeta",
+      "files": 1,
+      "allocated_bytes": 405504,
+      "logical_bytes": 404565
+    },
+    {
+      "path": "target/debug/deps/libicu_normalizer-f647378e21caf02c.rmeta",
+      "files": 1,
+      "allocated_bytes": 593920,
+      "logical_bytes": 590840
+    },
+    {
+      "path": "target/debug/deps/libcurve25519_dalek-664c5e07e5b285ac.rmeta",
+      "files": 1,
+      "allocated_bytes": 1282048,
+      "logical_bytes": 1280613
+    },
+    {
+      "path": "target/debug/deps/librustls_native_certs-cb300673918313aa.rmeta",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 23916
+    },
+    {
+      "path": "target/debug/deps/libicu_properties_data-f54071672940736d.rmeta",
+      "files": 1,
+      "allocated_bytes": 1859584,
+      "logical_bytes": 1857162
+    },
+    {
+      "path": "target/debug/deps/libtower_layer-e06e53ebaf0e99a3.rmeta",
+      "files": 1,
+      "allocated_bytes": 81920,
+      "logical_bytes": 78947
+    },
+    {
+      "path": "target/debug/deps/http_body-603497276061dc38.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1293
+    },
+    {
+      "path": "target/debug/deps/libyoke-c7d3c7aead1f06ff.rlib",
+      "files": 1,
+      "allocated_bytes": 245760,
+      "logical_bytes": 242448
+    },
+    {
+      "path": "target/debug/deps/libicu_locale_core-a4805789699630b4.rmeta",
+      "files": 1,
+      "allocated_bytes": 1589248,
+      "logical_bytes": 1588885
+    },
+    {
+      "path": "target/debug/deps/libhttparse-41279a38706f2123.rlib",
+      "files": 1,
+      "allocated_bytes": 368640,
+      "logical_bytes": 367622
+    },
+    {
+      "path": "target/debug/deps/hashbrown-7bc7cb14015bbcfb.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 6090
+    },
+    {
+      "path": "target/debug/deps/libform_urlencoded-d12c6a50d54285e9.rmeta",
+      "files": 1,
+      "allocated_bytes": 28672,
+      "logical_bytes": 27728
+    },
+    {
+      "path": "target/debug/deps/cfg_if-9965160c2c928c5b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 403
+    },
+    {
+      "path": "target/debug/deps/libsail_daemon-d1903a3dee052454.rlib",
+      "files": 1,
+      "allocated_bytes": 16117760,
+      "logical_bytes": 16115254
+    },
+    {
+      "path": "target/debug/deps/libtry_lock-707fb18d6d6f221a.rmeta",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 22685
+    },
+    {
+      "path": "target/debug/deps/libcfg_if-9965160c2c928c5b.rmeta",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5856
+    },
+    {
+      "path": "target/debug/deps/zerofrom_derive-9fd3d9aefe48e3b1.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 728
+    },
+    {
+      "path": "target/debug/deps/libidna-11550a3857ee792f.rmeta",
+      "files": 1,
+      "allocated_bytes": 245760,
+      "logical_bytes": 243665
+    },
+    {
+      "path": "target/debug/deps/hyper_rustls-55c87eefed272786.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1589
+    },
+    {
+      "path": "target/debug/deps/libsail_smtlib-19a534129ce5c59d.rlib",
+      "files": 1,
+      "allocated_bytes": 569344,
+      "logical_bytes": 565450
+    },
+    {
+      "path": "target/debug/deps/hyper_util-34d2895ff1da5b84.d",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 13753
+    },
+    {
+      "path": "target/debug/deps/libserde-a852991c5bff1d57.rmeta",
+      "files": 1,
+      "allocated_bytes": 843776,
+      "logical_bytes": 842175
+    },
+    {
+      "path": "target/debug/deps/signature-6983303e4b1f5532.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2273
+    },
+    {
+      "path": "target/debug/deps/libhttpdate-060e89508a6221e8.rmeta",
+      "files": 1,
+      "allocated_bytes": 32768,
+      "logical_bytes": 30087
+    },
+    {
+      "path": "target/debug/deps/libshared-c10ea9e52371c06f.rmeta",
+      "files": 1,
+      "allocated_bytes": 0,
+      "logical_bytes": 0
+    },
+    {
+      "path": "target/debug/deps/crypto_common-88638586647b8244.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 615
+    },
+    {
+      "path": "target/debug/deps/serde_spanned-6827d994617de2ec.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1333
+    },
+    {
+      "path": "target/debug/deps/serde_derive-f76a0e3e75495889.d",
+      "files": 1,
+      "allocated_bytes": 12288,
+      "logical_bytes": 8389
+    },
+    {
+      "path": "target/debug/deps/libc-93ff8fac5268ae02.d",
+      "files": 1,
+      "allocated_bytes": 24576,
+      "logical_bytes": 20689
+    },
+    {
+      "path": "target/debug/deps/libtower_http-37343d71fce16043.rmeta",
+      "files": 1,
+      "allocated_bytes": 483328,
+      "logical_bytes": 482306
+    },
+    {
+      "path": "target/debug/deps/zeroize-7bc49eb360c1d590.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 1432
+    },
+    {
+      "path": "target/debug/deps/syn-3e178ba1e25ac716.d",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 16309
+    },
+    {
+      "path": "target/debug/deps/syn-4b21d6d355c29d99.d",
+      "files": 1,
+      "allocated_bytes": 16384,
+      "logical_bytes": 15979
+    },
+    {
+      "path": "target/debug/deps/libhyper_rustls-e46882d33bda2122.rmeta",
+      "files": 1,
+      "allocated_bytes": 90112,
+      "logical_bytes": 89805
+    },
+    {
+      "path": "target/debug/deps/http_body_util-71eb74e8e36c34f9.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 5569
+    },
+    {
+      "path": "target/debug/deps/libsha2-4f74e9393f409a4d.rlib",
+      "files": 1,
+      "allocated_bytes": 811008,
+      "logical_bytes": 808186
+    },
+    {
+      "path": "target/debug/deps/yoke-c7d3c7aead1f06ff.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 3292
+    },
+    {
+      "path": "target/debug/deps/shared-c10ea9e52371c06f.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 543
+    },
+    {
+      "path": "target/debug/deps/libfutures_util-5d77ae410b8ebb77.rmeta",
+      "files": 1,
+      "allocated_bytes": 5947392,
+      "logical_bytes": 5944840
+    },
+    {
+      "path": "target/debug/deps/slab-39f8c566895ab09b.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 893
+    },
+    {
+      "path": "target/debug/deps/libserde-a852991c5bff1d57.rlib",
+      "files": 1,
+      "allocated_bytes": 1015808,
+      "logical_bytes": 1014734
+    },
+    {
+      "path": "target/debug/deps/generic_array-a076202f82edd331.d",
+      "files": 1,
+      "allocated_bytes": 4096,
+      "logical_bytes": 2094
+    },
+    {
+      "path": "target/debug/deps/libtoml_writer-730342480fc163ab.rmeta",
+      "files": 1,
+      "allocated_bytes": 106496,
+      "logical_bytes": 103906
+    },
+    {
+      "path": "target/debug/deps/librustls-419942101a65a58c.rmeta",
+      "files": 1,
+      "allocated_bytes": 3694592,
+      "logical_bytes": 3692696
+    },
+    {
+      "path": "target/debug/deps/toml_parser-aac63463b35afa37.d",
+      "files": 1,
+      "allocated_bytes": 8192,
+      "logical_bytes": 4226
+    }
+  ],
+  "allocated_bytes_reclaimed": 1022054400,
+  "protected_equal_after": true,
+  "ended_unix": 1791702395.9791331,
+  "original_record_sha256": "0a965402b5b2566b4c57b9f65856ecbf38872c605738be0a10681c1dc1e958c2",
+  "additional_retained_failed_elf": {
+    "name": "corrected-draft-failed-elf",
+    "bytes": 47335072,
+    "sha256": "5c7b29eb2e0e7e53604f77e97248a4b96d3cbef7455f9958b63701c275f0f1be",
+    "after_cleanup_present": true,
+    "scope": "outside every removed path; after-check only, not included in51 before/after seals"
+  }
+}

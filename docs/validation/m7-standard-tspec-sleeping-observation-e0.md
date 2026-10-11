@@ -1,5 +1,9 @@
 # Verismo tspec sleeping stage and original unit timeout
 
+The whole attempt subsequently closed with 158 Same and one infrastructure
+error; see [the separate complete terminal record](m7-default-standard-e0ca-terminal.md).
+The observations below retain their original nonterminal scope.
+
 The plain `verismo_tspec` arm subsequently reached its original 3,600-second
 deadline. The harness classified it as infrastructure error `SAIL3022` and
 killed its process group. Its retained stdout, stderr and time files are empty;
