@@ -51,3 +51,9 @@ unchanged. Independent closure rechecked all thirteen runtime artifacts, eight
 source files, the lock and four prior runtime/source seals; both containers had
 zero holders and unreadable live processes. Product performance, rebuilt Sail
 compatibility, publication and runtime selection remain separate.
+
+The complete qualification archive was copied to the host and all 4,134
+regular inventory files were stream-hash verified. The existing packer and
+a fresh private installation also [passed](packaging/result.json), preserving
+every runtime byte/mode. The local pin remains unpublished and unselected; the
+lead owns coherent product rebuild, gates and release-asset integration.

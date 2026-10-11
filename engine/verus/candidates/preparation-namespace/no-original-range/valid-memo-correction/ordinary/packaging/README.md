@@ -30,3 +30,12 @@ compatibility or performance. The source-dependent product must subsequently be
 rebuilt and gated against this exact patch, lock and archive pin. Updating the
 committed release asset, CI pin or selected runtime remains separate from this
 local package evidence and requires the lead's coherent integration sequence.
+
+The [local delivery result](result.json) is now **PASS**, 22.541 seconds. The
+archive contains fourteen canonical regular members and is 36,270,553 bytes.
+Its digest is `41d4996ecd903079df8a3fe3c970e1927b91b8b5ec6a1e45fac640b2db9fa462`.
+The [local pin](local-pin.json) has no release asset ID. Fresh installation
+retained every manifest/runtime byte and mode, source and prior runtime seals
+remained unchanged, and both container audits found no protected-path holders.
+No publication, selection, product compatibility or performance claim follows
+from this delivery-only pass.

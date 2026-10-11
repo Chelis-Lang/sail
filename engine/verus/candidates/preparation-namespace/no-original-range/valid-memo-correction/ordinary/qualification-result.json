@@ -140,5 +140,12 @@
       "failed": 0,
       "log_sha256": "beeeb10d7eaf24d3c00a2b0b6e3b9e442ca41cc78e612539535f8be35a202b15"
     }
+  },
+  "raw_archive": {
+    "path": "target/preparation-namespace/no-original-range-complete-qualification.tar.gz",
+    "sha256": "2c106b2626b749a58fcbf98397862aa1d0b5678bfde1098643f7bbfba600eddd",
+    "compressed_bytes": 131829516,
+    "raw_bytes": 1059044430,
+    "all_regular_inventory_members_verified_on_host": 4134
   }
 }
