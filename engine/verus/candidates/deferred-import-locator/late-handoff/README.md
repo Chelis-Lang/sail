@@ -3,8 +3,11 @@
 Status: unselected candidate. Forty-three reduced actual pinned API controls
 pass (29 unchanged plus 14 new controls). Independent actual complete source
 controls pass 40/40 VIR and 78/78 driver tests, with both all-targets strict
-Clippy checks passing in 180.872 seconds. Ordinary runtime build and original
-qualification remain pending.
+Clippy checks passing in 180.872 seconds. The separate ordinary build passed
+in 637.838 seconds with a fresh vstd proof (2,060 verified, zero errors),
+an exact thirteen-artifact manifest, unchanged source/lock and prior runtime
+seals, and closed owned actors. [ordinary-build-pass.json](ordinary-build-pass.json)
+retains its raw identities. Original qualification remains pending.
 The selected runtime and every earlier sealed candidate remain unchanged.
 
 The original `0bbc` fourteen-stage qualification remains failed: revision zero

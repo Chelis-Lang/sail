@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "actual complete source controls40VIR/78driver+bothstrict PASS; one ordinary build authorized; launch not yet recorded",
+  "status": "actual source40VIR/78driver+bothstrict PASS; ordinary freshvstd/new13/source+lock/oldseals/ownedclosure PASS; original14 pending",
   "patch_sha256": "bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372",
   "delta_sha256": "0cd5dfe76862acc95cc726e66be1fca3ae3b84938d3478955136206b6be83b55",
   "source_sha256": {
@@ -56,6 +56,7 @@
   ],
   "qualification": "separate root grant after ordinary seal; original14 scripts/argv/env/predicates and600 bounds unchanged; no TRACE/TARGET or copied proof receipts",
   "selected": false,
-  "ordinary_build_launched": false,
-  "source_controls_sha256": "bb3076251ccc793db7b7682e4c3c2d3d00a0ee69c604e6d2ab17f6e2b9e6cb0b"
+  "ordinary_build_launched": true,
+  "source_controls_sha256": "bb3076251ccc793db7b7682e4c3c2d3d00a0ee69c604e6d2ab17f6e2b9e6cb0b",
+  "ordinary_result": "ordinary-build-pass.json"
 }

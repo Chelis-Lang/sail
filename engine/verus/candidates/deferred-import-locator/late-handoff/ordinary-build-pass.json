@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "scope": "actual ordinary private source build/fresh vstd/new13 seal; original14/product qualification pending",
+  "closed_unix_ns": 1791708794909045294,
+  "selected": false,
+  "qualified": false,
+  "patch_sha256": "bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "source_files": {
+    "vir/src/context.rs": "d42eefa47f098464fb514a062dfebd5bcd315109ea46448efe92c8665a4ebe28",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "366a67bef30b60ed07b174296663f3c79f9aa7a2bf0c8aa649625a3e933cd745",
+    "rust_verify/src/sail_engine.rs": "1474a4204e60b7d409850add49ae0fea62422aac2d2745eb03f808bea4a17569",
+    "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641"
+  },
+  "manifest_sha256": "0e10cd6360b739b994d098c0ab80600ff4d498fa70db77e98c0150692a2163a9",
+  "manifest": {
+    "schema_version": 1,
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+    "features": [
+      "sail-interactive:bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372",
+      "host:x86_64-unknown-linux-gnu",
+      "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    ],
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "2c1b1f36a4bcee5f9a1435d3aaaab61dedb685b80bdbf454637fc662020c353f",
+      "verus/source/target-verus/release/cargo-verus": "d74957c835644c549247d2f39f78cb45c18d18889b184e9e70d02572d39eb4e7",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "dbc9692f502b22d106fe11462285b9f205e4eed6b3b484474b61500626e8cb4e",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "6016029a886aa28d78d3d5090148dd0267526f3154081a69b6215122161783aa",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "83c269c3893c691c8d9da622c539496b7d60cdb4947587f4e6d944663937ffb7",
+      "verus/source/target-verus/release/libvstd.rlib": "46aedcde7de845d14130a3653c91e866092c2b59c9c0e05f27dd32334ad0eccf",
+      "verus/source/target-verus/release/rust_verify": "24db829190c5925384f83dbcf25470034be10f4fc147e92cd9f5a5976bdfec13",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "ce53ae58c56c9df4af308e8b55f1d86afb2a27d6083e5b7f1597312bc089f0b4",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "build_seconds": 632,
+    "test_binaries": []
+  },
+  "complete_direct_artifact_inventory": true,
+  "owned_build_actors": [],
+  "fresh_vstd_verified": 2060,
+  "fresh_vstd_errors": 0,
+  "ordinary_result": {
+    "version": 1,
+    "exit_code": 0,
+    "elapsed_seconds": 637.8376052899985,
+    "patch_sha256": "bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372",
+    "scope": "Ordinary unselected late-handoff source build; actual source controls passed, original qualification pending"
+  },
+  "source_controls_sha256": "bb3076251ccc793db7b7682e4c3c2d3d00a0ee69c604e6d2ab17f6e2b9e6cb0b",
+  "prior_complete_runtime_seals_unchanged": true,
+  "original14_launched": false,
+  "status": "PASS",
+  "execution": {
+    "platform": "linux-x86_64-container-emulated-sharedload",
+    "jobs": 2,
+    "nice": 0,
+    "source_control_counts": {
+      "vir": 40,
+      "driver": 78
+    },
+    "source_controls_commit": "2c553ec",
+    "owned_group_closed": 705337,
+    "source_compiler_seed_bytes": 1288338042,
+    "source_compiler_seed_files": 3730,
+    "source_compiler_seed_elapsed_seconds": 8.665294503000041
+  },
+  "raw_archive": {
+    "sha256": "49bfc88ad2a7df43fbb7202de9621d3fec0bc968a30e3c63ada26ee07a057622",
+    "bytes": 26081280,
+    "files": 31
+  },
+  "raw_artifact_sha256": {
+    "applied-source.json": "8757fb0c281deb2d84da6c86ea375d76a8d9c0dfbcba6a420162a2a604471239",
+    "build-candidate.py": "bce38b8f158d824f90d203402e3d3fab8ecc91f0202bbe0daa49a3cb2eb8b72a",
+    "build-input-freeze.json": "687024bce8167e7c5f4577c87eb747446f7ccfb22852cff1a7120fa10d1ce9a5",
+    "builder-archive-validation.json": "41f08219d025f60692baf6509c96e97aadb09eb8eb2e226b4d05f4a47e9c8868",
+    "builder-before.json": "7521abe41b2bc9d68ff77192cb6b27df4c6a5544e0317adf5aff3f5de25d081f",
+    "builder-before.tar": "e51e6e96d457da68cd1c105c028937571e60fea913bdb48a556f7e685e093d77",
+    "builder-source.tar": "b9a43bab50243c592f4dbda170eb61ddd26728df647875c364d22b18db06a568",
+    "candidate-delta.patch": "0cd5dfe76862acc95cc726e66be1fca3ae3b84938d3478955136206b6be83b55",
+    "candidate.patch": "bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372",
+    "close-build.py": "a678a81cfdbe70109c0a3997193bab1d897b207760ef48d928c25e753877b924",
+    "close-qualification.py": "413901a1c71acdb8a7735b1063b748fe4f94242a9e8415789656bfcc64a64616",
+    "closed-ordinary-build.json": "bd573a2bbbbdaa7dd4ac7bdd1ee9831ef74ff31243938873c6edc668264c1194",
+    "compiler-seed.json": "123c94b0dd34478270219b9e63026c09246299bec9cb1f2aee6017345daa70e9",
+    "dual-container-holder-preflight.json": "0986b1d2fd9c3b0b3f90ada316e799e3d688a647b5da1b4be9a29c7b8a11fa08",
+    "identity.json": "20abf79be429c490ddc9c0a3cf468671d0cdbefb54742de49b1c224bc22a7241",
+    "ordinary-build-actor.json": "5525249ab80f92ba1b45061d844b74335eb8630ed4ecd15e20e4a777ceeb8329",
+    "ordinary-build-result.json": "3c85ed40af2fb217719dda2acb3a1e09c33fc9f4aaf758cee481fe9f13771121",
+    "ordinary-build.log": "a468d12df55999a55f9d43b61602d14b4d3a5012870e6afa1d7ad1398cdecce7",
+    "ordinary-runtime-manifest.json": "0e10cd6360b739b994d098c0ab80600ff4d498fa70db77e98c0150692a2163a9",
+    "preceding-runtime-seals.json": "670c8fd5e8f413e2b8eaf5009974fd924c5055345bf8e9186cd3980ccb4485cc",
+    "resource-preflight.json": "5dc4d8b942c394e3bd5f8f2f811282995b6454db627143ced5eab9ee759dd194",
+    "run-original-pipeline.py": "941e7fcef81645183da7acf4a256bffa5f84d6bedbfe823e10a2b146da405fd9",
+    "setup.log": "73220a99253be4311213362cab8187721321b624b6d018b4d0969f44dc55ee64",
+    "source/rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "source/rust_verify/src/sail_engine.rs": "1474a4204e60b7d409850add49ae0fea62422aac2d2745eb03f808bea4a17569",
+    "source/rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "source/rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "source/rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "source/rust_verify/src/verifier.rs": "366a67bef30b60ed07b174296663f3c79f9aa7a2bf0c8aa649625a3e933cd745",
+    "source/vir/src/context.rs": "d42eefa47f098464fb514a062dfebd5bcd315109ea46448efe92c8665a4ebe28"
+  },
+  "host_backing_free_bytes_after": 9678716928,
+  "host_archive_recovery": {
+    "initial_error": "TypeError: host tarfile.extractall lacks filter parameter",
+    "correction": "validate exact hashed archive has regular relative members and no parent segments, then extract; all per-file SHA match",
+    "build_or_runtime_affected": false
+  }
+}
