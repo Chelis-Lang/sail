@@ -78,3 +78,13 @@ is retained. It strips engine selectors and records ordinary scheduling,
 resource/actor identity, raw phase logs, source closure and all four prior runtime
 seals. Launch remains contingent on the exact composed-source review; no runtime
 or proof acceptance is copied from the previous target's test executable.
+
+The [first complete source scope](first-source-failure.json) is retained as
+**FAIL**, 148.315 seconds: all 42 VIR controls and VIR strict passed, but the driver
+test crate failed nine E0603 references through the private engine module. The
+new driver controls did not execute and driver strict was unattempted. This is
+a test integration error, not an observed production authority failure. Source,
+lock and four prior runtime seals were unchanged, and both container audits found
+zero holders or unreadable live processes. Raw logs, exact source and the actual
+VIR tested executable are archived. A narrow test-shim correction is required;
+the failed scope is never relabelled as passing evidence.
