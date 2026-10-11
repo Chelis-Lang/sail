@@ -1,6 +1,6 @@
 --- a/crates/sail-daemon/src/remote.rs
 +++ b/crates/sail-daemon/src/remote.rs
-@@ -157,6 +157,90 @@
+@@ -157,6 +157,97 @@
      metrics: Arc<Metrics>,
      ca_hash: Option<[u8; 32]>,
      timeout: Duration,
@@ -50,8 +50,11 @@
 +                continue;
 +            };
 +            let path = task.path();
-+            if owner_field(&path.join("comm")).is_some_and(|name| name.trim() == "reqwest-interna")
-+            {
++            let Some(name) = owner_field(&path.join("comm")) else {
++                complete = false;
++                continue;
++            };
++            if name.trim() == "reqwest-interna" {
 +                let before = owner_field(&path.join("stat"));
 +                let sched = owner_field(&path.join("schedstat"));
 +                let wait = owner_field(&path.join("wchan"));
@@ -70,7 +73,11 @@
 +    } else {
 +        complete = false;
 +    }
-+    (started, std::time::Instant::now(), complete, rows)
++    let ended = std::time::Instant::now();
++    if ended.duration_since(started) >= std::time::Duration::from_millis(10) {
++        complete = false;
++    }
++    (started, ended, complete, rows)
 +}
 +
 +#[cfg(test)]
@@ -91,7 +98,7 @@
  }
  
  #[derive(Default)]
-@@ -349,7 +433,11 @@
+@@ -349,7 +440,11 @@
              .header("Accept-Encoding", "identity");
          #[cfg(test)]
          self.phase("request-built");
@@ -103,7 +110,7 @@
          #[cfg(test)]
          self.phase("request-send-returned");
          let response = sent.map_err(|e| {
-@@ -387,6 +475,8 @@
+@@ -387,6 +482,8 @@
          // Small entries fit in one read rather than growing from the default
          // tiny buffer. Reserve a fixed bounded amount, never a server-provided
          // Content-Length; the existing MAX+1 stream bound remains authoritative.
@@ -112,7 +119,7 @@
          let mut bytes = Vec::with_capacity(8 * 1024);
          response
              .take(MAX_ENTRY_BYTES + 1)
-@@ -395,6 +485,8 @@
+@@ -395,6 +492,8 @@
                  self.record("interrupted-response", true);
                  failure("shared response interrupted")
              })?;

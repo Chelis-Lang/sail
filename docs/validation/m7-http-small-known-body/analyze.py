@@ -58,8 +58,10 @@ def interval(before, after):
 
 
 def arm(root, name):
-    raw = (root / (name + "-matched-lookup.stderr")).read_bytes()
-    if len(raw) > 32 * 1024 * 1024:
+    limit = 32 * 1024 * 1024
+    with (root / (name + "-matched-lookup.stderr")).open("rb") as handle:
+        raw = handle.read(limit + 1)
+    if len(raw) > limit:
         return {"status": "unavailable", "reason": "raw interpretation bound exceeded"}
     text = raw.decode("utf-8")
     samples = {}
