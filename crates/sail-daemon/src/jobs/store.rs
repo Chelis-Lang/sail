@@ -275,7 +275,10 @@ fn projected_currentness(state: &State, job: &Stored, projection: &Projection) -
             &job.submission.environment,
         )
     });
-    classify(projection.currentness, &projection.input_revision, snapshot)
+    let currentness = classify(projection.currentness, &projection.input_revision, snapshot);
+    #[cfg(test)]
+    output_fallback_tests::after_freshness();
+    currentness
 }
 
 pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
@@ -331,6 +334,8 @@ fn repair_project(state: &State, job: &Stored) -> io::Result<sail_api::repair::R
     serde_json::from_slice(&project_bytes(state, job)?).map_err(io::Error::other)
 }
 fn project_bytes(state: &State, job: &Stored) -> io::Result<Vec<u8>> {
+    #[cfg(test)]
+    output_fallback_tests::before_read();
     let bytes = read_bytes(&state.root.join(&job.status.id).join("stdout"))?;
     if job
         .projection
@@ -342,6 +347,152 @@ fn project_bytes(state: &State, job: &Stored) -> io::Result<Vec<u8>> {
         ));
     }
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod output_fallback_tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    #[derive(Default)]
+    struct Probe {
+        reads: usize,
+        freshness: usize,
+        restore: Option<(PathBuf, Vec<u8>)>,
+        writes_ok: bool,
+    }
+    std::thread_local! {
+        static PROBE: RefCell<Option<Probe>> = const { RefCell::new(None) };
+    }
+    pub(super) fn before_read() {
+        PROBE.with_borrow_mut(|probe| {
+            if let Some(probe) = probe {
+                probe.reads += 1;
+            }
+        });
+    }
+    pub(super) fn after_freshness() {
+        PROBE.with_borrow_mut(|probe| {
+            if let Some(probe) = probe {
+                probe.freshness += 1;
+                if let Some((path, bytes)) = probe.restore.take() {
+                    probe.writes_ok = std::fs::write(&path, b"changed between barriers").is_ok()
+                        && std::fs::write(path, bytes).is_ok();
+                }
+            }
+        });
+    }
+    fn counts() -> Probe {
+        PROBE.with_borrow_mut(|probe| probe.take().unwrap_or_default())
+    }
+    fn measured(
+        state: &State,
+        job: &Stored,
+    ) -> (io::Result<super::super::result_cache::WireFrame>, Probe) {
+        PROBE.with_borrow_mut(|probe| *probe = Some(Probe::default()));
+        let result = result_frame(state, job, &mut Trace::disabled());
+        (result, counts())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn store_final_barrier_failure_repeats_complete_hash_and_independent_freshness() {
+        static SERIAL: AtomicU64 = AtomicU64::new(0);
+        let root = std::env::temp_dir().join(format!(
+            "sail-store-output-{}-{}",
+            std::process::id(),
+            SERIAL.fetch_add(1, Ordering::Relaxed)
+        ));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let server = super::super::bind(
+            &root.join("socket"),
+            &root.join("jobs"),
+            Path::new("/bin/true"),
+        )
+        .unwrap_or_else(|error| unreachable!("fixture: {error}"));
+        let state = &server.state;
+        let project =
+            super::currentness_note_tests::project(sail_api::project::Currentness::Current);
+        let bytes =
+            serde_json::to_vec(&project).unwrap_or_else(|error| unreachable!("fixture: {error}"));
+        let mut job = Stored::new(Submission {
+            mode: sail_api::jobs::Mode::Stock,
+            project_dir: root.clone(),
+            args: Vec::new(),
+            force: false,
+            environment: BTreeMap::new(),
+            input_revision: None,
+        });
+        job.status.state = Lifecycle::Completed;
+        job.projection = Some(Projection::validated(&bytes, &project));
+        let directory = state.root.join(&job.status.id);
+        assert!(std::fs::create_dir_all(&directory).is_ok());
+        let path = directory.join("stdout");
+        assert!(std::fs::write(&path, &bytes).is_ok());
+        let expected =
+            encode_result(result(state, &job).unwrap_or_else(|e| unreachable!("fixture: {e}")))
+                .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let worker = super::super::output_service::Queue::spawn(&state.outputs)
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let first = result_frame(state, &job, &mut Trace::disabled());
+        let idle = state.outputs.idle_for_test();
+        let key = stdout_digest(&serde_json::to_vec(&job).unwrap_or_default());
+        let frames = state
+            .result_cache
+            .get(&key)
+            .unwrap_or_else(|| unreachable!("cached family"));
+        let (healthy, healthy_probe) = measured(state, &job);
+        let lock = frames
+            .output
+            .lock()
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let (busy, busy_probe) = measured(state, &job);
+        drop(lock);
+        let quota = state.result_cache.budget().reserve(100 * 1024 * 1024);
+        let quota_admitted = quota.is_some();
+        let (limited, limited_probe) = measured(state, &job);
+        drop(quota);
+        PROBE.with_borrow_mut(|probe| {
+            *probe = Some(Probe {
+                restore: Some((path.clone(), bytes.clone())),
+                ..Probe::default()
+            })
+        });
+        let restored = result_frame(state, &job, &mut Trace::disabled());
+        let restored_probe = counts();
+        assert!(std::fs::write(&path, b"wrong persisted SHA").is_ok());
+        let wrong = result_frame(state, &job, &mut Trace::disabled());
+        let oversized_file = File::create(&path).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert!(
+            oversized_file
+                .set_len(sail_api::jobs::MAX_FRAME as u64 + 1)
+                .is_ok()
+        );
+        drop(oversized_file);
+        let oversized = result_frame(state, &job, &mut Trace::disabled());
+        state.outputs.stop();
+        let joined = worker.join().is_ok();
+        drop(frames);
+        drop(server);
+        assert!(std::fs::remove_dir_all(&root).is_ok());
+        // Owned construction is joined before outcome assertions; the probe
+        // observes the actual store read and unchanged freshness implementation.
+        assert!(idle && joined);
+        assert!(quota_admitted);
+        for frame in [first, healthy, busy, limited, restored] {
+            assert_eq!(
+                &*frame.unwrap_or_else(|e| unreachable!("frame: {e}")),
+                expected.as_slice()
+            );
+        }
+        assert_eq!((healthy_probe.reads, healthy_probe.freshness), (0, 1));
+        assert_eq!((busy_probe.reads, busy_probe.freshness), (1, 1));
+        assert_eq!((limited_probe.reads, limited_probe.freshness), (1, 1));
+        assert!(restored_probe.writes_ok);
+        assert_eq!((restored_probe.reads, restored_probe.freshness), (1, 2));
+        assert!(wrong.is_err_and(|e| e.to_string().starts_with("SAIL0816:")));
+        assert!(oversized.is_err_and(|e| e.to_string().starts_with("SAIL0814:")));
+    }
 }
 pub(super) fn read_bytes(path: &Path) -> io::Result<Vec<u8>> {
     let mut bytes = Vec::new();
@@ -492,7 +643,7 @@ mod currentness_note_tests {
     use super::*;
     use sail_api::project::{Execution, ProjectResult};
 
-    fn project(currentness: sail_api::project::Currentness) -> ProjectResult {
+    pub(super) fn project(currentness: sail_api::project::Currentness) -> ProjectResult {
         ProjectResult {
             kind: "sail-project-result".to_owned(),
             schema_version: sail_api::project::SCHEMA_VERSION,

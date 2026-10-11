@@ -57,6 +57,14 @@ impl Queue {
             .stack_size(STACK_BYTES)
             .spawn(move || queue.run())
     }
+    #[cfg(test)]
+    pub(super) fn idle_for_test(&self) -> bool {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        while self.active.load(Ordering::Acquire) && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        !self.active.load(Ordering::Acquire)
+    }
     pub(super) fn stop(&self) {
         self.cancelled.store(true, Ordering::Release);
         // Retire the queued Task outside its mutex. A running Task keeps its
