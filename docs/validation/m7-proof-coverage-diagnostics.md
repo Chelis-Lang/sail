@@ -40,7 +40,11 @@ diagnostics. Earlier sysroot namespace/file observer failures were collapsed to
 `sysroot-namespace-invalidated`. New code retains that outer reason and the first
 failed `namespace` or `explicit-files` observer, with its existing sticky detail.
 It calls the same checks once in the same short-circuit order; formatting reads
-only saved static labels. This extension is awaiting its separate validation.
+only saved static labels. The six original Linux sysroot controls and strict affected-crate Clippy
+[pass against this extension](../../bench/validation/m7-linux-sysroot-details-7238da8-emulated-2026-10-11.json).
+Restored namespace changes now also assert the saved observer role and sticky
+detail; incomplete inventory retains its original reason without an invented
+observer failure. The explicit-file branch still needs a dedicated control.
 The completed D20 active repair remains failed with the older coarse note and
 cannot be attributed retrospectively. Existing setup sidecars record elapsed
 phases, not barrier outcomes. `SAIL_FRESHNESS_TRACE=1` describes daemon projection stages;
