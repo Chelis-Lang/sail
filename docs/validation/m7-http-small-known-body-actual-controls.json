@@ -51,8 +51,7 @@
     "process_group_uncertainty": false,
     "both_process_censuses": {
       "holders": 0,
-      "unreadable": 0,
-      "survivors": 0
+      "unreadable": 0
     },
     "postflight_record_sha256": {
       "sail-m7-acceptance-post-census.json": "23c7acc7f6e84bdfa5278a10fbac5ebd0723bf70fdeaee09df332c52bc048f0a",
@@ -62,7 +61,16 @@
     },
     "slot_returned_to_lead": true,
     "no_further_native_source_or_target_access": true,
-    "last_target_image": "Instrumented diagnostic candidate; source-sensitive artifacts must rebuild normally for a subsequent source"
+    "last_target_image": "Instrumented diagnostic candidate; source-sensitive artifacts must rebuild normally for a subsequent source",
+    "known_phase_process_groups": {
+      "survivors": 0,
+      "unreadable": 0,
+      "scope": "Separate fixed-PGID stat-only census after path-holder closure; no target/source access",
+      "records": {
+        "sail-m7-acceptance-known-group-postflight.json": "2a9eba564a67bd41789bb45a57a03649424f51678c9aaa9aaca7e7d75d8283c0",
+        "sail-m7-handoff-validation-known-group-postflight.json": "caec0f2e862836cde65aa363cc8fc1a250ac883b4e2d803f38ec8a2dcca755be"
+      }
+    }
   },
   "elapsed_seconds": 320.8493324379997,
   "terminal_raw_sha256": "6cd158f930281eea6cd39b40e52cb17359a9d06ca3087eb0c8ca6bacf73b97c6",

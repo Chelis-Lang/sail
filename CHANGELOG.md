@@ -11,11 +11,13 @@ semantic versioning once the API is published.
   component controls and strict checks pass; installed live latency acceptance
   remains pending.
   Optional RPC metadata distinguishes guarded validation from full-hash fallback.
-- Read exact HTTP response lengths with a fixed buffer for bodies
-  at most 8 KiB. It avoids an extra EOF read while retaining capped streaming
-  for larger or unknown bodies, original timeouts and all trust checks.
-  All 38 affected controls and strict checks pass, as does the original
-  concurrent-reader check. Combined-product validation remains pending.
+- Read exact small HTTP bodies within the existing 8 KiB allocation, avoiding
+  an extra EOF read while retaining capped streaming for larger or unknown
+  bodies, original timeouts and trust checks. All 38 affected controls, strict
+  checks, read-count sensitivity and the original concurrent-reader comparison
+  pass. Complete workspace and installed-product acceptance remain pending;
+  the single observed pair establishes no stable speedup. See the
+  [control record](docs/validation/m7-http-small-known-body-actual-controls.md).
 
 - Extend existing optional diagnostics with managed result, receipt and ordinary
   dependency publication intervals, plus daemon child-exit, document-read,
