@@ -1,0 +1,80 @@
+{
+  "compiler_launched": false,
+  "deadline_renewed": false,
+  "executable_controls": "pending",
+  "files": {
+    "argv.json": {
+      "bytes": 2208,
+      "sha256": "c5278abcf2a6147ddbbc03389e616d9a26a53511df0d556c886425756d0d09c0"
+    },
+    "commands.bin": {
+      "bytes": 358298,
+      "sha256": "ff1aebf727168498cac2186ddfbebd556073b726fa1d8417df11b043f1b2f1bf"
+    },
+    "execution.json": {
+      "bytes": 5261,
+      "sha256": "ad910ca81e5e896efdbf06b58e09f813251942e86875acf3ab09da619f672d47"
+    },
+    "expected-wire.bin": {
+      "bytes": 358317,
+      "sha256": "faa2a5db20d8337c831d66417dedcfe8bc0fb655ecea7460c812ce6e30dd3ed8"
+    },
+    "instrumented-smt_process.rs": {
+      "bytes": 9614,
+      "sha256": "9573c5559bdd7c396e55b35a3f21482cc8c79c0c8923700fccef3b0e19169767"
+    },
+    "m7-stock-smt-process-diagnostic.py": {
+      "bytes": 30659,
+      "sha256": "25ae9f57a03304b7d5b68f5ff9b7013ede2b798491e9bca2955bb6542e65d2c1"
+    },
+    "main.rs": {
+      "bytes": 5732,
+      "sha256": "a52bd7179c297e4f30db6256b6f4ac7a372763d1163f28559a9c34cb8d02860e"
+    },
+    "managed-evidence.py": {
+      "bytes": 10112,
+      "sha256": "c7bf44ba1c204f8730e4aa628f9be9bf2bab07fd3e95e48357fad0c16e5ee8cd"
+    },
+    "pinned-smt_process.rs": {
+      "bytes": 9208,
+      "sha256": "d11353d624acb6bb9f0e8c104cbcb705f89a4ac0ce479e283cdbc26848e46201"
+    },
+    "prepared.json": {
+      "bytes": 2948,
+      "sha256": "1b9436685030909ee7d99c0cf41e195ba188a40fb4683d9e9876f6b5c94b3663"
+    },
+    "test-m7-stock-smt-process-diagnostic.py": {
+      "bytes": 6658,
+      "sha256": "2267a467a78a5bdc78734c59ade82921270aff4826e059c5a2125311eac222e4"
+    }
+  },
+  "fixed_prefix_rows": {
+    "delivery": 19,
+    "enqueue": 1,
+    "normal": 23,
+    "read": 14,
+    "write": 7
+  },
+  "historical_failed_recorder_preserved": true,
+  "host_pure_controls": {
+    "passed": 9
+  },
+  "kind": "static-only-recorder-correction",
+  "linux_pure_controls": {
+    "passed": 9
+  },
+  "metadata_row_bytes": 32,
+  "proof_launched": false,
+  "queue_rows": 64,
+  "queued_payload_bytes": 2048,
+  "sender_write_timeout_max_ms": 25,
+  "solver_launched": false,
+  "static_freeze": {
+    "bytes": 2332,
+    "sha256": "ca83b9f5272e2325ec4346e2edab0fc65dd94fc2696ee277fb2bbb1b8dcdce6d"
+  },
+  "static_prepare_input_path_error_retained": true,
+  "stock_marker_nonblocking": true,
+  "stock_operations_changed": false,
+  "tail_scope": "Fixed exact fake-peer prefixes only; absent completion counters leave general tail unknown."
+}

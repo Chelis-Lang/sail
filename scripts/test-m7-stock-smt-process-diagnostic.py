@@ -33,30 +33,72 @@ class PreparationControls(unittest.TestCase):
         with self.assertRaises(ValueError):
             DIAG.replace_once("two two", "two", "marker")
 
-    def test_independent_boundaries_identify_injected_loss_only(self):
+    @staticmethod
+    def rows(pause):
+        return [{"sequence": index, "stage": stage, "dropped": 0}
+                for index, stage in enumerate(DIAG.fixed_stages(pause))]
+
+    def test_independent_boundaries_require_exact_fixed_prefix(self):
+        self.assertEqual([len(DIAG.fixed_stages(stage)) for stage in (1, 4, 13, 16)], [1, 7, 14, 19])
         for before, after in ((1, 2), (4, 5), (13, 14), (16, 17)):
-            rows = [{"stage": before, "dropped": 0}]
+            rows = self.rows(before)
             self.assertTrue(DIAG.sensitivity(rows, before, True)["passed"])
             self.assertFalse(DIAG.sensitivity(rows, before, False)["passed"])
-            self.assertFalse(DIAG.sensitivity(rows + [{"stage": after, "dropped": 0}], before, True)["passed"])
-            self.assertFalse(DIAG.sensitivity([], before, True)["passed"])
+            self.assertFalse(DIAG.sensitivity(rows + [{"sequence": len(rows), "stage": after, "dropped": 0}], before, True)["passed"])
+            for index in range(len(rows)):
+                missing = rows[:index] + rows[index + 1:]
+                # Even renumbered loss cannot pass the exact cardinality check.
+                missing = [dict(row, sequence=n) for n, row in enumerate(missing)]
+                self.assertFalse(DIAG.sensitivity(missing, before, True)["passed"])
 
     def test_loss_and_invalid_observations_never_certify_boundary(self):
-        self.assertFalse(DIAG.sensitivity([{"stage": 1, "dropped": 1}], 1, True)["passed"])
-        self.assertFalse(DIAG.sensitivity([{"stage": 99, "dropped": 0}], 1, True)["passed"])
+        self.assertFalse(DIAG.sensitivity([{"sequence": 0, "stage": 1, "dropped": 1}], 1, True)["passed"])
+        self.assertFalse(DIAG.sensitivity([{"sequence": 0, "stage": 99, "dropped": 0}], 1, True)["passed"])
+        self.assertFalse(DIAG.sensitivity([{"stage": 1, "dropped": 0}], 1, True)["passed"])
+        rows = self.rows(16)
+        self.assertFalse(DIAG.sensitivity(rows[:-1] + [rows[0]], 16, True)["passed"])
 
-    def test_complete_delivery_requires_every_named_stage(self):
-        rows = [{"stage": stage, "dropped": 0} for stage in (2, 5, 7, 9, 11, 15, 17, 19, 21)]
+    def test_complete_delivery_requires_exact_multiplicity(self):
+        rows = self.rows(0)
+        self.assertEqual(len(rows), 23)
         self.assertTrue(DIAG.sensitivity(rows, 0, False)["passed"])
         self.assertFalse(DIAG.sensitivity(rows[:-1], 0, False)["passed"])
         self.assertFalse(DIAG.sensitivity(rows, 0, True)["passed"])
+        changed = [dict(row) for row in rows]
+        changed[-1]["stage"] = 13
+        self.assertFalse(DIAG.sensitivity(changed, 0, False)["passed"])
+        # Thread interleaving need not follow numeric stage order.
+        reverse = [dict(row, sequence=n) for n, row in enumerate(reversed(rows))]
+        self.assertTrue(DIAG.sensitivity(reverse, 0, False)["passed"])
+
+    def test_completed_loss_accounting_requires_every_counter(self):
+        value = {"responses": 1, "observations": 23, "dropped": 0, "queue_dropped": 0,
+                 "queue_full": 0, "queue_disconnected": 0, "send_dropped": 0,
+                 "sender_errors": 0, "deadline_dropped": 0}
+        self.assertEqual(DIAG.completed_counters(value), value)
+        for key in value:
+            invalid = dict(value)
+            invalid.pop(key)
+            with self.assertRaises(ValueError):
+                DIAG.completed_counters(invalid)
+        for key in ("queue_full", "sender_errors", "dropped"):
+            with self.assertRaises(ValueError):
+                DIAG.completed_counters(dict(value, **{key: 1}))
+        with self.assertRaises(ValueError):
+            DIAG.completed_counters(dict(value, dropped=True))
+        loss = dict(value, dropped=3, queue_dropped=1, queue_full=1,
+                    send_dropped=2, sender_errors=1, deadline_dropped=1)
+        self.assertEqual(DIAG.completed_counters(loss), loss)
 
     def test_fake_peer_and_main_are_static_parseable_sources(self):
         compile(DIAG.FAKE_SOLVER, "fake-solver", "exec")
         self.assertIn('b\'(echo "<<DONE>>")\\n\'', DIAG.FAKE_SOLVER)
         self.assertIn("#![forbid(unsafe_code)]", DIAG.MAIN)
-        self.assertIn("sock.set_nonblocking(true)?", DIAG.MAIN)
-        self.assertIn("drop(process)", DIAG.MAIN)
+        self.assertIn("sender.try_send(row)", DIAG.MAIN)
+        self.assertIn("sync_channel::<[u8; 32]>(64)", DIAG.MAIN)
+        self.assertIn("remaining.min(Duration::from_millis(25))", DIAG.MAIN)
+        self.assertIn("writer.join()", DIAG.MAIN)
+        self.assertLess(DIAG.MAIN.index("drop(process)"), DIAG.MAIN.index("metadata.finish()?"))
 
     def test_build_timeout_retains_terminal_and_owns_cleanup(self):
         class Actor:
