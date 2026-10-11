@@ -65,3 +65,12 @@ unchanged four runtime/source/lock seals and closed actors. The narrow correctio
 adds only that marker to the new test annotation; it changes no production byte
 or assertion. The corrected source controls remain pending; no runtime build or
 diagnostic proof has run.
+
+
+The corrected complete source controls now PASS: VIR41/41, driver91/91 and both
+all-target strict Clippy checks, including all three new boundary controls.
+[source-controls-pass.json](source-controls-pass.json) retains the exact commands,
+logs, tested ELF and source hashes (54.537 seconds total), unchanged eight-file
+source/lock and four older complete runtime/source/lock seals, and closed actors.
+The E0308 attempt stays failed. This source-only result does not identify the
+real refusal or qualify a runtime; the original failed qualification is intact.
