@@ -39,9 +39,31 @@
     }
   },
   "controller_source_commit": "2d6539f642b284d66c1f485570b4a166e721a4b7",
-  "current_proof_admitted": false,
+  "current_proof_admitted": true,
+  "current_proof_scope": "unmeasured baseline preparation only; bounded checks, collectors and retained integration remain pending",
   "inventory_statement": "No old inventory reused; metadata covers installed products and 13 selected artifacts only. Production original Guard acquires and validates complete actual inventory before proof; setup metadata never certifies Current.",
   "original_failures_preserved": true,
+  "observed_baseline_repair_preparation": {
+    "accepted": true,
+    "batched": true,
+    "compiler_invocations": 3,
+    "context_sha256": "7f687ceb1aa57d24fae2a2ae0c66ac2317ef8386b91cb385cebc1a47a99bb065",
+    "currentness": "current",
+    "error": null,
+    "exit_code": 0,
+    "external_wall_s": 803.6280054070011,
+    "input_revision": "c8aabc2366c0446c4cf5ab0759e7f10cf355fdf3a0a36ca81c2082302a47b2cd",
+    "job": "1791696952644-561644-1",
+    "notes": [],
+    "pretty_archived_public_result": {
+      "bytes": 10724376,
+      "sha256": "adeedb97881068e651605930ee3245aa8b41035f2dc39c42d08e9a8f9888842f",
+      "wire_size": "not measured by this file seal"
+    },
+    "reported_execution_wall_s": 769.2353089749999,
+    "scope": "existing single declaration retry in unmeasured preparation; not a one-driver or latency claim",
+    "whole_baseline_preparation_wall_s": 3202.3655167550026
+  },
   "observed_ordinary_preparation": {
     "accepted_current_proof": false,
     "complete_targets": ["vstd", "human_eval_verus"],
