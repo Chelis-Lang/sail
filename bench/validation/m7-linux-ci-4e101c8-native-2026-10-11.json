@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "source_commit": "4e101c8e621c38f9eb73a9da6e28247085451eed",
+  "run_id": 38132262939,
+  "url": "https://github.com/Chelis-Lang/sail/actions/runs/38132262939",
+  "execution": "GitHub Actions native Linux x86-64",
+  "scope": "Complete descriptor-bound default product CI; optional source candidate, real-project live reader and repair performance remain separate",
+  "conclusion": "success",
+  "created_at": "2026-10-11T10:31:37Z",
+  "completed_at": "2026-10-11T10:37:51Z",
+  "inclusive_elapsed_seconds": 374.0,
+  "workspace_tests_passed": 566,
+  "solver_controls_passed": 39,
+  "conformance": "33/33 Same, zero Unstable/Different/infrastructure errors in each pass-through, fill and warm; 311 functions each",
+  "jobs": [
+    {
+      "name": "No AI authorship markers",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:39Z",
+      "completed_at": "2026-10-11T10:31:55Z",
+      "elapsed_seconds": 16.0
+    },
+    {
+      "name": "image / CI image",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:40Z",
+      "completed_at": "2026-10-11T10:31:48Z",
+      "elapsed_seconds": 8.0
+    },
+    {
+      "name": "End to end (managed)",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:57Z",
+      "completed_at": "2026-10-11T10:37:34Z",
+      "elapsed_seconds": 337.0
+    },
+    {
+      "name": "Workspace gate",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:57Z",
+      "completed_at": "2026-10-11T10:36:01Z",
+      "elapsed_seconds": 244.0
+    },
+    {
+      "name": "End to end (legacy)",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:57Z",
+      "completed_at": "2026-10-11T10:37:34Z",
+      "elapsed_seconds": 337.0
+    },
+    {
+      "name": "Solver tests",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:57Z",
+      "completed_at": "2026-10-11T10:34:43Z",
+      "elapsed_seconds": 166.0
+    },
+    {
+      "name": "Conformance",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:57Z",
+      "completed_at": "2026-10-11T10:37:00Z",
+      "elapsed_seconds": 303.0
+    },
+    {
+      "name": "End to end (repair)",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:31:57Z",
+      "completed_at": "2026-10-11T10:36:49Z",
+      "elapsed_seconds": 292.0
+    },
+    {
+      "name": "End to end",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:37:36Z",
+      "completed_at": "2026-10-11T10:37:42Z",
+      "elapsed_seconds": 6.0
+    },
+    {
+      "name": "CI completion",
+      "conclusion": "success",
+      "started_at": "2026-10-11T10:37:44Z",
+      "completed_at": "2026-10-11T10:37:50Z",
+      "elapsed_seconds": 6.0
+    }
+  ],
+  "raw_log": {
+    "bytes": 774480,
+    "sha256": "eb8552393cd9c301c6d5fc65476361b53e15a802eff270e78bd5495dec035242"
+  },
+  "m7_accepted": false
+}
