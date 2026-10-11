@@ -19,7 +19,9 @@ next unchanged run reused both reports with zero invocations. The
 [local timeout comparison](validation/m7-managed-cold-777-vs-f94.md) records a
 separate unresolved 240-second failure during this cold path. Neither ordinary
 dependency preparation nor compiler startup may be described as an established
-warm proof check.
+warm proof check. The separate [timeout stage witness](validation/m7-managed-cold-stage-777.md)
+observes actual vstd verification after pre-Cargo setup and ordinary dependency
+compilation; none of those stages alone is established as the entire cause.
 
 The current product does not share Cargo dependency artifacts across those
 targets. A future production compilation cache could remove repeated ordinary

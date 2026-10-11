@@ -1,0 +1,456 @@
+{
+  "kind": "standalone_original_managed_cold_stage_witness",
+  "product": {
+    "product_source_commit": "777b86a539f4f6f42f3fab1cf97e176a22f6ac5c",
+    "scope": "standalone unchanged managed240 acceptance with timeout-only observation helper; does not replace failed complete777 suite",
+    "files": {
+      "sail": {
+        "sha256": "4036ed22336bcf9d95923bb4398ef12b16d92bde161883897547c0317b0dde2a",
+        "bytes": 73066504
+      },
+      "sail-z3": {
+        "sha256": "a337030eec201a11f0b351b55bf2000e3e1f50e28f9a47580461e1af090bb80b",
+        "bytes": 10467160
+      }
+    }
+  },
+  "harness_commit": "11e34e2",
+  "execution": "Linux x86_64 Docker emulation on macOS arm64; shared development load",
+  "scope": "Original complete managed assertions retained, first cold invocation failed240s; later assertions not reached; separate from failed whole777 aggregate and nativef94 pass",
+  "terminal": {
+    "exit_code": 1,
+    "elapsed_seconds": 244.0933341130003,
+    "scope": "standalone managed phase; failed complete777 pipeline remains failed"
+  },
+  "operation": {
+    "operation": "managed-01",
+    "duration_s": 240.92232498700105,
+    "verification_timeout_s": 240,
+    "returncode": null,
+    "timed_out": true
+  },
+  "observation": {
+    "clock_ticks_per_second": 100,
+    "root_start_ticks": 2438235,
+    "cargo_start_after_root_seconds": 58.56,
+    "vstd_verifier_start_after_root_seconds": 140.36,
+    "cargo_to_vstd_start_seconds": 81.8,
+    "vstd_verifier_cpu_seconds": 101.65,
+    "requested_demo_start_observed": false,
+    "verifier": {
+      "pid": 402471,
+      "parent": 402470,
+      "state": "S",
+      "comm": "rust_verify",
+      "wchan": "rt_mutex_schedule",
+      "user_ticks": 8768,
+      "system_ticks": 1397,
+      "start_ticks": 2452271,
+      "identity_stable": true,
+      "compiler_selection": {
+        "crate_name": "vstd",
+        "literal_verus_crate": false,
+        "literal_is_vstd": false
+      }
+    },
+    "owned_processes": [
+      {
+        "pid": 401593,
+        "parent": 401568,
+        "state": "S",
+        "comm": "sail",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 2146,
+        "system_ticks": 589,
+        "start_ticks": 2438235,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 401675,
+        "parent": 401593,
+        "state": "S",
+        "comm": "python3",
+        "wchan": "unix_stream_read_generic",
+        "user_ticks": 35,
+        "system_ticks": 3,
+        "start_ticks": 2439966,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 401699,
+        "parent": 401593,
+        "state": "S",
+        "comm": "python3",
+        "wchan": "unix_stream_read_generic",
+        "user_ticks": 30,
+        "system_ticks": 5,
+        "start_ticks": 2443752,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 401700,
+        "parent": 401593,
+        "state": "S",
+        "comm": "cargo-verus",
+        "wchan": "do_wait",
+        "user_ticks": 15,
+        "system_ticks": 1,
+        "start_ticks": 2443870,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 401718,
+        "parent": 401700,
+        "state": "S",
+        "comm": "sail-cargo",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 7,
+        "system_ticks": 2,
+        "start_ticks": 2444079,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 401719,
+        "parent": 401718,
+        "state": "S",
+        "comm": "cargo",
+        "wchan": "futex_do_wait",
+        "user_ticks": 84,
+        "system_ticks": 28,
+        "start_ticks": 2444091,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 402470,
+        "parent": 401719,
+        "state": "S",
+        "comm": "sail-verus-driv",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 8,
+        "system_ticks": 1,
+        "start_ticks": 2452262,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": "vstd",
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 402471,
+        "parent": 402470,
+        "state": "S",
+        "comm": "rust_verify",
+        "wchan": "rt_mutex_schedule",
+        "user_ticks": 8768,
+        "system_ticks": 1397,
+        "start_ticks": 2452271,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": "vstd",
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403211,
+        "parent": 402471,
+        "state": "S",
+        "comm": "sail-z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 14,
+        "system_ticks": 10,
+        "start_ticks": 2461057,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403271,
+        "parent": 402471,
+        "state": "S",
+        "comm": "sail-z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 7,
+        "system_ticks": 7,
+        "start_ticks": 2461497,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403415,
+        "parent": 402471,
+        "state": "S",
+        "comm": "sail-z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 5,
+        "system_ticks": 4,
+        "start_ticks": 2462140,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403419,
+        "parent": 402471,
+        "state": "S",
+        "comm": "sail-z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 6,
+        "system_ticks": 3,
+        "start_ticks": 2462160,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403430,
+        "parent": 402471,
+        "state": "S",
+        "comm": "sail-z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 6,
+        "system_ticks": 5,
+        "start_ticks": 2462172,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403438,
+        "parent": 402471,
+        "state": "S",
+        "comm": "sail-z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 3,
+        "system_ticks": 3,
+        "start_ticks": 2462182,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403220,
+        "parent": 403211,
+        "state": "S",
+        "comm": "z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 92,
+        "system_ticks": 7,
+        "start_ticks": 2461092,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403276,
+        "parent": 403271,
+        "state": "S",
+        "comm": "z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 39,
+        "system_ticks": 3,
+        "start_ticks": 2461536,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403426,
+        "parent": 403415,
+        "state": "R",
+        "comm": "z3",
+        "wchan": "0",
+        "user_ticks": 33,
+        "system_ticks": 2,
+        "start_ticks": 2462167,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403433,
+        "parent": 403419,
+        "state": "S",
+        "comm": "z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 28,
+        "system_ticks": 2,
+        "start_ticks": 2462175,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403448,
+        "parent": 403430,
+        "state": "S",
+        "comm": "z3",
+        "wchan": "anon_pipe_read",
+        "user_ticks": 34,
+        "system_ticks": 1,
+        "start_ticks": 2462200,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      },
+      {
+        "pid": 403452,
+        "parent": 403438,
+        "state": "R",
+        "comm": "z3",
+        "wchan": "0",
+        "user_ticks": 18,
+        "system_ticks": 1,
+        "start_ticks": 2462211,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        }
+      }
+    ],
+    "capture_seconds": 0.34943712500171387,
+    "bytes_read": 77906,
+    "inventory_entries": 241,
+    "partial": true,
+    "errors": [],
+    "progress_kinds": [
+      "context-ready",
+      "target-started"
+    ]
+  },
+  "facts": [
+    "Pre-Cargo managed setup preceded Cargo by58.56s; its internal stage costs were not separately timed.",
+    "The Cargo process preceded the vstd verification driver by~81.8s; compilation announcements alone do not establish per-crate durations.",
+    "At deadline an exact vstd compiler and its shim/Z3 descendants were live; no requested demo verification start was observed.",
+    "CPU counters are process-wide accumulated user/system work, not last-interval utilization; parallel verifier threads can consume more than one CPU-second per wall second.",
+    "No verdict, rlimit-exhaustion, deadlock, pure-load or exclusive-emulation cause is established.",
+    "Original owned kill/reap and scratch cleanup remain unchanged; no proof prewarming or deadline extension occurred."
+  ],
+  "raw_files": {
+    "__pycache__/managed-evidence.cpython-312.pyc": {
+      "sha256": "26ae6ddbbc6890de928aec35584c433b30dceab608b43bb48d765db7aa9fd6af",
+      "bytes": 13441
+    },
+    "controller.json": {
+      "sha256": "ff2c97fa5089253b4606eb387f1b9894d3dffaec69108d8cbfb0127ecbb29ad3",
+      "bytes": 46
+    },
+    "managed-evidence.py": {
+      "sha256": "f47632dd991177ff40dc50685dc7e01b83236608b58be9ffaecce086825ca3fb",
+      "bytes": 9487
+    },
+    "metadata.json": {
+      "sha256": "3d323eab643b886632725a059412de058f23fd789388d0976b88c75ca5edf680",
+      "bytes": 1455
+    },
+    "reports/managed-01.events.jsonl": {
+      "sha256": "bb6673574b0089d47578c022434427abe1f23c528db1b38e477028a06215022c",
+      "bytes": 531
+    },
+    "reports/managed-01.operation.json": {
+      "sha256": "4813db396b552143d746d51c0b385ad593466c37d4e9fe54a97fe8c736f89045",
+      "bytes": 131
+    },
+    "reports/managed-01.stderr": {
+      "sha256": "9b660806219f69732a82b37f79ae87bdb5474b235a9c02b36d681e733c347287",
+      "bytes": 594
+    },
+    "reports/managed-01.stdout.json": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "reports/managed-01.timeout.json": {
+      "sha256": "2b611955f5d410f665e577723a9c68863c1d2b0e9be14eeb919d4b29cd8b479f",
+      "bytes": 191474
+    },
+    "stderr.log": {
+      "sha256": "0b23e68c02d6f9a76f59564e606c07f34a99156d97cf50a263535ffc4bec1ed8",
+      "bytes": 1766
+    },
+    "stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "terminal.json": {
+      "sha256": "cdf11ce53e468b8c7959007c2ca5fc8ac1d95213b84ad1258235f9c6c5d24e89",
+      "bytes": 144
+    },
+    "test-managed.py": {
+      "sha256": "a5d212a56e4fdaf9472c597f40f36878a24caab74865a014ca3944948490702b",
+      "bytes": 15159
+    }
+  },
+  "cleanup": {
+    "fixture_removed": true,
+    "same_identity_active_processes_after_cleanup": 0,
+    "same_identity_zombie_descendants": 19,
+    "limitation": "Kernel zombie process entries remain under container init; captured workers are no longer running and do not retain open descriptors. Original kill/reap semantics unchanged."
+  }
+}
