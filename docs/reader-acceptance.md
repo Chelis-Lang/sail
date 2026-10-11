@@ -95,6 +95,13 @@ future controller freezes. Running controller files must not be edited in place.
 
 ## Developer checks
 
+The daemon bounds retained complete-result cache storage while preserving full
+responses. Capacity remains charged through in-flight output after eviction;
+quota pressure serves an uncached response. This is a cache-retention bound,
+not a bound on cold encoding or process RSS. See the
+[ownership validation](validation/m7-result-frame-ownership.md). Freshness
+validation and the original reader thresholds remain unchanged.
+
 Run `python3 scripts/test-m7-reader-acceptance.py` for the fast harness regressions.
 They use actual old/new filesystem layouts and cover ambiguity, missing output,
 record/scope/revision/seal mismatches, substituted directories, symlinked files,
