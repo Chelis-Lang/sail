@@ -148,9 +148,9 @@ impl JobServer {
             }),
             Err(error) => {
                 self.state.stop.store(true, Ordering::SeqCst);
+                self.state.outputs.stop();
                 self.state.ready.notify_all();
                 let _ = worker.join();
-                self.state.outputs.stop();
                 if let Some(outputs) = outputs {
                     let _ = outputs.join();
                 }

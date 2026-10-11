@@ -147,3 +147,15 @@ fixed margin explicitly adds `(MAX_CLIENTS + 1) * size_of::<OutputOwner>()` for
 endpoint and constructor retirement, separately from existing Frames Arc shells.
 The admission also overcharges the complete OutputOwner inline size in addition
 to the primitive's checked retained bytes before its Box allocation.
+
+The proc sweep envelope uses the original shared aggregate 2 MiB read budget:
+global and fallback fdinfo bytes consume that same remaining counter. Their
+combined old/new read-buffer growth is at most 6 MiB, not two independent full
+allocations. Valid owned rows require at least 33 bytes, bounding found-key Vec
+growth by 3 MiB. The 11 MiB envelope also leaves 2 MiB for bounded kernel stat,
+path and metadata operations. Supported Linux has 4096-byte pages and
+MAX_ARG_STRLEN of 32 pages; the explicit 2 MiB environment copy charge is
+conservative. No production set_var/remove_var route exists.
+
+Endpoint spawn failure starts optional cancellation before joining either
+original worker or constructor, preserving prompt shutdown ownership.
