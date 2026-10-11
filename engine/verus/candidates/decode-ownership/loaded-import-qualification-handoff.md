@@ -1,8 +1,11 @@
 # Loaded-import candidate build and qualification handoff
 
 This is a runnable sequence for a **reviewed, unselected** candidate. Its exact
-source patch is still pending. It adds no source policy, proof run, test waiver
-or runtime selection. [The authority review](loaded-import-authority-review.md)
+full patch is frozen at
+`e6f54134fd8478b3b82f3d2513da3a883b70a7f6cd08d2af3985c207abf785ef`.
+Its [ordinary build record](loaded-import-ordinary-build.json) retains fresh vstd
+2,060/0 and actual library controls. The mandatory driver strict check failed; original source qualification has not
+started. The candidate remains unselected. [The authority review](loaded-import-authority-review.md)
 and [causal diagnostic](span-provenance-causal-diagnostic.json) retain the
 existing failures. A source implementation must receive review before step 2.
 
@@ -116,3 +119,34 @@ namespace, ambiguous/missing owners, unsupported raw types and state transitions
 Unrelated coordinate relocation alone is only a candidate positive; its actual
 previous-revision restoration and strict fresh-versus-cached/stock controls
 still have to pass.
+
+## Current execution
+
+The ordinary Linux build completed in 727.842 seconds with two build jobs and
+ordinary process priority. All 38 VIR and 43 driver library tests passed with
+independent cases scheduled serially. The initial strict-check attempt stopped
+because the pinned Linux toolchain lacked Clippy; that setup failure is retained.
+The exact Rust 1.98.1 component was installed, and only strict checks resumed.
+VIR all-target strict Clippy passed. Driver all-target strict Clippy failed
+`items_after_test_module`: the test-only `drop_probe` module precedes
+`memo_test_authority`. The exact failure and candidate remain retained. The
+correction must relocate the unchanged test module, receive a new patch identity
+and ordinary build, and pass strict checks before qualification. The original
+fourteen-stage pipeline has not started. No restored
+HIT, full same-input result or product qualification is inferred from this build.
+
+For space-aware checks after all ordinary-builder descendants have exited, the
+owned `target-verus` can be reused. Cargo may add the exact empty `.cargo-lock`
+and `.cargo-artifact-lock` files directly under its runtime directory. Retain
+those files' hashes and metadata, prove no process has an open descriptor, then
+move only those empty control files to evidence. Any other direct artifact or
+nonempty control file stops qualification. Validate every original manifest
+artifact and the exact thirteen-file inventory before and afterward; never
+reseal or move runtime artifacts.
+
+The post-check runtime audit retained two zero-byte Cargo control files, with
+no open descriptor holders. Evidence and the runtime are on different native
+mounts, so a rename returned `EXDEV`. The completed retention copied the exact
+empty bytes, checked their hash and unchanged source device/inode/size/ctime,
+then removed only those control files. All thirteen manifest artifact hashes
+and the exact direct-file inventory matched afterward, without resealing.
