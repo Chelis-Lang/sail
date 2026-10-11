@@ -16,6 +16,9 @@ shows a running stock verifier with pinned-Z3 children, followed by sleeping
 threads and no queued pipe bytes at the sampled instant. It does not identify a
 lock owner, prove a deadlock or establish emulation/overlapping work as cause.
 No retry, new limit or source-engine selection was made.
+The [post-terminal retained-source audit](m7-standard-tspec-retained-audit.md)
+places the wait after compiler/solver launch, with no sampled capture-file write
+wait or identified runner deadlock; its causal conclusion remains unknown.
 
 The remaining units completed: Verismo main was Same; page-table was Same on its
 expected verification failure; Anvil was Same with 143 compared functions.
