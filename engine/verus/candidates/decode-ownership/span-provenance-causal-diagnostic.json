@@ -1,0 +1,269 @@
+{
+  "version": 1,
+  "scope": "Independent causal diagnostic only; original strict replay failed and is unchanged",
+  "execution": "linux-x86_64-container-emulated-sharedload",
+  "nice": 0,
+  "compiler_bound_seconds": 600,
+  "product_qualified": false,
+  "selected_runtime_changed": false,
+  "patch_sha256": "0f55e6cf1eeec57927b14ad899a405275681b7c891f5df407bf70ca09aade24f",
+  "runtime_manifest_sha256": "9a6c9406891d15ba83820c7a799251f2609895509baee473a634baa42328a198",
+  "rust_verify_sha256": "ef82f2de8fb5553bbd76869de3f3c644f45eeed9433c3b22ecd20d82f9aad743",
+  "original_strict_replay": {
+    "exit_code": 1,
+    "elapsed_seconds": 64.604854905,
+    "failed_revision": 0,
+    "failed_assertion": "Exact stock.stderr equals engine.stderr",
+    "stock_stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+    "engine_stderr_sha256": "93b26c5db2e56d16c66fb9d9c5548f56e3a9ae2fc870b481cbf28bd64660367f",
+    "stderr_bytes_each": 234,
+    "delta": "First two module/function progress notes swapped; third note identical",
+    "full_verified": 9,
+    "full_errors": 0,
+    "controls_completed": false,
+    "summary_sha256": "8e65b62b3ddf73ce5e76b0292ea64c8faff10d1a7c66aa78f49967c98e15d43d",
+    "log_sha256": "4e18286eb2fb96ca5a55312f9f2a90b52d5bb03c3fe918904a0675d3c9fe9ccd"
+  },
+  "independent_collection": {
+    "qualification": false,
+    "controller_sha256": "3127ab3b74e9790973b0e4b10d8b18c174b5f5e914e43d4d8444b05df6d9635c",
+    "summary_sha256": "3b8dc97ee5b7c77dbfd6f73c6106f181aaf1ce14a7b169b793ee01227eb9950d",
+    "commands": [
+      {
+        "arm": "stock-note-control",
+        "exit_code": 0,
+        "elapsed_seconds": 18.956753841001046,
+        "stdout_sha256": "a3d5bde7ca3052c55f8dd72bfd1b26944bf4d024af607b7fe54cf02b8b68cd49",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      },
+      {
+        "arm": "stock-note-control",
+        "exit_code": 0,
+        "elapsed_seconds": 15.20995684099762,
+        "stdout_sha256": "73a81b5b3f9a2b2960cfd101f1444ad4cc8239e93713895fcd05367a83fbe02c",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      },
+      {
+        "revision": 0,
+        "arm": "stock",
+        "exit_code": 0,
+        "elapsed_seconds": 11.617938797000534,
+        "stdout_sha256": "2b703e9fa2cb193e6d6947e1195b349bc45f4ca00730e5d99b8a3edfb17b7a29",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      },
+      {
+        "revision": 0,
+        "arm": "engine",
+        "exit_code": 0,
+        "elapsed_seconds": 17.39340642499883,
+        "stdout_sha256": "8e2ad975242d7feb62a4501159ce6ff0f270aa8f9552aa47f3e6b986e078a1cd",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      },
+      {
+        "revision": 1,
+        "arm": "stock",
+        "exit_code": 0,
+        "elapsed_seconds": 16.304194008000195,
+        "stdout_sha256": "2cd4bb0d1a658223cdd0c7a2bc3e2d3678bbab041b10aac73d3463b54d9ee973",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      },
+      {
+        "revision": 1,
+        "arm": "engine",
+        "exit_code": 0,
+        "elapsed_seconds": 24.658409510997444,
+        "stdout_sha256": "869e2b77c7bdc395d160194938b33e8fd773b75760b1793db8e69fcc652a3d7a",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      },
+      {
+        "revision": 2,
+        "arm": "stock",
+        "exit_code": 0,
+        "elapsed_seconds": 16.183334591001767,
+        "stdout_sha256": "67a5577c1180b23ff8fa899de1f75bebcde97453a8816e307f28f4fdd1ae8caf",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      },
+      {
+        "revision": 2,
+        "arm": "engine",
+        "exit_code": 0,
+        "elapsed_seconds": 14.351964215002226,
+        "stdout_sha256": "ab958877479f44468b89c6173bbd8a1169768f7407f7509e07a13d16df75ffec",
+        "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+        "stderr_bytes": 234,
+        "verification_results": {
+          "encountered-error": false,
+          "encountered-vir-error": false,
+          "success": true,
+          "verified": 9,
+          "errors": 0,
+          "is-verifying-entire-crate": true
+        }
+      }
+    ],
+    "all_eight_stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+    "note_order_variation_in_stock_controls_observed": false,
+    "strict_revision_comparisons": [
+      {
+        "revision": 0,
+        "zero_exit_codes": true,
+        "stderr_bytes_equal": true,
+        "verification_results_equal": true,
+        "function_details_equal": true,
+        "all_actual_hit_oracles_pass": true,
+        "previous_revision_focus_restore": null
+      },
+      {
+        "revision": 1,
+        "zero_exit_codes": true,
+        "stderr_bytes_equal": true,
+        "verification_results_equal": true,
+        "function_details_equal": true,
+        "all_actual_hit_oracles_pass": true,
+        "previous_revision_focus_restore": true
+      },
+      {
+        "revision": 2,
+        "zero_exit_codes": true,
+        "stderr_bytes_equal": true,
+        "verification_results_equal": true,
+        "function_details_equal": true,
+        "all_actual_hit_oracles_pass": true,
+        "previous_revision_focus_restore": false
+      }
+    ]
+  },
+  "first_provenance_mismatch": {
+    "revision": 2,
+    "preparation_key": "cca97f3b775f34d6aa0657db1ce0f9432b4dfd042eb4feec17957a5094b84fa1",
+    "span_identity": [
+      563,
+      [
+        2208441662476345389,
+        316229852143522
+      ],
+      "vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)"
+    ],
+    "span_kind": "imported",
+    "expected_digest": "0849384a493a9a1bf5c7291b96da57c142e578edb3edc00340041ec687b95967",
+    "actual_digest": "80d85bb04aad4274130455992cfc1a6cf584066170557b8944876b4dd8de6be6",
+    "matching_prior_store_count": 11,
+    "matching_prior_inventory_count": 1,
+    "contributing_owner_count": 454,
+    "owners_changed": 454,
+    "only_changed_owner_fields": [
+      "start"
+    ],
+    "uniform_start_delta_bytes": 25,
+    "unchanged_owner_fields": [
+      "index",
+      "name",
+      "length",
+      "hash",
+      "foreign"
+    ],
+    "digest_recomputation": "Exact legacy bincode imported-tag/data and owner tuple encodings independently reproduce all 11 captured prior store digests and both expected/actual mismatch digests",
+    "direct_same_identity_prior_store_captured": false,
+    "direct_store_missing_reason": "The bounded store trace stopped before that identity; independent mismatch arm remained available",
+    "selected_original_to_current_mapping_state_captured": false,
+    "raw_delta_sha256": "1d576f989b153f2c8d4d8ba25f711e35235e1add739c362829d548865fafdb1f",
+    "raw_comparison_sha256": "51d646ce0ffe3dc698c469d0ad3180361b85b9ef6d14da0e7862367c8633a97f"
+  },
+  "raw_events": [
+    {
+      "revision": 0,
+      "sha256": "da0618c6692221f1d595aa2630d5251aa9ad550f4abbe258159cf7472f5ecf4e",
+      "trace_records": 47,
+      "unavailable": [
+        {
+          "reason": "observation allocation or serialization limit"
+        }
+      ]
+    },
+    {
+      "revision": 1,
+      "sha256": "5bba6ce19a52d51931d8341e34178bb52ef1be78cbd9082f6bdeb5bdf6f9faf5",
+      "trace_records": 0,
+      "unavailable": []
+    },
+    {
+      "revision": 2,
+      "sha256": "2a3f322bab2724c97ff0bd43385ccfba32e5b6be6a604eb9ec99461b98269461",
+      "trace_records": 26,
+      "unavailable": [
+        {
+          "reason": "observation allocation or serialization limit"
+        }
+      ]
+    }
+  ],
+  "interpretation": [
+    "The recorded contributing-field cause is session-global relocation, not changed foreign content or owner names.",
+    "The exact selected original-to-current mapping and Loaded/Delayed state remain unobserved; no owner/raw check may be removed from this evidence alone.",
+    "The independent collection does not waive the original note-order failure or establish previous-revision reuse.",
+    "No VI0001 attribution: this stderr-note ordering discrepancy is distinct from its SMT arrow-symbol ordering issue."
+  ]
+}
