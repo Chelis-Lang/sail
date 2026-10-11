@@ -1,0 +1,55 @@
+{
+  "kind": "managed_setup_subphase_timing_candidate",
+  "base_product_commit": "777b86a539f4f6f42f3fab1cf97e176a22f6ac5c",
+  "scope": "Observation-only optional timing implementation; no cold verifier run repeated or performance improvement claimed",
+  "selection": "existing SAIL_JOB_EVENTS only; unchanged context environment exclusion",
+  "bounds": {
+    "files_per_process": 64,
+    "rows_per_file": 64,
+    "bytes_per_file": 16384,
+    "threads_added": 0,
+    "dependencies_added": 0
+  },
+  "privacy": "Fixed phase enum,PID,relative start/elapsed milliseconds only; no paths,args,source,config,environment values or solver/model data",
+  "source_files": {
+    "crates/sail-verus/src/managed/diagnostics.rs": {
+      "sha256": "829ba9c08276507f2171fbf45202e02b3f2b06f422e196fc721c79044ed54883",
+      "bytes": 9949
+    },
+    "crates/sail-verus/src/managed/runner.rs": {
+      "sha256": "3e30e669a0adb1c49e4d8ce03823a261da29ef92de56977ad94eaccd41a9880d",
+      "bytes": 76198
+    },
+    "crates/sail-verus/src/managed/mod.rs": {
+      "sha256": "e904d91427e4683d6654a5b83216fe32a6d19a655d846b10d0a7660dffd8db8b",
+      "bytes": 808
+    }
+  },
+  "validation": {
+    "execution": "native macOS arm64 host, isolated worktree target",
+    "diagnostic_controls": {
+      "passed": 6,
+      "elapsed_seconds": 0.01
+    },
+    "unchanged_runner_controls": {
+      "passed": 7,
+      "elapsed_seconds": 0.02
+    },
+    "strict_all_targets_clippy": "pass",
+    "fmt": "pass",
+    "initial_clippy_attempt": "failed similar_names/items_after_statements/naive_bytecount/assert_is_empty in new diagnostic code; corrected without lint exceptions",
+    "initial_second_unit_attempt": "five controls passed with Atomic::fetch_update deprecation warning; replaced with pinned-toolchain try_update before final strictClippy/tests"
+  },
+  "preserved_behavior": [
+    "Every existing byte hash/probe/metadata call/observation barrier remains.",
+    "No proof or currentness authority comes from diagnostic records.",
+    "File/sink failure and budget exhaustion disable diagnostics without changing original errors.",
+    "Context total is inclusive and must not be added to constituent phases.",
+    "Timers begin in managed runner; CLI configuration/daemon connection remain outside their interval.",
+    "The original240s and other acceptance deadlines/assertions remain unchanged."
+  ],
+  "pending": [
+    "Native Linux full gate after lead integration",
+    "Actual cold subphase timing run; prior standalone240failure remains failed"
+  ]
+}

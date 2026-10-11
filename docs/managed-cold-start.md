@@ -59,3 +59,37 @@ extension that can admit a late result.
 Reads use nonblocking, no-follow descriptors and refuse nonregular files, so a
 substituted FIFO cannot make diagnostics wait for a writer. The small evidence
 controls run in the workspace gate; they do not prewarm or invoke Verus.
+
+With the existing `SAIL_JOB_EVENTS` opt-in, managed setup also writes adjacent
+`*.setup-PID-SERIAL.jsonl` files. They record fixed phase names, PID and relative
+start/elapsed milliseconds. They contain no arguments, paths, source,
+configuration, environment values, diagnostics or solver/model contents. Each
+file is created exclusively with mode 0600; an existing file, alias or special
+file disables that output. Limits are 64 files per process, 64 rows and 16 KiB
+per file. Failure, exhaustion or missing parent directories disables this
+optional evidence without changing verification or error handling. There are
+no observation threads, dependencies or changes to identity inputs.
+
+The phases separate Cargo metadata/initial configuration; complete runtime
+context construction; executable and optional engine byte validation; Python
+closure identity; toolchain probes; sysroot observer/lease acquisition; initial
+sysroot hashing and validation; context configuration/sealing; owned aliases;
+initial dependency/source snapshot; coherent input guards; the second snapshot;
+input validation; target cleanup; and invocation sealing. `runtime-context` is
+an inclusive parent of its constituent phases, so its duration must not be
+added to theirs. Snapshot and guard phases retain all their original reads,
+probes and barriers. They are timings of those existing blocks, not evidence
+that one specific hash or syscall caused a delay.
+
+Timing begins in the managed runner, after CLI configuration and daemon
+connection setup. A final row is written when its block exits, including error
+returns; a forcibly killed unfinished block may have no completed row. Append
+I/O adds observation overhead and kernel operations are not interruptible by
+these limits. These records diagnose stage costs; they do not extend the
+240-second check or qualify performance, and no cold verifier run has yet been
+repeated with the new subphase timers.
+Choose an event destination outside the workspace and other declared inputs;
+otherwise writing diagnostics can itself invalidate source observation. The
+managed acceptance harness already does this. The timer's no-follow creation
+protects its final filename; its parent directory is an explicitly chosen
+private diagnostic destination, not a trust boundary for verification.
