@@ -193,8 +193,12 @@ Later streams show only the selected crate being checked, without the old macro
 dependency rebuild pattern. Complete late-EXEC output correctly rejects E0499
 by cleanup, but its publication time against the deadline was not retained.
 Completed jobs have 3.17–3.47 seconds beyond the reported runner time, which
-excludes some publication work. Measuring that seam is the next core task;
-no single stage is established as its cause.
+excludes some publication work. The subsequent instrumented run measures
+4.73–4.88 seconds of post-child independent freshness construction in two
+completed jobs. Parsing and managed publication take milliseconds. That
+measurement directs the next change toward preserving valid input observers
+across unchanged metadata publication; it does not identify every operation
+inside freshness or qualify a speedup.
 
 The [async HTTP candidate](decisions/0037-owned-async-shared-http-transport.md)
 passes its 39 affected controls but increases combined helper/I/O CPU and complete
@@ -222,14 +226,17 @@ Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Complete the selected runtime’s product integration. Reuse ordinary Cargo
-   dependencies when only the repair focus changes, while retaining exact
-   per-request proof contexts, fresh verified targets, independent full validation
-   and complete receipts. Source qualification, packaging and the coherent pin
-   are already complete; product acceptance remains open.
-3. Finish the current live reader stage diagnosis and fix any measured dominant
-   cost. Run the retained real-project CLI/MCP scenarios with complete genuine
-   Current evidence and unchanged deadlines.
+2. Reduce measured post-child freshness construction. Preserve continuous input
+   observation when metadata bytes are unchanged, without skipping independent
+   runtime/input validation or publishing Completed before results are ready.
+   Ordinary dependency reuse and source qualification are implemented; installed
+   product acceptance remains open.
+3. Validate the full-result ownership change that releases the output-cell lock
+   during independent input inspection. Component controls must precede the
+   complete four-client, 200-sample reader census and retained real-project
+   CLI/MCP scenarios. Separately validate bounded small HTTP body reads against
+   the original eight-reader 250 ms check. These candidates remain unselected
+   until their correctness controls and complete-operation measurements pass.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
 5. Measure every frozen HumanEval and Vest repair cycle for three rounds, retaining
