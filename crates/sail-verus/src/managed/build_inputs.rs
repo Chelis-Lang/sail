@@ -12,7 +12,11 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+#[path = "build_inputs_family.rs"]
+pub(super) mod family;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BuildInput {
     package_id: String,
     package_name: String,
@@ -21,6 +25,8 @@ struct BuildInput {
     env: BTreeMap<String, Option<String>>,
     digest: String,
     covered: bool,
+    #[serde(default)]
+    output: Option<(PathBuf, String)>,
 }
 
 fn current(record: &BuildInput, environment: Option<&BTreeMap<String, String>>) -> (String, bool) {
@@ -28,17 +34,23 @@ fn current(record: &BuildInput, environment: Option<&BTreeMap<String, String>>) 
     let env: BTreeMap<String, Option<String>> = record
         .env
         .keys()
-        .map(|k| {
-            (
-                k.clone(),
-                environment.map_or_else(|| std::env::var(k).ok(), |e| e.get(k).cloned()),
-            )
-        })
+        .map(|k| (k.clone(), effective_value(k, environment)))
         .collect();
     (
         digest(&serde_json::to_vec(&(files, env)).unwrap_or_default()),
         complete,
     )
+}
+
+fn effective_value(key: &str, environment: Option<&BTreeMap<String, String>>) -> Option<String> {
+    // The pinned Cargo-Verus sets this value unconditionally before Cargo.
+    // invoke() also binds it explicitly, without changing process environment.
+    // Old records hashed from the parent value fail the new content comparison.
+    if key == "RUSTC_BOOTSTRAP" {
+        Some("1".to_owned())
+    } else {
+        environment.map_or_else(|| std::env::var(key).ok(), |e| e.get(key).cloned())
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -119,7 +131,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             .parent()
             .unwrap_or(Path::new("."))
             .join("output");
-        let text = std::fs::read_to_string(output).unwrap_or_default();
+        let text = std::fs::read_to_string(&output).unwrap_or_default();
         let mut paths = Vec::new();
         let mut env = BTreeMap::new();
         for line in text.lines() {
@@ -131,7 +143,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
                 paths.push(package_dir.join(p));
             }
             if let Some(key) = line.strip_prefix("rerun-if-env-changed=") {
-                env.insert(key.to_owned(), std::env::var(key).ok());
+                env.insert(key.to_owned(), effective_value(key, None));
             }
         }
         // With no declaration Cargo watches the entire package. Hash that same
@@ -147,11 +159,22 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             env,
             digest: String::new(),
             covered: true,
+            output: Some((output, digest(text.as_bytes()))),
         };
         let (hash, complete) = current(&record, None);
         record.digest = hash;
         record.covered = complete;
-        previous.retain(|r| r.package_id != record.package_id);
+        // Cargo can emit separate host/target units for one package. Keep
+        // every distinct output contract; the last unit cannot certify others.
+        previous.retain(|r| {
+            r.package_id != record.package_id
+                || r.output.as_ref().is_some_and(|(path, _)| {
+                    record
+                        .output
+                        .as_ref()
+                        .is_none_or(|(actual, _)| path != actual)
+                })
+        });
         previous.push(record);
     }
     json(path, &previous)
@@ -176,6 +199,7 @@ mod tests {
             env: BTreeMap::new(),
             digest: String::new(),
             covered: true,
+            output: None,
         };
         record.digest = current(&record, None).0;
         let selected_state = root.join("selected.json");
@@ -216,6 +240,7 @@ mod tests {
             env: BTreeMap::new(),
             digest: String::new(),
             covered: true,
+            output: None,
         };
         record.digest = current(&record, None).0;
         let state = root.join("state.json");
