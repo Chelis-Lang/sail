@@ -36,7 +36,12 @@ The [reader acceptance guide](reader-acceptance.md) explains genuine proof setup
 owned-job archival, compatible storage layouts and failure handling.
 [Whole-result profiling](result-frame-profile.md) records transfer and complete
 response decoding costs without changing reader acceptance.
-The [source preparation audit](../engine/verus/candidates/decode-budget/README.md)
+The [interactive source engine](../engine/verus/README.md) describes the selected
+qualified patch, coherent prebuilt artifact, exact lowering oracle and runtime
+identity. Its [qualification](../engine/verus/qualification-linux.json) passes
+the source-level checks; the original product repair and reader workflows remain
+separate, open acceptance requirements.
+The historical [source preparation audit](../engine/verus/candidates/decode-budget/README.md)
 records allocation ownership, phase bounds and outstanding combined-runtime
 checks for the unselected engine candidate.
 Its [closed ownership refinement](../engine/verus/candidates/decode-ownership/README.md)
