@@ -312,6 +312,67 @@ def run_owned(child, limit, groups, module, closure, observe):
         raise
 
 
+class OwnedPhaseRunner:
+    """Shared birth-checked phase lifecycle for local gates and product install."""
+    def __init__(self, root, source, target, module, closure, record, check):
+        self.root, self.source, self.target = root, source, target
+        self.module, self.closure, self.record, self.check = module, closure, record, check
+        self.active, self.spawning = None, False
+
+    def interrupt(self, number, _frame):
+        self.closure.uncertain("controller signal " + str(number))
+        for value in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            signal.signal(value, signal.SIG_IGN)
+        raise InterruptedError("native controller signal " + str(number))
+
+    def require_idle(self):
+        self.closure.require()
+        if self.active is not None or self.spawning:
+            raise RuntimeError("actor ownership unavailable")
+
+    def run(self, name, command, limit):
+        self.require_idle()
+        self.check()
+        row = {"name": name, "command": command, "limit_seconds": limit}
+        self.record["phases"].append(row)
+        started, groups = time.monotonic(), None
+        env = os.environ.copy()
+        env.update(CARGO_BUILD_JOBS="2", NEXTEST_TEST_THREADS="1", CARGO_TARGET_DIR=self.target, PYTHONDONTWRITEBYTECODE="1")
+        try:
+            with (self.root / (name + ".log")).open("wb") as log:
+                self.spawning = True
+                self.active = subprocess.Popen(command, cwd=self.source, env=env, stdout=log,
+                                               stderr=subprocess.STDOUT, start_new_session=True)
+                self.spawning = False
+                pinned = self.module.row(self.active.pid)
+                if pinned is None or pinned["pgid"] != self.active.pid:
+                    self.closure.uncertain("phase birth unavailable")
+                    raise RuntimeError("phase birth unavailable; owner audit required")
+                groups = self.module.Groups(pinned)
+                row["owner"] = pinned
+                # Put potentially failing checkpoint inside the owned wait cleanup.
+                def observe(value):
+                    save(self.root / "result.json", self.record)
+                    observe_owned(self.module, value)
+                code = run_owned(self.active, limit, groups, self.module, self.closure, observe)
+                row["exit_code"] = code
+                self.active = None
+                audit = group_closure(self.module, groups)
+                row["group_closure"] = audit
+                if audit["survivors"] or audit["unavailable"] or groups.partial:
+                    self.closure.uncertain("known descendant-group closure incomplete")
+                self.require_idle()
+                self.check()
+                return code
+        finally:
+            row["elapsed_seconds"] = time.monotonic() - started
+            if (self.root / (name + ".log")).is_file():
+                row["log_sha256"] = sha(self.root / (name + ".log"))
+            if groups is not None:
+                row["known_groups"] = list(groups.known.values())
+            save(self.root / "result.json", self.record)
+
+
 def retained_images(root, paths):
     rows, errors, total = [], [], 0
     destination = root / "retained-images"
@@ -353,65 +414,24 @@ def native(root):
     record = {"status": "RUNNING", "revision": config["revision"], "archive_sha256": config["archive_sha256"],
               "jobs": 2, "nextest_independent_tests": 1, "phases": [], "scope": "local workspace gate then original solver suite; no installed-product/corpus/performance credit"}
     closure = Closure()
-    active = None
-    spawning = False
-    def interrupt(number, _frame):
-        if active is not None or spawning:
-            closure.uncertain("signal while command/spawn active")
-        for value in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-            signal.signal(value, signal.SIG_IGN)
-        raise InterruptedError("native controller signal " + str(number))
-    for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-        signal.signal(number, interrupt)
-    def run(name, command, limit):
-        closure.require()
+    def check():
         verify_source(source, expected)
         if os.readlink(source / "target") != config["target"] or sha(root / "source.tar") != config["archive_sha256"]:
             raise ValueError("target/archive identity changed")
         verify_protected(protected)
-        if module.row(1) is None or module.row(1)["start"] != config["pid1_birth"]:
+        first = module.row(1)
+        if first is None or first["start"] != config["pid1_birth"]:
             raise ValueError("container birth changed")
-        nonlocal active, spawning
-        row = {"name": name, "command": command, "limit_seconds": limit}
-        record["phases"].append(row)
-        started = time.monotonic()
-        env = os.environ.copy()
-        env.update(CARGO_BUILD_JOBS="2", NEXTEST_TEST_THREADS="1", CARGO_TARGET_DIR=config["target"], PYTHONDONTWRITEBYTECODE="1")
-        groups = None
-        try:
-            with (root / (name + ".log")).open("wb") as log:
-                spawning = True
-                active = subprocess.Popen(command, cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-                spawning = False
-                pinned = module.row(active.pid)
-                if pinned is None or pinned["pgid"] != active.pid:
-                    closure.uncertain("phase birth unavailable")
-                    raise RuntimeError("phase birth unavailable; owner audit required")
-                groups = module.Groups(pinned)
-                row["owner"] = pinned
-                save(root / "result.json", record)
-                code = run_owned(active, limit, groups, module, closure, lambda value: observe_owned(module, value))
-                row["exit_code"] = code
-                active = None
-                audit = group_closure(module, groups)
-                row["group_closure"] = audit
-                if audit["survivors"] or audit["unavailable"] or groups.partial:
-                    closure.uncertain("known descendant-group closure incomplete")
-                closure.require()
-                verify_source(source, expected)
-                verify_protected(protected)
-                if name == "gate":
-                    record["retention"] = retained_images(root, config["retain_elf"])
-                    if record["retention"]["errors"]:
-                        raise ValueError("requested executable retention incomplete")
-                return code
-        finally:
-            row["elapsed_seconds"] = time.monotonic() - started
-            if (root / (name + ".log")).is_file():
-                row["log_sha256"] = sha(root / (name + ".log"))
-            if groups is not None:
-                row["known_groups"] = list(groups.known.values())
-            save(root / "result.json", record)
+    runner = OwnedPhaseRunner(root, source, config["target"], module, closure, record, check)
+    for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(number, runner.interrupt)
+    def run(name, command, limit):
+        code = runner.run(name, command, limit)
+        if name == "gate":
+            record["retention"] = retained_images(root, config["retain_elf"])
+            if record["retention"]["errors"]:
+                raise ValueError("requested executable retention incomplete")
+        return code
     try:
         verify_source(source, expected)
         if os.readlink(source / "target") != config["target"] or sha(root / "source.tar") != config["archive_sha256"]:
@@ -425,8 +445,7 @@ def native(root):
         save(root / "primary.json", record)
         try:
             closure.require()
-            if active is not None or spawning:
-                raise RuntimeError("actor ownership unavailable")
+            runner.require_idle()
             verify_source(source, expected)
             if os.readlink(source / "target") != config["target"] or sha(root / "source.tar") != config["archive_sha256"]:
                 raise ValueError("target/archive identity changed")
