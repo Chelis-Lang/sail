@@ -1,5 +1,6 @@
 //! Owned Cargo invocation, artifact validation, and complete report reuse.
 
+use super::diagnostics::{Diagnostics, Phase};
 use super::files::{digest, event, file_digest, json};
 use super::input::{metadata, snapshot_metadata};
 use super::receipts::{Invocation, Receipt, Runtime, artifact_hashes, complete, read};
@@ -97,7 +98,12 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     clippy::too_many_lines,
     reason = "The context explicitly enumerates all executable and environment bindings."
 )]
-fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<Context> {
+fn context(
+    config: &Config,
+    engine: Option<&crate::engine::Request>,
+    diagnostics: &Diagnostics,
+) -> Result<Context> {
+    let binaries = diagnostics.phase(Phase::RuntimeBinaries);
     let mut identity = Vec::new();
     let mut hashed = super::files::FileDigests::default();
     if let Some(engine) = engine {
@@ -122,6 +128,8 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
             identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
         }
     }
+    drop(binaries);
+    let helper = diagnostics.phase(Phase::HelperIdentity);
     // Python is an optional Linux freshness dependency. Its exact interpreter,
     // loaded stdlib and ELF closure join the context; unavailable coverage still
     // permits fresh verification but the coherent guard cannot publish Current.
@@ -129,6 +137,8 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     if let Some(helper) = super::lease::helper_identity() {
         identity.extend(helper);
     }
+    drop(helper);
+    let toolchains = diagnostics.phase(Phase::ToolchainProbes);
     let wrapper = actual_wrapper(&config.cargo_verus)?;
     identity.push((
         wrapper.to_string_lossy().into_owned(),
@@ -167,16 +177,24 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
             .into_owned(),
         hashed.hash(&wrapper.with_file_name("rust_verify"))?,
     ));
+    drop(toolchains);
+    let guard = diagnostics.phase(Phase::SysrootGuard);
     // Observe all installed-target namespaces before inventory collection and
     // acquire kernel leases before the first eligible byte read. Earlier hashes
     // remain ineligible: this owner cannot authorize a pre-guard digest.
     let mut sysroots = super::sysroot::Baseline::begin(&sysroots, |path| hashed.contains(path));
+    drop(guard);
+    let sysroot_bytes = diagnostics.phase(Phase::SysrootHash);
     for path in sysroots.paths().to_vec() {
         let hash = hashed.hash(&path)?;
         sysroots.capture(&path, &hash);
         identity.push((path.to_string_lossy().into_owned(), hash));
     }
+    drop(sysroot_bytes);
+    let barrier = diagnostics.phase(Phase::SysrootBarrier);
     let _ = sysroots.complete();
+    drop(barrier);
+    let configuration = diagnostics.phase(Phase::ContextConfiguration);
     // The exact Cargo configuration bytes join the context, not only its path.
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
@@ -245,6 +263,7 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     json(&state.join(format!("{hash}.link")), &identity_sha)?;
+    drop(configuration);
     Ok(Context { hash, sysroots })
 }
 
@@ -1237,6 +1256,8 @@ pub(crate) fn run_engine(
         ));
     }
     let started = Instant::now();
+    let diagnostics = Diagnostics::new();
+    let metadata_phase = diagnostics.phase(Phase::Metadata);
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
     super::configuration::check(&invocation, &config.args)?;
@@ -1257,7 +1278,10 @@ pub(crate) fn run_engine(
             "no selected Cargo targets declare package.metadata.verus.verify=true",
         ));
     }
-    let Context { hash, mut sysroots } = context(config, engine.as_ref())?;
+    drop(metadata_phase);
+    let context_phase = diagnostics.phase(Phase::RuntimeContext);
+    let Context { hash, mut sysroots } = context(config, engine.as_ref(), &diagnostics)?;
+    drop(context_phase);
 
     let run_id = format!(
         "{}-{}",
@@ -1266,7 +1290,10 @@ pub(crate) fn run_engine(
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos())
     );
+    let owned_paths = diagnostics.phase(Phase::OwnedPaths);
     let (paths, _lock) = prepare(config, &workspace_root, &hash, &run_id)?;
+    drop(owned_paths);
+    let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
     let (sources, source_coverage) = super::source_inputs::load(&source_state);
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
@@ -1289,14 +1316,20 @@ pub(crate) fn run_engine(
     if !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
+    drop(initial_snapshot);
+    let guards = diagnostics.phase(Phase::InputGuards);
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
     let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
     let mut coherent = super::coherent::Guard::begin(&before);
+    drop(guards);
+    let monitored_snapshot = diagnostics.phase(Phase::MonitoredSnapshot);
     // Establish the revision again after the watcher is live, closing the setup
     // interval between metadata collection and native observation.
     let monitored = snapshot_metadata(&data, &extras);
     before.revision = monitored.revision;
     before.observation_paths = monitored.observation_paths;
+    drop(monitored_snapshot);
+    let input_barrier = diagnostics.phase(Phase::InputBarrier);
     before.complete &= monitored.complete && coherent.ready();
     let stamp_before = super::input::mutation_stamp(&before);
     super::configuration::check(&invocation, &config.args)?;
@@ -1316,6 +1349,8 @@ pub(crate) fn run_engine(
         "complete":before.complete && script_coverage && monitor.complete() && absent.ready(),
         "source_observation":source_state.is_file()
     }));
+    drop(input_barrier);
+    let cleanup = diagnostics.phase(Phase::TargetCleanup);
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
         || focused(&config.args)
@@ -1350,6 +1385,8 @@ pub(crate) fn run_engine(
     if !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
+    drop(cleanup);
+    let seal = diagnostics.phase(Phase::InvocationSeal);
     let runtime = Runtime {
         run_id: run_id.clone(),
         args: config.args.clone(),
@@ -1401,6 +1438,7 @@ pub(crate) fn run_engine(
         engine,
     };
     json(&paths.runtime, &runtime)?;
+    drop(seal);
     let mut exit = invoke(config, &paths, err)?;
     let (mut targets, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
     if exit == Some(0) && !missing.is_empty() {
@@ -1721,7 +1759,7 @@ mod tests {
             force: true,
         };
         std::fs::write(runtime.join("z3"), b"tampered")?;
-        let error = context(&config, Some(&request))
+        let error = context(&config, Some(&request), &Diagnostics::default())
             .err()
             .ok_or("corrupt engine was accepted")?;
         assert_eq!(error.code, "SAIL3120");
