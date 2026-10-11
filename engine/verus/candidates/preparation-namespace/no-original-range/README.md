@@ -66,3 +66,13 @@ refusal, prepopulated memo sensitivity, and the actual direct/parallel validator
 adapter. Existing physical/drop controls and the actual finish-call-removal
 counterfactual remain required. None of these planned controls replaces full
 runtime or product acceptance.
+
+`run-source-controls.py` prepares the sole complete library/strict invocation in
+the closed existing private target. It binds the prior positive retirement
+result and exact source, saves the original source before applying only the role
+delta, checks the composed full patch in reverse, then runs every VIR/driver
+`sail_` control serially and both all-target strict checks. Internal concurrency
+is retained. It strips engine selectors and records ordinary scheduling,
+resource/actor identity, raw phase logs, source closure and all four prior runtime
+seals. Launch remains contingent on the exact composed-source review; no runtime
+or proof acceptance is copied from the previous target's test executable.

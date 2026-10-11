@@ -39,5 +39,7 @@
     "full against exact pinned files",
     "retirement then narrow role delta",
     "full reverse against composed source"
-  ]
+  ],
+  "positive_source_control_result_sha256": "3d5cd3a6b9f509c33e8fa345c5a38792ee90ed9431d67bba21b9f2ae1019bc19",
+  "source_controller_sha256": "326632795b00d68e8f22351372a3bba3462fc014e94140b4cbab7502be4be6ba"
 }
