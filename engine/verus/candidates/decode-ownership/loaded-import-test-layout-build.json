@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "scope": "Corrected ordinary Linux candidate build and actual strict source controls; original qualification running",
+  "scope": "Corrected ordinary Linux build and strict source controls passed; original source qualification failed",
   "patch_sha256": "506679543779f2856899006d7d70420ce85d47cb74c9873a064f97ab82c44984",
   "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
   "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
@@ -126,7 +126,7 @@
     "scope": "Conservative ownership proof; not measured RSS or qualification"
   },
   "original_14_stage_pipeline": {
-    "status": "running",
+    "status": "failed",
     "compiler_limit_seconds": 600,
     "assertions_changed": false,
     "selected": false,
@@ -146,7 +146,9 @@
       "engine/verus/candidates/actor-observation.py": "d01de79ee9de89b823d7ccfb0efa1474a2ed4185f519bffd925e8546895edc34",
       "engine/verus/candidates/test-real-he-same-input.py": "2bb7a3817dd6aecfba438f3dc0ab78aa82012527c3977fcd6365ce5dbcac67d2",
       "engine/verus/candidates/test-private-span-migration.py": "dd57b4ef82a9f40720946e89ebb18c7aecd915c84df309627c59ca8896f4deaf"
-    }
+    },
+    "failure_record": "loaded-import-qualification-failure.json",
+    "source_gates_passed": false
   },
   "previous_failed_candidate": {
     "patch_sha256": "e6f54134fd8478b3b82f3d2513da3a883b70a7f6cd08d2af3985c207abf785ef",
