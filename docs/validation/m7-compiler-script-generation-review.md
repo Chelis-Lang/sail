@@ -74,8 +74,48 @@ IDs first, then collect their clean names; an ambiguous Cargo package selector
 must fail safely rather than authorize old output. A same-name, different-ID
 control must cover the invalidation of only one package.
 
-Final corrected source bytes and actual controls are pending; this document does
-not approve either draft for production activation.
+## Final static review
+
+The corrected source closes the findings above:
+
+| File | SHA-256 |
+| --- | --- |
+| `build_inputs_family.rs` | `bc9384861154398b54e557bed0960bb202a947de56024d17976cba23a695f125` |
+| `build_inputs.rs` | `16809219e7094287fafb416f23e4b1980d3aa45d312fcd31f1f6c02f0d7db5fb` |
+| `runner.rs` | `b77325aac006c1ccfc8ea13d2e11cdac566de81e8c2e6982265d9f87c687798f` |
+
+Late cleanup now compares package IDs before collecting clean names. Every
+distinct output contract survives the actual update path; invalidating one unit
+refuses the package's complete export. Recheck remains after the original live
+Input barrier and before Cargo invocation, under the same exclusive family lock.
+
+Missing generations retain previous declarations solely as uncovered observation
+paths: `covered=false`, `output=None`, and exact current metadata membership.
+These records force cleaning and cannot authorize old output. Keeping their
+paths lets the existing observers cover the fresh declaration-establishment run.
+Removed dependencies are discarded rather than forcing an invalid Cargo clean.
+Recheck retires these observation-only records after their paths have entered the
+original inventory; fresh execution supplies new output-bound records.
+
+The initial `script_coverage` flag affects the context-ready event and declaration
+note, not `before.complete` or the final Current predicate. Final Current still
+requires fresh `after_coverage`, original source coverage, equal revisions and
+every original barrier. The drafted initialization control exercises absent
+begin, forced clean observation, actual update, publication and a second begin
+that admits complete observations.
+
+Older supported CLI binaries cannot share this writer generation merely by
+selecting the same engine: `managed_cli::config` selects the actual Sail
+executable, and the compiler-family digest includes its independently read path
+and contents along with the original tool identities. The seven-field borrowed
+engine identity omits only the focused function.
+
+Nine drafted Linux controls cover generation abort, watcher setup, multiple
+output units, binding refusals, effective environment, malformed/nonregular
+exports, same-name package IDs, initialization and dependency removal. They have
+not executed at this review point. The static review has no remaining generation
+or authority blocker; affected compilation, controls and strict checks remain
+required. This does not establish product repair timing or proof acceptance.
 
 Required sensitivity includes aborting a later generation, restoring external
 bytes and mtime, and returning to both the old and a new proof context; changing
