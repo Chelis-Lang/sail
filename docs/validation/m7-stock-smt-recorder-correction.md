@@ -43,7 +43,9 @@ An earlier 25 ms sender timeout was superseded before execution because it
 did not accommodate that observer window. An initial static preparation used an
 incorrect transcript filename; its missing-file
 error is retained, and the corrected path resolves the same sealed transcript.
-No compiler or solver was launched. Executable controls remain pending. Neither pure
+No compiler or solver was launched. The separate [executable sequence](m7-stock-smt-recorder-corrected-terminal.md)
+subsequently passed; its component scope remains distinct from the failed
+full-project prerequisite. Neither pure
 controls nor a successful component can explain the original full-project wait
 or count as reader, proof, performance or M7 acceptance. The original
 [plan](m7-stock-smt-boundary-plan.md) and [focused ordinary diagnosis](m7-ordinary-wait-diagnostic-plan.md)

@@ -1,0 +1,441 @@
+{
+  "acceptance": false,
+  "build": {
+    "binary": {
+      "bytes": 5197904,
+      "sha256": "94ec3d2b9c5933bc603803080bae22b45768e12fcd8875ffbb4476e65f2bf6ee"
+    },
+    "cleanup_errors": [],
+    "elapsed_s": 6.894988211999589,
+    "exit_code": 0,
+    "timed_out": false
+  },
+  "controller": {
+    "bytes": 30660,
+    "sha256": "9c2041898e7aa3d2f3afff5f23d33f67485df735e7a15c8721594a5cd06e4aed"
+  },
+  "driver_pid": 779419,
+  "external_inclusive_s": 28.53815401400061,
+  "failed_step": null,
+  "historical_cause_established": false,
+  "kind": "separate-bounded-recorder-correction-scope",
+  "proof_or_acceptance": false,
+  "raw_archive": {
+    "bytes": 1477946,
+    "sha256": "51ff41027b96e84c126d7825637aed9a6fa337fe1db2a5c49ff307afcdf083cd"
+  },
+  "raw_files": {
+    "delivery-terminal": {
+      "bytes": 20133,
+      "sha256": "8858bfe45cc110fea3b1530817d6d5d7aa912bd40a9420e3d16ce23630ecf9d2"
+    },
+    "enqueue-terminal": {
+      "bytes": 17794,
+      "sha256": "b1e13be1c4080603e520c0665571f0711597129222da28412099a726cb4857bd"
+    },
+    "normal-terminal": {
+      "bytes": 9079,
+      "sha256": "c8f9279239d345309bf66162c870d6771012a0bd0a83d7f5605aceabc2374506"
+    },
+    "read-terminal": {
+      "bytes": 19463,
+      "sha256": "ccda0f56e05e52a946755e22b87d4967ffaa33ef19b77fdc0342a22995563d03"
+    },
+    "real-terminal": {
+      "bytes": 10341,
+      "sha256": "6164cb5c01792457e52bfe8450e2c50c7948529c496d4d519828c86910c1500d"
+    },
+    "write-terminal": {
+      "bytes": 18549,
+      "sha256": "e15f49830141997a8f4c6ef2f78e56d85afb7d2f0afb8117e466dc8f5d72b14e"
+    }
+  },
+  "source_scope": "Exact stock b346 AIR, intent-derived batch, sealed46 forwarding shim/pinnedZ3; no daemon cache arm or historical concurrency reproduction.",
+  "started_unix_ns": 1791720264319898464,
+  "steps": [
+    {
+      "controller_pid": 779424,
+      "exit_code": 0,
+      "external_inclusive_s": 8.029620419998537,
+      "label": "build",
+      "outer_timeout": false
+    },
+    {
+      "cleanup_errors": [],
+      "controller_pid": 779456,
+      "deadline_s": 3,
+      "exit_code": 0,
+      "external_inclusive_s": 1.495106376001786,
+      "internal_inclusive_s": 0.6895771249983227,
+      "label": "normal",
+      "observation_loss": {
+        "completed_counts": {
+          "deadline_dropped": 0,
+          "dropped": 0,
+          "observations": 23,
+          "queue_disconnected": 0,
+          "queue_dropped": 0,
+          "queue_full": 0,
+          "responses": 1,
+          "send_dropped": 0,
+          "sender_errors": 0
+        },
+        "final_drain_limited": false,
+        "fixed_control_prefix_certified": true,
+        "metadata_writer_joined_on_normal_exit": true,
+        "missing_received_rows": 0,
+        "sender_dropped_at_last_row": 0,
+        "tail_loss_unknown_without_completion_counts": false
+      },
+      "outer_timeout": false,
+      "overwritten_rows": 0,
+      "postseals_equal": true,
+      "received_rows": 23,
+      "sensitivity": {
+        "expected_rows": 23,
+        "expected_stage_counts": {
+          "1": 1,
+          "10": 1,
+          "11": 1,
+          "12": 1,
+          "13": 2,
+          "14": 2,
+          "15": 1,
+          "16": 1,
+          "17": 1,
+          "18": 1,
+          "19": 1,
+          "2": 1,
+          "20": 1,
+          "21": 1,
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "fixed_control_prefix_only": true,
+        "observed_stage_counts": {
+          "1": 1,
+          "10": 1,
+          "11": 1,
+          "12": 1,
+          "13": 2,
+          "14": 2,
+          "15": 1,
+          "16": 1,
+          "17": 1,
+          "18": 1,
+          "19": 1,
+          "2": 1,
+          "20": 1,
+          "21": 1,
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "passed": true
+      },
+      "timed_out": false,
+      "transport_exit_code": 0,
+      "wire": {
+        "actual_bytes": 46,
+        "actual_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "expected_bytes": 46,
+        "expected_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "passed": true,
+        "required_prefix_bytes": 46
+      }
+    },
+    {
+      "cleanup_errors": [],
+      "controller_pid": 779462,
+      "deadline_s": 3,
+      "exit_code": 0,
+      "external_inclusive_s": 4.2051562939959695,
+      "internal_inclusive_s": 3.495901125999808,
+      "label": "enqueue",
+      "observation_loss": {
+        "completed_counts": null,
+        "final_drain_limited": false,
+        "fixed_control_prefix_certified": true,
+        "metadata_writer_joined_on_normal_exit": false,
+        "sender_dropped_at_last_row": 0,
+        "tail_loss_unknown_without_completion_counts": true
+      },
+      "outer_timeout": false,
+      "overwritten_rows": 0,
+      "postseals_equal": true,
+      "received_rows": 1,
+      "sensitivity": {
+        "confirmed_boundary": "enqueue-before",
+        "expected_rows": 1,
+        "expected_stage_counts": {
+          "1": 1
+        },
+        "fixed_control_prefix_only": true,
+        "following_boundary_absent": "enqueue-after",
+        "observed_stage_counts": {
+          "1": 1
+        },
+        "passed": true
+      },
+      "timed_out": true,
+      "transport_exit_code": -2,
+      "wire": {
+        "actual_bytes": 0,
+        "actual_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 46,
+        "expected_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "passed": true,
+        "required_prefix_bytes": 0
+      }
+    },
+    {
+      "cleanup_errors": [],
+      "controller_pid": 779471,
+      "deadline_s": 3,
+      "exit_code": 0,
+      "external_inclusive_s": 4.431242917999043,
+      "internal_inclusive_s": 3.470535751002899,
+      "label": "write",
+      "observation_loss": {
+        "completed_counts": null,
+        "final_drain_limited": false,
+        "fixed_control_prefix_certified": true,
+        "metadata_writer_joined_on_normal_exit": false,
+        "sender_dropped_at_last_row": 0,
+        "tail_loss_unknown_without_completion_counts": true
+      },
+      "outer_timeout": false,
+      "overwritten_rows": 0,
+      "postseals_equal": true,
+      "received_rows": 7,
+      "sensitivity": {
+        "confirmed_boundary": "write-before",
+        "expected_rows": 7,
+        "expected_stage_counts": {
+          "1": 1,
+          "12": 1,
+          "13": 1,
+          "18": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1
+        },
+        "fixed_control_prefix_only": true,
+        "following_boundary_absent": "write-after",
+        "observed_stage_counts": {
+          "1": 1,
+          "12": 1,
+          "13": 1,
+          "18": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1
+        },
+        "passed": true
+      },
+      "timed_out": true,
+      "transport_exit_code": -2,
+      "wire": {
+        "actual_bytes": 0,
+        "actual_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 46,
+        "expected_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "passed": true,
+        "required_prefix_bytes": 0
+      }
+    },
+    {
+      "cleanup_errors": [],
+      "controller_pid": 779490,
+      "deadline_s": 3,
+      "exit_code": 0,
+      "external_inclusive_s": 4.219733835001534,
+      "internal_inclusive_s": 3.4914448770068702,
+      "label": "read",
+      "observation_loss": {
+        "completed_counts": null,
+        "final_drain_limited": false,
+        "fixed_control_prefix_certified": true,
+        "metadata_writer_joined_on_normal_exit": false,
+        "sender_dropped_at_last_row": 0,
+        "tail_loss_unknown_without_completion_counts": true
+      },
+      "outer_timeout": false,
+      "overwritten_rows": 0,
+      "postseals_equal": true,
+      "received_rows": 14,
+      "sensitivity": {
+        "confirmed_boundary": "read-before",
+        "expected_rows": 14,
+        "expected_stage_counts": {
+          "1": 1,
+          "10": 1,
+          "11": 1,
+          "12": 1,
+          "13": 1,
+          "18": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "fixed_control_prefix_only": true,
+        "following_boundary_absent": "read-after",
+        "observed_stage_counts": {
+          "1": 1,
+          "10": 1,
+          "11": 1,
+          "12": 1,
+          "13": 1,
+          "18": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "passed": true
+      },
+      "timed_out": true,
+      "transport_exit_code": -2,
+      "wire": {
+        "actual_bytes": 46,
+        "actual_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "expected_bytes": 46,
+        "expected_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "passed": true,
+        "required_prefix_bytes": 46
+      }
+    },
+    {
+      "cleanup_errors": [],
+      "controller_pid": 779512,
+      "deadline_s": 3,
+      "exit_code": 0,
+      "external_inclusive_s": 4.3184190440006205,
+      "internal_inclusive_s": 3.5391824179969262,
+      "label": "delivery",
+      "observation_loss": {
+        "completed_counts": null,
+        "final_drain_limited": false,
+        "fixed_control_prefix_certified": true,
+        "metadata_writer_joined_on_normal_exit": false,
+        "sender_dropped_at_last_row": 0,
+        "tail_loss_unknown_without_completion_counts": true
+      },
+      "outer_timeout": false,
+      "overwritten_rows": 0,
+      "postseals_equal": true,
+      "received_rows": 19,
+      "sensitivity": {
+        "confirmed_boundary": "delivery-before",
+        "expected_rows": 19,
+        "expected_stage_counts": {
+          "1": 1,
+          "10": 1,
+          "11": 1,
+          "12": 1,
+          "13": 2,
+          "14": 2,
+          "15": 1,
+          "16": 1,
+          "18": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "fixed_control_prefix_only": true,
+        "following_boundary_absent": "delivery-after",
+        "observed_stage_counts": {
+          "1": 1,
+          "10": 1,
+          "11": 1,
+          "12": 1,
+          "13": 2,
+          "14": 2,
+          "15": 1,
+          "16": 1,
+          "18": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1,
+          "7": 1,
+          "8": 1,
+          "9": 1
+        },
+        "passed": true
+      },
+      "timed_out": true,
+      "transport_exit_code": -2,
+      "wire": {
+        "actual_bytes": 46,
+        "actual_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "expected_bytes": 46,
+        "expected_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+        "passed": true,
+        "required_prefix_bytes": 46
+      }
+    },
+    {
+      "cleanup_errors": [],
+      "controller_pid": 779524,
+      "deadline_s": 600,
+      "exit_code": 0,
+      "external_inclusive_s": 1.8310517930003698,
+      "internal_inclusive_s": 0.935445126000559,
+      "label": "real",
+      "metadata_complete": true,
+      "observation_loss": {
+        "completed_counts": {
+          "deadline_dropped": 0,
+          "dropped": 0,
+          "observations": 45,
+          "queue_disconnected": 0,
+          "queue_dropped": 0,
+          "queue_full": 0,
+          "responses": 12,
+          "send_dropped": 0,
+          "sender_errors": 0
+        },
+        "final_drain_limited": false,
+        "fixed_control_prefix_certified": false,
+        "metadata_writer_joined_on_normal_exit": true,
+        "missing_received_rows": 0,
+        "sender_dropped_at_last_row": 0,
+        "tail_loss_unknown_without_completion_counts": false
+      },
+      "outer_timeout": false,
+      "overwritten_rows": 0,
+      "postseals_equal": true,
+      "received_rows": 45,
+      "scope": "Intent-derived forwarding-only component; incomplete metadata never localizes absent operations.",
+      "sensitivity": null,
+      "timed_out": false,
+      "transport_exit_code": 0,
+      "wire": null
+    }
+  ]
+}
