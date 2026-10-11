@@ -83,8 +83,9 @@
     "proof_authority": false,
     "serialization_failure": "sticky stop under EMITTER before any unavailable replacement; queued calls do not publish",
     "optional_target_selector": "SAIL_ENGINE_IMPORT_TRACE_TARGET=div-mod-relocation",
-    "target_exact_spelling": "vstd/arithmetic/div_mod.rs:519:50:519:56 (#0)",
-    "target_filters_before_admission": true
+    "target_exact_spelling": "vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)",
+    "target_filters_before_admission": true,
+    "initial_filter_literal_review_failure": "First unbuilt draft omitted the second-colon space; corrected exact spelling and explicit no-space negative before any build"
   },
   "source_api_test_functions": [
     "loaded_foreign_capture_matches_exact_stock_resolver_and_is_worker_owned",
