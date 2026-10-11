@@ -1,0 +1,175 @@
+diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
+--- a/source/rust_verify/src/sail_engine.rs
++++ b/source/rust_verify/src/sail_engine.rs
+@@ -525,36 +525,113 @@
+         let mut out=std::fs::OpenOptions::new().create(true).append(true).open(path)?;out.write_all(bytes)
+     });
+ }
++// Supplementary failure records share the existing import trace's record/byte
++// caps, mutex, admitted borrowed writer and sticky unavailable replacement.
++// These records describe a refusal, never fresh successful span authority.
++fn trace_namespace_inner<F,P>(phase:&str,encode:F,publish:P)->bool
++where F:FnOnce(&str,&mut ObservationWriter)->Result<(),serde_json::Error>,P:FnOnce(&[u8])->std::io::Result<()> {
++    let skipped=Cell::new(false);
++    observe_inner(phase,|phase,writer|{
++        if IMPORT_TRACE_STOP.load(Ordering::Acquire){skipped.set(true);return Ok(());}
++        if IMPORT_TRACE_RECORDS.fetch_update(Ordering::AcqRel,Ordering::Acquire,|n|n.checked_add(1).filter(|n|*n<=4096)).is_err(){
++            IMPORT_TRACE_STOP.store(true,Ordering::Release);
++            return Err(serde::ser::Error::custom("namespace trace record cap"));
++        }
++        if let Err(error)=encode(phase,writer){IMPORT_TRACE_STOP.store(true,Ordering::Release);return Err(error);}
++        let bytes=writer.bytes.len().checked_add(1).ok_or_else(||<serde_json::Error as serde::ser::Error>::custom("namespace trace size"))?;
++        if bytes>32768 || IMPORT_TRACE_BYTES.fetch_update(Ordering::AcqRel,Ordering::Acquire,|used|used.checked_add(bytes).filter(|used|*used<=4*1024*1024-512)).is_err(){
++            IMPORT_TRACE_STOP.store(true,Ordering::Release);
++            return Err(serde::ser::Error::custom("namespace trace aggregate budget"));
++        }
++        Ok(())
++    },|bytes|if skipped.get(){Ok(())}else{publish(bytes)})
++}
++fn trace_namespace<F>(encode:F)
++where F:FnOnce(&str,&mut ObservationWriter)->Result<(),serde_json::Error> {
++    if !active() || std::env::var("SAIL_ENGINE_IMPORT_TRACE").as_deref()!=Ok("1"){return;}
++    let phase=if FOCUS.load(Ordering::Relaxed){"focus"}else{"full"};
++    trace_namespace_inner(phase,encode,|bytes|{
++        let path=std::env::var_os("SAIL_ENGINE_EVENTS").ok_or_else(||std::io::Error::other("observation path unavailable"))?;
++        let mut out=std::fs::OpenOptions::new().create(true).append(true).open(path)?;out.write_all(bytes)
++    });
++}
++fn namespace_span_fields(span:&vir::messages::Span,phase:&str,writer:&mut ObservationWriter)->Result<(),serde_json::Error>{
++    if span.as_string.len()>4096 || span.data.len()>4096{return Err(serde::ser::Error::custom("namespace trace span budget"));}
++    let raw=&*span.raw_span as &(dyn std::any::Any+Send+Sync);
++    let kind=if raw.is::<rustc_span::SpanData>(){"SpanData"}else if raw.is::<()>(){"unit"}else{"unknown"};
++    serde_json::to_writer(writer,&Observation {version:1,phase,event:"preparation-namespace-refused",payload:Fields(fields!(
++        "boundary":"worker-binding","id":span.id,"data":&span.data,"as_string":&span.as_string,"raw_kind":kind
++    ))})
++}
++fn trace_namespace_span(span:&vir::messages::Span){
++    trace_namespace(|phase,writer|namespace_span_fields(span,phase,writer));
++}
++fn namespace_validation(sources:&Sources,words:[u64;2],files:&[Arc<rustc_span::SourceFile>])->bool {
++    let result=match &sources.3 {Ok(imports)=>imports.validate_binding_files(words,files),Err(reason)=>Err(*reason)};
++    if let Err(reason)=result {
++        trace_namespace(|phase,writer|{
++            let record=sources.3.as_ref().ok().and_then(|imports|imports.record(words).ok());
++            let role=record.map(|record|match &record.state {
++                crate::spans::sail_owned_imports::State::Pending(_)=>"Pending",
++                crate::spans::sail_owned_imports::State::Loaded(_)=>"LoadedForeign",
++                crate::spans::sail_owned_imports::State::Deferred(_)=>"DeferredForeign",
++                crate::spans::sail_owned_imports::State::OriginalDescriptor(_)=>"OriginalDescriptor",
++                crate::spans::sail_owned_imports::State::Unavailable(_)=>"Unavailable",
++            });
++            // Only a bounded current namespace is scanned, under the exact
++            // same files guard as the unchanged validator. No file is cloned.
++            let matches=if files.len()>4096{None}else{record.map(|record|files.iter().filter(|file|matches!(*file.external_src.borrow(),rustc_span::ExternalSource::Foreign{..})&&file.src_hash.hash_bytes()==&record.expected_hash[..usize::from(record.expected_hash_len)]).count())};
++            serde_json::to_writer(writer,&Observation {version:1,phase,event:"preparation-namespace-refused",payload:Fields(fields!(
++                "boundary":"compiler-validation","words":words,"reason":ObservedDebug(&reason),
++                "classification_role":role,"classification_is_frozen":true,"current_files_len":files.len(),
++                "current_foreign_expected_hash_matches":matches
++            ))})
++        });
++    }
++    result.is_ok()
++}
++fn trace_namespace_admission(reason:&'static str){
++    trace_namespace(|phase,writer|serde_json::to_writer(writer,&Observation {version:1,phase,event:"preparation-namespace-refused",payload:Fields(fields!(
++        "boundary":"service-admission","reason":reason,"retained_control_bytes":sail_namespace::retained_bytes()
++    ))}));
++}
++
+ fn validate_used_namespace(span:&vir::messages::Span,sources:&Sources,files:&[Arc<rustc_span::SourceFile>])->Option<()> {
+-    if let ProvenanceKey::Imported(words)=provenance_key(span)? {
+-        sources.3.as_ref().ok()?.validate_binding_files(words,files).ok()?;
+-    }
+-    Some(())
++    let result=provenance_key(span).and_then(|key|match key {
++        ProvenanceKey::Imported(words)=>namespace_validation(sources,words,files).then_some(()),
++        ProvenanceKey::Local(..)=>Some(()),
++    });
++    if result.is_none(){trace_namespace_span(span);}
++    result
+ }
+ #[cfg(test)]
+ pub(super) fn namespace_shared_allocation_bytes()->usize{sail_namespace::shared_allocation_bytes()}
+ pub(crate) struct NamespaceRequest { bridge:sail_namespace::Request, sources:Arc<Sources> }
+ pub(super) fn serve_namespace(request:NamespaceRequest,map:&SourceMap){
+     let files=map.files();
+-    request.bridge.serve(|words|request.sources.3.as_ref().ok().is_some_and(|imports|imports.validate_binding_files(words,&files).is_ok()));
++    request.bridge.serve(|words|namespace_validation(&request.sources,words,&files));
+ }
+ fn with_namespace<R>(map:Option<&SourceMap>,queue:Option<&std::sync::mpsc::Sender<ReporterMessage>>,sources:&Arc<Sources>,operation:impl FnOnce(&dyn Fn(&vir::messages::Span)->Option<()>)->R)->Option<R>{
+     if let Some(map)=map {
+         let files=map.files();
+         return Some(operation(&|span|validate_used_namespace(span,sources,&files)));
+     }
+-    let queue=queue?;
++    let Some(queue)=queue else{trace_namespace_admission("absent-queue");return None;};
+     // PREPARATION_GATE must already be held: at most one rendezvous exists.
+     // Receiver-side files remain borrowed through Ready, all validations, and
+     // the worker's complete decode/restore or cache publication. Lease disposal
+     // disconnects even on unwind: no Drop sends or waits for an acknowledgement.
+-    let (lease,bridge)=sail_namespace::Lease::pair()?;
++    let Some((lease,bridge))=sail_namespace::Lease::pair() else{trace_namespace_admission("pair-busy");return None;};
+     retained_charge();
+-    queue.send(ReporterMessage::PreparationNamespace(Box::new(NamespaceRequest{bridge,sources:Arc::clone(sources)}))).ok()?;
+-    if !lease.ready(){return None;}
+-    Some(operation(&|span|match provenance_key(span)?{
+-        ProvenanceKey::Imported(words)=>lease.validate(words).then_some(()),
+-        ProvenanceKey::Local(..)=>Some(()),
++    if queue.send(ReporterMessage::PreparationNamespace(Box::new(NamespaceRequest{bridge,sources:Arc::clone(sources)}))).is_err(){trace_namespace_admission("queue-disconnected");return None;}
++    if !lease.ready(){trace_namespace_admission("ready-disconnected-or-poisoned");return None;}
++    Some(operation(&|span|{
++        let result=provenance_key(span).and_then(|key|match key {
++            ProvenanceKey::Imported(words)=>lease.validate(words).then_some(()),
++            ProvenanceKey::Local(..)=>Some(()),
++        });
++        if result.is_none(){trace_namespace_span(span);}
++        result
+     }))
+ }
+ fn current_bindings(krate:&Krate,ctx:&vir::context::Ctx)->Option<vir::messages::SailSpanBindings> {
+@@ -1120,3 +1197,45 @@
+         let mut bytes=Vec::new();assert!(observe_inner("full",|phase,writer|serde_json::to_writer(writer,&Observation {version:1,phase,event:"prepared-key-components",payload:Fields(Field("bucket",ObservedDebug(&Stream),()))}),|frame|{bytes.extend_from_slice(frame);Ok(())}));assert_eq!(serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["event"],"observer-unavailable");
+     }
+ }
++
++#[cfg(test)] mod namespace_boundary_observer_tests {
++    use super::*;
++    #[test] fn exact_worker_raw_kind_and_full_identity_are_borrowed_even_when_invalid(){
++        for (raw,kind) in [(Arc::new(()) as Arc<dyn std::any::Any+Send+Sync>,"unit"),(Arc::new(7_u32),"unknown")] {
++            let span=vir::messages::Span{raw_span:raw,id:71,data:Vec::new(),as_string:"exact generated label α".to_owned()};
++            let mut writer=ObservationWriter{bytes:Vec::new()};namespace_span_fields(&span,"focus",&mut writer).unwrap();
++            let parsed:serde_json::Value=serde_json::from_slice(&writer.bytes).unwrap();
++            assert_eq!(parsed,serde_json::json!({"version":1,"phase":"focus","event":"preparation-namespace-refused","payload":{"boundary":"worker-binding","id":71,"data":[],"as_string":"exact generated label α","raw_kind":kind}}));
++            assert_eq!(Arc::strong_count(&span.raw_span),1);
++            assert!(provenance_key(&span).is_none());
++        }
++        let span=vir::messages::Span{raw_span:Arc::new(()),id:72,data:vec![1,2],as_string:"exact imported".to_owned()};
++        let mut writer=ObservationWriter{bytes:Vec::new()};namespace_span_fields(&span,"full",&mut writer).unwrap();
++        let parsed:serde_json::Value=serde_json::from_slice(&writer.bytes).unwrap();assert_eq!(parsed["payload"]["data"],serde_json::json!([1,2]));assert_eq!(Arc::strong_count(&span.raw_span),1);
++    }
++    #[test] fn observation_wrapper_preserves_closed_raw_owner_validation(){
++        use rustc_span::{BytePos,SpanData,SyntaxContext};
++        let sources=Sources(Vec::new(),0,std::sync::Mutex::new(ProvenanceMemo::default()),Err(crate::spans::sail_owned_imports::CaptureFailure::Missing));
++        let mut span=vir::messages::Span{raw_span:Arc::new(SpanData{lo:BytePos(0),hi:BytePos(0),ctxt:SyntaxContext::root(),parent:None}),id:0,data:Vec::new(),as_string:"no location".to_owned()};
++        assert_eq!(validate_used_namespace(&span,&sources,&[]),Some(()));
++        span.raw_span=Arc::new(());assert_eq!(validate_used_namespace(&span,&sources,&[]),None);
++        span.data=vec![1,2];assert!(!namespace_validation(&sources,[1,2],&[]));assert_eq!(validate_used_namespace(&span,&sources,&[]),None);
++        span.raw_span=Arc::new(99_u32);assert_eq!(validate_used_namespace(&span,&sources,&[]),None);
++        assert!(sources.2.lock().unwrap().values.is_empty());assert!(matches!(sources.3,Err(crate::spans::sail_owned_imports::CaptureFailure::Missing)));
++    }
++    #[test] fn shared_trace_caps_skip_work_and_publish_one_unavailable_without_partial_identity(){
++        // Independent source cases run serially. No selector or proof state is
++        // set here; only this private trace's atomics and injected output vary.
++        let previous=(IMPORT_TRACE_RECORDS.swap(4096,Ordering::AcqRel),IMPORT_TRACE_BYTES.swap(0,Ordering::AcqRel),IMPORT_TRACE_STOP.swap(false,Ordering::AcqRel));
++        let encoded=Cell::new(false);let mut bytes=Vec::new();
++        assert!(trace_namespace_inner("focus",|_,_|{encoded.set(true);Ok(())},|frame|{bytes.extend_from_slice(frame);Ok(())}));
++        assert!(!encoded.get());assert_eq!(serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["event"],"observer-unavailable");assert!(bytes.len()<512);
++        let length=bytes.len();assert!(trace_namespace_inner("full",|_,_|{encoded.set(true);Ok(())},|frame|{bytes.extend_from_slice(frame);Ok(())}));assert!(!encoded.get());assert_eq!(bytes.len(),length);
++        IMPORT_TRACE_RECORDS.store(0,Ordering::Release);IMPORT_TRACE_BYTES.store(4*1024*1024-512,Ordering::Release);IMPORT_TRACE_STOP.store(false,Ordering::Release);bytes.clear();
++        assert!(trace_namespace_inner("full",|phase,writer|serde_json::to_writer(writer,&Observation{version:1,phase,event:"preparation-namespace-refused",payload:Fields(fields!("boundary":"service-admission","reason":"pair-busy"))}),|frame|{bytes.extend_from_slice(frame);Ok(())}));
++        assert_eq!(serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["event"],"observer-unavailable");assert!(bytes.len()<512);
++        IMPORT_TRACE_RECORDS.store(0,Ordering::Release);IMPORT_TRACE_BYTES.store(0,Ordering::Release);IMPORT_TRACE_STOP.store(false,Ordering::Release);
++        assert!(!trace_namespace_inner("full",|phase,writer|serde_json::to_writer(writer,&Observation{version:1,phase,event:"preparation-namespace-refused",payload:Fields(fields!("reason":"queue-disconnected"))}),|_|Err(std::io::Error::other("owned writer failure"))));
++        IMPORT_TRACE_RECORDS.store(previous.0,Ordering::Release);IMPORT_TRACE_BYTES.store(previous.1,Ordering::Release);IMPORT_TRACE_STOP.store(previous.2,Ordering::Release);
++    }
++}
