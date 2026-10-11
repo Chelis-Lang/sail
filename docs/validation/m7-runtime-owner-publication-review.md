@@ -6,6 +6,13 @@ runtime, target, daemon or proof was changed or executed. The immediate next
 measurement should evaluate the metadata candidate's unchanged-owner path;
 splitting runtime ownership is a conditional design, not a selected feature.
 
+The follow-up below reads integrated source
+`c35abdbdab22ec3e68ef1f58df7144eb46fe3c9b`. It refines the minimum change and its
+limits without implementing it or attributing any portion of the measured
+interval to runtime work. The current-product publication controller will
+measure the metadata change separately; neither review supplies repair or
+reader acceptance credit.
+
 ## What the observed interval includes
 
 The [original publication diagnostic](../../bench/validation/m7-linux-publication-timing-original-repair-db4c65f-failure-2026-10-11.json)
@@ -95,49 +102,157 @@ plus retired-owner disposal would locate the remaining cost. No such
 instrumentation or new run is part
 of this review. A synthetic owner pass alone supplies no real repair speedup.
 
-## Conditional runtime-through-edit design
+## Minimum conservative implementation boundary
 
-If actual edits still spend substantial time rebuilding unchanged runtime
-coverage, the narrowest sound split initially stays within one exact request
-key. Independently acquire a runtime-only namespace/lease owner before its
-complete initial identity and content reads. Retain it separately from the
-project/configuration/declaration owner and revision. A source edit invalidates
-the latter; its new snapshot must be completely rebuilt under fresh guards.
-The retained runtime can contribute only after its own full clean barriers
-prove continuous coverage across that construction interval. Bracket both
-owners and the exact context selector within the caller's interval, retain
-pointer/generation checks, and discard a late project fill after replacement.
+The first implementation should separate **runtime digest authority**, while
+retaining the original complete source transaction. It should not begin by
+removing runtime paths from `observation_plan`, weakening the original source
+lease, or changing `refresh_context_validated`'s project hashing. The proposed
+retained shapes are:
 
-The partition must bind exact raw sidecar and runtime path spellings,
-canonical identities, full ordered identity contents and helper/interpreter/
-mount coverage. Overlapping project/runtime files remain invalidating inputs
-to both owners. Keep the context `.link` selection freshly guarded rather than
-using the JSON digest as selection authority. Any missing, dirty or ambiguous
-runtime coverage uses original full acquisition and hashing. Restart, eviction
-or replacement cannot transfer authority to a new owner; a still-live evicted
-owner is usable only while the same guards and accounting remain intact.
+| Owner | Contents and responsibility | Invalidation |
+| --- | --- | --- |
+| Independent runtime owner | Exact request binding, runtime identity SHA, raw `.link` and selected `.json` coverage, complete runtime file/alias namespace Observer and nonrenewable ReadLease | Any runtime binding/content, sidecar, helper, interpreter, kernel, mount or coverage failure |
+| Source projection | Original complete observation plan and full lease, freshly captured complete InputSnapshot, generation and reader-overlap state | Original source, declaration, configuration and namespace changes |
 
-This needs an ADR and an explicit bound on retained and in-flight owners,
-construction overlap, inventories, helpers, descriptors and memory before
-implementation. Existing limits of 32 indexed contexts and two revalidations
-do not themselves bound the physical cost of another owner. A split may add
-helper and barrier work, so its whole-operation gain must be measured; no
-fraction of the observed 4.7 seconds can be promised in advance.
+The runtime owner stores no prior source revision or Current result. Its digest
+may replace only `runtime_current`'s redundant content reads after independent
+cold establishment and fresh validation of that same continuous owner. The
+source projection still covers the complete original union of source and runtime
+files. Thus this initial seam retains source helper acquisition and original
+runtime binding checks within that lease. It may save runtime hashing, but does
+not remove all reconstruction work or establish a several-second saving.
 
-Required controls would distinguish a source edit from runtime invalidation:
+The runtime inventory must be discovered under native coverage, not trusted
+from an earlier disk list. Acquire exact raw `.link` namespace coverage before
+discovery; acquire the selected JSON and complete discovered runtime coverage
+before eligible content hashing. Read the identity and hash every declared
+runtime file independently, then require final identity equality, exact raw
+sidecar lease membership and all clean barriers before publishing eligibility.
+If either sidecar or any discovered binding changed during acquisition, decline
+reuse. Unavailable or oversized discovery follows the original full path. A
+previous SHA or canonical-only sidecar alias cannot initialize this owner.
 
-- Reuse unchanged runtime coverage during a real source edit while rejecting
-  the old source revision; require a fresh complete source snapshot and all
-  original joint barriers before Current.
-- Restore source bytes/mtime, redirect ancestors, or write through an outside
-  hardlink/mmap during construction; no stale source Current can survive.
-- Mutate either identity sidecar, replace identical runtime bytes, change
-  selection/environment, redirect an alias, lose a helper or observe a mount
-  event; runtime reuse must refuse and take the original full path.
-- Hold an owner across eviction and overlapping fills; charge its entire
-  lifetime, reject owner substitution and late publication, and close owned
-  resources on shutdown without broadening admission.
+The identity is broader than a toolchain fingerprint: `runner::context` includes
+invocation configuration and any selected custom target-description file.
+Runtime/source inode overlap is therefore permitted and must remain guarded by
+both owners. Never assign an overlapping input exclusively to runtime or source
+based on directory spelling. `precise::Observer` already watches every path
+ancestor and symlink target and filters events against exact tracked roots;
+runtime coverage should use the existing exact-file constructor for this
+complete file inventory. It must not recursively track an unrelated project
+directory just because it contains a runtime configuration file. The unchanged
+source Observer keeps its recursive package and negative-path coverage.
 
-The [public freshness contract](../freshness.md) remains unchanged. This review
-adds no Current cache, proof memo, receipt transfer or asynchronous completion;
-the original reader, repair and benchmark bounds remain open product gates.
+### Joint publication transaction
+
+1. Select the retained runtime owner under the exact request key and retain
+   that same charged owner outside projection locks. Validate its namespace and
+   full ReadLease before using it. Dirty source state may clear the source
+   projection, but cannot clear or renew a valid runtime owner implicitly.
+2. Rebuild the original source observation plan and full source lease before
+   hashing the new project inputs. All original build-script environment,
+   declaration completeness, missing-input and content-path membership checks
+   remain. `refresh_context_validated` may receive a runtime-valid callback only
+   for the already independently established retained owner.
+3. Before publishing the new snapshot, require original plan equality, complete
+   source file membership and source lease/namespace barriers. Revalidate the
+   same runtime owner, raw sidecar selection and namespace. Keep identity
+   fallback parsing when exact raw membership is absent; no new eligibility is
+   inferred from a successful source refresh.
+4. Under the short publication lock, require the original source generation and
+   selected runtime owner identity still match. Reject replaced owners and late
+   fills. An evicted but retained owner is not invalid merely through eviction;
+   its continuous guards and physical charge must remain alive. Never substitute
+   a freshly created equal-digest owner between the two barriers.
+5. Only this joint transaction can supply the new source revision. A failed
+   joint barrier cannot publish or return its prospective complete snapshot as
+   Current. It follows original invalidation/refill and
+   Current/Historical/Unknown behavior. An intact runtime owner certifies runtime
+   bytes only, never the edited source or an old proof receipt.
+
+Hot inspection must validate both owners, retaining caller-entry checkpoint,
+both namespace barriers, same-pointer/generation checks and the existing 100 ms
+owner wait. Coalesced snapshots must identify the joint source/runtime owner
+pair; a checkpoint from the old source projection cannot authorize a sequential
+reader or a new source generation. Busy ownership stays unavailable for that
+read and does not destroy independently valid leases. No cache-age test, extra
+wait, helper renewal or late promotion is introduced.
+
+### Exact benefit and ownership limits
+
+The minimum proposal remains within one exact cache/workspace/context/environment
+key. The original repair fixture changes the function selector from `selected`
+to `missing`; `context_hashes` includes the full engine request and arguments.
+Those are separate proof contexts even when compiler artifacts are shared.
+The two retained worker timing rows do not include context IDs or an owner-reuse
+field. A same-key split therefore cannot be claimed to save both observed fills.
+Its supported target is a real body edit under unchanged invocation selectors
+and declarations after an independent runtime owner already exists.
+
+Cross-context runtime sharing would need a separate reviewed identity contract:
+equal runtime SHA alone does not bind a new context's raw `.link`, exact path
+view, environment or source interval. It is not part of this minimum proposal.
+Neither are removing runtime coverage from the source lease, sharing a lease
+helper or borrowing a proof-time/sysroot owner. Such changes require their own
+complete overlap, inventory and lifecycle arguments.
+
+Before implementation, reserve every added retained owner and construction
+overlap, with lifetime charges through final Arc disposal. Indexed context
+limits do not bound evicted owners still held by readers. Cap total helpers,
+native descriptors/watches, inventory/path storage and concurrently constructing
+owners, and release helper resources before refunding their reservation. Keep
+the original admission limit of 4,096 combined files, including helper runtime
+closure; splitting must not admit twice that inventory. Account for duplicate
+helper closure/namespace storage and joint-barrier scratch. Existing legacy
+loaders do not provide a new whole-owner memory ceiling; do not claim a 16 MiB
+peak or RSS bound from post-construction `retained_bytes` alone. Resource refusal
+must retain original complete validation, without an unbounded constructor
+queue or hidden retry. Helper kill/wait and retired-owner disposal belong to
+whole-operation measurement; moving them to an unowned reaper is not a saving.
+
+No new crate edge is needed for an implementation within existing managed
+observer/lease/freshness modules. Selecting independent runtime authority needs
+a numbered ADR extending the joint-owner argument in
+[ADR 0029](../decisions/0029-kernel-lease-work-bounds-and-freshness.md), with
+[mount-generation coverage](../decisions/0032-kernel-mount-generation-coverage.md)
+and an explicit physical/resource ledger. This review does not allocate an ADR
+number or select a new authority path.
+
+## Required decision evidence
+
+The next current-product publication run should first establish whether the
+metadata no-op preserves an existing owner on unchanged commands. If it removes
+most of the original cost, a second runtime owner may not earn its construction
+and barrier overhead. If actual source edits remain slow, measure complete
+establishment, including disposition of the old owner, source observation,
+source/helper lease acquisition, source hashes, runtime content hashes and joint
+validation. The retained aggregate 4.73–4.88-second values do not isolate these
+operations. Keep the original 120/30/5 fixture and all complete reports unchanged.
+
+Before selecting a split, real controls must cover:
+
+- A real source-body edit under the same request: runtime owner pointer stays
+  unchanged, source owner/revision changes, original source hashing and final
+  checks run, and the old source result cannot remain Current. Original unified
+  ownership must fail the runtime-retention assertion as the sensitivity check.
+- Source mutation/restoration through direct writes, outside hardlinks, mmap or
+  ancestor redirects between capture and either final barrier: the old source
+  generation never certifies the new result. Runtime/source inode overlap must
+  invalidate both as required.
+- Actual `.link`, selected JSON or runtime bytes replaced, restored, aliased or
+  deleted/recreated; helper death, interpreter change, kernel loss and transient
+  mounts: retained runtime reuse refuses and original full validation applies.
+  Cold setup still performs original independent runtime reads and hashes.
+- Changed selector, environment, cache/workspace raw bytes or missing exact
+  membership: same-key reuse is refused, with no canonical or equal-SHA shortcut.
+- Source refill raced with runtime replacement, held eviction, concurrent readers
+  and shutdown: no substituted owner, old checkpoint or late generation is
+  published; held owners stay charged through resource disposal. Preserve the
+  existing delayed-publication and restored-write reader controls.
+
+Compare complete establishment and terminal publication on actual edited source,
+not just `runtime_current` or a generated runtime-only microbenchmark. Until those
+checks and the whole-operation comparison justify implementation, current users
+retain the original hashing/freshness behavior; the public contract and original
+reader and repair deadlines are unchanged.

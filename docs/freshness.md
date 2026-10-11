@@ -269,3 +269,10 @@ lease and helper barrier remains mandatory, and dirty or absent coverage still
 recollects synchronously. The [complete component replay](validation/m7-preserve-freshness-metadata-replay.md)
 passes metadata, freshness, strict and sensitivity controls. Real source edits
 still invalidate the owner; combined product and repair performance remain pending.
+
+Real source or declaration changes still invalidate the combined source/runtime
+projection, even when compiler bytes remain unchanged. Independent runtime
+retention across edits is a [file-only design review](validation/m7-runtime-owner-publication-review.md),
+not an enabled feature. Its possible benefit depends on the exact context and
+has not been isolated from complete freshness construction. Every Current result
+still requires the original complete source, runtime and namespace barriers.
