@@ -1,19 +1,28 @@
 # Prepared original reader workflow on current product 4472279
 
-This is a launch plan, not an executed workflow. The preceding
+This records a reviewed launch plan and the subsequent frozen attempt. The
+one original workflow has started; no terminal result has been admitted. The preceding
 [single proof diagnosis](m7-sysroot-proof-diagnostic.md) establishes only its own
 new complete Current proof. It supplies no receipt, baseline job, digest owner or
-prepared Cargo directory to this plan. Root reviews the current complete gate
-and grants the concrete new freeze before any installation, setup or proof.
+prepared Cargo directory to this plan. The concrete [wrapper](m7-current-reader-workflow.py),
+[ten no-proof lifecycle controls](test-m7-current-reader-workflow.py) and
+[prepared input record](m7-current-reader-workflow-prepared.json) are sealed.
+Root granted the source-only copy, new byte-verified installation and one
+original workflow. It is now running; no terminal acceptance result exists.
 
 ## Exact product, compiler and controller inputs
 
 Use newly sealed product source commit
 `44722793489b56be9c2988fc62b709f173b36f22`, including the corrected shared trust and
-configuration path. Its exact release artifact sizes, hashes, source archive and
-installation grant are **pending root's completed build and seal**. This plan
-must not substitute the older diagnostic binaries or invent these identities.
-Root supplies the exact grant before installation or launch.
+configuration path. Its completed build took 183.689913 seconds. The source
+archive SHA-256 is `2d4fcfeac228a9ca8cfe948d31282b3d9247bff0ca4b131593a4ed193e9004f2`.
+The new service-owned Sail is 74,770,048 bytes with SHA-256
+`2567d049d92cb4363324ba83d757bd02d6895ecf19920ca32f8f61506d9cdcff`;
+the shim is 11,000,912 bytes with SHA-256
+`0693177849cb07a1add05206786a1eda2f08e871e0fe0ef282baa9c9d67492d5`.
+Both have mode `0700`, UID 0, and exactly match the root grant. The parent sealed
+installation remains unchanged. Full workspace gate 540 passed; the independent
+solver run's 38 passes and original GC/clear timeout remain separate evidence.
 
 The invariant compiler/collector inputs remain:
 
@@ -59,12 +68,13 @@ The corrected retained harness keeps five seconds for each full MCP exchange,
 
 ## New independent inputs and namespace
 
-After grant, create a new source-only template from the closed original active
+The prepared new source-only template comes from the closed original active
 HumanEval workspace using the original `copy_source` helper and its actual Cargo
 target exclusion. Copy only the 273 exact original template files plus its
 existing 3,007-byte generated `Cargo.lock`, SHA-256
 `a38eff2ab6773bcb3f8a8b32068b6b9687cae6d168b3a20f8002578649245525`.
-Verify that exact source inventory before and after copying. The historical
+The exact 274-file, 657,301-byte inventory matched before and after copying,
+with no target present. The historical
 lockfile hash was not retained; the new actual original Guard binds it freshly.
 No old target, cache, receipt, report or leased digest is copied. The controller
 then creates its own independent baseline and active source copies.
@@ -140,9 +150,20 @@ sealed current product `4472279` with the selected b346 baseline. It is not sele
 a newer source engine, a 512 MiB source physical-budget gate, the 2× edit-loop
 benchmark, current full-corpus conformance or M7 overall. The earlier failed D20
 workflow, every failed collector and the completed one-proof diagnostic remain
-separate. No new proof or setup is authorized by this document itself.
+separate. The separate root launch grant authorized exactly this one attempt. This
+document grants no additional setup, proof or retry.
 
 See [reader acceptance](../reader-acceptance.md),
 [freshness](../freshness.md), [the repair guide](../proof-repair.md),
 [the roadmap](../ROADMAP.md) and
 [the preserved diagnosis](m7-sysroot-proof-diagnostic.json).
+
+The wrapper's ten controls passed on both the host and Linux container. They
+exercise failure ordering, owned normal and forced shutdown, archival/seal
+failures preserving the original error, and bounded duplicate-free lifecycle
+documents; they execute no product or proof. Static validation of the complete
+new installation, source, selected artifacts and original controllers took
+2.716892 seconds inclusive. Absolute native argv and full input inventories stay
+in private launch records; their hashes are in the prepared record. The earlier
+723 report supplies only exact source and stock byte seals, never a receipt or
+Current authority. These controls and static seals do not establish live latency.
