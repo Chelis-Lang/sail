@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "scope": "Launcher preparation and read-only native inventory only; no benchmark, build, proof or performance admission",
+  "status": "prepared; combined product identity pending",
+  "controller": {
+    "file": "m7-current-benchmark-controller.py",
+    "bytes": 18881,
+    "sha256": "2fd351a3b12a1126b18998af09e157d990abf6d2b270786cb4c631c69c01eb72"
+  },
+  "pure_controls": {
+    "file": "test-m7-current-benchmark-controller.py",
+    "bytes": 4865,
+    "sha256": "12b7325ff301a5e70bba2bae27de9761861f38049f06af06dc9f7e604136c2bb",
+    "passed": 8,
+    "actors_launched": false
+  },
+  "unchanged_wrapper_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
+  "original": {
+    "rounds": 3,
+    "per_invocation_seconds": 600,
+    "minimum_median_speedup_each_project": 2,
+    "exact_oracles_changed": false,
+    "reader_acceptance": "separate",
+    "receipt_or_project_target_copies": false
+  },
+  "read_only_precheck": {
+    "acceptance": "PASS",
+    "container_birth_before": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "created": "2026-10-10T10:11:57.931137676Z",
+      "started_at": "2026-10-11T13:43:50.934382337Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "container_birth_after": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "created": "2026-10-10T10:11:57.931137676Z",
+      "started_at": "2026-10-11T13:43:50.934382337Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "runtime_artifacts": 13,
+    "source_files": 8,
+    "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "runtime_hash_mode_and_inventory_match": true,
+    "source_hashes_match": true,
+    "m6": {
+      "sail": {
+        "sha256": "69288597f5f5c0d0a81a66b00a6b0f174ba17bf6a878447050a2d7f75c0c36d8",
+        "bytes": 58964632,
+        "uid": 0,
+        "mode": 365
+      },
+      "sail-z3": {
+        "sha256": "aaa7e3c43ee6282b575b615ad87a4c964bae14c2f6a56787c98f03d1159582bd",
+        "bytes": 7681904,
+        "uid": 0,
+        "mode": 365
+      }
+    },
+    "corpus": {
+      "human-eval-verus": {
+        "actual": "bbe93f73b0a5802c438501f9a2106f9126bd2eea",
+        "expected": "bbe93f73b0a5802c438501f9a2106f9126bd2eea"
+      },
+      "vest": {
+        "actual": "11af01ddaef76cceded03517cd48764adb9d35b1",
+        "expected": "11af01ddaef76cceded03517cd48764adb9d35b1"
+      }
+    },
+    "historical_handoff_precheck": "FAIL: original M6 sail file absent; no proof or preparation actor",
+    "inventory_authority": "Read-only supplied-inventory deployment evidence; original complete runtime/input guards still determine proof admission"
+  },
+  "raw_files": {
+    "native.json": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stderr": {
+      "bytes": 386,
+      "sha256": "ea1159de19aa459f9d88057e10ebb9f3288e2a9e08affc2eed89303c3afadb69"
+    },
+    "acceptance.json": {
+      "bytes": 7789,
+      "sha256": "56eb4d1d6992563c7f4b297af881b1f8d331c96c16a27dbd5aa53fdd97d60a53"
+    },
+    "acceptance.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "record.json": {
+      "bytes": 968,
+      "sha256": "d035373d4b0416d428986f1ae8482030c18f66964bafa13992140bb62fe960cd"
+    },
+    "precheck.py": {
+      "bytes": 3174,
+      "sha256": "1337a4ae244cf17b47c47f724978a2084281ec1b0239d8bd2a65a8a6f7d342c0"
+    }
+  }
+}
