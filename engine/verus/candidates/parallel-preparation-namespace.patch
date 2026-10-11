@@ -1619,7 +1619,7 @@ diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail
 new file mode 100644
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,1120 @@
+@@ -0,0 +1,1122 @@
 +//! Private batch session: all retained spans belong to the active compiler callback.
 +use super::*;
 +use std::cell::{Cell,RefCell};
@@ -2153,6 +2153,8 @@ new file mode 100644
 +    }
 +    Some(())
 +}
++#[cfg(test)]
++pub(super) fn namespace_shared_allocation_bytes()->usize{sail_namespace::shared_allocation_bytes()}
 +pub(super) struct NamespaceRequest { bridge:sail_namespace::Request, sources:Arc<Sources> }
 +pub(super) fn serve_namespace(request:NamespaceRequest,map:&SourceMap){
 +    let files=map.files();
@@ -5740,7 +5742,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
  
          rustc_driver::Compilation::Stop
      }
-@@ -3392,3 +3447,15 @@
+@@ -3392,3 +3447,40 @@
          }
      }
  }
@@ -5755,6 +5757,31 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
 +#[cfg(test)]
 +pub(crate) fn sail_test_replay_reporter(messages:&[MessageX], reporter:&Reporter<'_>) {
 +    sail_engine::test_replay_reporter(messages,reporter);
++}
++
++#[cfg(test)]
++mod sail_namespace_layout_tests {
++    use super::*;
++    // Exact old queue payload shape, used only to verify this pin's ABI cost.
++    #[allow(dead_code)]
++    enum PreviousReporterMessage {
++        ReportLongRunning(CommandContext), FinishLongRunning(CommandContext),
++        Message(usize,Message,MessageLevel,bool),
++        Messages(usize,Vec<(Message,MessageLevel)>,bool),
++        WorkerPanicked(Box<dyn std::any::Any+Send>),Done(usize),
++    }
++    #[test]
++    fn boxed_namespace_request_preserves_queue_payload_and_bounds_extra_blocks(){
++        use std::mem::{align_of,size_of};
++        assert_eq!(size_of::<ReporterMessage>(),size_of::<PreviousReporterMessage>());
++        assert_eq!(align_of::<ReporterMessage>(),align_of::<PreviousReporterMessage>());
++        // Pinned std mpmc list uses31 slots + one next pointer per block.
++        let align=align_of::<ReporterMessage>().max(align_of::<usize>());
++        let slot=(size_of::<ReporterMessage>()+size_of::<usize>()).div_ceil(align)*align;
++        let block=(31*slot+size_of::<usize>()).div_ceil(align)*align;
++        assert!(2*sail_engine::namespace_shared_allocation_bytes()+2*size_of::<sail_engine::NamespaceRequest>()+4*256+512<=4096);
++        assert!(3*block+4096<=64*1024,"preparation queue blocks/retiring fixed shells exceed reserved ownership");
++    }
 +}
 diff --git a/source/vir/Cargo.toml b/source/vir/Cargo.toml
 index bfc3c2b..636309f 100644
@@ -10041,18 +10068,35 @@ diff --git a/source/rust_verify/src/sail_namespace.rs b/source/rust_verify/src/s
 new file mode 100644
 --- /dev/null
 +++ b/source/rust_verify/src/sail_namespace.rs
-@@ -0,0 +1,253 @@
+@@ -0,0 +1,314 @@
 +//! Fixed-slot rendezvous while the compiler thread holds its real namespace guard.
-+use std::sync::atomic::{AtomicUsize, Ordering};
++use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 +use std::sync::{Arc, Condvar, Mutex};
 +// Fixed mutex/condvar/Arc controls and one boxed queue request. No variable-size
 +// data, waiter queue, source file, span, String, or compiler context is owned here.
 +const CONTROL_BYTES: usize = 16 * 1024;
++pub(super) const QUEUE_RESERVE: usize = 64 * 1024;
++static QUEUE_USED: AtomicBool = AtomicBool::new(false);
 +static OWNED: AtomicUsize = AtomicUsize::new(0);
++#[cfg(test)]
++type DropPause = (
++    std::sync::mpsc::SyncSender<()>,
++    std::sync::mpsc::Receiver<()>,
++);
++#[cfg(test)]
++static DROP_PAUSE: Mutex<Option<DropPause>> = Mutex::new(None);
 +struct Owner;
 +impl Drop for Owner {
 +    fn drop(&mut self) {
 +        OWNED.store(0, Ordering::Release);
++        #[cfg(test)]
++        {
++            let pause = DROP_PAUSE.lock().ok().and_then(|mut value| value.take());
++            if let Some((started, resume)) = pause {
++                let _ = started.send(());
++                let _ = resume.recv();
++            }
++        }
 +    }
 +}
 +#[derive(Default)]
@@ -10070,6 +10114,15 @@ new file mode 100644
 +}
 +pub(super) fn retained_bytes() -> usize {
 +    OWNED.load(Ordering::Acquire)
++        + if QUEUE_USED.load(Ordering::Acquire) {
++            QUEUE_RESERVE
++        } else {
++            0
++        }
++}
++#[cfg(test)]
++pub(super) fn active_bytes() -> usize {
++    OWNED.load(Ordering::Acquire)
 +}
 +pub(super) struct Request {
 +    shared: Arc<Shared>,
@@ -10079,6 +10132,7 @@ new file mode 100644
 +}
 +impl Lease {
 +    pub(super) fn pair() -> Option<(Self, Request)> {
++        QUEUE_USED.store(true, Ordering::Release);
 +        OWNED
 +            .compare_exchange(0, CONTROL_BYTES, Ordering::AcqRel, Ordering::Acquire)
 +            .ok()?;
@@ -10174,6 +10228,10 @@ new file mode 100644
 +}
 +
 +#[cfg(test)]
++pub(super) fn shared_allocation_bytes() -> usize {
++    std::mem::size_of::<Shared>() + 2 * std::mem::size_of::<usize>()
++}
++#[cfg(test)]
 +mod tests {
 +    use super::Lease;
 +    use std::sync::{
@@ -10222,14 +10280,14 @@ new file mode 100644
 +        );
 +        assert_eq!(map.files().len(), 2);
 +        worker.join().unwrap();
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
 +    }
 +    #[test]
 +    fn cancellation_before_ready_releases_service_and_owner() {
 +        let (lease, request) = Lease::pair().unwrap();
 +        drop(lease);
 +        request.serve(|_| panic!("cancelled request validated"));
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
 +    }
 +    #[test]
 +    fn dropped_service_refuses_ready_without_waiting() {
@@ -10237,7 +10295,7 @@ new file mode 100644
 +        drop(request);
 +        assert!(!lease.ready());
 +        drop(lease);
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
 +    }
 +    #[test]
 +    fn validator_unwind_wakes_waiting_worker() {
@@ -10251,7 +10309,7 @@ new file mode 100644
 +                .is_err()
 +        );
 +        worker.join().unwrap();
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
 +    }
 +    #[test]
 +    fn worker_unwind_disconnects_compiler_service() {
@@ -10262,7 +10320,7 @@ new file mode 100644
 +        });
 +        request.serve(|_| false);
 +        assert!(worker.join().is_err());
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
 +    }
 +    #[test]
 +    fn last_peer_owns_budget_until_physical_control_disposal() {
@@ -10270,12 +10328,12 @@ new file mode 100644
 +        assert!(Lease::pair().is_none());
 +        drop(lease);
 +        assert!(Lease::pair().is_none());
-+        assert_eq!(super::retained_bytes(), 16384);
++        assert_eq!(super::active_bytes(), 16384);
 +        drop(request);
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
 +        let pair = Lease::pair().unwrap();
 +        drop(pair);
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
 +    }
 +    #[test]
 +    fn repeated_validations_use_one_fixed_slot_and_exact_words() {
@@ -10288,10 +10346,40 @@ new file mode 100644
 +        });
 +        request.serve(|words| {
 +            assert_eq!(words[1], u64::MAX - words[0]);
-+            assert_eq!(super::retained_bytes(), 16384);
++            assert_eq!(super::active_bytes(), 16384);
 +            words[0] % 2 == 0
 +        });
 +        worker.join().unwrap();
-+        assert_eq!(super::retained_bytes(), 0);
++        assert_eq!(super::active_bytes(), 0);
++    }
++    #[test]
++    fn paused_retiring_shared_shell_is_covered_by_fixed_margin() {
++        let pair = Lease::pair().unwrap();
++        let (started, notice) = std::sync::mpsc::sync_channel(0);
++        let (resume, continue_drop) = std::sync::mpsc::sync_channel(0);
++        *super::DROP_PAUSE.lock().unwrap() = Some((started, continue_drop));
++        let retiring = std::thread::spawn(move || drop(pair));
++        notice.recv().unwrap();
++        // Old Shared's fields have disposed, but Arc's allocation is physically
++        // live until the paused Owner::drop returns. New admission is permitted
++        // only because a permanent retirement reserve covers this second shell.
++        assert_eq!(super::active_bytes(), 0);
++        assert_eq!(super::retained_bytes(), super::QUEUE_RESERVE);
++        let new = Lease::pair().unwrap();
++        assert_eq!(super::retained_bytes(), super::QUEUE_RESERVE + 16384);
++        drop(new);
++        resume.send(()).unwrap();
++        retiring.join().unwrap();
++        assert_eq!(super::retained_bytes(), super::QUEUE_RESERVE);
++    }
++    #[test]
++    fn inline_shared_and_two_retiring_controls_fit_explicit_fixed_margin() {
++        let shared = super::shared_allocation_bytes();
++        // Pinned Unix pthread lazy initialization: at most two candidates each
++        // for one Mutex and Condvar. Each native object has a256-byte audited
++        // ceiling on the supported Linux/Darwin pins. Kernel state is not a
++        // Rust heap/source allocation; no variable-size user queue exists.
++        assert!(2 * shared + 4 * 256 + 512 <= 4096);
++        assert!(std::mem::size_of::<super::Request>() + std::mem::size_of::<super::Lease>() <= 128);
 +    }
 +}

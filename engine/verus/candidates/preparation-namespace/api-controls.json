@@ -2,31 +2,38 @@
   "version": 1,
   "scope": "fixed-slot helper and actual pinned default-mode SourceMap API; source integration/runtime/qualification pending",
   "status": "PASS",
-  "tests": 7,
+  "tests": 10,
   "independent_cases": "serial; internal worker concurrency preserved",
   "pinned_toolchain": "1.98.1",
-  "raw_summary_sha256": "4b8ef24cafce286cfcf583b665ab47b7ecff5f58da0b6608ab8320c345f72cc7",
+  "raw_summary_sha256": "663d95e910775d5a4120b19b983826d150d0dbea5d651c1b65a9e9133959181a",
   "records": [
     {
       "name": "compile",
       "exit_code": 0,
-      "elapsed_seconds": 1.425730166,
+      "elapsed_seconds": 2.8939456249999997,
       "timeout_seconds": 60
     },
     {
       "name": "tests",
       "exit_code": 0,
-      "elapsed_seconds": 0.4279812920000001,
+      "elapsed_seconds": 0.42439845799999976,
       "timeout_seconds": 30
     }
   ],
+  "pinned_std_libc_metadata": {
+    "filename": "liblibc-dd3054cc665f826f.rmeta",
+    "sha256": "4f526c28fa20b56b4432b67e3c7c8cb02a677dd7bf33992915c8651fe99981c5",
+    "std_metadata_sha256": "75f2db5ad4d3ff74fc261e1d2e26faebbaa63b0adb01b1ce57185119f987026f",
+    "crate_hash": "dd7211fcfd41dedd789c560061f96fc4"
+  },
   "raw_sha256": {
     "tests.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "tests.stdout": "13c19176c9707f04e845abd3762cf23f8affd6dfeff40e6db183742619612ca2",
+    "tests.stdout": "5aff8ce9ce44ea6060d4432f467170d310d7401f7953b3d0eddfe475e66cbf2c",
+    "pinned-std-dependencies.txt": "42ce9a58552663c59a469d1b71ec3e195ab575c020a4a6847cdb751b8e1f8bc1",
     "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "tests.rs": "b95b244783092aae38991b037128174adab645df603d2abf835432b62f99c8e7",
-    "namespace.rs": "d3892e3869cb0eb73476338548f21d27d3d4c2439794a1f468fa349ff9973987",
-    "probe": "3c792404389fda8695de002bbb28535054323369055b5d3407cd88527146fa49",
+    "tests.rs": "264bcf18a9a27811c7238bbf50323e94bd1f41b731149ba66dd31cad64919df3",
+    "namespace.rs": "7ad8dc9477dbd8e71add5c205cc25b70fa4664eb95f13df28d729380377ea4fa",
+    "probe": "2548b3489a68f0935cbc412a08016ae3d4bd89ce3680459e460c3865cd343caf",
     "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "claims_excluded": [
