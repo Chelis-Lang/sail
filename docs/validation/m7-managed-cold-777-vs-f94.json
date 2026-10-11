@@ -1,0 +1,307 @@
+{
+  "kind": "managed_cold_timeout_and_native_ci_comparison",
+  "local": {
+    "source_commit": "777b86a539f4f6f42f3fab1cf97e176a22f6ac5c",
+    "execution": "Linux x86_64 Docker emulation on macOS arm64; shared development load",
+    "whole_pipeline_seconds": 1556.7967765,
+    "pipeline_exit": 1,
+    "managed_timeout_seconds": 240,
+    "cold_result_received": false,
+    "stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "stderr": {
+      "sha256": "eb00f83641492cfa9a4fc4f39826db5ff8cd2fed90427ba38696549aca5438d7",
+      "bytes": 594
+    },
+    "full_log": {
+      "sha256": "2bcb04888da06cfa064f752cf1f4a515967f2308524e73b8f1196af3e4a23271",
+      "bytes": 4922
+    },
+    "last_observable_line": "Checking verus_builtin v0.0.0-2026-09-16-0054",
+    "legacy_json_mcp_portfolio": "passed before managed phase",
+    "installed_mcp_transport_checks_passed": 5,
+    "repair_phase": "not reached",
+    "cause": "unresolved; no phase timestamps, CPU/process inventory or managed sidecars survived original scratch cleanup",
+    "sail_sha256": "4036ed22336bcf9d95923bb4398ef12b16d92bde161883897547c0317b0dde2a",
+    "shim_sha256": "a337030eec201a11f0b351b55bf2000e3e1f50e28f9a47580461e1af090bb80b"
+  },
+  "native_ci": {
+    "source_commit": "f94bbda2ee247720ef1bac20cba228089d542a9c",
+    "run_id": 38098393759,
+    "job_id": 114349041910,
+    "url": "https://github.com/Chelis-Lang/sail/actions/runs/38098393759/job/114349041910",
+    "result": "success: all unchanged managed assertions completed",
+    "artifact_id": 11686563845,
+    "artifact_zip_sha256": "26618122e67aec8bf38b59682e1c8032c358a47087738a9423f9c6f2d9f11666",
+    "job_log": {
+      "sha256": "fb58e5e86bd6efbab66eef0eb67284ed3bccf4b273394cb91c007c18fc23eb12",
+      "bytes": 63320
+    },
+    "runs": [
+      {
+        "label": "managed-01",
+        "currentness": "current",
+        "exit_code": 0,
+        "execution": {
+          "verifier_invocations": 2,
+          "reused_targets": 0,
+          "wall_ms": 112082.617934
+        },
+        "notes": [],
+        "error": null,
+        "targets": [
+          {
+            "target": "demo",
+            "requested": true,
+            "reused": false,
+            "complete": true,
+            "summary": {
+              "functions": 1,
+              "verified": 1,
+              "failed": 0,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          },
+          {
+            "target": "vstd",
+            "requested": false,
+            "reused": false,
+            "complete": true,
+            "summary": {
+              "functions": 1871,
+              "verified": 1871,
+              "failed": 0,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          }
+        ],
+        "report": {
+          "sha256": "0bee92b3a83bc69a7817652146225bcb44765c74cb5717da76bd5ae0102ec638",
+          "bytes": 1948988
+        },
+        "stderr": {
+          "sha256": "dfda133bed3465bf0ff838af28544c1f79ac0091025af58819420782d0f64367",
+          "bytes": 1949
+        }
+      },
+      {
+        "label": "managed-02",
+        "currentness": "current",
+        "exit_code": 0,
+        "execution": {
+          "verifier_invocations": 0,
+          "reused_targets": 2,
+          "wall_ms": 3195.38583
+        },
+        "notes": [],
+        "error": null,
+        "targets": [
+          {
+            "target": "demo",
+            "requested": true,
+            "reused": true,
+            "complete": true,
+            "summary": {
+              "functions": 1,
+              "verified": 1,
+              "failed": 0,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          },
+          {
+            "target": "vstd",
+            "requested": false,
+            "reused": true,
+            "complete": true,
+            "summary": {
+              "functions": 1871,
+              "verified": 1871,
+              "failed": 0,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          }
+        ],
+        "report": {
+          "sha256": "46abfc48bdae88834657d9c1e295bcacd2b9d2516e8204e6066e001692bbd627",
+          "bytes": 1948984
+        },
+        "stderr": {
+          "sha256": "b7c7f73354ae12e322716a42c4e990652df41a2005ad8781345a54ee364dd19e",
+          "bytes": 85
+        }
+      },
+      {
+        "label": "managed-03",
+        "currentness": "current",
+        "exit_code": 0,
+        "execution": {
+          "verifier_invocations": 1,
+          "reused_targets": 1,
+          "wall_ms": 4294.226697
+        },
+        "notes": [],
+        "error": null,
+        "targets": [
+          {
+            "target": "demo",
+            "requested": true,
+            "reused": false,
+            "complete": true,
+            "summary": {
+              "functions": 1,
+              "verified": 1,
+              "failed": 0,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          },
+          {
+            "target": "vstd",
+            "requested": false,
+            "reused": true,
+            "complete": true,
+            "summary": {
+              "functions": 1871,
+              "verified": 1871,
+              "failed": 0,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          }
+        ],
+        "report": {
+          "sha256": "79bc571ded4a6bd3729f1d0e1c7cffe64b13d087484f74b371b61f1b88c15c45",
+          "bytes": 1948986
+        },
+        "stderr": {
+          "sha256": "abf4910ca8eb10cf3e2333f6d9c407823421144034e22f7fb1fb6d9b8f2cb4b6",
+          "bytes": 253
+        }
+      },
+      {
+        "label": "managed-04",
+        "currentness": "current",
+        "exit_code": 101,
+        "execution": {
+          "verifier_invocations": 1,
+          "reused_targets": 1,
+          "wall_ms": 3774.6168660000003
+        },
+        "notes": [],
+        "error": null,
+        "targets": [
+          {
+            "target": "demo",
+            "requested": true,
+            "reused": false,
+            "complete": false,
+            "summary": {
+              "functions": 1,
+              "verified": 0,
+              "failed": 1,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          },
+          {
+            "target": "vstd",
+            "requested": false,
+            "reused": true,
+            "complete": true,
+            "summary": {
+              "functions": 1871,
+              "verified": 1871,
+              "failed": 0,
+              "unknown": 0,
+              "provisional": 0,
+              "unstable": 0
+            }
+          }
+        ],
+        "report": {
+          "sha256": "afc11136a67b51e4cbffe7d1906c9945e8c28bd675898eb8bb7c3bd12bf13742",
+          "bytes": 1981791
+        },
+        "stderr": {
+          "sha256": "711f35d33840be650766e25a1d1046e5d4f6995ece84ba8d4c88a26eb142b251",
+          "bytes": 599
+        }
+      }
+    ],
+    "cold_cargo_finished_seconds_reported": 109,
+    "sail_sha256": "bf6186758d9e2f3f216703394a7311e0cf6ea0a555f39760773800e197b24482",
+    "shim_sha256": "abb8be5a8af647c043f87d3b5c0704b14fe256bdef77ae4efdef6d915e122de0"
+  },
+  "unchanged_777_to_f94_paths": [
+    "ci/test-managed.py",
+    "ci/run.sh",
+    "crates/sail-cli/src/managed_cli.rs",
+    "crates/sail-verus/src/managed/runner.rs",
+    "crates/sail-verus/src/managed/coherent.rs",
+    "crates/sail-verus/src/managed/sysroot.rs",
+    "crates/sail-verus/src/adapter.rs"
+  ],
+  "static_stage_audit": [
+    "Context binds actual Sail/Cargo-Verus/Cargo/Z3/shim/driver/Python/Rust executable/configuration/environment and sysroot bytes before invocation.",
+    "Eligible sysroot digests are held under observers and nonrenewable kernel read leases before first hash through final receipt seal; uncertainty triggers full validation and cannot authorize reuse.",
+    "The Cargo target is owned by workspace byte-path digest and complete context hash; different projects or engine/function/flag/runtime contexts do not share this target.",
+    "Non-verification dependency invocations forward unchanged; only verified targets add observation sidecars/complete proof reports.",
+    "Every newly isolated target may compile ordinary macro dependencies and verify vstd; native cold report confirms vstd1871 plus requested demo1 with2invocations.",
+    "Current receipt validation binds invocation dependencies and artifact byte hashes; missing target evidence triggers explicit cleanup and fresh invocation, not Cargo fresh-as-proof."
+  ],
+  "diagnostic_followup": "Timeout-only private bounded observation of existing progress events, descendant CPU/state/selected crate, cwd/fd targets and run-sidecar inventory; no new verification or code performance claim",
+  "controls": "No prewarming, fixture change,240s extension, new compiler flags, cache trust bypass or shared target implementation. Observations do not establish which dependency or proof was active in the failed run.",
+  "diagnostic_controls": {
+    "host": "nine passed; Linux real completed-group control separated from cross-platform deterministic late-response test",
+    "linux_container": "ten passed; original assertions and harness kill semantics unchanged",
+    "initial_host_real_late_completion": "failed PermissionError in unchanged os.killpg after child completion; no surviving owned process; failure retained, no cleanup semantic change",
+    "source_files": {
+      "ci/managed-evidence.py": {
+        "sha256": "f47632dd991177ff40dc50685dc7e01b83236608b58be9ffaecce086825ca3fb",
+        "bytes": 9487
+      },
+      "ci/test-managed.py": {
+        "sha256": "a5d212a56e4fdaf9472c597f40f36878a24caab74865a014ca3944948490702b",
+        "bytes": 15159
+      },
+      "scripts/test-managed-timeout-evidence.py": {
+        "sha256": "71265afe82f3ec397edc1d84de64e868c8ad30e66346a3a0f45141ce491f5422",
+        "bytes": 8389
+      }
+    },
+    "gate_command": "python3 scripts/test-managed-timeout-evidence.py",
+    "host_seconds": 0.13,
+    "linux_container_seconds": 0.81,
+    "raw_logs": {
+      "host-controls.stdout": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "host-controls.stderr": {
+        "sha256": "6b65a779b236ff4fde6129a97ef86f4eb3f48ad1c1fcfe316556b66be87ef949",
+        "bytes": 121
+      },
+      "linux-controls.stdout": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "linux-controls.stderr": {
+        "sha256": "1ecc6599fd0f715a15c1a73f9e01238b43c4d821f4ccfbaa4dfb2d73fe3beba3",
+        "bytes": 109
+      }
+    }
+  }
+}
