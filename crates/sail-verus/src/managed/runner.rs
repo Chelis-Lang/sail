@@ -59,6 +59,7 @@ fn input_environment_key(key: &std::ffi::OsStr) -> bool {
         "SAIL_ENGINE_CONTEXT",
         "SAIL_ENGINE_PREPARED_DIR",
         "SAIL_JOB_EVENTS",
+        "SAIL_JOB_RPC_TIMINGS",
         "SAIL_JOB_GUARD_PARENT",
         "SAIL_MANAGED_FORCE",
         "SAIL_DAEMON_SOCKET",
@@ -1985,6 +1986,7 @@ mod tests {
     fn lifecycle_only_job_environment_does_not_partition_proofs() {
         for key in [
             "SAIL_JOB_EVENTS",
+            "SAIL_JOB_RPC_TIMINGS",
             "SAIL_JOB_GUARD_PARENT",
             "SAIL_MANAGED_FORCE",
             "SAIL_MANAGED_PROXY",
@@ -1994,6 +1996,17 @@ mod tests {
         for key in ["RUSTFLAGS", "RUSTC", "PATH", "SAIL_CACHE_DIR"] {
             assert!(input_environment_key(std::ffi::OsStr::new(key)));
         }
+        let original = BTreeMap::from([("RUSTFLAGS", "-C opt-level=0")]);
+        let mut observed = original.clone();
+        observed.insert("SAIL_JOB_RPC_TIMINGS", "1");
+        let inputs = |values: BTreeMap<&str, &str>| {
+            values
+                .into_iter()
+                .filter(|(key, _)| input_environment_key(std::ffi::OsStr::new(key)))
+                .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                .collect::<BTreeMap<_, _>>()
+        };
+        assert_eq!(inputs(original), inputs(observed));
     }
     #[cfg(unix)]
     #[test]

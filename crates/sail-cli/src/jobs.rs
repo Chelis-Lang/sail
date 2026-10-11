@@ -11,18 +11,7 @@ use sail_api::jobs::{Client, Mode, Request, Response, Status, Submission};
 
 pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
     std::env::vars_os()
-        .filter(|(key, _)| {
-            ![
-                "SAIL_JOB_EVENTS",
-                "SAIL_MANAGED_FORCE",
-                "SAIL_JOB_GUARD_PARENT",
-                "SAIL_PROOF_EVENTS",
-                "SAIL_ENGINE",
-                "SAIL_ENGINE_FUNCTION",
-            ]
-            .iter()
-            .any(|value| key == value)
-        })
+        .filter(|(key, _)| input_environment_key(key))
         .map(|(key, value)| {
             let key = key
                 .into_string()
@@ -33,6 +22,20 @@ pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
             Ok((key, value))
         })
         .collect()
+}
+
+fn input_environment_key(key: &std::ffi::OsStr) -> bool {
+    ![
+        "SAIL_JOB_EVENTS",
+        "SAIL_JOB_RPC_TIMINGS",
+        "SAIL_MANAGED_FORCE",
+        "SAIL_JOB_GUARD_PARENT",
+        "SAIL_PROOF_EVENTS",
+        "SAIL_ENGINE",
+        "SAIL_ENGINE_FUNCTION",
+    ]
+    .iter()
+    .any(|value| key == *value)
 }
 
 /// Connect to the local job endpoint, automatically starting the daemon.
@@ -334,4 +337,24 @@ pub(crate) fn engine_options(args: &[String]) -> Result<(Mode, Vec<String>), Str
         }
     }
     Ok((mode, rest))
+}
+
+#[cfg(test)]
+mod environment_tests {
+    use super::*;
+
+    #[test]
+    fn rpc_observation_does_not_change_submitted_environment() {
+        let original = BTreeMap::from([("RUSTFLAGS", "-C opt-level=0"), ("PATH", "/toolchain")]);
+        let mut observed = original.clone();
+        observed.insert("SAIL_JOB_RPC_TIMINGS", "1");
+        let select = |environment: BTreeMap<&str, &str>| {
+            environment
+                .into_iter()
+                .filter(|(key, _)| input_environment_key(std::ffi::OsStr::new(key)))
+                .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                .collect::<BTreeMap<_, _>>()
+        };
+        assert_eq!(select(original), select(observed));
+    }
 }
