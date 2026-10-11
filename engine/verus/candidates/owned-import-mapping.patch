@@ -349,7 +349,7 @@
 +}
 --- /dev/null
 +++ b/rust_verify/src/sail_owned_imports_tests.rs
-@@ -0,0 +1,452 @@
+@@ -0,0 +1,536 @@
 +use super::sail_owned_imports as capture;
 +use super::*;
 +use capture::{CaptureFailure, State, sail_capture_loaded_imports};
@@ -800,5 +800,89 @@
 +            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id),
 +            Err(CaptureFailure::MissingOriginalHash)
 +        ));
++    });
++}
++
++#[test]
++fn ordinary_stock_resolution_can_load_after_capture_but_never_promotes_the_snapshot() {
++    session(|| {
++        struct RemoveFile(std::path::PathBuf);
++        impl Drop for RemoveFile {
++            fn drop(&mut self) {
++                let _ = std::fs::remove_file(&self.0);
++            }
++        }
++        let suffix = std::time::SystemTime::now()
++            .duration_since(std::time::UNIX_EPOCH)
++            .unwrap()
++            .as_nanos();
++        let path = std::env::temp_dir().join(format!(
++            "sail-import-timing-{}-{suffix}.rs",
++            std::process::id()
++        ));
++        let cleanup = RemoveFile(path.clone());
++        let content = "abcdefgh";
++        let hash = SourceFileHash::new_in_memory(SourceFileHashAlgorithm::Md5, content);
++        std::fs::write(&path, content).unwrap();
++        let map = SourceMap::new(FilePathMapping::empty());
++        let context = SpanContextX {
++            imported_crates: HashMap::from([(
++                7,
++                CrateInfo {
++                    files: vec![ExternSourceFile {
++                        original_start_pos: BytePos(1000),
++                        original_end_pos: BytePos(1008),
++                        info: Arc::new(Mutex::new(ExternSourceInfo::Delayed {
++                            filename: path.clone(),
++                            hash: hash.hash_bytes().to_vec(),
++                        })),
++                    }],
++                },
++            )]),
++        };
++        let metadata = HashMap::from([(
++            7,
++            HashMap::from([(
++                hash.hash_bytes().to_vec(),
++                FileStartEndPos {
++                    filename: Some(path),
++                    start_pos: 1000,
++                    end_pos: 1008,
++                },
++            )]),
++        )]);
++        let captured =
++            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id)
++                .unwrap();
++        assert!(map.files().is_empty());
++        assert_eq!(
++            captured.current_range(packed(1002, 1006)),
++            Err(CaptureFailure::Delayed)
++        );
++        // The unchanged stock resolver, rather than the helper, performs I/O.
++        let stock = context
++            .unpack_span(&packed(1002, 1006).to_vec(), Some(&map))
++            .unwrap()
++            .data();
++        assert_eq!(map.files().len(), 1);
++        assert!(matches!(
++            *context.imported_crates[&7].files[0].info.lock().unwrap(),
++            ExternSourceInfo::Loaded { .. }
++        ));
++        assert_eq!(stock.hi.0 - stock.lo.0, 4);
++        assert_eq!(stock.ctxt, rustc_span::SyntaxContext::root());
++        assert_eq!(stock.parent, None);
++        assert_eq!(
++            captured.current_range(packed(1002, 1006)),
++            Err(CaptureFailure::Delayed)
++        );
++        drop(captured);
++        // A later independent observation sees a locally loaded fallback;
++        // the initial Foreign-only proposal still refuses it.
++        assert!(matches!(
++            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id),
++            Err(CaptureFailure::NotForeign)
++        ));
++        drop(cleanup);
 +    });
 +}

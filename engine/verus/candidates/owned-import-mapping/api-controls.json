@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "Inert source API/ownership proposal; not selected, integrated, ordinarily built or proof-qualified",
-  "proposal_patch_sha256": "47bee309319108e47592c3b7db01062732a2dd1e06bf5fdb1041d100f3708be2",
+  "proposal_patch_sha256": "300aae450b17634cd884e574c0de09f5d2074a9d7a918d34b79d91f1ff255e56",
   "source_changes": "Uncalled private module plus unit tests only; no constructor call, key, codec, comparison, resolver state or selected runtime changed",
   "current_mismatch_trace": "Pending; no actual mismatch field inferred from these fixtures",
   "final_actual_api_controls": {
@@ -10,14 +10,14 @@
     "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
     "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
     "capture_sha256": "1562c8e2f8d43593ab24a8a3334473da01031eeee2fd5636e0d7c772b23a31f1",
-    "tests_sha256": "0c2cd111ede9805724b7f4a28aa93fc44d929a068cfc43851cc32efd75756174",
+    "tests_sha256": "e78826205884433f21b464fc4436010ea17f4d3fad98bffe912f5f150b580c80",
     "compile_exit_code": 0,
     "test_exit_code": 0,
-    "probe_sha256": "20fc752551de8bdcde5def4e72250773956ceea78f99a656a286ec8cf4515995",
-    "elapsed_seconds": 3.5913669590000006
+    "probe_sha256": "269d35a398cd1d4f31e3f119f381221b4b9bcfbf674160a688f8bde408145009",
+    "elapsed_seconds": 4.159440042
   },
-  "test_count": 8,
-  "raw_record": "target/owned-import-mapping/final-evidence",
+  "test_count": 9,
+  "raw_record": "target/owned-import-mapping/timing-evidence",
   "initial_failures": [
     {
       "version": 1,
@@ -68,12 +68,27 @@
     "exact_bounds_missing_original_and_wrong_current_map_fail_closed",
     "loaded_foreign_capture_matches_exact_stock_resolver_and_is_worker_owned",
     "namespace_hash_range_and_duplicate_content_refusals_are_exact",
+    "ordinary_stock_resolution_can_load_after_capture_but_never_promotes_the_snapshot",
     "original_hash_and_normalized_byte_lengths_are_kept_distinct"
   ],
   "final_output_hashes": {
     "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "tests.stdout": "20f6a0b8bc523fd8bf2295760307d3a17a72b9551d5861462f88396444340631",
+    "tests.stdout": "f2140f5b5acfbd5a09273ea891af9bd1df67eefe70350584e824c20f08a88e00",
     "tests.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-  }
+  },
+  "prior_eight_test_record": {
+    "version": 1,
+    "scope": "Inert loaded-import helper; actual pinned source-map types and extracted stock resolver, not source/proof qualification",
+    "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+    "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+    "capture_sha256": "1562c8e2f8d43593ab24a8a3334473da01031eeee2fd5636e0d7c772b23a31f1",
+    "tests_sha256": "0c2cd111ede9805724b7f4a28aa93fc44d929a068cfc43851cc32efd75756174",
+    "compile_exit_code": 0,
+    "test_exit_code": 0,
+    "probe_sha256": "20fc752551de8bdcde5def4e72250773956ceea78f99a656a286ec8cf4515995",
+    "elapsed_seconds": 3.5913669590000006
+  },
+  "prior_eight_test_patch_sha256": "47bee309319108e47592c3b7db01062732a2dd1e06bf5fdb1041d100f3708be2",
+  "timing_scope": "One new actual stock-resolver API timing control; pipeline timing/late capture/domain discussion is static, no real-project mismatch established"
 }
