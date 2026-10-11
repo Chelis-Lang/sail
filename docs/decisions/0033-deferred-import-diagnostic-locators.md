@@ -198,5 +198,7 @@ The [file-only implementation and control inventory](../../engine/verus/candidat
 passed complete source controls (42 VIR/108 driver and both strict checks),
 the admitted stale-memo sensitivity control and ordinary fresh-vstd verification
 (2060/0) with a complete new runtime manifest. The ADR and runtime remain
-proposed/unselected: strict original diagnostics, same-input lowering and genuine
-previous-revision checked reuse are still required before runtime selection.
+proposed/unselected for product delivery: the original thirteen-stage source
+qualification also passed strict stock diagnostics, same-input lowering and
+genuine previous-revision checked reuse. Rebuilt-product and performance
+acceptance remain separate before runtime selection.

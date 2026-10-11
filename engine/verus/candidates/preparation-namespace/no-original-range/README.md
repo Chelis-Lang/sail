@@ -5,7 +5,9 @@ passed 42 VIR and 108 driver tests and both strict checks. The admitted stale-me
 counterfactual failed at the expected inequality, then the exact restored case
 passed. The [ordinary build](valid-memo-correction/ordinary/ordinary-build-result.json)
 passed with fresh vstd 2060/0 and a complete new thirteen-artifact manifest.
-The original qualification remains pending; the selected runtime is unchanged.
+The [whole original source qualification](valid-memo-correction/ordinary/qualification-result.json)
+also passed all thirteen stages and final seals. Product acceptance and runtime
+selection remain pending; the selected runtime is unchanged.
 
 The retained [boundary diagnostic](../boundary-diagnostic/revision0-result.json)
 observed three missing-range refusals and a separate `pair-busy` admission miss.
