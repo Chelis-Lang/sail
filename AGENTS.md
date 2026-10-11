@@ -81,6 +81,14 @@ plus benchmark deltas for any performance change.
 **Parallel agents** work in separate worktrees under `.claude/worktrees/` on
 their own branches. The lead reviews and merges.
 
+**Shared Docker host.** Assign one lifecycle owner within the team. Other
+agents use existing Sail containers and do not independently restart Docker
+Desktop. Coordinate heavy compiler work so only one shared-target writer runs.
+When another project restarts the daemon, preserve the interrupted scope, wait
+for the existing instance to recover, and check its new container birth and
+write health. Do not reuse old process grants or silently replay a proof. An
+idle Sail container may restart automatically; a validation workflow may not.
+
 **Workspace hygiene.** Retire unused worktrees after their handoff is integrated.
 Preserve branch references, uncommitted source and raw validation evidence first;
 discard regenerable compiler intermediates. Reuse build targets for continuing
