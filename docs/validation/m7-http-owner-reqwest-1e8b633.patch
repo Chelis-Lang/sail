@@ -1,0 +1,16 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -95,3 +95,13 @@
+ [profile.profiling]
+ inherits = "release"
+ debug = true
++
++[profile.dev.package.reqwest]
++opt-level = 3
++debug-assertions = true
++overflow-checks = true
++
++[profile.test.package.reqwest]
++opt-level = 3
++debug-assertions = true
++overflow-checks = true
