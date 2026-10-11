@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "started_unix_ns": 1791720566730464000,
+  "scope": "Remove three unreferenced regenerable Sail images only; no containers or volumes removed",
+  "backing_available_before_bytes": 6836912128,
+  "protected_image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+  "all_container_references_before": [
+    {
+      "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+      "name": "/sail-m7-handoff-validation",
+      "status": "running"
+    },
+    {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+      "name": "/sail-m7-acceptance",
+      "status": "running"
+    }
+  ],
+  "images": [
+    {
+      "id": "sha256:11067f4e78d2fc0efe8d00788605d6b0157f22cccc9c464f951baca10d7ee35f",
+      "tags": [
+        "sail-ci:ae1e0bc5ac5ca905"
+      ],
+      "repo_digests": [
+        "sail-ci@sha256:11067f4e78d2fc0efe8d00788605d6b0157f22cccc9c464f951baca10d7ee35f"
+      ],
+      "nominal_size_bytes": 1169379104,
+      "rootfs": {
+        "Type": "layers",
+        "Layers": [
+          "sha256:d81fb2a7c6ee3be05fdefaa7fd223be219c1ab172083ec1b994c3ecda33ac0a8",
+          "sha256:22a0d500b37f4dbc9d8bd7fcb073c36b0a34e16e61579a58bf359c46a47cf9ce",
+          "sha256:ba00410d625bb9877d043447c4e6cae09bf99b1e43697c58a105c2744c54a067",
+          "sha256:1cb29652591a45fc36d51c4276d6ea495ba7177ebd598917e041ee1f6615c7a0",
+          "sha256:53f37001da6931e2d6dd90b2fd909bacb4879ea7e57b83989ee866320f169327",
+          "sha256:ca7e12b7cd3d69d1b5e801661165a7a2893057b9eb8805f03126274ce3af1270",
+          "sha256:564c34e94f65a81088d9bb6f1fd2a1f3ed26107e34abb3726cd7d132c461577f"
+        ]
+      }
+    },
+    {
+      "id": "sha256:220a885cd789f0c12cfe9e1aa727b79a24103d2a04631fca1e533c63ab887a21",
+      "tags": [
+        "sail-ci:7f91071fa5a16a1c",
+        "sail-ci:local"
+      ],
+      "repo_digests": [
+        "sail-ci@sha256:220a885cd789f0c12cfe9e1aa727b79a24103d2a04631fca1e533c63ab887a21"
+      ],
+      "nominal_size_bytes": 1167229700,
+      "rootfs": {
+        "Type": "layers",
+        "Layers": [
+          "sha256:d81fb2a7c6ee3be05fdefaa7fd223be219c1ab172083ec1b994c3ecda33ac0a8",
+          "sha256:22a0d500b37f4dbc9d8bd7fcb073c36b0a34e16e61579a58bf359c46a47cf9ce",
+          "sha256:ba00410d625bb9877d043447c4e6cae09bf99b1e43697c58a105c2744c54a067",
+          "sha256:1cb29652591a45fc36d51c4276d6ea495ba7177ebd598917e041ee1f6615c7a0",
+          "sha256:152e89776dadd6bb928a04834501563ced3ea45a68f9188589eafe9e34ce7c6d",
+          "sha256:1cc756232d53c235cc221fa3b69fa0a9de1e5da9bdbaa985819847c80bab4bd4",
+          "sha256:652dd24737ed38e4c8250aeaea8ead8d9ec4a52676988ad5fb0a57dfad87aa4d"
+        ]
+      }
+    },
+    {
+      "id": "sha256:05a3e064409a61fa205cdd66ce90d5e66030636c2c0efa1e6c9d0dc77f84c477",
+      "tags": [
+        "sail-singular:df4ba79c5c7c3cc1"
+      ],
+      "repo_digests": [
+        "sail-singular@sha256:05a3e064409a61fa205cdd66ce90d5e66030636c2c0efa1e6c9d0dc77f84c477"
+      ],
+      "nominal_size_bytes": 1186939281,
+      "rootfs": {
+        "Type": "layers",
+        "Layers": [
+          "sha256:d81fb2a7c6ee3be05fdefaa7fd223be219c1ab172083ec1b994c3ecda33ac0a8",
+          "sha256:22a0d500b37f4dbc9d8bd7fcb073c36b0a34e16e61579a58bf359c46a47cf9ce",
+          "sha256:103f88830a74f6ef6a66e3e5fd3f688b403fd0745b682a0fe102572ae4961636",
+          "sha256:876f008a49c0a89b4e1a7f9ad2bedca88308e94244252c1dccc85973a9dfbcfa",
+          "sha256:a72f561249edbdfcd4cfae409ace5a439d8ac8af15ab7e7a3b46594fcbb3d754",
+          "sha256:ca1d2f68796d977e95cf4fd14a4d15c548b17e328bb11c3ea9248d183b71bb77",
+          "sha256:a3032afc344b04cefde5c74c4bbefda09e661bdd0fe41f75435c22964fb92589",
+          "sha256:b78eb8407a344f07c68e3243866a28abd5a491ec763fb8a6ec93d40f0b41f683"
+        ]
+      }
+    }
+  ],
+  "regeneration_inputs": [
+    "26778e69:ci/Dockerfile + pinned toolchain inputs, sail-ci:ae1e0bc5ac5ca905",
+    "d2bf2c47:ci/Dockerfile + pinned toolchain inputs, sail-ci:7f91071fa5a16a1c",
+    "ci/Dockerfile.singular at df4ba79 inputs; preserved4050 base plus pinned Singular install"
+  ],
+  "nominal_sizes_are_not_reclaimed_bytes": true,
+  "operations": [
+    {
+      "id": "sha256:11067f4e78d2fc0efe8d00788605d6b0157f22cccc9c464f951baca10d7ee35f",
+      "argv": [
+        "docker",
+        "image",
+        "rm",
+        "sail-ci:ae1e0bc5ac5ca905"
+      ],
+      "exit_code": 0,
+      "stdout": "Untagged: sail-ci:ae1e0bc5ac5ca905\nDeleted: sha256:11067f4e78d2fc0efe8d00788605d6b0157f22cccc9c464f951baca10d7ee35f\n",
+      "stderr": ""
+    },
+    {
+      "id": "sha256:220a885cd789f0c12cfe9e1aa727b79a24103d2a04631fca1e533c63ab887a21",
+      "argv": [
+        "docker",
+        "image",
+        "rm",
+        "sail-ci:7f91071fa5a16a1c",
+        "sail-ci:local"
+      ],
+      "exit_code": 0,
+      "stdout": "Untagged: sail-ci:7f91071fa5a16a1c\nUntagged: sail-ci:local\nDeleted: sha256:220a885cd789f0c12cfe9e1aa727b79a24103d2a04631fca1e533c63ab887a21\n",
+      "stderr": ""
+    },
+    {
+      "id": "sha256:05a3e064409a61fa205cdd66ce90d5e66030636c2c0efa1e6c9d0dc77f84c477",
+      "argv": [
+        "docker",
+        "image",
+        "rm",
+        "sail-singular:df4ba79c5c7c3cc1"
+      ],
+      "exit_code": 0,
+      "stdout": "Untagged: sail-singular:df4ba79c5c7c3cc1\nDeleted: sha256:05a3e064409a61fa205cdd66ce90d5e66030636c2c0efa1e6c9d0dc77f84c477\n",
+      "stderr": ""
+    }
+  ],
+  "finished_unix_ns": 1791720594503901000,
+  "backing_available_after_bytes": 11415314432,
+  "all_containers_preserved": true,
+  "protected_image_layers_preserved": true,
+  "removed_images_absent": true,
+  "claimed_physical_recovery_bytes": null,
+  "backing_difference_is_observation_not_causal": true
+}
