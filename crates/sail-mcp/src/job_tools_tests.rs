@@ -6,6 +6,53 @@ use sail_api::output::{Counterexample, ObligationReport, OutcomeName, VerdictNam
 use sail_api::project::{Execution, ProjectResult, TargetResult};
 use std::path::{Path, PathBuf};
 
+#[test]
+fn owned_result_projection_matches_typed_schema_and_moves_the_full_graph() {
+    let root = Path::new("/fixture");
+    let repair = sail_api::repair::ResultDocument::from(sail_api::repair::BatchResult {
+        focus: None,
+        full: project(root),
+        manifest_sha256: "manifest".to_owned(),
+        compiler_invocations: 1,
+        batched: false,
+        selection_error: None,
+        preparation: None,
+    });
+    for repair in [None, Some(Box::new(repair))] {
+        for result in [
+            None,
+            Some(json!({"model": "λ\n".repeat(400_000), "array": [null, true, 1, 1.25]})),
+        ] {
+            let pointer = result
+                .as_ref()
+                .and_then(|value| value["model"].as_str())
+                .map(str::as_ptr);
+            let response = Response::Result(ResultDocument {
+                repair: repair.clone(),
+                job: status(root, Lifecycle::Completed, "id"),
+                result,
+            });
+            let expected = serde_json::to_value(&response).unwrap_or_default();
+            let actual = response_value(response).unwrap_or_default();
+            assert_eq!(actual, expected);
+            assert_eq!(
+                serde_json::to_vec(&actual).ok(),
+                serde_json::to_vec(&expected).ok()
+            );
+            assert_eq!(
+                actual["value"]["result"]["model"].as_str().map(str::as_ptr),
+                pointer
+            );
+            assert_eq!(actual["value"].get("repair").is_some(), repair.is_some());
+        }
+    }
+    let response = Response::Status(status(root, Lifecycle::Running, "id"));
+    assert_eq!(
+        response_value(response.clone()).ok(),
+        serde_json::to_value(response).ok()
+    );
+}
+
 struct Fixture {
     root: PathBuf,
     context: Context,
@@ -561,10 +608,14 @@ fn cancellation_interrupts_owned_read_and_does_not_retry_cli() {
             sail_api::jobs::read_frame(stream).unwrap_or_else(|error| unreachable!("{error}"));
         assert!(ready_tx.send(()).is_ok());
         let mut byte = [0];
+        let read = peer_read_with_interrupts(Duration::from_secs(2), |remaining| {
+            stream.set_read_timeout(Some(remaining))?;
+            stream.read(&mut byte)
+        });
         assert_eq!(
-            stream.read(&mut byte).ok(),
+            read.as_ref().ok().copied(),
             Some(0),
-            "owned read must close"
+            "owned read must close: {read:?}"
         );
     })
     .unwrap_or_else(|error| unreachable!("{error}"));
@@ -600,6 +651,84 @@ fn cancellation_interrupts_owned_read_and_does_not_retry_cli() {
     );
     assert!(worker.finish());
     assert!(server.finish());
+}
+
+// A syscall interruption is not EOF or a second RPC. Each attempt uses the
+// remaining SAME original peer budget; only Interrupted can be retried.
+fn peer_read_with_interrupts(
+    budget: std::time::Duration,
+    mut read: impl FnMut(std::time::Duration) -> std::io::Result<usize>,
+) -> std::io::Result<usize> {
+    let started = std::time::Instant::now();
+    loop {
+        let remaining = budget.saturating_sub(started.elapsed());
+        if remaining.is_zero() {
+            return Err(std::io::ErrorKind::TimedOut.into());
+        }
+        let result = read(remaining);
+        if started.elapsed() >= budget {
+            return Err(std::io::ErrorKind::TimedOut.into());
+        }
+        match result {
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            result => return result,
+        }
+    }
+}
+
+#[test]
+fn peer_interrupt_control_still_requires_eof_and_original_deadline() {
+    use std::io::ErrorKind;
+    use std::time::Duration;
+    let mut reads = 0;
+    assert_eq!(
+        peer_read_with_interrupts(Duration::from_secs(2), |_| {
+            reads += 1;
+            if reads == 1 {
+                Err(ErrorKind::Interrupted.into())
+            } else {
+                Ok(0)
+            }
+        })
+        .ok(),
+        Some(0)
+    );
+    assert_eq!(reads, 2);
+    for value in [
+        Ok(1),
+        Err(ErrorKind::TimedOut.into()),
+        Err(ErrorKind::ConnectionReset.into()),
+    ] {
+        let mut value = Some(value);
+        let read = peer_read_with_interrupts(Duration::from_secs(2), |_| {
+            value
+                .take()
+                .unwrap_or_else(|| unreachable!("nonInterrupted must not retry"))
+        });
+        assert_ne!(read.ok(), Some(0));
+        assert!(value.is_none());
+    }
+    let expired = peer_read_with_interrupts(Duration::ZERO, |_| {
+        unreachable!("expired peer must not read")
+    });
+    assert_eq!(
+        expired.err().map(|error| error.kind()),
+        Some(ErrorKind::TimedOut)
+    );
+    let mut first = true;
+    let interrupted = peer_read_with_interrupts(Duration::from_secs(2), |_| {
+        let previous = first;
+        first = false;
+        if previous {
+            Err(ErrorKind::Interrupted.into())
+        } else {
+            Err(ErrorKind::TimedOut.into())
+        }
+    });
+    assert_eq!(
+        interrupted.err().map(|error| error.kind()),
+        Some(ErrorKind::TimedOut)
+    );
 }
 
 #[test]

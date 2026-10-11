@@ -46,9 +46,40 @@ fn supported() -> Vec<&'static str> {
 type Out = Arc<Mutex<Box<dyn Write + Send>>>;
 
 fn send(out: &Out, message: &Value) {
+    send_checked(out, message, || false);
+}
+
+// Encoding owns no output lock. Publication remains one complete framed write,
+// with cancellation checked again after any output-lock wait.
+fn send_checked(out: &Out, message: &impl serde::Serialize, cancelled: impl Fn() -> bool) {
+    if cancelled() {
+        return;
+    }
+    let mut encoded = serde_json::to_vec(message).unwrap_or_default();
+    encoded.push(b'\n');
     if let Ok(mut w) = out.lock() {
-        let _ = writeln!(w, "{}", jsonrpc::line(message));
+        if cancelled() {
+            return;
+        }
+        let _ = w.write_all(&encoded);
         let _ = w.flush();
+    }
+}
+
+struct InflightCleanup {
+    inflight: Arc<Mutex<HashMap<String, Arc<Cancel>>>>,
+    key: String,
+    cancel: Arc<Cancel>,
+}
+impl Drop for InflightCleanup {
+    fn drop(&mut self) {
+        if let Ok(mut inflight) = self.inflight.lock()
+            && inflight
+                .get(&self.key)
+                .is_some_and(|current| Arc::ptr_eq(current, &self.cancel))
+        {
+            inflight.remove(&self.key);
+        }
     }
 }
 
@@ -166,16 +197,19 @@ impl Server {
             Arc::clone(&self.inflight),
         );
         let (id, name) = (id.clone(), name.to_owned());
+        let cleanup = InflightCleanup {
+            inflight,
+            key,
+            cancel: Arc::clone(&cancel),
+        };
         self.workers.push(std::thread::spawn(move || {
+            let _cleanup = cleanup;
             let result = tools::call(&ctx, &name, &args, &cancel);
-            if let Ok(mut inflight) = inflight.lock() {
-                inflight.remove(&key);
-            }
             if cancel.is_cancelled() {
                 return;
             }
             let message = match result {
-                Some(r) => jsonrpc::ok(&id, &r.to_json()),
+                Some(r) => jsonrpc::ok_owned(id.clone(), r.into_json()),
                 None => jsonrpc::error(
                     &id,
                     jsonrpc::INVALID_PARAMS,
@@ -183,7 +217,7 @@ impl Server {
                     None,
                 ),
             };
-            send(&out, &message);
+            send_checked(&out, &message, || cancel.is_cancelled());
         }));
         self.workers.retain(|w| !w.is_finished());
     }
@@ -521,3 +555,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+#[cfg(all(test, unix))]
+#[path = "output_tests.rs"]
+mod output_tests;

@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Move owned MCP result graphs through response envelopes and encode complete
+  replies before taking the stdout write lock. Preserve complete text and
+  structured payloads, atomic frames and cancellation through publication.
+
 - Coordinate the sysroot handoff test fixture's first preparation hint with
   maintenance startup. Keep production busy refusal, original handoff checks
   and deadlines; release and join fixture workers on assertion unwind.
