@@ -17,6 +17,10 @@ def row(pid, ppid, start=10, group=None):
 
 
 class Controls(unittest.TestCase):
+    def test_catchable_termination_enters_unwind(self):
+        with self.assertRaises(KeyboardInterrupt):
+            m.interrupted(signal.SIGTERM, None)
+
     def test_owned_group_parent_chain(self):
         g = m.Groups(row(100, 1))
         g.observe({100: row(100, 1), 101: row(101, 100, group=100), 102: row(102, 101), 200: row(200, 1)})

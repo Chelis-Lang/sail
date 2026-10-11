@@ -38,7 +38,9 @@ before signalling child groups and the primary. PID reuse, a missing parent,
 or an unrelated group grants no signal authority. Scans cap at 16,384 process
 entries and 256 retained groups. An unobserved or escaped orphan cannot be
 certified absent. Controller failure is retained separately from the
-harness's original result.
+harness's original result. Catchable controller SIGTERM/SIGHUP enters that
+same cleanup through unwind; SIGKILL cannot run cleanup. The initial
+unexecuted controller without those handlers remains retained separately.
 
 A supplementary archive copies at most 512 MiB across 4,096 files, with a
 120-second copying deadline. It excludes the private environment file and
@@ -55,7 +57,7 @@ or unavailable filename must remain separately labelled; none alone proves
 which actor stalled. Diagnostic success does not explain the old timeout.
 
 The [preparation record](m7-tspec-transcript-diagnostic-plan.json) binds actual
-Linux validation, script hashes and eight pure ownership/storage controls.
+Linux validation, script hashes and nine pure ownership/storage controls.
 The first host setup lacked `tomllib`; the first native prepare used the
 unsupported `Path.open(opener=...)` argument. Both setup failures remain
 retained, with no actor launched. The corrected prepare and validation-only
