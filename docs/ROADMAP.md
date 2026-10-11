@@ -124,8 +124,8 @@ reads can fall back to full byte validation. These are implemented changes,
 not measured real-project speedups.
 The [rebuilt combined release](../bench/validation/m7-linux-combined-product-a9609e9-emulated-2026-10-11.json)
 compiles and installs as private byte-identical copies. Its production source
-matches the passing gate; installation is preparatory while the solver failure
-remains open. Its [original emulated CLI/MCP fixture](../bench/validation/m7-linux-combined-repair-a9609e9-failure-2026-10-11.json)
+matches the earlier combined gate's source, whose HTTP deadline check fails;
+installation supplies no acceptance credit. Its [original emulated CLI/MCP fixture](../bench/validation/m7-linux-combined-repair-a9609e9-failure-2026-10-11.json)
 subsequently fails at 120.266 seconds during missing-function validation after
 success, declaration follow-up, events and baseline complete. Later cases are
 unattempted. No deadline changes or native-success substitution apply.
@@ -181,8 +181,11 @@ the ordinary build-script generation without republishing it; the next
 same-family check recompiles unchanged macro dependencies. The branch now
 implements ordinary-output retention for fully observed negative verification
 without changing successful proof receipts or `TargetResult.complete`.
-Independent review is complete; affected Linux controls and installed-product
-validation remain pending.
+Independent review is complete. All fifteen [affected Linux controls](validation/m7-negative-compiler-generation-first-controls.md)
+pass, including an actual Cargo dependency reuse check. Their first component
+scope fails strict Clippy on a test-only missing semicolon; that correction is
+integrated. The subsequent complete workspace gate passes strict Clippy and is
+running the remaining checks. Installed-product validation remains pending.
 
 The [async HTTP candidate](decisions/0037-owned-async-shared-http-transport.md)
 passes its 39 affected controls but increases combined helper/I/O CPU and complete

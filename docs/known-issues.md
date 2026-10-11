@@ -16,7 +16,8 @@ For current experimental repair use:
   [the recovered diagnostic](validation/m7-repair-a960-recovered-setup.md)
   identifies this mechanism. The branch now retains ordinary contracts only
   after fully observed normal negative verification; its
-  [Linux controls](validation/m7-negative-compiler-generation-plan.md) are
+  [fifteen affected Linux controls](validation/m7-negative-compiler-generation-first-controls.md)
+  pass, while complete workspace and installed-product validation remain
   pending. Proof acceptance and successful receipts remain independent.
 - Full-result reader latency and real-project repair speed remain unqualified.
   Original workflow scopes are retained with their original bounds; use the
