@@ -1,0 +1,330 @@
+{
+  "schema_version": 1,
+  "scope": "Original standalone managed acceptance after optional daemon handoff activation; fresh fixture/cache; no preparation or copied proof.",
+  "execution": "Linux x86_64 Docker Desktop emulation on a shared development host. Other owned gates/corpus work were active; no causal attribution from concurrency.",
+  "source": "7da9579f4aeebafdecf977aeb97a8daf8023740f",
+  "source_archive_sha256": "728118895837984fb2252aacf41db8479c63e1704b2acfe53b2772561ed3944f",
+  "product": {
+    "sail": {
+      "bytes": 74509448,
+      "sha256": "38ab3ab74eb38b4303373b7cd7fcf6dcfe6a812e17342d988136abc3d1b5d9a9"
+    },
+    "sail-z3": {
+      "bytes": 10997176,
+      "sha256": "94d7932b7e4ec31489e373e2af99ddef3d7c8d80e8dbbeace225c5b581d7d9e0"
+    }
+  },
+  "runtime": {
+    "verus": {
+      "bytes": 4708720,
+      "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+    },
+    "cargo-verus": {
+      "bytes": 2756256,
+      "sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+    },
+    "z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "controller": {
+    "bytes": 5087,
+    "sha256": "a6e200c222dae5f445d649b5e14207abf0396b48f72973bd343ddcba463ba39a"
+  },
+  "inputs": {
+    "test-managed.py": {
+      "bytes": 15159,
+      "sha256": "a5d212a56e4fdaf9472c597f40f36878a24caab74865a014ca3944948490702b"
+    },
+    "managed-evidence.py": {
+      "bytes": 9487,
+      "sha256": "f47632dd991177ff40dc50685dc7e01b83236608b58be9ffaecce086825ca3fb"
+    },
+    "diagnostics.rs": {
+      "sha256": "81ae57dab7f64c8ed505ee65faa46ac3f73f180c29e8d03681a13dc82590ad7c",
+      "bytes": 10583
+    }
+  },
+  "bounds": {
+    "managed": 240,
+    "plain": 120,
+    "cli": 30,
+    "rpc": 5
+  },
+  "preparation": "none",
+  "outcome": {
+    "returncode": 1,
+    "inclusive_elapsed_s": 245.12096811099764,
+    "first_managed": {
+      "operation": "managed-01",
+      "duration_s": 241.81911215200307,
+      "verification_timeout_s": 240,
+      "returncode": null,
+      "timed_out": true
+    },
+    "proof_report_bytes": 0,
+    "currentness": "unavailable: no complete report",
+    "later_warm_cli_mcp_mutation_checks": "not reached"
+  },
+  "started_utc": "2026-10-11T03:04:06.399274+00:00",
+  "finished_utc": "2026-10-11T03:08:11.563371+00:00",
+  "completed_setup_phases": [
+    {
+      "kind": "managed-setup-phase",
+      "phase": "metadata",
+      "pid": 499992,
+      "started_ms": 0.000292,
+      "elapsed_ms": 3715.0489599999996
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "runtime-binaries",
+      "pid": 499992,
+      "started_ms": 3715.797752,
+      "elapsed_ms": 638.10775
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "helper-identity",
+      "pid": 499992,
+      "started_ms": 4353.934585,
+      "elapsed_ms": 550.973834
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "toolchain-probes",
+      "pid": 499992,
+      "started_ms": 4904.930252,
+      "elapsed_ms": 1854.2388349999999
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-guard",
+      "pid": 499992,
+      "started_ms": 6759.192628,
+      "elapsed_ms": 2893.459085
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-handoff",
+      "pid": 499992,
+      "started_ms": 9652.682171,
+      "elapsed_ms": 0.7487499999999999
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-hash",
+      "pid": 499992,
+      "started_ms": 9653.44238,
+      "elapsed_ms": 15673.435132
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-barrier",
+      "pid": 499992,
+      "started_ms": 25326.923095000002,
+      "elapsed_ms": 11.898875
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "context-configuration",
+      "pid": 499992,
+      "started_ms": 25338.845887000003,
+      "elapsed_ms": 4.580125
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "runtime-context",
+      "pid": 499992,
+      "started_ms": 3715.635543,
+      "elapsed_ms": 21627.971719
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "owned-paths",
+      "pid": 499992,
+      "started_ms": 25344.184553000003,
+      "elapsed_ms": 3.420834
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "initial-snapshot",
+      "pid": 499992,
+      "started_ms": 25347.63272,
+      "elapsed_ms": 1594.039543
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "input-guards",
+      "pid": 499992,
+      "started_ms": 26941.700263000002,
+      "elapsed_ms": 1131.6073330000002
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "monitored-snapshot",
+      "pid": 499992,
+      "started_ms": 28073.333137999998,
+      "elapsed_ms": 67.302542
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "input-barrier",
+      "pid": 499992,
+      "started_ms": 28140.66043,
+      "elapsed_ms": 19.36175
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "target-cleanup",
+      "pid": 499992,
+      "started_ms": 28160.03168,
+      "elapsed_ms": 1629.373126
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "invocation-seal",
+      "pid": 499992,
+      "started_ms": 29789.419764000002,
+      "elapsed_ms": 236.49266699999998
+    }
+  ],
+  "handoff": {
+    "lookup_phase_ms": 0.7487499999999999,
+    "fill_hint_phase_present": false,
+    "actual_reuse": "not established",
+    "deterministic_activation_defect": "A nonempty BTreeMap<Vec<u8>, Vec<u8>> environment cannot serialize as a JSON map. The activation scope was therefore absent, and lookup/Prepare could not occur. Sorted byte-pair sequence serialization is being corrected separately.",
+    "reason_scope": "Confirmed independent serialization reproduction; no inference that the original caller guards failed."
+  },
+  "last_progress": {
+    "kind": "target-started",
+    "target": "vstd",
+    "no_completed_bucket_event": true,
+    "last_stderr": "Compiling verus_builtin_macros v0.0.0-2026-09-20-0158",
+    "context_sha256": "0bc7ce2dc476b650b4722907519bb2c3777cef054cd2673f36f713e83fd15773",
+    "input_revision": "4395c8c099dc9d8d9e164ff4f53de39aac95e49705b58ad672c67d0070b518aa",
+    "cold_source_observation": false
+  },
+  "timeout_observation": {
+    "proof_authority": false,
+    "limited": true,
+    "captured_process_count": 3,
+    "clock_ticks_per_second": 100,
+    "capture_seconds": 0.6722260419992381,
+    "bytes_read": 14310,
+    "errors": [],
+    "work_bounds": {
+      "bytes": 1048576,
+      "processes": 128,
+      "entries": 512,
+      "tasks_per_process": 128,
+      "fds_per_process": 64,
+      "scheduling_budget_seconds": 0.5
+    },
+    "limitation": "Kernel reads cannot be interrupted by an elapsed-time check; all observations may be partial and do not establish a timeout cause.",
+    "processes": [
+      {
+        "comm": "sail",
+        "state": "S",
+        "user_ticks": 1363,
+        "system_ticks": 222,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        },
+        "wchan": "anon_pipe_read"
+      },
+      {
+        "comm": "python3",
+        "state": "S",
+        "user_ticks": 16,
+        "system_ticks": 1,
+        "identity_stable": true,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        },
+        "wchan": "unix_stream_read_generic"
+      },
+      {
+        "comm": "cargo-verus",
+        "state": "S",
+        "user_ticks": 7,
+        "system_ticks": 0,
+        "identity_stable": false,
+        "compiler_selection": {
+          "crate_name": null,
+          "literal_verus_crate": false,
+          "literal_is_vstd": false
+        },
+        "wchan": "do_wait"
+      }
+    ]
+  },
+  "cleanup": {
+    "harness_reaped": true,
+    "wrapper_harness_managed_absent_after": true,
+    "remaining_captured_helper_cargo_states": [
+      "Z",
+      "Z"
+    ],
+    "scratch_removed": true,
+    "product_runtime_after_equal_before": true,
+    "limitation": "Read-only checks were confined to recorded PIDs; no claim of a complete host process inventory."
+  },
+  "raw_artifacts": {
+    "stderr.log": {
+      "sha256": "0d8fb4b462ec401119b69a7a2bda09497b015c4bf39df3702ca47625a45516ce",
+      "bytes": 1767
+    },
+    "metadata.json": {
+      "sha256": "e3a1af85869336f45e5b61f9cba7c3bd55b2e468b5c646ad0521551d95fcf7f3",
+      "bytes": 2357
+    },
+    "controller.json": {
+      "sha256": "c84d1b34ab8d9320a682e2f61c7f83577d4dcf7d9aeae44d689c8bb0b1703ccc",
+      "bytes": 47
+    },
+    "stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cleanup-observation.json": {
+      "sha256": "9b15169f6f71ba189ac9d7d790cd6d1f3d36c5089bfd5f26115255f80e7d4746",
+      "bytes": 542
+    },
+    "terminal.json": {
+      "sha256": "aef1561230a4dd53599d0b8f15e6f5aa403f9ab6c95cffda8a6974dc49f54e9a",
+      "bytes": 2304
+    },
+    "reports/managed-01.events.jsonl": {
+      "sha256": "2c172963c895d6884a7499b53ea7e2a87b632e6b4ea64628c489e8f525f23ca4",
+      "bytes": 532
+    },
+    "reports/managed-01.timeout.json": {
+      "sha256": "7d80e68ccb5cfef26273d4f1f552392b0c00d2b39d5e1ba313491a7f127e99a9",
+      "bytes": 16762
+    },
+    "reports/managed-01.operation.json": {
+      "sha256": "9b9334e5a58844fa09bfeb88c3f259770514241f6cd13c7d494fe5297e9ac0cc",
+      "bytes": 131
+    },
+    "reports/managed-01.stderr": {
+      "sha256": "aaae67de7fcf64f5dffcb21ff47239d05a10ea9f9f8b4730b2e178f288526f32",
+      "bytes": 594
+    },
+    "reports/managed-01.events.setup-499992-0.jsonl": {
+      "sha256": "7812070e4f33f791c440fc2c64facced77b668ebe591a63f1eb40631385b0182",
+      "bytes": 2089
+    },
+    "reports/managed-01.stdout.json": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "interpretation": "Original 240-second cold acceptance failed. Optional handoff was not exercised because activation scope construction declined. No warm improvement, correct-verdict completion, live-reader gate, source-engine qualification, or overall M7 acceptance is claimed."
+}
