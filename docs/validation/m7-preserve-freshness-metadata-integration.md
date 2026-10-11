@@ -1,21 +1,20 @@
 # Metadata publication integration checklist
 
 Candidate `8b3e4f61296669bb8621f1e85a3d9f1b41a2625b` remains unselected.
-Its first native scope built successfully, then stopped at one fixture error:
-seven of eight metadata cases passed, including the same-owner case. The complete
-freshness set, strict checks and counterfactual remain unattempted. The
-[first failure record](m7-preserve-freshness-metadata-first-failure.json) binds
-raw logs, the actual tested executable and independent closure. The corrected
-fixture checks the original stable error code and full Error equality; production
-bytes are unchanged and the corrected fixture is uncompiled. Original controller
-`867a2944` remains in Git; controller `3007b8f` retains owned cleanup and phase caps.
-The six exact Rust source hashes are in
-[m7-preserve-freshness-metadata-source.json](m7-preserve-freshness-metadata-source.json).
-No daemon, verifier proof or acceptance actor ran for these component controls.
+The [first scope](m7-preserve-freshness-metadata-first-failure.json) stopped at a
+fixture error. The corrected scope passed eight metadata tests, thirty freshness
+tests and all-target strict; its actual rewriting sensitivity failed as intended,
+but the old controller rejected interleaved libtest output. That whole scope stays
+failed and restored-positive was unattempted. The [new full replay proposal](m7-preserve-freshness-metadata-replay.md)
+reuses sealed compiled images, runs every component check freshly, and is
+unexecuted. Production bytes remain the original candidate. No proof, daemon,
+product or live reader acceptance actor ran for these component controls.
 
 1. After the lead grants an exclusively owned **private Linux** source/target,
    use the frozen [control runner](m7-preserve-freshness-metadata-controls.py),
-   SHA `097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2`.
+   Historical SHA `097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2`
+   used the rejected compact-line sensitivity classifier. Its corrected bytes
+   and the separate image-reuse replay are bound by the native plan.
    It checks source identity and counterfactual applicability before mutation.
    Preserve failed scopes, every actual tested executable and the independent
    actor/holder closure census. The exact affected commands are:
@@ -36,8 +35,9 @@ No daemon, verifier proof or acceptance actor ran for these component controls.
    release profile, with `CARGO_INCREMENTAL=0`. Timeout, interruption or forced
    group termination makes closure uncertainty sticky, even after leader reap.
    No later actor, patch or source restoration is allowed before an independent
-   lead audit. TERM and KILL each have a two-second cleanup grace. Nine fake-child
-   and predicate controls passed without launching a native actor. See the
+   lead audit. TERM and KILL each have a two-second cleanup grace. Ten fake-child
+   and classifier controls plus five replay-lineage controls passed without
+   launching a native actor. See the
    [native plan](m7-preserve-freshness-metadata-native-plan.json).
 
    ```text

@@ -97,8 +97,16 @@ def sha(path):
 
 
 def expected_negative(code, text):
-    return (code == 101 and CASE + " ... FAILED" in text
-            and ASSERTION in text
+    # --nocapture interleaves the panic between the case prefix and FAILED.
+    # Require the same exact single-case failure and unchanged assertion.
+    case = re.escape(CASE)
+    failed_case = re.search(
+        r"(?ms)^test " + case + r" \.\.\. (?:FAILED$|\nthread '" + case
+        + r"' [^\n]* panicked at [^\n]*\n.*?^FAILED$)", text)
+    return (code == 101 and failed_case is not None
+            and re.search(r"(?m)^running 1 test$", text) is not None
+            and re.search(r"(?m)^assertion failed: " + re.escape(ASSERTION) + r"$", text) is not None
+            and re.search(r"(?m)^    " + case + r"$", text) is not None
             and re.search(r"test result: FAILED\. 0 passed; 1 failed;", text) is not None)
 
 

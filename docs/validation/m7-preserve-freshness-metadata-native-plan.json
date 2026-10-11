@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "status": "first native scope FAIL preserved; corrected fixture requires a new root grant and fresh source binding",
+  "status": "corrected scope FAIL at controller classifier; complete image-reuse replay prepared only",
   "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
-  "controller_sha256": "097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2",
-  "pure_controls_sha256": "daccb308718eba2a92a2dc6924b97c2f9fed784d06f638d5f2b2a49b788edbe0",
+  "controller_sha256": "e6c44de24c38ea62e883207961528f1b03c92b96388d9f3f3761052aef15e898",
+  "pure_controls_sha256": "d5efc26f6eea61029eabe5d2c34ad39f85b6befb4507bd71368d55ef458d55f9",
   "counterfactual_sha256": "2de9811d37b2cccbe0328e203dc00d4fb3a0748ed56b64bb56243a0c320c65db",
   "profile": "release",
   "toolchain": "1.99.0",
@@ -35,7 +35,12 @@
   },
   "corrected_source_commit": "01a13b683f01e29cd09e29e1aa4a431f001bfd14",
   "corrected_source_archive_sha256": "d045750619c0f6f8e3c7dd92bb084d745f39596659b60a7b48dced538c97a1a0",
-  "source_record_sha256": "9321b90eb8153c948013254253e42b942ea0db1424ff2431e2708c4de94c255c",
+  "source_record_sha256": "9ceac27b1f8c85a6621d7ba2b8f30ad1e8505772abc75e5a06491349886ad049",
   "corrected_source_archive_bytes": 26234880,
-  "corrected_scope_started": false
+  "corrected_scope_started": true,
+  "corrected_scope_result_sha256": "3dc328392e2fc4e6e0284685ddda94735b20ffbe2d5a69adb9d627f8cb45396f",
+  "replay_controller_sha256": "fb513f2e906ac2e827fe86e4da25c0a007a6243a138e208c8ca6ec1824e64c77",
+  "replay_binding_sha256": "6d2d1aae3b178a99c1c12af659e627d62352cfff4e0aa9016bb9fc3bdbb92260",
+  "replay_pure_controls_sha256": "75d2a98debc9e93e0f8555f23297ab3556a6cdd8f834f96091c662fd45a27da2",
+  "replay_started": false
 }

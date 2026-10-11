@@ -139,7 +139,9 @@ class Controls(unittest.TestCase):
             owner.restore(Destination(), b"original")
 
     def test_only_exact_unchanged_owner_assertion_failure_is_sensitivity(self):
-        text = CONTROLS.CASE + " ... FAILED\nassertion failed: " + CONTROLS.ASSERTION + "\ntest result: FAILED. 0 passed; 1 failed; 0 ignored\n"
+        text = ("running 1 test\ntest " + CONTROLS.CASE + " ... FAILED\n"
+                "assertion failed: " + CONTROLS.ASSERTION + "\nfailures:\n    "
+                + CONTROLS.CASE + "\ntest result: FAILED. 0 passed; 1 failed; 0 ignored\n")
         self.assertTrue(CONTROLS.expected_negative(101, text))
         for code, candidate in [(0, text), (101, text.replace(CONTROLS.ASSERTION, "other")),
                                 (101, text.replace(CONTROLS.CASE, "other")),
@@ -147,6 +149,19 @@ class Controls(unittest.TestCase):
                                 (101, text.replace("1 failed", "11 failed")),
                                 (101, "error: compilation failed")]:
             self.assertFalse(CONTROLS.expected_negative(code, candidate))
+
+
+    def test_actual_interleaved_libtest_failure_and_refusal_variants(self):
+        path = Path(__file__).with_name("m7-preserve-freshness-metadata-libtest-failure.txt")
+        text = path.read_text()
+        self.assertTrue(CONTROLS.expected_negative(101, text))
+        for candidate in [text.replace("\nFAILED\n", "\nok\n"),
+                          text.replace("running 1 test", "running 2 tests"),
+                          text.replace(" panicked at ", " succeeded at "),
+                          text.replace("    " + CONTROLS.CASE, "    another_case"),
+                          text.replace("0 passed; 1 failed;", "1 passed; 0 failed;"),
+                          text.replace(CONTROLS.ASSERTION, "different assertion")]:
+            self.assertFalse(CONTROLS.expected_negative(101, candidate))
 
 
 if __name__ == "__main__":
