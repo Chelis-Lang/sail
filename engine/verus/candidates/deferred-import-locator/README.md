@@ -1,10 +1,14 @@
 # Exact DeferredLocator proposal
 
-Status: inert design, not a source patch or approved provenance policy. The
-`50667954` candidate and its failed original qualification remain unselected.
-No source loading, resolver mutation, changed preparation key or new runtime is
-introduced by this proposal. The existing full standard conformance attempt is
-independent of this source work.
+Status: unselected implementation for independent review under proposed
+[ADR 0033](../../../../docs/decisions/0033-deferred-import-diagnostic-locators.md).
+The [candidate patch](../deferred-import-locator.patch) has not had a full source
+build or qualification. Its helper controls pass against pinned rustc APIs;
+[identity](identity.json) and [evidence](helper-controls.json) distinguish those
+controls from the pending actual source and original fourteen-stage gates. The
+`50667954` candidate and its failed qualification remain immutable and
+unselected. This candidate introduces no eager source loading or resolver
+mutation. The existing full standard conformance attempt is independent.
 
 The [actual first refusal](../loaded-foreign-authority/delayed-role-review.md)
 is an imported raw-unit span for `vstd/function.rs:151:20: 151:65 (#0)`.
@@ -160,5 +164,7 @@ the new path-copy accounting explicitly. Prospective phase maximum remains
   previous-revision FOCUS gate. Preserve strict progress-note failures; neither
   a safe miss nor this design can qualify the source or satisfy HE/Vest 2×.
 
-Implementation and new build remain pending review. Retain all previous runtime,
-failure and selected-state evidence; no selected artifact changes are proposed.
+Implementation is reviewable; the new full source build remains pending explicit
+review. See the [implementation and control scope](implementation.md). Retain all
+previous runtime, failure and selected-state evidence; no selected artifact
+changes are proposed.
