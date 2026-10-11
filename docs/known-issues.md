@@ -81,6 +81,16 @@ four-reader latency gate has been established. See the
   implemented under [proposed ADR 0033](decisions/0033-deferred-import-diagnostic-locators.md),
   with current compiler resolution unchanged. It is not a selected source
   runtime or demonstrated cross-edit reuse.
+- The DeferredLocator `73bd` runtime passes actual source controls and its fresh
+  2,060-obligation vstd build, but its unchanged fourteen-stage qualification
+  stops at revision 0 of previous-revision focus. Eight earlier stages pass;
+  four fresh preparation provenance refusals leave zero hits. Stock and engine
+  verdicts and exact diagnostics match. No nonzero unchecked hit is observed,
+  and later cross-edit revisions were not reached. The candidate remains
+  unselected. See the [terminal failure and byte seals](../engine/verus/candidates/deferred-import-locator/dynsend-owner/qualification-failure.json)
+  and [independent span-form review](../engine/verus/candidates/deferred-import-locator/dynsend-owner/fresh-provenance-review.md).
+  The separate bounded import-state trace cannot attribute Local or unsupported
+  span-form refusals; its outcome will not replace original qualification.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
