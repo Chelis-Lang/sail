@@ -332,9 +332,9 @@ impl Proxy {
 
 /// Report cleanup metadata only after the child has been killed/reaped.
 /// A reaped PID cannot authorize a later proc census: it may be reused.
-fn deadline_snapshot(owner: u32, bytes: Option<usize>, reader_finished: bool) {
+fn deadline_snapshot(owner: u32, bytes: Option<usize>, reader_finished: bool, child_reaped: bool) {
     let metadata = format!(
-        "fault-session cleanup: reaped_owner={owner}, stdout_bytes={bytes:?}, reader_finished={reader_finished}\n"
+        "fault-session cleanup: owner={owner}, child_reaped={child_reaped}, stdout_bytes={bytes:?}, reader_finished={reader_finished}\n"
     );
     // Bypass libtest capture, after child cleanup has already completed.
     let _ = std::io::stderr().write_all(metadata.as_bytes());
@@ -457,6 +457,7 @@ impl Shim {
         {
             std::thread::sleep(Duration::from_millis(5));
         }
+        let mut child_reaped = status.is_some();
         let timed_out = status.is_none() || self.reader.as_ref().is_some_and(|r| !r.is_finished());
         if timed_out {
             status = None;
@@ -464,7 +465,7 @@ impl Shim {
             // while owning the sink, and a blocking snapshot would prevent
             // the original deadline from ever killing/reaping the child.
             let _ = self.child.kill();
-            let _ = self.child.wait();
+            child_reaped = self.child.wait().is_ok();
         }
         drop(self.stdin.take());
         // A descendant may retain stdout, or the reader may be stuck. This
@@ -489,12 +490,13 @@ impl Shim {
             }
         });
         let stdout = self.out.try_lock().ok().map(|out| out.clone());
-        let output_complete = reader_joined && stdout.is_some();
+        let output_complete = child_reaped && reader_joined && stdout.is_some();
         if timed_out || !output_complete {
             deadline_snapshot(
                 self.child.id(),
                 stdout.as_ref().map(Vec::len),
                 reader_finished,
+                child_reaped,
             );
         }
         Ended {
