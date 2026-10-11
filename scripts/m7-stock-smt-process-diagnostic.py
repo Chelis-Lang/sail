@@ -7,6 +7,7 @@ process-group cleanup. The source transformation only adds metadata markers.
 """
 
 import argparse
+from collections import Counter
 import hashlib
 import importlib.util
 import json
@@ -98,38 +99,102 @@ def instrument(source):
 MAIN = r'''#![forbid(unsafe_code)]
 use std::io::Write;
 use std::os::unix::net::UnixDatagram;
-use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
+use std::sync::{Arc, OnceLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
+use std::time::{Duration, Instant};
 mod context { #[derive(Debug, Clone, Copy)] pub enum SmtSolver { Z3, Cvc5 } }
 mod stock { include!("instrumented-smt_process.rs"); }
-static SOCKET: OnceLock<UnixDatagram> = OnceLock::new();
+static QUEUE: OnceLock<SyncSender<[u8; 32]>> = OnceLock::new();
 static START: OnceLock<Instant> = OnceLock::new();
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-static DROPPED: AtomicU64 = AtomicU64::new(0);
+static QUEUE_DROPPED: AtomicU64 = AtomicU64::new(0);
+static QUEUE_FULL: AtomicU64 = AtomicU64::new(0);
+static QUEUE_DISCONNECTED: AtomicU64 = AtomicU64::new(0);
+static SEND_DROPPED: AtomicU64 = AtomicU64::new(0);
+static SEND_ERRORS: AtomicU64 = AtomicU64::new(0);
+static DEADLINE_DROPPED: AtomicU64 = AtomicU64::new(0);
 static PAUSE: OnceLock<u64> = OnceLock::new();
+fn dropped() -> u64 {
+    QUEUE_DROPPED.load(Ordering::Relaxed) + SEND_DROPPED.load(Ordering::Relaxed)
+}
 fn mark(stage: u64) {
     let seq = SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let elapsed = START.get().map_or(0, |s| s.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64);
     let mut row = [0u8; 32];
-    for (slot, value) in row.chunks_exact_mut(8).zip([seq, elapsed, DROPPED.load(Ordering::Relaxed), stage]) {
+    for (slot, value) in row.chunks_exact_mut(8).zip([seq, elapsed, dropped(), stage]) {
         slot.copy_from_slice(&value.to_le_bytes());
     }
-    if !SOCKET.get().is_some_and(|s| s.send(&row).is_ok_and(|n| n == 32)) {
-        DROPPED.fetch_add(1, Ordering::Relaxed);
+    match QUEUE.get().map(|sender| sender.try_send(row)) {
+        Some(Ok(())) => {}
+        Some(Err(TrySendError::Full(_))) => {
+            QUEUE_DROPPED.fetch_add(1, Ordering::Relaxed);
+            QUEUE_FULL.fetch_add(1, Ordering::Relaxed);
+        }
+        _ => {
+            QUEUE_DROPPED.fetch_add(1, Ordering::Relaxed);
+            QUEUE_DISCONNECTED.fetch_add(1, Ordering::Relaxed);
+        }
     }
     // Only sensitivity controls select a pause. Baseline selects zero.
     if PAUSE.get() == Some(&stage) { loop { std::thread::park(); } }
 }
+struct MetadataOwner {
+    stop: Arc<AtomicBool>,
+    writer: Option<std::thread::JoinHandle<()>>,
+}
+impl MetadataOwner {
+    fn finish(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.stop.store(true, Ordering::Release);
+        if let Some(writer) = self.writer.take() {
+            writer.join().map_err(|_| "metadata writer panicked")?;
+        }
+        Ok(())
+    }
+}
+impl Drop for MetadataOwner {
+    fn drop(&mut self) { let _ = self.finish(); }
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 5 { return Err("command, metadata socket, response file, pause stage required".into()); }
+    if args.len() != 6 { return Err("command, metadata socket, response file, pause stage, whole deadline required".into()); }
     let sock = UnixDatagram::unbound()?;
     sock.connect(&args[2])?;
-    sock.set_nonblocking(true)?;
-    SOCKET.set(sock).map_err(|_| "socket already initialized")?;
-    START.set(Instant::now()).map_err(|_| "clock already initialized")?;
+    let began = Instant::now();
+    START.set(began).map_err(|_| "clock already initialized")?;
     PAUSE.set(args[4].parse()?).map_err(|_| "pause already initialized")?;
+    let budget = Duration::from_secs(args[5].parse()?);
+    if budget.is_zero() || budget > Duration::from_secs(600) { return Err("invalid whole deadline".into()); }
+    let (sender, receiver) = sync_channel::<[u8; 32]>(64);
+    let stop = Arc::new(AtomicBool::new(false));
+    let worker_stop = stop.clone();
+    let writer = std::thread::Builder::new().name("sail-diag-metadata".into()).spawn(move || {
+        loop {
+            let row = if worker_stop.load(Ordering::Acquire) {
+                match receiver.try_recv() { Ok(row) => row, Err(_) => break }
+            } else {
+                match receiver.recv_timeout(Duration::from_millis(10)) {
+                    Ok(row) => row,
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                }
+            };
+            let remaining = budget.saturating_sub(began.elapsed());
+            if remaining.is_zero() {
+                SEND_DROPPED.fetch_add(1, Ordering::Relaxed);
+                DEADLINE_DROPPED.fetch_add(1, Ordering::Relaxed);
+                continue;
+            }
+            let timeout = remaining.min(Duration::from_millis(25));
+            let sent = sock.set_write_timeout(Some(timeout)).and_then(|()| sock.send(&row));
+            if !sent.is_ok_and(|n| n == 32) {
+                SEND_DROPPED.fetch_add(1, Ordering::Relaxed);
+                SEND_ERRORS.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    })?;
+    let mut metadata = MetadataOwner { stop, writer: Some(writer) };
+    QUEUE.set(sender).map_err(|_| "metadata queue already initialized")?;
     let commands = std::fs::read(&args[1])?;
     if commands.len() > 1024 * 1024 { return Err("command bound".into()); }
     let mut process = stock::SmtProcess::launch(&context::SmtSolver::Z3, None);
@@ -142,7 +207,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     mark(20);
     drop(process);
     mark(21);
-    println!("{{\"responses\":{},\"observations\":{},\"dropped\":{}}}", responses.len(), SEQUENCE.load(Ordering::Relaxed), DROPPED.load(Ordering::Relaxed));
+    metadata.finish()?;
+    println!("{{\"responses\":{},\"observations\":{},\"dropped\":{},\"queue_dropped\":{},\"queue_full\":{},\"queue_disconnected\":{},\"send_dropped\":{},\"sender_errors\":{},\"deadline_dropped\":{}}}", responses.len(), SEQUENCE.load(Ordering::Relaxed), dropped(), QUEUE_DROPPED.load(Ordering::Relaxed), QUEUE_FULL.load(Ordering::Relaxed), QUEUE_DISCONNECTED.load(Ordering::Relaxed), SEND_DROPPED.load(Ordering::Relaxed), SEND_ERRORS.load(Ordering::Relaxed), DEADLINE_DROPPED.load(Ordering::Relaxed));
     Ok(())
 }
 '''
@@ -164,21 +230,49 @@ with open(os.environ["SAIL_DIAG_WIRE_PATH"], "xb") as wire:
 '''
 
 
+def fixed_stages(pause):
+    """Exact one-request/two-line fake-peer prefixes of the bound stock source."""
+    return {
+        1: [1],
+        4: [1, 2, 3, 4, 12, 13, 18],
+        13: list(range(1, 14)) + [18],
+        16: list(range(1, 17)) + [13, 14, 18],
+        0: list(range(1, 22)) + [13, 14],
+    }[pause]
+
+
 def sensitivity(rows, pause, timed_out):
-    """Diagnose only a delivered, loss-free intentional boundary control."""
-    observed = {row["stage"] for row in rows}
-    following = {1: 2, 4: 5, 13: 14, 16: 17}
-    forbidden = {1: {2, 3, 4, 5, 15, 16, 17, 19}, 4: {5, 7, 9, 11, 15, 16, 17, 19},
-                 13: {14, 15, 16, 17, 19}, 16: {17, 19}}
-    sequences = [row.get("sequence", index) for index, row in enumerate(rows)]
-    if (any(row["dropped"] for row in rows) or any(stage not in STAGES for stage in observed)
-            or sorted(sequences) != list(range(len(sequences)))):
-        return {"passed": False, "reason": "observation loss or invalid stage"}
+    """Certify only the exact, loss-free fixed-control prefix, not general tails."""
+    expected = Counter(fixed_stages(pause))
+    observed = Counter(row["stage"] for row in rows)
+    sequences = [row.get("sequence") for row in rows]
+    valid_sequence = (all(type(n) is int for n in sequences)
+                      and sorted(sequences) == list(range(len(sequences))))
+    passed = (bool(timed_out) == bool(pause) and valid_sequence
+              and not any(row["dropped"] for row in rows) and observed == expected)
+    result = {"passed": passed, "expected_rows": sum(expected.values()),
+              "expected_stage_counts": dict(sorted(expected.items())),
+              "observed_stage_counts": dict(sorted(observed.items())),
+              "fixed_control_prefix_only": True}
     if pause:
-        passed = timed_out and pause in observed and not (forbidden[pause] & observed)
-        return {"passed": passed, "confirmed_boundary": STAGES[pause],
-                "following_boundary_absent": STAGES[following[pause]]}
-    return {"passed": not timed_out and {2, 5, 7, 9, 11, 15, 17, 19, 21} <= observed}
+        following = {1: 2, 4: 5, 13: 14, 16: 17}
+        result.update(confirmed_boundary=STAGES[pause],
+                      following_boundary_absent=STAGES[following[pause]])
+    return result
+
+
+def completed_counters(value):
+    """Require complete normal-exit sender accounting, including every loss class."""
+    fields = {"responses", "observations", "dropped", "queue_dropped", "queue_full",
+              "queue_disconnected", "send_dropped", "sender_errors", "deadline_dropped"}
+    if (not isinstance(value, dict) or set(value) != fields
+            or any(type(n) is not int or n < 0 for n in value.values())
+            or value["queue_dropped"] != value["queue_full"] + value["queue_disconnected"]
+            or value["send_dropped"] != value["sender_errors"] + value["deadline_dropped"]
+            or value["dropped"] != value["queue_dropped"] + value["send_dropped"]
+            or value["dropped"] > value["observations"]):
+        raise ValueError("completed counter shape/accounting")
+    return value
 
 
 def write_json(path, value):
@@ -358,7 +452,7 @@ def run(args):
                 overwritten += 1
     deadline = 3 if args.pause or args.fake_peer else 600
     started = time.monotonic()
-    command = [str(out / "transport"), str(command_file), str(socket_path), str(run_out / "responses"), str(args.pause)]
+    command = [str(out / "transport"), str(command_file), str(socket_path), str(run_out / "responses"), str(args.pause), str(deadline)]
     timed_out = False
     observations = []
     operation_error = None
@@ -410,17 +504,17 @@ def run(args):
             complete_counts = None
             if actor.returncode == 0:
                 try:
-                    complete_counts = json.loads(read_bounded(run_out / "stdout", 4096))
-                    if (not isinstance(complete_counts, dict) or set(complete_counts) != {"responses", "observations", "dropped"}
-                            or any(not isinstance(n, int) or n < 0 for n in complete_counts.values())):
-                        raise ValueError("completed counter shape")
+                    complete_counts = completed_counters(json.loads(read_bounded(run_out / "stdout", 4096)))
                 except (OSError, ValueError):
                     complete_counts = None
                     closure_errors.append("completed metadata counters unavailable")
             loss = {"final_drain_limited": final_drain_limited,
                     "sender_dropped_at_last_row": max((r["dropped"] for r in rows), default=0),
                     "completed_counts": complete_counts,
-                    "tail_loss_unknown_without_completion_counts": complete_counts is None}
+                    "tail_loss_unknown_without_completion_counts": complete_counts is None,
+                    "fixed_control_prefix_certified": (args.pause or args.fake_peer)
+                        and sensitivity(rows, args.pause, timed_out)["passed"],
+                    "metadata_writer_joined_on_normal_exit": actor.returncode == 0 and complete_counts is not None}
             if complete_counts is not None:
                 loss["missing_received_rows"] = complete_counts["observations"] - complete_counts["dropped"] - total
             wire_comparison = None
@@ -464,7 +558,9 @@ def run(args):
         raise RuntimeError("owned cleanup failed; terminal evidence retained")
     if args.pause or args.fake_peer:
         if (not sensitivity(rows, args.pause, timed_out)["passed"] or not wire_comparison["passed"]
-                or final_drain_limited or (not args.pause and actor.returncode != 0)):
+                or overwritten or final_drain_limited or (not args.pause and (actor.returncode != 0
+                    or complete_counts is None or complete_counts["responses"] != 1
+                    or complete_counts["dropped"] != 0 or loss["missing_received_rows"] != 0))):
             raise RuntimeError("sensitivity control failed; terminal evidence retained")
     elif timed_out or actor.returncode != 0:
         raise RuntimeError("component failed; terminal evidence retained")
