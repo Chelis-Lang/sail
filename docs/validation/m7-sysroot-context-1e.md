@@ -55,7 +55,7 @@ hash loop. Both caller guards passed, and the exact context key and complete
 ordered runtime identity bytes matched.
 
 The debug caller's first and second contexts took 52.262 and 16.380 seconds.
-Their sysroot-hash phases took 18.908 seconds and 1.899 milliseconds; their guard
+Their sysroot-hash phases took 18.908 seconds and 1.929 milliseconds; their guard
 phases took 22.114 and 10.740 seconds. These observations establish that the
 actual pinned inventory handoff works in this scope. They are not a release
 speedup, a proof result, or acceptance measurements. Inclusive owned lifecycle
