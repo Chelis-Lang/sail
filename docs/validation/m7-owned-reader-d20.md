@@ -21,8 +21,17 @@ original retained CLI/MCP workflow, bounded by 120 seconds whole, 30 seconds per
 CLI and five seconds per MCP exchange. The existing single declaration retry is
 unchanged; no other retry is allowed.
 
-Preparation is not an acceptance result. This attempt has no proof, collector
-or retained pass claim while running. It does not qualify the optional source
+The first ordinary preparation completed in 1348.077 seconds externally
+(1346.816 seconds reported execution), with two verifier invocations and no
+reused targets. Both reports were complete: 1871 verified vstd functions and 331
+verified HumanEval functions, with no failed obligations. The project remained
+Unknown with `native-observation-invalidated` and newly established build
+declarations. Its exact report bytes are sealed in the running record. These
+obligations do not admit a Current proof; the first exact repair-context
+preparation remains pending.
+
+Preparation is not an acceptance result. This attempt has no Current proof,
+collector or retained pass claim while running. It does not qualify the optional source
 physical budget, 2× edit-loop performance or M7 overall. The root full local
 gate runs concurrently from a separate frozen source tree as the sole writer to
 the common Cargo target; this scenario uses only its private project targets.
