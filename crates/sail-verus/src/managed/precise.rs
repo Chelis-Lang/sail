@@ -113,7 +113,7 @@ mod platform {
                 .checked_add(super::super::retained::tree(tracked.len())?)?
                 .checked_add(super::super::retained::vector(excluded)?)?
                 .checked_add(super::super::retained::vector(bindings)?)?
-                .checked_add(mounts.capacity())?;
+                .checked_add(mounts.retained_bytes()?)?;
             directories
                 .values()
                 .chain(canonical_watches.keys())

@@ -41,7 +41,7 @@ impl ReadLease {
         } = self;
         let used = std::mem::size_of::<Self>()
             .checked_add(super::retained::vector(bindings)?)?
-            .checked_add(mounts.capacity())?
+            .checked_add(mounts.retained_bytes()?)?
             .checked_add(interpreter.capacity())?
             .checked_add(helper_observer.retained_bytes()?)?
             .checked_add(

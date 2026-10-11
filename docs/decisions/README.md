@@ -33,4 +33,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0028: Exact prepared graph-read dependencies (proposed candidate)](0028-exact-prepared-graph-read-dependencies.md)
 - [0029: Kernel lease work bounds and freshness](0029-kernel-lease-work-bounds-and-freshness.md)
 - [0030: Loaded imported span authority (proposed candidate)](0030-imported-span-authority.md)
+- [0031: Guarded sysroot digest handoff (proposed)](0031-guarded-sysroot-digest-handoff.md)
 - [0032: Sticky kernel mount-generation coverage](0032-kernel-mount-generation-coverage.md)
