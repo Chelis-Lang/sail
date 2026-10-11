@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "status": "ordinary build running; no result or qualification claim",
+  "selected": false,
+  "qualified": false,
+  "patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+  "variant_suffix": "c77e1a1879302e06",
+  "started_unix_ns": 1791719666528586757,
+  "owned_actor": {
+    "pid": 777503,
+    "pgid": 777503,
+    "nice": 0,
+    "jobs": 2,
+    "source_jobs": 2,
+    "execution": "linux-x86_64-container-emulated-sharedload"
+  },
+  "source_control_result_sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+  "memo_sensitivity_result_sha256": "5be40db3fba7b031e4ceb38977fd264c63c5712f58637826233bde448647a8ed",
+  "build_controller_sha256": "084b0372b4b351ab7833b200d7857cee3ba297473fef82b63d8c03a7bf432c0a",
+  "builder_archive_sha256": "b9a43bab50243c592f4dbda170eb61ddd26728df647875c364d22b18db06a568",
+  "builder_before_patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+  "compiler_seed": {
+    "files": 3730,
+    "copied_bytes": 1288338042,
+    "changed_source_excluded": 112,
+    "hardlinks": false,
+    "runtime_proof_seal_copied": false
+  },
+  "observed_concurrent_work": "C reports no native compiler/proof/daemon; root common target closed at source launch. Other system work not attributed as causal load.",
+  "host_backing_free_bytes_at_record": 6775504896,
+  "raw_artifacts": {
+    "ordinary-build-actor.json": {
+      "sha256": "b26ffab3bfd88815af761fb214e3229f91aed671a92b25e717a388f5a005146b",
+      "bytes": 466
+    },
+    "resource-preflight.json": {
+      "sha256": "9764abc226a3f34c655ede6efe7740648e6df6baaf21efb1f4ea7bc24ddff53f",
+      "bytes": 269
+    },
+    "compiler-seed.json": {
+      "sha256": "0c353d2c68bfb24e2bba44d79b96af85fcf945f7f7ac31c3e8131b53a315c671",
+      "bytes": 703821
+    },
+    "builder-before.json": {
+      "sha256": "40c7831fee3927ce9c6228e0e328a5492c8cec3d1c4b0fd68721d81da8191990",
+      "bytes": 342
+    },
+    "builder-archive-validation.json": {
+      "sha256": "41f08219d025f60692baf6509c96e97aadb09eb8eb2e226b4d05f4a47e9c8868",
+      "bytes": 146
+    },
+    "build-input-freeze.json": {
+      "sha256": "be798b6b72e85d9d8bd62cdd3c43ef7a407a4f3439be8f94a732086947fd9a93",
+      "bytes": 3383
+    }
+  },
+  "requirements": [
+    "Fresh ordinary vstd2060/0",
+    "Complete new13 manifest/source8+653 lock and prior-runtime seals",
+    "Original13 stages/14scripts600strictstock and genuinepriorrevisionfocus before selection"
+  ]
+}
