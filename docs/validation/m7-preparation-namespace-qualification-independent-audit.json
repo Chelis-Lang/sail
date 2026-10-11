@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "scope": "read-only existing original qualification and frozen source audit; no new actor or qualification",
+  "candidate": "b3b07d47d7542817",
+  "patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+  "engine_verifier_sha256": "d34ba8cdda91b365aedda1317e52c92a8a50720338cd6c68c9f368cdd73de81e",
+  "observed_stage": "previous-revision-focus revision 0",
+  "prior_stages_passed": 8,
+  "qualification_status": "FAIL; unselected",
+  "stock_and_engine_verified": 9,
+  "stock_and_engine_errors": 0,
+  "exact_stderr_equal": true,
+  "actual_hits": 0,
+  "same_callback_checks": [],
+  "focus_restores": [],
+  "misses": 4,
+  "peak_retained_bytes": 10201751,
+  "namespace_refusal_records": 3,
+  "outer_namespace_admission_failure_records": 1,
+  "actual_refused_binding_or_helper_reason": null,
+  "outer_failure_is_inner_refusal_relabel": false,
+  "transient_previous_service_owner_admission_refusal": "source-level possibility only; actual cause unestablished",
+  "raw_records": {
+    "summary.json": {"bytes": 1196, "sha256": "9e2258e8acfefd34dc19ad11ce6efa8e2a0a21bc02c5de7d81e6d3d2df615e6f"},
+    "0/events.jsonl": {"bytes": 14620, "sha256": "6b3d7ef00e50577a5960b6772a032e2b0d231a81e3f19bbcf41a62ea60b8614d"},
+    "0/stock.stderr": {"bytes": 234, "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16"},
+    "0/engine.stderr": {"bytes": 234, "sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16"}
+  },
+  "changes_to_source_tests_deadlines_or_acceptance": false,
+  "diagnostic_or_composite_control_executed": false
+}
