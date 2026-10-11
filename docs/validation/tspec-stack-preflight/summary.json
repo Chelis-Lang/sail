@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "scope": "Standalone owned fixtures only; no Verus, solver or conformance actor",
+  "status": "No transparent stack-capture route qualified",
+  "container": {
+    "name": "sail-m7-tspec-stack-preflight",
+    "id": "685c5c1cd7942f9075e89012b7a64dc03208b1a1f404a2bc852bf783c67b8b91",
+    "platform": "linux/amd64",
+    "image_sha256": "4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+    "cap_add": [
+      "SYS_PTRACE"
+    ],
+    "security_opt": [
+      "seccomp=unconfined"
+    ],
+    "docker_version": "29.7.2"
+  },
+  "packages": {
+    "gdb": "15.1-1ubuntu1~24.04.1",
+    "libc6:amd64": "2.39-0ubuntu8.9",
+    "gcc": "4:13.2.0-7ubuntu1"
+  },
+  "binary_sha256": {
+    "gdb": "3832cc070ae1716e322105d3b39fb398695e5f031c9d39224cf227a8c2b889f6",
+    "cc": "1b99826121ae6682a634e5efe09bd3e3df58ce58e0b28f849114ab5b89139c26",
+    "libc": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf",
+    "ld": "c20a2dc8917c755f02b94049356320fe1f62ac7d9f8994731f807d9df39302da"
+  },
+  "runs": [
+    {
+      "path": "ptrace/preflight.json",
+      "status": "FAIL"
+    },
+    {
+      "path": "remote/preflight.json",
+      "status": "FAIL"
+    },
+    {
+      "path": "remote-cfi/preflight.json",
+      "status": "FAIL"
+    },
+    {
+      "path": "remote-child/preflight.json",
+      "status": "FAIL"
+    },
+    {
+      "path": "remote-kept/preflight.json",
+      "status": "FAIL"
+    }
+  ],
+  "limits": {
+    "debugger_seconds": 5,
+    "output_bytes": 262144,
+    "owned_maps_bytes": 65536,
+    "fixture_completion_seconds": 2
+  },
+  "findings": {
+    "ptrace": "GDB could not read guest registers even with the explicit capability and seccomp setting",
+    "remote": "Guest breakpoint reached, worker unwinding unavailable before library load biases were supplied",
+    "remote_cfi": "Both guest marker frames unwound; remote detach lacked confirmation, actor resumed and completed normally",
+    "remote_child": "Both guest marker frames unwound; ordinary fork after remote disconnect terminated SIGTRAP with translator unfair_lock_lock error",
+    "remote_kept": "Absolute5s preflight timeout after known breakpoint/library setup; fork behavior unresolved; owned actor killed and closed. Fixture stdout/stderr were not drained on this timeout, a retained evidence limitation."
+  },
+  "original_failure_scope_unchanged": true,
+  "proof_launched": false,
+  "all_owned_fixture_actors_closed": true,
+  "raw_sha256": {
+    "fixture-child.c": "d489ba55c63f3244edd7f04166b54cdda5062ea2898379fda441e40b59228b33",
+    "fixture.c": "ebe31bc6c5a180792c16aca8a58a69375cc38f290b3797137a093b1654bc2b2f",
+    "ptrace/fixture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ptrace/fixture.stdout": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5",
+    "ptrace/gdb.stdout": "acded96d7844856d36831884ea24cdfe125bf1db5409b04d02380d9396610326",
+    "ptrace/preflight.json": "236b95cfaa24c52f9005ef512419ba2b6db82ec6495c2bec36b687c57978cf47",
+    "remote/fixture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "remote/fixture.stdout": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5",
+    "remote/gdb.stdout": "6e9f3d089a29a8e8f625fb97750346112cf7b7d1f5537d9da571ed1b7c0b91a6",
+    "remote/preflight.json": "4f2fa1d493c23da96411bd588aabae04933dfb16dffcc0e836328adc52a043b3",
+    "remote-cfi/fixture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "remote-cfi/fixture.stdout": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5",
+    "remote-cfi/gdb.stdout": "91a8aa4d02a3406a7816f70a1f97d10500e9318567bb3e0de363716b3e9a456c",
+    "remote-cfi/preflight.json": "67cdeb6077c6f4c5aae8934b3b9cbcd3f030710a294b8d5c1f9e870201061964",
+    "remote-child/fixture.stderr": "91384627ef3571c7f9447c219a12faa3abac8c5d19e27caa3f5bf4997bd794a8",
+    "remote-child/fixture.stdout": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5",
+    "remote-child/gdb.stdout": "c65339486595943c4a82369dba1ceaa6611dc0af55d5640fcea97efc90de5961",
+    "remote-child/preflight.json": "d8d2ffc4784dbc92cc36340b58ad6fbf84918d03716ffcb53773acc6fb6c40dc",
+    "remote-kept/gdb.stdout": "8ea2831ba80ff412bc41577065eb79bb4dedf1683e26234f216e03b61cab3c84",
+    "remote-kept/preflight.json": "de420f814ee5fa6c0071290e2ffec59c532218c5e8bf459e54084ac0d9b77a5b",
+    "run-preflight.py": "dc224b61c550861aa2f9abd7fad9a87121283fbaf805b37b86d8f0669f3f88ef",
+    "run-remote-cfi-preflight.py": "27f1f0a9647f6db04b9a149f6452f02c2c5b17b4ece3c46fe08d74fe9b4e4f98",
+    "run-remote-child-preflight.py": "16c72d5f8e81bd76b5c43f01cc1f5075766f6beb51cc6570f443bd862e37eccc",
+    "run-remote-kept-preflight.py": "64c70f80c76288603e2762ac3f10d4dcba19beacf3088a586294436ae75fdb97",
+    "run-remote-preflight.py": "b34cefcbfc718f2d58861eb3944f30a42f043bc0014b4a2da9515864e1b7c90c"
+  },
+  "static_source_audit": {
+    "pin": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "files": {
+      "source/air/src/smt_process.rs": "d11353d624acb6bb9f0e8c104cbcb705f89a4ac0ce479e283cdbc26848e46201",
+      "source/air/src/smt_verify.rs": "1c19b5b5affd915043765e5034d0ab1c599cff2333b484eb008e1e3aa37ad2e2",
+      "source/rust_verify/src/verifier.rs": "f28f141fcdf87a0020884927d482a9c3f266928319363d5c8ae7da4e79ab2e17"
+    },
+    "scope": "Immutable pinned source, not an observed userspace stack"
+  }
+}
