@@ -407,7 +407,7 @@ pub struct Shim {
     child: Child,
     stdin: Option<ChildStdin>,
     out: Arc<Mutex<Vec<u8>>>,
-    reader: Option<JoinHandle<()>>,
+    reader: Option<JoinHandle<bool>>,
     started: Instant,
 }
 
@@ -452,11 +452,21 @@ impl Shim {
         let out = Arc::new(Mutex::new(Vec::new()));
         let sink = Arc::clone(&out);
         let reader = std::thread::spawn(move || {
-            let Some(s) = stdout.as_mut() else { return };
+            let Some(s) = stdout.as_mut() else {
+                return false;
+            };
             let mut buf = [0u8; 8192];
-            while let Ok(n @ 1..) = s.read(&mut buf) {
-                if let Ok(mut o) = sink.lock() {
-                    o.extend_from_slice(buf.get(..n).unwrap_or_default());
+            loop {
+                match s.read(&mut buf) {
+                    Ok(0) => return true,
+                    Ok(n) => {
+                        let Ok(mut out) = sink.lock() else {
+                            return false;
+                        };
+                        out.extend_from_slice(buf.get(..n).unwrap_or_default());
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                    Err(_) => return false,
                 }
             }
         });
@@ -532,7 +542,7 @@ impl Shim {
         let reader_finished = self.reader.as_ref().is_none_or(JoinHandle::is_finished);
         let reader_joined = self.reader.take().is_none_or(|r| {
             if reader_finished {
-                r.join().is_ok()
+                r.join().is_ok_and(|eof| eof)
             } else {
                 // Rust cannot cancel a blocked thread. Dropping the handle
                 // detaches it; report incomplete cleanup rather than claiming
@@ -956,11 +966,10 @@ mod wait_controls {
         let child_reaped = !PathBuf::from(format!("/proc/{pid}")).exists();
         drop(held_sink);
         assert!(waiter.join().is_ok());
-        let reader_retired = wait_until(Duration::from_secs(1), || Arc::strong_count(&sink) == 1);
-        assert!(
-            reader_retired,
-            "paused reader must retire after pause release"
-        );
+        wait_until(Duration::from_secs(1), "paused reader retirement", || {
+            Arc::strong_count(&sink) == 1
+        });
+        assert_eq!(Arc::strong_count(&sink), 1);
         let ended = result.unwrap_or_else(|e| unreachable!("cleanup blocked by sink: {e}"));
         assert!(
             child_reaped,
