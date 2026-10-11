@@ -26,6 +26,7 @@
     "rust_verify/src/sail_engine.rs",
     "rust_verify/src/sail_owned_imports.rs",
     "rust_verify/src/sail_owned_imports_tests.rs",
+    "rust_verify/src/verifier.rs",
     "vir/src/context.rs"
   ],
   "existing_helper_test_prefix_byte_exact": true,
@@ -36,9 +37,10 @@
   "stock_metadata_sha256": "cf8e7b5a273073dc7e07e863c03e2283183f99ca67cda139f269a73ba63b34f4",
   "stock_metadata_suffix_sha256": "116efc62929ff8fa1c3c941d4977a89fe5bc38c01a3229f8cc2d4779b6e8aa04",
   "apply_checks": [
-    "full against exact pinned files",
-    "retirement then narrow role delta",
-    "full reverse against composed source"
+    "original role full applied against exact pinned files",
+    "positive retirement then original role delta",
+    "original first-failed full then narrow cfg(test) correction",
+    "corrected full reverse against composed source"
   ],
   "positive_source_control_result_sha256": "3d5cd3a6b9f509c33e8fa345c5a38792ee90ed9431d67bba21b9f2ae1019bc19",
   "source_controller_sha256": "b97d9693138af242529b0d457d6b6d348930ebc546468ea294c21561d88e5356",
