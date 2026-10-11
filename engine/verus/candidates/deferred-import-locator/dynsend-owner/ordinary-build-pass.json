@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "scope": "Ordinary private source build and fresh vstd proof only; original14/product acceptance pending",
+  "closed_unix_ns": 1791697772591108876,
+  "selected": false,
+  "qualified": false,
+  "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "source_files": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+    "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+    "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+    "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+    "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395"
+  },
+  "manifest_sha256": "f47828d9a3b4b12de72e4d7725e0200543522c21a9dbe9cf2cde3891774d1abf",
+  "manifest": {
+    "schema_version": 1,
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+    "features": [
+      "sail-interactive:886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+      "host:x86_64-unknown-linux-gnu",
+      "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    ],
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "305abefce0b62721547a06370e63f493ce961a2de4dbbbb15313beae4517d4d9",
+      "verus/source/target-verus/release/cargo-verus": "f289aace1c0c9f3cf33320792d61fead92f223bbb1e9fbffd9db52c5c40c93c4",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "706cf40d8ecb1b03adf3c43705fbea3c08b0bbe15fc7170d2efaaa5378e6b91c",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "49d13f1043b3bb2f19270544f432b75d80ccfa68b52d12e0d6df19af64a71121",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "89044b0f7fb3980d4b5c3de84504274718151470b62059d4addbb60868600567",
+      "verus/source/target-verus/release/libvstd.rlib": "e8ddd2da6f270fb19c9c0ec3a23e58098b8a0b69e92865f972dcf7d24ff21885",
+      "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "ee8de6d4dedc584f2457938868dea48c839ad6117789d78b6784181dff5d9829",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "build_seconds": 2520,
+    "test_binaries": []
+  },
+  "complete_direct_artifact_inventory": true,
+  "owned_build_actors": [],
+  "fresh_vstd_verified": 2060,
+  "fresh_vstd_errors": 0,
+  "ordinary_result": {
+    "version": 1,
+    "exit_code": 0,
+    "elapsed_seconds": 2589.2194950150006,
+    "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+    "scope": "Ordinary unselected DeferredLocator source build; source-control execution and original qualification pending"
+  },
+  "source_controls_sha256": "7fdb4a4278dbc5f0266ccd499d41d123b8e69957d858ae51d8049487ba21a6c0",
+  "raw_artifacts": {
+    "ordinary-build.log": {
+      "sha256": "694f3d83217840900d13142688605eb6d7392ad01e02393c3ae4e3a77d55858c",
+      "bytes": 6357
+    },
+    "ordinary-build-result.json": {
+      "sha256": "b682c60f19c5bbf30a9826f0377532f858225efeeb925b0c3216823204bec530",
+      "bytes": 288
+    },
+    "ordinary-build-actor.json": {
+      "sha256": "06c195ea8b05a65e5ec919754d06c56e12e352fde8faa24ab4658c8cc6e2378e",
+      "bytes": 439
+    },
+    "compiler-seed.json": {
+      "sha256": "b2d99019d8d56aee6028e709a08edc70c265ee77b868fa8d1e944e2dc0c918c0",
+      "bytes": 692739
+    },
+    "applied-source.json": {
+      "sha256": "476239e799b4911a3153100464f7886506b5d3a4beecba1515ef1d46e06acd25",
+      "bytes": 973
+    },
+    "builder-before.json": {
+      "sha256": "87dd17e035ee8c1b736f19e24e181d8e4d0a1b7b288187c8bff8046198fa1b2d",
+      "bytes": 340
+    },
+    "preceding-runtime-seals.json": {
+      "sha256": "74906606f944fdbb12932e6bc8a544b409f06a7f8e06482f9fcfe1cac52ccfea",
+      "bytes": 3571
+    },
+    "resource-preflight.json": {
+      "sha256": "a224c37795f0b7ef6fa1aee5e977b19fd7efb6990071769c5c75ae2e8629f021",
+      "bytes": 244
+    }
+  },
+  "native_available_bytes": 319486287872,
+  "prior_complete_runtime_seals_unchanged": true,
+  "original14_launched": false,
+  "raw_closed_report_sha256": "e13d8deb8dc5202c35c9f43464405906d79f65bd1ca80150b11b69ffbe2cfedf",
+  "closure_controller_sha256": "a79a36ced390dcc7dd6da85f70cb63c34f5011064171b4f72899c9731ad896ab",
+  "variant_suffix": "73bd8aa61b18ca12",
+  "source_controls_already_passed": {
+    "vir_library_cases": 38,
+    "driver_library_cases": 55,
+    "vir_all_target_strict": true,
+    "driver_all_target_strict": true,
+    "record": "engine/verus/candidates/deferred-import-locator/dynsend-owner/source-controls-pass.json"
+  },
+  "raw_ordinary_scope_note": "The frozen ordinary controller scope string predates completed source controls; exact source controls are independently retained as passed. Original qualification remains pending.",
+  "qualification_controller_sha256": "8e23ab10653b001668e503f9da3bcde9db5155de0175c528afb1ee67a3434e26",
+  "host_backing_observation": {
+    "observed_unix_ns": 1791697840069803000,
+    "host_available_bytes": 12100841472,
+    "causal_load_claim": false
+  },
+  "remaining": [
+    "Root review of sealed new manifest and controller",
+    "One original14 strict raw-diagnostic/same-input/genuine prior-revision FOCUS qualification",
+    "Post-qualification exact13/source-lock/seven-source/owned-actor closure"
+  ]
+}
