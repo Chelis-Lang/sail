@@ -40,9 +40,28 @@
   },
   "controller_source_commit": "2d6539f642b284d66c1f485570b4a166e721a4b7",
   "current_proof_admitted": true,
-  "current_proof_scope": "unmeasured baseline preparation only; bounded checks, collectors and retained integration remain pending",
+  "current_proof_scope": "unmeasured preparation and original bounded baseline checks admitted; active bounded checks, collectors and retained integration pending",
   "inventory_statement": "No old inventory reused; metadata covers installed products and 13 selected artifacts only. Production original Guard acquires and validates complete actual inventory before proof; setup metadata never certifies Current.",
-  "original_failures_preserved": true,
+  "observed_active_repair_preparation": {
+    "accepted": true,
+    "batched": true,
+    "compiler_invocations": 2,
+    "context_sha256": "7f43f09c1d5c7fc8c1be8e616e818d3d260cf12142f39dbd7c04daaad3d45946",
+    "currentness": "current",
+    "input_revision": "615d4a6748850de634aec68fd91e0b1988017b90497c131e179674c8bd6c3e98",
+    "job": "1791698136646-561644-2",
+    "notes": [
+      "Build-script input declarations were established during this run"
+    ],
+    "pretty_archived_public_result": {
+      "bytes": 10725634,
+      "sha256": "70010d3ff2fa60e49c62cb8f1af16fe23bf14f4e7b16b3e015da0e2c42400f16",
+      "wire_size": "not measured by this file seal"
+    },
+    "reported_execution_wall_s": 359.511232373,
+    "scope": "unmeasured independent preparation; no retry and no latency or one-driver claim",
+    "whole_active_preparation_wall_s": 754.249119929
+  },
   "observed_baseline_repair_preparation": {
     "accepted": true,
     "batched": true,
@@ -60,13 +79,48 @@
       "sha256": "adeedb97881068e651605930ee3245aa8b41035f2dc39c42d08e9a8f9888842f",
       "wire_size": "not measured by this file seal"
     },
-    "reported_execution_wall_s": 769.2353089749999,
+    "reported_execution_wall_s": 769.235308975,
     "scope": "existing single declaration retry in unmeasured preparation; not a one-driver or latency claim",
-    "whole_baseline_preparation_wall_s": 3202.3655167550026
+    "whole_baseline_preparation_wall_s": 3202.365516755003
+  },
+  "observed_bounded_baseline_checks": {
+    "ordinary": {
+      "currentness": "current",
+      "deadline_s": 600,
+      "exit_code": 0,
+      "external_wall_s": 185.67021450099855,
+      "notes": [],
+      "reported_execution_wall_s": 185.472829292,
+      "reused_targets": 0,
+      "verifier_invocations": 3
+    },
+    "repair": {
+      "accepted": true,
+      "batched": true,
+      "compiler_invocations": 1,
+      "currentness": "current",
+      "deadline_s": 600,
+      "error": null,
+      "exit_code": 0,
+      "external_wall_s": 263.7707565370001,
+      "job": "1791698698304-561644-3",
+      "notes": [],
+      "pretty_archived_public_result": {
+        "bytes": 10724616,
+        "sha256": "6053c39248c87ff507a7ccef1fb9b96195f95730c344eb2e151e3437a4efd972",
+        "wire_size": "not measured by this file seal"
+      },
+      "reported_execution_wall_s": 210.132180303,
+      "reused_targets": 1,
+      "verifier_invocations": 1
+    }
   },
   "observed_ordinary_preparation": {
     "accepted_current_proof": false,
-    "complete_targets": ["vstd", "human_eval_verus"],
+    "complete_targets": [
+      "vstd",
+      "human_eval_verus"
+    ],
     "exit_code": 0,
     "external_wall_s": 1348.0766077419976,
     "report_currentness": "unknown",
@@ -81,9 +135,13 @@
     },
     "reused_targets": 0,
     "stage": "baseline-unmeasured-preparation-ordinary-full",
-    "verified_functions": {"vstd": 1871, "human_eval_verus": 331},
+    "verified_functions": {
+      "human_eval_verus": 331,
+      "vstd": 1871
+    },
     "verifier_invocations": 2
   },
+  "original_failures_preserved": true,
   "preparation": "Authorized separately recorded unmeasured ordinary/exact repair-context phase before original bounded checks; existing single declaration retry only",
   "probes": {
     "job_read_bench": {

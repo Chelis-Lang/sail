@@ -37,11 +37,21 @@ invocations. It took 803.628 seconds externally (769.235 seconds reported
 execution). Total baseline preparation was 3202.366 seconds, including the
 ordinary and first Unknown repair phases. The pretty archived public Result
 file is sealed separately; its file size does not measure compact wire bytes.
-Preparation of the fresh independent active workspace is now running.
+The fresh independent active workspace also established complete accepted
+Current evidence without a retry: two actual invocations, 359.511 seconds
+reported repair execution and 754.249 seconds for all active preparation.
+Combined unmeasured preparation took 3956.615 seconds.
 
-This unmeasured Current baseline is not a reader acceptance result or a
-one-driver claim. The original bounded checks, collectors and retained
-integration remain pending. The attempt does not qualify the optional source
+The original bounded baseline checks then passed. Ordinary full verification
+took 185.670 seconds externally with Current, no notes and three invocations.
+The repair check took 263.771 seconds externally (210.132 seconds reported
+execution), with accepted Current, no notes, one invocation and one reused
+target. Both retained their original 600-second bounds. The active bounded
+checks are running; neither collector nor retained integration has run yet.
+
+The preparation and bounded baseline checks do not establish reader acceptance
+or a measured edit-loop speedup. The complete collector and integration gates
+remain pending. The attempt does not qualify the optional source
 physical budget, 2× edit-loop performance or M7 overall. The root full local
 gate runs concurrently from a separate frozen source tree as the sole writer to
 the common Cargo target; this scenario uses only its private project targets.
