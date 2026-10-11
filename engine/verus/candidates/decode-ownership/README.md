@@ -14,6 +14,11 @@ assigned to a function from its opaque filename. The complete per-entry identiti
 and outcomes are in `probe.json`. Earlier failures remain in
 `../decode-budget/primitive-charge-profile.json`.
 
+The [deferred-locator consumer audit](deferred-locator-consumer-audit.md) records
+the next read-only authority review after the LoadedForeign candidate's actual
+Delayed refusal. It proposes no source implementation, selected-runtime change
+or exemption from the original qualification gates.
+
 ## Closed ownership routes
 
 A probe supplies a **nomination inventory**, never new runtime authority. The
