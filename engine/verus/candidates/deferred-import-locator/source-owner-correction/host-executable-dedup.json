@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "scope": "Closed owned archived host executable duplicates only; no selected/new/qualification runtime path",
+  "open_holders": [],
+  "method": "Same-device hardlink after exact SHA equality and holder check; one runnable per SHA retained at every original path",
+  "allocated_duplicate_bytes_retired": 147185664,
+  "records": [
+    {
+      "sha256": "ed5e63637d2d16f4f8e78a2b45a71f13897b5deed67508a3d3720cd7d2dd0e06",
+      "preserved_runnable": "target/retained-prior-worktree-binaries/m7-product/sail",
+      "duplicate_runnable": "target/retained-prior-worktree-binaries/m7-product/deps/sail-90c359df01d602a0",
+      "bytes": 42482680,
+      "allocated_duplicate_bytes_retired": 42483712,
+      "same_device": true,
+      "old_duplicate_inode": 71598174,
+      "shared_preserved_inode": 71598011
+    },
+    {
+      "sha256": "f73ab7e529b84adfe16d4d73d5c11e41a86f47967108543668a8464c880c231e",
+      "preserved_runnable": "target/retained-prior-worktree-binaries/m7-bench-lifecycle/sail",
+      "duplicate_runnable": "target/retained-prior-worktree-binaries/m7-bench-lifecycle/deps/sail-90c359df01d602a0",
+      "bytes": 43882984,
+      "allocated_duplicate_bytes_retired": 43884544,
+      "same_device": true,
+      "old_duplicate_inode": 71597175,
+      "shared_preserved_inode": 71597126
+    },
+    {
+      "sha256": "5582c51c14a1c0a95a20bf90bc08045a418af0ee610bc713c23e0d6c8acef043",
+      "preserved_runnable": "target/retained-prior-worktree-binaries/m7-bench-lifecycle/examples/managed",
+      "duplicate_runnable": "target/retained-prior-worktree-binaries/m7-bench-lifecycle/examples/managed-fe8640e42c7806f0",
+      "bytes": 11123112,
+      "allocated_duplicate_bytes_retired": 11124736,
+      "same_device": true,
+      "old_duplicate_inode": 71597163,
+      "shared_preserved_inode": 71597143
+    },
+    {
+      "sha256": "22a32e821deef3cd3f9467bc4ef10a8abcfbfd10c58c5f40149e8304eef5746f",
+      "preserved_runnable": "target/retained-prior-worktree-binaries/m7-rust-read-probe/sail",
+      "duplicate_runnable": "target/retained-prior-worktree-binaries/m7-rust-read-probe/deps/sail-90c359df01d602a0",
+      "bytes": 43885016,
+      "allocated_duplicate_bytes_retired": 43888640,
+      "same_device": true,
+      "old_duplicate_inode": 71599506,
+      "shared_preserved_inode": 71599368
+    },
+    {
+      "sha256": "7447e148df5547fd218ed453d8ce76efe1396e271b029400c4f7de9f2330bbf2",
+      "preserved_runnable": "target/retained-prior-worktree-binaries/m7-rust-read-probe/examples/check_mcp",
+      "duplicate_runnable": "target/retained-prior-worktree-binaries/m7-rust-read-probe/examples/check_mcp-6ffefe2173864296",
+      "bytes": 3224472,
+      "allocated_duplicate_bytes_retired": 3227648,
+      "same_device": true,
+      "old_duplicate_inode": 71599485,
+      "shared_preserved_inode": 71599500
+    },
+    {
+      "sha256": "0c42ee41751b53080572a4247cd9cab1c9b3dc49ea2804f68b84db7fd38af1c5",
+      "preserved_runnable": "target/retained-prior-worktree-binaries/m7-rust-read-probe/examples/check_output",
+      "duplicate_runnable": "target/retained-prior-worktree-binaries/m7-rust-read-probe/examples/check_output-4d328277960ec72d",
+      "bytes": 2572608,
+      "allocated_duplicate_bytes_retired": 2576384,
+      "same_device": true,
+      "old_duplicate_inode": 71599488,
+      "shared_preserved_inode": 71599487
+    }
+  ],
+  "source_or_raw_evidence_changed": false,
+  "active_native_variant_untouched": "29829d2f648fba58"
+}

@@ -1,7 +1,7 @@
 # Single-threaded SourceMap test owner correction
 
 Status: unselected, reviewed source correction; actual corrected build and gates
-have not run. [Identity](identity.json) binds the complete new
+have not finished. [Identity](identity.json) binds the complete new
 [candidate patch](../../deferred-import-locator-source-owner.patch) and its
 [narrow delta](from-a61.patch).
 
@@ -26,3 +26,10 @@ cache/evidence mount boundary for only the same two known empty Cargo control
 files after their holders close. The thirteen sealed runtime files never move;
 all exact hashes and direct inventory are checked afterward. The original EXDEV
 setup failure remains separately recorded.
+
+[Build launch](build-launch.json) records the newly authorized ordinary-priority
+two-job private build and compiler-only seed from the closed prior candidate.
+Its runtime files, source and failed strict record remain immutable. This is a
+launch record, not a qualified runtime. [Host executable deduplication](host-executable-dedup.json)
+preserves every archived runnable path while sharing exact duplicate bytes after
+holder checks; selected/new/qualification runtime paths are excluded.
