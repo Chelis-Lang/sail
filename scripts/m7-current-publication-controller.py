@@ -21,7 +21,8 @@ require, sha, checkpoint = (common[name] for name in ('require', 'sha', 'checkpo
 READ_JSON = common['read_json']
 FILES = ('scripts/m7-current-publication-controller.py',
          'scripts/m7-publication-timing-diagnostic.py', 'scripts/m7-native-product.py',
-         'docs/validation/m7-current-benchmark-controller.py', 'ci/test-repair.py')
+         'docs/validation/m7-current-benchmark-controller.py',
+         'scripts/local-combined-gates.py', 'ci/test-repair.py')
 FIXTURE_SHA = '9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7'
 EXTERNAL_SECONDS = 300  # Includes original install/fetch, 120s scenario and cleanup.
 
@@ -121,6 +122,18 @@ def matching_terminal(value, grant):
             and value.get('original_limits') == [120, 30, 5]
             and value.get('fixture_sha256') == FIXTURE_SHA
             and value.get('product_sha256') == grant['artifacts']['sail']['sha256'])
+
+
+def partial_capture_terminal(value, grant):
+    """Bind the wrapper's expected exit one for passed fixture/partial timing."""
+    captures = value.get('capture') if isinstance(value, dict) else None
+    return (matching_terminal(value, grant)
+            and value['original_fixture_passed'] is True
+            and value.get('original_fixture_unchanged_after') is True
+            and value.get('product_unchanged_after') is True
+            and isinstance(captures, list) and 0 < len(captures) <= 1
+            and all(isinstance(row, dict) and type(row.get('partial')) is bool for row in captures)
+            and any(row['partial'] for row in captures))
 
 
 def host(args):
@@ -275,8 +288,14 @@ def host(args):
                              if row['name'] == 'original-diagnostic'), {})
             code = original.get('exit_code')
             terminal = record.get('native-record')
-            failed_fixture = isinstance(terminal, dict) and terminal.get('original_fixture_passed') is False
-            if code not in (0, 1) or (code == 1 and not failed_fixture):
+            failed_fixture = (record.get('native_terminal_record_matches') is True
+                              and terminal.get('original_fixture_passed') is False)
+            partial = partial_capture_terminal(terminal, grant) if terminal is not None else False
+            if code == 1 and partial:
+                record['diagnostic_capture_partial'] = True
+                record['diagnostic_outcome'] = 'passed-fixture-partial-capture'
+                record['status'] = 'FAIL'
+            if code not in (0, 1) or (code == 1 and not (failed_fixture or partial)):
                 reasons.append('docker-exit-unconfirmed')
             if 'container_error' in record:
                 reasons.append('container-identity-unavailable')
@@ -304,7 +323,7 @@ def main():
         if args.native_mode == 'execute':
             native_execute(binding, args.out)
         else:
-            value = native_seals(binding) if args.native_mode == 'seals' else common['closure'](args.out)
+            value = native_seals(binding) if args.native_mode == 'seals' else common['closure'](args.out, binding['grant']['source_path'])
             print(json.dumps(value), flush=True)
         return 0
     require(all(getattr(args, flag.replace('-', '_')) for flag in

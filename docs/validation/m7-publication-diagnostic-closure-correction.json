@@ -1,0 +1,62 @@
+{
+  "kind": "publication-diagnostic-closure-correction",
+  "base_commit": "730a3210151ca51b7e011121c4795553b0cfa3e5",
+  "scope": "File-only reporting/lifecycle correction; no native, compiler, Docker or proof actor",
+  "historical_scope": {
+    "revision": "730a321",
+    "controller_status": "UNCERTAIN",
+    "original_fixture_passed": true,
+    "fixture_elapsed_seconds": 100.685,
+    "unchanged": true,
+    "source": "Root-retained execution; not reclassified by this correction"
+  },
+  "source_sha256": {
+    "docs/validation/m7-current-benchmark-controller.py": "b79112b5674b00dc3d16df8ca577c5873b471d48b2e41e3173f993a2ec09df90",
+    "docs/validation/test-m7-current-benchmark-controller.py": "239613bda03357ab9c3e15c6fc3b1c3c7a6129702080b7a3c6e617fed1ded358",
+    "scripts/m7-current-publication-controller.py": "5fd21ea313e5cda72ae7b736b2a261f2944c4882cdcd48d7a7fe9d37ceb979d7",
+    "scripts/test-m7-current-publication-controller.py": "8ee2dc09016e28be5291795040ec76b26a9e8cfd57a25dae695226afc97091e2"
+  },
+  "shared_guard_sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc",
+  "original_fixture_sha256": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7",
+  "pure_controls": [
+    {
+      "command": "python3 docs/validation/test-m7-current-benchmark-controller.py",
+      "tests": 16,
+      "status": "PASS"
+    },
+    {
+      "command": "python3 scripts/test-m7-current-publication-controller.py",
+      "tests": 15,
+      "status": "PASS"
+    },
+    {
+      "command": "python3 scripts/test-local-combined-gates.py",
+      "tests": 31,
+      "status": "PASS",
+      "skipped": 1,
+      "skip_reason": "Host Python3.9 lacks tar data filter; actual extraction control retained for Python3.12"
+    },
+    {
+      "command": "python3 scripts/test-local-product-install.py",
+      "tests": 13,
+      "status": "PASS"
+    },
+    {
+      "command": "python3 docs/validation/test-m7-current-benchmark-install.py",
+      "tests": 8,
+      "status": "PASS"
+    },
+    {
+      "command": "python3 scripts/test-m7-publication-timing-diagnostic.py",
+      "tests": 13,
+      "status": "PASS"
+    }
+  ],
+  "semantics": [
+    "Exact self PID/kernel birth only; never child/other/recycled/unreadable identity exclusion",
+    "Shared stable bounded all-task dead evidence; no leader-only skip",
+    "Passed original fixture plus explicitly partial capture and unchanged hashes explains wrapper1 as diagnostic FAIL",
+    "Transport or incomplete closure remains sticky UNCERTAIN",
+    "Original fixture/ring/oracles/deadlines unchanged; no acceptance credit"
+  ]
+}

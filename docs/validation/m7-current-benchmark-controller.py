@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import signal
 import stat
 import subprocess
@@ -172,11 +173,43 @@ def native_execute(grant, output):
     os.execvp(command[0], command)
 
 
-def closure(output):
+def census_identity_matches(pinned, before, after):
+    """Exclude only this census PID with its unchanged kernel birth."""
+    return (isinstance(pinned, dict) and isinstance(before, dict) and isinstance(after, dict)
+            and all(type(row.get(key)) is int and row[key] > 0
+                    for row in (pinned, before, after) for key in ('pid', 'start_ticks'))
+            and all(row.get('state') in ('R', 'S', 'D', 'T', 't', 'W', 'I', 'K', 'P')
+                    for row in (pinned, before, after))
+            and (pinned['pid'], pinned['start_ticks']) == (before['pid'], before['start_ticks'])
+            == (after['pid'], after['start_ticks']))
+
+
+def closure_row(pid):
+    """Adapt the existing census identity to the shared bounded task guard."""
+    try:
+        row = process_identity(pid)
+        return dict(pid=row['pid'], ppid=row['ppid'], pgid=row['pgid'],
+                    start=row['start_ticks'], state=row['state'])
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def closure(output, source_root=None):
     """Bounded, read-only candidate census, not an unlimited orphan certificate."""
     started = time.monotonic()
     actor = read_json(Path(output) / 'actor.json')
-    result = {'scope': 'Bounded post-cleanup metadata census; no environment or signals', 'candidates': [], 'unreadable': [], 'complete': True, 'scanned': 0}
+    source_root = Path(source_root) if source_root is not None else Path(__file__).resolve().parents[2]
+    # Reuse the same stable all-task guard as local gate/product closure. The
+    # copied standalone benchmark launcher supplies its sealed source root.
+    guard = runpy.run_path(str(source_root / 'scripts/local-combined-gates.py'))['dead_threads']
+    result = {'scope': 'Bounded post-cleanup metadata census; no environment or signals',
+              'candidates': [], 'unreadable': [], 'terminated_unreaped': [],
+              'census_excluded': [], 'complete': True, 'scanned': 0}
+    try:
+        census = process_identity(os.getpid())
+    except (OSError, ValueError, IndexError) as error:
+        result.update(complete=False, census_identity_error=type(error).__name__)
+        return result
     for path in Path('/proc').iterdir():
         if not path.name.isdigit():
             continue
@@ -187,18 +220,37 @@ def closure(output):
         pid = int(path.name)
         try:
             before = process_identity(pid)
-            if before['state'] == 'Z':
+            if pid == census['pid']:
+                after = process_identity(pid)
+                if census_identity_matches(census, before, after):
+                    result['census_excluded'].append(after)
+                    continue
+                result['unreadable'].append({'pid': pid, 'error_type': 'CensusIdentityChanged'})
+            if before['state'] in ('Z', 'X'):
+                leader = dict(pid=pid, ppid=before['ppid'], pgid=before['pgid'],
+                              start=before['start_ticks'], state=before['state'])
+                evidence = guard(types.SimpleNamespace(row=closure_row), leader)
+                if evidence.get('complete') is True and evidence.get('status') == 'terminated':
+                    result['terminated_unreaped'].append(dict(before, terminated_evidence=evidence))
+                else:
+                    result['unreadable'].append({'pid': pid, 'error_type': 'TaskClosureUnavailable',
+                                                 'task_status': evidence.get('status')})
+                continue
+            if before['state'] not in ('R', 'S', 'D', 'T', 't', 'W', 'I', 'K', 'P'):
+                result['unreadable'].append({'pid': pid, 'error_type': 'UnknownTaskState'})
                 continue
             with (path / 'cmdline').open('rb') as stream:
-                command = stream.read(65536)
+                command = stream.read(65537)
+            if len(command) > 65536:
+                result['complete'] = False
             matched = str(output).encode() in command or before['pgid'] == actor['pgid']
             try:
                 matched |= os.readlink(path / 'cwd').startswith(str(output) + '/')
             except FileNotFoundError:
+                result['unreadable'].append({'pid': pid, 'error_type': 'CwdUnavailable'})
                 continue
             for index, fd in enumerate((path / 'fd').iterdir()):
                 if index >= 64:
-                    # A capped FD scan cannot establish general absence.
                     result['complete'] = False
                     break
                 try:
@@ -206,16 +258,17 @@ def closure(output):
                 except FileNotFoundError:
                     continue
             after = process_identity(pid)
-            if before['start_ticks'] != after['start_ticks']:
+            if before['start_ticks'] != after['start_ticks'] or after['state'] not in ('R', 'S', 'D', 'T', 't', 'W', 'I', 'K', 'P'):
                 result['complete'] = False
             elif matched:
                 result['candidates'].append(after)
         except FileNotFoundError:
+            # A vanished numeric entry is distinct from an unreadable live row.
             continue
-        except (OSError, ValueError) as error:
+        except (OSError, ValueError, IndexError) as error:
             result['unreadable'].append({'pid': pid, 'error_type': type(error).__name__})
     result['elapsed_seconds'] = time.monotonic() - started
-    result['complete'] &= not result['unreadable']
+    result['complete'] &= not result['unreadable'] and result['elapsed_seconds'] < 1
     return result
 
 
@@ -344,7 +397,7 @@ def main():
         elif args.native_mode == 'execute':
             native_execute(grant, args.native_output)
         elif args.native_mode == 'closure':
-            print(json.dumps(closure(args.native_output)))
+            print(json.dumps(closure(args.native_output, grant['source_path'])))
         else:
             owner = read_json(args.native_output / 'actor.json')
             current = process_identity(owner['pid'])

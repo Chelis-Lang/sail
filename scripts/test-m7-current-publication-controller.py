@@ -53,11 +53,13 @@ class Controls(unittest.TestCase):
                             raise KeyboardInterrupt('Controller interrupted')
                         if fault == 'docker-failure':
                             return subprocess.CompletedProcess(command, 125)
-                        if fault == 'fixture-failure':
+                        if fault == 'fixture-failure' or str(fault).startswith('partial-capture'):
                             return subprocess.CompletedProcess(command, 1)
                         value = None
                     if mode == 'seals' and fault == 'post-seal' and destination == 'after-seals.stdout':
                         value = {'exact': 'changed'}
+                    if mode == 'closure' and fault == 'partial-capture-closure-loss':
+                        raise OSError('closure transport lost')
                     if mode == 'closure' and fault == 'closure-incomplete':
                         value = {'complete': False, 'candidates': []}
                     if mode == 'closure' and fault == 'closure-holder':
@@ -69,6 +71,8 @@ class Controls(unittest.TestCase):
                              'original_fixture_passed': fault not in ('false-native-record', 'fixture-failure'),
                              'qualification_credit': False, 'original_limits': [120, 30, 5],
                              'fixture_sha256': controller.FIXTURE_SHA, 'product_sha256': DIGEST}
+                    if str(fault).startswith('partial-capture'):
+                        value.update(capture=[{'partial': True}], original_fixture_unchanged_after=True, product_unchanged_after=fault != 'partial-capture-unsealed')
                     if fault == 'native-record-mismatch':
                         value['product_sha256'] = 'f' * 64
                     if fault == 'native-record-malformed':
@@ -170,6 +174,43 @@ class Controls(unittest.TestCase):
         self.assertIn('docker-exit-unconfirmed', record['uncertainty_reasons'])
         self.assertEqual(next(p for p in record['phases'] if p['name'] == 'original-diagnostic')['exit_code'], 125)
         self.assertEqual(sum('--native-mode' in c and c[-1] == 'execute' for c in commands), 1)
+
+    def test_passed_fixture_partial_capture_is_expected_diagnostic_failure(self):
+        code, record, commands, _ = self.exercise('partial-capture')
+        self.assertEqual(code, 1)
+        self.assertEqual(record['status'], 'FAIL')
+        self.assertEqual(record['diagnostic_outcome'], 'passed-fixture-partial-capture')
+        self.assertTrue(record['diagnostic_capture_partial'])
+        self.assertEqual(record['uncertainty_reasons'], [])
+        self.assertFalse(record['qualification_credit'])
+        self.assertEqual(sum('--native-mode' in c and c[-1] == 'execute' for c in commands), 1)
+
+    def test_partial_capture_without_unchanged_seals_does_not_confirm_exit(self):
+        code, record, _, _ = self.exercise('partial-capture-unsealed')
+        self.assertEqual(code, 1)
+        self.assertEqual(record['status'], 'UNCERTAIN')
+        self.assertIn('docker-exit-unconfirmed', record['uncertainty_reasons'])
+
+    def test_bound_partial_capture_never_clears_transport_uncertainty(self):
+        code, record, _, _ = self.exercise('partial-capture-closure-loss')
+        self.assertEqual(code, 1)
+        self.assertEqual(record['status'], 'UNCERTAIN')
+        self.assertTrue(record['diagnostic_capture_partial'])
+        self.assertIn('transport-or-interruption', record['uncertainty_reasons'])
+        self.assertIn('native-closure-unavailable', record['uncertainty_reasons'])
+        self.assertFalse(record['native_closure_certified'])
+
+    def test_partial_terminal_is_exact_and_bounded(self):
+        grant = {'artifacts': {'sail': {'sha256': DIGEST}}}
+        value = {'kind': 'original-repair-publication-timing-diagnostic',
+                 'original_fixture_passed': True, 'qualification_credit': False,
+                 'original_limits': [120, 30, 5], 'fixture_sha256': controller.FIXTURE_SHA,
+                 'product_sha256': DIGEST, 'original_fixture_unchanged_after': True,
+                 'product_unchanged_after': True, 'capture': [{'partial': True}]}
+        self.assertTrue(controller.partial_capture_terminal(value, grant))
+        for captures in ([], [{'partial': False}], [{'partial': 1}], [None], [{'partial': True}] * 2):
+            self.assertFalse(controller.partial_capture_terminal(dict(value, capture=captures), grant))
+        self.assertFalse(controller.partial_capture_terminal(dict(value, product_sha256='f' * 64), grant))
 
     def test_copy_failure_is_terminal_without_native_invocation(self):
         code, record, commands, _ = self.exercise('copy-binding.stdout')

@@ -95,3 +95,10 @@ and execution-record identities separately; the producer record is unchanged.
 See [ADR 0036](../decisions/0036-managed-compiler-artifact-families.md) for the
 implemented compiler-family observations and their separate product-validation
 scope, and the [roadmap](../ROADMAP.md) for M7 acceptance.
+
+The bounded cleanup census excludes only its own exactly observed PID/kernel
+birth. Dead leader state alone does not establish closure: the shared local
+gate/product task guard requires stable complete all-dead membership and retains
+its evidence separately. Live siblings, unknown states and changing/unreadable
+tasks remain incomplete. This reporting correction does not modify the original
+benchmark, collectors, timing thresholds or deadlines.
