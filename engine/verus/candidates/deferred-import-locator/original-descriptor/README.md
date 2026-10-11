@@ -155,3 +155,12 @@ namespace cause is not yet observed; it must not be inferred from the older
 runtime/source/lock/old seals plus both-container actor closure passed separately.
 The full 1,341-file raw failure archive is retained by hash. Source helper and
 metadata control passes did not establish genuine previous-revision reuse.
+
+A [separate provenance diagnostic plan](provenance-diagnostic-plan.json) freezes
+one exact failed revision-0 engine invocation against the same sealed runtime
+and 265-file project. It requires a separate grant and adds only the existing
+bounded unfiltered import trace. The original qualification stays failed.
+Unavailable records expose descriptor refusal and Foreign hash counts; their
+filename strings are not retained, and Local/malformed-unit refusals can remain
+unobserved. Primary streams and predicates are retained before independent
+post-run seal and actor closure. This is diagnosis, with no acceptance credit.

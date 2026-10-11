@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "status": "proposed; not launched, requires root one-diagnostic grant",
+  "controller_sha256": "22e9f44bf09a1bccde9ac6bed559f205075b1892b9a7a762b463c0ee181e214f",
+  "runtime_manifest_sha256": "c9ea656bf1bd5dcb81cd13f7dd4c83e13fdc4804910a8949a5562e81daa4ff0d",
+  "patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+  "source_inventory_sha256": "dd10bf6fe593a617e71174de432429d6ba9a4eb49974b0c67377bb84988decf5",
+  "source_files": 265,
+  "original_failed_log_sha256": "534589717a91971966c3f5633a8915908389e3ad14e2dc02f9172be9963d5119",
+  "scope": "ONE independent exact original revision0 engine invocation; original14 stays failed; no qualification/retry/acceptance credit",
+  "original_compiler_flags": "unchanged including selected module/time/no-report-long-running/air/SMT transcript; only log/output directories fresh",
+  "budget_seconds": 600,
+  "trace": {
+    "only_new_compiler_selector": "SAIL_ENGINE_IMPORT_TRACE=1",
+    "TARGET": "unset",
+    "max_records": 4096,
+    "max_total_bytes": 4194304,
+    "max_record_bytes": 32768
+  },
+  "assertions": "same original revision0 exit/diagnostic/module/function/positive checked HIT/same-input/normal-terminal predicates retained; stock is original retained same-source control, no new stock actor",
+  "fresh_paths": "new private prepared/oracle/focus/events/air/SMT dirs; same original retained project path with pre/post265-file SHA",
+  "runtime_source_lock_old_failure_and_actors": "pre/post exact13/source7/653lock checks plus owned actor monitor/closure; primary saved before closure",
+  "expected_observation": "first ineligible Imported record: id/words/display, initial/preFocus state/ranges, original range/hash, descriptor_refusal, initial/preFocus all-Foreign counts; eligible roles also exact loader_path/current typed owner",
+  "limitation": "Unavailable original/current filename strings are not retained by existing seam. No claim of current descriptor names/content or actual first-store refusal unless correlated with ordering; Local/malformed/rawunit failure can be unobserved. Trace caps/unavailable retained.",
+  "native_output": "private native /tmp/sail-m7-original-descriptor-provenance-diagnostic-0bbc; must not exist at launch",
+  "original_cross_edit_script_sha256": "80b49c69b84599b606f200157c67cdc1f92e73054905f3a22b11ce839789fc2a"
+}
