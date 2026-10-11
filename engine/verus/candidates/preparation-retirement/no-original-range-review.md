@@ -191,3 +191,21 @@ reporting bug was flagged to B before launch. It must validate the actual prefix
 and primary result, accepting full success only with all 13 stages passed and
 retaining any terminal failure and remaining unattempted stages. This does not
 change an oracle. Build and qualification execution remain separately pending.
+
+The reporting-only correction in `42a7432` was then independently reviewed at
+closure hash
+`2cb0cf5494cd903acb85483151457444e795c36a3a6837371fe674ea2704f817`.
+It requires the exact 13-stage name prefix and 14 frozen scripts. Complete
+success requires all 13 stages passed with zero exits and the source-gate flag
+true; terminal failure requires every preceding stage passed and the final
+stage failed with a nonzero exit and the source-gate flag false. Counts now
+come from that actual prefix. Product qualification remains false. Builder,
+build closure and original qualifier hashes above are unchanged.
+
+An independent extraction of this pure validator passed 22 controls: every
+terminal failure position, complete success, and eight malformed outcome
+rejections. These are report-shape controls only, with no compiler, runtime or
+qualification execution. B's private ordinary build has started; its terminal
+result and the original qualification remain pending. The earlier hard-coded
+reporting defect and all earlier source and qualification failures remain
+retained.
