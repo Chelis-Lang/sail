@@ -113,46 +113,20 @@ candidate.
 The active priorities are complete product workflows, with unchanged acceptance
 targets. Historical passes below establish only their recorded scopes.
 
-Current implementation work advances two blocked paths. The
-[single late imported-authority handoff](../engine/verus/candidates/deferred-import-locator/late-handoff/README.md)
-is implemented as an unselected source candidate: 43 reduced pinned API
-controls pass, and independent review confirms immutable recipes, strict role
-classification and bounded constructor scans. The
-[complete pinned source controls](validation/m7-late-import-handoff-source-controls.md)
-pass 40 VIR and 78 driver tests plus both strict all-target checks in 180.872
-seconds. The ordinary runtime build now passes in 637.838 seconds, including
-fresh verification of all 2,060 vstd obligations. Its thirteen runtime artifacts,
-seven changed source files and source lock are sealed; independent review
-passes. The [original qualification](../engine/verus/candidates/deferred-import-locator/late-handoff/qualification-failure.json)
-passes its first two audits, then fails the migration fixture because the new
-engine publishes no prepared lowering. Both full proofs succeed. Retained data
-and source inspection identify the cause: parallel workers supply no diagnostic
-source map, and preparation incorrectly reused that optional argument. The [preparation-only namespace correction](../engine/verus/candidates/preparation-namespace/README.md)
-now passes 41 VIR and 88 driver tests and both strict all-target checks after a
-crate-visibility correction. Its ordinary build passes in 479.578 seconds with
-fresh verification of all 2,060 vstd obligations; complete artifacts, changed
-source and lock seals pass independent review. The unchanged qualification now passes its first eight stages, then fails
-previous-revision focused reuse: stock and engine both verify 9/0 with identical
-diagnostics, but there are no restored hits. Three namespace refusals and a
-separate broker-availability refusal precede existing tracing. The
-[retained failure](../engine/verus/candidates/preparation-namespace/visibility-correction/qualification-failure.json)
-and [independent audit](validation/m7-preparation-namespace-qualification-independent-audit.md)
-preserve all original bounds. The bounded refusal-point diagnostic now passes
-41 VIR and 91 driver tests and both strict compiler checks; its test-only raw
-owner annotation was corrected without changing the validator. The [original revision-zero diagnostic](../engine/verus/candidates/preparation-namespace/boundary-diagnostic/revision0-result.json)
-now identifies uncovered exported span ranges
-([VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md)) and a
-separate actual `pair-busy` admission refusal. Stock results remain exact; the
-positive hit assertion still fails. A
-separate [broker-retirement acknowledgement](../engine/verus/candidates/preparation-retirement/README.md)
-passes 41 VIR and 98 driver tests plus both strict checks. Removing its actual
-finish call makes the unchanged guard-lifetime regression fail. The correction
-orders the next admission after the previous compiler service releases its
-namespace borrow and quota owner; an ordinary runtime and qualification remain
-pending. The explicit imported-range absence role is a separate proposal,
-with no source coordinates or loader authority. The
-fourteen frozen scripts define thirteen actual pipeline stage records; the
-remaining four stages were not attempted. The candidate remains unselected.
+The corrected optional source runtime now passes its original thirteen-stage
+qualification: genuine previous-revision focused reuse, all three full HumanEval
+revisions, exact stock verdicts/diagnostics and cached-versus-fresh lowering from
+the same compiler input. The source controls, strict checks, actual memo-bypass
+sensitivity and ordinary fresh-vstd build also pass. Independent review checks
+all runtime, source, lock and frozen-script seals. Local packaging and a fresh
+installation match all thirteen runtime files and modes; the
+[delivery record](../bench/validation/m7-linux-engine-aaa3b2e4-delivery-2026-10-11.json)
+binds the private prebuilt artifact. The patch and pin select that correction
+together on this in-progress branch. Rebuilt Sail product checks and the frozen
+repair benchmarks are next; source qualification alone does not accept M7.
+The [candidate history](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
+and [retained workstream history](validation/m7-workstream-history-cc0898e.md)
+preserve the earlier migration, zero-hit and test-fixture failures.
 
 The reader path now moves MCP response graphs and encodes outside its output
 lock, with [46 targeted controls](validation/m7-mcp-output-ownership.md) passing.
@@ -207,9 +181,9 @@ buffers do not improve complete-client p95; no buffer change is selected.
 | Workstream | Current evidence | Remaining product gate |
 |---|---|---|
 | Managed verification | The sealed current product passes the [original managed workflow](validation/m7-managed-current-product.md): cold proof, unchanged complete receipt reuse, missing-receipt recovery, restored-mtime failing edit, and CLI/MCP jobs. The new descriptor-bound product passes again: cold verification takes 220.375 s under its original 240 s bound. | Real HumanEval/Vest integration and repair performance; the small receipt fixture does not establish either. |
-| Preparation across source edits | The [missing-original-range and broker-retirement candidate](../engine/verus/candidates/preparation-namespace/no-original-range/README.md) passes all 150 source tests, both strict compiler checks, the actual memo-bypass regression and an ordinary fresh-vstd build with all 13 artifacts sealed. Its original qualification is running; the preceding candidate's ninth-stage zero-hit failure remains preserved. | Pass the unchanged thirteen-stage pipeline (fourteen frozen scripts), including genuine previous-revision focused reuse within 600 s. All candidates remain unselected. |
+| Preparation across source edits | The selected [missing-original-range and broker-retirement correction](../engine/verus/README.md) passes all original thirteen source stages, genuine previous-revision focus and three complete HumanEval revisions. All runtime files match the independently verified prebuilt archive and fresh install. | Rebuild Sail with the selected patch, pass CLI/MCP repair integration and run the complete original HumanEval/Vest repair catalogues. Source hits alone do not establish a speedup. |
 | Responsive reads | The current product passes all 89 daemon controls, the full 566-test workspace gate and 39 solver controls. The [original live census](validation/m7-current-reader-workflow.md) fails full Result p95 at 394.713 ms; Status passes. The [stage diagnostic](validation/m7-rpc-stage-workflow.md) also fails complete Result p95 at 403.341 ms. The exact freshness optimization passes its complete checks; its [new reader workflow](validation/m7-rpc-binding-reader-terminal.md) fails the 600-second prerequisite before collecting samples. | Four concurrent readers, 200 samples, both p95 values below 200 ms during active verification; then retained real-project CLI/MCP within their original bounds. |
-| Default and shared caching | The latest complete local gate and recorded native CI pass; native CI completes in 482 s, longest job 448 s. The previous [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) has 158 Same and one stock Verismo timeout at the original 3,600 s bound. Its cause remains unknown. | Complete current-product standard conformance and cache fill/warm rounds. The failed standard scope remains failed. |
+| Default and shared caching | Earlier local gates and recorded native CI pass (482 s total, longest job 448 s). The latest local diagnostic gate fails eight original deadline-sensitive cases; one focused follow-up passes seven, with no changed assertions or deadlines. The previous [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) has 158 Same and one stock Verismo timeout at the original 3,600 s bound. Its cause remains unknown. | Complete current-product standard conformance and cache fill/warm rounds. The failed standard scope remains failed. |
 | Repair product acceptance | CLI/MCP repair, proof journals, explanations, named baselines and comparison are implemented. Current native CI passes all original fixture scenarios. | Complete source and real-project workflows, then three rounds with at least 2× median repair improvement on each of HumanEval and Vest. |
 
 [Retained workstream history](validation/m7-workstream-history-cc0898e.md)
@@ -222,8 +196,8 @@ receive complete fresh service replies; decoded reuse grants no freshness or
 proof authority. Start with [the walkthrough](proof-repair-walkthrough.md),
 [the MCP guide](mcp.md) or [the SDK contract](result-client.md).
 
-M7 is **not accepted**. The selected source baseline still lacks the required
-physical preparation-memory bound, and corrective candidates remain unselected.
+M7 is **not accepted**. The corrected source runtime has passed source and ownership qualification,
+but rebuilt-product integration and performance have not yet passed.
 The current passing product suites cover default workflows; source qualification,
 live reader latency, complete standard conformance and repair performance remain
 separate requirements. [Known issues](known-issues.md), the

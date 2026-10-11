@@ -1,8 +1,7 @@
 # Repair workflow walkthrough
 
 This walkthrough covers the implemented experimental workflow. It does not
-establish the unfinished M7 speed, concurrent-reader latency or physical
-preparation-memory claims. See [the roadmap](ROADMAP.md),
+establish the unfinished M7 speed or concurrent-reader latency claims. See [the roadmap](ROADMAP.md),
 [known issues](known-issues.md) and [acceptance requirements](bench/m7-repair-acceptance.md).
 The commands and response fields were checked against the CLI/MCP implementation;
 this documentation change does not constitute a new proof run.
@@ -23,8 +22,10 @@ sail engine status --output json
 The source-build command installs the selected engine in the same Sail cache
 that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
-The selected runtime is experimental and has unresolved physical preparation
-accounting; corrective variants are unselected until their complete gates pass.
+The selected runtime is experimental. Its complete source qualification now
+passes, including ownership accounting, genuine reuse across edits and exact
+full HumanEval results. Rebuilt-product checks and the M7 speed and reader
+latency targets remain separate; see [engine qualification](../engine/verus/README.md).
 
 `fetch-verus` installs artifacts but does not put `cargo-verus` on `PATH`:
 configure your ordinary stock launcher on `PATH` or through `SAIL_CARGO_VERUS`.
