@@ -243,7 +243,13 @@
     "label": "m7-http-async-compare-raw.tar.gz",
     "bytes": 319273,
     "sha256": "35f96a4c60db076584a61b7a0b593caba70373b8cd3c22ba50c10529994ffff9",
-    "members": 148
+    "members": 148,
+    "retention": "sealed on native filesystem; host transfer did not complete",
+    "transfer_failures": [
+      "Docker archive request500 for raw archive",
+      "Docker archive request500 for strict terminal",
+      "Docker daemon unavailable for final inputs copy"
+    ]
   },
   "limitations": [
     "one sequential baseline/candidate observation, not a distribution",
@@ -257,5 +263,72 @@
   "corrected_unselected_patch": {
     "bytes": 18094,
     "sha256": "ae56b725cce46f65f3d1048311cc3f216eebfd72d338e5a68d836cc296fef1c2"
-  }
+  },
+  "io_subintervals": {
+    "baseline": {
+      "before-send\u2192server-accepted": {
+        "wall_ms": 25.207834,
+        "io_cpu_ms": 19.61529,
+        "io_runqueue_ms": 1.655043
+      },
+      "server-accepted\u2192before-server-read": {
+        "wall_ms": 0.496541,
+        "io_cpu_ms": 0.999709,
+        "io_runqueue_ms": 0.0
+      },
+      "before-server-read\u2192server-read": {
+        "wall_ms": 25.9545,
+        "io_cpu_ms": 25.454666,
+        "io_runqueue_ms": 0.017584
+      },
+      "server-read\u2192server-delay-ended": {
+        "wall_ms": 76.330042,
+        "io_cpu_ms": 0.0,
+        "io_runqueue_ms": 0.0
+      },
+      "server-delay-ended\u2192server-sent": {
+        "wall_ms": 0.831,
+        "io_cpu_ms": 0.0,
+        "io_runqueue_ms": 0.0
+      },
+      "server-sent\u2192after-send": {
+        "wall_ms": 22.593125,
+        "io_cpu_ms": 12.061126,
+        "io_runqueue_ms": 9.395541
+      }
+    },
+    "candidate": {
+      "before-send\u2192server-accepted": {
+        "wall_ms": 53.693042,
+        "io_cpu_ms": 2.746586,
+        "io_runqueue_ms": 0.053125
+      },
+      "server-accepted\u2192before-server-read": {
+        "wall_ms": 1.269417,
+        "io_cpu_ms": 0.489085,
+        "io_runqueue_ms": 0.000333
+      },
+      "before-server-read\u2192server-read": {
+        "wall_ms": 14.460583,
+        "io_cpu_ms": 5.318165,
+        "io_runqueue_ms": 3.283084
+      },
+      "server-read\u2192server-delay-ended": {
+        "wall_ms": 77.523042,
+        "io_cpu_ms": 0.0,
+        "io_runqueue_ms": 0.0
+      },
+      "server-delay-ended\u2192server-sent": {
+        "wall_ms": 0.673,
+        "io_cpu_ms": 0.0,
+        "io_runqueue_ms": 0.0
+      },
+      "server-sent\u2192after-send": {
+        "wall_ms": 24.240583,
+        "io_cpu_ms": 11.837167,
+        "io_runqueue_ms": 0.19975
+      }
+    }
+  },
+  "io_subinterval_scope": "Existing samples only. Server samples observe the IO owner plus server thread, not the request helper. Sample times differ from phase markers; intervals cannot identify specific functions. Runtime pre/post birth IDs checked for all nine samples in each arm."
 }
