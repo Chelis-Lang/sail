@@ -204,7 +204,7 @@ pub(in crate::managed) fn recheck(
         .map(|(_, name)| name.clone())
         .collect();
     let clean = clean.into_iter().collect();
-    json(local, &retained)?;
+    super::super::files::json_metadata(local, &retained)?;
     Ok(clean)
 }
 
@@ -241,7 +241,7 @@ pub(in crate::managed) fn begin(
             records.push(prior);
         }
     }
-    json(local, &records)
+    super::super::files::json_metadata(local, &records)
 }
 
 /// Optional publication after the original final Current transaction. The

@@ -1,5 +1,11 @@
 # Known issues and acceptance limits
 
+The original 120-second publication diagnostic retained two completed worker
+freshness fills of 4.73–4.88 seconds and failed at missing foreground. A source-only
+[exact-byte metadata publication candidate](validation/m7-preserve-freshness-metadata-plan.md)
+addresses potential self-invalidation of existing native owners; it is uncompiled,
+unselected and provides no whole-loop or reader acceptance credit.
+
 Optional [publication timings](result-rpc-diagnostics.md) separate child exit,
 document reading, freshness establishment and persisted job status. Retained
 stdout alone cannot establish when any of these completed. The original repair

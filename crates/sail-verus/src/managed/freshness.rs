@@ -923,6 +923,177 @@ mod tests {
             let _ = std::fs::remove_dir_all(&self.root);
         }
     }
+    impl Fixture {
+        fn directory(&self) -> PathBuf {
+            self.cache
+                .join("projects")
+                .join(super::super::files::digest(
+                    self.workspace.as_os_str().as_encoded_bytes(),
+                ))
+                .join(&self.context)
+        }
+        fn request(&self) -> Request {
+            FreshnessIndex::request(
+                &self.cache,
+                &self.workspace,
+                &self.context,
+                &self.environment,
+            )
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"))
+        }
+        fn runtime_owner(&self, index: &FreshnessIndex) -> Arc<Mutex<RuntimeSlot>> {
+            index
+                .entry(&self.request().key())
+                .and_then(|entry| entry.lock().ok().and_then(|state| state.runtime.clone()))
+                .unwrap_or_else(|| unreachable!("fixture runtime owner"))
+        }
+        fn prepare_metadata(&self) {
+            assert!(
+                super::super::files::json(
+                    &self.directory().join("build-inputs.json"),
+                    &serde_json::json!([])
+                )
+                .is_ok()
+            );
+        }
+        fn republish_metadata(&self, preserve: bool) {
+            let paths = [
+                self.directory().join("input-state.json"),
+                self.directory().join("source-inputs.json"),
+                self.directory().join("build-inputs.json"),
+                self.cache
+                    .join("runtime-identities")
+                    .join(format!("{}.link", self.context)),
+            ];
+            for path in paths {
+                let value: serde_json::Value = std::fs::read(&path)
+                    .ok()
+                    .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+                    .unwrap_or_else(|| unreachable!("fixture sidecar"));
+                let result = if preserve {
+                    super::super::files::json_metadata(&path, &value)
+                } else {
+                    super::super::files::json(&path, &value)
+                };
+                assert!(result.is_ok());
+            }
+        }
+    }
+    #[test]
+    fn unchanged_metadata_publication_keeps_same_continuous_freshness_owner() {
+        let fixture = Fixture::new("metadata-preserve");
+        fixture.prepare_metadata();
+        let index = FreshnessIndex::default();
+        let initial = fixture.establish(&index);
+        assert!(initial.complete);
+        let owner = fixture.runtime_owner(&index);
+        fixture.republish_metadata(true);
+        let fresh = fixture.establish(&index);
+        assert!(fresh.complete);
+        assert_eq!(fresh.revision, initial.revision);
+        assert!(Arc::ptr_eq(&owner, &fixture.runtime_owner(&index)));
+    }
+    #[test]
+    fn original_same_byte_replacement_requires_new_freshness_owner() {
+        let fixture = Fixture::new("metadata-replace");
+        fixture.prepare_metadata();
+        let index = FreshnessIndex::default();
+        let initial = fixture.establish(&index);
+        assert!(initial.complete);
+        let owner = fixture.runtime_owner(&index);
+        fixture.republish_metadata(false);
+        let fresh = fixture.establish(&index);
+        assert!(fresh.complete);
+        assert_eq!(fresh.revision, initial.revision);
+        assert!(!Arc::ptr_eq(&owner, &fixture.runtime_owner(&index)));
+    }
+    #[test]
+    fn metadata_noop_never_revives_restored_write_alias_or_dead_helper() {
+        for case in ["runtime", "source", "alias", "helper"] {
+            let fixture = Fixture::new(case);
+            fixture.prepare_metadata();
+            let index = FreshnessIndex::default();
+            assert!(fixture.establish(&index).complete);
+            let owner = fixture.runtime_owner(&index);
+            match case {
+                "runtime" | "source" => {
+                    use std::io::{Read as _, Seek as _, Write as _};
+                    let path = if case == "runtime" {
+                        fixture.runtime.clone()
+                    } else {
+                        fixture.workspace.join("src/lib.rs")
+                    };
+                    let mut file = std::fs::OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .open(path)
+                        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                    let modified = file
+                        .metadata()
+                        .and_then(|metadata| metadata.modified())
+                        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                    let mut original = [0u8; 1];
+                    assert!(file.read_exact(&mut original).is_ok());
+                    assert!(file.rewind().is_ok());
+                    assert!(file.write_all(&[original[0] ^ 1]).is_ok());
+                    assert!(file.rewind().is_ok());
+                    assert!(file.write_all(&original).is_ok());
+                    assert!(
+                        file.set_times(std::fs::FileTimes::new().set_modified(modified))
+                            .is_ok()
+                    );
+                    drop(file);
+                }
+                "alias" => {
+                    let path = fixture
+                        .cache
+                        .join("runtime-identities")
+                        .join(format!("{}.link", fixture.context));
+                    let target = fixture.root.join("aliased-link.json");
+                    assert!(std::fs::rename(&path, &target).is_ok());
+                    assert!(std::os::unix::fs::symlink(&target, &path).is_ok());
+                }
+                "helper" => {
+                    let mut slot = owner.lock().unwrap_or_else(|e| unreachable!("fixture:{e}"));
+                    assert!(
+                        slot.runtime
+                            .as_mut()
+                            .is_some_and(|runtime| runtime.lease.stop_owner_for_test().is_ok())
+                    );
+                }
+                _ => unreachable!("fixed case"),
+            }
+            fixture.republish_metadata(true);
+            assert!(matches!(
+                fixture.request().refresh(&owner, Instant::now()),
+                Refresh::Invalid
+            ));
+        }
+    }
+    #[test]
+    fn preserved_metadata_does_not_fill_another_context_or_environment() {
+        let fixture = Fixture::new("metadata-key");
+        fixture.prepare_metadata();
+        let index = FreshnessIndex::default();
+        assert!(fixture.establish(&index).complete);
+        fixture.republish_metadata(true);
+        let original = fixture.request();
+        let mut changed = original.clone();
+        changed.context = "b".repeat(64);
+        let other = index
+            .entry(&changed.key())
+            .unwrap_or_else(|| unreachable!("fixture entry"));
+        assert!(other.lock().is_ok_and(|state| state.runtime.is_none()));
+        changed = original.clone();
+        changed
+            .environment
+            .insert("LANG".to_owned(), "different".to_owned());
+        let other = index
+            .entry(&changed.key())
+            .unwrap_or_else(|| unreachable!("fixture entry"));
+        assert!(other.lock().is_ok_and(|state| state.runtime.is_none()));
+        assert_ne!(original.key(), changed.key());
+    }
     #[test]
     fn non_utf8_path_spellings_and_environment_keep_requests_isolated() {
         use std::ffi::OsString;

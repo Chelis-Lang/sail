@@ -3,7 +3,9 @@
 //! Cargo checksum freshness covers Rust source; build-script fingerprints still
 //! use timestamps. These receipts additionally hash declared paths and environment.
 
-use super::files::{digest, json};
+use super::files::digest;
+#[cfg(test)]
+use super::files::json;
 use super::input::snapshot_paths;
 use super::receipts::read;
 use crate::Result;
@@ -177,7 +179,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
         });
         previous.push(record);
     }
-    json(path, &previous)
+    super::files::json_metadata(path, &previous)
 }
 
 #[cfg(test)]
