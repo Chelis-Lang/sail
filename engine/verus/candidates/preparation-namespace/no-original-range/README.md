@@ -36,9 +36,11 @@ inventory. The borrowed namespace guard and existing work cap remain required
 on both direct and parallel preparation paths. Stock Reporter and resolver are
 unchanged.
 
-A distinct provenance tag and v10 preparation domain reject intact v9 entries.
-The existing current-domain assertion changes accordingly; all earlier negative
-assertions remain, and a v9 rejection control is added. No query, diagnostic or
+A distinct provenance tag and v10 preparation domain require intact v9 entries
+to miss. The existing current-domain assertion changes accordingly; all earlier
+negative assertions remain. The added source control proves serialized v9/v10
+domain inequality only; it is not an actual cache-rejection run. Runtime
+migration and misfiled-entry controls remain mandatory. No query, diagnostic or
 solver normalization is introduced. The original strict stock stderr, same-input
 lowering oracle, 600-second compiler limits and genuine previous-revision reuse
 checks remain unchanged.
