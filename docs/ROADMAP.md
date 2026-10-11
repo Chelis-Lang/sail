@@ -232,6 +232,10 @@ passes all 39 original controls. Its separate complete workspace attempt fails
 two HTTP controls at their unchanged 250 ms lookup budgets (520/522 pass);
 later gate steps are not reached. Those failures remain open. The corrected
 `1e8b633` product build and complete gate are a separate frozen scope.
+The [original HTTP traces](validation/m7-http-gate-7da9579.md) and single
+[bounded send/body diagnostic](validation/m7-http-sendbody-7da9579.json) retain
+both outcomes. The latter passes the unchanged fixture but does not identify
+the failure's full cause or justify a transport/profile change.
 A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
 detects restored mount changes throughout that handoff.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)

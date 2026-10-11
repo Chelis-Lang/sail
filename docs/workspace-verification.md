@@ -39,6 +39,17 @@ for those unsupported managed configurations. Cargo configuration discovery
 uses the original invocation directory, including member-directory ancestors;
 relative Cargo/cache homes are resolved against that directory.
 
+On the M7 development branch, Linux managed commands also attempt automatic
+sysroot-digest reuse through the trusted local daemon. Each command first
+installs its own original file and namespace guards. It accepts an available
+snapshot only while both owners protect the same complete inventory; executable
+identities and all final proof checks remain local. A cold, unavailable, busy or
+invalid service falls back to full local hashing. Cold commands can request a
+bounded background fill after their own hash barrier; they do not wait for that
+fill. No new configuration is required. Original cold/warm integration and
+performance validation remain pending; see [the roadmap](ROADMAP.md) and
+[the handoff contract](decisions/0031-guarded-sysroot-digest-handoff.md).
+
 Linux is the reference platform for frontend proof reuse. Its ordered native
 event queue tracks transient creation and removal of missing Cargo configuration
 files before receipts are published. On macOS, present inputs retain content
