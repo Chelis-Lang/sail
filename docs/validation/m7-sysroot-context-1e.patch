@@ -1,0 +1,298 @@
+diff --git a/crates/sail-verus/src/managed/runner.rs b/crates/sail-verus/src/managed/runner.rs
+index 10cfb24..0b77a14 100644
+--- a/crates/sail-verus/src/managed/runner.rs
++++ b/crates/sail-verus/src/managed/runner.rs
+@@ -201,13 +201,20 @@ fn context(
+                 let request = sail_api::sysroot::Request::Lookup {
+                     scope: scope.clone(),
+                 };
+-                match sail_api::sysroot::call(socket, &request) {
++                match {
++                    let result = sail_api::sysroot::call(socket, &request);
++                    #[cfg(test)]
++                    context_control::lookup_result(&result);
++                    result
++                } {
+                     Ok(sail_api::sysroot::Response::Lookup(Some(snapshot))) => {
+                         sysroots.import(scope, &snapshot)
+                     }
+                     _ => false,
+                 }
+             });
++        #[cfg(test)]
++        context_control::handoff(&installed_sysroots, scope.as_ref(), imported, &sysroots);
+         drop(phase);
+         (scope, imported)
+     };
+@@ -226,6 +233,8 @@ fn context(
+     let barrier = diagnostics.phase(Phase::SysrootBarrier);
+     let sysroots_complete = sysroots.complete();
+     drop(barrier);
++    #[cfg(all(test, target_os = "linux"))]
++    context_control::barrier(sysroots_complete, sysroots.failure_reason());
+     #[cfg(target_os = "linux")]
+     if sysroots_complete
+         && !imported
+@@ -234,7 +243,11 @@ fn context(
+         let phase = diagnostics.phase(Phase::SysrootFillHint);
+         // Independent construction starts only after this caller's original
+         // complete hash barrier. No request contains caller-computed digests.
+-        let _ = sail_api::sysroot::call(socket, &sail_api::sysroot::Request::Prepare { scope });
++        let response =
++            sail_api::sysroot::call(socket, &sail_api::sysroot::Request::Prepare { scope });
++        #[cfg(test)]
++        context_control::prepare_result(&response);
++        let _ = response;
+         drop(phase);
+     }
+     #[cfg(not(target_os = "linux"))]
+@@ -2025,3 +2038,7 @@ mod tests {
+         assert!(std::fs::remove_dir_all(root).is_ok());
+     }
+ }
++
++#[cfg(all(test, target_os = "linux"))]
++#[path = "sysroot_context_control.rs"]
++mod context_control;
+diff --git a/crates/sail-verus/src/managed/sysroot_context_control.rs b/crates/sail-verus/src/managed/sysroot_context_control.rs
+new file mode 100644
+index 0000000..8487130
+--- /dev/null
++++ b/crates/sail-verus/src/managed/sysroot_context_control.rs
+@@ -0,0 +1,236 @@
++//! Unselected, ignored actual-runtime diagnostic: never executes a proof.
++
++use super::*;
++use sail_api::sysroot::{Request, Response, Scope};
++use std::cell::RefCell;
++use std::time::Duration;
++
++type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
++
++#[derive(Default, serde::Serialize)]
++struct Observation {
++    roots: Vec<PathBuf>,
++    scope: Option<Scope>,
++    lookup: Option<String>,
++    imported: bool,
++    captured_before_local_hashes: usize,
++    inventory_files: usize,
++    complete_local_barrier: bool,
++    barrier_refusal: Option<String>,
++    natural_prepare: Option<String>,
++    #[serde(skip)]
++    prepare_observed: Option<Instant>,
++}
++thread_local! {
++    static OBSERVATION: RefCell<Option<Observation>> = const { RefCell::new(None) };
++}
++fn record(update: impl FnOnce(&mut Observation)) {
++    OBSERVATION.with_borrow_mut(|slot| {
++        if let Some(row) = slot {
++            update(row);
++        }
++    });
++}
++fn response_kind(response: &std::io::Result<Response>) -> String {
++    match response {
++        Ok(Response::Lookup(Some(snapshot))) => format!("lookup-snapshot:{}", snapshot.rows.len()),
++        Ok(Response::Lookup(None)) => "lookup-none".into(),
++        Ok(Response::Prepared(accepted)) => format!("prepare:{accepted}"),
++        Err(error) => format!("io:{:?}:{}", error.kind(), error),
++    }
++}
++pub(super) fn lookup_result(response: &std::io::Result<Response>) {
++    record(|row| row.lookup = Some(response_kind(response)));
++}
++pub(super) fn handoff(
++    roots: &BTreeSet<PathBuf>,
++    scope: Option<&Scope>,
++    imported: bool,
++    baseline: &super::super::sysroot::Baseline,
++) {
++    record(|row| {
++        row.roots = roots.iter().cloned().collect();
++        row.scope = scope.cloned();
++        row.imported = imported;
++        row.inventory_files = baseline.paths().len();
++        row.captured_before_local_hashes = baseline
++            .paths()
++            .iter()
++            .filter(|path| baseline.captured(path).is_some())
++            .count();
++    });
++}
++pub(super) fn barrier(complete: bool, refusal: &str) {
++    record(|row| {
++        row.complete_local_barrier = complete;
++        row.barrier_refusal = (!complete).then(|| refusal.to_owned());
++    });
++}
++pub(super) fn prepare_result(response: &std::io::Result<Response>) {
++    record(|row| {
++        row.natural_prepare = Some(response_kind(response));
++        row.prepare_observed = Some(Instant::now());
++    });
++}
++fn destination(name: &str) -> std::io::Result<PathBuf> {
++    std::env::var_os(name)
++        .filter(|value| !value.is_empty())
++        .map(PathBuf::from)
++        .ok_or_else(|| std::io::Error::other(format!("missing {name}")))
++}
++fn bounded_bytes(path: &Path) -> std::io::Result<Vec<u8>> {
++    let mut bytes = Vec::new();
++    File::open(path)?
++        .take(2 * 1024 * 1024 + 1)
++        .read_to_end(&mut bytes)?;
++    if bytes.len() > 2 * 1024 * 1024 {
++        return Err(std::io::Error::other("diagnostic identity exceeds two MiB"));
++    }
++    Ok(bytes)
++}
++fn artifact(config: &Config, context: &Context, label: &str, output: &Path) -> TestResult {
++    let root = config.cache.join("runtime-identities");
++    let link = bounded_bytes(&root.join(format!("{}.link", context.hash)))?;
++    let identity: String = serde_json::from_slice(&link)?;
++    if identity.len() != 64 || !identity.bytes().all(|b| b.is_ascii_hexdigit()) {
++        return Err("invalid runtime identity link".into());
++    }
++    let bytes = bounded_bytes(&root.join(format!("{identity}.json")))?;
++    if digest(&bytes) != identity {
++        return Err("runtime identity bytes do not match their digest".into());
++    }
++    let rows: Vec<(String, String)> = serde_json::from_slice(&bytes)?;
++    if rows.windows(2).any(|pair| pair[0] > pair[1]) {
++        return Err("runtime identities are not ordered".into());
++    }
++    std::fs::write(output.join(format!("{label}.identities.json")), bytes)?;
++    std::fs::write(output.join(format!("{label}.link.json")), link)?;
++    Ok(())
++}
++fn run_context(
++    config: &Config,
++    output: &Path,
++    label: &str,
++) -> std::result::Result<(Context, Observation), Box<dyn std::error::Error>> {
++    OBSERVATION.with_borrow_mut(|slot| *slot = Some(Observation::default()));
++    eprintln!("context-control {label} starting");
++    let started = Instant::now();
++    let result = context(config, None, &Diagnostics::new());
++    let observation = OBSERVATION
++        .with_borrow_mut(Option::take)
++        .ok_or("diagnostic observation was not installed")?;
++    json(
++        &output.join(format!("{label}.observation.json")),
++        &observation,
++    )?;
++    json(
++        &output.join(format!("{label}.operation.json")),
++        &serde_json::json!({
++            "elapsed_s": started.elapsed().as_secs_f64(),
++            "error": result.as_ref().err().map(ToString::to_string),
++            "context_sha256": result.as_ref().ok().map(|c| &c.hash),
++        }),
++    )?;
++    let context = result?;
++    artifact(config, &context, label, output)?;
++    eprintln!(
++        "context-control {label} complete; imported={} captured={} prepare={:?}",
++        observation.imported, observation.captured_before_local_hashes, observation.natural_prepare
++    );
++    Ok((context, observation))
++}
++
++#[test]
++#[ignore = "separately frozen actual-pinned-runtime diagnostic; no verification or acceptance"]
++#[allow(
++    clippy::too_many_lines,
++    reason = "Single ignored control keeps its two original context calls and evidence sequence explicit"
++)]
++fn actual_pinned_sysroot_context_handoff() -> TestResult {
++    let output = destination("SAIL_MANAGED_CONTEXT_CONTROL_OUT")?;
++    let workspace = destination("SAIL_MANAGED_CONTEXT_CONTROL_WORKSPACE")?;
++    let cache = destination("SAIL_MANAGED_CONTEXT_CONTROL_CACHE")?;
++    let socket = destination("SAIL_DAEMON_SOCKET")?;
++    let sail = destination("SAIL_MANAGED_CONTEXT_CONTROL_SAIL")?;
++    let shim = sail.with_file_name("sail-z3");
++    let cargo_verus = destination("SAIL_CARGO_VERUS")?;
++    let z3 = destination("VERUS_Z3_PATH")?;
++    let cargo = std::env::var_os("CARGO").map(PathBuf::from).map_or_else(
++        || resolve_program(std::ffi::OsStr::new("cargo"), &workspace),
++        Ok,
++    )?;
++    std::fs::create_dir_all(&output)?;
++    let config = Config {
++        workspace,
++        cache,
++        sail,
++        shim,
++        cargo_verus,
++        cargo,
++        z3,
++        socket: Some(socket.clone()),
++        args: Vec::new(),
++        force: false,
++    };
++    let (mut first, observed_first) = run_context(&config, &output, "first")?;
++    let first_guard_after = first.sysroots.complete();
++    let first_key = first.hash.clone();
++    drop(first);
++    let mut observations = Vec::new();
++    let mut published = false;
++    let mut snapshot_sha = None;
++    let readiness = observed_first.prepare_observed.unwrap_or_else(Instant::now);
++    if let Some(scope) = observed_first.scope.as_ref() {
++        while readiness.elapsed() < Duration::from_secs(120) {
++            let entered = readiness.elapsed().as_secs_f64();
++            let response = sail_api::sysroot::call(
++                &socket,
++                &Request::Lookup {
++                    scope: scope.clone(),
++                },
++            );
++            let category = response_kind(&response);
++            if let Ok(Response::Lookup(Some(snapshot))) = &response {
++                published = snapshot.valid(scope);
++                snapshot_sha = Some(digest(&serde_json::to_vec(snapshot)?));
++                json(&output.join("published.snapshot.json"), snapshot)?;
++            }
++            observations.push(serde_json::json!({ "entered_s": entered,
++                "returned_s": readiness.elapsed().as_secs_f64(), "response": category }));
++            json(&output.join("readiness.json"), &observations)?;
++            if published {
++                break;
++            }
++            std::thread::sleep(Duration::from_millis(250));
++        }
++    }
++    eprintln!(
++        "context-control publication observed={published} after {:.3}s",
++        readiness.elapsed().as_secs_f64()
++    );
++    let readiness_elapsed = readiness.elapsed().as_secs_f64();
++    let (mut second, observed_second) = run_context(&config, &output, "second")?;
++    let second_guard_after = second.sysroots.complete();
++    let identities_equal = bounded_bytes(&output.join("first.identities.json"))?
++        == bounded_bytes(&output.join("second.identities.json"))?;
++    json(
++        &output.join("summary.json"),
++        &serde_json::json!({
++            "scope": "actual pinned sysroot context diagnostic only; no Cargo, proof, Current report or acceptance",
++            "construction_cap_s": 120, "rpc_budget_ms": 100,
++            "first": observed_first, "second": observed_second,
++            "first_guard_after": first_guard_after, "second_guard_after": second_guard_after,
++            "publication_observed": published, "snapshot_sha256": snapshot_sha,
++            "readiness_elapsed_s": readiness_elapsed,
++            "context_keys_equal": first_key == second.hash,
++            "complete_ordered_identity_bytes_equal": identities_equal,
++            "internal_construction_reason": "not exposed by sealed endpoint; no inferred cause",
++        }),
++    )?;
++    if first_key != second.hash || !identities_equal {
++        return Err(
++            "unchanged contexts did not preserve exact key and ordered runtime identities".into(),
++        );
++    }
++    Ok(())
++}
