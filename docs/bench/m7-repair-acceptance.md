@@ -147,8 +147,11 @@ Pass `--sail`, `--project`, `--cache`, `--socket`, `--job`, `--package`, `--targ
 The local Linux scenario checks the actual CLI and stdio MCP result, exact
 explanation, immutable named baseline and comparison, explicit missing-job and
 missing-function errors, and a proof cursor resumed across independent MCP
-connections. A mismatched cursor must report a gap; replaying a completed cursor
-must preserve its exact events. It then submits one explicitly forced owned
+connections. A cursor from another stream must return the existing explicit
+`SAIL0902` error through its CLI/MCP projection; an actual journal gap remains
+incomplete evidence. Replaying a completed cursor must preserve its exact
+events. The [original conflicting assertion and corrected real run](../validation/m7-rpc-retained-corrected.md)
+are retained separately. The scenario then submits one explicitly forced owned
 repair, observes its actual worker and descendants through kernel identities,
 cancels that job and requires those processes to stop. The externally supplied
 completed job and its original evidence must survive unchanged. Cleanup cancels
