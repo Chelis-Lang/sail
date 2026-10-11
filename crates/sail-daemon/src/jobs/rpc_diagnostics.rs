@@ -17,6 +17,7 @@ const LIMIT: usize = 256;
 pub(super) enum Operation {
     Result,
     Status,
+    WorkerPublication,
     #[default]
     Other,
 }
@@ -31,6 +32,10 @@ pub(super) enum Stage {
     FrameLookup,
     Encode,
     Write,
+    ChildWait,
+    DocumentRead,
+    FreshnessEstablish,
+    StatusSave,
 }
 
 #[derive(Clone, Copy, Default, Serialize)]
@@ -48,6 +53,11 @@ struct Record {
     frame_lookup_us: Option<u64>,
     encode_us: Option<u64>,
     write_us: Option<u64>,
+    child_wait_us: Option<u64>,
+    child_exit_observed_us: Option<u64>,
+    document_read_us: Option<u64>,
+    freshness_establish_us: Option<u64>,
+    status_save_us: Option<u64>,
     frame_hit: Option<bool>,
     frame_bytes: Option<usize>,
     currentness: Option<sail_api::jobs::Currentness>,
@@ -258,6 +268,10 @@ impl Trace<'_> {
                 Stage::FrameLookup => &mut record.frame_lookup_us,
                 Stage::Encode => &mut record.encode_us,
                 Stage::Write => &mut record.write_us,
+                Stage::ChildWait => &mut record.child_wait_us,
+                Stage::DocumentRead => &mut record.document_read_us,
+                Stage::FreshnessEstablish => &mut record.freshness_establish_us,
+                Stage::StatusSave => &mut record.status_save_us,
             };
             // An optional output owner brackets input freshness with two
             // output barriers; fallback may add the original read/SHA too.
@@ -280,6 +294,14 @@ impl Trace<'_> {
     pub fn frame_hit(&mut self, hit: bool) {
         if let Some(record) = &mut self.record {
             record.frame_hit = Some(hit);
+        }
+    }
+
+    /// Records the successful child-exit observation relative to this daemon's
+    /// diagnostic origin. It is not an inferred output or publication time.
+    pub fn child_exited(&mut self) {
+        if let (Some(owner), Some(record)) = (self.owner, &mut self.record) {
+            record.child_exit_observed_us = Some(micros(owner.origin.elapsed()));
         }
     }
 
@@ -347,10 +369,87 @@ mod tests {
             assert!(trace.started.is_none());
             assert!(trace.begin().is_none());
             assert_eq!(trace.measure(Stage::Write, || 7), 7);
+            trace.operation(Operation::WorkerPublication);
+            trace.child_exited();
+            assert_eq!(trace.measure(Stage::FreshnessEstablish, || 11), 11);
+            assert!(trace.record.is_none());
             trace.finish(true);
             // No directory is created or touched when diagnostics are off.
             recorder.export(Path::new("/sail-diagnostic-disabled-no-directory"))?;
         }
+        Ok(())
+    }
+
+    #[test]
+    fn worker_publication_observes_existing_error_and_fixed_stage_fields() -> io::Result<()> {
+        let recorder = enabled();
+        let mut trace = recorder.start();
+        trace.operation(Operation::WorkerPublication);
+        trace.measure(Stage::ChildWait, || ());
+        trace.child_exited();
+        let error = trace
+            .measure(Stage::DocumentRead, || {
+                Err::<(), _>(io::Error::other("unchanged document failure"))
+            })
+            .err()
+            .ok_or_else(|| io::Error::other("lost document error"))?;
+        assert_eq!(error.to_string(), "unchanged document failure");
+        trace.measure(Stage::StatusSave, || ());
+        trace.finish(false);
+        let owner = recorder
+            .inner
+            .as_ref()
+            .ok_or_else(|| io::Error::other("missing recorder"))?;
+        let rows = owner
+            .rows
+            .lock()
+            .map_err(|_| io::Error::other("diagnostic lock poisoned"))?;
+        let row = rows
+            .front()
+            .ok_or_else(|| io::Error::other("missing publication row"))?;
+        assert!(row.child_wait_us.is_some());
+        assert!(row.child_exit_observed_us.is_some());
+        assert!(row.document_read_us.is_some());
+        assert!(row.status_save_us.is_some());
+        assert_eq!(row.freshness_establish_us, None);
+        assert!(!row.write_succeeded);
+        let value = serde_json::to_value(row).map_err(io::Error::other)?;
+        assert_eq!(value["operation"], "worker_publication");
+        assert_eq!(value.as_object().map(serde_json::Map::len), Some(22));
+        Ok(())
+    }
+
+    #[test]
+    fn expanded_fixed_records_fit_existing_storage_and_export_bounds() -> io::Result<()> {
+        assert!(std::mem::size_of::<Record>() <= 512);
+        let maximum = Record {
+            sequence: u64::MAX,
+            started_us: u64::MAX,
+            dispatch_delay_us: u64::MAX,
+            total_us: u64::MAX,
+            operation: Operation::WorkerPublication,
+            read_us: Some(u64::MAX),
+            lookup_us: Some(u64::MAX),
+            output_seal_us: Some(u64::MAX),
+            freshness_us: Some(u64::MAX),
+            frame_key_us: Some(u64::MAX),
+            frame_lookup_us: Some(u64::MAX),
+            encode_us: Some(u64::MAX),
+            write_us: Some(u64::MAX),
+            child_wait_us: Some(u64::MAX),
+            child_exit_observed_us: Some(u64::MAX),
+            document_read_us: Some(u64::MAX),
+            freshness_establish_us: Some(u64::MAX),
+            status_save_us: Some(u64::MAX),
+            frame_hit: Some(false),
+            frame_bytes: Some(usize::MAX),
+            currentness: Some(sail_api::jobs::Currentness::Historical),
+            write_succeeded: false,
+        };
+        // Export adds a fixed header. Reserve 1 KiB for its maximum-width
+        // counters rather than checking only an ordinary one-row example.
+        let bytes = serde_json::to_vec(&vec![maximum; LIMIT]).map_err(io::Error::other)?;
+        assert!(bytes.len() + 1024 <= 256 * 1024);
         Ok(())
     }
 

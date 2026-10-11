@@ -1832,8 +1832,11 @@ pub(crate) fn run_engine(
         notes,
         error: None,
     };
+    let result_publication = diagnostics.phase(Phase::ResultPublication);
     json(&paths.run.join("result.json"), &result)?;
+    drop(result_publication);
     if result.currentness == Currentness::Current {
+        let _receipt_publication = diagnostics.phase(Phase::ReceiptPublication);
         for (path, receipt) in pending {
             json(&path, &receipt)?;
         }
@@ -1852,6 +1855,7 @@ pub(crate) fn run_engine(
             json(&paths.run.join("result.json"), &result)?;
         }
     }
+    let family_publication = diagnostics.phase(Phase::CompilerFamilyPublication);
     publish_compiler_generation(
         &paths,
         &after_data,
@@ -1864,6 +1868,7 @@ pub(crate) fn run_engine(
             args: &config.args,
         },
     );
+    drop(family_publication);
     Ok(result)
 }
 

@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Extend existing optional diagnostics with managed result, receipt and ordinary
+  dependency publication intervals, plus daemon child-exit, document-read,
+  freshness-establishment and status-save timings. Fixed metadata bounds and
+  original proof checks, freshness order and deadlines remain unchanged. This
+  instrumentation has not yet established a remaining repair latency cause.
+
 - Document the rejected shared HTTP async-adapter experiment. Its complete
   operation was slower despite passing the affected security controls; the
   production transport and all deadlines remain unchanged.

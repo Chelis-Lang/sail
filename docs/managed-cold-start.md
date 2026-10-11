@@ -113,6 +113,20 @@ added to theirs. Snapshot and guard phases retain all their original reads,
 probes and barriers. They are timings of those existing blocks, not evidence
 that one specific hash or syscall caused a delay.
 
+The same sink now observes three publication boundaries: `result-publication`
+is the first complete result-document write; `receipt-publication` is the
+existing pending-receipt writes and guarded commit, including any original
+Unknown demotion and replacement result write; `compiler-family-publication`
+is the existing ordinary dependency-generation publication attempt. These
+observations do not admit a receipt or generation. Error exits retain the
+original error and record a finished interval when the timer is dropped.
+The existing result `execution.wall_ms` is sampled before these boundaries and
+is unchanged. A retained worker stdout document proves neither its emission
+time nor terminal daemon publication before a deadline. Daemon child-exit,
+document-read, optional freshness establishment and status persistence can be
+observed separately through the existing
+[optional daemon diagnostic ring](result-rpc-diagnostics.md).
+
 Timing begins in the managed runner, after CLI configuration and daemon
 connection setup. A final row is written when its block exits, including error
 returns; a forcibly killed unfinished block may have no completed row. Append
