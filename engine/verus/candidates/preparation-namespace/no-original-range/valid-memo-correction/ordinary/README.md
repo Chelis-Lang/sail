@@ -16,3 +16,5 @@ pipeline, 14-script inventory, exact stock diagnostics, same-input oracle and
 600-second compiler limits. The new runtime remains unselected until those
 checks and the genuine previous-revision focused restore pass. Neither the
 source pass nor the planned sensitivity test supplies a reuse or latency claim.
+
+The planned post-qualification reporter now validates the actual original stage prefix: a pass requires all 13 passed stages and the source-completion flag; a failure requires one terminal failed stage after passed predecessors, with the remainder unattempted. It no longer hard-codes the preceding run's 8/1/4 counts. Twenty-two pure reporting controls retain the original ninth-stage failure pattern and reject incomplete passes, duplicate/skipped stages and primary/status inconsistencies. The qualifier, assertions and frozen script inventory are unchanged.
