@@ -98,6 +98,10 @@ scans; any index optimization would need equivalent namespace/hash/ambiguity
 tests. Hash-map import iteration is sorted only in this private lookup inventory,
 not in the stock graph, bucket, function, command or solver order.
 
+The [trace-gated implementation handoff](implementation-handoff.md) identifies
+the exact causal choices, narrow source seams and migration controls. It is
+unapplied and awaits the first real mismatch.
+
 The [timing and domain review](timing-and-domain.md) distinguishes constructor
 Loaded owners from later ordinary resolution and exact Delayed descriptors. The
 [pinned formatter audit](formatter-audit.json) records the actual Unix streaming
