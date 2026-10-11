@@ -42,6 +42,26 @@
   "current_proof_admitted": false,
   "inventory_statement": "No old inventory reused; metadata covers installed products and 13 selected artifacts only. Production original Guard acquires and validates complete actual inventory before proof; setup metadata never certifies Current.",
   "original_failures_preserved": true,
+  "observed_ordinary_preparation": {
+    "accepted_current_proof": false,
+    "complete_targets": ["vstd", "human_eval_verus"],
+    "exit_code": 0,
+    "external_wall_s": 1348.0766077419976,
+    "report_currentness": "unknown",
+    "report_execution_wall_s": 1346.816283908,
+    "report_notes": [
+      "SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification (native-observation-invalidated); no current proof receipt is published",
+      "Build-script input declarations were established during this run"
+    ],
+    "report_seal": {
+      "bytes": 2159805,
+      "sha256": "f36290a765239c6d7d500d8fc5e7b468b00f8cdf923e6c4e2759e74090f84466"
+    },
+    "reused_targets": 0,
+    "stage": "baseline-unmeasured-preparation-ordinary-full",
+    "verified_functions": {"vstd": 1871, "human_eval_verus": 331},
+    "verifier_invocations": 2
+  },
   "preparation": "Authorized separately recorded unmeasured ordinary/exact repair-context phase before original bounded checks; existing single declaration retry only",
   "probes": {
     "job_read_bench": {
