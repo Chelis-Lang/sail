@@ -117,7 +117,7 @@ def identity(container, closure=None):
     value = json.loads(raw)
     if not value["State"]["Running"]:
         raise ValueError("container not running")
-    return {"id": value["Id"], "image": value["Image"], "birth": value["State"]["StartedAt"]}
+    return {"id": value["Id"], "image": value["Image"], "birth": value["State"]["StartedAt"], "created": value["Created"]}
 
 
 def inventory(archive):

@@ -16,7 +16,8 @@ convention required by the existing benchmark grant validator. Then run:
 python3 scripts/local-product-install.py \
   --gate-output "$complete_host_gate_output" --container "$container" \
   --native-root "$fresh_native_product_output" \
-  --output "$fresh_host_product_output" --engine "$selected_engine_inventory"
+  --output "$fresh_host_product_output" --engine "$selected_engine_inventory" \
+  --execution "$honest_environment_and_load_label"
 ```
 
 The engine JSON contains `engine_build`, `manifest_sha256` and `files`. The last
@@ -48,7 +49,8 @@ retains `product-grant.json` and the exact original `source.tar` together.
 
 The grant is compatible with the existing benchmark `common.validate_grant`
 contract: release-build and owned-install must both pass; source commit,
-archive and path, container, installed directory, two artifacts and ownership
+archive and path, container, its actual creation/start identity, an explicit
+execution environment/load label, installed directory, two artifacts and ownership
 are explicit. `installation_only` and `source_modified=false` describe delivery
 only. Installation is not proof Currentness, repair acceptance, source-engine
 qualification or performance evidence. Original product fixtures and benchmarks

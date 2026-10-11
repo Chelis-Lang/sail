@@ -34,6 +34,8 @@ def inputs():
 
 def grant_inputs():
     config = {'gate_config': inputs()[2], 'container': 'sail-m7-handoff-validation',
+              'execution': 'explicit test environment',
+              'execution_container_birth': {'id': 'id', 'image': 'image', 'created': 'created', 'started_at': 'started'},
               'product_dir': '/opt/sail-m7-core-product-' + 'a' * 7,
               'engine': {'engine_build': '/selected-engine'}, 'gate_inputs': {'result.json': 'c' * 64}}
     record = {'status': 'PASS', 'uncertainty': [], 'closure': 'closed-recorded-scope',
@@ -92,6 +94,8 @@ class Controls(unittest.TestCase):
         config, record, artifacts, installation = grant_inputs()
         result = p.make_grant(g, config, record, artifacts, installation)
         self.assertIs(validator.validate_grant(result, 'a' * 7), result)
+        self.assertEqual(result['execution'], config['execution'])
+        self.assertEqual(result['execution_container_birth'], config['execution_container_birth'])
         self.assertTrue(result['installation_only'])
         self.assertFalse(result['source_modified'])
         self.assertEqual(set(result['artifacts']), {'sail', 'sail-z3'})
