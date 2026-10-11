@@ -128,8 +128,8 @@ targets. Historical passes below establish only their recorded scopes.
 
 | Workstream | Implementation and current validation | Remaining product gate |
 |---|---|---|
-| Repeat verification setup | Guarded daemon sysroot reuse is wired in. The bounded environment-byte selector has two Linux regressions and strict checks passing; the corrected product and complete gate are running. | Original cold/warm managed CLI/MCP scenario, including missing receipts and restored-mtime edits. |
-| Reuse after a source edit | The unselected DeferredLocator candidate has 22 pinned-type helper controls and independent review. Actual source provenance, codec and Reporter controls are added separately. | Complete source build and original fourteen-stage qualification, including genuine previous-revision focus reuse within 600 seconds. |
+| Repeat verification setup | Guarded daemon sysroot reuse is wired in. The corrected product builds and reaches the automatic fill hint, but its original cold scenario exceeds 240 seconds. The complete gate is running. | Establish actual guarded reuse, then the original cold/warm managed CLI/MCP scenario, including missing receipts and restored-mtime edits. |
+| Reuse after a source edit | The unselected DeferredLocator candidate has 22 pinned-type helper controls and independent review. Its full private source build is running with actual provenance, codec and Reporter controls added separately. | Complete source checks and original fourteen-stage qualification, including genuine previous-revision focus reuse within 600 seconds. |
 | Shared cache | The whole-session solver control passes. Two workspace HTTP controls fail their original 250 ms budget; phase observations are retained. | Resolve the measured delay and pass the complete unchanged gate. |
 | End-to-end acceptance | CLI/MCP repair, journals, explanations, saved baselines and result clients are implemented. Full default standard validation is active. | Complete current standard coverage; real four-reader p95 below 200 ms; retained real-project CLI/MCP; three rounds with at least 2× median repair gains on each of human-eval-verus and Vest. |
 
@@ -231,11 +231,15 @@ The independent frozen `7da9579`
 passes all 39 original controls. Its separate complete workspace attempt fails
 two HTTP controls at their unchanged 250 ms lookup budgets (520/522 pass);
 later gate steps are not reached. Those failures remain open. The corrected
-`1e8b633` product build and complete gate are a separate frozen scope.
+`1e8b633` product build passes; its complete gate is a separate frozen scope.
 The [original HTTP traces](validation/m7-http-gate-7da9579.md) and single
 [bounded send/body diagnostic](validation/m7-http-sendbody-7da9579.json) retain
 both outcomes. The latter passes the unchanged fixture but does not identify
 the failure's full cause or justify a transport/profile change.
+The corrected product's [original managed scenario](validation/m7-sysroot-activation-1e8b633.md)
+also exceeds the first cold 240-second limit. It reaches the automatic fill hint,
+but warm, CLI/MCP and mutation checks are not reached. No daemon publication,
+import or speedup is inferred from the hint alone.
 A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
 detects restored mount changes throughout that handoff.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
