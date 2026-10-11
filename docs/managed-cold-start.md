@@ -57,6 +57,15 @@ cleaning. Proof-specific or unaudited Cargo-injected environment declarations
 refuse sharing. See the [decision](decisions/0036-managed-compiler-artifact-families.md)
 for the local cache trust boundary and effective environment binding.
 
+A fully observed Current negative full verification can retain those ordinary
+dependency contracts when all requested targets finished normally, the complete
+full result contains proof errors without a VIR error, and input declarations
+were already covered before the run. Compiler errors, partial or interrupted
+runs, new declarations and uncertain inputs withdraw the generation. Failed
+proofs remain failed, produce no successful receipt and do not skip the next
+selected verification. This implementation still needs whole-product validation;
+it does not change the original repair deadlines.
+
 The [script-observation diagnostic](validation/m7-compiler-script-observations.md)
 records the avoided cleaning seam and its control scope. The compiler-family
 implementation and affected controls are separate from pending whole-product

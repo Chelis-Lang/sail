@@ -369,6 +369,14 @@ pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
             && (results["is-verifying-entire-crate"] != true || results["success"].is_boolean()))
 }
 
+/// Reads the existing bounded full terminal; never establishes proof success.
+pub(crate) fn terminal_success(path: &Path) -> Option<bool> {
+    let terminal = terminal(path)?;
+    (terminal.payload.normal_termination == Some(true))
+        .then_some(terminal.payload.success)
+        .flatten()
+}
+
 /// Converts exact source message text while preserving locations when supplied.
 pub(crate) fn diagnostic(raw: &Value) -> sail_api::output::Diagnostic {
     let message = &raw["message"];

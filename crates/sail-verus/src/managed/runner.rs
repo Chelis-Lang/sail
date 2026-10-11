@@ -634,6 +634,127 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
         .collect()
 }
 
+/// A complete negative full run can retain ordinary dependency contracts, but
+/// neither Cargo's 101 nor Currentness alone establishes that completion.
+fn negative_compiler_generation(
+    paths: &Paths,
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+    result: &ProjectResult,
+    script_coverage: bool,
+    engine: bool,
+    args: &[String],
+) -> bool {
+    if !engine
+        || !script_coverage
+        || focused(args)
+        || result.currentness != Currentness::Current
+        || result.exit_code != Some(101)
+        || result.error.is_some()
+        || expected.is_empty()
+    {
+        return false;
+    }
+    let check = || -> Option<bool> {
+        let mut calls = BTreeMap::new();
+        let mut starts = Vec::new();
+        for entry in std::fs::read_dir(paths.run.join("invocations")).ok()? {
+            let path = entry.ok()?.path();
+            match path.extension()?.to_str()? {
+                "json" => {
+                    let call: Invocation = read(&path)?;
+                    let key = call.identity.key();
+                    if path.file_stem()?.to_str()? != key
+                        || call.run_id != result.run_id
+                        || calls.insert(key, call).is_some()
+                    {
+                        return Some(false);
+                    }
+                }
+                "started" => {
+                    let start: Value = read(&path)?;
+                    if start["run_id"] != result.run_id {
+                        return Some(false);
+                    }
+                    starts.push(start["target"].as_str()?.to_owned());
+                }
+                _ => return Some(false),
+            }
+        }
+        let mut names: Vec<_> = calls
+            .values()
+            .map(|call| call.identity.name.clone())
+            .collect();
+        names.sort();
+        starts.sort();
+        if names.is_empty()
+            || names != starts
+            || !calls.values().any(|call| call.report.exit_code == Some(1))
+            || !calls
+                .values()
+                .all(|call| crate::engine::completed_compiler_output(&paths.run, call))
+        {
+            return Some(false);
+        }
+        Some(expected.iter().all(|(id, name, kind)| {
+            data["packages"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|package| {
+                    package["id"] == *id
+                        && calls
+                            .values()
+                            .filter(|call| {
+                                package["manifest_path"].as_str().is_some_and(|manifest| {
+                                    Path::new(manifest) == call.identity.manifest
+                                }) && name.replace('-', "_") == call.identity.name
+                                    && (kind == &call.identity.crate_type
+                                        || (kind == "lib" && call.identity.crate_type == "rlib"))
+                            })
+                            .count()
+                            == 1
+                })
+        }))
+    };
+    check() == Some(true)
+}
+
+struct CompilerGeneration<'a> {
+    compiler: &'a str,
+    script_coverage: bool,
+    source_engine: bool,
+    args: &'a [String],
+}
+
+fn publish_compiler_generation(
+    paths: &Paths,
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+    result: &ProjectResult,
+    generation: &CompilerGeneration<'_>,
+) {
+    if (result.currentness == Currentness::Current && result.exit_code == Some(0))
+        || negative_compiler_generation(
+            paths,
+            data,
+            expected,
+            result,
+            generation.script_coverage,
+            generation.source_engine,
+            generation.args,
+        )
+    {
+        super::build_inputs::family::publish(
+            &paths.compiler_inputs,
+            generation.compiler,
+            &paths.target,
+            &paths.build_inputs,
+            data,
+        );
+    }
+}
+
 fn artifacts(paths: &Paths) -> Vec<Value> {
     std::fs::read_to_string(paths.run.join("artifacts.jsonl"))
         .unwrap_or_default()
@@ -1513,6 +1634,7 @@ pub(crate) fn run_engine(
     }
     drop(cleanup);
     let seal = diagnostics.phase(Phase::InvocationSeal);
+    let source_engine = engine.is_some();
     let runtime = Runtime {
         run_id: run_id.clone(),
         args: config.args.clone(),
@@ -1730,15 +1852,18 @@ pub(crate) fn run_engine(
             json(&paths.run.join("result.json"), &result)?;
         }
     }
-    if result.currentness == Currentness::Current && result.exit_code == Some(0) {
-        super::build_inputs::family::publish(
-            &paths.compiler_inputs,
-            &compiler_hash,
-            &paths.target,
-            &paths.build_inputs,
-            &after_data,
-        );
-    }
+    publish_compiler_generation(
+        &paths,
+        &after_data,
+        &expected,
+        &result,
+        &CompilerGeneration {
+            compiler: &compiler_hash,
+            script_coverage,
+            source_engine,
+            args: &config.args,
+        },
+    );
     Ok(result)
 }
 
@@ -2013,6 +2138,384 @@ mod tests {
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
         }
         .seal()
+    }
+
+    struct NegativeGeneration {
+        root: PathBuf,
+        paths: Paths,
+        data: Value,
+        expected: BTreeSet<(String, String, String)>,
+        call: Invocation,
+        result: ProjectResult,
+        _ownership: Ownership,
+    }
+
+    impl NegativeGeneration {
+        fn new(label: &str) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+            let root = std::env::temp_dir().join(format!(
+                "sail-negative-generation-{label}-{}",
+                std::process::id()
+            ));
+            let config = compiler_fixture(&root)?;
+            let (paths, ownership) = prepare(&config, &root, "negative", "compiler", "run")?;
+            let data = serde_json::json!({"packages":[{
+                "id":"input", "name":"input", "manifest_path":root.join("Cargo.toml")
+            }]});
+            let mut call = compiler_receipt(&paths, &data, &root.join("absent")).invocation;
+            call.success = false;
+            call.report.exit_code = Some(1);
+            call.report.crates[0].verus.verified = Some(1);
+            call.report.crates[0].verus.errors = Some(1);
+            call.report.crates[0].verus.success = Some(false);
+            let result = ProjectResult {
+                kind: "sail-project-result".to_owned(),
+                schema_version: SCHEMA_VERSION,
+                run_id: "run".to_owned(),
+                workspace: root.to_string_lossy().into_owned(),
+                context_sha256: "negative".to_owned(),
+                input_revision: "revision".to_owned(),
+                currentness: Currentness::Current,
+                exit_code: Some(101),
+                targets: Vec::new(),
+                execution: Execution {
+                    verifier_invocations: 1,
+                    reused_targets: 0,
+                    wall_ms: 1.0,
+                },
+                notes: Vec::new(),
+                error: None,
+            };
+            let fixture = Self {
+                root,
+                paths,
+                data,
+                call,
+                result,
+                _ownership: ownership,
+                expected: BTreeSet::from([(
+                    "input".to_owned(),
+                    "input".to_owned(),
+                    "lib".to_owned(),
+                )]),
+            };
+            fixture.seal()?;
+            Ok(fixture)
+        }
+
+        fn seal(&self) -> std::io::Result<()> {
+            let sidecar = self
+                .paths
+                .run
+                .join("sidecars")
+                .join(self.call.identity.key());
+            std::fs::create_dir_all(&sidecar)?;
+            std::fs::write(
+                sidecar.join("verus.stdout"),
+                include_bytes!("../../tests/fixtures/engine-terminal/failed-proof.json"),
+            )?;
+            std::fs::write(
+                sidecar.join("engine.events.jsonl"),
+                include_bytes!("../../tests/fixtures/engine-terminal/terminal-failure.jsonl"),
+            )?;
+            std::fs::write(
+                self.paths
+                    .run
+                    .join("invocations")
+                    .join(format!("{}.json", self.call.identity.key())),
+                serde_json::to_vec(&self.call)?,
+            )?;
+            std::fs::write(
+                self.paths.run.join("invocations/1.started"),
+                serde_json::to_vec(&serde_json::json!({"run_id":"run","target":"input"}))?,
+            )
+        }
+
+        fn eligible(&self) -> bool {
+            negative_compiler_generation(
+                &self.paths,
+                &self.data,
+                &self.expected,
+                &self.result,
+                true,
+                true,
+                &[],
+            )
+        }
+    }
+
+    impl Drop for NegativeGeneration {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn negative_compiler_generation_requires_full_normal_current_and_complete_coverage()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut f = NegativeGeneration::new("refusals")?;
+        assert!(f.eligible());
+        assert!(!complete(&f.call.report));
+        for currentness in [Currentness::Unknown, Currentness::Historical] {
+            f.result.currentness = currentness;
+            assert!(!f.eligible());
+        }
+        f.result.currentness = Currentness::Current;
+        for exit in [None, Some(1), Some(2), Some(0)] {
+            f.result.exit_code = exit;
+            assert!(!f.eligible());
+        }
+        f.result.exit_code = Some(101);
+        assert!(!negative_compiler_generation(
+            &f.paths,
+            &f.data,
+            &f.expected,
+            &f.result,
+            false,
+            true,
+            &[]
+        ));
+        assert!(!negative_compiler_generation(
+            &f.paths,
+            &f.data,
+            &f.expected,
+            &f.result,
+            true,
+            false,
+            &[]
+        ));
+        assert!(!negative_compiler_generation(
+            &f.paths,
+            &f.data,
+            &f.expected,
+            &f.result,
+            true,
+            true,
+            &["--verify-function=selected".to_owned()]
+        ));
+        f.expected.insert((
+            "input".to_owned(),
+            "unattempted".to_owned(),
+            "bin".to_owned(),
+        ));
+        assert!(!f.eligible());
+        f.expected.retain(|(_, name, _)| name == "input");
+        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        for field in [
+            "encountered-vir-error",
+            "is-verifying-entire-crate",
+            "errors",
+        ] {
+            f.seal()?;
+            let mut doc: Value =
+                serde_json::from_slice(&std::fs::read(sidecar.join("verus.stdout"))?)?;
+            doc["verification-results"][field] = match field {
+                "encountered-vir-error" => Value::Bool(true),
+                "errors" => Value::from(0),
+                _ => Value::Bool(false),
+            };
+            std::fs::write(sidecar.join("verus.stdout"), serde_json::to_vec(&doc)?)?;
+            assert!(!f.eligible(), "{field}");
+        }
+        f.seal()?;
+        std::fs::write(sidecar.join("engine.events.jsonl"),
+            b"{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false,\"normal_termination\":false}}\n")?;
+        assert!(!f.eligible());
+        f.seal()?;
+        std::fs::write(
+            f.paths.run.join("invocations/2.started"),
+            b"{\"run_id\":\"run\",\"target\":\"input\"}",
+        )?;
+        assert!(!f.eligible(), "one completion cannot cover two starts");
+        std::fs::remove_file(f.paths.run.join("invocations/2.started"))?;
+        std::fs::write(f.paths.run.join("invocations/pending.json"), b"{")?;
+        assert!(!f.eligible());
+        std::fs::remove_file(f.paths.run.join("invocations/pending.json"))?;
+        assert!(f.eligible());
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "One real Cargo dependency lifecycle brackets the negative generation and restored-input refusal."
+    )]
+    fn current_negative_generation_reuses_real_dependency_without_a_proof_receipt()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut f = NegativeGeneration::new("cargo")?;
+        std::fs::create_dir_all(f.root.join("dependency/src"))?;
+        std::fs::create_dir_all(f.root.join("src"))?;
+        std::fs::write(
+            f.root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\nedition='2024'\n[package.metadata.verus]\nverify=true\n[dependencies]\nordinary-dep={path='dependency'}\n[workspace]\n",
+        )?;
+        std::fs::write(
+            f.root.join("src/lib.rs"),
+            "pub fn input() { ordinary_dep::ordinary(); }\n",
+        )?;
+        std::fs::write(
+            f.root.join("dependency/Cargo.toml"),
+            "[package]\nname='ordinary-dep'\nversion='0.1.0'\nedition='2024'\n",
+        )?;
+        std::fs::write(
+            f.root.join("dependency/src/lib.rs"),
+            "pub fn ordinary() {}\n",
+        )?;
+        std::fs::write(f.root.join("external.txt"), "good")?;
+        std::fs::write(
+            f.root.join("dependency/build.rs"),
+            "fn main() { println!(\"cargo:rerun-if-changed=../external.txt\"); std::fs::write(std::env::var(\"OUT_DIR\").unwrap()+\"/generated\",std::fs::read(\"../external.txt\").unwrap()).unwrap(); }\n",
+        )?;
+        let cargo = |arguments: &[&str]| -> std::io::Result<std::process::Output> {
+            Command::new("cargo")
+                .current_dir(&f.root)
+                .args(arguments)
+                .arg("--target-dir")
+                .arg(&f.paths.target)
+                .env_remove("RUSTC_WRAPPER")
+                .env_remove("RUSTC_WORKSPACE_WRAPPER")
+                .output()
+        };
+        let built = cargo(&["build", "--offline", "--message-format=json"])?;
+        assert!(
+            built.status.success(),
+            "{}",
+            String::from_utf8_lossy(&built.stderr)
+        );
+        let metadata = Command::new("cargo")
+            .current_dir(&f.root)
+            .args(["metadata", "--offline", "--format-version=1"])
+            .output()?;
+        assert!(metadata.status.success());
+        f.data = serde_json::from_slice(&metadata.stdout)?;
+        f.expected = expected_targets(
+            &f.data,
+            &[
+                "--package".to_owned(),
+                "input".to_owned(),
+                "--lib".to_owned(),
+            ],
+        );
+        let artifacts = f.paths.run.join("artifacts.jsonl");
+        std::fs::write(&artifacts, &built.stdout)?;
+        super::super::build_inputs::update(&f.paths.build_inputs, &artifacts, &f.data)?;
+        let generation = CompilerGeneration {
+            compiler: "compiler",
+            script_coverage: true,
+            source_engine: true,
+            args: &[],
+        };
+        // Bootstrap through the unchanged successful publication branch.
+        f.result.exit_code = Some(0);
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation);
+        super::super::build_inputs::family::begin(
+            &f.paths.compiler_inputs,
+            "compiler",
+            &f.paths.target,
+            &f.paths.build_inputs,
+            &f.data,
+        )?;
+        assert!(!f.paths.compiler_inputs.exists());
+        let (clean, _, coverage) =
+            super::super::build_inputs::stale(&f.paths.build_inputs, &f.data);
+        assert_eq!(clean, Vec::<String>::new());
+        assert!(coverage);
+        f.result.exit_code = Some(101);
+        assert!(f.eligible());
+        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected)?;
+        assert_eq!(targets.len(), 1);
+        assert!(!targets[0].complete && !targets[0].reused);
+        assert_eq!(targets[0].report.exit_code, Some(1));
+        assert_eq!(std::fs::read_dir(&f.paths.receipts)?.count(), 0);
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation);
+        assert!(f.paths.compiler_inputs.is_file());
+        let next_context = f.root.join("next-context-build-inputs.json");
+        super::super::build_inputs::family::begin(
+            &f.paths.compiler_inputs,
+            "compiler",
+            &f.paths.target,
+            &next_context,
+            &f.data,
+        )?;
+        assert_eq!(
+            super::super::build_inputs::stale(&next_context, &f.data).0,
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            super::super::build_inputs::family::recheck(&next_context, &f.data, &f.paths.target)?,
+            Vec::<String>::new()
+        );
+        let cleaned = cargo(&["clean", "--offline", "-p", "input"])?;
+        assert!(cleaned.status.success());
+        let next = cargo(&["build", "--offline", "--message-format=json"])?;
+        assert!(next.status.success());
+        let records: Vec<Value> = next
+            .stdout
+            .split(|b| *b == b'\n')
+            .filter_map(|line| serde_json::from_slice(line).ok())
+            .collect();
+        assert!(records.iter().any(|r| r["reason"] == "compiler-artifact"
+            && r["target"]["name"] == "ordinary_dep"
+            && r["fresh"] == true));
+        assert!(records.iter().any(|r| r["reason"] == "compiler-artifact"
+            && r["target"]["name"] == "input"
+            && r["fresh"] == false));
+        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        for field in ["encountered-vir-error", "is-verifying-entire-crate"] {
+            f.seal()?;
+            let mut doc: Value =
+                serde_json::from_slice(&std::fs::read(sidecar.join("verus.stdout"))?)?;
+            doc["verification-results"][field] = Value::Bool(field == "encountered-vir-error");
+            std::fs::write(sidecar.join("verus.stdout"), serde_json::to_vec(&doc)?)?;
+            publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation);
+            assert!(
+                !f.paths.compiler_inputs.exists(),
+                "{field} must leave consumed export absent"
+            );
+        }
+        f.seal()?;
+        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation);
+        assert!(
+            !f.paths.compiler_inputs.exists(),
+            "unfinished full invocation cannot publish"
+        );
+        f.seal()?;
+        let establishing = CompilerGeneration {
+            script_coverage: false,
+            ..generation
+        };
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &establishing);
+        assert!(
+            !f.paths.compiler_inputs.exists(),
+            "negative declaration establishment cannot publish"
+        );
+        // The consumed generation does not survive an interrupted rewrite.
+        let input = std::fs::File::open(f.root.join("external.txt"))?;
+        let mtime = input.metadata()?.modified()?;
+        std::fs::write(f.root.join("external.txt"), "fail")?;
+        input.set_times(std::fs::FileTimes::new().set_modified(mtime))?;
+        assert_eq!(
+            super::super::build_inputs::family::recheck(&next_context, &f.data, &f.paths.target)?,
+            vec!["ordinary-dep"]
+        );
+        f.result.currentness = Currentness::Unknown;
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation);
+        assert!(!f.paths.compiler_inputs.exists());
+        std::fs::write(f.root.join("external.txt"), "good")?;
+        input.set_times(std::fs::FileTimes::new().set_modified(mtime))?;
+        super::super::build_inputs::family::begin(
+            &f.paths.compiler_inputs,
+            "compiler",
+            &f.paths.target,
+            &f.paths.build_inputs,
+            &f.data,
+        )?;
+        assert_eq!(
+            super::super::build_inputs::stale(&f.paths.build_inputs, &f.data).0,
+            vec!["ordinary-dep"]
+        );
+        Ok(())
     }
 
     #[test]

@@ -15,6 +15,12 @@ semantic versioning once the API is published.
   contracts still force cleaning; exact proof contexts and receipts stay private.
   Whole-loop performance validation remains pending.
 
+- Retain freshly validated ordinary dependency contracts after a fully observed
+  Current negative full verification. Require complete normal compiler outcomes
+  and pre-existing input coverage; compiler errors, incomplete runs and uncertain
+  inputs still withdraw the generation. Failed proofs and successful-receipt
+  rules are unchanged. Product validation remains pending.
+
 - Avoid repeated Linux runtime identity parsing when the original continuous
   lease binds both exact sidecar paths. Missing coverage retains the original
   parse; all per-read freshness checks remain. No live reader latency gain is

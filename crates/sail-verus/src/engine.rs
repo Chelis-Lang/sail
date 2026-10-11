@@ -581,6 +581,43 @@ fn completed_driver(run: &Path, sidecar: &Path) -> bool {
     valid() == Some(true)
 }
 
+/// Complete full verifier outcome for ordinary compiler-output retention only.
+/// Failed proofs remain failed and never gain a successful proof receipt.
+pub(crate) fn completed_compiler_output(run: &Path, call: &crate::managed::Invocation) -> bool {
+    let sidecar = run.join("sidecars").join(call.identity.key());
+    if !completed_driver(run, &sidecar)
+        || call.report.error.is_some()
+        || !call.report.invariant_violations().is_empty()
+    {
+        return false;
+    }
+    let Some(stdout) = bounded_document(&sidecar.join("verus.stdout")) else {
+        return false;
+    };
+    let (documents, _) = crate::attribution::json_documents(&stdout);
+    let ([document], [krate]) = (documents.as_slice(), call.report.crates.as_slice()) else {
+        return false;
+    };
+    let results = &document["verification-results"];
+    let Some(errors) = results["errors"].as_u64() else {
+        return false;
+    };
+    let success = errors == 0;
+    results["is-verifying-entire-crate"] == true
+        && results["encountered-vir-error"] == false
+        && results["encountered-error"] == !success
+        && results["success"] == success
+        && krate.verus.verified == results["verified"].as_u64()
+        && krate.verus.errors == Some(errors)
+        && krate.verus.success == Some(success)
+        && krate.verus.encountered_vir_error == Some(false)
+        && call.report.exit_code == Some(i32::from(!success))
+        && call.success == success
+        && (!success || crate::managed::receipt_complete(&call.report))
+        && crate::engine_events::terminal_success(&sidecar.join("engine.events.jsonl"))
+            == Some(success)
+}
+
 fn bounded_document(path: &Path) -> Option<Vec<u8>> {
     use std::io::Read as _;
     const LIMIT: u64 = 32 * 1024 * 1024;
