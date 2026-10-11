@@ -25,6 +25,12 @@ def terminal(codes, status='PASS'):
 
 
 class Controls(unittest.TestCase):
+    def test_explicit_product_source_and_external_target(self):
+        m.validate_paths('/tmp/sail-m7-core-product-source-abcdef0', '/work/target', '/tmp/sail-local-gates-abcdef0')
+        for source in ('relative', '/', '/work/target', '/work/target/inside', '/work', '/tmp'):
+            with self.assertRaises(ValueError):
+                m.validate_paths(source, '/work/target', '/tmp/sail-local-gates-abcdef0')
+
     def test_original_sequence_and_caps(self):
         seen = []
         self.assertTrue(m.sequence(lambda *args: seen.append(args) or 0, m.Closure()))

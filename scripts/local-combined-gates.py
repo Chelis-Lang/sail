@@ -193,7 +193,8 @@ def verify_protected(expected):
 
 
 def support_module(root):
-    spec = importlib.util.spec_from_file_location("owned_gate_groups", root / "source" / SUPPORT)
+    config = load(root / "config.json")
+    spec = importlib.util.spec_from_file_location("owned_gate_groups", Path(config["source"]) / SUPPORT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -308,7 +309,7 @@ def native(root):
     if who is None:
         raise ValueError("controller birth unavailable")
     save(root / "owner.json", who)
-    source = root / "source"
+    source = Path(config["source"])
     expected = load(root / "source-inventory.json")
     protected = load(root / "protected.json")
     record = {"status": "RUNNING", "revision": config["revision"], "archive_sha256": config["archive_sha256"],
@@ -432,12 +433,23 @@ def validate_terminal(record, revision, archive_sha):
         raise ValueError("nonterminal native status")
 
 
+def validate_paths(source, target, output):
+    source, target, output = Path(source), Path(target), Path(output)
+    if not source.is_absolute() or ".." in source.parts or source == Path("/"):
+        raise ValueError("source must be a new explicit absolute native path")
+    if source == target or source in target.parents or target in source.parents:
+        raise ValueError("source and compiler target must not overlap")
+    if source == output or source in output.parents:
+        raise ValueError("source must not contain native evidence output")
+
+
 def host(args):
     closure = Closure()
     args.output.mkdir(mode=0o700, exist_ok=False)
     report = {"status": "RUNNING", "scope": "local gate then solver; no installed-product/corpus/performance credit"}
     before, remote = None, None
     root = args.native_root
+    source = args.source or root + "/source"
     def interrupted(number, _frame):
         closure.uncertain("host interruption")
         for value in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -452,6 +464,7 @@ def host(args):
             raise ValueError("expected new private /tmp/sail-local-gates-* root")
         if not Path(args.target).is_absolute() or ".." in Path(args.target).parts:
             raise ValueError("target must be an explicit absolute native path")
+        validate_paths(source, args.target, root)
         archive = args.output / "source.tar"
         revision = call(["git", "rev-parse", args.revision + "^{commit}"], cwd=args.repo).stdout.decode().strip()
         before = identity(args.container, closure)
@@ -468,23 +481,23 @@ def host(args):
         report.update(revision=revision, archive_sha256=sha(archive), controller_sha256=sha(Path(__file__)), container_before=before)
         save(args.output / "controller.json", report)
         command = ["docker", "exec", "-i", args.container, "python3", "-"]
-        prepare = "from pathlib import Path\nr=Path(%r);r.mkdir(mode=0o700,exist_ok=False);(r/'source').mkdir()\n" % root
+        prepare = "from pathlib import Path\nr=Path(%r);r.mkdir(mode=0o700,exist_ok=False);Path(%r).mkdir(mode=0o700,exist_ok=False)\n" % (root, source)
         call(command, payload=prepare.encode())
         for name in ("source.tar", "source-inventory.json", "protected.json"):
             call(["docker", "cp", str(args.output / name), args.container + ":" + root + "/" + name], timeout=60)
         prepare = """import json,tarfile
 from pathlib import Path
-r=Path(%r)
-with tarfile.open(r/'source.tar') as h:h.extractall(r/'source',filter='data')
-(r/'source'/'target').symlink_to(%r)
+r=Path(%r);s=Path(%r)
+with tarfile.open(r/'source.tar') as h:h.extractall(s,filter='data')
+(s/'target').symlink_to(%r)
 print(json.dumps({'pid1_birth':int(Path('/proc/1/stat').read_text().rsplit(')',1)[1].split()[19])}))
-""" % (root, args.target)
+""" % (root, source, args.target)
         result = call(command, payload=prepare.encode(), timeout=60).stdout
-        config = {"revision": revision, "archive_sha256": sha(archive), "target": args.target,
+        config = {"revision": revision, "archive_sha256": sha(archive), "target": args.target, "source": source,
                   "pid1_birth": json.loads(result)["pid1_birth"], "retain_elf": args.retain_elf}
         save(args.output / "config.json", config)
         call(["docker", "cp", str(args.output / "config.json"), args.container + ":" + root + "/config.json"])
-        remote = root + "/source/scripts/local-combined-gates.py"
+        remote = source + "/scripts/local-combined-gates.py"
         if identity(args.container, closure) != before:
             raise RuntimeError("container changed during setup")
         with (args.output / "transport.log").open("wb") as log:
@@ -533,6 +546,7 @@ def main():
     parser.add_argument("--container")
     parser.add_argument("--native-root")
     parser.add_argument("--target", default="/work/target")
+    parser.add_argument("--source", help="new exact native source path; defaults to native-root/source")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--protected", type=Path)
     parser.add_argument("--retain-elf", action="append", default=[])
