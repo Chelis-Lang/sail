@@ -6,6 +6,23 @@ that branch released or accepted. The [roadmap](ROADMAP.md) tracks remaining wor
 The [retained status history](validation/m7-acceptance-status-history.md) preserves
 the detailed prior roadmap narrative and its distinct failed/setup scopes.
 
+For current experimental repair use:
+
+- A successful focused check still needs complete Current full validation.
+  An Unknown result, including a namespace observation failure after the
+  verifier finishes, cannot authorize a repair.
+- Completed negative proofs currently discard the ordinary build-script
+  generation. The next check can recompile unchanged macro dependencies;
+  [the recovered diagnostic](validation/m7-repair-a960-recovered-setup.md)
+  identifies this mechanism. Retention of ordinary compiler output is being
+  corrected independently of proof acceptance.
+- Full-result reader latency and real-project repair speed remain unqualified.
+  The original workflows are running with their original bounds; use the
+  [roadmap](ROADMAP.md) for current acceptance status.
+- The complete gate currently has an unresolved shared HTTP-reader deadline
+  failure. The new transport candidate is under validation; no increased
+  timeout or weakened hit assertion is selected.
+
 The original stock Verismo tspec deadline failure is now tracked locally as
 [VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md). Sleeping compiler
 threads and empty solver pipes do not identify its cause; the complete standard

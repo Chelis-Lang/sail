@@ -79,7 +79,13 @@ after installation. A complete post-precheck source seal also passes. The
 prepared-only original benchmark precheck takes 4.199 seconds through its primary
 result, excluding final archival work, with matching
 M6, runtime, source, corpus, product and container-birth seals. These are setup
-results only. No benchmark preparation, Cargo or proof workload has run.
+results only. Subsequent executions are separate: the first workload
+[stopped on a read-only filesystem](../../bench/validation/m7-linux-repair-benchmark-a9609e9-storage-failure-2026-10-11.json)
+before measured samples, and a recovered setup
+[refused a leftover socket](../../bench/validation/m7-linux-repair-benchmark-a9609e9-stale-socket-2026-10-11.json).
+An explicitly fresh namespace is now running the original workload. Its
+dependency/solver warmups are preparation, not measured repair speedups; complete
+three-round performance and final seals remain pending.
 The [portable record](m7-current-benchmark-launcher.json) retains the producer
 and execution-record identities separately; the producer record is unchanged.
 See [ADR 0036](../decisions/0036-managed-compiler-artifact-families.md) for the
