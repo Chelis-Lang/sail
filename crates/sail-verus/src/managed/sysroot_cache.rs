@@ -279,8 +279,24 @@ mod linux {
         }
         Some(used)
     }
+    #[cfg(test)]
+    enum TestStartup {
+        // The fixture queues its one hint before maintenance can contend.
+        BeforeMaintenance(std::sync::mpsc::Receiver<()>),
+        // Controlled counterfactual for the old, uncoordinated fixture.
+        HoldingState {
+            entered: std::sync::mpsc::Sender<()>,
+            release: std::sync::mpsc::Receiver<()>,
+        },
+    }
     impl Index {
         pub(super) fn new() -> io::Result<Self> {
+            Self::create(
+                #[cfg(test)]
+                None,
+            )
+        }
+        fn create(#[cfg(test)] startup: Option<TestStartup>) -> io::Result<Self> {
             let mut nonce = [0u8; 32];
             File::open("/dev/urandom")?.read_exact(&mut nonce)?;
             let shared = Arc::new(Shared {
@@ -298,7 +314,24 @@ mod linux {
             let owner = Arc::clone(&shared);
             let worker = std::thread::Builder::new()
                 .name("sail-sysroot-maintenance".into())
-                .spawn(move || maintenance(&owner))?;
+                .spawn(move || {
+                    #[cfg(test)]
+                    match startup {
+                        Some(TestStartup::BeforeMaintenance(release)) => {
+                            let _ = release.recv();
+                        }
+                        Some(TestStartup::HoldingState { entered, release }) => {
+                            let Ok(state) = owner.state.lock() else {
+                                return;
+                            };
+                            let _ = entered.send(());
+                            let _ = release.recv();
+                            drop(state);
+                        }
+                        None => {}
+                    }
+                    maintenance(&owner);
+                })?;
             Ok(Self {
                 shared,
                 worker: Mutex::new(Some(worker)),
@@ -589,8 +622,50 @@ mod linux {
                 .unwrap_or_else(|| unreachable!("scope fixture"));
             (root, scope)
         }
-        fn await_ready(index: &Index, scope: &Scope) -> Box<Snapshot> {
+        // The release owner drops before Index::drop joins maintenance, even
+        // when the original cold-lookup or single prepare assertion panics.
+        struct StartupRelease(Option<mpsc::Sender<()>>);
+        impl StartupRelease {
+            fn release(&mut self) {
+                if let Some(release) = self.0.take() {
+                    let _ = release.send(());
+                }
+            }
+        }
+        impl Drop for StartupRelease {
+            fn drop(&mut self) {
+                self.release();
+            }
+        }
+        struct FixtureIndex {
+            index: Index,
+            release: std::cell::RefCell<StartupRelease>,
+        }
+        impl FixtureIndex {
+            fn new() -> Self {
+                let (release, receive) = mpsc::channel();
+                let index = Index::create(Some(TestStartup::BeforeMaintenance(receive)))
+                    .unwrap_or_else(|_| unreachable!("index fixture"));
+                Self {
+                    index,
+                    release: std::cell::RefCell::new(StartupRelease(Some(release))),
+                }
+            }
+        }
+        impl std::ops::Deref for FixtureIndex {
+            type Target = Index;
+            fn deref(&self) -> &Self::Target {
+                &self.index
+            }
+        }
+        impl Drop for FixtureIndex {
+            fn drop(&mut self) {
+                self.release.get_mut().release();
+            }
+        }
+        fn await_ready(index: &FixtureIndex, scope: &Scope) -> Box<Snapshot> {
             assert!(index.prepare(scope));
+            index.release.borrow_mut().release();
             let started = Instant::now();
             loop {
                 if let Some(snapshot) = index.lookup(scope) {
@@ -604,9 +679,49 @@ mod linux {
             }
         }
         #[test]
+        fn busy_startup_declines_without_waiting_and_old_single_hint_assertion_fails() {
+            let (root, scope) = fixture();
+            let (entered, observe) = mpsc::channel();
+            let (release, receive) = mpsc::channel();
+            // Release is declared after Index, so it also runs first on unwind.
+            let index = Index::create(Some(TestStartup::HoldingState {
+                entered,
+                release: receive,
+            }))
+            .unwrap_or_else(|_| unreachable!("controlled startup"));
+            let mut release = StartupRelease(Some(release));
+            assert!(observe.recv_timeout(Duration::from_secs(2)).is_ok());
+            let started = Instant::now();
+            assert!(index.lookup(&scope).is_none());
+            assert!(!index.prepare(&scope));
+            assert!(started.elapsed() < Duration::from_millis(100));
+            let old_assertion = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                assert!(index.prepare(&scope));
+            }));
+            assert!(
+                old_assertion.is_err(),
+                "old single assertion rejects legal busy startup"
+            );
+            release.release();
+            index.shutdown();
+            assert!(std::fs::remove_dir_all(root).is_ok());
+        }
+
+        #[test]
+        fn startup_release_on_unwind_joins_maintenance() {
+            let started = Instant::now();
+            let outcome = std::panic::catch_unwind(|| {
+                let _index = FixtureIndex::new();
+                std::panic::resume_unwind(Box::new("controlled fixture assertion unwind"));
+            });
+            assert!(outcome.is_err());
+            assert!(started.elapsed() < Duration::from_secs(2));
+        }
+
+        #[test]
         fn independent_handoff_is_exact_and_survives_daemon_loss_after_transfer() {
             let (root, scope) = fixture();
-            let index = Index::new().unwrap_or_else(|_| unreachable!("index fixture"));
+            let index = FixtureIndex::new();
             assert!(
                 index.lookup(&scope).is_none(),
                 "cold lookup never waits for construction"
@@ -643,7 +758,7 @@ mod linux {
         #[test]
         fn complete_inventory_scope_and_dirty_caller_refuse_stale_handoff() {
             let (root, scope) = fixture();
-            let index = Index::new().unwrap_or_else(|_| unreachable!("index fixture"));
+            let index = FixtureIndex::new();
             let _ready = await_ready(&index, &scope);
             let mut caller = Baseline::begin(&BTreeSet::from([root.clone()]), |_| false);
             let mut snapshot = index
@@ -683,7 +798,7 @@ mod linux {
                 if change == "hardlink" {
                     assert!(std::fs::hard_link(&file, &outside).is_ok());
                 }
-                let index = Index::new().unwrap_or_else(|_| unreachable!("index fixture"));
+                let index = FixtureIndex::new();
                 let _ready = await_ready(&index, &scope);
                 let mut caller = Baseline::begin(&BTreeSet::from([root.clone()]), |_| false);
                 let snapshot = index
@@ -724,7 +839,7 @@ mod linux {
         #[test]
         fn two_owner_bound_eviction_and_restart_preserve_only_local_overlap() {
             let (root, first) = fixture();
-            let index = Index::new().unwrap_or_else(|_| unreachable!("index fixture"));
+            let index = FixtureIndex::new();
             let _first = await_ready(&index, &first);
             let mut caller = Baseline::begin(&BTreeSet::from([root.clone()]), |_| false);
             let snapshot = index

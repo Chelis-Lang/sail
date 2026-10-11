@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "scope": "Test-only Linux sysroot handoff initial maintenance coordination and controlled contention; no production readiness change",
+  "base_source_commit": "00598eb",
+  "base_archive_sha256": "e0ca499c80cf5ae6a2c06aab391fd72799a3e0dc9cb2667fe8fea43aa7d2b4cf",
+  "source_overlay": {
+    "path": "crates/sail-verus/src/managed/sysroot_cache.rs",
+    "bytes": 34804,
+    "sha256": "3e94b64f24f2888bc75a80161afc7f635f955869dc9d4a1cf5ffa9673d4749d5"
+  },
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; private reused Cargo target; two compiler jobs; ordinary priority; serial test cases",
+  "commands": [
+    "CARGO_BUILD_JOBS=2 cargo test --locked -p sail-verus --lib managed::sysroot_cache::linux::tests -- --test-threads=1",
+    "CARGO_BUILD_JOBS=2 cargo clippy --locked -p sail-verus --all-targets -- -D warnings"
+  ],
+  "controls": {
+    "passed": 8,
+    "failed": 0,
+    "elapsed_seconds": 17.16,
+    "compilation_seconds": 79,
+    "controlled_old_single_assertion": "Fails under actual maintenance-held state mutex and is caught as required",
+    "busy_refusal": "lookup=None and prepare=false while maintenance retains state mutex; elapsed <100ms",
+    "unwind_cleanup": "Fixture releases owned startup channel before Index drop joins; completed <2s",
+    "original_checks": "Cold lookup, single accepted preparation assertion, full independent inventory/guard/import/eviction/restart checks preserved",
+    "later_preparations": "Original behavior unchanged; only initial startup coordinated"
+  },
+  "strict_all_target_clippy": {
+    "exit_code": 0,
+    "elapsed_seconds": 28.2
+  },
+  "preserved_prior_failure": {
+    "record": "bench/validation/m7-linux-core-gate-37e5342-failure-emulated-2026-10-11.json",
+    "tests_passed": 540,
+    "tests_total": 541,
+    "actual_refusal_cause": "Uncaptured; controlled contention demonstrates possibility only"
+  },
+  "original_bounds_and_assertions_unchanged": true,
+  "m7_accepted": false,
+  "retained_artifacts": {
+    "tested-elf": {
+      "bytes": 31835480,
+      "sha256": "e35ffc2472f53cc05080a8aad7ffd12747fe779a56215f36ce2490c2e1c6f2d0"
+    },
+    "tests.log": {
+      "bytes": 2031,
+      "sha256": "c654f2fa38a617cc93914b5f6f9ff84138716e2cc819e2ad541b5ee75d466cc3"
+    },
+    "clippy.log": {
+      "bytes": 768,
+      "sha256": "01044e46d69488524183c660c8f4796fddb2b39e2061f8e79fb66a17e67460b4"
+    },
+    "sysroot_cache.rs": {
+      "bytes": 34804,
+      "sha256": "3e94b64f24f2888bc75a80161afc7f635f955869dc9d4a1cf5ffa9673d4749d5"
+    },
+    "Cargo.lock": {
+      "bytes": 53548,
+      "sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb"
+    }
+  },
+  "limits": "Not complete gate, proof/currentness, source-engine, reader latency or performance qualification. Earlier447 solver timeout retained separately; parent separately reports original37 solver39/39 pass."
+}
