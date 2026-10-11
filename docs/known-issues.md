@@ -211,3 +211,10 @@ captured bytes are now retained as its default; explicit fixture selection and
 all bounds/equality assertions remain. A fresh complete run is required.
 [The failed attempt](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
 retains the entire log. This is a test setup defect, not a solver disagreement.
+
+The fresh complete solver run passes the corrected fixture, but fails the
+original HTTP whole-session replay assertion: correct answers required one
+extra Z3 process (two starts before, three afterward). The failed native cache,
+signed replies and certificate are retained for diagnosis. Cause is unresolved;
+this full run remains failed. See the
+[complete fresh attempt](../bench/validation/m7-linux-solver-777-emulated-2026-10-11.json).

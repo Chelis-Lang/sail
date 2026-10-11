@@ -115,12 +115,16 @@ proof authority. Start with [the walkthrough](proof-repair-walkthrough.md),
 M7 is **not accepted**. The selected source baseline still lacks the required
 physical preparation-memory bound. Corrective graph/decoder/observer candidates
 remain unselected and require complete source qualification and genuine
-previous-revision focus reuse. The complete frozen `b36acc7`
-[workspace gate](../bench/validation/m7-linux-gate-b36-emulated-2026-10-11.json)
+previous-revision focus reuse. The complete frozen `777b86a`
+[workspace gate](../bench/validation/m7-linux-gate-777-emulated-2026-10-11.json)
 passes all 485 tests and the remaining gate steps. The complete
-[solver attempt](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
-passes all 37 real-solver controls but fails the new fixture-dependent timing
-diagnostic; its setup correction still requires a fresh complete run. The
+[solver attempt](../bench/validation/m7-linux-solver-777-emulated-2026-10-11.json)
+passes the corrected classifier fixture and 36 other controls, but fails the
+HTTP whole-session replay control: answers match the solver, yet the fresh
+reader starts Z3 instead of using only signed remote replies/certificate.
+The failed cache and signed files are retained; the cause is being diagnosed.
+The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
+remains preserved. The
 [installed product build](validation/m7-current-product-build.json) and
 [hardened MCP transport smoke](validation/m7-installed-mcp-b36.md) pass their
 recorded scopes. The bounded source candidate now builds with all 13 runtime
@@ -142,7 +146,7 @@ sets the unchanged required gates and artifact provenance.
 
 Priority order for completing this milestone:
 
-1. Keep the complete workspace gate green, correct the solver fixture seam and retain real-solver/fault
+1. Keep the complete workspace gate green, restore complete solver/HTTP replay success and retain real-solver/fault
    evidence, finish the current CLI/MCP suite without changing assertions or deadlines,
    and finish full default standard corpus validation. The original shared-entry
    timeout's cause remains unresolved despite the subsequent complete suite pass.
