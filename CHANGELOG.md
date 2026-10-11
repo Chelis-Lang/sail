@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Let shared-cache lookup helpers wait for concurrent HTTP setup within the
+  existing lookup budget. Preserve bounded fallback, credential reload and trust
+  checks; avoid an immediate miss when the configured client is still starting.
+
 - Start configured HTTP client initialization asynchronously when the daemon
   opens its cache, reducing cold remote misses without a startup wait. Preserve
   lookup deadlines, signature and trust checks, bounded constructor ownership,

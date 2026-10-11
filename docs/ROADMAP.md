@@ -135,7 +135,18 @@ initialization asynchronously at daemon bind. Its complete corrected local
 passes all 489 tests and every remaining gate step. Its separate
 [solver suite](../bench/validation/m7-linux-solver-de36-emulated-2026-10-11.json)
 passes all 38 original controls, including whole-session remote replay without
-starting Z3. The latest complete local
+starting Z3. The subsequent frozen `d333a9c`
+[native run](../bench/validation/m7-linux-ci-d333-native-failure-2026-10-11.json)
+passes workspace, end-to-end and conformance but fails the original whole-session
+solver control. A deterministic
+[setup-contention regression](validation/m7-http-setup-contention.md) demonstrates
+an immediate skip while initialization is still in progress. The helper now
+waits within its existing budget; a complete new gate is pending. The failed
+native invocation lacks a phase trace, so its exact cause remains unknown.
+The complete default standard attempt also fails: 156 Same, one diagnostic-order
+Unstable and two unchanged unit timeouts, with no Different verdicts. See
+[the terminal scope](../bench/validation/m7-linux-default-standard-1dc-failure-2026-10-11.json).
+Fill and warm were not reached. The latest complete local
 [end-to-end attempt](../bench/validation/m7-linux-e2e-777-failure-emulated-2026-10-11.json)
 passes legacy and installed MCP controls but times out during the first cold
 managed dependency build at its unchanged 240-second limit; repair is not reached.

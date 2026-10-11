@@ -94,6 +94,37 @@ fn publish(pending: &Pending, result: Lookup) {
     }
 }
 
+fn lookup_suppressed(
+    pending: &Pending,
+    backoff: &Mutex<Option<Instant>>,
+    negative: &Mutex<HashMap<[u8; 32], Instant>>,
+    key: &QueryKey,
+) -> bool {
+    pending.0.lock().map_or(true, |value| value.is_some())
+        || backoff
+            .lock()
+            .ok()
+            .and_then(|until| *until)
+            .is_some_and(|until| Instant::now() < until)
+        || negative
+            .lock()
+            .ok()
+            .and_then(|entries| entries.get(&key.0).copied())
+            .is_some_and(|at| at.elapsed() < NEGATIVE_TTL)
+}
+
+fn reset_suppression(
+    negative: &Mutex<HashMap<[u8; 32], Instant>>,
+    backoff: &Mutex<Option<Instant>>,
+) {
+    if let Ok(mut entries) = negative.lock() {
+        entries.clear();
+    }
+    if let Ok(mut until) = backoff.lock() {
+        *until = None;
+    }
+}
+
 #[cfg(test)]
 type Phases = Arc<Mutex<Vec<(&'static str, Instant)>>>;
 
@@ -362,6 +393,7 @@ impl SharedTier {
             return Lookup::Skipped;
         }
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
+        let initialization_deadline = Instant::now().checked_add(self.config.timeout);
         let in_flight = Arc::clone(&self.in_flight);
         let (key_c, local_c) = (*key, local.clone());
         let remote = Arc::clone(&self.remote);
@@ -382,29 +414,25 @@ impl SharedTier {
             .spawn(move || {
                 #[cfg(test)]
                 phase(&phases, "helper-start");
-                let resolved = remote.resolve(&root, &config, || {
-                    if let Ok(mut entries) = negative.lock() {
-                        entries.clear();
-                    }
-                    if let Ok(mut until) = backoff.lock() {
-                        *until = None;
-                    }
+                let mut resolved = remote.resolve(&root, &config, || {
+                    reset_suppression(&negative, &backoff);
                 });
+                if matches!(resolved, initialization::Resolution::Initializing)
+                    && let Some(deadline) = initialization_deadline
+                {
+                    #[cfg(test)]
+                    phase(&phases, "initializer-wait-start");
+                    resolved = remote.wait_ready(deadline);
+                }
+                let initialization_timed_out =
+                    matches!(resolved, initialization::Resolution::TimedOut)
+                        || initialization_deadline
+                            .is_some_and(|deadline| Instant::now() >= deadline);
                 // A constructor may complete after the caller has already
                 // published its fallback. Keep the validated client for later
                 // requests, without starting an obsolete network request.
-                let ended = publication.0.lock().map_or(true, |value| value.is_some());
-                let skipped = ended
-                    || backoff
-                        .lock()
-                        .ok()
-                        .and_then(|until| *until)
-                        .is_some_and(|until| Instant::now() < until)
-                    || negative
-                        .lock()
-                        .ok()
-                        .and_then(|entries| entries.get(&key_c.0).copied())
-                        .is_some_and(|at| at.elapsed() < NEGATIVE_TTL);
+                let skipped = initialization_timed_out
+                    || lookup_suppressed(&publication, &backoff, &negative, &key_c);
                 let data = if skipped {
                     None
                 } else {
@@ -418,7 +446,8 @@ impl SharedTier {
                             Some(SharedStore::read(&path))
                         }
                         initialization::Resolution::Ready(None)
-                        | initialization::Resolution::Initializing => None,
+                        | initialization::Resolution::Initializing
+                        | initialization::Resolution::TimedOut => None,
                     }
                 };
                 #[cfg(test)]
@@ -428,6 +457,7 @@ impl SharedTier {
                 #[cfg(test)]
                 let validation_started = Instant::now();
                 let result = match data {
+                    None if initialization_timed_out => Lookup::Timeout,
                     None => Lookup::Skipped,
                     Some(Ok(Some(data))) => match verify_entry(&data, &key_c, &trusted, &local_c) {
                         Ok(verified) => Lookup::Hit(verified),
@@ -469,7 +499,7 @@ impl SharedTier {
                 }
                 Lookup::Unavailable
             }
-            Err(RecvTimeoutError::Timeout) => {
+            Ok(Lookup::Timeout) | Err(RecvTimeoutError::Timeout) => {
                 if let Ok(mut b) = self.backoff_until.lock() {
                     *b = Some(Instant::now() + self.config.backoff);
                 }
@@ -775,6 +805,92 @@ mod http_tests {
             count,
             server: Some(server),
         }
+    }
+
+    #[test]
+    fn lookup_waits_for_setup_publication_within_the_existing_budget() {
+        let mut fixture = http_fixture("setup-publication", false);
+        fixture.establish_transport_and_trust();
+        fixture.tier.remote.expire();
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Mutex::new(release_rx);
+        *fixture.tier.remote.before_constructor.lock().unwrap() = Some(Arc::new(move || {
+            entered_tx.send(()).unwrap();
+            let _ = release_rx.lock().unwrap().recv();
+        }));
+        fixture.tier.prepare();
+        entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let tier = Arc::clone(&fixture.tier);
+        let solver = fixture.solver.clone();
+        let key = fixture.key;
+        let lookup = std::thread::spawn(move || tier.lookup(&key, &solver));
+        let started = Instant::now();
+        loop {
+            let waiting = fixture
+                .phases
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|(name, _)| *name == "initializer-wait-start");
+            if waiting || lookup.is_finished() {
+                assert!(
+                    waiting,
+                    "setup contention must not publish an immediate skip"
+                );
+                break;
+            }
+            assert!(started.elapsed() < Duration::from_secs(2));
+            std::thread::yield_now();
+        }
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
+        release_tx.send(()).unwrap();
+        let result = lookup.join().unwrap();
+        assert!(matches!(result, Lookup::Hit(_)), "lookup: {result:?}");
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
+        fixture.close();
+    }
+
+    #[test]
+    fn setup_timeout_never_starts_an_obsolete_request_or_another_constructor() {
+        let mut fixture = http_fixture("setup-timeout", false);
+        fixture.establish_transport_and_trust();
+        Arc::get_mut(&mut fixture.tier).unwrap().config.timeout = Duration::from_millis(50);
+        fixture.tier.remote.expire();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let count = Arc::clone(&calls);
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Mutex::new(release_rx);
+        *fixture.tier.remote.before_constructor.lock().unwrap() = Some(Arc::new(move || {
+            count.fetch_add(1, Ordering::Relaxed);
+            entered_tx.send(()).unwrap();
+            let _ = release_rx.lock().unwrap().recv();
+        }));
+        fixture.tier.prepare();
+        entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(matches!(
+            fixture.tier.lookup(&fixture.key, &fixture.solver),
+            Lookup::Timeout
+        ));
+        assert!(fixture.tier.backing_off());
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
+        release_tx.send(()).unwrap();
+        let started = Instant::now();
+        assert!(matches!(
+            fixture
+                .tier
+                .remote
+                .wait_ready(started + Duration::from_secs(2)),
+            initialization::Resolution::Ready(_)
+        ));
+        while fixture.tier.in_flight.load(Ordering::SeqCst) != 0 {
+            assert!(started.elapsed() < Duration::from_secs(2));
+            std::thread::yield_now();
+        }
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
+        fixture.close();
     }
 
     #[test]
