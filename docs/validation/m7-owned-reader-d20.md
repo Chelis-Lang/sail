@@ -27,11 +27,21 @@ reused targets. Both reports were complete: 1871 verified vstd functions and 331
 verified HumanEval functions, with no failed obligations. The project remained
 Unknown with `native-observation-invalidated` and newly established build
 declarations. Its exact report bytes are sealed in the running record. These
-obligations do not admit a Current proof; the first exact repair-context
-preparation remains pending.
+obligations did not admit a Current proof. The first repair preparation also
+completed all obligations with Unknown and newly established declarations.
+Only the controller's existing single declaration retry followed.
 
-Preparation is not an acceptance result. This attempt has no Current proof,
-collector or retained pass claim while running. It does not qualify the optional source
+That retry produced accepted, complete Current full evidence with no notes:
+1871 vstd and 331 HumanEval functions verified, with three actual compiler
+invocations. It took 803.628 seconds externally (769.235 seconds reported
+execution). Total baseline preparation was 3202.366 seconds, including the
+ordinary and first Unknown repair phases. The pretty archived public Result
+file is sealed separately; its file size does not measure compact wire bytes.
+Preparation of the fresh independent active workspace is now running.
+
+This unmeasured Current baseline is not a reader acceptance result or a
+one-driver claim. The original bounded checks, collectors and retained
+integration remain pending. The attempt does not qualify the optional source
 physical budget, 2× edit-loop performance or M7 overall. The root full local
 gate runs concurrently from a separate frozen source tree as the sole writer to
 the common Cargo target; this scenario uses only its private project targets.
