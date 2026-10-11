@@ -1,0 +1,420 @@
+{
+  "baseline_job": "1791711182962-716934-2",
+  "budgets": {
+    "cli_s": 30,
+    "mcp_exchange_s": 5,
+    "original_whole_s": 120,
+    "separate_normal_projection_observation_s": 120
+  },
+  "contract_disagreement": {
+    "actual": "SAIL0902 cursor belongs to another proof stream projected as MCP SAIL0907 isError=true",
+    "assertion": "mismatched proof stream returns a non-error page with explicit gap",
+    "original_harness_sha256": "ba1acf98c39dce9687a4a0e277234296459651dc1580316576c654ceb2154028",
+    "production_check": "crates/sail-daemon/src/proof_journal.rs::Journals::page",
+    "scope_note": "No assertion or production contract changed; original failure preserved for owner review."
+  },
+  "historical_reader_result_unchanged": true,
+  "immutable_before_after_equal": true,
+  "later_stages_unattempted": [
+    "cursor reconnect/replay",
+    "comparison via MCP",
+    "new owned forced submission/cancellation"
+  ],
+  "lifecycle": {
+    "actors": [
+      {
+        "binary_sha256": "fc45e03634526efdf7adcf50ac8eb5ce758477991e4b474d26529162dd592007",
+        "mode": "retained",
+        "pid": 747518,
+        "started": true
+      },
+      {
+        "elapsed_s": 0.1350776670005871,
+        "exit_code": 0,
+        "mode": "retained",
+        "pid": 747518,
+        "stopped": true
+      }
+    ],
+    "cleanup_errors": []
+  },
+  "new_proof_submitted": false,
+  "normal_projection": {
+    "body_bytes": 4313813,
+    "complete_result_rpc_ms": 298.21316699963063,
+    "elapsed_s": 18.412056425004266,
+    "input_revision": "f2197351d5d52c79a315175829a8634eea4b557f7d33b0bed25ccdd1804ae926",
+    "statuses": [
+      {
+        "currentness": "unknown",
+        "elapsed_s": 1.0542039170031785,
+        "rpc_ms": 28.753541002515703,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 1.5852799589993083,
+        "rpc_ms": 18.23100000183331,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 2.107870792999165,
+        "rpc_ms": 20.50791600049706,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 2.626127543000621,
+        "rpc_ms": 15.176125001744367,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 3.1535622099981993,
+        "rpc_ms": 16.009250000934117,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 3.676343502003874,
+        "rpc_ms": 21.7555419949349,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 4.192252835004183,
+        "rpc_ms": 14.279875002102926,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 4.707380502004526,
+        "rpc_ms": 13.645916995301377,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 5.232719710998936,
+        "rpc_ms": 24.61320900329156,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 5.754812252998818,
+        "rpc_ms": 20.005750004202127,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 6.277397461002693,
+        "rpc_ms": 21.431166998809204,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 6.8217445030022645,
+        "rpc_ms": 40.46741699858103,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 7.352841712003283,
+        "rpc_ms": 30.308624998724554,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 7.8896387120039435,
+        "rpc_ms": 34.30250000383239,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 8.423494378999749,
+        "rpc_ms": 27.40629199979594,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 8.968334379002044,
+        "rpc_ms": 42.238583002472296,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 9.50415287999931,
+        "rpc_ms": 28.8777499954449,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 10.029611588004627,
+        "rpc_ms": 18.749709000985604,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 10.621129463004763,
+        "rpc_ms": 82.81724999687867,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 11.149759839005128,
+        "rpc_ms": 25.06320900283754,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 11.666711547004525,
+        "rpc_ms": 13.784374998067506,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 12.189403005999338,
+        "rpc_ms": 21.396707998064812,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 12.71743717299978,
+        "rpc_ms": 24.47391700115986,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 13.237877131003188,
+        "rpc_ms": 17.90087499830406,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 13.772525006999786,
+        "rpc_ms": 33.49095900193788,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 14.316258382001251,
+        "rpc_ms": 31.745332998980302,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 14.841117964999285,
+        "rpc_ms": 22.747750001144595,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 15.380842506005138,
+        "rpc_ms": 31.85137500258861,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 15.925583132004249,
+        "rpc_ms": 38.53520799748367,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 16.449250507001125,
+        "rpc_ms": 16.279458002827596,
+        "state": "completed"
+      },
+      {
+        "currentness": "unknown",
+        "elapsed_s": 16.97770650700113,
+        "rpc_ms": 25.7389999969746,
+        "state": "completed"
+      },
+      {
+        "currentness": "current",
+        "elapsed_s": 17.54255588199885,
+        "rpc_ms": 56.66275000112364,
+        "state": "completed"
+      }
+    ]
+  },
+  "original_harness": {
+    "cleanup_errors": [],
+    "command_budget_s": 30,
+    "context_sha256": "51cd9594a54b24cd5cfe8e16e6d504270160faef27f93791d2566e1269e7b9ab",
+    "elapsed_s": 5.337184502997843,
+    "environment_label": "Linux x86_64 Docker emulation; separate original 120/30/5 retained functional scope after failed 0f reader workflow; existing genuine baseline, normal Current reestablishment, no proof authority copy",
+    "failure": {
+      "message": "{'content': [{'text': 'SAIL0907: proof operation failed: error[SAIL0906]: SAIL0902: cursor belongs to another proof stream\\n', 'type': 'text'}, {'text': '{\"exit_code\":2}', 'type': 'text'}], 'isError': True, 'resultType': 'complete', 'structuredContent': {'exit_code': 2}}",
+      "type": "AssertionError"
+    },
+    "input_revision": "f2197351d5d52c79a315175829a8634eea4b557f7d33b0bed25ccdd1804ae926",
+    "job": "1791711182962-716934-2",
+    "kind": "real-retained-job-cli-mcp-integration",
+    "operations": [
+      {
+        "elapsed_s": 0.6415246249962365,
+        "exit_code": 0,
+        "operation": "cargo-metadata"
+      },
+      {
+        "elapsed_s": 0.13484620900271693,
+        "exit_code": 0,
+        "operation": "retained-status"
+      },
+      {
+        "elapsed_s": 0.09319191700342344,
+        "exit_code": 2,
+        "operation": "missing-cli-job"
+      },
+      {
+        "elapsed_s": 0.6636855000033393,
+        "exit_code": 0,
+        "operation": "baseline-save"
+      },
+      {
+        "elapsed_s": 0.20954045899998164,
+        "exit_code": 0,
+        "operation": "baseline-self-compare"
+      },
+      {
+        "elapsed_s": 0.3132992090031621,
+        "exit_code": 2,
+        "operation": "baseline-overwrite-refused"
+      },
+      {
+        "elapsed_s": 0.042984416999388486,
+        "operation": "mcp-initialize"
+      },
+      {
+        "elapsed_s": 0.5087804169961601,
+        "operation": "mcp-tools/call"
+      },
+      {
+        "elapsed_s": 0.4015966670049238,
+        "operation": "mcp-tools/call"
+      },
+      {
+        "elapsed_s": 0.02381904199864948,
+        "operation": "mcp-tools/call"
+      },
+      {
+        "elapsed_s": 0.19314041700272355,
+        "operation": "mcp-tools/call"
+      },
+      {
+        "elapsed_s": 0.10936545800359454,
+        "operation": "mcp-tools/call"
+      },
+      {
+        "elapsed_s": 0.12481600000319304,
+        "operation": "mcp-tools/call"
+      }
+    ],
+    "passed": false,
+    "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+    "qualification": "Requires separate genuine Current full proof; not performance acceptance.",
+    "rpc_budget_s": 5,
+    "run_id": "739942-1791711191041248125",
+    "sail_sha256": "fc45e03634526efdf7adcf50ac8eb5ce758477991e4b474d26529162dd592007",
+    "target": {
+      "kind": [
+        "lib"
+      ],
+      "package_id": "path+file:///tmp/sail-m7-rpc-stage-workflow-0f31c1d/baseline#human_eval_verus@0.0.0",
+      "target": "human_eval_verus"
+    },
+    "version": 1,
+    "workflow_budget_s": 120
+  },
+  "passed": false,
+  "product_source": "0f31c1deec1d1cdaf92704f8b5e4b5e9ef1cfba6",
+  "raw_archive": {
+    "bytes": 1190955,
+    "files": 31,
+    "sha256": "6e77d338d8693c8e9df3dc57fe37c42d1bf57eec5205387fda19c0f40403b913",
+    "uncompressed_bytes": 44007566
+  },
+  "scope": "Separate original retained CLI/MCP functional attempt after failed 0f reader workflow; no census or M7 qualification",
+  "sealed_bytes_after": {
+    "original_rpc_timing": {
+      "bytes": 84111,
+      "sha256": "62d2556ff786bd3373b3c6ae8062e988c11281e4953e337595783f91ffc19858"
+    },
+    "product": {
+      "sail": {
+        "bytes": 74999136,
+        "sha256": "fc45e03634526efdf7adcf50ac8eb5ce758477991e4b474d26529162dd592007"
+      },
+      "sail-z3": {
+        "bytes": 11000920,
+        "sha256": "0ef1ee28a0428da0e186b1ff23b429d5a41715901ee55cc013792bacd1c42ec2"
+      }
+    },
+    "scripts": {
+      "m7-job-read-bench.py": {
+        "bytes": 11877,
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+      },
+      "m7-reader-acceptance.py": {
+        "bytes": 33712,
+        "sha256": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d"
+      },
+      "m7-repair-bench.py": {
+        "bytes": 31040,
+        "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33"
+      },
+      "m7-retained-jobs-acceptance.py": {
+        "bytes": 20198,
+        "sha256": "ba1acf98c39dce9687a4a0e277234296459651dc1580316576c654ceb2154028"
+      }
+    }
+  },
+  "sealed_bytes_before": {
+    "original_rpc_timing": {
+      "bytes": 84111,
+      "sha256": "62d2556ff786bd3373b3c6ae8062e988c11281e4953e337595783f91ffc19858"
+    },
+    "product": {
+      "sail": {
+        "bytes": 74999136,
+        "sha256": "fc45e03634526efdf7adcf50ac8eb5ce758477991e4b474d26529162dd592007"
+      },
+      "sail-z3": {
+        "bytes": 11000920,
+        "sha256": "0ef1ee28a0428da0e186b1ff23b429d5a41715901ee55cc013792bacd1c42ec2"
+      }
+    },
+    "scripts": {
+      "m7-job-read-bench.py": {
+        "bytes": 11877,
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+      },
+      "m7-reader-acceptance.py": {
+        "bytes": 33712,
+        "sha256": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d"
+      },
+      "m7-repair-bench.py": {
+        "bytes": 31040,
+        "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33"
+      },
+      "m7-retained-jobs-acceptance.py": {
+        "bytes": 20198,
+        "sha256": "ba1acf98c39dce9687a4a0e277234296459651dc1580316576c654ceb2154028"
+      }
+    }
+  },
+  "selected_runtime_manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+  "version": 1,
+  "wrapper": {
+    "bytes": 6691,
+    "exit_code": 1,
+    "failure": {
+      "message": "Original retained harness failed; see unchanged original summary and streams",
+      "type": "AssertionError"
+    },
+    "inclusive_elapsed_s": 24.97429734400066,
+    "sha256": "fd8c786ee68f4f0b5ae550bb793b5661477498b01ccfbc57a45d5e6ad98cdac2"
+  }
+}
