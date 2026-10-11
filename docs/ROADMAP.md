@@ -139,8 +139,11 @@ separate broker-availability refusal precede existing tracing. The
 and [independent audit](validation/m7-preparation-namespace-qualification-independent-audit.md)
 preserve all original bounds. The bounded refusal-point diagnostic now passes
 41 VIR and 91 driver tests and both strict compiler checks; its test-only raw
-owner annotation was corrected without changing the validator. One original
-revision-zero diagnostic is being prepared to identify the actual boundary. A
+owner annotation was corrected without changing the validator. The [original revision-zero diagnostic](../engine/verus/candidates/preparation-namespace/boundary-diagnostic/revision0-result.json)
+now identifies uncovered exported span ranges
+([VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md)) and a
+separate actual `pair-busy` admission refusal. Stock results remain exact; the
+positive hit assertion still fails. A
 separate broker-retirement acknowledgement is being implemented to prevent the
 next worker from attempting admission before the previous compiler service has
 released its namespace borrow and quota owner. The

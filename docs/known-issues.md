@@ -22,8 +22,13 @@ now passes 41 VIR and 88 driver tests, both strict compiler checks and an ordina
 build with fresh vstd, plus [independent review](validation/m7-preparation-namespace-independent-review.md).
 The unchanged qualification passes eight stages and fails its ninth
 (previous-revision focus) with zero hits, despite stock/engine 9/0 and exact
-diagnostics. Three namespace refusals and a distinct broker admission refusal
-remain unexplained; the final four of thirteen stage records were not attempted.
+diagnostics. The [bounded diagnostic](../engine/verus/candidates/preparation-namespace/boundary-diagnostic/revision0-result.json)
+now identifies three uncovered imported ranges (tracked as
+[VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md)) and a
+distinct actual `pair-busy` admission refusal. The separate
+[retirement acknowledgement](../engine/verus/candidates/preparation-retirement/README.md)
+passes 16 reduced pinned controls; actual compiler controls and a faithful
+unresolved-range role remain under validation. No candidate is selected; the final four of thirteen stage records were not attempted.
 The fourteen-script inventory is preserved. Stock diagnostic routing and
 parallelism remain unchanged; this candidate is unselected. See the
 [exact failure audit](validation/m7-preparation-namespace-qualification-independent-audit.md). See the
