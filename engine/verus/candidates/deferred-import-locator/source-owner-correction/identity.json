@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "selected": false,
+  "source_qualified": false,
+  "product_qualified": false,
+  "scope": "Unselected narrow cfg(test) single-threaded SourceMap owner correction after frozen a61 strict lint failure; actual corrected source/build/original14 pending",
+  "verus_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "rust_toolchain": "1.98.1",
+  "rustc_commit": "48a229ceaefd4985c50990b14116b6d856af0985",
+  "base_patch_sha256": "506679543779f2856899006d7d70420ce85d47cb74c9873a064f97ab82c44984",
+  "patch_sha256": "4a3e19ffe292e830fdb13881c47429adeb94ad6778095590514a83d2990407de",
+  "from_loaded_sha256": "be7f7a12f2a30ac41b40c4eadaf6d8242990f7684ee26e34b4c2d59beadf8554",
+  "domain": "sail-prepared/graph-ledger/import-locator-authority/v6",
+  "portable_version": 3,
+  "physical_budget_bytes": 536870912,
+  "prospective_phase_max_bytes": 524288000,
+  "mapping_family_bytes": 8388608,
+  "mapping_record_limit": 4096,
+  "path_and_name_limit_bytes": 4096,
+  "source_files": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "f8fecfdb843b637db4d7f4a1d762bfbbfaa5d8465049cbddc93f0e3d0fdcd32e",
+    "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+    "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+    "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+    "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395"
+  },
+  "artifacts": {
+    "engine/verus/candidates/deferred-import-locator/capture.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+    "engine/verus/candidates/deferred-import-locator/tests.rs": "58cd5fb85826d1e70b2faa063b544d1dd1377b54572e723144b8740c9e9f8455",
+    "engine/verus/candidates/deferred-import-locator/source-controls.rs": "8855a283ad91fdb8f8f29426e0ee16d7132fc27fb74158a824cdf7e80a591d9e",
+    "engine/verus/candidates/deferred-import-locator/existing-controls.rs": "a0fb5fddf06d60edccb183be772c823fbf5cfd9e79068c15e323c91da1c88604",
+    "engine/verus/candidates/deferred-import-locator/test-api.py": "8fe300b25c0979b346c32571bb260fab2c923536bbf4f6668725510852722db3"
+  },
+  "source_checks": "not run; no new full source/compiler/runtime build authorized yet",
+  "original_qualification": {
+    "stages": 14,
+    "compiler_timeout_seconds": 600,
+    "status": "not run",
+    "assertions_changed": false
+  },
+  "delta_from_a61_sha256": "398d3a1ef88946247b4b7d82f5916bd2c745662e872069101facbd93d1a14838",
+  "prior_patch_sha256": "a61db9548935194f9d70224652a1056b1efc7bf0b91f55a6918c5220cc4e4672",
+  "helper_source_sha256": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+  "actual_corrected_tests_executed": false,
+  "actual_corrected_strict_executed": false,
+  "source_gate_prior_failure": "../source-gate-a61-failure.json",
+  "independent_review_commit": "c7de714",
+  "review_checks": {
+    "full_pinned_apply": true,
+    "narrow_a61_apply": true,
+    "rustfmt1_98": true,
+    "production_files_changed": false,
+    "assertions_changed": false,
+    "lint_policy_changed": false
+  }
+}

@@ -23,7 +23,8 @@ build, exact thirteen-artifact manifest, source/lock identities and closed owner
 before source tests. [Full-source gate evidence](source-gate-a61-failure.json) records 38/38 VIR and
 55/55 driver library tests passing, with strict VIR Clippy passing and strict
 driver Clippy failing at the Reporter test's `Arc<SourceMap>` owner. The pinned
-SourceMap is single-threaded; a narrow test-only `Rc` correction is under review.
+SourceMap is single-threaded; a narrow test-only [`Rc` correction](source-owner-correction/README.md) is frozen
+for independent review and a fresh feature-bound build.
 Assertions and lint policy stay unchanged. This frozen failure and its thirteen
 runtime bytes remain preserved; no source/product qualification or selected
 runtime change is claimed. The original fourteen stages have not launched.
