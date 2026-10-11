@@ -49,6 +49,13 @@ references are saved. Credential files must be regular, owner-only files with
 at least 16 token characters. Connections and disconnects affect new daemon
 lookups within five seconds, without restarting verification jobs.
 
+An unchanged loopback HTTP configuration retains its connection pool after fresh
+endpoint, private-token and CA validation. Rotated credentials, changed CA bytes
+or a changed request timeout replace the transport; invalid configuration disables
+remote lookup. HTTPS refreshes reconstruct the client so platform certificate-root
+behavior remains unchanged. Signing trust and entry verification still run
+independently on every accepted remote reply.
+
 Disconnect removes the remote configuration. It preserves local imported entries
 and trusted public keys. Removing a signing key stops future imports after trust
 reload; previously imported local entries remain until local maintenance removes

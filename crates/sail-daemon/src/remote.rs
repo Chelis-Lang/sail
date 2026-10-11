@@ -156,6 +156,7 @@ pub struct HttpClient {
     token: String,
     metrics: Arc<Metrics>,
     ca_hash: Option<[u8; 32]>,
+    timeout: Duration,
 }
 
 #[derive(Default)]
@@ -191,6 +192,16 @@ impl HttpClient {
     /// # Errors
     /// The endpoint, credential, CA or HTTP client is invalid.
     pub fn new(config: &RemoteConfig, timeout: Duration) -> Result<Self, String> {
+        Self::refresh(config, timeout, None)
+    }
+
+    /// Revalidate private configuration before reusing an identical loopback
+    /// HTTP transport. HTTPS reconstructs so platform root reload is unchanged.
+    pub(crate) fn refresh(
+        config: &RemoteConfig,
+        timeout: Duration,
+        previous: Option<&Self>,
+    ) -> Result<Self, String> {
         #[cfg(test)]
         let began = std::time::Instant::now();
         let base = endpoint(&config.endpoint)?;
@@ -215,6 +226,17 @@ impl HttpClient {
             ca_hash = Some(sail_key::sha256(&pem));
             builder = builder.add_root_certificate(certificate);
         }
+        if base.scheme() == "http"
+            && let Some(previous) = previous
+            && previous.base == base
+            && previous.token == token
+            && previous.ca_hash == ca_hash
+            && previous.timeout == timeout
+        {
+            #[cfg(test)]
+            previous.phase("client-configuration-reused");
+            return Ok(previous.clone());
+        }
         let client = builder
             .build()
             .map_err(|_| failure("cannot initialize HTTP transport"))?;
@@ -230,6 +252,7 @@ impl HttpClient {
             token,
             metrics,
             ca_hash,
+            timeout,
         })
     }
 
@@ -250,7 +273,10 @@ impl HttpClient {
     }
 
     pub(crate) fn same_configuration(&self, other: &Self) -> bool {
-        self.base == other.base && self.token == other.token && self.ca_hash == other.ca_hash
+        self.base == other.base
+            && self.token == other.token
+            && self.ca_hash == other.ca_hash
+            && self.timeout == other.timeout
     }
 
     pub(crate) fn retain_metrics(&mut self, previous: &Self) {
@@ -408,5 +434,132 @@ impl HttpClient {
             StatusCode::CONFLICT => Ok(Published::Conflict),
             _ => Err(failure("shared publication refused")),
         }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod refresh_tests {
+    #![allow(clippy::unwrap_used, reason = "test setup and assertions")]
+
+    use super::*;
+    use std::os::unix::fs::PermissionsExt as _;
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    struct Fixture {
+        root: PathBuf,
+        config: RemoteConfig,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            let root = std::env::temp_dir().join(format!(
+                "sail-http-refresh-{}-{}",
+                std::process::id(),
+                COUNTER.fetch_add(1, Ordering::Relaxed)
+            ));
+            std::fs::create_dir(&root).unwrap();
+            let token = root.join("read.token");
+            std::fs::write(&token, "0123456789abcdef0123456789abcdef").unwrap();
+            std::fs::set_permissions(&token, std::fs::Permissions::from_mode(0o600)).unwrap();
+            Self {
+                config: RemoteConfig {
+                    endpoint: "http://127.0.0.1:9/".to_owned(),
+                    token_file: token,
+                    ca_file: None,
+                },
+                root,
+            }
+        }
+    }
+
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn unchanged_loopback_configuration_reuses_transport_after_revalidation() {
+        let fixture = Fixture::new();
+        let timeout = Duration::from_millis(250);
+        let first = HttpClient::new(&fixture.config, timeout).unwrap();
+        let second = HttpClient::refresh(&fixture.config, timeout, Some(&first)).unwrap();
+        assert!(Arc::ptr_eq(&first.metrics, &second.metrics));
+        assert!(
+            second
+                .phases()
+                .iter()
+                .any(|(name, _)| *name == "client-configuration-reused")
+        );
+        assert_eq!(second.info().requests, 0, "refresh must not send a request");
+        std::fs::set_permissions(
+            &fixture.config.token_file,
+            std::fs::Permissions::from_mode(0o644),
+        )
+        .unwrap();
+        assert!(HttpClient::refresh(&fixture.config, timeout, Some(&first)).is_err());
+        std::fs::remove_file(&fixture.config.token_file).unwrap();
+        assert!(HttpClient::refresh(&fixture.config, timeout, Some(&first)).is_err());
+    }
+
+    #[test]
+    fn changed_credentials_endpoint_or_timeout_replace_transport() {
+        let mut fixture = Fixture::new();
+        let timeout = Duration::from_millis(250);
+        let first = HttpClient::new(&fixture.config, timeout).unwrap();
+        let changed_timeout =
+            HttpClient::refresh(&fixture.config, Duration::from_millis(50), Some(&first)).unwrap();
+        assert!(!first.same_configuration(&changed_timeout));
+        assert!(!Arc::ptr_eq(&first.metrics, &changed_timeout.metrics));
+        std::fs::write(
+            &fixture.config.token_file,
+            "fedcba9876543210fedcba9876543210",
+        )
+        .unwrap();
+        let changed_token = HttpClient::refresh(&fixture.config, timeout, Some(&first)).unwrap();
+        assert!(!first.same_configuration(&changed_token));
+        assert!(!Arc::ptr_eq(&first.metrics, &changed_token.metrics));
+        fixture.config.endpoint = "http://127.0.0.1:10/".to_owned();
+        let changed_endpoint =
+            HttpClient::refresh(&fixture.config, timeout, Some(&changed_token)).unwrap();
+        assert!(!changed_token.same_configuration(&changed_endpoint));
+        assert!(!Arc::ptr_eq(
+            &changed_token.metrics,
+            &changed_endpoint.metrics
+        ));
+    }
+
+    #[test]
+    fn complete_ca_bytes_and_validity_are_checked_before_loopback_reuse() {
+        let mut fixture = Fixture::new();
+        let ca = fixture.root.join("ca.pem");
+        let pem = include_bytes!("../tests/fixtures/http-ca.pem");
+        std::fs::write(&ca, pem).unwrap();
+        fixture.config.ca_file = Some(ca.clone());
+        let timeout = Duration::from_millis(250);
+        let first = HttpClient::new(&fixture.config, timeout).unwrap();
+        let same = HttpClient::refresh(&fixture.config, timeout, Some(&first)).unwrap();
+        assert!(Arc::ptr_eq(&first.metrics, &same.metrics));
+        let mut changed = pem.to_vec();
+        changed.push(b'\n');
+        std::fs::write(&ca, changed).unwrap();
+        let changed_ca = HttpClient::refresh(&fixture.config, timeout, Some(&first)).unwrap();
+        assert!(!first.same_configuration(&changed_ca));
+        assert!(!Arc::ptr_eq(&first.metrics, &changed_ca.metrics));
+        std::fs::write(&ca, b"invalid PEM").unwrap();
+        assert!(HttpClient::refresh(&fixture.config, timeout, Some(&first)).is_err());
+    }
+
+    #[test]
+    fn https_refresh_preserves_platform_root_reconstruction() {
+        let mut fixture = Fixture::new();
+        fixture.config.endpoint = "https://example.invalid/".to_owned();
+        let timeout = Duration::from_millis(250);
+        let first = HttpClient::new(&fixture.config, timeout).unwrap();
+        let second = HttpClient::refresh(&fixture.config, timeout, Some(&first)).unwrap();
+        assert!(first.same_configuration(&second));
+        assert!(!Arc::ptr_eq(&first.metrics, &second.metrics));
+        assert_eq!(second.info().requests, 0);
     }
 }
