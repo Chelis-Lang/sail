@@ -359,4 +359,4 @@ not establish the old failure's cause. See the
 [fixture control scope](validation/m7-sysroot-fixture-startup.md). The separate
 original solver suite passed 39/39, and the earlier `4472279` timeout is retained.
 
-The later [complete local workspace gate](../bench/validation/m7-linux-core-gate-ec9b682-emulated-2026-10-11.json) passes 543/543 and every remaining step with the same production contracts. It does not establish the cause of either earlier failure or qualify source reuse, readers or repair performance.
+The later [complete local workspace gate](../bench/validation/m7-linux-core-gate-ec9b682-emulated-2026-10-11.json) passes 543/543 and every remaining step with the same production contracts; the immediately following [39/39 solver suite](../bench/validation/m7-linux-core-solver-ec9b682-emulated-2026-10-11.json) also passes. It does not establish the cause of either earlier failure or qualify source reuse, readers or repair performance.
