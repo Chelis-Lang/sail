@@ -120,3 +120,13 @@ vstd proof and complete new thirteen-artifact manifest remain pending.
 A source-control pass does not transfer any old proof/runtime authority or
 establish product qualification. Original fourteen-stage/600-second strict
 qualification remains a separate required grant and run after the new seal.
+
+The [prepared qualification controller](qualification-controller.json) binds
+new variant/source-control identities while retaining the original fourteen
+script hashes, command, environment and 600-second compiler assertions. Its
+[diff](qualification-controller-diff.patch) changes private root/build bindings
+and the exact reviewed source-terminal record format/hash. Inherited engine
+selectors are removed as before; dormant trace is not enabled. This is only a
+prepared controller: it cannot run until the new runtime manifest is closed,
+reviewed and separately granted. Its primary result must be retained before
+independent post-run runtime/source/lock/actor closure, including on failure.
