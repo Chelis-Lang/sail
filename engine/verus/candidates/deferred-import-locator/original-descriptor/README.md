@@ -5,7 +5,7 @@ selected source runtime and frozen 886b/73bd candidate remain unchanged.
 Actual pinned API controls pass 29/29 on the host and 30/30 on Linux, including
 the actual sealed-vstd metadata fixture. Actual Linux source controls pass
 39/39 VIR and 64/64 driver tests, with both all-targets Clippy checks under
-`-D warnings` passing. The ordinary runtime build and fresh vstd proof pass; full qualification remains pending. The original
+`-D warnings` passing. The ordinary runtime build and fresh vstd proof pass; the original qualification failed at revision-zero focused preparation admission. The original
 fourteen-stage qualification failure and its separate
 bounded trace remain failed and diagnostic evidence respectively.
 
@@ -137,9 +137,21 @@ independent post-run runtime/source/lock/actor closure, including on failure.
 
 Ordinary build closure also records both-container live command/cwd/fd audits
 with no holders or unreadable live processes, the unchanged stock launcher/
-driver/solver identities, and the private builder executable. One [original qualification](qualification-launch.json) is now running under
-the reviewed controller, with its original raw diagnostics, fourteen stages
-and 600-second bounds intact. Its terminal result remains pending. The preparation ownership proof and source
+driver/solver identities, and the private builder executable. One [original qualification](qualification-launch.json) finished
+[FAILED](qualification-failure.json) under the reviewed controller, with its
+original raw diagnostics, fourteen stages and 600-second bounds intact. The preparation ownership proof and source
 controls do not replace genuine prior-revision reuse, full same-input checks
 or the unchanged raw stock diagnostic oracle. The selected runtime stays
-unchanged while this new candidate awaits complete original qualification.
+unchanged because this new candidate has not passed complete original qualification.
+
+The first eight stages passed; `previous-revision-focus` stopped on revision 0
+at its unchanged line-77 positive-HIT assertion. Actual hits/checks/focused
+restores are all zero, with four fresh-store provenance admission refusals.
+Stock and engine both proved the module 9/0 and emitted byte-identical stderr.
+The assertion label does not mean an unchecked nonzero hit was observed. No
+trace was enabled, so the specific binding, descriptor refusal or Foreign
+namespace cause is not yet observed; it must not be inferred from the older
+73bd trace. The remaining original stages were not run, no retry occurred, and
+runtime/source/lock/old seals plus both-container actor closure passed separately.
+The full 1,341-file raw failure archive is retained by hash. Source helper and
+metadata control passes did not establish genuine previous-revision reuse.
