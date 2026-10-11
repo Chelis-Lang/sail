@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "PROPOSED; requires root build grant",
+  "status": "GRANTED and launched; ordinary runtime result pending",
   "source_control_evidence": "source-controls-pass.json",
   "full_patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
   "delta_sha256": "4c8048a70a3b0dc2bfbfe9ba865bf275c118a8f2804d48437b9542ea6415070a",
@@ -69,5 +69,5 @@
   ],
   "qualification": "Original14/600 strict stock diagnostics, same-input oracle and genuine previous-revision FOCUS only after separate root manifest/controller grant",
   "selected": false,
-  "ordinary_build_launched": false
+  "ordinary_build_launched": true
 }

@@ -114,8 +114,9 @@ exact cleanup recovery. The new control target is protected for a future seed.
 
 The [ordinary build plan](ordinary-build-plan.json) freezes a private builder
 archive with only its embedded interactive patch replaced, prospective variant
-`0bbc7d378544f972`, and compiler-only seed exclusions. It requires a fresh vstd
-proof and complete new thirteen-artifact manifest; it is awaiting a build grant.
+`0bbc7d378544f972`, and compiler-only seed exclusions. The granted ordinary
+build is running, with [launch evidence](ordinary-build-launch.json); a fresh
+vstd proof and complete new thirteen-artifact manifest remain pending.
 A source-control pass does not transfer any old proof/runtime authority or
 establish product qualification. Original fourteen-stage/600-second strict
 qualification remains a separate required grant and run after the new seal.
