@@ -576,6 +576,40 @@ mod tests {
     }
 
     #[test]
+    fn explicit_file_failure_retains_its_first_observer_detail() -> TestResult {
+        let root = fixture()?;
+        let disjoint = root.join("disjoint");
+        std::fs::write(&disjoint, b"unchanged")?;
+        let mut owner = baseline(&root);
+        assert!(owner.complete(), "fixture did not acquire kernel coverage");
+        // Isolate the second real observer in this control. Production roots
+        // and acquisition remain unchanged; no observer result is fabricated.
+        owner
+            .protection
+            .as_mut()
+            .ok_or("fixture protection unavailable")?
+            .namespace = Observer::begin(std::slice::from_ref(&disjoint), &[])
+            .ok_or("disjoint native observation unavailable")?;
+        assert!(owner.complete());
+        std::fs::write(root.join("lib/compiler.so"), b"changed")?;
+        assert!(!owner.complete());
+        assert_eq!(owner.failure_reason(), "sysroot-namespace-invalidated");
+        assert_eq!(
+            owner.failure_description(),
+            "sysroot-namespace-invalidated; barrier=explicit-files; detail=namespace-tracked-input-event"
+        );
+        assert!(!owner.complete());
+        assert_eq!(
+            owner.failure_description(),
+            "sysroot-namespace-invalidated; barrier=explicit-files; detail=namespace-tracked-input-event",
+            "first failed observer detail must remain sticky"
+        );
+        drop(owner);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn absent_inventory_and_symlink_retargeting_break_owned_coverage() -> TestResult {
         use std::os::unix::fs::symlink;
         let root = fixture()?;
