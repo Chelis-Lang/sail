@@ -135,3 +135,16 @@ Its raw stock diagnostics, every same-input checked hit and genuine previous-
 revision FOCUS remain required under the original 600-second invocation bound.
 No candidate runtime build, qualification retry, hit or performance claim is
 part of this helper result. User-facing proof repair remains experimental.
+
+## Observation boundary kept separate
+
+The new namespace barrier can refuse an Imported binding before `provenance()`
+reaches the optional existing trace. Missing trace records therefore do not
+identify a local versus imported failure, or demonstrate successful validation.
+A proposed diagnostic-only follow-up would invoke the same admitted, bounded
+trace only on a failed used-import namespace check, adding the explicit validation
+failure reason. Its owner fields/counts would describe immutable late
+classification, never a fabricated current namespace snapshot or successful
+live authority. That follow-up is not implemented in the frozen patch and is
+not needed to authorize a hit. Any future diagnostic would retain the primary
+original qualification result independently.
