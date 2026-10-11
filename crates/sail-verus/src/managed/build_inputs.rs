@@ -186,7 +186,7 @@ mod tests {
             "source":"registry+https://example.invalid/index",
             "targets":[{"kind":["custom-build"]}]
         }]});
-        assert!(stale(&selected_state, &data).0.is_empty());
+        assert_eq!(stale(&selected_state, &data).0, Vec::<String>::new());
         let file = std::fs::File::open(&payload)?;
         let mtime = file.metadata()?.modified()?;
         std::fs::write(&payload, "fail")?;
