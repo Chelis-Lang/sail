@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "prepared; not executed; rebuilt product grant pending",
-  "controller_sha256": "377b83de6d56a8d4a5c4603725ae3c14c64791b0b90fde405dcde285f97bd0b2",
+  "controller_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
   "input_sha256": {
     "scripts/m7-repair-bench.py": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33",
     "scripts/m7-job-read-bench.py": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
@@ -35,5 +35,10 @@
     "all_passed": true
   },
   "performance_acceptance": false,
-  "reader_acceptance": false
+  "reader_acceptance": false,
+  "interruption_signals": [
+    "SIGINT",
+    "SIGTERM",
+    "SIGHUP"
+  ]
 }
