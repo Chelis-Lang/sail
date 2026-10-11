@@ -920,10 +920,13 @@ mod http_tests {
     fn invalid_credentials_and_disconnect_do_not_reuse_old_transport() {
         let mut fixture = http_fixture("disconnect", false);
         fixture.establish_transport_and_trust();
-        assert!(matches!(
-            fixture.tier.lookup(&fixture.key, &fixture.solver),
-            Lookup::Hit(_)
-        ));
+        let lookup = fixture.tier.lookup(&fixture.key, &fixture.solver);
+        assert!(
+            matches!(lookup, Lookup::Hit(_)),
+            "lookup: {lookup:?}; phases_us: {:?}; request_read: {:?}",
+            fixture.phase_report(),
+            fixture.request_report()
+        );
         std::fs::write(fixture.root.join("read.token"), "invalid").unwrap();
         fixture.tier.remote.expire();
         assert!(matches!(
