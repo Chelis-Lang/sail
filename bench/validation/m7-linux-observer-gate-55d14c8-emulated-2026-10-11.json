@@ -1,0 +1,48 @@
+{
+  "source_commit": "55d14c8f4bc464943a706211bf1acc35ef0d276d",
+  "source_archive_sha256": "592359d4a79f9e18ce6d40d6675391924595a3f3c1ab1f4bf263f9bcb54a7e89",
+  "container": "sail-m7-handoff-validation",
+  "source_path": "/tmp/sail-m7-combined-core-55d14c8",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete local workspace gate after birth-bound all-task observer correction; original checks retained. Product Rust unchanged from independently passing 46e1da6 solver scope. Source-runtime, proof and live reader qualification separate",
+  "phases": [
+    {
+      "phase": "gate",
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-combined-core-55d14c8",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "-e",
+        "NEXTEST_TEST_THREADS=1",
+        "sail-m7-handoff-validation",
+        "bash",
+        "ci/run.sh",
+        "gate"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 675.192203583
+    }
+  ],
+  "status": "PASS",
+  "test_summary": {
+    "passed": 566,
+    "skipped": 39,
+    "observer_controls": 12,
+    "observer_native_skips": 0
+  },
+  "raw_log": {
+    "bytes": 123705,
+    "sha256": "9ddea6309a909def0ac85f35a7e42519235deb16ffa7aecabdd52c62f2886d51",
+    "retained_archive_bytes": 22981,
+    "retained_archive_sha256": "0b8f7d5f4ca5ddace7d50991b418d2c9e9a19655267ad96becb4644ce9f900f1"
+  },
+  "limitations": [
+    "Local Linux amd64 Docker emulation with concurrent development work; not native CI or a benchmark",
+    "Closed regenerable libraries were rebuilt for the required full local gate",
+    "Product Rust bytes unchanged from the separately passing 46e1da6 solver scope; no unnecessary solver repeat",
+    "Unselected source candidate, live reader latency, complete standard and repair performance acceptance remain separate"
+  ]
+}

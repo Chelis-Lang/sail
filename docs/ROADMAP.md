@@ -189,6 +189,10 @@ The separate original managed fixture passes in 335.794 seconds, with cold
 verification at 220.375 seconds under the unchanged 240-second bound. The latest pushed
 [native CI revision](../bench/validation/m7-linux-ci-4e101c8-native-2026-10-11.json)
 passes every check in 374 seconds, including all 566 workspace and 39 solver tests. The separate
+[observer integration gate](../bench/validation/m7-linux-observer-gate-55d14c8-emulated-2026-10-11.json)
+also passes all 566 workspace tests and every remaining check, including the 12
+native timeout-observation controls. Product Rust is unchanged from the preceding
+solver scope. The separate
 [retained CLI/MCP workflow](validation/m7-rpc-retained-functional.md)
 re-establishes genuine Current evidence, then exposes a wrong-stream cursor
 assertion conflicting with the documented explicit-error contract. Its original
@@ -229,9 +233,10 @@ Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Qualify the preparation-only namespace correction against the pinned compiler,
-   then build and run the original source qualification. Preserve same-input
-   lowering, independent stock outcomes and the physical memory ceiling.
+2. Validate the combined broker retirement and explicit missing-original-range
+   correction against the pinned compiler, then build and run the original
+   source qualification. Preserve same-input lowering, independent stock
+   outcomes, every existing role/refusal and the physical memory ceiling.
 3. Finish the current live reader stage diagnosis and fix any measured dominant
    cost. Run the retained real-project CLI/MCP scenarios with complete genuine
    Current evidence and unchanged deadlines.
