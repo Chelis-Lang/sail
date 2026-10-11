@@ -5,6 +5,22 @@ COMMIT='426d8b01e7ffb910a36c15e1f870ff985bb61eef'
 BUILD=Path('/root/.cache/sail/verus-src-build')/(COMMIT+'-c77e1a1879302e06')
 PATCH='aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124'
 LOCK='653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1'
+def validate_pipeline_terminal(pipeline,actor):
+ expected=['private-graph-audit','private-span-audit','old-domain-migration','same-input-hit-controls','source-fixtures','graph-checkpoint','cancel-restart','first-input-delta','previous-revision-focus','real-he-same-input','vir-tests','air-writer-tests','driver-tests']
+ stages=pipeline['stages']
+ assert 1<=len(stages)<=len(expected)
+ assert [stage['name'] for stage in stages]==expected[:len(stages)]
+ assert len(actor['script_sha256'])==14
+ assert pipeline['product_qualified'] is False
+ if actor['status']=='passed':
+  assert actor['exit_code']==0 and pipeline['source_gates_passed'] is True
+  assert len(stages)==13 and all(stage['status']=='passed' and stage['exit_code']==0 for stage in stages)
+ else:
+  assert actor['status']=='failed' and actor['exit_code']!=0 and pipeline['source_gates_passed'] is False
+  assert stages[-1]['status']=='failed' and stages[-1]['exit_code']!=0
+  assert all(stage['status']=='passed' and stage['exit_code']==0 for stage in stages[:-1])
+ return {'frozen_script_inventory':14,'total_pipeline_stages':13,'attempted':len(stages),'passed':sum(stage['status']=='passed' for stage in stages),'failed':sum(stage['status']=='failed' for stage in stages),'not_attempted':13-len(stages)}
+
 def sha(path):
  h=hashlib.sha256()
  with path.open('rb') as f:
@@ -61,7 +77,8 @@ record={'version':1,'scope':'Independent post-qualification seals/closure; prima
 pipeline=json.loads((ROOT/'original-qualification/pipeline.json').read_text())
 record['stage_counts']={'frozen_script_inventory':len(actor['script_sha256']),'total_pipeline_stages':13,'attempted':len(pipeline['stages']),'passed':sum(v['status']=='passed' for v in pipeline['stages']),'failed':sum(v['status']=='failed' for v in pipeline['stages']),'not_attempted':13-len(pipeline['stages'])}
 record['pipeline_sha256']=sha(ROOT/'original-qualification/pipeline.json')
-assert record['stage_counts']=={'frozen_script_inventory':14,'total_pipeline_stages':13,'attempted':9,'passed':8,'failed':1,'not_attempted':4}
+assert record['stage_counts']==validate_pipeline_terminal(pipeline,actor)
+record['source_gates_passed']=pipeline['source_gates_passed']
 (ROOT/'qualification-seal-closure.json').write_text(json.dumps(record,indent=2)+'\n')
 (ROOT/'qualification-runtime-manifest.json').write_bytes(manifest_path.read_bytes())
 print(json.dumps({k:record[k] for k in ['manifest_sha256','fresh_vstd_verified','fresh_vstd_errors','complete_direct_artifact_inventory','native_available_bytes','selected','qualified']}))

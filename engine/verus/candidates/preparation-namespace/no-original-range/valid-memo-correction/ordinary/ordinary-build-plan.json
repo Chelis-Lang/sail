@@ -46,8 +46,8 @@
     "build-candidate.py": "084b0372b4b351ab7833b200d7857cee3ba297473fef82b63d8c03a7bf432c0a",
     "close-build.py": "39ced274bf50a394f471c7652c5afffbd5f8c35f6fbf7b830767568165ad0b37",
     "run-original-pipeline.py": "8b7a0cf501cfc1a7401da33c59059ad866101b3bb304d29cd879e8639aed1f19",
-    "close-qualification.py": "d62a5d08407a8d7aca7041b5fde5898b07e1bef29fd17bc42071e6e58fec41ab",
-    "controller-diff.patch": "efd9d8528cdee67f0a4482f59d04eaa9be57d9cce5708f184a1c4949fabe930d"
+    "close-qualification.py": "2cb0cf5494cd903acb85483151457444e795c36a3a6837371fe674ea2704f817",
+    "controller-diff.patch": "1987b2bccafd5bfd847722b6900698444fddd6f57fa1f30d3c44bf867fce3d86"
   },
   "sensitivity_result_sha256": "5be40db3fba7b031e4ceb38977fd264c63c5712f58637826233bde448647a8ed",
   "sensitivity_inputs": {
