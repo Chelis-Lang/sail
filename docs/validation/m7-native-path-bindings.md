@@ -30,7 +30,9 @@ remains recorded; the extracted comparison was corrected to borrow a native
 Path instead of a PathBuf. The [bounded syscall component](m7-binding-paths-component/README.md)
 is synthetic and does not replace live reader acceptance. The
 [sealed release](m7-binding-product/installed-product.json) is now installed,
-and one unchanged live-reader workflow is running against its owned copy.
+and its [unchanged live-reader workflow](m7-rpc-binding-reader-terminal.md)
+fails the original 600-second verification prerequisite after successful
+independent full Current preparation. It collects no latency samples.
 The first release process stalled and was closed after an exact PID and birth
 identity check; its [failure record](m7-binding-product/stalled-build.json) and
 [kernel observations](m7-binding-product/stall-observation.json) remain

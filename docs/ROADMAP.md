@@ -144,9 +144,13 @@ now identifies uncovered exported span ranges
 ([VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md)) and a
 separate actual `pair-busy` admission refusal. Stock results remain exact; the
 positive hit assertion still fails. A
-separate broker-retirement acknowledgement is being implemented to prevent the
-next worker from attempting admission before the previous compiler service has
-released its namespace borrow and quota owner. The
+separate [broker-retirement acknowledgement](../engine/verus/candidates/preparation-retirement/README.md)
+passes 41 VIR and 98 driver tests plus both strict checks. Removing its actual
+finish call makes the unchanged guard-lifetime regression fail. The correction
+orders the next admission after the previous compiler service releases its
+namespace borrow and quota owner; an ordinary runtime and qualification remain
+pending. The explicit imported-range absence role is a separate proposal,
+with no source coordinates or loader authority. The
 fourteen frozen scripts define thirteen actual pipeline stage records; the
 remaining four stages were not attempted. The candidate remains unselected.
 
@@ -178,7 +182,9 @@ binding optimization now passes the [complete Linux validation](validation/m7-na
 unchanged hardlink regression also detects an unsafe guard-removal variant.
 The [new sealed release](validation/m7-binding-product/installed-product.json)
 builds in 108.350 seconds; the stalled first build remains separately recorded.
-One unchanged live-reader workflow is running against its exact owned copy.
+The [unchanged live-reader workflow](validation/m7-rpc-binding-reader-terminal.md)
+completes independent full Current preparation, then fails the original
+600-second ordinary-verification prerequisite. It collects no latency samples.
 The separate original managed fixture passes in 335.794 seconds, with cold
 verification at 220.375 seconds under the unchanged 240-second bound. The latest pushed
 [native CI revision](../bench/validation/m7-linux-ci-4e101c8-native-2026-10-11.json)
@@ -197,7 +203,7 @@ buffers do not improve complete-client p95; no buffer change is selected.
 |---|---|---|
 | Managed verification | The sealed current product passes the [original managed workflow](validation/m7-managed-current-product.md): cold proof, unchanged complete receipt reuse, missing-receipt recovery, restored-mtime failing edit, and CLI/MCP jobs. The new descriptor-bound product passes again: cold verification takes 220.375 s under its original 240 s bound. | Real HumanEval/Vest integration and repair performance; the small receipt fixture does not establish either. |
 | Preparation across source edits | The late-handoff candidate passes [complete source tests](validation/m7-late-import-handoff-source-controls.md), strict checks and fresh vstd. Its original qualification fails because parallel workers have no diagnostic source map. The [preparation-only namespace correction](../engine/verus/candidates/preparation-namespace/README.md) passes 129 source tests, both strict compiler checks and an ordinary build with fresh vstd; compiler-thread borrowing preserves stock reporter routing and parallelism. | The unchanged thirteen-stage pipeline (fourteen frozen scripts), including previous-revision focused reuse within 600 s; its ninth stage currently fails with zero hits. All candidates remain unselected. |
-| Responsive reads | The current product passes all 89 daemon controls, the full 564-test workspace gate and 39 solver controls. The [original live census](validation/m7-current-reader-workflow.md) fails full Result p95 at 394.713 ms; Status passes. The [stage diagnostic](validation/m7-rpc-stage-workflow.md) also fails complete Result p95 at 403.341 ms; the exact freshness optimization passes 566 workspace and 39 solver controls, but its real reader census remains pending. | Four concurrent readers, 200 samples, both p95 values below 200 ms during active verification; then retained real-project CLI/MCP within their original bounds. |
+| Responsive reads | The current product passes all 89 daemon controls, the full 566-test workspace gate and 39 solver controls. The [original live census](validation/m7-current-reader-workflow.md) fails full Result p95 at 394.713 ms; Status passes. The [stage diagnostic](validation/m7-rpc-stage-workflow.md) also fails complete Result p95 at 403.341 ms. The exact freshness optimization passes its complete checks; its [new reader workflow](validation/m7-rpc-binding-reader-terminal.md) fails the 600-second prerequisite before collecting samples. | Four concurrent readers, 200 samples, both p95 values below 200 ms during active verification; then retained real-project CLI/MCP within their original bounds. |
 | Default and shared caching | The latest complete local gate and native CI pass; native CI completes in 374 s. The previous [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) has 158 Same and one stock Verismo timeout at the original 3,600 s bound. Its cause remains unknown. | Complete current-product standard conformance and cache fill/warm rounds. The failed standard scope remains failed. |
 | Repair product acceptance | CLI/MCP repair, proof journals, explanations, named baselines and comparison are implemented. Current native CI passes all original fixture scenarios. | Complete source and real-project workflows, then three rounds with at least 2× median repair improvement on each of HumanEval and Vest. |
 
