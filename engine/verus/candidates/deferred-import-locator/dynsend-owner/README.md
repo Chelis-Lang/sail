@@ -118,3 +118,13 @@ thirteen-artifact runtime seals stay byte-exact. File-allocated retirement and
 native/host free-space observations are separate; shared backing-space changes
 are not attributed to this cleanup. The active ordinary and common targets
 remain protected.
+
+[Original qualification launch](qualification-launch.json) records the one
+subsequently authorized fourteen-stage actor on the sealed new manifest. It
+uses the reviewed exact controller at normal priority, serial independent
+cases and unchanged internal concurrency. The original fourteen fixture
+sources, 600-second compiler bounds, stock diagnostic and same-input checks,
+and genuine previous-revision FOCUS requirement stay unchanged. No trace
+supplement is forwarded. The run is active; neither qualification nor runtime
+selection is claimed. Its terminal outcome will be retained before separate
+source/runtime and owned-actor closure checks.
