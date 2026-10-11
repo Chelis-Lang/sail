@@ -28,6 +28,11 @@ def save(path, value):
     path.write_text(json.dumps(value, indent=2) + '\n')
 
 
+def interrupted(number, _frame):
+    """Route catchable controller termination through its owned finally cleanup."""
+    raise KeyboardInterrupt(f'controller signal {number}')
+
+
 def row(pid):
     try:
         with open(f'/proc/{pid}/stat', 'rb') as file:
@@ -292,4 +297,6 @@ if __name__ == '__main__':
         print(json.dumps({'preflight': 'PASS', 'actor_launched': False,
                           'controller_sha256': sha(Path(__file__))}))
     else:
+        for number in (signal.SIGTERM, signal.SIGHUP):
+            signal.signal(number, interrupted)
         run(args)
