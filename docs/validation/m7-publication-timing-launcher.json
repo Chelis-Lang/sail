@@ -1,0 +1,52 @@
+{
+  "kind": "original-repair-publication-timing-launcher",
+  "status": "prepare-only-no-runtime-actors",
+  "source_sha256": {
+    "ci/test-repair.py": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7",
+    "scripts/m7-publication-timing-diagnostic.py": "db795c9003cefee8234417525771851f63b4f3a6a2c6f5c8239736761100747f",
+    "scripts/test-m7-publication-timing-diagnostic.py": "d400fcd26af5ae833cc784b076d56905c2da20808221e4614a50b5b5f7865cf0"
+  },
+  "validation": {
+    "pure_controls": {
+      "passed": 12,
+      "failed": 0,
+      "elapsed_s": 0.109,
+      "command": "python3 scripts/test-m7-publication-timing-diagnostic.py"
+    },
+    "diff_check": "PASS",
+    "actual_fixture": "not-run"
+  },
+  "original_limits_s": {
+    "whole_proof_tool_budget": 120,
+    "cli_and_mcp_operation_maximum": 30,
+    "mcp_cleanup_wait": 5,
+    "daemon_cleanup_wait": 10,
+    "subprocess_timeout_drain": 10
+  },
+  "only_environment_change": "SAIL_JOB_RPC_TIMINGS=1",
+  "retention_bounds": {
+    "scan_entries": 4096,
+    "files": 257,
+    "aggregate_inspected_bytes": 4194304,
+    "rpc_bytes": 262144,
+    "rpc_rows": 256,
+    "setup_bytes": 16384,
+    "setup_rows": 64,
+    "setup_files": 256
+  },
+  "retained_names": [
+    "rpc-timings.json",
+    "numeric-job-id/events.setup-numeric-pid-numeric-serial.jsonl"
+  ],
+  "capture_boundary": "after original body finally attempts owned shutdown, before original TemporaryDirectory cleanup",
+  "original_cleanup_always_delegated": true,
+  "private_job_or_environment_records_retained": false,
+  "proof_or_acceptance_credit": false,
+  "orphan_absence_certified": false,
+  "limits": [
+    "overwritten or dropped ring rows are unavailable; no cold-publication inference from latest rows",
+    "bounded file work does not impose an interruptible filesystem wall-clock deadline",
+    "no job identifier in RPC rows; attribution requires corroborating original public evidence",
+    "original owned shutdown attempts do not certify global descendant absence"
+  ]
+}
