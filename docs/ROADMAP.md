@@ -103,6 +103,13 @@ rounds and spread are required. Batch-local preparation reuse is distinguished
 from persistent reuse across edits. No successful focus is accepted before
 complete current full validation. M7 remains incomplete until these gates pass.
 
+The private [Loaded import authority candidate](../engine/verus/candidates/loaded-foreign-authority/README.md)
+addresses the measured foreign-coordinate relocation miss under proposed
+[ADR0030](decisions/0030-imported-span-authority.md). Implementation and new-domain
+controls exist; compilation, actual resolver-state evidence and complete source/
+previous-revision proof gates remain pending. It is unselected and grants no
+M7 performance or acceptance claim.
+
 ### Current state
 
 The experimental CLI/MCP workflow is implemented: exact-function repair checks,

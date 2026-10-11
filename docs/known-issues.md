@@ -208,13 +208,13 @@ default SMT keys bind the exact process prefix. Seed-dependent proof discovery
 is exposed through named opt-in portfolios, with separate keys and provenance;
 it is never silently substituted into default verification.
 
-## Current complete solver test setup
+## Earlier complete solver setup and replay failures
 
 The frozen b36 workspace gate passes all 485 tests. Its complete solver step
 passes 37 real-Z3 and fault controls, but the new classifier timing diagnostic
 fails before assertions because its external fixture was absent. The original
 captured bytes are now retained as its default; explicit fixture selection and
-all bounds/equality assertions remain. A fresh complete run is required.
+all bounds/equality assertions remain. That attempt required fresh complete validation.
 [The failed attempt](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
 retains the entire log. This is a test setup defect, not a solver disagreement.
 
@@ -222,5 +222,23 @@ The fresh complete solver run passes the corrected fixture, but fails the
 original HTTP whole-session replay assertion: correct answers required one
 extra Z3 process (two starts before, three afterward). The failed native cache,
 signed replies and certificate are retained for diagnosis. Cause is unresolved;
-this full run remains failed. See the
+this full run remains failed. The later complete 38-control passes in the table
+above retain separate identities and do not erase this failure. See the
 [complete fresh attempt](../bench/validation/m7-linux-solver-777-emulated-2026-10-11.json).
+
+## Unselected imported-span relocation candidate
+
+The f833 source diagnostic identifies a genuine previous-revision focus miss:
+Imported id563 in vstd div_mod keeps its original words/content/name/identity,
+while all454 foreign contributing starts move25. Complete inventories reproduce
+the expected/current digests. Actual Loaded/Delayed resolver state was not
+observed in that trace. The earlier strict immediate-progress diagnostic-order
+failure and c05 cross-edit failure remain retained; this causal finding is not
+proof or performance qualification.
+
+The private [Loaded authority candidate](../engine/verus/candidates/loaded-foreign-authority/README.md)
+and [proposed ADR0030](decisions/0030-imported-span-authority.md) add conservative
+original→current mapping authority, explicit state evidence and new-domain
+migration refusal. Delayed/local/unknown states remain misses. Compiler/runtime,
+complete source, genuine previous-revision FOCUS and HE/Vest gates are pending.
+Selected runtime pins are unchanged.

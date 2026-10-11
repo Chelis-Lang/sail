@@ -338,3 +338,16 @@ hashes matched before and after; source, runtime, failure records and raw
 qualification data remain. No intermediate seed or qualification receipt was
 copied. The exact resource-only operation is recorded in
 `qualifications/2421-intermediate-cleanup.json`. It does not requalify the runtime.
+
+## Loaded foreign imported-span authority candidate
+
+The [Loaded authority implementation](loaded-foreign-authority/README.md) is
+private, proposed and unqualified. The f833 causal trace proves454 foreign starts
+shift25 with all other contributing fields unchanged; actual selected resolver
+state still requires observation. The new v5 domain captures original authority
+once and revalidates only initial Loaded Foreign mappings, preserving exact
+current raw bindings and every other lowering dependency. Delayed/local/unknown
+states remain misses. It adds one admitted8MiB family (prospective500MiB phase
+maximum), bounded actual-state evidence and new negative/migration controls.
+No compiler/runtime was built, no source pin changed and no cross-edit or
+performance acceptance follows. See [proposed ADR0030](../../../docs/decisions/0030-imported-span-authority.md).
