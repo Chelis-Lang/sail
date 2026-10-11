@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Document the rejected shared HTTP async-adapter experiment. Its complete
+  operation was slower despite passing the affected security controls; the
+  production transport and all deadlines remain unchanged.
+
 - Make fault-test timeout cleanup independent of a stalled output-buffer lock.
   Incomplete reader retirement now fails explicitly; solver deadlines and reply
   checks remain unchanged. This does not identify earlier solver-test timeouts.
