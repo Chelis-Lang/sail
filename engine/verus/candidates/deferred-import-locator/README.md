@@ -23,6 +23,13 @@ before source tests. Actual full library controls and strict Clippy are running
 in the private target; no source or product qualification is claimed, and no
 selected runtime changed.
 
+[Inactive compiler cleanup](preceding-compiler-cleanup.json) retired only the
+preceding b46 compiler intermediates after the new builder closed. All thirteen
+b46 runtime bytes, its source and raw failure evidence remain unchanged; three
+probe/test executables were separately retained. The active candidate target is
+protected. Allocated retirement is recorded separately from concurrent host
+backing-space changes.
+
 The [actual first refusal](../loaded-foreign-authority/delayed-role-review.md)
 is an imported raw-unit span for `vstd/function.rs:151:20: 151:65 (#0)`.
 Constructor and pre-focus states are both Delayed. A LoadedForeign-only snapshot
