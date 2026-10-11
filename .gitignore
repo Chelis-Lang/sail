@@ -1,4 +1,5 @@
 /target
+/_retired-evidence
 /fuzz/target
 /fuzz/corpus
 /fuzz/artifacts
