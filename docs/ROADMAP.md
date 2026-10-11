@@ -172,6 +172,13 @@ later gate steps are not reached. Its independent
 [solver suite](../bench/validation/m7-linux-solver-e0ca-emulated-2026-10-11.json)
 passes all 38 controls. Production workspace bytes match `012707a`; the full
 cause of the late HTTP delivery under shared development load is unresolved.
+The later frozen `091efd5` [complete local gate](../bench/validation/m7-linux-gate-091e-emulated-2026-10-11.json)
+passes all 502 tests and every remaining step after adding sticky kernel mount
+coverage and retained-storage accounting. Its [solver suite](../bench/validation/m7-linux-solver-091e-emulated-2026-10-11.json)
+passes all 39 controls, including the real isolated mount-restoration fault.
+The original HTTP concurrency fixture passes; the earlier late-delivery failure
+and its unknown complete cause remain retained. These complete local scopes
+do not qualify source reuse, real-reader latency or repair performance.
 The complete default standard attempt also fails: 156 Same, one diagnostic-order
 Unstable and two unchanged unit timeouts, with no Different verdicts. See
 [the terminal scope](../bench/validation/m7-linux-default-standard-1dc-failure-2026-10-11.json).
