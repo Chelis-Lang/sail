@@ -28,6 +28,13 @@ artifact grants proof or runtime authority.
 The [first compile failure](../../bench/validation/m7-linux-binding-first-compile-a9300ac-emulated-2026-10-11.json)
 remains recorded; the extracted comparison was corrected to borrow a native
 Path instead of a PathBuf. The [bounded syscall component](m7-binding-paths-component/README.md)
-is synthetic and does not replace live reader acceptance. A sealed product and
-one new unchanged live-reader workflow are next. The 403.341 ms failure remains
+is synthetic and does not replace live reader acceptance. The
+[sealed release](m7-binding-product/installed-product.json) is now installed,
+and one unchanged live-reader workflow is running against its owned copy.
+The first release process stalled and was closed after an exact PID and birth
+identity check; its [failure record](m7-binding-product/stalled-build.json) and
+[kernel observations](m7-binding-product/stall-observation.json) remain
+separate. No userspace cause is established. A fresh process built the same
+source in 108.350 seconds. The original managed CLI/MCP scope is also running
+against this release, with its 240-second verification bound unchanged. The 403.341 ms failure remains
 failed, and the optional source engine remains unselected.
