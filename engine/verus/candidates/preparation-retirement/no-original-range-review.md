@@ -70,3 +70,25 @@ Composition with the acknowledgement overlay must preserve its real adapter
 retirement sensitivity test and every prior role/assertion. No static blocker
 was identified in the reviewed draft; full-source tests, strict checks, ordinary
 build and the unchanged original qualification remain pending.
+
+The frozen composition in B's `bedefef` was subsequently checked against full
+patch `93c91bef65f1793d87968dec7c3a5271f9855a4a379d1019bc78cc25a125394d`
+and role delta
+`6dedaadc2428979a0d956c875e51038dfe567f119f6f3ffa1b5c0442ac17174f`.
+All eight composed source hashes matched its identity. Independently reversing
+only that role delta returned the byte-exact eight-source positive retirement
+overlay. The existing helper tests remain an exact prefix, and the retirement
+implementation and real adapter sensitivity control are preserved.
+
+The final added controls exercise a prepopulated word memo, covered stock
+`None`, pending ownership, exact original hash/range changes, current raw-kind
+and literal changes, and codec-rebound spans through both actual direct and
+parallel namespace adapters. Removing the memo bypass would fail the retained
+stale-value assertion; accepting any stock `None` would fail the covered-row
+assertion. These are source-level sensitivity findings, not executed results.
+Controller `326632795b00d68e8f22351372a3bba3462fc014e94140b4cbab7502be4be6ba`
+retains the complete serial library controls and both all-target strict checks,
+prior seals, source closure and engine-selector removal. Static composition is
+approved for that one private source-control scope. Full-source execution is
+pending, and the domain inequality control proves encoded-format separation
+only. Actual cache rejection remains mandatory in the original runtime gate.
