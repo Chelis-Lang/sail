@@ -133,3 +133,13 @@ the same fourteen scripts, command, environment, strict diagnostics and
 600-second compiler bounds. Its only changes are the candidate, evidence and
 source-control bindings. These prepared controllers have not launched a runtime
 build or qualification.
+
+Actual complete-source controls on the frozen namespace candidate passed VIR
+41/41, driver 88/88 and strict VIR checking. Strict driver checking failed with
+`private_interfaces`: the crate-visible reporter enum carried the narrower
+`NamespaceRequest` type. The run is failed, independently retained in
+`source-controls-failure.json`; its assertions and lint policy remain unchanged.
+Both tested executables, exact raw logs and source snapshots are sealed. All
+three prior thirteen-artifact runtime/source/lock inventories and the candidate
+source eight-file/lock inventory stayed unchanged; the dual-container holder
+audit found no remaining actors. No ordinary runtime or qualification ran.
