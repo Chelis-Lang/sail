@@ -45,6 +45,13 @@ current-span key. Intact entries from the old domain must miss. The original
 strict diagnostics, same-input lowering oracle and genuine previous-revision
 reuse checks remain mandatory; no UnknownCrate-to-success shortcut is allowed.
 
+The existing Imported provenance memo keys only the packed words. Absence
+provenance should also bind the current span ID and spelling, so this role must
+bypass that memo and stream the complete identity directly to the hasher.
+Otherwise different exact current literal identities could incorrectly share a
+digest. Recorded-role memo behavior stays unchanged. The complete prepared
+binding key and current raw-unit restoration remain independently mandatory.
+
 Completeness storage must be admitted before allocation in the SAME 8 MiB
 family, with actual Vec capacity and seed/record overlap charged. A bounded
 per-crate digest can be streamed from the immutable constructor rows, using
@@ -52,6 +59,15 @@ their audited range order without copying the metadata table. Any unsorted or
 ambiguous input must refuse, rather than normalize silently. Registry buffers
 drop physically before owner quota release. The 500 MiB plus 80 KiB total and
 512 MiB aggregate cap stay unchanged; admission overflow produces a miss.
+
+One conservative implementation can repeat a fixed-size optional completeness
+digest in each existing Record. Its larger inline size is then covered by the
+existing `size_of<Record>` reservation and actual-capacity check, without a
+second registry allocation. Per-crate count equality plus the existing unique
+original-row matching and duplicate/overlap refusal establishes a bijection;
+the complete constructor table remains borrowed while its digest is streamed.
+An incomplete namespace can retain existing recorded-role behavior while
+offering no absence authority.
 
 Required controls include actual pinned metadata/full consumption for the
 three observed ranges, actual stock None with zero loader calls, exact current
