@@ -1,0 +1,50 @@
+{
+  "status": "PASS",
+  "removed_directories": [
+    "verus/source/target-verus/release/deps",
+    "verus/source/target-verus/release/build",
+    "verus/source/target-verus/release/incremental"
+  ],
+  "removed_files": 2503,
+  "removed_allocated_bytes": 2229366784,
+  "inventory_sha256": "d76e22dbd85f7b7b44798b7e82b10829e1a46a69d75d63047e37499535c6f1de",
+  "runtime13_source8_lock_tested_images_unchanged": true,
+  "native_overlay_free_bytes": 311888093184,
+  "variant": "c77e1a1879302e06",
+  "host_backing_free_bytes_before": 15511293952,
+  "host_backing_free_bytes_after_observed": 17319596032,
+  "observed_backing_change_not_attributed": true,
+  "initial_setup_failures": [
+    "Docker copy failed EROFS before native script publication; no removal",
+    "One private scratch write failed EROFS; no removal",
+    "Read-only census could not connect to Docker API after external interruption; no removal"
+  ],
+  "after_external_recovery": "fresh dual-container command/cwd/fd/maps audit: zero holders, zero unreadable",
+  "scope": "Closed native compiler deps/build/incremental only. Source, runtime13, original manifest, all qualification evidence and archived actual tested ELFs unchanged. No archive duplication.",
+  "raw_inventory": {
+    "result.json": {
+      "sha256": "afaf5330afd50932665cd9cdcc1ec53386dc6a7af8554e1cf8af26d3b0f5c429",
+      "bytes": 459
+    },
+    "ownership-before.json": {
+      "sha256": "f35f34c8e9a92aca9e1ee546fd59876523735735ed613590f2d498d5dbc053e6",
+      "bytes": 74
+    },
+    "after-seals.json": {
+      "sha256": "d6fca651de6a41f1a73ab27cff8dc685ba16a9e4ee577c4cfd81a4ce16f42f26",
+      "bytes": 3023
+    },
+    "before-seals.json": {
+      "sha256": "d6fca651de6a41f1a73ab27cff8dc685ba16a9e4ee577c4cfd81a4ce16f42f26",
+      "bytes": 3023
+    },
+    "compiler-inventory.json": {
+      "sha256": "d76e22dbd85f7b7b44798b7e82b10829e1a46a69d75d63047e37499535c6f1de",
+      "bytes": 622289
+    },
+    "ownership-immediate-before.json": {
+      "sha256": "dbc13253cabb1132c717d7f40a357d8226925707bc4b724ec31b054522d33266",
+      "bytes": 74
+    }
+  }
+}
