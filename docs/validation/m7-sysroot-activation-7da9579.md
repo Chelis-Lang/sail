@@ -40,3 +40,11 @@ unchanged. See [guarded-sysroots.md](../guarded-sysroots.md),
 [ADR 0031](../decisions/0031-guarded-sysroot-digest-handoff.md) and
 [managed-cold-start.md](../managed-cold-start.md) for the contract and earlier
 standalone results.
+
+An independent private-target check of the selector correction passed both
+exact-byte and oversized-selection regressions in 0.13 seconds, plus strict
+all-target Clippy in 18.22 seconds. Its
+[frozen source and control record](m7-sysroot-selection-controls.json) includes
+the initial validation-snapshot compile failure and the exact sealed timer
+dependency used to correct that snapshot. These controls do not replace the
+failed original scenario or establish an actual warm handoff.
