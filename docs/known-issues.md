@@ -615,3 +615,23 @@ The remaining gate steps and pinned-solver suite are unattempted in this scope.
 This failure remains separate from the earlier cache-maintenance timeout and
 its passing focused cleanup controls. No deadline, fixture delay, reader count
 or all-hit assertion has been weakened.
+
+### Emergency read-only filesystem interrupted the combined runs
+
+During the separate [b63 solver run](../bench/validation/m7-linux-combined-core-solver-b63af10-failure-2026-10-11.json),
+39 of 41 cases pass, including cache maintenance. The attribution tests then
+fail on a missing obligation and temporary-directory creation. Independent
+process launches fail to create emulator temporary files, a repair diagnostic
+reports `EROFS`, and `/proc/mounts` records ext4 `emergency_ro`. This establishes
+an infrastructure failure; the two test assertions do not preserve enough IO
+detail to establish their individual causes. The frozen benchmark also stops
+on `EROFS` before any measured sample. Docker restart restores independently
+checked writes and fsync in both Sail containers.
+
+Reusing the interrupted benchmark's old pathname leaves its externally named
+socket in place; the original runner refuses it before starting a daemon.
+The launcher now supports an explicit fresh `--run-id` namespace, retaining each
+failed attempt and isolating work, caches and socket selection. It performs no
+automatic retries or proof-state transfer. Old process birth grants are not
+reused after restart, and no descendant-closure claim is made for the interrupted
+workflows.

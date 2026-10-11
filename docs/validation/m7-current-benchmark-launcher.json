@@ -1,17 +1,17 @@
 {
   "version": 1,
   "scope": "Launcher preparation and read-only native inventory only; no benchmark, build, proof or performance admission",
-  "status": "Acceptance installation and read-only original benchmark precheck PASS; benchmark not executed",
+  "status": "Original installation and precheck PASS; first benchmark interrupted by EROFS, first recovered setup refused stale socket; fresh named attempt pending",
   "controller": {
     "file": "m7-current-benchmark-controller.py",
-    "bytes": 20193,
-    "sha256": "0277dc0ca5e3bf2b1c336b1f7d6c97e4ff76c5503f100481075e89e247318453"
+    "bytes": 20737,
+    "sha256": "3af7c2be2abe9d59de80b9e1904a629f3dec9af004d2109ca03294e7fa05aa43"
   },
   "pure_controls": {
     "file": "test-m7-current-benchmark-controller.py",
-    "bytes": 5485,
-    "sha256": "29b440baab14f228e4e021091e6663cd48bfb8ee3757524eb2aeb560465c5828",
-    "passed": 9,
+    "bytes": 6209,
+    "sha256": "7317d47df71f1ba87590b9bb2d2e96dd617fda0c1da66ab2cb3e0634eb97f3dc",
+    "passed": 11,
     "actors_launched": false
   },
   "unchanged_wrapper_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
@@ -217,5 +217,14 @@
     "proof_preparation_or_cargo_launched": false,
     "recorded_primary_elapsed_seconds": 4.199344333,
     "elapsed_scope": "Precheck through primary result, before final postseals/archive; outer CLI duration not retained"
-  }
+  },
+  "previous_controller": {
+    "file": "m7-current-benchmark-controller.py",
+    "bytes": 20193,
+    "sha256": "0277dc0ca5e3bf2b1c336b1f7d6c97e4ff76c5503f100481075e89e247318453"
+  },
+  "execution_attempts": [
+    "m7-linux-repair-benchmark-a9609e9-storage-failure-2026-10-11.json",
+    "m7-linux-repair-benchmark-a9609e9-stale-socket-2026-10-11.json"
+  ]
 }

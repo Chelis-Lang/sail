@@ -1,0 +1,81 @@
+{
+  "status": "retired",
+  "scope": "Only debug/release compiler subtrees in three closed private target families; all ELF images retained; root evidence left untouched",
+  "initial_allocated_bytes": 1350819840,
+  "preserved_allocated_bytes": 592564224,
+  "preserved_elf_paths": 1427,
+  "reclaimed_allocated_bytes": 758255616,
+  "inventory_sha256": "a5c67f3a878a80fafe47264ae6b592be4f1c28e97a45c0e6d006d80938d853ce",
+  "retained_inventory_gzip_sha256": "8f8d9c49d0368481c215215529d327de62aaec3e72db613f956c9b27a31ef1b7",
+  "predelete_checks": [
+    {
+      "target": "/work/target/live-linux-fixed",
+      "examined_live_processes": 1,
+      "holders": [],
+      "unreadable_or_ambiguous": [],
+      "logical_bytes": 872627286,
+      "allocated_bytes": 1045741568,
+      "files": 51474,
+      "elapsed_seconds": 0.5860676659999626,
+      "container": "sail-m7-handoff-validation"
+    },
+    {
+      "target": "/work/target/live-linux-fixed",
+      "examined_live_processes": 1,
+      "holders": [],
+      "unreadable_or_ambiguous": [],
+      "logical_bytes": 872627286,
+      "allocated_bytes": 1045741568,
+      "files": 51474,
+      "elapsed_seconds": 0.5836707500000102,
+      "container": "sail-m7-acceptance"
+    },
+    {
+      "target": "/work/target/m7-shared-fault-diagnosis",
+      "examined_live_processes": 1,
+      "holders": [],
+      "unreadable_or_ambiguous": [],
+      "logical_bytes": 557832145,
+      "allocated_bytes": 561922048,
+      "files": 1302,
+      "elapsed_seconds": 0.01781095799998411,
+      "container": "sail-m7-handoff-validation"
+    },
+    {
+      "target": "/work/target/m7-shared-fault-diagnosis",
+      "examined_live_processes": 1,
+      "holders": [],
+      "unreadable_or_ambiguous": [],
+      "logical_bytes": 557832145,
+      "allocated_bytes": 561922048,
+      "files": 1302,
+      "elapsed_seconds": 0.018275666000022284,
+      "container": "sail-m7-acceptance"
+    },
+    {
+      "target": "/work/target/m7-result-stream-profile",
+      "examined_live_processes": 1,
+      "holders": [],
+      "unreadable_or_ambiguous": [],
+      "logical_bytes": 193224595,
+      "allocated_bytes": 196349952,
+      "files": 936,
+      "elapsed_seconds": 0.013997917000040161,
+      "container": "sail-m7-handoff-validation"
+    },
+    {
+      "target": "/work/target/m7-result-stream-profile",
+      "examined_live_processes": 1,
+      "holders": [],
+      "unreadable_or_ambiguous": [],
+      "logical_bytes": 193224595,
+      "allocated_bytes": 196349952,
+      "files": 936,
+      "elapsed_seconds": 0.012407291999977588,
+      "container": "sail-m7-acceptance"
+    }
+  ],
+  "recovery": "Initial immediate audits failed when ext4 became emergency read-only. Deletion did not run. After Docker recovery native inventory was zero-sized; independently retained host bytes restored the owned metadata only, every ELF rehashed, both-container zero-holder checks repeated, then deletion completed.",
+  "protected": "All original ELF images retained/rehashed; raw evidence and target-root records, common debug/release, selected runtime, M6, corpus, current proofs/caches and active targets untouched",
+  "native_retained_image_root": "/work/target/m7-retained-closed-core-images-20261011"
+}

@@ -21,6 +21,18 @@ def grant():
 
 
 class Controls(unittest.TestCase):
+    def test_fresh_namespace_changes_work_and_socket_selection_inputs(self):
+        first = M.output_path('abcdef0', False)
+        recovered = M.output_path('abcdef0', False, 'after-recovery')
+        self.assertNotEqual(first / 'work/results/cache-m6', recovered / 'work/results/cache-m6')
+        self.assertEqual(str(first), '/tmp/sail-m7-current-benchmark-abcdef0')
+        self.assertEqual(str(M.output_path('abcdef0', True, 'after-recovery')), str(recovered) + '-precheck')
+
+    def test_unsafe_namespace_refused_before_docker(self):
+        for value in ('', '../other', '/other', 'a/b', 'a' * 33, 'A', 'a\n'):
+            with self.assertRaises(ValueError):
+                M.output_path('abcdef0', False, value)
+
     def test_valid_record_binds_exact_revision(self):
         value = grant()
         self.assertIs(M.validate_grant(value, 'a' * 7), value)
