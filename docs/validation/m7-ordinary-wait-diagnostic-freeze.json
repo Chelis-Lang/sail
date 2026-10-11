@@ -1,0 +1,366 @@
+{
+  "actual_run": "pending independent code review; not reader acceptance",
+  "controller": {
+    "bytes": 22364,
+    "sha256": "fafa3b128bd515b820c63432358ad6b482fd8ef9f76ddd66c2a482c3ab9cb389"
+  },
+  "daemon_launched": false,
+  "deadline_s": 600,
+  "files": {
+    "argv.json": {
+      "bytes": 160,
+      "sha256": "f47f9400958feeb89e457ebdc8fff18bc4a90b8f6a9ac81de7cef7d3264b3198"
+    },
+    "config.json": {
+      "bytes": 268,
+      "sha256": "9d5720822eeff0f985044b45371a7b08326b73e3413d412d02c63efeb1776aae"
+    },
+    "execution.json": {
+      "bytes": 1674,
+      "sha256": "1e558158b46b4891d71953c00cf254850fdfba07eef12ea584307488337f5c6c"
+    },
+    "m7-ordinary-wait-diagnostic.py": {
+      "bytes": 22364,
+      "sha256": "fafa3b128bd515b820c63432358ad6b482fd8ef9f76ddd66c2a482c3ab9cb389"
+    },
+    "static-freeze.json": {
+      "bytes": 59754,
+      "sha256": "650148a172183160d75c7798b64fb3293d3e5e19640801b07d8c0f43274c68af"
+    },
+    "test-m7-ordinary-wait-diagnostic.py": {
+      "bytes": 5008,
+      "sha256": "5d979a30de0f1b4fd73c32e5bdfbae2fbdbf7a10b1d1c5c5fd38b5336fc00439"
+    }
+  },
+  "force": "1",
+  "host_pure_controls": 8,
+  "initial_pure_control_failure": {
+    "cause": "Path() truthiness incorrectly treated root as nonempty, so excluded compiler target file was copied in synthetic fixture.",
+    "fixed_before_native_prepare": true,
+    "name": "test_context_archive_excludes_target_and_preserves_original_bytes",
+    "native_source_or_target_ever_modified": false
+  },
+  "input_environment_hash_scope": "Diagnostic binding of private frozen environment; actual unchanged production context validates independently.",
+  "input_environment_keys": [
+    "CARGO_HOME",
+    "CARGO_TARGET_DIR",
+    "DEBIAN_FRONTEND",
+    "HOME",
+    "HOSTNAME",
+    "LC_CTYPE",
+    "PATH",
+    "RUSTUP_HOME",
+    "RUSTUP_TOOLCHAIN",
+    "SAIL_CACHE_DIR",
+    "SAIL_CARGO_VERUS",
+    "SAIL_TEST_Z3",
+    "SAIL_VERUS_HOME",
+    "VERUS_Z3_PATH"
+  ],
+  "input_environment_sha256": "f001d0dd5bf6d89f4443076ec8481c426d3a6220330cc8d9f2cf6a854a50ddc2",
+  "kind": "focused-ordinary-static-only",
+  "linux_pure_controls": 8,
+  "manifest": {
+    "bytes": 2107,
+    "sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
+  },
+  "original_context": "4bc68866277c17e21676a56e3eb6ce912582a6752da73feb8049763196203ad5",
+  "original_revision": "821414360c2a5f474ff8cb6124db72606ab68366c26a240771c0b4a3cd24b947",
+  "original_summary": {
+    "bytes": 117276,
+    "sha256": "cb13504ab47f3d13f084d2c69f300c3f0194475d6eab2821437b7ccdf4acda6e"
+  },
+  "prior_context_files": {
+    "ordinary": {
+      "build-inputs.json": {
+        "bytes": 2180,
+        "sha256": "7af1ebfa4f5ab5baad575cf03fa3c1bbac74706944c74852f03cb9184135a9dd"
+      },
+      "input-state.json": {
+        "bytes": 161325,
+        "sha256": "c252219532c391af4fbb85aaa9aeb223286be64a59efb1010899497c8daec099"
+      },
+      "ownership.lock": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "receipts/13f1ef8f3a641a42922aed8de1f656ec69e68d2be1ac0e13a2b00309c104719a.json": {
+        "bytes": 1833069,
+        "sha256": "4e09f15bb0412b01a18a9226798723be05107804ce3f988e60b491a8abad27a1"
+      },
+      "runs/752165-1791714431157231375/artifacts.jsonl": {
+        "bytes": 23673,
+        "sha256": "4bd53fd66994ef9fdd993967a6c8ff22fdc82dca8c2963a8a4385d9fc7944456"
+      },
+      "runs/752165-1791714431157231375/cargo.stderr": {
+        "bytes": 1152,
+        "sha256": "0801205bb1d4f00cf2ca1803d0a1a5839b2121aa41a73d7419372f696591203e"
+      },
+      "runs/752165-1791714431157231375/cargo.stdout": {
+        "bytes": 23716,
+        "sha256": "3ede5045f856608ce07023800d975182d7f5f8ae0584a692ee13ccc081f6bc1b"
+      },
+      "runs/752165-1791714431157231375/committed.json": {
+        "bytes": 272,
+        "sha256": "c5f128497f7f1017f144a629cd9ba416386677150985cf9b1fbd378efa099baf"
+      },
+      "runs/752165-1791714431157231375/pending-receipts/045fe20e015a23124636aaa2de03611d8bc4c2027c3213f50b1d67375e27aa89.json": {
+        "bytes": 329525,
+        "sha256": "f85c909f2ed7b58ce55e82f4ec2dcae799a7646487effed970bc78ec91cc842c"
+      },
+      "runs/752165-1791714431157231375/pending-receipts/13f1ef8f3a641a42922aed8de1f656ec69e68d2be1ac0e13a2b00309c104719a.json": {
+        "bytes": 1833069,
+        "sha256": "4e09f15bb0412b01a18a9226798723be05107804ce3f988e60b491a8abad27a1"
+      },
+      "runs/752165-1791714431157231375/result.json": {
+        "bytes": 2158911,
+        "sha256": "21a5487fcd27685cfcad1087592db3e906c9154a5def460cdeee3e16406b2400"
+      },
+      "runs/752165-1791714431157231375/sidecars/7ec20131490defc54dd25ed4ee887a58363b5b2bd9ab322af0bb5939ee2c6d24/verus.stderr": {
+        "bytes": 904,
+        "sha256": "42f91a1df56927d919be61c41ffe934cde6da9c7d28bad313aec90cd45697f15"
+      },
+      "runs/752165-1791714431157231375/sidecars/7ec20131490defc54dd25ed4ee887a58363b5b2bd9ab322af0bb5939ee2c6d24/verus.stdout": {
+        "bytes": 251406,
+        "sha256": "ad096b5ea64852090529ebbe3ddc35b63cce68417a283bc903210cbbea322f0d"
+      },
+      "runs/752165-1791714431157231375/sidecars/c2d7729a9d82369806fefa6e0e760a32fd5102c9a15f1258272a1c6883b1225f/verus.stderr": {
+        "bytes": 868,
+        "sha256": "decc5cc7ac526be0e6066659ef4e983eb71544de0488376a14b6fb3d56f4eefc"
+      },
+      "runs/752165-1791714431157231375/sidecars/c2d7729a9d82369806fefa6e0e760a32fd5102c9a15f1258272a1c6883b1225f/verus.stdout": {
+        "bytes": 1485148,
+        "sha256": "2dd0d3fd1a5f736f0d6d4a516ebc98a99447bf850ed5f715924f31551081fb32"
+      },
+      "runs/774796-1791715378669981591/artifacts.jsonl": {
+        "bytes": 22831,
+        "sha256": "8ae74a707c7cf5da1938a2e6b633cce879026cf17e74629df9fbcf97ce628d3a"
+      },
+      "runtime.json": {
+        "bytes": 7794,
+        "sha256": "b2ec31ea51ad122c10c7fde86783a8cffcb1b5e878d6318fe1ae69de6cc9b129"
+      },
+      "sail-cargo": {
+        "bytes": 74887568,
+        "content_retained": false,
+        "reason": "large installed executable bound by immutable product",
+        "sha256": "67b620fbb511cf31ba9ebf215c52429350a79ccaab5f6cc8b97e2c60e545a26d"
+      },
+      "sail-verus-driver": {
+        "bytes": 74887568,
+        "content_retained": false,
+        "reason": "large installed executable bound by immutable product",
+        "sha256": "67b620fbb511cf31ba9ebf215c52429350a79ccaab5f6cc8b97e2c60e545a26d"
+      },
+      "source-inputs.json": {
+        "bytes": 87133,
+        "sha256": "20e91d35a4f97947c62688aa9990788800fafdbea660242b9b9659d30100f196"
+      }
+    },
+    "ordinary_count": 20,
+    "repair": {
+      "build-inputs.json": {
+        "bytes": 2180,
+        "sha256": "f77b15531e144c502565c4e57c6195386dbb0e390c7e713db647503ef7fd28ca"
+      },
+      "input-state.json": {
+        "bytes": 161325,
+        "sha256": "c252219532c391af4fbb85aaa9aeb223286be64a59efb1010899497c8daec099"
+      },
+      "ownership.lock": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "receipts/045fe20e015a23124636aaa2de03611d8bc4c2027c3213f50b1d67375e27aa89.json": {
+        "bytes": 328806,
+        "sha256": "4d757b7327974f847e0e6e1dbb0bda5f8920b0ff15f503aea26026c366b06007"
+      },
+      "receipts/13f1ef8f3a641a42922aed8de1f656ec69e68d2be1ac0e13a2b00309c104719a.json": {
+        "bytes": 1830028,
+        "sha256": "8fdbd2a1c19bc1340a92faa43ba569d0c2bf129f27a7a5626ecccbc938e8a966"
+      },
+      "runs/759104-1791714671431134833/artifacts.jsonl": {
+        "bytes": 23673,
+        "sha256": "479d28e8572b543c463a769fec656994daa882ce79a5a56b1c01ed1747bc53a8"
+      },
+      "runs/759104-1791714671431134833/cargo.stderr": {
+        "bytes": 1152,
+        "sha256": "6ce70906af70059e37be108a79cbf2fc2a932272043134486cb069eaf471fd73"
+      },
+      "runs/759104-1791714671431134833/cargo.stdout": {
+        "bytes": 23716,
+        "sha256": "a375b84caa93f4806b6e7f732759bec2ca82143d3ab381f58dbbb7abfc391f69"
+      },
+      "runs/759104-1791714671431134833/committed.json": {
+        "bytes": 272,
+        "sha256": "6a543f51bd9545a0af3b7d5a783643a159a4ddfc766f5fbbdc27c863cec2e1b8"
+      },
+      "runs/759104-1791714671431134833/pending-receipts/045fe20e015a23124636aaa2de03611d8bc4c2027c3213f50b1d67375e27aa89.json": {
+        "bytes": 328806,
+        "sha256": "4d757b7327974f847e0e6e1dbb0bda5f8920b0ff15f503aea26026c366b06007"
+      },
+      "runs/759104-1791714671431134833/pending-receipts/13f1ef8f3a641a42922aed8de1f656ec69e68d2be1ac0e13a2b00309c104719a.json": {
+        "bytes": 1830028,
+        "sha256": "8fdbd2a1c19bc1340a92faa43ba569d0c2bf129f27a7a5626ecccbc938e8a966"
+      },
+      "runs/759104-1791714671431134833/result.json": {
+        "bytes": 2155156,
+        "sha256": "8017d354b470bb9578c8e3dee6ebdf7f997706aa3e58644caa69f1e7c2324da1"
+      },
+      "runs/759104-1791714671431134833/sidecars/03fd022e54f3e9e9cfd19581a2ddda391cb8e454f307aee9260da8fd1484c4e0/engine.events.jsonl": {
+        "bytes": 2219822,
+        "sha256": "aeaebf35c5ce90f947ed2c0f7ec207e76742569a166677c067d2c473035db54e"
+      },
+      "runs/759104-1791714671431134833/sidecars/03fd022e54f3e9e9cfd19581a2ddda391cb8e454f307aee9260da8fd1484c4e0/verus.stderr": {
+        "bytes": 868,
+        "sha256": "42e361e3d869fcd2415951bcfbc0568cc375769625125332af1ae2fc7b1e7179"
+      },
+      "runs/759104-1791714671431134833/sidecars/03fd022e54f3e9e9cfd19581a2ddda391cb8e454f307aee9260da8fd1484c4e0/verus.stdout": {
+        "bytes": 1482987,
+        "sha256": "107c29d093e7ed7d1cd1d9bc138b0b6ccb73f23439697ed18b16c0e57e3ff419"
+      },
+      "runs/759104-1791714671431134833/sidecars/ad0deed175e66468af03ce07661982b1ce9846cee4286dede6283f3a7068096f/engine.events.jsonl": {
+        "bytes": 472163,
+        "sha256": "f054858be98afc9b37f1049b54c358e3dc9ba579138048d09054feb42037ea48"
+      },
+      "runs/759104-1791714671431134833/sidecars/ad0deed175e66468af03ce07661982b1ce9846cee4286dede6283f3a7068096f/focus.report.json": {
+        "bytes": 2400,
+        "sha256": "3210c4b8e52ade63189d6bb6dff03c44bb8d78a76351368ad239201c330252df"
+      },
+      "runs/759104-1791714671431134833/sidecars/ad0deed175e66468af03ce07661982b1ce9846cee4286dede6283f3a7068096f/focus.source.json": {
+        "bytes": 4132,
+        "sha256": "c91a6027c038d0f41465b3e08aa1454e4194d7511a0533480cf7fbc92404b500"
+      },
+      "runs/759104-1791714671431134833/sidecars/ad0deed175e66468af03ce07661982b1ce9846cee4286dede6283f3a7068096f/verus.stderr": {
+        "bytes": 904,
+        "sha256": "f6cd8cefcb80eea13f21fcda64e0a78e2285108b24216db7c449f90993179bdf"
+      },
+      "runs/759104-1791714671431134833/sidecars/ad0deed175e66468af03ce07661982b1ce9846cee4286dede6283f3a7068096f/verus.stdout": {
+        "bytes": 250527,
+        "sha256": "695c6527f4651b6ffd7df8054973cfbc3454b1ce16b43b0e3e5009dc0fe07e09"
+      },
+      "runtime.json": {
+        "bytes": 10730,
+        "sha256": "535d4aab631081131531ff97f5b5b3c0f3417ab3faf8575dd135d11de2253c16"
+      },
+      "sail-cargo": {
+        "bytes": 74887568,
+        "content_retained": false,
+        "reason": "large installed executable bound by immutable product",
+        "sha256": "67b620fbb511cf31ba9ebf215c52429350a79ccaab5f6cc8b97e2c60e545a26d"
+      },
+      "sail-verus-driver": {
+        "bytes": 74887568,
+        "content_retained": false,
+        "reason": "large installed executable bound by immutable product",
+        "sha256": "67b620fbb511cf31ba9ebf215c52429350a79ccaab5f6cc8b97e2c60e545a26d"
+      },
+      "source-inputs.json": {
+        "bytes": 87133,
+        "sha256": "20e91d35a4f97947c62688aa9990788800fafdbea660242b9b9659d30100f196"
+      }
+    },
+    "repair_count": 24
+  },
+  "private_environment_values_exported": false,
+  "product": {
+    "sail": {
+      "bytes": 74887568,
+      "sha256": "67b620fbb511cf31ba9ebf215c52429350a79ccaab5f6cc8b97e2c60e545a26d"
+    },
+    "sail-z3": {
+      "bytes": 11000880,
+      "sha256": "167bccac2908ed1a109660b5254ff6da0bc24b227e8424ba8c521620a8840872"
+    }
+  },
+  "proof_launched": false,
+  "selected_artifacts": {
+    "verus/source/target-verus/release/.cargo-build-lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/.vstd-fingerprint": {
+      "bytes": 155,
+      "sha256": "429fa4044969f926433ea92e7c06604670c5af1aed26bcc3c8f42493f409d652"
+    },
+    "verus/source/target-verus/release/cargo-verus": {
+      "bytes": 2754984,
+      "sha256": "3b654550d9787335953020f3946a96205bca5736c3e57ddba0fd3b47688d8fb9"
+    },
+    "verus/source/target-verus/release/libverus_builtin.rlib": {
+      "bytes": 928246,
+      "sha256": "65aabd6f36f48a976080ed7935a6cbad1397cd586f281845f47ae33678674237"
+    },
+    "verus/source/target-verus/release/libverus_builtin_macros.so": {
+      "bytes": 13801616,
+      "sha256": "47ecd157517d37f6a631664a2ab28e7eaf7ec890d4968a373964731d7ac23cd6"
+    },
+    "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+      "bytes": 8570208,
+      "sha256": "a0537a11801a32855b055117e7ec058bcba8c68689b5e492768cd0bbb0b69763"
+    },
+    "verus/source/target-verus/release/libvstd.rlib": {
+      "bytes": 10236586,
+      "sha256": "5e1ead56f11dd56ea759ea53b9b5dd28de66e0f655b6935cd0702c4f5ab33a3b"
+    },
+    "verus/source/target-verus/release/rust_verify": {
+      "bytes": 27902632,
+      "sha256": "670e3a437474e7bc0dd53df0f070da5fd48de508954eb58c7c1e5698bfc43e58"
+    },
+    "verus/source/target-verus/release/version.txt": {
+      "bytes": 26,
+      "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+    },
+    "verus/source/target-verus/release/verus": {
+      "bytes": 4705336,
+      "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+    },
+    "verus/source/target-verus/release/verus-root": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/vstd.vir": {
+      "bytes": 30076214,
+      "sha256": "e30595b97c5f729b36f66a3c9101a82ff976831f885fc5592c979077f2f9c3bc"
+    },
+    "verus/source/target-verus/release/z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "snapshots": {
+    "bytes": 1048576,
+    "count": 5,
+    "each_work_s": 0.5,
+    "fds_per_pid": 64,
+    "pids": 128,
+    "schedule": [
+      "context-ready",
+      "target-started",
+      "60 seconds",
+      "300 seconds",
+      "599.3 seconds"
+    ],
+    "tasks_per_pid": 128
+  },
+  "source_bytes": 657301,
+  "source_files": 274,
+  "stock": {
+    "cargo-verus": {
+      "bytes": 2756256,
+      "sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+    },
+    "verus": {
+      "bytes": 4708720,
+      "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+    },
+    "z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "wrapper_freeze": {
+    "bytes": 1227,
+    "sha256": "26fffc3d55101bbafc679a49c7393c18502005e29c18c0e22be5cb28fe32cfc9"
+  }
+}

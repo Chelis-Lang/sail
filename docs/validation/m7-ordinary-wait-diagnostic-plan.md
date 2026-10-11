@@ -78,7 +78,25 @@ and normal daemon closure, without signalling discovered PIDs. Evidence errors
 must not replace the original terminal failure. The full project result, if
 any, remains subject to the original Current/Historical/Unknown rules.
 
-The concrete lifecycle wrapper, input seals and observation schedule still
-need to be frozen before this separate invocation. It is not a second reader
+The [concrete wrapper](../../scripts/m7-ordinary-wait-diagnostic.py),
+private argv/configuration and [input freeze](m7-ordinary-wait-diagnostic-freeze.json)
+are now prepared, with eight pure controls passing on host and Linux. One pure
+archive-exclusion control first caught a `Path()` truthiness error; it was fixed
+before native preparation, and no real compiler target was copied or modified.
+The evidence archive retains prior lifecycle/receipt/artifact metadata separately;
+it skips compiler targets and already retained large logs/provenance. Large
+installed wrappers are hash-bound without duplicate byte copies. This is evidence
+storage, never proof authority imported into the new invocation.
+
+A joined, owned deadline thread observes the original clock beginning before CLI
+dispatch. It performs only the original owned-handle cleanup at expiry, independent
+of snapshot work; normal completion wakes and joins it promptly. The CLI closes
+before the owned daemon. Snapshot file reads remain bounded and nonblocking where
+supported; the wrapper does not claim it can interrupt arbitrary kernel reads.
+Public records bind private environment names/hashes, not values. The diagnostic
+environment hash is evidence only; the unchanged production context check supplies
+the actual context/revision comparison. The new observation file is outside the
+fixture and uses an already excluded observation key. No proof or service has
+launched during this preparation. It is not a second reader
 acceptance attempt. See [reader acceptance](../reader-acceptance.md),
 [known issues](../known-issues.md) and [the roadmap](../ROADMAP.md).
