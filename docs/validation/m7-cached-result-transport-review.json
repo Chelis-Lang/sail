@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "scope": "read-only source and retained subset audit; no new service, proof, collector, build or endpoint call",
+  "source_revision": "cdb6e6d1000086baae561efbf824c83ec1718665",
+  "source_files": {
+    "crates/sail-daemon/src/jobs.rs": {
+      "bytes": 19753,
+      "sha256": "3435a97862a50190aed039fb493efe7708546d905c2409768a6b4ad573315849"
+    },
+    "crates/sail-daemon/src/jobs/store.rs": {
+      "bytes": 20319,
+      "sha256": "83a79bd75a10199c2d973a2395231aa8bb8301bb5fe5a31041d8f0960541039c"
+    },
+    "crates/sail-daemon/src/jobs/result_cache.rs": {
+      "bytes": 17067,
+      "sha256": "780149f200d217e0dae384f34bbdbdbd7ea8fdcae50551401287c45bb3074cca"
+    },
+    "crates/sail-api/src/jobs.rs": {
+      "bytes": 21163,
+      "sha256": "aba017bdcd2c1555296279efe9dfe04c758d44587e1cb5eb3cdead43f53ee6a3"
+    },
+    "crates/sail-api/src/jobs/decoded.rs": {
+      "bytes": 31943,
+      "sha256": "bc4f75ebfa4e293a74cb6b1bb63203223310b3a861c30d0a64c2165cd1c3855d"
+    },
+    "scripts/m7-job-read-bench.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    }
+  },
+  "original_record": "m7-descriptor-reader-terminal.json",
+  "raw_seal": {
+    "bytes": 84038,
+    "sha256": "858ce3ab134817f026bc261ddcc4c2bd017271c6fe8ad870676ec48ef82b0ec0",
+    "archive_member": "rpc-timings.json"
+  },
+  "selected_rows": {
+    "operation": "result",
+    "currentness": "current",
+    "count": 42,
+    "all_preencoded_hits": true,
+    "all_encoding_stage_absent": true,
+    "all_writes_succeeded": true
+  },
+  "joint_prewrite": {
+    "formula": "for each retained row: (total_us - write_us) / 1000; accepted-to-completion clock minus that SAME row socket-output interval",
+    "count": 42,
+    "median_ms": 46.016000000000005,
+    "p95_ms": 63.794,
+    "max_ms": 79.851
+  },
+  "write": {
+    "count": 42,
+    "median_ms": 60.1755,
+    "p95_ms": 194.522,
+    "max_ms": 213.972
+  },
+  "limits": [
+    "42 retained completed calls are a tail subset of 100 original Result samples; no client/server call identity join",
+    "No separate stage quantiles were added or subtracted",
+    "Write wall time includes backpressure and scheduling; no sender CPU attribution",
+    "Original complete Python Result p95 343.142 ms remains FAIL; Rust unattempted",
+    "Source audit of current paths is not a claim that the original compiled service included later fixes"
+  ],
+  "finding": "No repeated graph decode/encoding or full frame clone occurs on the cached sender path. Existing output-seal validation and fresh runtime/input validation are avoidable-work seams under separately reviewed continuous authority; another encoded-frame memo is unsupported."
+}
