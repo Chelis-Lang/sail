@@ -10,7 +10,7 @@ content or losing observation coverage requires fresh work. Cargo saying
 `fresh` is insufficient proof evidence. See [ADR 0023](decisions/0023-managed-incremental-workspace-verification.md)
 and the [freshness contract](freshness.md).
 
-The staged [guarded sysroot handoff](guarded-sysroots.md) addresses repeated
+The implemented [guarded sysroot handoff](guarded-sysroots.md) addresses repeated
 runtime byte hashing in unchanged commands. It uses a continuously guarded
 local daemon owner and an overlapping original caller owner; it does not copy
 compiled artifacts or proof receipts into a cold target. Missing, busy, invalid
@@ -19,8 +19,10 @@ cold/warm acceptance and measured savings are still pending.
 
 A newly isolated target has no ordinary compiled dependency artifacts or proof
 receipts. Even a one-function project can first compile its macro dependency
-chain and verify vstd. Different projects and different engine/function/flag or
-runtime contexts currently own different targets. Native CI's retained cold
+chain and verify vstd. Different projects and different engine, flag or runtime identities own
+separate compiler targets. Focus selectors within the same compiler-artifact
+family can share ordinary dependencies; their proof contexts and receipts stay
+separate. Native CI's retained cold
 example required two verifier invocations for vstd and the requested demo; its
 next unchanged run reused both reports with zero invocations. The
 [local timeout comparison](validation/m7-managed-cold-777-vs-f94.md) records a
@@ -125,13 +127,13 @@ and 38-control solver suite. It is a build scope only; cold-start measurements
 retain their original deadlines and remain separate from source/runtime and
 reader qualification.
 
-The retained daemon Result path has a separate output-owner integration candidate
+The current daemon Result path enables an optional background output-owner service
 under [ADR0035](decisions/0035-guarded-retained-output-digests.md). It concerns
 persisted stdout bytes, not verification or input Currentness. One background
 constructor may establish continuous output coverage within the existing frame
 budget; foreground requests use that coverage only around their independent
 input/runtime freshness check. Missing, busy, refused or invalid coverage retains
-the full read/hash fallback. The candidate passed
+the full read/hash fallback. The integration passed
 [35 affected native source controls and strict checks](validation/m7-guarded-output-source-controls.md).
-Installed activation and the original live reader gate remain pending; these
+A newly built installed product and the original live reader gate remain pending; these
 controls establish no latency or reuse benchmark.
