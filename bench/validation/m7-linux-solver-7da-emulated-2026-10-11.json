@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "source_commit": "7da9579f4aeebafdecf977aeb97a8daf8023740f",
+  "source_archive_sha256": "728118895837984fb2252aacf41db8479c63e1704b2acfe53b2772561ed3944f",
+  "scope": "Independent complete original pinned solver and fault-injection suite after the failed workspace gate",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; shared development load",
+  "command": "bash ci/run.sh solver",
+  "independent_test_threads": 1,
+  "internal_fixture_concurrency": "unchanged",
+  "exit_code": 0,
+  "elapsed_seconds": 167.171805375,
+  "tests": {
+    "run": 39,
+    "passed": 39,
+    "failed": 0,
+    "skipped": 522,
+    "nextest_seconds": 155.839
+  },
+  "complete_gate": false,
+  "m7_accepted": false,
+  "limitations": [
+    "Separate workspace gate fails two unchanged HTTP lookup assertions; this independent solver pass does not repair it.",
+    "Original managed scenario fails the first cold 240-second deadline; this scope does not establish its complete cause.",
+    "The corrected byte-environment selector is absent from this frozen source.",
+    "No source qualification, complete standard corpus, real-reader latency or repair-loop performance follows from this suite."
+  ],
+  "raw_log": {
+    "bytes": 4471,
+    "sha256": "3d8588f51b7c2223bbc421e73cb584237292b54ec88a1333aeb9a32caf901edb"
+  },
+  "terminal_record": {
+    "bytes": 325,
+    "sha256": "458e76ba9f08cf39416b873f3900056887fd1c332640325da09f5f95a1899f16"
+  }
+}
