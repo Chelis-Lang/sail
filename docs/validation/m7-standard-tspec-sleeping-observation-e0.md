@@ -1,7 +1,15 @@
-# Nonterminal Verismo tspec process observation
+# Verismo tspec sleeping stage and original unit timeout
 
-The new complete default standard attempt has 155 of 159 units classified Same
-at this observation. Its `verismo_tspec` plain arm is still running. This is
+The plain `verismo_tspec` arm subsequently reached its original 3,600-second
+deadline. The harness classified it as infrastructure error `SAIL3022` and
+killed its process group. Its retained stdout, stderr and time files are empty;
+the Sail arm was not started. A bounded scan found six remaining members of the
+owned process group, all dead zombies awaiting reaping. The complete attempt
+continues with 155 Same and one infrastructure error; this is a unit outcome,
+not the full-suite terminal result.
+
+The new complete default standard attempt had 155 of 159 units classified Same
+at the earlier observation below. Its `verismo_tspec` plain arm was running. This is
 process-stage evidence, not a terminal conformance result or an identified cause.
 The [machine record](m7-standard-tspec-sleeping-observation-e0.json) binds the
 frozen executable, stock driver/Z3, source and observer identities.
@@ -31,7 +39,7 @@ These observations establish a sleeping pipeline. They do not identify the
 responsible lock, prove a deadlock, or establish emulation or overlapping work
 as its cause. No debugger attachment, pipe consumption, retry, source change,
 solver flag change or deadline change was made. The original 3,600-second unit
-limit and one-job full-suite controller continue unchanged.
+limit was unchanged, and the one-job full-suite controller continues unchanged.
 
 The bounded raw snapshot is retained outside the corpus scratch and copied to
 the host with matching SHA-256 and length. It is supplementary to the
