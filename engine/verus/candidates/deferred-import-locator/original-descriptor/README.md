@@ -5,7 +5,7 @@ selected source runtime and frozen 886b/73bd candidate remain unchanged.
 Actual pinned API controls pass 29/29 on the host and 30/30 on Linux, including
 the actual sealed-vstd metadata fixture. Actual Linux source controls pass
 39/39 VIR and 64/64 driver tests, with both all-targets Clippy checks under
-`-D warnings` passing. Runtime build, proof and qualification remain pending. The original
+`-D warnings` passing. The ordinary runtime build and fresh vstd proof pass; full qualification remains pending. The original
 fourteen-stage qualification failure and its separate
 bounded trace remain failed and diagnostic evidence respectively.
 
@@ -115,8 +115,12 @@ exact cleanup recovery. The new control target is protected for a future seed.
 The [ordinary build plan](ordinary-build-plan.json) freezes a private builder
 archive with only its embedded interactive patch replaced, prospective variant
 `0bbc7d378544f972`, and compiler-only seed exclusions. The granted ordinary
-build is running, with [launch evidence](ordinary-build-launch.json); a fresh
-vstd proof and complete new thirteen-artifact manifest remain pending.
+build passed, with [launch evidence](ordinary-build-launch.json),
+[terminal evidence](ordinary-build-pass.json) and the
+[complete runtime manifest](ordinary-runtime-manifest.json). Fresh vstd verified
+2,060 with zero errors; all thirteen runtime bytes, seven source files, source
+lock and prior runtime seals pass closure. Whole build elapsed 749.928 seconds
+in this recorded shared execution; this is not performance acceptance.
 A source-control pass does not transfer any old proof/runtime authority or
 establish product qualification. Original fourteen-stage/600-second strict
 qualification remains a separate required grant and run after the new seal.
@@ -130,3 +134,11 @@ selectors are removed as before; dormant trace is not enabled. This is only a
 prepared controller: it cannot run until the new runtime manifest is closed,
 reviewed and separately granted. Its primary result must be retained before
 independent post-run runtime/source/lock/actor closure, including on failure.
+
+Ordinary build closure also records both-container live command/cwd/fd audits
+with no holders or unreadable live processes, the unchanged stock launcher/
+driver/solver identities, and the private builder executable. The original
+qualification has not launched. The preparation ownership proof and source
+controls do not replace genuine prior-revision reuse, full same-input checks
+or the unchanged raw stock diagnostic oracle. The selected runtime stays
+unchanged while this new manifest awaits independent qualification review.
