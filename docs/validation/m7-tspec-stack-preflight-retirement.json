@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "scope": "Standalone debugger scratch archival before exact owned-container retirement; no proof actor",
+  "all5_failed_controls_raw_hashes_checked": true,
+  "all_archived_members_rechecked": true,
+  "archive_name": "standalone-debugger-evidence.tar.gz",
+  "archive_sha256": "ebcbe2a066a3a1e60e856dd0b355d6f1138c95955a1369b25aea5c7daa6b9c7a",
+  "archive_bytes": 18112,
+  "inventory": {
+    "compile.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "compile.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "fixture": {
+      "bytes": 21584,
+      "sha256": "86c30903b6bcea4fbe348f8e35749491c49e44138b0bd12450753241c9efcde6"
+    },
+    "fixture-child": {
+      "bytes": 22144,
+      "sha256": "c85297b3321d48f93fc7fe9686ff048a85cdabf3a637303213aae0cb724165e5"
+    },
+    "fixture-child.c": {
+      "bytes": 1522,
+      "sha256": "d489ba55c63f3244edd7f04166b54cdda5062ea2898379fda441e40b59228b33"
+    },
+    "fixture.c": {
+      "bytes": 1180,
+      "sha256": "ebe31bc6c5a180792c16aca8a58a69375cc38f290b3797137a093b1654bc2b2f"
+    },
+    "fixture.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "fixture.stdout": {
+      "bytes": 6,
+      "sha256": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5"
+    },
+    "gdb.stdout": {
+      "bytes": 205,
+      "sha256": "acded96d7844856d36831884ea24cdfe125bf1db5409b04d02380d9396610326"
+    },
+    "package-install.stderr": {
+      "bytes": 74,
+      "sha256": "f77216c41aadf6c667ac1a602069951966cea350daab793ffe11ae0de1225ddc"
+    },
+    "package-install.stdout": {
+      "bytes": 7424,
+      "sha256": "3da7821f51c30efc68ae12cf4802ee29666e194d2344b2cf94567d65a027b48e"
+    },
+    "preflight.json": {
+      "bytes": 1982,
+      "sha256": "236b95cfaa24c52f9005ef512419ba2b6db82ec6495c2bec36b687c57978cf47"
+    },
+    "remote/fixture.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "remote/fixture.stdout": {
+      "bytes": 6,
+      "sha256": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5"
+    },
+    "remote/gdb.stdout": {
+      "bytes": 846,
+      "sha256": "6e9f3d089a29a8e8f625fb97750346112cf7b7d1f5537d9da571ed1b7c0b91a6"
+    },
+    "remote/preflight.json": {
+      "bytes": 1442,
+      "sha256": "4f2fa1d493c23da96411bd588aabae04933dfb16dffcc0e836328adc52a043b3"
+    },
+    "remote-cfi/fixture.maps": {
+      "bytes": 3113,
+      "sha256": "b66694975df5048abe1c870ac83d2ad0ff4559ee2ba80937bb1f68e67d52a964"
+    },
+    "remote-cfi/fixture.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "remote-cfi/fixture.stdout": {
+      "bytes": 6,
+      "sha256": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5"
+    },
+    "remote-cfi/gdb.stdout": {
+      "bytes": 1223,
+      "sha256": "91a8aa4d02a3406a7816f70a1f97d10500e9318567bb3e0de363716b3e9a456c"
+    },
+    "remote-cfi/preflight.json": {
+      "bytes": 2039,
+      "sha256": "67cdeb6077c6f4c5aae8934b3b9cbcd3f030710a294b8d5c1f9e870201061964"
+    },
+    "remote-child/fixture.maps": {
+      "bytes": 3143,
+      "sha256": "cdd239f510d2fbd68d57d9d1394f4b67a8b830086844649755bfa9a8dc8c80de"
+    },
+    "remote-child/fixture.stderr": {
+      "bytes": 78,
+      "sha256": "91384627ef3571c7f9447c219a12faa3abac8c5d19e27caa3f5bf4997bd794a8"
+    },
+    "remote-child/fixture.stdout": {
+      "bytes": 6,
+      "sha256": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5"
+    },
+    "remote-child/gdb.stdout": {
+      "bytes": 1253,
+      "sha256": "c65339486595943c4a82369dba1ceaa6611dc0af55d5640fcea97efc90de5961"
+    },
+    "remote-child/preflight.json": {
+      "bytes": 2049,
+      "sha256": "d8d2ffc4784dbc92cc36340b58ad6fbf84918d03716ffcb53773acc6fb6c40dc"
+    },
+    "remote-kept/fixture.maps": {
+      "bytes": 3143,
+      "sha256": "3d0c355711daa0e4572c0b1fce2779f4c0d159a4c02f516afacba34f733e5555"
+    },
+    "remote-kept/gdb.stdout": {
+      "bytes": 791,
+      "sha256": "8ea2831ba80ff412bc41577065eb79bb4dedf1683e26234f216e03b61cab3c84"
+    },
+    "remote-kept/preflight.json": {
+      "bytes": 1777,
+      "sha256": "de420f814ee5fa6c0071290e2ffec59c532218c5e8bf459e54084ac0d9b77a5b"
+    },
+    "run-preflight.py": {
+      "bytes": 4905,
+      "sha256": "dc224b61c550861aa2f9abd7fad9a87121283fbaf805b37b86d8f0669f3f88ef"
+    },
+    "run-remote-cfi-preflight.py": {
+      "bytes": 5207,
+      "sha256": "27f1f0a9647f6db04b9a149f6452f02c2c5b17b4ece3c46fe08d74fe9b4e4f98"
+    },
+    "run-remote-child-preflight.py": {
+      "bytes": 5217,
+      "sha256": "16c72d5f8e81bd76b5c43f01cc1f5075766f6beb51cc6570f443bd862e37eccc"
+    },
+    "run-remote-kept-preflight.py": {
+      "bytes": 5367,
+      "sha256": "64c70f80c76288603e2762ac3f10d4dcba19beacf3088a586294436ae75fdb97"
+    },
+    "run-remote-preflight.py": {
+      "bytes": 4628,
+      "sha256": "b34cefcbfc718f2d58861eb3944f30a42f043bc0014b4a2da9515864e1b7c90c"
+    }
+  },
+  "container_id": "685c5c1cd7942f9075e89012b7a64dc03208b1a1f404a2bc852bf783c67b8b91",
+  "cleanup_pending": true,
+  "exact_container_removed": true,
+  "container_writable_bytes_before": 84234240,
+  "zero_owned_actors_before_stop": true,
+  "other_containers_untouched": true,
+  "host_scratch_removed": false,
+  "host_scratch_retention_reason": "Docker VM retained read-only mount-cache descriptors after exact container removal; no VM restart or deletion behind those holders",
+  "host_holder_pid": 7432
+}
