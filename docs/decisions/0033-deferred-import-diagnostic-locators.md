@@ -1,6 +1,6 @@
 # 0033: Exact deferred imported diagnostic locators
 
-- **Status:** proposed; executable candidate qualification pending
+- **Status:** accepted for the selected missing-original-range/retirement correction on the in-progress M7 branch; product acceptance pending
 - **Date:** 2026-10-11
 
 ## Context
@@ -202,3 +202,22 @@ proposed/unselected for product delivery: the original thirteen-stage source
 qualification also passed strict stock diagnostics, same-input lowering and
 genuine previous-revision checked reuse. Rebuilt-product and performance
 acceptance remain separate before runtime selection.
+
+## Selection after complete source qualification
+
+The combined missing-original-range role, valid memo handling and broker
+retirement correction now pass the original thirteen-stage source qualification.
+The unchanged fourteen-script inventory, exact stock diagnostics and same-input
+ordered solver writes remain bound. Genuine previous-revision focused reuse and
+all three full HumanEval revisions pass. Independent review checks source, lock,
+runtime and script bytes; local packaging and fresh installation preserve every
+runtime byte and mode.
+
+Select that exact patch together with its prebuilt Linux artifact pin on the M7
+branch. The earlier unselected proposals and failed qualifications remain
+retained history. This does not select a separately proposed authority or change
+stock diagnostic loading. Rebuilt Sail CLI/MCP integration, current-product
+conformance, live reader latency and the complete repair performance catalogues
+remain required before M7 acceptance. See
+[the qualification](../../engine/verus/qualification-linux.json) and
+[delivery](../../bench/validation/m7-linux-engine-aaa3b2e4-delivery-2026-10-11.json).

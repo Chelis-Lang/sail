@@ -199,15 +199,21 @@ Final performance acceptance uses the frozen repair catalogue and the complete
 focused-plus-full loop, including input/runtime validation and late compiler
 checks. A source build or cache hit count alone is not performance acceptance.
 
-The source regression `cargo test --release -p vir --lib sail_preparation_tests`
-checks 5,000 small typed lookup entries against their exact reference binary
-encoding; it fails with the former 4 KiB allocation. It is a local source test,
-not a CI source build. Current host and Linux qualification JSON records the
-corrected variant. Earlier immutable qualification is retained under
-`qualifications/`. The real human-eval-verus oracle separately records two
-unchanged fresh callbacks with exact full SMT inputs; its edited-source failure
-is retained with stock-to-stock evidence of VI-0001. This does not establish
-real-project reuse across edits or satisfy product performance acceptance.
+The selected Linux source runtime has passed the original thirteen-stage
+qualification, recorded in [qualification-linux.json](qualification-linux.json).
+It includes genuine previous-revision focused reuse, three complete HumanEval
+revisions, cached-versus-fresh lowering from the same compiler input, exact stock
+verdicts and diagnostics, cancellation/restart, and all 152 library controls.
+The preceding 150 source controls and both strict checks also pass. Removing the
+actual missing-range memo bypass makes its unchanged regression fail.
+Independent stock transcript instability remains separately recorded; it grants
+no cached-versus-fresh normalization.
+
+Prepared ownership remains conservatively admitted within the 512 MiB ceiling;
+unsupported imported metadata falls back to fresh lowering. The source gate and
+its memory controls do not establish process RSS, live-reader latency or repair
+speedup. Earlier selected qualifications and candidate failures remain immutable
+under `qualifications/` and `candidates/`.
 
 ## Pinned Linux runtime for CI
 
@@ -218,21 +224,22 @@ uses a BuildKit secret for the private download; it does not retain that
 credential or build Verus from source. The optional runtime is exercised by
 the real repair CLI/MCP end-to-end phase alongside the stock checks.
 
-`qualification-linux.json` records the corrected source differential checks in a
-local Linux amd64 container under emulation. It covers eleven stock-equivalent
-fixtures, eight prepared-reuse revisions, cancellation/restart, normal driver
-termination, worker-span provenance and preparation encoding. It does
-not substitute for the frozen whole-loop product performance acceptance.
+The committed patch and runtime pin now select the missing-original-range and
+broker-retirement correction. Its ordinary build verified all 2,060 vstd
+obligations, and local packaging plus a fresh install matched all thirteen
+runtime files byte for byte and mode for mode. See the
+[delivery record](../../bench/validation/m7-linux-engine-aaa3b2e4-delivery-2026-10-11.json).
+CI downloads these exact prebuilt bytes; it never compiles the engine.
+
+This selection is on the in-progress M7 branch. Rebuilt Sail CLI/MCP repair
+checks, complete current-product corpus conformance, established reader latency
+and the frozen HumanEval/Vest repair benchmarks remain required. The private
+prerelease artifact is a runtime prerequisite, not M7 product acceptance.
 
 Earlier imported-authority candidates and their distinct failures remain in
 [the workstream history](../../docs/validation/m7-workstream-history-cc0898e.md).
-The current corrective source work includes an unselected
-[missing-original-range candidate](candidates/preparation-namespace/no-original-range/README.md).
-It preserves the current stock resolver's exact absence result for a complete,
-known imported metadata namespace and keeps current raw-span rebinding mandatory.
-Its corrected source controls pass all 150 tests and both strict compiler checks;
-the earlier fixture failures remain retained. The actual memo-bypass sensitivity,
-ordinary fresh-vstd build and original thirteen-stage source qualification pass,
-including genuine prior-revision focused reuse and full HumanEval same-input
-checks. Artifact delivery and rebuilt-product acceptance remain separate; the
-selected runtime is unchanged.
+The [candidate history](candidates/preparation-namespace/no-original-range/README.md)
+retains the initial compile failure, invalid test fixture, zero-hit predecessor
+and actual memo-bypass sensitivity. The selected role preserves the current
+stock resolver's exact absence result for a complete known imported metadata
+namespace and always requires exact current raw-span rebinding.

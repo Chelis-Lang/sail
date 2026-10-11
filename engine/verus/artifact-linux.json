@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "variant": "426d8b01e7ffb910a36c15e1f870ff985bb61eef-bfc6b239222f190b",
+  "variant": "426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06",
   "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
   "rust_toolchain": "1.98.1",
   "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
-  "patch_sha256": "b34639a55cd79475f0f67e0a55ba5b74732448abd71f93f51a396f516890a344",
+  "patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
   "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "archive_sha256": "142478f52e42234e32cbbde4760364744aa2f58ce5a850cbb4763f6069427304",
-  "asset_id": 628264334,
-  "release_tag": "engine-runtime-b34639a5-linux"
+  "archive_sha256": "41d4996ecd903079df8a3fe3c970e1927b91b8b5ec6a1e45fac640b2db9fa462",
+  "asset_id": 630780761,
+  "release_tag": "engine-runtime-aaa3b2e4-linux"
 }

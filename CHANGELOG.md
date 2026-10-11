@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Select the qualified optional source engine with conservative imported-range
+  absence handling and preparation retirement acknowledgement. Its original
+  thirteen-stage source qualification passes, including genuine reuse across
+  edits and three complete HumanEval revisions. Publish a digest-pinned prebuilt
+  Linux runtime for CI; M7 product integration and performance remain pending.
+
 - Optimize Linux managed input path checks using owned descriptors, with exact
   pathname/inode checks and the existing conservative fallback. Reader latency
   acceptance remains under validation.

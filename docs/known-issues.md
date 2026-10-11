@@ -44,12 +44,13 @@ fails the unchanged assertion with the bypass removed and passes after exact
 source restoration. The separately reviewed
 [ordinary runtime build](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/ordinary/ordinary-build-result.json)
 passes with fresh verification of all 2,060 vstd obligations and all 13 runtime
-artifacts sealed. Its original thirteen-stage qualification is now running.
-No candidate
-is selected; the final four
-of thirteen stage records were not attempted.
-The fourteen-script inventory is preserved. Stock diagnostic routing and
-parallelism remain unchanged; this candidate is unselected. See the
+artifacts sealed. Its original thirteen-stage qualification now passes, including
+genuine previous-revision focus and all three full HumanEval revisions. All
+fourteen frozen scripts and original checks remain unchanged. The correction is
+selected together with its independently verified prebuilt runtime pin on the
+in-progress branch; rebuilt-product integration, reader latency and repair
+performance remain open. Earlier failed qualifications remain failed. Stock
+diagnostic routing and parallelism remain unchanged. See the
 [exact failure audit](validation/m7-preparation-namespace-qualification-independent-audit.md). See the
 [retained qualification](../engine/verus/candidates/deferred-import-locator/late-handoff/qualification-failure.json).
 
