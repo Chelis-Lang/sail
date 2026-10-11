@@ -36,3 +36,6 @@ pub mod remote;
 
 #[cfg(unix)]
 mod proof_journal;
+
+#[cfg(unix)]
+pub mod sysroot;

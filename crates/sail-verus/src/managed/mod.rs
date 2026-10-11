@@ -23,6 +23,7 @@ mod retained;
 mod runner;
 mod source_inputs;
 mod sysroot;
+mod sysroot_cache;
 
 pub(crate) use files::{digest, event, file_digest, json};
 pub use freshness::FreshnessIndex;
@@ -30,6 +31,7 @@ pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
 pub(crate) use runner::run_engine;
 pub use runner::{Config, refresh_context, refresh_result, run};
+pub use sysroot_cache::SysrootIndex;
 
 pub(crate) use receipts::complete as receipt_complete;
 
