@@ -226,3 +226,12 @@ match and publish no entries. Quiet-session tests still require genuine hits.
 Abnormal solver termination discards every staged reply, including complete
 replies before the fault. Earlier prefix retention was a cache benefit, not a
 correctness requirement.
+
+
+The cleanup-first correction has [actual focused controls](validation/m7-fault-session-cleanup-controls.md):
+two lifecycle cases pass, the blocking-snapshot counterfactual fails as expected,
+and the original GC/clear case passes once in 13.902 seconds with its unchanged
+CI profile. Affected all-target strict Clippy passes. The earlier complete
+40/41 failure, first strict failure and stale-restored-artifact setup failure
+remain separate. Current post-reap diagnostics emit fixed cleanup metadata only;
+live proc attribution requires a separately birth-anchored observer.
