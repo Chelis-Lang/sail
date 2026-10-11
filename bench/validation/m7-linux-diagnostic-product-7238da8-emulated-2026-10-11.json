@@ -1,0 +1,69 @@
+{
+  "source_commit": "7238da8406cd3a5d62b8c378949d36832446aed8",
+  "source_archive_sha256": "2c30f98ffdf5aae5881014801ac892cd1327516e17cdcb4e791650debf427096",
+  "artifacts": {
+    "sail": {
+      "bytes": 74664464,
+      "sha256": "731f581c95c0eb6d436bb045f177a6deaf9a3298faebdb7dfdcba9dad8335289"
+    },
+    "sail-z3": {
+      "bytes": 11000912,
+      "sha256": "ddfa36ab78d36d8e7fbfaf7740f19bb7c63a6bab9fa36f39a3e1bf82f3049636"
+    }
+  },
+  "installer_sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0",
+  "installation_only": true,
+  "scope": "Diagnostic only; strict affected checks and original sysroot controls pass. Whole current product/source/reader qualification remains incomplete.",
+  "build_exit_code": 0,
+  "cargo_reported_build_seconds": 372,
+  "raw_build_log": {
+    "bytes": 1208,
+    "sha256": "db139ceb9ae9e5f1724ef680cff51b15c42bc5bb300f9d3404f5211faced0613"
+  },
+  "external_build_elapsed_seconds": null,
+  "external_timing_note": "No encompassing monotonic timer was retained; Cargo reported 6m12s.",
+  "installation_checks": {
+    "handoff": {
+      "record_sha256": "770d4faa0c63098535b49ed74b4b84ff661194273d1a678aca7152d67db3700d",
+      "authority": "installation-only",
+      "credentials": {
+        "cap_eff": "00000000a82425fb",
+        "cap_lease": false,
+        "fsuid": 0,
+        "gids": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uids": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "acceptance": {
+      "record_sha256": "a6f2b06b1d1ef2827a63f8ca7b013f74413e083110ccd6567372f1d479989e8e",
+      "authority": "installation-only",
+      "credentials": {
+        "cap_eff": "00000000a80425fb",
+        "cap_lease": false,
+        "fsuid": 0,
+        "gids": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uids": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  }
+}

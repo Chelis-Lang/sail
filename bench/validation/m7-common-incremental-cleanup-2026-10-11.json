@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "date": "2026-10-11",
+  "scope": "Closed common debug incremental compiler cache only",
+  "removed_files": 79168,
+  "removed_allocated_bytes": 12233867264,
+  "removed_logical_bytes": 12083473585,
+  "both_container_checks": {
+    "sail-m7-handoff-validation": {
+      "holders": 0,
+      "unreadable_live": 0
+    },
+    "sail-m7-acceptance": {
+      "holders": 0,
+      "unreadable_live": 0
+    }
+  },
+  "preserved": [
+    "debug and release binaries",
+    "dependency artifacts and fingerprints",
+    "source runtimes and seals",
+    "raw test/build/proof evidence",
+    "other projects"
+  ],
+  "execution": "Linux amd64 Docker emulation on arm64 macOS",
+  "raw_retirement_sha256": "042376f8f465c5888d5a14238b8affdd59fc8eb6d34f2fbd128b0e247d1bb4dd"
+}
