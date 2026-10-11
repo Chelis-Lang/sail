@@ -43,10 +43,17 @@ For current experimental repair use:
 - Full-result reader latency and real-project repair speed remain unqualified.
   Original workflow scopes are retained with their original bounds; use the
   [roadmap](ROADMAP.md) for current acceptance status.
-- The complete gate currently has an unresolved shared HTTP-reader deadline
-  failure. The async transport candidate passed affected controls but regressed
-  complete-operation cost and was rejected; no increased timeout or weakened
-  hit assertion is selected.
+- The last complete gate fails the shared HTTP-reader deadline. A small exact
+  body optimization is now selected after 38 affected tests, strict checks and
+  the original concurrent-reader case pass. Its complete workspace run is next;
+  component success does not close the earlier whole-gate failure. The async
+  transport candidate remains rejected after its measured regression. See
+  [HTTP validation](validation/m7-http-small-known-body-actual-controls.md).
+- The selected result-output change reduces validation lock contention while
+  preserving independent input and output checks. Its component p95 improves
+  from 19.366 to 12.713 ms, but the original complete Result census still fails
+  at 343.142 ms. The new component result excludes socket transfer and client
+  JSON parsing; the full reader workload must be rerun.
 
 The original stock Verismo tspec deadline failure is now tracked locally as
 [VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md). Sleeping compiler

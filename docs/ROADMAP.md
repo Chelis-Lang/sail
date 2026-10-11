@@ -110,18 +110,23 @@ candidate.
 
 ### Current state
 
+Closed host build targets were [losslessly archived](validation/m7-closed-host-targets-20261011.md), retaining test images and raw logs while reducing their logical storage by about 805 MB. Active Linux builds and runtimes are preserved.
+
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented. Stock verification stays
 the default. Start with [the repair walkthrough](proof-repair-walkthrough.md),
 [the MCP guide](mcp.md) or [the SDK contract](result-client.md).
 
-The current implementation adds two core changes. Compatible repair selectors
-share ordinary Cargo dependency artifacts, while proof contexts and full
-validation remain independent. Validated build-script observations retain
-fresh input/output checks across that compiler family. The daemon constructs
-retained-result output owners through a bounded background service; foreground
-reads can fall back to full byte validation. These are implemented changes,
-not measured real-project speedups.
+Compatible repair selectors now share ordinary Cargo dependency artifacts,
+while proof contexts and full validation remain independent. Validated
+build-script observations retain fresh input/output checks across that compiler
+family. The daemon constructs retained-result output owners through a bounded
+background service; foreground reads can fall back to full byte validation.
+The selected output-owner overlap and small exact HTTP-body changes have passed
+component validation. Preserving observers across unchanged metadata publication
+is undergoing its Linux controls. The next execution is the combined workspace
+and solver gate, then a sealed product run of the original repair and full-reader
+workloads. These changes do not yet establish real-project speedups.
 The [rebuilt combined release](../bench/validation/m7-linux-combined-product-a9609e9-emulated-2026-10-11.json)
 compiles and installs as private byte-identical copies. Its production source
 matches the earlier combined gate's source, whose HTTP deadline check fails;
