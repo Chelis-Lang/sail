@@ -1,39 +1,43 @@
 {
-  "actual_run": "pending independent code review; not reader acceptance",
+  "actual_run": "One reviewed run authorized; launch/terminal evidence recorded separately; no reader acceptance",
   "controller": {
-    "bytes": 22364,
-    "sha256": "fafa3b128bd515b820c63432358ad6b482fd8ef9f76ddd66c2a482c3ab9cb389"
+    "bytes": 23003,
+    "sha256": "67d55ae4c7fbb831fcc33e1a15fad237c5635cc8dc3b9467029a2905be4025f6"
   },
   "daemon_launched": false,
   "deadline_s": 600,
   "files": {
     "argv.json": {
-      "bytes": 160,
-      "sha256": "f47f9400958feeb89e457ebdc8fff18bc4a90b8f6a9ac81de7cef7d3264b3198"
+      "bytes": 164,
+      "sha256": "cf5937cdc39ac2a9359baea6ce8a6cfcdc686cce5023d93497e514a184f20196"
     },
     "config.json": {
-      "bytes": 268,
-      "sha256": "9d5720822eeff0f985044b45371a7b08326b73e3413d412d02c63efeb1776aae"
+      "bytes": 270,
+      "sha256": "37b84669d9230fa3cb6b1af8fa6a8b2d1f2f37c42477571761bff5d5bab06f97"
     },
     "execution.json": {
-      "bytes": 1674,
-      "sha256": "1e558158b46b4891d71953c00cf254850fdfba07eef12ea584307488337f5c6c"
+      "bytes": 1678,
+      "sha256": "7e541b1c284ce024b11e1d2f867fd470739b1011bdbebe853225d4e89fd9e459"
     },
     "m7-ordinary-wait-diagnostic.py": {
-      "bytes": 22364,
-      "sha256": "fafa3b128bd515b820c63432358ad6b482fd8ef9f76ddd66c2a482c3ab9cb389"
+      "bytes": 23003,
+      "sha256": "67d55ae4c7fbb831fcc33e1a15fad237c5635cc8dc3b9467029a2905be4025f6"
     },
     "static-freeze.json": {
       "bytes": 59754,
-      "sha256": "650148a172183160d75c7798b64fb3293d3e5e19640801b07d8c0f43274c68af"
+      "sha256": "c8e96b836dac1b442cca588d7800202da1229088b118d0f058807c898e67afc1"
     },
     "test-m7-ordinary-wait-diagnostic.py": {
-      "bytes": 5008,
-      "sha256": "5d979a30de0f1b4fd73c32e5bdfbae2fbdbf7a10b1d1c5c5fd38b5336fc00439"
+      "bytes": 5837,
+      "sha256": "37ec349d52c4274757a1d049a7ecded0d5a86b5414653bbde116cf84128466bc"
     }
   },
   "force": "1",
-  "host_pure_controls": 8,
+  "host_pure_controls": 10,
+  "inherited_sail_allowlist": [
+    "SAIL_TEST_Z3",
+    "SAIL_VERUS_HOME"
+  ],
   "initial_pure_control_failure": {
     "cause": "Path() truthiness incorrectly treated root as nonempty, so excluded compiler target file was copied in synthetic fixture.",
     "fixed_before_native_prepare": true,
@@ -59,17 +63,23 @@
   ],
   "input_environment_sha256": "f001d0dd5bf6d89f4443076ec8481c426d3a6220330cc8d9f2cf6a854a50ddc2",
   "kind": "focused-ordinary-static-only",
-  "linux_pure_controls": 8,
+  "linux_pure_controls": 10,
   "manifest": {
     "bytes": 2107,
     "sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
   },
   "original_context": "4bc68866277c17e21676a56e3eb6ce912582a6752da73feb8049763196203ad5",
   "original_revision": "821414360c2a5f474ff8cb6124db72606ab68366c26a240771c0b4a3cd24b947",
+  "original_static_preparation_superseded": {
+    "controller_sha256": "fafa3b128bd515b820c63432358ad6b482fd8ef9f76ddd66c2a482c3ab9cb389",
+    "proof_launched": false,
+    "reason": "Closed late-success and inherited-selector review gaps before execution."
+  },
   "original_summary": {
     "bytes": 117276,
     "sha256": "cb13504ab47f3d13f084d2c69f300c3f0194475d6eab2821437b7ccdf4acda6e"
   },
+  "post_wait_absolute_deadline_check": true,
   "prior_context_files": {
     "ordinary": {
       "build-inputs.json": {
@@ -360,7 +370,7 @@
     }
   },
   "wrapper_freeze": {
-    "bytes": 1227,
-    "sha256": "26fffc3d55101bbafc679a49c7393c18502005e29c18c0e22be5cb28fe32cfc9"
+    "bytes": 1241,
+    "sha256": "80e30804c1258c74db0aa39cd0721bf849597086c6d329973af430f8317141a3"
   }
 }

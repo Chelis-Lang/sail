@@ -22,6 +22,12 @@ class Controls(unittest.TestCase):
         self.assertEqual(DIAG.input_environment(base), DIAG.input_environment(observed))
         self.assertNotEqual(DIAG.input_environment(base), DIAG.input_environment(dict(base, PATH="/other")))
 
+    def test_unapproved_inherited_engine_and_portfolio_selectors_refused(self):
+        DIAG.validate_inherited_environment({"PATH": "/frozen", "SAIL_TEST_Z3": "/pinned", "SAIL_VERUS_HOME": "/stock"})
+        for name in ("SAIL_ENGINE", "SAIL_ENGINE_IMPORT_TRACE", "SAIL_ENGINE_TARGET", "SAIL_ENGINE_BUILD", "SAIL_PORTFOLIO_TARGET", "SAIL_SOLVER_MODE", "SAIL_DAEMON_SOCKET"):
+            with self.assertRaises(ValueError):
+                DIAG.validate_inherited_environment({name: ""})
+
     def test_snapshot_schedule_caps_and_retains_original_deadline(self):
         seen = set()
         labels = []
@@ -70,6 +76,12 @@ class Controls(unittest.TestCase):
             self.assertEqual(set(rows), {"receipts/exact.json"})
             self.assertEqual((destination / "receipts/exact.json").read_bytes(), b'{"seal":"exact"}')
             self.assertFalse((destination / "target").exists())
+
+    def test_late_completion_is_refused_even_without_timer_signal(self):
+        with patch.object(DIAG.time, "monotonic", return_value=700):
+            self.assertTrue(DIAG.deadline_expired(100, False))
+            self.assertFalse(DIAG.deadline_expired(100.001, False))
+            self.assertTrue(DIAG.deadline_expired(100.001, True))
 
     def test_absolute_deadline_runs_independently_of_observation(self):
         class Actor:

@@ -63,9 +63,22 @@ def load(name, path):
     return module
 
 
+def validate_inherited_environment(environment):
+    """Only the two baseline container selectors may be inherited."""
+    unexpected = sorted(key for key in environment if key.startswith("SAIL_")
+                        and key not in {"SAIL_TEST_Z3", "SAIL_VERUS_HOME"})
+    if unexpected:
+        raise ValueError("unapproved inherited Sail selector: " + ", ".join(unexpected))
+
+
 def input_environment(environment):
     """Match the frozen runner's selector without exporting private values."""
     return {k: v for k, v in environment.items() if k not in EXCLUDED_ENV and not k.startswith("SAIL_MANAGED_")}
+
+
+def deadline_expired(started, signalled):
+    """A late observed completion never escapes the original absolute clock."""
+    return signalled or time.monotonic() - started >= 600
 
 
 def observation_due(elapsed, seen, context_ready, target_started):
@@ -187,6 +200,7 @@ def prepare(args):
         raise ValueError("original immutable input seals differ")
     if (original / "cache.sock").exists() or (original / "cache.sock").is_symlink():
         raise ValueError("original endpoint still present")
+    validate_inherited_environment(os.environ)
     env = dict(os.environ, SAIL_CACHE_DIR=str(original / "cache"),
                SAIL_DAEMON_SOCKET=str(original / "cache.sock"), SAIL_MANAGED_FORCE="1",
                CARGO_TARGET_DIR=str(baseline / "target"),
@@ -339,7 +353,7 @@ def run(args):
                         if max((execution / "stdout").stat().st_size, (execution / "stderr").stat().st_size) > 32 * 1024 * 1024:
                             raise ValueError("partial stream size limit")
                         time.sleep(min(.02, max(0, 600 - (time.monotonic() - started))))
-                    if deadline_owner.expired.is_set():
+                    if deadline_expired(started, deadline_owner.expired.is_set()):
                         timed_out = True
                         raise subprocess.TimeoutExpired(config["command"], 600)
                     if actor.returncode != 0:
