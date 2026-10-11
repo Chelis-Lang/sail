@@ -1,0 +1,98 @@
+--- a/crates/sail-daemon/src/shared.rs
++++ b/crates/sail-daemon/src/shared.rs
+@@ -148,7 +148,7 @@
+ }
+ 
+ #[cfg(test)]
+-fn thread_cpu_ticks() -> Option<u64> {
++pub(crate) fn thread_cpu_ticks() -> Option<u64> {
+     use std::io::Read as _;
+     let file = std::fs::File::open("/proc/thread-self/stat").ok()?;
+     let mut bytes = Vec::with_capacity(512);
+--- a/crates/sail-daemon/src/remote.rs
++++ b/crates/sail-daemon/src/remote.rs
+@@ -165,7 +165,20 @@
+     unavailable: AtomicU64,
+     last: Mutex<Option<String>>,
+     #[cfg(test)]
++    request_cpu: Mutex<Vec<(&'static str, u128, Option<u64>)>>,
++    #[cfg(test)]
+     phases: Mutex<Vec<(&'static str, std::time::Instant)>>,
++}
++
++#[cfg(test)]
++impl Drop for Metrics {
++    fn drop(&mut self) {
++        // Emit only after the original fixture releases its transport; no
++        // diagnostic output is added to the bounded request/publication path.
++        if let Ok(spans) = self.request_cpu.get_mut() {
++            eprintln!("HTTP send/body wall+own-thread CPU: {spans:?}");
++        }
++    }
+ }
+ 
+ impl std::fmt::Debug for HttpClient {
+@@ -249,6 +262,24 @@
+             .unwrap_or_default()
+     }
+ 
++    #[cfg(test)]
++    fn record_request_cpu(
++        &self,
++        phase: &'static str,
++        started: std::time::Instant,
++        before: Option<u64>,
++    ) {
++        let elapsed = started.elapsed().as_micros();
++        let ticks = before
++            .zip(crate::shared::thread_cpu_ticks())
++            .and_then(|(before, after)| after.checked_sub(before));
++        if let Ok(mut spans) = self.metrics.request_cpu.lock() {
++            if spans.len() < 16 {
++                spans.push((phase, elapsed, ticks));
++            }
++        }
++    }
++
+     pub(crate) fn same_configuration(&self, other: &Self) -> bool {
+         self.base == other.base && self.token == other.token && self.ca_hash == other.ca_hash
+     }
+@@ -316,7 +347,13 @@
+             .header("Accept-Encoding", "identity");
+         #[cfg(test)]
+         self.phase("request-built");
++        #[cfg(test)]
++        let send_started = std::time::Instant::now();
++        #[cfg(test)]
++        let send_cpu = crate::shared::thread_cpu_ticks();
+         let sent = request.send();
++        #[cfg(test)]
++        self.record_request_cpu("send", send_started, send_cpu);
+         #[cfg(test)]
+         self.phase("request-send-returned");
+         let response = sent.map_err(|e| {
+@@ -355,13 +392,17 @@
+         // tiny buffer. Reserve a fixed bounded amount, never a server-provided
+         // Content-Length; the existing MAX+1 stream bound remains authoritative.
+         let mut bytes = Vec::with_capacity(8 * 1024);
+-        response
+-            .take(MAX_ENTRY_BYTES + 1)
+-            .read_to_end(&mut bytes)
+-            .map_err(|_| {
+-                self.record("interrupted-response", true);
+-                failure("shared response interrupted")
+-            })?;
++        #[cfg(test)]
++        let body_started = std::time::Instant::now();
++        #[cfg(test)]
++        let body_cpu = crate::shared::thread_cpu_ticks();
++        let body = response.take(MAX_ENTRY_BYTES + 1).read_to_end(&mut bytes);
++        #[cfg(test)]
++        self.record_request_cpu("body", body_started, body_cpu);
++        body.map_err(|_| {
++            self.record("interrupted-response", true);
++            failure("shared response interrupted")
++        })?;
+         if bytes.len() as u64 > MAX_ENTRY_BYTES {
+             self.record("oversized-response", true);
+             return Err(failure("shared response exceeds entry limit"));
