@@ -1,0 +1,200 @@
+{
+  "budgets": {
+    "cli_s": 30,
+    "clients": 4,
+    "collector_process_s": 600,
+    "p95_limit_ms": 200,
+    "retained_workflow_s": 120,
+    "rpc_s": 5,
+    "samples_per_collector": 200,
+    "setup_checks_s": 600
+  },
+  "catalogue": {
+    "bytes": 5510,
+    "sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6"
+  },
+  "collector_note": "Original Python and Rust source/assertions unchanged. Existing staged-02fd binary retained; current jobs client/API diff 1e\u2192d20 is empty. Collector origin freeze is independent of actual d20 product.",
+  "collector_results": null,
+  "concurrent_work": "Root full current 2d6539f local gate uses common Cargo target/jobs 2; this scenario only uses private owned fixture targets. No causal attribution.",
+  "controller_scripts": {
+    "m7-job-read-bench.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    },
+    "m7-native-product.py": {
+      "bytes": 12115,
+      "sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+    },
+    "m7-reader-acceptance.py": {
+      "bytes": 33712,
+      "sha256": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d"
+    },
+    "m7-repair-bench.py": {
+      "bytes": 31040,
+      "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33"
+    },
+    "m7-retained-jobs-acceptance.py": {
+      "bytes": 20198,
+      "sha256": "ba1acf98c39dce9687a4a0e277234296459651dc1580316576c654ceb2154028"
+    }
+  },
+  "controller_source_commit": "2d6539f642b284d66c1f485570b4a166e721a4b7",
+  "current_proof_admitted": false,
+  "inventory_statement": "No old inventory reused; metadata covers installed products and 13 selected artifacts only. Production original Guard acquires and validates complete actual inventory before proof; setup metadata never certifies Current.",
+  "original_failures_preserved": true,
+  "preparation": "Authorized separately recorded unmeasured ordinary/exact repair-context phase before original bounded checks; existing single declaration retry only",
+  "probes": {
+    "job_read_bench": {
+      "bytes": 12235200,
+      "sha256": "f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d"
+    },
+    "python-reader-probe.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    }
+  },
+  "product": {
+    "files": {
+      "sail": {
+        "bytes": 74616824,
+        "sha256": "55c265ad320bcf7ab7b50d3bf5ab6866799d22e1a4eb55309aed258200d098ff"
+      },
+      "sail-z3": {
+        "bytes": 10997224,
+        "sha256": "0927d6ead6e268046696aacd68dea6f141eb3a8eec0480780e2aa2e86d76b3c6"
+      }
+    },
+    "installer_sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0",
+    "installer_source_commit": "2d6539f642b284d66c1f485570b4a166e721a4b7",
+    "new_installation": {
+      "gid": 0,
+      "mode": "0700",
+      "old_sealed_product_changed": false,
+      "uid": 0
+    },
+    "source_archive_sha256": "3040f96230dee9938fb784f374137c138e233b4486f521aebb6b7335e46bcd98",
+    "source_commit": "d20d034087cb9c6c74a66161b76daa512d95221a"
+  },
+  "retained_results": null,
+  "scope": "Selected b346 reader/retained functional scope only; not source physical gate, 2x performance or overall M7 qualification",
+  "selected_runtime_artifact_ownership": {
+    "verus/source/target-verus/release/.cargo-build-lock": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/.vstd-fingerprint": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/cargo-verus": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/libverus_builtin.rlib": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/libverus_builtin_macros.so": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/libvstd.rlib": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/rust_verify": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/version.txt": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/verus": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/verus-root": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/vstd.vir": {
+      "gid": 0,
+      "uid": 0
+    },
+    "verus/source/target-verus/release/z3": {
+      "gid": 0,
+      "uid": 0
+    }
+  },
+  "source_only_template_files": 273,
+  "source_only_template_sha256": "b559c9e745066450202f8e952819f9e153d35268e544b45bd1ebc2c5382c3b9f",
+  "source_runtime_artifacts": {
+    "verus/source/target-verus/release/.cargo-build-lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/.vstd-fingerprint": {
+      "bytes": 155,
+      "sha256": "429fa4044969f926433ea92e7c06604670c5af1aed26bcc3c8f42493f409d652"
+    },
+    "verus/source/target-verus/release/cargo-verus": {
+      "bytes": 2754984,
+      "sha256": "3b654550d9787335953020f3946a96205bca5736c3e57ddba0fd3b47688d8fb9"
+    },
+    "verus/source/target-verus/release/libverus_builtin.rlib": {
+      "bytes": 928246,
+      "sha256": "65aabd6f36f48a976080ed7935a6cbad1397cd586f281845f47ae33678674237"
+    },
+    "verus/source/target-verus/release/libverus_builtin_macros.so": {
+      "bytes": 13801616,
+      "sha256": "47ecd157517d37f6a631664a2ab28e7eaf7ec890d4968a373964731d7ac23cd6"
+    },
+    "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+      "bytes": 8570208,
+      "sha256": "a0537a11801a32855b055117e7ec058bcba8c68689b5e492768cd0bbb0b69763"
+    },
+    "verus/source/target-verus/release/libvstd.rlib": {
+      "bytes": 10236586,
+      "sha256": "5e1ead56f11dd56ea759ea53b9b5dd28de66e0f655b6935cd0702c4f5ab33a3b"
+    },
+    "verus/source/target-verus/release/rust_verify": {
+      "bytes": 27902632,
+      "sha256": "670e3a437474e7bc0dd53df0f070da5fd48de508954eb58c7c1e5698bfc43e58"
+    },
+    "verus/source/target-verus/release/version.txt": {
+      "bytes": 26,
+      "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+    },
+    "verus/source/target-verus/release/verus": {
+      "bytes": 4705336,
+      "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+    },
+    "verus/source/target-verus/release/verus-root": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/vstd.vir": {
+      "bytes": 30076214,
+      "sha256": "e30595b97c5f729b36f66a3c9101a82ff976831f885fc5592c979077f2f9c3bc"
+    },
+    "verus/source/target-verus/release/z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "source_runtime_manifest": {
+    "bytes": 2107,
+    "sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
+  },
+  "state": "running",
+  "version": 1,
+  "wrapper": {
+    "bytes": 8684,
+    "sha256": "dcba3e12bd33bfbe459fa154bb079d79401a784b50d642c74fe57a362357d020"
+  }
+}
