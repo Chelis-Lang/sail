@@ -114,6 +114,7 @@ def main():
         raise KeyboardInterrupt('Owned benchmark controller interrupted')
 
     signal.signal(signal.SIGTERM, interrupted)
+    signal.signal(signal.SIGHUP, interrupted)
     try:
         for name, command in commands:
             phase = {'name': name, 'command': command, 'status': 'running'}
