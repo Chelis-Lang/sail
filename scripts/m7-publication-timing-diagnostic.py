@@ -184,10 +184,10 @@ def retain_timings(root, destination):
         capture(jobs, "rpc-timings.json", "rpc-timings.json", rpc=True)
         with os.scandir(jobs) as entries:
             for entry in entries:
-                result["scan_entries"] += 1
-                if result["scan_entries"] > MAX_SCAN:
+                if result["scan_entries"] >= MAX_SCAN:
                     result["partial"] = True
                     break
+                result["scan_entries"] += 1
                 if not JOB.fullmatch(entry.name):
                     continue
                 try:
@@ -198,15 +198,16 @@ def retain_timings(root, destination):
                 try:
                     with os.scandir(job) as files:
                         for file in files:
-                            result["scan_entries"] += 1
-                            if result["scan_entries"] > MAX_SCAN:
+                            if result["scan_entries"] >= MAX_SCAN:
                                 result["partial"] = True
                                 break
+                            result["scan_entries"] += 1
                             if SETUP.fullmatch(file.name):
                                 capture(job, file.name, entry.name + "/" + file.name)
                 finally:
                     os.close(job)
-                if result["scan_entries"] > MAX_SCAN:
+                if result["scan_entries"] >= MAX_SCAN:
+                    result["partial"] = True
                     break
     except (OSError, ValueError, AssertionError) as error:
         result["partial"] = True

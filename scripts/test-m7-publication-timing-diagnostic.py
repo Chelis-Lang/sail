@@ -142,6 +142,7 @@ class Controls(unittest.TestCase):
         with mock.patch.object(diagnostic, "MAX_SCAN", 1):
             result = diagnostic.retain_timings(self.root, self.root / "scan")
         self.assertTrue(result["partial"])
+        self.assertLessEqual(result["scan_entries"], 1)
         with self.assertRaises(AssertionError):
             diagnostic.validate((json.dumps(setup()).encode() + b"\n") * 65, False)
 
