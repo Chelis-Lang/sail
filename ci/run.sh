@@ -78,6 +78,7 @@ case "$step" in
     python3 scripts/test-m7-result-frame-profile.py
     python3 scripts/test-managed-timeout-evidence.py
     python3 scripts/test-m7-ordinary-wait-diagnostic.py
+    python3 scripts/test-m7-publication-timing-diagnostic.py
     python3 scripts/test-m7-stock-smt-process-diagnostic.py
     python3 scripts/test-m7-conformance-observation.py
     python3 scripts/test-m7-tspec-transcript-run.py
