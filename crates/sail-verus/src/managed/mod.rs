@@ -24,6 +24,8 @@ mod runner;
 mod source_inputs;
 mod sysroot;
 mod sysroot_cache;
+#[cfg(any(target_os = "linux", test))]
+mod sysroot_selection;
 
 pub(crate) use files::{digest, event, file_digest, json};
 pub use freshness::FreshnessIndex;

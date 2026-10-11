@@ -236,3 +236,14 @@ watches, giving a conservative 73,728-watch bound across all three owners. Paren
 Rust descriptors are bounded by these fixed owners, their inotify/mount/socket
 handles, one listener, one accepted endpoint and the finite temporary helper
 probe. These are kernel resource counts, not Rust heap or Python RSS claims.
+
+The optional pre-sysroot selection identity streams exact sorted byte-key/value
+environment pairs into SHA-256. JSON object keys cannot represent those OS byte
+keys. The stream declines optional reuse after 256 KiB of encoded input without
+retaining a serialized buffer or copied pair vector. The original complete
+context encoding and proof/cache keys are unchanged. The first staged activation
+failed to construct this scope and retained local hashing; its separate cold
+timeout remains [recorded](../validation/m7-sysroot-activation-7da9579.md).
+The [corrected selector controls](../validation/m7-sysroot-selection-controls.json)
+pass actual byte-key/non-UTF8, exact encoding, changed input and overbudget cases;
+complete integrated acceptance is still required.

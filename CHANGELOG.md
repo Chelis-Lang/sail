@@ -9,6 +9,8 @@ semantic versioning once the API is published.
   Keep overlapping original caller guards, complete inventory checks and fresh
   executable identities; fall back to local hashing on any unavailable or
   invalid handoff. Bound background ownership and aggregate optional RPC work.
+  Bind arbitrary environment bytes as sorted pairs, with bounded streaming
+  encoding, so staged reuse is not silently disabled by JSON object-key rules.
 
 - Invalidate retained Linux proof and sysroot-digest coverage on kernel mount
   events, including a bind mount restored before the next check. Preserve

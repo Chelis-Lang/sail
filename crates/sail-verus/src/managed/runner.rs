@@ -190,8 +190,8 @@ fn context(
         let phase = diagnostics.phase(Phase::SysrootHandoff);
         let scope = config.socket.as_ref().and_then(|_| {
             let selection =
-                serde_json::to_vec(&(1, &config.args, engine, &identity, &environment)).ok()?;
-            super::sysroot_cache::scope(&installed_sysroots, digest(&selection))
+                super::sysroot_selection::selection(&config.args, engine, &identity, &environment)?;
+            super::sysroot_cache::scope(&installed_sysroots, selection)
         });
         let imported = config
             .socket
