@@ -125,7 +125,7 @@ family. The daemon constructs retained-result output owners through a bounded
 background service; foreground reads can fall back to full byte validation.
 The selected output-owner overlap and small exact HTTP-body changes have passed
 component validation. Preserving observers across unchanged metadata publication
-is undergoing its Linux controls. The next execution is the combined workspace
+now passes its [complete Linux component replay](validation/m7-preserve-freshness-metadata-replay.md), including sensitivity checks. The next execution is the combined workspace
 and solver gate, then a sealed product run of the original repair and full-reader
 workloads. These changes do not yet establish real-project speedups.
 The [rebuilt combined release](../bench/validation/m7-linux-combined-product-a9609e9-emulated-2026-10-11.json)
