@@ -238,7 +238,13 @@ The [test integration correction](../engine/verus/candidates/preparation-namespa
 uses test-only forwarding functions and moves an unchanged helper before the
 test module. It preserves production authority and every assertion. Corrected
 complete compiler controls, ordinary runtime construction and the original
-qualification are still required; the failed scope remains separate.
+qualification are still required; the failed scope remains separate. The
+[corrected source scope](../engine/verus/candidates/preparation-namespace/no-original-range/test-integration-correction/source-failure.json)
+then compiles the driver and passes 83 of 108 controls before a new test fixture
+uses a digest that the existing memo rejects. Its unwrap poisons the serial
+test lock, producing 24 subsequent failures. Driver strict checking is not
+reached. A valid admitted stale digest and a bypass-removal sensitivity control
+are required; production memo admission remains unchanged.
 
 Priority order for completing this milestone:
 
@@ -338,3 +344,10 @@ ownership-bound, all-task process observation; its
 passes on Linux. The retained main-task snapshot still cannot identify the
 missing verifier/solver stage or establish a timeout cause. No new reader
 workflow is implied by the observer control.
+
+The separate [stock transport component](validation/m7-stock-smt-boundary-terminal.md)
+builds and completes its normal fake-peer transfer with exact input bytes and
+child shutdown. Its recorder drops two packets, so the sensitivity control
+fails and the sequence stops before fault controls or the real forwarding arm.
+A bounded metadata queue correction is being reviewed; neither this transfer
+nor its recorder failure establishes the original verification wait's cause.
