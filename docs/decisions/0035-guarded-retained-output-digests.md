@@ -138,3 +138,16 @@ all-target checks for both affected packages; see the
 The initial strict failures and tested images remain retained. All original complete payload,
 collector, four-client/200-sample and five-second bounds remain required; prior
 component measurements are not daemon acceptance or performance qualification.
+
+## Concurrent validation candidate
+
+The [source-only overlap candidate](../validation/m7-result-output-overlap-plan.md)
+releases output locks during independent input freshness. It retains the same
+continuously guarded owner across both barriers, confirms exact owner identity
+again, and keeps the original complete fallback on any refusal. An evicted but
+continuously guarded owner remains valid and charged; removal or substitution
+between barriers cannot certify an earlier prospective result. The fixed
+admission margin also covers the new mutex/Arc allocation shell after reservation
+refund. No new proof authority or retention ceiling is introduced. Affected
+controls and complete-operation measurements are pending; this candidate has
+not been selected in an installed product.

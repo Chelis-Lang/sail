@@ -32,7 +32,7 @@ pub(super) struct Frames {
     current: Arc<Vec<u8>>,
     historical: Arc<Vec<u8>>,
     unknown: Arc<Vec<u8>>,
-    pub(super) output: Mutex<Option<Box<super::output_service::OutputOwner>>>,
+    pub(super) output: Mutex<Option<Arc<Mutex<super::output_service::OutputOwner>>>>,
     pub(super) offered: std::sync::atomic::AtomicBool,
     // Last field: physical buffers are disposed before their charge is released.
     charge: Option<Charge>,
@@ -153,7 +153,7 @@ impl Drop for Charge {
 thread_local! {
     // Pauses the actual refund inside Frames destruction, while its outer Arc
     // allocation is still live. Only the explicitly owned test thread opts in.
-    static REFUND_GATE: std::cell::RefCell<Option<Arc<(std::sync::Barrier, std::sync::Barrier)>>> = const { std::cell::RefCell::new(None) };
+    pub(super) static REFUND_GATE: std::cell::RefCell<Option<Arc<(std::sync::Barrier, std::sync::Barrier)>>> = const { std::cell::RefCell::new(None) };
 }
 #[derive(Default)]
 struct Entries {

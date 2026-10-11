@@ -28,7 +28,7 @@ NUMERIC = set("sequence started_us dispatch_delay_us total_us read_us lookup_us 
               "freshness_us frame_key_us frame_lookup_us encode_us write_us child_wait_us "
               "child_exit_observed_us document_read_us freshness_establish_us status_save_us "
               "frame_bytes".split())
-ROW_KEYS = NUMERIC | {"operation", "frame_hit", "currentness", "write_succeeded"}
+ROW_KEYS = NUMERIC | {"operation", "frame_hit", "output_guarded", "currentness", "write_succeeded"}
 
 
 def sha_file(path):
@@ -83,6 +83,7 @@ def validate(data, rpc):
             assert row["operation"] in ("result", "status", "worker_publication", "other")
             assert row["currentness"] in (None, "current", "historical", "unknown")
             assert row["frame_hit"] is None or type(row["frame_hit"]) is bool
+            assert row["output_guarded"] is None or type(row["output_guarded"]) is bool
             assert type(row["write_succeeded"]) is bool
         return len(value["rows"])
     lines = data.splitlines()

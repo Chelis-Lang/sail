@@ -314,3 +314,12 @@ path uses the same eligibility and complete barriers.
 
 The [enabled-path checks](validation/m7-runtime-sidecar-production.md) retain
 the same mutation controls and strict validation after production selection.
+
+A [source-only output overlap candidate](validation/m7-result-output-overlap-plan.md)
+keeps the exact charged output owner alive while releasing its lock during
+independent input freshness. It then rechecks the same owner with the original
+complete output barrier. Refusal retains the full read/hash fallback. This adds
+no flag, partial response or Currentness memo. Validation and selection are
+pending; no new live reader latency gain is claimed. Optional diagnostic rows
+distinguish successful guarded output validation from full-hash fallback through
+`output_guarded`; `frame_hit` alone does not establish which validation ran.

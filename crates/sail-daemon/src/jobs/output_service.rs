@@ -13,10 +13,13 @@ use super::result_cache::{Budget, Charge, Frames};
 
 const STACK_BYTES: usize = 1024 * 1024;
 const CONTROL_BYTES: usize = 65_536;
-// Box disposes OutputOwner fields before freeing its outer allocation. Count
-// each bounded endpoint destructor and the sole constructor's retiring shell.
+const ARC_HEADER_BYTES: usize = 2 * std::mem::size_of::<usize>();
+const OWNER_ALLOCATION_BYTES: usize = std::mem::size_of::<Mutex<OutputOwner>>() + ARC_HEADER_BYTES;
+// Arc disposes OutputOwner fields before freeing its outer allocation. Count
+// the mutex/header as well as each bounded endpoint destructor and the sole
+// constructor's retiring shell, inside the original family ceiling.
 pub(super) const FIXED_BYTES: usize =
-    STACK_BYTES + CONTROL_BYTES + (super::MAX_CLIENTS + 1) * std::mem::size_of::<OutputOwner>();
+    STACK_BYTES + CONTROL_BYTES + (super::MAX_CLIENTS + 1) * OWNER_ALLOCATION_BYTES;
 const CONSTRUCTION_BYTES: usize = 64 * 1024 * 1024;
 const INSPECTION_BYTES: usize = 16 * 1024 * 1024;
 
@@ -119,21 +122,38 @@ impl Queue {
         trace: &mut super::rpc_diagnostics::Trace<'_>,
         input: impl FnOnce(&mut super::rpc_diagnostics::Trace<'_>) -> R,
     ) -> Option<R> {
-        // Scratch admission happens before observer/kernel work. The same
-        // nonblocking mutex protects both output barriers around independent
-        // input/runtime freshness. No readiness or constructor wait is allowed.
+        // Scratch admission precedes all observer/kernel work. Retain the exact
+        // charged owner across independent input validation, without holding
+        // either output mutex while that separate operation runs. Each barrier
+        // still uses a nonblocking try-lock; contention always falls back.
         let _scratch = self.budget.reserve(INSPECTION_BYTES)?;
-        let mut cell = frames.output.try_lock().ok()?;
-        let owner = cell.as_mut()?;
-        if !trace.measure(super::rpc_diagnostics::Stage::OutputSeal, || {
-            owner.guard.namespace_barrier()
-        }) {
-            return None;
+        let owner = {
+            let cell = frames.output.try_lock().ok()?;
+            Arc::clone(cell.as_ref()?)
+        };
+        {
+            let mut checked = owner.try_lock().ok()?;
+            if !trace.measure(super::rpc_diagnostics::Stage::OutputSeal, || {
+                checked.guard.namespace_barrier()
+            }) {
+                return None;
+            }
         }
         let input = input(trace);
+        // Refuse owner removal/substitution, even if the substitute independently
+        // hashed identical bytes. Index eviction alone does not invalidate a
+        // continuously guarded owner retained by this exact frame family.
+        let cell = frames.output.try_lock().ok()?;
+        if !cell
+            .as_ref()
+            .is_some_and(|published| Arc::ptr_eq(published, &owner))
+        {
+            return None;
+        }
+        let mut checked = owner.try_lock().ok()?;
         trace
             .measure(super::rpc_diagnostics::Stage::OutputSeal, || {
-                owner.guard.clean()
+                checked.guard.clean()
             })
             .then_some(input)
     }
@@ -176,15 +196,22 @@ impl Queue {
             && !self.cancelled.load(Ordering::Acquire)
             && guard
                 .retained_bytes()
-                .and_then(|n| n.checked_add(std::mem::size_of::<OutputOwner>()))
+                .and_then(|n| n.checked_add(OWNER_ALLOCATION_BYTES))
                 .is_some_and(|n| n <= GUARDED_OUTPUT_RETAINED_BYTES)
-            && let Ok(mut cell) = frames.output.lock()
             && let Some(charge) = owner_charge.take()
         {
-            *cell = Some(Box::new(OutputOwner {
+            let mut candidate = Some(Arc::new(Mutex::new(OutputOwner {
                 guard,
                 _charge: charge,
-            }));
+            })));
+            if let Ok(mut cell) = frames.output.lock()
+                && cell.is_none()
+                && !self.cancelled.load(Ordering::Acquire)
+            {
+                *cell = candidate.take();
+            }
+            // A refused candidate disposes its helper and reservation off-lock.
+            drop(candidate);
         }
         // Explicit disposal precedes scratch refund and the outer retirement
         // flag. Evicted frames still retain both charges throughout construction.
@@ -293,9 +320,7 @@ mod tests {
         assert!(fixed <= CONTROL_BYTES);
         assert_eq!(
             FIXED_BYTES,
-            STACK_BYTES
-                + CONTROL_BYTES
-                + (super::super::MAX_CLIENTS + 1) * std::mem::size_of::<OutputOwner>()
+            STACK_BYTES + CONTROL_BYTES + (super::super::MAX_CLIENTS + 1) * OWNER_ALLOCATION_BYTES
         );
         assert_eq!(
             CONSTRUCTION_BYTES + GUARDED_OUTPUT_RETAINED_BYTES,
@@ -361,3 +386,7 @@ mod tests {
         assert_eq!(refunded, 0);
     }
 }
+
+#[cfg(all(test, target_os = "linux"))]
+#[path = "output_overlap_tests.rs"]
+mod overlap_tests;

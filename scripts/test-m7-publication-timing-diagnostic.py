@@ -20,7 +20,7 @@ spec.loader.exec_module(diagnostic)
 def rpc():
     row = dict.fromkeys(diagnostic.NUMERIC, None)
     row.update(sequence=0, started_us=0, dispatch_delay_us=0, total_us=0,
-               operation="worker_publication", frame_hit=None, currentness=None,
+               operation="worker_publication", frame_hit=None, output_guarded=None, currentness=None,
                write_succeeded=False)
     return {"kind": "diagnostic-job-rpc-stages", "daemon_pid": 1,
             "origin_unix_ms": 0, "capacity": 256, "started": 1,
@@ -86,6 +86,21 @@ class Controls(unittest.TestCase):
         for data, is_rpc in cases:
             with self.assertRaises((ValueError, AssertionError)):
                 diagnostic.validate(data, is_rpc)
+
+    def test_output_guarded_preserves_three_states_and_refuses_non_boolean_or_missing_field(self):
+        for guarded in (None, False, True):
+            value = rpc()
+            value["rows"][0].update(operation="result", output_guarded=guarded)
+            self.assertEqual(diagnostic.validate(json.dumps(value).encode(), True), 1)
+        for guarded in (0, 1, "true", {}, []):
+            value = rpc()
+            value["rows"][0]["output_guarded"] = guarded
+            with self.assertRaises(AssertionError):
+                diagnostic.validate(json.dumps(value).encode(), True)
+        value = rpc()
+        del value["rows"][0]["output_guarded"]
+        with self.assertRaises(AssertionError):
+            diagnostic.validate(json.dumps(value).encode(), True)
 
     def test_overwritten_or_absent_ring_is_explicitly_incomplete(self):
         jobs, _, _, _ = populate(self.root)
