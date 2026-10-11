@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "status": "PASS",
+  "scope": "Closed root-owned combined-gate debug incremental state only; no tested executables, shared libraries, dependency artifacts, build outputs, fingerprints, runtime, proof evidence or private agent targets removed",
+  "closed_gate_commit": "73c03702f067dbfdd46eefee1ffc650ff510c16f",
+  "preflight": {
+    "sail-m7-handoff-validation": {
+      "processes_examined": 80,
+      "holders": [],
+      "unreadable": []
+    },
+    "sail-m7-acceptance": {
+      "processes_examined": 4,
+      "holders": [],
+      "unreadable": []
+    }
+  },
+  "postflight": {
+    "sail-m7-handoff-validation": {
+      "processes_examined": 80,
+      "holders": [],
+      "unreadable": []
+    },
+    "sail-m7-acceptance": {
+      "processes_examined": 4,
+      "holders": [],
+      "unreadable": []
+    }
+  },
+  "files_removed": 19858,
+  "logical_file_bytes_observed": 3103832856,
+  "unique_inode_allocated_bytes_observed": 3141398528,
+  "allocated_bytes_all_links_in_scope": 3099734016,
+  "protected_executable_and_shared_library_files": 68,
+  "protected_before_after_equal": true
+}
