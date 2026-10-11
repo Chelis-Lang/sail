@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "actual pinned API30/30, metadata, source VIR39/39+driver64/64+both strict PASS; ordinary fresh vstd2060/0 and complete13 runtime manifest PASS; original14/product qualification pending",
+  "status": "actual API/metadata/source39VIR64driver+strict and ordinary fresh vstd2060/0+13seal PASS; original14 FAILED revision0 zero-hit fresh-store provenance admission; unselected",
   "base_patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
   "delta_sha256": "4c8048a70a3b0dc2bfbfe9ba865bf275c118a8f2804d48437b9542ea6415070a",
   "source_sha256": {

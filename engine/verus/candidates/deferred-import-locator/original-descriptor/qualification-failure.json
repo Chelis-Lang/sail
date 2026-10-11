@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "status": "FAILED",
+  "scope": "one original frozen fourteen-stage qualification; unselected candidate; no retry or acceptance credit",
+  "patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+  "variant_suffix": "0bbc7d378544f972",
+  "manifest_sha256": "c9ea656bf1bd5dcb81cd13f7dd4c83e13fdc4804910a8949a5562e81daa4ff0d",
+  "controller_sha256": "036c30efd2a4020036f01968a1082dd65b7cd84ea57148c86bcabc30ca011872",
+  "started_unix_ns": 1791703826132168051,
+  "actor": {
+    "pid": 671887,
+    "pgid": 671887,
+    "nice": 0
+  },
+  "compiler_bounds_seconds": 600,
+  "elapsed_seconds": 154.85241465399304,
+  "exit_code": 1,
+  "first_stages_passed": [
+    "private-graph-audit",
+    "private-span-audit",
+    "old-domain-migration",
+    "same-input-hit-controls",
+    "source-fixtures",
+    "graph-checkpoint",
+    "cancel-restart",
+    "first-input-delta"
+  ],
+  "failed_stage": "previous-revision-focus",
+  "failed_source_assertion": {
+    "file": "test-private-span-cross-edit.py",
+    "line": 77,
+    "predicate": "hits == len(checks) and hits > 0",
+    "label": "unchecked actual hit",
+    "interpretation": "zero actual hits; no unchecked nonzero hit was observed"
+  },
+  "failed_revision": 0,
+  "actual_hits": 0,
+  "same_callback_check_count": 0,
+  "focus_restore_count": 0,
+  "preparation": {
+    "version": 1,
+    "enabled": true,
+    "batch_hits": 0,
+    "persistent_hits": 0,
+    "misses": 4,
+    "peak_retained_bytes": 10092200,
+    "memory_budget_bytes": 536870912,
+    "disk_budget_bytes": 536870912
+  },
+  "fresh_store_unavailable_events": [
+    {
+      "version": 1,
+      "phase": "focus",
+      "event": "prepared-unavailable",
+      "payload": {
+        "stage": "provenance"
+      }
+    },
+    {
+      "version": 1,
+      "phase": "full",
+      "event": "prepared-unavailable",
+      "payload": {
+        "stage": "provenance"
+      }
+    },
+    {
+      "version": 1,
+      "phase": "full",
+      "event": "prepared-unavailable",
+      "payload": {
+        "stage": "provenance"
+      }
+    },
+    {
+      "version": 1,
+      "phase": "full",
+      "event": "prepared-unavailable",
+      "payload": {
+        "stage": "provenance"
+      }
+    }
+  ],
+  "stock_engine_module_verdict_equal": true,
+  "module_verdict": {
+    "encountered-error": false,
+    "encountered-vir-error": false,
+    "success": true,
+    "verified": 9,
+    "errors": 0,
+    "is-verifying-entire-crate": true
+  },
+  "stock_engine_stderr_byte_equal": true,
+  "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+  "actual_cause": "fresh store provenance admission unavailable; original selector disabled trace, so exact span/role/path/count cause not observed",
+  "comparison_with_prior73bd": "same revision0 line77 zero-hit/zero-check/zero-focus-restore failure; four provenance refusals and byte-identical stock/module9/0 diagnostics; this record does not infer identical underlying refusal",
+  "source_gates_passed": false,
+  "product_qualified": false,
+  "selected": false,
+  "independent_post_seal": {
+    "manifest_sha256": "c9ea656bf1bd5dcb81cd13f7dd4c83e13fdc4804910a8949a5562e81daa4ff0d",
+    "complete_direct_artifact_inventory": true,
+    "source_sha256": {
+      "vir/src/context.rs": "48ca863ba0342247ab3499de2e60199ec267c7cbb4d2d431b828be7fd04bd9b7",
+      "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+      "rust_verify/src/sail_engine.rs": "97dd2485b03c08c49ca473c2c59e3bb173dd1997f52663130f0e539b8d08b416",
+      "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+      "rust_verify/src/sail_deferred_import_tests.rs": "1056058cb50a98fedb98e4016694937e5fc2589e8b22fd1a3374f687bdf641da",
+      "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+      "rust_verify/src/sail_owned_imports.rs": "28816c68622ae75ea0c719adfd28f307a4df83a966473738b53c356dc1ced529"
+    },
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "prior_complete_runtime_seals_unchanged": true
+  },
+  "owned_actor_closure": {
+    "sail-m7-acceptance": {
+      "holders": [],
+      "unreadable_live": []
+    },
+    "sail-m7-handoff-validation": {
+      "holders": [],
+      "unreadable_live": []
+    }
+  },
+  "raw_archive": {
+    "label": "qualification-raw.tar.gz",
+    "bytes": 1988000,
+    "sha256": "00b7f7244ec39780eca26b9c17698c96233626fda11c1c7d5f1b6daffbea8da7",
+    "files": 1341
+  },
+  "raw_record_inventory": {
+    "actor-closure.json": {
+      "bytes": 163,
+      "sha256": "b60db171f21e8be5080ec5fe5cfa4ca39870a0fe6e2dd9c29bd910dead1dd1f1"
+    },
+    "close-qualification.py": {
+      "bytes": 5171,
+      "sha256": "b9b849457b3b98542a813b3c3ccb304757b6e82813e9a4494ec9a612cfa67731"
+    },
+    "original-qualification-actor.json": {
+      "bytes": 3339,
+      "sha256": "dca320a54145f0d3832e1b67f29d3ae5dad78598d32e1ea433f98bc7dbd54d01"
+    },
+    "original-qualification.log": {
+      "bytes": 237,
+      "sha256": "534589717a91971966c3f5633a8915908389e3ad14e2dc02f9172be9963d5119"
+    },
+    "qualification-controller.log": {
+      "bytes": 286,
+      "sha256": "3a46364e16015cf48fd4ce192ad7f409788b7616eb88c215a390b49cc9163d13"
+    },
+    "qualification-file-inventory.json": {
+      "bytes": 224394,
+      "sha256": "9f16001b90d30af3355ec42207dc6c6595263ba7510665de9fb49da9f9cee410"
+    },
+    "qualification-raw.tar.gz": {
+      "bytes": 1988000,
+      "sha256": "00b7f7244ec39780eca26b9c17698c96233626fda11c1c7d5f1b6daffbea8da7"
+    },
+    "qualification-runtime-manifest.json": {
+      "bytes": 2106,
+      "sha256": "c9ea656bf1bd5dcb81cd13f7dd4c83e13fdc4804910a8949a5562e81daa4ff0d"
+    },
+    "qualification-seal-closure.json": {
+      "bytes": 9034,
+      "sha256": "5ef801778a13dc140c8f5a873813319420a89e2790c75c2dbe7863e71d1a9d5c"
+    }
+  },
+  "post_host_backing_free_bytes": 8905691136,
+  "post_host_sample_unix_ns": 1791704313724136000
+}
