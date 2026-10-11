@@ -8,6 +8,22 @@ the detailed prior roadmap narrative and its distinct failed/setup scopes.
 
 ## Interactive repair engine (M7)
 
+The latest unselected source candidate builds and freshly verifies all 2,060
+vstd obligations, but fails the original migration qualification because it
+publishes no prepared lowering. Both fixture proofs succeed. Parallel workers
+correctly omit a diagnostic source map; the candidate mistakenly required that
+optional map for preparation. Separate preparation access is being implemented
+without changing diagnostic routing or parallelism. See the
+[retained qualification](../engine/verus/candidates/deferred-import-locator/late-handoff/qualification-failure.json).
+
+The daemon's [retained-frame accounting](validation/m7-result-frame-admission-margin.md)
+now covers Vec capacity, evicted live writes and fixed retirement metadata
+within its existing 128 MiB ceiling. All 89 daemon controls pass. This bound
+excludes uncached encoding and process RSS; it does not establish the live
+Result latency target. The retained 394.713 ms p95 failure remains open, and
+bounded optional [stage timing](result-rpc-diagnostics.md) will observe the next
+unchanged live workload.
+
 An Unknown proof and unavailable validation during a later job read are distinct
 conditions. Earlier managed reports collapsed precise namespace failures to
 `native-observation-invalidated`; they cannot establish which event or barrier
