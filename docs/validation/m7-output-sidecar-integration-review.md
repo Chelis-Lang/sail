@@ -139,7 +139,12 @@ The first actual affected scope passed six guarded-output controls, one fdinfo
 bound control, one exact-file control, 21 daemon jobs unit controls and all six
 original daemon jobs integration controls. Its whole result remains FAIL because
 strict Clippy rejected startup match spelling. The following test-only
-semicolon failure is also retained; the corrected `169d6d7` complete affected
-scope is still running at this review point. These passes establish neither a
-green complete scope nor the original reader p95. Static quota, shutdown and
-full-fallback review has no remaining blocker.
+semicolon failure is also retained. The corrected `169d6d7` complete affected
+scope subsequently passed all 35 tests and affected all-target strict Clippy in
+525.632 seconds. Independent review rehashed result
+`2b0a6eeb813f6796da2528dbef9ca8a209b39836f4f9a61e40c3221af278b429`,
+all six phase logs and five retained tested executable images. Source and
+protected inventories matched; both container closure records had no holders or
+unreadable actors. Static quota, shutdown and full-fallback review has no
+remaining integration blocker. This affected scope supplies no original reader
+p95, whole-product or fresh proof qualification credit.
