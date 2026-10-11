@@ -84,8 +84,8 @@ waives real HE/Vest proof, performance or reader acceptance.
 
 ## Proposed amendment: original-descriptor-only role
 
-This amendment is proposed for independent review; no implementation or
-executable qualification follows from it. The corrected v6 ordinary candidate
+This amendment is reviewed for an unselected file-only implementation; helper
+execution and full source/runtime qualification remain pending. The corrected v6 ordinary candidate
 passes source controls/strict checks and fresh vstd, but its original fourteen
 stages fail at zero hits in revision 0. A separate bounded trace finds a
 per-record Delayed refusal in `vstd/function.rs`; its coarse reason does not
@@ -99,8 +99,12 @@ OriginalDescriptorLocator, limited to an exact original metadata filename/hash/
 range and the same current Delayed descriptor, with no Foreign raw-hash match
 across any current crate. This conservative condition avoids inventing a
 CrateNum association when no Foreign owner exists.
-Require absolute bounded UTF-8 path identity and unchanged state/namespace at
-pre-focus handoff. Preserve the existing LoadedForeign and Foreign-associated
+Require absolute bounded UTF-8 path identity. Retain original metadata
+filename/hash/range once at constructor capture inside the admitted owner;
+pre-focus rereads only the mutable current Delayed descriptor and Foreign
+namespace against that frozen authority. It does not reread the original table.
+Require unchanged descriptor state/path/hash and the same zero-match namespace
+condition at handoff. Preserve the existing LoadedForeign and Foreign-associated
 DeferredLocator rules and negatives; never promote or relabel one into another.
 Current stock Reporter remains the sole source loader, hash checker and offset
 translator. The capsule attests only a current recipe, never loaded content, a

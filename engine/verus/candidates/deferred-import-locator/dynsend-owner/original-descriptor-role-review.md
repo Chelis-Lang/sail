@@ -1,7 +1,8 @@
 # Original-descriptor-only delayed role: proposed boundary
 
-Status: design for independent review only. No source change, helper execution,
-proof, build or candidate activation follows from this document. The
+Status: reviewed design; a file-only implementation/control draft is pending
+independent review. No helper execution, proof, build or candidate activation
+follows from this document. The
 [original qualification failure](qualification-failure.json) and the
 [separate bounded diagnostic](provenance-diagnostic-result.json) remain distinct.
 The selected runtime is unchanged.
@@ -62,9 +63,12 @@ Capture requires all of the following, before freezing any worker snapshot:
    and existing duplicate/ambiguous checks remain. No filename-derived crate
    identity or extra stable-crate inventory is introduced. Missing Foreign
    identity never creates a Loaded claim.
-5. Immediately before Sources handoff, the same original descriptor/range,
-   Delayed state, path/hash and zero-match namespace condition are revalidated
-   on the compiler thread. Any new Foreign association or early Loaded, None,
+5. Retain the exact immutable original metadata range/hash/filename once at
+   constructor capture in the admitted family. Immediately before Sources
+   handoff, reread only the mutable current descriptor and Foreign namespace on
+   the compiler thread: compare its Delayed state/path/hash against that frozen
+   original authority and require the same zero-match condition. The original
+   metadata table is no longer borrowed and is not reread at handoff. Any new Foreign association or early Loaded, None,
    Busy/poison or descriptor change refuses this role. There is no promotion,
    reconstruction of discarded authority or second snapshot.
 
@@ -80,8 +84,11 @@ role remains OriginalDescriptorLocator. It never writes back into SpanContext.
 These requirements remain conservative when actual callback conditions are
 unsupported. A source lacking an exact original filename, a changed remapping,
 relative/non-UTF8/oversized path, ambiguous original metadata or a changed
-handoff namespace is still a miss. The observed 5705 record cannot be claimed
-eligible under this proposal without executable evidence.
+handoff namespace is still a miss. The actual sealed-vstd metadata/control now establishes a supported original
+recipe for this selected hash/range in a controlled empty Foreign namespace;
+its absolute filename is retained by SHA. It does not establish the historical
+5705 callback namespace, nor full fresh-store admission. See the
+[implementation and controls](../original-descriptor/README.md).
 
 ## Current binding, consumers and domain
 
