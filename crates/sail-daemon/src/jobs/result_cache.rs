@@ -18,11 +18,12 @@ const MAP_NODE_BYTES: usize = 1024;
 // therefore cannot use the refundable per-family quota. Reserve their maximum
 // overlap permanently from the same 128 MiB ceiling, including fixed owners and
 // each endpoint worker's off-lock retired Arc vector. No frame bytes are exempt.
-const ADMISSION_MARGIN: usize = MAP_NODE_BYTES
+const ADMISSION_MARGIN: usize = super::output_service::FIXED_BYTES
+    + MAP_NODE_BYTES
     + std::mem::size_of::<ResultCache>()
     + std::mem::size_of::<Budget>()
     + ARC_HEADER_BYTES
-    + super::MAX_CLIENTS
+    + (super::MAX_CLIENTS + 1)
         * (std::mem::size_of::<Frames>()
             + ARC_HEADER_BYTES
             + MAX_ENTRIES * std::mem::size_of::<Arc<Frames>>());
@@ -31,6 +32,8 @@ pub(super) struct Frames {
     current: Arc<Vec<u8>>,
     historical: Arc<Vec<u8>>,
     unknown: Arc<Vec<u8>>,
+    pub(super) output: Mutex<Option<Box<super::output_service::OutputOwner>>>,
+    pub(super) offered: std::sync::atomic::AtomicBool,
     // Last field: physical buffers are disposed before their charge is released.
     charge: Option<Charge>,
 }
@@ -40,6 +43,8 @@ impl Frames {
             current,
             historical,
             unknown,
+            output: Mutex::new(None),
+            offered: std::sync::atomic::AtomicBool::new(false),
             charge: None,
         }
     }
@@ -60,6 +65,9 @@ impl Frames {
                 .checked_add(std::mem::size_of::<Vec<u8>>() + ARC_HEADER_BYTES)?;
         }
         Some(size)
+    }
+    pub(super) fn charged(&self) -> bool {
+        self.charge.is_some()
     }
     pub fn select(self: &Arc<Self>, currentness: Currentness) -> WireFrame {
         let bytes = Arc::clone(match currentness {
@@ -95,7 +103,7 @@ impl Deref for WireFrame {
     }
 }
 
-struct Budget {
+pub(super) struct Budget {
     used: AtomicUsize,
     limit: usize,
 }
@@ -108,7 +116,11 @@ impl Default for Budget {
     }
 }
 impl Budget {
-    fn reserve(self: &Arc<Self>, bytes: usize) -> Option<Charge> {
+    #[cfg(test)]
+    pub(super) fn used_for_test(&self) -> usize {
+        self.used.load(Ordering::Acquire)
+    }
+    pub(super) fn reserve(self: &Arc<Self>, bytes: usize) -> Option<Charge> {
         self.used
             .try_update(Ordering::AcqRel, Ordering::Acquire, |used| {
                 used.checked_add(bytes).filter(|total| *total <= self.limit)
@@ -120,7 +132,7 @@ impl Budget {
         })
     }
 }
-struct Charge {
+pub(super) struct Charge {
     budget: Arc<Budget>,
     bytes: usize,
 }
@@ -154,6 +166,9 @@ pub(super) struct ResultCache {
     budget: Arc<Budget>,
 }
 impl ResultCache {
+    pub(super) fn budget(&self) -> Arc<Budget> {
+        Arc::clone(&self.budget)
+    }
     pub fn get(&self, key: &str) -> Option<Arc<Frames>> {
         self.entries.lock().ok()?.values.get(key).cloned()
     }
@@ -401,11 +416,14 @@ mod tests {
         assert!(node_upper <= MAP_NODE_BYTES);
         let fixed =
             std::mem::size_of::<ResultCache>() + std::mem::size_of::<Budget>() + ARC_HEADER_BYTES;
-        let retiring = super::super::MAX_CLIENTS
+        let retiring = (super::super::MAX_CLIENTS + 1)
             * (std::mem::size_of::<Frames>()
                 + ARC_HEADER_BYTES
                 + MAX_ENTRIES * std::mem::size_of::<Arc<Frames>>());
-        assert_eq!(ADMISSION_MARGIN, MAP_NODE_BYTES + fixed + retiring);
+        assert_eq!(
+            ADMISSION_MARGIN,
+            super::super::output_service::FIXED_BYTES + MAP_NODE_BYTES + fixed + retiring
+        );
         const { assert!(ADMISSION_MARGIN < MAX_BYTES) };
         assert_eq!(
             ResultCache::default().budget.limit + ADMISSION_MARGIN,

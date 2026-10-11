@@ -117,3 +117,12 @@ the exact Linux Sail/shim bytes built after the complete 498-test workspace gate
 and 38-control solver suite. It is a build scope only; cold-start measurements
 retain their original deadlines and remain separate from source/runtime and
 reader qualification.
+
+The retained daemon Result path has a separate output-owner integration candidate
+under [ADR0035](decisions/0035-guarded-retained-output-digests.md). It concerns
+persisted stdout bytes, not verification or input Currentness. One background
+constructor may establish continuous output coverage within the existing frame
+budget; foreground requests use that coverage only around their independent
+input/runtime freshness check. Missing, busy, refused or invalid coverage retains
+the full read/hash fallback. This candidate has not yet passed source controls or
+the original live reader gate, and establishes no latency or reuse benchmark.

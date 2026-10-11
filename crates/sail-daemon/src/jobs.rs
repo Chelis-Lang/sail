@@ -1,5 +1,6 @@
 //! Durable, FIFO project verification jobs on a separate local endpoint.
 
+mod output_service;
 mod product;
 mod result_cache;
 mod rpc_diagnostics;
@@ -35,6 +36,7 @@ struct State {
     proofs: crate::proof_journal::Journals,
     freshness: sail_verus::managed::FreshnessIndex,
     result_cache: result_cache::ResultCache,
+    outputs: Arc<output_service::Queue>,
     rpc_diagnostics: rpc_diagnostics::Recorder,
 }
 
@@ -51,6 +53,7 @@ pub struct JobHandle {
     state: Arc<State>,
     listener: Option<JoinHandle<()>>,
     worker: Option<JoinHandle<()>>,
+    outputs: Option<JoinHandle<()>>,
 }
 
 /// Binds an endpoint and recovers retained job records. Unfinished records
@@ -79,6 +82,8 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
     let listener = UnixListener::bind(&socket)?;
     std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
     listener.set_nonblocking(true)?;
+    let result_cache = result_cache::ResultCache::default();
+    let outputs = output_service::Queue::new(result_cache.budget());
     Ok(JobServer {
         socket,
         listener,
@@ -92,7 +97,8 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             activity: Arc::new(AtomicU64::new(0)),
             proofs: crate::proof_journal::Journals::default(),
             freshness: sail_verus::managed::FreshnessIndex::default(),
-            result_cache: result_cache::ResultCache::default(),
+            result_cache,
+            outputs,
             rpc_diagnostics: rpc_diagnostics::Recorder::new(),
         }),
     })
@@ -104,10 +110,29 @@ impl JobServer {
     /// # Errors
     /// Returns thread creation errors.
     pub fn spawn(self) -> io::Result<JobHandle> {
+        let outputs = match output_service::Queue::spawn(&self.state.outputs) {
+            Ok(worker) => Some(worker),
+            Err(_) => {
+                // Optional constructor setup cannot prevent the original job
+                // service from serving complete read-and-hash responses.
+                self.state.outputs.stop();
+                None
+            }
+        };
         let worker_state = Arc::clone(&self.state);
-        let worker = std::thread::Builder::new()
+        let worker = match std::thread::Builder::new()
             .name("sail-project-worker".to_owned())
-            .spawn(move || worker::run(&worker_state))?;
+            .spawn(move || worker::run(&worker_state))
+        {
+            Ok(worker) => worker,
+            Err(error) => {
+                self.state.outputs.stop();
+                if let Some(outputs) = outputs {
+                    let _ = outputs.join();
+                }
+                return Err(error);
+            }
+        };
         let endpoint_state = Arc::clone(&self.state);
         let listener = self.listener;
         let endpoint = std::thread::Builder::new()
@@ -119,11 +144,16 @@ impl JobServer {
                 state: self.state,
                 listener: Some(listener),
                 worker: Some(worker),
+                outputs,
             }),
             Err(error) => {
                 self.state.stop.store(true, Ordering::SeqCst);
                 self.state.ready.notify_all();
                 let _ = worker.join();
+                self.state.outputs.stop();
+                if let Some(outputs) = outputs {
+                    let _ = outputs.join();
+                }
                 Err(error)
             }
         }
@@ -138,6 +168,7 @@ impl JobHandle {
     /// Cancels active work, joins both service threads, and removes the endpoint.
     pub fn shutdown(&mut self) {
         self.state.stop.store(true, Ordering::SeqCst);
+        self.state.outputs.stop();
         self.state.ready.notify_all();
         if let Ok(mut jobs) = self.state.jobs.lock() {
             for job in jobs.values_mut() {
@@ -153,6 +184,9 @@ impl JobHandle {
             let _ = thread.join();
         }
         if let Some(thread) = self.worker.take() {
+            let _ = thread.join();
+        }
+        if let Some(thread) = self.outputs.take() {
             let _ = thread.join();
         }
         let _ = self.state.rpc_diagnostics.export(&self.state.root);

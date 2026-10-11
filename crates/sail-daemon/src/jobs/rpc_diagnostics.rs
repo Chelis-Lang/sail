@@ -259,7 +259,14 @@ impl Trace<'_> {
                 Stage::Encode => &mut record.encode_us,
                 Stage::Write => &mut record.write_us,
             };
-            *destination = Some(micros(started.elapsed()));
+            // An optional output owner brackets input freshness with two
+            // output barriers; fallback may add the original read/SHA too.
+            // Retain their complete stage cost instead of overwriting a pass.
+            *destination = Some(
+                destination
+                    .unwrap_or(0)
+                    .saturating_add(micros(started.elapsed())),
+            );
         }
     }
 

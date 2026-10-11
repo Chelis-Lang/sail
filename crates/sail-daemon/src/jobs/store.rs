@@ -171,6 +171,23 @@ pub(super) fn result_frame(
             .map(|bytes| stdout_digest(&bytes))
             .map_err(io::Error::other)
     })?;
+    let projection = job
+        .projection
+        .as_ref()
+        .ok_or_else(|| io::Error::other("SAIL0816: missing result seal"))?;
+    if let Some(frames) = trace.measure(Stage::FrameLookup, || state.result_cache.get(&key))
+        && let Some(currentness) = state.outputs.validate(&frames, trace, |trace| {
+            trace.measure(Stage::Freshness, || {
+                projected_currentness(state, job, projection)
+            })
+        })
+    {
+        trace.currentness(currentness);
+        trace.frame_hit(true);
+        return Ok(frames.select(currentness));
+    }
+    // Failed final output coverage discards its prospective input result and
+    // repeats the original complete read/SHA and independent freshness below.
     let bytes = match trace.measure(Stage::OutputSeal, || project_bytes(state, job)) {
         Ok(bytes) => bytes,
         Err(error) => {
@@ -178,10 +195,7 @@ pub(super) fn result_frame(
             return Err(error);
         }
     };
-    let projection = job
-        .projection
-        .as_ref()
-        .ok_or_else(|| io::Error::other("SAIL0816: missing result seal"))?;
+
     let currentness = trace.measure(Stage::Freshness, || {
         projected_currentness(state, job, projection)
     });
@@ -226,6 +240,11 @@ pub(super) fn result_frame(
             frame(Currentness::Historical)?,
             frame(Currentness::Unknown)?,
         ),
+    );
+    state.outputs.offer(
+        &frames,
+        &state.root.join(&job.status.id).join("stdout"),
+        &projection.stdout_sha256,
     );
     let selected = frames.select(currentness);
     trace.end(Stage::Encode, encode_started);
