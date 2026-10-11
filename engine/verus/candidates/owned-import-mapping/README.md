@@ -98,6 +98,11 @@ scans; any index optimization would need equivalent namespace/hash/ambiguity
 tests. Hash-map import iteration is sorted only in this private lookup inventory,
 not in the stock graph, bucket, function, command or solver order.
 
+The [timing and domain review](timing-and-domain.md) distinguishes constructor
+Loaded owners from later ordinary resolution and exact Delayed descriptors. The
+[pinned formatter audit](formatter-audit.json) records the actual Unix streaming
+Debug chain; it grants no arbitrary formatter or aggregate memory exemption.
+
 ## Controls and remaining gates
 
 The API tests cover loaded foreign mapping against the exact stock resolver,
