@@ -268,6 +268,39 @@ class Controls(unittest.TestCase):
             self.assertFalse(record['all_cargo_artifacts_archived'])
             self.assertIn('not inferred', record['files'][0]['execution_identity'])
 
+    def test_live_s_and_r_refuse_but_z_and_x_are_retained_separately(self):
+        rows = {pid: {'pid': pid, 'pgid': 100, 'state': state}
+                for pid, state in enumerate(('S', 'R', 'Z', 'X'), 100)}
+        entries = [types.SimpleNamespace(name=str(pid)) for pid in rows]
+        module = types.SimpleNamespace(MAX_SCAN=10, row=rows.get)
+        groups = types.SimpleNamespace(known={100: {}})
+        with patch.object(m.Path, 'iterdir', return_value=iter(entries)):
+            audit = m.group_closure(module, groups)
+        self.assertEqual([r['state'] for r in audit['survivors']], ['S', 'R'])
+        self.assertEqual([r['state'] for r in audit['terminated_unreaped']], ['Z', 'X'])
+        self.assertFalse(m.closed_groups(audit))
+        audit['survivors'] = []
+        self.assertTrue(m.closed_groups(audit))
+        audit['terminated_unreaped'][0]['state'] = 'S'
+        self.assertFalse(m.closed_groups(audit))
+
+    def test_missing_raced_row_is_distinct_from_unreadable_existing_row(self):
+        module = types.SimpleNamespace(MAX_SCAN=10, row=lambda _pid: None)
+        groups = types.SimpleNamespace(known={100: {}})
+        for exists in (False, True):
+            entry = types.SimpleNamespace(name='100', exists=lambda: exists)
+            with patch.object(m.Path, 'iterdir', return_value=iter([entry])):
+                audit = m.group_closure(module, groups)
+            self.assertEqual(audit['unavailable'], [100] if exists else [])
+            self.assertEqual(audit['terminated_unreaped'], [])
+            self.assertEqual(m.closed_groups(audit), not exists)
+
+    def test_group_scan_overflow_remains_unavailable(self):
+        with patch.object(m.Path, 'iterdir', return_value=iter([Mock(), Mock()])):
+            audit = m.group_closure(types.SimpleNamespace(MAX_SCAN=1), Mock())
+        self.assertFalse(m.closed_groups(audit))
+        self.assertEqual(audit['unavailable'], ['process scan bound'])
+
     def test_normal_parent_exit_does_not_invent_scan_failure(self):
         primary = {'pid': 123, 'state': 'Z'}
         entry = types.SimpleNamespace(name='123')
