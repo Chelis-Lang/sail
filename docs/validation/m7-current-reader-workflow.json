@@ -1,0 +1,6414 @@
+{
+  "census": {
+    "active_crate": "human_eval_verus",
+    "active_job": "1791705217580-674245-4",
+    "active_worker": {
+      "name": "sail",
+      "parent": 674245,
+      "pid": 700769,
+      "started_ticks": 4904715,
+      "state": "S"
+    },
+    "clients": 4,
+    "deadline_seconds": 5,
+    "establishment_ms": 144.33708300202852,
+    "establishment_reads": 1,
+    "execution_environment": "Linux amd64 Docker Desktop emulation; independent concurrent development work",
+    "input_revision": "35582bdce63f09891d6e614c180c46f9731d4411fade81fa05ff45b6712871fb",
+    "job": "1791704992851-674245-2",
+    "passed": false,
+    "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+    "samples": [
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 99.45687500294298
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 274.26029199705226
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 87.76987499732058
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 148.8115420070244
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 52.0623339980375
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 298.5407500018482
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 63.83004099916434
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 256.5332500016666
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 135.05162599903997
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 133.34908300021198
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 43.5377910034731
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 179.1637089991127
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 58.08654199790908
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 218.65837500081398
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 84.51395800511818
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 166.31437500473112
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 86.47008299885783
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 251.33008400007384
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 68.95995899685659
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 262.17558300413657
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 67.27016700460808
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 276.976665998518
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 72.64820900309132
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 192.6854590055882
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 98.34391700132983
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 188.49791699904017
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 47.24583299685037
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 221.09387499949662
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 145.72862499335315
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 190.74691699643154
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 147.46249999734573
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 220.08704199834028
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 60.209249997569714
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 381.72312499955297
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 56.54924999544164
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 279.0389169967966
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 97.40287500608247
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 209.63112499885028
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 75.8064999972703
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 330.8099999994738
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 86.95016599813243
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 249.17124999774387
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 90.50866700272309
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 344.36224999808474
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 51.997542002936825
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 198.9419999954407
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 98.93033400294371
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 302.4866670020856
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 58.550792004098184
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 349.9214999974356
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 55.426791004720144
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 213.98995799972909
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 120.31291699531721
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 218.88529200077755
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 85.28987499448704
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 114.95991699484875
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 60.416125001211185
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 138.94500099559082
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 68.64954200136708
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 182.94437500298955
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 69.22908400156302
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 240.21775100118248
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 98.62495899869828
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 272.49829200445674
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 51.60150099982275
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 316.40995899942936
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 182.1908749989234
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 331.3910420038155
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 50.64025000319816
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 237.23820900340797
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 65.42050000280142
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 347.2107080015121
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 84.69145900016883
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 191.79595800233074
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 95.80579199973727
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 263.6563339983695
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 51.52674999408191
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 234.97966699505923
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 255.04383399675135
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 152.77375000005122
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 46.828792001178954
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 191.7511249994277
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 69.34258399996907
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 165.6059590022778
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 48.61170899675926
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 206.851666996954
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 89.43870800430886
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 170.76129199995194
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 82.43033399776323
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 183.36016700050095
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 42.30341700167628
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 370.73016700014705
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 51.99929200171027
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 299.84679199696984
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 70.20020799973281
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 198.14620800025295
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 178.67029099579668
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 508.4223750018282
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 101.7767500015907
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 147.7858330035815
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 54.37887500011129
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 532.6634590019239
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 71.75200000347104
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 440.047832998971
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 114.15604200010421
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 454.96758299850626
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 58.76216600154294
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 260.20329099992523
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 70.58129199867835
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 325.77683399722446
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 171.5929169949959
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 196.0215409999364
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 63.958124999771826
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 197.5759580018348
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 124.03187499876367
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 229.13058399717556
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 102.25820900086546
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 365.8339999965392
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 141.5765409983578
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 378.19450000097277
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 94.02591699472396
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 338.47175000119023
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 238.85387500195066
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 337.29774999665096
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 101.56545900099445
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 153.08925000135787
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 54.69004200131167
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 257.3975839986815
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 59.36341699998593
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 235.21074999734992
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 77.16970899491571
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 382.45891699625645
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "R"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 99.75208400283009
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 223.4501669954625
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 71.95320800383342
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 309.84000000171363
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 131.18737500190036
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 314.60208399948897
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 56.44537499756552
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 200.4272080012015
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 65.54416599828983
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 112.97033399750944
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 49.57720800302923
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 216.58691700577037
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 122.37362500309246
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 372.71949999558274
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 86.3413750048494
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 139.33629199891584
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 148.42979200329864
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 212.4134170007892
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 115.74924999877112
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 231.6560839972226
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 105.11870900518261
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 304.1958330068155
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 63.43758299772162
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 289.16037599992706
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 118.76608400052646
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 236.33329199947184
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 110.396000003675
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 172.32479200174566
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 106.22145899833413
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 337.8443330002483
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 92.5983340057428
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 311.47170899930643
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 69.9137920018984
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 319.3351250010892
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 63.10541599668795
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 292.0670000021346
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 113.34874999738531
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 397.031207998225
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 59.26920899946708
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 244.9977090000175
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 147.99862499785377
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 341.4344999982859
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 120.68750099570025
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 223.21212499809917
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 54.64620800194098
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 394.71345899801236
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 56.306416998268105
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 257.9046669998206
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 90.57658300298499
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 315.9471660037525
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 55.6904159966507
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 266.26300100178923
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 74.18350000079954
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 200.82270800048718
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 79.1255829972215
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 387.70954200299457
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 97.41533399937907
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 189.72754199785413
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 111.57358299533371
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 267.26679100102047
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 104.79741599556291
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 170.99345799942967
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 82.5693329970818
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 249.66312499600463
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 56.66787499649217
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 274.6616670046933
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "status",
+        "response_bytes": 452,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 108.4464579980704
+      },
+      {
+        "active_after": "running",
+        "active_before": "running",
+        "current": true,
+        "operation": "result",
+        "response_bytes": 4312245,
+        "verifier_continued": true,
+        "verifiers_after": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "verifiers_before": [
+          {
+            "crate_name": "human_eval_verus",
+            "name": "rust_verify",
+            "parent": 701013,
+            "pid": 701015,
+            "started_ticks": 4905907,
+            "state": "S"
+          }
+        ],
+        "wall_ms": 178.19333300576545
+      }
+    ],
+    "schema_version": 1,
+    "summary": {
+      "result": {
+        "count": 100,
+        "max_ms": 532.6634590019239,
+        "median_ms": 249.41718749687425,
+        "p95_ms": 394.71345899801236
+      },
+      "status": {
+        "count": 100,
+        "max_ms": 255.04383399675135,
+        "median_ms": 82.49983349742251,
+        "p95_ms": 148.42979200329864
+      }
+    }
+  },
+  "census_scope": "current records are original combined admission booleans, not separately retained response labels; all200 are true and verifier_continuedtrue",
+  "cleanup": {
+    "archival_errors": [],
+    "cleanup_errors": [],
+    "daemon": {
+      "elapsed_s": 0.12229829200077802,
+      "exit_code": 0,
+      "pid": 674245
+    },
+    "outer_finalization_errors": [],
+    "post_observation_identity": {
+      "bytes": 531,
+      "sha256": "59c5c1b90be7a6d84286e3a2298e8dc07b7ed5e6d0d167f375c5b88fd707d5bd"
+    },
+    "post_tracked_actor_observation": {
+      "674221": {
+        "present": false
+      },
+      "674227": {
+        "present": false
+      },
+      "674245": {
+        "present": false
+      },
+      "680924": {
+        "present": false
+      },
+      "691679": {
+        "present": false
+      },
+      "697979": {
+        "present": false
+      },
+      "699738": {
+        "present": false
+      },
+      "700769": {
+        "present": false
+      },
+      "701013": {
+        "parent": 1,
+        "present": true,
+        "started_ticks": 4905897,
+        "state": "Z"
+      },
+      "701015": {
+        "parent": 1,
+        "present": true,
+        "started_ticks": 4905907,
+        "state": "Z"
+      }
+    },
+    "post_tracked_actor_observation_scope": "Exact owned controller/daemon/workers and captured verifier-parent bindings only; two orphan zombies remain, no tracked non-zombie actor survives"
+  },
+  "complete_proof_phases": [
+    {
+      "command_wall_ms": 207893.32438899874,
+      "deadline_s": null,
+      "phase": "baseline-unmeasured-preparation-ordinary-full",
+      "report": {
+        "context_sha256": "8e455294c968e7f6dbde089be54171afbec6625083e6104fe9c72924f13dd2d8",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 0,
+          "verifier_invocations": 2,
+          "wall_ms": 207765.996097
+        },
+        "exit_code": 0,
+        "input_revision": "35582bdce63f09891d6e614c180c46f9731d4411fade81fa05ff45b6712871fb",
+        "notes": [
+          "Build-script input declarations were established during this run"
+        ],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      }
+    },
+    {
+      "command_wall_ms": 194675.3291720015,
+      "deadline_s": null,
+      "phase": "active-unmeasured-preparation-ordinary-full",
+      "report": {
+        "context_sha256": "edf81f45ffa295a4d7112d214522205cf7cf0d84c039b1c7741dd99ba525dc2d",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 0,
+          "verifier_invocations": 2,
+          "wall_ms": 194457.76300500002
+        },
+        "exit_code": 0,
+        "input_revision": "55a087e5a4c5328f05606c8f6de7a70292042ac7211063d0db504b1b1fa56992",
+        "notes": [
+          "Build-script input declarations were established during this run"
+        ],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      }
+    },
+    {
+      "command_wall_ms": 64069.471695001994,
+      "deadline_s": 600,
+      "phase": "baseline-ordinary-full",
+      "report": {
+        "context_sha256": "8e455294c968e7f6dbde089be54171afbec6625083e6104fe9c72924f13dd2d8",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 1,
+          "verifier_invocations": 1,
+          "wall_ms": 63879.881695000004
+        },
+        "exit_code": 0,
+        "input_revision": "35582bdce63f09891d6e614c180c46f9731d4411fade81fa05ff45b6712871fb",
+        "notes": [],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": true,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      }
+    },
+    {
+      "command_wall_ms": 51076.50018899585,
+      "deadline_s": 600,
+      "phase": "active-ordinary-full",
+      "report": {
+        "context_sha256": "edf81f45ffa295a4d7112d214522205cf7cf0d84c039b1c7741dd99ba525dc2d",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 1,
+          "verifier_invocations": 1,
+          "wall_ms": 50917.159273000005
+        },
+        "exit_code": 0,
+        "input_revision": "55a087e5a4c5328f05606c8f6de7a70292042ac7211063d0db504b1b1fa56992",
+        "notes": [],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": true,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      }
+    },
+    {
+      "accepted": true,
+      "batched": true,
+      "compiler_invocations": 2,
+      "job": "1791704255977-674245-0",
+      "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+      "phase": "baseline-unmeasured-preparation-repair-context-0",
+      "report": {
+        "context_sha256": "a4c37aa3c8e2f01aabe791ca07bf6c3fdb81193f2a08c6cd7027fd074f34f626",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 0,
+          "verifier_invocations": 2,
+          "wall_ms": 190588.763712
+        },
+        "exit_code": 0,
+        "input_revision": "35582bdce63f09891d6e614c180c46f9731d4411fade81fa05ff45b6712871fb",
+        "notes": [
+          "Build-script input declarations were established during this run"
+        ],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      },
+      "result_reads": 1,
+      "selection_error": null,
+      "status_reads": 787,
+      "submit_to_result_wall_ms": 204983.60888400202
+    },
+    {
+      "accepted": true,
+      "batched": true,
+      "compiler_invocations": 2,
+      "job": "1791704656138-674245-1",
+      "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+      "phase": "active-unmeasured-preparation-repair-context-0",
+      "report": {
+        "context_sha256": "e317d5b40685e4e6e55e6bdb5d2209daa17a843ac2b47f0a36dabf446ecb1de5",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 0,
+          "verifier_invocations": 2,
+          "wall_ms": 256945.491243
+        },
+        "exit_code": 0,
+        "input_revision": "55a087e5a4c5328f05606c8f6de7a70292042ac7211063d0db504b1b1fa56992",
+        "notes": [
+          "Build-script input declarations were established during this run"
+        ],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      },
+      "result_reads": 1,
+      "selection_error": null,
+      "status_reads": 1025,
+      "submit_to_result_wall_ms": 271738.14874899836
+    },
+    {
+      "accepted": true,
+      "batched": true,
+      "compiler_invocations": 1,
+      "job": "1791704992851-674245-2",
+      "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+      "phase": "baseline-repair-context-0",
+      "report": {
+        "context_sha256": "a4c37aa3c8e2f01aabe791ca07bf6c3fdb81193f2a08c6cd7027fd074f34f626",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 1,
+          "verifier_invocations": 1,
+          "wall_ms": 75979.42315900001
+        },
+        "exit_code": 0,
+        "input_revision": "35582bdce63f09891d6e614c180c46f9731d4411fade81fa05ff45b6712871fb",
+        "notes": [],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": true,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      },
+      "result_reads": 1,
+      "selection_error": null,
+      "status_reads": 330,
+      "submit_to_result_wall_ms": 87958.31216499937
+    },
+    {
+      "accepted": true,
+      "batched": true,
+      "compiler_invocations": 1,
+      "job": "1791705132731-674245-3",
+      "manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+      "phase": "active-repair-context-0",
+      "report": {
+        "context_sha256": "e317d5b40685e4e6e55e6bdb5d2209daa17a843ac2b47f0a36dabf446ecb1de5",
+        "currentness": "current",
+        "error": null,
+        "execution": {
+          "reused_targets": 1,
+          "verifier_invocations": 1,
+          "wall_ms": 74050.097202
+        },
+        "exit_code": 0,
+        "input_revision": "55a087e5a4c5328f05606c8f6de7a70292042ac7211063d0db504b1b1fa56992",
+        "notes": [],
+        "targets": [
+          {
+            "complete": true,
+            "requested": false,
+            "reused": true,
+            "summary": {
+              "failed": 0,
+              "functions": 1871,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 1871
+            },
+            "target": "vstd"
+          },
+          {
+            "complete": true,
+            "requested": true,
+            "reused": false,
+            "summary": {
+              "failed": 0,
+              "functions": 331,
+              "provisional": 0,
+              "unknown": 0,
+              "unstable": 0,
+              "verified": 331
+            },
+            "target": "human_eval_verus"
+          }
+        ]
+      },
+      "result_reads": 1,
+      "selection_error": null,
+      "status_reads": 318,
+      "submit_to_result_wall_ms": 84788.09795599955
+    }
+  ],
+  "execution": "Local Linux amd64 Docker Desktop emulation on arm64 macOS; concurrent development, no causal attribution",
+  "external_inclusive_elapsed_s": 1218.3556302650031,
+  "frozen_inputs": "m7-current-reader-workflow-prepared.json",
+  "immutable_inputs_unchanged": true,
+  "kind": "original-current-reader-workflow-terminal",
+  "original_error": {
+    "message": "('python-census', 1)",
+    "type": "AssertionError"
+  },
+  "passed": false,
+  "private_metadata_seals": {
+    "python_census": {
+      "bytes": 145682,
+      "sha256": "21c37d46c32792069a305a4a65c07dadecf38e617ff3e834068f77b4950e429f"
+    },
+    "summary": {
+      "bytes": 126749,
+      "sha256": "c08e4a6cbc7445cdecd9a61eacace748c1a5b464049060fcad32bf1c0eb55abb"
+    },
+    "terminal": {
+      "bytes": 138,
+      "sha256": "9905acf309146637280fac6f3481ac456d8590c4c2143f6450a7b14d75da865f"
+    }
+  },
+  "production_source": "44722793489b56be9c2988fc62b709f173b36f22",
+  "raw_evidence": {
+    "all_archive_entries_and_compressed_hash_verified_on_host": true,
+    "archive": {
+      "bytes": 4794530,
+      "sha256": "8b9338eac63cd93e8bda4edffcee1ac05ab475390ef895839caca29ab6f1469e"
+    },
+    "excluded": [
+      "verification workspaces and targets",
+      "cache and environment-bearing record.json"
+    ],
+    "files": 147,
+    "initial_host_archive_utility_error": "hashlib.file_digest unavailable; corrected bounded streaming SHA256 verification passed without changing archived bytes or workflow",
+    "inventory": {
+      "bytes": 25535,
+      "sha256": "f509da559310498088c192ae4d9e69f7a6bb927b2a6a5e58d0640aa04f803bd6"
+    },
+    "post_cancel_worker_streams_separate_from_original_before_cancel_copies": true,
+    "raw_bytes": 149438353
+  },
+  "repeat_attempts": 0,
+  "response_body_bytes": {
+    "result": 4312245,
+    "status": 452
+  },
+  "retained_cli_mcp_attempted": false,
+  "rust_census_attempted": false,
+  "scope": "Original current447 selected-b346 reader stage only; not source physical 512MiB, 2x, full conformance or overallM7. Previous failures and completed723 diagnosis remain separate. No Result latency phase decomposition or cause established.",
+  "status": "FAIL original Python full-Result p95; first failure stopped workflow",
+  "timer_archives": {
+    "1791704255977-674245-0/events.setup-680924-0.jsonl": {
+      "bytes": 2166,
+      "layout": "projects/jobs",
+      "sha256": "ab4827b98a9a725ad93e1f84d69d68ab240cb050d9cc29a8fc519c82a5a1a597"
+    },
+    "1791704656138-674245-1/events.setup-691679-0.jsonl": {
+      "bytes": 2212,
+      "layout": "projects/jobs",
+      "sha256": "a18aed6a596211c3404efdc5f8248be509f49fde0f0350eb2bd20d081a80bbb7"
+    },
+    "1791704992851-674245-2/events.setup-697979-0.jsonl": {
+      "bytes": 2218,
+      "layout": "projects/jobs",
+      "sha256": "6e102b751c5a9c221247982e472c502135cb9c1ae690d54eaa543f942f70bb2c"
+    },
+    "1791705132731-674245-3/events.setup-699738-0.jsonl": {
+      "bytes": 2234,
+      "layout": "projects/jobs",
+      "sha256": "c9eaa4c2cdd7838e42ed7ce40fff54a164cead191360f68d3e8cff648e193c12"
+    },
+    "1791705217580-674245-4/events.setup-700769-0.jsonl": {
+      "bytes": 2051,
+      "layout": "projects/jobs",
+      "sha256": "99c8d1f8fa434a8e083ed06ef2f1b37bb135e0ce49ca53f760df6ca76dc1d1a2"
+    }
+  },
+  "unmeasured_preparation": {
+    "completed": true,
+    "not_performance_samples": true,
+    "phase_wall_ms": [
+      413611.5915659975,
+      466987.1468380006
+    ],
+    "retries": 0,
+    "total_wall_s": 880.598738403998
+  },
+  "verifier_binding": {
+    "crate_name": "human_eval_verus",
+    "parent": 701013,
+    "pid": 701015,
+    "same_binding_spans_all200_samples": true,
+    "started_ticks": 4905907
+  },
+  "version": 1,
+  "wrapper_inclusive_elapsed_s": 1218.0945798479952
+}
