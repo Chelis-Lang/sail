@@ -1,0 +1,147 @@
+--- a/crates/sail-verus/src/managed/lease.rs
++++ b/crates/sail-verus/src/managed/lease.rs
+@@ -62,6 +62,10 @@
+         self.process.kill()?;
+         self.process.wait().map(|_| ())
+     }
++    #[cfg(test)]
++    pub(super) fn diagnostic_output(path: std::path::PathBuf) {
++        ACQUIRE_DIAGNOSTIC.with(|output| *output.borrow_mut() = Some(path));
++    }
+     pub(super) fn acquire(paths: &[PathBuf]) -> Option<Self> {
+         let mut stage = "input-file-limit";
+         #[cfg(test)]
+@@ -74,6 +78,13 @@
+                 started.elapsed()
+             );
+         }
++        #[cfg(test)]
++        ACQUIRE_DIAGNOSTIC.with(|output| {
++            if let Some(path) = output.borrow().as_ref() {
++                let result = serde_json::json!({"stage":stage,"available":lease.is_some(),"elapsed_ms":started.elapsed().as_secs_f64()*1000.0});
++                std::fs::write(path.join("acquisition.json"), serde_json::to_vec(&result).unwrap()).unwrap();
++            }
++        });
+         lease
+     }
+     #[allow(
+@@ -159,6 +170,15 @@
+                 ))
+             })
+             .collect::<Option<_>>()?;
++        #[cfg(test)]
++        ACQUIRE_DIAGNOSTIC.with(|output| {
++            if let Some(path) = output.borrow().as_ref() {
++                let rows: Vec<_> = bindings.iter().map(|(p,c,d,i)| serde_json::json!({"path":p.as_os_str().as_encoded_bytes(),"canonical":c.as_os_str().as_encoded_bytes(),"device":d,"inode":i})).collect();
++                let bytes = serde_json::to_vec(&rows).unwrap();
++                assert!(bytes.len() <= 8 * 1024 * 1024);
++                std::fs::write(path.join("combined-bindings.json"),bytes).unwrap();
++            }
++        });
+         // JSON PathBuf serialization panics inside json! on non-UTF-8 names.
+         // The private Linux helper opens exact native bytes, with no lossy path
+         // conversion. Its imported-runtime report remains fallible UTF-8 JSON.
+@@ -358,11 +378,31 @@
+         include_str!("helper_runtime.py"),
+         include_str!("lease.py")
+     );
++    #[cfg(test)]
++    let (helper, stderr) = ACQUIRE_DIAGNOSTIC.with(|output| {
++        let Some(path) = output.borrow().as_ref().cloned() else {
++            return (helper, Stdio::null());
++        };
++        let helper = helper.replace("    for path, device, inode in identities:", "    path = None\n    operation = 'helper-readiness'\n    for path, device, inode in identities:")
++            .replace("        fd = os.open(bytes(path)", "        operation = 'open'\n        fd = os.open(bytes(path)")
++            .replace("        fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_RDLCK)", "        operation = 'F_SETLEASE-F_RDLCK'\n        fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_RDLCK)")
++            .replace("except (OSError, ValueError, TypeError, AttributeError, KeyError):\n    release()", "except (OSError, ValueError, TypeError, AttributeError, KeyError) as error:\n    record = {'operation':locals().get('operation'), 'errno':getattr(error,'errno',None),'error_type':type(error).__name__,'path_hex':bytes(path).hex() if locals().get('path') is not None else None}\n    payload = json.dumps(record).encode('ascii')\n    if len(payload) <= 32768:\n        os.write(2,payload+b'\\n')\n    release()");
++        (helper, Stdio::from(std::fs::File::create(path.join("helper-error.json")).unwrap()))
++    });
+     Command::new(interpreter)
+         .args(["-I", "-u", "-c", &helper])
+         .stdin(Stdio::from(input))
+         .stdout(Stdio::from(output))
+-        .stderr(Stdio::null())
++        .stderr({
++            #[cfg(test)]
++            {
++                stderr
++            }
++            #[cfg(not(test))]
++            {
++                Stdio::null()
++            }
++        })
+         .spawn()
+         .ok()
+ }
+@@ -1019,3 +1059,8 @@
+         drop(writer);
+     }
+ }
++
++#[cfg(test)]
++thread_local! {
++    static ACQUIRE_DIAGNOSTIC: std::cell::RefCell<Option<std::path::PathBuf>> = const { std::cell::RefCell::new(None) };
++}
+--- a/crates/sail-verus/src/managed/mod.rs
++++ b/crates/sail-verus/src/managed/mod.rs
+@@ -38,3 +38,6 @@
+ pub(crate) use receipts::complete as receipt_complete;
+ 
+ pub(crate) use runner::focused;
++
++#[cfg(all(test, target_os = "linux"))]
++mod retained_lease_diagnostic;
+--- /dev/null
++++ b/crates/sail-verus/src/managed/retained_lease_diagnostic.rs
+@@ -0,0 +1,50 @@
++//! Unselected single acquisition control for a retained completed project.
++#![allow(clippy::unwrap_used, reason = "unselected ignored diagnostic fixture")]
++use super::*;
++use std::collections::BTreeMap;
++use std::os::unix::fs::MetadataExt as _;
++use std::path::Path;
++#[test]
++#[ignore = "one explicitly authorized retained-scope acquisition; no Cargo or proof"]
++fn diagnose_retained_input_lease_acquisition_once() {
++    let directory = std::env::var("SAIL_LEASE_DIAGNOSTIC_INPUT").unwrap();
++    let directory = Path::new(&directory);
++    let input: serde_json::Value =
++        serde_json::from_slice(&std::fs::read(directory.join("input.json")).unwrap()).unwrap();
++    let environment: BTreeMap<String, String> =
++        serde_json::from_slice(&std::fs::read(directory.join("environment.json")).unwrap())
++            .unwrap();
++    let cache = Path::new(input["cache"].as_str().unwrap());
++    let workspace = Path::new(input["workspace"].as_str().unwrap());
++    let context = input["context"].as_str().unwrap();
++    let snapshot = runner::refresh_context(cache, workspace, context, &environment).unwrap();
++    let encode = |paths: &[std::path::PathBuf]| {
++        paths
++            .iter()
++            .map(|p| p.as_os_str().as_encoded_bytes().to_vec())
++            .collect::<Vec<_>>()
++    };
++    let observer = precise::Observer::begin(&snapshot.roots, &snapshot.excluded);
++    let Some(mut observer) = observer else {
++        std::fs::write(
++            directory.join("outcome.json"),
++            b"{\"observer_available\":false,\"acquisition_attempted\":false}",
++        )
++        .unwrap();
++        return;
++    };
++    let paths = observer.files();
++    let rows:Vec<_>=paths.iter().map(|path|{let m=std::fs::metadata(path).unwrap();serde_json::json!({"path":path.as_os_str().as_encoded_bytes(),"device":m.dev(),"inode":m.ino()})}).collect();
++    let inventory = serde_json::json!({"snapshot_complete":snapshot.complete,"input_revision":snapshot.revision,"roots":encode(&snapshot.roots),"excluded":encode(&snapshot.excluded),"observer_files":rows});
++    let bytes = serde_json::to_vec(&inventory).unwrap();
++    assert!(bytes.len() <= 8 * 1024 * 1024);
++    std::fs::write(directory.join("inventory.json"), bytes).unwrap();
++    lease::ReadLease::diagnostic_output(directory.to_owned());
++    let mut owner = lease::ReadLease::acquire(&paths);
++    let available = owner.is_some();
++    let owner_clean = owner.as_mut().map(lease::ReadLease::clean);
++    let observer_clean = observer.clean();
++    std::fs::write(directory.join("outcome.json"),serde_json::to_vec(&serde_json::json!({"observer_available":true,"acquisition_attempted":true,"lease_available":available,"owner_clean":owner_clean,"observer_clean":observer_clean})).unwrap()).unwrap();
++    drop(owner);
++    drop(observer);
++}
