@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "scope": "Closed regenerable common debug caches and unused native installation worktree after exact closure and evidence preservation",
+  "common_target": [
+    {
+      "scope": "Closed shared-target incremental compiler cache after complete 566-test gate and 39 solver controls; every tested ELF, fingerprint, log, runtime and source remains unchanged",
+      "source_gate": "46e1da6 full566 workspace and39solver PASS; sealed release complete",
+      "checks": {
+        "sail-m7-handoff-validation": {
+          "blockers": [],
+          "unreadable_live": []
+        },
+        "sail-m7-acceptance": {
+          "blockers": [],
+          "unreadable_live": []
+        }
+      },
+      "removed_files": 10187,
+      "allocated_bytes": 1672749056,
+      "logical_bytes": 1653429077,
+      "preserved_artifacts": null,
+      "preserved_metadata_equal": null,
+      "raw_inventory_sha256": "3c3ff00ceca5cbb585896fddb6b7bdd18e45cabf9ec444a527666c30448e3a54"
+    },
+    {
+      "scope": "Regenerable closed debug .rlib/.rmeta libraries only; preserves every standalone tested ELF, shared library, source runtime, fingerprint, dependency record and raw result",
+      "source_gate": "46e1da6 full566 workspace and39solver PASS; sealed release complete",
+      "checks": {
+        "sail-m7-handoff-validation": {
+          "blockers": [],
+          "unreadable_live": []
+        },
+        "sail-m7-acceptance": {
+          "blockers": [],
+          "unreadable_live": []
+        }
+      },
+      "removed_files": 562,
+      "allocated_bytes": 734539776,
+      "logical_bytes": 733506717,
+      "preserved_artifacts": 1743,
+      "preserved_metadata_equal": true,
+      "raw_inventory_sha256": "f792fab4bf3badf51aea04176833d3f2de4d30a3675f60fc61b47a028719d1bf"
+    }
+  ],
+  "retired_worktree": {
+    "version": 1,
+    "scope": "Confirmed closed diagnostic worktrees; all ignored evidence and actual executables retained in verified archives",
+    "started_unix_ns": 1791714784684062000,
+    "worktrees": [
+      {
+        "name": "m7-native-install",
+        "head": "b5657787de970104a288f00615c4ea98483a6d0a",
+        "branch_preserved": "fix/m7-native-product-ownership",
+        "files": 20,
+        "logical_bytes": 90413885,
+        "archive": "m7-native-install-target.tar.gz",
+        "archive_bytes": 26423607,
+        "archive_sha256": "dd0904599784d398cbf209fd80fe7522f82074306c5a5ed2fa153b7cdef61b41",
+        "every_ignored_file_verified": true,
+        "open_holders": 0,
+        "status": "retired"
+      }
+    ],
+    "active_inputs_touched": false,
+    "apfs_recovery_attribution": false,
+    "completed_unix_ns": 1791714791262877000
+  },
+  "active_private_targets_modified": false,
+  "backing_space_reclamation_attribution": false,
+  "observed_host_available_after_common_retirement": "4.2 GiB; observed filesystem availability, not attributed backing recovery",
+  "original_acceptance_bounds_modified": false
+}
