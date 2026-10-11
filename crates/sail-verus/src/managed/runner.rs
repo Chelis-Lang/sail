@@ -1601,7 +1601,7 @@ pub(crate) fn run_engine(
         notes.push(format!("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification ({}); no current proof receipt is published", coherent.failure_description()));
     }
     if !sysroot_complete {
-        notes.push(format!("SAIL3114: sysroot byte identities lost continuous kernel coverage ({}); no current proof receipt is published", sysroots.failure_reason()));
+        notes.push(format!("SAIL3114: sysroot byte identities lost continuous kernel coverage ({}); no current proof receipt is published", sysroots.failure_description()));
     }
     if !script_coverage {
         notes.push("Build-script input declarations were established during this run".to_owned());
@@ -1645,7 +1645,7 @@ pub(crate) fn run_engine(
             // the original oracle; uncertainty remains regardless of equality.
             let _ = runtime_current(&config.cache, &result.context_sha256);
             result.currentness = Currentness::Unknown;
-            result.notes.push(format!("SAIL3114: sysroot kernel coverage ended before receipt commit ({}); no current proof receipt is published", sysroots.failure_reason()));
+            result.notes.push(format!("SAIL3114: sysroot kernel coverage ended before receipt commit ({}); no current proof receipt is published", sysroots.failure_description()));
             json(&paths.run.join("result.json"), &result)?;
         }
     }
