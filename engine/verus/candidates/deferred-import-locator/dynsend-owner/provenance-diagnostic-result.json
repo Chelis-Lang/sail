@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "scope": "One independent bounded observation on exact failed revision0; original14 stays failed, no source/product qualification credit",
+  "status": "completed",
+  "exit_code": 0,
+  "controller_sha256": "710f55c5f6f4eb717192803362d9726210a8ce0650e8af1351391a92a37c45f0",
+  "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+  "runtime_variant": "73bd8aa61b18ca12",
+  "manifest_sha256": "f47828d9a3b4b12de72e4d7725e0200543522c21a9dbe9cf2cde3891774d1abf",
+  "selected": false,
+  "product_qualified": false,
+  "compiler_limit_seconds": 600,
+  "controller_elapsed_seconds": 57.34620140199695,
+  "invocation_and_observation_elapsed_seconds": 47.94981023100263,
+  "nice": 0,
+  "controller_pid": 625007,
+  "controller_starttime_ticks": 4301286,
+  "trace": {
+    "opt_in": "1",
+    "target_filter": null,
+    "max_records": 4096,
+    "max_published_bytes": 4194304,
+    "max_complete_record_bytes": 32768
+  },
+  "source_inventory_sha256": "dd10bf6fe593a617e71174de432429d6ba9a4eb49974b0c67377bb84988decf5",
+  "source_files_count": 265,
+  "primary": {
+    "stderr_equal_to_original": true,
+    "stderr_bytes": 234,
+    "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+    "full_module_results_equal_to_original": true,
+    "function_details_equal_to_original": true,
+    "full_module_verification": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "success": true,
+      "verified": 9,
+      "errors": 0,
+      "is-verifying-entire-crate": true
+    },
+    "event_counts": {
+      "compiler-sealed": 1,
+      "compiler-started": 2,
+      "diagnostic": 4,
+      "function-observed": 8,
+      "function-started": 11,
+      "import-authority-state": 6,
+      "obligation-observed": 11,
+      "obligation-progress": 22,
+      "phase-finished": 2,
+      "phase-started": 2,
+      "preparation-summary": 1,
+      "prepared-key-components": 4,
+      "prepared-unavailable": 4
+    },
+    "first_ineligible_import_state": {
+      "version": 1,
+      "phase": "focus",
+      "event": "import-authority-state",
+      "payload": {
+        "id": 5705,
+        "words": [
+          2208441662476345389,
+          1764737637827845
+        ],
+        "as_string": "vstd/function.rs:138:2: 138:2 (#0)",
+        "eligible": false,
+        "initial_state": "Delayed",
+        "pre_focus_state": "Delayed",
+        "initial_start": null,
+        "initial_end": null,
+        "pre_focus_start": null,
+        "pre_focus_end": null,
+        "original_start": 406973,
+        "original_end": 411571,
+        "expected_hash": [
+          150,
+          106,
+          21,
+          212,
+          167,
+          136,
+          93,
+          15,
+          51,
+          145,
+          223,
+          41,
+          214,
+          211,
+          26,
+          29
+        ],
+        "reason": "Delayed"
+      }
+    },
+    "preceding_loaded_eligible_records": 5,
+    "adjacent_next_event": {
+      "version": 1,
+      "phase": "focus",
+      "event": "prepared-unavailable",
+      "payload": {
+        "stage": "provenance"
+      }
+    },
+    "observer_unavailable": [],
+    "preparation": {
+      "version": 1,
+      "enabled": true,
+      "batch_hits": 0,
+      "persistent_hits": 0,
+      "misses": 4,
+      "peak_retained_bytes": 10087942,
+      "memory_budget_bytes": 536870912,
+      "disk_budget_bytes": 536870912
+    },
+    "narrowing": "A valid per-record Imported binding is State::Unavailable(Delayed), before fresh store admission. Five prior eligible Loaded observations exclude a whole mapping-family capture error. Immutable mapping plus serialized store-loop provenance return and immediately adjacent refusal correlate this binding to the focus refusal in this diagnostic.",
+    "remaining_uncertainty": "Delayed merges unsupported absolute/UTF8/bounded/non-NUL descriptor path and no matching same-crate/raw-hash current Foreign source. The unavailable branch records neither path nor Foreign-match count; it does not distinguish these conditions. Full-phase refusals are not separately traced."
+  },
+  "independent_closure": {
+    "same_pre_post_seals": true,
+    "source_inventory_unchanged": true,
+    "active_bound_processes": [],
+    "all13artifact_sha256": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "305abefce0b62721547a06370e63f493ce961a2de4dbbbb15313beae4517d4d9",
+      "verus/source/target-verus/release/cargo-verus": "f289aace1c0c9f3cf33320792d61fead92f223bbb1e9fbffd9db52c5c40c93c4",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "706cf40d8ecb1b03adf3c43705fbea3c08b0bbe15fc7170d2efaaa5378e6b91c",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "49d13f1043b3bb2f19270544f432b75d80ccfa68b52d12e0d6df19af64a71121",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "89044b0f7fb3980d4b5c3de84504274718151470b62059d4addbb60868600567",
+      "verus/source/target-verus/release/libvstd.rlib": "e8ddd2da6f270fb19c9c0ec3a23e58098b8a0b69e92865f972dcf7d24ff21885",
+      "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "ee8de6d4dedc584f2457938868dea48c839ad6117789d78b6784181dff5d9829",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "seven_source_sha256": {
+      "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+      "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+      "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+      "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+      "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+      "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+      "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395"
+    },
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+  },
+  "raw_sha256": {
+    "closure.json": "820e58712b3b8c230fc14f95acd44291498bc775c43c7f6c61b8e00e00357151",
+    "diagnostic.json": "fbf25abde8f643790f2e551c4af4aae282ea3fe7bdce379cb18c60718546d183",
+    "engine.actor-observations.jsonl": "2b41f27801e88f60a7947852afd2f685b476c3dd90d876ba7257e9a82aa39fae",
+    "engine.stderr": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+    "engine.stdout": "efa0c1e1e99b652dfe8df9c9f83d6462cebd8958aff1dc551ca0af2c57d7f537",
+    "events.jsonl": "05157f6b886f4c8814e1590825d994afa50d004f29cf601eea35b199bd3a215c",
+    "focus.json": "5bd0d444047fe0bb2a87788ad9132c795f81da51039b7bf54677bfd5e42bc8a4"
+  }
+}
