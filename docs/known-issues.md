@@ -459,3 +459,17 @@ and no solver process started. All post-run seals match. The three bounded
 process snapshots are explicitly partial. The historical timeout remains
 unexplained, and no reader latency samples or acceptance are supplied by this
 successful diagnostic.
+
+## Local diagnostic integration gate deadline failures
+
+The [complete local gate on `5b8dd6f`](../bench/validation/m7-linux-diagnostic-gate-5b8dd6f-failure-2026-10-11.json)
+passes all new pure diagnostic controls and strict linting, then fails eight of
+566 workspace cases; later gate steps are not reached. Production Rust is
+unchanged from the passing `46e1da6` and `55d14c8` scopes. The one focused run of
+the same eight original cases passes seven and still fails the HTTP refresh
+fixture: its validated reply is published 253.329 ms after lookup begins, past
+the unchanged 250 ms serving deadline. The whole failed gate remains failed.
+Actual tested binaries and raw phase clocks are retained. These observations
+do not establish a scheduling, transport or implementation cause; no assertion,
+timeout, payload or admission rule has changed. The previous native CI passes
+remain separate from this local failure.
