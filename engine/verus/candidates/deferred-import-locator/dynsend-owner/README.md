@@ -83,3 +83,11 @@ closed source-control target with changed VIR/driver crates excluded. No
 runtime files, proof receipts or acceptance records are copied. Fresh ordinary
 vstd verification and a complete thirteen-artifact manifest are still required
 from this build; original fourteen-stage qualification has not launched.
+
+[Prepared qualification handoff](qualification-handoff.json) binds the eighteen
+original scripts and one future controller to this candidate. Their assertions,
+raw stock diagnostic comparisons, prior-revision FOCUS requirement and original
+600-second compiler bounds stay unchanged. The supplementary import-state trace
+is opt-in, exact-target filtered and bounded; it changes no eligibility rule.
+No qualification process has launched. Root must first review the fresh new
+manifest and this controller binding.

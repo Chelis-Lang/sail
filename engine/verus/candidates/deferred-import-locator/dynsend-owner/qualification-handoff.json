@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "scope": "Prepared original qualification handoff, NOT executed or granted; requires new ordinary manifest review first",
+  "status": "not launched",
+  "prospective_variant": "73bd8aa61b18ca12",
+  "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+  "controller_sha256": "e5541c4aa0d9a9b69fe1ab7d0db9d0b9bd15d3254665f7af90c77ef7c5e714e8",
+  "original_script_sha256": {
+    "engine/verus/test-real-he.py": "effde8542a0b096aa760b6f24a9d97ef249016cd8aa588129445151a901efb89",
+    "engine/verus/test-engine.py": "543be4cecca10c745a4e870511a1e4e7ac841e1c839d190bb2be0f0f03294c5f",
+    "engine/verus/test-prepared.py": "22d0436832438d276ac79ef330dc283b67352157f9bd0c75a9ee89cc34ef1f8f",
+    "engine/verus/test-cancel.py": "c899b388c6005197f561a73c7aeafe7fe8c49e76cbb9f0f04fc56f296e15744d",
+    "engine/verus/candidates/test-graph-ledger.py": "283f05ed2cfb3f19dcd40ca055b315fe74403f93564f56b77ef87dfd8a59e603",
+    "engine/verus/candidates/audit-private-span-boundary.py": "ecaa208f6ead0dd0d0b459ffbc375e2635c44d870caf19d68b6efe1ab9d398f4",
+    "engine/verus/candidates/qualify-same-input.py": "f7ddcf603e2ff7c52a2a107ce97139ee2ccc43c75f558b61d14642762d92cc62",
+    "engine/verus/candidates/test-private-span-cross-edit.py": "80b49c69b84599b606f200157c67cdc1f92e73054905f3a22b11ce839789fc2a",
+    "engine/verus/candidates/audit-graph-ledger.py": "c1385581e251f4f8da24efb3ad176d067e0773b283f92d2253effc5122feb5e6",
+    "engine/verus/candidates/test-same-callback.py": "6cd4d5d18efd8d751de89b7c36dec04c3d26ed11f912cac3a0d9ca9050237295",
+    "engine/verus/candidates/test-key-delta.py": "c3a46a4c530f9e02234614f49cd5fea2ec4b841b1d133d711c10c749344778e6",
+    "engine/verus/candidates/actor-observation.py": "d01de79ee9de89b823d7ccfb0efa1474a2ed4185f519bffd925e8546895edc34",
+    "engine/verus/candidates/test-real-he-same-input.py": "2bb7a3817dd6aecfba438f3dc0ab78aa82012527c3977fcd6365ce5dbcac67d2",
+    "engine/verus/candidates/test-private-span-migration.py": "dd57b4ef82a9f40720946e89ebb18c7aecd915c84df309627c59ca8896f4deaf"
+  },
+  "original_script_count": 14,
+  "stages": 14,
+  "compiler_timeout_seconds": 600,
+  "assertions_changed": false,
+  "source_controls_required": "exact886b full38VIR/55driver and both strict passed542bd6c",
+  "new_manifest_required": true,
+  "source_hashes_and_lock_rechecked_at_launch": true,
+  "complete_runtime_inventory_required": 13,
+  "independent_source_cases": "serial; internal concurrency unchanged",
+  "supplementary_observation": {
+    "SAIL_ENGINE_IMPORT_TRACE": "1",
+    "SAIL_ENGINE_IMPORT_TRACE_TARGET": "div-mod-relocation",
+    "authority_or_eligibility_changes": false
+  },
+  "original14_launched": false,
+  "selected": false,
+  "qualified": false,
+  "remaining": [
+    "Fresh ordinary vstd2060/0 and complete new runtime manifest",
+    "Root manifest/controller review and exact grant",
+    "One original14 actor, strict rawstock diagnostics, same-input oracle and genuine previous-revision FOCUS reuse"
+  ]
+}
