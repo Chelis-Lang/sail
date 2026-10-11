@@ -55,3 +55,13 @@ correction is being reviewed independently; it is not mixed into this delta.
 
 `identity.json` binds the full and narrow patches, eight complete-source hashes
 and unchanged source lock. Only the engine observation/adaptor file changes.
+
+
+The first actual source-control attempt passed VIR41 and strict VIR, then
+failed the new driver test fixture with `E0308`: its mixed-kind raw owner type
+omitted `RefUnwindSafe`, required by actual `Span.raw_span`. The
+[failed scope](raw-owner-failure.json) retains exact source/result/raw hashes,
+unchanged four runtime/source/lock seals and closed actors. The narrow correction
+adds only that marker to the new test annotation; it changes no production byte
+or assertion. The corrected source controls remain pending; no runtime build or
+diagnostic proof has run.
