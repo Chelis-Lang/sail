@@ -917,8 +917,9 @@ mod wait_controls {
         );
         assert!(ended.status.is_none());
         assert!(!ended.output_complete);
-        assert!(
-            ended.stdout.is_empty(),
+        assert_eq!(
+            ended.stdout,
+            Vec::<u8>::new(),
             "busy buffer must be reported unavailable"
         );
     }
