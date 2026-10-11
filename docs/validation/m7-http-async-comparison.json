@@ -244,12 +244,13 @@
     "bytes": 319273,
     "sha256": "35f96a4c60db076584a61b7a0b593caba70373b8cd3c22ba50c10529994ffff9",
     "members": 148,
-    "retention": "sealed on native filesystem; host transfer did not complete",
+    "retention": "native original preserved; exact host-private recovery verified afterward",
     "transfer_failures": [
       "Docker archive request500 for raw archive",
       "Docker archive request500 for strict terminal",
       "Docker daemon unavailable for final inputs copy"
-    ]
+    ],
+    "recovery_record": "m7-http-async-archive-recovery.json"
   },
   "limitations": [
     "one sequential baseline/candidate observation, not a distribution",
