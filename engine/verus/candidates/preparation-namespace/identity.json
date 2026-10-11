@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "status": "file-only prototype; 7 reduced pinned/API controls PASS; complete source checks/runtime/original14 pending; unselected",
+  "base_patch_sha256": "bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372",
+  "full_patch_sha256": "d688a80b53a7303d87c80eb12aee2a57b30b7fb1200812d443bb89c0f0f22fd6",
+  "delta_sha256": "20337bd3fe22a293b915f811f72dfb1bc5ae34dfd2119c19e604d367909abe45",
+  "source_sha256": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_engine.rs": "b2464e58712bc3284ca480c0af3a1befc15c6a4b47a5b684cbc916b70d8c1921",
+    "rust_verify/src/sail_namespace.rs": "575f0baf425015720739a4a84cc7c655bb5d58d0623208896649155a49ea7e36",
+    "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "32fdfa79c2e5f8d4c5461905e0f44ef46625133eb1c4d1b44339e5c10bec7b92",
+    "vir/src/context.rs": "8bcec061b764900da85d35f78c1ff50acf333983d4a5d3de4c2e2cd72d4abfb3"
+  },
+  "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "control_source_sha256": "b95b244783092aae38991b037128174adab645df603d2abf835432b62f99c8e7",
+  "control_owner_bytes": 16384,
+  "prospective_phase_max_bytes": 524304384,
+  "unchanged_global_budget_bytes": 536870912,
+  "domain": "sail-prepared/graph-ledger/parallel-namespace-lease-authority/v9",
+  "qualification_failed_scope_retained": "../deferred-import-locator/late-handoff/qualification-failure.json",
+  "api_source_extraction": "namespace.rs is exact production file prefix before cfg(test); tests.rs separately exercises it",
+  "api_core_matches": true
+}
