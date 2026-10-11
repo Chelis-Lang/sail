@@ -259,3 +259,19 @@ the complete gate. [The phase record](validation/m7-http-749-followup.json)
 separates those facts and retains the unresolved cause. An unavailable or slow
 shared store still falls back to local verification; no timeout, unsigned reply
 or diagnostic timing authorizes a cached proof.
+
+### Rejected transport adapter experiment
+
+Production retains the pinned reqwest blocking transport. An owned async-client
+candidate passed 39 affected security and lifecycle controls, including the
+unchanged eight-reader, one-GET fixture. Its once-only complete-operation
+comparison was slower: combined helper and I/O CPU rose from 66.264 ms to
+84.160 ms, and lookup-to-publication wall time rose from 185.680 ms to
+222.422 ms. The smaller body-adapter cost did not justify selection.
+
+The unselected patch and exact limits are retained in
+[ADR 0037](decisions/0037-owned-async-shared-http-transport.md) and the
+[comparison record](validation/m7-http-async-comparison.json). Both measured
+fixtures passed the original 250 ms deadline and 75 ms response delay. Those
+separate passes do not erase the failed full gate or qualify live readers.
+No trust, signature, TLS, payload, timeout or fallback contract changed.
