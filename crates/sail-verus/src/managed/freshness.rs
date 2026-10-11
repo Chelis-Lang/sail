@@ -40,7 +40,6 @@ fn trace(stage: &'static str, started: std::time::Instant, reason: &'static str)
 
 #[cfg(target_os = "linux")]
 struct RuntimeValidation {
-    #[cfg(test)]
     identity_guarded: bool,
     identity: String,
     lease: ReadLease,
@@ -49,13 +48,14 @@ struct RuntimeValidation {
 #[cfg(target_os = "linux")]
 impl RuntimeValidation {
     fn valid(&mut self, request: &Request, started: std::time::Instant) -> Option<()> {
-        // Candidate remains unselected in production pending whole-path
-        // controls/profile. Exact raw sidecar membership was certified only
-        // after the cold independent reads and all successful final barriers.
+        // Exact raw sidecar membership was certified only after the cold
+        // independent reads and all successful final barriers. This boolean
+        // adds no parsed graph or separately retained ownership. The existing
+        // complete native owner remains the sole authority on every read.
         #[cfg(test)]
         let guarded = self.identity_guarded && runtime_identity_guard::enabled();
         #[cfg(not(test))]
-        let guarded = false;
+        let guarded = self.identity_guarded;
         if !guarded {
             #[cfg(test)]
             runtime_identity_guard::record_parse();
@@ -565,7 +565,6 @@ impl FreshnessIndex {
                 runtime.zip(lease).map(|((identity, _), lease)| {
                     Arc::new(Mutex::new(RuntimeSlot {
                         runtime: Some(RuntimeValidation {
-                            #[cfg(test)]
                             identity_guarded: runtime_identity_guard::eligible(
                                 &request.cache,
                                 &request.context,
@@ -608,7 +607,7 @@ impl FreshnessIndex {
     }
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(target_os = "linux")]
 #[path = "freshness_identity_guard.rs"]
 mod runtime_identity_guard;
 #[cfg(target_os = "linux")]
