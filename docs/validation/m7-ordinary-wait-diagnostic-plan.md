@@ -80,7 +80,7 @@ any, remains subject to the original Current/Historical/Unknown rules.
 
 The [concrete wrapper](../../scripts/m7-ordinary-wait-diagnostic.py),
 private argv/configuration and [input freeze](m7-ordinary-wait-diagnostic-freeze.json)
-are now prepared, with eight pure controls passing on host and Linux. One pure
+are now prepared, with ten pure controls passing on host and Linux. One pure
 archive-exclusion control first caught a `Path()` truthiness error; it was fixed
 before native preparation, and no real compiler target was copied or modified.
 The evidence archive retains prior lifecycle/receipt/artifact metadata separately;
@@ -90,13 +90,30 @@ storage, never proof authority imported into the new invocation.
 
 A joined, owned deadline thread observes the original clock beginning before CLI
 dispatch. It performs only the original owned-handle cleanup at expiry, independent
-of snapshot work; normal completion wakes and joins it promptly. The CLI closes
+of snapshot work; normal completion wakes and joins it promptly. A separate absolute check after
+observing exit refuses a late successful return even if the timer did not fire. The CLI closes
 before the owned daemon. Snapshot file reads remain bounded and nonblocking where
 supported; the wrapper does not claim it can interrupt arbitrary kernel reads.
+Only the original container
+`SAIL_TEST_Z3` and `SAIL_VERUS_HOME` may be inherited; unapproved engine, portfolio,
+daemon and trace selectors are refused before private configuration is frozen.
 Public records bind private environment names/hashes, not values. The diagnostic
 environment hash is evidence only; the unchanged production context check supplies
 the actual context/revision comparison. The new observation file is outside the
-fixture and uses an already excluded observation key. No proof or service has
-launched during this preparation. It is not a second reader
+fixture and uses an already excluded observation key. No proof or service launched during static preparation. The one reviewed
+execution is recorded separately from this freeze.
+
+The exact non-background ordinary command routes through `managed_cli::verify`
+to `managed::run`, which launches Cargo-Verus below the CLI. It does not submit a
+background proof worker to the daemon. Thus the original CLI-root all-task walk
+is appropriate for its verifier/shim/solver descendants. Target telemetry uses
+`event: target-started` with `target: human_eval_verus`; missing telemetry is a
+missed observation, never proof that no verifier ran.
+
+An external read-only closure audit follows original cleanup. It retains observed
+CLI and service birth/group headers and bounded matching-group metadata. An
+exited leader alone cannot certify descendant absence; escaped, reparented or
+uncaptured descendants, PID reuse, and scan limits remain explicit. The audit
+signals no discovered process and does not extend the original proof clock. It is not a second reader
 acceptance attempt. See [reader acceptance](../reader-acceptance.md),
 [known issues](../known-issues.md) and [the roadmap](../ROADMAP.md).
