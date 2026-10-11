@@ -231,7 +231,8 @@ The current corrective source work includes an unselected
 It preserves the current stock resolver's exact absence result for a complete,
 known imported metadata namespace and keeps current raw-span rebinding mandatory.
 Its corrected source controls pass all 150 tests and both strict compiler checks;
-the two earlier fixture failures remain retained. The actual memo-bypass
-sensitivity and ordinary fresh-vstd build also pass. Original cross-edit
-qualification remains pending. The selected runtime and product acceptance
-status remain unchanged.
+the earlier fixture failures remain retained. The actual memo-bypass sensitivity,
+ordinary fresh-vstd build and original thirteen-stage source qualification pass,
+including genuine prior-revision focused reuse and full HumanEval same-input
+checks. Artifact delivery and rebuilt-product acceptance remain separate; the
+selected runtime is unchanged.

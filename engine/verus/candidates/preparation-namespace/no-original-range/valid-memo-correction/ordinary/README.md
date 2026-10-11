@@ -43,3 +43,11 @@ hit completed the same-input wire, diagnostics, verdict and effect comparison,
 and both later revisions restored a persistent focused preparation. The full
 HE comparison and remaining pipeline stages are still pending; this stage does
 not select the runtime or establish product performance acceptance.
+
+The [whole original qualification](qualification-result.json) passed all thirteen
+stages in 2645.966 seconds. The original fourteen-script inventory, 600-second
+compiler bounds and every stock/same-input/prior-revision assertion remained
+unchanged. Independent closure rechecked all thirteen runtime artifacts, eight
+source files, the lock and four prior runtime/source seals; both containers had
+zero holders and unreadable live processes. Product performance, rebuilt Sail
+compatibility, publication and runtime selection remain separate.
