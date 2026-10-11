@@ -1,0 +1,62 @@
+{
+  "frozen": {
+    "scope": "Independent private-target validation of exact root optional selector fix; original 7da scenario remains failed and unchanged",
+    "root_head": "148b377cf906795b5fd4d9378c54734dab4ce08d",
+    "files": {
+      "crates/sail-verus/src/managed/sysroot_selection.rs": {
+        "sha256": "8f6157e99ea1de8236a1e1368cfc0b69954257169d01da2b143fe73ce545eaba",
+        "bytes": 3593
+      },
+      "crates/sail-verus/src/managed/mod.rs": {
+        "sha256": "1d07a9ef991eb1513e6b33509304b664009aa3d782581615217d8101fbbaec11",
+        "bytes": 1026
+      },
+      "crates/sail-verus/src/managed/runner.rs": {
+        "sha256": "82171354cf0a9501d93e8feebef7ced4dbc532df8792582d7f35d0c94918f4af",
+        "bytes": 78116
+      }
+    },
+    "diff_sha256": "f5a7d61d23b7a33bdd0d343a17d55de78b44902141ec6153e4ca5941decbfb8c",
+    "target": "private sysroot-reuse target, no common Cargo writes"
+  },
+  "activation_dependency": {
+    "file": "crates/sail-verus/src/managed/diagnostics.rs",
+    "source": "sealed 7da original scenario input",
+    "sha256": "81ae57dab7f64c8ed505ee65faa46ac3f73f180c29e8d03681a13dc82590ad7c",
+    "bytes": 10583,
+    "reason": "Original private primitives base lacks the two activation timer enum variants referenced by root runner; initial compile failure retained."
+  },
+  "logs": {
+    "sail-m7-sysroot-selection-root-tests.log": {
+      "sha256": "ba512297b828504eb55ef8aaf16b17c62daef835fa863b09d0397b1b2d7ea644",
+      "bytes": 1507
+    },
+    "sail-m7-sysroot-selection-root-tests-02.log": {
+      "sha256": "cdae9582cff72105bc9656c19c686979d9bded202748e9eb3f0bcaf9a444c588",
+      "bytes": 595
+    },
+    "sail-m7-sysroot-selection-root-clippy.log": {
+      "sha256": "b90e129b4106cca9bfef171f9cad18b64ab341887e55660e3429d7f229d7567a",
+      "bytes": 239
+    }
+  },
+  "targeted_tests": {
+    "passed": 2,
+    "failed": 0,
+    "case_elapsed_s": 0.13,
+    "compile_elapsed_s": 17.17
+  },
+  "strict_clippy": {
+    "passed": true,
+    "elapsed_s": 18.22
+  },
+  "schema_version": 1,
+  "execution": "Linux x86_64 Docker Desktop emulation; private Cargo target, two build jobs, one independent test case at a time.",
+  "commands": [
+    "cargo test -p sail-verus --lib sysroot_selection::tests -- --test-threads=1",
+    "cargo clippy -p sail-verus --all-targets -- -D warnings"
+  ],
+  "review": "Selection retains original sorted byte pairs via borrowed Serializer.collect_seq; SHA256 receives at most 256 KiB encoded bytes. No serialized selection buffer or vector of environment pairs is retained. Normal context encoding and local hashing fallback are unchanged.",
+  "initial_control_failure": "Private primitives validation source lacked two timer enum variants referenced by the copied activation runner. Initial compile log is preserved. Adding only the sealed diagnostics dependency corrected the validation snapshot; no production/test assertion changed.",
+  "qualification_scope": "Two exact selector regressions and all-target strict Clippy passed. This is not original cold/warm managed acceptance, complete workspace qualification, a measured reuse benefit, or final source-engine qualification. The original 7da cold timeout remains failed."
+}
