@@ -54,7 +54,13 @@ pub(super) fn selection(
     };
     serde_json::to_writer(
         &mut writer,
-        &(1, args, engine, identity, Environment(environment)),
+        &(
+            "sail-managed-sysroot-selection-v2",
+            args,
+            engine.map(crate::engine::Request::artifact_identity),
+            identity,
+            Environment(environment),
+        ),
     )
     .ok()?;
     Some(format!("{:x}", writer.digest.finalize()))
@@ -63,6 +69,53 @@ pub(super) fn selection(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sysroot_selection_omits_only_the_driver_local_function() {
+        let selected = crate::engine::Request {
+            function: Some("selected".to_owned()),
+            cargo_verus: "engine/cargo-verus".into(),
+            manifest: "engine/sail-build.json".into(),
+            manifest_sha256: "manifest-bytes".to_owned(),
+            stock_wrapper: "engine/verus".into(),
+            artifacts: vec!["engine/rust_verify".into()],
+            prepared: "prepared".into(),
+        };
+        let args = vec!["--lib".to_owned()];
+        let identity = vec![("compiler".to_owned(), "compiler-bytes".to_owned())];
+        let environment = BTreeMap::from([(b"RUSTFLAGS".to_vec(), b"flags".to_vec())]);
+        let select = |request| selection(&args, request, &identity, &environment);
+        let expected = select(Some(&selected));
+        assert!(expected.is_some());
+        let mut missing = selected.clone();
+        missing.function = Some("missing".to_owned());
+        assert_eq!(expected, select(Some(&missing)));
+        missing.function = None;
+        assert_eq!(expected, select(Some(&missing)));
+        assert_ne!(expected, select(None));
+        let mut variants = vec![selected.clone(); 6];
+        variants[0].cargo_verus = "another/cargo-verus".into();
+        variants[1].manifest = "another/sail-build.json".into();
+        variants[2].manifest_sha256 = "different-manifest".into();
+        variants[3].stock_wrapper = "another/verus".into();
+        variants[4].artifacts.push("another/rust_verify".into());
+        variants[5].prepared = "another/prepared".into();
+        for request in variants {
+            assert_ne!(expected, select(Some(&request)));
+        }
+        assert_ne!(
+            expected,
+            selection(&[], Some(&selected), &identity, &environment)
+        );
+        assert_ne!(
+            expected,
+            selection(&args, Some(&selected), &[], &environment)
+        );
+        assert_ne!(
+            expected,
+            selection(&args, Some(&selected), &identity, &BTreeMap::new())
+        );
+    }
 
     #[test]
     fn actual_byte_environment_uses_exact_sorted_pairs() -> Result<(), serde_json::Error> {
@@ -76,7 +129,7 @@ mod tests {
         let identity = vec![("/opt/verus/z3".into(), "solver-content".into())];
         let pairs = environment.iter().collect::<Vec<_>>();
         let expected = serde_json::to_vec(&(
-            1,
+            "sail-managed-sysroot-selection-v2",
             &args,
             Option::<&crate::engine::Request>::None,
             &identity,

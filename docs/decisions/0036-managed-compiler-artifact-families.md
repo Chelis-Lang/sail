@@ -24,6 +24,14 @@ Compiler artifacts and executable aliases live in this family. Runtime sidecars,
 source/build-script observations, proof receipts, committed reports and runs stay
 under the complete proof context.
 
+The optional daemon sysroot hint selection also uses a distinct versioned domain
+and the same borrowed function-independent request view. This changes selection
+only. Each caller still creates its own namespace/kernel Baseline before import,
+checks exact scope and content identities, validates at the original barriers,
+and falls back to original local hashing on refusal or uncertainty. No caller
+digest owner or proof context is shared. The 256 KiB streamed selection bound
+remains unchanged; request buffers are borrowed rather than cloned.
+
 A nonblocking family ownership lock accompanies the existing proof-context lock
 through package cleaning, Cargo invocation, artifact validation and receipt
 publication. Acquisition always proceeds from proof context to compiler family.

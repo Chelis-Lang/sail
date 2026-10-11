@@ -331,10 +331,7 @@ fn context_hashes(
         &serde_json::to_vec(&(1, args, engine, identity, environment))
             .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
-    let mut compiler_engine = engine.cloned();
-    if let Some(request) = &mut compiler_engine {
-        request.function = None;
-    }
+    let compiler_engine = engine.map(crate::engine::Request::artifact_identity);
     // Only the driver-local focus selector is omitted. Compiler/solver bytes,
     // arguments, configuration and byte-exact environment remain bound. Cargo
     // freshness supplies ordinary artifacts; only exact proof receipts can
@@ -1766,6 +1763,10 @@ mod tests {
         let selected = compiler_request(Some("selected"));
         let missing = compiler_request(Some("missing"));
         let full = compiler_request(None);
+        assert_eq!(
+            serde_json::to_vec(&selected.artifact_identity())?,
+            serde_json::to_vec(&full)?
+        );
         let hashes = |request| context_hashes(&args, request, &identity, &environment);
         let (proof, compiler) = hashes(Some(&selected))?;
         assert_eq!(

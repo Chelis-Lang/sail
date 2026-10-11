@@ -209,6 +209,45 @@ pub(crate) struct Request {
     pub prepared: PathBuf,
 }
 
+/// Borrowed request identity for compiler artifacts and optional sysroot hints.
+/// Proof contexts and driver controls continue to serialize the full `Request`.
+#[derive(serde::Serialize)]
+pub(crate) struct ArtifactRequest<'a> {
+    function: Option<&'a str>,
+    cargo_verus: &'a Path,
+    manifest: &'a Path,
+    manifest_sha256: &'a str,
+    stock_wrapper: &'a Path,
+    artifacts: &'a [PathBuf],
+    prepared: &'a Path,
+}
+
+impl Request {
+    pub(crate) fn artifact_identity(&self) -> ArtifactRequest<'_> {
+        // Enumerate every field so adding a request control requires deciding
+        // its artifact identity explicitly. Only the driver-local selector is
+        // omitted; no owned strings, paths or artifact vectors are cloned.
+        let Self {
+            function: _,
+            cargo_verus,
+            manifest,
+            manifest_sha256,
+            stock_wrapper,
+            artifacts,
+            prepared,
+        } = self;
+        ArtifactRequest {
+            function: None,
+            cargo_verus,
+            manifest,
+            manifest_sha256,
+            stock_wrapper,
+            artifacts,
+            prepared,
+        }
+    }
+}
+
 fn request(config: &crate::managed::Config, function: Option<String>) -> Result<(Request, String)> {
     let pins = Pins::embedded()?;
     let build = build_dir(&config.workspace.join(&config.cache), &pins);
