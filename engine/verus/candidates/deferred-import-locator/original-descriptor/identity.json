@@ -17,7 +17,7 @@
   "prospective_preparation_max_bytes": 524288000,
   "old_domain": "sail-prepared/graph-ledger/import-locator-authority/v6",
   "new_domain": "sail-prepared/graph-ledger/original-descriptor-locator-authority/v7",
-  "metadata_control": "not executed; closed bounded suffix preflight then actual pinned CrateMetadata serde decode and exact stock remaining-original descriptor loop in an empty current Foreign namespace",
+  "metadata_control": "actual pinned Linux30/30 PASS: sealed vstd CrateMetadata fully consumed, exact stock remaining-original loop, selected original recipe eligible/no loader IO in empty current Foreign namespace; historical failed namespace not established",
   "old_tests_byte_exact_prefix": true,
   "preflight_tests": "4/4 PASS, Python-only malformed allocation/work hints",
   "full_patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
