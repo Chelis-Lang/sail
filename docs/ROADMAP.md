@@ -128,6 +128,14 @@ after the successful proof and declaration-establishment follow-up; later cases
 are unattempted. The failure and reduced diagnostic stay separate from the
 passing source gates. Complete product integration and the frozen repair
 benchmarks remain next; source qualification alone does not accept M7.
+The subsequent [complete local gate](../bench/validation/m7-linux-selected-source-gate-a8bdac6-environment-failure-2026-10-11.json)
+fails with 342 passing and 224 failing workspace cases after the Docker
+filesystem becomes read-only; later gate steps are unattempted. Both actual
+private scratch write probes confirm `EROFS`. The selected-runtime image
+[export was cancelled](../bench/validation/m7-selected-engine-image-export-interruption-2026-10-11.json)
+for low disk space. Docker subsequently restarts externally, interrupting the
+stock diagnostic without a harness terminal result. Neither interruption
+qualifies the product or replaces the retained failures.
 The [candidate history](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
 and [retained workstream history](validation/m7-workstream-history-cc0898e.md)
 preserve the earlier migration, zero-hit and test-fixture failures.

@@ -492,3 +492,17 @@ will preserve the same fixture and worker streams under the original relevant
 limits. The full integration remains failed, separate from the passing
 thirteen-stage source qualification and artifact installation. No deadline or
 assertion was changed.
+
+## Local Docker filesystem failure during selected-engine validation
+
+The complete selected-source local gate on 2026-10-11 completes all 566
+workspace cases with 342 passes and 224 failures. Temporary-file and lock
+creation report `EROFS`; independent private writes to both container overlays
+and the shared target also fail. Later gate steps are unattempted. This is a
+failed gate, with raw evidence retained in the [validation record](../bench/validation/m7-linux-selected-source-gate-a8bdac6-environment-failure-2026-10-11.json),
+not a successful product qualification. Individual failure causes beyond the
+recorded errors are not inferred. After external Docker recovery, private
+write probes succeed again. The selected image export was cancelled for low
+space and was never loaded; the running stock diagnostic was interrupted
+without a harness terminal result or a certified process cleanup. Retained
+engine runtime files and original test limits remain unchanged.
