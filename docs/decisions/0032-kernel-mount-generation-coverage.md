@@ -64,3 +64,21 @@ retains the real isolated fault control and affected checks. The subsequent
 passes all 502 tests and remaining steps; the [complete solver suite](../../bench/validation/m7-linux-solver-091e-emulated-2026-10-11.json)
 passes all 39 controls, including the same real fault.
 This decision does not qualify the optional source engine or M7 performance.
+
+## Exact per-barrier path bindings
+
+The Linux read-lease binding check opens each current path with `O_PATH`,
+compares its device/inode and compares the exact kernel pathname through an
+owned procfs descriptor directory. This repeats at every barrier; it retains no
+identity memo. The existing namespace, mount, lease, helper and interpreter
+checks remain. Any procfs failure, mismatched identity, full pathname buffer or
+` (deleted)` suffix falls back to the original canonical-path/metadata predicate.
+The suffix refusal also covers live filenames containing that literal suffix.
+
+Linux's [descriptor lookup](https://github.com/torvalds/linux/blob/v6.12/fs/proc/fd.c#L165)
+returns the opened file's path; its [pathname renderer](https://github.com/torvalds/linux/blob/v6.12/fs/d_path.c)
+can append the deleted marker. A deleted descriptor and a live hardlink named
+with that marker must not certify the same binding. Native regression controls
+exercise this collision, symlinks, hardlinks, parent traversal, native byte names
+and unavailable procfs fallback against the unchanged predicate. This change is
+under validation; it does not establish the real reader latency target.

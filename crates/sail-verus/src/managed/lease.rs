@@ -5,7 +5,7 @@
 
 use super::precise::Observer;
 use std::io::{Read, Write};
-use std::os::fd::OwnedFd;
+use std::os::fd::{AsRawFd as _, OwnedFd};
 use std::os::unix::fs::MetadataExt as _;
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
@@ -330,16 +330,88 @@ impl ReadLease {
             .unwrap_or("kernel-lease-validation-unavailable")
     }
     fn bindings_current(&mut self) -> bool {
-        self.mounts.clean()
-            && self
-                .bindings
-                .iter()
-                .all(|(path, canonical, device, inode)| {
-                    path.canonicalize().as_ref().ok() == Some(canonical)
-                        && std::fs::metadata(path)
-                            .is_ok_and(|m| m.dev() == *device && m.ino() == *inode)
-                })
+        if !self.mounts.clean() {
+            return false;
+        }
+        let descriptors = ProcBindings::open();
+        self.bindings
+            .iter()
+            .all(|(path, canonical, device, inode)| {
+                current_binding_matches(descriptors.as_ref(), path, canonical, *device, *inode)
+            })
     }
+}
+
+/// Per-barrier descriptor lookup, with no retained identity or freshness memo.
+struct ProcBindings {
+    directory: OwnedFd,
+}
+impl ProcBindings {
+    fn open() -> Option<Self> {
+        use rustix::fs::{Mode, OFlags, PROC_SUPER_MAGIC, fstatfs, open};
+        let directory = open(
+            "/proc/self/fd",
+            OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .ok()?;
+        (fstatfs(&directory).ok()?.f_type == PROC_SUPER_MAGIC).then_some(Self { directory })
+    }
+    fn matches(&self, path: &Path, canonical: &Path, device: u64, inode: u64) -> bool {
+        use rustix::fs::{Mode, OFlags, open};
+        let Ok(file) = open(path, OFlags::PATH | OFlags::CLOEXEC, Mode::empty()) else {
+            return false;
+        };
+        self.descriptor_matches(&file, canonical, device, inode)
+    }
+    fn descriptor_matches(
+        &self,
+        file: &OwnedFd,
+        canonical: &Path,
+        device: u64,
+        inode: u64,
+    ) -> bool {
+        use rustix::fs::{fstat, readlinkat_raw};
+        let Ok(metadata) = fstat(file) else {
+            return false;
+        };
+        if metadata.st_dev != device || metadata.st_ino != inode {
+            return false;
+        }
+        // The opened descriptor pins this exact lookup. procfs supplies its
+        // kernel pathname, including symlink traversal and the opened hardlink.
+        // A full buffer may be truncated: use the unchanged original predicate
+        // instead of accepting a prefix. No proc lookup failure certifies input.
+        let mut bytes = [0u8; 4097];
+        let Ok(count) = readlinkat_raw(
+            &self.directory,
+            file.as_raw_fd().to_string(),
+            bytes.as_mut_slice(),
+        ) else {
+            return false;
+        };
+        let Some(actual) = bytes.get(..count).filter(|_| count < bytes.len()) else {
+            return false;
+        };
+        // d_path appends this suffix to unlinked files. It can look like a live
+        // filename that literally ends in those bytes. Refuse
+        // the shortcut for both cases; the original predicate resolves them.
+        !actual.ends_with(b" (deleted)") && actual == canonical.as_os_str().as_encoded_bytes()
+    }
+}
+fn current_binding_matches(
+    descriptors: Option<&ProcBindings>,
+    path: &Path,
+    canonical: &Path,
+    device: u64,
+    inode: u64,
+) -> bool {
+    descriptors.is_some_and(|owner| owner.matches(path, canonical, device, inode))
+        || original_binding_matches(path, canonical, device, inode)
+}
+fn original_binding_matches(path: &Path, canonical: &Path, device: u64, inode: u64) -> bool {
+    path.canonicalize().as_ref().ok() == Some(canonical)
+        && std::fs::metadata(path).is_ok_and(|m| m.dev() == device && m.ino() == inode)
 }
 #[cfg(test)]
 fn trace_clean(stage: &'static str, started: std::time::Instant) {
@@ -634,6 +706,103 @@ mod tests {
         ));
         assert!(std::fs::write(&file, b"good").is_ok());
         file
+    }
+    #[test]
+    fn descriptor_bindings_preserve_exact_native_path_predicate() -> std::io::Result<()> {
+        use std::os::unix::ffi::OsStringExt as _;
+        use std::os::unix::fs::symlink;
+        let root = fixture().with_extension("descriptor-matrix");
+        std::fs::create_dir_all(root.join("nested/inside"))?;
+        let file = root.join("nested/input");
+        std::fs::write(&file, b"same inode, distinct spellings")?;
+        std::fs::hard_link(&file, root.join("hardlink"))?;
+        symlink("nested/input", root.join("alias"))?;
+        symlink("nested", root.join("directory"))?;
+        symlink("missing", root.join("dangling"))?;
+        symlink("loop", root.join("loop"))?;
+        let binary_name = root.join(std::ffi::OsString::from_vec(b"native-\xff".to_vec()));
+        std::fs::write(&binary_name, b"native bytes")?;
+        let deleted_name = root.join("literal (deleted)");
+        std::fs::write(&deleted_name, b"literal suffix")?;
+        let paths = [
+            file,
+            root.join("hardlink"),
+            root.join("alias"),
+            root.join("directory/input"),
+            root.join("nested/inside/.././input"),
+            binary_name,
+            deleted_name,
+        ];
+        let owner = ProcBindings::open()
+            .ok_or_else(|| std::io::Error::other("real proc descriptor directory unavailable"))?;
+        for expected in &paths {
+            let canonical = expected.canonicalize()?;
+            let metadata = std::fs::metadata(expected)?;
+            for path in paths.iter().chain([
+                &root.join("missing"),
+                &root.join("dangling"),
+                &root.join("loop"),
+            ]) {
+                let old =
+                    original_binding_matches(path, &canonical, metadata.dev(), metadata.ino());
+                let fast = owner.matches(path, &canonical, metadata.dev(), metadata.ino());
+                assert!(!fast || old, "shortcut admitted a different native binding");
+                assert_eq!(
+                    current_binding_matches(
+                        Some(&owner),
+                        path,
+                        &canonical,
+                        metadata.dev(),
+                        metadata.ino()
+                    ),
+                    old
+                );
+                assert_eq!(
+                    current_binding_matches(None, path, &canonical, metadata.dev(), metadata.ino()),
+                    old
+                );
+                assert!(!owner.matches(path, &canonical, metadata.dev(), metadata.ino() ^ 1));
+            }
+        }
+        // The shortcut may not interpret the deleted marker as a live filename.
+        let literal = paths
+            .last()
+            .ok_or_else(|| std::io::Error::other("fixture"))?;
+        let metadata = std::fs::metadata(literal)?;
+        assert!(!owner.matches(
+            literal,
+            &literal.canonicalize()?,
+            metadata.dev(),
+            metadata.ino()
+        ));
+        assert!(original_binding_matches(
+            literal,
+            &literal.canonicalize()?,
+            metadata.dev(),
+            metadata.ino()
+        ));
+        std::fs::remove_dir_all(root)
+    }
+    #[test]
+    fn unlinked_descriptor_cannot_spoof_a_literal_deleted_hardlink() -> std::io::Result<()> {
+        use rustix::fs::{Mode, OFlags, open};
+        let file = fixture();
+        let literal = PathBuf::from(format!("{} (deleted)", file.display()));
+        std::fs::hard_link(&file, &literal)?;
+        let metadata = std::fs::metadata(&file)?;
+        let canonical = literal.canonicalize()?;
+        let owner =
+            ProcBindings::open().ok_or_else(|| std::io::Error::other("proc unavailable"))?;
+        let opened = open(&file, OFlags::PATH | OFlags::CLOEXEC, Mode::empty())?;
+        std::fs::remove_file(&file)?;
+        assert!(!original_binding_matches(
+            &file,
+            &canonical,
+            metadata.dev(),
+            metadata.ino()
+        ));
+        assert!(!owner.descriptor_matches(&opened, &canonical, metadata.dev(), metadata.ino()));
+        std::fs::remove_file(literal)
     }
     #[test]
     fn replacing_selected_interpreter_under_unchanged_path_invalidates_projection() {
