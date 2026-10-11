@@ -71,11 +71,11 @@ class Controls(unittest.TestCase):
 
     def test_product_requires_no_live_groups_and_retains_dead_row_record(self):
         controller, record, config = inputs()
-        dead = {'pid': 100, 'state': 'Z'}
+        dead = {'pid': 100, 'pgid': 100, 'start': 10, 'state': 'Z', 'terminated_evidence': {'status': 'terminated', 'complete': True, 'task_rows': [{'pid': 100, 'pgid': 100, 'start': 10, 'state': 'Z'}]}}
         record['phases'][0]['group_closure']['terminated_unreaped'] = [dead]
         p.prerequisite(g, controller, record, config)
         self.assertEqual(record['phases'][0]['group_closure']['terminated_unreaped'], [dead])
-        dead['state'] = 'R'
+        dead['terminated_evidence']['task_rows'][0]['state'] = 'R'
         with self.assertRaises(ValueError):
             p.prerequisite(g, controller, record, config)
 
