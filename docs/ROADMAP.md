@@ -135,9 +135,15 @@ classification and bounded constructor scans. The
 pass 40 VIR and 78 driver tests plus both strict all-target checks in 180.872
 seconds. The ordinary runtime build now passes in 637.838 seconds, including
 fresh verification of all 2,060 vstd obligations. Its thirteen runtime artifacts,
-seven changed source files and source lock are sealed; independent review and
-the unchanged fourteen qualification stages follow. The candidate remains
-unselected until genuine previous-revision focused reuse passes.
+seven changed source files and source lock are sealed; independent review
+passes. The [original qualification](../engine/verus/candidates/deferred-import-locator/late-handoff/qualification-failure.json)
+passes its first two audits, then fails the migration fixture because the new
+engine publishes no prepared lowering. Both full proofs succeed. Retained data
+and source inspection identify the cause: parallel workers supply no diagnostic
+source map, and preparation incorrectly reused that optional argument. Separate
+preparation-only namespace plumbing is being implemented without changing stock
+reporter routing or parallelism. The candidate remains unselected until all
+fourteen stages, including genuine previous-revision focused reuse, pass.
 
 The reader path now moves MCP response graphs and encodes outside its output
 lock, with [46 targeted controls](validation/m7-mcp-output-ownership.md) passing.
