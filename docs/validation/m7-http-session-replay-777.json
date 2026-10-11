@@ -132,5 +132,32 @@
     "wall_seconds": 5.24,
     "scope": "diagnostic; does not replace the complete failed suite"
   },
-  "stats_or_transport_phases_from_original_run": null
+  "stats_or_transport_phases_from_original_run": null,
+  "phase_diagnostic": {
+    "scope": "private diagnostic daemon/test source linked against exact original test dependency fingerprints; unchanged serving limits and original start-count/output assertions",
+    "result": "same start-count failure",
+    "lookup_relative_microseconds": {
+      "trusted_keys_loaded": 49,
+      "helper_started": 106857,
+      "transport_resolved": 270456,
+      "foreground_timeout": 301815,
+      "http_body_returned": 314578,
+      "entry_classified": 315341
+    },
+    "stats": {
+      "gets": 1,
+      "hits": 0,
+      "shared_lookups": 1,
+      "shared_hits": 0,
+      "shared_timeouts": 1,
+      "shared_rejected": 0
+    },
+    "remote": {
+      "requests": 1,
+      "last_status": "ok",
+      "auth_refused": 0,
+      "unavailable": 0
+    },
+    "conclusion": "the first valid HTTP reply completed after foreground fallback; client initialization contributed 163.599 ms, HTTP 44.122 ms, final validation 0.763 ms in this diagnostic only"
+  }
 }

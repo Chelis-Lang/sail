@@ -15,7 +15,12 @@ they do not establish that the remote store served any reply.
 One separate run of the unchanged frozen test executable reproduced the same
 assertion failure. It is a diagnostic, not a replacement for the failed complete
 suite. The original fixture did not retain transport phases or daemon counters;
-its cause is still under investigation.
+a subsequent diagnostic reproduced its first-fetch timeout. The helper began at
+106.857 ms, client initialization finished at 270.456 ms, HTTP delivered the body
+at 314.578 ms and entry validation finished at 315.341 ms. The foreground timed
+out at 301.815 ms. These timings belong to the separate diagnostic, not the
+original full suite. It recorded one request with final status `ok`, one shared
+timeout and no rejected entry.
 
 For users, a failed shared lookup falls back to the configured pinned solver and
 can cost a solver startup even when a signed session is available remotely. The
