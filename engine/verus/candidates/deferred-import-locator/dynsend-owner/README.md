@@ -51,3 +51,9 @@ it does not establish formatted stderr or prepared-group replay equivalence.
 Original raw-diagnostic checks and 600-second compiler limits remain unchanged.
 The proposed v6 authority, one 8 MiB mapping family and prospective 500 MiB
 phase maximum are unchanged. The selected runtime remains unchanged.
+
+[Source-control launch](source-control-launch.json) records the one authorized
+private pinned-source overlay, exact lock/archive, compiler-only closed cache
+seed, two build jobs and serial independent cases. It precedes any new ordinary
+variant build. All source library controls and strict checks remain required;
+the failed Rc variant's source and thirteen runtime bytes are protected.
