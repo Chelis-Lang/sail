@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "status": "FAIL; first native scope preserved",
+  "source_commit": "8b3e4f61296669bb8621f1e85a3d9f1b41a2625b",
+  "controller_commit": "3007b8f5ced785b03de484d71063b0168a52976c",
+  "controller_sha256": "097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2",
+  "result_sha256": "f4ada37047fbf14a01525f8cd1a1699ed2e26709fdeed82ccd3f46b5671c702c",
+  "result": {
+    "schema": 1,
+    "status": "FAIL",
+    "source": {
+      "crates/sail-verus/src/managed/files.rs": "16d9c3c8d4e718f0c845e3c1153776db8bf84367736dff20c7664340cb3b09f7",
+      "crates/sail-verus/src/managed/freshness.rs": "e80e42f7c4920d655bd49449250c6306ba198dd7f9a7abb33205c66d5322b281",
+      "crates/sail-verus/src/managed/runner.rs": "9fd31bf5d551107f8c0a23ffafbedaf18f2ee64412f8bd5681cab253a8388731",
+      "crates/sail-verus/src/managed/source_inputs.rs": "62dfc13bc015777aab3fc74dce5bd457240873579f18b50e7a62d3b166221d34",
+      "crates/sail-verus/src/managed/build_inputs.rs": "07c0b4d83e63ec66f405a31f3dd2d7dc16b21a538833d8cee7d2299ef15df662",
+      "crates/sail-verus/src/managed/build_inputs_family.rs": "a2374653ef56af5e26019c87eea1e36922c2934878f64517a8ba352cd8951186"
+    },
+    "lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "phases": [
+      {
+        "name": "positive-build",
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "sail-verus",
+          "--release",
+          "--lib",
+          "--no-run",
+          "--message-format=json-render-diagnostics"
+        ],
+        "limit_seconds": 600,
+        "exit_code": 0,
+        "elapsed_seconds": 106.3572364640022,
+        "log_sha256": "794141c5b2f18e8418c07eca55af3742f8cf8809d34d6b70eb7943d602e4cf7a",
+        "tested_images": [
+          {
+            "name": "positive-build-sail_verus-00709776d1fabf40",
+            "sha256": "95f65ce4e5b3ced7c19b02ccfd7f3eb4ebffb7bf0c92753b11d65f0a6caf8af2",
+            "bytes": 34611944
+          }
+        ],
+        "pass": true
+      },
+      {
+        "name": "metadata",
+        "argv": [
+          "tested-binaries/positive-build-sail_verus-00709776d1fabf40",
+          "metadata",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "limit_seconds": 180,
+        "exit_code": 101,
+        "elapsed_seconds": 3.379325042998971,
+        "log_sha256": "54296d3a6fe138b58a58ee37a3443089a816f3eb159cef0dd4283ecac43f6c5c",
+        "pass": false
+      }
+    ],
+    "actor_closure_certified": false,
+    "verification_or_acceptance_credit": false,
+    "owned_group_starts": [
+      {
+        "pid": 7253,
+        "pgid": 7253,
+        "launched_unix_ns": 1791757616538718304
+      },
+      {
+        "pid": 7406,
+        "pgid": 7406,
+        "launched_unix_ns": 1791757723210484714
+      }
+    ],
+    "active_leader_pid": null,
+    "spawn_closure_uncertain": false,
+    "error_kind": "ValueError",
+    "closure_uncertainty_reasons": [],
+    "process_group_closure_uncertain": false,
+    "source_equal": true,
+    "lock_equal": true
+  },
+  "retention": {
+    "schema": 1,
+    "status": "FAIL retained; first scope only",
+    "archive_sha256": "bbc39695e64f429c38be14b556052e1a093abd87781f02066f8b8cd59c60c910",
+    "archive_bytes": 8687493,
+    "verified_regular_members": 5,
+    "result_sha256": "f4ada37047fbf14a01525f8cd1a1699ed2e26709fdeed82ccd3f46b5671c702c",
+    "tested_elf_sha256": "95f65ce4e5b3ced7c19b02ccfd7f3eb4ebffb7bf0c92753b11d65f0a6caf8af2",
+    "private_environment_exported": false
+  },
+  "inventory": [
+    {
+      "bytes": 1659,
+      "mode": 420,
+      "path": "metadata.log",
+      "sha256": "54296d3a6fe138b58a58ee37a3443089a816f3eb159cef0dd4283ecac43f6c5c"
+    },
+    {
+      "bytes": 55412,
+      "mode": 420,
+      "path": "positive-build.log",
+      "sha256": "794141c5b2f18e8418c07eca55af3742f8cf8809d34d6b70eb7943d602e4cf7a"
+    },
+    {
+      "bytes": 2570,
+      "mode": 420,
+      "path": "result.json",
+      "sha256": "f4ada37047fbf14a01525f8cd1a1699ed2e26709fdeed82ccd3f46b5671c702c"
+    },
+    {
+      "bytes": 34611944,
+      "mode": 493,
+      "path": "tested-binaries/positive-build-sail_verus-00709776d1fabf40",
+      "sha256": "95f65ce4e5b3ced7c19b02ccfd7f3eb4ebffb7bf0c92753b11d65f0a6caf8af2"
+    },
+    {
+      "bytes": 7837,
+      "mode": 420,
+      "path": "tested-binaries/positive-build-sail_verus-00709776d1fabf40.d",
+      "sha256": "19e5f8ca6c579e86330fd06f02d0c9dbf182468395f72cd65cc4e23587490894"
+    }
+  ],
+  "independent_closure": {
+    "status": "PASS",
+    "whole_source_equal": true,
+    "source6_and_lock_equal": true,
+    "protected_bytes_equal_both_containers": true,
+    "groups_empty_both_containers": true,
+    "holders_empty_both_containers": true,
+    "container_births_equal": true,
+    "first_scope_status": "FAIL",
+    "no_further_actor_started": true
+  },
+  "closure_sha256": "c962d56b34c0c6c14a5b112322d1c55cd76314904de52d07434256dd39d3d144",
+  "metadata": {
+    "passed": 7,
+    "failed": 1,
+    "same_continuous_arc_case": "PASS within metadata filter"
+  },
+  "unattempted": [
+    "complete freshness set",
+    "all-target strict",
+    "original-rewrite counterfactual",
+    "restored positive"
+  ],
+  "failure": "cfg(test) expected SAIL3102: but original Error Display is error[SAIL3102]:",
+  "correction": "cfg(test) checks stable Error.code and exact full candidate/original Error equality",
+  "setup_failure": "Initial bundle was staged in the other container before private target discovery; no source extraction or Cargo invocation there. Correct container preparation was independently frozen before the first scope.",
+  "private_environment_exported": false,
+  "source_native_failed_tree_mutated": false,
+  "slot_returned_after_independent_closure": true,
+  "acceptance_credit": false
+}
