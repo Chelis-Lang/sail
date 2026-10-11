@@ -150,3 +150,22 @@ mounts, so a rename returned `EXDEV`. The completed retention copied the exact
 empty bytes, checked their hash and unchanged source device/inode/size/ctime,
 then removed only those control files. All thirteen manifest artifact hashes
 and the exact direct-file inventory matched afterward, without resealing.
+
+## Test-layout correction
+
+The corrected full patch is
+`506679543779f2856899006d7d70420ce85d47cb74c9873a064f97ab82c44984`,
+with the exact from-e6f delta
+`47451f9c2f1e32e1042778a3ef77b2328aa1b7b8c2c72c93e4fd40134c43e89b`.
+Only `sail_owned_imports.rs` changes: the identical test-only `drop_probe` module
+moves below the unchanged helper. Its new source hash is
+`10fbd5f5e9647e5ebb13a6297d198a45037731a7f65c7e1bb6f35c4af271b410`;
+the other five source hashes remain identical. No authority, runtime logic,
+budget, assertion or lint exception changes.
+
+A fresh feature-bound private variant `b46efd051424968f` is building at ordinary
+priority with two jobs. Its verified inactive compiler seed copied 3,522 files
+(1,090,456,706 bytes) in 15.008 seconds, excluding 103 changed-crate paths, every
+runtime/proof/seal output and hardlinks. The e6f failed candidate remains frozen
+and unselected. New vstd verification, runtime inventory, all source checks and
+the original qualification pipeline are required again.
