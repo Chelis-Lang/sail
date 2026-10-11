@@ -110,7 +110,8 @@ def make_grant(g, config, record, artifacts, installation):
     return {'version': 1, 'source_commit': config['gate_config']['revision'],
             'source_archive_sha256': config['gate_config']['archive_sha256'],
             'source_path': config['gate_config']['source'], 'product_dir': config['product_dir'],
-            'container': config['container'], 'engine_build': config['engine']['engine_build'],
+            'container': config['container'], 'execution': config['execution'],
+            'execution_container_birth': config['execution_container_birth'], 'engine_build': config['engine']['engine_build'],
             'selected_engine': config['engine'], 'combined_gate_result_sha256': config['gate_inputs']['result.json'],
             'phases': [dict(p, phase=p['name']) for p in phases], 'artifacts': artifacts,
             'installation': installation, 'installation_only': True, 'source_modified': False}
@@ -209,6 +210,8 @@ def host(args):
     def call(command, timeout=30, **kwargs):
         return g.bounded_command(command, timeout=timeout, closure=closure, **kwargs)
     try:
+        if not args.execution or len(args.execution.encode()) > 512 or any(c in args.execution for c in '\r\n'):
+            raise ValueError('bounded explicit execution environment label required')
         prior = g.load(args.gate_output / 'controller.json')
         gate_record = g.load(args.gate_output / 'result.json')
         gate_config = g.load(args.gate_output / 'config.json')
@@ -228,6 +231,7 @@ def host(args):
             if archived['files'][name]['sha256'] != g.sha(actual):
                 raise ValueError('running product/lifecycle helper differs from gate archive')
         config = {'gate_controller': prior, 'gate_config': gate_config, 'container': args.container,
+                  'execution': args.execution, 'execution_container_birth': {'id': before['id'], 'image': before['image'], 'created': before['created'], 'started_at': before['birth']},
                   'gate_root': prior['native_root'], 'engine': g.load(args.engine),
                   'helper_sha256': g.sha(Path(g.__file__)),
                   'product_dir': '/opt/sail-m7-core-product-' + gate_config['revision'][:7],
@@ -287,12 +291,13 @@ def main():
     parser.add_argument('--container')
     parser.add_argument('--native-root')
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--execution', help='explicit honest environment/load label retained in grant')
     parser.add_argument('--engine', type=Path, help='explicit exact13 runtime inventory + manifest SHA')
     args = parser.parse_args()
     if args.native:
         return native(args.native)
-    if not all((args.gate_output, args.container, args.native_root, args.output, args.engine)):
-        parser.error('host mode requires gate-output/container/native-root/output/engine')
+    if not all((args.gate_output, args.container, args.native_root, args.output, args.engine, args.execution)):
+        parser.error('host mode requires gate-output/container/native-root/output/engine/execution')
     return host(args)
 
 
