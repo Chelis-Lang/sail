@@ -148,3 +148,9 @@ per-call actual verifier checks passed. Shutdown exported only the latest
 Those complete Result frames were preencoded hits; their write and freshness
 intervals are material, with no demonstrated serialization remedy. Rust and
 retained integration were unattempted in that fail-fast workflow.
+
+For publication attribution on a newly sealed product, the
+[prepared current-product controller](validation/m7-current-publication-controller.md)
+uses the repository's current 23-field timing launcher and original repair
+fixture. Its pure failure controls provide no new product timing or acceptance
+credit. Transport loss remains uncertain; it cannot certify native shutdown.
