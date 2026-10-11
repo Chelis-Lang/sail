@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "scope": "explicit unused Sail image tags only",
+  "started_unix": 1791755481.761013,
+  "images": [
+    {
+      "tag": "sail-ci:33d1126c08027ca0",
+      "id": "sha256:f7a4926756ff034bf1de58f89bd9070fc02f323411a985b56f4b7099dea25e40",
+      "inspect_size_bytes": 1206447118,
+      "container_references": [],
+      "inspect_sha256": "6360811a3a4528b9bb5f11116e84e5bf666858829bba51469370fccc78fb4378",
+      "retirement_exit": 0,
+      "stdout": "Untagged: sail-ci:33d1126c08027ca0\nDeleted: sha256:f7a4926756ff034bf1de58f89bd9070fc02f323411a985b56f4b7099dea25e40\n",
+      "stderr": ""
+    },
+    {
+      "tag": "sail-team-cache:live-http",
+      "id": "sha256:1472d3609d7556e06a47409bfba019a374a0cae0a5729bf9d5f2cf304e959763",
+      "inspect_size_bytes": 45715394,
+      "container_references": [],
+      "inspect_sha256": "61c6a023890ec65690c4729ce6664c41724a16be130cac71e309acfae6a2008e",
+      "retirement_exit": 0,
+      "stdout": "Untagged: sail-team-cache:live-http\nDeleted: sha256:1472d3609d7556e06a47409bfba019a374a0cae0a5729bf9d5f2cf304e959763\n",
+      "stderr": ""
+    },
+    {
+      "tag": "sail-team-cache:live-final-http",
+      "id": "sha256:b1c9f61f89ea6a386e5644620f73ba6da0852544825ed3965b63880ccd961127",
+      "inspect_size_bytes": 48702072,
+      "container_references": [],
+      "inspect_sha256": "6e9eefdf0b61f1e9a2ab19b8f964877831d3270a2c7137f13555813b4888274d",
+      "retirement_exit": 0,
+      "stdout": "Untagged: sail-team-cache:live-final-http\nDeleted: sha256:b1c9f61f89ea6a386e5644620f73ba6da0852544825ed3965b63880ccd961127\n",
+      "stderr": ""
+    }
+  ],
+  "errors": [],
+  "completed_unix": 1791755482.276073,
+  "preserved": "Active validation image4050cf22332a, both owned live containers, all shared volumes, qualified runtime/source artifacts and foreign images. No global prune or restart.",
+  "claim": "Listed image sizes do not prove physical storage reclaimed; registry/build inputs permit future image construction. Retired images are no longer claimed locally available.",
+  "reclaim_helper": {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "--name",
+      "sail-m7-owned-space-reclaim",
+      "--privileged",
+      "--pid=host",
+      "docker/desktop-reclaim-space"
+    ],
+    "exit_code": 0,
+    "image_manifest_digest": "sha256:8b26e45c51632fd78131f3bddca76122bebc1dd8376f16dd26f769c7f33121fd",
+    "observation": "The amd64 helper exited normally under emulation and its owned container was removed. Immediate host free space did not improve. A later df observation showed about3.2GiB free; concurrent activity prevents exact causal attribution.",
+    "reference": "https://docs.docker.com/desktop/troubleshoot-and-support/faqs/linuxfaqs/",
+    "historical_note": "https://github.com/docker/docs/issues/16738"
+  },
+  "active_container_postcheck": [
+    {
+      "name": "sail-m7-handoff-validation",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+      "birth": "2026-10-11T17:06:30.345746794Z",
+      "state": "running"
+    },
+    {
+      "name": "sail-m7-acceptance",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+      "birth": "2026-10-11T17:06:34.584538213Z",
+      "state": "running"
+    }
+  ],
+  "unused_volume_observation": {
+    "removed": false,
+    "reason": "No retained inventory proves the old volumes contain no unique raw/tested/runtime artifacts; contents remain protected.",
+    "names": [
+      "sail-m7-default-cache",
+      "sail-m7-default-registry",
+      "sail-m7-default-target",
+      "sail-m7-freshness-cache",
+      "sail-m7-freshness-diagnostic-target",
+      "sail-m7-freshness-target"
+    ]
+  }
+}
