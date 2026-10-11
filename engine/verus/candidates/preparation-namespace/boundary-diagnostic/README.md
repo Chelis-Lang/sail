@@ -74,3 +74,21 @@ logs, tested ELF and source hashes (54.537 seconds total), unchanged eight-file
 source/lock and four older complete runtime/source/lock seals, and closed actors.
 The E0308 attempt stays failed. This source-only result does not identify the
 real refusal or qualify a runtime; the original failed qualification is intact.
+The diagnostic controller pair is `build-diagnostic.py` and
+`run-diagnostic.py`. The first builds only the changed driver in the closed
+private compiler target, then copies thirteen sealed donor files to a separate
+image and replaces its driver. That image has no build manifest and carries no
+fresh vstd proof or runtime qualification. The donor and every older runtime
+remain sealed and unchanged.
+
+The second controller retains the failed revision-zero project, compiler flags,
+original context label and all original predicates. It uses new empty
+preparation/oracle/output directories and the existing 600-second actor helper.
+Only the bounded import trace is enabled; its target filter is absent. The
+retained context label identifies the original experiment, while the diagnostic
+driver SHA is recorded independently. Failure observations distinguish the
+compiler's exact namespace refusal, the correlated worker binding and service
+admission failure. Their frozen role field does not assert current authority.
+The diagnostic is independent of the failed qualification and the proposed
+broker-retirement correction. Pre/post source, image and old-runtime hashes,
+actor closure and raw streams remain mandatory even when a predicate fails.
