@@ -96,7 +96,7 @@ class PreparationControls(unittest.TestCase):
         self.assertIn("#![forbid(unsafe_code)]", DIAG.MAIN)
         self.assertIn("sender.try_send(row)", DIAG.MAIN)
         self.assertIn("sync_channel::<[u8; 32]>(64)", DIAG.MAIN)
-        self.assertIn("remaining.min(Duration::from_millis(25))", DIAG.MAIN)
+        self.assertIn("remaining.min(Duration::from_millis(600))", DIAG.MAIN)
         self.assertIn("writer.join()", DIAG.MAIN)
         self.assertLess(DIAG.MAIN.index("drop(process)"), DIAG.MAIN.index("metadata.finish()?"))
 

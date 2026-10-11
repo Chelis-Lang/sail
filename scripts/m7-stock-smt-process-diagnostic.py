@@ -185,7 +185,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 DEADLINE_DROPPED.fetch_add(1, Ordering::Relaxed);
                 continue;
             }
-            let timeout = remaining.min(Duration::from_millis(25));
+            let timeout = remaining.min(Duration::from_millis(600));
             let sent = sock.set_write_timeout(Some(timeout)).and_then(|()| sock.send(&row));
             if !sent.is_ok_and(|n| n == 32) {
                 SEND_DROPPED.fetch_add(1, Ordering::Relaxed);
