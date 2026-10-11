@@ -168,7 +168,7 @@ fn context(
     identity.push((rustup.to_string_lossy().into_owned(), hashed.hash(&rustup)?));
     let cargo_sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
     let verifier_sysroot = verifier_sysroot(&wrapper, &config.workspace)?;
-    let sysroots = BTreeSet::from([cargo_sysroot, verifier_sysroot]);
+    let installed_sysroots = BTreeSet::from([cargo_sysroot, verifier_sysroot]);
     identity.push((
         config
             .cargo_verus
@@ -182,18 +182,63 @@ fn context(
     // Observe all installed-target namespaces before inventory collection and
     // acquire kernel leases before the first eligible byte read. Earlier hashes
     // remain ineligible: this owner cannot authorize a pre-guard digest.
-    let mut sysroots = super::sysroot::Baseline::begin(&sysroots, |path| hashed.contains(path));
+    let mut sysroots =
+        super::sysroot::Baseline::begin(&installed_sysroots, |path| hashed.contains(path));
     drop(guard);
+    #[cfg(target_os = "linux")]
+    let (handoff_scope, imported) = {
+        let phase = diagnostics.phase(Phase::SysrootHandoff);
+        let scope = config.socket.as_ref().and_then(|_| {
+            let selection =
+                serde_json::to_vec(&(1, &config.args, engine, &identity, &environment)).ok()?;
+            super::sysroot_cache::scope(&installed_sysroots, digest(&selection))
+        });
+        let imported = config
+            .socket
+            .as_ref()
+            .zip(scope.as_ref())
+            .is_some_and(|(socket, scope)| {
+                let request = sail_api::sysroot::Request::Lookup {
+                    scope: scope.clone(),
+                };
+                match sail_api::sysroot::call(socket, &request) {
+                    Ok(sail_api::sysroot::Response::Lookup(Some(snapshot))) => {
+                        sysroots.import(scope, &snapshot)
+                    }
+                    _ => false,
+                }
+            });
+        drop(phase);
+        (scope, imported)
+    };
     let sysroot_bytes = diagnostics.phase(Phase::SysrootHash);
     for path in sysroots.paths().to_vec() {
-        let hash = hashed.hash(&path)?;
+        // Remote rows can populate only the independently protected Baseline,
+        // never the phase-local FileDigests cache or pre-guard executable aliases.
+        let hash = match sysroots.captured(&path) {
+            Some(hash) => hash.to_owned(),
+            None => hashed.hash(&path)?,
+        };
         sysroots.capture(&path, &hash);
         identity.push((path.to_string_lossy().into_owned(), hash));
     }
     drop(sysroot_bytes);
     let barrier = diagnostics.phase(Phase::SysrootBarrier);
-    let _ = sysroots.complete();
+    let sysroots_complete = sysroots.complete();
     drop(barrier);
+    #[cfg(target_os = "linux")]
+    if sysroots_complete
+        && !imported
+        && let Some((socket, scope)) = config.socket.as_ref().zip(handoff_scope)
+    {
+        let phase = diagnostics.phase(Phase::SysrootFillHint);
+        // Independent construction starts only after this caller's original
+        // complete hash barrier. No request contains caller-computed digests.
+        let _ = sail_api::sysroot::call(socket, &sail_api::sysroot::Request::Prepare { scope });
+        drop(phase);
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = sysroots_complete;
     let configuration = diagnostics.phase(Phase::ContextConfiguration);
     // The exact Cargo configuration bytes join the context, not only its path.
     let invocation = std::path::absolute(&config.workspace)

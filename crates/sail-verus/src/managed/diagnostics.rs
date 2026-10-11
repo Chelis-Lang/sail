@@ -33,8 +33,12 @@ pub(super) enum Phase {
     HelperIdentity,
     ToolchainProbes,
     SysrootGuard,
+    #[cfg(target_os = "linux")]
+    SysrootHandoff,
     SysrootHash,
     SysrootBarrier,
+    #[cfg(target_os = "linux")]
+    SysrootFillHint,
     ContextConfiguration,
     OwnedPaths,
     InitialSnapshot,
