@@ -6,14 +6,21 @@ that branch released or accepted. The [roadmap](ROADMAP.md) tracks remaining wor
 The [retained status history](validation/m7-acceptance-status-history.md) preserves
 the detailed prior roadmap narrative and its distinct failed/setup scopes.
 
+The original stock Verismo tspec deadline failure is now tracked locally as
+[VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md). Sleeping compiler
+threads and empty solver pipes do not identify its cause; the complete standard
+attempt remains failed. No workaround is selected.
+
 ## Interactive repair engine (M7)
 
 The latest unselected source candidate builds and freshly verifies all 2,060
 vstd obligations, but fails the original migration qualification because it
 publishes no prepared lowering. Both fixture proofs succeed. Parallel workers
 correctly omit a diagnostic source map; the candidate mistakenly required that
-optional map for preparation. Separate preparation access is being implemented
-without changing diagnostic routing or parallelism. See the
+optional map for preparation. The [preparation-only namespace correction](../engine/verus/candidates/preparation-namespace/README.md)
+now passes ten reduced controls and [independent static review](validation/m7-preparation-namespace-independent-review.md).
+Actual pinned compiler tests and strict checks are running. Stock diagnostic
+routing and parallelism remain unchanged; this candidate is unselected. See the
 [retained qualification](../engine/verus/candidates/deferred-import-locator/late-handoff/qualification-failure.json).
 
 The daemon's [retained-frame accounting](validation/m7-result-frame-admission-margin.md)
@@ -21,8 +28,8 @@ now covers Vec capacity, evicted live writes and fixed retirement metadata
 within its existing 128 MiB ceiling. All 89 daemon controls pass. This bound
 excludes uncached encoding and process RSS; it does not establish the live
 Result latency target. The retained 394.713 ms p95 failure remains open, and
-bounded optional [stage timing](result-rpc-diagnostics.md) will observe the next
-unchanged live workload.
+bounded optional [stage timing](result-rpc-diagnostics.md) is observing the
+current unchanged live workload.
 
 An Unknown proof and unavailable validation during a later job read are distinct
 conditions. Earlier managed reports collapsed precise namespace failures to
