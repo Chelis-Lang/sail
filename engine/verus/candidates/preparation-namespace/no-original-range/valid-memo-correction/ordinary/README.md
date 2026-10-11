@@ -36,3 +36,10 @@ The [single original qualification](qualification-launch.json) is now running
 at ordinary priority. Its thirteen-stage pipeline and fourteen-script inventory
 are unchanged; each compiler invocation retains its original 600-second bound.
 No trace selectors, extra retries or runtime selection were introduced.
+
+The original ninth [previous-revision focused reuse stage](previous-revision-focus-pass.json)
+passed all three revisions, including the unrelated body edit. Every observed
+hit completed the same-input wire, diagnostics, verdict and effect comparison,
+and both later revisions restored a persistent focused preparation. The full
+HE comparison and remaining pipeline stages are still pending; this stage does
+not select the runtime or establish product performance acceptance.
