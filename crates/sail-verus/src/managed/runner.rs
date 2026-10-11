@@ -2250,6 +2250,10 @@ mod tests {
     }
 
     #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "The refusal matrix keeps all mutations of the same sealed full outcome together."
+    )]
     fn negative_compiler_generation_requires_full_normal_current_and_complete_coverage()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut f = NegativeGeneration::new("refusals")?;
@@ -2300,7 +2304,14 @@ mod tests {
         assert!(!f.eligible());
         f.expected.retain(|(_, name, _)| name == "input");
         let original_call = f.call.clone();
-        for field in ["error", "errors", "verified", "exit", "success"] {
+        for field in [
+            "error",
+            "errors",
+            "verified",
+            "exit",
+            "success",
+            "report-success",
+        ] {
             f.call = original_call.clone();
             match field {
                 "error" => {
@@ -2310,6 +2321,7 @@ mod tests {
                 "errors" => f.call.report.crates[0].verus.errors = Some(2),
                 "verified" => f.call.report.crates[0].verus.verified = Some(0),
                 "exit" => f.call.report.exit_code = Some(101),
+                "report-success" => f.call.report.crates[0].verus.success = Some(true),
                 _ => f.call.success = true,
             }
             f.seal()?;

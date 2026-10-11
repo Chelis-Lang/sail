@@ -75,13 +75,15 @@ is atomically published only after the original final Current transaction.
 
 Successful runs retain the existing publication rule. A source-engine run with
 ordinary proof errors may also retain fresh ordinary contracts when its input
-declarations were already covered at entry, the invocation was unfocused, and
+declarations were already covered at entry, Cargo passthrough arguments contain
+no partial verification-scope filters, and
 every selected target has exactly one observed completed full compiler outcome.
 Every recorded compiler start must have a corresponding completion, including
 dependencies. The negative branch requires Cargo exit 101, normal driver exits
 0 or 1, an exact sealed full terminal and whole-crate JSON, explicit absence of
 VIR errors, matching report counts and success fields, and at least one ordinary
-proof error. Generic exit 101, partial scope, cancellation, missing output,
+proof error. A source-engine focus selection may accompany this complete full
+run; the full document, not the focus result, establishes completion. Generic exit 101, partial scope, cancellation, missing output,
 duplicate starts, declaration establishment and uncertain input coverage refuse
 this branch. The original guarded receipt commit must still finish Current.
 
