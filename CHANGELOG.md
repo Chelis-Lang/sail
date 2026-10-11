@@ -6,11 +6,16 @@ semantic versioning once the API is published.
 ## Unreleased
 
 - Release retained-output locks during
-  independent freshness validation, then checks the same continuously guarded
+  independent freshness validation, then check the same continuously guarded
   owner again. Complete fallback, payloads and quotas remain unchanged. Native
   component controls and strict checks pass; installed live latency acceptance
   remains pending.
   Optional RPC metadata distinguishes guarded validation from full-hash fallback.
+- Read exact HTTP response lengths with a fixed buffer for bodies
+  at most 8 KiB. It avoids an extra EOF read while retaining capped streaming
+  for larger or unknown bodies, original timeouts and all trust checks.
+  All 38 affected controls and strict checks pass, as does the original
+  concurrent-reader check. Combined-product validation remains pending.
 
 - Extend existing optional diagnostics with managed result, receipt and ordinary
   dependency publication intervals, plus daemon child-exit, document-read,

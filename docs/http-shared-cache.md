@@ -275,3 +275,10 @@ The unselected patch and exact limits are retained in
 fixtures passed the original 250 ms deadline and 75 ms response delay. Those
 separate passes do not erase the failed full gate or qualify live readers.
 No trust, signature, TLS, payload, timeout or fallback contract changed.
+
+An additional unselected source candidate reads an exact small HTTP body within
+the existing 8 KiB application buffer, avoiding the extra read used only to
+observe EOF. Larger and unknown bodies keep the capped streaming path. Its
+component controls and original eight-reader deadline still require execution;
+it does not establish a cause or improvement for the retained failures. See the
+[small-body plan](validation/m7-http-small-known-body-plan.md).
