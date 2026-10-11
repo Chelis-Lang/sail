@@ -80,6 +80,7 @@ case "$step" in
     python3 scripts/test-m7-ordinary-wait-diagnostic.py
     python3 scripts/test-m7-publication-timing-diagnostic.py
     python3 docs/validation/m7-http-small-known-body/test-runner.py
+    python3 scripts/test-local-combined-gates.py
     python3 scripts/test-m7-stock-smt-process-diagnostic.py
     python3 scripts/test-m7-conformance-observation.py
     python3 scripts/test-m7-tspec-transcript-run.py

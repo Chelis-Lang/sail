@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "scope": "Unreferenced Sail target intermediates only",
+  "volumes": [
+    "sail-m7-default-target",
+    "sail-m7-freshness-target",
+    "sail-m7-freshness-diagnostic-target"
+  ],
+  "removed_files": 3051,
+  "logical_bytes_removed": 1985171264,
+  "physical_bytes_reclaimed": "not measured",
+  "preserved_executables_and_libraries": 278,
+  "post_hash_verification": true,
+  "active_targets_and_data_volumes_touched": false,
+  "inventory_sha256": "79908b4d14ba3e1b5acf657014fd20cc21b47d17379849867d0d462b46cd45f4",
+  "archive_failure": "m7-unused-default-target-archive-failure.json",
+  "docker_restart": "Authorized restart; new births recorded independently before any resumed validation"
+}
