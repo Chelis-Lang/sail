@@ -81,8 +81,16 @@ authorized 73bd feature-bound variant, frozen private builder archive and
 normal-priority two-job actor. The compatible compiler-only seed comes from the
 closed source-control target with changed VIR/driver crates excluded. No
 runtime files, proof receipts or acceptance records are copied. Fresh ordinary
-vstd verification and a complete thirteen-artifact manifest are still required
+vstd verification and a complete thirteen-artifact manifest are required
 from this build; original fourteen-stage qualification has not launched.
+
+[Ordinary build closure](ordinary-build-pass.json) now records successful
+completion in 2,589.219 seconds (the official builder reports 2,520 seconds),
+with a fresh vstd proof of 2,060 verified and zero errors. The new manifest, all
+thirteen direct runtime artifacts, pinned lock and all seven source hashes
+were checked after completion. Owned build actors are closed, and both
+preceding complete runtime seals remain unchanged. This is an unselected
+build/source-gate result, not original-oracle or product qualification.
 
 [Prepared qualification handoff](qualification-handoff.json) binds the fourteen
 original Python source files and the [future controller](run-qualification.py)
