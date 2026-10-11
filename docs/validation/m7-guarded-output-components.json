@@ -1,0 +1,985 @@
+{
+  "scope": "unselected guarded stdout and per-barrier parent grouping components; no proof, RPC, census or performance acceptance",
+  "original_live_reader_failure": "m7-descriptor-reader-terminal.json",
+  "raw_archive": {
+    "bytes": 20449413,
+    "sha256": "71b0ad46ba3c856895f90e904f45ca6fbba75e0168b5fd435dedac8c60edae50"
+  },
+  "initial_build": {
+    "status": "pass",
+    "cargo_s": 421,
+    "linux_output_controls": {
+      "passed": 6,
+      "test_s": 15.92
+    }
+  },
+  "initial_semantic_steps": [
+    {
+      "label": "output-owner-controls",
+      "bound_s": 180,
+      "elapsed_s": 26.879771261999963,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 129
+    },
+    {
+      "label": "parent-binding-controls",
+      "bound_s": 180,
+      "elapsed_s": 0.6358294169999681,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 165
+    },
+    {
+      "label": "complete-validation-profile",
+      "bound_s": 180,
+      "elapsed_s": 4.611057376999952,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 170
+    },
+    {
+      "label": "example-build",
+      "bound_s": 600,
+      "elapsed_s": 81.07460849400002,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 181
+    },
+    {
+      "label": "strict-clippy",
+      "bound_s": 600,
+      "elapsed_s": 57.392299317999914,
+      "returncode": 101,
+      "timedout": false,
+      "pid": 288
+    }
+  ],
+  "initial_test_binary": {
+    "bytes": 31910256,
+    "sha256": "3a0c234b82f45b101400f9a92e06e99dceafa95ceabf31754b3f7d8df67e48b0"
+  },
+  "initial_sources": {
+    "crates/sail-verus/src/managed/guarded_output.rs": {
+      "bytes": 14227,
+      "sha256": "760fd45598a1a3fac28172aba4a21cf0b080a07f8cab202d7cf96abf473821d2"
+    },
+    "crates/sail-verus/src/managed/mod.rs": {
+      "bytes": 1118,
+      "sha256": "91ed7f155c73d8015996747944d6b9cc035d1b66464e830bd5156d28aa8ffff2"
+    },
+    "crates/sail-verus/src/managed/lease.rs": {
+      "bytes": 47112,
+      "sha256": "2b12a18a594330fb95b62235c4b78f89cb7213afce13f924fa43daa45ad5c6e5"
+    },
+    "crates/sail-verus/src/managed/lease_binding_batch.rs": {
+      "bytes": 11932,
+      "sha256": "17014d574bdf86417d35d3650cbe68ecb733621029ad6cf867a15b9f3e3ab180"
+    },
+    "crates/sail-verus/examples/guarded_output_profile.rs": {
+      "bytes": 4203,
+      "sha256": "a1e7bfb4928d08baf051f7298cfe7d1ff1a2ad59abaa01792dab2eff404cc243"
+    }
+  },
+  "initial_clippy": {
+    "status": "failed",
+    "findings": [
+      "needless_pass_by_value",
+      "large_stack_arrays",
+      "collapsible_if",
+      "manual_assert_eq"
+    ],
+    "profile_unattempted_after_clippy": true
+  },
+  "corrected_steps": [
+    {
+      "label": "output-owner-controls",
+      "bound_s": 180,
+      "elapsed_s": 6.1268840029999865,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 618
+    },
+    {
+      "label": "parent-binding-controls",
+      "bound_s": 180,
+      "elapsed_s": 0.13649095799996758,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 646
+    },
+    {
+      "label": "example-build",
+      "bound_s": 600,
+      "elapsed_s": 71.32209715700003,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 651
+    },
+    {
+      "label": "strict-clippy",
+      "bound_s": 600,
+      "elapsed_s": 12.104275713999982,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 749
+    },
+    {
+      "label": "complete-output-profile",
+      "bound_s": 180,
+      "elapsed_s": 1.2412325010000131,
+      "returncode": 0,
+      "timedout": false,
+      "pid": 796
+    }
+  ],
+  "corrected_test_binary": {
+    "bytes": 31910984,
+    "sha256": "a4ea1ba8a6499174ba3ba709e2e791bd001adc7722ba4206b09e6834a83b05ea"
+  },
+  "profile_binary": {
+    "bytes": 22691288,
+    "sha256": "e1f44ddb3eb2fcf3eb0ee6ab075ade1c8ec33d58f6c1402647f304c942de88b9"
+  },
+  "corrected_sources": {
+    "crates/sail-verus/src/managed/guarded_output.rs": {
+      "bytes": 14281,
+      "sha256": "6992e446eeca2c98e004df818047d447c2d60d6f59aad3fd206c86f7013d1f76"
+    },
+    "crates/sail-verus/src/managed/mod.rs": {
+      "bytes": 1118,
+      "sha256": "91ed7f155c73d8015996747944d6b9cc035d1b66464e830bd5156d28aa8ffff2"
+    },
+    "crates/sail-verus/src/managed/lease.rs": {
+      "bytes": 47100,
+      "sha256": "101e89ee9192edfc779457c8793190ddb6331e68a1367ab0df16675d5012a196"
+    },
+    "crates/sail-verus/src/managed/lease_binding_batch.rs": {
+      "bytes": 11945,
+      "sha256": "42df4f2a00fd2b885cdcb301d97560bcaccc309f44787d9e06db951e94aa34c4"
+    },
+    "crates/sail-verus/examples/guarded_output_profile.rs": {
+      "bytes": 4203,
+      "sha256": "a1e7bfb4928d08baf051f7298cfe7d1ff1a2ad59abaa01792dab2eff404cc243"
+    }
+  },
+  "source_postseals": {
+    "crates/sail-verus/src/managed/guarded_output.rs": {
+      "bytes": 14281,
+      "sha256": "6992e446eeca2c98e004df818047d447c2d60d6f59aad3fd206c86f7013d1f76"
+    },
+    "crates/sail-verus/src/managed/mod.rs": {
+      "bytes": 1118,
+      "sha256": "91ed7f155c73d8015996747944d6b9cc035d1b66464e830bd5156d28aa8ffff2"
+    },
+    "crates/sail-verus/src/managed/lease.rs": {
+      "bytes": 47100,
+      "sha256": "101e89ee9192edfc779457c8793190ddb6331e68a1367ab0df16675d5012a196"
+    },
+    "crates/sail-verus/src/managed/lease_binding_batch.rs": {
+      "bytes": 11945,
+      "sha256": "42df4f2a00fd2b885cdcb301d97560bcaccc309f44787d9e06db951e94aa34c4"
+    },
+    "crates/sail-verus/examples/guarded_output_profile.rs": {
+      "bytes": 4203,
+      "sha256": "a1e7bfb4928d08baf051f7298cfe7d1ff1a2ad59abaa01792dab2eff404cc243"
+    }
+  },
+  "source_seals_unchanged": true,
+  "profile_output": {
+    "comparisons": [
+      {
+        "clients": 1,
+        "guarded": false,
+        "samples": [
+          {
+            "guarded_hit": false,
+            "wall_us": 7675
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11583
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7959
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7911
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 8483
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11491
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 13433
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10587
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9573
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11632
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7647
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9049
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11680
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 8454
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9608
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9426
+          }
+        ],
+        "samples_per_client": 16
+      },
+      {
+        "clients": 1,
+        "guarded": true,
+        "samples": [
+          {
+            "guarded_hit": true,
+            "wall_us": 9778
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 610
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 610
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 491
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 612
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 503
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 520
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 528
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 483
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 559
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 383
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 387
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 390
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 394
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 370
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 375
+          }
+        ],
+        "samples_per_client": 16
+      },
+      {
+        "clients": 4,
+        "guarded": false,
+        "samples": [
+          {
+            "guarded_hit": false,
+            "wall_us": 18352
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 25781
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7969
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9977
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 14782
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10751
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10550
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 15196
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10119
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 19761
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11980
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 20597
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 16008
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 15008
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 19504
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 36258
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 23341
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 13294
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9876
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9728
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11047
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7582
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11753
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9923
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11693
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 15100
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 12185
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10096
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7648
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11605
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9139
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 25362
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9007
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9674
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 19856
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9814
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9529
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 17006
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 13856
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 12812
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 12709
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 13417
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 14675
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11584
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 13680
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 14315
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 26498
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 37485
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 12494
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10277
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 16276
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10345
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 21217
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 11236
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10226
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 16154
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9272
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7476
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 8160
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 19558
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9886
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 7500
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9575
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9816
+          }
+        ],
+        "samples_per_client": 16
+      },
+      {
+        "clients": 4,
+        "guarded": true,
+        "samples": [
+          {
+            "guarded_hit": false,
+            "wall_us": 17779
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10746
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 13860
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 618
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 383
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 351
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 366
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 380
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 354
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 384
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 355
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 362
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 306
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 334
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 322
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 305
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 9146
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10099
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 15537
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 17186
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 8957
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 10905
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 837
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 359
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 371
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 626
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 320
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 304
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 324
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 316
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 319
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 302
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 12289
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 12541
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 17796
+          },
+          {
+            "guarded_hit": false,
+            "wall_us": 8317
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 602
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 354
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 373
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 375
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 302
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 344
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 4345
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 657
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 444
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 483
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 410
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 4058
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 24841
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 559
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 567
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 378
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 330
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 316
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 338
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 321
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 325
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 367
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 323
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 337
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 4050
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 597
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 724
+          },
+          {
+            "guarded_hit": true,
+            "wall_us": 475
+          }
+        ],
+        "samples_per_client": 16
+      }
+    ],
+    "construction_us": 609065,
+    "daemon_path_enabled": false,
+    "kind": "guarded-output-component-profile",
+    "live_rpc_or_current_proof_acceptance": false,
+    "output_bytes": 2158309,
+    "output_seal_unchanged": true,
+    "output_sha256": "718fc30e7df9978a21d130df8bbbb459cf9f433865462db4ca33b615ce531347",
+    "requested_retained_bytes": 318900
+  },
+  "output_summary": [
+    {
+      "clients": 1,
+      "guarded": false,
+      "guarded_hits": 0,
+      "count": 16,
+      "median_ms": 9.4995,
+      "p95_ms": 13.433,
+      "max_ms": 13.433
+    },
+    {
+      "clients": 1,
+      "guarded": true,
+      "guarded_hits": 16,
+      "count": 16,
+      "median_ms": 0.497,
+      "p95_ms": 9.778,
+      "max_ms": 9.778
+    },
+    {
+      "clients": 4,
+      "guarded": false,
+      "guarded_hits": 0,
+      "count": 64,
+      "median_ms": 11.8665,
+      "p95_ms": 25.781,
+      "max_ms": 37.485
+    },
+    {
+      "clients": 4,
+      "guarded": true,
+      "guarded_hits": 51,
+      "count": 64,
+      "median_ms": 0.3815,
+      "p95_ms": 17.186,
+      "max_ms": 24.841
+    }
+  ],
+  "grouped_full_validation": {
+    "acceptance": false,
+    "grouped_us": [
+      12326,
+      3811,
+      37445,
+      8192,
+      17245,
+      145220,
+      6473,
+      18409,
+      14445,
+      12677,
+      26148,
+      8564,
+      6092,
+      9632,
+      10584,
+      68483
+    ],
+    "input_files": 512,
+    "live_rpc": false,
+    "original_us": [
+      18211,
+      35889,
+      13741,
+      30819,
+      16717,
+      8362,
+      18451,
+      7652,
+      5213,
+      10478,
+      16869,
+      8064,
+      6772,
+      15831,
+      8134,
+      16492
+    ],
+    "parent_cap": 64,
+    "scope": "unselected complete original ReadLease.clean comparison"
+  },
+  "grouped_summary": {
+    "original": {
+      "count": 16,
+      "median_ms": 14.786,
+      "p95_ms": 35.889,
+      "max_ms": 35.889
+    },
+    "grouped": {
+      "count": 16,
+      "median_ms": 12.5015,
+      "p95_ms": 145.22,
+      "max_ms": 145.22
+    }
+  },
+  "selection": {
+    "output_owner": "unselected; component gain supports bounded integration design, not live200 acceptance",
+    "parent_grouping": "test-only; no demonstrated tail improvement, no timing retry",
+    "unchanged_full_result_schema": true,
+    "unchanged_freshness_barriers": true
+  },
+  "ownership": {
+    "private_target_allocated_kib": 316344,
+    "common_target_writes": false,
+    "retained_owner_requested_bytes": 318900,
+    "owner_allowance_bytes": 16777216,
+    "whole_peak_or_rss_claim": false,
+    "requires_frame_family_reservation_before_daemon_integration": true
+  },
+  "limits": [
+    "one-client16 and four-client64 samples per condition; fixed original-then-guarded ordering",
+    "parent comparison512 generated files and16 original then16 grouped calls; wall-only timing cannot locate cause of tail change",
+    "grouping does not certify namespace continuity; same-inode rename control relies on unchanged outer native Observer",
+    "no input/report Currentness or verification acceptance from this component",
+    "all controls returned normally; owned child cleanup uses original helper kill/wait; no comprehensive external orphan census claimed"
+  ]
+}

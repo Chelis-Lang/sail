@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add an unselected Linux library prototype for continuously guarded retained
+  output digests. It certifies complete output bytes only; the daemon still uses
+  its original read/hash and input freshness checks. No live reader gain is
+  claimed until complete validation costs and original gates pass.
+
 - Select the qualified optional source engine with conservative imported-range
   absence handling and preparation retirement acknowledgement. Its original
   thirteen-stage source qualification passes, including genuine reuse across

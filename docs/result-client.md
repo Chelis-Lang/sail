@@ -263,3 +263,28 @@ controller. It checked direct live reads, same-ID state changes, service loss
 and restart, notification cancellation, socket cleanup and normal EOF exit.
 The worker was stopped before any proof; it does not establish Current-result
 latency or the separate real-reader acceptance.
+## Retained output validation prototype
+
+The daemon still reads and checks the complete persisted worker output before
+serving cached Result frames. An unselected library prototype,
+`managed::GuardedOutput`, tests whether continuous Linux namespace and read-lease
+ownership can safely avoid repeated output hashing. It certifies output bytes
+only; it cannot report Current without the original independent input checks.
+Cold or uncertain ownership uses the original complete read/hash path. The
+prototype has no daemon activation or user flag, and no claimed live latency
+gain. See [ADR 0035](decisions/0035-guarded-retained-output-digests.md) and the
+[latest original reader failure](validation/m7-descriptor-reader-terminal.md).
+
+A second, test-only candidate groups file-parent descriptor lookups within one
+lease barrier. It retains at most 64 temporary directory descriptors and borrowed
+paths, opens each exact child name, and checks the original device/inode and
+kernel pathname. It freshly resolves all reused parents before success. Any
+unsupported lookup or parent mismatch invokes the complete original absolute
+inventory predicate. No descriptor or identity memo survives the barrier, and
+production still uses the original path. Namespace, mount generation, helper,
+interpreter and both complete kernel inventories are unchanged. A same-inode
+hardlink rebound can satisfy the original path predicate; the original outer
+namespace observation remains necessary to reject the rename event. The new
+control demonstrates that distinction rather than treating path identity as
+continuous namespace coverage. Complete-operation measurements must justify any
+later selection; these controls give no live reader or latency acceptance.
