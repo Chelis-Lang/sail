@@ -4,7 +4,8 @@ Status: unselected implementation for independent review under proposed
 [ADR 0033](../../../../docs/decisions/0033-deferred-import-diagnostic-locators.md).
 The [candidate patch](../deferred-import-locator.patch) has passed its private
 ordinary source build with fresh vstd verification (2060 verified, 0 errors).
-Full source-control and original qualification gates remain pending. Its helper
+The full source gate failed at one test-only strict lint; original qualification
+was not launched. Its helper
 controls pass against pinned rustc APIs;
 [identity](identity.json) and [evidence](helper-controls.json) distinguish those
 controls from the pending actual source and original fourteen-stage gates. The
@@ -19,9 +20,19 @@ target ownership, compiler-only seed inventory and corrected pre-compiler
 archive-transfer setup failure. That historical launch record remains unchanged.
 [Build evidence](ordinary-build.json) records the successful 1720.396-second
 build, exact thirteen-artifact manifest, source/lock identities and closed owner
-before source tests. Actual full library controls and strict Clippy are running
-in the private target; no source or product qualification is claimed, and no
-selected runtime changed.
+before source tests. [Full-source gate evidence](source-gate-a61-failure.json) records 38/38 VIR and
+55/55 driver library tests passing, with strict VIR Clippy passing and strict
+driver Clippy failing at the Reporter test's `Arc<SourceMap>` owner. The pinned
+SourceMap is single-threaded; a narrow test-only `Rc` correction is under review.
+Assertions and lint policy stay unchanged. This frozen failure and its thirteen
+runtime bytes remain preserved; no source/product qualification or selected
+runtime change is claimed. The original fourteen stages have not launched.
+
+Empty Cargo control-file retention initially hit cross-device `rename` failure
+between the cache and native evidence mounts. Content-verified move retained only
+the two exact empty control files after all source children closed; all thirteen
+sealed runtime hashes and inventory remained unchanged. This setup failure is
+recorded separately from the strict source-check failure.
 
 [Inactive compiler cleanup](preceding-compiler-cleanup.json) retired only the
 preceding b46 compiler intermediates after the new builder closed. All thirteen
