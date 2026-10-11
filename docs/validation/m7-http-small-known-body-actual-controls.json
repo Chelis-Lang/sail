@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "RUNNING; native affected controls pending",
+  "scope": "Root-granted one private affected HTTP controls, exact counterfactual/restored positive and one baseline/candidate comparison; unselected",
+  "candidate_commit": "e6f6c7c3ac509e8f92de3cc56a563ed8dee5f2da",
+  "runner_commit": "db31164b53eff04af87ed9ea2537748013d7a344",
+  "controller_sha256": "f025aef616e57b301be5813ac1efa5804eb877dcdc2b15d96bd27bf761a1250b",
+  "inputs_sha256": "e10258a9747c39ccaee99595265df64f3f493b1966cf60012c374a74e5b3309a",
+  "grant_sha256": "1f8afa0ade994f7134db099b722d0dfb556638cb6ce77e5694e2839e75df77b9",
+  "source_archive": {
+    "sha256": "4d75db9aea84b881f62694721dcd6938b480c94b75fc08b25593e9abd8650a31",
+    "bytes": 26183680,
+    "regular_files": 1355,
+    "symlinks": 1,
+    "inventory_sha256": "07e1d9e5d63018aa776d69e84154a667b69a176ad918bc344474bbb34c6e9c41"
+  },
+  "preflight": {
+    "sail-m7-acceptance-launch-census.json": "3d060a1c420a1cda3ddd453a562ffc8a831a59b5e344d294fe08b79faccb2665",
+    "sail-m7-handoff-validation-launch-census.json": "2ae5455bb0f4bd358a318e5f8536212d96e0798dbf0e564a5842f9cbacf5693c",
+    "sail-m7-acceptance-protected.json": "95af4cf86042378430378470d79901d2b04ecf5beb3aa96f86762a201719853f",
+    "sail-m7-handoff-validation-protected.json": "3580f5ff4eab033cc189c07b0da1b3df0576af21840a16d5f5010a01ebbb7b97",
+    "c-target-handoff.json": "7d5acbb3415ac24ca0a9fc99da7f2917e1eb478c0e2e74c22d3cd33501a60f22",
+    "native-source-preparation.json": "d35188bfc56db1c6316afff2fcc189116be0ae5d77ba31990b82791868fee75d"
+  },
+  "preflight_observation": "Both containers: zero holders and unreadable cmd/cwd/fd/maps; exact six prior tested-image copies and whole C outside-target evidence; installed product and complete engine13/manifest preserved",
+  "profile": "release",
+  "jobs": 1,
+  "incremental": false,
+  "target_reuse": "Existing exclusively handed-off private shared-trust target; no copied target or warmth claim",
+  "compiler_identity": "1.99.0 observed",
+  "host_session": 54467,
+  "first_build_pid": 6360,
+  "first_build_pgid": 6360,
+  "first_build_unix_ns": 1791756689329269013,
+  "execution": "Linux amd64 Docker emulation on arm64 macOS, shared host; root holds other heavy compilation while this sole slot runs",
+  "public_artifact_or_engine_change": false,
+  "proof_or_performance_credit": false,
+  "original_fixture": {
+    "readers": 8,
+    "deadline_ms": 250,
+    "server_delay_ms": 75,
+    "hits": 8,
+    "gets": 1,
+    "matched_coalesced": 7
+  },
+  "closure": "Pending complete primary and independent postflight audits/protected seals; timeout/signal uncertainty refuses source restoration and further phases"
+}
