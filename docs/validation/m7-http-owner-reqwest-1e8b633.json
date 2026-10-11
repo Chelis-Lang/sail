@@ -1,0 +1,172 @@
+{
+  "original_source_commit": "1e8b633572cb680aa27fcebd7dc526ee09278f99",
+  "baseline_archive_sha256": "439ec02e3fab13a6f96f3a9ebd7d59754210f7a078ac555398c2814c8d2bfb9d",
+  "archive_sha256": "b5a0ef15db75441a3d79cea89a26c182237e61160b56d4852c0398740888a67a",
+  "profile_patch_sha256": "6457fe35a5ac07676f68ce1fe6357dce0c069d3b49dca5e5ae5b96bca1f9e88f",
+  "scope": "One paired package-only reqwest opt-level3 control, identical bounded owner observation and original paused-initiator fixture; debug assertions and overflow checks remain enabled",
+  "selected": false,
+  "repetitions": 1,
+  "original_deadline_ms": 250,
+  "original_server_delay_ms": 75,
+  "baseline_binary": {
+    "bytes": 46327496,
+    "sha256": "c1a48dbdb7b0716b7e5026657d07044e6ebf64277cc47dc119f98b6cca87822d"
+  },
+  "exit_code": 0,
+  "inclusive_elapsed_seconds": 72.883272375,
+  "raw_log_sha256": "5eb7fc617d303c9f2f975698017b6207a9624d52067b9bb814f84b2562002aae",
+  "command": "cargo test --locked -p sail-daemon --lib shared::http_tests::verified_http_reply_reaches_readers_while_initiator_is_paused -- --exact --nocapture",
+  "samples": [
+    {
+      "phase": "before-send",
+      "monotonic_ns": 34809745183884,
+      "owners": [
+        {
+          "role": "calling-thread",
+          "cpu_ticks": 0,
+          "schedstat": {
+            "runtime_ns": 6161041,
+            "runqueue_wait_ns": 2676542,
+            "timeslices": 7
+          }
+        },
+        {
+          "role": "reqwest-runtime:33548",
+          "cpu_ticks": 11,
+          "schedstat": {
+            "runtime_ns": 115123707,
+            "runqueue_wait_ns": 129709,
+            "timeslices": 3
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after-send",
+      "monotonic_ns": 34809930922759,
+      "owners": [
+        {
+          "role": "calling-thread",
+          "cpu_ticks": 0,
+          "schedstat": {
+            "runtime_ns": 9185792,
+            "runqueue_wait_ns": 2717542,
+            "timeslices": 9
+          }
+        },
+        {
+          "role": "reqwest-runtime:33548",
+          "cpu_ticks": 19,
+          "schedstat": {
+            "runtime_ns": 200436831,
+            "runqueue_wait_ns": 161627,
+            "timeslices": 6
+          }
+        }
+      ]
+    },
+    {
+      "phase": "before-body",
+      "monotonic_ns": 34809931609092,
+      "owners": [
+        {
+          "role": "calling-thread",
+          "cpu_ticks": 0,
+          "schedstat": {
+            "runtime_ns": 10112667,
+            "runqueue_wait_ns": 2717542,
+            "timeslices": 9
+          }
+        },
+        {
+          "role": "reqwest-runtime:33548",
+          "cpu_ticks": 19,
+          "schedstat": {
+            "runtime_ns": 200436831,
+            "runqueue_wait_ns": 161627,
+            "timeslices": 6
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after-body",
+      "monotonic_ns": 34809935082592,
+      "owners": [
+        {
+          "role": "calling-thread",
+          "cpu_ticks": 1,
+          "schedstat": {
+            "runtime_ns": 13570084,
+            "runqueue_wait_ns": 2717542,
+            "timeslices": 9
+          }
+        },
+        {
+          "role": "reqwest-runtime:33548",
+          "cpu_ticks": 19,
+          "schedstat": {
+            "runtime_ns": 200436831,
+            "runqueue_wait_ns": 161627,
+            "timeslices": 6
+          }
+        }
+      ]
+    }
+  ],
+  "send": {
+    "helper": {
+      "wall_ns": 185738875,
+      "cpu_ticks": 0,
+      "schedstat": {
+        "runtime_ns": 3024751,
+        "runqueue_wait_ns": 41000,
+        "timeslices": 2
+      }
+    },
+    "runtime": {
+      "wall_ns": 185738875,
+      "cpu_ticks": 8,
+      "schedstat": {
+        "runtime_ns": 85313124,
+        "runqueue_wait_ns": 31918,
+        "timeslices": 3
+      }
+    }
+  },
+  "body": {
+    "helper": {
+      "wall_ns": 3473500,
+      "cpu_ticks": 1,
+      "schedstat": {
+        "runtime_ns": 3457417,
+        "runqueue_wait_ns": 0,
+        "timeslices": 0
+      }
+    },
+    "runtime": {
+      "wall_ns": 3473500,
+      "cpu_ticks": 0,
+      "schedstat": {
+        "runtime_ns": 0,
+        "runqueue_wait_ns": 0,
+        "timeslices": 0
+      }
+    }
+  },
+  "baseline": "m7-http-owner-1e8b633.json",
+  "profile_patch": "m7-http-owner-reqwest-1e8b633.patch",
+  "result": "Fixture PASS; performance hypothesis not demonstrated; profile NOT selected",
+  "qualification": {
+    "m7_accepted": false,
+    "complete_gate_pass": false,
+    "profile_selected": false
+  },
+  "comparison": {
+    "baseline_send_runtime_cpu_ns": 49505839,
+    "candidate_send_runtime_cpu_ns": 85313124,
+    "baseline_first_lookup_to_publication_us": 198353,
+    "candidate_first_lookup_to_publication_us": 208290,
+    "interpretation": "One paired diagnostic does not demonstrate reduced send CPU or wall time. Body CPU decreases but does not establish a whole-request benefit. Guest scheduling/hypervisor and first-use effects are not causally separated."
+  }
+}

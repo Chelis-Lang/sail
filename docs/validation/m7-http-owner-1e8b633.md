@@ -25,9 +25,17 @@ phase takes 198.353 ms. Guest per-thread accounting excludes blocking sleep,
 network waits and unobserved hypervisor scheduling; it cannot establish the
 complete failed gate's cause or identify a dependency hotspot.
 
-Runtime CPU is material in this one diagnostic. A separately frozen, single
-package-only `reqwest` optimization control is being tested against this same
-observation. It preserves debug assertions, overflow checks, features, TLS,
-signature checks and every original fixture bound. Its results must demonstrate
-a cost reduction before any profile change is selected. No broader optimization
-or full gate pass follows from this positive observation.
+Runtime CPU is material in this one diagnostic. The separately frozen, single
+package-only [reqwest optimization control](m7-http-owner-reqwest-1e8b633.json)
+also passes the fixture, but **does not demonstrate a performance improvement**.
+It preserves debug assertions, overflow checks, features, TLS, signatures and
+every original fixture bound. Send runtime CPU rises to 85.313 ms, send snapshot
+wall time rises to 185.739 ms, and the first lookup-to-publication phase takes
+208.290 ms. Body helper CPU drops to 3.457 ms, but that alone does not establish
+a whole-request gain. First-use, scheduling and hypervisor effects are not
+causally separated by this pair.
+
+The [package-only profile patch](m7-http-owner-reqwest-1e8b633.patch) remains
+unselected. The workspace profiles are unchanged. Neither diagnostic establishes
+the failed complete gate's cause, authorizes a broader profile change, or
+replaces the original failed controls.
