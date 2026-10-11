@@ -142,3 +142,23 @@ other assertions are byte-exact. Controller
 `fe5816dec6ac841fa184001b0f52d0949719e993fd5e94cfe9b3c7df3ac972d2`
 binds the second failed result before a new complete scope. Static review found
 no blocker; actual corrected source controls remain pending.
+
+The corrected complete source scope then passed: 42 VIR and 108 driver controls
+and both all-target strict checks, enclosing 37.197 seconds, result
+`a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808`.
+This closes source-control validation only. It does not erase either earlier
+failed scope, build an ordinary runtime, or establish a restored hit.
+
+The independently reviewed counterfactual patch
+`c994c23d0c281848f85336e1639e4cc480ddefae0e96bc8f60582557566c61fc`
+removes only the six-line production absence memo bypass. Scratch application
+matched negative engine
+`871bd25334955e841fe790e3a6078e12a096966783316bd3b345a2af5d60a846`;
+fixture, admission checks and inequality assertion are unchanged. Final
+controller `e8a2e84230ca52483611b04a53d1f79f9666d4d9f3277465800266903a055129`
+requires the exact positive result and source, one failed case at the inequality
+with identical admitted stale digests on both sides, then exact source restoration
+and one positive case. It retains each actual executable and dependency file
+before rebuilding, and verifies final source and prior runtime seals. This is
+approved for the one private sensitivity scope; execution remains pending.
+No ordinary runtime or original qualification result is inferred.
