@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "scope": "Inert source API/ownership proposal; not selected, integrated, ordinarily built or proof-qualified",
+  "proposal_patch_sha256": "47bee309319108e47592c3b7db01062732a2dd1e06bf5fdb1041d100f3708be2",
+  "source_changes": "Uncalled private module plus unit tests only; no constructor call, key, codec, comparison, resolver state or selected runtime changed",
+  "current_mismatch_trace": "Pending; no actual mismatch field inferred from these fixtures",
+  "final_actual_api_controls": {
+    "version": 1,
+    "scope": "Inert loaded-import helper; actual pinned source-map types and extracted stock resolver, not source/proof qualification",
+    "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+    "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+    "capture_sha256": "1562c8e2f8d43593ab24a8a3334473da01031eeee2fd5636e0d7c772b23a31f1",
+    "tests_sha256": "0c2cd111ede9805724b7f4a28aa93fc44d929a068cfc43851cc32efd75756174",
+    "compile_exit_code": 0,
+    "test_exit_code": 0,
+    "probe_sha256": "20fc752551de8bdcde5def4e72250773956ceea78f99a656a286ec8cf4515995",
+    "elapsed_seconds": 3.5913669590000006
+  },
+  "test_count": 8,
+  "raw_record": "target/owned-import-mapping/final-evidence",
+  "initial_failures": [
+    {
+      "version": 1,
+      "scope": "Inert loaded-import helper; actual pinned source-map types and extracted stock resolver, not source/proof qualification",
+      "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+      "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+      "capture_sha256": "d86755a943ea023c1fb73f19ed0c1f65e4686a494063ff4e813c0e17c14a1434",
+      "tests_sha256": "79b760f222d8a8f8888d0c9c2e760dd0bbbabb8482bee6b24638aaba98eed1c3",
+      "compile_exit_code": 1,
+      "elapsed_seconds": 1.9366841669999997,
+      "compile_stderr_sha256": "66eead38fc3e90c7e3a1c53d827892cc5c75403c7cdc61f3ead90e8a5a884d6c",
+      "raw_record": "target/owned-import-mapping/first"
+    },
+    {
+      "version": 1,
+      "scope": "Inert loaded-import helper; actual pinned source-map types and extracted stock resolver, not source/proof qualification",
+      "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+      "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+      "capture_sha256": "29cba89100854018899243ffa8a6edccf2e6f84dbec6518e7e4c4a7aef0bb3ee",
+      "tests_sha256": "584cb0c861531df834382122dcf38ba1b63f42268b323656735c9ef7f4518176",
+      "compile_exit_code": 1,
+      "elapsed_seconds": 1.8458339169999998,
+      "compile_stderr_sha256": "d4f16793ca3e9592d7b13f673cb72b54a1279edbec34fe2024489df30953ea7e",
+      "raw_record": "target/owned-import-mapping/final"
+    }
+  ],
+  "earlier_six_test_helper_pass": "target/owned-import-mapping/corrected/summary.json",
+  "script_sha256": "3631759e366d8caa1f813ea354341e06fa0c4dd1ecad151f3524555da1df0d63",
+  "stock_source_identity": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+  "pinned_compiler_source_paths": [
+    "compiler/rustc_span/src/lib.rs",
+    "compiler/rustc_span/src/source_map.rs",
+    "compiler/rustc_span/src/def_id.rs",
+    "compiler/rustc_data_structures/src/sync/freeze.rs"
+  ],
+  "pending": [
+    "Complete host driver/VIR and strict source checks after any future integration",
+    "Global preparation phase accounting including owned snapshot",
+    "B actual first mismatch Local/Imported trace",
+    "Same-input wire/effects/diagnostic and stock verdict/diagnostic checks",
+    "Genuine previous-revision FOCUS restoration and real project catalogue performance"
+  ],
+  "controls": [
+    "allocation_name_limit_and_last_owner_release_are_bounded",
+    "coherent_source_map_relocation_is_observed_without_asserting_equivalence",
+    "delayed_missing_and_busy_entries_do_not_load_sources_or_promote_later",
+    "disposal_precedes_releasing_the_process_family_admission",
+    "exact_bounds_missing_original_and_wrong_current_map_fail_closed",
+    "loaded_foreign_capture_matches_exact_stock_resolver_and_is_worker_owned",
+    "namespace_hash_range_and_duplicate_content_refusals_are_exact",
+    "original_hash_and_normalized_byte_lengths_are_kept_distinct"
+  ],
+  "final_output_hashes": {
+    "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests.stdout": "20f6a0b8bc523fd8bf2295760307d3a17a72b9551d5861462f88396444340631",
+    "tests.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
