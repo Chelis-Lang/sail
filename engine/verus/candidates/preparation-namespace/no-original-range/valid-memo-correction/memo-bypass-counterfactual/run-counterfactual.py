@@ -1,5 +1,5 @@
 from pathlib import Path
-import hashlib,json,os,subprocess,time,tarfile,signal
+import hashlib,json,os,subprocess,time,tarfile,signal,re,shutil
 OUT=Path('/tmp/sail-m7-no-original-range-memo-sensitivity');OUT.mkdir(exist_ok=True)
 SOURCE=Path('/tmp/sail-m7-original-descriptor-source-controls/verus/source')
 TARGET=SOURCE/'target-verus'
@@ -59,6 +59,15 @@ try:
    save('current-actor.json',{'pid':child.pid,'pgid':os.getpgid(child.pid),'start_ticks':fields[19],'command':command,'nice':os.getpriority(os.PRIO_PROCESS,child.pid),'start_unix_ns':time.time_ns()})
    code=child.wait(timeout=180);child=None
   text=log.read_text()
+  paths=re.findall(r'Running unittests .*?\(([^)]+)\)',text)
+  assert len(paths)==1
+  executable=SOURCE/paths[0]
+  retained=OUT/'tested-binaries'/phase/executable.name
+  retained.parent.mkdir(parents=True,exist_ok=True)
+  shutil.copy2(executable,retained)
+  assert sha(retained)==sha(executable)
+  if executable.with_suffix('.d').exists():shutil.copy2(executable.with_suffix('.d'),retained.with_suffix('.d'))
+  save(phase+'-image.json',{'sha256':sha(retained),'bytes':retained.stat().st_size,'path':str(retained.relative_to(OUT))})
   phases.append({'name':phase,'command':command,'exit_code':code,'elapsed_seconds':time.monotonic()-phase_start,'log_sha256':sha(log)})
   save('progress.json',phases)
   assert 'running 1 test' in text
