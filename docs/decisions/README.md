@@ -35,3 +35,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0030: Loaded imported span authority (proposed candidate)](0030-imported-span-authority.md)
 - [0031: Guarded sysroot digest handoff (proposed)](0031-guarded-sysroot-digest-handoff.md)
 - [0032: Sticky kernel mount-generation coverage](0032-kernel-mount-generation-coverage.md)
+- [0033: Exact deferred imported diagnostic locators (proposed candidate)](0033-deferred-import-diagnostic-locators.md)
