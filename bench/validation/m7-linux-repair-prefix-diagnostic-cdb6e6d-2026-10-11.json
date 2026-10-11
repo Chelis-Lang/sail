@@ -137,11 +137,12 @@
     }
   ],
   "raw_evidence": {
-    "sha256": "06d1f78f0a06b441a02c006eaedb87f110d4a2e51cbf69f8b6671600a1f895d3",
-    "bytes": 19431157,
+    "sha256": "e6bf72cbc9fb257ba91af9a63ec59076893310c4abe6551cb1ea1380fc7a9756",
+    "bytes": 38710691,
     "regular_files": 677,
     "expanded_regular_bytes": 152917420,
-    "excluded": "ordinary Cargo target build files only; native cache remains retained for dependency-rebuild investigation"
+    "excluded": "ordinary Cargo target build files only; native cache remains retained for dependency-rebuild investigation",
+    "archive_member_hashes_verified": true
   },
   "interpretation": "Missing selector emits unavailable evidence, performs full verification, and returns SAIL3122 with Current full evidence. This demonstrates completion in this reduced scope only; it neither replaces the original120-second whole-workflow failure nor establishes its cause. Snapshot process inventory is limited and is not an exhaustive process census. Regression/later CLI/MCP suite and performance acceptance are unattempted."
 }
