@@ -113,3 +113,12 @@ visibility. Native-size setup initially had ambiguous libc candidates and a
 metadata-only rlib; final selection follows the pinned std metadata dependency
 identity and binds its full metadata hash. No production guard or assertion was
 changed to repair those setup failures.
+
+The complete-source controller is `run-source-controls.py`, bound in
+`source-control-plan.json`. It reuses the closed private compiler target after
+dual-container holder checks, validates the preceding actual-source result,
+preserves the old source before applying the exact delta, and compares all three
+prior runtime artifact/source/lock inventories before and after the checks.
+It runs two Cargo jobs at ordinary priority and one independent test case at a
+time; every test's internal concurrency remains unchanged. This is source
+control compilation, not an ordinary runtime build or qualification run.
