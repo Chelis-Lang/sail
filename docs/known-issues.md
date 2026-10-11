@@ -17,6 +17,13 @@ event cause. The [coverage diagnostic boundary](validation/m7-proof-coverage-dia
 explains the remaining attribution limits. Earlier HE Unknown reports remain
 failed acceptance evidence; these diagnostic changes do not recertify them.
 
+The service-owned D20 workflow establishes Current preparations and passes its
+bounded baseline checks, but its active repair completes with Unknown sysroot
+coverage (`sysroot-namespace-invalidated`). Neither reader census nor retained
+CLI/MCP integration was attempted. The [terminal scope and audit](validation/m7-owned-reader-d20-sysroot-audit.md)
+retain this failure separately from the earlier executable ownership refusal.
+The older coarse note does not identify which sysroot observer or event failed.
+
 CLI/MCP repair checks, journals, explanations and immutable baselines are
 implemented. The selected source runtime passes source fixtures and the small
 native Linux CLI/MCP scenario. Real human-eval-verus and Vest acceptance is
