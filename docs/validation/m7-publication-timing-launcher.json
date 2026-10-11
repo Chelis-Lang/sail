@@ -3,14 +3,13 @@
   "status": "prepare-only-no-runtime-actors",
   "source_sha256": {
     "ci/test-repair.py": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7",
-    "scripts/m7-publication-timing-diagnostic.py": "db795c9003cefee8234417525771851f63b4f3a6a2c6f5c8239736761100747f",
-    "scripts/test-m7-publication-timing-diagnostic.py": "d400fcd26af5ae833cc784b076d56905c2da20808221e4614a50b5b5f7865cf0"
+    "scripts/m7-publication-timing-diagnostic.py": "3d4c4cb6237a55b4215e453131b158ee80f7e05b042a49f38abc838d1b932837",
+    "scripts/test-m7-publication-timing-diagnostic.py": "86f4f1e48aec1aa41eea1da287bee571fdde16c68829c6f846607e56f3cb2d1d"
   },
   "validation": {
     "pure_controls": {
       "passed": 12,
       "failed": 0,
-      "elapsed_s": 0.109,
       "command": "python3 scripts/test-m7-publication-timing-diagnostic.py"
     },
     "diff_check": "PASS",
