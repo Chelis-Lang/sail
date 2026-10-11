@@ -44,7 +44,7 @@ are integer microseconds, with these boundaries:
 | `dispatch_delay_us` | Accepted socket to its owned request thread starting |
 | `read_us` | Complete request-frame read and parse |
 | `lookup_us` | Stored job lookup and clone |
-| `output_seal_us` | Bounded full stdout read and exact seal validation |
+| `output_seal_us` | Complete output validation: accumulated owner barriers and/or original full stdout read and exact seal |
 | `freshness_us` | Existing current-input validation and classification |
 | `frame_key_us` | Complete stored-job serialization and frame-key hash |
 | `frame_lookup_us` | Immutable frame cache lookup |
@@ -52,13 +52,15 @@ are integer microseconds, with these boundaries:
 | `write_us` | Complete socket output, including its existing error fallback |
 | `total_us` | Acceptance to recording after socket output |
 
-`frame_hit` and the existing computed `currentness` are observations, not cache
-authority. `frame_bytes` counts the complete selected Result frame, including its
+`frame_hit` includes cached responses reached through original output hashing;
+it does not establish guarded-output shortcut admission. The existing computed
+`currentness` is also an observation, not cache authority. `frame_bytes` counts the complete selected Result frame, including its
 four-byte header. `write_succeeded` means transport success; an Error response can
 be written successfully. Missing stages are null for paths that did not execute
 them, including nonterminal/older-record fallback. Buffer disposal and other
 unmarked work can contribute to `total_us`; stage times are not guaranteed to sum
-to the total.
+to the total. Repeated boundaries accumulate rather than replace earlier
+intervals, including a failed final owner barrier followed by full fallback.
 
 Large `write_us` values may reflect receiver progress rather than server CPU.
 The [complete-result offline control](validation/m7-result-transfer-profile.md)
