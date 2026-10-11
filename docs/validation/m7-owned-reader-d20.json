@@ -13,8 +13,23 @@
     "bytes": 5510,
     "sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6"
   },
+  "cleanup": {
+    "archival_errors": [],
+    "cleanup_errors": [],
+    "daemon_pid": 561644,
+    "elapsed_s": 1.6675190839960123,
+    "exit_code": 0,
+    "forced": false
+  },
   "collector_note": "Original Python and Rust source/assertions unchanged. Existing staged-02fd binary retained; current jobs client/API diff 1e\u2192d20 is empty. Collector origin freeze is independent of actual d20 product.",
-  "collector_results": null,
+  "collector_results": {
+    "python": {
+      "attempted": false
+    },
+    "rust": {
+      "attempted": false
+    }
+  },
   "concurrent_work": "Root full current 2d6539f local gate uses common Cargo target/jobs 2; this scenario only uses private owned fixture targets. No causal attribution.",
   "controller_scripts": {
     "m7-job-read-bench.py": {
@@ -40,7 +55,23 @@
   },
   "controller_source_commit": "2d6539f642b284d66c1f485570b4a166e721a4b7",
   "current_proof_admitted": true,
-  "current_proof_scope": "unmeasured preparation and original bounded baseline checks admitted; active bounded checks, collectors and retained integration pending",
+  "current_proof_scope": "baseline preparation and bounded baseline checks admitted; active bounded repair Unknown; no collector or retained integration attempted",
+  "error": {
+    "code": "SAIL0942",
+    "message": "repair warmup lacks Current accepted full evidence",
+    "type": "ValueError"
+  },
+  "failed_context_runtime_identity": {
+    "bytes": 79091,
+    "context_sha256": "7f43f09c1d5c7fc8c1be8e616e818d3d260cf12142f39dbd7c04daaad3d45946",
+    "derived_identity_inventory_sha256": "271ac554461c3153a835b1159faeab615df8a2fa8a0992cd5cab6e5e148ee721",
+    "eligible_sysroot_path_rows": 327,
+    "sha256": "71e1eccfbde7036fd46eb767a1ae6577f9314cf7af0e1707aff1200fd159801c",
+    "sysroot": "Rust 1.98.1 x86_64 Linux toolchain",
+    "total_rows": 418
+  },
+  "immutable_inputs_unchanged": true,
+  "inclusive_elapsed_s": 4913.329304703999,
   "inventory_statement": "No old inventory reused; metadata covers installed products and 13 selected artifacts only. Production original Guard acquires and validates complete actual inventory before proof; setup metadata never certifies Current.",
   "observed_active_repair_preparation": {
     "accepted": true,
@@ -82,6 +113,59 @@
     "reported_execution_wall_s": 769.235308975,
     "scope": "existing single declaration retry in unmeasured preparation; not a one-driver or latency claim",
     "whole_baseline_preparation_wall_s": 3202.365516755003
+  },
+  "observed_bounded_active_checks": {
+    "ordinary": {
+      "controller_scope_check_passed": true,
+      "deadline_s": 600,
+      "exit_code": 0,
+      "external_wall_s": 194.9509890900008
+    },
+    "repair": {
+      "accepted": false,
+      "actual_worker_stdout": {
+        "bytes": 2158397,
+        "sha256": "1063035b363673062433a08bd097c689e4491392a0f5647d0a15c148c646ced2"
+      },
+      "batched": true,
+      "compiler_invocations": 1,
+      "currentness": "unknown",
+      "deadline_s": 600,
+      "declaration_retry": false,
+      "error": null,
+      "exit_code": 0,
+      "external_wall_s": 299.72243605300173,
+      "job": "1791699162785-561644-4",
+      "notes": [
+        "SAIL3114: sysroot byte identities lost continuous kernel coverage (sysroot-namespace-invalidated); no current proof receipt is published",
+        "SAIL3114: current input validation is unavailable or still running; native coverage and kernel read leases must be established before claiming Current"
+      ],
+      "pretty_archived_public_result": {
+        "bytes": 10725661,
+        "sha256": "066d360a42d467d674aa35c34b835393e831ad95388fca72d89a2d756741dd01",
+        "wire_size": "not measured by this file seal"
+      },
+      "reported_execution_wall_s": 274.802437418,
+      "reused_targets": 1,
+      "state": "completed",
+      "targets": [
+        {
+          "complete": true,
+          "failed": 0,
+          "reused": true,
+          "target": "vstd",
+          "verified": 1871
+        },
+        {
+          "complete": true,
+          "failed": 0,
+          "reused": false,
+          "target": "human_eval_verus",
+          "verified": 331
+        }
+      ],
+      "verifier_invocations": 1
+    }
   },
   "observed_bounded_baseline_checks": {
     "ordinary": {
@@ -142,6 +226,7 @@
     "verifier_invocations": 2
   },
   "original_failures_preserved": true,
+  "passed": false,
   "preparation": "Authorized separately recorded unmeasured ordinary/exact repair-context phase before original bounded checks; existing single declaration retry only",
   "probes": {
     "job_read_bench": {
@@ -175,7 +260,17 @@
     "source_archive_sha256": "3040f96230dee9938fb784f374137c138e233b4486f521aebb6b7335e46bcd98",
     "source_commit": "d20d034087cb9c6c74a66161b76daa512d95221a"
   },
-  "retained_results": null,
+  "raw_archive": {
+    "archive_bytes": 4565991,
+    "files": 103,
+    "inventory_sha256": "04c5c794f4b72d643d4c409ebc4239e861e539b3a2717fcbd1f0019477772210",
+    "scope": "all root artifacts, command streams, allowlisted original owned job output/events and setup timers; no environment-bearing record, project Cargo target or cache payload",
+    "sha256": "7b7f4eb8d709f0c05b60e6165e442b339e7f8fb1302ea834869785593df983db",
+    "uncompressed_bytes": 159518065
+  },
+  "retained_results": {
+    "attempted": false
+  },
   "scope": "Selected b346 reader/retained functional scope only; not source physical gate, 2x performance or overall M7 qualification",
   "selected_runtime_artifact_ownership": {
     "verus/source/target-verus/release/.cargo-build-lock": {
@@ -291,7 +386,7 @@
     "bytes": 2107,
     "sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
   },
-  "state": "running",
+  "state": "failed",
   "version": 1,
   "wrapper": {
     "bytes": 8684,
