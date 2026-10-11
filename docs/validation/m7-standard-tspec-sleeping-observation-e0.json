@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "scope": "Nonterminal read-only metadata from one unchanged full default standard attempt; not a conformance classification or proven cause",
+  "environment": "Local Linux x86-64 container under Rosetta emulation; overlapping validation recorded separately, no load cause inferred",
+  "source_commit": "e0ca5f5154e74326443181f57f0fd928488159d3",
+  "source_archive_sha256": "451da19432e6ffea002ccfa13248d14a823c097fd81ad10b0269bc2c6b0ccd71",
+  "conformance_sha256": "cd660c860030adcd33dd1df641034e9793773a5ed8ec65545f70ad251acdea8e",
+  "shim_sha256": "a337030eec201a11f0b351b55bf2000e3e1f50e28f9a47580461e1af090bb80b",
+  "stock_driver_sha256": "b8c11e7b626cc85d8a46b90036f0adfec443b7cde1c69d8b182175b92c708af7",
+  "stock_z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+  "observer_sha256": "2b8366ce4e2577371516696b693c08f6b5a986ab4dfe26afbd7cceb567455c2e",
+  "harness_leader": {
+    "pid": 453116,
+    "starttime_ticks": 2858550
+  },
+  "full_attempt_completed_at_observation": 155,
+  "full_attempt_expected_units": 159,
+  "completed_classifications": {
+    "Same": 155
+  },
+  "unit": "verismo/source/verismo_tspec/src",
+  "arm": "plain",
+  "jobs": 1,
+  "unit_timeout_seconds": 3600,
+  "raw_stdout_bytes": 0,
+  "raw_stderr_bytes": 0,
+  "raw_time_bytes": 0,
+  "read_prefix_bytes": 20344111,
+  "samples_with_same_verifier": 141,
+  "first_verifier_sample": {
+    "elapsed_s": 4532.619792653997,
+    "cpu_ticks": 89,
+    "starttime_ticks": 3519078
+  },
+  "last_observed_cpu_change": {
+    "elapsed_s": 4737.3638826649985,
+    "cpu_ticks": 23974
+  },
+  "latest_sample_elapsed_s": 5241.088950311998,
+  "unchanged_cpu_interval_s": 503.7250676469994,
+  "verifier": {
+    "pid": 539579,
+    "starttime_ticks": 3519078,
+    "state": "S",
+    "cpu_ticks": 23974,
+    "wchan": "rt_mutex_schedule"
+  },
+  "verifier_observed_thread_count": 16,
+  "all_observed_verifier_threads_sleeping": true,
+  "verifier_thread_wait_channels": [
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "futex_do_wait",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule",
+    "rt_mutex_schedule"
+  ],
+  "direct_z3_children": [
+    {
+      "pid": 543050,
+      "starttime_ticks": 3527534,
+      "state": "S",
+      "cpu_ticks": 127,
+      "wchan": "anon_pipe_read"
+    },
+    {
+      "pid": 544207,
+      "starttime_ticks": 3539474,
+      "state": "S",
+      "cpu_ticks": 71,
+      "wchan": "anon_pipe_read"
+    },
+    {
+      "pid": 544216,
+      "starttime_ticks": 3539590,
+      "state": "S",
+      "cpu_ticks": 46,
+      "wchan": "anon_pipe_read"
+    }
+  ],
+  "raw_snapshot": {
+    "file": "snapshot.json",
+    "sha256": "93410b504806231d5886fbcd5427ea0c99f4b8b5ad59d6fc2c37e90cbb4d6e6c",
+    "bytes": 52423,
+    "native_and_host_copy_match": true
+  },
+  "actor_or_deadline_changed": false,
+  "intrusive_attachment_or_pipe_consumption": false,
+  "terminal": false,
+  "cause_established": false,
+  "qualified": false,
+  "limitations": [
+    "Sampled CPU and wait channels identify a sleeping pipeline, not the responsible lock or cause",
+    "Raw streams have no completed document at this observation",
+    "The full original unit timeout and remaining units must still run to terminal",
+    "The earlier complete failed standard attempt remains separate"
+  ],
+  "raw_stream_size_observation_unix_ns": 1791692137671809881
+}
