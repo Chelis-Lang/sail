@@ -9,8 +9,10 @@ The separate correction in the [diagnostic controller](../../scripts/m7-stock-sm
 replaces direct datagram sends from stock threads with a fixed 64-row queue.
 Each row contains four integers and occupies 32 bytes, so queued payload storage
 is 2 KiB. A marker only attempts `try_send`; it never waits on metadata output.
-One owned metadata writer sends the rows with a timeout of at most 25 ms and
-no more than the remaining whole-operation budget. Queue-full, disconnected,
+One owned metadata writer sends the rows with a timeout of at most 600 ms and
+no more than the remaining whole-operation budget. This accommodates the
+observer's documented 0.5-second snapshot window plus collector polling; it does
+not guarantee delivery if that finite work bound or queue capacity is exceeded. Queue-full, disconnected,
 send-error and deadline losses have separate counters. Nothing retries a
 failed metadata send or changes stock command bytes, solver options, channels,
 flushes, reads or proof authority. This diagnostic is not a product change.
@@ -37,7 +39,9 @@ pass on the host and Linux. They cover exact prefix multiplicities, sequence/los
 complete loss-class accounting, source boundaries, byte extraction and compiler
 timeout preservation. The [static freeze](m7-stock-smt-recorder-correction.json) binds the corrected
 controller, generated sources, argv, complete runtime/tools and unchanged input.
-An initial static preparation used an incorrect transcript filename; its missing-file
+An earlier 25 ms sender timeout was superseded before execution because it
+did not accommodate that observer window. An initial static preparation used an
+incorrect transcript filename; its missing-file
 error is retained, and the corrected path resolves the same sealed transcript.
 No compiler or solver was launched. Executable controls remain pending. Neither pure
 controls nor a successful component can explain the original full-project wait
