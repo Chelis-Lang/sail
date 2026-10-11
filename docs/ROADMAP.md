@@ -159,10 +159,19 @@ original solver replay control; its longest job is 339 seconds. The later
 `012707a` [local gate](../bench/validation/m7-linux-gate-0127-emulated-2026-10-11.json)
 passes all 498 tests and every gate step, and its
 [solver suite](../bench/validation/m7-linux-solver-0127-emulated-2026-10-11.json)
-passes all 38 controls after adding bounded opt-in setup timings. Native CI uses
+passes all 38 controls after adding bounded opt-in setup timings. The later
+`c5a76f1` [native run](../bench/validation/m7-linux-ci-c5a7-native-2026-10-11.json)
+also passes all required checks with 498 workspace tests and 38 solver controls;
+its longest job is 318 seconds. Native CI uses
 the existing prebuilt source baseline. These scopes do not qualify the corrective
 source, real readers or repair performance. The failed native invocation lacks a
 phase trace, so its exact cause remains unknown.
+The subsequent frozen `e0ca5f5` [local workspace attempt](../bench/validation/m7-linux-gate-e0ca-failure-emulated-2026-10-11.json)
+passes 497/498 tests but fails the original 250 ms concurrent HTTP lookup;
+later gate steps are not reached. Its independent
+[solver suite](../bench/validation/m7-linux-solver-e0ca-emulated-2026-10-11.json)
+passes all 38 controls. Production workspace bytes match `012707a`; the full
+cause of the late HTTP delivery under shared development load is unresolved.
 The complete default standard attempt also fails: 156 Same, one diagnostic-order
 Unstable and two unchanged unit timeouts, with no Different verdicts. See
 [the terminal scope](../bench/validation/m7-linux-default-standard-1dc-failure-2026-10-11.json).
