@@ -79,3 +79,15 @@ helper for this synchronous public API.
 No crate dependency edge, third-party version, solver identity, wire schema,
 proof authority or cache key changes. Production selection requires review,
 meaningful original controls and measured complete-operation improvement.
+
+## Remaining attribution limit
+
+The existing baseline samples locate 19.615 ms of I/O-owner CPU before
+server acceptance, 25.455 ms while the server completes its header read,
+and 12.061 ms after server send before the helper receives the response.
+The fixed server sleep interval adds no measured I/O CPU. These are observed
+intervals, not function profiles. Pinned Hyper's HTTP/1 dispatch, header
+encoding and flush path is a candidate for narrower attribution; the records
+do not establish a redundant operation or justify another transport rewrite.
+Server-side samples do not observe helper CPU, so the candidate's smaller
+I/O-thread counters cannot be counted as total savings.
