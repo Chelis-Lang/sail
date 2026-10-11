@@ -1,10 +1,11 @@
 # Original-descriptor diagnostic locator candidate
 
-Status: file-only implementation and controls for independent review. The
+Status: actual pinned helper, metadata, library and strict source checks pass. The
 selected source runtime and frozen 886b/73bd candidate remain unchanged.
 Actual pinned API controls pass 29/29 on the host and 30/30 on Linux, including
-the actual sealed-vstd metadata fixture. Full source controls/strict checks,
-runtime build, proof and qualification remain pending. The original
+the actual sealed-vstd metadata fixture. Actual Linux source controls pass
+39/39 VIR and 64/64 driver tests, with both all-targets Clippy checks under
+`-D warnings` passing. Runtime build, proof and qualification remain pending. The original
 fourteen-stage qualification failure and its separate
 bounded trace remain failed and diagnostic evidence respectively.
 
@@ -94,3 +95,27 @@ helper/metadata/source controls. Source strict checks, fresh ordinary vstd,
 complete new runtime manifest and the original fourteen-stage/600-second
 qualification—including strict stock stderr, same-input oracle and genuine
 previous-revision FOCUS—remain mandatory. The candidate is unselected.
+
+The [source terminal record](source-controls-pass.json) retains exact patch,
+seven source files, lock, commands, raw hashes, controller/input archive and
+prior-runtime seals. Independent library cases ran serially at ordinary
+priority with two compiler jobs; internal concurrency tests stayed unchanged.
+The actual Reporter scope above remains unchanged despite successful compilation.
+No runtime proof or original qualification was run by this controller.
+
+The [closed compiler retirement](closed-compiler-retirement.json) records
+1,397,915,648 allocated bytes removed from the old owned compiler-only `deps`,
+`build` and `incremental` directories after exact seed verification and full
+process command/cwd/fd holder checks in both containers. Runnable old test ELFs,
+API libraries and fingerprint inventories retain 340,639,744 allocated bytes.
+All old thirteen runtime artifacts, source files, lock and raw failures remain
+unchanged. Concurrent overlay/APFS free-space differences are not claimed as
+exact cleanup recovery. The new control target is protected for a future seed.
+
+The [ordinary build plan](ordinary-build-plan.json) freezes a private builder
+archive with only its embedded interactive patch replaced, prospective variant
+`0bbc7d378544f972`, and compiler-only seed exclusions. It requires a fresh vstd
+proof and complete new thirteen-artifact manifest; it is awaiting a build grant.
+A source-control pass does not transfer any old proof/runtime authority or
+establish product qualification. Original fourteen-stage/600-second strict
+qualification remains a separate required grant and run after the new seal.

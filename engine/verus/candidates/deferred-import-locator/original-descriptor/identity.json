@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "actual pinned API30/30 and metadata control PASS; actual full-source controls/strict/build/qualification pending",
+  "status": "actual pinned API30/30 and metadata PASS; actual source VIR39/39 + driver64/64 + both strict all-targets Clippy PASS; ordinary runtime/build/qualification pending",
   "base_patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
   "delta_sha256": "4c8048a70a3b0dc2bfbfe9ba865bf275c118a8f2804d48437b9542ea6415070a",
   "source_sha256": {
