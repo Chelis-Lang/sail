@@ -66,10 +66,11 @@ Read-only inspection of the preserved scratch state showed completed forged,
 untrusted-signer and other-solver stores with local entries. The platform store
 had been rewritten, but its local cache held only the trust key; the truncation
 case had not started. This narrows the unfinished phase without identifying a
-production cause. No bound was raised and no check was removed. The targeted
-diagnostic records case/round boundaries and, if the existing 60-second session
-bound expires, the exact owned child tree, thread wait states and output size.
-It does not read credentials or process environments.
+production cause. No bound was raised and no check was removed. At that source,
+the targeted diagnostic recorded case/round boundaries and could inspect the
+owned child tree, thread wait states and output size at the existing 60-second
+session bound. It did not read credentials or process environments. The current
+cleanup-first helper uses fixed metadata after reaping, as described below.
 
 A subsequent isolated run of this exact case, with diagnostic logging and all
 original checks intact, passed in 11.340 seconds. All five cases and both
