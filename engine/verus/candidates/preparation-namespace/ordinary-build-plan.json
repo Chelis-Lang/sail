@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "status": "prepared while actual source tests/strict run; no ordinary launch",
+  "patch_sha256": "af7f878479f91471c2f930208bf431cbf3ef993a9537ba5acc66646915b13d3f",
+  "delta_sha256": "25c3929fc98789ccf1982dd3825195bf56c43850231a5af4aaf9d20e8c5d56f5",
+  "source_sha256": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_engine.rs": "36efb823a59a34b49d3cb8595ff9da08e052afa87a87b3d718cf659688269d72",
+    "rust_verify/src/sail_namespace.rs": "7ad8dc9477dbd8e71add5c205cc25b70fa4664eb95f13df28d729380377ea4fa",
+    "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "254c75c7ff469aeacbb310cf779c62d09906e8f16a0efb4b65d6be513cb6878b",
+    "vir/src/context.rs": "8bcec061b764900da85d35f78c1ff50acf333983d4a5d3de4c2e2cd72d4abfb3"
+  },
+  "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "variant_suffix": "e04836a66b22cbb9",
+  "features": [
+    "sail-interactive:af7f878479f91471c2f930208bf431cbf3ef993a9537ba5acc66646915b13d3f",
+    "host:x86_64-unknown-linux-gnu",
+    "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+  ],
+  "jobs": 2,
+  "nice": 0,
+  "source_control_root": "private complete-source controls",
+  "builder_source_archive_sha256": "b9a43bab50243c592f4dbda170eb61ddd26728df647875c364d22b18db06a568",
+  "builder_archive_exception": "only preceding private interactive.patch replaced from 1ad to sealed bb9; verify every other archive entry byte-for-byte",
+  "compiler_seed": "closed tested compiler intermediates only; exclude changed VIR/driver/vstd and all runtime/proof/seal artifacts",
+  "runtime_requirement": "fresh ordinary vstd2060/0 and complete13/source8+653lock seal",
+  "qualification": "one original14 unchanged script/argv/env/assertions600 after sealed ordinary closure; no TRACE or TARGET",
+  "controller_sha256": {
+    "build-candidate.py": "661100421ac4fb87a2cbdab79d483a826c134e6c60215becd710e7a005c9c645",
+    "close-build.py": "cb181441b061208e81895872c5f59a11d196e9bf56a5cae99aaf57bc727d62e2",
+    "run-original-pipeline.py": "a8e322272f948878be94027c2e3ea89ea661df8feebbe2026724840802f14e21",
+    "qualification-controller-diff.patch": "e0b3dd0ac7135b0fde898b663261891f3f602d96a653f75632d8eb973aa88b45"
+  }
+}

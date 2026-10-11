@@ -1,0 +1,21 @@
+--- late-handoff-controller
++++ preparation-namespace-controller
+@@ -1,14 +1,14 @@
+ from pathlib import Path
+ import hashlib,json,os,subprocess,time
+-ROOT=Path('/tmp/sail-m7-late-handoff-build-evidence')
+-BUILD=Path('/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-ba9253e0e3b8c136')
++ROOT=Path('/tmp/sail-m7-preparation-namespace-build-evidence')
++BUILD=Path('/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-e04836a66b22cbb9')
+ SCRIPTS=Path('/tmp/sail-m7-combined-c39-evidence/qualification-scripts')
+ PIPELINE=SCRIPTS/'engine/verus/candidates/qualify-same-input.py'
+ sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+ assert sha(PIPELINE)=='f7ddcf603e2ff7c52a2a107ce97139ee2ccc43c75f558b61d14642762d92cc62'
+ assert sha(SCRIPTS/'engine/verus/candidates/test-private-span-cross-edit.py')=='80b49c69b84599b606f200157c67cdc1f92e73054905f3a22b11ce839789fc2a'
+-assert sha(ROOT/'candidate.patch')=='bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372'
+-CONTROL_ROOT=Path('/tmp/sail-m7-late-handoff-source-controls')
++assert sha(ROOT/'candidate.patch')=='af7f878479f91471c2f930208bf431cbf3ef993a9537ba5acc66646915b13d3f'
++CONTROL_ROOT=Path('/tmp/sail-m7-preparation-namespace-source-controls')
+ freeze=json.loads((ROOT/'build-input-freeze.json').read_text())
+ for name,digest in freeze['source_control_inputs'].items():assert sha(CONTROL_ROOT/name)==digest
+ checks=json.loads((CONTROL_ROOT/'result.json').read_text());assert checks['status']=='PASS'

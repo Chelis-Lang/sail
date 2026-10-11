@@ -122,3 +122,14 @@ prior runtime artifact/source/lock inventories before and after the checks.
 It runs two Cargo jobs at ordinary priority and one independent test case at a
 time; every test's internal concurrency remains unchanged. This is source
 control compilation, not an ordinary runtime build or qualification run.
+
+The prospective ordinary variant is `e04836a66b22cbb9`. Its controllers and
+`ordinary-build-plan.json` bind the exact frozen patch, eight changed-source
+identities and original source lock. Ordinary execution requires all four
+complete-source phases to pass first. Compiler seeding excludes changed VIR,
+driver and vstd outputs; fresh vstd verification and a new complete thirteen-file
+runtime manifest remain mandatory. The original qualification controller retains
+the same fourteen scripts, command, environment, strict diagnostics and
+600-second compiler bounds. Its only changes are the candidate, evidence and
+source-control bindings. These prepared controllers have not launched a runtime
+build or qualification.
