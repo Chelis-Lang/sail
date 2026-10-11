@@ -1,8 +1,8 @@
 # Pinned compiler diagnostic owner correction
 
-Status: unselected, proposed source correction. The actual pinned ownership API
-control passes; full source library tests, both strict checks, ordinary build,
-and original fourteen-stage qualification have not run on this correction.
+Status: unselected. The actual pinned ownership API control and full source
+library/strict checks pass. A fresh ordinary runtime build and the original
+fourteen-stage qualification have not run on this correction.
 [Identity](identity.json) binds the [complete candidate](../../deferred-import-locator-dynsend-owner.patch)
 and [minimal delta](from-rc.patch).
 
@@ -57,3 +57,14 @@ private pinned-source overlay, exact lock/archive, compiler-only closed cache
 seed, two build jobs and serial independent cases. It precedes any new ordinary
 variant build. All source library controls and strict checks remain required;
 the failed Rc variant's source and thirteen runtime bytes are protected.
+
+[Actual source controls](source-controls-pass.json) passed 38 VIR and 55 driver
+library cases, plus both all-target Clippy checks with warnings denied, on the
+exact 886b overlay and pinned lock. All seven source hashes were checked again
+afterward, and no owned compiler remains. The preceding failed 29829 variant's
+complete thirteen-artifact inventory and hashes stayed unchanged. The run uses
+closed compiler-only copies, excludes changed VIR/driver objects and every
+runtime/proof/seal output, and retains the full seed inventory and raw logs.
+The earlier Arc lint and Rc trait failures remain failed records. These source
+controls do not supply a new runtime manifest, vstd receipt, original oracle
+result, or permission to select the candidate.
