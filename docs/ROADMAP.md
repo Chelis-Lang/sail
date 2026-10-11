@@ -128,6 +128,12 @@ after the successful proof and declaration-establishment follow-up; later cases
 are unattempted. The failure and reduced diagnostic stay separate from the
 passing source gates. Complete product integration and the frozen repair
 benchmarks remain next; source qualification alone does not accept M7.
+The [compiler-family change](decisions/0036-managed-compiler-artifact-families.md)
+now shares ordinary targets across focus selectors while keeping proof receipts
+separate. Its [11 targeted controls and strict checks](validation/m7-compilation-context-controls.md)
+pass, and the rebuilt product installs. The [original repair workflow](../bench/validation/m7-linux-repair-cdb6e6d-failure-2026-10-11.json)
+still fails the 120-second whole budget after two Current successful jobs;
+phase diagnosis and actual whole-workflow acceptance remain required.
 The subsequent [complete local gate](../bench/validation/m7-linux-selected-source-gate-a8bdac6-environment-failure-2026-10-11.json)
 fails with 342 passing and 224 failing workspace cases after the Docker
 filesystem becomes read-only; later gate steps are unattempted. Both actual

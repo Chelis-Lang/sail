@@ -488,7 +488,7 @@ the internal wait or establish a deadlock.
 
 All 728 retained operation/summary/stream files are archived. The original
 fixture removes its temporary project during cleanup, so unavailable worker
-state cannot be reconstructed from that attempt. The separate [reduced diagnostic](../engine/verus/candidates/preparation-namespace/no-original-range/ordinary/repair-selector-diagnostic/README.md)
+state cannot be reconstructed from that attempt. The separate [reduced diagnostic](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/ordinary/repair-selector-diagnostic/README.md)
 preserves its worker streams but also fails the original total budget, during
 the first successful-proof attempt before the missing selector is submitted. The full integration remains failed, separate from the passing
 thirteen-stage source qualification and artifact installation. No deadline or
@@ -511,3 +511,18 @@ The separate [post-recovery full gate](../bench/validation/m7-linux-selected-sou
 passes all 566 workspace tests and every remaining gate step. This establishes
 that recorded integration scope; it does not reclassify the earlier failure or
 qualify the later compiler-family and reader component changes.
+
+## Repair workflow after compiler-family reuse
+
+The [rebuilt compiler-family product](../bench/validation/m7-linux-product-cdb6e6d-compiler-family-2026-10-11.json)
+installs successfully, but the [original repair workflow](../bench/validation/m7-linux-repair-cdb6e6d-failure-2026-10-11.json)
+still exceeds its unchanged 120-second budget. Its successful Current proof and
+Current declaration follow-up take 63.905 and 28.570 seconds from worker start
+to completion. Each uses one compiler invocation. The missing-function job has
+roughly 27 seconds left when submitted and remains Running at the deadline;
+regression and later cases are unattempted. Managed-run times of 57.632 and
+20.078 seconds are contained in those job times, not additional intervals.
+This does not establish a missing-selector deadlock or an internal phase cause.
+The fixture removes worker state during cleanup; all operation evidence is
+retained separately. Compilation reuse and its targeted controls do not qualify
+the repair loop or performance.

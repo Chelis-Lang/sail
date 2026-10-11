@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "state": "failed-original-repair-workflow",
+  "source_commit": "cdb6e6d1000086baae561efbf824c83ec1718665",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "bounds_s": {
+    "whole_workflow": 120,
+    "CLI": 30,
+    "RPC": 5
+  },
+  "primary_elapsed_s": 120.31361505500035,
+  "external_elapsed_s": 123.172511125,
+  "exit_code": 1,
+  "jobs": [
+    {
+      "label": "success",
+      "last_result_file": "success-result-201.stdout.json",
+      "job_id": "1791728241499-19036-0",
+      "state": "completed",
+      "submitted_at_ms": 1791728241499,
+      "started_at_ms": 1791728241512,
+      "finished_at_ms": 1791728305417,
+      "currentness": "current",
+      "exit_code": 0,
+      "accepted": true,
+      "managed_wall_ms": 57632.063068,
+      "verifier_invocations": 1,
+      "compiler_invocations": 1,
+      "completed_job_elapsed_s": 63.905
+    },
+    {
+      "label": "success-established",
+      "last_result_file": "success-established-result-84.stdout.json",
+      "job_id": "1791728305775-19036-1",
+      "state": "completed",
+      "submitted_at_ms": 1791728305775,
+      "started_at_ms": 1791728305782,
+      "finished_at_ms": 1791728334352,
+      "currentness": "current",
+      "exit_code": 0,
+      "accepted": true,
+      "managed_wall_ms": 20077.856884,
+      "verifier_invocations": 1,
+      "compiler_invocations": 1,
+      "completed_job_elapsed_s": 28.57
+    },
+    {
+      "label": "missing",
+      "last_result_file": "missing-result-80.stdout.json",
+      "job_id": "1791728335026-19036-2",
+      "state": "running",
+      "submitted_at_ms": 1791728335026,
+      "started_at_ms": 1791728335055,
+      "finished_at_ms": null,
+      "currentness": "unknown",
+      "exit_code": null
+    }
+  ],
+  "operation_count": 374,
+  "engine_runtime13_unchanged": true,
+  "engine_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+  "product_artifacts": {
+    "sail": {
+      "bytes": 75543208,
+      "sha256": "c479ef3e52436fc8dbaeb7b04d8ba75c87147d14de88cbeef7bb586a48b6bff8"
+    },
+    "sail-z3": {
+      "bytes": 11000968,
+      "sha256": "78d1c8e0641d8c9f981c1063b3a9b6f79f793690e659f4754e1de923f793dbb8"
+    }
+  },
+  "raw_evidence": {
+    "sha256": "5ce14cad1ce01174f9c55cd1870cc1308440cbdf3ac189e60b33b98a28ecf928",
+    "bytes": 35639,
+    "regular_files": 760,
+    "expanded_regular_bytes": 353115
+  },
+  "raw_log_sha256": "2853504eda53785feac58d482d3009d1c8f9cab50d378327ee7ed155af9a9541",
+  "progress_failures": [],
+  "cleanup_errors": [],
+  "unattempted": [
+    "regression",
+    "late compilation rejection",
+    "remaining CLI/MCP repair workflow cases"
+  ],
+  "interpretation": "First success and declaration follow-up are Current/accepted with one compiler invocation each. Missing job is still Running at the whole deadline; roughly27 seconds remain after its submission. Neither a selector-specific hang nor the internal phase/cause is established. The original fixture removes project/cache during cleanup. Compiler-family controls/source qualification do not accept this workflow; no deadlines or checks changed."
+}
