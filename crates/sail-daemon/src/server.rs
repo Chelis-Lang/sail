@@ -630,6 +630,9 @@ pub fn bind(
         active: AtomicU64::new(0),
         last_activity: Mutex::new(Instant::now()),
     });
+    if let Some(shared) = &state.shared {
+        shared.prepare();
+    }
     if let Some(shared) = &state.shared
         && shared.description().is_some()
     {
