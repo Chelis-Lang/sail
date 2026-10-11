@@ -41,6 +41,26 @@
       "preserved_artifacts": 1743,
       "preserved_metadata_equal": true,
       "raw_inventory_sha256": "f792fab4bf3badf51aea04176833d3f2de4d30a3675f60fc61b47a028719d1bf"
+    },
+    {
+      "scope": "Regenerable closed release .rlib/.rmeta libraries only; preserves every standalone tested ELF, shared library, source runtime, fingerprint, dependency record and raw result",
+      "source_gate": "46e1da6 full566 workspace and39solver PASS; sealed release complete",
+      "checks": {
+        "sail-m7-handoff-validation": {
+          "blockers": [],
+          "unreadable_live": []
+        },
+        "sail-m7-acceptance": {
+          "blockers": [],
+          "unreadable_live": []
+        }
+      },
+      "removed_files": 446,
+      "allocated_bytes": 1174593536,
+      "logical_bytes": 1173696098,
+      "preserved_artifacts": 295,
+      "preserved_metadata_equal": true,
+      "raw_inventory_sha256": "5adf54d5e966b1a3db57a60a7c20e0b79e2ddeccac73f78ddf39f7feb7da5b3e"
     }
   ],
   "retired_worktree": {
