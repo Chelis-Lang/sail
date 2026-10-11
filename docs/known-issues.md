@@ -1,5 +1,12 @@
 # Known issues and acceptance limits
 
+Optional [publication timings](result-rpc-diagnostics.md) separate child exit,
+document reading, freshness establishment and persisted job status. Retained
+stdout alone cannot establish when any of these completed. The original repair
+fixture's total 120-second budget, 30-second CLI bound and five-second cleanup
+bound remain unchanged; new timing fields are observation only and require
+affected validation before a cause or performance claim.
+
 This page separates product limitations, upstream behavior and unresolved test
 failures. It describes the current M7 development branch; it does not declare
 that branch released or accepted. The [roadmap](ROADMAP.md) tracks remaining work.

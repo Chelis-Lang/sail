@@ -1,0 +1,27 @@
+{
+  "kind": "publication-timing-source-review",
+  "status": "source-only-uncompiled",
+  "base_commit": "11c6738bdebd2cceb2b8f5de41b15c2e98b539fe",
+  "source_sha256": {
+    "crates/sail-daemon/src/jobs/rpc_diagnostics.rs": "1d708a67666dcb99e5ea40215362bc6094f22a8bfc246f5bb59316c126f77eb7",
+    "crates/sail-daemon/src/jobs/worker.rs": "129c41ef7e9239ee9b65effadf41a4969f2737529dea06376060ac5828a82932",
+    "crates/sail-verus/src/managed/diagnostics.rs": "066450f475ff579e28d4918fdb46e0498bd84a0ec404a9b527b0e6deb87d2ee8",
+    "crates/sail-verus/src/managed/runner.rs": "0b2fe6a764695d4b60502c948699205cf2f337ce889de7a66d715eba32c285fb"
+  },
+  "diagnostic_bounds": {
+    "managed_files_per_process": 64,
+    "managed_rows_per_file": 64,
+    "managed_bytes_per_file": 16384,
+    "daemon_rows": 256,
+    "daemon_capacity_maximum": 512,
+    "daemon_export_bytes": 262144
+  },
+  "validation": {
+    "format_check": "PASS",
+    "compiled_controls": "not-run",
+    "strict": "not-run",
+    "proof_or_fixture": "not-run",
+    "diff_check": "PASS"
+  },
+  "authority": "existing order and outcomes unchanged; metadata is never admission"
+}

@@ -1,8 +1,9 @@
-# Optional result RPC stage diagnostics
+# Optional result RPC and worker publication diagnostics
 
 Set `SAIL_JOB_RPC_TIMINGS=1` on an owned diagnostic daemon to retain bounded RPC
-stage metadata. It is off by default. Neither setting changes proof admission,
-currentness, output seals, protocol fields, request deadlines or reader checks.
+stage and worker publication metadata. It is off by default. Proof admission,
+currentness, output seals, protocol fields, request deadlines and reader checks
+are unchanged.
 The observation-only key is excluded from CLI submissions and managed compiler
 input environment selection, like `SAIL_JOB_EVENTS`.
 
@@ -52,6 +53,35 @@ are integer microseconds, with these boundaries:
 | `write_us` | Complete socket output, including its existing error fallback |
 | `total_us` | Acceptance to recording after socket output |
 
+The same ring also accepts `worker_publication` rows from the existing FIFO
+worker. Their start is the worker beginning execution, not socket acceptance or
+job submission. `dispatch_delay_us` therefore has no queue-latency interpretation
+on these rows. They contain these additional fixed fields:
+
+| Field | Existing operation observed |
+|---|---|
+| `child_wait_us` | Existing polling after Running status is saved until the child exit is observed |
+| `child_exit_observed_us` | Successful exit observation relative to the daemon diagnostic origin |
+| `document_read_us` | Complete existing result-document read and projection construction |
+| `freshness_establish_us` | Existing optional freshness-owner establishment before terminal status |
+| `status_save_us` | Status-lock acquisition, original terminal mutation and persistence |
+
+For worker rows, `total_us` ends after status persistence and `write_succeeded`
+means that persistence succeeded, including an InfrastructureError status. It
+does not mean verification succeeded. Cancellation or an early execution error
+can leave child/document fields null; failed document reads still record their
+duration. No timestamp is inferred from a run ID or retained stdout. There is
+no job ID in this private metadata, so overlapping request rows require the
+owned launch record and operation discriminator for interpretation. Worker
+records compete with RPC records for the same 256-row tail; no second ring,
+thread or queue is created.
+
+Freshness establishment remains synchronous before Completed publication.
+Neither timings nor a child-exit marker confer Current. The ordinary complete
+document, input/runtime checks, cancellation, status errors and FIFO behavior
+retain their existing order. Managed runner publication timings are documented
+in [managed cold start](managed-cold-start.md).
+
 `frame_hit` includes cached responses reached through original output hashing;
 it does not establish guarded-output shortcut admission. The existing computed
 `currentness` is also an observation, not cache authority. `frame_bytes` counts the complete selected Result frame, including its
@@ -74,8 +104,15 @@ and atomically replaces the final trace. It creates no background thread or
 queue. This bound describes owned metadata storage, not RSS or an interruptible
 filesystem deadline. A forced exit, contended export, poisoned sink or write
 failure may leave diagnostics absent or incomplete; none changes the original
-proof result or cleanup error. The total started count also includes requests
-still in flight when the ring was sealed.
+proof result or cleanup error. The total started count also includes request
+and worker observations still in flight when the ring was sealed.
+
+The expanded fixed record has a source control requiring at most 512 bytes and
+maximum-width serialization of all 256 rows plus a header allowance within the
+existing 256 KiB export cap. With at most 512 reserved slots, requested ring
+storage is at most 256 KiB. Export bytes are separate transient storage;
+allocator metadata and RSS are not these quantities. These new controls remain
+uncompiled until the affected source validation runs.
 
 Default operation allocates no rows and takes no stage clocks or trace I/O.
 The original seal read, freshness checks, complete preencoded frames and error

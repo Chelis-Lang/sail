@@ -47,6 +47,9 @@ pub(super) enum Phase {
     InputBarrier,
     TargetCleanup,
     InvocationSeal,
+    ResultPublication,
+    ReceiptPublication,
+    CompilerFamilyPublication,
 }
 
 #[derive(serde::Serialize)]
@@ -209,6 +212,39 @@ mod tests {
             assert_eq!(row["kind"], "managed-setup-phase");
             assert!(row["elapsed_ms"].as_f64().is_some_and(|v| v >= 0.0));
             assert!(row["started_ms"].as_f64().is_some_and(|v| v >= 0.0));
+        }
+        drop(diagnostics);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn publication_phases_keep_fixed_schema_and_original_failure() -> TestResult {
+        let root = fixture()?;
+        let path = root.join("publication");
+        let diagnostics = Diagnostics::create_at(&path);
+        drop(diagnostics.phase(Phase::ResultPublication));
+        let outcome = {
+            let _receipt = diagnostics.phase(Phase::ReceiptPublication);
+            Err::<(), _>(std::io::Error::other("original publication error"))
+        };
+        assert_eq!(
+            outcome.err().ok_or("publication error lost")?.to_string(),
+            "original publication error"
+        );
+        drop(diagnostics.phase(Phase::CompilerFamilyPublication));
+        let rows: Vec<serde_json::Value> = std::fs::read_to_string(&path)?
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<Result<_, _>>()?;
+        assert_eq!(rows.len(), 3);
+        for (row, phase) in rows.iter().zip([
+            "result-publication",
+            "receipt-publication",
+            "compiler-family-publication",
+        ]) {
+            assert_eq!(row["phase"], phase);
+            assert_eq!(row.as_object().map(serde_json::Map::len), Some(5));
         }
         drop(diagnostics);
         std::fs::remove_dir_all(root)?;
