@@ -269,3 +269,8 @@ The preceding installer gate failed a positive handoff control at its original
 deadline. That observation does not establish its cause or demonstrate that
 readiness waiting fixes it. Validation of this transport change is separate from
 the real-project acceptance and performance measurements.
+
+The [independent affected-crate validation](../../bench/validation/m7-linux-sysroot-readiness-34d04c9-emulated-2026-10-11.json)
+passes strict all-target checks and all seven original sysroot controls on the
+local Linux container. It retains the original deadline and assertions. A
+complete current workspace gate and real-project acceptance remain required.
