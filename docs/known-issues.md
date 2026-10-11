@@ -33,8 +33,13 @@ Result latency target. The retained 394.713 ms p95 failure remains open. The cur
 at 403.341 ms with all 200 samples valid and live; its 43-row Result tail has
 cached frames without encoding. Freshness and socket-write costs are under
 investigation. The [retained CLI/MCP scope](validation/m7-rpc-retained-functional.md)
-also preserves a wrong-stream assertion conflicting with the documented explicit
-error contract; reconnect and cancellation remain unattempted.
+also preserves the original wrong-stream assertion failure. Its
+[corrected followup](validation/m7-rpc-retained-corrected.md) passes the exact
+stable error, reconnects, complete results, baseline comparisons and actual
+submission/cancellation under the original bounds. This does not pass the live
+reader latency gate. A larger socket buffer was not selected: the
+[offline full-transfer control](validation/m7-result-transfer-profile.md)
+shows no consequential complete-client latency improvement.
 
 An Unknown proof and unavailable validation during a later job read are distinct
 conditions. Earlier managed reports collapsed precise namespace failures to
