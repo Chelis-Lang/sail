@@ -34,6 +34,26 @@ metadata writes directly to stderr before the next phase, surviving libtest's
 captured-output lifetime. The [lifecycle proposal](validation/m7-fault-owned-lifecycle-proposal.md)
 keeps direct-solver and pipe-owner cleanup changes separate and unimplemented.
 
+
+The later `c97de63` workspace gate passed 605 tests, but its complete solver
+scope passed 40 of 41; the GC/clear final concurrent sessions reached the same
+180-second limit. One unchanged isolated diagnostic passed in 8.78 seconds.
+Neither outcome establishes the historical timeout's cause; the
+[retained diagnostic](validation/m7-gc-c97-isolated-diagnostic.md) records both.
+
+Test-support session cleanup now kills and reaps a timed-out child before
+observing its output buffer. The byte snapshot uses `try_lock`, explicitly
+reporting unavailable bytes. Normal clean exits retain the original session
+budget to reach reader EOF and preserve the complete stream. After a deadline,
+reader retirement has one second of cleanup grace. An unfinished reader is
+reported incomplete, its handle is detached, and the session cannot pass. Rust
+cannot cancel that blocked thread; the test process still owns its remaining
+lifetime, and this helper does not claim descendant termination. The Linux
+paused-buffer control releases its pause and verifies physical reader retirement
+before asserting; a separate normal-exit control requires exact complete bytes.
+All original 60-second sessions, 180-second nextest limits, concurrent fixtures
+and cache/reply assertions remain unchanged.
+
 ## Retained unresolved timeout
 
 The integrated Linux run at source `62ad095` passed 36 of 37 solver checks, but

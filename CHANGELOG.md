@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Make fault-test timeout cleanup independent of a stalled output-buffer lock.
+  Incomplete reader retirement now fails explicitly; solver deadlines and reply
+  checks remain unchanged. This does not identify earlier solver-test timeouts.
+
 - Reuse validated ordinary Cargo build-script contracts across compatible
   compiler-family selectors. Consume each shared generation before mutation,
   recheck after input guards begin, and retain every output unit. Unavailable

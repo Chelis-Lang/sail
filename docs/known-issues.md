@@ -571,3 +571,15 @@ observation sees one shim stdout thread waiting on pipe output, but it does not
 establish the underlying cause or attribute it to the new result-serving path.
 Raw logs and the failure are retained; diagnosis is required before claiming a
 green solver gate or product qualification.
+
+### Fault-test timeout cleanup limitation
+
+The `c97de63` combined source gate passes 605 tests, while its complete solver
+scope fails with 40 of 41 passing: GC/clear stalls in final concurrent sessions.
+The [isolated diagnostic](validation/m7-gc-c97-isolated-diagnostic.md) passes in
+8.78 seconds and does not identify or replace that failure. A separate
+cleanup-first test-support correction avoids blocking the timeout kill on the
+output-buffer mutex. It refuses incomplete reader delivery and reports bounded
+retirement failure truthfully. A blocked Rust reader cannot be forcibly canceled;
+its detached lifetime remains owned by the test process. This is a fixture
+cleanup limitation, not evidence of a production cache defect or its absence.
