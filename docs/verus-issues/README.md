@@ -23,6 +23,7 @@ filed as is.
 | [VI-0010](VI-0010-ambiguous-friendly-function-names.md) | Distinct trait implementations share a friendly function name | open | `corpus/repros/verus-ambiguous-friendly-name/` |
 | [VI-0011](VI-0011-cargo-no-vstd-launcher-mode.md) | Cargo no-vstd metadata misses launcher macro-mode selection | open | `corpus/repros/verus-cargo-no-vstd/` |
 | [VI-0012](VI-0012-filtered-progress-note-order.md) | Filtered bucket-start notes bypass long-running suppression and print in arrival order | open; repeated stock identity pending | frozen HumanEval module013 source control |
+| [VI-0013](VI-0013-verismo-tspec-stock-wait.md) | Stock Verismo tspec waits until the original unit deadline | open; cause unknown | pinned corpus project `verismo`, `source/verismo_tspec/src` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).
