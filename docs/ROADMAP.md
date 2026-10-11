@@ -125,7 +125,11 @@ not measured real-project speedups.
 The [rebuilt combined release](../bench/validation/m7-linux-combined-product-a9609e9-emulated-2026-10-11.json)
 compiles and installs as private byte-identical copies. Its production source
 matches the passing gate; installation is preparatory while the solver failure
-remains open. After all common-target actors closed, [1.59 GB of incremental
+remains open. Its [original emulated CLI/MCP fixture](../bench/validation/m7-linux-combined-repair-a9609e9-failure-2026-10-11.json)
+subsequently fails at 120.266 seconds during missing-function validation after
+success, declaration follow-up, events and baseline complete. Later cases are
+unattempted. No deadline changes or native-success substitution apply.
+After all common-target actors closed, [1.59 GB of incremental
 compiler scratch](validation/m7-closed-incremental-retirement-a9609e9.json) was
 retired without removing binaries, runtime files or raw evidence.
 
@@ -142,7 +146,11 @@ The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolat
 passes in 8.78 seconds without reproducing the stall. It does not replace the
 failed whole solver suite. That audit found that test-support timeout cleanup
 can block on its output mutex before killing the child; its correction is in
-progress, without attributing the historical timeout to that gap.
+implemented, without attributing the historical timeout to that gap. The first
+[combined correction gate](../bench/validation/m7-linux-cleanup-control-gate-6b1edb1-failure-2026-10-11.json)
+fails strict Clippy on a test-only closure; workspace tests and solver are
+unattempted there. The direct-method spelling is corrected and its new complete
+gate and solver scope is running.
 
 M7 is **not accepted**. PR #74 remains draft until the required product,
 reader, conformance and performance gates pass. Emulated local Linux runs are

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "status": "FAIL",
+  "source_commit": "a9609e91af593d97dfc8830958527a4e54dedfc8",
+  "scope": "Original whole CLI/MCP repair fixture against rebuilt combined production; unchanged120/30/5 bounds. No product acceptance from completed prefix.",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent root gate and private lifecycle controls",
+  "internal_elapsed_seconds": 120.26577997099957,
+  "external_elapsed_seconds": 124.094281709,
+  "exit_code": 1,
+  "operations_attempted": 361,
+  "last_operation": {
+    "operation": "missing-result-10",
+    "elapsed_s": 0.05431379200126685,
+    "exit_code": 0
+  },
+  "completed_prefix": [
+    "success",
+    "declaration-establishment-follow-up",
+    "proof-events",
+    "cursor-resume",
+    "baseline-save"
+  ],
+  "failed_during": "missing-function job awaiting terminal result at whole workflow deadline",
+  "later_cases": "unattempted",
+  "original_deadlines_seconds": {
+    "workflow": 120,
+    "cli": 30,
+    "rpc": 5
+  },
+  "progress_failures": [],
+  "cleanup_errors": [],
+  "engine_runtime_before_after_equal": true,
+  "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+  "product_artifacts": {
+    "sail": {
+      "bytes": 76147424,
+      "sha256": "36d018f1a52b95a5df158c58f7f66adabfa2b4979003eae45927b7f3ea0fbf53"
+    },
+    "sail-z3": {
+      "bytes": 11000896,
+      "sha256": "ef2f6cb3e333a257194afcf5683b0670b34f498e46e5a68acd49b37d6df14f9a"
+    }
+  },
+  "raw_archive": {
+    "bytes": 37887,
+    "sha256": "8f08c3b8e346c1e171a63d46cd4d3a864cde3e8157cbc4d7563e85591cc1fa69",
+    "regular_members": 734,
+    "every_member_independently_verified": true
+  },
+  "public_worker_observations": [
+    "Initial Cargo dependency build reports66seconds.",
+    "Same-family declaration follow-up Cargo build reports4.71seconds.",
+    "Missing-function public worker stderr is empty at timeout; its complete phase cost is unavailable."
+  ],
+  "limitations": [
+    "Shared-load label does not establish timeout cause.",
+    "Earlier native complete small-fixture success remains separate.",
+    "No deadline, proof graph, oracle or fixture was changed."
+  ]
+}

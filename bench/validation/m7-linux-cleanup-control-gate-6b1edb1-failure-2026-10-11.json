@@ -1,0 +1,41 @@
+{
+  "source_commit": "6b1edb1aadf49f2c24dded429dcb8e4c9c09670b",
+  "source_archive_sha256": "1a451de878b241beea16f979acb8002e68800442505f8ff3aa397bdc4393058f",
+  "container": "sail-m7-handoff-validation",
+  "source_path": "/tmp/sail-m7-combined-core-6b1edb1",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete local workspace gate and original pinned-solver suite after test-support cleanup-first correction. Original c97 maintenance timeout retained; no historical cause inferred. Production code equals current a9609e9 installed product; repair, reader, corpus and performance remain separate.",
+  "phases": [
+    {
+      "phase": "gate",
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-combined-core-6b1edb1",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "-e",
+        "NEXTEST_TEST_THREADS=1",
+        "sail-m7-handoff-validation",
+        "bash",
+        "ci/run.sh",
+        "gate"
+      ],
+      "exit_code": 101,
+      "elapsed_seconds": 60.123841041000006
+    }
+  ],
+  "container_identity": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T13:43:50.466327086Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "status": "FAIL",
+  "failure": "Strict Clippy redundant_closure_for_method_calls in cleanup control at support895; direct PoisonError::into_inner correction follows.",
+  "workspace_tests": "unattempted",
+  "solver": "unattempted",
+  "production_changed": false,
+  "raw_log_sha256": "2f3e7b237dc6b8530e7c51b1fce649de9c7ff4829729045eff1c3c1b7b09d846",
+  "retained_log_gzip_sha256": "0795d133fa43d142a151504bfc42e2e6d987257d0af47b185aa50c7148451cad"
+}
