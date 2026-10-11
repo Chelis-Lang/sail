@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "scope": "fixed-slot helper and actual pinned default-mode SourceMap API; source integration/runtime/qualification pending",
+  "status": "PASS",
+  "tests": 7,
+  "independent_cases": "serial; internal worker concurrency preserved",
+  "pinned_toolchain": "1.98.1",
+  "raw_summary_sha256": "4b8ef24cafce286cfcf583b665ab47b7ecff5f58da0b6608ab8320c345f72cc7",
+  "records": [
+    {
+      "name": "compile",
+      "exit_code": 0,
+      "elapsed_seconds": 1.425730166,
+      "timeout_seconds": 60
+    },
+    {
+      "name": "tests",
+      "exit_code": 0,
+      "elapsed_seconds": 0.4279812920000001,
+      "timeout_seconds": 30
+    }
+  ],
+  "raw_sha256": {
+    "tests.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests.stdout": "13c19176c9707f04e845abd3762cf23f8affd6dfeff40e6db183742619612ca2",
+    "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests.rs": "b95b244783092aae38991b037128174adab645df603d2abf835432b62f99c8e7",
+    "namespace.rs": "d3892e3869cb0eb73476338548f21d27d3d4c2439794a1f468fa349ff9973987",
+    "probe": "3c792404389fda8695de002bbb28535054323369055b5d3407cd88527146fa49",
+    "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "claims_excluded": [
+    "actual source integration compilation",
+    "full Reporter raw diagnostics",
+    "complete runtime qualification",
+    "genuine previous-revision HIT",
+    "performance"
+  ]
+}

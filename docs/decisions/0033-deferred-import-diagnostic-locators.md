@@ -159,3 +159,11 @@ including twenty-nine unchanged controls. This is not complete source or
 runtime qualification. Actual full library/strict checks, new ordinary vstd/
 manifest and every original fourteen-stage oracle remain mandatory. This ADR
 and runtime stay proposed/unselected until executable qualification.
+
+The subsequent late-handoff qualification exposed a separate parallel-worker
+plumbing defect: stock workers have no diagnostic SourceMap, so the new
+preparation namespace check refused storage before provenance. The proposed
+[v9 preparation-only namespace service](../../engine/verus/candidates/preparation-namespace/README.md)
+keeps stock diagnostic routing unchanged and borrows the live map on the compiler
+thread through each preparation transaction. Its file-only controls and distinct
+ownership arithmetic do not constitute executable runtime qualification.

@@ -1,0 +1,487 @@
+diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
+--- a/source/rust_verify/src/sail_engine.rs
++++ b/source/rust_verify/src/sail_engine.rs
+@@ -13,6 +13,9 @@
+ static PEAK_RETAINED:AtomicU64=AtomicU64::new(0);
+ pub(super) fn preparation_summary(){if active(){retained_charge();emit!("preparation-summary", {"version":1,"enabled":ENABLED.load(Ordering::Relaxed),"batch_hits":BATCH_HITS.load(Ordering::Relaxed),"persistent_hits":PERSISTENT_HITS.load(Ordering::Relaxed),"misses":MISSES.load(Ordering::Relaxed),"peak_retained_bytes":PEAK_RETAINED.load(Ordering::Relaxed),"memory_budget_bytes":BUDGET,"disk_budget_bytes":BUDGET});}}
+ static PREPARATION_GATE:std::sync::Mutex<()>=std::sync::Mutex::new(());
++#[path = "sail_namespace.rs"]
++mod sail_namespace;
++
+ static REPORT_BYTES:AtomicU64=AtomicU64::new(0);
+ static ENABLED:AtomicBool=AtomicBool::new(false);
+ struct SourceOwner {index:usize,name:String,start:u32,length:u32,hash:String,foreign:bool}
+@@ -88,7 +91,7 @@
+ fn retained_charge(){
+     let sources=SOURCES.lock().ok().and_then(|sources|sources.as_ref().map(|sources|sources.1.saturating_add(sources.2.lock().ok().map_or(PROVENANCE_BUDGET,|memo|memo.charge())))).unwrap_or(0);
+     let cache=with_cache(|cache|cache.borrow_mut().bucket.as_ref().map_or(0,|(_,entry)|entry._charge));
+-    let charge=(sources as u64).saturating_add(cache as u64).saturating_add(REPORT_BYTES.load(Ordering::Relaxed)).saturating_add(vir::sail_graph::retained_bytes() as u64).saturating_add(crate::spans::sail_owned_imports::retained_bytes() as u64).saturating_add(256);
++    let charge=(sources as u64).saturating_add(cache as u64).saturating_add(REPORT_BYTES.load(Ordering::Relaxed)).saturating_add(vir::sail_graph::retained_bytes() as u64).saturating_add(crate::spans::sail_owned_imports::retained_bytes() as u64).saturating_add(sail_namespace::retained_bytes() as u64).saturating_add(256);
+     PEAK_RETAINED.fetch_max(charge,Ordering::Relaxed);
+ }
+ pub(super) fn note_import_charge(){PEAK_RETAINED.fetch_max(crate::spans::sail_owned_imports::retained_peak() as u64,Ordering::Relaxed);}
+@@ -528,12 +531,36 @@
+     }
+     Some(())
+ }
++pub(super) struct NamespaceRequest { bridge:sail_namespace::Request, sources:Arc<Sources> }
++pub(super) fn serve_namespace(request:NamespaceRequest,map:&SourceMap){
++    let files=map.files();
++    request.bridge.serve(|words|request.sources.3.as_ref().ok().is_some_and(|imports|imports.validate_binding_files(words,&files).is_ok()));
++}
++fn with_namespace<R>(map:Option<&SourceMap>,queue:Option<&std::sync::mpsc::Sender<ReporterMessage>>,sources:&Arc<Sources>,operation:impl FnOnce(&dyn Fn(&vir::messages::Span)->Option<()>)->R)->Option<R>{
++    if let Some(map)=map {
++        let files=map.files();
++        return Some(operation(&|span|validate_used_namespace(span,sources,&files)));
++    }
++    let queue=queue?;
++    // PREPARATION_GATE must already be held: at most one rendezvous exists.
++    // Receiver-side files remain borrowed through Ready, all validations, and
++    // the worker's complete decode/restore or cache publication. Lease disposal
++    // disconnects even on unwind: no Drop sends or waits for an acknowledgement.
++    let (lease,bridge)=sail_namespace::Lease::pair()?;
++    retained_charge();
++    queue.send(ReporterMessage::PreparationNamespace(Box::new(NamespaceRequest{bridge,sources:Arc::clone(sources)}))).ok()?;
++    if !lease.ready(){return None;}
++    Some(operation(&|span|match provenance_key(span)?{
++        ProvenanceKey::Imported(words)=>lease.validate(words).then_some(()),
++        ProvenanceKey::Local(..)=>Some(()),
++    }))
++}
+ fn current_bindings(krate:&Krate,ctx:&vir::context::Ctx)->Option<vir::messages::SailSpanBindings> {
+     struct Sink;impl Write for Sink {fn write(&mut self,bytes:&[u8])->std::io::Result<usize>{Ok(bytes.len())}fn flush(&mut self)->std::io::Result<()>{Ok(())}}
+     let (result,bindings)=vir::messages::sail_collect_spans(||bincode_next::serde::encode_into_std_write(&(krate,ctx.sail_seed_spans()),&mut Sink,bincode_next::config::legacy()));
+     result.ok()?;bindings
+ }
+-pub(super) fn take_bucket(key: &str, krate:&Krate, source_map:Option<&SourceMap>, ctx: &mut vir::context::Ctx) -> Option<(vir::sst::KrateSst,ReplayMessages)> {
++pub(super) fn take_bucket(key: &str, krate:&Krate, source_map:Option<&SourceMap>, preparation_queue:Option<&std::sync::mpsc::Sender<ReporterMessage>>, ctx: &mut vir::context::Ctx) -> Option<(vir::sst::KrateSst,ReplayMessages)> {
+     if !active() || !CACHING.load(Ordering::Relaxed) { return None; }
+     let _gate=PREPARATION_GATE.lock().ok()?;
+     MISSES.fetch_add(1,Ordering::Relaxed);
+@@ -544,7 +571,7 @@
+     let batch=bytes.is_some();
+     let bytes=match bytes.or_else(||read_disk(key)){Some(bytes)=>bytes,None=>return None};
+     let source_inventory=SOURCES.lock().ok()?.clone()?;
+-    let current_files=source_map?.files();
++    with_namespace(source_map,preparation_queue,&source_inventory,|validate| {
+     let bindings=current_bindings(krate,ctx)?;
+     let budget=vir::sail_decode::Budget::new();
+     struct PreparedSeed<'a>(&'a vir::sail_decode::Budget);
+@@ -559,7 +586,7 @@
+     if let Err(stage)=ctx.global.sail_validate_graph_reads(portable.graph_reads.frames()) {emit!("prepared-miss", {"stage":stage,"key":key});return None;}
+     for (identity,expected) in &portable.bindings {
+         let Some(span)=bindings.get(identity)else{emit!("prepared-miss", {"stage":"span-binding","key":key});return None;};
+-        validate_used_namespace(span,&source_inventory,&current_files)?;
++        validate(span)?;
+         let Some(actual)=provenance(span,&source_inventory)else{emit!("prepared-miss", {"stage":"span-owner","key":key});return None;};
+         if actual.as_str()!=expected {emit!("prepared-miss", {"stage":"span-provenance","key":key});return None;}
+     }
+@@ -572,8 +599,9 @@
+     if batch {BATCH_HITS.fetch_add(1,Ordering::Relaxed);}else{PERSISTENT_HITS.fetch_add(1,Ordering::Relaxed);}
+     emit!("prepared-restored", {"source":if batch{"batch"}else{"persistent"},"bytes":bytes.len()});
+     Some((portable.sst,messages))
+-}
+-pub(super) fn store_bucket(key: String, graph_reads:vir::sail_graph::Ledger, sst: &vir::sst::KrateSst, ctx: &vir::context::Ctx, source_map:Option<&SourceMap>, messages: std::cell::Ref<'_,Messages>) {
++    })?
++}
++pub(super) fn store_bucket(key: String, graph_reads:vir::sail_graph::Ledger, sst: &vir::sst::KrateSst, ctx: &vir::context::Ctx, source_map:Option<&SourceMap>, preparation_queue:Option<&std::sync::mpsc::Sender<ReporterMessage>>, messages: std::cell::Ref<'_,Messages>) {
+     if key.is_empty() || !active() || !CACHING.load(Ordering::Relaxed) {emit!("prepared-unavailable", {"stage":"key"}); return; }
+     let Ok(_gate)=PREPARATION_GATE.lock()else{return;};
+     with_cache(|cache|cache.borrow_mut().bucket=None);
+@@ -582,29 +610,30 @@
+     if messages.len()>131072 {return;}
+     let Some(messages)=messages.iter().map(|(message,level,immediate)|Some((message.downcast_ref::<MessageX>()?,*level,*immediate))).collect::<Option<Vec<_>>>() else{return;};
+     let Some(source_inventory)=SOURCES.lock().ok().and_then(|sources|sources.clone()) else{emit!("prepared-unavailable", {"stage":"sources"});return;};
+-    let Some(map)=source_map else{emit!("prepared-unavailable", {"stage":"source-map"});return;};
+-    let current_files=map.files();
+-    let _=source_map;
++    let admitted=with_namespace(source_map,preparation_queue,&source_inventory,|validate| {
+     let mut portable=PortableView {version:3,key:&key,bindings:Vec::new(),sst,graph_reads:graph_reads.frames(),effects,messages};
+     let mut writer=Bounded {bytes:Vec::new()};
+     let (encoded,bindings)=vir::messages::sail_collect_spans(||bincode_next::serde::encode_into_std_write(&portable,&mut writer,bincode_next::config::legacy()));
+-    if let Err(error)=encoded {emit!("prepared-unavailable", {"stage":"serialize","reason":ObservedDisplay(&error)});return;}
+-    let Some(bindings)=bindings else{emit!("prepared-unavailable", {"stage":"bindings"});return;};
++    if let Err(error)=encoded {emit!("prepared-unavailable", {"stage":"serialize","reason":ObservedDisplay(&error)});return None;}
++    let Some(bindings)=bindings else{emit!("prepared-unavailable", {"stage":"bindings"});return None;};
+     let mut converted=Vec::new();let mut converted_bytes=0usize;
+     for (key,span) in bindings{
+-        if validate_used_namespace(&span,&source_inventory,&current_files).is_none(){emit!("prepared-unavailable", {"stage":"namespace"});return;}
+-        let Some(value)=provenance(&span,&source_inventory)else{emit!("prepared-unavailable", {"stage":"provenance"});return;};
++        if validate(&span).is_none(){emit!("prepared-unavailable", {"stage":"namespace"});return None;}
++        let Some(value)=provenance(&span,&source_inventory)else{emit!("prepared-unavailable", {"stage":"provenance"});return None;};
+         converted_bytes=converted_bytes.saturating_add(key.1.capacity().saturating_mul(8)).saturating_add(key.2.capacity()).saturating_add(value.capacity()).saturating_add(128);
+-        if converted_bytes>16*1024*1024{return;}converted.push((key,value));
++        if converted_bytes>16*1024*1024{return None;}converted.push((key,value));
+     }
+     portable.bindings=converted;portable.bindings.sort_by(|a,b|a.0.cmp(&b.0));
+     writer.bytes.clear();
+-    if bincode_next::serde::encode_into_std_write(&portable,&mut writer,bincode_next::config::legacy()).is_err(){return;}
++    if bincode_next::serde::encode_into_std_write(&portable,&mut writer,bincode_next::config::legacy()).is_err(){return None;}
+     let bytes:Arc<[u8]>=writer.bytes.into();
+     let charge=bytes.len().saturating_add(key.capacity()).saturating_add(std::mem::size_of::<Entry>()).saturating_add(256);
+-    if charge>BUDGET {return;}
++    if charge>BUDGET {return None;}
+     write_disk(&key,&bytes);
+     with_cache(|cache| cache.borrow_mut().bucket=Some((key,Entry {bytes,_charge:charge})));retained_charge();
++    Some(())
++    });
++    if admitted.is_none(){emit!("prepared-unavailable", {"stage":"source-map"});}
+ }
+ fn disk_root()->Option<std::path::PathBuf>{std::env::var_os("SAIL_ENGINE_PREPARED_DIR").map(std::path::PathBuf::from)}
+ fn read_disk(key:&str)->Option<Arc<[u8]>> {
+diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
+--- a/source/rust_verify/src/verifier.rs
++++ b/source/rust_verify/src/verifier.rs
+@@ -206,6 +206,7 @@
+     Messages(usize, Vec<(Message, MessageLevel)>, bool),
+     WorkerPanicked(Box<dyn std::any::Any + Send>),
+     Done(usize),
++    PreparationNamespace(Box<sail_engine::NamespaceRequest>),
+ }
+ 
+ /// A reporter that forwards messages on an mpsc channel
+@@ -1941,6 +1942,7 @@
+         reporter: &impl Diagnostics,
+         krate: &Krate,
+         source_map: Option<&SourceMap>,
++        preparation_queue: Option<&std::sync::mpsc::Sender<ReporterMessage>>,
+         bucket_id: &BucketId,
+         mut global_ctx: vir::context::GlobalCtx,
+     ) -> Result<vir::context::GlobalCtx, VirErr> {
+@@ -2005,7 +2007,7 @@
+             Some(independent)
+         }else{None};
+         let checkpoint_key = sail_engine::bucket_key(self, bucket_id, &pruned_krate, &ctx);
+-        let krate_sst = if let Some((cached,messages)) = sail_engine::take_bucket(&checkpoint_key,&pruned_krate,source_map,&mut ctx) {
++        let krate_sst = if let Some((cached,messages)) = sail_engine::take_bucket(&checkpoint_key,&pruned_krate,source_map,preparation_queue,&mut ctx) {
+             sail_engine::emit!("prepared-hit", {"bucket":bucket_name});
+             if let Some(independent)=oracle_initial{sail_oracle::verify(self,&pruned_krate,source_map,bucket_id,independent,&ctx,&cached,&messages)?;}
+             messages.replay(reporter);
+@@ -2033,7 +2035,7 @@
+         }
+         let krate_sst = vir::poly::poly_krate_for_module(&mut ctx, &krate_sst);
+         let graph_reads=ctx.global.sail_finish_graph_reads();
+-        if collector.cacheable(){if let Some(graph_reads)=graph_reads{sail_engine::store_bucket(checkpoint_key.clone(), graph_reads, &krate_sst, &ctx, source_map, collector.messages());}else{sail_engine::emit!("prepared-unavailable", {"stage":"graph-ledger"});}}
++        if collector.cacheable(){if let Some(graph_reads)=graph_reads{sail_engine::store_bucket(checkpoint_key.clone(), graph_reads, &krate_sst, &ctx, source_map, preparation_queue, collector.messages());}else{sail_engine::emit!("prepared-unavailable", {"stage":"graph-ledger"});}}
+         krate_sst
+         };
+ 
+@@ -2223,6 +2225,7 @@
+                                     &reporter,
+                                     &thread_krate,
+                                     None,
++                                    Some(&worker_sender),
+                                     &bucket_id,
+                                     task,
+                                 );
+@@ -2268,6 +2271,7 @@
+                     _ => receiver.recv().expect("receiving message failed"),
+                 };
+                 match msg {
++                    ReporterMessage::PreparationNamespace(request)=>sail_engine::serve_namespace(*request,source_map),
+                     ReporterMessage::Messages(id, mut msgs, now) => {
+                         // The multi-message "Messages" gives us a chance to sort the messages
+                         // for clearer diagnostics.
+@@ -2577,6 +2581,7 @@
+                     reporter,
+                     &krate,
+                     Some(source_map),
++                    None,
+                     bucket_id,
+                     global_ctx,
+                 )?;
+diff --git a/source/rust_verify/src/sail_namespace.rs b/source/rust_verify/src/sail_namespace.rs
+new file mode 100644
+--- /dev/null
++++ b/source/rust_verify/src/sail_namespace.rs
+@@ -0,0 +1,253 @@
++//! Fixed-slot rendezvous while the compiler thread holds its real namespace guard.
++use std::sync::atomic::{AtomicUsize, Ordering};
++use std::sync::{Arc, Condvar, Mutex};
++// Fixed mutex/condvar/Arc controls and one boxed queue request. No variable-size
++// data, waiter queue, source file, span, String, or compiler context is owned here.
++const CONTROL_BYTES: usize = 16 * 1024;
++static OWNED: AtomicUsize = AtomicUsize::new(0);
++struct Owner;
++impl Drop for Owner {
++    fn drop(&mut self) {
++        OWNED.store(0, Ordering::Release);
++    }
++}
++#[derive(Default)]
++struct State {
++    ready: bool,
++    requester: bool,
++    service: bool,
++    command: Option<[u64; 2]>,
++    reply: Option<bool>,
++}
++struct Shared {
++    state: Mutex<State>,
++    changed: Condvar,
++    _owner: Owner,
++}
++pub(super) fn retained_bytes() -> usize {
++    OWNED.load(Ordering::Acquire)
++}
++pub(super) struct Request {
++    shared: Arc<Shared>,
++}
++pub(super) struct Lease {
++    shared: Arc<Shared>,
++}
++impl Lease {
++    pub(super) fn pair() -> Option<(Self, Request)> {
++        OWNED
++            .compare_exchange(0, CONTROL_BYTES, Ordering::AcqRel, Ordering::Acquire)
++            .ok()?;
++        let shared = Arc::new(Shared {
++            state: Mutex::new(State {
++                requester: true,
++                service: true,
++                ..State::default()
++            }),
++            changed: Condvar::new(),
++            _owner: Owner,
++        });
++        Some((
++            Self {
++                shared: Arc::clone(&shared),
++            },
++            Request { shared },
++        ))
++    }
++    pub(super) fn ready(&self) -> bool {
++        let Ok(mut state) = self.shared.state.lock() else {
++            return false;
++        };
++        while !state.ready && state.service {
++            let Ok(next) = self.shared.changed.wait(state) else {
++                return false;
++            };
++            state = next;
++        }
++        state.ready && state.service
++    }
++    pub(super) fn validate(&self, words: [u64; 2]) -> bool {
++        let Ok(mut state) = self.shared.state.lock() else {
++            return false;
++        };
++        if !state.ready || !state.service || state.command.is_some() || state.reply.is_some() {
++            return false;
++        }
++        state.command = Some(words);
++        self.shared.changed.notify_all();
++        while state.reply.is_none() && state.service {
++            let Ok(next) = self.shared.changed.wait(state) else {
++                return false;
++            };
++            state = next;
++        }
++        state.reply.take().unwrap_or(false)
++    }
++}
++impl Drop for Lease {
++    fn drop(&mut self) {
++        if let Ok(mut state) = self.shared.state.lock() {
++            state.requester = false;
++        }
++        self.shared.changed.notify_all();
++    }
++}
++impl Request {
++    pub(super) fn serve(self, mut validate: impl FnMut([u64; 2]) -> bool) {
++        let Ok(mut state) = self.shared.state.lock() else {
++            return;
++        };
++        state.ready = true;
++        self.shared.changed.notify_all();
++        loop {
++            while state.command.is_none() && state.requester {
++                let Ok(next) = self.shared.changed.wait(state) else {
++                    return;
++                };
++                state = next;
++            }
++            let Some(words) = state.command.take() else {
++                return;
++            };
++            drop(state);
++            let answer = validate(words);
++            let Ok(next) = self.shared.state.lock() else {
++                return;
++            };
++            state = next;
++            state.reply = Some(answer);
++            self.shared.changed.notify_all();
++        }
++    }
++}
++impl Drop for Request {
++    fn drop(&mut self) {
++        if let Ok(mut state) = self.shared.state.lock() {
++            state.service = false;
++        }
++        self.shared.changed.notify_all();
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::Lease;
++    use std::sync::{
++        Arc,
++        atomic::{AtomicBool, Ordering},
++    };
++
++    #[test]
++    fn actual_default_rustc_namespace_stays_on_compiler_thread() {
++        rustc_data_structures::sync::set_dyn_thread_safe_mode(false);
++        assert!(rustc_data_structures::sync::check_dyn_thread_safe().is_none());
++        let map = rustc_span::source_map::SourceMap::new(
++            rustc_span::source_map::FilePathMapping::empty(),
++        );
++        map.new_source_file(
++            rustc_span::FileName::Custom("first".into()),
++            "abc".to_owned(),
++        );
++        let (lease, request) = Lease::pair().unwrap();
++        let published = Arc::new(AtomicBool::new(false));
++        let signal = published.clone();
++        let (diag_send, diag_receive) = std::sync::mpsc::channel();
++        let worker = std::thread::spawn(move || {
++            assert!(lease.ready());
++            assert!(lease.validate([7, 8]));
++            assert!(!lease.validate([9, 10]));
++            diag_send.send("ordinary queued diagnostic").unwrap();
++            signal.store(true, Ordering::Release);
++            drop(lease);
++        });
++        {
++            let files = map.files();
++            request.serve(|words| {
++                assert_eq!(files.len(), 1);
++                assert!(!published.load(Ordering::Acquire));
++                words == [7, 8]
++            });
++            assert!(published.load(Ordering::Acquire));
++            // Deliberately do not dequeue/render diagnostics while files is held.
++        }
++        assert_eq!(diag_receive.recv().unwrap(), "ordinary queued diagnostic");
++        // Actual SourceMap mutation succeeds only after service and guard disposal.
++        map.new_source_file(
++            rustc_span::FileName::Custom("after".into()),
++            "xyz".to_owned(),
++        );
++        assert_eq!(map.files().len(), 2);
++        worker.join().unwrap();
++        assert_eq!(super::retained_bytes(), 0);
++    }
++    #[test]
++    fn cancellation_before_ready_releases_service_and_owner() {
++        let (lease, request) = Lease::pair().unwrap();
++        drop(lease);
++        request.serve(|_| panic!("cancelled request validated"));
++        assert_eq!(super::retained_bytes(), 0);
++    }
++    #[test]
++    fn dropped_service_refuses_ready_without_waiting() {
++        let (lease, request) = Lease::pair().unwrap();
++        drop(request);
++        assert!(!lease.ready());
++        drop(lease);
++        assert_eq!(super::retained_bytes(), 0);
++    }
++    #[test]
++    fn validator_unwind_wakes_waiting_worker() {
++        let (lease, request) = Lease::pair().unwrap();
++        let worker = std::thread::spawn(move || {
++            assert!(lease.ready());
++            assert!(!lease.validate([1, 2]));
++        });
++        assert!(
++            std::panic::catch_unwind(|| request.serve(|_| panic!("injected validator panic")))
++                .is_err()
++        );
++        worker.join().unwrap();
++        assert_eq!(super::retained_bytes(), 0);
++    }
++    #[test]
++    fn worker_unwind_disconnects_compiler_service() {
++        let (lease, request) = Lease::pair().unwrap();
++        let worker = std::thread::spawn(move || {
++            assert!(lease.ready());
++            panic!("injected worker panic");
++        });
++        request.serve(|_| false);
++        assert!(worker.join().is_err());
++        assert_eq!(super::retained_bytes(), 0);
++    }
++    #[test]
++    fn last_peer_owns_budget_until_physical_control_disposal() {
++        let (lease, request) = Lease::pair().unwrap();
++        assert!(Lease::pair().is_none());
++        drop(lease);
++        assert!(Lease::pair().is_none());
++        assert_eq!(super::retained_bytes(), 16384);
++        drop(request);
++        assert_eq!(super::retained_bytes(), 0);
++        let pair = Lease::pair().unwrap();
++        drop(pair);
++        assert_eq!(super::retained_bytes(), 0);
++    }
++    #[test]
++    fn repeated_validations_use_one_fixed_slot_and_exact_words() {
++        let (lease, request) = Lease::pair().unwrap();
++        let worker = std::thread::spawn(move || {
++            assert!(lease.ready());
++            for i in 0..1000 {
++                assert_eq!(lease.validate([i, u64::MAX - i]), i % 2 == 0);
++            }
++        });
++        request.serve(|words| {
++            assert_eq!(words[1], u64::MAX - words[0]);
++            assert_eq!(super::retained_bytes(), 16384);
++            words[0] % 2 == 0
++        });
++        worker.join().unwrap();
++        assert_eq!(super::retained_bytes(), 0);
++    }
++}
+diff --git a/source/vir/src/context.rs b/source/vir/src/context.rs
+--- a/source/vir/src/context.rs
++++ b/source/vir/src/context.rs
+@@ -178,7 +178,7 @@
+ // Baseline dependency shape differs from v3: the pre-lowering span seed vector
+ // is excluded only behind a private unsupported-read boundary. Old preparations
+ // cannot share this domain even if a caller supplies the same external context.
+-pub const SAIL_PREPARATION_DOMAIN: &str = "sail-prepared/graph-ledger/late-import-handoff-authority/v8";
++pub const SAIL_PREPARATION_DOMAIN: &str = "sail-prepared/graph-ledger/parallel-namespace-lease-authority/v9";
+ const SAIL_KEY_LIMIT:usize=32*1024*1024;
+ struct SailKeyWriter(Vec<u8>);
+ impl std::io::Write for SailKeyWriter {
+@@ -1248,7 +1248,7 @@
+         let old=sail_encode(&("sail-prepared/graph-ledger/private-span-seed/v4",&input)).unwrap();
+         let new=sail_encode(&(SAIL_PREPARATION_DOMAIN,&input)).unwrap();
+         assert_ne!(old,new,"old imported-owner authority cannot enter the Loaded relocation domain");
+-        assert_eq!(SAIL_PREPARATION_DOMAIN,"sail-prepared/graph-ledger/late-import-handoff-authority/v8");
++        assert_eq!(SAIL_PREPARATION_DOMAIN,"sail-prepared/graph-ledger/parallel-namespace-lease-authority/v9");
+         let previous_loaded = sail_encode(&("sail-prepared/graph-ledger/loaded-foreign-authority/v5", &input)).unwrap();
+         assert_ne!(new, previous_loaded, "intact Loaded-only entries must not enter the Deferred domain");
+     }
+@@ -1285,3 +1285,15 @@
+             bincode_next::serde::encode_to_vec(&expected, bincode_next::config::legacy()).unwrap());
+     }
+ }
++
++#[cfg(test)]
++mod sail_namespace_domain_tests {
++    use super::*;
++    #[test]
++    fn namespace_lease_domain_rejects_intact_pre_broker_identity(){
++        let input=("same exact compiler input",11u64);
++        let old=sail_encode(&("sail-prepared/graph-ledger/late-import-handoff-authority/v8",&input)).unwrap();
++        let current=sail_encode(&(SAIL_PREPARATION_DOMAIN,&input)).unwrap();
++        assert_ne!(old,current,"intact pre-broker preparation cannot cross the explicit new domain");
++    }
++}
