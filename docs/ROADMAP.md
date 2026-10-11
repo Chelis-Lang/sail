@@ -111,6 +111,7 @@ candidate.
 ### Current state
 
 Closed host build targets were [losslessly archived](validation/m7-closed-host-targets-20261011.md), retaining test images and raw logs while reducing their logical storage by about 805 MB. Active Linux builds and runtimes are preserved.
+A later whole-volume archival failed on host space before removing its original. After Docker recovery, [unused build intermediates](validation/m7-unused-intermediates-20261012.json) were removed from three unreferenced Sail targets: 1.99 GB logical bytes, with all 278 executable/library hashes checked afterward. Data volumes and active targets remain intact; resumed validation uses fresh container identities.
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented. Stock verification stays
