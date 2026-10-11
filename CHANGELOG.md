@@ -15,21 +15,24 @@ semantic versioning once the API is published.
   an extra EOF read while retaining capped streaming for larger or unknown
   bodies, original timeouts and trust checks. All 38 affected controls, strict
   checks, read-count sensitivity and the original concurrent-reader comparison
-  pass. Complete workspace and installed-product acceptance remain pending;
+  pass. The complete `730a321` workspace gate and original installed repair
+  fixture also pass; live reader and real-project acceptance remain pending;
   the single observed pair establishes no stable speedup. See the
   [control record](docs/validation/m7-http-small-known-body-actual-controls.md).
 - Preserve exact unchanged private declaration metadata and runtime links on
   Linux, keeping an existing continuous freshness observer. All component
   controls and counterfactual checks pass; edits still invalidate observation.
-  Combined product validation and measured repair gains remain pending.
+  The combined gate, ordinary product and original repair fixture pass at
+  `730a321`; measured real-project gains and reader acceptance remain pending.
 
 - Extend existing optional diagnostics with managed result, receipt and ordinary
   dependency publication intervals, plus daemon child-exit, document-read,
   freshness-establishment and status-save timings. Fixed metadata bounds and
-  original proof checks, freshness order and deadlines remain unchanged. This
+  original proof checks, freshness order and deadlines remain unchanged. Earlier
   retained original-workflow measurements show 4.73–4.88 seconds spent
   establishing freshness after child exit. Its internal cost breakdown remains
-  unmeasured; whole-workflow acceptance is pending.
+  unmeasured. The later original uninstrumented `730a321` repair fixture passes
+  within unchanged limits; the separate partial timing scope remains UNCERTAIN.
 
 - Document the rejected shared HTTP async-adapter experiment. Its complete
   operation was slower despite passing the affected security controls; the
@@ -49,7 +52,8 @@ semantic versioning once the API is published.
   Current negative full verification. Require complete normal compiler outcomes
   and pre-existing input coverage; compiler errors, incomplete runs and uncertain
   inputs still withdraw the generation. Failed proofs and successful-receipt
-  rules are unchanged. Product validation remains pending.
+  rules are unchanged. The original installed `730a321` repair fixture passes;
+  real-project performance remains pending.
 
 - Avoid repeated Linux runtime identity parsing when the original continuous
   lease binds both exact sidecar paths. Missing coverage retains the original
@@ -59,8 +63,8 @@ semantic versioning once the API is published.
 - Retained-result output owners use one bounded daemon constructor,
   shared frame-cache admission and original complete read/hash fallback. Exact
   input/runtime freshness remains independent. The implementation passed 35
-  affected native tests and strict checks; installed activation and the original
-  live reader acceptance remain pending.
+  affected native tests and strict checks. The installed original `730a321`
+  repair fixture passes; original live reader acceptance remains pending.
 
 - Add a Linux primitive for continuously guarded retained output digests. It
   certifies complete output bytes only; the daemon retains its original read/hash
