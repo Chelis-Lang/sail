@@ -450,3 +450,12 @@ The [all-task observation controls](validation/m7-reader-process-observation.md)
 now pass on Linux, including a real child launched by a non-main thread and
 queued PID reuse refusal. They improve future diagnostic coverage; they do
 not recover missing historical state or establish a timeout cause.
+
+The separate [focused ordinary diagnostic](validation/m7-ordinary-wait-diagnostic-terminal.md)
+completes with a full Current result in 87.054 seconds, preserving that same
+ordinary context, revision and 600-second limit. Its one HumanEval invocation
+uses the daemon cache: 113 completed shim records report 4,410 replies served
+and no solver process started. All post-run seals match. The three bounded
+process snapshots are explicitly partial. The historical timeout remains
+unexplained, and no reader latency samples or acceptance are supplied by this
+successful diagnostic.

@@ -251,15 +251,18 @@ now passes all 42 VIR and 108 driver controls plus both strict checks in
 bypass fails the unchanged assertion, and exact restoration passes it. The
 ordinary runtime build passes in 1,001.791 seconds, freshly verifies all 2,060
 vstd obligations and seals all 13 artifacts. The original qualification is now
-running; genuine reuse and product acceptance remain separate gates.
+running. Its ninth stage now passes genuine previous-revision focused reuse:
+all three revisions match stock outcomes and exact lowering, with four hits
+and one focused restore on each later revision. The full-project stage and
+remaining compiler controls must still close; product acceptance stays separate.
 
 Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Close the fresh ordinary build of the source-tested broker retirement and
-   explicit missing-original-range correction, then run the original
-   source qualification. Preserve same-input lowering, independent stock
+2. Close the original thirteen-stage qualification of the source-tested broker
+   retirement and explicit missing-original-range correction, then package and
+   integrate its sealed runtime with the product and CI pin coherently. Preserve same-input lowering, independent stock
    outcomes, every existing role/refusal and the physical memory ceiling.
 3. Finish the current live reader stage diagnosis and fix any measured dominant
    cost. Run the retained real-project CLI/MCP scenarios with complete genuine
@@ -361,6 +364,10 @@ passes its private compile, normal transfer, all four intentional boundary pause
 and real forwarding arm. The real arm records all 45 rows and 12 response lines
 without metadata loss; its original deadlines remain unchanged. It uses no
 daemon cache or full-project concurrency and does not establish the historical
-verification wait's cause. A separate focused ordinary-verification
-diagnosis is being prepared without the preceding repair preparation or a reader
-census.
+verification wait's cause. The separate [focused ordinary verification](validation/m7-ordinary-wait-diagnostic-terminal.md)
+now completes with a full Current result in 87.054 seconds under its original
+600-second bound. It preserves the ordinary context and source revision, runs
+one HumanEval invocation and reuses vstd through the normal receipt path. All
+113 completed shim records report cached replies without starting a solver.
+Its bounded process snapshots remain partial. This success does not explain
+the historical timeout or supply reader latency or repair acceptance.
