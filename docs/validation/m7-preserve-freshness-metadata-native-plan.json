@@ -33,7 +33,9 @@
     "source_record_sha256": "715a0357cf5949042368419911b6093036129baf652435932f5d4562c3f855ac",
     "result_sha256": "f4ada37047fbf14a01525f8cd1a1699ed2e26709fdeed82ccd3f46b5671c702c"
   },
-  "corrected_source_commit": null,
-  "corrected_source_archive_sha256": null,
-  "source_record_sha256": "9321b90eb8153c948013254253e42b942ea0db1424ff2431e2708c4de94c255c"
+  "corrected_source_commit": "01a13b683f01e29cd09e29e1aa4a431f001bfd14",
+  "corrected_source_archive_sha256": "d045750619c0f6f8e3c7dd92bb084d745f39596659b60a7b48dced538c97a1a0",
+  "source_record_sha256": "9321b90eb8153c948013254253e42b942ea0db1424ff2431e2708c4de94c255c",
+  "corrected_source_archive_bytes": 26234880,
+  "corrected_scope_started": false
 }
