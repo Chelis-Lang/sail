@@ -311,3 +311,7 @@ semantic versioning once the API is published.
 - `sail-conformance`: `cargo-verus` corpus units (with Verus dependencies
   patched to the pinned source in a scratch copy), project requirements
   (skipped and reported when unavailable), and the standard-tier corpus.
+
+- Optimize Linux managed input path checks using owned descriptors, with exact
+  pathname/inode checks and the existing conservative fallback. Reader latency
+  acceptance remains under validation.

@@ -1,0 +1,26 @@
+{
+  "scope": "Regenerable closed debug .rlib/.rmeta libraries only; preserves every standalone tested ELF, shared library, source runtime, fingerprint, dependency record and raw result",
+  "source_gate": "0f31c1d complete564 workspace and39solver PASS",
+  "checks": {
+    "sail-m7-handoff-validation": {
+      "blockers": [],
+      "unreadable_live": []
+    },
+    "sail-m7-acceptance": {
+      "blockers": [],
+      "unreadable_live": []
+    }
+  },
+  "retirement": {
+    "allocated_bytes": 1081176064,
+    "logical_bytes": 1079846269,
+    "preserved_artifacts": 1743,
+    "preserved_metadata_equal": true,
+    "files": 934
+  },
+  "raw_retirement_record": {
+    "bytes": 120281,
+    "sha256": "c6cf1eae83c0334de301268ece87992dbc657fcf1104b49313f84d77e811864b"
+  },
+  "limitations": "Compiler libraries are regenerable and future debug builds will recompile them; standalone tested ELFs and shared runtime artifacts remain unchanged"
+}
