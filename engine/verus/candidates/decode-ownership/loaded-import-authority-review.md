@@ -118,3 +118,17 @@ cap before the known failing binding. Qualification must retain its actual state
 record, or use a separately bounded targeted observation. Exhausted or missing
 evidence cannot establish Loaded authority. This concern does not authorize any
 provenance, cache-key or original-test change.
+
+The final export closes that observation concern with private selector
+`SAIL_ENGINE_IMPORT_TRACE_TARGET=div-mod-relocation`, applied before trace
+admission. Complete patch SHA-256 is
+`e6f54134fd8478b3b82f3d2513da3a883b70a7f6cd08d2af3985c207abf785ef`;
+delta is `dbae5d4f95508219341ecf611ffca399c48c57fba187feee79cc026fdbf31876`.
+The exact retained spelling is `vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)`.
+Review caught an earlier selector missing that space; the earlier export stays
+retained and the correction adds an explicit no-space negative, alongside
+adjacent-range, hygiene, prefix and unknown-selector controls. This selector
+filters observations only; it does not affect authority, keys or preparation.
+Both final patch hashes and all six source-file hashes were independently
+checked again. Static approval permits the authorized private build, with
+actual tests, fresh vstd and all original qualification gates still pending.
