@@ -156,10 +156,13 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
 
 /// Immutable frames avoid rebuilding large function graphs. The persisted
 /// stdout contents and live freshness are still checked on every RPC.
-pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8>>> {
+pub(super) fn result_frame(
+    state: &State,
+    job: &Stored,
+) -> io::Result<super::result_cache::WireFrame> {
     use super::result_cache::Frames;
     if job.status.state != Lifecycle::Completed || job.projection.is_none() {
-        return encode_result(result(state, job)?);
+        return encode_result(result(state, job)?).map(Into::into);
     }
     let key = stdout_digest(&serde_json::to_vec(job).map_err(io::Error::other)?);
     let bytes = match project_bytes(state, job) {
@@ -206,11 +209,11 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
     };
     let frames = state.result_cache.insert(
         key,
-        Frames {
-            current: frame(Currentness::Current)?,
-            historical: frame(Currentness::Historical)?,
-            unknown: frame(Currentness::Unknown)?,
-        },
+        Frames::new(
+            frame(Currentness::Current)?,
+            frame(Currentness::Historical)?,
+            frame(Currentness::Unknown)?,
+        ),
     );
     Ok(frames.select(currentness))
 }

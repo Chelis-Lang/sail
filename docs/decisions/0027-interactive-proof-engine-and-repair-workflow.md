@@ -86,6 +86,18 @@ verification worker. Established reads must meet less than 200 ms p95 on
 Linux under active verification and concurrent clients. The existing client
 deadline remains unchanged.
 
+Cached complete-result wire frames have a separate 128 MiB retained-storage
+quota, alongside the existing 16-entry and payload limits. Admission charges
+buffer capacities, owners and conservative index storage. A selected response
+keeps its entire three-currentness frame family charged until output releases
+it, including after index eviction. Disposal happens outside the index lock;
+concurrent writers cannot spend the same refunded capacity. Unavailable quota
+causes an uncached complete response, never a truncated report or a change in
+freshness checks. Temporary cold encoding and ordinary uncached responses are
+outside this cache-retention quota; it is not a process RSS bound. The
+[ownership controls](../validation/m7-result-frame-ownership.md) retain actual
+negative controls and the affected daemon suite.
+
 ## Acceptance
 
 Freeze the human-eval-verus and Vest repair catalogues before optimization.
