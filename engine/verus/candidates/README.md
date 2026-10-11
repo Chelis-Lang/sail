@@ -351,3 +351,12 @@ states remain misses. It adds one admitted8MiB family (prospective500MiB phase
 maximum), bounded actual-state evidence and new negative/migration controls.
 No compiler/runtime was built, no source pin changed and no cross-edit or
 performance acceptance follows. See [proposed ADR0030](../../../docs/decisions/0030-imported-span-authority.md).
+
+The [late import handoff candidate](deferred-import-locator/late-handoff/README.md)
+is an unselected file-only correction to the retained OriginalDescriptor
+provenance admission failure. It keeps exact constructor recipes, one 8 MiB
+physical owner and every strict role check, then classifies once at the natural
+compiler-thread handoff. Forty-three reduced pinned API controls pass; full source,
+ordinary runtime and all original qualification stages remain pending. No
+previous-revision hit, selected-runtime or performance claim follows from that
+helper result.
