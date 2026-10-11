@@ -373,3 +373,14 @@ Warm pools could only shorten that small solver-side remainder, so they are
 - Instantiation replay.
 - A warm Verus frontend.
 - Other verifiers.
+
+## Detailed sysroot diagnosis
+
+The [single product-7238da8 diagnosis](validation/m7-sysroot-proof-diagnostic.md)
+now completes one new complete Current full proof, with 1,871 vstd and 331
+HumanEval functions verified within the original 600-second budget. Its two
+actual invocations and 478.014-second outer duration are cold diagnostic costs,
+not a repair gain or one-driver result. It does not reproduce or explain the
+older D20 coverage failure. Original Python/Rust four-reader and retained
+CLI/MCP qualification still require a separately reviewed complete workflow;
+source-budget and 2× gates remain unchanged.
