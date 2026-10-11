@@ -18,9 +18,10 @@ semantic versioning once the API is published.
   pass. Complete workspace and installed-product acceptance remain pending;
   the single observed pair establishes no stable speedup. See the
   [control record](docs/validation/m7-http-small-known-body-actual-controls.md).
-- Prepare an unselected Linux candidate that avoids replacing exact unchanged
-  private declaration metadata and runtime links. Independent native freshness
-  checks and synchronous completion remain unchanged; validation is pending.
+- Preserve exact unchanged private declaration metadata and runtime links on
+  Linux, keeping an existing continuous freshness observer. All component
+  controls and counterfactual checks pass; edits still invalidate observation.
+  Combined product validation and measured repair gains remain pending.
 
 - Extend existing optional diagnostics with managed result, receipt and ordinary
   dependency publication intervals, plus daemon child-exit, document-read,

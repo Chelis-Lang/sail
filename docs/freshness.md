@@ -262,9 +262,10 @@ path uses the same eligibility and complete barriers.
 The [enabled-path checks](validation/m7-runtime-sidecar-production.md) retain
 the same mutation controls and strict validation after production selection.
 
-A source-only candidate preserves exact unchanged private input-declaration and
+The Linux implementation preserves exact unchanged private input-declaration and
 runtime-link bytes rather than atomically replacing their inodes. It can retain
 the existing continuous native owner for the same context; every input, namespace,
 lease and helper barrier remains mandatory, and dirty or absent coverage still
-recollects synchronously. This candidate is uncompiled and unselected; see the
-[metadata publication plan](validation/m7-preserve-freshness-metadata-plan.md).
+recollects synchronously. The [complete component replay](validation/m7-preserve-freshness-metadata-replay.md)
+passes metadata, freshness, strict and sensitivity controls. Real source edits
+still invalidate the owner; combined product and repair performance remain pending.
