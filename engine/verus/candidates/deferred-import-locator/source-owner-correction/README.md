@@ -1,7 +1,7 @@
 # Single-threaded SourceMap test owner correction
 
-Status: unselected, reviewed source correction; actual corrected build and gates
-have not finished. [Identity](identity.json) binds the complete new
+Status: unselected. The ordinary corrected build passed, but the corrected
+actual driver controls failed to compile. [Identity](identity.json) binds the complete new
 [candidate patch](../../deferred-import-locator-source-owner.patch) and its
 [narrow delta](from-a61.patch).
 
@@ -36,7 +36,20 @@ holder checks; selected/new/qualification runtime paths are excluded.
 
 [Ordinary build evidence](ordinary-build.json) records this corrected variant's
 fresh 2060/0 vstd proof, 1054.968-second closed build and thirteen-artifact seal.
-The full source library controls and both strict checks are running on these
-exact bytes; no source or product qualification is claimed. The previous a61
+The subsequent [source gate](source-gate-4a3-failure.json) passed 38 VIR controls
+and failed to compile the driver controls with E0277: the pinned diagnostic
+emitter requires rustc's `DynSend` marker, which `Rc<SourceMap>` does not
+implement. Neither strict check ran on this correction; no source or product
+qualification is claimed. The previous a61
 strict failure remains separate, and original fourteen-stage qualification has
 not launched.
+
+The pinned compiler itself stores `Arc<SourceMap>` in `ParseSess` and accepts
+it through its distinct `DynSend`/`DynSync` contract. Those markers are different
+from standard Rust `Send`/`Sync`. The fixture needs its exact custom `FileLoader`
+and hash inputs, which `ParseSess::new` does not accept. A small actual-type
+ownership control is being used before another correction; no constructor is
+hidden from Clippy and no unsafe marker implementation is added. The failed
+Rc variant, all thirteen runtime bytes, and both known empty Cargo control-file
+records remain retained. All original Reporter assertions and qualification
+requirements remain mandatory.
