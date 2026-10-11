@@ -38,8 +38,12 @@ scope is retained. A reviewed test-only integration correction preserves all
 assertions and production code. The following scope exposes an invalid digest
 fixture and preserves its test-lock cascade separately. With a valid admitted
 digest, [complete compiler controls](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/source-controls.json)
-pass all 150 tests and both strict checks. A real bypass-removal sensitivity,
-ordinary runtime build and original qualification remain required. No candidate
+pass all 150 tests and both strict checks. The
+[real memo-bypass sensitivity](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/memo-bypass-counterfactual/result.json)
+fails the unchanged assertion with the bypass removed and passes after exact
+source restoration. The separately reviewed ordinary runtime build is active;
+fresh vstd verification, complete runtime closure and original qualification
+remain required. No candidate
 is selected; the final four
 of thirteen stage records were not attempted.
 The fourteen-script inventory is preserved. Stock diagnostic routing and
