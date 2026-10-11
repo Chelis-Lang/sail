@@ -11,17 +11,20 @@ For current experimental repair use:
 - A successful focused check still needs complete Current full validation.
   An Unknown result, including a namespace observation failure after the
   verifier finishes, cannot authorize a repair.
-- Completed negative proofs currently discard the ordinary build-script
-  generation. The next check can recompile unchanged macro dependencies;
+- The previously built combined product discards the ordinary build-script
+  generation after negative proofs. The next check can recompile unchanged macro dependencies;
   [the recovered diagnostic](validation/m7-repair-a960-recovered-setup.md)
-  identifies this mechanism. Retention of ordinary compiler output is being
-  corrected independently of proof acceptance.
+  identifies this mechanism. The branch now retains ordinary contracts only
+  after fully observed normal negative verification; its
+  [Linux controls](validation/m7-negative-compiler-generation-plan.md) are
+  pending. Proof acceptance and successful receipts remain independent.
 - Full-result reader latency and real-project repair speed remain unqualified.
-  The original workflows are running with their original bounds; use the
+  Original workflow scopes are retained with their original bounds; use the
   [roadmap](ROADMAP.md) for current acceptance status.
 - The complete gate currently has an unresolved shared HTTP-reader deadline
-  failure. The new transport candidate is under validation; no increased
-  timeout or weakened hit assertion is selected.
+  failure. The async transport candidate passed affected controls but regressed
+  complete-operation cost and was rejected; no increased timeout or weakened
+  hit assertion is selected.
 
 The original stock Verismo tspec deadline failure is now tracked locally as
 [VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md). Sleeping compiler

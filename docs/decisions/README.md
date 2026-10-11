@@ -39,3 +39,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0034: MCP response encoding ownership](0034-mcp-response-encoding-ownership.md)
 - [0035: Guarded retained output digests (unselected prototype)](0035-guarded-retained-output-digests.md)
 - [0036: Managed compiler artifact families (implemented; product validation pending)](0036-managed-compiler-artifact-families.md)
+- [0037: Owned async shared HTTP transport (rejected after comparison)](0037-owned-async-shared-http-transport.md)

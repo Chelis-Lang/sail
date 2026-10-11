@@ -140,7 +140,7 @@ retired without removing binaries, runtime files or raw evidence.
 | Repair workflow | [Native CI passes the original complete small fixture in 45.847 seconds](../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json), under unchanged 120/30/5-second bounds. Earlier emulated whole-workflow timeouts remain failed. | Run the rebuilt combined product and complete real HumanEval/Vest workflows. The small fixture does not establish real-project performance. |
 | Responsive reads | The last [original full reader census](validation/m7-descriptor-reader-terminal.md) retains 200 valid samples with four concurrent clients: Status p95 120.526 ms passes; complete Result p95 343.142 ms fails. Component controls for bounded output ownership pass. | Both complete p95 values below 200 ms during actual verification, then original retained CLI/MCP scenarios. No reduced graphs or changed client deadlines. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | The unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) is running in a fresh namespace after the recorded infrastructure/setup failures; warmups are not measured samples. The full [reader workflow](validation/m7-current-reader-controller.md) is also running. No current whole-loop speedup or reader latency result is claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
+| Frozen repair performance | The unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) is interrupted again during preparation by host storage exhaustion and a Docker shutdown. Four warmup records survive; no measured samples do. The reader's active preparation is also interrupted before its census. No current whole-loop speedup or reader latency result is claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -168,15 +168,26 @@ benchmark setup then correctly refuses a leftover socket when its old pathname
 is reused; [that failed scope](../bench/validation/m7-linux-repair-benchmark-a9609e9-stale-socket-2026-10-11.json)
 is retained. A fresh explicitly named benchmark namespace now isolates work,
 caches and socket selection without copying prior proof state. Reader and
-repair diagnostics also use fresh scopes. These runs remain pending acceptance.
+repair diagnostics also use fresh scopes. A later host disk-full/Docker shutdown
+interrupts the fresh benchmark and reader scopes before measurement. They remain
+failed or incomplete. Docker lifecycle work is now coordinated through one
+team owner, and heavy builds run serially on the shared instance; no proof is
+automatically replayed after restart. These runs remain pending acceptance.
 
 The [recovered repair diagnostic](validation/m7-repair-a960-recovered-setup.md)
 still fails its original 120-second workflow budget, later at MCP repair. Both
 missing-selector paths pass. A completed Current negative regression consumes
 the ordinary build-script generation without republishing it; the next
-same-family check recompiles unchanged macro dependencies. The team is
-implementing ordinary-output retention for fully observed negative verification
+same-family check recompiles unchanged macro dependencies. The branch now
+implements ordinary-output retention for fully observed negative verification
 without changing successful proof receipts or `TargetResult.complete`.
+Independent review is complete; affected Linux controls and installed-product
+validation remain pending.
+
+The [async HTTP candidate](decisions/0037-owned-async-shared-http-transport.md)
+passes its 39 affected controls but increases combined helper/I/O CPU and complete
+lookup time in its bounded comparison. It is rejected; production keeps the
+blocking transport and the original deadline failure remains unresolved.
 
 [Additional closed build cleanup](validation/m7-closed-core-build-retirement.json)
 retires 758 MB of compiler intermediates, preserving and rehashing every

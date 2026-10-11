@@ -83,9 +83,13 @@ results only. Subsequent executions are separate: the first workload
 [stopped on a read-only filesystem](../../bench/validation/m7-linux-repair-benchmark-a9609e9-storage-failure-2026-10-11.json)
 before measured samples, and a recovered setup
 [refused a leftover socket](../../bench/validation/m7-linux-repair-benchmark-a9609e9-stale-socket-2026-10-11.json).
-An explicitly fresh namespace is now running the original workload. Its
-dependency/solver warmups are preparation, not measured repair speedups; complete
-three-round performance and final seals remain pending.
+An explicitly fresh namespace then ran the original workload, retaining four
+warmups before another host disk-full error and Docker shutdown interrupted
+preparation. No measured sample was retained. Its recovered input seals match,
+but native completion and pre-shutdown descendant closure are unrecorded. See
+[the interrupted scope](../../bench/validation/m7-linux-repair-benchmark-a9609e9-host-storage-interruption-2026-10-11.json).
+Warmups are preparation, not measured repair speedups; complete three-round
+performance remains pending.
 The [portable record](m7-current-benchmark-launcher.json) retains the producer
 and execution-record identities separately; the producer record is unchanged.
 See [ADR 0036](../decisions/0036-managed-compiler-artifact-families.md) for the
