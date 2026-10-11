@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Start configured HTTP client initialization asynchronously when the daemon
+  opens its cache, reducing cold remote misses without a startup wait. Preserve
+  lookup deadlines, signature and trust checks, bounded constructor ownership,
+  and the lightweight unconfigured local path.
+
 - Index current canonical native watches during Linux observer setup. Preserve
   descriptor replacement across hardlink aliases, coverage checks and watch caps.
 
@@ -45,7 +50,7 @@ semantic versioning once the API is published.
 - Optimize strict shared-signature arithmetic in development and test builds;
   retain the same trust checks, lookup deadlines and release configuration.
 
-- Keep optional HTTP transport initialization inside bounded lookup helpers;
+- Keep late HTTP configuration initialization inside bounded lookup helpers;
   client startup and retirement cannot block status or shared lookup callers.
   Preserve trusted-entry checks, credential reloads and the existing deadlines.
 

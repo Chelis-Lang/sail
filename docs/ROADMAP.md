@@ -123,6 +123,14 @@ passes the corrected classifier fixture and 36 other controls, but fails the
 HTTP whole-session replay control: answers match the solver, yet the fresh
 reader starts Z3 instead of using only signed remote replies/certificate.
 The failed cache and signed files are retained; the cause is being diagnosed.
+The independent frozen `f94bbda`
+[native Linux CI run](../bench/validation/m7-linux-ci-f94-native-2026-10-11.json)
+passes all required checks: 485 workspace tests, 38 solver controls, all three
+end-to-end phases and three rounds of the 33-unit conformance subset. Its longest
+job is 368 seconds. This preserves the separate local replay failure and does
+not qualify the real-project workload. Configured HTTP transport now starts
+initialization asynchronously at daemon bind; its complete corrected local
+gate is still pending.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
 remains preserved. The
 [installed product build](validation/m7-current-product-build.json) and
@@ -148,8 +156,9 @@ Priority order for completing this milestone:
 
 1. Keep the complete workspace gate green, restore complete solver/HTTP replay success and retain real-solver/fault
    evidence, finish the current CLI/MCP suite without changing assertions or deadlines,
-   and finish full default standard corpus validation. The original shared-entry
-   timeout's cause remains unresolved despite the subsequent complete suite pass.
+   and finish full default standard corpus validation. The cold replay diagnostic
+   identifies client construction consuming the lookup budget; separate earlier
+   established-transport failures remain unresolved and independently recorded.
 2. Build and qualify the bounded source candidate with the same-input lowering
    oracle, independent stock outcomes, adversarial controls and physical budget.
 3. Establish genuine Current real-project results and execute the original live
