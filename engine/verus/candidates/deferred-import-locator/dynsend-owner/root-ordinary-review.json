@@ -1,0 +1,23 @@
+{
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+  "manifest_sha256": "f47828d9a3b4b12de72e4d7725e0200543522c21a9dbe9cf2cde3891774d1abf",
+  "all13_artifacts": true,
+  "all7_source_files": true,
+  "source_lock": true,
+  "raw_build_records": true,
+  "fresh_vstd": "2060 verified, 0 errors",
+  "owned_build_actors": [],
+  "source_controls_pass": true,
+  "observed_unix_ns": 1791697890298161014,
+  "scope": "Independent root read-only ordinary manifest review; source qualification and product acceptance pending",
+  "qualification_controller_sha256": "8e23ab10653b001668e503f9da3bcde9db5155de0175c528afb1ee67a3434e26",
+  "authorized_original_qualification_runs": 1,
+  "original_stages": 14,
+  "compiler_timeout_seconds": 600,
+  "assertions_changed": false,
+  "inherited_engine_environment_removed": true,
+  "diagnostic_trace_environment_added": false,
+  "selected": false,
+  "qualified": false
+}
