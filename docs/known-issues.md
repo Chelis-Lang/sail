@@ -100,8 +100,10 @@ four-reader latency gate has been established. See the
   completes with five eligible Loaded records followed by an ineligible Delayed
   descriptor. It does not record that descriptor's filename or Foreign-match
   count, and cannot attribute Local or unsupported span-form refusals. The
-  original-descriptor correction is under implementation; this diagnostic
-  does not replace original qualification.
+  [original-descriptor correction](../engine/verus/candidates/deferred-import-locator/original-descriptor/README.md)
+  is implemented and passes 30 pinned API/metadata controls, but is unselected.
+  Complete source tests, runtime build and original qualification remain pending;
+  the diagnostic does not replace them.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
