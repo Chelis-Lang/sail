@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "source_commit": "8b8288d175ef42677b02509b7a5300f642bf0336",
+  "execution": "Native Linux x86-64 GitHub Actions; Ubuntu hosted runner",
+  "run_url": "https://github.com/Chelis-Lang/sail/actions/runs/38116102661",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "No AI authorship markers",
+      "conclusion": "success",
+      "elapsed_seconds": 11.0
+    },
+    {
+      "name": "image / CI image",
+      "conclusion": "success",
+      "elapsed_seconds": 7.0
+    },
+    {
+      "name": "End to end (repair)",
+      "conclusion": "success",
+      "elapsed_seconds": 317.0
+    },
+    {
+      "name": "Conformance",
+      "conclusion": "success",
+      "elapsed_seconds": 305.0
+    },
+    {
+      "name": "End to end (legacy)",
+      "conclusion": "success",
+      "elapsed_seconds": 379.0
+    },
+    {
+      "name": "End to end (managed)",
+      "conclusion": "success",
+      "elapsed_seconds": 247.0
+    },
+    {
+      "name": "Solver tests",
+      "conclusion": "success",
+      "elapsed_seconds": 172.0
+    },
+    {
+      "name": "Workspace gate",
+      "conclusion": "success",
+      "elapsed_seconds": 301.0
+    },
+    {
+      "name": "End to end",
+      "conclusion": "success",
+      "elapsed_seconds": 5.0
+    },
+    {
+      "name": "CI completion",
+      "conclusion": "success",
+      "elapsed_seconds": 5.0
+    }
+  ],
+  "longest_job_seconds": 379.0,
+  "workspace_tests": {
+    "passed": 528,
+    "failed": 0,
+    "skipped": 39,
+    "nextest_elapsed_seconds": 94.502
+  },
+  "independent_solver_tests": {
+    "passed": 39,
+    "failed": 0,
+    "skipped": 528,
+    "nextest_elapsed_seconds": 41.072
+  },
+  "conformance": {
+    "pass-through": {
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "raw_report": {
+        "bytes": 21986,
+        "sha256": "64651735e87a0b9833ca75263b574bb9d7f04622cacef542d4bcf081c92641ec"
+      }
+    },
+    "cache-fill": {
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "raw_report": {
+        "bytes": 22036,
+        "sha256": "a0724908e54142c635b52ada10bb1ea9b4f31fdecee7ddd9c296ec10cfd5314b"
+      }
+    },
+    "cache-warm": {
+      "summary": {
+        "projects_skipped": 0,
+        "units": 33,
+        "same": 33,
+        "unstable": 0,
+        "different": 0,
+        "infra_error": 0,
+        "functions": 311,
+        "units_with_rlimit_drift": 0
+      },
+      "raw_report": {
+        "bytes": 22063,
+        "sha256": "9b33969a2feacefc4a3245d176047f7a33d5b0ec4916cb661304daa75a2926cc"
+      }
+    }
+  },
+  "repair_fixture": {
+    "passed": true,
+    "elapsed_seconds": 55.841512946999956,
+    "original_workflow_budget_seconds": 120,
+    "engine_manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+    "raw_summary": {
+      "bytes": 24446,
+      "sha256": "533bae555d4b10781d1860d11fd3f394289e57d1f41e5551af94bd679a01a8f3"
+    }
+  },
+  "managed_live_service_transport": {
+    "checks": {
+      "direct_read_without_executable_or_children": true,
+      "fresh_same_id_frame_changes_running_to_cancelled": true,
+      "missing_service_does_not_serve_retained_frame": true,
+      "service_restart_preserves_identity_and_live_reads": true,
+      "actual_notification_cancels_read_and_suppresses_late_response": true
+    },
+    "passed": true,
+    "raw_summary": {
+      "bytes": 902,
+      "sha256": "c6ced85bc75b17d8bcc8d98996543657c74e334134d896aa2ec2e5dd373b4595"
+    },
+    "proof_qualification": false,
+    "latency_qualification": false
+  },
+  "raw_run_metadata": {
+    "bytes": 17347,
+    "sha256": "db902688b1553f855ab97030c6a36e80ae1a7328378dc709e494d2aab4683fc4"
+  },
+  "raw_run_log": {
+    "bytes": 763882,
+    "sha256": "041a6cfdd32c8c65bd68340c7ef0d07f7fd87b7c9f75d4ab36a5e8d480ed27a7"
+  },
+  "qualification": {
+    "all_required_native_ci_jobs_pass": true,
+    "m7_accepted": false,
+    "source_original14_real_project_readers_retained_workflow_and_three_round_repair_speed": "separate pending gates",
+    "later_proof_coverage_diagnostics": "outside this frozen run",
+    "local_b34_failed_gate": "independent retained failure; native pass does not establish its cause"
+  }
+}

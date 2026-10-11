@@ -46,8 +46,8 @@
   "additional_gate_steps": {
     "python_collectors_and_ci_controls": "passed",
     "strict_workspace_all_target_clippy": "passed",
-    "post_nextest_steps": "not reached by gate; independent continuation pending",
-    "solver": "not reached by sequential gate controller"
+    "post_nextest_steps": "not reached by gate; independent remaining checks passed; separate continuation record",
+    "solver": "not reached by gate; independent 39/39 suite passed; separate continuation record"
   },
   "raw_log": {
     "bytes": 79370,
