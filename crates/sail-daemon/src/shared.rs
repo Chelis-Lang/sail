@@ -1108,10 +1108,14 @@ mod http_tests {
     fn disconnect_hides_cached_transport_without_initializing_or_waiting_for_drop() {
         let mut fixture = http_fixture("cached-disconnect", false);
         fixture.establish_transport_and_trust();
-        assert!(matches!(
-            fixture.tier.lookup(&fixture.key, &fixture.solver),
-            Lookup::Hit(_)
-        ));
+        let initial = fixture.tier.lookup(&fixture.key, &fixture.solver);
+        assert!(
+            matches!(initial, Lookup::Hit(_)),
+            "initial serving lookup: {initial:?}; remote: {:?}; phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
+            fixture.tier.remote_info(),
+            fixture.phase_report(),
+            fixture.request_report()
+        );
         assert!(fixture.tier.remote_info().is_some());
         crate::remote::disconnect(&fixture.root).unwrap();
         assert!(fixture.tier.description().is_none());
