@@ -2,6 +2,7 @@
 """Harness admission regressions; do not substitute for real project acceptance."""
 
 import copy
+import ast
 import importlib.util
 import io
 from pathlib import Path
@@ -111,6 +112,50 @@ class EvidenceAdmissionTests(unittest.TestCase):
             document["result"]["targets"][0]["report"]["crates"][0]["functions"] = functions
             with self.assertRaises(AssertionError):
                 self.admitted(document)
+
+
+class CursorIdentityTests(unittest.TestCase):
+    def existing_projection(self):
+        return {"content": [
+            {"text": "SAIL0907: proof operation failed: error[SAIL0906]: SAIL0902: cursor belongs to another proof stream\n", "type": "text"},
+            {"text": '{"exit_code":2}', "type": "text"}],
+            "isError": True, "resultType": "complete", "structuredContent": {"exit_code": 2}}
+
+    def acceptance(self, result):
+        acceptance = harness.Acceptance.__new__(harness.Acceptance)
+        acceptance.exchange = lambda method, arguments: result
+        return acceptance
+
+    def test_original_non_error_expectation_refuses_the_existing_product(self):
+        evidence = Path(__file__).resolve().parent.parent / "docs/validation/m7-rpc-retained-functional.json"
+        actual = ast.literal_eval(harness.json.loads(evidence.read_text())["original_harness"]["failure"]["message"])
+        self.assertEqual(actual, self.existing_projection())
+        # This reproduces the original harness's first failed assertion on the
+        # exact real MCP projection retained in the functional failure record.
+        with self.assertRaises(AssertionError):
+            self.acceptance(actual).tool("verification_events", {})
+        corrected = self.acceptance(actual).tool("verification_events", {}, error=True)
+        harness.wrong_stream_refused(corrected)
+
+    def test_non_error_gap_is_not_an_identity_refusal(self):
+        gap = {"content": [], "isError": False, "resultType": "complete",
+               "structuredContent": {"gap": "wrong-stream", "events": []}}
+        with self.assertRaises(AssertionError):
+            self.acceptance(gap).tool("verification_events", {}, error=True)
+        with self.assertRaises(AssertionError):
+            harness.wrong_stream_refused(gap)
+
+    def test_other_or_incomplete_errors_do_not_satisfy_the_contract(self):
+        actual = self.existing_projection()
+        mutations = [dict(actual, isError=False), dict(actual, resultType="partial"),
+                     dict(actual, structuredContent={"exit_code": 1}), dict(actual, content=[])]
+        wrong_error = copy.deepcopy(actual)
+        wrong_error["content"][0]["text"] = wrong_error["content"][0]["text"].replace(
+            "cursor belongs to another proof stream", "cursor is ahead of the proof journal")
+        mutations.append(wrong_error)
+        for mutation in mutations:
+            with self.assertRaises(AssertionError):
+                harness.wrong_stream_refused(mutation)
 
 
 class RpcDeadlineTests(unittest.TestCase):

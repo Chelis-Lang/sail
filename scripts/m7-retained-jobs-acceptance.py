@@ -65,6 +65,15 @@ def selected(document, package_id, target, kind, function):
     return result, entry, functions[0]
 
 
+def wrong_stream_refused(result):
+    """Require the existing explicit cursor-identity refusal, not a journal gap."""
+    expected = {"content": [
+        {"text": "SAIL0907: proof operation failed: error[SAIL0906]: SAIL0902: cursor belongs to another proof stream\n", "type": "text"},
+        {"text": '{"exit_code":2}', "type": "text"}],
+        "isError": True, "resultType": "complete", "structuredContent": {"exit_code": 2}}
+    assert result == expected, "wrong-stream cursor must expose the exact existing SAIL0902 MCP error projection"
+
+
 class Acceptance:
     def __init__(self, args):
         self.args = args
@@ -273,8 +282,8 @@ class Acceptance:
         first = self.tool("verification_events", {"job_id": self.args.job})
         assert first["events"] and first["gap"] is None, first
         cursor = first["next"]
-        mismatched = self.tool("verification_events", {"job_id": self.args.job, "stream_id": "wrong-stream", "after": 0})
-        assert mismatched["gap"] is not None, "cursor identity mismatch must retain an explicit gap"
+        mismatched = self.tool("verification_events", {"job_id": self.args.job, "stream_id": "wrong-stream", "after": 0}, error=True)
+        wrong_stream_refused(mismatched)
         self.disconnect()
         self.connect()
         resumed = self.tool("verification_events", {"job_id": self.args.job, **cursor})

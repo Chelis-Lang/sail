@@ -35,6 +35,26 @@ failure is retained for review rather than silently accepting either outcome.
 Reconnect, cursor replay, MCP comparison and owned forced submission/cancellation
 were not reached; no new proof was submitted.
 
+## Reviewed harness correction
+
+The wrong-stream assertion now requires that exact existing `SAIL0902` MCP
+error projection, including `isError=true` and complete exit-code evidence.
+This follows the existing explicit-refusal contract in
+[the workflow guide](../proof-repair.md#resumable-observations), the stream-bound
+[`Cursor` API](../../crates/sail-api/src/proof.rs), and the early rejection in
+[`Journals::page`](../../crates/sail-daemon/src/proof_journal.rs).
+[ADR 0027](../decisions/0027-interactive-proof-engine-and-repair-workflow.md)
+requires visible gaps and completion within the journal; it does not authorize
+interpreting another stream's cursor as a page of this stream.
+
+Three new controls use the retained actual error to reproduce the original
+non-error assertion failure, require the complete corrected projection, and
+reject non-error gap pages, wrong error messages, incomplete results or wrong
+exit codes. All twelve harness controls pass. Only the mistaken wrong-stream
+expectation changed; reconnect, gap/truncation/duplicate checks and all
+120/30/5 deadlines remain unchanged. Any subsequent real run must identify this
+corrected harness revision; the archived original failure remains a failure.
+
 The wrapper took 24.974297 s inclusive. Its owned daemon exited normally with
 code 0 in 0.135078 s; cleanup errors were empty. Product/script byte seals and
 the original exported stage-recorder bytes remained unchanged. The earlier
