@@ -139,15 +139,23 @@ The initial strict failures and tested images remain retained. All original comp
 collector, four-client/200-sample and five-second bounds remain required; prior
 component measurements are not daemon acceptance or performance qualification.
 
-## Concurrent validation candidate
+## Concurrent validation
 
-The [source-only overlap candidate](../validation/m7-result-output-overlap-plan.md)
+The [reviewed overlap change](../validation/m7-result-output-overlap-plan.md)
 releases output locks during independent input freshness. It retains the same
 continuously guarded owner across both barriers, confirms exact owner identity
 again, and keeps the original complete fallback on any refusal. An evicted but
 continuously guarded owner remains valid and charged; removal or substitution
 between barriers cannot certify an earlier prospective result. The fixed
 admission margin also covers the new mutex/Arc allocation shell after reservation
-refund. No new proof authority or retention ceiling is introduced. Affected
-controls and complete-operation measurements are pending; this candidate has
-not been selected in an installed product.
+refund. No new proof authority or retention ceiling is introduced.
+
+The [native record](../validation/m7-result-output-overlap-native.md) retains
+30 daemon controls, eight unchanged primitive controls, strict checks and the
+first test-only Clippy naming failure. The original lock algorithm fails the
+overlap sensitivity assertion. A fixed-order comparison with four readers and
+complete 2,158,309-byte output plus real fixture-input freshness reduces p95
+from 19.366 to 12.713 ms with all 128 validations complete. Source is selected
+for integration after review; installed full-reader acceptance remains pending.
+This 6.653 ms component reduction is not an explanation or remedy established
+for the original 343.142 ms, 4,313,743-byte live Result failure.

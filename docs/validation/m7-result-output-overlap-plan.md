@@ -1,9 +1,11 @@
 # Retained output overlap candidate
 
-Status: source-only candidate on `perf/m7-result-delivery`, based on
-`db4c65fe8221884983326c8259a7c2f065df7693`. Compilation, affected controls,
-complete-operation comparison and product selection are pending. No proof,
-daemon, reader census or acceptance retry has run for this change.
+Status: native affected controls, strict checks and the bounded complete-operation
+comparison are executed. Reviewed source is selected for integration through
+root commits `4eb5a86`, `d9404c3` and `af582d5`; installed live reader acceptance
+remains pending. The branch is `perf/m7-result-delivery`, based on
+`db4c65fe8221884983326c8259a7c2f065df7693`. No proof, daemon service, live reader
+census or acceptance retry ran. See the [sealed native scope](m7-result-output-overlap-native.md).
 
 ## Evidence and supported change
 
@@ -61,13 +63,13 @@ binds this accounting to the actual owner mutex's size and alignment.
 This is requested owned storage accounting, not allocator overhead or RSS.
 Refused constructor publication drops its candidate outside the frame-cell lock.
 
-## Controls prepared, not yet executed
+## Executed controls
 
-Six Linux controls use actual independently constructed output guards:
+All six Linux controls pass using actual independently constructed output guards:
 
 1. Pause the first independent input operation and require a second reader to
    validate before releasing it. The original lock-across-input implementation
-   must fail this sensitivity control.
+   fails the separate sensitivity control exactly at `None` versus `Some(23)`.
 2. Overwrite and restore output bytes/mtime during overlapping input operations;
    both final barriers and a later attempt must refuse the dirty owner.
 3. Remove or substitute a different independently clean owner between barriers;
@@ -96,9 +98,17 @@ The maximum-width row/export control and exact-schema retention fixtures are
 updated. Old frozen launchers and historical records remain unchanged; a future
 candidate diagnostic needs the updated launcher identity.
 
-Before selection, run affected native controls and strict checks in a private
-target, then compare the same complete validation operation under four readers.
-Include both output barriers, independent real input freshness and any fallback,
-rather than claiming savings from the paused mutex control. The original live
+Native daemon controls pass 30/30, unchanged primitive controls pass 8/8,
+and corrected all-target strict checks pass. The first strict check failed only
+the test identifiers `changed`/`charged`; the two-name correction and failed log
+remain separately sealed. Thirteen exact-schema Python controls also pass.
+
+The single fixed-order comparison includes both output barriers, independent
+real fixture-input freshness and complete fallback under four readers, with
+16 samples per reader in each condition. All 128 checks remain complete.
+The representation-adapted original lock algorithm has 19.366 ms p95 and 15
+fallbacks; the candidate has 12.713 ms p95 and 10 fallbacks. The exact complete
+fixture is 2,158,309 bytes, not the original 4,313,743-byte live response. RPC
+transfer and Python decoding are outside this component. The original live
 four-reader/200-sample strict 200 ms p95 and 5 s RPC oracle is unchanged. Neither
 this candidate nor a component pass erases previous failed reader or HTTP gates.

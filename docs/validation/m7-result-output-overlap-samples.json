@@ -1,0 +1,1179 @@
+{
+  "all_complete": true,
+  "cleanup_joined": true,
+  "cleanup_removed": true,
+  "conditions": [
+    {
+      "clients": 4,
+      "name": "original-lock-scope",
+      "samples": [
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 24.708750000000002
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 17.073125
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 9.86775
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 9.863209
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 9.2805
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 10.845875
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 10.978875
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 0.983791
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 0.8042499999999999
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 0.798584
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 0.742625
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 0.738208
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 0.837416
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 0.73775
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 0.788833
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 0.838125
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 12.451083
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 3.7369999999999997
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 1.084166
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 4.722834000000001
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 3.011875
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 1.86725
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 1.355542
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 3.9936659999999997
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 8.659165999999999
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 6.602374999999999
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 1.1297499999999998
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 2.146541
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 2.234625
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 0.683208
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 0.6660830000000001
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 0.684667
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 23.299207999999997
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 19.366167
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 8.724499999999999
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 13.571541
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 8.035709
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 0.698125
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 0.6791250000000001
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 0.673458
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 0.824167
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 0.725375
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 1.5890419999999998
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 3.394708
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 1.444667
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 0.847791
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 1.5840830000000001
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 1.1133339999999998
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 29.816167
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 18.139792
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 8.822459
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 0.753625
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 0.769291
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 0.822667
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 2.2763750000000003
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 1.174167
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 0.704334
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 0.688625
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 2.189041
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 1.096166
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 0.871541
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 0.864959
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 1.532
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 1.880542
+        }
+      ]
+    },
+    {
+      "clients": 4,
+      "name": "candidate-unlocked-input",
+      "samples": [
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 15.0335
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 11.688749999999999
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 0.772
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 0.92525
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 2.284041
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 1.040042
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 1.412917
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 0.8032090000000001
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 0.757167
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 2.8735000000000004
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 1.1937499999999999
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 1.092333
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 1.055416
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 1.040167
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 1.077042
+        },
+        {
+          "client": 0,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 1.035125
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 12.713334
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 12.554375
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 1.122875
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 2.449833
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 0.723917
+        },
+        {
+          "client": 1,
+          "freshness_calls": 2,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 15.890041
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 0.9907920000000001
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 1.1688749999999999
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 1.92075
+        },
+        {
+          "client": 1,
+          "freshness_calls": 2,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 10.970334
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 0.716458
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 0.73925
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 1.445791
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 0.730417
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 0.7535419999999999
+        },
+        {
+          "client": 1,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 1.309666
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 11.476417
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 0.745667
+        },
+        {
+          "client": 2,
+          "freshness_calls": 2,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 13.248459
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 11.414583
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": false,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 12.556209
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 1.2966659999999999
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 1.022291
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 0.662709
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 0.657959
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 0.747458
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 0.6655409999999999
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 0.650375
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 1.021
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 0.679375
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 0.682834
+        },
+        {
+          "client": 2,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 0.6861659999999999
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 0,
+          "wall_ms": 2.234167
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 1,
+          "wall_ms": 0.6653330000000001
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 2,
+          "wall_ms": 0.646083
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 3,
+          "wall_ms": 0.655958
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 4,
+          "wall_ms": 0.6643340000000001
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 5,
+          "wall_ms": 0.6736249999999999
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 6,
+          "wall_ms": 0.67875
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 7,
+          "wall_ms": 0.688292
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 8,
+          "wall_ms": 0.861209
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 9,
+          "wall_ms": 3.859084
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 10,
+          "wall_ms": 4.380249999999999
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 11,
+          "wall_ms": 0.794209
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 12,
+          "wall_ms": 0.8312499999999999
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 13,
+          "wall_ms": 2.317708
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 14,
+          "wall_ms": 0.673916
+        },
+        {
+          "client": 3,
+          "freshness_calls": 1,
+          "guarded": true,
+          "input_valid": true,
+          "output_valid": true,
+          "sample": 15,
+          "wall_ms": 0.8214589999999999
+        }
+      ]
+    }
+  ],
+  "fixture_bytes": 2158309,
+  "fixture_sha256": "718fc30e7df9978a21d130df8bbbb459cf9f433865462db4ca33b615ce531347",
+  "input_construction_ms": 637.316417,
+  "input_mutation_refused": true,
+  "input_runtime_bytes": 8388608,
+  "input_source_files": 1,
+  "kind": "output-overlap-complete-operation-component",
+  "output_construction_ms": 617.695376
+}

@@ -1,0 +1,425 @@
+{
+  "schema": 1,
+  "kind": "retained-output-overlap-native-component",
+  "status": "PASS_WITH_RETAINED_FIRST_STRICT_FAILURE",
+  "source": {
+    "base_commit": "db4c65fe8221884983326c8259a7c2f065df7693",
+    "candidate_commit": "92e3068739fea6a0e0cdf4f552aab1cd598bed37",
+    "alignment_commit": "a8f2b1a81f28302081f1b027e400d74e2c51b68a",
+    "test_name_correction": "cc04138ae5251cdc79c4b084c2d771eaae79db5c",
+    "original_archive": {
+      "bytes": 26234880,
+      "sha256": "56df7db1ed755098f877928b8444bd40d5d7b8836f575efbde5af40bc1771004"
+    },
+    "corrected_archive": {
+      "bytes": 26234880,
+      "sha256": "8c3366b8ed934488d11b8e4f7def2629210b835b5e6341f5e9a0372e130659e2"
+    },
+    "corrected_test_source_sha256": "ef6521512a031f8690f48c55511ba3aeb4ec20e4dd7313fb693b2d1d40f17b18",
+    "root_selected_source_commits": [
+      "4eb5a86",
+      "d9404c3",
+      "af582d5"
+    ]
+  },
+  "execution": {
+    "platform": "Linux x86_64 container on Docker Desktop emulation",
+    "jobs": 1,
+    "incremental": false,
+    "target_private": true,
+    "common_target_writes": false,
+    "selected_runtime_or_production_sail_invoked": false,
+    "proof_or_live_reader_census": false,
+    "initial_build_rebuilt_dependencies": true,
+    "maintenance": "Host lossless evidence compression overlapped initial build; Desktop block reclaim closed before component measurement. No maintenance actor ran during profile.",
+    "container_before": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+      "birth": "2026-10-11T17:06:34.584538213Z",
+      "running": true,
+      "pid": 717
+    },
+    "container_after": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+      "birth": "2026-10-11T17:06:34.584538213Z",
+      "running": true,
+      "pid": 717
+    },
+    "container_pid1_birth_ticks": 1420
+  },
+  "controls": {
+    "first_status": "FAIL",
+    "first_phases": [
+      {
+        "name": "build-list",
+        "timeout_seconds": 900,
+        "exit_code": 0,
+        "elapsed_seconds": 670.3529803460005,
+        "stdout": {
+          "bytes": 45454,
+          "sha256": "22a7cbb4f45d0b9b1b5a641f829a1dc1bba9c167d1761b5ddf7f4ae6520c740b"
+        },
+        "stderr": {
+          "bytes": 4879,
+          "sha256": "09166feb38bf248d9ae676e159916c9d9df52a76024aa62e80cd01ed7386f1ee"
+        }
+      },
+      {
+        "name": "daemon-jobs",
+        "timeout_seconds": 900,
+        "exit_code": 0,
+        "elapsed_seconds": 11.723227213999053,
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "bytes": 4619,
+          "sha256": "4f5d5da7c1aab5d1fb8d484e2904a9716c2a27321ff45c96f4c9b7d03c3171d1"
+        }
+      },
+      {
+        "name": "guarded-primitives",
+        "timeout_seconds": 900,
+        "exit_code": 0,
+        "elapsed_seconds": 173.6092136619991,
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "bytes": 1957,
+          "sha256": "2067f13e772c72068a6cac9af9d1531896e13db5921314ccb87ce19f9e52caf3"
+        }
+      },
+      {
+        "name": "affected-strict",
+        "timeout_seconds": 900,
+        "exit_code": 101,
+        "elapsed_seconds": 169.8470323699985,
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "bytes": 4972,
+          "sha256": "24b87496ca24f198a9eb48cdad2785ee4343723c5eb1694a9998872ad45f9058"
+        }
+      }
+    ],
+    "first_failure": {
+      "kind": "strict Clippy similar_names",
+      "file": "crates/sail-daemon/src/jobs/output_overlap_tests.rs",
+      "line": 229,
+      "bindings": [
+        "changed",
+        "charged"
+      ],
+      "correction": "Two test identifier substitutions; no lint allowance or assertion/budget change"
+    },
+    "daemon_tests": 30,
+    "new_overlap_tests": 6,
+    "primitive_tests": 8,
+    "schema_python_tests": 13,
+    "corrected_status": "PASS",
+    "corrected_phases": [
+      {
+        "name": "build-list",
+        "timeout_seconds": 900,
+        "exit_code": 0,
+        "elapsed_seconds": 211.39908876499976,
+        "stdout": {
+          "bytes": 45494,
+          "sha256": "8aa9832879444e63922b19b4268531d2a6f198ee0edc6415a861659c1ac91251"
+        },
+        "stderr": {
+          "bytes": 909,
+          "sha256": "8da316a337ce4cad3438dbe97143259568b9f52850038b1ca1ff50373f83a094"
+        }
+      },
+      {
+        "name": "daemon-jobs",
+        "timeout_seconds": 900,
+        "exit_code": 0,
+        "elapsed_seconds": 8.22007779499836,
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "bytes": 4619,
+          "sha256": "d23f0e276785d12a57f99f2ef6a27ca959c17bde167dbd039ceafb0186b396f2"
+        }
+      },
+      {
+        "name": "affected-strict",
+        "timeout_seconds": 900,
+        "exit_code": 0,
+        "elapsed_seconds": 33.147903931003384,
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "bytes": 909,
+          "sha256": "977bb44321302c2ed8010b2b0381ae6cdb4c393dc4fd20c501f59d11753ded09"
+        }
+      },
+      {
+        "name": "launcher-pure",
+        "timeout_seconds": 30,
+        "exit_code": 0,
+        "elapsed_seconds": 0.2398647499976505,
+        "stdout": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "bytes": 183,
+          "sha256": "a8656c5e09707ce742d8ea094b701272225a6f80f466f579d6016b48f79efd67"
+        }
+      }
+    ],
+    "corrected_images": {
+      "sail-daemon": {
+        "member": "tested-binaries/sail_daemon-7df407ca02aaedbe-781be485fc94dffc",
+        "bytes": 60252848,
+        "sha256": "781be485fc94dffc90150805a2aafdbfe5c107781d0841a870df8529b0d7c463"
+      },
+      "sail-verus": {
+        "member": "tested-binaries/sail_verus-570a1d71b2858a8a-02110523bc56a554",
+        "bytes": 34617432,
+        "sha256": "02110523bc56a55496a5c9219c0f2ae8f690cafbfefaef4f47dfa58ba55683b4"
+      }
+    },
+    "unchanged_primitive_scope": "Eight original guarded-output/kernel/precise controls passed before correction; unchanged source retained, not repeatedly run."
+  },
+  "sensitivity": {
+    "algorithm": "Original db4 locking and barrier order adapted only from Box owner storage to the candidate Arc/Mutex representation; not an untouched original product binary",
+    "test": "jobs::output_service::overlap_tests::original_lock_scope_sensitivity",
+    "exit_code": 101,
+    "expected_failure": true,
+    "exact_assertion": {
+      "left": "None",
+      "right": "Some(23)"
+    },
+    "first_owner_and_cleanup_assertions_passed": true,
+    "phase": {
+      "name": "original-lock-sensitivity",
+      "timeout_seconds": 180,
+      "exit_code": 101,
+      "elapsed_seconds": 0.6558564170009049,
+      "stdout": {
+        "bytes": 297,
+        "sha256": "4b2c1c3b314936fef1dad13b15a3daf9221cdd5afd3866a8c303a8cb670ea7e3"
+      },
+      "stderr": {
+        "bytes": 298,
+        "sha256": "d9db28893e5967e454b6b6093dad069b18c8273fb3c11824a4c66bd5a8acc68d"
+      }
+    }
+  },
+  "component": {
+    "fixture": "718fc30e7df9978a21d130df8bbbb459cf9f433865462db4ca33b615ce531347",
+    "fixture_bytes": 2158309,
+    "full_fixture_json_unchanged": true,
+    "runtime_bytes": 8388608,
+    "runtime": "Generated zero-filled fixture; independent actual FreshnessIndex guards; removed after closure",
+    "input_source_files": 1,
+    "real_freshness_inspect_every_call": true,
+    "original_reader_wire_bytes": 4313743,
+    "original_reader_samples_per_operation": 200,
+    "component_is_original_acceptance": false,
+    "includes": [
+      "Original namespace and full output barriers",
+      "Independent real input freshness",
+      "Original complete read/SHA plus repeated independent freshness on fallback"
+    ],
+    "excludes": [
+      "RPC/socket transfer",
+      "Python full result decoding",
+      "Verified project/Current proof authority",
+      "Selected Verus/Z3 runtime",
+      "HE/Vest acceptance"
+    ],
+    "condition_order": [
+      "original-lock-scope",
+      "candidate-unlocked-input"
+    ],
+    "samples_per_client_per_condition": 16,
+    "p95_rule": "sorted[ceil(0.95*n)-1]",
+    "conditions": [
+      {
+        "name": "original-lock-scope",
+        "clients": 4,
+        "samples": 64,
+        "median_ms": 1.4883335,
+        "p95_ms": 19.366167,
+        "max_ms": 29.816167,
+        "guarded": 49,
+        "fallback": 15,
+        "input_valid": 64,
+        "output_valid": 64,
+        "freshness_calls": 64
+      },
+      {
+        "name": "candidate-unlocked-input",
+        "clients": 4,
+        "samples": 64,
+        "median_ms": 1.0216455,
+        "p95_ms": 12.713334,
+        "max_ms": 15.890041,
+        "guarded": 54,
+        "fallback": 10,
+        "input_valid": 64,
+        "output_valid": 64,
+        "freshness_calls": 67
+      }
+    ],
+    "p95_reduction_ms": 6.652833000000001,
+    "all_input_output_checks_passed": true,
+    "restored_input_content_and_mtime_refused": true,
+    "output_construction_ms": 617.695376,
+    "input_construction_ms": 637.316417,
+    "candidate_extra_freshness_calls": 3,
+    "extra_calls_reason": "Final output validation refused after independent input validation, so prospective result was discarded and original complete output read/SHA plus independent input validation repeated",
+    "cleanup_joined": true,
+    "cleanup_removed": true,
+    "phase": {
+      "name": "complete-operation-profile",
+      "timeout_seconds": 180,
+      "exit_code": 0,
+      "elapsed_seconds": 2.2866825430028257,
+      "stdout": {
+        "bytes": 205,
+        "sha256": "d300b6c3f2157a1a1a17eee14da897566c2b0fbb9635447ade2381423bfedd17"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "samples_file": "m7-result-output-overlap-samples.json",
+    "samples_seal": {
+      "bytes": 29062,
+      "sha256": "a97c1a81c0debe0ce1006e3176bd9933ba70a4faee0843372d11df459270dea2"
+    },
+    "diagnostic_addition_file": "m7-result-output-overlap-profile.rs",
+    "diagnostic_addition_seal": {
+      "bytes": 13334,
+      "sha256": "2d41270c0881e2355d99891d005694ccacb0c37e0fa2542c86387ed3da60d1a1"
+    },
+    "diagnostic_controller_sha256": "b9966b66dcdc7e116436ce37cf3fd4e5f0c9989e3249bce4e2cb159b6a4ce548",
+    "derivative_source_inventory_before": {
+      "bytes": 229461,
+      "sha256": "a0e38f01ed6d00238f134758129b0cee8620a630f6082e937d0890d3a99c4f24"
+    },
+    "derivative_source_inventory_after": {
+      "bytes": 229461,
+      "sha256": "a0e38f01ed6d00238f134758129b0cee8620a630f6082e937d0890d3a99c4f24"
+    },
+    "image": {
+      "member": "tested-binaries/diagnostic-sail-daemon-66007b1d5e66d24a",
+      "bytes": 60558288,
+      "sha256": "66007b1d5e66d24a3fa484494efb6fd4d45abf09f81e95e658472f21535d556e"
+    }
+  },
+  "closure": {
+    "original_1361_source_files_match": true,
+    "corrected_1361_source_files_match": true,
+    "profile_derivative_files_match": true,
+    "fixture_post_seal": {
+      "bytes": 2158309,
+      "sha256": "718fc30e7df9978a21d130df8bbbb459cf9f433865462db4ca33b615ce531347"
+    },
+    "preserved_tested_images": {
+      "diagnostic-sail-daemon-66007b1d5e66d24a": {
+        "bytes": 60558288,
+        "sha256": "66007b1d5e66d24a3fa484494efb6fd4d45abf09f81e95e658472f21535d556e"
+      },
+      "sail_daemon-7df407ca02aaedbe-781be485fc94dffc": {
+        "bytes": 60252848,
+        "sha256": "781be485fc94dffc90150805a2aafdbfe5c107781d0841a870df8529b0d7c463"
+      },
+      "sail_daemon-7df407ca02aaedbe-b2e479f5ad769f67": {
+        "bytes": 60249088,
+        "sha256": "b2e479f5ad769f670b5efd1ac5ea7237af7370bdfd471e77d0e0e1cc55b6680d"
+      },
+      "sail_verus-00709776d1fabf40-335a84d3a71d870e": {
+        "bytes": 34482024,
+        "sha256": "335a84d3a71d870ea495f4373b4386d2220ed78465da1b4af144bdb42d7dff8c"
+      },
+      "sail_verus-570a1d71b2858a8a-02110523bc56a554": {
+        "bytes": 34617432,
+        "sha256": "02110523bc56a55496a5c9219c0f2ae8f690cafbfefaef4f47dfa58ba55683b4"
+      },
+      "sail_verus-570a1d71b2858a8a-e2e4388d3022f647": {
+        "bytes": 34617648,
+        "sha256": "e2e4388d3022f647722f6db242ae2bf2d2cd904f0758d6b6ab7f940589cb83a9"
+      }
+    },
+    "both_container_births_images_unchanged": true,
+    "audits": {
+      "sail-m7-acceptance": {
+        "unix_ns": 1791756383560805469,
+        "examined": 1,
+        "holders": [],
+        "incomplete": [],
+        "known_owned_group_survivors": []
+      },
+      "sail-m7-handoff-validation": {
+        "unix_ns": 1791756383719727761,
+        "examined": 1,
+        "holders": [],
+        "incomplete": [],
+        "known_owned_group_survivors": []
+      }
+    },
+    "census_source_sha256": "a087e48a0ebda5737cf2a5680105a7850b895b407856e2f4d7c2bd07e757f9dc",
+    "slot_released": true,
+    "no_pinned_source_or_runtime_mutated": true
+  },
+  "raw": {
+    "archive": {
+      "bytes": 106926394,
+      "sha256": "49c98319aba37ab4064ee96a045bc3384b430f4c5080caeaff4eb0627355ead2"
+    },
+    "archive_member_root": "sail-m7-output-overlap-a8f2b1a",
+    "verified_original_members": 4135,
+    "all_member_bytes_verified": true,
+    "host_mode": "0600 in private 0700 directory",
+    "host_transfer_rehashed": true,
+    "verification_history": [
+      {
+        "status": "FAIL",
+        "reason": "initial regular-member-only verifier omitted three repository symlinks",
+        "original_archive_unchanged": true
+      },
+      {
+        "status": "PASS",
+        "reason": "all inventoried file bytes including bounded internal symlink target bytes checked"
+      }
+    ],
+    "internal_symlink_target_bytes_verified": [
+      {
+        "member": "corrected-source/CLAUDE.md",
+        "target": "AGENTS.md"
+      },
+      {
+        "member": "profile-source/CLAUDE.md",
+        "target": "AGENTS.md"
+      },
+      {
+        "member": "source/CLAUDE.md",
+        "target": "AGENTS.md"
+      }
+    ],
+    "native_and_host_originals_preserved": true,
+    "handoff_json_seal": {
+      "bytes": 3909,
+      "sha256": "7d5acbb3415ac24ca0a9fc99da7f2917e1eb478c0e2e74c22d3cd33501a60f22"
+    }
+  },
+  "limits": "One fixed-order four-client component comparison; no live p95 claim, no cause of historical full-reader failure, no proof/performance/M7 acceptance. Original full graph, four-reader/200-sample strict 200 ms p95 and 5 s RPC gates remain unchanged."
+}

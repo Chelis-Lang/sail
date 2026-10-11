@@ -315,11 +315,15 @@ path uses the same eligibility and complete barriers.
 The [enabled-path checks](validation/m7-runtime-sidecar-production.md) retain
 the same mutation controls and strict validation after production selection.
 
-A [source-only output overlap candidate](validation/m7-result-output-overlap-plan.md)
+The [retained-output overlap change](validation/m7-result-output-overlap-plan.md)
 keeps the exact charged output owner alive while releasing its lock during
 independent input freshness. It then rechecks the same owner with the original
 complete output barrier. Refusal retains the full read/hash fallback. This adds
-no flag, partial response or Currentness memo. Validation and selection are
-pending; no new live reader latency gain is claimed. Optional diagnostic rows
+no flag, partial response or Currentness memo. Native affected controls and
+strict checks pass. A separate four-reader component reduced complete output
+and fixture-input validation p95 from 19.37 to 12.71 ms. That comparison excludes
+RPC transfer and Python parsing; installed live reader acceptance remains
+pending. See the [complete component scope](validation/m7-result-output-overlap-native.md).
+Optional diagnostic rows
 distinguish successful guarded output validation from full-hash fallback through
 `output_guarded`; `frame_hit` alone does not establish which validation ran.
