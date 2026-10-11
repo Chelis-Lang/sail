@@ -892,7 +892,9 @@ mod wait_controls {
         let mut shim = controlled_child(&solver);
         let pid = shim.child.id();
         let sink = Arc::clone(&shim.out);
-        let held_sink = sink.lock().unwrap_or_else(|e| e.into_inner());
+        let held_sink = sink
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         shim.feed(b"trigger\n", true);
         let (finished, outcome) = std::sync::mpsc::sync_channel(1);
         let waiter = std::thread::spawn(move || {
