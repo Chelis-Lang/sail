@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "scope": "ONE fresh unchanged original managed scenario after the sorted byte-pair selector correction. No preparation, manual Prepare, copied receipts, or altered assertion/deadline.",
+  "execution": "Linux x86_64 Docker Desktop emulation on a shared development host. Concurrent work facts are not assigned as a timeout cause.",
+  "source": "1e8b633572cb680aa27fcebd7dc526ee09278f99",
+  "source_archive_sha256": "86079bc82502b8f1f035b440a2e66f85ea6d81e99a997ec4071b38071c8c01cb",
+  "product": {
+    "sail": {
+      "bytes": 74534768,
+      "sha256": "55e05b6c92e957c4f4bffaffcc38a4143e4e23a47a18ecfa55c4fa536bf15239"
+    },
+    "sail-z3": {
+      "bytes": 10997176,
+      "sha256": "4fda4ec1b21eb49c6e77dcdacd566576a91f48f8e7a8ebde7726cd087f8e1bf5"
+    }
+  },
+  "runtime": {
+    "verus": {
+      "bytes": 4708720,
+      "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+    },
+    "cargo-verus": {
+      "bytes": 2756256,
+      "sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+    },
+    "z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "controller": {
+    "bytes": 5087,
+    "sha256": "a6e200c222dae5f445d649b5e14207abf0396b48f72973bd343ddcba463ba39a"
+  },
+  "inputs": {
+    "test-managed.py": {
+      "bytes": 15159,
+      "sha256": "a5d212a56e4fdaf9472c597f40f36878a24caab74865a014ca3944948490702b"
+    },
+    "managed-evidence.py": {
+      "bytes": 9487,
+      "sha256": "f47632dd991177ff40dc50685dc7e01b83236608b58be9ffaecce086825ca3fb"
+    },
+    "diagnostics.rs": {
+      "sha256": "81ae57dab7f64c8ed505ee65faa46ac3f73f180c29e8d03681a13dc82590ad7c",
+      "bytes": 10583
+    }
+  },
+  "bounds": {
+    "managed": 240,
+    "plain": 120,
+    "cli": 30,
+    "rpc": 5
+  },
+  "started_utc": "2026-10-11T03:26:52.909193+00:00",
+  "finished_utc": "2026-10-11T03:31:04.755190+00:00",
+  "outcome": {
+    "returncode": 1,
+    "inclusive_elapsed_s": 251.50277132399788,
+    "first_managed": {
+      "operation": "managed-01",
+      "duration_s": 244.66998207099823,
+      "verification_timeout_s": 240,
+      "returncode": null,
+      "timed_out": true
+    },
+    "proof_report_bytes": 0,
+    "currentness": "unavailable: no complete report",
+    "later_warm_cli_mcp_mutation_checks": "not reached"
+  },
+  "completed_setup_phases": [
+    {
+      "kind": "managed-setup-phase",
+      "phase": "metadata",
+      "pid": 506547,
+      "started_ms": 0.00025,
+      "elapsed_ms": 7482.1201710000005
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "runtime-binaries",
+      "pid": 506547,
+      "started_ms": 7505.4347960000005,
+      "elapsed_ms": 1916.1857499999999
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "helper-identity",
+      "pid": 506547,
+      "started_ms": 9421.71738,
+      "elapsed_ms": 1529.713209
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "toolchain-probes",
+      "pid": 506547,
+      "started_ms": 10951.473756000001,
+      "elapsed_ms": 4560.966835
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-guard",
+      "pid": 506547,
+      "started_ms": 15512.493508,
+      "elapsed_ms": 14756.806131
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-handoff",
+      "pid": 506547,
+      "started_ms": 30269.338764,
+      "elapsed_ms": 27.168792
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-hash",
+      "pid": 506547,
+      "started_ms": 30296.544889,
+      "elapsed_ms": 39664.147184999994
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-barrier",
+      "pid": 506547,
+      "started_ms": 69960.821116,
+      "elapsed_ms": 18.896375
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "sysroot-fill-hint",
+      "pid": 506547,
+      "started_ms": 69979.76236600001,
+      "elapsed_ms": 12.842832999999999
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "context-configuration",
+      "pid": 506547,
+      "started_ms": 69992.63778300001,
+      "elapsed_ms": 5.732041000000001
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "runtime-context",
+      "pid": 506547,
+      "started_ms": 7485.603712,
+      "elapsed_ms": 62512.937237000006
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "owned-paths",
+      "pid": 506547,
+      "started_ms": 69998.662616,
+      "elapsed_ms": 2.581375
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "initial-snapshot",
+      "pid": 506547,
+      "started_ms": 70001.267741,
+      "elapsed_ms": 2065.613543
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "input-guards",
+      "pid": 506547,
+      "started_ms": 72066.906325,
+      "elapsed_ms": 1441.2833759999999
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "monitored-snapshot",
+      "pid": 506547,
+      "started_ms": 73508.352451,
+      "elapsed_ms": 114.86375
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "input-barrier",
+      "pid": 506547,
+      "started_ms": 73623.27290899999,
+      "elapsed_ms": 21.166459
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "target-cleanup",
+      "pid": 506547,
+      "started_ms": 73644.470868,
+      "elapsed_ms": 2071.686292
+    },
+    {
+      "kind": "managed-setup-phase",
+      "phase": "invocation-seal",
+      "pid": 506547,
+      "started_ms": 75716.403035,
+      "elapsed_ms": 220.766084
+    }
+  ],
+  "handoff": {
+    "lookup_phase_ms": 27.168792,
+    "automatic_fill_hint_phase_ms": 12.842832999999999,
+    "interpretation": "Corrected scope reached the automatic hint branch after a successful original local hash barrier. Hint return does not establish queue acceptance, successful background publication, or a guarded digest import. No warm call was reached."
+  },
+  "last_progress": {
+    "kind": "target-started",
+    "target": "vstd",
+    "completed_bucket_event": false,
+    "last_stderr": "Compiling verus_builtin_macros v0.0.0-2026-09-20-0158",
+    "context_sha256": "757004828166ea31468eaba604b3c3786be5724db70727a47750cf691542db52",
+    "input_revision": "6de80cebdd62a2640c2434843110d9d92e3f05bec17624f71bcdd12839a36bcf",
+    "cold_source_observation": false
+  },
+  "timeout_observation": {
+    "capture_is_proof_authority": false,
+    "clock_ticks_per_second": 100,
+    "limited": true,
+    "capture_seconds": 2.829498209997837,
+    "bytes_read": 532,
+    "errors": [],
+    "work_bounds": {
+      "bytes": 1048576,
+      "processes": 128,
+      "entries": 512,
+      "tasks_per_process": 128,
+      "fds_per_process": 64,
+      "scheduling_budget_seconds": 0.5
+    },
+    "limitation": "Kernel reads cannot be interrupted by an elapsed-time check; all observations may be partial and do not establish a timeout cause.",
+    "captured_process_count": 0
+  },
+  "concurrent_work": {
+    "separate_source_build": {
+      "pid_process_group": 509369,
+      "started_unix_ns": 1791689381261258259,
+      "build_jobs": 2,
+      "nice": 0,
+      "variant": "436dd0391e711083",
+      "timing_relation": "Compiler started after the measured cold runtime-context span. It cannot explain that prior span; later proof work overlapped.",
+      "isolation": "Private source/bootstrap targets; no reads or writes of this scenario cache/fixture."
+    },
+    "root_workspace_gate": "Running independently in a separate owned container and common target. No cause assigned."
+  },
+  "cleanup": {
+    "harness_reaped": true,
+    "recorded_wrapper_harness_managed_absent_after": true,
+    "scratch_removed": true,
+    "product_runtime_after_equal_before": true,
+    "limitation": "Timeout process observation was empty/limited. Post-cleanup observations cover only three already recorded actors; no complete helper/process census is claimed."
+  },
+  "raw_artifacts": {
+    "stderr.log": {
+      "sha256": "342bdb23a9444a39911bfbc81fedb5857f1ea30891d83e14699d60096b0befd1",
+      "bytes": 1767
+    },
+    "metadata.json": {
+      "sha256": "95d42eed7dbd76218c2fb7300a441262f00d4ba1f987756950bff00ba762c883",
+      "bytes": 2357
+    },
+    "controller.json": {
+      "sha256": "dc1cd2f6b20e1ba8c7ece06542f554963231a54325823aa9c33fad013e928cdb",
+      "bytes": 47
+    },
+    "stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "cleanup-observation.json": {
+      "sha256": "0b2ee83f0102babf768331ec3df95ea036949c9d1530a50833a9f35cdbb914f4",
+      "bytes": 328
+    },
+    "terminal.json": {
+      "sha256": "a71980b5202004873dfaeb50555b264144938b070316eda252f7a8d4d17832cc",
+      "bytes": 2303
+    },
+    "reports/managed-01.events.setup-506547-0.jsonl": {
+      "sha256": "eb40220a65f6cc67ea27a89cb8ab9b914acc88f1d262d614ca8f051df73f3bdc",
+      "bytes": 2226
+    },
+    "reports/managed-01.events.jsonl": {
+      "sha256": "db25abfa6bf5d86be2030f9e40add2dbccbf046b5ae6a4d389f3b6d24c7187b1",
+      "bytes": 532
+    },
+    "reports/managed-01.timeout.json": {
+      "sha256": "b000b9897ec7d5c115d58032fdeb0e1845a9922edf9d3917264da6b7fa6ee8a6",
+      "bytes": 1417
+    },
+    "reports/managed-01.operation.json": {
+      "sha256": "ddf4ad22ab52a4ee145a1aebbedecb0577e8809595e052fa3d77fe67006ef8e8",
+      "bytes": 131
+    },
+    "reports/managed-01.stderr": {
+      "sha256": "e862272d8c3ecdf2c2f9b55f71d2ec4f5bfe1e4f3038356c4a119818d8424e08",
+      "bytes": 594
+    },
+    "reports/managed-01.stdout.json": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "interpretation": "Original cold240 acceptance failed. No warm speedup, live-reader latency, product CLI/MCP acceptance for this run, final source qualification, or overall M7 acceptance is established."
+}
