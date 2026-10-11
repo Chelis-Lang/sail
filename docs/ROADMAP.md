@@ -187,8 +187,9 @@ completes independent full Current preparation, then fails the original
 600-second ordinary-verification prerequisite. It collects no latency samples.
 The separate original managed fixture passes in 335.794 seconds, with cold
 verification at 220.375 seconds under the unchanged 240-second bound. The latest pushed
-[native CI revision](../bench/validation/m7-linux-ci-4e101c8-native-2026-10-11.json)
-passes every check in 374 seconds, including all 566 workspace and 39 solver tests. The separate
+[native CI revision](../bench/validation/m7-linux-ci-b029db5-native-2026-10-11.json)
+passes all ten jobs in 482 seconds, including all 566 workspace and 39 solver tests;
+the longest individual job takes 448 seconds. The separate
 [observer integration gate](../bench/validation/m7-linux-observer-gate-55d14c8-emulated-2026-10-11.json)
 also passes all 566 workspace tests and every remaining check, including the 12
 native timeout-observation controls. Product Rust is unchanged from the preceding
@@ -228,6 +229,16 @@ live reader latency, complete standard conformance and repair performance remain
 separate requirements. [Known issues](known-issues.md), the
 [retained histories](validation/m7-workstream-history-cc0898e.md) and
 [acceptance guide](bench/m7-repair-acceptance.md) preserve their exact scopes.
+
+The combined explicit missing-original-range candidate's
+[first complete source scope](../engine/verus/candidates/preparation-namespace/no-original-range/first-source-failure.json)
+passes 42 VIR tests and the VIR strict check, then fails driver compilation:
+new tests referenced a private module. Driver strict checking was not reached.
+The [test integration correction](../engine/verus/candidates/preparation-namespace/no-original-range/test-integration-correction/README.md)
+uses test-only forwarding functions and moves an unchanged helper before the
+test module. It preserves production authority and every assertion. Corrected
+complete compiler controls, ordinary runtime construction and the original
+qualification are still required; the failed scope remains separate.
 
 Priority order for completing this milestone:
 
