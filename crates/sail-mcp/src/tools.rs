@@ -123,6 +123,31 @@ impl ToolResult {
             "isError": self.is_error,
         })
     }
+
+    /// Consumes this result, moving its complete structured payload into the
+    /// MCP response while retaining the same complete JSON text payload.
+    #[must_use]
+    pub fn into_json(self) -> Value {
+        let encoded = serde_json::to_string(&self.structured).unwrap_or_default();
+        let text_content = |text: String| {
+            Value::Object(Map::from_iter([
+                ("type".to_owned(), Value::String("text".to_owned())),
+                ("text".to_owned(), Value::String(text)),
+            ]))
+        };
+        Value::Object(Map::from_iter([
+            (
+                "resultType".to_owned(),
+                Value::String("complete".to_owned()),
+            ),
+            (
+                "content".to_owned(),
+                Value::Array(vec![text_content(self.text), text_content(encoded)]),
+            ),
+            ("structuredContent".to_owned(), self.structured),
+            ("isError".to_owned(), Value::Bool(self.is_error)),
+        ]))
+    }
 }
 
 fn string_schema(description: &str) -> Value {

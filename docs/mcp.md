@@ -39,6 +39,16 @@ The `env` entry is needed only if `cargo-verus` is not on the client's
 
 ## Reading completed evidence
 
+Tool replies retain the full structured result and its complete JSON text for
+clients that read text only. The server moves owned result graphs through the
+response envelope and encodes each complete JSON-RPC frame before taking the
+stdout write lock. Concurrent frames remain atomic. Cancellation remains
+registered through encoding and is checked again before publication; a
+cancelled response is suppressed before its write begins. Slow stdout consumers
+can still block writes. This does not establish a live-reader latency gain or a
+bound on temporary response memory. See [ADR 0034](decisions/0034-mcp-response-encoding-ownership.md)
+and the [scoped controls](validation/m7-mcp-output-ownership.md).
+
 Job status, completed results, counterexamples and cached-result lookups use
 persistent service clients inside `sail mcp`. Each lookup still opens a bounded
 connection and reads the complete fresh service reply. The service determines

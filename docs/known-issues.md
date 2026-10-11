@@ -31,6 +31,15 @@ unfinished. Neither a twofold whole-loop gain on each project nor the real
 four-reader latency gate has been established. See the
 [acceptance guide](bench/m7-repair-acceptance.md) for exact scopes and records.
 
+MCP now moves owned result graphs and encodes complete responses outside the
+stdout mutex. Exact text/structured payload, cancellation and atomic-frame
+controls pass; they do not explain or replace the Python-first live-reader
+failure. Slow output I/O and full response serialization remain costs. The
+[scoped record](validation/m7-mcp-output-ownership.md) retains three initial
+44/45 test failures and the final 46/46 pass: a peer read returned lawful EINTR,
+then the fixture handled only Interrupted within its original absolute budget
+while still requiring EOF. Historical cancellation failures remain separate.
+
 - The selected baseline's diagnostic reporters release quota before nested
   allocations finish dropping. Its accounting does not establish the required
   aggregate 512 MiB physical preparation bound. The corrective source candidates

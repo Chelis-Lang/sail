@@ -84,7 +84,7 @@ fn execute(
         read_request(&arguments).and_then(|request| direct_read(ctx, project, &request, cancel))
     {
         return match result {
-            Ok(response) => match serde_json::to_value(response) {
+            Ok(response) => match response_value(response) {
                 Ok(document) => ToolResult::ok(
                     "Verification job response; proof outcomes are in the completed result."
                         .to_owned(),
@@ -122,6 +122,29 @@ fn execute(
             json!({"error":"service_unavailable"}),
         ),
     }
+}
+
+// Move the already-decoded arbitrary JSON graph rather than serialize it into
+// a second owned Value. Exhaustive destructuring keeps schema growth visible.
+fn response_value(response: sail_api::jobs::Response) -> serde_json::Result<Value> {
+    let sail_api::jobs::Response::Result(document) = response else {
+        return serde_json::to_value(response);
+    };
+    let sail_api::jobs::ResultDocument {
+        repair,
+        job,
+        result,
+    } = document;
+    let mut body = Map::new();
+    if let Some(repair) = repair {
+        body.insert("repair".to_owned(), serde_json::to_value(repair)?);
+    }
+    body.insert("job".to_owned(), serde_json::to_value(job)?);
+    body.insert("result".to_owned(), result.unwrap_or(Value::Null));
+    Ok(Value::Object(Map::from_iter([
+        ("response".to_owned(), Value::String("result".to_owned())),
+        ("value".to_owned(), Value::Object(body)),
+    ])))
 }
 
 pub(super) fn direct_read(

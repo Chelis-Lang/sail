@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "scope": "private actual native Linux MCP affected-code tests under Docker Desktop emulation; no proof or live latency qualification",
+  "source_base": "e2aab5ca2bdd781712c2b068be8aa8a53c8fc4b1",
+  "toolchain": "1.99.0",
+  "cargo_jobs": 2,
+  "test_workers": 2,
+  "source_files": {
+    "crates/sail-mcp/src/job_tools.rs": {
+      "bytes": 21392,
+      "sha256": "ee899e4131d4bfdaf44251e0ca6e46db594024a19ff16ed6fb198f23bcbf3873"
+    },
+    "crates/sail-mcp/src/job_tools_tests.rs": {
+      "bytes": 27286,
+      "sha256": "45beaa3e56ba97fdaf435cdf2ec4e6ce06b82d57c0495cca1c3bb5fed11525a5"
+    },
+    "crates/sail-mcp/src/jsonrpc.rs": {
+      "bytes": 8210,
+      "sha256": "581859f31ffb5b41074bbc516db52159e6bf980ed334801d016cb7f7c6b93cfc"
+    },
+    "crates/sail-mcp/src/server.rs": {
+      "bytes": 20882,
+      "sha256": "80a21fa90f70bdee62dccd6008c88178e9c02865970eda99d0227113897b4378"
+    },
+    "crates/sail-mcp/src/tools.rs": {
+      "bytes": 39735,
+      "sha256": "8765f6c2ce8ea633b608990250f35ebacaf890fb02a4423581a22b8d44437743"
+    },
+    "crates/sail-mcp/src/output_tests.rs": {
+      "bytes": 8964,
+      "sha256": "fc0758fa23a6ec98d3850b10e77b26676e738b026c04249be2c7cc808030c0dd"
+    }
+  },
+  "cargo_lock": {
+    "bytes": 53548,
+    "sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb"
+  },
+  "tested_elf": {
+    "bytes": 23419968,
+    "sha256": "6dcc3e7c7325652448d919f51c8ade4fb2c05150777d2b0acdb2cbd0a0991c5e"
+  },
+  "raw": {
+    "Cargo.lock": {
+      "bytes": 53548,
+      "sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb"
+    },
+    "cancellation-isolated.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "cancellation-isolated.log": {
+      "bytes": 201,
+      "sha256": "c0980aaeb160599bcf7cfcd0cbe42b3ee587babc461f8d38bdd5ab87331efe83"
+    },
+    "clippy-final.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "clippy-final.log": {
+      "bytes": 150,
+      "sha256": "1a13ca7fd7aaccf446e6753d2aa2d597e059c47dd113ae984e2f2f09e91adf8b"
+    },
+    "clippy-initial.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "clippy-initial.log": {
+      "bytes": 654,
+      "sha256": "90dc64e19d9dde55faa8ef8717d9ce448812f41301ae293b2abd6414b5eccbc7"
+    },
+    "initial-source.tar": {
+      "bytes": 17705472,
+      "sha256": "c7797c47ef2a1c4efb067e648d028586295a051c79c302a47b32d871f5a4b671"
+    },
+    "tested-elf": {
+      "bytes": 23419968,
+      "sha256": "6dcc3e7c7325652448d919f51c8ade4fb2c05150777d2b0acdb2cbd0a0991c5e"
+    },
+    "tests-diagnostic.exit": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "tests-diagnostic.log": {
+      "bytes": 4620,
+      "sha256": "653377eedfbef8a61a6369f005571ac3edea400f30713de34cc387f8a749f3a1"
+    },
+    "tests-eintr-final.exit": {
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "tests-eintr-final.log": {
+      "bytes": 3942,
+      "sha256": "162aaf4f12cf841da0685ef5e48aa26c3be09e0640a4d7f761812b0ac93310e8"
+    },
+    "tests-final.exit": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "tests-final.log": {
+      "bytes": 4544,
+      "sha256": "eef3d103690b5af8692a14fff4c947e1ca997dad7c416069973c3c7a1845be9b"
+    },
+    "tests-initial.exit": {
+      "bytes": 4,
+      "sha256": "39b8dc3fc8b44765c8e6f1adee04c5b465e555ab791cc42d0d9e810d5b64297c"
+    },
+    "tests-initial.log": {
+      "bytes": 5049,
+      "sha256": "41a89d7b1862a939960539e3ef2e54175e6d5917acb38d947bf16e6abeb3fcd4"
+    }
+  },
+  "commands": [
+    "CARGO_BUILD_JOBS=2 cargo test --locked -p sail-mcp --lib -- --test-threads=2",
+    "CARGO_BUILD_JOBS=2 cargo clippy --locked -p sail-mcp --all-targets -- -D warnings"
+  ],
+  "scopes": [
+    {
+      "name": "incomplete test-module formatting setup",
+      "status": "failed",
+      "detail": "cargo fmt could not find output_tests.rs before file creation; no compiler launched"
+    },
+    {
+      "name": "initial full library",
+      "status": "failed",
+      "passed": 44,
+      "failed": 1,
+      "exit": 101,
+      "log": "tests-initial.log",
+      "peer_error": "not retained by original .ok() assertion"
+    },
+    {
+      "name": "isolated unchanged cancellation control",
+      "status": "passed",
+      "passed": 1,
+      "filtered": 44,
+      "seconds": 0.04,
+      "log": "cancellation-isolated.log",
+      "qualification": false
+    },
+    {
+      "name": "final projection/ping draft library",
+      "status": "failed",
+      "passed": 44,
+      "failed": 1,
+      "exit": 101,
+      "log": "tests-final.log",
+      "peer_error": "not retained by original .ok() assertion"
+    },
+    {
+      "name": "diagnostic original EOF assertion",
+      "status": "failed",
+      "passed": 44,
+      "failed": 1,
+      "exit": 101,
+      "log": "tests-diagnostic.log",
+      "peer_error": {
+        "os": 4,
+        "kind": "Interrupted"
+      }
+    },
+    {
+      "name": "final absolute-budget EINTR fixture library",
+      "status": "passed",
+      "passed": 46,
+      "failed": 0,
+      "exit": 0,
+      "seconds": 2.86,
+      "log": "tests-eintr-final.log"
+    },
+    {
+      "name": "initial all-target strict",
+      "status": "passed",
+      "seconds": 9.0,
+      "log": "clippy-initial.log"
+    },
+    {
+      "name": "final all-target strict",
+      "status": "passed",
+      "seconds": 2.24,
+      "log": "clippy-final.log"
+    }
+  ],
+  "counterfactual": {
+    "old_output_lock_first": "same real serializer paused under old critical section; output try_lock false; new path true and actual server ping publishes",
+    "oracle": "exact output graphs/bytes unchanged; no normalization"
+  },
+  "original_bounds": {
+    "client_cancellation_seconds": 1,
+    "peer_read_absolute_seconds": 2,
+    "rpc_transport_seconds": 5,
+    "collector_bounds_unchanged": true
+  },
+  "end_state": {
+    "owned_cargo_actors": "closed",
+    "shared_cargo_target": "untouched",
+    "source_engine_runtime": "untouched",
+    "proof_actors": "none",
+    "installed_transport_validation": "not run",
+    "whole_gate": "pending parent gate"
+  },
+  "limits": [
+    "temporary output memory is outside SDK family budget",
+    "output I/O remains serialized",
+    "no claim about Python-only 447 failure",
+    "historical cancellation failures unreclassified",
+    "pre-final ELF identities were not independently sealed; raw streams and initial source archive retained"
+  ]
+}
