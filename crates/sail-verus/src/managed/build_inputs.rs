@@ -71,19 +71,20 @@ pub(super) fn stale_environment(
         extras.extend(record.paths.iter().cloned());
         covered &= record.covered && complete;
     }
-    // New scripts have no declared-input observation; their first run must be fresh.
+    // A shared compiler target can contain an older script output even when
+    // this proof context has no observation. Registry scripts can consume
+    // external inputs too: clean every unobserved script before learning its
+    // declared inputs beside Cargo's output.
     for package in data["packages"].as_array().into_iter().flatten() {
-        if package["source"].is_null()
-            && package["targets"].as_array().is_some_and(|targets| {
-                targets.iter().any(|t| {
-                    t["kind"]
-                        .as_array()
-                        .is_some_and(|k| k.iter().any(|v| v == "custom-build"))
-                })
+        if package["targets"].as_array().is_some_and(|targets| {
+            targets.iter().any(|t| {
+                t["kind"]
+                    .as_array()
+                    .is_some_and(|k| k.iter().any(|v| v == "custom-build"))
             })
-            && !previous
-                .iter()
-                .any(|r| r.package_id == package["id"].as_str().unwrap_or_default())
+        }) && !previous
+            .iter()
+            .any(|r| r.package_id == package["id"].as_str().unwrap_or_default())
         {
             clean.insert(package["name"].as_str().unwrap_or_default().to_owned());
             covered = false;
@@ -159,6 +160,47 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn new_focus_context_cleans_registry_scripts_before_learning_external_inputs()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-build-input-focus-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let payload = root.join("external.txt");
+        std::fs::write(&payload, "good")?;
+        let mut record = BuildInput {
+            package_id: "registry-pkg".to_owned(),
+            package_name: "registry-pkg".to_owned(),
+            manifest: root.join("Cargo.toml"),
+            paths: vec![payload.clone()],
+            env: BTreeMap::new(),
+            digest: String::new(),
+            covered: true,
+        };
+        record.digest = current(&record, None).0;
+        let selected_state = root.join("selected.json");
+        let missing_state = root.join("missing.json");
+        json(&selected_state, &vec![record])?;
+        let data = serde_json::json!({"packages":[{
+            "id":"registry-pkg", "name":"registry-pkg",
+            "source":"registry+https://example.invalid/index",
+            "targets":[{"kind":["custom-build"]}]
+        }]});
+        assert!(stale(&selected_state, &data).0.is_empty());
+        let file = std::fs::File::open(&payload)?;
+        let mtime = file.metadata()?.modified()?;
+        std::fs::write(&payload, "fail")?;
+        file.set_times(std::fs::FileTimes::new().set_modified(mtime))?;
+        assert_eq!(file.metadata()?.modified()?, mtime);
+        assert_eq!(stale(&selected_state, &data).0, vec!["registry-pkg"]);
+        let (clean, _, covered) = stale(&missing_state, &data);
+        assert_eq!(clean, vec!["registry-pkg"]);
+        assert!(!covered);
+        assert!(!missing_state.exists());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn declared_external_build_input_refresh_ignores_restored_timestamps() {
         let root =
