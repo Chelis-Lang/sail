@@ -410,7 +410,7 @@ fn current_binding_matches(
         || original_binding_matches(path, canonical, device, inode)
 }
 fn original_binding_matches(path: &Path, canonical: &Path, device: u64, inode: u64) -> bool {
-    path.canonicalize().as_ref().ok() == Some(canonical)
+    path.canonicalize().as_deref().ok() == Some(canonical)
         && std::fs::metadata(path).is_ok_and(|m| m.dev() == device && m.ino() == inode)
 }
 #[cfg(test)]

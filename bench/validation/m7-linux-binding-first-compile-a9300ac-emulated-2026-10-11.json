@@ -1,0 +1,34 @@
+{
+  "source_commit": "a9300acec1c7881e102de8c35fd71d8e648426ef",
+  "source_archive_sha256": "a6abeddfb4bd593b4c19caeec2ecde4c846e5076aad925bd274dd2c48db11697",
+  "container": "sail-m7-handoff-validation",
+  "source_path": "/tmp/sail-m7-combined-core-a9300ac",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Original complete gate attempt; compile fails before tests due to extracted canonical predicate reference type mismatch; no result accepted or check changed",
+  "phases": [
+    {
+      "phase": "gate",
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-combined-core-a9300ac",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "-e",
+        "NEXTEST_TEST_THREADS=1",
+        "sail-m7-handoff-validation",
+        "bash",
+        "ci/run.sh",
+        "gate"
+      ],
+      "exit_code": 101,
+      "elapsed_seconds": 49.027558583
+    }
+  ],
+  "log": {
+    "bytes": 5813,
+    "sha256": "b0aa612dd0bc3f04ddd340ffba297cc843e83548fc1c4a147d8b10cf91d9a6e3"
+  },
+  "diagnosis": "Expected &PathBuf, found &Path in Some(canonical); correction uses Result::as_deref to preserve exact native Path equality"
+}
