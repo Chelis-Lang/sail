@@ -15,6 +15,76 @@ mod platform {
     const MAX_WATCHES: usize = 8192;
     const MAX_EVENTS: usize = 32768;
 
+    struct Construction {
+        left: usize,
+        visits: usize,
+        stop: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+        started: Instant,
+    }
+    impl Construction {
+        fn charge(&mut self, bytes: usize) -> Option<()> {
+            if self
+                .stop
+                .as_ref()
+                .is_some_and(|stop| stop.load(std::sync::atomic::Ordering::Acquire))
+                || self.started.elapsed() >= Duration::from_secs(120)
+            {
+                return None;
+            }
+            self.left = self.left.checked_sub(bytes)?;
+            Some(())
+        }
+        fn path(&mut self, path: &PathBuf, inline: usize) -> Option<()> {
+            (path.capacity() <= 8192).then_some(())?;
+            self.charge(inline.checked_add(path.capacity())?)
+        }
+    }
+
+    #[cfg(test)]
+    mod construction_tests {
+        use super::*;
+        use std::sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        };
+
+        #[test]
+        fn original_clock_and_shared_stop_apply_during_helper_observation() {
+            let stop = Arc::new(AtomicBool::new(false));
+            let mut control = Construction {
+                left: 16 * 1024 * 1024,
+                visits: 0,
+                stop: Some(Arc::clone(&stop)),
+                started: Instant::now(),
+            };
+            assert!(control.charge(1024).is_some());
+            stop.store(true, Ordering::Release);
+            assert!(control.charge(0).is_none());
+            assert!(
+                Observer::begin_bounded_with(
+                    &[PathBuf::from("/tmp")],
+                    &[],
+                    Some(stop),
+                    control.started,
+                )
+                .is_none()
+            );
+            let start = Instant::now()
+                .checked_sub(Duration::from_secs(121))
+                .unwrap_or_else(|| unreachable!("monotonic fixture"));
+            assert!(
+                Observer::begin_bounded_with(
+                    &[PathBuf::from("/tmp")],
+                    &[],
+                    Some(Arc::new(AtomicBool::new(false))),
+                    start,
+                )
+                .is_none(),
+                "a nested helper phase cannot renew the construction clock"
+            );
+        }
+    }
+
     fn identity(path: &Path) -> std::io::Result<Option<(u64, u64)>> {
         match std::fs::metadata(path) {
             Ok(m) => Ok(Some((m.dev(), m.ino()))),
@@ -87,6 +157,7 @@ mod platform {
         failure: Option<&'static str>,
         mounts: super::super::kernel_mounts::Guard,
         bindings: Vec<(PathBuf, Option<(u64, u64)>)>,
+        construction: Option<Construction>,
     }
     impl Observer {
         pub(super) fn retained_bytes(&self) -> Option<usize> {
@@ -101,11 +172,17 @@ mod platform {
                 failure: _,
                 mounts,
                 bindings,
+                construction,
             } = self;
             // inotify0.11.5 owns one Arc<FdGuard> (two atomic counters, fd and
             // close flag). WatchDescriptor only holds a Weak to that same Arc.
             let used = std::mem::size_of::<Self>()
                 .checked_add(64)?
+                .checked_add(if construction.as_ref().is_some_and(|c| c.stop.is_some()) {
+                    64
+                } else {
+                    0
+                })?
                 .checked_add(super::super::retained::hash::<(WatchDescriptor, PathBuf)>(
                     directories.capacity(),
                 )?)?
@@ -124,7 +201,41 @@ mod platform {
         }
 
         pub(super) fn begin(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
+            Self::begin_with(roots, excluded, None)
+        }
+        pub(super) fn begin_bounded(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
+            Self::begin_bounded_with(roots, excluded, None, Instant::now())
+        }
+        pub(super) fn begin_bounded_with(
+            roots: &[PathBuf],
+            excluded: &[PathBuf],
+            stop: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+            started: Instant,
+        ) -> Option<Self> {
+            Self::begin_with(
+                roots,
+                excluded,
+                Some(Construction {
+                    left: 16 * 1024 * 1024,
+                    visits: 0,
+                    stop,
+                    started,
+                }),
+            )
+        }
+        fn begin_with(
+            roots: &[PathBuf],
+            excluded: &[PathBuf],
+            mut construction: Option<Construction>,
+        ) -> Option<Self> {
             let mounts = super::super::kernel_mounts::Guard::begin()?;
+            if let Some(budget) = construction.as_mut() {
+                (roots.len() <= 4096 && excluded.len() <= 4096).then_some(())?;
+                budget.charge(1024 * 1024 + mounts.retained_bytes()?)?;
+                for path in roots.iter().chain(excluded) {
+                    budget.path(path, 1024)?;
+                }
+            }
             let mut observer = Self {
                 native: Inotify::init().ok()?,
                 directories: HashMap::new(),
@@ -136,6 +247,7 @@ mod platform {
                 failure: None,
                 mounts,
                 bindings: Vec::new(),
+                construction,
             };
             let mut visited = BTreeSet::new();
             for root in roots {
@@ -143,6 +255,9 @@ mod platform {
                 observer.walk(root, &mut visited, true)?;
             }
             for path in roots {
+                if let Some(budget) = observer.construction.as_mut() {
+                    budget.path(path, 128)?;
+                }
                 observer.bindings.push((path.clone(), identity(path).ok()?));
             }
             Some(observer)
@@ -157,6 +272,10 @@ mod platform {
             }
             if self.directories.len() >= MAX_WATCHES {
                 return None;
+            }
+            if let Some(budget) = self.construction.as_mut() {
+                budget.path(&canonical, 2048)?;
+                budget.path(&canonical, 0)?;
             }
             let descriptor = self
                 .native
@@ -188,6 +307,16 @@ mod platform {
             *count = count.checked_add(1)?;
             Some(())
         }
+        fn track(&mut self, path: PathBuf) -> Option<()> {
+            if !self.tracked.contains(&path)
+                && let Some(budget) = self.construction.as_mut()
+            {
+                (self.tracked.len() < 8192).then_some(())?;
+                budget.path(&path, 1024)?;
+            }
+            self.tracked.insert(path);
+            Some(())
+        }
         fn binding(&mut self, path: &Path) -> Option<()> {
             self.binding_depth(path, 0)
         }
@@ -204,7 +333,7 @@ mod platform {
                 Ok(metadata) if metadata.file_type().is_symlink() => {
                     let target = std::fs::read_link(path).ok()?;
                     let target = path.parent()?.join(target);
-                    self.tracked.insert(target.clone());
+                    self.track(target.clone())?;
                     self.binding_depth(&target, depth + 1)?;
                 }
                 Ok(_) => {
@@ -212,17 +341,17 @@ mod platform {
                         if !local_filesystem(&canonical, self.mounts.snapshot()) {
                             return None;
                         }
-                        self.tracked.insert(canonical);
+                        self.track(canonical)?;
                     }
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                     let parent = path.ancestors().skip(1).find(|p| p.is_dir())?;
-                    self.tracked.insert(
+                    self.track(
                         parent
                             .canonicalize()
                             .ok()?
                             .join(path.strip_prefix(parent).ok()?),
-                    );
+                    )?;
                 }
                 Err(_) => return None,
             }
@@ -245,6 +374,11 @@ mod platform {
             {
                 return Some(());
             }
+            if let Some(budget) = self.construction.as_mut() {
+                budget.charge(0)?;
+                budget.visits = budget.visits.checked_add(1)?;
+                (budget.visits <= 16384).then_some(())?;
+            }
             self.binding(path)?;
             let canonical = match path.canonicalize() {
                 Ok(path) => path,
@@ -254,6 +388,11 @@ mod platform {
             if !canonical.is_dir() {
                 self.watch(&canonical)?;
                 return Some(());
+            }
+            if !visited.contains(&canonical)
+                && let Some(budget) = self.construction.as_mut()
+            {
+                budget.path(&canonical, 1024)?;
             }
             if !visited.insert(canonical.clone()) {
                 return Some(());
@@ -498,6 +637,21 @@ impl Observer {
     }
     pub(super) fn begin(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
         platform::Observer::begin(roots, excluded).map(Self)
+    }
+    #[allow(
+        dead_code,
+        reason = "Bounded construction is consumed by forthcoming sysroot daemon owners"
+    )]
+    pub(super) fn begin_bounded(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
+        platform::Observer::begin_bounded(roots, excluded).map(Self)
+    }
+    pub(super) fn begin_bounded_with(
+        roots: &[PathBuf],
+        excluded: &[PathBuf],
+        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        started: std::time::Instant,
+    ) -> Option<Self> {
+        platform::Observer::begin_bounded_with(roots, excluded, Some(stop), started).map(Self)
     }
     pub(super) fn clean(&mut self) -> bool {
         self.0.clean()

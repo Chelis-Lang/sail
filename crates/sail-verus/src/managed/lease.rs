@@ -66,7 +66,7 @@ impl ReadLease {
         let mut stage = "input-file-limit";
         #[cfg(test)]
         let started = std::time::Instant::now();
-        let lease = Self::acquire_at_stage(paths, &mut stage);
+        let lease = Self::acquire_at_stage(paths, &mut stage, None, None);
         #[cfg(test)]
         if lease.is_none() {
             eprintln!(
@@ -76,18 +76,52 @@ impl ReadLease {
         }
         lease
     }
-    fn acquire_at_stage(paths: &[PathBuf], stage: &mut &'static str) -> Option<Self> {
-        if paths.len() > 4096 {
+    #[allow(
+        dead_code,
+        reason = "Bounded daemon construction is integrated separately"
+    )]
+    pub(super) fn acquire_bounded(
+        paths: &[PathBuf],
+        cancelled: &dyn Fn() -> bool,
+        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        started: std::time::Instant,
+    ) -> Option<Self> {
+        Self::acquire_at_stage(
+            paths,
+            &mut "input-file-limit",
+            Some(cancelled),
+            Some((stop, started)),
+        )
+    }
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keeps the original acquisition stages and optional limits in one fail-closed transaction"
+    )]
+    fn acquire_at_stage(
+        paths: &[PathBuf],
+        stage: &mut &'static str,
+        cancelled: Option<&dyn Fn() -> bool>,
+        stop: Option<(
+            std::sync::Arc<std::sync::atomic::AtomicBool>,
+            std::time::Instant,
+        )>,
+    ) -> Option<Self> {
+        if paths.len() > 4096 || cancelled.is_some_and(|cancelled| cancelled()) {
             return None;
         }
         *stage = "interpreter-resolution";
         let interpreter = interpreter()?;
         *stage = "helper-runtime-closure";
-        let closure = helper_paths(&interpreter)?;
+        let closure = helper_paths_with(&interpreter, cancelled)?;
         *stage = "helper-native-observer";
-        let helper_observer = Observer::begin(&closure, &[])?;
+        let helper_observer = if cancelled.is_some() {
+            let (stop, started) = stop?;
+            Observer::begin_bounded_with(&closure, &[], stop, started)?
+        } else {
+            Observer::begin(&closure, &[])?
+        };
         *stage = "helper-baseline-digests";
-        let baseline = helper_digests(&closure)?;
+        let baseline = helper_digests_with(&closure, cancelled)?;
         let mut paths = paths.to_vec();
         paths.extend(closure.iter().filter(|p| p.is_file()).cloned());
         paths.sort();
@@ -99,10 +133,23 @@ impl ReadLease {
         *stage = "mount-inventory";
         let mounts = super::kernel_mounts::Guard::begin()?;
         *stage = "input-path-bindings";
+        let mut binding_bytes = 0usize;
         let bindings: Vec<_> = paths
             .iter()
             .map(|path| {
                 let canonical = path.canonicalize().ok()?;
+                if let Some(cancelled) = cancelled {
+                    binding_bytes = binding_bytes
+                        .checked_add(path.as_os_str().len())?
+                        .checked_add(canonical.as_os_str().len())?;
+                    if cancelled()
+                        || binding_bytes > 512 * 1024
+                        || path.as_os_str().len() > 4096
+                        || canonical.as_os_str().len() > 4096
+                    {
+                        return None;
+                    }
+                }
                 let metadata = std::fs::metadata(&canonical).ok()?;
                 metadata.is_file().then_some((
                     path.clone(),
@@ -122,11 +169,20 @@ impl ReadLease {
         *stage = "helper-path-encoding";
         let runtime: Vec<_> = closure.iter().map(|p| p.to_str()).collect::<Option<_>>()?;
         *stage = "helper-request-encoding";
-        let mut bytes = serde_json::to_vec(&serde_json::json!({
-            "files": identities,
-            "runtime": runtime,
-        }))
-        .ok()?;
+        let mut bytes = if cancelled.is_some() {
+            #[derive(serde::Serialize)]
+            struct Request<'a> {
+                files: &'a [(&'a [u8], &'a u64, &'a u64)],
+                runtime: &'a [&'a str],
+            }
+            bounded_encode(&Request {
+                files: &identities,
+                runtime: &runtime,
+            })?
+        } else {
+            serde_json::to_vec(&serde_json::json!({ "files": identities, "runtime": runtime }))
+                .ok()?
+        };
         bytes.push(b'\n');
         if bytes.len() > 1_048_576 {
             return None;
@@ -141,6 +197,9 @@ impl ReadLease {
         let child_output: OwnedFd = child_socket.into();
         let parent_socket = socket.try_clone().ok()?;
         *stage = "helper-process-spawn";
+        if cancelled.is_some_and(|cancelled| cancelled()) {
+            return None;
+        }
         let process = spawn_helper(&interpreter, child_input, child_output)?;
         let mut lease = Self {
             process,
@@ -153,20 +212,29 @@ impl ReadLease {
             failure: None,
         };
         *stage = "helper-request-write";
+        if cancelled.is_some_and(|cancelled| cancelled()) {
+            return None;
+        }
         socket.write_all(&bytes).ok()?;
         *stage = "helper-readiness-frame";
         #[cfg(test)]
         let fds = lease.readiness(&mut socket)?;
         #[cfg(not(test))]
         let fds = descriptors(&mut socket)?;
+        if cancelled.is_some_and(|cancelled| cancelled()) {
+            return None;
+        }
         let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
         *stage = "kernel-lease-inventory-bind";
         lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
-        let validation = lease.validate_initial(&closure, &baseline, stage)?;
+        let validation = lease.validate_initial(&closure, &baseline, stage, cancelled)?;
         if let Err(reason) = validation {
             *stage = reason;
             #[cfg(test)]
             eprintln!("lease acquisition failed: {reason}");
+            return None;
+        }
+        if cancelled.is_some_and(|cancelled| cancelled()) {
             return None;
         }
         Some(lease)
@@ -188,6 +256,7 @@ impl ReadLease {
         closure: &[PathBuf],
         baseline: &[Option<String>],
         stage: &mut &'static str,
+        cancelled: Option<&dyn Fn() -> bool>,
     ) -> Option<std::result::Result<(), &'static str>> {
         let validation = if self.kernel.is_none() {
             Err("kernel-lease-inventory-binding-unavailable")
@@ -195,7 +264,7 @@ impl ReadLease {
             Err("lease-binding-invalidated")
         } else {
             *stage = "helper-final-digests";
-            if helper_digests(closure)? != baseline {
+            if helper_digests_with(closure, cancelled)? != baseline {
                 Err("helper-byte-identity-invalidated")
             } else if !self.helper_observer.clean() {
                 Err("helper-observation-invalidated")
@@ -338,12 +407,20 @@ fn interpreter() -> Option<PathBuf> {
         .find(|path| path.is_file())
         .and_then(|path| std::path::absolute(path).ok())
 }
-fn helper_digests(paths: &[PathBuf]) -> Option<Vec<Option<String>>> {
+fn helper_digests_with(
+    paths: &[PathBuf],
+    cancelled: Option<&dyn Fn() -> bool>,
+) -> Option<Vec<Option<String>>> {
+    let mut read = 0u64;
     paths
         .iter()
         .map(|path| {
             if path.is_file() {
-                super::files::file_digest(path).ok().map(Some)
+                if let Some(cancelled) = cancelled {
+                    bounded_digest(path, &mut read, cancelled).map(Some)
+                } else {
+                    super::files::file_digest(path).ok().map(Some)
+                }
             } else if !path.exists() {
                 Some(None)
             } else {
@@ -351,6 +428,61 @@ fn helper_digests(paths: &[PathBuf]) -> Option<Vec<Option<String>>> {
             }
         })
         .collect()
+}
+fn bounded_encode(value: &impl serde::Serialize) -> Option<Vec<u8>> {
+    struct Writer(Vec<u8>);
+    impl Write for Writer {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            if self
+                .0
+                .len()
+                .checked_add(bytes.len())
+                .is_none_or(|size| size > 1_048_576)
+            {
+                return Err(std::io::Error::other(
+                    "bounded helper request exceeds limit",
+                ));
+            }
+            self.0.extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = Writer(Vec::new());
+    serde_json::to_writer(&mut writer, value).ok()?;
+    Some(writer.0)
+}
+fn bounded_digest(path: &Path, read: &mut u64, cancelled: &dyn Fn() -> bool) -> Option<String> {
+    use sha2::{Digest as _, Sha256};
+    let descriptor = rustix::fs::open(
+        path,
+        rustix::fs::OFlags::RDONLY | rustix::fs::OFlags::NONBLOCK | rustix::fs::OFlags::CLOEXEC,
+        rustix::fs::Mode::empty(),
+    )
+    .ok()?;
+    let mut file = std::fs::File::from(descriptor);
+    if !file.metadata().ok()?.is_file() {
+        return None;
+    }
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 65536].into_boxed_slice();
+    loop {
+        if cancelled() {
+            return None;
+        }
+        let count = file.read(&mut buffer).ok()?;
+        if count == 0 {
+            break;
+        }
+        *read = read.checked_add(u64::try_from(count).ok()?)?;
+        if *read > 128 * 1024 * 1024 {
+            return None;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    Some(format!("{:x}", hasher.finalize()))
 }
 pub(super) fn helper_identity() -> Option<Vec<(String, String)>> {
     let paths = helper_paths(&interpreter()?)?;
@@ -366,6 +498,12 @@ pub(super) fn helper_identity() -> Option<Vec<(String, String)>> {
         .collect()
 }
 fn helper_paths(interpreter: &Path) -> Option<Vec<PathBuf>> {
+    helper_paths_with(interpreter, None)
+}
+fn helper_paths_with(
+    interpreter: &Path,
+    cancelled: Option<&dyn Fn() -> bool>,
+) -> Option<Vec<PathBuf>> {
     // This cold-only process is bounded independently of any job RPC. The
     // installed interpreter/loader bootstrap is the explicit trusted OS boundary.
     let (mut socket, child_socket) = UnixStream::pair().ok()?;
@@ -383,15 +521,26 @@ fn helper_paths(interpreter: &Path) -> Option<Vec<PathBuf>> {
         .spawn()
         .ok()?;
     let mut bytes = Vec::new();
-    let read = std::io::Read::by_ref(&mut socket)
-        .take(1_048_577)
-        .read_to_end(&mut bytes);
+    let read = if let Some(cancelled) = cancelled {
+        bounded_helper_output(&mut socket, &mut bytes, cancelled)
+    } else {
+        std::io::Read::by_ref(&mut socket)
+            .take(1_048_577)
+            .read_to_end(&mut bytes)
+            .map(|_| ())
+    };
     let _ = child.kill();
     let _ = child.wait();
     if read.is_err() || bytes.len() > 1_048_576 {
         return None;
     }
-    let mut paths: Vec<PathBuf> = serde_json::from_slice(&bytes).ok()?;
+    let mut paths: Vec<PathBuf> = if cancelled.is_some() {
+        #[derive(serde::Deserialize)]
+        struct Paths(#[serde(deserialize_with = "bounded_paths")] Vec<PathBuf>);
+        serde_json::from_slice::<Paths>(&bytes).ok()?.0
+    } else {
+        serde_json::from_slice(&bytes).ok()?
+    };
     if paths.len() > 1024 || paths.iter().any(|p| !p.is_absolute()) {
         return None;
     }
@@ -399,6 +548,70 @@ fn helper_paths(interpreter: &Path) -> Option<Vec<PathBuf>> {
     paths.sort();
     paths.dedup();
     Some(paths)
+}
+fn bounded_helper_output(
+    socket: &mut UnixStream,
+    bytes: &mut Vec<u8>,
+    cancelled: &dyn Fn() -> bool,
+) -> std::io::Result<()> {
+    socket.set_nonblocking(true)?;
+    let started = std::time::Instant::now();
+    let mut chunk = [0u8; 8192];
+    loop {
+        if cancelled() || started.elapsed() >= Duration::from_secs(2) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "bounded helper observation cancelled or expired",
+            ));
+        }
+        match socket.read(&mut chunk) {
+            Ok(0) => return Ok(()),
+            Ok(count) => {
+                if bytes.len().checked_add(count).is_none_or(|n| n > 1_048_576) {
+                    return Err(std::io::Error::other("bounded helper output exceeds limit"));
+                }
+                bytes.extend_from_slice(&chunk[..count]);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error),
+        }
+    }
+}
+fn bounded_paths<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Vec<PathBuf>, D::Error> {
+    struct Paths;
+    impl<'de> serde::de::Visitor<'de> for Paths {
+        type Value = Vec<PathBuf>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("at most1024 helper paths")
+        }
+        fn visit_seq<A: serde::de::SeqAccess<'de>>(
+            self,
+            mut sequence: A,
+        ) -> Result<Self::Value, A::Error> {
+            let mut values = Vec::new();
+            while values.len() < 1024 {
+                let Some(path) = sequence.next_element::<PathBuf>()? else {
+                    return Ok(values);
+                };
+                if !path.is_absolute() || path.as_os_str().len() > 4096 {
+                    return Err(serde::de::Error::custom("unsupported bounded helper path"));
+                }
+                values.push(path);
+            }
+            if sequence.next_element::<serde::de::IgnoredAny>()?.is_some() {
+                return Err(serde::de::Error::custom(
+                    "bounded helper path count exceeded",
+                ));
+            }
+            Ok(values)
+        }
+    }
+    deserializer.deserialize_seq(Paths)
 }
 impl Drop for ReadLease {
     fn drop(&mut self) {
@@ -750,5 +963,59 @@ mod tests {
         assert!(!lease.clean());
         assert_eq!(lease.failure_reason(), "lease-binding-invalidated");
         assert!(std::fs::remove_file(file).is_ok());
+    }
+}
+
+#[cfg(test)]
+mod bounded_controls {
+    use super::*;
+    #[test]
+    fn bounded_helper_encoding_preserves_exact_original_json_and_refuses_growth() {
+        #[derive(serde::Serialize)]
+        struct Request<'a> {
+            files: &'a [(&'a [u8], &'a u64, &'a u64)],
+            runtime: &'a [&'a str],
+        }
+        let device = 12;
+        let inode = 34;
+        let files = [(b"/tmp/exact".as_slice(), &device, &inode)];
+        let runtime = ["/usr/bin/python3", "/usr/lib/python3"];
+        let typed = bounded_encode(&Request {
+            files: &files,
+            runtime: &runtime,
+        })
+        .unwrap_or_else(|| unreachable!("bounded fixture"));
+        let old = serde_json::to_vec(&serde_json::json!({"files": files, "runtime": runtime}))
+            .unwrap_or_else(|_| unreachable!("original fixture"));
+        assert_eq!(
+            typed, old,
+            "typed serialization must preserve original helper bytes"
+        );
+        assert!(bounded_encode(&"x".repeat(1024 * 1024)).is_none());
+    }
+    #[test]
+    fn helper_observation_shutdown_uses_shared_stop_without_renewing_clock() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+            mpsc,
+        };
+        let (mut reader, writer) =
+            UnixStream::pair().unwrap_or_else(|_| unreachable!("socket fixture"));
+        let stop = Arc::new(AtomicBool::new(false));
+        let owner = Arc::clone(&stop);
+        let (started, ready) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            assert!(started.send(()).is_ok());
+            bounded_helper_output(&mut reader, &mut Vec::new(), &|| {
+                owner.load(Ordering::Acquire)
+            })
+        });
+        assert!(ready.recv_timeout(Duration::from_secs(2)).is_ok());
+        let clock = std::time::Instant::now();
+        stop.store(true, Ordering::Release);
+        assert!(worker.join().is_ok_and(|result| result.is_err()));
+        assert!(clock.elapsed() < Duration::from_millis(250));
+        drop(writer);
     }
 }

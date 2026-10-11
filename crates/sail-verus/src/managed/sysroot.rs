@@ -13,9 +13,52 @@ struct Inventory {
     complete: bool,
 }
 
-fn file(path: PathBuf, files: &mut BTreeSet<PathBuf>, complete: &mut bool) {
+struct Enumeration {
+    visits: usize,
+    bytes: usize,
+    failed: bool,
+    #[cfg(target_os = "linux")]
+    cancelled: Option<Cancellation>,
+}
+impl Enumeration {
+    fn visit(&mut self) -> bool {
+        self.visits += 1;
+        #[cfg(target_os = "linux")]
+        {
+            self.failed |= self.cancelled.as_ref().is_some_and(Cancellation::cancelled);
+        }
+        self.failed |= self.visits > 16384;
+        !self.failed
+    }
+    fn insert(&mut self, path: &PathBuf, count: usize) -> bool {
+        self.bytes = self.bytes.saturating_add(path.capacity());
+        self.failed |= count >= 4096
+            || self.bytes > 512 * 1024
+            || path.as_os_str().len() > 4096
+            || path.capacity() > 8192
+            || path.to_str().is_none();
+        !self.failed
+    }
+}
+fn file(
+    mut path: PathBuf,
+    files: &mut BTreeSet<PathBuf>,
+    complete: &mut bool,
+    limit: &mut Option<Enumeration>,
+) {
+    if limit.is_some() {
+        path.shrink_to_fit();
+    }
     match std::fs::metadata(&path) {
         Ok(metadata) if metadata.is_file() => {
+            if !files.contains(&path)
+                && limit
+                    .as_mut()
+                    .is_some_and(|limit| !limit.insert(&path, files.len()))
+            {
+                *complete = false;
+                return;
+            }
             files.insert(path);
         }
         Ok(_) => {}
@@ -24,12 +67,21 @@ fn file(path: PathBuf, files: &mut BTreeSet<PathBuf>, complete: &mut bool) {
     }
 }
 
-fn directory(path: &Path, files: &mut BTreeSet<PathBuf>, complete: &mut bool) {
+fn directory(
+    path: &Path,
+    files: &mut BTreeSet<PathBuf>,
+    complete: &mut bool,
+    limit: &mut Option<Enumeration>,
+) {
     match std::fs::read_dir(path) {
         Ok(entries) => {
             for entry in entries {
+                if limit.as_mut().is_some_and(|limit| !limit.visit()) {
+                    *complete = false;
+                    break;
+                }
                 match entry {
-                    Ok(entry) => file(entry.path(), files, complete),
+                    Ok(entry) => file(entry.path(), files, complete, limit),
                     Err(_) => *complete = false,
                 }
             }
@@ -39,23 +91,56 @@ fn directory(path: &Path, files: &mut BTreeSet<PathBuf>, complete: &mut bool) {
     }
 }
 
+#[cfg(test)]
 fn inventory(sysroots: &BTreeSet<PathBuf>) -> Inventory {
+    inventory_with(sysroots, false)
+}
+#[cfg(test)]
+fn inventory_with(sysroots: &BTreeSet<PathBuf>, bounded: bool) -> Inventory {
+    inventory_controlled(
+        sysroots,
+        bounded,
+        #[cfg(target_os = "linux")]
+        None,
+    )
+}
+fn inventory_controlled(
+    sysroots: &BTreeSet<PathBuf>,
+    bounded: bool,
+    #[cfg(target_os = "linux")] cancelled: Option<&Cancellation>,
+) -> Inventory {
+    let mut limit = bounded.then_some(Enumeration {
+        visits: 0,
+        bytes: 0,
+        failed: false,
+        #[cfg(target_os = "linux")]
+        cancelled: cancelled.cloned(),
+    });
     let mut files = BTreeSet::new();
     let mut complete = true;
     for sysroot in sysroots {
         for name in ["rustc", "cargo"] {
-            file(sysroot.join("bin").join(name), &mut files, &mut complete);
+            file(
+                sysroot.join("bin").join(name),
+                &mut files,
+                &mut complete,
+                &mut limit,
+            );
         }
-        directory(&sysroot.join("lib"), &mut files, &mut complete);
+        directory(&sysroot.join("lib"), &mut files, &mut complete, &mut limit);
         match std::fs::read_dir(sysroot.join("lib/rustlib")) {
             Ok(entries) => {
                 for entry in entries {
+                    if limit.as_mut().is_some_and(|limit| !limit.visit()) {
+                        complete = false;
+                        break;
+                    }
                     match entry {
                         Ok(entry) => {
                             let library = entry.path().join("lib");
                             match std::fs::metadata(&library) {
                                 Ok(metadata) if metadata.is_dir() => {
-                                    directory(&library, &mut files, &mut complete);
+                                    directory(&library, &mut files, &mut complete, &mut limit);
                                 }
                                 Ok(_) => {}
                                 Err(error)
@@ -82,6 +167,20 @@ fn inventory(sysroots: &BTreeSet<PathBuf>) -> Inventory {
 }
 
 #[cfg(target_os = "linux")]
+#[derive(Clone)]
+struct Cancellation {
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    started: std::time::Instant,
+}
+#[cfg(target_os = "linux")]
+impl Cancellation {
+    fn cancelled(&self) -> bool {
+        self.stop.load(std::sync::atomic::Ordering::Acquire)
+            || self.started.elapsed() >= std::time::Duration::from_secs(120)
+    }
+}
+
+#[cfg(target_os = "linux")]
 struct Protection {
     namespace: Observer,
     files: Observer,
@@ -102,8 +201,54 @@ impl Baseline {
         sysroots: &BTreeSet<PathBuf>,
         already_hashed: impl Fn(&Path) -> bool,
     ) -> Self {
+        Self::begin_with(
+            sysroots,
+            already_hashed,
+            #[cfg(target_os = "linux")]
+            None,
+        )
+    }
+    #[cfg(target_os = "linux")]
+    pub(super) fn begin_bounded(
+        sysroots: &BTreeSet<PathBuf>,
+        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        started: std::time::Instant,
+    ) -> Option<Self> {
+        if sysroots.is_empty()
+            || sysroots.len() > 8
+            || sysroots.iter().any(|path| {
+                !path.is_absolute() || path.as_os_str().len() > 4096 || path.to_str().is_none()
+            })
+        {
+            return None;
+        }
+        let cancellation = Cancellation { stop, started };
+        let mut owner = Self::begin_with(sysroots, |_| false, Some(&cancellation));
+        (owner.complete()
+            && !cancellation.cancelled()
+            && owner.retained_bytes()? <= 16 * 1024 * 1024)
+            .then_some(owner)
+    }
+    fn begin_with(
+        sysroots: &BTreeSet<PathBuf>,
+        already_hashed: impl Fn(&Path) -> bool,
+        #[cfg(target_os = "linux")] bounded: Option<&Cancellation>,
+    ) -> Self {
         #[cfg(target_os = "linux")]
-        let namespace = Observer::begin(
+        let observe = |roots: &[PathBuf], excluded: &[PathBuf]| {
+            if let Some(bounded) = bounded {
+                Observer::begin_bounded_with(
+                    roots,
+                    excluded,
+                    std::sync::Arc::clone(&bounded.stop),
+                    bounded.started,
+                )
+            } else {
+                Observer::begin(roots, excluded)
+            }
+        };
+        #[cfg(target_os = "linux")]
+        let namespace = observe(
             &sysroots
                 .iter()
                 .flat_map(|root| {
@@ -119,7 +264,15 @@ impl Baseline {
         );
         // The namespace watcher is installed before enumeration, including the
         // parent of absent directories and every existing target directory.
-        let found = inventory(sysroots);
+        let found = inventory_controlled(
+            sysroots,
+            #[cfg(target_os = "linux")]
+            bounded.is_some(),
+            #[cfg(not(target_os = "linux"))]
+            false,
+            #[cfg(target_os = "linux")]
+            bounded,
+        );
         let baseline = Self {
             eligible: found
                 .paths
@@ -146,13 +299,24 @@ impl Baseline {
                 let namespace = namespace?;
                 // Explicit file roots cover symlinks and reserved-looking
                 // directory names which the general walk need not descend.
-                let files = Observer::begin(&found.paths, &[])?;
-                let lease = ReadLease::acquire(&found.paths)?;
-                (inventory(sysroots) == found).then_some(Protection {
-                    namespace,
-                    files,
-                    lease,
-                })
+                let files = observe(&found.paths, &[])?;
+                let lease = if let Some(bounded) = bounded {
+                    ReadLease::acquire_bounded(
+                        &found.paths,
+                        &|| bounded.cancelled(),
+                        std::sync::Arc::clone(&bounded.stop),
+                        bounded.started,
+                    )?
+                } else {
+                    ReadLease::acquire(&found.paths)?
+                };
+                (inventory_controlled(sysroots, bounded.is_some(), bounded) == found).then_some(
+                    Protection {
+                        namespace,
+                        files,
+                        lease,
+                    },
+                )
             })();
             if baseline.protection.is_none() && baseline.failure.is_none() {
                 baseline.failure = Some("sysroot-kernel-coverage-unavailable");
@@ -166,6 +330,53 @@ impl Baseline {
         }
     }
 
+    #[allow(dead_code, reason = "Used by bounded daemon sysroot admission")]
+    pub(super) fn retained_bytes(&self) -> Option<usize> {
+        let Self {
+            paths,
+            eligible,
+            captured,
+            failure: _,
+            #[cfg(target_os = "linux")]
+            protection,
+        } = self;
+        let used = std::mem::size_of::<Self>()
+            .checked_add(
+                paths
+                    .capacity()
+                    .checked_mul(std::mem::size_of::<PathBuf>())?,
+            )?
+            .checked_add(eligible.len().checked_add(1)?.checked_mul(1024)?)?
+            .checked_add(captured.len().checked_add(1)?.checked_mul(1024)?)?;
+        let used = paths
+            .iter()
+            .chain(eligible)
+            .try_fold(used, |used, path| used.checked_add(path.capacity()))?;
+        let used = captured.iter().try_fold(used, |used, (path, hash)| {
+            used.checked_add(path.capacity())?
+                .checked_add(hash.capacity())
+        })?;
+        #[cfg(target_os = "linux")]
+        {
+            let used = if let Some(Protection {
+                namespace,
+                files,
+                lease,
+            }) = protection
+            {
+                used.checked_add(namespace.retained_bytes()?)?
+                    .checked_add(files.retained_bytes()?)?
+                    .checked_add(lease.retained_bytes()?)?
+            } else {
+                used
+            };
+            Some(used)
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            Some(used)
+        }
+    }
     pub(super) fn paths(&self) -> &[PathBuf] {
         &self.paths
     }
@@ -178,6 +389,52 @@ impl Baseline {
 
     pub(super) fn captured(&self, path: &Path) -> Option<&String> {
         self.captured.get(path)
+    }
+
+    #[cfg(target_os = "linux")]
+    #[allow(
+        dead_code,
+        reason = "Runner activation follows independent handoff qualification"
+    )]
+    pub(super) fn import(
+        &mut self,
+        scope: &sail_api::sysroot::Scope,
+        snapshot: &sail_api::sysroot::Snapshot,
+    ) -> bool {
+        // This caller acquired its original protection BEFORE the RPC. A wire
+        // shape or generation alone cannot prove a complete inventory or grant
+        // authority to pre-guard executable/engine aliases.
+        if !self.captured.is_empty()
+            || !snapshot.valid(scope)
+            || snapshot.rows.len() != self.paths.len()
+            || !super::sysroot_cache::actual(scope)
+            || !self.clean()
+        {
+            return false;
+        }
+        for (path, row) in self.paths.iter().zip(&snapshot.rows) {
+            let Some(binding) = super::sysroot_cache::binding(path) else {
+                return false;
+            };
+            if row.path != *path
+                || row.canonical != binding.canonical
+                || row.device != binding.device
+                || row.inode != binding.inode
+            {
+                return false;
+            }
+        }
+        if !super::sysroot_cache::actual(scope) || !self.clean() {
+            return false;
+        }
+        for row in &snapshot.rows {
+            self.capture(&row.path, &row.sha256);
+        }
+        if !super::sysroot_cache::actual(scope) || !self.clean() {
+            self.captured.clear();
+            return false;
+        }
+        true
     }
 
     pub(super) fn clean(&mut self) -> bool {
@@ -437,5 +694,48 @@ mod tests {
         drop(owner);
         std::fs::remove_dir_all(root)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod bounded_tests {
+    use super::{Enumeration, inventory, inventory_with};
+    use std::collections::BTreeSet;
+    use std::path::PathBuf;
+
+    #[test]
+    fn optional_inventory_cap_never_truncates_original_context_inventory() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-sysroot-inventory-bound-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(root.join("lib"))?;
+        for file in 0..4097 {
+            std::fs::write(root.join("lib").join(format!("{file:04}.rlib")), [])?;
+        }
+        let roots = BTreeSet::from([root.clone()]);
+        let original = inventory(&roots);
+        let bounded = inventory_with(&roots, true);
+        assert!(original.complete);
+        assert_eq!(original.paths.len(), 4097);
+        assert!(!bounded.complete);
+        assert!(bounded.paths.len() <= 4096);
+        assert_eq!(original.paths, inventory_with(&roots, false).paths);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn path_bytes_and_directory_visits_refuse_before_growth() {
+        let mut budget = Enumeration {
+            visits: 16384,
+            bytes: 512 * 1024,
+            failed: false,
+            #[cfg(target_os = "linux")]
+            cancelled: None,
+        };
+        assert!(!budget.visit());
+        assert!(!budget.insert(&PathBuf::from("/extra"), 1));
+        assert!(budget.failed);
     }
 }

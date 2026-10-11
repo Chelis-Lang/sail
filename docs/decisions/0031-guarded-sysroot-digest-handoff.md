@@ -74,7 +74,7 @@ One separate maintenance worker constructs entries from its own guarded reads;
 it never invokes Verus and does not add a verification worker.
 
 Initial proposed caps are two retained owners, one constructing owner, two queued
-scopes and 4,096 inventory files per owner. Root/path/frame and retained ownership
+scopes and 4, 096 inventory files per owner. Root/path/frame and retained ownership
 charges must be checked before publication; original observer, helper and lease
 limits remain in force. A small frame-size bound alone is not a decoded-memory
 or helper-process RSS claim. Cancellation checks accompany every bounded read
@@ -107,7 +107,7 @@ M7 source-engine, reader p95 or edit-loop performance.
 The first admission primitives charge actual String/PathBuf and Vec capacities
 with checked arithmetic. On the pinned 64-bit toolchain, observer and kernel
 inventory BTree nodes have at most eleven entries of at most 48 inline bytes,
-twelve pointer edges and node metadata. A deliberately conservative 1,024-byte
+twelve pointer edges and node metadata. A deliberately conservative 1, 024-byte
 charge per entry plus one root covers sparse nodes; it is not a length-only
 payload estimate. See the pinned [Rust node layout](https://github.com/rust-lang/rust/blob/1.99.0/library/alloc/src/collections/btree/node.rs).
 
@@ -129,8 +129,8 @@ Overflow refuses admission rather than wrapping to a smaller charge.
 
 ## Optional endpoint wire contract
 
-The independent `sail_api::sysroot` endpoint uses version1 frames capped at
-1MiB. It appends `.sysroots-v1` to the existing local cache socket path; neither
+The independent `sail_api::sysroot` endpoint uses version 1 frames capped at
+1 MiB. It appends `.sysroots-v1` to the existing local cache socket path; neither
 the job protocol nor SMT cache keys change. Requests contain at most eight
 sorted exact UTF-8 absolute roots, their actual canonical device/inode bindings,
 the process filesystem root identity, mount namespace and mount inventory
@@ -138,13 +138,96 @@ content digest, and the pre-sysroot runtime-selection content digest. Unsupporte
 native encodings decline reuse instead of converting path bytes lossily.
 
 A Lookup response must echo the exact scope and return a sorted complete
-inventory of at most4096 bound files. The caller remains responsible for
+inventory of at most 4,096 bound files. The caller remains responsible for
 comparing that inventory against its independently guarded actual local files.
 No syntactically valid response alone is authority. Prepare is only a bounded
 maintenance hint; it carries no caller hashes. Collection counts are bounded
 while decoding, and oversize output is refused before any frame bytes are sent.
 Old versions, trailing/truncated JSON, wrong variants and late full responses
-refuse reuse. One100ms budget covers connect/backlog, write, read and validation;
+refuse reuse. One 100 ms budget covers connect/backlog, write, read and validation;
 there is no retry or late promotion. Socket operations remain safe Rust through
-the pinned socket2 dependency. The byte/work caps are explicit; elapsed checks
+the pinned socket 2 dependency. The byte/work caps are explicit; elapsed checks
 do not pretend to interrupt kernel I/O or scheduler suspension.
+
+## Construction and endpoint implementation review
+
+The optional implementation uses one maintenance worker and one endpoint worker.
+Lookup never performs construction or content hashing. A queue contains at most
+two exact scopes; at most two independently guarded owners are retained, each
+admitted only when exhaustive Rust-owned storage accounting is at most 16 MiB.
+An invalid or evicted owner is released before another helper is constructed.
+One endpoint owns at most one accepted socket and one complete response clone;
+it has a finite kernel backlog and creates no per-connection thread. Kernel
+backlog capacity is not a bound on Linux kernel networking memory.
+
+The 96 MiB construction reservation is a Rust storage ledger, not RSS,
+Python allocator usage or a total process peak. Three bounded namespace/helper
+observers each precharge at most 16 MiB before watched collections grow. Inventory
+traversal stops at 16,384 visits, 4,096 files and 512 KiB of admitted original path
+capacity. Canonical row capacity is separately bounded before hash-map, capture
+and response growth. Each helper closure report is capped at 1 MiB and 1,024 paths
+while decoding; helper baseline/final content reads each stop at 128 MiB. Content
+reads use 64 KiB chunks, reject nonregular files with a nonblocking open, and stop
+at 4 GiB per construction. Request and response encodings each cap 1 MiB before
+sending a frame. The typed helper request avoids allocating a JSON Value for
+every native path byte.
+
+The finite peak must additionally charge retained owners, the constructing
+owner, original queued scopes, the endpoint's decoded request, its complete
+snapshot clone and response frame, helper protocol buffers and temporary
+inventory/hash collections. File descriptors, inotify watches, leases and helper
+processes are separate resource counts; they are not represented as claimed RSS.
+Admission controls and their implementation ledger require review before the
+runner is enabled.
+
+Cancellation propagates one shared stop source and the original construction
+start through inventory, helper observation, helper hashes and final barriers.
+Nested observers cannot restart a fresh 120-second construction clock. Shutdown
+sets index cancellation before joining the endpoint, wakes a waiting maintenance
+worker even after lock poisoning, and joins both owned workers outside RPCs.
+Construction observes stop between bounded operations; this is not a promise to
+interrupt kernel I/O or scheduler suspension. A cancelled owner cannot publish.
+
+The local endpoint requires a cache socket owned by the current user with mode
+0600, and refuses foreign files and foreign-owned existing sockets. Older
+daemons with a public socket mode decline this handoff; an upgraded cache daemon
+must set its owned socket private immediately after bind and before accepting.
+An active endpoint is never unlinked; stale replacement requires a refused
+connection and an exact inode recheck. Its trust boundary is the same private,
+trusted local daemon as existing cache/job sockets. Snapshot shape validation
+cannot make a malicious same-user daemon trustworthy. The caller still holds
+its original independently acquired guards before the request, compares the
+complete actual inventory and path/canonical/device/inode rows, and captures
+only files eligible after those guards began. The FileDigests alias map is never
+populated from remote rows. Every failure retains the original local path.
+
+At this review stage the endpoint and import primitives are not enabled in the
+managed runner. Primitive transport/ownership controls do not establish original
+managed cold/warm acceptance or a measured product speedup.
+
+The index reserves 96 MiB before starting its single builder and refuses a charge
+above 160 MiB including up to 32 MiB retained owners and a 16 MiB endpoint/queue
+reserve. The latter covers two queued scopes plus constructing/accepted scope
+copies, one bounded input frame and typed decode, one snapshot clone and its
+bounded output frame. These limits apply to one index/endpoint family, not every
+unrelated daemon in a process or the system. Retained admission remains 16 MiB per
+owner; the larger construction reserve covers concurrently built temporary
+collections before retained admission. It does not allocate 96 MiB eagerly.
+
+The construction ledger covers the three 16 MiB observer reserves, conservative
+BTree node charges for original/eligible/captured/canonical-digest inventories,
+512 KiB path-capacity inventories and clones, file row/descriptor/identity Vecs,
+helper baseline/final digest vectors, helper request/readiness/closure buffers,
+mount guards and hash chunks. Path capacity is checked before collection growth,
+with capacity shrinking on optional inventory paths; canonical row capacities
+are also admitted before capture/hash-map insertion. The same original local
+inventory path does not acquire these optional restrictions.
+
+Per daemon index, there are at most two retained lease helpers and one
+constructing helper (a conservative upper bound; eviction releases the old
+helper before constructing its replacement). Each helper opens at most 4,096
+leased regular files. Each of the three observers per owner retains at most 8,192
+watches, giving a conservative 73,728-watch bound across all three owners. Parent
+Rust descriptors are bounded by these fixed owners, their inotify/mount/socket
+handles, one listener, one accepted endpoint and the finite temporary helper
+probe. These are kernel resource counts, not Rust heap or Python RSS claims.
