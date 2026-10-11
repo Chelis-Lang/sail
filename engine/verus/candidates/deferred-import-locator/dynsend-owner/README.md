@@ -201,3 +201,12 @@ does not emit the path or match count, so neither cause is established here.
 The three full-phase refusals were not individually traced. This diagnostic
 does not demonstrate a hit, previous-revision reuse, or original qualification
 pass; it supplies narrower evidence for a separately reviewed correction.
+
+
+[Original-descriptor role review](original-descriptor-role-review.md) proposes a
+distinct authority for stock delayed recipes whose original metadata file has
+not yet acquired current Foreign metadata. The existing Foreign-associated
+policy and negatives stay intact; actual path association, namespace absence,
+current binding and no-loading controls remain required. This is an unexecuted
+design under a proposed ADR amendment, not the diagnosed narrower branch for
+binding 5705 or an implemented correction.
