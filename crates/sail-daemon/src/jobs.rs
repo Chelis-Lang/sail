@@ -110,14 +110,13 @@ impl JobServer {
     /// # Errors
     /// Returns thread creation errors.
     pub fn spawn(self) -> io::Result<JobHandle> {
-        let outputs = match output_service::Queue::spawn(&self.state.outputs) {
-            Ok(worker) => Some(worker),
-            Err(_) => {
-                // Optional constructor setup cannot prevent the original job
-                // service from serving complete read-and-hash responses.
-                self.state.outputs.stop();
-                None
-            }
+        let outputs = if let Ok(worker) = output_service::Queue::spawn(&self.state.outputs) {
+            Some(worker)
+        } else {
+            // Optional constructor setup cannot prevent the original job
+            // service from serving complete read-and-hash responses.
+            self.state.outputs.stop();
+            None
         };
         let worker_state = Arc::clone(&self.state);
         let worker = match std::thread::Builder::new()
