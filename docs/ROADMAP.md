@@ -257,7 +257,7 @@ records material runtime CPU in one original fixture. Its paired reqwest-only
 optimization does not improve the complete observed request; that profile is
 not selected and the failed gate's complete cause remains unresolved.
 The retained CLI/MCP collector now enforces its original five-second MCP bound
-through partial-frame reads and JSON decoding. Nine controls pass, including
+through partial-frame reads and JSON decoding. [Nine controls pass](validation/m7-retained-rpc-deadline.json), including
 three that reject the preceding loose collector. A full gate on the corrected
 collector is active; this does not establish real-project retained acceptance.
 A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
