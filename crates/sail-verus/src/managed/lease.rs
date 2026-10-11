@@ -123,7 +123,7 @@ impl ReadLease {
         *stage = "helper-native-observer";
         let helper_observer = if cancelled.is_some() {
             let (stop, started) = stop?;
-            Observer::begin_bounded_with(&closure, &[], stop, started)?
+            Observer::begin_files_bounded_with(&closure, stop, started)?
         } else {
             Observer::begin(&closure, &[])?
         };
@@ -233,7 +233,16 @@ impl ReadLease {
         }
         let identities: Vec<_> = lease.bindings.iter().map(|(_, _, d, i)| (*d, *i)).collect();
         *stage = "kernel-lease-inventory-bind";
-        lease.kernel = super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities);
+        lease.kernel = if let Some(cancelled) = cancelled {
+            super::kernel_leases::Inventory::bind_bounded(
+                lease.process.id(),
+                &fds,
+                &identities,
+                cancelled,
+            )
+        } else {
+            super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities)
+        };
         let validation = lease.validate_initial(&closure, &baseline, stage, cancelled)?;
         if let Err(reason) = validation {
             *stage = reason;

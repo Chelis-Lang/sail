@@ -105,6 +105,18 @@ fn descriptor(text: &str, pid: u32) -> Option<Key> {
     leases.next().is_none().then_some(key)
 }
 
+// Construction uses one bounded descriptor text at a time. The kernel's
+// ordinary fdinfo fields and exact lease row remain parsed without normalization.
+fn bounded_fdinfo(reader: impl std::io::Read) -> Option<String> {
+    const LIMIT: usize = 65_536;
+    let mut text = String::new();
+    reader
+        .take(LIMIT as u64 + 1)
+        .read_to_string(&mut text)
+        .ok()?;
+    (text.len() <= LIMIT).then_some(text)
+}
+
 fn kernel_rows(already_read: u64) -> Result<Vec<u8>, &'static str> {
     let remaining = MAX_LOCK_BYTES
         .checked_sub(already_read)
@@ -170,6 +182,22 @@ impl Inventory {
     }
 
     pub(super) fn bind(pid: u32, fds: &[u32], identities: &[(u64, u64)]) -> Option<Self> {
+        Self::bind_with(pid, fds, identities, None)
+    }
+    pub(super) fn bind_bounded(
+        pid: u32,
+        fds: &[u32],
+        identities: &[(u64, u64)],
+        cancelled: &dyn Fn() -> bool,
+    ) -> Option<Self> {
+        Self::bind_with(pid, fds, identities, Some(cancelled))
+    }
+    fn bind_with(
+        pid: u32,
+        fds: &[u32],
+        identities: &[(u64, u64)],
+        cancelled: Option<&dyn Fn() -> bool>,
+    ) -> Option<Self> {
         if fds.is_empty()
             || fds.len() != identities.len()
             || fds.len() > 4096
@@ -182,11 +210,19 @@ impl Inventory {
         let mut expected_rows = Vec::with_capacity(fds.len());
         let mut descriptors = Vec::new();
         for (fd, (device, inode)) in fds.iter().zip(identities) {
+            if cancelled.is_some_and(|cancelled| cancelled()) {
+                return None;
+            }
             let metadata = std::fs::metadata(format!("/proc/{pid}/fd/{fd}")).ok()?;
             if metadata.dev() != *device || metadata.ino() != *inode || !metadata.is_file() {
                 return None;
             }
-            let info = std::fs::read_to_string(format!("/proc/{pid}/fdinfo/{fd}")).ok()?;
+            let path = format!("/proc/{pid}/fdinfo/{fd}");
+            let info = if cancelled.is_some() {
+                bounded_fdinfo(std::fs::File::open(path).ok()?)?
+            } else {
+                std::fs::read_to_string(path).ok()?
+            };
             let rows = info.lines().filter_map(|line| line.strip_prefix("lock:\t"));
             let mut count = 0;
             for line in rows {
@@ -323,6 +359,20 @@ impl Inventory {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_constructor_fdinfo_preserves_complete_text_and_refuses_growth() {
+        let text = b"pos:\t0\nflags:\t0100000\nlock:\t1: LEASE ACTIVE READ 7 0:0:1 0 EOF\n";
+        assert_eq!(
+            bounded_fdinfo(text.as_slice()).as_deref(),
+            std::str::from_utf8(text).ok()
+        );
+        assert!(bounded_fdinfo(std::io::repeat(b'a').take(65_537)).is_none());
+        assert_eq!(
+            bounded_fdinfo(std::io::repeat(b'a').take(65_536)).map(|s| s.len()),
+            Some(65_536)
+        );
+    }
     #[test]
     fn exact_owner_active_multiset_rejects_breaks_extra_and_malformed_rows() {
         let valid = "1: LEASE ACTIVE READ 7 00:2a:100 0 EOF\n2: LEASE ACTIVE READ 7 00:2a:100 0 EOF\n3: POSIX ADVISORY WRITE 9 00:2a:200 0 EOF\n";
