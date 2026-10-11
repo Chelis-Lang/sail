@@ -59,6 +59,15 @@ assert actual_sources==archive_sources
 save('builder-archive-validation.json',{'archive_sha256':sha(OUT/'builder-source.tar'),'entry_count':len(actual_sources),'complete_source_match':True})
 for relative, digest in identity['source_sha256'].items():
     assert sha(OUT / 'source' / relative) == digest
+# Require the already closed targeted sensitivity scope; no proof authority.
+SENSITIVITY=Path('/tmp/sail-m7-no-original-range-memo-sensitivity')
+for name,digest in freeze['sensitivity_inputs'].items():assert sha(SENSITIVITY/name)==digest
+sensitivity=json.loads((SENSITIVITY/'result.json').read_text())
+assert sensitivity['status']=='PASS' and len(sensitivity['phases'])==2
+assert [phase['exit_code'] for phase in sensitivity['phases']]==[101,0]
+assert json.loads((SENSITIVITY/'source-closure.json').read_text())['source_sha256']==identity['source_sha256']
+
+
 assert not BUILD.exists()
 assert os.getpriority(os.PRIO_PROCESS, 0) == 0
 CONTROL=Path('/tmp/sail-m7-no-original-range-valid-memo-source-controls')
@@ -181,14 +190,6 @@ save('compiler-seed.json', {'version': 1, 'scope': 'Inactive compiler intermedia
                             'files': copied, 'excluded_changed_crate_paths': excluded,
                             'elapsed_seconds': time.monotonic() - started,
                             'runtime_or_proof_or_seal_copied': False, 'hardlinks': False})
-# Require the already closed targeted sensitivity scope; no proof authority.
-SENSITIVITY=Path('/tmp/sail-m7-no-original-range-memo-sensitivity')
-for name,digest in freeze['sensitivity_inputs'].items():assert sha(SENSITIVITY/name)==digest
-sensitivity=json.loads((SENSITIVITY/'result.json').read_text())
-assert sensitivity['status']=='PASS' and len(sensitivity['phases'])==2
-assert [phase['exit_code'] for phase in sensitivity['phases']]==[101,0]
-assert json.loads((SENSITIVITY/'source-closure.json').read_text())['source_sha256']==identity['source_sha256']
-
 for suffix, record in sealed.items():
     old = OLD.parent / (COMMIT + '-' + suffix)
     assert sha(old / 'sail-build.json') == record['manifest_sha256']

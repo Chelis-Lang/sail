@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "prepared; no ordinary launch; targeted sensitivity active separately",
+  "status": "Prepared exact ordinary runtime after actual source and memo sensitivity closure; unlaunched",
   "patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
   "delta_sha256": "9415f4a14f8345b09f25978b0deacc7849054b4d20358a2f76e44ad3730b65a9",
   "source_sha256": {
@@ -34,7 +34,7 @@
     "source-closure.json": "e136e33b80997c24f36641297bef6ebabe307a76fd1b2fdd2b59686e8f9e1219",
     "freeze/seal.json": "9c3888688f18105c54a2a8e171834644bdf97ebcadd3d3d3b833ed738e6b19a9"
   },
-  "sensitivity_required": "Closed exact one-case bypass negative then restored-positive, result+images+closure hashes to be frozen after terminal",
+  "sensitivity_required": "Actual targeted negative then restored-positive PASS closed; no proof credit",
   "builder_source_archive_sha256": "b9a43bab50243c592f4dbda170eb61ddd26728df647875c364d22b18db06a568",
   "builder_archive_exception": "Only private interactive.patch changes from sealed955cd584 to fullaaa3; every other entry must exactly match immutable builder archive",
   "bootstrap_target": "Existing private xtask target; no common writer",
@@ -43,10 +43,22 @@
   "qualification_requirement": "Exactly original13 stages/14 frozen scripts; unchangedargv/env/600/fullstockdiagnostics/sameinput/genuinepriorrevisionFOCUS; no TRACE/TARGET/retry/selection",
   "current_host_backing_free_observation": "9.2GiB before preparation; remeasure immediately before launch",
   "controller_sha256": {
-    "build-candidate.py": "30cf24c84a8253a141c4071f31af9d2f8a978f4a87491875aa6d8560c4c04d4c",
+    "build-candidate.py": "084b0372b4b351ab7833b200d7857cee3ba297473fef82b63d8c03a7bf432c0a",
     "close-build.py": "39ced274bf50a394f471c7652c5afffbd5f8c35f6fbf7b830767568165ad0b37",
     "run-original-pipeline.py": "8b7a0cf501cfc1a7401da33c59059ad866101b3bb304d29cd879e8639aed1f19",
     "close-qualification.py": "d62a5d08407a8d7aca7041b5fde5898b07e1bef29fd17bc42071e6e58fec41ab",
-    "controller-diff.patch": "e504a05cffd42500d59dbfd415b660fe7d640e890c1e5f7ed4fb7324e410eda3"
+    "controller-diff.patch": "efd9d8528cdee67f0a4482f59d04eaa9be57d9cce5708f184a1c4949fabe930d"
+  },
+  "sensitivity_result_sha256": "5be40db3fba7b031e4ceb38977fd264c63c5712f58637826233bde448647a8ed",
+  "sensitivity_inputs": {
+    "result.json": "5be40db3fba7b031e4ceb38977fd264c63c5712f58637826233bde448647a8ed",
+    "source-closure.json": "e136e33b80997c24f36641297bef6ebabe307a76fd1b2fdd2b59686e8f9e1219",
+    "bypass-removed.log": "41d3c0b51d8361f625618735cddab705b3297e42e61eb8af3c8f5cdd2467e1a4",
+    "positive-restored.log": "addab4f3325965145ec6be1e73dfda7fe20eb2985cb904cf67fb4503a92d8e17",
+    "bypass-removed-image.json": "f0abde1f7ae3fe6814f7a4f1bd9181ff03883934a7b9f3e1d1c10e76f73a3f38",
+    "positive-restored-image.json": "54345f3ba709c1f5b4863d46d757ac7891fbfb308f293ec7599b50f1afbaea36",
+    "plan.json": "528083381779f22d22a92a7cf9b1ab22aba62da9784d2cb1c3053a4cf33e822c",
+    "run-counterfactual.py": "e8a2e84230ca52483611b04a53d1f79f9666d4d9f3277465800266903a055129",
+    "ownership-after.json": "6c7af39e47367d7b906adf9859c65ff2f37ef42f3a10932c252f52a7ef2ff688"
   }
 }

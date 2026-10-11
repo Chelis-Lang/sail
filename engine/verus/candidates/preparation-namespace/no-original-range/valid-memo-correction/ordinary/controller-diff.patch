@@ -15,7 +15,7 @@
  OLD = Path('/root/.cache/sail/verus-src-build') / (COMMIT + '-0bbc7d378544f972')
  BUILD = OLD.parent / (COMMIT + '-' + SUFFIX)
  SNAPSHOT = Path('/tmp/sail-m7-original-descriptor-build-candidate')
-@@ -54,14 +54,14 @@
+@@ -54,14 +54,23 @@
      if any(part in {'.git','target','target-verus','__pycache__'} for part in relative.parts):continue
      if entry.is_symlink():actual_sources[str(relative)]=('link',os.readlink(entry))
      elif entry.is_file():actual_sources[str(relative)]=('file',sha(entry))
@@ -25,44 +25,6 @@
  save('builder-archive-validation.json',{'archive_sha256':sha(OUT/'builder-source.tar'),'entry_count':len(actual_sources),'complete_source_match':True})
  for relative, digest in identity['source_sha256'].items():
      assert sha(OUT / 'source' / relative) == digest
- assert not BUILD.exists()
- assert os.getpriority(os.PRIO_PROCESS, 0) == 0
--CONTROL=Path('/tmp/sail-m7-preparation-namespace-visibility-source-controls')
-+CONTROL=Path('/tmp/sail-m7-no-original-range-valid-memo-source-controls')
- assert freeze['source_control_inputs']
- for name,digest in freeze['source_control_inputs'].items():
-     assert sha(CONTROL/name)==digest
-@@ -107,7 +107,7 @@
- save('resource-preflight.json',{'version':1,'owned_target_holders':holders,'unreadable_live':unreadable_live,'private_target':'/tmp/sail-m7-engine-xtask-target','native_disk_free_bytes':shutil.disk_usage(OUT).free,'scope':'Read-only holder audit before compiler seed and launch; unrelated actors untouched'})
- 
- sealed = {}
--for suffix in ['73bd8aa61b18ca12','0bbc7d378544f972','ba9253e0e3b8c136']:
-+for suffix in ['73bd8aa61b18ca12','0bbc7d378544f972','ba9253e0e3b8c136','b3b07d47d7542817']:
-     old = OLD.parent / (COMMIT + '-' + suffix)
-     raw = (old / 'sail-build.json').read_bytes()
-     manifest = json.loads(raw)
-@@ -117,7 +117,7 @@
-     assert {str(p.relative_to(old)) for p in runtime.iterdir() if p.is_file()}==set(manifest['artifacts'])
-     sealed[suffix] = {'manifest_sha256': hashlib.sha256(raw).hexdigest(),
-                       'artifacts': manifest['artifacts'], 'lock_sha256':sha(old/'verus/source/Cargo.lock'),
--                      'source_sha256':{name:sha(old/'verus/source'/name) for name in json.loads(Path('/tmp/sail-m7-late-handoff-source-controls/identity.json').read_text())['source_sha256']}}
-+                      'source_sha256':{name:sha(old/'verus/source'/name) for name in json.loads(Path('/tmp/sail-m7-preparation-namespace-visibility-source-controls/identity.json' if suffix=='b3b07d47d7542817' else '/tmp/sail-m7-late-handoff-source-controls/identity.json').read_text())['source_sha256']}}
- save('preceding-runtime-seals.json', sealed)
- 
- started = time.monotonic()
-@@ -129,7 +129,7 @@
-             continue
-         if entry.is_file() or entry.is_symlink():
-             tar.add(entry, arcname=str(relative), recursive=False)
--assert sha(SNAPSHOT / 'engine/verus/interactive.patch') == 'bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372'
-+assert sha(SNAPSHOT / 'engine/verus/interactive.patch') == '955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e'
- save('builder-before.json', {'archive_sha256': sha(archive), 'bytes': archive.stat().st_size,
-                             'elapsed_seconds': time.monotonic() - started,
-                             'preceding_patch_sha256': sha(SNAPSHOT / 'engine/verus/interactive.patch'),
-@@ -181,6 +181,14 @@
-                             'files': copied, 'excluded_changed_crate_paths': excluded,
-                             'elapsed_seconds': time.monotonic() - started,
-                             'runtime_or_proof_or_seal_copied': False, 'hardlinks': False})
 +# Require the already closed targeted sensitivity scope; no proof authority.
 +SENSITIVITY=Path('/tmp/sail-m7-no-original-range-memo-sensitivity')
 +for name,digest in freeze['sensitivity_inputs'].items():assert sha(SENSITIVITY/name)==digest
@@ -71,9 +33,41 @@
 +assert [phase['exit_code'] for phase in sensitivity['phases']]==[101,0]
 +assert json.loads((SENSITIVITY/'source-closure.json').read_text())['source_sha256']==identity['source_sha256']
 +
- for suffix, record in sealed.items():
++
+ assert not BUILD.exists()
+ assert os.getpriority(os.PRIO_PROCESS, 0) == 0
+-CONTROL=Path('/tmp/sail-m7-preparation-namespace-visibility-source-controls')
++CONTROL=Path('/tmp/sail-m7-no-original-range-valid-memo-source-controls')
+ assert freeze['source_control_inputs']
+ for name,digest in freeze['source_control_inputs'].items():
+     assert sha(CONTROL/name)==digest
+@@ -107,7 +116,7 @@
+ save('resource-preflight.json',{'version':1,'owned_target_holders':holders,'unreadable_live':unreadable_live,'private_target':'/tmp/sail-m7-engine-xtask-target','native_disk_free_bytes':shutil.disk_usage(OUT).free,'scope':'Read-only holder audit before compiler seed and launch; unrelated actors untouched'})
+ 
+ sealed = {}
+-for suffix in ['73bd8aa61b18ca12','0bbc7d378544f972','ba9253e0e3b8c136']:
++for suffix in ['73bd8aa61b18ca12','0bbc7d378544f972','ba9253e0e3b8c136','b3b07d47d7542817']:
      old = OLD.parent / (COMMIT + '-' + suffix)
-     assert sha(old / 'sail-build.json') == record['manifest_sha256']
+     raw = (old / 'sail-build.json').read_bytes()
+     manifest = json.loads(raw)
+@@ -117,7 +126,7 @@
+     assert {str(p.relative_to(old)) for p in runtime.iterdir() if p.is_file()}==set(manifest['artifacts'])
+     sealed[suffix] = {'manifest_sha256': hashlib.sha256(raw).hexdigest(),
+                       'artifacts': manifest['artifacts'], 'lock_sha256':sha(old/'verus/source/Cargo.lock'),
+-                      'source_sha256':{name:sha(old/'verus/source'/name) for name in json.loads(Path('/tmp/sail-m7-late-handoff-source-controls/identity.json').read_text())['source_sha256']}}
++                      'source_sha256':{name:sha(old/'verus/source'/name) for name in json.loads(Path('/tmp/sail-m7-preparation-namespace-visibility-source-controls/identity.json' if suffix=='b3b07d47d7542817' else '/tmp/sail-m7-late-handoff-source-controls/identity.json').read_text())['source_sha256']}}
+ save('preceding-runtime-seals.json', sealed)
+ 
+ started = time.monotonic()
+@@ -129,7 +138,7 @@
+             continue
+         if entry.is_file() or entry.is_symlink():
+             tar.add(entry, arcname=str(relative), recursive=False)
+-assert sha(SNAPSHOT / 'engine/verus/interactive.patch') == 'bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372'
++assert sha(SNAPSHOT / 'engine/verus/interactive.patch') == '955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e'
+ save('builder-before.json', {'archive_sha256': sha(archive), 'bytes': archive.stat().st_size,
+                             'elapsed_seconds': time.monotonic() - started,
+                             'preceding_patch_sha256': sha(SNAPSHOT / 'engine/verus/interactive.patch'),
 --- preceding/close-build.py
 +++ no-original-range/close-build.py
 @@ -1,9 +1,9 @@

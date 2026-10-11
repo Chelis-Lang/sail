@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "prepared; no counterfactual run",
+  "status": "Executed expected-negative and restored-positive PASS; see result.json",
   "full_patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
   "positive_result_sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
   "positive_engine_sha256": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
