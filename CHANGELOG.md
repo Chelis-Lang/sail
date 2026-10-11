@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Stage automatic Linux sysroot-digest reuse through a trusted local daemon.
+  Keep overlapping original caller guards, complete inventory checks and fresh
+  executable identities; fall back to local hashing on any unavailable or
+  invalid handoff. Bound background ownership and aggregate optional RPC work.
+
 - Invalidate retained Linux proof and sysroot-digest coverage on kernel mount
   events, including a bind mount restored before the next check. Preserve
   existing file guards and conservative fallback; test real mount restoration

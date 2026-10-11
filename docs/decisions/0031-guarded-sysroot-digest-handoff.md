@@ -201,9 +201,14 @@ complete actual inventory and path/canonical/device/inode rows, and captures
 only files eligible after those guards began. The FileDigests alias map is never
 populated from remote rows. Every failure retains the original local path.
 
-At this review stage the endpoint and import primitives are not enabled in the
-managed runner. Primitive transport/ownership controls do not establish original
-managed cold/warm acceptance or a measured product speedup.
+Root review permits staged runner integration of the endpoint and import
+primitives. The original caller Baseline is acquired before lookup, imported
+rows remain confined to its eligible captured map, and independent fill hints
+follow only a complete original local hash barrier. `sail serve` owns the
+optional endpoint and joins it on shutdown; its cache socket is private to the
+user. All failures retain local hashing. Primitive transport/ownership controls
+do not establish original managed cold/warm acceptance or a measured product
+speedup. This ADR remains proposed until the integrated acceptance is retained.
 
 The index reserves 96 MiB before starting its single builder and refuses a charge
 above 160 MiB including up to 32 MiB retained owners and a 16 MiB endpoint/queue

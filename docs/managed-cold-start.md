@@ -10,6 +10,13 @@ content or losing observation coverage requires fresh work. Cargo saying
 `fresh` is insufficient proof evidence. See [ADR 0023](decisions/0023-managed-incremental-workspace-verification.md)
 and the [freshness contract](freshness.md).
 
+The staged [guarded sysroot handoff](guarded-sysroots.md) addresses repeated
+runtime byte hashing in unchanged commands. It uses a continuously guarded
+local daemon owner and an overlapping original caller owner; it does not copy
+compiled artifacts or proof receipts into a cold target. Missing, busy, invalid
+or incompatible endpoints retain original local hashing. Complete integrated
+cold/warm acceptance and measured savings are still pending.
+
 A newly isolated target has no ordinary compiled dependency artifacts or proof
 receipts. Even a one-function project can first compile its macro dependency
 chain and verify vstd. Different projects and different engine/function/flag or

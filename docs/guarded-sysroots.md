@@ -7,10 +7,13 @@ for a warm command that started no verifier. The optional Linux daemon handoff
 in [ADR 0031](decisions/0031-guarded-sysroot-digest-handoff.md) is being implemented
 to reuse those content digests under uninterrupted kernel guards.
 
-The endpoint and independent import primitives are implemented but not yet
-enabled in the managed runner. Their controls are not a measured verification
-speedup or acceptance of the final M7 source engine. The existing local hashing
-path remains the current behavior.
+The managed runner now attempts this optional handoff from a running local
+`sail serve` daemon. No extra command or cache publication is required. The
+daemon uses a private user socket and owns the endpoint and maintenance worker
+through shutdown. An older or unavailable daemon keeps the original local
+hashing behavior. Integration is staged for the original cold/warm acceptance;
+primitive controls alone are not a measured verification speedup or acceptance
+of the final M7 source engine.
 
 The handoff is local to a trusted private Sail daemon. It does not read digest
 authority from disk, a shared cache or another host. Each caller acquires its
@@ -50,6 +53,6 @@ local daemon remains an explicit trust boundary, as described in
 
 Original proof verdicts, diagnostics, cache keys, unknown-serving policy and
 CLI/RPC deadlines do not change. Original managed cold/warm checks and corpus
-conformance must pass before the handoff is enabled and any product performance
-claim is made. See [managed-cold-start.md](managed-cold-start.md) and
+conformance must pass before this staged integration is accepted or any product
+performance claim is made. See [managed-cold-start.md](managed-cold-start.md) and
 [ROADMAP.md](ROADMAP.md) for current evidence and remaining qualification.

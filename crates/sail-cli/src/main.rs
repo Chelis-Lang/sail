@@ -318,6 +318,11 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         }
     };
     let mut job_server = job_server;
+    // The optional endpoint owns independent background guards. A refusal
+    // keeps managed verification on its original local content-hashing path.
+    let mut sysroot_server = sail_daemon::sysroot::bind(&socket)
+        .and_then(sail_daemon::sysroot::Server::spawn)
+        .ok();
     let activity = job_server.activity();
     let handle = server.handle();
     let signals = signal_hook::iterator::Signals::new([
@@ -336,6 +341,9 @@ fn serve(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
     }
     let result = server.run_with_activity(activity);
     job_server.shutdown();
+    if let Some(server) = sysroot_server.as_mut() {
+        server.shutdown();
+    }
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
