@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "source_commit": "88a88d584eebacf9ed6d00c6720a4953ef67f423",
+  "archive_sha256": "faf31ba7e3b405b936f1094883414166a1d7bddb8f107f89eb210faf031da39b",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Focused strict and original HTTP/refresh controls; no complete-gate or product acceptance substitute",
+  "strict": {
+    "phase": "strict",
+    "command": [
+      "docker",
+      "exec",
+      "-w",
+      "/tmp/sail-m7-http-refresh-validation",
+      "-e",
+      "CARGO_BUILD_JOBS=2",
+      "-e",
+      "NEXTEST_TEST_THREADS=1",
+      "sail-m7-handoff-validation",
+      "cargo",
+      "clippy",
+      "--locked",
+      "-p",
+      "sail-daemon",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 51.960287917
+  },
+  "http_controls": {
+    "phase": "http-controls",
+    "command": [
+      "docker",
+      "exec",
+      "-w",
+      "/tmp/sail-m7-http-refresh-validation",
+      "-e",
+      "CARGO_BUILD_JOBS=2",
+      "-e",
+      "NEXTEST_TEST_THREADS=1",
+      "sail-m7-handoff-validation",
+      "cargo",
+      "nextest",
+      "run",
+      "--locked",
+      "-p",
+      "sail-daemon",
+      "--profile",
+      "ci",
+      "-E",
+      "test(remote::refresh_tests) or test(shared::http_tests)"
+    ],
+    "exit_code": 100,
+    "elapsed_seconds": 103.26312620799999
+  },
+  "nextest_seconds": 13.783,
+  "tests": {
+    "run": 16,
+    "passed": 12,
+    "failed": 4,
+    "skipped": 51
+  },
+  "failed_tests": [
+    "remote::refresh_tests::complete_ca_bytes_and_validity_are_checked_before_loopback_reuse",
+    "shared::http_tests::lookup_waits_for_setup_publication_within_the_existing_budget",
+    "shared::http_tests::status_reads_existing_metrics_during_owned_transport_refresh",
+    "shared::http_tests::verified_http_reply_reaches_readers_while_initiator_is_paused"
+  ],
+  "findings": {
+    "private_ca": "Non-certificate PEM accepted; rustls from_pem only stores bytes and empty roots were permitted. Regression remains unchanged; explicit nonempty PEM certificate parsing follows.",
+    "setup_refresh": "Trace confirms fresh config validated and existing client reused at183983us; original setup-publication still times out.",
+    "timing": "Three original serving bounds fail; complete causes remain unestablished. No development-load attribution, acceptance inference or latency gain."
+  },
+  "log": {
+    "bytes": 14262,
+    "sha256": "ca0bb284b24e3d84f56a42fef5bdf153c732fb74ae37c1a4fb68cd2ca70c0450"
+  },
+  "qualification": {
+    "focused_http_pass": false,
+    "complete_gate_pass": false,
+    "m7_accepted": false
+  }
+}
