@@ -21,6 +21,12 @@ and wait operation 0. The reported common PC is absent from the complete
 recorded maps, so this does not supply a mapped user stack or a lock owner.
 The read attached no debugger and consumed no memory or pipe contents.
 
+A later non-consuming `FIONREAD` check found zero available bytes in each of
+the three solver children's stdin, stdout and stderr pipes. Their matching
+verifier pipe descriptors were recorded, with all process start identities
+checked before and after. There was no queued pipe input or unread solver reply
+at that instant; this does not identify the reason for the wait.
+
 These observations establish a sleeping pipeline. They do not identify the
 responsible lock, prove a deadlock, or establish emulation or overlapping work
 as its cause. No debugger attachment, pipe consumption, retry, source change,
