@@ -210,9 +210,13 @@ on frozen `012707a` passes all original checks: cold 216.080 s, unchanged
 The unchanged run still spends 15.992 s hashing sysroots despite zero verifier
 invocations. A bounded local daemon digest handoff is now wired into managed
 verification and `sail serve`, with overlapping complete caller/daemon guards.
-The frozen `7da9579` Linux product build passes; its original fresh cold/warm
-scenario and complete local gate are running. No benchmark speedup is yet
-accepted. A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
+The frozen `7da9579` Linux product build passes, but its original scenario
+[fails the first cold deadline](validation/m7-sysroot-activation-7da9579.md).
+The new scope encoder independently rejects byte-keyed environment maps and
+therefore never enables handoff. Its bounded streaming-pair fix passes
+[Linux regressions and strict checks](validation/m7-sysroot-selection-controls.json);
+complete integration remains pending. No benchmark speedup is yet accepted.
+A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
 detects restored mount changes throughout that handoff.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
 remains preserved. The
