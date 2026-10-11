@@ -17,14 +17,16 @@
   },
   "baseline_remote_sha256": "e99a242c4a2d0bb7104bf8f40a1264f6fd931600fa7d154c45445a171c7391e4",
   "payloads": {
-    "README.md": "31a23879191e6c26f63a45d66e91163a0cd6f76346de0fbaf97d965b50f1e0ec",
-    "analyze.py": "fd2674a3ff4eb7b19385701965d5e67a515f4d340e4aa6e47d7250d6cfffcfe0",
-    "baseline-observation.patch": "9e0d703a78ba9a060064dea3121d498732e913f1784716f50fd6ea24d8ce7754",
+    "README.md": "287fa4cc4ff567a4b7e4743b15df9bf8ab625055410f33de13afa9c09e1bb32c",
+    "analyze.py": "775a5a29ff75402ce85ced98c5ca5c8353ac1c504d94b731c294ccc3cd3f9377",
+    "baseline-observation.patch": "736551b023c01f5c99f7017ed7bb7d9b6d09695e37e42e4b0464fbf587d5c9d3",
     "baseline-remote.rs": "e99a242c4a2d0bb7104bf8f40a1264f6fd931600fa7d154c45445a171c7391e4",
-    "candidate-observation.patch": "a3c1f84d366de0ff7248766aee4e825ef961b329a8110fea8bd4c10754e493f1",
+    "candidate-observation.patch": "02e1d929f3350d69a955585787408d85942eddb250ba75ab437444e7a2549e35",
     "freeze-source.py": "22bd40ac5c43296240929cbce3c28646eec0dd8a7abb506fad40f901b88f9f58",
+    "from-2264076.patch": "432d4f63bff1c39972c476fe21bd20197141c96309eef923dc3c29a192e6032e",
     "original-stream-sensitivity.patch": "fd358b08fea8d8fbd73d46a2565a07b17a790aa83c3e5024146f13ccbb44e80f",
-    "run.py": "d46eec34752cf958af88b019dac798b45866c1543ac0770e321b1bc9fa69d55c"
+    "run.py": "f025aef616e57b301be5813ac1efa5804eb877dcdc2b15d96bd27bf761a1250b",
+    "test-runner.py": "717b64b135eb04b9ab78589ba516aaab9f897d37da701207dd26610d03a1eb33"
   },
   "target_reuse": "closed private shared-trust Cargo target after C closure and root slot grant; no target copy or warmth claim",
   "release_profile": true,
@@ -48,8 +50,9 @@
   "file_only_checks": {
     "python_ast": "PASS; no controller execution",
     "formatted_observation_overlays_apply_check": "PASS; no compilation",
-    "controller_runtime_controls": "not run",
-    "slot_granted": false
+    "controller_runtime_controls": "native execution not run",
+    "slot_granted": false,
+    "pure_controller_controls": "PASS: 10 fake-child/in-memory/static-overlay controls; no native actors"
   },
   "controller_limits_seconds": {
     "compile": 600,
@@ -60,5 +63,12 @@
   },
   "planned_native_source": "fresh private source from exact e6f6c7c Git archive; previous C source remains unchanged",
   "planned_native_target": "existing private shared-trust target, after actual C handoff and explicit lead grant",
-  "product_seals": "lead-supplied complete selected product/runtime and prior tested-image inventory required before mutation and after source restoration"
+  "product_seals": "lead-supplied complete selected product/runtime and prior tested-image inventory required before mutation and after source restoration",
+  "superseded_runner_freeze": {
+    "commit": "2264076",
+    "controller_sha256": "d46eec34752cf958af88b019dac798b45866c1543ac0770e321b1bc9fa69d55c",
+    "inputs_sha256": "10bd4a85f7c4df9a2c0e1aa6919ff722329332ddb2b05c9707d94ba5036b12e3",
+    "executed": false
+  },
+  "correction_scope": "sticky abnormal descendant closure refusal; bounded preallocation log read; missing comm/final traversal overrun => incomplete; production and original oracles unchanged"
 }

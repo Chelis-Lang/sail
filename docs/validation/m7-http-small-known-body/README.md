@@ -1,7 +1,9 @@
 # Pending Linux HTTP control and comparison runners
 
 Status: source-only preparation for `e6f6c7c`; no compiler, HTTP lookup or
-controller execution. The independent source review accepted the fixed-buffer
+native controller execution. Ten pure host controls pass for fake child cleanup,
+bounded log interpretation and sampler refusal guards; Rust/proc execution
+remains pending. The independent source review accepted the fixed-buffer
 candidate. It remains unselected. The original failed concurrent-reader scope
 and its eight-reader, 250 ms deadline are unchanged.
 
@@ -60,7 +62,9 @@ never counted as passing. The paired comparison requires both original
 outcomes to pass. Each invocation has a 30-second outer cleanup bound.
 
 The reviewed current-process sampler reads at most 4096 bytes per proc field,
-at most 64 task entries and checks a ten-millisecond traversal budget. Counter
+at most 64 task entries and checks a ten-millisecond traversal budget before
+each entry and again after the final read. A missing task comm marks the whole
+sample incomplete, even if another runtime task was identified. Counter
 interpretation refuses birth mismatches; raw reads may straddle a task change
 within this same test process. It records
 calling-helper and pinned reqwest runtime stat/schedstat/wchan, with a second
@@ -70,7 +74,8 @@ start/publication as well as send/body and server phases. These synchronous
 observations perturb elapsed time; they are diagnostic, not production or
 resource qualification. Proc syscall latency itself has no hard bound.
 
-`analyze.py` reads the retained raw streams, preserving unavailable results for
+`analyze.py` reads at most 32 MiB plus one sentinel byte before interpretation;
+it refuses larger logs before any full-file allocation. It preserves unavailable results for
 missing, incomplete or changed-birth counters. It reports whole lookup to
 publication, each caller's full elapsed time, transport/body elapsed intervals
 and matching helper/I/O CPU plus runqueue deltas. It does not turn raw
@@ -81,11 +86,32 @@ is not a distribution and cannot explain a historical timeout by itself.
 
 The runner writes its primary result before independent closure. It restores
 exact source and rechecks all protected bytes/modes and container birth.
-Interruptions route through owned child termination/reap before restoration;
-if retirement is unavailable, leave the applied source intact and report
-closure unavailable. It never restores source beneath a still-owned child.
+Interruptions route through the original owned group TERM/KILL and leader-reap
+waits. Any command timeout, interrupted wait, required group termination or
+signal during spawn/run sets sticky descendant/process-group uncertainty.
+Leader reap cannot clear it, including a race where the leader exits just after
+the timeout. Every next command, patch and restoration checks that guard. The
+runner then stops, leaves applied source intact and reports closure unavailable;
+only an explicit separate lead holder/group closure audit can authorize manual
+restoration or a newly reviewed scope. A failed spawn with unknown ownership
+also refuses restoration. Normal completed commands (including expected code
+101 counterfactuals) keep the original behavior and deadline/grace values.
 The lead performs a fresh dual-container holder audit after controller exit.
 Waited child closure alone does not certify absence of arbitrary descendants.
 The target's last compiled executable may be the instrumented candidate; its
 source is restored and future builds must process it normally. Retained
 positive, negative, restored and paired images keep their distinct scopes.
+
+## Retained runner correction
+
+Commit `2264076` retains the first runner freeze; it was never executed. Its
+review found that leader reap alone could permit restoration after forced
+cleanup. The correction changes only controller lifecycle/interpretation and
+both matched test-only samplers. Production candidate `e6f6c7c`, original
+fixture assertions, known-body counterfactual and all original deadlines remain
+unchanged. `inputs.json` retains the superseded controller/input hashes and
+binds the correction export plus `test-runner.py`. The ten pure controls create
+no process, HTTP request or compilation. Fake child tests prove timeout races,
+signals and failed termination retain uncertainty; Rust sampler checks are
+static overlay checks, not executable proc coverage. Native controls and actual
+closure remain required after the exclusive slot grant.

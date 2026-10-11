@@ -43,6 +43,41 @@ def pid1_birth():
     return int(raw.rsplit(")", 1)[1].split()[19])
 
 
+class ProcessClosure:
+    """Sticky uncertainty; a reaped leader does not prove descendant closure."""
+
+    def __init__(self):
+        self.reasons = []
+
+    def uncertain(self, reason):
+        if reason not in self.reasons:
+            self.reasons.append(reason)
+
+    def require_normal_completion(self):
+        if self.reasons:
+            raise RuntimeError("descendant/process-group closure uncertain; explicit lead audit required: "
+                               + ", ".join(self.reasons))
+
+
+def wait_child(child, limit, closure, kill_group):
+    """Keep original waits; forced cleanup never authorizes subsequent mutation."""
+    try:
+        child.wait(timeout=limit)
+    except BaseException:
+        # Mark even when the leader exits between the exception and poll().
+        closure.uncertain("wait interrupted or timed out")
+        raise
+    finally:
+        if child.poll() is None:
+            closure.uncertain("process-group termination required")
+            kill_group(child.pid, signal.SIGTERM)
+            try:
+                child.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                kill_group(child.pid, signal.SIGKILL)
+                child.wait(timeout=2)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
@@ -100,6 +135,7 @@ def main():
     phases = []
     active = None
     spawning = False
+    closure = ProcessClosure()
     started = time.monotonic()
     result = {"status": "RUNNING", "scope": "affected HTTP controls, isolated sensitivity and one matched comparison; unselected",
               "candidate_commit": inputs["candidate_commit"], "grant": seal(args.grant),
@@ -109,6 +145,8 @@ def main():
     write(args.output / "execution.json", result)
 
     def interrupt(number, _frame):
+        if active is not None or spawning:
+            closure.uncertain("signal during active command or spawn")
         for value in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             signal.signal(value, signal.SIG_IGN)
         raise InterruptedError("controller signal " + str(number))
@@ -118,6 +156,7 @@ def main():
 
     def run(command, label, limit):
         nonlocal active, spawning
+        closure.require_normal_completion()
         row = {"name": label, "command": command, "limit_seconds": limit}
         begin = time.monotonic()
         phases.append(row)
@@ -131,17 +170,11 @@ def main():
                            launched_unix_ns=time.time_ns())
                 write(args.output / "progress.json", result)
                 try:
-                    active.wait(timeout=limit)
+                    wait_child(active, limit, closure, os.killpg)
                 finally:
-                    if active.poll() is None:
-                        os.killpg(active.pid, signal.SIGTERM)
-                        try:
-                            active.wait(timeout=2)
-                        except subprocess.TimeoutExpired:
-                            os.killpg(active.pid, signal.SIGKILL)
-                            active.wait(timeout=2)
                     row["exit_code"] = active.returncode
-                    active = None
+                    if active.poll() is not None:
+                        active = None
         finally:
             row["elapsed_seconds"] = time.monotonic() - begin
             row["raw"] = [seal(args.output / (label + suffix)) for suffix in (".stdout", ".stderr")]
@@ -194,10 +227,12 @@ def main():
         return row
 
     def patch(name):
+        closure.require_normal_completion()
         subprocess.run(["git", "apply", "--check", str(payload / name)], cwd=args.source, check=True)
         subprocess.run(["git", "apply", str(payload / name)], cwd=args.source, check=True)
 
     def restore():
+        closure.require_normal_completion()
         for name, data in before.items():
             (args.source / name).write_bytes(data)
 
@@ -247,8 +282,11 @@ def main():
     finally:
         # Preserve the primary scope before independent source/protected closure.
         result["elapsed_seconds"] = time.monotonic() - started
+        result["process_group_closure_uncertain"] = bool(closure.reasons)
+        result["closure_uncertainty_reasons"] = list(closure.reasons)
         write(args.output / "primary.json", result)
         try:
+            closure.require_normal_completion()
             assert active is None and not spawning, "child ownership/retirement unavailable; leave applied source untouched"
             restore()
             source_check()

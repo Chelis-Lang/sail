@@ -1,6 +1,6 @@
 --- a/crates/sail-daemon/src/remote.rs
 +++ b/crates/sail-daemon/src/remote.rs
-@@ -175,6 +175,90 @@
+@@ -175,6 +175,97 @@
      metrics: Arc<Metrics>,
      ca_hash: Option<[u8; 32]>,
      timeout: Duration,
@@ -50,8 +50,11 @@
 +                continue;
 +            };
 +            let path = task.path();
-+            if owner_field(&path.join("comm")).is_some_and(|name| name.trim() == "reqwest-interna")
-+            {
++            let Some(name) = owner_field(&path.join("comm")) else {
++                complete = false;
++                continue;
++            };
++            if name.trim() == "reqwest-interna" {
 +                let before = owner_field(&path.join("stat"));
 +                let sched = owner_field(&path.join("schedstat"));
 +                let wait = owner_field(&path.join("wchan"));
@@ -70,7 +73,11 @@
 +    } else {
 +        complete = false;
 +    }
-+    (started, std::time::Instant::now(), complete, rows)
++    let ended = std::time::Instant::now();
++    if ended.duration_since(started) >= std::time::Duration::from_millis(10) {
++        complete = false;
++    }
++    (started, ended, complete, rows)
 +}
 +
 +#[cfg(test)]
@@ -91,7 +98,7 @@
  }
  
  #[derive(Default)]
-@@ -367,7 +451,11 @@
+@@ -367,7 +458,11 @@
              .header("Accept-Encoding", "identity");
          #[cfg(test)]
          self.phase("request-built");
@@ -103,7 +110,7 @@
          #[cfg(test)]
          self.phase("request-send-returned");
          let response = sent.map_err(|e| {
-@@ -400,10 +488,14 @@
+@@ -400,10 +495,14 @@
              self.record("oversized-response", true);
              return Err(failure("shared response exceeds entry limit"));
          }
