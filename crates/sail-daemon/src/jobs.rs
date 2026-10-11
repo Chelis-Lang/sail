@@ -11,7 +11,7 @@ use std::io::{self, Write as _};
 use std::os::unix::fs::PermissionsExt as _;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -19,6 +19,10 @@ use std::time::Duration;
 use sail_api::jobs::{Currentness, Lifecycle, Request, Response, Status, Submission};
 
 use store::Stored;
+
+// Also bounds result-cache retirement storage: each endpoint worker can be
+// suspended in at most one final owner drop at a time.
+const MAX_CLIENTS: usize = 32;
 
 struct State {
     root: PathBuf,
@@ -162,11 +166,11 @@ impl Drop for JobHandle {
 }
 
 fn endpoint(listener: &UnixListener, state: &Arc<State>) {
-    let clients = Arc::new(AtomicU64::new(0));
+    let clients = Arc::new(AtomicUsize::new(0));
     while !state.stop.load(Ordering::SeqCst) {
         match listener.accept() {
             Ok((mut stream, _)) => {
-                if clients.fetch_add(1, Ordering::SeqCst) >= 32 {
+                if clients.fetch_add(1, Ordering::SeqCst) >= MAX_CLIENTS {
                     clients.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }

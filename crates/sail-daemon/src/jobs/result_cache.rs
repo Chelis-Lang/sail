@@ -10,6 +10,22 @@ use sail_api::jobs::Currentness;
 
 const MAX_BYTES: usize = 128 * 1024 * 1024;
 const MAX_ENTRIES: usize = 16;
+const ARC_HEADER_BYTES: usize = 2 * std::mem::size_of::<usize>();
+const MAP_NODE_BYTES: usize = 1024;
+
+// Rust 1.99 keeps the empty leaf root after remove/pop_first, and Arc frees its
+// outer allocation only after dropping Frames (including Charge). These bytes
+// therefore cannot use the refundable per-family quota. Reserve their maximum
+// overlap permanently from the same 128 MiB ceiling, including fixed owners and
+// each endpoint worker's off-lock retired Arc vector. No frame bytes are exempt.
+const ADMISSION_MARGIN: usize = MAP_NODE_BYTES
+    + std::mem::size_of::<ResultCache>()
+    + std::mem::size_of::<Budget>()
+    + ARC_HEADER_BYTES
+    + super::MAX_CLIENTS
+        * (std::mem::size_of::<Frames>()
+            + ARC_HEADER_BYTES
+            + MAX_ENTRIES * std::mem::size_of::<Arc<Frames>>());
 
 pub(super) struct Frames {
     current: Arc<Vec<u8>>,
@@ -35,13 +51,13 @@ impl Frames {
         // key storage and a conservative 1 KiB per indexed BTree node. The
         // pinned map layout is also audited by sail-api's ownership controls.
         let mut size = std::mem::size_of::<Self>()
-            .checked_add(2 * std::mem::size_of::<usize>())?
+            .checked_add(ARC_HEADER_BYTES)?
             .checked_add(std::mem::size_of::<String>() + key_capacity)?
-            .checked_add(1024)?;
+            .checked_add(MAP_NODE_BYTES)?;
         for frame in [&self.current, &self.historical, &self.unknown] {
             size = size
                 .checked_add(frame.capacity())?
-                .checked_add(std::mem::size_of::<Vec<u8>>() + 2 * std::mem::size_of::<usize>())?;
+                .checked_add(std::mem::size_of::<Vec<u8>>() + ARC_HEADER_BYTES)?;
         }
         Some(size)
     }
@@ -53,7 +69,7 @@ impl Frames {
         });
         WireFrame {
             bytes,
-            _owner: Some(Arc::clone(self)),
+            _owner: self.charge.as_ref().map(|_| Arc::clone(self)),
         }
     }
 }
@@ -87,7 +103,7 @@ impl Default for Budget {
     fn default() -> Self {
         Self {
             used: AtomicUsize::new(0),
-            limit: MAX_BYTES,
+            limit: MAX_BYTES - ADMISSION_MARGIN,
         }
     }
 }
@@ -111,7 +127,21 @@ struct Charge {
 impl Drop for Charge {
     fn drop(&mut self) {
         self.budget.used.fetch_sub(self.bytes, Ordering::AcqRel);
+        #[cfg(test)]
+        REFUND_GATE.with(|gate| {
+            if let Some(gate) = gate.borrow().as_ref() {
+                gate.0.wait();
+                gate.1.wait();
+            }
+        });
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    // Pauses the actual refund inside Frames destruction, while its outer Arc
+    // allocation is still live. Only the explicitly owned test thread opts in.
+    static REFUND_GATE: std::cell::RefCell<Option<Arc<(std::sync::Barrier, std::sync::Barrier)>>> = const { std::cell::RefCell::new(None) };
 }
 #[derive(Default)]
 struct Entries {
@@ -324,6 +354,96 @@ mod tests {
         assert!(cache.get("restored").is_some());
         drop(restored);
         cache.remove("restored");
+        assert_eq!(cache.budget.used.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn fixed_margin_survives_empty_index_and_actual_outer_arc_refund() {
+        let cache = ResultCache::default();
+        let first = cache.insert("a".to_owned(), frames(1));
+        let output = first.select(Currentness::Current);
+        drop(first);
+        cache.remove("a"); // Pinned BTreeMap retains its empty root.
+        let gate = Arc::new((std::sync::Barrier::new(2), std::sync::Barrier::new(2)));
+        let (empty, refunded, refused, fits, joined) = std::thread::scope(|scope| {
+            let worker_gate = Arc::clone(&gate);
+            let worker = scope.spawn(move || {
+                REFUND_GATE.with(|slot| *slot.borrow_mut() = Some(worker_gate));
+                drop(output); // Charge refunds before the outer Arc can deallocate.
+                REFUND_GATE.with(|slot| *slot.borrow_mut() = None);
+            });
+            gate.0.wait();
+            let empty = cache
+                .entries
+                .lock()
+                .is_ok_and(|entries| entries.values.is_empty());
+            let refunded = cache.budget.used.load(Ordering::Acquire) == 0;
+            let refused = cache.budget.reserve(MAX_BYTES).is_none();
+            let reservation = cache.budget.reserve(cache.budget.limit);
+            let fits = reservation.is_some()
+                && cache.budget.used.load(Ordering::Acquire) + ADMISSION_MARGIN == MAX_BYTES;
+            drop(reservation);
+            // Release/join the real destructor before any assertion.
+            gate.1.wait();
+            (empty, refunded, refused, fits, worker.join().is_ok())
+        });
+        assert!(empty && refunded && refused && fits && joined);
+        assert_eq!(cache.budget.used.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn fixed_margin_covers_pinned_index_and_all_endpoint_retirement_owners() {
+        // Rust 1.99 B=6: eleven String/Arc slots, parent pointer/index/length,
+        // and (for internal nodes) twelve pointer edges. Include worst-case
+        // padding at each fixed metadata member, rather than assuming repr(C).
+        let node_upper = 11 * (std::mem::size_of::<String>() + std::mem::size_of::<Arc<Frames>>())
+            + 15 * std::mem::size_of::<usize>();
+        assert!(node_upper <= MAP_NODE_BYTES);
+        let fixed =
+            std::mem::size_of::<ResultCache>() + std::mem::size_of::<Budget>() + ARC_HEADER_BYTES;
+        let retiring = super::super::MAX_CLIENTS
+            * (std::mem::size_of::<Frames>()
+                + ARC_HEADER_BYTES
+                + MAX_ENTRIES * std::mem::size_of::<Arc<Frames>>());
+        assert_eq!(ADMISSION_MARGIN, MAP_NODE_BYTES + fixed + retiring);
+        const { assert!(ADMISSION_MARGIN < MAX_BYTES) };
+        assert_eq!(
+            ResultCache::default().budget.limit + ADMISSION_MARGIN,
+            MAX_BYTES
+        );
+    }
+
+    #[test]
+    fn quota_refused_output_drops_unused_variants_with_the_uncached_family() {
+        let cache = ResultCache {
+            budget: Arc::new(Budget {
+                used: AtomicUsize::new(0),
+                limit: 2000,
+            }),
+            ..ResultCache::default()
+        };
+        let first = cache.insert_bounded("a".to_owned(), frames(100), 1000, 1);
+        let held = first.select(Currentness::Current);
+        drop(first);
+        let historical = Arc::new(vec![8]);
+        let unknown = Arc::new(vec![9]);
+        let historical_weak = Arc::downgrade(&historical);
+        let unknown_weak = Arc::downgrade(&unknown);
+        let refused = cache.insert_bounded(
+            "b".to_owned(),
+            Frames::new(Arc::new(vec![7; 100]), historical, unknown),
+            1000,
+            1,
+        );
+        assert!(cache.get("b").is_none());
+        assert!(refused.charge.is_none());
+        let output = refused.select(Currentness::Current);
+        drop(refused);
+        assert!(historical_weak.upgrade().is_none());
+        assert!(unknown_weak.upgrade().is_none());
+        assert_eq!(&*output, &[7; 100]);
+        assert!(cache.budget.used.load(Ordering::Acquire) > 0);
+        drop(held);
         assert_eq!(cache.budget.used.load(Ordering::Acquire), 0);
     }
 }

@@ -8,6 +8,8 @@ semantic versioning once the API is published.
 - Charge cached complete-result frame families by retained buffer capacity, and
   keep their charge through an in-flight response after eviction. When the
   128 MiB quota is unavailable, return the complete response without caching it.
+  Reserve fixed index, control and retirement headroom inside that ceiling;
+  uncached output releases the two unselected currentness variants.
 
 - Move owned MCP result graphs through response envelopes and encode complete
   replies before taking the stdout write lock. Preserve complete text and

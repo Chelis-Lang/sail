@@ -23,6 +23,13 @@ log hashes and the separately preserved tested ELF are in the
 [machine-readable record](m7-result-frame-ownership.json). Earlier setup and
 strict-check failures remain retained with the private raw evidence.
 
+That original 80-test scope addresses the capacity and evicted-output defects.
+It does not cover the later independent finding that the outer Arc deallocates
+after its refundable charge drops, or that the empty BTree root remains
+allocated. The [fixed admission margin](m7-result-frame-admission-margin.md)
+records the separate correction and controls within the same ceiling. The
+original pass and failed drafts remain retained.
+
 This is local Linux amd64 Docker emulation. It does not establish the original
 reader latency threshold or source-engine acceptance. The earlier full Result
 p95 failure remains open; no latency improvement is inferred from these tests.
