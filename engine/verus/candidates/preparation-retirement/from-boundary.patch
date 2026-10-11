@@ -1,0 +1,396 @@
+diff --git a/source/rust_verify/src/sail_namespace.rs b/source/rust_verify/src/sail_namespace.rs
+--- a/source/rust_verify/src/sail_namespace.rs
++++ b/source/rust_verify/src/sail_namespace.rs
+@@ -14,6 +14,8 @@
+ );
+ #[cfg(test)]
+ static DROP_PAUSE: Mutex<Option<DropPause>> = Mutex::new(None);
++#[cfg(test)]
++static RETIREMENT_PAUSE: Mutex<Option<DropPause>> = Mutex::new(None);
+ struct Owner;
+ impl Drop for Owner {
+     fn drop(&mut self) {
+@@ -41,6 +43,37 @@
+     changed: Condvar,
+     _owner: Owner,
+ }
++#[derive(Default)]
++struct Completion {
++    retired: Mutex<bool>,
++    changed: Condvar,
++}
++/// Compiler-only lexical guard, installed before its borrowed namespace guard.
++/// This is a lifetime acknowledgement, never source authority.
++pub(super) struct Retirement {
++    completion: Arc<Completion>,
++}
++impl Drop for Retirement {
++    fn drop(&mut self) {
++        // Recover poison only to notify disposal. No source validator, Ready
++        // state or proof authority is accessed through this separate control.
++        let mut retired = match self.completion.retired.lock() {
++            Ok(retired) => retired,
++            Err(error) => error.into_inner(),
++        };
++        *retired = true;
++        self.completion.changed.notify_all();
++        drop(retired);
++        #[cfg(test)]
++        {
++            let pause = RETIREMENT_PAUSE.lock().ok().and_then(|mut value| value.take());
++            if let Some((started, resume)) = pause {
++                let _ = started.send(());
++                let _ = resume.recv();
++            }
++        }
++    }
++}
+ pub(super) fn retained_bytes() -> usize {
+     OWNED.load(Ordering::Acquire)
+         + if QUEUE_USED.load(Ordering::Acquire) {
+@@ -55,9 +88,11 @@
+ }
+ pub(super) struct Request {
+     shared: Arc<Shared>,
++    completion: Arc<Completion>,
+ }
+ pub(super) struct Lease {
+     shared: Arc<Shared>,
++    completion: Arc<Completion>,
+ }
+ impl Lease {
+     pub(super) fn pair() -> Option<(Self, Request)> {
+@@ -74,11 +109,14 @@
+             changed: Condvar::new(),
+             _owner: Owner,
+         });
++        // The existing active reservation precedes BOTH fixed allocations.
++        let completion = Arc::new(Completion::default());
+         Some((
+             Self {
+                 shared: Arc::clone(&shared),
++                completion: Arc::clone(&completion),
+             },
+-            Request { shared },
++            Request { shared, completion },
+         ))
+     }
+     pub(super) fn ready(&self) -> bool {
+@@ -110,6 +148,24 @@
+         }
+         state.reply.take().unwrap_or(false)
+     }
++    /// Normal-path retirement, after Ready and the complete worker operation.
++    /// The caller retains PREPARATION_GATE until this returns and this Lease
++    /// physically drops. Drop itself remains a non-waiting disconnect.
++    pub(super) fn finish(&self) {
++        if let Ok(mut state) = self.shared.state.lock() {
++            state.requester = false;
++        }
++        self.shared.changed.notify_all();
++        let Ok(mut retired) = self.completion.retired.lock() else {
++            return;
++        };
++        while !*retired {
++            let Ok(next) = self.completion.changed.wait(retired) else {
++                return;
++            };
++            retired = next;
++        }
++    }
+ }
+ impl Drop for Lease {
+     fn drop(&mut self) {
+@@ -120,6 +176,11 @@
+     }
+ }
+ impl Request {
++    /// Install before map.files(), then dispose after service and that borrow.
++    /// On unwind lexical drop order performs the same lifetime notification.
++    pub(super) fn retirement_guard(&self) -> Retirement {
++        Retirement { completion: Arc::clone(&self.completion) }
++    }
+     pub(super) fn serve(self, mut validate: impl FnMut([u64; 2]) -> bool) {
+         let Ok(mut state) = self.shared.state.lock() else {
+             return;
+@@ -161,6 +222,14 @@
+     std::mem::size_of::<Shared>() + 2 * std::mem::size_of::<usize>()
+ }
+ #[cfg(test)]
++pub(super) fn completion_allocation_bytes() -> usize {
++    std::mem::size_of::<Completion>() + 2 * std::mem::size_of::<usize>()
++}
++#[cfg(test)]
++pub(super) fn retirement_handle_bytes() -> usize {
++    std::mem::size_of::<Retirement>()
++}
++#[cfg(test)]
+ mod tests {
+     use super::Lease;
+     use std::sync::{
+@@ -312,3 +381,134 @@
+         assert!(std::mem::size_of::<super::Request>() + std::mem::size_of::<super::Lease>() <= 128);
+     }
+ }
++
++#[cfg(test)]
++mod retirement_tests {
++    use super::*;
++    use std::sync::mpsc;
++    use std::time::Duration;
++
++    fn map() -> rustc_span::source_map::SourceMap {
++        rustc_data_structures::sync::set_dyn_thread_safe_mode(false);
++        assert!(rustc_data_structures::sync::check_dyn_thread_safe().is_none());
++        let map = rustc_span::source_map::SourceMap::new(
++            rustc_span::source_map::FilePathMapping::empty(),
++        );
++        map.new_source_file(rustc_span::FileName::Custom("first".into()), "abc".to_owned());
++        map
++    }
++
++    #[test]
++    fn old_disconnect_under_live_compiler_owner_refuses_next_admission() {
++        let map = map();
++        let (lease, request) = Lease::pair().unwrap();
++        // Force the legal receiver scheduling window: Ready was published,
++        // but the compiler still owns Request and has not handled disconnect.
++        request.shared.state.lock().unwrap().ready = true;
++        let files = map.files();
++        assert_eq!(files.len(), 1);
++        let worker = std::thread::spawn(move || {
++            assert!(lease.ready());
++            drop(lease); // The unchanged old normal-return disconnect.
++        });
++        worker.join().unwrap();
++        assert_eq!(active_bytes(), CONTROL_BYTES);
++        assert!(Lease::pair().is_none());
++        let retirement = request.retirement_guard();
++        request.serve(|_| panic!("disconnected request must not validate"));
++        drop(files);
++        drop(retirement);
++        assert_eq!(active_bytes(), 0);
++    }
++
++    #[test]
++    fn normal_finish_waits_for_actual_compiler_guard_and_owner_retirement() {
++        let map = map();
++        let (lease, request) = Lease::pair().unwrap();
++        let retirement = request.retirement_guard();
++        let files = map.files();
++        let (finished, result) = mpsc::sync_channel(1);
++        let worker = std::thread::spawn(move || {
++            assert!(lease.ready());
++            assert!(lease.validate([1, 2]));
++            lease.finish();
++            drop(lease);
++            finished.send(()).unwrap();
++        });
++        request.serve(|words| { assert_eq!(files.len(), 1); words == [1, 2] });
++        // The service Request is gone, but the real borrowed namespace and
++        // lifetime token remain. The worker is still the charged last owner.
++        assert_eq!(active_bytes(), CONTROL_BYTES);
++        assert!(matches!(result.try_recv(), Err(mpsc::TryRecvError::Empty)));
++        drop(files);
++        map.new_source_file(rustc_span::FileName::Custom("after".into()), "xyz".to_owned());
++        drop(retirement);
++        result.recv_timeout(Duration::from_secs(1)).unwrap();
++        worker.join().unwrap();
++        assert_eq!(active_bytes(), 0);
++        drop(Lease::pair().unwrap());
++    }
++
++    #[test]
++    fn retirement_before_waiter_registration_is_not_lost() {
++        let (lease, request) = Lease::pair().unwrap();
++        let retirement = request.retirement_guard();
++        drop(request); // Peer loss: no source authority or Ready is granted.
++        assert!(!lease.ready());
++        drop(retirement);
++        lease.finish(); // Predicate is already true, without an extra signal.
++        drop(lease);
++        assert_eq!(active_bytes(), 0);
++    }
++
++    #[test]
++    fn validator_unwind_retires_guard_and_wakes_normal_finish() {
++        let map = map();
++        let (lease, request) = Lease::pair().unwrap();
++        let worker = std::thread::spawn(move || {
++            assert!(lease.ready());
++            assert!(!lease.validate([1, 2]));
++            lease.finish();
++        });
++        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
++            let _retirement = request.retirement_guard();
++            let _files = map.files();
++            request.serve(|_| panic!("controlled validator unwind"));
++        })).is_err());
++        worker.join().unwrap();
++        map.new_source_file(rustc_span::FileName::Custom("after unwind".into()), "xyz".to_owned());
++        assert_eq!(active_bytes(), 0);
++    }
++
++    #[test]
++    fn acknowledged_old_completion_shell_remains_covered_after_active_refund() {
++        let (lease, request) = Lease::pair().unwrap();
++        let retirement = request.retirement_guard();
++        let old_completion = Arc::downgrade(&retirement.completion);
++        drop(request);
++        let (started, notice) = mpsc::sync_channel(0);
++        let (resume, continue_drop) = mpsc::sync_channel(0);
++        *RETIREMENT_PAUSE.lock().unwrap() = Some((started, continue_drop));
++        let retiring = std::thread::spawn(move || drop(retirement));
++        notice.recv_timeout(Duration::from_secs(1)).unwrap();
++        lease.finish();
++        drop(lease);
++        assert_eq!(active_bytes(), 0);
++        assert!(old_completion.upgrade().is_some());
++        assert_eq!(retained_bytes(), QUEUE_RESERVE);
++        let next = Lease::pair().unwrap();
++        assert_eq!(retained_bytes(), QUEUE_RESERVE + CONTROL_BYTES);
++        drop(next);
++        resume.send(()).unwrap();
++        retiring.join().unwrap();
++        assert!(old_completion.upgrade().is_none());
++        assert_eq!(retained_bytes(), QUEUE_RESERVE);
++    }
++
++    #[test]
++    fn fixed_completion_and_retiring_native_candidates_fit_old_margin() {
++        assert!(2 * shared_allocation_bytes() + 2 * completion_allocation_bytes()
++            + 2 * std::mem::size_of::<Request>() + 2 * std::mem::size_of::<Lease>()
++            + 2 * retirement_handle_bytes() + 10 * 256 + 512 <= 4096);
++    }
++}
+diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
+--- a/source/rust_verify/src/sail_engine.rs
++++ b/source/rust_verify/src/sail_engine.rs
+@@ -606,10 +606,23 @@
+ }
+ #[cfg(test)]
+ pub(super) fn namespace_shared_allocation_bytes()->usize{sail_namespace::shared_allocation_bytes()}
++#[cfg(test)]
++pub(super) fn namespace_completion_allocation_bytes()->usize{sail_namespace::completion_allocation_bytes()}
++#[cfg(test)]
++pub(super) fn namespace_retirement_handle_bytes()->usize{sail_namespace::retirement_handle_bytes()}
+ pub(crate) struct NamespaceRequest { bridge:sail_namespace::Request, sources:Arc<Sources> }
+ pub(super) fn serve_namespace(request:NamespaceRequest,map:&SourceMap){
+-    let files=map.files();
+-    request.bridge.serve(|words|namespace_validation(&request.sources,words,&files));
++    let NamespaceRequest{bridge,sources}=request;
++    // This token precedes the real files guard, so unwind releases the later
++    // guard before acknowledging retirement. No queued reporter is nested here.
++    let retirement=bridge.retirement_guard();
++    {
++        let files=map.files();
++        bridge.serve(|words|namespace_validation(&sources,words,&files));
++        #[cfg(test)] namespace_retirement_adapter_tests::pause_before_guard_retirement();
++    }
++    drop(sources);
++    drop(retirement);
+ }
+ fn with_namespace<R>(map:Option<&SourceMap>,queue:Option<&std::sync::mpsc::Sender<ReporterMessage>>,sources:&Arc<Sources>,operation:impl FnOnce(&dyn Fn(&vir::messages::Span)->Option<()>)->R)->Option<R>{
+     if let Some(map)=map {
+@@ -619,20 +632,26 @@
+     let Some(queue)=queue else{trace_namespace_admission("absent-queue");return None;};
+     // PREPARATION_GATE must already be held: at most one rendezvous exists.
+     // Receiver-side files remain borrowed through Ready, all validations, and
+-    // the worker's complete decode/restore or cache publication. Lease disposal
+-    // disconnects even on unwind: no Drop sends or waits for an acknowledgement.
++    // the worker's complete decode/restore or cache publication. Normal return
++    // acknowledges compiler retirement before disposing the Lease under this
++    // gate. Drop remains non-waiting on early failure, cancellation and unwind.
+     let Some((lease,bridge))=sail_namespace::Lease::pair() else{trace_namespace_admission("pair-busy");return None;};
+     retained_charge();
+     if queue.send(ReporterMessage::PreparationNamespace(Box::new(NamespaceRequest{bridge,sources:Arc::clone(sources)}))).is_err(){trace_namespace_admission("queue-disconnected");return None;}
+     if !lease.ready(){trace_namespace_admission("ready-disconnected-or-poisoned");return None;}
+-    Some(operation(&|span|{
++    let result=operation(&|span|{
+         let result=provenance_key(span).and_then(|key|match key {
+             ProvenanceKey::Imported(words)=>lease.validate(words).then_some(()),
+             ProvenanceKey::Local(..)=>Some(()),
+         });
+         if result.is_none(){trace_namespace_span(span);}
+         result
+-    }))
++    });
++    // Also finish ordinary inner refusals: they still had a live service.
++    // This never changes the operation result, restores twice or retries.
++    lease.finish();
++    drop(lease);
++    Some(result)
+ }
+ fn current_bindings(krate:&Krate,ctx:&vir::context::Ctx)->Option<vir::messages::SailSpanBindings> {
+     struct Sink;impl Write for Sink {fn write(&mut self,bytes:&[u8])->std::io::Result<usize>{Ok(bytes.len())}fn flush(&mut self)->std::io::Result<()>{Ok(())}}
+@@ -1239,3 +1258,56 @@
+         IMPORT_TRACE_RECORDS.store(previous.0,Ordering::Release);IMPORT_TRACE_BYTES.store(previous.1,Ordering::Release);IMPORT_TRACE_STOP.store(previous.2,Ordering::Release);
+     }
+ }
++
++#[cfg(test)] mod namespace_retirement_adapter_tests {
++    use super::*;
++    type GuardPause=(std::sync::mpsc::SyncSender<()>,std::sync::mpsc::Receiver<()>);
++    static GUARD_PAUSE:std::sync::Mutex<Option<GuardPause>>=std::sync::Mutex::new(None);
++    pub(super) fn pause_before_guard_retirement(){
++        let pause=GUARD_PAUSE.lock().unwrap().take();
++        if let Some((started,resume))=pause{let _=started.send(());let _=resume.recv();}
++    }
++    #[test]
++    fn actual_worker_adapter_retires_both_success_and_inner_refusal_before_return() {
++        rustc_data_structures::sync::set_dyn_thread_safe_mode(false);
++        assert!(rustc_data_structures::sync::check_dyn_thread_safe().is_none());
++        let map=SourceMap::new(rustc_span::source_map::FilePathMapping::empty());
++        for imported in [false,true] {
++            let sources=Arc::new(Sources(Vec::new(),0,std::sync::Mutex::new(ProvenanceMemo::default()),Err(crate::spans::sail_owned_imports::CaptureFailure::Missing)));
++            let (sender,receiver)=std::sync::mpsc::channel();
++            let (finished,result)=std::sync::mpsc::sync_channel(1);
++            let worker=std::thread::spawn(move || {
++                let _gate=PREPARATION_GATE.lock().unwrap();
++                let span=if imported {
++                    vir::messages::Span{raw_span:Arc::new(()),id:1,data:vec![1,2],as_string:"exact missing import".to_owned()}
++                }else{
++                    vir::messages::Span{raw_span:Arc::new(rustc_span::SpanData{lo:rustc_span::BytePos(0),hi:rustc_span::BytePos(0),ctxt:rustc_span::SyntaxContext::root(),parent:None}),id:0,data:Vec::new(),as_string:"no location".to_owned()}
++                };
++                let outcome=with_namespace(None,Some(&sender),&sources,|validate|validate(&span).map(|()|17));
++                finished.send(outcome).unwrap();
++            });
++            let (started,notice)=std::sync::mpsc::sync_channel(0);
++            let (resume,continue_service)=std::sync::mpsc::sync_channel(0);
++            *GUARD_PAUSE.lock().unwrap()=Some((started,continue_service));
++            // This peer always releases the pause before any assertion, so a
++            // counterfactual failure cannot strand the compiler or worker.
++            let observer=std::thread::spawn(move||{
++                notice.recv_timeout(std::time::Duration::from_secs(1)).unwrap();
++                let early=result.recv_timeout(std::time::Duration::from_millis(100));
++                let live=sail_namespace::active_bytes();
++                resume.send(()).unwrap();
++                (early,live,result)
++            });
++            let message=receiver.recv_timeout(std::time::Duration::from_secs(1)).unwrap();
++            let ReporterMessage::PreparationNamespace(request)=message else{panic!("expected only the existing prep queue request")};
++            serve_namespace(*request,&map);
++            let (early,live,result)=observer.join().unwrap();
++            worker.join().unwrap();
++            assert_eq!(sail_namespace::active_bytes(),0);
++            assert!(matches!(early,Err(std::sync::mpsc::RecvTimeoutError::Timeout)),"worker returned before compiler guard retirement");
++            assert_eq!(live,16*1024);
++            assert_eq!(result.recv_timeout(std::time::Duration::from_secs(1)).unwrap(),Some(if imported{None}else{Some(17)}));
++            map.new_source_file(rustc_span::FileName::Custom(format!("after-{imported}")),"abc".to_owned());
++        }
++    }
++}
+diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
+--- a/source/rust_verify/src/verifier.rs
++++ b/source/rust_verify/src/verifier.rs
+@@ -3481,6 +3481,10 @@
+         let slot=(size_of::<ReporterMessage>()+size_of::<usize>()).div_ceil(align)*align;
+         let block=(31*slot+size_of::<usize>()).div_ceil(align)*align;
+         assert!(2*sail_engine::namespace_shared_allocation_bytes()+2*size_of::<sail_engine::NamespaceRequest>()+4*256+512<=4096);
++        // New Shared/Completion may each race two native initializers per
++        // Mutex/Condvar; one retired Completion can still own two native
++        // objects after its notification. All fit the SAME fixed4KiB margin.
++        assert!(2*sail_engine::namespace_shared_allocation_bytes()+2*sail_engine::namespace_completion_allocation_bytes()+2*size_of::<sail_engine::NamespaceRequest>()+2*sail_engine::namespace_retirement_handle_bytes()+10*256+512<=4096);
+         assert!(3*block+4096<=64*1024,"preparation queue blocks/retiring fixed shells exceed reserved ownership");
+     }
+ }

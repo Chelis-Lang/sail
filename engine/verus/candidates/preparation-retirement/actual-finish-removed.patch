@@ -1,0 +1,11 @@
+diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
+--- a/source/rust_verify/src/sail_engine.rs
++++ b/source/rust_verify/src/sail_engine.rs
+@@ -649,7 +649,6 @@
+     });
+     // Also finish ordinary inner refusals: they still had a live service.
+     // This never changes the operation result, restores twice or retries.
+-    lease.finish();
+     drop(lease);
+     Some(result)
+ }

@@ -1,0 +1,20 @@
+
+running 1 test
+test namespace::retirement_tests::normal_finish_waits_for_actual_compiler_guard_and_owner_retirement ... FAILED
+
+failures:
+
+---- namespace::retirement_tests::normal_finish_waits_for_actual_compiler_guard_and_owner_retirement stdout ----
+
+thread 'namespace::retirement_tests::normal_finish_waits_for_actual_compiler_guard_and_owner_retirement' (123301288) panicked at <home>/code/sail/.claude/worktrees/m7-mcp-client/target/preparation-retirement-api-1/finish-removed/namespace.rs:432:9:
+assertion `left == right` failed
+  left: 0
+ right: 16384
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    namespace::retirement_tests::normal_finish_waits_for_actual_compiler_guard_and_owner_retirement
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.01s
+
