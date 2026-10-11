@@ -226,7 +226,7 @@ fn missing_or_substituted_owner_cannot_complete_an_earlier_handoff() {
             Some(23)
         },
     );
-    let charged = fixture.queue.budget.used_for_test();
+    let reserved_bytes = fixture.queue.budget.used_for_test();
     drop(retired);
     drop(original);
     drop(replacement);
@@ -234,7 +234,7 @@ fn missing_or_substituted_owner_cannot_complete_an_earlier_handoff() {
     let cleanup = fixture.close();
     assert!(cleanup.0 && cleanup.1 && idle);
     assert!(absent.is_none() && changed.is_none());
-    assert!(charged >= 2 * GUARDED_OUTPUT_RETAINED_BYTES);
+    assert!(reserved_bytes >= 2 * GUARDED_OUTPUT_RETAINED_BYTES);
     assert_eq!(fixture.queue.budget.used_for_test(), 0);
 }
 
