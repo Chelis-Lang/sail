@@ -130,17 +130,22 @@ Current implementation work advances two blocked paths. The
 [single late imported-authority handoff](../engine/verus/candidates/deferred-import-locator/late-handoff/README.md)
 is implemented as an unselected source candidate: 43 reduced actual pinned API
 controls pass, and independent review confirms immutable recipes, strict role
-classification and bounded constructor scans. Complete source tests and strict
-checks are running before one ordinary runtime build and the original fourteen
-qualification stages. No source runtime is selected from these helper controls.
+classification and bounded constructor scans. The
+[complete pinned source controls](validation/m7-late-import-handoff-source-controls.md)
+pass 40 VIR and 78 driver tests plus both strict all-target checks in 180.872
+seconds. The existing target has been handed off for one ordinary runtime build
+and the original fourteen qualification stages. No source runtime is selected
+from these library controls.
 
 The reader path now moves MCP response graphs and encodes outside its output
 lock, with [46 targeted controls](validation/m7-mcp-output-ownership.md) passing.
 The daemon retains cache charges through evicted in-flight output and accounts
 for buffer capacity; [all 80 daemon controls](validation/m7-result-frame-ownership.md)
 pass. Neither result proves the live reader latency threshold. Bounded optional
-RPC stage timings are being implemented to diagnose the retained full Result
-failure without changing collectors or freshness checks. The last pushed
+[RPC stage timings](result-rpc-diagnostics.md) are implemented, with eight scoped
+controls and strict affected checks passing, to diagnose the retained full Result
+failure without changing collectors or freshness checks. A new complete coherent
+gate and solver run is underway. The last pushed
 [native CI revision](../bench/validation/m7-linux-ci-08435c5-native-2026-10-11.json)
 passes every check in 442 seconds; the newer combined product still needs its
 complete gate and solver run.
