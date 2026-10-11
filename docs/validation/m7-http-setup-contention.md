@@ -21,8 +21,12 @@ The positive control holds a refresh after establishing fixture transport so it
 can expose the contention deterministically. This is a supplementary regression,
 not prewarming any original acceptance fixture. The timeout negative requires
 fallback and backoff, exactly one constructor, and zero late network requests.
-Host daemon controls and strict Clippy pass; the integrated Linux gate and original
-solver suite are pending.
+Host daemon controls and strict Clippy pass. The frozen `cbd6d60` complete Linux
+[workspace gate](../../bench/validation/m7-linux-gate-cbd6-emulated-2026-10-11.json)
+now passes all 491 tests and every remaining step; its original
+[solver suite](../../bench/validation/m7-linux-solver-cbd6-emulated-2026-10-11.json)
+passes all 38 controls, including whole-session signed HTTP replay without solver
+startup. These remain distinct from the earlier failed native invocation.
 
 The [native d333 run](../../bench/validation/m7-linux-ci-d333-native-failure-2026-10-11.json)
 failed the unchanged whole-session replay control, with equal replies but an
