@@ -1,8 +1,8 @@
 # Original-range absence ordinary build plan
 
 Actual source controls passed (42 VIR and 108 driver cases, both strict checks).
-This plan remains unlaunched pending the targeted memo sensitivity closure and
-review. It binds the final full candidate and compiler-derived feature variant,
+The targeted memo sensitivity scope also passed, with both executable images
+retained. This ordinary plan remains unlaunched pending review. It binds the final full candidate and compiler-derived feature variant,
 uses the existing private ordinary builder and closed compiler-only seed, forces
 changed source crates to rebuild, and requires a fresh ordinary vstd proof plus
 a new complete 13-artifact manifest. No runtime, proof, receipt or seal is seeded.
