@@ -101,3 +101,28 @@ local run must produce exactly identical ordered runtime identities and context
 keys. The original full managed acceptance and affected workspace/solver/corpus
 gates remain required. This ADR neither lengthens those limits nor qualifies
 M7 source-engine, reader p95 or edit-loop performance.
+
+## Requested-storage accounting implementation
+
+The first admission primitives charge actual String/PathBuf and Vec capacities
+with checked arithmetic. On the pinned 64-bit toolchain, observer and kernel
+inventory BTree nodes have at most eleven entries of at most 48 inline bytes,
+twelve pointer edges and node metadata. A deliberately conservative 1,024-byte
+charge per entry plus one root covers sparse nodes; it is not a length-only
+payload estimate. See the pinned [Rust node layout](https://github.com/rust-lang/rust/blob/1.99.0/library/alloc/src/collections/btree/node.rs).
+
+HashMap usable capacity is not allocated bucket count. The observer accounting
+charges twice the next power of two of usable capacity plus 32 buckets, with
+32 additional bytes per bucket for control bytes, padding and alignment. It
+refuses unaudited pointer widths and tuple alignments. The observer also charges
+the inotify wrapper's shared descriptor allocation once; the pinned wrapper
+owns one Arc and watch descriptors hold Weak references, rather than separate
+allocations per descriptor. Its exact version is bound by Cargo.lock.
+
+These primitives count requested Rust storage and deliberately overcount nested
+inline structures. They do not claim an allocator RSS bound or include kernel
+watch/lock memory, descriptor tables or the separate Python owner's address
+space. Resource-count limits and construction/transient reservations remain
+separate requirements before the daemon handoff is enabled. Exhaustive field
+destructuring makes added guard fields require an explicit accounting decision.
+Overflow refuses admission rather than wrapping to a smaller charge.

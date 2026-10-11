@@ -18,6 +18,8 @@ mod observe;
 #[cfg(target_os = "linux")]
 mod precise;
 mod receipts;
+#[cfg(any(target_os = "linux", test))]
+mod retained;
 mod runner;
 mod source_inputs;
 mod sysroot;
