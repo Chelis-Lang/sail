@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('observer', Path(__file__).with_name('m7-conformance-observation.py'))
 module = importlib.util.module_from_spec(spec)
@@ -11,6 +12,36 @@ spec.loader.exec_module(module)
 
 
 class Controls(unittest.TestCase):
+    def test_descendant_disappearance_and_reparenting_are_skipped(self):
+        observer = module.Observer.__new__(module.Observer)
+        observer.pid = 10
+        rows = {10: {'ppid': 1, 'starttime_ticks': 100},
+                11: {'ppid': 10, 'starttime_ticks': 101},
+                12: {'ppid': 11, 'starttime_ticks': 102}}
+        pinned = {10: 100, 11: 101, 12: 102}
+        with patch.object(observer, 'row_at', side_effect=[rows[12], ProcessLookupError('parent exited')]):
+            self.assertIsNone(observer.descendant_row(12, rows, pinned))
+        with patch.object(observer, 'row_at', side_effect=[rows[11], ProcessLookupError('child exited')]):
+            self.assertIsNone(observer.descendant_row(11, rows, pinned))
+        for changed in ({'ppid': 1, 'starttime_ticks': 101},
+                        {'ppid': 10, 'starttime_ticks': 999}):
+            with patch.object(observer, 'row_at', return_value=changed):
+                self.assertIsNone(observer.descendant_row(11, rows, pinned))
+        with patch.object(observer, 'row_at', return_value=rows[11]):
+            self.assertEqual(observer.descendant_row(11, rows, pinned), rows[11])
+
+    def test_leader_loss_and_reuse_still_end_observation(self):
+        observer = module.Observer.__new__(module.Observer)
+        observer.pid, observer.start, observer.root_fd = 10, 100, 101
+        with patch.object(observer, 'row_at', side_effect=ProcessLookupError('leader exited')):
+            with self.assertRaises(ProcessLookupError):
+                observer.assert_leader()
+        for changed in ({'state': 'S', 'starttime_ticks': 999},
+                        {'state': 'Z', 'starttime_ticks': 100}):
+            with patch.object(observer, 'row_at', return_value=changed):
+                with self.assertRaises(ValueError):
+                    observer.assert_leader()
+
     def test_stat_comm_delimiters_and_cpu_fields_are_not_misparsed(self):
         fields = ['S', '10', '20'] + ['0'] * 19
         fields[11], fields[12], fields[19], fields[21] = '31', '32', '33', '34'

@@ -129,6 +129,25 @@ class Observer:
                         os.close(fd)
         return rows
 
+    def descendant_row(self, pid, rows, pinned):
+        """A disappearing descendant cannot invalidate the pinned leader."""
+        try:
+            chain = pid
+            while chain != self.pid:
+                fd = pinned.get(chain)
+                if fd is None:
+                    return None
+                current = self.row_at(fd)
+                if (current['ppid'], current['starttime_ticks']) != (rows[chain]['ppid'], rows[chain]['starttime_ticks']):
+                    return None
+                chain = current['ppid']
+            row = self.row_at(pinned[pid])
+            if (row['ppid'], row['starttime_ticks']) != (rows[pid]['ppid'], rows[pid]['starttime_ticks']):
+                return None
+            return row
+        except (OSError, ValueError, IndexError):
+            return None
+
     def sample(self):
         rows = self.scan()
         owned = descendants(rows, self.pid, self.start)
@@ -161,22 +180,12 @@ class Observer:
                     continue
                 # Check the entire pinned parent chain immediately before any
                 # payload read. A vanished/reparented ancestor yields no row.
-                chain = pid
-                valid = True
-                while chain != self.pid:
-                    parent_fd = pinned.get(chain)
-                    if parent_fd is None:
-                        valid = False
-                        break
-                    current = self.row_at(parent_fd)
-                    if (current['ppid'], current['starttime_ticks']) != (rows[chain]['ppid'], rows[chain]['starttime_ticks']):
-                        valid = False
-                        break
-                    chain = current['ppid']
-                if not valid:
+                row = self.assert_leader() if pid == self.pid else self.descendant_row(pid, rows, pinned)
+                if row is None:
                     continue
+                # Leader loss remains a mandatory failure even when a child
+                # disappeared during its separate identity validation.
                 self.assert_leader()
-                row = self.row_at(fd)
                 row['pid'] = pid
                 try:
                     row['exe'] = link_at(fd, 'exe')
