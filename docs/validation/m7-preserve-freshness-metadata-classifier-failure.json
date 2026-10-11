@@ -1,0 +1,304 @@
+{
+  "schema": 1,
+  "status": "FAIL retained; sensitivity classifier rejected the actual expected Rust failure",
+  "source_commit": "01a13b683f01e29cd09e29e1aa4a431f001bfd14",
+  "controller_sha256": "097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2",
+  "result": {
+    "schema": 1,
+    "status": "FAIL",
+    "source": {
+      "crates/sail-verus/src/managed/files.rs": "50da6958dfa7e890f690a5ffc2c739048ce6f02d943830db1784b87e831ec874",
+      "crates/sail-verus/src/managed/freshness.rs": "e80e42f7c4920d655bd49449250c6306ba198dd7f9a7abb33205c66d5322b281",
+      "crates/sail-verus/src/managed/runner.rs": "9fd31bf5d551107f8c0a23ffafbedaf18f2ee64412f8bd5681cab253a8388731",
+      "crates/sail-verus/src/managed/source_inputs.rs": "62dfc13bc015777aab3fc74dce5bd457240873579f18b50e7a62d3b166221d34",
+      "crates/sail-verus/src/managed/build_inputs.rs": "07c0b4d83e63ec66f405a31f3dd2d7dc16b21a538833d8cee7d2299ef15df662",
+      "crates/sail-verus/src/managed/build_inputs_family.rs": "a2374653ef56af5e26019c87eea1e36922c2934878f64517a8ba352cd8951186"
+    },
+    "lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "phases": [
+      {
+        "name": "positive-build",
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "sail-verus",
+          "--release",
+          "--lib",
+          "--no-run",
+          "--message-format=json-render-diagnostics"
+        ],
+        "limit_seconds": 600,
+        "exit_code": 0,
+        "elapsed_seconds": 328.07602481700087,
+        "log_sha256": "b243444090a67561bf4f75a519493f90300c3396a9f1c7d6fa078e31bede21d4",
+        "tested_images": [
+          {
+            "name": "positive-build-sail_verus-00709776d1fabf40",
+            "sha256": "df11db604b88cff90376fc822bef5dffaedfe754265971485e5ab5400442f11f",
+            "bytes": 34597024
+          }
+        ],
+        "pass": true
+      },
+      {
+        "name": "metadata",
+        "argv": [
+          "tested-binaries/positive-build-sail_verus-00709776d1fabf40",
+          "metadata",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "limit_seconds": 180,
+        "exit_code": 0,
+        "elapsed_seconds": 4.719136001996958,
+        "log_sha256": "d987ba6b2dc8ace9055cb57ee0e1759376db072deb4e9a092aabd7d840682ec2",
+        "pass": true
+      },
+      {
+        "name": "freshness",
+        "argv": [
+          "tested-binaries/positive-build-sail_verus-00709776d1fabf40",
+          "managed::freshness::tests::",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "limit_seconds": 180,
+        "exit_code": 0,
+        "elapsed_seconds": 55.79275077499915,
+        "log_sha256": "30b4ff8785dde9286ef1190c921f93405a29ce0c3dcbc8e1e921c429f62339b0",
+        "pass": true
+      },
+      {
+        "name": "strict",
+        "argv": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "-p",
+          "sail-verus",
+          "--release",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "limit_seconds": 600,
+        "exit_code": 0,
+        "elapsed_seconds": 56.54426748499827,
+        "log_sha256": "1445b63522630daa118a380a7902571bcf2968960e4644bf49b945af2da76fa9",
+        "pass": true
+      },
+      {
+        "name": "removed-noop-build",
+        "argv": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "sail-verus",
+          "--release",
+          "--lib",
+          "--no-run",
+          "--message-format=json-render-diagnostics"
+        ],
+        "limit_seconds": 600,
+        "exit_code": 0,
+        "elapsed_seconds": 131.87871747700046,
+        "log_sha256": "251e009375593f03037348c1a4b728f09fa5f48212d9e4a18a4019bb062dd07b",
+        "tested_images": [
+          {
+            "name": "removed-noop-build-sail_verus-00709776d1fabf40",
+            "sha256": "368e60dac4e76a0363eb2a96f462fb62286793f9c3c7b3222a2c91f487d9723e",
+            "bytes": 34616088
+          }
+        ],
+        "pass": true
+      },
+      {
+        "name": "removed-noop",
+        "argv": [
+          "tested-binaries/removed-noop-build-sail_verus-00709776d1fabf40",
+          "managed::freshness::tests::unchanged_metadata_publication_keeps_same_continuous_freshness_owner",
+          "--exact",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "limit_seconds": 180,
+        "exit_code": 101,
+        "elapsed_seconds": 1.494083875000797,
+        "log_sha256": "66cb48aefb18323741ef2e12354c225ce820aa163cacf8eb2dc8baad3fc78262",
+        "pass": false
+      }
+    ],
+    "actor_closure_certified": false,
+    "verification_or_acceptance_credit": false,
+    "owned_group_starts": [
+      {
+        "pid": 7537,
+        "pgid": 7537,
+        "launched_unix_ns": 1791758344687835543
+      },
+      {
+        "pid": 7743,
+        "pgid": 7743,
+        "launched_unix_ns": 1791758673176760876
+      },
+      {
+        "pid": 7764,
+        "pgid": 7764,
+        "launched_unix_ns": 1791758677899419419
+      },
+      {
+        "pid": 7997,
+        "pgid": 7997,
+        "launched_unix_ns": 1791758733698849709
+      },
+      {
+        "pid": 8100,
+        "pgid": 8100,
+        "launched_unix_ns": 1791758790296846763
+      },
+      {
+        "pid": 8181,
+        "pgid": 8181,
+        "launched_unix_ns": 1791758922563027963
+      }
+    ],
+    "active_leader_pid": null,
+    "spawn_closure_uncertain": false,
+    "error_kind": "ValueError",
+    "closure_uncertainty_reasons": [],
+    "process_group_closure_uncertain": false,
+    "source_equal": true,
+    "lock_equal": true
+  },
+  "retention": {
+    "schema": 1,
+    "status": "FAIL classifier; preserved",
+    "archive_sha256": "566eb174793aa25c80a4e40886a397e37dd78667c6a4ff1d7a59915ab77a8af2",
+    "archive_bytes": 17366766,
+    "verified_regular_members": 11,
+    "result_sha256": "3dc328392e2fc4e6e0284685ddda94735b20ffbe2d5a69adb9d627f8cb45396f",
+    "images": [
+      {
+        "path": "tested-binaries/removed-noop-build-sail_verus-00709776d1fabf40",
+        "bytes": 34616088,
+        "mode": 493,
+        "sha256": "368e60dac4e76a0363eb2a96f462fb62286793f9c3c7b3222a2c91f487d9723e"
+      },
+      {
+        "path": "tested-binaries/positive-build-sail_verus-00709776d1fabf40",
+        "bytes": 34597024,
+        "mode": 493,
+        "sha256": "df11db604b88cff90376fc822bef5dffaedfe754265971485e5ab5400442f11f"
+      }
+    ],
+    "private_environment_exported": false
+  },
+  "inventory": [
+    {
+      "bytes": 6429,
+      "mode": 420,
+      "path": "freshness.log",
+      "sha256": "30b4ff8785dde9286ef1190c921f93405a29ce0c3dcbc8e1e921c429f62339b0"
+    },
+    {
+      "bytes": 1184,
+      "mode": 420,
+      "path": "metadata.log",
+      "sha256": "d987ba6b2dc8ace9055cb57ee0e1759376db072deb4e9a092aabd7d840682ec2"
+    },
+    {
+      "bytes": 55412,
+      "mode": 420,
+      "path": "positive-build.log",
+      "sha256": "b243444090a67561bf4f75a519493f90300c3396a9f1c7d6fa078e31bede21d4"
+    },
+    {
+      "bytes": 54902,
+      "mode": 420,
+      "path": "removed-noop-build.log",
+      "sha256": "251e009375593f03037348c1a4b728f09fa5f48212d9e4a18a4019bb062dd07b"
+    },
+    {
+      "bytes": 675,
+      "mode": 420,
+      "path": "removed-noop.log",
+      "sha256": "66cb48aefb18323741ef2e12354c225ce820aa163cacf8eb2dc8baad3fc78262"
+    },
+    {
+      "bytes": 5170,
+      "mode": 420,
+      "path": "result.json",
+      "sha256": "3dc328392e2fc4e6e0284685ddda94735b20ffbe2d5a69adb9d627f8cb45396f"
+    },
+    {
+      "bytes": 848,
+      "mode": 420,
+      "path": "strict.log",
+      "sha256": "1445b63522630daa118a380a7902571bcf2968960e4644bf49b945af2da76fa9"
+    },
+    {
+      "bytes": 34597024,
+      "mode": 493,
+      "path": "tested-binaries/positive-build-sail_verus-00709776d1fabf40",
+      "sha256": "df11db604b88cff90376fc822bef5dffaedfe754265971485e5ab5400442f11f"
+    },
+    {
+      "bytes": 7837,
+      "mode": 420,
+      "path": "tested-binaries/positive-build-sail_verus-00709776d1fabf40.d",
+      "sha256": "19e5f8ca6c579e86330fd06f02d0c9dbf182468395f72cd65cc4e23587490894"
+    },
+    {
+      "bytes": 34616088,
+      "mode": 493,
+      "path": "tested-binaries/removed-noop-build-sail_verus-00709776d1fabf40",
+      "sha256": "368e60dac4e76a0363eb2a96f462fb62286793f9c3c7b3222a2c91f487d9723e"
+    },
+    {
+      "bytes": 7837,
+      "mode": 420,
+      "path": "tested-binaries/removed-noop-build-sail_verus-00709776d1fabf40.d",
+      "sha256": "19e5f8ca6c579e86330fd06f02d0c9dbf182468395f72cd65cc4e23587490894"
+    }
+  ],
+  "independent_closure": {
+    "schema": 1,
+    "status": "PASS",
+    "scope_status": "FAIL",
+    "whole_source_bytes_equal": true,
+    "source_modes_equal": false,
+    "source_mode_changes": {
+      "crates/sail-verus/src/managed/files.rs": {
+        "before": 436,
+        "after": 420
+      }
+    },
+    "source6_and_lock_equal": true,
+    "protected_equal_both_containers": true,
+    "prior_tested_images_equal": true,
+    "dual_holders_empty": true,
+    "dual_owned_groups_empty": true,
+    "container_births_equal": true,
+    "no_further_actor_started": true,
+    "result_sha256": "3dc328392e2fc4e6e0284685ddda94735b20ffbe2d5a69adb9d627f8cb45396f"
+  },
+  "unattempted": [
+    "restored positive compilation",
+    "restored positive test"
+  ],
+  "positive_metadata_passed": 8,
+  "positive_freshness_passed": 30,
+  "original_ignored_case": "managed::freshness::tests::identity_guard_tests::complete_inspect_profile_retains_all_original_barriers_and_exact_output",
+  "original_ignored_reason": "explicit local complete-inspect component comparison; not a live reader or proof gate",
+  "negative_actual_exit": 101,
+  "negative_actual_assertion": "Arc::ptr_eq(&owner, &fixture.runtime_owner(&index))",
+  "negative_case_passed": 0,
+  "negative_case_failed": 1,
+  "whole_scope_pass": false,
+  "slot_returned": true,
+  "acceptance_credit": false
+}

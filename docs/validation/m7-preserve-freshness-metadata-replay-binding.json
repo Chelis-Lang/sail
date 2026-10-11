@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "source": {
+    "crates/sail-verus/src/managed/files.rs": "50da6958dfa7e890f690a5ffc2c739048ce6f02d943830db1784b87e831ec874",
+    "crates/sail-verus/src/managed/freshness.rs": "e80e42f7c4920d655bd49449250c6306ba198dd7f9a7abb33205c66d5322b281",
+    "crates/sail-verus/src/managed/runner.rs": "9fd31bf5d551107f8c0a23ffafbedaf18f2ee64412f8bd5681cab253a8388731",
+    "crates/sail-verus/src/managed/source_inputs.rs": "62dfc13bc015777aab3fc74dce5bd457240873579f18b50e7a62d3b166221d34",
+    "crates/sail-verus/src/managed/build_inputs.rs": "07c0b4d83e63ec66f405a31f3dd2d7dc16b21a538833d8cee7d2299ef15df662",
+    "crates/sail-verus/src/managed/build_inputs_family.rs": "a2374653ef56af5e26019c87eea1e36922c2934878f64517a8ba352cd8951186"
+  },
+  "lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+  "prior_result_sha256": "3dc328392e2fc4e6e0284685ddda94735b20ffbe2d5a69adb9d627f8cb45396f",
+  "prior_controller_sha256": "097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2",
+  "counterfactual_sha256": "2de9811d37b2cccbe0328e203dc00d4fb3a0748ed56b64bb56243a0c320c65db",
+  "positive_image": {
+    "name": "positive-build-sail_verus-00709776d1fabf40",
+    "sha256": "df11db604b88cff90376fc822bef5dffaedfe754265971485e5ab5400442f11f",
+    "bytes": 34597024
+  },
+  "negative_image": {
+    "name": "removed-noop-build-sail_verus-00709776d1fabf40",
+    "sha256": "368e60dac4e76a0363eb2a96f462fb62286793f9c3c7b3222a2c91f487d9723e",
+    "bytes": 34616088
+  },
+  "prior_logs": {
+    "positive-build.log": "b243444090a67561bf4f75a519493f90300c3396a9f1c7d6fa078e31bede21d4",
+    "metadata.log": "d987ba6b2dc8ace9055cb57ee0e1759376db072deb4e9a092aabd7d840682ec2",
+    "freshness.log": "30b4ff8785dde9286ef1190c921f93405a29ce0c3dcbc8e1e921c429f62339b0",
+    "strict.log": "1445b63522630daa118a380a7902571bcf2968960e4644bf49b945af2da76fa9",
+    "removed-noop-build.log": "251e009375593f03037348c1a4b728f09fa5f48212d9e4a18a4019bb062dd07b",
+    "removed-noop.log": "66cb48aefb18323741ef2e12354c225ce820aa163cacf8eb2dc8baad3fc78262"
+  },
+  "negative_literal_sha256": "66cb48aefb18323741ef2e12354c225ce820aa163cacf8eb2dc8baad3fc78262",
+  "source_restoration": "byte-exact; archive mode0664 became git-apply mode0644 on files.rs; mode difference retained, no native correction",
+  "scope": "new full component replay, no prior test outcome substitutes a fresh execution",
+  "prior_source_record_sha256": "9321b90eb8153c948013254253e42b942ea0db1424ff2431e2708c4de94c255c"
+}

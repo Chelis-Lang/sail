@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "base_commit": "db4c65fe8221884983326c8259a7c2f065df7693",
-  "status": "first native scope FAIL; cfg(test) Error expectation corrected; corrected scope uncompiled and unselected",
+  "status": "unselected; corrected positive component tests and strict PASS; whole corrected scope FAIL at sensitivity-output classifier; new full replay unexecuted",
   "sources": {
     "crates/sail-verus/src/managed/files.rs": "50da6958dfa7e890f690a5ffc2c739048ce6f02d943830db1784b87e831ec874",
     "crates/sail-verus/src/managed/freshness.rs": "e80e42f7c4920d655bd49449250c6306ba198dd7f9a7abb33205c66d5322b281",
@@ -16,13 +16,16 @@
   "additional_open_descriptors": 1,
   "controls": {
     "new_source_only": 9,
-    "native_compilation": "first source build PASS; corrected fixture uncompiled",
-    "strict": "not run",
-    "counterfactual": "not run",
+    "native_compilation": "corrected source build PASS",
+    "strict": "corrected scope all-target PASS",
+    "counterfactual": "actual exit101/exact Arc assertion/0passed1failed; original controller incorrectly rejected interleaved libtest output",
     "original_120_30_5_fixture": "not run",
     "reader_census": "not run",
-    "first_native_metadata": "7/8 PASS; one cfg(test) Error display expectation FAIL",
-    "native_complete_freshness": "not run"
+    "first_native_metadata": "first scope7/8 PASS plus one fixture failure retained",
+    "native_complete_freshness": "30 PASS; 1 existing profile case ignored",
+    "corrected_metadata": "8 PASS",
+    "restored_positive": "unattempted",
+    "new_full_replay": "prepare-only; no actor"
   },
   "freshness_publication": "synchronous unchanged",
   "currentness_authority": "existing independent native owner and original barriers",
