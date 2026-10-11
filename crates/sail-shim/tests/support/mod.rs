@@ -332,10 +332,12 @@ impl Proxy {
 
 /// Snapshot only this test's child tree when its original deadline expires.
 /// Proc files are bounded and no process environment is read.
-fn deadline_snapshot(owner: u32, bytes: usize, reader_finished: bool) {
-    eprintln!(
-        "fault-session deadline: owner={owner}, stdout_bytes={bytes}, reader_finished={reader_finished}"
+fn deadline_snapshot(owner: u32, bytes: Option<usize>, reader_finished: bool) {
+    let metadata = format!(
+        "fault-session deadline: owner={owner}, stdout_bytes={bytes:?}, reader_finished={reader_finished}\n"
     );
+    // Bypass libtest capture, after child cleanup has already completed.
+    let _ = std::io::stderr().write_all(metadata.as_bytes());
     let mut table = Vec::new();
     let Ok(entries) = std::fs::read_dir("/proc") else {
         return;
@@ -411,9 +413,12 @@ pub struct Shim {
 
 /// How a session ended.
 pub struct Ended {
-    /// `None` if the shim had to be killed at the deadline (a hang).
+    /// `None` on a deadline or incomplete output/reader cleanup.
     pub status: Option<ExitStatus>,
     pub stdout: Vec<u8>,
+    /// False when the reader could not retire or the buffer was unavailable.
+    /// Such a session must never be accepted as a complete reply stream.
+    pub output_complete: bool,
     pub elapsed: Duration,
 }
 
@@ -434,10 +439,14 @@ impl Shim {
         for (k, v) in env {
             cmd.env(k, v);
         }
-        let mut child = match cmd.spawn() {
+        let child = match cmd.spawn() {
             Ok(c) => c,
             Err(e) => unreachable!("cannot start sail-z3: {e}"),
         };
+        Self::from_child(child)
+    }
+
+    fn from_child(mut child: Child) -> Self {
         let stdin = child.stdin.take();
         let mut stdout = child.stdout.take();
         let out = Arc::new(Mutex::new(Vec::new()));
@@ -491,24 +500,59 @@ impl Shim {
             }
             std::thread::sleep(Duration::from_millis(5));
         }
-        if status.is_none() {
-            deadline_snapshot(
-                self.child.id(),
-                self.output().len(),
-                self.reader
-                    .as_ref()
-                    .is_none_or(std::thread::JoinHandle::is_finished),
-            );
+        // A clean child exit still requires EOF and complete reader delivery
+        // within the original session deadline. Normal sessions keep their
+        // full remaining deadline rather than a shorter new drain budget.
+        while status.is_some()
+            && self.reader.as_ref().is_some_and(|r| !r.is_finished())
+            && self.started.elapsed() < limit
+        {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let timed_out = status.is_none() || self.reader.as_ref().is_some_and(|r| !r.is_finished());
+        if timed_out {
+            status = None;
+            // Cleanup must precede diagnostics: the reader can be stalled
+            // while owning the sink, and a blocking snapshot would prevent
+            // the original deadline from ever killing/reaping the child.
             let _ = self.child.kill();
             let _ = self.child.wait();
         }
         drop(self.stdin.take());
-        if let Some(r) = self.reader.take() {
-            let _ = r.join();
+        // A descendant may retain stdout, or the reader may be stuck. This
+        // is cleanup grace, not extra solver time; the original `limit` is
+        // unchanged. Only join a finished reader, and never accept an
+        // incomplete stream as a successful session.
+        let retirement_started = Instant::now();
+        while self.reader.as_ref().is_some_and(|r| !r.is_finished())
+            && retirement_started.elapsed() < Duration::from_secs(1)
+        {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let reader_finished = self.reader.as_ref().is_none_or(JoinHandle::is_finished);
+        let reader_joined = self.reader.take().is_none_or(|r| {
+            if reader_finished {
+                r.join().is_ok()
+            } else {
+                // Rust cannot cancel a blocked thread. Dropping the handle
+                // detaches it; report incomplete cleanup rather than claiming
+                // it was joined. The test process owns its remaining lifetime.
+                false
+            }
+        });
+        let stdout = self.out.try_lock().ok().map(|out| out.clone());
+        let output_complete = reader_joined && stdout.is_some();
+        if timed_out || !output_complete {
+            deadline_snapshot(
+                self.child.id(),
+                stdout.as_ref().map(Vec::len),
+                reader_finished,
+            );
         }
         Ended {
-            status,
-            stdout: self.output(),
+            status: if output_complete { status } else { None },
+            stdout: stdout.unwrap_or_default(),
+            output_complete,
             elapsed: self.started.elapsed(),
         }
     }
@@ -524,6 +568,10 @@ pub fn session(solver: &Path, socket: Option<&Path>, input: &[u8], env: &[(&str,
 /// Runs a whole session and requires success.
 pub fn ok_session(solver: &Path, socket: Option<&Path>, input: &[u8]) -> Vec<u8> {
     let e = session(solver, socket, input, &[]);
+    assert!(
+        e.output_complete,
+        "session output or reader cleanup incomplete"
+    );
     assert!(
         e.status.is_some_and(|s| s.success()),
         "session failed: {:?}",
@@ -857,4 +905,83 @@ pub fn kill9(pid: u32) {
         .status()
         .is_ok_and(|s| s.success());
     assert!(ok, "kill -9 {pid} failed");
+}
+
+#[cfg(test)]
+mod wait_controls {
+    use super::*;
+
+    fn scripted_solver(dir: &Scratch, body: &str) -> PathBuf {
+        use std::os::unix::fs::PermissionsExt as _;
+        let path = dir.path("solver");
+        assert!(std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).is_ok());
+        assert!(std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).is_ok());
+        path
+    }
+
+    fn controlled_child(solver: &Path) -> Shim {
+        let child = Command::new(solver)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap_or_else(|e| unreachable!("cannot start lifecycle control: {e}"));
+        // Same real reader and wait implementation as Shim::spawn, without
+        // a solver descendant that the control would otherwise need to own.
+        Shim::from_child(child)
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn timeout_reaps_child_while_actual_reader_sink_is_paused() {
+        let dir = Scratch::new("wait-paused-sink");
+        // Trigger output only after the sink is paused, then leave the
+        // actual child alive beyond our short
+        // control deadline. This changes no real solver fixture deadline.
+        let solver = scripted_solver(&dir, "IFS= read -r line; printf 'ready\n'; exec sleep 60");
+        let mut shim = controlled_child(&solver);
+        let pid = shim.child.id();
+        let sink = Arc::clone(&shim.out);
+        let held_sink = sink.lock().unwrap_or_else(|e| e.into_inner());
+        shim.feed(b"trigger\n", true);
+        let (finished, outcome) = std::sync::mpsc::sync_channel(1);
+        let waiter = std::thread::spawn(move || {
+            let ended = shim.wait(Duration::from_millis(100));
+            let _ = finished.send(ended);
+        });
+        // The old snapshot-before-kill path cannot send while held_sink is
+        // held. Always release the pause before asserting/joining so failure
+        // cannot strand this control's waiter.
+        let result = outcome.recv_timeout(Duration::from_secs(3));
+        let child_reaped = !PathBuf::from(format!("/proc/{pid}")).exists();
+        drop(held_sink);
+        assert!(waiter.join().is_ok());
+        let reader_retired = wait_until(Duration::from_secs(1), || Arc::strong_count(&sink) == 1);
+        assert!(
+            reader_retired,
+            "paused reader must retire after pause release"
+        );
+        let ended = result.unwrap_or_else(|e| unreachable!("cleanup blocked by sink: {e}"));
+        assert!(
+            child_reaped,
+            "deadline must reap child before observing sink"
+        );
+        assert!(ended.status.is_none());
+        assert!(!ended.output_complete);
+        assert!(
+            ended.stdout.is_empty(),
+            "busy buffer must be reported unavailable"
+        );
+    }
+
+    #[test]
+    fn clean_exit_joins_reader_and_preserves_all_output() {
+        let dir = Scratch::new("wait-complete");
+        let solver = scripted_solver(&dir, "printf 'complete reply\n'");
+        let shim = controlled_child(&solver);
+        let ended = shim.wait(Duration::from_secs(5));
+        assert!(ended.status.is_some_and(|status| status.success()));
+        assert!(ended.output_complete);
+        assert_eq!(ended.stdout, b"complete reply\n");
+    }
 }
