@@ -29,8 +29,15 @@ distinct actual `pair-busy` admission refusal. The separate
 [retirement acknowledgement](../engine/verus/candidates/preparation-retirement/README.md)
 passes 16 reduced pinned controls, 41 VIR and 98 driver tests, and both strict
 compiler checks. Removing the actual adapter's finish call fails its unchanged
-guard-lifetime regression. Ordinary runtime qualification and a faithful
-unresolved-range role remain pending. No candidate is selected; the final four
+guard-lifetime regression. The combined
+[missing-original-range role](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
+is implemented with complete imported-table identity and exact current raw-span
+rebinding. Its first compiler scope passes 42 VIR controls and VIR strict, then
+fails driver test compilation through a private-module reference. The failed
+scope is retained. A reviewed test-only integration correction preserves all
+assertions and production code; complete corrected compiler controls, an
+ordinary runtime build and original qualification remain required. No candidate
+is selected; the final four
 of thirteen stage records were not attempted.
 The fourteen-script inventory is preserved. Stock diagnostic routing and
 parallelism remain unchanged; this candidate is unselected. See the
