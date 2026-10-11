@@ -1,0 +1,54 @@
+error: cannot find derive macro `Serialize` in this scope
+  --> /tmp/sail-m7-preparation-absence-stock-control-profile/probe.rs:16:17
+   |
+16 | #[derive(Clone, Serialize, Deserialize)] // for Debug, see ast_util
+   |                 ^^^^^^^^^
+   |
+help: consider importing one of these derive macros
+   |
+12 | mod vir {pub mod messages {use crate::Serialize;
+   |                            +++++++++++++++++++++
+12 | mod vir {pub mod messages {use serde::Serialize;
+   |                            +++++++++++++++++++++
+
+error: cannot find derive macro `Deserialize` in this scope
+  --> /tmp/sail-m7-preparation-absence-stock-control-profile/probe.rs:16:28
+   |
+16 | #[derive(Clone, Serialize, Deserialize)] // for Debug, see ast_util
+   |                            ^^^^^^^^^^^
+   |
+help: consider importing one of these derive macros
+   |
+12 | mod vir {pub mod messages {use crate::Deserialize;
+   |                            +++++++++++++++++++++++
+12 | mod vir {pub mod messages {use serde::Deserialize;
+   |                            +++++++++++++++++++++++
+
+error: cannot find attribute `serde` in this scope
+  --> /tmp/sail-m7-preparation-absence-stock-control-profile/probe.rs:18:7
+   |
+18 |     #[serde(skip)]
+   |       ^^^^^
+   |
+   = note: `serde` is an attribute that can be used by the derive macros `Deserialize`, `JsonSchema`, `JsonSchema_repr` and `Serialize`, you might be missing a `derive` attribute
+   = note: `serde` is in scope, but it is a crate, not an attribute
+
+error: cannot find attribute `serde` in this scope
+  --> /tmp/sail-m7-preparation-absence-stock-control-profile/probe.rs:19:7
+   |
+19 |     #[serde(default = "crate::messages::empty_raw_span")]
+   |       ^^^^^
+   |
+   = note: `serde` is an attribute that can be used by the derive macros `Deserialize`, `JsonSchema`, `JsonSchema_repr` and `Serialize`, you might be missing a `derive` attribute
+   = note: `serde` is in scope, but it is a crate, not an attribute
+
+warning: unused import: `FileName`
+ --> /tmp/sail-m7-preparation-absence-stock-control-profile/probe.rs:7:26
+  |
+7 | use rustc_span::{BytePos,FileName,Span,SpanData};
+  |                          ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
