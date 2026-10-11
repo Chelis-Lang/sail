@@ -583,3 +583,21 @@ output-buffer mutex. It refuses incomplete reader delivery and reports bounded
 retirement failure truthfully. A blocked Rust reader cannot be forcibly canceled;
 its detached lifetime remains owned by the test process. This is a fixture
 cleanup limitation, not evidence of a production cache defect or its absence.
+
+### Combined product's emulated repair deadline
+
+The [rebuilt combined product attempt](../bench/validation/m7-linux-combined-repair-a9609e9-failure-2026-10-11.json)
+fails the unchanged 120-second complete workflow at 120.266 seconds internally.
+Success, its declaration-establishment follow-up, events, cursor resume and
+baseline complete; missing-function validation remains unfinished, and later
+cases are unattempted. Public worker streams report a 66-second initial Cargo
+build and a 4.71-second follow-up build. Those observations do not establish
+the missing-function phase cost or a performance improvement. All 734 retained
+raw archive members are independently verified; progress and cleanup report no
+errors. The earlier complete native small-fixture pass stays separate.
+
+The [first cleanup-control integration gate](../bench/validation/m7-linux-cleanup-control-gate-6b1edb1-failure-2026-10-11.json)
+fails strict Clippy on a redundant test-only closure. The direct method spelling
+is corrected; neither this lint failure nor its correction identifies the
+historical cache-maintenance stall. Tests and solver were unattempted in that
+failed gate scope.
