@@ -63,6 +63,15 @@ four-reader latency gate has been established. See the
   the required edited-revision persistent focus hit does not. The candidate
   remains unselected; see the
   [full failure record](../engine/verus/candidates/decode-ownership/scoped-query-qualification-failure.json).
+- The subsequent LoadedForeign candidate builds and passes its scoped source
+  tests, but the original qualification fails strict progress-note ordering
+  and records no restored preparations. Its first actual imported span remains
+  Delayed at capture and focus, so LoadedForeign correctly refuses it. The
+  [failure record](../engine/verus/candidates/decode-ownership/loaded-import-qualification-failure.json)
+  preserves both problems. A bounded deferred diagnostic recipe is being
+  implemented under [proposed ADR 0033](decisions/0033-deferred-import-diagnostic-locators.md),
+  with current compiler resolution unchanged. It is not a selected source
+  runtime or demonstrated cross-edit reuse.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
@@ -143,6 +152,13 @@ yet the new namespace and lease consumers correctly remain dirty. Unsupported
 coverage refuses reuse. See [ADR 0032](decisions/0032-kernel-mount-generation-coverage.md)
 and [its scoped validation](validation/m7-kernel-mount-generation.json);
 complete affected gates remain required.
+
+The first automatic guarded-sysroot integration also failed to enable reuse:
+its scope encoder passed byte-keyed environment bindings to a JSON object
+serializer, which rejects that input type. The original content-hashing path
+still ran. A bounded streaming encoder of exact sorted byte pairs is being
+validated; this defect does not establish the cause of the separately retained
+cold verification timeout. The original failed scenario remains recorded.
 
 The local Linux container is supported for development and acceptance runs under
 emulation, with that environment recorded. Native Linux reference measurements
