@@ -158,3 +158,10 @@ The [all-task observer control](validation/m7-reader-process-observation.md)
 now demonstrates that coverage on a real worker-thread child and rejects PID
 birth changes. It improves future diagnosis, without recapturing old state or
 admitting a timed-out proof.
+
+One separately scoped [focused ordinary diagnosis](validation/m7-ordinary-wait-diagnostic-terminal.md)
+then completed under the same 600-second bound, FORCE policy and ordinary
+context, with a Current full report and unchanged post-run seals. Its successful
+cached solver path did not reproduce the historical wait. Partial all-task
+snapshots and a capped closure scan remain explicitly incomplete. No reader
+census, retained integration or acceptance claim follows from this diagnostic.

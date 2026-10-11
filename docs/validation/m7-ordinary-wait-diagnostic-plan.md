@@ -1,10 +1,15 @@
 # Focused diagnosis of the original ordinary-full wait
 
-This is a plan only; no invocation has started. It targets the
+This plan was executed once; see the
+[terminal outcome and observation limits](m7-ordinary-wait-diagnostic-terminal.md).
+It targets the
 [failed ordinary prerequisite](m7-rpc-binding-reader-terminal.md) directly,
 without repeating its 950.644 seconds of repair preparations or running another
-reader workflow. The [component control](m7-stock-smt-boundary-terminal.md)
-has stopped on recorder loss; its real forwarding arm remains unattempted.
+reader workflow. The [original component control](m7-stock-smt-boundary-terminal.md)
+stopped on recorder loss. The separately corrected
+[component scope](m7-stock-smt-recorder-corrected-terminal.md) completed its
+controls and forwarding-only arm; neither component establishes the historical
+full-project cause.
 
 Use the preserved baseline workspace and original ordinary cache/context in
 place, with the exact service-owned product 46 bytes and original selector:
