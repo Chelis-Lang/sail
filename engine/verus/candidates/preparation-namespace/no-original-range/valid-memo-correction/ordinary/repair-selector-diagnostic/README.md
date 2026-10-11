@@ -11,7 +11,7 @@ The original temporary project/cache were removed by the fixture's cleanup.
 This reduced diagnostic repeats only that success prefix and the missing
 selector on the exact same no-vstd source fixture, with a new retained project
 and cache. It preserves the original 120-second whole budget, 30-second CLI
-limit, five-second readiness/cleanup calls, selections and product bytes.
+limit, original remaining(5) readiness checks and five-second cleanup calls, selections and product bytes.
 It uses the original fixture's execute/stop helpers and GOOD source text;
 it neither retries the complete fixture nor earns acceptance credit.
 
@@ -28,3 +28,19 @@ Full verification then proceeds with caching disabled and does not enter the
 namespace broker via preparation key/take/store. This excludes that particular
 static route; it does not establish a deadlock, compiler, solver or timing cause.
 The original full fixture failure remains independent of this diagnostic.
+
+The one reduced scope failed at 120.182 seconds in its initial success job.
+The missing selector was not submitted. Existing setup timing reached the
+invocation seal at 39.227 seconds, followed by ordinary dependency compilation.
+A partial timeout snapshot found non-verifying `proc_macro2` compilation through
+`rust_verify`; it establishes neither a deadlock nor the original missing-job
+cause. The daemon exited normally and independent dual-container private-path
+command/cwd/FD audits found no holders or unreadable live processes. Product
+and all 13 runtime bytes remained equal. The 368 public raw/source files are
+retained in a verified archive; the complete native private workspace remains.
+
+The frozen controller has default SIGTERM/SIGHUP behavior and a narrow setup
+exception window before its main try/finally. Those limits did not occur in this
+run; they prevent claiming general cleanup coverage. Original daemon shutdown
+is independent of the post-run orphan/reference census. No retry or benchmark
+was launched after this failure. See `result.json` for exact retained identities.
