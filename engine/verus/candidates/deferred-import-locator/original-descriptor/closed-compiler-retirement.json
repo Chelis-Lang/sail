@@ -1,0 +1,406 @@
+{
+  "scope": "closed owned733 compiler-only retirement, current private source-control target protected",
+  "removed_directory_names": [
+    "deps",
+    "build",
+    "incremental"
+  ],
+  "removed_allocated_bytes": 1397915648,
+  "retained_archive_allocated_bytes": 340639744,
+  "native_overlay_free_before": 323070296064,
+  "native_overlay_free_after": 324368936960,
+  "elapsed_seconds": 1.3024847919950844,
+  "retained_test_elf_and_api_libraries": [
+    {
+      "path": "cargo_verus-3748cec225a4eae3",
+      "bytes": 2754984,
+      "sha256": "f289aace1c0c9f3cf33320792d61fead92f223bbb1e9fbffd9db52c5c40c93c4"
+    },
+    {
+      "path": "libbincode_derive_next-e833bf78d21b052a.so",
+      "bytes": 1588768,
+      "sha256": "d2ad7283762a692aeba19826e2ed26e92c527c1f7add39ec802480920e8295e9"
+    },
+    {
+      "path": "libbincode_next-2b94c1ab673d618c.rmeta",
+      "bytes": 1406086,
+      "sha256": "bf5739f7b9caed99622aca617ba2112f7abed5c3b108a689525edbfcba5b3e69"
+    },
+    {
+      "path": "libbincode_next-379abfe21ea605bb.rlib",
+      "bytes": 3144768,
+      "sha256": "6691d67edbe7db3ad381a65437229de3b0a88c6f03fe7044df3eca3bf7c37f5a"
+    },
+    {
+      "path": "libbincode_next-379abfe21ea605bb.rmeta",
+      "bytes": 3098271,
+      "sha256": "20e2a63a591e4650c3a69b284c84dbf775c96c58ba02c81986acff42b131f334"
+    },
+    {
+      "path": "libbincode_next-913dd26879fc01fc.rmeta",
+      "bytes": 1406086,
+      "sha256": "1589013102eb41d3d7b19d8c23b243305ad90d0fb88f0b46889eb48f78e20fa3"
+    },
+    {
+      "path": "libbincode_next-9d0f19ba5ce7fc43.rlib",
+      "bytes": 3144768,
+      "sha256": "64025c7961207f1635c00340859f82d82f407ede7db7cb4e1290dbcf192c4acb"
+    },
+    {
+      "path": "libbincode_next-9d0f19ba5ce7fc43.rmeta",
+      "bytes": 3098271,
+      "sha256": "cbd3cffe50cced6d810b3b4c7c7a137185b41e897b72c06563b5f7705ec6b003"
+    },
+    {
+      "path": "libbitmask_enum-f24271cb016d8888.so",
+      "bytes": 3077688,
+      "sha256": "98fabc359b85ea612fb502bb4eb1d7a7588bf886c8f1f2d946b23fb65e2eb866"
+    },
+    {
+      "path": "libclap_derive-e81c2a8809a7e417.so",
+      "bytes": 4308784,
+      "sha256": "5bc75352a3581d2190d7d28b3e59330b445c38efd46b4ef17f97bce8fbc1d689"
+    },
+    {
+      "path": "libduplicate-550fc97515409ae8.so",
+      "bytes": 1602240,
+      "sha256": "2ab4860fe703cfaf9818974047649dff3829f02ec52f36785a6a8b1d629b169c"
+    },
+    {
+      "path": "libfutures_macro-ed3c8f49003680a2.so",
+      "bytes": 3201944,
+      "sha256": "2db554a70b92add13efb88d59388f3faf2f80ff2016f2c669490dff720689b27"
+    },
+    {
+      "path": "libpastey-19b2f20d79ff8064.so",
+      "bytes": 760440,
+      "sha256": "f7b15dc999db9daa9dfa4aab7d44e235771520647ae148e75d54a354b2b84515"
+    },
+    {
+      "path": "libproc_macro_error_attr-9255b72d93c35aa5.so",
+      "bytes": 819728,
+      "sha256": "ffb41da6ca3342814c0303ddcaa59b92bc39626ccf557e509df98caea2090977"
+    },
+    {
+      "path": "librapidhash-c0330177a8b18477.rlib",
+      "bytes": 1032908,
+      "sha256": "fb939363371c0c0c8d2494298f25fe1c17cf781f801d442af0758fce3dbe4ffd"
+    },
+    {
+      "path": "librapidhash-c0330177a8b18477.rmeta",
+      "bytes": 1028095,
+      "sha256": "c7548b0b7bf028a78edb19a494f4ffcb5c7d0e6e1afb3d574ceb669741886d28"
+    },
+    {
+      "path": "librapidhash-eabddd14b479333e.rmeta",
+      "bytes": 478736,
+      "sha256": "7e7a7e4865bd147ae1d4fa43bd199f7abadbe83c21dc7ae4f52612def94c1520"
+    },
+    {
+      "path": "librust_verify_test_macros-88e803fc4204e0a3.so",
+      "bytes": 1160864,
+      "sha256": "e6a18bcdf01a09ac35916fa1a1dad4df995a42ed301726d61e742783a824553b"
+    },
+    {
+      "path": "librust_verify_test_macros-94a95d5ff9a22cc9.so",
+      "bytes": 1160184,
+      "sha256": "fbce337de97bf52d328246f40fc3130c259d364c32b44cbebec79642bd9e716b"
+    },
+    {
+      "path": "librustversion-c02da1d99e4b71a1.so",
+      "bytes": 791192,
+      "sha256": "2cc9339dbd32066535a1e5885fdb8fc96de516b9b8ed210f5a160b8d3c23c04c"
+    },
+    {
+      "path": "libserde-158e6f43ce465227.rlib",
+      "bytes": 928562,
+      "sha256": "28746dbf1e8178cd0e87326c1efff5c174d668374733ed80e18ca48e1514cb86"
+    },
+    {
+      "path": "libserde-158e6f43ce465227.rmeta",
+      "bytes": 826866,
+      "sha256": "c6976c2c63efb08844f426e577a17520d02d5a0dc2138c8d43c553142170ff2d"
+    },
+    {
+      "path": "libserde-5712fabe2fb0f5cd.rmeta",
+      "bytes": 516783,
+      "sha256": "5f52cf28c2c46f2aba47ef17a2f16347e4ae9be82789faf6741712b8629afe74"
+    },
+    {
+      "path": "libserde-9491f2f77d72cc7f.rlib",
+      "bytes": 996620,
+      "sha256": "d9590a3899cd3f97e3b5848dc46b8274cfa29ff6a1fc26a5bb1a900884a6dda6"
+    },
+    {
+      "path": "libserde-9491f2f77d72cc7f.rmeta",
+      "bytes": 970450,
+      "sha256": "d06016f07a517b7ca5f8e40686f8d5e18b580d33c2cdb5d30aecdb3552d70292"
+    },
+    {
+      "path": "libserde-9fd74960028e4515.rlib",
+      "bytes": 996404,
+      "sha256": "dd739e9ad8b37f61ecfeb6336e7ce6b0b557c054920c7c399d3e1cc5574779c1"
+    },
+    {
+      "path": "libserde-9fd74960028e4515.rmeta",
+      "bytes": 970238,
+      "sha256": "d31b7013f100c478539ad2d351dc83b2a433f0c3524312f1875211177b81c4e0"
+    },
+    {
+      "path": "libserde-c1777137299e8513.rmeta",
+      "bytes": 516783,
+      "sha256": "bc3f709a7f5917b7ad7a19afb69ad9745a8b02882f43d48ea2f3bb6595162b72"
+    },
+    {
+      "path": "libserde-e6285aa01a023a81.rlib",
+      "bytes": 996620,
+      "sha256": "a591368d9485644177db664c4b9036076dc980501eaa0ee379813c56fb88e324"
+    },
+    {
+      "path": "libserde-e6285aa01a023a81.rmeta",
+      "bytes": 970450,
+      "sha256": "c80d6a5810ca613b73157bdbb54c9eb4004aacbda01c3c3e4eed7a8c7210e450"
+    },
+    {
+      "path": "libserde_core-1072166df35b84b8.rmeta",
+      "bytes": 2669265,
+      "sha256": "18a4ad58211372fb2be0be64099a52d81287adbde5ea9dbf002e2f281e964a3a"
+    },
+    {
+      "path": "libserde_core-2547563587d4b831.rlib",
+      "bytes": 5491844,
+      "sha256": "a7c34af944df33d2b3d106da0255b5f4af29eb8bad39b71b4c42b32736df138d"
+    },
+    {
+      "path": "libserde_core-2547563587d4b831.rmeta",
+      "bytes": 5412246,
+      "sha256": "6562daacbb003543460a06af9497995998b1fe90fca10e75fc369b2e9f61943d"
+    },
+    {
+      "path": "libserde_core-2e494b77d872a23c.rlib",
+      "bytes": 4525242,
+      "sha256": "3b40d899c0623a7a07d80440e740e4dda15d4c93647509fcd9e8a82b37a25f1f"
+    },
+    {
+      "path": "libserde_core-2e494b77d872a23c.rmeta",
+      "bytes": 4375792,
+      "sha256": "b24e60632cb1cde09df4673e1166b2ea7cd1d5c8675c3a51623358050c4214c6"
+    },
+    {
+      "path": "libserde_core-33f817f32c849133.rlib",
+      "bytes": 5491844,
+      "sha256": "7ec3591568bf50c15410e2dfd7332b97f594d98147e7dcb01237d41be3f15f66"
+    },
+    {
+      "path": "libserde_core-33f817f32c849133.rmeta",
+      "bytes": 5412246,
+      "sha256": "3d6b7584d931a5c97d6874718fecb5ae245d8644986847320a60a0a3cee244e8"
+    },
+    {
+      "path": "libserde_core-455b3b0333f9880a.rlib",
+      "bytes": 4948928,
+      "sha256": "bec911ff00a9e50a81a1c6709bb660efb0e90d4135488dc0af834404e8b47a71"
+    },
+    {
+      "path": "libserde_core-455b3b0333f9880a.rmeta",
+      "bytes": 4789518,
+      "sha256": "4eb480d3e7f536f15dacabbe5d15dd7def48c63fcb554ca6d36b796d1a7dbc51"
+    },
+    {
+      "path": "libserde_core-d057d8c31bb5e366.rmeta",
+      "bytes": 2669265,
+      "sha256": "c63b777bbb01f79cd0331c2926dcbf9ecb0ce8e3a3da66cfcb315f1fb634ecec"
+    },
+    {
+      "path": "libserde_derive-4784988e36f34382.so",
+      "bytes": 5042504,
+      "sha256": "291c47f854766092005fccbb432fb078867dde33dfe551efd2d20922f8db9095"
+    },
+    {
+      "path": "libstrum_macros-d652d6330c5a4dd1.so",
+      "bytes": 4679488,
+      "sha256": "75090c6eef387ba6a5a2338d8916d24e1b6d45e9f8beb3c6d449654be555ec70"
+    },
+    {
+      "path": "libthiserror_impl-7c6c59bcc0ed1303.so",
+      "bytes": 4030416,
+      "sha256": "1eead78289d023b57b621251f14c1baff7965097f749e4829c831dd14ca8be63"
+    },
+    {
+      "path": "libtracing_attributes-2bc5cf5ac8d17ea6.so",
+      "bytes": 4415816,
+      "sha256": "7bdfcbe372157bdcd525797ec84cc5da0bcdf1f661be290e88aabf85ea37dcef"
+    },
+    {
+      "path": "libverus_builtin_macros-4041e04a1423e5ea.so",
+      "bytes": 13801064,
+      "sha256": "680c0a4d2de39557d19dcfeb71461326eeea7e2c1988312f48787083dd4a11e8"
+    },
+    {
+      "path": "libverus_builtin_macros-4d24ed628610c6f9.so",
+      "bytes": 13801216,
+      "sha256": "847d34da4de1293ed4fac872326c7f9c1b0d51106a5b96bba8aa3e02901a54b6"
+    },
+    {
+      "path": "libverus_builtin_macros-5340f0a10eb659b3.so",
+      "bytes": 13802056,
+      "sha256": "8c163089cb55fc3177a7e5505176d3321b6104e19635e0085353605bb12a7f9c"
+    },
+    {
+      "path": "libverus_builtin_macros-8ee02c8951a3ce51.so",
+      "bytes": 13801128,
+      "sha256": "cdf8dd2fec69a34bcd9b8c8ddf6ea52854b2e714fd0432bd1dbd53522b3d40c0"
+    },
+    {
+      "path": "libverus_builtin_macros-8fae4d5933788e10.so",
+      "bytes": 13789000,
+      "sha256": "eddc7508e59eae2c67c807cb0d576e4e43e9964b5ac490db14abda891065dde8"
+    },
+    {
+      "path": "libverus_builtin_macros-9a842a40aacbbfba.so",
+      "bytes": 13789056,
+      "sha256": "171584b1088bb439dbc873b6a451d4a60894bbf7b11e46031dd11e9bc4a4596d"
+    },
+    {
+      "path": "libverus_builtin_macros-d7ada7c493efe33a.so",
+      "bytes": 13801552,
+      "sha256": "49d13f1043b3bb2f19270544f432b75d80ccfa68b52d12e0d6df19af64a71121"
+    },
+    {
+      "path": "libverus_builtin_macros-ee8aceeeab1b6cb4.so",
+      "bytes": 13801184,
+      "sha256": "b7f6428fb77db1baef8705a54a278a4b24c5db506f2e96185fab8a4f20c159a5"
+    },
+    {
+      "path": "libverus_state_machines_macros-04f2d3a917c2d7be.so",
+      "bytes": 8558192,
+      "sha256": "ec01cbdc772d1be4317da395128423dd030e0a552aee71d2f4fccd440c7077e9"
+    },
+    {
+      "path": "libverus_state_machines_macros-2712f5ba853aeb41.so",
+      "bytes": 8570136,
+      "sha256": "1d6931b6b7b6fe35ef44a0f0095e321cc94c44b6c94209e802e220cd625f2fa7"
+    },
+    {
+      "path": "libverus_state_machines_macros-274cd951c58abff4.so",
+      "bytes": 8568304,
+      "sha256": "e51e37ffd3c3f023d5bf6a65e3f840504628401698025321f057b2b6ca470a8e"
+    },
+    {
+      "path": "libverus_state_machines_macros-33a9d17a43325045.so",
+      "bytes": 8570128,
+      "sha256": "c382bad053e0ed0e563b8ee4f7b344ffb81de6ddf30741615dd2a41c9da94dda"
+    },
+    {
+      "path": "libverus_state_machines_macros-6ff4b51cb61156e2.so",
+      "bytes": 8570296,
+      "sha256": "89044b0f7fb3980d4b5c3de84504274718151470b62059d4addbb60868600567"
+    },
+    {
+      "path": "libverus_state_machines_macros-a2fcde6487756625.so",
+      "bytes": 8558144,
+      "sha256": "f1eab21881b9e00b2e1f5500fe4e0c0588dd8dc6a31a5ca8ed165341aaeeee2e"
+    },
+    {
+      "path": "libverus_state_machines_macros-b6d31829848ca736.so",
+      "bytes": 8569640,
+      "sha256": "57cef10cfacf24b1f30ea64252b4a86688ddbef3bc1338fde3c7dc6416b6ecab"
+    },
+    {
+      "path": "libverus_state_machines_macros-d15980ded7a85beb.so",
+      "bytes": 8570144,
+      "sha256": "404422675c914ecab44647d1225e4432c47bdf6fb8f336223f91c78e2344f94c"
+    },
+    {
+      "path": "libvir_macros-a28cb000eac23234.so",
+      "bytes": 4168864,
+      "sha256": "05d18a74f565e51e628ce64f52bce37ace13dfa517052f0416e13189e355dcf3"
+    },
+    {
+      "path": "rust_verify-a4418350c79ef26e",
+      "bytes": 29788864,
+      "sha256": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7"
+    },
+    {
+      "path": "verus-6277c653aea166f8",
+      "bytes": 4705336,
+      "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+    },
+    {
+      "path": "vstd_build-672aba8c5b71b135",
+      "bytes": 51640,
+      "sha256": "843ae0be4320ea234728e8640f908398590d15fd5da610bd9e6bc2886e35f73c"
+    }
+  ],
+  "prior_seal_before": {
+    "manifest_sha256": "f47828d9a3b4b12de72e4d7725e0200543522c21a9dbe9cf2cde3891774d1abf",
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "305abefce0b62721547a06370e63f493ce961a2de4dbbbb15313beae4517d4d9",
+      "verus/source/target-verus/release/cargo-verus": "f289aace1c0c9f3cf33320792d61fead92f223bbb1e9fbffd9db52c5c40c93c4",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "706cf40d8ecb1b03adf3c43705fbea3c08b0bbe15fc7170d2efaaa5378e6b91c",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "49d13f1043b3bb2f19270544f432b75d80ccfa68b52d12e0d6df19af64a71121",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "89044b0f7fb3980d4b5c3de84504274718151470b62059d4addbb60868600567",
+      "verus/source/target-verus/release/libvstd.rlib": "e8ddd2da6f270fb19c9c0ec3a23e58098b8a0b69e92865f972dcf7d24ff21885",
+      "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "ee8de6d4dedc584f2457938868dea48c839ad6117789d78b6784181dff5d9829",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "source_identity": {
+      "sources": {
+        "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395",
+        "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+        "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+        "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+        "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+        "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+        "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac"
+      },
+      "lock": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    }
+  },
+  "prior_seal_after": {
+    "manifest_sha256": "f47828d9a3b4b12de72e4d7725e0200543522c21a9dbe9cf2cde3891774d1abf",
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "305abefce0b62721547a06370e63f493ce961a2de4dbbbb15313beae4517d4d9",
+      "verus/source/target-verus/release/cargo-verus": "f289aace1c0c9f3cf33320792d61fead92f223bbb1e9fbffd9db52c5c40c93c4",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "706cf40d8ecb1b03adf3c43705fbea3c08b0bbe15fc7170d2efaaa5378e6b91c",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "49d13f1043b3bb2f19270544f432b75d80ccfa68b52d12e0d6df19af64a71121",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "89044b0f7fb3980d4b5c3de84504274718151470b62059d4addbb60868600567",
+      "verus/source/target-verus/release/libvstd.rlib": "e8ddd2da6f270fb19c9c0ec3a23e58098b8a0b69e92865f972dcf7d24ff21885",
+      "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "ee8de6d4dedc584f2457938868dea48c839ad6117789d78b6784181dff5d9829",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "source_identity": {
+      "sources": {
+        "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395",
+        "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+        "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+        "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+        "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+        "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+        "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac"
+      },
+      "lock": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    }
+  },
+  "compiler_seed_verified": true,
+  "runtime_source_proof_seal_removed": false,
+  "host_backing_recovery": "measured separately; overlay apparent free does not establish host APFS recovery",
+  "version": 1,
+  "raw_record_sha256": "d1ae24cab2a416ce7d6ff1febf5266e9011e40b4a45610746c8c87b6a73ecf3e",
+  "retained_fingerprint_inventory_count": 2144,
+  "retained_fingerprint_inventory_sha256": "3105bab5abc264870017dcfd80d4fbf63e125379b62b6cb1603f1373f1dc3c93",
+  "holder_audit_sha256": "b60db171f21e8be5080ec5fe5cfa4ca39870a0fe6e2dd9c29bd910dead1dd1f1",
+  "post_host_free_bytes": 13109829632,
+  "post_host_measurement_unix_ns": 1791702415451726000,
+  "space_claim": "Removed allocated-byte count is exact; concurrent APFS/overlay free-space changes are not attributed solely to this cleanup."
+}

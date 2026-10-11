@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "status": "PROPOSED; requires root build grant",
+  "source_control_evidence": "source-controls-pass.json",
+  "full_patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+  "delta_sha256": "4c8048a70a3b0dc2bfbfe9ba865bf275c118a8f2804d48437b9542ea6415070a",
+  "source_sha256": {
+    "vir/src/context.rs": "48ca863ba0342247ab3499de2e60199ec267c7cbb4d2d431b828be7fd04bd9b7",
+    "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+    "rust_verify/src/sail_engine.rs": "97dd2485b03c08c49ca473c2c59e3bb173dd1997f52663130f0e539b8d08b416",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/sail_deferred_import_tests.rs": "1056058cb50a98fedb98e4016694937e5fc2589e8b22fd1a3374f687bdf641da",
+    "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+    "rust_verify/src/sail_owned_imports.rs": "28816c68622ae75ea0c719adfd28f307a4df83a966473738b53c356dc1ced529"
+  },
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "rust_toolchain": "1.98.1",
+  "features": [
+    "sail-interactive:1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+    "host:x86_64-unknown-linux-gnu",
+    "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+  ],
+  "prospective_variant_suffix": "0bbc7d378544f972",
+  "builder_repository_commit": "328e8f5c166ac21ff589a16f8a18e320c67b226d",
+  "builder_archive_sha256": "b9a43bab50243c592f4dbda170eb61ddd26728df647875c364d22b18db06a568",
+  "builder_archive_bytes": 12195840,
+  "builder_patch_change": "Only private archive engine/verus/interactive.patch replaced by exact complete candidate; selected patch untouched",
+  "command": [
+    "cargo",
+    "xtask",
+    "build-verus-engine",
+    "--keep-intermediates"
+  ],
+  "scheduling": {
+    "jobs": 2,
+    "source_jobs": 2,
+    "nice": 0,
+    "target": "existing private engine xtask bootstrap target; no common target writer"
+  },
+  "seed": {
+    "source": "newly closed OriginalDescriptor source-control target",
+    "allowlist": [
+      "release/deps",
+      "release/build",
+      "release/.fingerprint"
+    ],
+    "exclude_changed_crates": [
+      "vir",
+      "vir_macros",
+      "rust_verify"
+    ],
+    "copy": "distinct-inode compiler files only, per-file before/after hashes",
+    "runtime_proof_receipt_manifest_or_seal_copied": false,
+    "preconditions": [
+      "full cmd/cwd/fd holder audit of seed and bootstrap target",
+      "all source/lock/patch hashes and prior13 seals",
+      "new feature variant absent",
+      "host backing free-space recorded"
+    ]
+  },
+  "required_terminal": [
+    "fresh ordinary vstd2060/0",
+    "new complete13-artifact manifest and exact direct runtime inventory",
+    "seven source hashes and653 lock before/after",
+    "solver and stock/product/build identities recorded",
+    "owned group closure and raw log hashes",
+    "prior13 runtime/source seals unchanged"
+  ],
+  "qualification": "Original14/600 strict stock diagnostics, same-input oracle and genuine previous-revision FOCUS only after separate root manifest/controller grant",
+  "selected": false,
+  "ordinary_build_launched": false
+}
