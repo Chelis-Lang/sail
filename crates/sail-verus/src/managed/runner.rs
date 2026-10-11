@@ -2290,7 +2290,7 @@ mod tests {
             &f.result,
             true,
             true,
-            &["--verify-function=selected".to_owned()]
+            &["--".to_owned(), "--verify-function=selected".to_owned()]
         ));
         f.expected.insert((
             "input".to_owned(),
@@ -2299,6 +2299,40 @@ mod tests {
         ));
         assert!(!f.eligible());
         f.expected.retain(|(_, name, _)| name == "input");
+        let original_call = f.call.clone();
+        for field in ["error", "errors", "verified", "exit", "success"] {
+            f.call = original_call.clone();
+            match field {
+                "error" => {
+                    f.call.report.error =
+                        crate::report::setup_failure(&[], "SAIL3100", "fixture").error
+                }
+                "errors" => f.call.report.crates[0].verus.errors = Some(2),
+                "verified" => f.call.report.crates[0].verus.verified = Some(0),
+                "exit" => f.call.report.exit_code = Some(101),
+                _ => f.call.success = true,
+            }
+            f.seal()?;
+            assert!(!f.eligible(), "mismatched report {field}");
+        }
+        f.call = original_call;
+        f.seal()?;
+        for start in [
+            b"{".as_slice(),
+            b"{\"run_id\":\"other\",\"target\":\"input\"}".as_slice(),
+        ] {
+            std::fs::write(f.paths.run.join("invocations/1.started"), start)?;
+            assert!(!f.eligible(), "malformed or wrong-run start");
+        }
+        f.seal()?;
+        std::fs::remove_file(
+            f.paths
+                .run
+                .join("invocations")
+                .join(format!("{}.json", f.call.identity.key())),
+        )?;
+        assert!(!f.eligible(), "started invocation missing its completion");
+        f.seal()?;
         let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
         for field in [
             "encountered-vir-error",
@@ -2479,6 +2513,13 @@ mod tests {
         assert!(
             !f.paths.compiler_inputs.exists(),
             "unfinished full invocation cannot publish"
+        );
+        std::fs::write(sidecar.join("engine.events.jsonl"),
+            b"{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false,\"normal_termination\":false}}\n")?;
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation);
+        assert!(
+            !f.paths.compiler_inputs.exists(),
+            "abnormal termination cannot publish"
         );
         f.seal()?;
         let establishing = CompilerGeneration {
