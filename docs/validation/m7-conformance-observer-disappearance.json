@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "scope": "Metadata observer only; no conformance or proof acceptance",
+  "old_observer_sha256": "cbfdb01e9374f1f3e835851a11c254ead30d24e008b4cad93e34b971333a7861",
+  "original_raw_evidence": "target/verismo-default-diagnostic/standard-e0ca5f5/process-observations.jsonl",
+  "original_terminal_observation": {
+    "event": "observation-ended",
+    "reason": "[Errno 3] No such process: 'stat'",
+    "last_complete_sample_elapsed_s": 1725.1150224960002
+  },
+  "cause": "Descendant stat validation was outside its disappearance handler; ordinary descendant exit could end metadata observation despite a live pinned leader",
+  "fix": "Skip disappearing or reparented descendants, retaining mandatory exact retained leader checks before payload and publication",
+  "unchanged": {
+    "sampling_seconds": 5,
+    "duration_seconds": 7300,
+    "scan_count": 16384,
+    "process_count": 256,
+    "thread_count": 512,
+    "fd_count": 256,
+    "record_bytes": 262144,
+    "output_bytes": 25165824,
+    "actor_timeout_seconds": 3600,
+    "actor_or_classifier_changes": false
+  },
+  "controls": {
+    "helper_tests": 6,
+    "passed": 6,
+    "elapsed_s": 0.02,
+    "scope": "synthetic metadata controls, no actor/proof launch"
+  },
+  "corrected_observer_sha256": "2b8366ce4e2577371516696b693c08f6b5a986ab4dfe26afbd7cceb567455c2e",
+  "corrected_controls_sha256": "f5da35a662b65cb78aab03d1fbcccfbff93174059360aae1f40b7cd66ba6d701",
+  "supplementary_observation": "pending separately frozen attachment; original output/failure remains unchanged"
+}
