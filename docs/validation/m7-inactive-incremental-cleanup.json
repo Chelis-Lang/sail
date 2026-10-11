@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "scope": "Inactive compiler scratch cleanup; no product or proof acceptance claim",
+  "linux_validation_scratch": {
+    "machine": "local x86-64 Linux container under Docker Desktop emulation",
+    "roots": {
+      "real": "completed managed validation contexts",
+      "stock": "completed stock validation contexts"
+    },
+    "directories": [
+      {
+        "root_label": "real",
+        "relative_directory": "2a6baffdae6ce0dc4acfea942c01cc4d4c018e736e6d145d23e7e1d7b5cbb17b/cd463becebc5036a4a6f71431615eeefe9993a2096241c56613d252a88d34c00/target/debug/incremental",
+        "allocated_bytes_reclaimed": 316235776,
+        "removed": true
+      },
+      {
+        "root_label": "real",
+        "relative_directory": "1f2fe273c97d41bb609699204f2f5d4d043546b3039187f0710c28f235344137/1583ea9e7dd1205978abd875fbbc327e1afb91c4b75dc8e3874a10ce96ea697e/target/debug/incremental",
+        "allocated_bytes_reclaimed": 269000704,
+        "removed": true
+      },
+      {
+        "root_label": "real",
+        "relative_directory": "85f06fda1797ca7a5b94ae8a11c891fa374d247da2bb41714c2c35f7800b348d/1da5b6b34e59d862f31f64496b7f9b054b28552a6d9d89bf57915586592b8e94/target/debug/incremental",
+        "allocated_bytes_reclaimed": 268996608,
+        "removed": true
+      },
+      {
+        "root_label": "real",
+        "relative_directory": "f32aaf73530e5749a77a16ce7321c95c310dd20c246b42c98d2da2c60508c023/06c8709f3d8621515b5dc332b45ad26094b6f05a4d3bbb7b9649c7504097ea25/target/debug/incremental",
+        "allocated_bytes_reclaimed": 268992512,
+        "removed": true
+      },
+      {
+        "root_label": "real",
+        "relative_directory": "f32aaf73530e5749a77a16ce7321c95c310dd20c246b42c98d2da2c60508c023/a4bd1c8214096a6d4c2d6e1afcd04049378a2c309c04db0932fca36022a345de/target/debug/incremental",
+        "allocated_bytes_reclaimed": 269266944,
+        "removed": true
+      },
+      {
+        "root_label": "real",
+        "relative_directory": "f32aaf73530e5749a77a16ce7321c95c310dd20c246b42c98d2da2c60508c023/02be819b92cb808cfe277aca9b424f67043068a9c224ee0a8f19c2bb16215f3f/target/debug/incremental",
+        "allocated_bytes_reclaimed": 268992512,
+        "removed": true
+      },
+      {
+        "root_label": "stock",
+        "relative_directory": "f32aaf73530e5749a77a16ce7321c95c310dd20c246b42c98d2da2c60508c023/b00857e9e5acb956758103c44a1282dfb4cdc5fb04ab51506c23826372c4e2e2/target/debug/incremental",
+        "allocated_bytes_reclaimed": 268992512,
+        "removed": true
+      },
+      {
+        "root_label": "stock",
+        "relative_directory": "700c2ffc241d67896347faf7ef4465619ad19963427419bef27467846ed5111b/4c2a489335daf5dc9f4fb7df3f0531d9877e3fc6b0f40d84d9409b9e95bd8281/target/debug/incremental",
+        "allocated_bytes_reclaimed": 316231680,
+        "removed": true
+      }
+    ],
+    "allocated_bytes_reclaimed": 2246709248,
+    "protected_before": {
+      "sha256": "349a4f01cf48c23423a80dfd02c9345a34c656b1807295147bbe18ebd862caa2",
+      "entries": 17743,
+      "regular_bytes": 4834850037
+    },
+    "protected_after": {
+      "sha256": "349a4f01cf48c23423a80dfd02c9345a34c656b1807295147bbe18ebd862caa2",
+      "entries": 17743,
+      "regular_bytes": 4834850037
+    },
+    "protected_unchanged": true,
+    "ownership_checks": [
+      {
+        "processes": 398,
+        "references": 545,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 398,
+        "references": 597,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 398,
+        "references": 597,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 397,
+        "references": 559,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 397,
+        "references": 558,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 397,
+        "references": 559,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 397,
+        "references": 559,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 398,
+        "references": 558,
+        "matches": [],
+        "complete": true
+      },
+      {
+        "processes": 398,
+        "references": 597,
+        "matches": [],
+        "complete": true
+      }
+    ],
+    "cleanup_script_sha256": "5fede543b524fd004e10faaea8438349a34f2c4700a1e7eafedcbfda49db95a5",
+    "raw_records": "target/old-incremental-cleanup/native-records",
+    "raw_summary_sha256": "bc270ee949c398e5c560933eb1e0b8f588dd472192d2ee0c831e26ac5d20f2fb"
+  },
+  "host_closed_object_cleanup": {
+    "scope": "Owned closed object cleanup; inventory and raw/source/frozen binaries preserved",
+    "deleted_pattern": "target/debug/deps/*.o",
+    "deleted_file_count": 7216,
+    "allocated_bytes_reclaimed": 245407744,
+    "retained_binaries_verified_after": true,
+    "retained_binary_inventory": [
+      {
+        "path": "target/debug/deps/libzerovec_derive-97733c8e5d19ec39.dylib",
+        "bytes": 2561032,
+        "sha256": "c4bec93120c4a4089a6318773cce5e5d40b6fd0b2be54a6aaa74ba4a0b505199"
+      },
+      {
+        "path": "target/debug/deps/sail_mcp-676b3a05cf864240",
+        "bytes": 11961080,
+        "sha256": "b197f9ebdb18a9462c490c3c08e6575d70eb5d932645b44fbf48765f64ec8d6c"
+      },
+      {
+        "path": "target/debug/deps/mcp-3144cda41d84a6e0",
+        "bytes": 11042344,
+        "sha256": "fcc301e5aa6638820d93b55337a3cc50f49e8d717e463d8f310f069bdf98d640"
+      },
+      {
+        "path": "target/debug/deps/libserde_derive-1d4a402a1f140642.dylib",
+        "bytes": 3684248,
+        "sha256": "657b2e3aa82c39adc9d07d0207c7eda64cf308ab9f39230e73cd966a77555f74"
+      },
+      {
+        "path": "target/debug/deps/libyoke_derive-0c208a0d5d30e6f6.dylib",
+        "bytes": 2613976,
+        "sha256": "bb957fa260cb52abecea5e0bd36f5bbd6a15cf7b3044ad873981997c18a82368"
+      },
+      {
+        "path": "target/debug/deps/libdisplaydoc-a9cb807f771ba62a.dylib",
+        "bytes": 2434664,
+        "sha256": "77aa3e6aec93b5cc130a4e6d77dea24f3ccb313397908264847814768c870f4b"
+      },
+      {
+        "path": "target/debug/deps/sail-aecad73e5b4929e4",
+        "bytes": 44357048,
+        "sha256": "b6545169351db30ca6d3ab84e83ed4483b8cbe5955c69818a4a1314a68f33893"
+      },
+      {
+        "path": "target/debug/deps/sail_api-8fa70a2a322bb3b1",
+        "bytes": 9930984,
+        "sha256": "dbb620586481cea5534a449e7543415e94d2b8a6bf59ddeeed0b24b9d85d8615"
+      },
+      {
+        "path": "target/debug/deps/libzerofrom_derive-36c68d10464608b9.dylib",
+        "bytes": 2735176,
+        "sha256": "34899b47e179956e9133cdb880657e0e6fc01d1fe55a6c2c815f5c4a5a07b99d"
+      },
+      {
+        "path": "target/debug/deps/libserde_derive-9396c7f46bd331dd.dylib",
+        "bytes": 3684184,
+        "sha256": "bdd815ec1c9700a194477da46044fd3b52e4264f5529e2cd99134999f65f30a6"
+      }
+    ]
+  },
+  "total_recorded_allocated_bytes_reclaimed": 2492116992,
+  "preserved": [
+    "All regular context files, binaries, dependencies, Cargo fingerprints, receipts, sidecars and raw transcripts",
+    "Selected and candidate runtimes, source and qualification records",
+    "Active standard conformance cache and page-table actor",
+    "Root common Cargo target and complete gate/solver actors",
+    "Source agent bootstrap, seed, target and running candidate build",
+    "Other projects and all container data volumes"
+  ],
+  "verification": "Compared identical sorted path/kind/mode/content seals for all 17,743 protected entries before and after; no symlinks in the sealed context inventory. Cmd/cwd/fd scans were complete before sealing and immediately before each removal. Exact scratch directory device/inode identity was checked before each removal. Filesystem free-space movement is not attributed because concurrent work remained active."
+}
