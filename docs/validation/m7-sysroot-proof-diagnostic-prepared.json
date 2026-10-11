@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "kind": "prepared-one-sysroot-proof-diagnostic",
+  "state": "prepared-not-launched",
+  "acceptance": false,
+  "proofs_launched": 0,
+  "product_source_commit": "7238da8406cd3a5d62b8c378949d36832446aed8",
+  "source_archive_sha256": "2c30f98ffdf5aae5881014801ac892cd1327516e17cdcb4e791650debf427096",
+  "product": {
+    "sail": {
+      "bytes": 74664464,
+      "sha256": "731f581c95c0eb6d436bb045f177a6deaf9a3298faebdb7dfdcba9dad8335289"
+    },
+    "sail-z3": {
+      "bytes": 11000912,
+      "sha256": "ddfa36ab78d36d8e7fbfaf7740f19bb7c63a6bab9fa36f39a3e1bf82f3049636"
+    }
+  },
+  "product_grant": {
+    "bytes": 1102,
+    "sha256": "aa83d7fafd8aa8974813e9de2c1651c09b0ae4d832ec046e7e365c3aa389bbc3"
+  },
+  "selected_manifest": {
+    "bytes": 2107,
+    "sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41"
+  },
+  "selected_artifacts": {
+    "verus/source/target-verus/release/.cargo-build-lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/.vstd-fingerprint": {
+      "bytes": 155,
+      "sha256": "429fa4044969f926433ea92e7c06604670c5af1aed26bcc3c8f42493f409d652"
+    },
+    "verus/source/target-verus/release/cargo-verus": {
+      "bytes": 2754984,
+      "sha256": "3b654550d9787335953020f3946a96205bca5736c3e57ddba0fd3b47688d8fb9"
+    },
+    "verus/source/target-verus/release/libverus_builtin.rlib": {
+      "bytes": 928246,
+      "sha256": "65aabd6f36f48a976080ed7935a6cbad1397cd586f281845f47ae33678674237"
+    },
+    "verus/source/target-verus/release/libverus_builtin_macros.so": {
+      "bytes": 13801616,
+      "sha256": "47ecd157517d37f6a631664a2ab28e7eaf7ec890d4968a373964731d7ac23cd6"
+    },
+    "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+      "bytes": 8570208,
+      "sha256": "a0537a11801a32855b055117e7ec058bcba8c68689b5e492768cd0bbb0b69763"
+    },
+    "verus/source/target-verus/release/libvstd.rlib": {
+      "bytes": 10236586,
+      "sha256": "5e1ead56f11dd56ea759ea53b9b5dd28de66e0f655b6935cd0702c4f5ab33a3b"
+    },
+    "verus/source/target-verus/release/rust_verify": {
+      "bytes": 27902632,
+      "sha256": "670e3a437474e7bc0dd53df0f070da5fd48de508954eb58c7c1e5698bfc43e58"
+    },
+    "verus/source/target-verus/release/version.txt": {
+      "bytes": 26,
+      "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+    },
+    "verus/source/target-verus/release/verus": {
+      "bytes": 4705336,
+      "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+    },
+    "verus/source/target-verus/release/verus-root": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/vstd.vir": {
+      "bytes": 30076214,
+      "sha256": "e30595b97c5f729b36f66a3c9101a82ff976831f885fc5592c979077f2f9c3bc"
+    },
+    "verus/source/target-verus/release/z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "stock": {
+    "cargo-verus": {
+      "bytes": 2756256,
+      "sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+    },
+    "verus": {
+      "bytes": 4708720,
+      "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+    },
+    "z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "controller": {
+    "bytes": 15886,
+    "sha256": "6f29f27975035ed253ec75e6cfbc8f22eaca24a9ad5256e927cf877253b34779"
+  },
+  "helpers": {
+    "m7-job-read-bench.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    },
+    "m7-native-product.py": {
+      "bytes": 12115,
+      "sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+    },
+    "m7-reader-acceptance.py": {
+      "bytes": 33712,
+      "sha256": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d"
+    },
+    "m7-repair-bench.py": {
+      "bytes": 31040,
+      "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33"
+    },
+    "m7-retained-jobs-acceptance.py": {
+      "bytes": 20198,
+      "sha256": "ba1acf98c39dce9687a4a0e277234296459651dc1580316576c654ceb2154028"
+    }
+  },
+  "unused_collectors": {
+    "job_read_bench": {
+      "bytes": 12235200,
+      "sha256": "f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d"
+    },
+    "python-reader-probe.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    }
+  },
+  "original_opaque_references": {
+    "original_input_state": {
+      "bytes": 159931,
+      "sha256": "cac56bdf6c27ea2c15a723b761ab9f5574e2d75440d42da928d712707e7a0050"
+    },
+    "original_result": {
+      "bytes": 10725661,
+      "sha256": "066d360a42d467d674aa35c34b835393e831ad95388fca72d89a2d756741dd01"
+    },
+    "original_runtime_identities": {
+      "bytes": 79091,
+      "sha256": "71e1eccfbde7036fd46eb767a1ae6577f9314cf7af0e1707aff1200fd159801c"
+    },
+    "original_summary": {
+      "bytes": 125520,
+      "sha256": "c12fd6f74c08607e82c0dde9ebca7769a9b03e35d63b496b73db1de67844485b"
+    }
+  },
+  "original_job": "1791699162785-561644-4",
+  "source": {
+    "original_template_file_count": 273,
+    "exact_original_template_files": true,
+    "actual_file_count": 274,
+    "existing_generated_lock": {
+      "bytes": 3007,
+      "sha256": "a38eff2ab6773bcb3f8a8b32068b6b9687cae6d168b3a20f8002578649245525"
+    },
+    "historical_lockfile_hash_retained": false
+  },
+  "product_ownership_prerequisite": {
+    "authority": "environment-prerequisite-only",
+    "completeness": "product binaries only; all runtime/source/helper bindings remain required",
+    "credentials": {
+      "cap_eff": "00000000a80425fb",
+      "cap_lease": false,
+      "fsuid": 0,
+      "gids": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uids": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "currentness_certified": false,
+    "foreign_owned": [],
+    "ownership_prerequisite_met": true,
+    "supplied_bindings": 2,
+    "uid_counts": {
+      "0": 2
+    },
+    "version": 1
+  },
+  "private_launch_freeze": {
+    "bytes": 50567,
+    "sha256": "7dc4a29722704b50e86e35a0a13aeeb6284719bf9b720608827f54037e399889"
+  },
+  "private_launch_arguments": {
+    "bytes": 1738,
+    "sha256": "8fbf5adfd50eabd3d625c7550009469e104a168845b7620c4f4bca41d0f68d3c"
+  },
+  "preflight": {
+    "initial_exact_template_check": "refused-before-product-execution; one existing generated Cargo.lock only",
+    "reviewed_explicit_lock_check": "passed; no product, Cargo, service or proof execution"
+  },
+  "no_proof_controls": {
+    "passed": 7,
+    "scope": "wrapper control flow only; not actual proof/freshness acceptance"
+  },
+  "limits": {
+    "whole_proof_s": 600,
+    "cli_s": 30,
+    "rpc_s": 5,
+    "submissions": 1,
+    "retries": 0,
+    "collectors": 0
+  },
+  "scope": "Same selected b346 compiler/source/selector/solver inputs, new executable/cache identity. No old receipt or digest authority, no warmup or manual Prepare. New Guard binds existing generated lockfile. Cause investigation only.",
+  "links": [
+    "m7-sysroot-proof-diagnostic-plan.md",
+    "m7-owned-reader-d20.md",
+    "m7-sysroot-proof-diagnostic.py",
+    "test-m7-sysroot-proof-diagnostic.py"
+  ]
+}
