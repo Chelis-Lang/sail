@@ -1,7 +1,8 @@
 # VI-0012: Filtered verification prints bucket-start notes in arrival order
 
-- **Status:** open; source mechanism established, identical-runtime repeated
-  stock control pending. Recorded locally, not filed upstream.
+- **Status:** open; source mechanism established, the separately authorized
+  sealed-runtime two-run control did not reproduce differing order. Recorded
+  locally, not filed upstream.
 - **Verus:** pinned `0.2026.10.04.426d8b0`, source commit
   `426d8b01e7ffb910a36c15e1f870ff985bb61eef`.
 - **Found:** 2026-10-11.
@@ -9,7 +10,7 @@
   `engine/verus/candidates/test-private-span-cross-edit.py`, selecting the
   pinned HumanEval module `human_eval_013`. This existing input contains
   separately scheduled `lemma_div` and `lemma_div_converse` buckets. A smaller
-  executable stock-only reproduction has not yet been run.
+  stock-only control is retained below.
 - **Impact:** candidate `50667954` failed the original exact stderr comparison
   before revisions one and two. Neither transcript normalization nor a thread
   override is applied. The source candidate remains unqualified.
@@ -74,8 +75,21 @@ which worker scheduling caused the recorded comparison failure.
 
 ## Required follow-up
 
-Seal the historical stock identity or run a separately authorized bounded
-stock-only reproduction with exact source, launcher, driver and flags. Retain
-every raw output and order rather than retrying qualification until it passes.
+Two independently fresh stock-only processes used identical complete command
+lines, unchanged complete source input and the sealed launcher/driver/Z3 above.
+They completed in 19.649 and 16.506 seconds, both with nine verified functions,
+zero errors and identical 234-byte stderr SHA-256 `63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16`.
+This pair **did not reproduce differing note order**. The bounded controller,
+source/command/runtime hashes and all raw-output inventory identities are in
+[the negative reproduction record](../validation/m7-filtered-progress-two-stock.json).
+The controller is [m7-filtered-progress-control.py](../../scripts/m7-filtered-progress-control.py).
+
+Both new runs differ from the original b46 stock note order, but their retained
+scratch source/log paths differ from the original. This is not evidence of
+nondeterminism under identical complete inputs across those scopes. The original
+strict b46 failure and zero-hit state remain unchanged. No extra runs, thread
+override, normalization or oracle treatment was adopted.
+
+Retain every raw output and order rather than retrying qualification until it passes.
 Any proposed treatment of progress notes needs an explicit correctness decision;
 the original diagnostic check remains mandatory in the meantime.
