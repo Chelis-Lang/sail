@@ -68,3 +68,10 @@ runtime/proof/seal output, and retains the full seed inventory and raw logs.
 The earlier Arc lint and Rc trait failures remain failed records. These source
 controls do not supply a new runtime manifest, vstd receipt, original oracle
 result, or permission to select the candidate.
+
+[Closed compiler retirement](preceding-compiler-retirement.json) removes only
+regenerable compiler subdirectories from the two closed failed variants after
+exact runtime-seal and holder checks, retaining their actual test executables,
+source snapshots and raw failures. Allocated files retired and native/host free
+space observations are recorded separately; shared backing-space changes are
+not attributed to cleanup. No selected/new/qualification runtime file moves.
