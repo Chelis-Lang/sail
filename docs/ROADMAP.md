@@ -237,12 +237,15 @@ Priority order for completing this milestone:
    runtime/input validation or publishing Completed before results are ready.
    Ordinary dependency reuse and source qualification are implemented; installed
    product acceptance remains open.
-3. Validate the full-result ownership change that releases the output-cell lock
-   during independent input inspection. Component controls must precede the
-   complete four-client, 200-sample reader census and retained real-project
-   CLI/MCP scenarios. Separately validate bounded small HTTP body reads against
-   the original eight-reader 250 ms check. These candidates remain unselected
-   until their correctness controls and complete-operation measurements pass.
+3. Integrate the [validated output-owner overlap change](validation/m7-result-output-overlap-native.md)
+   into the complete product gate, then run the unchanged four-client,
+   200-sample reader census and retained CLI/MCP scenarios. Its affected controls
+   and component comparison pass; component p95 falls from 19.366 to 12.713 ms.
+   That measurement includes no RPC or Python decoding and does not complete
+   the full reader gate. The [transport review](validation/m7-full-result-cost-followup-review.md)
+   finds no additional encoding or full-frame copy on cached hits. Separately
+   validate the still-unselected bounded small HTTP body reads against the
+   original eight-reader 250 ms check.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
 5. Measure every frozen HumanEval and Vest repair cycle for three rounds, retaining
