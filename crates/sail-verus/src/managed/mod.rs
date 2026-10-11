@@ -7,6 +7,7 @@ mod configuration;
 mod diagnostics;
 mod files;
 mod freshness;
+mod guarded_output;
 mod input;
 #[cfg(target_os = "linux")]
 mod kernel_leases;
@@ -29,6 +30,7 @@ mod sysroot_selection;
 
 pub(crate) use files::{digest, event, file_digest, json};
 pub use freshness::FreshnessIndex;
+pub use guarded_output::{GUARDED_OUTPUT_RETAINED_BYTES, GuardedOutput};
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
 pub(crate) use runner::run_engine;

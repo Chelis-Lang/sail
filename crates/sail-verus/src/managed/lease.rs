@@ -334,6 +334,12 @@ impl ReadLease {
             return false;
         }
         let descriptors = ProcBindings::open();
+        #[cfg(test)]
+        if binding_batch::enabled()
+            && let Some(descriptors) = &descriptors
+        {
+            return binding_batch::matches(descriptors, &self.bindings);
+        }
         self.bindings
             .iter()
             .all(|(path, canonical, device, inode)| {
@@ -341,6 +347,12 @@ impl ReadLease {
             })
     }
 }
+
+// Candidate remains test-only until complete-operation measurements justify
+// selection. Production barriers still perform every original absolute lookup.
+#[cfg(test)]
+#[path = "lease_binding_batch.rs"]
+mod binding_batch;
 
 /// Per-barrier descriptor lookup, with no retained identity or freshness memo.
 struct ProcBindings {

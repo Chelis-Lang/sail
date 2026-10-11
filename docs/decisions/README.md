@@ -37,3 +37,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0032: Sticky kernel mount-generation coverage](0032-kernel-mount-generation-coverage.md)
 - [0033: Exact deferred imported diagnostic locators (proposed candidate)](0033-deferred-import-diagnostic-locators.md)
 - [0034: MCP response encoding ownership](0034-mcp-response-encoding-ownership.md)
+- [0035: Guarded retained output digests (unselected prototype)](0035-guarded-retained-output-digests.md)
