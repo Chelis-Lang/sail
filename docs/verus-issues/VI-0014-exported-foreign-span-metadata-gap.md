@@ -37,9 +37,14 @@ that branch precedes the optional source loader. The
 [read-only metadata lineage](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/vstd-metadata-lineage.json)
 binds the exact sealed 30,076,214-byte vstd artifact and its 22,312-byte metadata
 suffix: all 145 recorded original ranges omit the three positions. That bounded
-inspection is separate from typed decoding and executable stock-resolver
-controls. Neither the inspection nor source analysis qualifies a new Sail
-restoration role.
+inspection is separate from the subsequent
+[typed stock-resolver control](../../engine/verus/candidates/preparation-retirement/absence-control/README.md).
+That control fully decodes the pinned metadata and executes byte-exact stock
+lookup methods in a reduced SourceMap fixture. All three uncovered ranges return
+`None` without loading; a real covered descriptor reaches the instrumented
+loader once. Unknown crates and covered-but-unavailable records are distinct
+negative cases. The original exporting compiler's SourceFile state remains
+unobserved. Neither control qualifies a new Sail restoration role.
 
 The current Sail helper labels both an absent crate and an uncovered original
 range `UnknownCrate`. The diagnostic label therefore does not establish that a
@@ -57,9 +62,9 @@ unqualified and does not recover the failed qualification.
 The [diagnostic controller](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/run-diagnostic.py)
 replays that frozen validation workspace with fresh preparation/oracle output,
 without copying proof evidence. The unchanged stock exporter and unpacking
-branches above are the source-level reproduction seam. A standalone minimal
-compiler fixture is still pending; the retained project run is not presented
-as one.
+branches above are the source-level reproduction seam. The reduced executable
+stock-method fixture is retained separately from the full project run; it does
+not reproduce historical source-file arrival or run an entire compiler proof.
 
 A distinct `pair-busy` refusal is also observed at 81,920 retained control bytes.
 It concerns compiler-service retirement and is addressed by a separate
