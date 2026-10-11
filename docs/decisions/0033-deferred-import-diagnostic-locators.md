@@ -80,3 +80,37 @@ stages, including strict stock stderr, same-input ordered raw SMT/effects and
 genuine previous-revision FOCUS under unchanged 600-second bounds. Existing
 failures remain separate. This proposed ADR neither selects a source runtime nor
 waives real HE/Vest proof, performance or reader acceptance.
+
+
+## Proposed amendment: original-descriptor-only role
+
+This amendment is proposed for independent review; no implementation or
+executable qualification follows from it. The corrected v6 ordinary candidate
+passes source controls/strict checks and fresh vstd, but its original fourteen
+stages fail at zero hits in revision 0. A separate bounded trace finds a
+per-record Delayed refusal in `vstd/function.rs`; its coarse reason does not
+distinguish unsupported path from absent Foreign metadata. Both results and
+post-run seals are retained in the
+[candidate review](../../engine/verus/candidates/deferred-import-locator/dynsend-owner/original-descriptor-role-review.md).
+
+The pinned SpanContext remaining-original loop legitimately creates Delayed
+recipes before SourceMap has loaded their Foreign metadata. Propose a distinct
+OriginalDescriptorLocator, limited to an exact original metadata filename/hash/
+range and the same current Delayed descriptor, with no Foreign raw-hash match
+across any current crate. This conservative condition avoids inventing a
+CrateNum association when no Foreign owner exists.
+Require absolute bounded UTF-8 path identity and unchanged state/namespace at
+pre-focus handoff. Preserve the existing LoadedForeign and Foreign-associated
+DeferredLocator rules and negatives; never promote or relabel one into another.
+Current stock Reporter remains the sole source loader, hash checker and offset
+translator. The capsule attests only a current recipe, never loaded content, a
+loader algorithm, coordinates or a verified result. Exact current raw-unit and
+span binding remains mandatory.
+
+A separately tagged v7 preparation domain and unchanged one-family 8 MiB /
+prospective 500 MiB phase bounds are required. Original-descriptor filename
+association, no-load source APIs, current Reporter/binding, state/namespace/
+ambiguity negatives, physical drop and old-domain controls need independent
+review and actual execution before a build. All original fourteen stages,
+strict raw stock diagnostics and genuine prior-revision FOCUS remain unchanged.
+The amendment and candidate remain unselected until executable qualification.
