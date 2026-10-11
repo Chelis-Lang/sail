@@ -244,7 +244,9 @@ pub(in crate::managed) fn begin(
     json(local, &records)
 }
 
-/// Optional publication after the original final Current transaction succeeds.
+/// Optional publication after the original final Current transaction. The
+/// runner admits either successful verification or its separately sealed full
+/// negative outcome; neither this export nor a negative outcome is a proof.
 /// Encoding/publication failure leaves no reusable family export.
 pub(in crate::managed) fn publish(
     path: &Path,

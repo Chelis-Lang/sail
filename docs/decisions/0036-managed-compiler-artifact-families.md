@@ -66,12 +66,32 @@ memory or RSS. Existing local Cargo observation loaders retain their original
 loading behavior.
 
 The exclusive owner consumes the export before any cleaning or invocation.
-Failed, interrupted and non-Current runs cannot leave an earlier generation
-certifying rewritten output. An absent generation forces cleaning even when an
+Interrupted, infrastructure-failed, incomplete and non-Current runs cannot leave
+an earlier generation certifying rewritten output. An absent generation forces cleaning even when an
 older private context has observations. Its old declaration paths remain only
 as uncovered watch roots, so the original declaration-establishment transition
 can acquire the necessary inventory; they grant no output reuse. A fresh export
-is atomically published only after the original successful Current transaction.
+is atomically published only after the original final Current transaction.
+
+Successful runs retain the existing publication rule. A source-engine run with
+ordinary proof errors may also retain fresh ordinary contracts when its input
+declarations were already covered at entry, the invocation was unfocused, and
+every selected target has exactly one observed completed full compiler outcome.
+Every recorded compiler start must have a corresponding completion, including
+dependencies. The negative branch requires Cargo exit 101, normal driver exits
+0 or 1, an exact sealed full terminal and whole-crate JSON, explicit absence of
+VIR errors, matching report counts and success fields, and at least one ordinary
+proof error. Generic exit 101, partial scope, cancellation, missing output,
+duplicate starts, declaration establishment and uncertain input coverage refuse
+this branch. The original guarded receipt commit must still finish Current.
+
+This is a completed negative compiler outcome, not successful verification.
+`TargetResult.complete`, invocation success, proof receipts and function verdicts
+keep their existing meanings. Per-function attribution uncertainty does not
+change the explicit terminal whole-crate proof error; it grants no proof reuse.
+The exported records independently revalidate each ordinary script contract and
+every output unit at publication and before the next mutation. A repair still
+reverifies its selected crate and cannot borrow a negative proof receipt.
 
 A second full contract check runs after the original native owners and monitored
 snapshot are live, before Cargo can reuse output. Any newly invalid package is
