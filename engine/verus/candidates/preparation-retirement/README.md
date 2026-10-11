@@ -2,8 +2,10 @@
 
 Status: file-only candidate overlay, unselected. The pinned helper's 16 controls
 and isolated strict check passed. Removing its finish wait failed the unchanged
-lifetime assertion as expected, without a timeout. Complete-source adapter/layout
-controls, strict checks, ordinary runtime and original qualification are pending. The selected runtime and product behavior are
+lifetime assertion as expected, without a timeout. Complete-source controls passed: 41 VIR and 98 driver tests, plus both strict
+all-target checks. Removing the actual normal finish call failed the unchanged
+paused-guard adapter assertion. Ordinary runtime and original qualification are
+pending. The selected runtime and product behavior are
 unchanged. This is an availability correction, not imported-span authority or
 evidence that the previous qualification's namespace refusals have been solved.
 
@@ -64,14 +66,16 @@ and inner refusal. Its fixed test-only hook pauses after service while the real
 files guard still lives. An observer releases that pause before assertions, then
 checks that the worker could not return or refund the charge. The
 [actual-call counterfactual](actual-finish-removed.patch) removes only the
-`with_namespace` normal finish call; that full-source sensitivity remains
-unexecuted. It must fail the same adapter assertion before claiming integrated
-regression coverage. The std-only model and helper-level sensitivity are separate
+`with_namespace` normal finish call; that full-source sensitivity failed the same adapter assertion with exit 101
+in 0.121 seconds, without a timeout. Its initial standalone loader setup failed
+with exit 127; the corrected run reused the identical executable after adding
+the pinned compiler library path. Both outcomes are retained in
+[source-controls.json](source-controls.json). The std-only model and helper-level sensitivity are separate
 evidence; [api-controls.json](api-controls.json) retains their actual scope.
 
 `namespace.rs` is the exact helper from this overlay. `tests.rs` adds the pinned
-native-type ceiling check without changing any original control. Complete
-compiler source tests and strict checks must still run before an ordinary build.
+native-type ceiling check without changing any original control. The complete compiler source tests and strict checks are now recorded in
+[source-controls.json](source-controls.json); an ordinary build remains separate.
 The original stock diagnostics, exact same-input oracle, prior-revision hit
 requirement and all 600-second qualification bounds remain mandatory. Default
 proof repair and cache users must not treat this candidate as selected or
@@ -79,7 +83,7 @@ qualified, and no measured reader/proof latency gain is claimed.
 
 The independent boundary diagnostic subsequently observed one `pair-busy`
 refusal with 80 KiB retained, and three separate `UnknownCrate` validator
-refusals. That is evidence of the admission race, not proof this uncompiled
+refusals. That is evidence of the admission race, not proof this
 adapter fixes every refusal or produces a persistent hit. The original failed
 qualification and diagnostic remain separate.
 
