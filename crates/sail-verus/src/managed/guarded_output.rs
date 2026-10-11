@@ -16,7 +16,8 @@ pub const GUARDED_OUTPUT_RETAINED_BYTES: usize = 16 * 1024 * 1024;
 ///
 /// Construction belongs outside foreground RPCs. The original complete read and
 /// SHA check remains the fallback; every reuse requires fresh native barriers.
-/// This primitive is not currently enabled in the daemon result path.
+/// The daemon result path uses optional background construction and brackets
+/// independent input freshness with these barriers before reusing an output seal.
 pub struct GuardedOutput {
     #[cfg(target_os = "linux")]
     inner: linux::Owner,

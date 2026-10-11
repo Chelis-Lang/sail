@@ -55,7 +55,9 @@ frame cell alone. Replacement, eviction, a held request and shutdown cannot
 release it while its helper or observer remains alive. Field drop order disposes
 the guard before its charge. The permanent admission margin includes each
 bounded endpoint's retiring owner mutex/Arc allocation shell and the sole
-constructor's shell, as well as the existing stack/control/Frames margin.
+constructor's shell, including header-to-data and tail alignment padding,
+as well as the existing stack/control/Frames margin. A pinned C-layout control
+binds this accounting to the actual owner mutex's size and alignment.
 This is requested owned storage accounting, not allocator overhead or RSS.
 Refused constructor publication drops its candidate outside the frame-cell lock.
 

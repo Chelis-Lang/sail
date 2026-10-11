@@ -14,7 +14,16 @@ use super::result_cache::{Budget, Charge, Frames};
 const STACK_BYTES: usize = 1024 * 1024;
 const CONTROL_BYTES: usize = 65_536;
 const ARC_HEADER_BYTES: usize = 2 * std::mem::size_of::<usize>();
-const OWNER_ALLOCATION_BYTES: usize = std::mem::size_of::<Mutex<OutputOwner>>() + ARC_HEADER_BYTES;
+const OWNER_ALIGNMENT: usize = std::mem::align_of::<Mutex<OutputOwner>>();
+const ARC_ALIGNMENT: usize = if OWNER_ALIGNMENT > std::mem::align_of::<usize>() {
+    OWNER_ALIGNMENT
+} else {
+    std::mem::align_of::<usize>()
+};
+const OWNER_OFFSET: usize = ARC_HEADER_BYTES.div_ceil(OWNER_ALIGNMENT) * OWNER_ALIGNMENT;
+const OWNER_ALLOCATION_BYTES: usize = (OWNER_OFFSET + std::mem::size_of::<Mutex<OutputOwner>>())
+    .div_ceil(ARC_ALIGNMENT)
+    * ARC_ALIGNMENT;
 // Arc disposes OutputOwner fields before freeing its outer allocation. Count
 // the mutex/header as well as each bounded endpoint destructor and the sole
 // constructor's retiring shell, inside the original family ceiling.
@@ -310,6 +319,20 @@ mod tests {
 
     #[test]
     fn fixed_service_storage_and_single_stack_fit_separate_margin() {
+        // The pinned standard library's ArcInner uses this C layout. Bind both
+        // header-to-data and tail padding rather than assuming usize alignment
+        // for the output mutex. No allocation or unsafe inspection is needed.
+        #[repr(C)]
+        struct AllocationLayout {
+            _strong: std::sync::atomic::AtomicUsize,
+            _weak: std::sync::atomic::AtomicUsize,
+            _data: Mutex<OutputOwner>,
+        }
+        assert_eq!(
+            OWNER_ALLOCATION_BYTES,
+            std::mem::size_of::<AllocationLayout>()
+        );
+        assert_eq!(ARC_ALIGNMENT, std::mem::align_of::<AllocationLayout>());
         let fixed = std::mem::size_of::<Queue>()
             + 4 * std::mem::size_of::<usize>()
             + std::mem::size_of::<AtomicBool>()
