@@ -22,3 +22,10 @@ response cannot explain an earlier proof retrospectively. See
 [coverage diagnostics](m7-proof-coverage-diagnostics.md) and
 [freshness](../freshness.md) for the user-visible distinction between successful
 obligations and complete Current evidence.
+
+The frozen `21c281f` Linux container run passes strict affected-crate Clippy and
+all seven sysroot controls, including this regression. The original observer
+controls and their assertions remain intact. See the [raw-log identities and
+phase timings](../../bench/validation/m7-linux-sysroot-seven-21c281f-emulated-2026-10-11.json).
+This validates the detail path, not the historical failure cause or real workflow
+acceptance.
