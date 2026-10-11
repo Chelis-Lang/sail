@@ -1,4 +1,8 @@
-# One tspec transcript diagnostic, prepared but not executed
+# One tspec transcript diagnostic preparation
+
+This retained preparation scope preceded execution. The subsequent single run
+was [interrupted by filesystem/container failure](m7-tspec-transcript-interrupted.md)
+before a unit result; its original settings and failed historical scope remain.
 
 The [retained complete standard failure](m7-default-standard-e0ca-terminal.md)
 and [VI-0013](../verus-issues/VI-0013-verismo-tspec-stock-wait.md) remain
