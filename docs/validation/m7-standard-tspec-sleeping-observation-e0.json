@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "scope": "Nonterminal read-only metadata from one unchanged full default standard attempt; not a conformance classification or proven cause",
+  "scope": "Read-only sleeping-stage metadata and later original unit timeout inside an unchanged still-running complete default standard attempt; not a full conformance classification or proven cause",
   "environment": "Local Linux x86-64 container under Rosetta emulation; overlapping validation recorded separately, no load cause inferred",
   "source_commit": "e0ca5f5154e74326443181f57f0fd928488159d3",
   "source_archive_sha256": "451da19432e6ffea002ccfa13248d14a823c097fd81ad10b0269bc2c6b0ccd71",
@@ -102,7 +102,7 @@
   "limitations": [
     "Sampled CPU and wait channels identify a sleeping pipeline, not the responsible lock or cause",
     "Raw streams have no completed document at this observation",
-    "The full original unit timeout and remaining units must still run to terminal",
+    "The original unit limit fired without a completed raw document; the remaining full-suite units must still reach terminal",
     "The earlier complete failed standard attempt remains separate"
   ],
   "raw_stream_size_observation_unix_ns": 1791692137671809881,
@@ -146,5 +146,91 @@
     "all_available_byte_counts_zero": true,
     "verifier_fd_scan_limit": 64,
     "interpretation_limit": "No unread solver reply or queued pipe input at this instant; no root cause inferred"
+  },
+  "unit_timeout_followup": {
+    "raw_file": "timeout.json",
+    "sha256": "ded29496c704ab6b809d1a237636b6cdea54161971c853430d6395faf3d3e788",
+    "bytes": 2445,
+    "observed_unix_ns": 1791694802435138294,
+    "classification": "InfraError",
+    "error_code": "SAIL3022",
+    "unit_timeout_seconds": 3600,
+    "raw_error_line": "            error[SAIL3022]: /opt/verus/verus-x86-linux/cargo-verus: exceeded the unit time limit of 3600s; process group killed",
+    "completed_units": 156,
+    "completed_classifications": {
+      "Same": 155,
+      "InfraError": 1
+    },
+    "raw_partial_streams": {
+      "plain/stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "plain/stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "plain/time.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "sail_arm_started": false,
+    "process_scan_count": 636,
+    "owned_pgid": 533812,
+    "owned_group_remaining": [
+      {
+        "pid": 533815,
+        "state": "Z",
+        "ppid": 1,
+        "pgid": 533812,
+        "start_ticks": 3497016,
+        "cpu_ticks": 7
+      },
+      {
+        "pid": 533832,
+        "state": "Z",
+        "ppid": 1,
+        "pgid": 533812,
+        "start_ticks": 3497146,
+        "cpu_ticks": 279
+      },
+      {
+        "pid": 539579,
+        "state": "Z",
+        "ppid": 1,
+        "pgid": 533812,
+        "start_ticks": 3519078,
+        "cpu_ticks": 23990
+      },
+      {
+        "pid": 543050,
+        "state": "Z",
+        "ppid": 1,
+        "pgid": 533812,
+        "start_ticks": 3527534,
+        "cpu_ticks": 127
+      },
+      {
+        "pid": 544207,
+        "state": "Z",
+        "ppid": 1,
+        "pgid": 533812,
+        "start_ticks": 3539474,
+        "cpu_ticks": 72
+      },
+      {
+        "pid": 544216,
+        "state": "Z",
+        "ppid": 1,
+        "pgid": 533812,
+        "start_ticks": 3539590,
+        "cpu_ticks": 48
+      }
+    ],
+    "owned_group_live_count": 0,
+    "full_suite_terminal": false,
+    "original_actor_deadline_and_cleanup_unchanged": true,
+    "cause_established": false
   }
 }
