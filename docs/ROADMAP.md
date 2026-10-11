@@ -155,13 +155,13 @@ strict checks pass. Neither result proves the live reader latency threshold.
 Bounded optional
 [RPC stage timings](result-rpc-diagnostics.md) are implemented, with eight scoped
 controls and strict affected checks passing, to diagnose the retained full Result
-failure without changing collectors or freshness checks. The combined
-[workspace gate](../bench/validation/m7-linux-core-gate-76a6976-emulated-2026-10-11.json)
-passes 561 tests and all remaining checks; its separate
-[solver run](../bench/validation/m7-linux-core-solver-76a6976-emulated-2026-10-11.json)
-passes all 39 controls. These runs precede the final admission correction. A
-complete gate and solver run on that correction is underway, followed by a new
-sealed CLI/shim build and the unchanged real-reader workflow with bounded stage
+failure without changing collectors or freshness checks. The latest combined
+[workspace gate](../bench/validation/m7-linux-core-gate-0f31c1d-emulated-2026-10-11.json)
+passes all 564 tests and remaining checks in 542.758 seconds, including the final
+admission correction. Its separate
+[solver run](../bench/validation/m7-linux-core-solver-0f31c1d-emulated-2026-10-11.json)
+passes all 39 original controls in 94.628 seconds. A new sealed CLI/shim build
+is underway, followed by the unchanged real-reader workflow with bounded stage
 timings. The last pushed
 [native CI revision](../bench/validation/m7-linux-ci-08435c5-native-2026-10-11.json)
 passes every check in 442 seconds. The full Result p95 failure at 394.713 ms
