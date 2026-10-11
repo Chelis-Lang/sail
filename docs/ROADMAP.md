@@ -141,7 +141,11 @@ passes workspace, end-to-end and conformance but fails the original whole-sessio
 solver control. A deterministic
 [setup-contention regression](validation/m7-http-setup-contention.md) demonstrates
 an immediate skip while initialization is still in progress. The helper now
-waits within its existing budget; a complete new gate is pending. The failed
+waits within its existing budget. Its frozen `cbd6d60`
+[complete local workspace gate](../bench/validation/m7-linux-gate-cbd6-emulated-2026-10-11.json)
+passes all 491 tests and every remaining step, and the
+[original solver suite](../bench/validation/m7-linux-solver-cbd6-emulated-2026-10-11.json)
+passes all 38 controls. Current native revalidation is pending. The failed
 native invocation lacks a phase trace, so its exact cause remains unknown.
 The complete default standard attempt also fails: 156 Same, one diagnostic-order
 Unstable and two unchanged unit timeouts, with no Different verdicts. See

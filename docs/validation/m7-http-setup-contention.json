@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Deterministic configured HTTP setup contention regression; host daemon controls, integrated Linux gate pending",
+  "scope": "Deterministic configured HTTP setup contention regression plus complete frozen cbd6d60 local Linux gates",
   "execution": "macOS arm64 host, configured HTTP fixture uses original250ms timeout and75ms response delay",
   "production_files": {
     "crates/sail-daemon/src/shared.rs": "ea150cc0d430f00cf711a03091f3c9546c2569bcafef761200d072e8632a0dc9",
@@ -24,8 +24,8 @@
   "limitations": [
     "Fixture transport establishment before the deterministic paused refresh is not an acceptance prewarm and does not modify any original cold replay control.",
     "The exact cause of the native d333 whole-session failure remains unknown: no failed phase trace was retained.",
-    "Original whole-session38solver scope, complete workspace gate and full standard corpus still required for the production change.",
-    "No real-reader, source, or M7 performance acceptance follows from these controls."
+    "No real-reader, source, or M7 performance acceptance follows from these controls.",
+    "A fresh current native CI run and full standard corpus are still required; the original native failed scope is retained."
   ],
   "host_daemon_tests": {
     "passed": 25,
@@ -35,5 +35,12 @@
     "sha256": "b1039c92fe0a925bea6bd58c0724694c95872829c86a10df8ab4410ccca275c4",
     "raw_log": "   Compiling sail-daemon v0.0.0 (/Users/jeff/code/sail/crates/sail-daemon)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.62s\n     Running unittests src/lib.rs (target/debug/deps/sail_daemon-64f6ff484ff0736a)\n\nrunning 25 tests\ntest http_server::deadline_tests::timed_out_connection_keeps_stalled_filesystem_work_within_capacity ... ok\ntest http_server::deadline_tests::total_deadline_drops_stalled_response_and_releases_capacity ... ok\ntest jobs::result_cache::tests::bounded_eviction_and_oversized_replies_never_retain_unbounded_entries ... ok\ntest proof_journal::tests::duplicate_delivery_restart_and_same_name_targets_preserve_one_ordered_stream ... ok\ntest proof_journal::tests::incomplete_frames_wait_and_malformed_or_conflicting_events_expose_a_gap ... ok\ntest proof_journal::tests::producer_events_must_match_the_worker_context_and_exact_target_inventory ... ok\ntest proof_journal::tests::retention_budget_reports_gap_without_reassigning_or_inventing_event_ids ... ok\ntest proof_journal::tests::terminal_pages_drain_all_events_and_spool_replacement_is_explicitly_incomplete ... ok\ntest proof_journal::tests::terminal_truncated_event_never_becomes_observed_evidence ... ok\ntest shared::http_tests::concurrent_readers_coalesce_one_http_lookup ... ok\ntest shared::http_tests::cpu_tick_parser_handles_comm_boundaries_truncation_and_overflow ... ok\ntest shared::http_tests::credential_rotation_clears_previous_transport_backoff ... ok\ntest shared::http_tests::disconnect_hides_cached_transport_without_initializing_or_waiting_for_drop ... ok\ntest shared::http_tests::fixed_valid_and_forged_signature_cpu_control ... ok\ntest shared::http_tests::forged_http_reply_is_refused_while_initiator_is_paused ... ok\ntest shared::http_tests::invalid_credentials_and_disconnect_do_not_reuse_old_transport ... ok\ntest shared::http_tests::lookup_waits_for_setup_publication_within_the_existing_budget ... ok\ntest shared::http_tests::paused_client_constructor_cannot_block_followers_or_status ... ok\ntest shared::http_tests::setup_timeout_never_starts_an_obsolete_request_or_another_constructor ... ok\ntest shared::http_tests::status_reads_existing_metrics_during_owned_transport_refresh ... ok\ntest shared::http_tests::verified_http_reply_reaches_readers_while_initiator_is_paused ... ok\ntest shared::initialization::tests::daemon_setup_constructs_transport_without_network_or_trust ... ok\ntest shared::initialization::tests::failed_setup_retains_reload_cadence_without_constructor_retries ... ok\ntest shared::initialization::tests::paused_setup_has_one_owner_and_shutdown_discards_its_client ... ok\ntest shared::initialization::tests::unconfigured_and_directory_stores_have_no_setup_owner ... ok\n\ntest result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.57s\n\n"
   },
-  "strict_clippy": "cargo clippy --locked -p sail-daemon --all-targets -- -D warnings: passed"
+  "strict_clippy": "cargo clippy --locked -p sail-daemon --all-targets -- -D warnings: passed",
+  "integrated_validation": {
+    "source_commit": "cbd6d60f66b6e2976eafd2487e7315843746788a",
+    "workspace": "bench/validation/m7-linux-gate-cbd6-emulated-2026-10-11.json",
+    "solver": "bench/validation/m7-linux-solver-cbd6-emulated-2026-10-11.json",
+    "workspace_passed": 491,
+    "solver_passed": 38
+  }
 }
