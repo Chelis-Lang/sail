@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "scope": "Original fourteen-stage source qualification terminal failure, followed by independent byte-seal and present actor closure; no retry or acceptance credit",
+  "status": "failed",
+  "candidate_selected": false,
+  "product_qualified": false,
+  "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+  "manifest_sha256": "f47828d9a3b4b12de72e4d7725e0200543522c21a9dbe9cf2cde3891774d1abf",
+  "variant": "73bd8aa61b18ca12",
+  "controller_sha256": "8e23ab10653b001668e503f9da3bcde9db5155de0175c528afb1ee67a3434e26",
+  "compiler_limit_seconds": 600,
+  "assertions_changed": false,
+  "trace_supplement": false,
+  "elapsed_seconds": 433.840826489999,
+  "exit_code": 1,
+  "stages": [
+    {
+      "name": "private-graph-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 7.012379628002236
+    },
+    {
+      "name": "private-span-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 9.172581295999407
+    },
+    {
+      "name": "old-domain-migration",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 32.922163556999294
+    },
+    {
+      "name": "same-input-hit-controls",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 54.03624623300129
+    },
+    {
+      "name": "source-fixtures",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 79.22630111900071
+    },
+    {
+      "name": "graph-checkpoint",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 165.00824995099538
+    },
+    {
+      "name": "cancel-restart",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 10.483185796998441
+    },
+    {
+      "name": "first-input-delta",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 38.77635376799299
+    },
+    {
+      "name": "previous-revision-focus",
+      "status": "failed",
+      "exit_code": 1,
+      "elapsed_seconds": 34.24692805700033
+    }
+  ],
+  "failed_revision": {
+    "revision": 0,
+    "later_revisions_executed": false,
+    "assertion_source": "engine/verus/candidates/test-private-span-cross-edit.py",
+    "assertion_line": 77,
+    "assertion": "hits == len(checks) and hits > 0",
+    "assertion_label": "unchecked actual hit",
+    "actual_hits": 0,
+    "same_callback_checks": 0,
+    "focus_restores": 0,
+    "interpretation": "The positive-hit clause fails; no nonzero unchecked hit was observed.",
+    "earlier_checks": {
+      "stock_engine_exit_zero": true,
+      "exact_stderr_equal_line74": true,
+      "full_module_verdict_equal_line75": true,
+      "function_details_equal_line76": true
+    },
+    "stderr_bytes": 234,
+    "stderr_sha256": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+    "full_module_verification": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "success": true,
+      "verified": 9,
+      "errors": 0,
+      "is-verifying-entire-crate": true
+    },
+    "preparation": {
+      "version": 1,
+      "enabled": true,
+      "batch_hits": 0,
+      "persistent_hits": 0,
+      "misses": 4,
+      "peak_retained_bytes": 10074898,
+      "memory_budget_bytes": 536870912,
+      "disk_budget_bytes": 536870912
+    },
+    "refusals": [
+      {
+        "phase": "focus",
+        "event": "prepared-unavailable",
+        "payload": {
+          "stage": "provenance"
+        }
+      },
+      {
+        "phase": "full",
+        "event": "prepared-unavailable",
+        "payload": {
+          "stage": "provenance"
+        }
+      },
+      {
+        "phase": "full",
+        "event": "prepared-unavailable",
+        "payload": {
+          "stage": "provenance"
+        }
+      },
+      {
+        "phase": "full",
+        "event": "prepared-unavailable",
+        "payload": {
+          "stage": "provenance"
+        }
+      }
+    ],
+    "reason_limit": "Each refusal records stage=provenance only, without binding identity or narrower reason. Imported/Deferred/Loaded state and first failing span cannot be inferred from these records.",
+    "event_counts": {
+      "compiler-sealed": 1,
+      "compiler-started": 2,
+      "diagnostic": 4,
+      "function-observed": 8,
+      "function-started": 11,
+      "obligation-observed": 11,
+      "obligation-progress": 22,
+      "phase-finished": 2,
+      "phase-started": 2,
+      "preparation-summary": 1,
+      "prepared-key-components": 4,
+      "prepared-unavailable": 4
+    }
+  },
+  "independent_closure": {
+    "same_pre_post_seals": true,
+    "complete_direct_inventory": true,
+    "all13artifact_sha256": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "305abefce0b62721547a06370e63f493ce961a2de4dbbbb15313beae4517d4d9",
+      "verus/source/target-verus/release/cargo-verus": "f289aace1c0c9f3cf33320792d61fead92f223bbb1e9fbffd9db52c5c40c93c4",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "706cf40d8ecb1b03adf3c43705fbea3c08b0bbe15fc7170d2efaaa5378e6b91c",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "49d13f1043b3bb2f19270544f432b75d80ccfa68b52d12e0d6df19af64a71121",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "89044b0f7fb3980d4b5c3de84504274718151470b62059d4addbb60868600567",
+      "verus/source/target-verus/release/libvstd.rlib": "e8ddd2da6f270fb19c9c0ec3a23e58098b8a0b69e92865f972dcf7d24ff21885",
+      "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "ee8de6d4dedc584f2457938868dea48c839ad6117789d78b6784181dff5d9829",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "seven_source_sha256": {
+      "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+      "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+      "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+      "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+      "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+      "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+      "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395"
+    },
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "active_owned_pipeline_actors": [],
+    "active_bound_child_processes": [],
+    "unavailable_proc_reads": [],
+    "historical_child_identity_limit": "Original failed-stage execute did not enable optional process observations; no per-child historical PID/group identity was saved. Present closure binds command/runtime, cwd or inherited owned sidecar/preparation selectors, not a complete historical process census."
+  },
+  "raw_sha256": {
+    "original-qualification-primary-terminal.json": "b043d1aaf82b71ad44ab0bd73725c4cde901305043b6170d576c62ed6f827b69",
+    "original-qualification.log": "534589717a91971966c3f5633a8915908389e3ad14e2dc02f9172be9963d5119",
+    "original-qualification-closure.json": "6574e93e3e9746c6943babb55fa0b1d17eb0096a5dc8b1d196347a9735d1788a",
+    "original-qualification-child-closure.json": "e9a637199c0228516e4cecfc119a856fdbf5a61b066735e943490d2c2a49e8a0",
+    "original-qualification/pipeline.json": "7c2443b51d524ef6c7e80eaa6a2568da2c114802ffe498bdcad05f2fa58c9e37",
+    "original-qualification/previous-revision-focus.log": "aa0e59b1ab0210d71e6f46c24aa677742c3f6a25a6b4fd86c1108a71e99eaddd",
+    "original-qualification/previous-revision-focus/summary.json": "6f5d44faafd4d8779df25f331c67dee3f5f1475f6328271f07e80782acdfa06d",
+    "original-qualification/previous-revision-focus/0/stock.stdout": "37593f212742b313e8835d44bbcdff4dd8c861b6faa84cd58d63a06cfbea7bb6",
+    "original-qualification/previous-revision-focus/0/stock.stderr": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+    "original-qualification/previous-revision-focus/0/engine.stdout": "65fbf1525389a5de6b4bd986a51ecc32c8c0b44390b13c1a4dd85460b20a364a",
+    "original-qualification/previous-revision-focus/0/engine.stderr": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+    "original-qualification/previous-revision-focus/0/events.jsonl": "68e0ea031a3f7dc9db92033e00d793f4e2bd36066a3602bbd19c1ccc8c5aaa0f",
+    "original-qualification/previous-revision-focus/0/focus.json": "4926330c025a1715659a40fb9bd4397fc07df2d2edfdc66dc3898740c2f3a1e3"
+  }
+}
