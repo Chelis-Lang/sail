@@ -91,3 +91,9 @@ encoding and flush path is a candidate for narrower attribution; the records
 do not establish a redundant operation or justify another transport rewrite.
 Server-side samples do not observe helper CPU, so the candidate's smaller
 I/O-thread counters cannot be counted as total savings.
+
+The diagnostic archive was subsequently recovered and checked against its
+existing complete-byte seal and 148-member inventory. The
+[recovery record](../validation/m7-http-async-archive-recovery.json) preserves
+the earlier failed transfers. Recovery adds no experiment, conformance or
+performance acceptance credit; the candidate remains unselected.

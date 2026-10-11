@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "scope": "read-only recovery of the existing sealed async HTTP diagnostic archive; no new experiment or validation credit",
+  "archive": {
+    "label": "m7-http-async-compare-raw.tar.gz",
+    "bytes": 319273,
+    "sha256": "35f96a4c60db076584a61b7a0b593caba70373b8cd3c22ba50c10529994ffff9",
+    "host_mode": "0o600",
+    "native_original_preserved": true
+  },
+  "inventory": {
+    "members": 148,
+    "sha256": "9817910e78bbadf83000fd2a1bc6740d45f23224c930144591e93013af9e2b72",
+    "all_regular_relative_no_traversal": true,
+    "required_raw_and_terminal_members_present": true
+  },
+  "transfer": {
+    "returncode": 0,
+    "elapsed_seconds": 0.60920325,
+    "status": "verified"
+  },
+  "retained_history": [
+    "earlier Docker archive request500 for raw archive",
+    "earlier Docker archive request500 for strict terminal",
+    "earlier Docker daemon unavailable for final inputs copy"
+  ],
+  "authority": "byte recovery only; rejected performance hypothesis and failed original full-gate scope unchanged"
+}
