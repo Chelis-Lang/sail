@@ -1,13 +1,15 @@
 # Metadata publication integration checklist
 
-Candidate `8b3e4f61296669bb8621f1e85a3d9f1b41a2625b` remains unselected.
+Candidate `8b3e4f61296669bb8621f1e85a3d9f1b41a2625b` has completed its
+component controls; combined product acceptance remains pending.
 The [first scope](m7-preserve-freshness-metadata-first-failure.json) stopped at a
 fixture error. The corrected scope passed eight metadata tests, thirty freshness
 tests and all-target strict; its actual rewriting sensitivity failed as intended,
 but the old controller rejected interleaved libtest output. That whole scope stays
 failed and restored-positive was unattempted. The [new full replay proposal](m7-preserve-freshness-metadata-replay.md)
-reuses sealed compiled images, runs every component check freshly, and is
-unexecuted. Production bytes remain the original candidate. No proof, daemon,
+reused sealed compiled images and completed every component check freshly.
+Its [complete terminal result](m7-preserve-freshness-metadata-replay-result.json)
+is PASS, including the unchanged negative assertion and restored positive case. Production bytes remain the original candidate. No proof, daemon,
 product or live reader acceptance actor ran for these component controls.
 
 1. After the lead grants an exclusively owned **private Linux** source/target,

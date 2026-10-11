@@ -1,4 +1,4 @@
-# Metadata component replay proposal
+# Metadata component replay
 
 The first native scope remains failed at a test-only error format expectation.
 The corrected scope passed eight metadata tests, thirty freshness tests and
@@ -63,7 +63,24 @@ replay performs no source patch, restoration, installation or verifier proof.
 First unexpected failure stops the new scope. Closure remains independently
 verified; reaping a leader is not an orphan-absence certificate.
 
-The replay is prepared only. Product integration, the complete original repair
-fixture and live reader census remain pending. Metadata preservation alone cannot
+The separately granted replay completed **PASS** on the restarted containers.
+It freshly ran metadata `8/0/0` (2.552 seconds), freshness `30/0/1`
+(30.272 seconds), all-target strict Clippy (9.829 seconds), the unchanged exact
+negative case (exit 101, `0/1`, 0.804 seconds), and the restored positive case
+(`1/0`, 0.442 seconds). The negative still failed at the original same-owner
+assertion. See the [terminal record](m7-preserve-freshness-metadata-replay-result.json).
+
+Independent closure verified both new container births, all source bytes/modes,
+links and lock, protected product inventories (20 and 4,154 files), and prior
+actual test images. Both holder censuses had zero holders/unreadable entries;
+none of the five owned process groups survived in either container. This does
+not certify absence of arbitrary orphans. All six fresh raw members were
+SHA-verified in the compact archive; the reused executable bytes remain in their
+separately verified historical archive. The private slot was returned before
+writing this record. No optimized test-image build or verifier proof ran.
+
+Both previous scopes remain failed. The new component pass grants no complete
+product gate, repair, reader or performance acceptance. Product integration,
+the complete original repair fixture and live reader census remain pending. Metadata preservation alone cannot
 keep the unified owner through an actual source edit; any repair-edit benefit
 requires a new independent owner and actual post-child timing evidence.
