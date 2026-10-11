@@ -107,6 +107,12 @@ this storage audit.
 
 ## Validation and limits
 
+The [complete fresh-frame cost audit](validation/m7-fresh-frame-hot-cost-audit.md)
+separates existing server encoding reuse from client parse/clone costs. Its
+offline profiles do not identify the remaining live-service bottleneck or
+qualify the 200 ms p95 target; hot encoding already uses complete preencoded
+frames after fresh output-seal and currentness validation.
+
 Adversarial tests cover entire-frame identity, independent returned ownership,
 changed metadata/currentness/errors/ordering, malformed and incomplete frames,
 concurrent different replies, overbudget retention, old entry lifetimes,

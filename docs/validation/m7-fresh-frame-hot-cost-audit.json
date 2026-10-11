@@ -1,0 +1,114 @@
+{
+  "kind": "fresh_complete_result_hot_cost_audit",
+  "code_audit_source_commit": "044e616eda12ddafaa6a669ae0753463187dc1ba",
+  "code_files": {
+    "crates/sail-daemon/src/jobs/store.rs": {
+      "sha256": "9c94bb45e83483870f82fb7f15197daf68fd7104a082b5e2f8d48dcdb47d0c06",
+      "bytes": 16280
+    },
+    "crates/sail-daemon/src/jobs/result_cache.rs": {
+      "sha256": "6cfdec220953db5eadaf6cc434e478c2bb06b5cb327efc37e4a63299e4b68cb8",
+      "bytes": 3448
+    },
+    "crates/sail-daemon/src/jobs.rs": {
+      "sha256": "6010b85ff4d3d397ff4ab94f06d77df4eb3f0cc05c5f58e35d409ada912a77b5",
+      "bytes": 15029
+    },
+    "crates/sail-api/src/jobs.rs": {
+      "sha256": "aba017bdcd2c1555296279efe9dfe04c758d44587e1cb5eb3cdead43f53ee6a3",
+      "bytes": 21163
+    },
+    "crates/sail-api/src/jobs/decoded.rs": {
+      "sha256": "bc4f75ebfa4e293a74cb6b1bb63203223310b3a861c30d0a64c2165cd1c3855d",
+      "bytes": 31943
+    },
+    "crates/sail-api/src/jobs/ownership.rs": {
+      "sha256": "317197ba0349fa6bf8edda930aa85b947eaf7731a7cd051fbb65b1d1d2702358",
+      "bytes": 9615
+    },
+    "crates/sail-api/src/jobs/cancellable.rs": {
+      "sha256": "1467d63feeebbf093194442e89e01f57f1e433021a259b99c8b409c1b14415e3",
+      "bytes": 12031
+    }
+  },
+  "frame": {
+    "sha256": "e620323a453103af7d5c04a5e3b4836dd41c9d46e0b5cbdba01b9c946f1325ed",
+    "bytes": 4314950
+  },
+  "scope": "static current code audit plus previously retained complete-frame offline profiles; no new proof or live acceptance run",
+  "component_profile_source": {
+    "record": "m7-result-client-components.json",
+    "source_commit": "b9dba7d",
+    "environment": "Linux amd64 Docker emulation on macOS arm64 shared developer load",
+    "binary_sha256": "1fbeb9a745460f79e2b144175a1e3288671c74cbb19ca0a4b9fa35026b4b9d28",
+    "sample_count": 8
+  },
+  "four_reader_components_ms": {
+    "cached_arc_4": {
+      "median_ms": 0.0002915,
+      "p95_ms": 0.001167
+    },
+    "zeroed_body_allocation_copy_4": {
+      "median_ms": 0.9616665,
+      "p95_ms": 1.1470420000000001
+    },
+    "entire_fresh_body_equality_4": {
+      "median_ms": 0.34360450000000003,
+      "p95_ms": 0.841708
+    },
+    "response_clone_4": {
+      "median_ms": 17.754479500000002,
+      "p95_ms": 27.999042
+    },
+    "typed_read_frame_4": {
+      "median_ms": 50.015812999999994,
+      "p95_ms": 3512.666335
+    }
+  },
+  "whole_client_profile_source": {
+    "record": "m7-staged-result-client.json",
+    "source_commit": "26a1a9876918de5986d9abb2023033ba3b9f7ff5",
+    "environment": "Linux amd64 Docker Desktop emulated on macOS arm64, shared developer load",
+    "binary_sha256": "22b5c993f0f2ec9f9507a45585235dc8c180cfac1d2612ae2cc6cd8a53cda09e",
+    "sample_count": 8
+  },
+  "four_reader_whole_client_ms": {
+    "default_warm_4": {
+      "median_ms": 126.32710399999999,
+      "p95_ms": 209.760167
+    },
+    "uncached_client_4": {
+      "median_ms": 280.1682915,
+      "p95_ms": 432.77050099999997
+    }
+  },
+  "hot_server_path": [
+    "Derive cache key from complete Stored job metadata.",
+    "Read complete bounded persisted stdout and compare its SHA256 to validated projection seal.",
+    "Perform fresh input/runtime currentness inspection.",
+    "Select complete preencoded Current/Historical/Unknown Arc frame on an encoding-cache hit.",
+    "Send full frame under existing transport rules."
+  ],
+  "hot_client_path": [
+    "Capture cache admission generation before RPC.",
+    "Obtain complete fresh bounded frame body.",
+    "Compare entire body with validated candidate; changed bytes take ordinary parser.",
+    "Return independent complete Response ownership; subsequent cancellation/deadline and response checks still apply."
+  ],
+  "decisions": [
+    "No extra immutable server encoding memo: complete hot frames already retained and selected; cold encoding costs are not hot encoding costs.",
+    "No new body pool/equality shortcut: isolated copy/equality median costs are below1ms here and full bytes remain authority.",
+    "No claim independent graph clone dominates209.760167ms: component and whole-call runs differ and cannot be subtracted as phase measurements.",
+    "No new production optimization from this audit; next attribution requires same-call phase evidence from a current genuine service."
+  ],
+  "ownership_scope": {
+    "client_family": "128MiB charged retained ownership across clones/endpoints/in-flight entries; returned independent graphs and temporary parse/clone storage are outside retention bound",
+    "server": "16 retained frame sets and128MiB retained wire lengths; Arc frames held by in-flight sends outlive table eviction, so this is not a process RSS or aggregate in-flight limit"
+  },
+  "limits": [
+    "Offline warm p95209.760167ms still exceeds the separate200ms live threshold.",
+    "Typed-read component3.512s tail is retained; no host-load cause inferred.",
+    "No schema, graph, Current authority, collector, deadline, cache trust or validation rule changed.",
+    "The original live Python failure and Rust-not-reached scope remain; offline results do not qualify them."
+  ]
+}
