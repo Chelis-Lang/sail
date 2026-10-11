@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "source_commit": "fc395e561643bafddc6fc1abee7be0c9406b2814",
+  "source_archive_sha256": "ef432f6698d472ce148b0be403249f881b44f9c20a83691ebc7a9e2669b79a5b",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; shared development load",
+  "scope": "Complete workspace gate after tightening the retained MCP acceptance collector; production Rust/profile bytes unchanged from1e; earlier failed gates retained",
+  "command": "bash ci/run.sh gate",
+  "exit_code": 100,
+  "inclusive_elapsed_seconds": 867.388468875,
+  "nextest_elapsed_seconds": 303.417,
+  "tests": {
+    "run": 524,
+    "passed": 523,
+    "failed": 1,
+    "skipped": 39
+  },
+  "strict_clippy": "passed",
+  "retained_collector_controls": {
+    "passed": 9,
+    "rpc_deadline_seconds": 5
+  },
+  "failure": {
+    "test": "shared::http_tests::lookup_waits_for_setup_publication_within_the_existing_budget",
+    "result": "Lookup::Timeout",
+    "serving_deadline_ms": 250,
+    "server_delay_ms": 75,
+    "transport_trust_setup_ms": 96.471708,
+    "request_phase_trace": "not recorded in this original assertion",
+    "cause": "unestablished; no attribution to development load"
+  },
+  "other_original_http_controls": "Concurrent eight-reader, initial credentials/disconnect and paused initiator authentic/forged controls pass; they do not substitute for the failed setup-publication test",
+  "later_gate_steps": "not reached after original nextest failure",
+  "raw_log": {
+    "bytes": 65960,
+    "sha256": "7ae0e63772a7af7f22b8932e90eaf36f25b3a31a556f8b69e5d6b4a148b4cb0c"
+  },
+  "qualification": {
+    "complete_local_gate_pass": false,
+    "m7_accepted": false
+  }
+}
