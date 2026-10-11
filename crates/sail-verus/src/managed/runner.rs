@@ -2316,7 +2316,7 @@ mod tests {
             match field {
                 "error" => {
                     f.call.report.error =
-                        crate::report::setup_failure(&[], "SAIL3100", "fixture").error
+                        crate::report::setup_failure(&[], "SAIL3100", "fixture").error;
                 }
                 "errors" => f.call.report.crates[0].verus.errors = Some(2),
                 "verified" => f.call.report.crates[0].verus.verified = Some(0),
