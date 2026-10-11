@@ -7,7 +7,10 @@ Clippy checks passing in 180.872 seconds. The separate ordinary build passed
 in 637.838 seconds with a fresh vstd proof (2,060 verified, zero errors),
 an exact thirteen-artifact manifest, unchanged source/lock and prior runtime
 seals, and closed owned actors. [ordinary-build-pass.json](ordinary-build-pass.json)
-retains its raw identities. Original qualification remains pending.
+retains its raw identities. The one unchanged original qualification failed
+after 8.968 seconds at old-domain migration; the two preceding static audits
+passed. [qualification-failure.json](qualification-failure.json) retains the
+primary result and independent seal closure. The candidate is unqualified.
 The selected runtime and every earlier sealed candidate remain unchanged.
 
 The original `0bbc` fourteen-stage qualification remains failed: revision zero
@@ -178,3 +181,24 @@ fourteen scripts, compiler command, environment, raw diagnostics, same-input
 oracle, checked previous-revision FOCUS and 600-second bounds remain unchanged.
 No trace selectors, assertion changes, copied proof acceptance or extra retries
 are introduced. Build launch and qualification remain separately recorded.
+
+## Actual original qualification failure
+
+Both old and new migration actors exited zero, verified two functions with zero
+errors, and wrote empty stderr. The old actor retained one preparation; the new
+actor wrote none and emitted `prepared-unavailable` at `source-map` in focus and
+full. The unchanged line-55 new-domain fill/disjoint-key assertion failed. This
+is a failed positive fill prerequisite, not evidence that an old-domain artifact
+was accepted. The remaining eleven stages, including genuine previous-revision
+FOCUS reuse, did not run. No retry or trace diagnostic was launched.
+
+The new `store_bucket` guard requires the optional diagnostic SourceMap. Stock
+parallel workers call `verify_bucket_outer` with `None` so their diagnostics are
+queued for the compiler thread. Consequently the new guard prevents parallel
+preparation storage. Any correction needs distinct preparation-only namespace
+access while preserving stock diagnostic routing, worker concurrency, every
+namespace check and the original oracle; this record does not implement one.
+
+Independent closure confirmed the same thirteen runtime artifacts, seven source
+files and lock, unchanged prior runtime seals, and no live owned pipeline actor.
+The frozen runtime remains unselected.
