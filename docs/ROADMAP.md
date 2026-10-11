@@ -122,7 +122,8 @@ passes all 485 tests and the remaining gate steps. The complete
 passes the corrected classifier fixture and 36 other controls, but fails the
 HTTP whole-session replay control: answers match the solver, yet the fresh
 reader starts Z3 instead of using only signed remote replies/certificate.
-The failed cache and signed files are retained; the cause is being diagnosed.
+The retained phase trace identifies cold HTTP transport construction consuming
+the lookup budget; the configured startup fix addresses that measured cause.
 The independent frozen `f94bbda`
 [native Linux CI run](../bench/validation/m7-linux-ci-f94-native-2026-10-11.json)
 passes all required checks: 485 workspace tests, 38 solver controls, all three
@@ -130,7 +131,11 @@ end-to-end phases and three rounds of the 33-unit conformance subset. Its longes
 job is 368 seconds. This preserves the separate local replay failure and does
 not qualify the real-project workload. Configured HTTP transport now starts
 initialization asynchronously at daemon bind; its complete corrected local
-gate is still pending.
+gate is still pending. The latest complete local
+[end-to-end attempt](../bench/validation/m7-linux-e2e-777-failure-emulated-2026-10-11.json)
+passes legacy and installed MCP controls but times out during the first cold
+managed dependency build at its unchanged 240-second limit; repair is not reached.
+Retained partial streams establish the last observable stage, not a cause.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
 remains preserved. The
 [installed product build](validation/m7-current-product-build.json) and
