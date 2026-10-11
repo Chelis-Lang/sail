@@ -48,6 +48,9 @@ Its [closed ownership refinement](../engine/verus/candidates/decode-ownership/RE
 records exact audited routes, retained payload probes and safe budget refusals.
 Long corpus, source-build and benchmark work runs locally in the Linux container;
 required CI remains short.
+The [frozen local combined gate helper](validation/local-combined-gates.md)
+retains exact source, raw failures and bounded phase ownership when running the
+workspace gate followed by the original solver suite in an existing container.
 
 Evidence lives in `bench/validation/`, `docs/validation/` and
 `engine/verus/qualifications/` or `engine/verus/candidates/qualifications/`.
