@@ -120,3 +120,25 @@ behavior are unchanged. No static blocker was identified. Corrected controller
 requires the exact failed result and source before running a new complete scope.
 Corrected source tests and strict results remain pending; this review launches
 no compiler, runtime or qualification actor.
+
+That corrected scope compiled but failed after 18.930 seconds: 83 of 108 driver
+controls passed. The new memo fixture supplied non-hex short text, which the
+unchanged production `ProvenanceMemo::insert` correctly refused. Its subsequent
+test-only unwrap panicked, followed by 24 poisoned serial-lock failures. This
+disproved the earlier static assumption that the fixture had been admitted.
+The complete failed scope remains retained; no cascade is counted as passing.
+
+The new fixture correction was independently checked against full patch
+`aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124`
+and delta `9415f4a14f8345b09f25978b0deacc7849054b4d20358a2f76e44ad3730b65a9`.
+Own scratch application matched all eight source hashes. Only the test helper's
+stale value, two added pre-call admission assertions and matching expected
+literal changed. The value is exactly 64 ASCII hexadecimal characters; the
+unchanged insertion policy admits that shape, and the test checks both the
+single entry and exact value before calling `provenance()`. Removing the bypass
+would therefore return that admitted stale digest and fail the existing
+inequality assertion. Production insertion, bypass, keys, ownership and all
+other assertions are byte-exact. Controller
+`fe5816dec6ac841fa184001b0f52d0949719e993fd5e94cfe9b3c7df3ac972d2`
+binds the second failed result before a new complete scope. Static review found
+no blocker; actual corrected source controls remain pending.
