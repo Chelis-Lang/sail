@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "status": "PASS ordinary source build only; original14/product qualification pending; unselected",
+  "closed": {
+    "version": 1,
+    "scope": "Ordinary private source build and fresh vstd proof only; original14/product acceptance pending",
+    "closed_unix_ns": 1791712476507140054,
+    "selected": false,
+    "qualified": false,
+    "patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+    "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "source_files": {
+      "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+      "rust_verify/src/sail_engine.rs": "c6bbc9ba1356d6a2a744073844b0b888956514abb0e9287a1f26949e97cee71d",
+      "rust_verify/src/sail_namespace.rs": "7ad8dc9477dbd8e71add5c205cc25b70fa4664eb95f13df28d729380377ea4fa",
+      "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+      "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+      "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+      "rust_verify/src/verifier.rs": "254c75c7ff469aeacbb310cf779c62d09906e8f16a0efb4b65d6be513cb6878b",
+      "vir/src/context.rs": "8bcec061b764900da85d35f78c1ff50acf333983d4a5d3de4c2e2cd72d4abfb3"
+    },
+    "manifest_sha256": "acae733747b439a5a7777d446e88f4d25c1e855d015420806c7d0f7456c89e9f",
+    "manifest": {
+      "schema_version": 1,
+      "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+      "rust_toolchain": "1.98.1",
+      "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+      "features": [
+        "sail-interactive:955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+        "host:x86_64-unknown-linux-gnu",
+        "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+      ],
+      "artifacts": {
+        "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "verus/source/target-verus/release/.vstd-fingerprint": "40c417dd4f6e2a40e4cf68b39d78b19fcc728bb96f090690893f70ef6392d405",
+        "verus/source/target-verus/release/cargo-verus": "553bb2f6cfde3de553f20b0fddfac02eb942ba9dc2a81407c1565aa87b0b8fb1",
+        "verus/source/target-verus/release/libverus_builtin.rlib": "ddb3983e6e2012c65d36c83ccff224627f1c00171e5044e7e799487ac367a7ee",
+        "verus/source/target-verus/release/libverus_builtin_macros.so": "85e4597c10585d190b2c7f921901667497883e267682da2f273da5915ac16ff5",
+        "verus/source/target-verus/release/libverus_state_machines_macros.so": "f61ac47b6ba83d604ec1e279614f92c97610a66e415b44260ae5bbc7165cea8e",
+        "verus/source/target-verus/release/libvstd.rlib": "7bf372f9df47abafee79555a8832cbd8f11c693854fc10aef5492deb9f01cb8e",
+        "verus/source/target-verus/release/rust_verify": "d34ba8cdda91b365aedda1317e52c92a8a50720338cd6c68c9f368cdd73de81e",
+        "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+        "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+        "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "verus/source/target-verus/release/vstd.vir": "cf8e7b5a273073dc7e07e863c03e2283183f99ca67cda139f269a73ba63b34f4",
+        "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+      },
+      "build_seconds": 473,
+      "test_binaries": []
+    },
+    "complete_direct_artifact_inventory": true,
+    "owned_build_actors": [],
+    "fresh_vstd_verified": 2060,
+    "fresh_vstd_errors": 0,
+    "ordinary_result": {
+      "version": 1,
+      "exit_code": 0,
+      "elapsed_seconds": 479.578193844005,
+      "patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+      "scope": "Ordinary unselected preparation-namespace source build; actual source controls passed, original qualification pending"
+    },
+    "source_controls_sha256": "a551ced4f2c56d2bdeb6354773c6591b5cfc0f7b85aa19cdcb48f7e90bba9b71",
+    "raw_artifacts": {
+      "ordinary-build.log": {
+        "sha256": "7ca9b8588e215b879f860c5326091c16cb35edf39478d83a8e458af967686eeb",
+        "bytes": 6352
+      },
+      "ordinary-build-result.json": {
+        "sha256": "4c03a116a68284a2c61893b5d0d27ec770043124264a0a28ad2a1813e5409efa",
+        "bytes": 294
+      },
+      "ordinary-build-actor.json": {
+        "sha256": "fbb5207e024a1bb17125be3c56018907a163023dadfa21d680ea7c3a1e6e02c0",
+        "bytes": 466
+      },
+      "compiler-seed.json": {
+        "sha256": "23a497383d7e480825b174adbfa3ba19291b077b9922d4b06335276e652def55",
+        "bytes": 703052
+      },
+      "applied-source.json": {
+        "sha256": "cd909d0705a3694e7e1fc78a075a6bd8053d7c65ec7e1c4c63b86df23b0dc296",
+        "bytes": 1082
+      },
+      "builder-before.json": {
+        "sha256": "146638eb46fc6949e22697e931fea58b13376948e4b1f09309a40a878c23939d",
+        "bytes": 342
+      },
+      "preceding-runtime-seals.json": {
+        "sha256": "138f18855b3e866082e16dc75c13232d401baddf16caf35d1197f1b2d8578917",
+        "bytes": 8013
+      },
+      "resource-preflight.json": {
+        "sha256": "2578e297a9694560c0083fb4fc06f264bdef13038701672001c21e853c9bc731",
+        "bytes": 269
+      }
+    },
+    "native_available_bytes": 310516097024,
+    "prior_complete_runtime_seals_unchanged": true,
+    "original14_launched": false
+  },
+  "ordinary_raw_archive": {
+    "sha256": "e2e608df7cb69a44405b7d4d3d8587a7a0b83d749e8a9dcde0f1728f00bafa9a",
+    "bytes": 26050560,
+    "files": 30,
+    "archive_setup_failure": "Python3.9 tarfile rejects filter keyword before any extraction; corrected by prechecking all members as unique relative regular files, no links, then same archive extracted",
+    "proof_runtime_source_unchanged": true
+  },
+  "controller_sha256": {
+    "build-candidate.py": "1c97072b8dfe3dad90983ea3d3dba5b3fedb8a535accea2f9aaba23cc99c799b",
+    "close-build.py": "0ef3074c0f830042c3f2dc2f6b679b65d4d1de9fcc0c145387dcbea66ab239b8",
+    "run-original-pipeline.py": "93e9870d0a500be957b1effc0d88da79831f3563805b0c812d5e99043972fbbf"
+  },
+  "source_control_result_sha256": "a551ced4f2c56d2bdeb6354773c6591b5cfc0f7b85aa19cdcb48f7e90bba9b71",
+  "host_backing_free_bytes": 8162148352,
+  "observation_unix_ns": 1791712800429249000,
+  "selected": false,
+  "qualified": false
+}
