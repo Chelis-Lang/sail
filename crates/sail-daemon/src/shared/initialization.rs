@@ -24,8 +24,10 @@ pub(super) enum Resolution {
 #[derive(Default)]
 pub(super) struct State {
     current: Mutex<Option<Remote>>,
+    descriptor: Mutex<Option<String>>,
     ready: Condvar,
     initializer: Mutex<()>,
+    presence: super::presence::State,
     #[cfg(test)]
     pub(super) before_constructor: Mutex<Option<std::sync::Arc<dyn Fn() + Send + Sync>>>,
 }
@@ -72,10 +74,20 @@ fn configuration(root: &Path, config: &SharedConfig) -> Option<RemoteConfig> {
 }
 
 impl State {
-    /// Initialize only an explicitly configured HTTP transport during daemon setup.
-    /// No request or trust validation is performed, and setup never waits.
+    /// Initialize a configured HTTP transport during daemon setup.
+    /// No request or trust validation is performed. Optional presence discovery
+    /// waits at most 100 ms; client construction belongs to the setup owner.
     pub(super) fn prepare(self: &Arc<Self>, root: &Path, config: &SharedConfig) -> Option<Setup> {
-        configuration(root, config)?;
+        let explicit = config.store.to_string_lossy();
+        if !explicit.is_empty()
+            && !explicit.starts_with("http://")
+            && !explicit.starts_with("https://")
+        {
+            return None;
+        }
+        if self.configured(root, config) != Some(true) {
+            return None;
+        }
         let state = Arc::clone(self);
         let root = root.to_path_buf();
         let config = config.clone();
@@ -93,11 +105,24 @@ impl State {
         })
     }
 
+    pub(super) fn configured(&self, root: &Path, config: &SharedConfig) -> Option<bool> {
+        self.presence.configured(root, config)
+    }
+
     /// Inspect while the cache retains ownership; a foreground reader must
     /// never own the final transport clone when a helper retires it.
     pub(super) fn info(&self) -> Option<sail_api::protocol::RemoteInfo> {
-        let current = self.current.lock().ok()?;
+        let current = self.current.try_lock().ok()?;
         Some(current.as_ref()?.client.as_ref()?.info())
+    }
+
+    #[cfg(test)]
+    #[allow(
+        clippy::unwrap_used,
+        reason = "test fixture deliberately holds publication mutex"
+    )]
+    pub(super) fn current_for_test(&self) -> impl Drop + '_ {
+        self.current.lock().unwrap()
     }
 
     #[cfg(test)]
@@ -110,7 +135,7 @@ impl State {
     }
 
     pub(super) fn endpoint(&self) -> Option<String> {
-        self.current.lock().ok()?.as_ref()?.endpoint.clone()
+        self.descriptor.try_lock().ok()?.clone()
     }
 
     /// Only call from a bounded helper: client construction itself has no deadline.
@@ -181,6 +206,11 @@ impl State {
             .as_ref()
             .and_then(|c| crate::remote::endpoint(&c.endpoint).ok())
             .map(|url| url.to_string());
+        // Display metadata is published separately before any token, CA or
+        // client construction. It is never signing or serving authority.
+        if let Ok(mut descriptor) = self.descriptor.lock() {
+            descriptor.clone_from(&endpoint);
+        }
         #[cfg(test)]
         if configured.is_some()
             && let Some(pause) = self.before_constructor.lock().ok().and_then(|v| v.clone())
@@ -326,6 +356,79 @@ mod tests {
         assert_eq!(info.requests, 0);
         assert_eq!(info.last_status, None);
         assert!(fixture.tier.trusted().0.is_empty());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn blocked_configuration_file_read_never_runs_on_setup_caller() {
+        let root = std::env::temp_dir().join(format!("sail-setup-fifo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let fifo = root.join(crate::remote::CONFIG_FILE);
+        assert!(
+            std::process::Command::new("mkfifo")
+                .arg(&fifo)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let state = Arc::new(State::default());
+        let caller_state = Arc::clone(&state);
+        let caller_root = root.clone();
+        let config = SharedConfig {
+            store: "http://127.0.0.1:1".into(),
+            trust_dir: root.join("trust"),
+            timeout: Duration::from_millis(250),
+            backoff: Duration::from_secs(30),
+        };
+        let (returned_tx, returned_rx) = std::sync::mpsc::channel();
+        let caller = std::thread::spawn(move || {
+            let started = Instant::now();
+            let owner = caller_state.prepare(&caller_root, &config);
+            let _ = returned_tx.send((owner, started.elapsed()));
+        });
+        let received = returned_rx.recv_timeout(Duration::from_millis(250));
+        // Linux FIFO read+write open does not wait for a peer. Release an old
+        // foreground reader (negative control) or the new helper before asserting.
+        let release = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&fifo)
+            .unwrap();
+        let opened_deadline = Instant::now() + Duration::from_secs(2);
+        let reader_opened = loop {
+            let descriptors = std::fs::read_dir("/proc/self/fd")
+                .unwrap()
+                .flatten()
+                .filter(|entry| std::fs::read_link(entry.path()).ok().as_ref() == Some(&fifo))
+                .count();
+            if descriptors >= 2 {
+                break true;
+            }
+            if Instant::now() >= opened_deadline {
+                break false;
+            }
+            std::thread::yield_now();
+        };
+        drop(release);
+        caller.join().unwrap();
+        assert!(
+            reader_opened,
+            "owned configuration reader must be released before assertions"
+        );
+        let (owner, elapsed) = received.unwrap();
+        assert!(owner.is_some());
+        assert!(
+            elapsed < Duration::from_millis(250),
+            "setup waited {elapsed:?}"
+        );
+        drop(owner);
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while state.initializer.try_lock().is_err() {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

@@ -110,3 +110,15 @@ identity. The existing setup-contention, timeout, credential rotation, forged
 reply and whole-session controls retain their original assertions and limits.
 Focused identity controls and complete gates are required before this change
 can establish a validated scope; it does not reclassify any preceding failure.
+
+### Bounded trust and configuration discovery
+
+The complete lookup clock now starts before helper dispatch. Discovery and trust
+refresh run inside owned helpers, not before the deadline. Setup performs only
+bounded optional presence discovery on the caller, then reads configuration,
+credentials and CA files on its existing constructor owner. The sole presence
+helper retains no client, credentials or trust model; an older/busy answer is not
+reused as fresh authority. Status inspects complete snapshots with try-locks and
+may omit unavailable optional fields. This corrects issue 76 independently of
+unresolved emulated HTTP timing failures. No deadline, trust TTL, signature,
+dynamic-connect policy or transport ownership rule changes.

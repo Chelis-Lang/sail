@@ -295,7 +295,7 @@ impl HttpClient {
     pub fn info(&self) -> sail_api::protocol::RemoteInfo {
         sail_api::protocol::RemoteInfo {
             endpoint: self.base.to_string(),
-            last_status: self.metrics.last.lock().ok().and_then(|v| v.clone()),
+            last_status: self.metrics.last.try_lock().ok().and_then(|v| v.clone()),
             requests: self.metrics.requests.load(Ordering::Relaxed),
             auth_refused: self.metrics.auth.load(Ordering::Relaxed),
             unavailable: self.metrics.unavailable.load(Ordering::Relaxed),

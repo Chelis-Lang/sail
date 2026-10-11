@@ -17,12 +17,13 @@
 //! caching), so concurrent sessions sharing a prefix ask the store once.
 
 mod initialization;
+mod presence;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc::RecvTimeoutError;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, TryLockError};
 use std::time::{Duration, Instant};
 
 use sail_cache::shared::{Rejection, SharedStore, Solver, TrustedKeys, Verified, verify_entry};
@@ -82,15 +83,116 @@ struct Trust {
     loaded: Instant,
 }
 
-/// The shared tier as the daemon uses it.
-type Pending = Arc<(Mutex<Option<Lookup>>, Condvar)>;
+#[derive(Default)]
+struct TrustState {
+    current: Mutex<Option<Trust>>,
+    #[cfg(test)]
+    before_load: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
+}
 
-fn publish(pending: &Pending, result: Lookup) {
-    if let Ok(mut value) = pending.0.lock()
+impl TrustState {
+    // Only owned helpers may call this: both directory reads and their mutex
+    // can block. Foreground status uses the nonblocking snapshot instead.
+    fn load(&self, directory: &std::path::Path) -> (Arc<TrustedKeys>, Vec<String>) {
+        let Ok(mut current) = self.current.lock() else {
+            return (Arc::new(TrustedKeys::default()), Vec::new());
+        };
+        if let Some(trust) = current.as_ref()
+            && trust.loaded.elapsed() < TRUST_RELOAD
+        {
+            return (Arc::clone(&trust.keys), Vec::new());
+        }
+        #[cfg(test)]
+        if let Some(before_load) = self.before_load.lock().ok().and_then(|hook| hook.clone()) {
+            before_load();
+        }
+        let (keys, problems) = TrustedKeys::load_dir(directory);
+        let keys = Arc::new(keys);
+        *current = Some(Trust {
+            keys: Arc::clone(&keys),
+            loaded: Instant::now(),
+        });
+        (keys, problems)
+    }
+
+    fn snapshot(&self) -> Option<Arc<TrustedKeys>> {
+        let current = self.current.try_lock().ok()?;
+        let trust = current.as_ref()?;
+        (trust.loaded.elapsed() < TRUST_RELOAD).then(|| Arc::clone(&trust.keys))
+    }
+}
+
+struct SharedLookup {
+    value: Mutex<Option<Arc<Lookup>>>,
+    ready: Condvar,
+    finished: AtomicBool,
+}
+
+type Pending = Arc<SharedLookup>;
+
+// Only owned helpers wait for publication. Full reply cloning never holds
+// this mutex; foreground publication uses try_lock below.
+fn publish(pending: &Pending, result: Arc<Lookup>) {
+    if let Ok(mut value) = pending.value.lock()
         && value.is_none()
     {
         *value = Some(result);
-        pending.1.notify_all();
+        pending.ready.notify_all();
+    }
+}
+
+fn publish_foreground(pending: &Pending, result: Arc<Lookup>) {
+    if let Ok(mut value) = pending.value.try_lock()
+        && value.is_none()
+    {
+        *value = Some(result);
+        pending.ready.notify_all();
+    }
+}
+
+fn retire_pending(table: &Mutex<HashMap<String, Pending>>, id: &str, owner: &Pending) {
+    let retired = table.try_lock().ok().and_then(|mut active| {
+        // Another caller may already have reaped this finished owner and
+        // installed a fresh one. Its publication must remain coalescible.
+        if active
+            .get(id)
+            .is_some_and(|current| Arc::ptr_eq(current, owner))
+        {
+            active.remove(id)
+        } else {
+            None
+        }
+    });
+    drop(retired);
+}
+
+// Admission/coalescing may contend briefly. Do not discard a simultaneous
+// reader, but never enter an unbounded mutex wait on the foreground.
+fn lock_until<T>(lock: &Mutex<T>, deadline: Option<Instant>) -> Option<MutexGuard<'_, T>> {
+    loop {
+        if deadline.is_none_or(|deadline| Instant::now() >= deadline) {
+            return None;
+        }
+        match lock.try_lock() {
+            Ok(guard) => return Some(guard),
+            Err(TryLockError::Poisoned(_)) => return None,
+            Err(TryLockError::WouldBlock) => {
+                let remaining = deadline?.saturating_duration_since(Instant::now());
+                std::thread::park_timeout(remaining.min(Duration::from_micros(50)));
+            }
+        }
+    }
+}
+
+fn before_deadline(result: &Lookup, deadline: Option<Instant>) -> Lookup {
+    if deadline.is_none_or(|deadline| Instant::now() >= deadline) {
+        return Lookup::Timeout;
+    }
+    let result = result.clone();
+    if deadline.is_none_or(|deadline| Instant::now() >= deadline) {
+        Lookup::Timeout
+    } else {
+        result
     }
 }
 
@@ -100,7 +202,7 @@ fn lookup_suppressed(
     negative: &Mutex<HashMap<[u8; 32], Instant>>,
     key: &QueryKey,
 ) -> bool {
-    pending.0.lock().map_or(true, |value| value.is_some())
+    pending.value.lock().map_or(true, |value| value.is_some())
         || backoff
             .lock()
             .ok()
@@ -122,6 +224,46 @@ fn reset_suppression(
     }
     if let Ok(mut until) = backoff.lock() {
         *until = None;
+    }
+}
+
+// Called only by the owned lookup helper after initialization and suppression
+// checks. Preserve the exact transport/directory dispatch and refusal mapping.
+fn read_shared(
+    resolved: initialization::Resolution,
+    directory: bool,
+    path: &std::path::Path,
+    local: &Solver,
+    key: &QueryKey,
+) -> Option<Result<Option<Vec<u8>>, Rejection>> {
+    match resolved {
+        initialization::Resolution::Ready(Some(remote)) => {
+            Some(remote.get(local, key).map_err(|_| Rejection::Unreadable))
+        }
+        initialization::Resolution::Ready(None) if directory => Some(SharedStore::read(path)),
+        initialization::Resolution::Ready(None)
+        | initialization::Resolution::Initializing
+        | initialization::Resolution::TimedOut => None,
+    }
+}
+
+fn classify_shared(
+    data: Option<Result<Option<Vec<u8>>, Rejection>>,
+    initialization_timed_out: bool,
+    key: &QueryKey,
+    trusted: &TrustedKeys,
+    local: &Solver,
+) -> Lookup {
+    match data {
+        None if initialization_timed_out => Lookup::Timeout,
+        None => Lookup::Skipped,
+        Some(Ok(Some(data))) => match verify_entry(&data, key, trusted, local) {
+            Ok(verified) => Lookup::Hit(verified),
+            Err(reason) => Lookup::Rejected(reason),
+        },
+        Some(Ok(None)) => Lookup::Miss,
+        Some(Err(Rejection::Unreadable)) => Lookup::Unavailable,
+        Some(Err(reason)) => Lookup::Rejected(reason),
     }
 }
 
@@ -180,7 +322,7 @@ pub(crate) struct SharedTier {
     pending: Mutex<HashMap<String, Pending>>,
     coalesced: AtomicU64,
     config: SharedConfig,
-    trust: Mutex<Option<Trust>>,
+    trust: Arc<TrustState>,
     in_flight: Arc<AtomicUsize>,
     backoff_until: Arc<Mutex<Option<Instant>>>,
     negative: Arc<Mutex<HashMap<[u8; 32], Instant>>>,
@@ -202,7 +344,7 @@ impl SharedTier {
             pending: Mutex::new(HashMap::new()),
             coalesced: AtomicU64::new(0),
             config,
-            trust: Mutex::new(None),
+            trust: Arc::new(TrustState::default()),
             in_flight: Arc::new(AtomicUsize::new(0)),
             backoff_until: Arc::new(Mutex::new(None)),
             negative: Arc::new(Mutex::new(HashMap::new())),
@@ -221,79 +363,85 @@ impl SharedTier {
         tier
     }
 
-    /// Move optional client construction into real daemon setup, without waiting.
+    /// Move optional client construction into real daemon setup.
+    /// Optional presence discovery waits at most 100 ms, never for a builder.
     /// The same constructor gate serializes this owner and lookup helpers.
     pub fn prepare(&self) {
-        if let Ok(mut setup) = self.setup.lock()
+        if let Ok(mut setup) = self.setup.try_lock()
             && setup.is_none()
         {
             *setup = self.remote.prepare(&self.root, &self.config);
         }
     }
 
+    #[cfg(test)]
     pub fn description(&self) -> Option<String> {
-        if !self.configured() {
+        if self.remote.configured(&self.root, &self.config) != Some(true) {
             return None;
         }
-        self.remote
-            .endpoint()
-            .or_else(|| {
-                crate::remote::load(&self.root)
-                    .ok()
-                    .flatten()
-                    .map(|c| c.endpoint)
-            })
-            .or_else(|| {
-                (!self.config.store.as_os_str().is_empty()).then(|| {
-                    let text = self.config.store.to_string_lossy();
-                    if text.starts_with("http://") || text.starts_with("https://") {
-                        crate::remote::endpoint(&text).map_or_else(
-                            |_| "<invalid HTTP endpoint>".to_owned(),
-                            |u| u.to_string(),
-                        )
-                    } else {
-                        text.into_owned()
-                    }
-                })
-            })
+        self.description_present()
     }
 
+    fn description_present(&self) -> Option<String> {
+        self.remote.endpoint().or_else(|| {
+            (!self.config.store.as_os_str().is_empty()).then(|| {
+                let text = self.config.store.to_string_lossy();
+                if text.starts_with("http://") || text.starts_with("https://") {
+                    crate::remote::endpoint(&text)
+                        .map_or_else(|_| "<invalid HTTP endpoint>".to_owned(), |u| u.to_string())
+                } else {
+                    text.into_owned()
+                }
+            })
+        })
+    }
+
+    #[cfg(test)]
     pub fn remote_info(&self) -> Option<sail_api::protocol::RemoteInfo> {
-        if !self.configured() {
+        if self.remote.configured(&self.root, &self.config) != Some(true) {
             return None;
         }
+        self.remote_info_present()
+    }
+
+    fn remote_info_present(&self) -> Option<sail_api::protocol::RemoteInfo> {
         let mut info = self.remote.info()?;
         info.coalesced = self.coalesced.load(Ordering::Relaxed);
         Some(info)
+    }
+
+    /// One bounded presence observation for the entire optional status section.
+    /// Snapshot metadata can be omitted while an owner or filesystem is busy.
+    pub(crate) fn status(&self) -> Option<sail_api::protocol::SharedInfo> {
+        if self.remote.configured(&self.root, &self.config) != Some(true) {
+            return None;
+        }
+        Some(sail_api::protocol::SharedInfo {
+            store: self.description_present()?,
+            trust_dir: self.config.trust_dir.display().to_string(),
+            trusted_keys: self
+                .trust_snapshot()
+                .map_or_else(Vec::new, |keys| keys.ids()),
+            timeout_ms: u64::try_from(self.config.timeout.as_millis()).unwrap_or(u64::MAX),
+            remote: self.remote_info_present(),
+        })
     }
 
     pub fn config(&self) -> &SharedConfig {
         &self.config
     }
 
-    fn configured(&self) -> bool {
-        !self.config.store.as_os_str().is_empty()
-            || self.root.join(crate::remote::CONFIG_FILE).is_file()
+    /// Re-reads signing trust at the original five-second cadence.
+    /// Call only on an owned helper: filesystem work can block indefinitely.
+    #[cfg(test)]
+    pub fn trusted(&self) -> (Arc<TrustedKeys>, Vec<String>) {
+        self.trust.load(&self.config.trust_dir)
     }
 
-    /// The trusted keys, re-read at most every [`TRUST_RELOAD`], and any
-    /// problems found when they were last read.
-    pub fn trusted(&self) -> (Arc<TrustedKeys>, Vec<String>) {
-        let Ok(mut t) = self.trust.lock() else {
-            return (Arc::new(TrustedKeys::default()), Vec::new());
-        };
-        if let Some(cur) = t.as_ref()
-            && cur.loaded.elapsed() < TRUST_RELOAD
-        {
-            return (Arc::clone(&cur.keys), Vec::new());
-        }
-        let (keys, problems) = TrustedKeys::load_dir(&self.config.trust_dir);
-        let keys = Arc::new(keys);
-        *t = Some(Trust {
-            keys: Arc::clone(&keys),
-            loaded: Instant::now(),
-        });
-        (keys, problems)
+    /// Last complete unexpired trust snapshot; absence never grants authority.
+    /// Pending I/O or a held owner causes immediate omission from status.
+    pub(crate) fn trust_snapshot(&self) -> Option<Arc<TrustedKeys>> {
+        self.trust.snapshot()
     }
 
     #[cfg(test)]
@@ -315,7 +463,7 @@ impl SharedTier {
     }
 
     fn remember_miss(&self, key: &QueryKey) {
-        if let Ok(mut n) = self.negative.lock() {
+        if let Ok(mut n) = self.negative.try_lock() {
             if n.len() >= MAX_NEGATIVE {
                 n.clear();
             }
@@ -329,49 +477,65 @@ impl SharedTier {
     }
 
     fn lookup_with(&self, key: &QueryKey, local: &Solver, after_spawn: impl FnOnce()) -> Lookup {
+        let started = Instant::now();
+        let deadline = started.checked_add(self.config.timeout);
         #[cfg(test)]
         phase(&self.phases, "lookup-start");
-        // No HTTP runtime is constructed on the foreground path.
-        if !self.configured() {
-            return Lookup::Skipped;
-        }
+        // Configuration, trust and HTTP construction belong to owned helpers.
         #[cfg(test)]
         phase(&self.phases, "foreground-ready");
         let id = format!("{}:{key}", local.summary());
-        let (pending, leader) = {
-            let Ok(mut active) = self.pending.lock() else {
-                return Lookup::Skipped;
+        #[cfg(test)]
+        phase(&self.phases, "id-formatted");
+        let (pending, leader, retired) = {
+            let Some(mut active) = lock_until(&self.pending, deadline) else {
+                return before_deadline(&Lookup::Skipped, deadline);
             };
+            // A caller unable to remove its completed key never waits for the
+            // table. A later owner reaps it before admission, within 64 slots.
+            // Move large reply owners out before physically dropping them.
+            let retired: Vec<_> = active
+                .extract_if(|_, pending| pending.finished.load(Ordering::Acquire))
+                .collect();
             if let Some(pending) = active.get(&id) {
-                (Arc::clone(pending), false)
+                (Arc::clone(pending), false, retired)
             } else {
                 if active.len() >= MAX_IN_FLIGHT {
                     return Lookup::Skipped;
                 }
-                let pending = Arc::new((Mutex::new(None), Condvar::new()));
+                let pending = Arc::new(SharedLookup {
+                    value: Mutex::new(None),
+                    ready: Condvar::new(),
+                    finished: AtomicBool::new(false),
+                });
                 active.insert(id.clone(), Arc::clone(&pending));
-                (pending, true)
+                (pending, true, retired)
             }
         };
+        drop(retired);
+        #[cfg(test)]
+        phase(&self.phases, "table-admitted");
         if !leader {
             self.coalesced.fetch_add(1, Ordering::Relaxed);
-            let (lock, ready) = &*pending;
-            let Ok(value) = lock.lock() else {
+            let Some(value) = lock_until(&pending.value, deadline) else {
+                return before_deadline(&Lookup::Skipped, deadline);
+            };
+            let Ok((value, _)) = pending.ready.wait_timeout_while(
+                value,
+                self.config.timeout.saturating_sub(started.elapsed()),
+                |v| v.is_none(),
+            ) else {
                 return Lookup::Skipped;
             };
-            let Ok((value, _)) =
-                ready.wait_timeout_while(value, self.config.timeout, |v| v.is_none())
-            else {
-                return Lookup::Skipped;
-            };
-            return value.clone().unwrap_or(Lookup::Timeout);
+            let result = value.clone();
+            drop(value);
+            return result.map_or(Lookup::Timeout, |result| before_deadline(&result, deadline));
         }
-        let result = self.lookup_one(key, local, &pending, after_spawn);
-        publish(&pending, result.clone());
-        if let Ok(mut active) = self.pending.lock() {
-            active.remove(&id);
-        }
-        result
+        let result = self.lookup_one(key, local, &pending, deadline, after_spawn);
+        publish_foreground(&pending, Arc::clone(&result));
+        pending.finished.store(true, Ordering::Release);
+        retire_pending(&self.pending, &id, &pending);
+        before_deadline(&result, deadline)
     }
 
     fn lookup_one(
@@ -379,21 +543,19 @@ impl SharedTier {
         key: &QueryKey,
         local: &Solver,
         pending: &Pending,
+        deadline: Option<Instant>,
         after_spawn: impl FnOnce(),
-    ) -> Lookup {
-        let (trusted, _) = self.trusted();
-        if trusted.is_empty() {
-            return Lookup::Skipped;
-        }
+    ) -> Arc<Lookup> {
         let Some(path) = self.store.entry_path(local, key) else {
-            return Lookup::Skipped;
+            return Arc::new(Lookup::Skipped);
         };
         if self.in_flight.fetch_add(1, Ordering::SeqCst) >= MAX_IN_FLIGHT {
             self.in_flight.fetch_sub(1, Ordering::SeqCst);
-            return Lookup::Skipped;
+            return Arc::new(Lookup::Skipped);
         }
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
-        let initialization_deadline = Instant::now().checked_add(self.config.timeout);
+        let initialization_deadline = deadline;
+        let trust = Arc::clone(&self.trust);
         let in_flight = Arc::clone(&self.in_flight);
         let (key_c, local_c) = (*key, local.clone());
         let remote = Arc::clone(&self.remote);
@@ -414,9 +576,25 @@ impl SharedTier {
             .spawn(move || {
                 #[cfg(test)]
                 phase(&phases, "helper-start");
-                let mut resolved = remote.resolve(&root, &config, || {
-                    reset_suppression(&negative, &backoff);
-                });
+                // Fresh presence is discovery only. Signing authority is read
+                // separately at its original cadence, all on this helper.
+                let configured = !config.store.as_os_str().is_empty()
+                    || root.join(crate::remote::CONFIG_FILE).is_file();
+                let (trusted, _) = if configured {
+                    trust.load(&config.trust_dir)
+                } else {
+                    (Arc::new(TrustedKeys::default()), Vec::new())
+                };
+                let mut resolved = if configured
+                    && !trusted.is_empty()
+                    && initialization_deadline.is_some_and(|deadline| Instant::now() < deadline)
+                {
+                    remote.resolve(&root, &config, || {
+                        reset_suppression(&negative, &backoff);
+                    })
+                } else {
+                    initialization::Resolution::Ready(None)
+                };
                 if matches!(resolved, initialization::Resolution::Initializing)
                     && let Some(deadline) = initialization_deadline
                 {
@@ -432,23 +610,13 @@ impl SharedTier {
                 // published its fallback. Keep the validated client for later
                 // requests, without starting an obsolete network request.
                 let skipped = initialization_timed_out
+                    || !configured
+                    || trusted.is_empty()
                     || lookup_suppressed(&publication, &backoff, &negative, &key_c);
                 let data = if skipped {
                     None
                 } else {
-                    match resolved {
-                        initialization::Resolution::Ready(Some(remote)) => Some(
-                            remote
-                                .get(&local_c, &key_c)
-                                .map_err(|_| Rejection::Unreadable),
-                        ),
-                        initialization::Resolution::Ready(None) if directory => {
-                            Some(SharedStore::read(&path))
-                        }
-                        initialization::Resolution::Ready(None)
-                        | initialization::Resolution::Initializing
-                        | initialization::Resolution::TimedOut => None,
-                    }
+                    read_shared(resolved, directory, &path, &local_c, &key_c)
                 };
                 #[cfg(test)]
                 phase(&phases, "transport-returned");
@@ -456,62 +624,58 @@ impl SharedTier {
                 let cpu_before = thread_cpu_ticks();
                 #[cfg(test)]
                 let validation_started = Instant::now();
-                let result = match data {
-                    None if initialization_timed_out => Lookup::Timeout,
-                    None => Lookup::Skipped,
-                    Some(Ok(Some(data))) => match verify_entry(&data, &key_c, &trusted, &local_c) {
-                        Ok(verified) => Lookup::Hit(verified),
-                        Err(reason) => Lookup::Rejected(reason),
-                    },
-                    Some(Ok(None)) => Lookup::Miss,
-                    Some(Err(Rejection::Unreadable)) => Lookup::Unavailable,
-                    Some(Err(reason)) => Lookup::Rejected(reason),
-                };
+                let result =
+                    classify_shared(data, initialization_timed_out, &key_c, &trusted, &local_c);
                 #[cfg(test)]
                 phase(&phases, "classified");
                 #[cfg(test)]
                 classification_cpu(validation_started, cpu_before);
-                in_flight.fetch_sub(1, Ordering::SeqCst);
                 // Coalesced readers need not wait for the initiating client to
                 // be scheduled again after this independently verified result.
-                publish(&publication, result.clone());
+                let result = Arc::new(result);
+                publish(&publication, Arc::clone(&result));
                 #[cfg(test)]
                 phase(&phases, "published");
                 let _ = tx.send(result);
+                in_flight.fetch_sub(1, Ordering::SeqCst);
             });
         if spawned.is_err() {
             self.in_flight.fetch_sub(1, Ordering::SeqCst);
-            return Lookup::Skipped;
+            return Arc::new(Lookup::Skipped);
         }
         after_spawn();
-        self.finish_lookup(key, &rx)
+        self.finish_lookup(key, &rx, deadline)
     }
 
-    fn finish_lookup(&self, key: &QueryKey, rx: &std::sync::mpsc::Receiver<Lookup>) -> Lookup {
-        match rx.recv_timeout(self.config.timeout) {
-            Ok(Lookup::Miss) => {
-                self.remember_miss(key);
-                Lookup::Miss
+    fn finish_lookup(
+        &self,
+        key: &QueryKey,
+        rx: &std::sync::mpsc::Receiver<Arc<Lookup>>,
+        deadline: Option<Instant>,
+    ) -> Arc<Lookup> {
+        let remaining = deadline.map_or(Duration::ZERO, |deadline| {
+            deadline.saturating_duration_since(Instant::now())
+        });
+        let received = rx.recv_timeout(remaining);
+        let result = if deadline.is_none_or(|deadline| Instant::now() >= deadline) {
+            Arc::new(Lookup::Timeout)
+        } else {
+            match received {
+                Ok(result) => result,
+                Err(RecvTimeoutError::Timeout) => Arc::new(Lookup::Timeout),
+                Err(RecvTimeoutError::Disconnected) => Arc::new(Lookup::Miss),
             }
-            Ok(Lookup::Unavailable) => {
-                if let Ok(mut b) = self.backoff_until.lock() {
-                    *b = Some(Instant::now() + self.config.backoff);
+        };
+        match &*result {
+            Lookup::Miss | Lookup::Rejected(_) => self.remember_miss(key),
+            Lookup::Unavailable | Lookup::Timeout => {
+                if let Ok(mut backoff) = self.backoff_until.try_lock() {
+                    *backoff = Some(Instant::now() + self.config.backoff);
                 }
-                Lookup::Unavailable
             }
-            Ok(Lookup::Timeout) | Err(RecvTimeoutError::Timeout) => {
-                if let Ok(mut b) = self.backoff_until.lock() {
-                    *b = Some(Instant::now() + self.config.backoff);
-                }
-                Lookup::Timeout
-            }
-            Ok(Lookup::Rejected(r)) => {
-                self.remember_miss(key);
-                Lookup::Rejected(r)
-            }
-            Ok(result) => result,
-            Err(RecvTimeoutError::Disconnected) => Lookup::Miss,
+            Lookup::Hit(_) | Lookup::Skipped => {}
         }
+        result
     }
 
     /// Remembers a rejection the caller made of a verified entry (the
@@ -912,15 +1076,29 @@ mod http_tests {
                 let solver = solver.clone();
                 std::thread::spawn(move || {
                     barrier.wait();
-                    tier.lookup(&key, &solver)
+                    let started = Instant::now();
+                    let result = tier.lookup(&key, &solver);
+                    (result, started.elapsed())
                 })
             })
             .collect::<Vec<_>>();
-        for worker in workers {
-            let result = worker.join().unwrap();
+        // Join every owned caller before asserting, retaining each return time
+        // without changing serving work or the original deadline/Hit oracle.
+        let outcomes = workers
+            .into_iter()
+            .map(|worker| worker.join().unwrap())
+            .collect::<Vec<_>>();
+        eprintln!(
+            "reader returned_hit/elapsed: {:?}",
+            outcomes
+                .iter()
+                .map(|(result, elapsed)| (matches!(result, Lookup::Hit(_)), elapsed))
+                .collect::<Vec<_>>()
+        );
+        for (result, elapsed) in outcomes {
             assert!(
                 matches!(result, Lookup::Hit(_)),
-                "lookup: {result:?}; remote: {:?}; phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
+                "lookup: {result:?}; caller_elapsed: {elapsed:?}; remote: {:?}; phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
                 tier.remote_info(),
                 fixture.phase_report(),
                 fixture.request_report()
@@ -991,6 +1169,155 @@ mod http_tests {
         let (result, initiating_result) = paused_initiator_lookup(&mut fixture);
         assert!(matches!(result, Lookup::Rejected(_)), "lookup: {result:?}");
         assert!(matches!(initiating_result, Lookup::Rejected(_)));
+    }
+
+    #[test]
+    fn paused_trust_refresh_cannot_block_lookup_or_status_or_serve_old_keys() {
+        let mut fixture = http_fixture("paused-trust", false);
+        fixture.establish_transport_and_trust();
+        Arc::get_mut(&mut fixture.tier).unwrap().config.timeout = Duration::from_millis(50);
+        fixture
+            .tier
+            .trust
+            .current
+            .lock()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .loaded -= TRUST_RELOAD;
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let release_rx = Mutex::new(release_rx);
+        *fixture.tier.trust.before_load.lock().unwrap() = Some(Arc::new(move || {
+            let _ = entered_tx.send(());
+            // A failed assertion cannot leave a detached, permanently parked owner.
+            let _ = release_rx
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(2));
+        }));
+        let tier = Arc::clone(&fixture.tier);
+        let solver = fixture.solver.clone();
+        let key = fixture.key;
+        let (returned_tx, returned_rx) = std::sync::mpsc::channel();
+        let caller = std::thread::spawn(move || {
+            let started = Instant::now();
+            let result = tier.lookup(&key, &solver);
+            let _ = returned_tx.send((result, started.elapsed()));
+        });
+        entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let started = Instant::now();
+        let status = fixture.tier.status().unwrap();
+        assert!(
+            status.trusted_keys.is_empty(),
+            "pending refresh cannot expose expired trust"
+        );
+        assert!(fixture.tier.trust_snapshot().is_none());
+        assert!(started.elapsed() < DEFAULT_SHARED_TIMEOUT);
+        let (result, elapsed) = returned_rx.recv_timeout(DEFAULT_SHARED_TIMEOUT).unwrap();
+        assert!(matches!(result, Lookup::Timeout), "lookup: {result:?}");
+        assert!(
+            elapsed < DEFAULT_SHARED_TIMEOUT,
+            "lookup waited {elapsed:?}"
+        );
+        assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
+        let _ = release_tx.send(());
+        caller.join().unwrap();
+        fixture.close();
+    }
+
+    #[test]
+    fn paused_pending_publication_cannot_block_foreground_or_leak_completed_key() {
+        let mut fixture = http_fixture("held-pending", false);
+        fixture.establish_transport_and_trust();
+        Arc::get_mut(&mut fixture.tier).unwrap().config.timeout = Duration::from_millis(50);
+        let tier = Arc::clone(&fixture.tier);
+        let solver = fixture.solver.clone();
+        let key = fixture.key;
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (resume_tx, resume_rx) = std::sync::mpsc::channel();
+        let (returned_tx, returned_rx) = std::sync::mpsc::channel();
+        let caller = std::thread::spawn(move || {
+            let started = Instant::now();
+            let result = tier.lookup_with(&key, &solver, || {
+                let _ = entered_tx.send(());
+                let _ = resume_rx.recv_timeout(Duration::from_secs(2));
+            });
+            let _ = returned_tx.send((result, started.elapsed()));
+        });
+        entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+        let held_table = fixture.tier.pending.lock().unwrap();
+        let pending = Arc::clone(held_table.values().next().unwrap());
+        let held_value = pending.value.lock().unwrap();
+        let _ = resume_tx.send(());
+        let (result, elapsed) = returned_rx.recv_timeout(DEFAULT_SHARED_TIMEOUT).unwrap();
+        assert!(matches!(result, Lookup::Timeout), "lookup: {result:?}");
+        assert!(
+            elapsed < DEFAULT_SHARED_TIMEOUT,
+            "foreground waited {elapsed:?}"
+        );
+        assert!(pending.finished.load(Ordering::Acquire));
+        assert_eq!(held_table.len(), 1);
+        drop(held_value);
+        drop(held_table);
+        caller.join().unwrap();
+        // Failed try-lock cleanup is reaped at the next bounded table access.
+        let _ = fixture.tier.lookup(&fixture.key, &fixture.solver);
+        assert!(fixture.tier.pending.lock().unwrap().is_empty());
+        fixture.close();
+    }
+
+    #[test]
+    fn held_remote_snapshot_mutex_does_not_block_status() {
+        let mut fixture = http_fixture("held-snapshot", false);
+        fixture.establish_transport_and_trust();
+        let held = fixture.tier.remote.current_for_test();
+        let started = Instant::now();
+        assert!(fixture.tier.remote_info().is_none());
+        assert!(fixture.tier.status().is_some());
+        assert!(started.elapsed() < DEFAULT_SHARED_TIMEOUT);
+        drop(held);
+        fixture.close();
+    }
+
+    #[test]
+    fn old_leader_retirement_preserves_replacement_publication_owner() {
+        let pending = || {
+            Arc::new(SharedLookup {
+                value: Mutex::new(None),
+                ready: Condvar::new(),
+                finished: AtomicBool::new(false),
+            })
+        };
+        let old = pending();
+        old.finished.store(true, Ordering::Release);
+        let replacement = pending();
+        let table = Mutex::new(HashMap::from([(
+            "key".to_owned(),
+            Arc::clone(&replacement),
+        )]));
+        // The new request has replaced the finished old leader before that
+        // leader regains the table. Its eventual response still has one owner.
+        retire_pending(&table, "key", &old);
+        assert!(Arc::ptr_eq(
+            table.lock().unwrap().get("key").unwrap(),
+            &replacement
+        ));
+        publish(&replacement, Arc::new(Lookup::Miss));
+        assert!(matches!(
+            table
+                .lock()
+                .unwrap()
+                .get("key")
+                .unwrap()
+                .value
+                .lock()
+                .unwrap()
+                .as_deref(),
+            Some(Lookup::Miss)
+        ));
+        retire_pending(&table, "key", &replacement);
+        assert!(table.lock().unwrap().is_empty());
     }
 
     #[test]

@@ -321,3 +321,21 @@ streams. Bitflags was Same:48verified/0errors on both sides, with no timeout
 reproduced. [The terminal record](validation/m7-verismo-bitflags-e0ca-diagnostic.json)
 retains streams and bounded metadata;18process rows had explicit descriptor
 truncation. Both complete standard timeouts and their unknown causes remain. This is neither a suite retry nor an optional-engine acceptance result.
+
+## Shared-cache foreground filesystem boundary
+
+The previous lookup implementation read the signing-key directory before its
+helper timeout; startup and status also loaded or tested remote configuration on
+the foreground. A blocked filesystem could therefore bypass the documented
+250 ms fallback bound. [Issue 76](https://github.com/Chelis-Lang/sail/issues/76)
+tracks this code-level defect. The correction moves those reads onto bounded
+owned helpers and uses optional status snapshots; see
+[the current behavior](http-shared-cache.md) and
+[ADR 0017](decisions/0017-shared-tier-with-signed-entries.md).
+This is not a measured explanation or waiver for the retained b34/a6 HTTP timing
+failures. Original serving, signature, disconnect and concurrency checks remain
+required, as does a new complete integrated gate.
+The [focused validation](validation/m7-shared-trust-foreground.md) retains all
+failed drafts and demonstrates three paused blocking counterfactuals, final
+23 shared-unit/26 integration controls and strict checks. A subsequent passing
+reader diagnostic does not explain or erase the retained eight-reader timeout.

@@ -11,7 +11,7 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime};
 
 use sail_api::protocol::{
-    Identity, Info, MemoryInfo, QueueInfo, Request, SharedInfo, StatsSnapshot, write_get_response,
+    Identity, Info, MemoryInfo, QueueInfo, Request, StatsSnapshot, write_get_response,
     write_hello_response, write_info_response, write_put_response, write_stats_response,
 };
 use sail_cache::memory::{MemoryTier, State as Slot, Value};
@@ -283,7 +283,6 @@ impl State {
         key: &QueryKey,
         solver: &Solver,
     ) -> Option<Arc<Value>> {
-        shared.description()?;
         let lookup = shared.lookup(key, solver);
         if !matches!(lookup, Lookup::Skipped) {
             self.stats.shared_lookups.fetch_add(1, Ordering::Relaxed);
@@ -433,20 +432,7 @@ impl State {
                 entries: queued,
                 bytes: queued_bytes,
             },
-            shared: self
-                .shared
-                .as_ref()
-                .filter(|s| s.description().is_some())
-                .map(|s| {
-                    let c = s.config();
-                    SharedInfo {
-                        store: s.description().unwrap_or_default(),
-                        trust_dir: c.trust_dir.display().to_string(),
-                        trusted_keys: s.trusted().0.ids(),
-                        timeout_ms: u64::try_from(c.timeout.as_millis()).unwrap_or(u64::MAX),
-                        remote: s.remote_info(),
-                    }
-                }),
+            shared: self.shared.as_ref().and_then(SharedTier::status),
         }
     }
 
@@ -638,21 +624,15 @@ pub fn bind(
         shared.prepare();
     }
     if let Some(shared) = &state.shared
-        && shared.description().is_some()
+        && let Some(info) = shared.status()
     {
-        let c = shared.config();
-        let (keys, problems) = shared.trusted();
         state.log.line(&format!(
-            "shared tier: store {}, trust {} ({} keys: {}), timeout {} ms",
-            shared.description().unwrap_or_default(),
-            c.trust_dir.display(),
-            keys.len(),
-            keys.ids().join(", "),
-            c.timeout.as_millis()
+            "shared tier: store {}, trust {} (cached keys: {}), timeout {} ms",
+            info.store,
+            info.trust_dir,
+            info.trusted_keys.join(", "),
+            info.timeout_ms
         ));
-        for p in problems {
-            state.log.line(&format!("shared tier: ignoring {p}"));
-        }
     }
     let w = Arc::clone(&state);
     let delay = config.write_delay;
