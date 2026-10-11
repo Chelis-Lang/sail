@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "status": "file-only candidate; independent static review and pinned helper16 controls + strict PASS; actual source adapter/layout/sensitivity controls pending; unselected",
+  "base_full_patch_sha256": "3892328a418109596f6a4a5f3649f5e7d370b19321419c29780d7a3961b44d61",
+  "base_delta_sha256": "5ffe95fa64be63a817f969062e32eeca332bd6fb11edc2a265c3d28c50891e2a",
+  "delta_sha256": "7daffd2be52dfcc4fb66e9600b04b773bad965cbddccc8f2031b262c37e9e341",
+  "source_sha256": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_engine.rs": "e865d614c649883d0dcd8009ec121274b60ffaa5986bbe1691d4441812aab672",
+    "rust_verify/src/sail_namespace.rs": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+    "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "bade935b6329da949a10999f9b040cf3908a1dd6176749d6f6953c2f6aa1bb67",
+    "vir/src/context.rs": "8bcec061b764900da85d35f78c1ff50acf333983d4a5d3de4c2e2cd72d4abfb3"
+  },
+  "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "domain_unchanged": "sail-prepared/graph-ledger/parallel-namespace-lease-authority/v9",
+  "validator_roles_keys_codec_drop_unchanged": true,
+  "active_bytes": 16384,
+  "permanent_queue_retirement_bytes": 65536,
+  "prospective_phase_max_bytes": 524369920,
+  "unchanged_global_budget_bytes": 536870912,
+  "native_margin_terms": 10,
+  "new_fixed_completion_controls": 1,
+  "ordinary_runtime_or_qualification_launched": false,
+  "actual_controls_status": "pinned helper16 PASS, helper-only sensitivity expected failure, isolated strict PASS; full source pending",
+  "actual_call_removed_counterfactual_sha256": "16a170d5faf80f66072071d5e5ba1789adb927aee4af129d8411e36c8a4841bc"
+}
