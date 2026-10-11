@@ -2,6 +2,7 @@
 """Bounded real-tool acceptance for managed proof receipts; never a benchmark."""
 
 import json
+import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -13,24 +14,40 @@ import tempfile
 import time
 
 sail = str(Path(sys.argv[1]).resolve())
+evidence_spec = importlib.util.spec_from_file_location("managed_evidence", Path(__file__).with_name("managed-evidence.py"))
+timeout_evidence = importlib.util.module_from_spec(evidence_spec)
+evidence_spec.loader.exec_module(timeout_evidence)
 cargo_verus = os.environ.get("SAIL_CARGO_VERUS") or shutil.which("cargo-verus")
 if not cargo_verus:
     raise SystemExit("managed acceptance requires the pinned cargo-verus")
 
-def bounded_verification(arguments, cwd, env, timeout):
+def bounded_verification(arguments, cwd, env, timeout, diagnostic=None):
     process = subprocess.Popen(arguments, cwd=cwd, env=env,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                start_new_session=True)
     try:
         stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired as failure:
-        # Stop the complete owned verification tree before its scratch directory
-        # is removed. Killing only Sail leaves Cargo writing into that directory.
         try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        failure.stdout, failure.stderr = process.communicate(timeout=10)
+            if diagnostic is not None:
+                cache, events, destination = diagnostic
+                try:
+                    timeout_evidence.capture_timeout(process.pid, cache, events, destination)
+                except Exception as diagnostic_error:
+                    # Evidence failure must never prevent the original owned cleanup.
+                    try:
+                        destination.write_text(json.dumps({"scope": "timeout-only diagnostic failed",
+                                                           "error": type(diagnostic_error).__name__}))
+                    except OSError:
+                        pass
+        finally:
+            # Stop the complete owned verification tree before its scratch directory
+            # is removed. Killing only Sail leaves Cargo writing into that directory.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            failure.stdout, failure.stderr = process.communicate(timeout=10)
         raise
     return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
@@ -109,15 +126,27 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         def managed(*args):
             label = f"managed-{len(managed_calls) + 1:02d}"
             managed_calls.append(label)
+            started = time.monotonic()
+            events = evidence / (label + ".events.jsonl")
+            # This existing observation-only variable is excluded from managed
+            # input identity; invocation arguments and compiler flags are unchanged.
+            observed_env = dict(env, SAIL_JOB_EVENTS=str(events))
             try:
                 run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
-                                           project, env, 240)
+                                           project, observed_env, 240,
+                                           (root / "cache", events, evidence / (label + ".timeout.json")))
             except subprocess.TimeoutExpired as failure:
                 (evidence / (label + ".stdout.json")).write_bytes(failure.stdout or b"")
                 (evidence / (label + ".stderr")).write_bytes(failure.stderr or b"")
+                (evidence / (label + ".operation.json")).write_text(json.dumps({
+                    "operation": label, "duration_s": time.monotonic() - started,
+                    "verification_timeout_s": 240, "returncode": None, "timed_out": True}))
                 raise
             (evidence / (label + ".stdout.json")).write_bytes(run.stdout)
             (evidence / (label + ".stderr")).write_bytes(run.stderr)
+            (evidence / (label + ".operation.json")).write_text(json.dumps({
+                "operation": label, "duration_s": time.monotonic() - started,
+                "verification_timeout_s": 240, "returncode": run.returncode, "timed_out": False}))
             result = json.loads(run.stdout)
             assert result["kind"] == "sail-project-result", result
             assert result["error"] is None, result
