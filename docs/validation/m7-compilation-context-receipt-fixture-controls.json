@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "status": "FAIL",
+  "source_commit": "4c84b535d8241b238af7259ad6d49af32473eaf5",
+  "source_archive_sha256": "73e1af1af58bd6571d42bb859d8bffbdeaf6a09010af11380ac3f07aa8db50a2",
+  "source_files": {
+    "crates/sail-verus/src/engine.rs": "3ca7e5254aadf5e4c8b0a3e0b84e3e69a8ebd6b742c0f5191d7338d2f98ed80b",
+    "crates/sail-verus/src/managed/runner.rs": "c9670f799e344dbbdb5cc4568c2762b343d67aa5b419e8264e6d3f49c0746e41",
+    "crates/sail-verus/src/managed/build_inputs.rs": "df3da7ab143165a8f55d98906575cfd3d9db71d22b3c699320b807242d2e043d",
+    "crates/sail-verus/src/managed/sysroot_selection.rs": "56ba70479db29c71e3650822a533eeb30a8a3522e4b7fa261b7b5b974cdb51d4",
+    "Cargo.lock": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "rust-toolchain.toml": "47b4a003491604fd1871e4469863e09766ed08a78dbd4d47ed0182a60e027d47"
+  },
+  "target_handoff_sha256": "f5d6212f11bb75935bf52332ca8e444f45f4096be18d641ce99bca25545a686f",
+  "jobs": 2,
+  "nice": 0,
+  "controller_pid": 1287,
+  "launch_unix_ns": 1791727385340306385,
+  "scope": "targeted sail-verus unit guards and package strict only; no Cargo project proof/product/repair/benchmark acceptance",
+  "phases": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "sail-verus",
+        "--lib",
+        "compiler",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 77.50484078499994,
+      "log_sha256": "7920a612f46d78a4fa3747b7a3615ae19bf2cdc51e585e05251b9209774085f8",
+      "log_bytes": 1409
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "sail-verus",
+        "--lib",
+        "shared_fresh_artifact",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 101,
+      "elapsed_seconds": 0.8926740839999638,
+      "log_sha256": "4c4327bdcffbf35b692b14a658b533961c9b02a953218adc766e183b193b509d",
+      "log_bytes": 960
+    }
+  ],
+  "elapsed_seconds": 84.3589252050001,
+  "failure_scope": "Six compiler controls passed; positive intact-receipt fixture omitted production output-directory exclusions, causing self-induced input revision change. Production unchanged; correction adds exact output metadata and revision stability assertion.",
+  "raw_files": {
+    "result.json": {
+      "sha256": "2d72303fb033eced3233c6e9882e6a44ec172b0e90dbed79f06fede641e2a390",
+      "bytes": 1993
+    },
+    "1.log": {
+      "sha256": "4c4327bdcffbf35b692b14a658b533961c9b02a953218adc766e183b193b509d",
+      "bytes": 960
+    },
+    "0.log": {
+      "sha256": "7920a612f46d78a4fa3747b7a3615ae19bf2cdc51e585e05251b9209774085f8",
+      "bytes": 1409
+    },
+    "progress.json": {
+      "sha256": "b1aaa104514f82ca4963a4d1f0a3bb5d09bfbed5f529dcfff104f664e680483a",
+      "bytes": 1576
+    }
+  },
+  "runtime_or_proof_acceptance": false
+}
