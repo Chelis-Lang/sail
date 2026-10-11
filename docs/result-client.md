@@ -263,17 +263,24 @@ controller. It checked direct live reads, same-ID state changes, service loss
 and restart, notification cancellation, socket cleanup and normal EOF exit.
 The worker was stopped before any proof; it does not establish Current-result
 latency or the separate real-reader acceptance.
-## Retained output validation prototype
+## Automatic retained output validation
 
-The daemon still reads and checks the complete persisted worker output before
-serving cached Result frames. An unselected library prototype,
-`managed::GuardedOutput`, tests whether continuous Linux namespace and read-lease
-ownership can safely avoid repeated output hashing. It certifies output bytes
-only; it cannot report Current without the original independent input checks.
-Cold or uncertain ownership uses the original complete read/hash path. The
-prototype has no daemon activation or user flag, and no claimed live latency
-gain. See [ADR 0035](decisions/0035-guarded-retained-output-digests.md) and the
-[latest original reader failure](validation/m7-descriptor-reader-terminal.md).
+The current daemon source enables one optional background constructor for
+`managed::GuardedOutput` on Linux. Established continuous namespace and read-lease
+coverage can avoid rereading and hashing persisted worker stdout. Both output
+barriers bracket the original independent input/runtime freshness check; output
+coverage alone cannot make a proof Current. Missing, busy, quota-refused or
+invalid coverage uses the complete original read/hash path. If the final output
+barrier fails, the daemon repeats that full read/hash and independent freshness
+check before serving the complete response.
+
+There is no new user flag. Construction and inspection share the existing
+128 MiB frame-retention budget; unavailable quota costs the shortcut. The
+[35 affected controls and strict checks](validation/m7-guarded-output-source-controls.md)
+pass, including real restored-write fallback and complete frame equivalence.
+Installed combined-product reader acceptance remains pending. See
+[ADR 0035](decisions/0035-guarded-retained-output-digests.md) and the
+[retained original reader failure](validation/m7-descriptor-reader-terminal.md).
 
 A second, test-only candidate groups file-parent descriptor lookups within one
 lease barrier. It retains at most 64 temporary directory descriptors and borrowed
