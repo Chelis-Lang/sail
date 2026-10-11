@@ -16,6 +16,11 @@ the original frozen dependency fingerprints; they are not a complete Cargo
 gate or corpus run. The unchanged whole-session test source passed three
 separate cold runs: 4.651, 2.694 and 2.534 seconds. Each retained exact direct Z3
 output, no additional solver startup, and at least three signed shared hits.
+The private builds exercised the committed production implementation; a module
+documentation clarification followed the first compile, and the later
+credential diagnostic adds assertion messages only. They are not claimed as
+exact Git-archive release artifacts. Compiler arguments and dependency hashes
+remain with the private raw evidence.
 
 All four new setup ownership tests passed, including a paused constructor,
 abandoned publication, failed-construction cadence, and no runtime for
