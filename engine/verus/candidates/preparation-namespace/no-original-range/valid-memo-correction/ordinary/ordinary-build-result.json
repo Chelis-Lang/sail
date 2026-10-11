@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "scope": "Ordinary unselected source build PASS; original qualification not launched",
+  "variant": "c77e1a1879302e06",
+  "status": "PASS",
+  "elapsed_seconds": 1001.7909706229984,
+  "fresh_vstd": {
+    "verified": 2060,
+    "errors": 0
+  },
+  "complete_direct_runtime_artifacts": 13,
+  "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+  "closed_native_record_sha256": "4274adc1a0aee5fb362bdc8eae4e666fd631466885027cfdaba747ce623fbfbd",
+  "source8_sha256": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_engine.rs": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+    "rust_verify/src/sail_namespace.rs": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+    "rust_verify/src/sail_owned_imports.rs": "7955d2ccf62699d59fd7e1d4aeda727dcb3539c8fff2fcf32421e3dc9a8aa597",
+    "rust_verify/src/sail_owned_imports_tests.rs": "a0ce98125d8e14b85d05e805d7455e126088afa34e49246606a1163b47cb34d2",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "88c714168ffb02cdb4a4d166813eba5506a4ac5f16d1453fa918158a03cc42ac",
+    "vir/src/context.rs": "c4672b093f7307f4aec248d75fc57381c454253bd948bc6a69141da981bc8f60"
+  },
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+  "manifest": {
+    "schema_version": 1,
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+    "features": [
+      "sail-interactive:aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+      "host:x86_64-unknown-linux-gnu",
+      "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    ],
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655",
+      "verus/source/target-verus/release/cargo-verus": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6",
+      "verus/source/target-verus/release/libvstd.rlib": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2",
+      "verus/source/target-verus/release/rust_verify": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "build_seconds": 994,
+    "test_binaries": []
+  },
+  "source_controls_sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+  "memo_sensitivity_sha256": "5be40db3fba7b031e4ceb38977fd264c63c5712f58637826233bde448647a8ed",
+  "prior_runtime_seals_unchanged": true,
+  "owned_build_actors": [],
+  "dual_container_holders": 0,
+  "dual_container_unreadable_live_processes": 0,
+  "ownership_closure_sha256": "5d4a111c25d6555a17812438bb58560a417b83f12aa7df39b04e30a28e789472",
+  "raw_archive": {
+    "path": "target/preparation-namespace/no-original-range-ordinary-build.tar",
+    "sha256": "ae7fc7685b467c33dc8041b111aeb7b738e8d8813f76f2d4959899cbc125dcee",
+    "all_36_inventory_entries_verified": true,
+    "inventory": {
+      "applied-source.json": {
+        "sha256": "ad4e8f548ee1fd1be5295014be0d07dddd1c325dd05d9b35ad134cb2df29606c",
+        "bytes": 1082
+      },
+      "build-candidate.py": {
+        "sha256": "084b0372b4b351ab7833b200d7857cee3ba297473fef82b63d8c03a7bf432c0a",
+        "bytes": 13878
+      },
+      "build-input-freeze.json": {
+        "sha256": "be798b6b72e85d9d8bd62cdd3c43ef7a407a4f3439be8f94a732086947fd9a93",
+        "bytes": 3383
+      },
+      "builder-archive-validation.json": {
+        "sha256": "41f08219d025f60692baf6509c96e97aadb09eb8eb2e226b4d05f4a47e9c8868",
+        "bytes": 146
+      },
+      "builder-before.json": {
+        "sha256": "40c7831fee3927ce9c6228e0e328a5492c8cec3d1c4b0fd68721d81da8191990",
+        "bytes": 342
+      },
+      "builder-before.tar": {
+        "sha256": "5bffdb2243eaac7c9e0122ba2aea7e75d57d8ea2afd6d5384532932b9c69f126",
+        "bytes": 12062720
+      },
+      "builder-source.tar": {
+        "sha256": "b9a43bab50243c592f4dbda170eb61ddd26728df647875c364d22b18db06a568",
+        "bytes": 12195840
+      },
+      "candidate-delta.patch": {
+        "sha256": "9415f4a14f8345b09f25978b0deacc7849054b4d20358a2f76e44ad3730b65a9",
+        "bytes": 1523
+      },
+      "candidate.patch": {
+        "sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+        "bytes": 559493
+      },
+      "close-build.py": {
+        "sha256": "39ced274bf50a394f471c7652c5afffbd5f8c35f6fbf7b830767568165ad0b37",
+        "bytes": 4879
+      },
+      "close-qualification.py": {
+        "sha256": "d62a5d08407a8d7aca7041b5fde5898b07e1bef29fd17bc42071e6e58fec41ab",
+        "bytes": 5709
+      },
+      "closed-ordinary-build.json": {
+        "sha256": "4274adc1a0aee5fb362bdc8eae4e666fd631466885027cfdaba747ce623fbfbd",
+        "bytes": 5498
+      },
+      "compiler-seed.json": {
+        "sha256": "0c353d2c68bfb24e2bba44d79b96af85fcf945f7f7ac31c3e8131b53a315c671",
+        "bytes": 703821
+      },
+      "final-close-qualification.py": {
+        "sha256": "2cb0cf5494cd903acb85483151457444e795c36a3a6837371fe674ea2704f817",
+        "bytes": 6970
+      },
+      "final-qualification-freeze.json": {
+        "sha256": "b71e9db3e675f5cefef1f1b4475bb2824179fc675d5d2647d5154e09982f3c4e",
+        "bytes": 3970
+      },
+      "identity.json": {
+        "sha256": "c66b74ef25bec79beec365cbb85ff367512253a874b44155e295242ba564ab2e",
+        "bytes": 4036
+      },
+      "ordinary-build-actor.json": {
+        "sha256": "b26ffab3bfd88815af761fb214e3229f91aed671a92b25e717a388f5a005146b",
+        "bytes": 466
+      },
+      "ordinary-build-plan.json": {
+        "sha256": "3f521620d35ee97790d0e8ca2ab084fffa21a50a293775eeb8d5fe106ae5b779",
+        "bytes": 5027
+      },
+      "ordinary-build-result.json": {
+        "sha256": "6b04ec0730aa40510a62eaa50422966ebfcb2b56377f5bccf75fca795846f6b1",
+        "bytes": 296
+      },
+      "ordinary-build.log": {
+        "sha256": "a3360afd83cbfb5cef2eafc9fd8a33c6c036668e698bbb3c9caddf6caa91b83b",
+        "bytes": 6353
+      },
+      "ordinary-runtime-manifest.json": {
+        "sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+        "bytes": 2106
+      },
+      "ownership-after.json": {
+        "sha256": "5d4a111c25d6555a17812438bb58560a417b83f12aa7df39b04e30a28e789472",
+        "bytes": 996
+      },
+      "ownership-before.json": {
+        "sha256": "82551cbb45e95fd6f7890a4f3f934cde3424c5d72ef02bcc3f78112a7df00fb5",
+        "bytes": 869
+      },
+      "preceding-runtime-seals.json": {
+        "sha256": "64dae89e39e37be37a920bcfffcc11eaf275722c73fda5717c3ba611fef6f78d",
+        "bytes": 10794
+      },
+      "resource-preflight.json": {
+        "sha256": "9764abc226a3f34c655ede6efe7740648e6df6baaf21efb1f4ea7bc24ddff53f",
+        "bytes": 269
+      },
+      "run-original-pipeline.py": {
+        "sha256": "8b7a0cf501cfc1a7401da33c59059ad866101b3bb304d29cd879e8639aed1f19",
+        "bytes": 6876
+      },
+      "setup.log": {
+        "sha256": "ff202e3128dc7c4f191d0f9dc36203a3577d0ac182d2f2dc8ff07d7212f02333",
+        "bytes": 317
+      },
+      "source/Cargo.lock": {
+        "sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+        "bytes": 92808
+      },
+      "source/rust_verify/src/sail_deferred_import_tests.rs": {
+        "sha256": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+        "bytes": 53794
+      },
+      "source/rust_verify/src/sail_engine.rs": {
+        "sha256": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+        "bytes": 107289
+      },
+      "source/rust_verify/src/sail_namespace.rs": {
+        "sha256": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+        "bytes": 19018
+      },
+      "source/rust_verify/src/sail_owned_imports.rs": {
+        "sha256": "7955d2ccf62699d59fd7e1d4aeda727dcb3539c8fff2fcf32421e3dc9a8aa597",
+        "bytes": 54618
+      },
+      "source/rust_verify/src/sail_owned_imports_tests.rs": {
+        "sha256": "a0ce98125d8e14b85d05e805d7455e126088afa34e49246606a1163b47cb34d2",
+        "bytes": 51720
+      },
+      "source/rust_verify/src/spans.rs": {
+        "sha256": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+        "bytes": 17055
+      },
+      "source/rust_verify/src/verifier.rs": {
+        "sha256": "88c714168ffb02cdb4a4d166813eba5506a4ac5f16d1453fa918158a03cc42ac",
+        "bytes": 154124
+      },
+      "source/vir/src/context.rs": {
+        "sha256": "c4672b093f7307f4aec248d75fc57381c454253bd948bc6a69141da981bc8f60",
+        "bytes": 66703
+      }
+    }
+  },
+  "final_native_qualification_freeze_sha256": "b71e9db3e675f5cefef1f1b4475bb2824179fc675d5d2647d5154e09982f3c4e",
+  "qualification_freeze": {
+    "version": 1,
+    "scope": "Unchanged original13-stage/14-script pipeline; not launched",
+    "closed_ordinary_sha256": "4274adc1a0aee5fb362bdc8eae4e666fd631466885027cfdaba747ce623fbfbd",
+    "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "source8_sha256": {
+      "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+      "rust_verify/src/sail_engine.rs": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+      "rust_verify/src/sail_namespace.rs": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+      "rust_verify/src/sail_owned_imports.rs": "7955d2ccf62699d59fd7e1d4aeda727dcb3539c8fff2fcf32421e3dc9a8aa597",
+      "rust_verify/src/sail_owned_imports_tests.rs": "a0ce98125d8e14b85d05e805d7455e126088afa34e49246606a1163b47cb34d2",
+      "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+      "rust_verify/src/verifier.rs": "88c714168ffb02cdb4a4d166813eba5506a4ac5f16d1453fa918158a03cc42ac",
+      "vir/src/context.rs": "c4672b093f7307f4aec248d75fc57381c454253bd948bc6a69141da981bc8f60"
+    },
+    "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+    "launcher_sha256": "8b7a0cf501cfc1a7401da33c59059ad866101b3bb304d29cd879e8639aed1f19",
+    "postqualification_report_sha256": "2cb0cf5494cd903acb85483151457444e795c36a3a6837371fe674ea2704f817",
+    "script_sha256": {
+      "engine/verus/test-real-he.py": "effde8542a0b096aa760b6f24a9d97ef249016cd8aa588129445151a901efb89",
+      "engine/verus/test-engine.py": "543be4cecca10c745a4e870511a1e4e7ac841e1c839d190bb2be0f0f03294c5f",
+      "engine/verus/test-prepared.py": "22d0436832438d276ac79ef330dc283b67352157f9bd0c75a9ee89cc34ef1f8f",
+      "engine/verus/test-cancel.py": "c899b388c6005197f561a73c7aeafe7fe8c49e76cbb9f0f04fc56f296e15744d",
+      "engine/verus/candidates/test-graph-ledger.py": "283f05ed2cfb3f19dcd40ca055b315fe74403f93564f56b77ef87dfd8a59e603",
+      "engine/verus/candidates/audit-private-span-boundary.py": "ecaa208f6ead0dd0d0b459ffbc375e2635c44d870caf19d68b6efe1ab9d398f4",
+      "engine/verus/candidates/qualify-same-input.py": "f7ddcf603e2ff7c52a2a107ce97139ee2ccc43c75f558b61d14642762d92cc62",
+      "engine/verus/candidates/test-private-span-cross-edit.py": "80b49c69b84599b606f200157c67cdc1f92e73054905f3a22b11ce839789fc2a",
+      "engine/verus/candidates/audit-graph-ledger.py": "c1385581e251f4f8da24efb3ad176d067e0773b283f92d2253effc5122feb5e6",
+      "engine/verus/candidates/test-same-callback.py": "6cd4d5d18efd8d751de89b7c36dec04c3d26ed11f912cac3a0d9ca9050237295",
+      "engine/verus/candidates/test-key-delta.py": "c3a46a4c530f9e02234614f49cd5fea2ec4b841b1d133d711c10c749344778e6",
+      "engine/verus/candidates/actor-observation.py": "d01de79ee9de89b823d7ccfb0efa1474a2ed4185f519bffd925e8546895edc34",
+      "engine/verus/candidates/test-real-he-same-input.py": "2bb7a3817dd6aecfba438f3dc0ab78aa82012527c3977fcd6365ce5dbcac67d2",
+      "engine/verus/candidates/test-private-span-migration.py": "dd57b4ef82a9f40720946e89ebb18c7aecd915c84df309627c59ca8896f4deaf"
+    },
+    "compiler_limits_seconds": 600,
+    "trace_or_target": false,
+    "runtime_selected": false,
+    "owned_actor_closure_sha256": "5d4a111c25d6555a17812438bb58560a417b83f12aa7df39b04e30a28e789472",
+    "external_inputs_sha256": {
+      "stock_launcher": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854",
+      "stock_driver": "b8c11e7b626cc85d8a46b90036f0adfec443b7cde1c69d8b182175b92c708af7",
+      "pinned_z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+      "old_2421_launcher": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+    }
+  },
+  "runtime_selected": false,
+  "product_qualified": false
+}
