@@ -1,10 +1,12 @@
 # One stock AIR transport component control
 
-This is a prepared diagnostic, not an executed result. It follows the
+This records the frozen preparation. Its subsequent
+[normal-control result](m7-stock-smt-boundary-terminal.md) failed on recorder
+loss, so the fault controls and real arm remain unattempted. It follows the
 [failed reader prerequisite](m7-rpc-binding-reader-terminal.md) and
 [bounded wait audit](m7-rpc-binding-reader-wait-audit.md). The original
 600-second failure remains unresolved. No compiler, solver, proof, endpoint or
-reader census was launched to prepare this control.
+reader census was launched during static preparation.
 
 The [controller](../../scripts/m7-stock-smt-process-diagnostic.py) extracts the
 exact command vector from the sole complete QUERY block in the sealed module
@@ -65,8 +67,9 @@ They must observe the selected boundary, reject the following boundary, and
 reject sequence gaps or dropped observations. A fifth normal fake-peer control
 requires complete delivery and stock child shutdown. Each compares the peer's
 actual stdin bytes with the untouched command/newline/DONE stream; deliberately
-pre-write pauses require the exact empty prefix. These executable sensitivities
-are pending. The eight
+pre-write pauses require the exact empty prefix. The normal executable
+sensitivity later failed on recorder loss; the four fault sensitivities remain
+pending. The eight
 [pure preparation controls](../../scripts/test-m7-stock-smt-process-diagnostic.py)
 pass on both host and Linux; they cover extraction, changed boundaries, loss
 handling, classification and compiler-timeout terminal preservation,
@@ -82,7 +85,7 @@ identities without exporting the private configuration's local paths.
 
 Execution order is: private build, normal fake peer, the four fault controls,
 then one real forwarding arm. Stop at a failed control; do not retry a failed
-real arm. The executable observations remain pending source/lifecycle review.
+real arm. The first executed control failed and stopped that frozen sequence.
 No result counts as Current proof, source qualification, M7 completion,
 performance or live-reader acceptance. See [reader acceptance](../reader-acceptance.md),
 [known issues](../known-issues.md) and [the roadmap](../ROADMAP.md).

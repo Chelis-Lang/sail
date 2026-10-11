@@ -1,0 +1,298 @@
+{
+  "build": {
+    "binary": {
+      "bytes": 5104312,
+      "sha256": "54023267272d36f6368ee57247a8a313fcb3e809562df9d3c6deef321f2f6848"
+    },
+    "cleanup_errors": [],
+    "elapsed_s": 1.524677793000592,
+    "exit_code": 0,
+    "external_inclusive_s": 2.0858855429978576
+  },
+  "controller_sha256": "e64b0963d1cd707516e0eb31c402c971828292c6c183f97120ab3e6614f4d4a4",
+  "executable_fault_controls": "unattempted",
+  "external_sequence": {
+    "elapsed_inclusive_s": 2.9924191259997315,
+    "pid": 776828,
+    "sequence_completed": false,
+    "started_unix_ns": 1791718488708869961
+  },
+  "failure_class": "diagnostic-recorder-loss",
+  "historical_cause_unresolved": true,
+  "kind": "stock-smt-boundary-normal-control-terminal",
+  "normal": {
+    "cleanup_errors": [],
+    "deadline_s": 3,
+    "elapsed_inclusive_s": 0.42913945800682995,
+    "exit_code": 0,
+    "fake_peer_wire_comparison": {
+      "actual_bytes": 46,
+      "actual_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+      "expected_bytes": 46,
+      "expected_sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680",
+      "passed": true,
+      "required_prefix_bytes": 46
+    },
+    "metadata_rows": [
+      {
+        "dropped": 0,
+        "elapsed_ns": 12051625,
+        "sequence": 0,
+        "stage": 1
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 20705708,
+        "sequence": 1,
+        "stage": 2
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 21114042,
+        "sequence": 2,
+        "stage": 3
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 21117625,
+        "sequence": 3,
+        "stage": 4
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 21278167,
+        "sequence": 4,
+        "stage": 18
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 21345750,
+        "sequence": 5,
+        "stage": 12
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 21502167,
+        "sequence": 6,
+        "stage": 5
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 21507417,
+        "sequence": 7,
+        "stage": 6
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 21511417,
+        "sequence": 8,
+        "stage": 13
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 22848333,
+        "sequence": 9,
+        "stage": 7
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 22866875,
+        "sequence": 10,
+        "stage": 8
+      },
+      {
+        "dropped": 0,
+        "elapsed_ns": 22946375,
+        "sequence": 11,
+        "stage": 9
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 92390875,
+        "sequence": 14,
+        "stage": 14
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 92922500,
+        "sequence": 15,
+        "stage": 13
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 92925750,
+        "sequence": 16,
+        "stage": 14
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 92928833,
+        "sequence": 17,
+        "stage": 15
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 92930292,
+        "sequence": 18,
+        "stage": 16
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 93136500,
+        "sequence": 19,
+        "stage": 17
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 93244667,
+        "sequence": 20,
+        "stage": 19
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 93533333,
+        "sequence": 21,
+        "stage": 20
+      },
+      {
+        "dropped": 2,
+        "elapsed_ns": 99966417,
+        "sequence": 22,
+        "stage": 21
+      }
+    ],
+    "observation_loss": {
+      "completed_counts": {
+        "dropped": 2,
+        "observations": 23,
+        "responses": 1
+      },
+      "final_drain_limited": false,
+      "missing_received_rows": 0,
+      "sender_dropped_at_last_row": 2,
+      "tail_loss_unknown_without_completion_counts": false
+    },
+    "overwritten_rows": 0,
+    "postseals_equal": true,
+    "received_rows": 21,
+    "sensitivity": {
+      "passed": false,
+      "reason": "observation loss or invalid stage"
+    },
+    "timed_out": false
+  },
+  "normal_controller": {
+    "exit_code": 1,
+    "external_inclusive_s": 0.9031736260003527
+  },
+  "postsealed_inventory": [
+    {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 155,
+      "sha256": "429fa4044969f926433ea92e7c06604670c5af1aed26bcc3c8f42493f409d652"
+    },
+    {
+      "bytes": 2754984,
+      "sha256": "3b654550d9787335953020f3946a96205bca5736c3e57ddba0fd3b47688d8fb9"
+    },
+    {
+      "bytes": 928246,
+      "sha256": "65aabd6f36f48a976080ed7935a6cbad1397cd586f281845f47ae33678674237"
+    },
+    {
+      "bytes": 13801616,
+      "sha256": "47ecd157517d37f6a631664a2ab28e7eaf7ec890d4968a373964731d7ac23cd6"
+    },
+    {
+      "bytes": 8570208,
+      "sha256": "a0537a11801a32855b055117e7ec058bcba8c68689b5e492768cd0bbb0b69763"
+    },
+    {
+      "bytes": 10236586,
+      "sha256": "5e1ead56f11dd56ea759ea53b9b5dd28de66e0f655b6935cd0702c4f5ab33a3b"
+    },
+    {
+      "bytes": 27902632,
+      "sha256": "670e3a437474e7bc0dd53df0f070da5fd48de508954eb58c7c1e5698bfc43e58"
+    },
+    {
+      "bytes": 26,
+      "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+    },
+    {
+      "bytes": 4705336,
+      "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+    },
+    {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 30076214,
+      "sha256": "e30595b97c5f729b36f66a3c9101a82ff976831f885fc5592c979077f2f9c3bc"
+    },
+    {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    {
+      "bytes": 645952,
+      "sha256": "859254978c0a0402c32f949f6de0d99aee73be8d15f45aac00ae1448aac51e74"
+    },
+    {
+      "bytes": 667092,
+      "sha256": "83118760c40b2c90bc01f035ee490ff9103154c392fd41aa66529e175071dacb"
+    },
+    {
+      "bytes": 11000880,
+      "sha256": "167bccac2908ed1a109660b5254ff6da0bc24b227e8424ba8c521620a8840872"
+    }
+  ],
+  "proof_or_acceptance": false,
+  "raw_files": {
+    "0.controller.stderr": {
+      "bytes": 578,
+      "sha256": "4dff6121ed90b04268543733ac6951d8090ea94d1455c8d8771c1c622fe0ba69"
+    },
+    "execution-record.json": {
+      "bytes": 1081,
+      "sha256": "351167e4d5c3c0740730f8113441b1300b116e2b20f3d8bdf7ae29345d74ba93"
+    },
+    "prepared/build.json": {
+      "bytes": 805,
+      "sha256": "c9a0836e8fd34f1c123251c7b7479365caa3eb098c6e7a1b6f2af295d7b84146"
+    },
+    "prepared/build.stderr": {
+      "bytes": 1397,
+      "sha256": "6dbb75edb90679054dde3f958e3b905fa22ae8cdf646128b407a58c705016b37"
+    },
+    "prepared/normal/fake-peer-wire.bin": {
+      "bytes": 46,
+      "sha256": "fccbf658da81f2041d38d0686169e3b5a1dc9b3e23c73d5fd11191c552671680"
+    },
+    "prepared/normal/responses": {
+      "bytes": 13,
+      "sha256": "0e340b779f038c91eacd8ada5b84477201a2fc529209f6ce246a6715ab68c3ba"
+    },
+    "prepared/normal/stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "prepared/normal/stdout": {
+      "bytes": 46,
+      "sha256": "5e2953be9b6aef8e28934671ea4a42c6bff798b9231bc3c30312de1f5dc5e516"
+    },
+    "prepared/normal/terminal.json": {
+      "bytes": 7906,
+      "sha256": "8b5d72b0ce4089adfac05278a0bfeded630afb7e30770b267f272153ce76a9eb"
+    }
+  },
+  "real_forwarding_arm": "unattempted",
+  "result": "FAIL",
+  "scope": "ONE normal fake-peer transport sensitivity; four faults and real forwarding arm unattempted after failfast",
+  "source_or_proof_run": "unattempted",
+  "static_plan": "m7-stock-smt-boundary-plan.json"
+}
