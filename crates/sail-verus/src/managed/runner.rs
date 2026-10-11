@@ -2014,7 +2014,7 @@ mod tests {
         )?;
         let expected = BTreeSet::from([("input".to_owned(), "input".to_owned(), "lib".to_owned())]);
         let (targets, missing) = target_records(&paths, &data, "missing", false, &expected)?;
-        assert!(targets.is_empty());
+        assert_eq!(targets, Vec::<TargetResult>::new());
         assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         assert_eq!(std::fs::read_dir(&paths.receipts)?.count(), 0);
         assert_eq!(
@@ -2024,7 +2024,7 @@ mod tests {
         // Even an intact old focus receipt with identical inputs/artifacts
         // cannot authorize another selector's skipped proof.
         let receipt = compiler_receipt(&paths, &data, &artifact);
-        assert!(!receipt.input_revision.is_empty());
+        assert_ne!(receipt.input_revision, "");
         let path = receipt_path(&paths, "input", "input", &["lib".to_owned()]);
         json(
             &paths
@@ -2042,7 +2042,7 @@ mod tests {
         assert!(missing.is_empty());
         for (context, force) in [("missing", false), ("selected", true)] {
             let (targets, missing) = target_records(&paths, &data, context, force, &expected)?;
-            assert!(targets.is_empty());
+            assert_eq!(targets, Vec::<TargetResult>::new());
             assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
         }
         drop(ownership);
