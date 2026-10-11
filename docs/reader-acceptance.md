@@ -144,3 +144,10 @@ original Python Result p95 (403.341 ms; Status 147.290 ms). All 200 admission an
 per-call verifier checks passed; Rust and retained integration were unattempted.
 Its bounded server tail attributes only 43 completed pairs after cleanup
 polling. It is diagnostic evidence, not reader acceptance or source qualification.
+
+The subsequent [native-binding product workflow](validation/m7-rpc-binding-reader-terminal.md)
+establishes independent complete Current preparation proofs, then times out in
+the original 600-second baseline ordinary-full check. No census or retained
+integration is attempted. The successful preparation does not substitute for
+that failed prerequisite. Its separately retained process snapshot is partial:
+main-task child traversal omitted descendants launched by other Cargo tasks.
