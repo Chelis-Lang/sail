@@ -47,17 +47,32 @@ class Controls(unittest.TestCase):
                     value = {'seals': {'exact': 'same'},
                              'closure': {'complete': True, 'candidates': []}}.get(mode)
                     if mode == 'execute':
+                        if fault == 'execute-oserror':
+                            raise OSError('Docker transport lost')
+                        if fault == 'execute-interrupt':
+                            raise KeyboardInterrupt('Controller interrupted')
+                        if fault == 'docker-failure':
+                            return subprocess.CompletedProcess(command, 125)
                         if fault == 'fixture-failure':
                             return subprocess.CompletedProcess(command, 1)
                         value = None
                     if mode == 'seals' and fault == 'post-seal' and destination == 'after-seals.stdout':
                         value = {'exact': 'changed'}
+                    if mode == 'closure' and fault == 'closure-incomplete':
+                        value = {'complete': False, 'candidates': []}
+                    if mode == 'closure' and fault == 'closure-holder':
+                        value = {'complete': True, 'candidates': [{'pid': 42}]}
                     if value is not None:
                         kwargs['stdout'].write(json.dumps(value).encode())
                 elif command[2:4] == ['sail-m7-handoff-validation', 'cat']:
-                    value = {'original_fixture_passed': fault != 'false-native-record',
+                    value = {'kind': 'original-repair-publication-timing-diagnostic',
+                             'original_fixture_passed': fault not in ('false-native-record', 'fixture-failure'),
                              'qualification_credit': False, 'original_limits': [120, 30, 5],
                              'fixture_sha256': controller.FIXTURE_SHA, 'product_sha256': DIGEST}
+                    if fault == 'native-record-mismatch':
+                        value['product_sha256'] = 'f' * 64
+                    if fault == 'native-record-malformed':
+                        value = []
                     kwargs['stdout'].write(json.dumps(value).encode())
                 elif 'tar' in command:
                     kwargs['stdout'].write(b'exact retained public archive')
@@ -94,6 +109,9 @@ class Controls(unittest.TestCase):
         code, record, commands, _ = self.exercise('fixture-failure')
         self.assertEqual(code, 1)
         self.assertEqual(record['status'], 'FAIL')
+        self.assertEqual(record['primary_status'], 'FAIL')
+        self.assertTrue(record['native_terminal_record_matches'])
+        self.assertEqual(record['uncertainty_reasons'], [])
         self.assertIn('raw_archive', record)
         self.assertEqual(sum('--native-mode' in c and c[-1] == 'execute' for c in commands), 1)
         self.assertEqual(next(p for p in record['phases'] if p['name'] == 'original-diagnostic')['exit_code'], 1)
@@ -107,13 +125,51 @@ class Controls(unittest.TestCase):
         self.assertEqual(partial, b'partial original failure\n')
         self.assertEqual(sum('--native-mode' in c and c[-1] == 'execute' for c in commands), 1)
 
-    def test_post_seal_and_missing_or_false_native_record_refuse_success(self):
-        for fault in ('post-seal', 'native-record.stdout', 'false-native-record'):
+    def test_post_seal_and_false_native_record_refuse_success(self):
+        for fault in ('post-seal', 'false-native-record'):
             code, record, _, _ = self.exercise(fault)
             self.assertEqual(code, 1)
             self.assertEqual(record['status'], 'FAIL')
             self.assertNotEqual(record['status'], 'running')
             self.assertIn('raw_archive', record)
+
+    def test_attempted_transport_loss_and_interruption_remain_uncertain(self):
+        for fault, error in (('execute-oserror', 'OSError'), ('execute-interrupt', 'KeyboardInterrupt')):
+            code, record, commands, _ = self.exercise(fault)
+            self.assertEqual(code, 1)
+            self.assertEqual(record['status'], 'UNCERTAIN')
+            self.assertEqual(record['error_type'], error)
+            self.assertTrue(record['bounded_closure_observed'])
+            self.assertFalse(record['native_closure_certified'])
+            self.assertIn('transport-or-interruption', record['uncertainty_reasons'])
+            self.assertEqual(sum('--native-mode' in c and c[-1] == 'execute' for c in commands), 1)
+
+    def test_lost_malformed_or_unbound_terminal_record_is_uncertain(self):
+        for fault in ('native-record.stdout', 'native-record-mismatch', 'native-record-malformed'):
+            code, record, _, _ = self.exercise(fault)
+            self.assertEqual(code, 1)
+            self.assertEqual(record['status'], 'UNCERTAIN')
+            self.assertEqual(record['primary_status'], 'DIAGNOSTIC_PASS')
+            self.assertIn('native-terminal-unavailable', record['uncertainty_reasons'])
+            self.assertFalse(record['native_closure_certified'])
+
+    def test_unavailable_incomplete_or_nonempty_closure_is_uncertain(self):
+        for fault in ('closure.stdout', 'closure-incomplete', 'closure-holder'):
+            code, record, _, _ = self.exercise(fault)
+            self.assertEqual(code, 1)
+            self.assertEqual(record['status'], 'UNCERTAIN')
+            self.assertIn('native-closure-unavailable', record['uncertainty_reasons'])
+            self.assertFalse(record['native_closure_certified'])
+
+    def test_docker_nonzero_without_confirmed_fixture_failure_is_uncertain(self):
+        code, record, commands, _ = self.exercise('docker-failure')
+        self.assertEqual(code, 1)
+        self.assertEqual(record['status'], 'UNCERTAIN')
+        self.assertEqual(record['primary_status'], 'FAIL')
+        self.assertEqual(record['error_type'], 'ValueError')
+        self.assertIn('docker-exit-unconfirmed', record['uncertainty_reasons'])
+        self.assertEqual(next(p for p in record['phases'] if p['name'] == 'original-diagnostic')['exit_code'], 125)
+        self.assertEqual(sum('--native-mode' in c and c[-1] == 'execute' for c in commands), 1)
 
     def test_copy_failure_is_terminal_without_native_invocation(self):
         code, record, commands, _ = self.exercise('copy-binding.stdout')

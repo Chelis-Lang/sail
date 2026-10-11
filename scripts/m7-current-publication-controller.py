@@ -112,6 +112,17 @@ def native_execute(binding, output):
     os.execv(command[0], command)
 
 
+def matching_terminal(value, grant):
+    """Recognize the bound finally record for either a passing or failed fixture."""
+    return (isinstance(value, dict)
+            and value.get('kind') == 'original-repair-publication-timing-diagnostic'
+            and type(value.get('original_fixture_passed')) is bool
+            and value.get('qualification_credit') is False
+            and value.get('original_limits') == [120, 30, 5]
+            and value.get('fixture_sha256') == FIXTURE_SHA
+            and value.get('product_sha256') == grant['artifacts']['sail']['sha256'])
+
+
 def host(args):
     output = Path(args.out)
     require(output.is_absolute(), 'Output must be an absolute new owned path')
@@ -148,6 +159,8 @@ def host(args):
             return None
         except BaseException as error:
             row['error_type'] = type(error).__name__
+            row['transport_uncertain'] = isinstance(
+                error, (OSError, KeyboardInterrupt, subprocess.TimeoutExpired))
             raise
         finally:
             row['elapsed_seconds'] = time.monotonic() - began
@@ -188,9 +201,12 @@ def host(args):
             phase('original-diagnostic', base + ['--native-mode', 'execute'], EXTERNAL_SECONDS, log)
         record['status'] = 'DIAGNOSTIC_PASS'
     except BaseException as error:
-        record.update(status='UNCERTAIN' if isinstance(error, subprocess.TimeoutExpired) else 'FAIL',
+        uncertain = isinstance(error, subprocess.TimeoutExpired) or (
+            attempted and isinstance(error, (OSError, KeyboardInterrupt)))
+        record.update(status='UNCERTAIN' if uncertain else 'FAIL',
                       error_type=type(error).__name__)
     finally:
+        record['primary_status'] = record['status']
         # Every following failure is retained independently, never a hidden retry.
         if prepared:
             for name, command, budget in (
@@ -204,15 +220,16 @@ def host(args):
                     record[name] = value
                     if name == 'after-seals':
                         require(value == record.get('before'), 'Post-run seals differ')
-                    elif name == 'native-record' and record['status'] == 'DIAGNOSTIC_PASS':
-                        require(value['original_fixture_passed'] is True
-                                and value['qualification_credit'] is False
-                                and value['original_limits'] == [120, 30, 5]
-                                and value['fixture_sha256'] == FIXTURE_SHA
-                                and value['product_sha256'] == grant['artifacts']['sail']['sha256'],
+                    elif name == 'native-record':
+                        record['native_terminal_record_matches'] = matching_terminal(value, grant)
+                        require(record['native_terminal_record_matches'],
                                 'Native diagnostic does not match original bindings')
+                        if record['status'] == 'DIAGNOSTIC_PASS':
+                            require(value['original_fixture_passed'] is True,
+                                    'Native fixture did not pass')
                     elif name == 'closure':
-                        record['bounded_closure_observed'] = value['complete'] and not value['candidates']
+                        record['bounded_closure_observed'] = (
+                            value.get('complete') is True and value.get('candidates') == [])
                         # A lost transport cannot certify native completion, even if a later scan is empty.
                         if record['status'] == 'DIAGNOSTIC_PASS':
                             require(record['bounded_closure_observed'], 'Bounded closure is incomplete')
@@ -245,6 +262,26 @@ def host(args):
                 require(after == before, 'Container birth changed')
             except BaseException as error:
                 record['container_error'] = type(error).__name__
+                record['status'] = 'UNCERTAIN'
+        if attempted:
+            reasons = []
+            if any(row.get('transport_uncertain') is True for row in record['phases']):
+                reasons.append('transport-or-interruption')
+            if record.get('native_terminal_record_matches') is not True:
+                reasons.append('native-terminal-unavailable')
+            if record.get('bounded_closure_observed') is not True:
+                reasons.append('native-closure-unavailable')
+            original = next((row for row in record['phases']
+                             if row['name'] == 'original-diagnostic'), {})
+            code = original.get('exit_code')
+            terminal = record.get('native-record')
+            failed_fixture = isinstance(terminal, dict) and terminal.get('original_fixture_passed') is False
+            if code not in (0, 1) or (code == 1 and not failed_fixture):
+                reasons.append('docker-exit-unconfirmed')
+            if 'container_error' in record:
+                reasons.append('container-identity-unavailable')
+            record['uncertainty_reasons'] = reasons
+            if reasons:
                 record['status'] = 'UNCERTAIN'
         record['external_elapsed_seconds'] = time.monotonic() - started
         record['diagnostic_attempted'] = attempted

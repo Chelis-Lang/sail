@@ -68,7 +68,8 @@ timing capture remain untouched; the host attempts a raw archive even after
 failure and seals any partial transfer explicitly. Failure of storage can
 still prevent a new checkpoint; it cannot certify success.
 
-An external timeout or lost connection is `UNCERTAIN`: terminating or losing a
+An attempted external timeout, transport error or interruption is `UNCERTAIN`:
+terminating or losing a
 Docker client does not prove the native actor stopped. The controller never
 retries the fixture, restarts Docker, signals guessed descendants or asserts
 universal native closure. The reused bounded post-cleanup census reports
@@ -79,10 +80,21 @@ an uncertain execution to success. Root must resolve any surviving owned
 actor before another heavy workload. Original cleanup errors and missing,
 dropped or overwritten timing observations stay visible.
 
-Seven pure controls cover one exact invocation and unchanged argv; nonzero
-fixture failure; timeout with an apparently empty later census; changed seals;
-missing or false native reports; setup-copy failure before invocation; and the
-repository's actual 23-field schema. They run without subprocesses:
+An attempted run also remains `UNCERTAIN` when its native terminal record is
+missing, malformed or does not bind the fixture and product, or when the bounded
+closure observation is unavailable, incomplete or contains candidate holders.
+A genuine nonzero fixture result with its matching failed terminal record and a
+complete bounded empty census remains `FAIL`. The primary status, original
+error and phase exit codes remain in the record alongside uncertainty reasons;
+no failure becomes success. `native_closure_certified` remains false even for
+an empty census.
+
+Eleven pure controls cover one exact invocation and unchanged argv; genuine
+fixture failure; timeout, transport errors and interruption with an apparently
+empty later census; changed seals; missing, malformed, unbound or false native
+reports; incomplete or nonempty closure observations; unconfirmed Docker exit;
+setup-copy failure before invocation; and the repository's actual 23-field
+schema. They run without subprocesses:
 
 ```sh
 python3 scripts/test-m7-current-publication-controller.py
