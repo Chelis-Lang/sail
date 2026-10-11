@@ -132,8 +132,10 @@ job is 368 seconds. This preserves the separate local replay failure and does
 not qualify the real-project workload. Configured HTTP transport now starts
 initialization asynchronously at daemon bind. Its complete corrected local
 [workspace gate](../bench/validation/m7-linux-gate-de36-emulated-2026-10-11.json)
-passes all 489 tests and every remaining gate step; the real solver suite is
-running independently. The latest complete local
+passes all 489 tests and every remaining gate step. Its separate
+[solver suite](../bench/validation/m7-linux-solver-de36-emulated-2026-10-11.json)
+passes all 38 original controls, including whole-session remote replay without
+starting Z3. The latest complete local
 [end-to-end attempt](../bench/validation/m7-linux-e2e-777-failure-emulated-2026-10-11.json)
 passes legacy and installed MCP controls but times out during the first cold
 managed dependency build at its unchanged 240-second limit; repair is not reached.
