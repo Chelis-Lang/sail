@@ -137,7 +137,13 @@ diagnostics, but there are no restored hits. Three namespace refusals and a
 separate broker-availability refusal precede existing tracing. The
 [retained failure](../engine/verus/candidates/preparation-namespace/visibility-correction/qualification-failure.json)
 and [independent audit](validation/m7-preparation-namespace-qualification-independent-audit.md)
-preserve all original bounds. A bounded refusal-point diagnostic is next. The
+preserve all original bounds. The bounded refusal-point diagnostic now passes
+41 VIR and 91 driver tests and both strict compiler checks; its test-only raw
+owner annotation was corrected without changing the validator. One original
+revision-zero diagnostic is being prepared to identify the actual boundary. A
+separate broker-retirement acknowledgement is being implemented to prevent the
+next worker from attempting admission before the previous compiler service has
+released its namespace borrow and quota owner. The
 fourteen frozen scripts define thirteen actual pipeline stage records; the
 remaining four stages were not attempted. The candidate remains unselected.
 
@@ -167,7 +173,10 @@ causality or replace the complete census. The exact per-barrier descriptor
 binding optimization now passes the [complete Linux validation](validation/m7-native-path-bindings.md):
 566 workspace tests, all remaining gate steps and 39 solver controls. Its
 unchanged hardlink regression also detects an unsafe guard-removal variant.
-The sealed product and one unchanged live-reader workflow are next. The latest pushed
+The [new sealed release](validation/m7-binding-product/installed-product.json)
+builds in 108.350 seconds; the stalled first build remains separately recorded.
+One unchanged live-reader workflow and the original managed fixture are now
+running against exact owned copies. The latest pushed
 [native CI revision](../bench/validation/m7-linux-ci-dd33daf-native-2026-10-11.json)
 passes every check in 476 seconds. The separate
 [retained CLI/MCP workflow](validation/m7-rpc-retained-functional.md)
