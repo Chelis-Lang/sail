@@ -678,15 +678,18 @@ automatic retries or proof-state transfer. Old process birth grants are not
 reused after restart, and no descendant-closure claim is made for the interrupted
 workflows.
 
-### Retained output overlap optimization remains unvalidated
+### Retained output overlap has component validation, not live acceptance
 
-The [source-only result candidate](validation/m7-result-output-overlap-plan.md)
+The [reviewed result change](validation/m7-result-output-overlap-plan.md)
 addresses an output mutex held across independent input freshness. Overlapping
 readers can otherwise take the original full stdout read/hash path despite an
 established continuously guarded owner. The candidate retains the exact charged
 owner, releases output locks during input checks and runs the original final
 barrier on that same owner. Refusal still performs complete hashing and
-independent freshness. Its affected controls and complete-operation measurements
-are pending; it has not been selected in an installed product. The original
+independent freshness. Its [native affected controls and strict checks](validation/m7-result-output-overlap-native.md)
+pass after a test-only naming correction; the first strict failure is preserved.
+A complete-output/real-fixture-input component reduces p95 by 6.653 ms while
+all 128 checks remain complete. Source is selected for integration, with
+installed live reader acceptance pending. The original
 343.142 ms complete Result p95 failure remains failed, and the original Python
 full-graph collector, four readers, 200 samples and strict 200 ms bound remain.
