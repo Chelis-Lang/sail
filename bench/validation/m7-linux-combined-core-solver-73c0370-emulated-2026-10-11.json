@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "state": "passed-pinned-solver-suite",
+  "source_commit": "73c03702f067dbfdd46eefee1ffc650ff510c16f",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "elapsed_s": 75.902627541,
+  "exit_code": 0,
+  "tests": {
+    "run": 41,
+    "pass": 41,
+    "fail": 0,
+    "workspace_skipped": 589
+  },
+  "scope": "All ignored-only pinned solver/cache/portfolio/fault-injection and attribution controls on the same combined scope as the full gate. Daemon output-owner service and compiler-family build-script observation reuse are later changes not covered. Original deadlines unchanged.",
+  "raw_log_sha256": "68092b3e020539e40972e701bc36ca5030165fa6b64689b536255e8a9ae6e7f5",
+  "retained_log_gzip_sha256": "ec09becb6268d184542e79b406a85894549dc10d3a8b3fdeae490f990b0fb230",
+  "gate_record": "m7-linux-combined-core-gate-73c0370-emulated-2026-10-11.json"
+}
