@@ -18,7 +18,12 @@ See [ADR 0032](../decisions/0032-kernel-mount-generation-coverage.md).
 The new native regressions compare symlinks, hardlinks, parent traversal, native
 byte names, missing paths and unavailable procfs fallback with the old predicate.
 An opened-and-unlinked file must not impersonate a live same-inode hardlink
-whose literal name ends in the kernel deleted marker. Both new tests pass.
+whose literal name ends in the kernel deleted marker. Both new tests pass. The [actual negative control](../../bench/validation/m7-linux-binding-negative-46e1da6-emulated-2026-10-11.json)
+removes only the deleted-marker guard in an isolated test-only source copy. The
+unchanged hardlink regression then fails at its intended assertion in 12.060
+seconds inclusive of compilation. The original passing test ELF is sealed and
+archived, and the production source remains unchanged. No unqualified test-only
+artifact grants proof or runtime authority.
 
 The [first compile failure](../../bench/validation/m7-linux-binding-first-compile-a9300ac-emulated-2026-10-11.json)
 remains recorded; the extracted comparison was corrected to borrow a native
