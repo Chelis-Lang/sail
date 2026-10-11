@@ -25,6 +25,8 @@ filed as is.
 | [VI-0012](VI-0012-filtered-progress-note-order.md) | Filtered bucket-start notes bypass long-running suppression and print in arrival order | open; repeated stock identity pending | frozen HumanEval module013 source control |
 | [VI-0013](VI-0013-verismo-tspec-stock-wait.md) | Stock Verismo tspec waits until the original unit deadline | open; cause unknown | pinned corpus project `verismo`, `source/verismo_tspec/src` |
 
+| [VI-0014](VI-0014-exported-foreign-span-metadata-gap.md) | Exported Foreign spans can lack original source-range metadata | open; conservative reuse refused | retained HumanEval revision-zero diagnostic; minimal fixture pending |
+
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).
 
