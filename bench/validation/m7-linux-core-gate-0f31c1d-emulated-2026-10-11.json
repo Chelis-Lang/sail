@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_commit": "0f31c1deec1d1cdaf92704f8b5e4b5e9ef1cfba6",
+  "source_archive_sha256": "79adceae5bee80c4710e832a561f5d3a89bfbf77560d446360b08947d2eacd12",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete combined MCP ownership, final retained frame admission/fallback correction and bounded optional RPC stage recorder",
+  "command": "bash ci/run.sh gate",
+  "exit_code": 0,
+  "inclusive_elapsed_seconds": 542.75781425,
+  "nextest_elapsed_seconds": 179.133,
+  "tests": {
+    "run": 564,
+    "passed": 564,
+    "failed": 0,
+    "skipped": 39
+  },
+  "original_assertions_and_bounds_unchanged": true,
+  "m7_accepted": false,
+  "raw_log": {
+    "bytes": 114588,
+    "sha256": "8298add4288070c629840f7d07a6fa7e70c9f38e0f1c43fabb80bfa11ba318f3"
+  },
+  "qualification": "Complete local gate scope only; source runtime, live readers, retained integration, full corpus and repair performance remain separate",
+  "strict_workspace_all_target_clippy": "passed",
+  "remaining_gate_steps": "All passed: examples, installed Python, doctests, rustdoc, layering, dependency policy and generated benchmark-page equality"
+}
