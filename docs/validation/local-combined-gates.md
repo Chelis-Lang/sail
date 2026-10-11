@@ -12,14 +12,18 @@ Run the helper from the exact committed revision that root intends to validate:
 ```sh
 python3 scripts/local-combined-gates.py \
   --repo . --revision "$revision" --container "$container" \
-  --native-root "$fresh_native_root" --target "$existing_native_target" \
+  --native-root "$fresh_native_root" --source "$fresh_native_source" \
+  --target "$existing_native_target" \
   --output "$fresh_host_output" --protected "$protected_inventory" \
   --retain-elf "$actual_daemon_test_image" \
   --retain-elf "$actual_verus_test_image"
 ```
 
 The native root must be a new temporary directory with the helper's
-`sail-local-gates-` prefix. Both output roots must be unused. The protected JSON
+`sail-local-gates-` prefix. Both output roots and the explicit source path must be unused. The source can
+use the product grant's existing revision-based path convention, so a later
+separately authorized release build and install reuse this exact tree rather than
+copying another checkout. The source and external target must not overlap. The protected JSON
 has `files` rows containing `path`, `bytes`, numeric permission `mode`, and
 `sha256`. Supply actual installed product, engine and retained-image paths from
 an existing verified inventory; the helper does not infer them or treat their
@@ -60,7 +64,7 @@ PASS requires both original phases to exit zero with matching input identity and
 closed recorded ownership. A failed, interrupted or unattempted phase receives
 no skipped-gate credit; earlier failed scopes remain separate.
 
-`python3 scripts/test-local-combined-gates.py` currently passes 20 pure controls
+`python3 scripts/test-local-combined-gates.py` currently passes 21 pure controls
 using fake processes and temporary files. They exercise stopping, timeout and
 signal cleanup, sticky uncertainty, transport capture bounds, input substitution,
 exact image retention and full two-phase PASS validation. No native gate, solver,
