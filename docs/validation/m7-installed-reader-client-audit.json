@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "scope": "Read-only actual447 Python census selection and current installed SDK/MCP full-response cost boundaries; no endpoint calls, actor or code change",
+  "product": "44722793489b56be9c2988fc62b709f173b36f22",
+  "source_paths_unchanged_from_447": true,
+  "original_bounds_unchanged": true,
+  "m7_accepted": false,
+  "raw_python_census": {
+    "bytes": 145682,
+    "sha256": "21c37d46c32792069a305a4a65c07dadecf38e617ff3e834068f77b4950e429f"
+  },
+  "summary": {
+    "status": {
+      "count": 100,
+      "median_ms": 82.49983349742251,
+      "p95_ms": 148.42979200329864,
+      "max_ms": 255.04383399675135
+    },
+    "result": {
+      "count": 100,
+      "median_ms": 249.41718749687425,
+      "p95_ms": 394.71345899801236,
+      "max_ms": 532.6634590019239
+    }
+  },
+  "operations": {
+    "status": {
+      "count": 100,
+      "body_bytes": [
+        452
+      ],
+      "current_admissions": 100,
+      "active_and_continuing": 100
+    },
+    "result": {
+      "count": 100,
+      "body_bytes": [
+        4312245
+      ],
+      "current_admissions": 100,
+      "active_and_continuing": 100
+    }
+  },
+  "client_selection": {
+    "measured": "Python socket+json.loads collector; no SDK or MCP",
+    "rust": "unattempted after Python failure",
+    "retained_cli_mcp": "unattempted after Python failure"
+  },
+  "known_costs": {
+    "python_timer": "connect/send/full frame receive/json.loads; no component split",
+    "sdk": "fresh frame per call; exact complete byte equality; independent Response clone on warm decode hit; admission generation captured before RPC",
+    "mcp": "persistent immediate shared cache family, but to_value(Response), structured graph/text creation, JSON-RPC graph clone and output serialization remain",
+    "output_lock": "server.send serializes complete JSON message under shared output mutex"
+  },
+  "attribution_limits": [
+    "Equal response lengths do not prove equal whole bodies or cache hits.",
+    "No measured server/transport/Python decode phase split.",
+    "Offline SDK component timings cannot be subtracted from live Python samples.",
+    "No demonstrated MCP latency failure or promised gain from static copy audit."
+  ],
+  "sources": {
+    "scripts/m7-job-read-bench.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    },
+    "scripts/m7-reader-acceptance.py": {
+      "bytes": 33712,
+      "sha256": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d"
+    },
+    "crates/sail-cli/examples/job_read_bench/measure.rs": {
+      "bytes": 15725,
+      "sha256": "10eeace00f2ff7776b65616a7d15fea950712b5f645f527e7002acac60a62b6c"
+    },
+    "crates/sail-api/src/jobs.rs": {
+      "bytes": 21163,
+      "sha256": "aba017bdcd2c1555296279efe9dfe04c758d44587e1cb5eb3cdead43f53ee6a3"
+    },
+    "crates/sail-api/src/jobs/decoded.rs": {
+      "bytes": 31943,
+      "sha256": "bc4f75ebfa4e293a74cb6b1bb63203223310b3a861c30d0a64c2165cd1c3855d"
+    },
+    "crates/sail-api/src/jobs/cancellable.rs": {
+      "bytes": 12031,
+      "sha256": "1467d63feeebbf093194442e89e01f57f1e433021a259b99c8b409c1b14415e3"
+    },
+    "crates/sail-api/src/jobs/ownership.rs": {
+      "bytes": 9615,
+      "sha256": "317197ba0349fa6bf8edda930aa85b947eaf7731a7cd051fbb65b1d1d2702358"
+    },
+    "crates/sail-mcp/src/job_clients.rs": {
+      "bytes": 9474,
+      "sha256": "c579c834282d622e779b3042d32d8e96afd9fae9683ff1af061b7666d489cd26"
+    },
+    "crates/sail-mcp/src/job_tools.rs": {
+      "bytes": 20481,
+      "sha256": "c086198fae7845ad5f77bbaab54c1374e7c76ca77cc4936f3705b88d5a3d307f"
+    },
+    "crates/sail-mcp/src/tools.rs": {
+      "bytes": 38743,
+      "sha256": "dda38ee921524a400c17092e85e4ad54763ea8d7326ebc08665e26e9f34c2bd7"
+    },
+    "crates/sail-mcp/src/jsonrpc.rs": {
+      "bytes": 7884,
+      "sha256": "55ed566873b9646cf4de9466e5ff1818cb1a20d4a32432e4e6b7e9c02ce6ad9b"
+    },
+    "crates/sail-mcp/src/server.rs": {
+      "bytes": 19814,
+      "sha256": "d5e826707b33ca53eef0ff129a30c13515b4b915c4301c9916f04c2ec40a4420"
+    }
+  }
+}
