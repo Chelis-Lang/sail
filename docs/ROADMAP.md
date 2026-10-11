@@ -123,6 +123,16 @@ remains unselected.
 
 ### Current state
 
+The active priorities are complete product workflows, with unchanged acceptance
+targets. Historical passes below establish only their recorded scopes.
+
+| Workstream | Implementation and current validation | Remaining product gate |
+|---|---|---|
+| Repeat verification setup | Guarded daemon sysroot reuse is wired in. The bounded environment-byte selector has two Linux regressions and strict checks passing; the corrected product and complete gate are running. | Original cold/warm managed CLI/MCP scenario, including missing receipts and restored-mtime edits. |
+| Reuse after a source edit | The unselected DeferredLocator candidate has 22 pinned-type helper controls and independent review. Actual source provenance, codec and Reporter controls are added separately. | Complete source build and original fourteen-stage qualification, including genuine previous-revision focus reuse within 600 seconds. |
+| Shared cache | The whole-session solver control passes. Two workspace HTTP controls fail their original 250 ms budget; phase observations are retained. | Resolve the measured delay and pass the complete unchanged gate. |
+| End-to-end acceptance | CLI/MCP repair, journals, explanations, saved baselines and result clients are implemented. Full default standard validation is active. | Complete current standard coverage; real four-reader p95 below 200 ms; retained real-project CLI/MCP; three rounds with at least 2× median repair gains on each of human-eval-verus and Vest. |
+
 The experimental CLI/MCP workflow is implemented: exact-function repair checks,
 separate focused/full evidence, resumable proof observations, failure explanation
 and immutable baseline comparison. Persistent MCP readers and the Rust SDK
@@ -216,6 +226,12 @@ The new scope encoder independently rejects byte-keyed environment maps and
 therefore never enables handoff. Its bounded streaming-pair fix passes
 [Linux regressions and strict checks](validation/m7-sysroot-selection-controls.json);
 complete integration remains pending. No benchmark speedup is yet accepted.
+The independent frozen `7da9579`
+[solver suite](../bench/validation/m7-linux-solver-7da-emulated-2026-10-11.json)
+passes all 39 original controls. Its separate complete workspace attempt fails
+two HTTP controls at their unchanged 250 ms lookup budgets (520/522 pass);
+later gate steps are not reached. Those failures remain open. The corrected
+`1e8b633` product build and complete gate are a separate frozen scope.
 A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
 detects restored mount changes throughout that handoff.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
