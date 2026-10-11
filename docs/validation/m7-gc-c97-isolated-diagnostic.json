@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "source_commit": "c97de6310c309e9eab9f066ba0169303045e0947",
+  "scope": "One root-authorized isolated unchanged-case diagnostic, not solver-suite acceptance or historical cause proof",
+  "execution": "Linux amd64 container emulation on arm64 macOS, ordinary priority, existing exact tested ELF, no compilation",
+  "original_suite": {
+    "tests_attempted": 41,
+    "passed": 40,
+    "timed_out": 1,
+    "case": "gc_and_clear_during_sessions_only_cost_misses",
+    "nextest_seconds": 297.402,
+    "reported_case_seconds": 190.034,
+    "test_limit_seconds": 180,
+    "termination_grace_seconds": 10,
+    "final_phase_start_seconds": 7.173875,
+    "source_gate": {
+      "tests": 605,
+      "status": "PASS"
+    },
+    "solver_log": {
+      "file": "solver.log",
+      "bytes": 6239,
+      "sha256": "09b58debb637d13c6acb2907e81a8249865ced367d27b2847468b5bbe142425e"
+    }
+  },
+  "diagnostic_launch": {
+    "command": [
+      "/work/target/debug/deps/faults-736d6f5a1e37420e",
+      "--ignored",
+      "--exact",
+      "gc_and_clear_during_sessions_only_cost_misses",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "binary_sha256": "6f119f49e804b829a121eba1c29f4651562156267af085d64deed3d3086aefd2",
+    "pid": 63716,
+    "birth": [
+      63710,
+      "694171"
+    ],
+    "nice": 0,
+    "session_limit": 60,
+    "test_limit": 180,
+    "terminate_grace": 10,
+    "scope": "Single diagnostic, no acceptance credit"
+  },
+  "diagnostic_result": {
+    "exit": 0,
+    "elapsed": 10.326638921999802,
+    "timed_out": false,
+    "diagnostic_only": true
+  },
+  "case_terminal": {
+    "passed": 1,
+    "failed": 0,
+    "elapsed_seconds": 8.78,
+    "final_phase_start_seconds": 7.267102,
+    "complete_seconds": 8.747052
+  },
+  "original_scratch": {
+    "file_count": 58,
+    "archive": {
+      "file": "scratch.tar",
+      "bytes": 327680,
+      "sha256": "c568add563dfab1cd46fe981c5aa95689ed9bbb506725916853dd68c98d16c53"
+    },
+    "inventory": {
+      "file": "inventory.json",
+      "bytes": 11419,
+      "sha256": "05e16d6fe3f7665d4f9a8a511dc49295917cb363e2a87d08cf9936eb5c22cd22"
+    }
+  },
+  "raw_records": [
+    {
+      "file": "run.py",
+      "bytes": 2572,
+      "sha256": "e8a3242d372ee8732dd4a774d154b9041f67899e5828043e071f38052eec33c9"
+    },
+    {
+      "file": "launch.json",
+      "bytes": 485,
+      "sha256": "ee669d6597251c75c03ee49ca9c40c626596ea210e607dacba52b2617d0256ed"
+    },
+    {
+      "file": "result.json",
+      "bytes": 97,
+      "sha256": "f87368b6a4e1ae805c54a8c5071c265a5e85667e75d2804c401c0d69f1774064"
+    },
+    {
+      "file": "test.log",
+      "bytes": 625,
+      "sha256": "278710529a80d8ad68c53f09cf5b65d54b3102df8c91713e4a0980857ef9dbe7"
+    },
+    {
+      "file": "observations.jsonl",
+      "bytes": 85195,
+      "sha256": "ca17ea4223c349c20ff66fd3aba6c5be9160902585b9d25a2fc180ba3361857e"
+    },
+    {
+      "file": "closure.json",
+      "bytes": 73,
+      "sha256": "cbd80d42f48b1a971c6452a2fe75b2d225ebd0a6ad7d3303948347283c04f47f"
+    }
+  ],
+  "owned_closure": {
+    "diagnostic_owned_pgid": 63716,
+    "members": [],
+    "unreadable": []
+  },
+  "static_findings": {
+    "stdout_reader_holds_sink_mutex_only_while_appending": true,
+    "output_snapshot_locks_before_timeout_kill": true,
+    "reader_join_after_kill_unbounded": true,
+    "concrete_production_lock_cycle_found": false,
+    "historical_cause": "unknown",
+    "isolated_pass_replaces_failed_suite": false
+  },
+  "limitations": [
+    "Original 113-second thread metadata existed only in returned tool output; no FD mapping or stack was captured.",
+    "Diagnostic metadata sampled at roughly five-second intervals; it captured no final-phase stall.",
+    "This direct exact-case invocation retains the 60-second session and 180-second test/10-second termination bounds, but is not a complete nextest suite run.",
+    "The diagnostic PGID was empty after close; this is not a global orphan-absence claim."
+  ]
+}
