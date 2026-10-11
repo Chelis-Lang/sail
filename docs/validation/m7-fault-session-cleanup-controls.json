@@ -193,8 +193,15 @@
     "logical_name": "controls.tar.gz",
     "bytes": 48296980,
     "sha256": "7b81086733d3ca223e5647131ced6f00bbc327e444c6eae2db164a404adaf214",
-    "regular_files": 25,
-    "all_member_sha_size_mode_verified_on_host": true
+    "all_member_sha_size_mode_verified_on_host": true,
+    "listed_artifacts": 25,
+    "regular_members": 26,
+    "inventory_member": {
+      "file": "inventory.json",
+      "bytes": 3953,
+      "mode": 420,
+      "sha256": "7600493f55488fb25891c941b6a82156532c6fbbc4caca1aba0086a12fc3d12f"
+    }
   },
   "raw_inventory": [
     {
