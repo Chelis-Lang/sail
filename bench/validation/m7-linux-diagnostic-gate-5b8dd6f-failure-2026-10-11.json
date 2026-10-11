@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "execution_environment": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "source_commit": "5b8dd6fe49a5cff843294195c52161dd94ae900e",
+  "source_archive_sha256": "6e622c8f09fcc086883853f9f12bcdadf53cb5c62096cfc4205137610699f0ae",
+  "status": "failed",
+  "gate_elapsed_seconds": 1029.8369251660001,
+  "gate_exit_code": 100,
+  "workspace": {
+    "attempted": 566,
+    "passed": 558,
+    "failed": 8,
+    "skipped_solver_controls": 39
+  },
+  "failed_cases": [
+    "sail-api sysroot::tests::complete_snapshot_is_exact_but_disconnect_and_partial_trickle_decline",
+    "sail-daemon shared::http_tests::concurrent_readers_coalesce_one_http_lookup",
+    "sail-daemon shared::http_tests::forged_http_reply_is_refused_while_initiator_is_paused",
+    "sail-daemon shared::http_tests::invalid_credentials_and_disconnect_do_not_reuse_old_transport",
+    "sail-daemon shared::http_tests::lookup_waits_for_setup_publication_within_the_existing_budget",
+    "sail-daemon shared::http_tests::status_reads_existing_metrics_during_owned_transport_refresh",
+    "sail-daemon::job_coalescing remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edits",
+    "sail-mcp job_tools::tests::async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs"
+  ],
+  "later_gate_steps": "not attempted after nextest failure",
+  "focused_followup": {
+    "scope": "One selected run of the same eight original cases, same source, assertions and deadlines; not recovery of failed complete gate",
+    "attempted": 8,
+    "passed": 7,
+    "failed": 1,
+    "remaining_failure": "shared::http_tests::status_reads_existing_metrics_during_owned_transport_refresh",
+    "unchanged_serving_timeout_ms": 250,
+    "lookup_start_us": 125242,
+    "validated_publish_us": 378571,
+    "publish_after_lookup_start_ms": 253.329,
+    "classification_wall_us": 5234
+  },
+  "cause": "unresolved; phase clocks establish deadline crossings, not their causal attribution",
+  "production_rust_unchanged_from_passing_46e1da6_and_55d14c8": true,
+  "tested_executables": {
+    "sail-api": {
+      "path": "/tmp/sail-m7-combined-core-5b8dd6f/target/debug/deps/sail_api-24757feb3e27ba7f",
+      "bytes": 20900504,
+      "sha256": "4d41179cff6d4a759562f2630a9c5966905ad0d81f5b4b676f32ecfeba4cb115"
+    },
+    "sail-daemon": {
+      "path": "/tmp/sail-m7-combined-core-5b8dd6f/target/debug/deps/sail_daemon-09399d08fc07cfbb",
+      "bytes": 54389216,
+      "sha256": "f88c05ddbead8a2f64ded9e34f54a096ecedbb3c9ea438c1cc81095540559df2"
+    },
+    "sail-daemon::job_coalescing": {
+      "path": "/tmp/sail-m7-combined-core-5b8dd6f/target/debug/deps/job_coalescing-363bad34ac4cea77",
+      "bytes": 39487576,
+      "sha256": "808c7357aa6b35032e2ebc3238b73541bc0a1610044fe81c57ceeb2968fdf761"
+    },
+    "sail-mcp": {
+      "path": "/tmp/sail-m7-combined-core-5b8dd6f/target/debug/deps/sail_mcp-0d1fe5100c2dde19",
+      "bytes": 23442584,
+      "sha256": "c25a675127e88a2b1b91f6ae39ffb48bcc172e7021431800692c44c03a704e69"
+    }
+  },
+  "retained_binary_archive": {
+    "bytes": 36004862,
+    "sha256": "e7c4b70df5d11ff09b848b6d1484a8e3661a3f19731963587d2cf186bf15576c"
+  },
+  "raw_records": {
+    "controller.json": {
+      "bytes": 1074,
+      "sha256": "1b6278c37b07bb6343c734f1530de50ddf215567c3014a353bec9f57a9a25cae"
+    },
+    "gate.log": {
+      "bytes": 93717,
+      "sha256": "6f140991d19313aa59dc171be81aecba668fbed10c9d4350f2833fbbe77ab154"
+    },
+    "focused-failures.log": {
+      "bytes": 4757,
+      "sha256": "bf40204505166f2605fe0ea5cf6495c89c6c06cb4b150b7ff8bef53bb252639f"
+    },
+    "test-binaries.json": {
+      "bytes": 106994,
+      "sha256": "c51d9930cd3fd62617bebd18e499af2e9633613e6e8b70d19a331d30d81192c5"
+    },
+    "test-binaries.log": {
+      "bytes": 73,
+      "sha256": "38a1eed67978e3ceee8ca57a753f5caa6ebe1e5eae1b311df505a78c175fbd07"
+    },
+    "failing-binary-seals.json": {
+      "bytes": 910,
+      "sha256": "3521a2a81e4b6613f40b209b2d329cea161399f624d30962d23a8994982269cb"
+    }
+  },
+  "source_runtime_reader_standard_or_performance_acceptance_credit": false,
+  "retained_source_archive": {
+    "compressed_bytes": 5838766,
+    "compressed_sha256": "7fe4e289455697adfc77ee49b2d0f93b932a3b3eaefec9577cdecaf6a390e52d",
+    "uncompressed_sha256": "6e622c8f09fcc086883853f9f12bcdadf53cb5c62096cfc4205137610699f0ae"
+  }
+}
