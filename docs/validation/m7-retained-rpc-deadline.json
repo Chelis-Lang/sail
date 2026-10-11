@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "scope": "Actual retained MCP collector admission/deadline regressions; no real project or performance acceptance",
+  "source_commit": "e178210a001e58fb2777e57cb2365f834576929c",
+  "execution": "Host Python unit controls, fake clock and stream; no proof evidence manufactured",
+  "command": "unittest: full current suite then preceding exchange implementation under unchanged three deadline regressions",
+  "elapsed_seconds": 0.579523375,
+  "current": {
+    "tests": 9,
+    "passed": 9
+  },
+  "preceding_collector_negative_control": {
+    "tests": 3,
+    "failed_as_expected": 3,
+    "errors": 0,
+    "implementation_source": "dccb41f^:scripts/m7-retained-jobs-acceptance.py",
+    "exchange_source_sha256": "dd4f0ba059c0092dbbec68d5cf73201f0f5d2316d916b246d0097c9f8e538978"
+  },
+  "bounds_seconds": {
+    "workflow": 120,
+    "cli": 30,
+    "mcp": 5
+  },
+  "collector_sha256": "ba1acf98c39dce9687a4a0e277234296459651dc1580316576c654ceb2154028",
+  "tests_sha256": "77f3aedf4fbe38bba3b270e406a8383b4740d568c574375689514ec780a4509f",
+  "log": {
+    "bytes": 3102,
+    "sha256": "a665e68ba759c4c3b6740d3bfb137c353a85cd2eaf1063fb5fca4a458c38b052"
+  },
+  "qualification": {
+    "real_current_proof": false,
+    "retained_project_acceptance": false,
+    "m7_accepted": false
+  }
+}
