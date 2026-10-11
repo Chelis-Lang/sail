@@ -152,3 +152,25 @@ and preparation selectors. The failed stage did not enable optional actor
 observations, so no complete historical per-child PID/group census is claimed.
 Raw failure streams, summaries and events are retained independently. The
 candidate stays unselected and unqualified.
+
+A [separate diagnostic controller](run-provenance-diagnostic.py) is prepared for
+review, with [static input/flag binding](provenance-diagnostic-review.json).
+It has not run. It binds the already-failed revision 0 source path and all 265
+source-copy hashes, exact sealed runtime and original compiler flags/context.
+Only fresh owned output paths and the existing unfiltered
+`SAIL_ENGINE_IMPORT_TRACE=1` observation differ; the target filter is absent.
+No preparations, oracle results or receipts are copied. The existing compiler
+helper keeps its original 600-second limit and can record the exact owned
+process group without supplying proof authority. Primary streams and outcome
+precede independent post-run runtime/source and present actor closure.
+
+The existing trace emits during focus only after `provenance_key` produces a
+valid Imported key. It can distinguish a whole capture error, record lookup
+failure or selected unavailable resolver state when that path is observed.
+It does not observe malformed unit/unknown raw owners or Local provenance
+refusal. A first ineligible trace record is not automatically the binding that
+caused the first complete-store refusal; ordering and fields must establish
+that correlation. Zero records or only eligible imports leave the cause
+unavailable. The bounded observer records its own refusal marker on overflow;
+no trace failure changes the full proof or preparation eligibility. The
+original failed qualification stays failed regardless of this diagnostic.
