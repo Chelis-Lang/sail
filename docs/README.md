@@ -51,6 +51,9 @@ required CI remains short.
 The [frozen local combined gate helper](validation/local-combined-gates.md)
 retains exact source, raw failures and bounded phase ownership when running the
 workspace gate followed by the original solver suite in an existing container.
+The [local product controller](validation/local-product-install.md) requires that
+complete validation before ordinary release construction and owned installation;
+its grant carries delivery evidence, not proof or performance acceptance.
 
 Evidence lives in `bench/validation/`, `docs/validation/` and
 `engine/verus/qualifications/` or `engine/verus/candidates/qualifications/`.
