@@ -133,5 +133,18 @@
     },
     "no_debugger_attach_process_pause_memory_or_pipe_read": true,
     "interpretation_limit": "The native wait metadata does not identify the responsible lock owner, map a user stack, or establish cause"
+  },
+  "nonconsuming_pipe_occupancy": {
+    "raw_file": "pipe-occupancy.json",
+    "sha256": "83c5ca09b3277d280fa95f96460ec263591c81752fcae1f4cf3d526cab5b4af1",
+    "bytes": 1826,
+    "read_unix_ns": 1791693041353801341,
+    "identity_matches_before_and_after": true,
+    "method": "FIONREAD only; no data read",
+    "solver_children": 3,
+    "checked_pipe_descriptors": 9,
+    "all_available_byte_counts_zero": true,
+    "verifier_fd_scan_limit": 64,
+    "interpretation_limit": "No unread solver reply or queued pipe input at this instant; no root cause inferred"
   }
 }
