@@ -234,3 +234,27 @@ sysroot-coverage failure. Its new executable/cache identity changes the context;
 no historical receipt supplies authority. The provisional focus remains
 provisional. One Current diagnostic proof establishes neither sustained live
 reader availability nor the original four-reader latency requirement.
+
+## Runtime identity parsing prototype
+
+A test-only candidate retains one eligibility boolean on the existing runtime
+validation owner. It can skip the hot identity-sidecar parse only when the same
+original lease binds the exact raw context `.link` and selected identity `.json`
+paths. Canonical aliases or missing membership retain the original parse. The
+boolean is set after the original final identity equality, complete runtime
+checks and cold native barriers succeed. The initial discovery parse remains
+unchanged and supplies no authority by itself.
+
+No parsed identity tree, path inventory or additional shared owner is retained.
+Every read still runs the complete original lease/helper/interpreter/kernel/mount
+checks, outer namespace barriers and request-entry/generation/pointer controls.
+A restored write, outside hardlink or mmap break, sidecar replacement, ancestor
+redirect or helper loss must reject that owner. Index eviction alone does not
+invalidate a still-held original native owner; its unchanged fresh barriers must
+continue to pass. This prototype is unselected in production. Component controls
+and fixed-order timing comparisons are separate from the original complete
+four-reader census and cannot establish its 200 ms latency requirement.
+
+The [sidecar component record](validation/m7-runtime-sidecar-components.md)
+retains the passing mutation controls, initial Clippy failure and small complete-
+inspection timing reduction. Production remains unchanged.

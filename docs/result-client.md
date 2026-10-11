@@ -288,3 +288,19 @@ namespace observation remains necessary to reject the rename event. The new
 control demonstrates that distinction rather than treating path identity as
 continuous namespace coverage. Complete-operation measurements must justify any
 later selection; these controls give no live reader or latency acceptance.
+
+A third test-only candidate avoids decoding the runtime identity sidecars again
+on each established read. It retains one boolean on the existing owner, not a
+parsed identity tree or another shared owner. Eligibility requires the exact raw
+context `.link` and selected `.json` paths in that owner's actual lease bindings,
+and is set only after the original final independent identity read and all cold
+validation barriers succeed. Canonical aliases or absent bindings use the
+original repeated parse. Every read retains the original namespace, mount,
+helper, interpreter, complete kernel inventories and input validation, plus
+request-entry, generation and pointer checks. The candidate remains unselected
+pending complete-operation controls and measurements; it does not change the
+original Python collector or establish live latency acceptance.
+
+The [sidecar component record](validation/m7-runtime-sidecar-components.md)
+retains the passing mutation controls, initial Clippy failure and small complete-
+inspection timing reduction. Production remains unchanged.

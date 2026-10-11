@@ -23,6 +23,14 @@ pub(super) struct ReadLease {
     failure: Option<&'static str>,
 }
 impl ReadLease {
+    // Membership alone is not authority. The caller must independently read
+    // under this owner and still run its entire fresh clean barrier.
+    #[cfg(test)]
+    pub(super) fn covers_exact_path(&self, path: &Path) -> bool {
+        self.bindings
+            .iter()
+            .any(|(bound, _, _, _)| bound.as_os_str() == path.as_os_str())
+    }
     /// Requested Rust storage; native descriptors and helper RSS are separate.
     #[allow(
         dead_code,
