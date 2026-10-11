@@ -1,0 +1,59 @@
+{
+  "source_commit": "21c281fdd870fc43a12e72607d34e2ba5d184045",
+  "archive_sha256": "7e5112b7fd1cb6322640de532cf9309023d846a16e9cfd22bd612165747e965a",
+  "container": "sail-m7-handoff-validation",
+  "scope": "Strict affected crate and all original sysroot controls plus actual explicit-files detail regression; no workflow acceptance retry",
+  "execution": "Linux amd64 Docker emulation on arm64 macOS; concurrent development",
+  "phases": [
+    {
+      "phase": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "sail-verus",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 57.699053792
+    },
+    {
+      "phase": "sysroot-controls",
+      "command": [
+        "cargo",
+        "nextest",
+        "run",
+        "--locked",
+        "-p",
+        "sail-verus",
+        "--profile",
+        "ci",
+        "-E",
+        "test(managed::sysroot::tests)"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 105.582248708
+    }
+  ],
+  "raw_log_identities": {
+    "clippy": {
+      "bytes": 589,
+      "sha256": "a7126ae86373451857517d9697760806d709ff07d250a7978fd1322393488e51"
+    },
+    "sysroot-controls": {
+      "bytes": 1737,
+      "sha256": "c78a30931755def9d69cf12409fff1d659c22847f4fa823dd103c21cebfc2e56"
+    }
+  },
+  "tests": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 168,
+    "nextest_seconds": 11.937,
+    "scope": "Six original Linux sysroot controls plus actual explicit-files first-detail regression"
+  }
+}
