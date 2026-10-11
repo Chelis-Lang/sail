@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import select
 import subprocess
 import sys
 import tempfile
@@ -71,6 +72,82 @@ class TimeoutEvidenceTests(unittest.TestCase):
         with patch.object(capture, "read", side_effect=[first, b"", b"", b"", changed]):
             rows = evidence.owned_processes(100, capture, Path("/missing"))
         self.assertFalse(rows[0]["identity_stable"])
+
+    def test_previously_bound_root_and_queued_child_reuse_are_refused(self):
+        capture = evidence.Capture()
+        with patch.object(capture, "read", return_value=raw_stat(1, 200)):
+            self.assertEqual(evidence.owned_processes(100, capture, Path("/missing"), 100), [])
+        self.assertTrue(capture.limited)
+        self.assertEqual(capture.errors[-1]["operation"], "process-identity")
+        with tempfile.TemporaryDirectory() as temporary:
+            proc = Path(temporary)
+            for pid, parent, children in [(100, 1, b"101"), (101, 100, b"")]:
+                directory = proc / str(pid)
+                (directory / "task" / str(pid)).mkdir(parents=True)
+                (directory / "stat").write_bytes(raw_stat(parent, 100))
+                (directory / "task" / str(pid) / "children").write_bytes(children)
+            capture = evidence.Capture()
+            original = capture.read
+            child_reads = 0
+            def changed_child(path, limit=65536):
+                nonlocal child_reads
+                value = original(path, limit)
+                if path == proc / "101/stat":
+                    child_reads += 1
+                    return raw_stat(100, 100 if child_reads == 1 else 200)
+                return value
+            with patch.object(capture, "read", side_effect=changed_child):
+                rows = evidence.owned_processes(100, capture, proc, 100)
+            self.assertEqual([row["pid"] for row in rows], [100])
+            self.assertTrue(capture.limited)
+
+    @unittest.skipUnless(sys.platform == "linux", "actual Linux per-task child ownership")
+    def test_worker_thread_child_is_absent_from_main_task_but_observed(self):
+        # The worker thread stays alive until its owned child exits normally.
+        code = """
+import json, os, subprocess, sys, threading
+release = threading.Event()
+def worker():
+    child = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'], stdin=subprocess.PIPE)
+    print(json.dumps({'child': child.pid, 'task': threading.get_native_id()}), flush=True)
+    release.wait()
+    child.communicate(b'closed', timeout=3)
+thread = threading.Thread(target=worker)
+thread.start()
+sys.stdin.readline()
+release.set()
+thread.join()
+"""
+        child = subprocess.Popen([sys.executable, "-u", "-c", code], stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        try:
+            self.assertTrue(select.select([child.stdout], [], [], 3)[0], "owned worker readiness")
+            made = json.loads(child.stdout.readline())
+            self.assertNotEqual(made["task"], child.pid)
+            proc = Path("/proc") / str(child.pid)
+            main = (proc / "task" / str(child.pid) / "children").read_text().split()
+            self.assertNotIn(str(made["child"]), main, "main-task-only observer must miss this child")
+            worker = (proc / "task" / str(made["task"]) / "children").read_text().split()
+            self.assertIn(str(made["child"]), worker)
+            identity = evidence.process_stat((proc / "stat").read_bytes())
+            capture = evidence.Capture()
+            rows = evidence.owned_processes(child.pid, capture,
+                                           expected_start_ticks=identity["start_ticks"])
+            by_pid = {row["pid"]: row for row in rows}
+            self.assertIn(made["child"], by_pid)
+            self.assertTrue(all(row["identity_stable"] for row in rows))
+            self.assertEqual(by_pid[made["child"]]["parent"], child.pid)
+            self.assertGreaterEqual(by_pid[made["child"]]["start_ticks"], identity["start_ticks"])
+            self.assertFalse(capture.limited)
+            self.assertLessEqual(evidence.MAX_BYTES - capture.remaining, evidence.MAX_BYTES)
+        finally:
+            try:
+                _, stderr = child.communicate(b"close\n", timeout=5)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, __import__("signal").SIGKILL)
+                _, stderr = child.communicate(timeout=5)
+        self.assertEqual(child.returncode, 0)
+        self.assertEqual(stderr, b"", "owned fixture thread/child cleanup failed")
 
     def test_compiler_selector_excludes_forwarded_tokens_and_full_arguments(self):
         result = evidence.compiler_selection(b"rust_verify\0--crate-name\0vstd\0--is-vstd\0--\0--crate-name\0fake\0secret\0")

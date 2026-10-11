@@ -8,6 +8,9 @@ semantic versioning once the API is published.
 - Optimize Linux managed input path checks using owned descriptors, with exact
   pathname/inode checks and the existing conservative fallback. Reader latency
   acceptance remains under validation.
+- Bind queued timeout-observation descendants by PID birth ticks and support a
+  previously recorded root identity. Keep bounded all-task traversal and
+  original timeout/cleanup behavior; no observation certifies a proof.
 
 - Charge cached complete-result frame families by retained buffer capacity, and
   keep their charge through an in-flight response after eviction. When the

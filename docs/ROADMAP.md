@@ -311,5 +311,8 @@ retains 950.644 seconds of successful independent full Current preparation,
 then fails its original 600-second baseline ordinary-full prerequisite. No
 reader or retained integration sample is attempted. Preserve this setup failure
 alongside earlier full-Result latency failures. Next diagnosis needs complete
-ownership-bound, all-task process observation; the retained main-task snapshot
-cannot identify the missing verifier/solver stage or establish a timeout cause.
+ownership-bound, all-task process observation; its
+[real worker-thread control](validation/m7-reader-process-observation.md) now
+passes on Linux. The retained main-task snapshot still cannot identify the
+missing verifier/solver stage or establish a timeout cause. No new reader
+workflow is implied by the observer control.

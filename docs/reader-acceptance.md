@@ -151,3 +151,7 @@ the original 600-second baseline ordinary-full check. No census or retained
 integration is attempted. The successful preparation does not substitute for
 that failed prerequisite. Its separately retained process snapshot is partial:
 main-task child traversal omitted descendants launched by other Cargo tasks.
+The [all-task observer control](validation/m7-reader-process-observation.md)
+now demonstrates that coverage on a real worker-thread child and rejects PID
+birth changes. It improves future diagnosis, without recapturing old state or
+admitting a timed-out proof.
