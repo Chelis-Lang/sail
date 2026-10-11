@@ -20,3 +20,5 @@ applying the correction in the closed private target. It records the new complet
 source scope independently, keeps serial cases/internal concurrency and two
 compiler jobs, and preserves all prior runtime/source seals. Runtime build and
 original qualification remain separate required gates.
+
+The frozen corrected source scope failed: VIR 42/42 and VIR strict passed; driver 83/108 passed, with 25 failures. The first new stale-memo control supplied a non-64-hex string, which the unchanged memo admission refused. Its subsequent unwrap poisoned the existing serial-test mutex; 24 later failures reported that poison. Driver strict was unattempted. `source-failure.json` retains primary logs, source/runtime seals, both tested executables and actor closure. This test-fixture failure supplies no production authority or reuse result.
