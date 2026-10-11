@@ -9,6 +9,8 @@ semantic versioning once the API is published.
   configuration validation, avoiding repeated runtime construction on reload.
   Keep credential/CA rotation, timeout changes, HTTPS root refresh and signature
   checks; lookup deadlines remain unchanged.
+  Reject private CA files containing no PEM certificates instead of silently
+  adding no private trust roots.
 
 - Stage automatic Linux sysroot-digest reuse through a trusted local daemon.
   Keep overlapping original caller guards, complete inventory checks and fresh

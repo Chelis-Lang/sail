@@ -68,6 +68,8 @@ addresses; `localhost` is deliberately not an HTTP exception. URLs cannot contai
 credentials, query strings or fragments. TLS certificates and hostnames are
 verified. `--ca-file FILE.pem` on connect or publication adds a private CA.
 There is no insecure TLS switch, automatic redirect or proxy environment fallback.
+An explicit private CA file must contain at least one PEM certificate; empty or
+non-certificate content is a configuration error.
 
 The server is an HTTP backend. A non-loopback bind requires the explicit
 `--behind-tls-proxy` option. Keep that backend private and expose a TLS reverse

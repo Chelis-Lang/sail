@@ -221,10 +221,17 @@ impl HttpClient {
             if pem.len() > 1024 * 1024 {
                 return Err(failure("private CA file is too large"));
             }
-            let certificate = reqwest::Certificate::from_pem(&pem)
+            // The rustls `from_pem` constructor only stores bytes; a PEM with
+            // no certificates can otherwise silently add no private roots.
+            let certificates = reqwest::Certificate::from_pem_bundle(&pem)
                 .map_err(|_| failure("invalid private CA certificate"))?;
+            if certificates.is_empty() {
+                return Err(failure("private CA file contains no certificates"));
+            }
             ca_hash = Some(sail_key::sha256(&pem));
-            builder = builder.add_root_certificate(certificate);
+            for certificate in certificates {
+                builder = builder.add_root_certificate(certificate);
+            }
         }
         if base.scheme() == "http"
             && let Some(previous) = previous
