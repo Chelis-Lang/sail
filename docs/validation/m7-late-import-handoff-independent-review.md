@@ -54,3 +54,34 @@ checks, original diagnostics/wire oracles, genuine previous-revision focus hit
 and original 600-second pipeline remain required before any selection or reuse
 claim. The prospective 500-MiB preparation argument remains separate from
 ordinary compiler RSS and actual product performance.
+
+## Subsequent bounded namespace freeze
+
+The subsequent file-only bundle is full patch
+`bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372`,
+delta `0cd5dfe76862acc95cc726e66be1fca3ae3b84938d3478955136206b6be83b55`.
+Its independent static review confirms that both imported and original outer
+map lengths are capped before any values fold, and aggregate original rows are
+capped before per-range scans or family admission. The existing imported-row
+and fixed Record allocation guards remain. Production construction covers every
+original row with a matched or remaining resolver row, but inconsistent helper
+inputs now independently fail safe; three 4097-entry controls cover original
+rows and both empty outer namespaces. The implementer's reduced actual API
+scope passes 43 controls. It is not complete-source qualification.
+
+The new used-namespace barrier can refuse before the dormant import trace in
+`provenance`. No trace record therefore proves neither success nor a particular
+failure cause. The failure-only trace proposal remains unimplemented in this
+freeze. A future diagnostic must distinguish immutable classification from a
+current validation failure; it must not present retained Foreign counts as a
+fresh namespace observation. Original qualification strips those trace selectors.
+
+One private actual pinned library/strict controller was started after explicit
+exclusive handoff. It applies only this delta to the previously closed control
+tree, verifies all seven source identities and the lock, and checks the whole
+patch against the pinned source. Both old 13-artifact runtime seals and a small
+before-source/lock backup are retained. It reuses the existing target without
+copying targets or proof receipts. Compiler jobs remain two, independent test
+cases remain serial, and all engine selectors are removed. Results are pending;
+no ordinary runtime build, vstd proof or original qualification was launched by
+this controller.
