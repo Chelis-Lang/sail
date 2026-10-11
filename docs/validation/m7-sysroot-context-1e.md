@@ -65,3 +65,11 @@ The [portable record](m7-sysroot-context-1e.json) includes all phase observation
 raw evidence seals, actual runtime/product/control identities and the initial
 diagnostic compile typo. It preserves the distinction between this successful
 context control and the original failed managed scenarios.
+
+After the diagnostic closed and its raw data and runnable executable were
+sealed, a holder audit inspected 609 processes and 198 descriptors and found
+no users of its private compiler target. Only that target's inactive
+`debug/incremental` subtree was removed: 1,392,651,477 logical bytes. Dependency
+artifacts, fingerprints, frozen binaries, source patches and raw evidence remain.
+The [cleanup record](m7-sysroot-context-1e-cleanup.json) does not claim physical
+reclaimed storage or affect shared targets or other projects.
