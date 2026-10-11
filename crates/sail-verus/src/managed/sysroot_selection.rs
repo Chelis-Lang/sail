@@ -84,7 +84,9 @@ mod tests {
         let args = vec!["--lib".to_owned()];
         let identity = vec![("compiler".to_owned(), "compiler-bytes".to_owned())];
         let environment = BTreeMap::from([(b"RUSTFLAGS".to_vec(), b"flags".to_vec())]);
-        let select = |request| selection(&args, request, &identity, &environment);
+        let select = |request: Option<&crate::engine::Request>| {
+            selection(&args, request, &identity, &environment)
+        };
         let expected = select(Some(&selected));
         assert!(expected.is_some());
         let mut missing = selected.clone();

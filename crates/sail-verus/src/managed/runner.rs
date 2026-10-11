@@ -1767,7 +1767,9 @@ mod tests {
             serde_json::to_vec(&selected.artifact_identity())?,
             serde_json::to_vec(&full)?
         );
-        let hashes = |request| context_hashes(&args, request, &identity, &environment);
+        let hashes = |request: Option<&crate::engine::Request>| {
+            context_hashes(&args, request, &identity, &environment)
+        };
         let (proof, compiler) = hashes(Some(&selected))?;
         assert_eq!(
             proof,
