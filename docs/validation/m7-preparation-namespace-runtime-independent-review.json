@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "scope": "Independent read-only ordinary runtime, source controls and original qualification launcher review; no proof launched by reviewer",
+  "status": "PASS within recorded closure scope; original14 qualification pending",
+  "selected": false,
+  "qualified": false,
+  "variant": "b3b07d47d7542817",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+  "delta_sha256": "5c43c05a52a43df0c5db03a3d28a6896ee47947c7386616ea740459816fa029a",
+  "manifest_sha256": "acae733747b439a5a7777d446e88f4d25c1e855d015420806c7d0f7456c89e9f",
+  "closure_sha256": "aea2390342ff8100b800b9ad80399c889338127334c427edb724270808dd2778",
+  "source_controls_sha256": "a551ced4f2c56d2bdeb6354773c6591b5cfc0f7b85aa19cdcb48f7e90bba9b71",
+  "launcher_sha256": "93e9870d0a500be957b1effc0d88da79831f3563805b0c812d5e99043972fbbf",
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "checks": {
+    "actual_complete13_artifact_hashes": true,
+    "complete_direct_runtime_inventory": true,
+    "actual_source8_and_lock_hashes": true,
+    "manifest_and_evidence_copy_equal": true,
+    "all_closure_raw_hashes": true,
+    "actual_source_controls_and_four_log_hashes": true,
+    "actual_library_counts": {"vir": 41, "rust_verify": 88},
+    "both_all_target_strict_checks": true,
+    "fresh_vstd": {"verified": 2060, "errors": 0},
+    "all14_frozen_qualification_script_hashes": true,
+    "launcher_ast_changes_only_identity_paths_and_patch_hash": true,
+    "original_arguments_environment_and600_seconds_unchanged": true,
+    "prior73bd_0bbc_ba925_complete13_source_lock_seals": true,
+    "owned_pgid744812_and_runtime_path_holders": [],
+    "unreadable_live_actors": []
+  },
+  "limitations": [
+    "Ordinary build and library controls are not source-engine qualification.",
+    "This review did not run, retry or edit the original14 qualification.",
+    "Earlier source qualification and strict-control failures remain separately retained.",
+    "Only the already authorized sole qualification owner may launch the unchanged original14."
+  ]
+}
