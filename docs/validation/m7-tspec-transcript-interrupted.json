@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "scope": "One selected verismo-tspec logging diagnostic; interrupted environment, no complete unit or acceptance result",
+  "status": "INTERRUPTED_ENVIRONMENT",
+  "original_unit_timeout_s": 3600,
+  "original_jobs": 1,
+  "manual_retry": false,
+  "added_flags": [
+    "--log",
+    "smt-transcript",
+    "--log-dir",
+    "{out}/smt-transcripts"
+  ],
+  "controller_sha256": "9a3fae217fa7b4e27f7d4f2bc700ca06e984c2dde8690467cd7173c572387749",
+  "freeze_sha256": "db61c0323fdc19ed3b55350d26a11c955492659a548e2e0a7c0ed5e5f17ff9ae",
+  "private_environment_sha256": "5251982ef06991850228f4e0a04b12bd5ea1488590e4da8069c3a62f3dcb467c",
+  "private_environment_exported": false,
+  "conformance_sha256": "1f62c6c276158cdf3dc083337115323eff02a97d25df1806fcf7c558709b78bf",
+  "shim_sha256": "a337030eec201a11f0b351b55bf2000e3e1f50e28f9a47580461e1af090bb80b",
+  "stock_verifier_sha256": "b8c11e7b626cc85d8a46b90036f0adfec443b7cde1c69d8b182175b92c708af7",
+  "stock_verus_sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854",
+  "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+  "original_runner_sha256": "59d7ca4686025280daee10cfd8f15f9a982739d49ea0e89e440a7638ae2aaa93",
+  "actor": {
+    "pid": 820333,
+    "start_ticks": 6859978,
+    "controller_pid": 820325,
+    "started_unix_ns": 1791724770374450965
+  },
+  "last_retained_observation_s": 1235.7491233119945,
+  "health_probe": {
+    "errno": 30,
+    "unix_ns": 1791726152112335215
+  },
+  "docker_exec_exit_code": 255,
+  "container_finished_at": "2026-10-11T13:43:32Z",
+  "restart_initiator_observed": false,
+  "controlled_cleanup_completed": false,
+  "post_recovery_last_observed_births_absent": true,
+  "exhaustive_orphan_absence_certified": false,
+  "primary_result_json_present": false,
+  "unit_classifier": null,
+  "plain_stdout_bytes": 0,
+  "plain_stderr_bytes": 0,
+  "plain_time_bytes": 0,
+  "sail_arm_attempted": false,
+  "framing": {
+    "files": 542,
+    "bytes": 161009268,
+    "completed_queries": 3880,
+    "completed_responses": 3880,
+    "unmatched_queries": 0,
+    "open_sections": 0,
+    "intent_equals_accepted_wire": false
+  },
+  "archive": {
+    "archive_sha256": "2e925314624c9d87c98cdea2523ccd28bb440446b7cf35de14c382e5aed1b740",
+    "archive_bytes": 161455616,
+    "expanded_bytes": 161009268,
+    "regular_files": 545,
+    "transcripts_compared": 542,
+    "prior_prefix_equal": true
+  },
+  "archive_relative_path": "target/tspec-environment-failure-20261011/harness-prefix.tar",
+  "supplementary_seals": [
+    {
+      "name": "actor.json",
+      "bytes": 653,
+      "sha256": "6e3b52fd1fb86b8f869d984db934fce6d14151dee9cc34651febe486835a2865"
+    },
+    {
+      "name": "archive-inventory.json",
+      "bytes": 256891,
+      "sha256": "b9a18a320d906712908a00a4e31be04a9dcee0e2b76174125e0a3806d469b70b"
+    },
+    {
+      "name": "bits-prefix-transcript-metadata.json",
+      "bytes": 147040,
+      "sha256": "1f06aa3885fc1121413f0a989db2c9b38bd8e592517b7938adb7d03cb7c54864"
+    },
+    {
+      "name": "container-state.jsonl",
+      "bytes": 452,
+      "sha256": "14dd832cb819df343770b0f6b63e08789bb19d75a999ce5464034951286b3d10"
+    },
+    {
+      "name": "controller.py",
+      "bytes": 13595,
+      "sha256": "9a3fae217fa7b4e27f7d4f2bc700ca06e984c2dde8690467cd7173c572387749"
+    },
+    {
+      "name": "freeze.json",
+      "bytes": 319247,
+      "sha256": "db61c0323fdc19ed3b55350d26a11c955492659a548e2e0a7c0ed5e5f17ff9ae"
+    },
+    {
+      "name": "observation.jsonl",
+      "bytes": 4513923,
+      "sha256": "e4077139855ade97b3df9ae3151c4373f6319fb024bac7276cecfcf7152961ce"
+    },
+    {
+      "name": "observer.py",
+      "bytes": 11905,
+      "sha256": "2b8366ce4e2577371516696b693c08f6b5a986ab4dfe26afbd7cceb567455c2e"
+    },
+    {
+      "name": "observer.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "observer.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "open-transcript-metadata.json",
+      "bytes": 1467,
+      "sha256": "7e66eab2edfbcbe262ed1f663f5073020b7df7d63bfb7027d158b761dec7a2b2"
+    },
+    {
+      "name": "post-recovery-births.json",
+      "bytes": 736,
+      "sha256": "7c70f161fd349f307ab2e3b9260c554f59f2ed0dd7e02e5807791174045bbc3e"
+    },
+    {
+      "name": "recovery.json",
+      "bytes": 2907,
+      "sha256": "14faf96a8c05bc8dbe207e4c9643f46bd6b0c5f61e387c03d7d78bd97581278f"
+    },
+    {
+      "name": "retained-prefix.tar.gz",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "stderr",
+      "bytes": 218,
+      "sha256": "8a5efa76fb86ff3b2d4f195c9bd86eaf16187ec8ef5c1c1619d962c700d5a20a"
+    },
+    {
+      "name": "stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "transcript-observation-1.json",
+      "bytes": 986,
+      "sha256": "4075aaa66a926cff52685c59a6043ddfd344726485c25573fc679dd69ef60793"
+    },
+    {
+      "name": "transcript-observation-2.json",
+      "bytes": 392233,
+      "sha256": "807902c929dd6efa7ce1819fc6cf625ad036858ef7cbd9b3dac555ea71b41733"
+    }
+  ],
+  "historical_3600_timeout_explained": false,
+  "default_standard_qualified": false,
+  "reader_or_source_or_product_qualification_credit": false,
+  "remaining_cause": "Unknown; balanced logged batches and zero-byte newest transcript do not establish actual userspace wait ownership"
+}

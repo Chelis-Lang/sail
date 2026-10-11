@@ -217,42 +217,25 @@ requirements. [Known issues](known-issues.md), the
 [retained histories](validation/m7-workstream-history-cc0898e.md) and
 [acceptance guide](bench/m7-repair-acceptance.md) preserve their exact scopes.
 
-The combined explicit missing-original-range candidate's
-[first complete source scope](../engine/verus/candidates/preparation-namespace/no-original-range/first-source-failure.json)
-passes 42 VIR tests and the VIR strict check, then fails driver compilation:
-new tests referenced a private module. Driver strict checking was not reached.
-The [test integration correction](../engine/verus/candidates/preparation-namespace/no-original-range/test-integration-correction/README.md)
-uses test-only forwarding functions and moves an unchanged helper before the
-test module. It preserves production authority and every assertion. Corrected
-complete compiler controls, ordinary runtime construction and the original
-qualification are still required; the failed scope remains separate. The
-[corrected source scope](../engine/verus/candidates/preparation-namespace/no-original-range/test-integration-correction/source-failure.json)
-then compiles the driver and passes 83 of 108 controls before a new test fixture
-uses a digest that the existing memo rejects. Its unwrap poisons the serial
-test lock, producing 24 subsequent failures. Driver strict checking is not
-reached. A valid admitted stale digest and a bypass-removal sensitivity control
-are required; production memo admission remains unchanged. The
-[valid-fixture source scope](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/source-controls.json)
-now passes all 42 VIR and 108 driver controls plus both strict checks in
-37.197 seconds. The actual memo-bypass sensitivity passes: removing only the
-bypass fails the unchanged assertion, and exact restoration passes it. The
-ordinary runtime build passes in 1,001.791 seconds, freshly verifies all 2,060
-vstd obligations and seals all 13 artifacts. The original qualification is now
-running. Its ninth stage now passes genuine previous-revision focused reuse:
-all three revisions match stock outcomes and exact lowering, with four hits
-and one focused restore on each later revision. The full-project HumanEval stage also passes all three revisions, each with
-441 verified and zero errors; actual same-input hits pass every exact oracle.
-Independent stock transcript instability remains reported separately. The
-remaining three compiler suites must close; product acceptance stays separate.
+Focused controls, source builds, offline profiles and earlier passing suites
+establish only their recorded scopes. No timeout or failed run is reclassified.
+The [selected tspec logging diagnostic](validation/m7-tspec-transcript-interrupted.md)
+was interrupted by filesystem/container failure and supplies no standard or product qualification.
+[Known issues](known-issues.md) links the complete failure index; the
+[retained status history](validation/m7-acceptance-status-history.md) preserves
+the earlier detailed narrative. [The acceptance guide](bench/m7-repair-acceptance.md)
+sets the unchanged required gates and artifact provenance.
+
 
 Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Close the original thirteen-stage qualification of the source-tested broker
-   retirement and explicit missing-original-range correction, then package and
-   integrate its sealed runtime with the product and CI pin coherently. Preserve same-input lowering, independent stock
-   outcomes, every existing role/refusal and the physical memory ceiling.
+2. Complete the selected runtime’s product integration. Reuse ordinary Cargo
+   dependencies when only the repair focus changes, while retaining exact
+   per-request proof contexts, fresh verified targets, independent full validation
+   and complete receipts. Source qualification, packaging and the coherent pin
+   are already complete; product acceptance remains open.
 3. Finish the current live reader stage diagnosis and fix any measured dominant
    cost. Run the retained real-project CLI/MCP scenarios with complete genuine
    Current evidence and unchanged deadlines.
