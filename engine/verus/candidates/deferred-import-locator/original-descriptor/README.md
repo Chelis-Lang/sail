@@ -137,8 +137,9 @@ independent post-run runtime/source/lock/actor closure, including on failure.
 
 Ordinary build closure also records both-container live command/cwd/fd audits
 with no holders or unreadable live processes, the unchanged stock launcher/
-driver/solver identities, and the private builder executable. The original
-qualification has not launched. The preparation ownership proof and source
+driver/solver identities, and the private builder executable. One [original qualification](qualification-launch.json) is now running under
+the reviewed controller, with its original raw diagnostics, fourteen stages
+and 600-second bounds intact. Its terminal result remains pending. The preparation ownership proof and source
 controls do not replace genuine prior-revision reuse, full same-input checks
 or the unchanged raw stock diagnostic oracle. The selected runtime stays
-unchanged while this new manifest awaits independent qualification review.
+unchanged while this new candidate awaits complete original qualification.
