@@ -127,5 +127,15 @@
     "full workspace/solver gate pass",
     "M7 acceptance",
     "speedup"
-  ]
+  ],
+  "subsequent_integrated_validation": {
+    "source_commit": "091efd515c6fb8026b21c1872332787ad58ea188",
+    "source_archive_sha256": "3499359cee165e3e711080bd50a635a7dcb4a50d5a8482bb4242af503144e734",
+    "workspace": "bench/validation/m7-linux-gate-091e-emulated-2026-10-11.json",
+    "workspace_passed": 502,
+    "solver": "bench/validation/m7-linux-solver-091e-emulated-2026-10-11.json",
+    "solver_passed": 39,
+    "scope": "Complete local emulated workspace and pinned solver/fault gates; no source, full standard, real-reader or performance acceptance",
+    "m7_accepted": false
+  }
 }
