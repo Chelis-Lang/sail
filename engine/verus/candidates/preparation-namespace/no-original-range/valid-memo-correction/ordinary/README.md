@@ -31,3 +31,8 @@ scripts and the corrected prefix reporter. Trace selectors remain absent. The
 original thirteen-stage qualification has not launched; the runtime stays
 unselected. Fresh vstd and source controls provide no cross-edit reuse or product
 acceptance claim.
+
+The [single original qualification](qualification-launch.json) is now running
+at ordinary priority. Its thirteen-stage pipeline and fourteen-script inventory
+are unchanged; each compiler invocation retains its original 600-second bound.
+No trace selectors, extra retries or runtime selection were introduced.
