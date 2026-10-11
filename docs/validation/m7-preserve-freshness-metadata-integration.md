@@ -39,8 +39,8 @@ No compiler, daemon or proof actor ran for this checklist.
    ownership before execution; reject unintended engine/portfolio/trace selectors.
    No old reports, receipts or caches are copied into the new fixture workspace.
 
-3. Run the original fixture and a **separately labeled** timing diagnostic using
-   their immutable files. `ci/test-repair.py` remains SHA
+3. Bind the original fixture through the **separately labeled** timing diagnostic
+   using immutable files. `ci/test-repair.py` remains SHA
    `9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7`.
    The timing launcher takes the sealed product path/SHA, engine build and pinned
    source checkout as explicit arguments, so it can select the combined product
@@ -48,8 +48,11 @@ No compiler, daemon or proof actor ran for this checklist.
    original per-operation 30-second, MCP cleanup five-second, daemon cleanup
    ten-second and post-kill drain ten-second limits remain unchanged. Only the
    existing `SAIL_JOB_RPC_TIMINGS=1` observation switch is enabled. Original
-   cleanup always runs before bounded metadata retention and TemporaryDirectory
-   cleanup; this does not certify orphan absence or add cancellation authority.
+   cleanup runs before bounded metadata retention and TemporaryDirectory cleanup
+   on ordinary exit or Python exception; the wrapper always delegates the original
+   TemporaryDirectory cleanup when its exit handler runs. Forced process death or
+   VM failure can bypass those handlers. This does not certify orphan absence or
+   add cancellation authority.
 
    Choose a wrapper whose exact schema matches the sealed product **before**
    launch. The db4 timing wrapper from `628f145` is SHA
