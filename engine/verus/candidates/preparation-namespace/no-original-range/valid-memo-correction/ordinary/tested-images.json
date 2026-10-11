@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "scope": "Retained actual original qualification test images; no compiler retirement or new execution",
+  "status": "PASS",
+  "variant": "c77e1a1879302e06",
+  "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+  "runtime13_pre_post_equal": true,
+  "items": [
+    {
+      "phase": "vir-tests",
+      "image": "vir-371d5fb11f64013b",
+      "bytes": 4992384,
+      "sha256": "772b341fff1b93d0364839e3c6060722f0730451735aa2d09074b6eaea8735e0",
+      "mode": 493,
+      "actual_test_log_sha256": "f1f3d8bd85c530c1bfb7db5f2e9c4f5e19ab29ad67757b15b231826b939f7795"
+    },
+    {
+      "phase": "vir-tests",
+      "image": "vir-371d5fb11f64013b.d",
+      "bytes": 4338,
+      "sha256": "7d10a001f18345a3b3d341caa7409c7e08b297058861388e5bbe3ae92b59be94",
+      "mode": 420,
+      "actual_test_log_sha256": "f1f3d8bd85c530c1bfb7db5f2e9c4f5e19ab29ad67757b15b231826b939f7795"
+    },
+    {
+      "phase": "air-writer-tests",
+      "image": "air-2c55f366b5ce8405",
+      "bytes": 2767440,
+      "sha256": "4fd39986bfe361922fed1ac37e00bf447b87c526bef9bb4da7ee4e9087ac3a3c",
+      "mode": 493,
+      "actual_test_log_sha256": "2683ed378fce87b5c513ca1c365de84948441eae00224d917cadd7421e3c5cf0"
+    },
+    {
+      "phase": "air-writer-tests",
+      "image": "air-2c55f366b5ce8405.d",
+      "bytes": 1680,
+      "sha256": "075ac1617222ddde00602f6565ae308dbe708414867f8ee006401119356a6fb5",
+      "mode": 420,
+      "actual_test_log_sha256": "2683ed378fce87b5c513ca1c365de84948441eae00224d917cadd7421e3c5cf0"
+    },
+    {
+      "phase": "driver-tests",
+      "image": "rust_verify-14ab167ce66aa7fe",
+      "bytes": 3071528,
+      "sha256": "f5c0e9eca8da274afbc84b089aec54dd1bceeaf23c4efd88cde6453109b3a49b",
+      "mode": 493,
+      "actual_test_log_sha256": "beeeb10d7eaf24d3c00a2b0b6e3b9e442ca41cc78e612539535f8be35a202b15"
+    },
+    {
+      "phase": "driver-tests",
+      "image": "rust_verify-14ab167ce66aa7fe.d",
+      "bytes": 5825,
+      "sha256": "62e7b792d5dad83f6f990a87beeaa63df296b8f8caf4e7c073ea88b7fdfccbf8",
+      "mode": 420,
+      "actual_test_log_sha256": "beeeb10d7eaf24d3c00a2b0b6e3b9e442ca41cc78e612539535f8be35a202b15"
+    }
+  ],
+  "total_bytes": 10843195
+}
