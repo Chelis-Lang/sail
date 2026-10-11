@@ -1,0 +1,258 @@
+{
+  "version": 1,
+  "status": "PASS: actual complete source controls only; runtime build and qualification pending",
+  "full_patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+  "delta_sha256": "5c43c05a52a43df0c5db03a3d28a6896ee47947c7386616ea740459816fa029a",
+  "result_sha256": "a551ced4f2c56d2bdeb6354773c6591b5cfc0f7b85aa19cdcb48f7e90bba9b71",
+  "controller_sha256": "4a0fe0529abc90b2e0c2394ab547bbd412d2a955d8b337e405444054b3c25e6d",
+  "result": {
+    "status": "PASS",
+    "phases": [
+      {
+        "name": "vir-test",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "test",
+          "-p",
+          "vir",
+          "--release",
+          "--lib",
+          "sail_",
+          "--",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 1.4031237090021023,
+        "log_sha256": "53de62f3d0de071ce5b152d0336acb13142d7ebe35706436b7c9c62bfa851c44"
+      },
+      {
+        "name": "vir-clippy",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "clippy",
+          "-p",
+          "vir",
+          "--release",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 1.1462360840014298,
+        "log_sha256": "89aa4769e54bb50d65a67dd340ec1c8feb3090a58fc5bd94727365ba94745770"
+      },
+      {
+        "name": "rust_verify-test",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "test",
+          "-p",
+          "rust_verify",
+          "--release",
+          "--lib",
+          "sail_",
+          "--",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 19.420406883997202,
+        "log_sha256": "c5065081bca9b97b5b36ad20f93dc23a91d6af49082e4c8dba0b9dce97c51eb5"
+      },
+      {
+        "name": "rust_verify-clippy",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "clippy",
+          "-p",
+          "rust_verify",
+          "--release",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 7.9285774620002485,
+        "log_sha256": "a20e8c9c9739ab29adcabece94e607fc7469e4cb377adb698320cd7ceeb287f4"
+      }
+    ],
+    "elapsed_seconds": 29.901460387998668
+  },
+  "actual_test_counts": {
+    "vir": 41,
+    "rust_verify": 88
+  },
+  "both_strict_checks": "all targets -D warnings, unchanged policy",
+  "source8_lock_unchanged": true,
+  "prior_complete13_runtime_source7_lock_unchanged": true,
+  "dual_container_holders": {
+    "sail-m7-acceptance": {
+      "owned_paths": [
+        "/tmp/sail-m7-original-descriptor-source-controls/verus/source",
+        "/tmp/sail-m7-original-descriptor-source-controls/verus/source/target-verus",
+        "/tmp/sail-m7-engine-xtask-target",
+        "/tmp/sail-m7-original-descriptor-build-candidate"
+      ],
+      "holders": [],
+      "unreadable_live": []
+    },
+    "sail-m7-handoff-validation": {
+      "owned_paths": [
+        "/tmp/sail-m7-original-descriptor-source-controls/verus/source",
+        "/tmp/sail-m7-original-descriptor-source-controls/verus/source/target-verus",
+        "/tmp/sail-m7-engine-xtask-target",
+        "/tmp/sail-m7-original-descriptor-build-candidate"
+      ],
+      "holders": [],
+      "unreadable_live": []
+    }
+  },
+  "raw_seal_sha256": "9a40421fd6a783654040a07878750bc9fd51d594f60fd0797020a6b9ae7acb3b",
+  "raw_inventory": {
+    "applied-source.json": {
+      "bytes": 2316,
+      "sha256": "5fad84708fa592ba74dc6e6abfe1056ffd6faeb88e652d94e91147dc84aaaf04"
+    },
+    "apply.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-source8-lock.json": {
+      "bytes": 1065,
+      "sha256": "0b1fe8aea439c07359c868d0abe5fdd34bc0cd5decb5e7e1dc55739e4d27e93a"
+    },
+    "before-source8-lock.tar": {
+      "bytes": 593920,
+      "sha256": "e07b634f8a65d5e204d52bd5f672a3e45c47bbc9c28e94d3c17103a683641118"
+    },
+    "current-actor.json": {
+      "bytes": 283,
+      "sha256": "89696a3375873a5aeeb0f7cff10cd42f52deb7bf2e885337372f27ebc7ca5221"
+    },
+    "delta.patch": {
+      "bytes": 746,
+      "sha256": "5c43c05a52a43df0c5db03a3d28a6896ee47947c7386616ea740459816fa029a"
+    },
+    "dual-container-holder-preflight.json": {
+      "bytes": 727,
+      "sha256": "f23ec98c90e67b42ddd722249181e96dbf8d33f3709c281b7396cb2849a65e18"
+    },
+    "execution.json": {
+      "bytes": 246,
+      "sha256": "8cb74d59a0944e3098c52bedab54ef24e4d3f9f277f49392dd0606bf4be53a45"
+    },
+    "full.patch": {
+      "bytes": 511616,
+      "sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e"
+    },
+    "identity.json": {
+      "bytes": 2316,
+      "sha256": "5fad84708fa592ba74dc6e6abfe1056ffd6faeb88e652d94e91147dc84aaaf04"
+    },
+    "prior-runtime-after.json": {
+      "bytes": 8013,
+      "sha256": "b3e9ded1cfe10af22ec3dda4ff559efa1a8eeb10bb716cb3bfd4de0d82ff446b"
+    },
+    "prior-runtime-before.json": {
+      "bytes": 8013,
+      "sha256": "b3e9ded1cfe10af22ec3dda4ff559efa1a8eeb10bb716cb3bfd4de0d82ff446b"
+    },
+    "progress.json": {
+      "bytes": 1485,
+      "sha256": "72ff119867bb50a5daf4e361bf8b92b261972fbc75c2a5d9c325da6cf25b8a20"
+    },
+    "resource-preflight.json": {
+      "bytes": 108,
+      "sha256": "f5ef210e45a4a4f1007e6b68206de09f9bf712f4dcd9ea062da1e3b22c251bae"
+    },
+    "result.json": {
+      "bytes": 1708,
+      "sha256": "a551ced4f2c56d2bdeb6354773c6591b5cfc0f7b85aa19cdcb48f7e90bba9b71"
+    },
+    "run-source-controls.py": {
+      "bytes": 6032,
+      "sha256": "4a0fe0529abc90b2e0c2394ab547bbd412d2a955d8b337e405444054b3c25e6d"
+    },
+    "rust_verify-clippy.log": {
+      "bytes": 170,
+      "sha256": "a20e8c9c9739ab29adcabece94e607fc7469e4cb377adb698320cd7ceeb287f4"
+    },
+    "rust_verify-test.log": {
+      "bytes": 10483,
+      "sha256": "c5065081bca9b97b5b36ad20f93dc23a91d6af49082e4c8dba0b9dce97c51eb5"
+    },
+    "source/Cargo.lock": {
+      "bytes": 92808,
+      "sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    },
+    "source/rust_verify/src/sail_deferred_import_tests.rs": {
+      "bytes": 53794,
+      "sha256": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5"
+    },
+    "source/rust_verify/src/sail_engine.rs": {
+      "bytes": 88784,
+      "sha256": "c6bbc9ba1356d6a2a744073844b0b888956514abb0e9287a1f26949e97cee71d"
+    },
+    "source/rust_verify/src/sail_namespace.rs": {
+      "bytes": 10962,
+      "sha256": "7ad8dc9477dbd8e71add5c205cc25b70fa4664eb95f13df28d729380377ea4fa"
+    },
+    "source/rust_verify/src/sail_owned_imports.rs": {
+      "bytes": 49894,
+      "sha256": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c"
+    },
+    "source/rust_verify/src/sail_owned_imports_tests.rs": {
+      "bytes": 37928,
+      "sha256": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641"
+    },
+    "source/rust_verify/src/spans.rs": {
+      "bytes": 17055,
+      "sha256": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7"
+    },
+    "source/rust_verify/src/verifier.rs": {
+      "bytes": 152781,
+      "sha256": "254c75c7ff469aeacbb310cf779c62d09906e8f16a0efb4b65d6be513cb6878b"
+    },
+    "source/vir/src/context.rs": {
+      "bytes": 66147,
+      "sha256": "8bcec061b764900da85d35f78c1ff50acf333983d4a5d3de4c2e2cd72d4abfb3"
+    },
+    "source-closure.json": {
+      "bytes": 978,
+      "sha256": "e871af35c679d0184e411436efb226273b9f34a0da9cc4bff4e2948bfaf6adc0"
+    },
+    "tested-elf/rust_verify-fbadc31d5f770ece": {
+      "bytes": 2770016,
+      "sha256": "940b602e53894ceb31b3cef610c7ccdad04dce346d28fc5d52ee9daad616227e"
+    },
+    "tested-elf/rust_verify-fbadc31d5f770ece.d": {
+      "bytes": 5739,
+      "sha256": "08c477e94af27dd5e068e6c37f30606aaae42cfba83c8063c49df23b8cf901cf"
+    },
+    "tested-elf/vir-d9a7bf74b1249c1e": {
+      "bytes": 4989928,
+      "sha256": "9c8539223b260fb7f9d28fbb0c637d29c741091285442b0833fc293e5c232113"
+    },
+    "tested-elf/vir-d9a7bf74b1249c1e.d": {
+      "bytes": 4252,
+      "sha256": "f6c533e48afb0a5224e1ad1b5bcbc77da049af3c5205a895ee8f1c80c162bd48"
+    },
+    "vir-clippy.log": {
+      "bytes": 62,
+      "sha256": "89aa4769e54bb50d65a67dd340ec1c8feb3090a58fc5bd94727365ba94745770"
+    },
+    "vir-test.log": {
+      "bytes": 4226,
+      "sha256": "53de62f3d0de071ce5b152d0336acb13142d7ebe35706436b7c9c62bfa851c44"
+    }
+  },
+  "raw_bytes": 9494601,
+  "old_failed_control_record": "../source-controls-failure.json",
+  "selected": false,
+  "qualified": false
+}
