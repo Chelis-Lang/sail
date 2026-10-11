@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "status": "file-only; 43 reduced actual pinned API controls PASS; complete source library/strict/build/qualification pending; unselected",
+  "base_patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+  "full_patch_sha256": "bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372",
+  "delta_sha256": "0cd5dfe76862acc95cc726e66be1fca3ae3b84938d3478955136206b6be83b55",
+  "source_sha256": {
+    "vir/src/context.rs": "d42eefa47f098464fb514a062dfebd5bcd315109ea46448efe92c8665a4ebe28",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "366a67bef30b60ed07b174296663f3c79f9aa7a2bf0c8aa649625a3e933cd745",
+    "rust_verify/src/sail_engine.rs": "1474a4204e60b7d409850add49ae0fea62422aac2d2745eb03f808bea4a17569",
+    "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641"
+  },
+  "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "family_budget_bytes": 8388608,
+  "prospective_preparation_max_bytes": 524288000,
+  "old_domain": "sail-prepared/graph-ledger/original-descriptor-locator-authority/v7",
+  "new_domain": "sail-prepared/graph-ledger/late-import-handoff-authority/v8",
+  "old_tests_byte_exact_prefix": true,
+  "api_sha256": {
+    "test-api.py": "14f7713462beac7a336820d413c2a04657890dd269f492a666ae0b285363c004",
+    "capture.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "tests.rs": "c1eda7796ca4c475f36b8219abae920c4029b7c4d02bbaa9f657c9b508e1ce6f",
+    "existing-controls.rs": "a0fb5fddf06d60edccb183be772c823fbf5cfd9e79068c15e323c91da1c88604",
+    "metadata-input.py": "c9b20c63061c76a2a4fb4f529a56e94d48aa82900544aa3e2ab63ccf0726c1f1"
+  }
+}

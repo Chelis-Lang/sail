@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "status": "PASS",
+  "scope": "reduced actual pinned rustc API and unchanged stock resolver controls; no complete-source compilation or qualification",
+  "platform": "aarch64-apple-darwin",
+  "rustc_commit": "48a229ceaefd4985c50990b14116b6d856af0985",
+  "compiler_toolchain": "1.98.1",
+  "independent_cases": "serial; internal concurrency and original assertions unchanged",
+  "compile_timeout_seconds": 60,
+  "test_timeout_seconds": 30,
+  "test_count": 43,
+  "unchanged_test_count": 29,
+  "new_test_count": 14,
+  "metadata_control_executed": false,
+  "compile_warnings": false,
+  "source_identity": "identity.json",
+  "final_raw_scope": "target/late-import-handoff/api-43-controls",
+  "attempts": [
+    {
+      "scope": "api-first-controls",
+      "status": "FAIL",
+      "detail": "four E0658 errors: borrowed expected byte slice called unstable slice.as_slice; removed those slice-only calls",
+      "compile_exit_code": 1,
+      "test_exit_code": null,
+      "elapsed_seconds": 0.8832762920000001,
+      "artifact_sha256": {
+        "compile.stderr": "350988f464c231c4cdc45bd02b6fc5c08736b7046c41cd777a0fdf8828d5db98",
+        "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "probe.rs": "2b25f88c5dd06012be87221356fc564cba2910229db70018e554b1bc4344f0d9",
+        "summary.json": "4739835b5aab7c455b72ad73d9586629695d9a270ba935ea7a5fd8e57469eea1"
+      },
+      "probe_sha256": null
+    },
+    {
+      "scope": "api-unchanged-controls",
+      "status": "PASS",
+      "detail": "29 unchanged controls; unused TyCtxt import warning retained before removal",
+      "compile_exit_code": 0,
+      "test_exit_code": 0,
+      "elapsed_seconds": 1.637727959,
+      "artifact_sha256": {
+        "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "probe.rs": "c5c1cca6c12c0cb08e30a99a21fd4068e85f70f76d9954e408419f15ae128840",
+        "summary.json": "c99bb23c9d33ea963eda2da7e6b523ee5e81c35e0cba0e0c08544d20dda7d0dc",
+        "tests.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tests.stdout": "2c673e04f7bdab793413112cbb1ce778c37f986af960349df95e1508913da6af"
+      },
+      "probe_sha256": "ad8a1fd89feb855e4199dfb7328dbf1cb2e407afda521d3f6c12e6e6823818e4"
+    },
+    {
+      "scope": "api-phase-controls",
+      "status": "PASS",
+      "detail": "39 controls, including ten new phase controls; unused import warning retained before removal",
+      "compile_exit_code": 0,
+      "test_exit_code": 0,
+      "elapsed_seconds": 2.101337125,
+      "artifact_sha256": {
+        "compile.stderr": "dea676ba13a528f8fdeca3562268708b0e8421f4a6e982e44e148807fd2ad2bf",
+        "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "probe.rs": "b0b75c8337bd178bb28ff16bcde04f04a7063c2e81bb933e4847d31b12eee27f",
+        "summary.json": "1adb9abfdbad18f20a5781f0f798fb7a67c99c6aa6e0e1593d36e414628750f6",
+        "tests.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tests.stdout": "0e6a1a4e0b9eb6c5ad65eb99512026c1960c7fa8ca5db0d976be181473836682"
+      },
+      "probe_sha256": "889136540f2c2f2221cfb3ed16215e3eda5f49c5bac24faff33d5513c8b773df"
+    },
+    {
+      "scope": "api-final-draft-controls",
+      "status": "FAIL",
+      "detail": "E0422: resolver control used nonexistent SpanX fixture type; changed fixture to actual pinned Span",
+      "compile_exit_code": 1,
+      "test_exit_code": null,
+      "elapsed_seconds": 0.9327171249999999,
+      "artifact_sha256": {
+        "compile.stderr": "2f58eb7b20d2f67cc17953dc0458630410860d7b1972a07b34fa258bad32ae58",
+        "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "probe.rs": "d94a2c03e707a613edb19de22a0b749b7baefdb994b9d8ff9001484baaf4c627",
+        "summary.json": "ebc5ac29736d5fa2353393649519deb1cc27e9fcce8fb6c87d5824b844c51b8e"
+      },
+      "probe_sha256": null
+    },
+    {
+      "scope": "api-40-controls",
+      "status": "PASS",
+      "detail": "40 controls: 29 unchanged plus eleven phase/namespace/drop controls; no compiler warnings",
+      "compile_exit_code": 0,
+      "test_exit_code": 0,
+      "elapsed_seconds": 1.835355333,
+      "artifact_sha256": {
+        "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "probe.rs": "d94a2c03e707a613edb19de22a0b749b7baefdb994b9d8ff9001484baaf4c627",
+        "summary.json": "1b48f0289b37de7d8ca71b9ef8861de18ccb161527a124db762da3090b0a4668",
+        "tests.stderr": "bfe0fb28ee48afe139c6bf878915fa93372c749e495230f1693da9764cffcc5a",
+        "tests.stdout": "d41320ac362551c5b4916a34c6778eec229c01c0015e0a125ce5503db20a64aa"
+      },
+      "probe_sha256": "bb67521450e0a43a7331ed18d39817b38b597173951496222d9e905f82d2a92a"
+    },
+    {
+      "scope": "api-43-controls",
+      "status": "PASS",
+      "detail": "43 controls: 29 unchanged plus 14 late phase/namespace/drop/work-cap controls; no compiler warnings",
+      "compile_exit_code": 0,
+      "test_exit_code": 0,
+      "elapsed_seconds": 4.550386833,
+      "artifact_sha256": {
+        "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "probe.rs": "d94a2c03e707a613edb19de22a0b749b7baefdb994b9d8ff9001484baaf4c627",
+        "summary.json": "d3dd43ea130d1ea8bd07c46a03c527fe7f3dfa4ad02e2142a9cde6805acc2b58",
+        "tests.stderr": "bfe0fb28ee48afe139c6bf878915fa93372c749e495230f1693da9764cffcc5a",
+        "tests.stdout": "abb99ca6d0cd51934643694498afb5b1d800c2ec4e95389ead06d187f718fcb3"
+      },
+      "probe_sha256": "cb453e70746299dd70b859049eaef9007b00aac1a12a9f61156af2fb41c0e1aa"
+    }
+  ],
+  "remaining": [
+    "full actual VIR/driver library tests",
+    "all-targets strict Clippy",
+    "ordinary fresh vstd proof and complete runtime manifest",
+    "original fourteen qualification stages with unchanged 600-second bounds and raw diagnostic oracle",
+    "genuine prior-revision checked FOCUS restore",
+    "product and reader acceptance"
+  ]
+}

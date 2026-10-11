@@ -180,3 +180,10 @@ assertion failure is retained. A separate check after parent/controller exit
 found no bound actors and identical runtime/source/lock/project seals; no
 verifier leak is inferred. The twenty-file raw diagnostic archive is retained
 by hash. Capture-phase redesign remains read-only pending review.
+
+The [single late-handoff successor](../late-handoff/README.md) is a file-only
+unselected v8 proposal tied to that preserved `0bbc` cause. It retains exact
+constructor recipe seeds and performs its only strict role classification after
+ordinary frontend namespace work. Forty-three reduced pinned API controls pass;
+complete source/runtime/original qualification remains pending. It does not
+change this frozen v7 runtime or reinterpret its failed qualification.

@@ -118,3 +118,44 @@ ambiguity negatives, physical drop and old-domain controls need independent
 review and actual execution before a build. All original fourteen stages,
 strict raw stock diagnostics and genuine prior-revision FOCUS remain unchanged.
 The amendment and candidate remain unselected until executable qualification.
+
+## Proposed amendment: one late authority classification
+
+The OriginalDescriptor candidate's original qualification remains failed.
+Its separate bounded trace identifies a recipe that stays Delayed while an
+equal-raw-hash Foreign file appears during ordinary frontend work. Early role
+classification followed by demotion correctly refuses that change, but precedes
+the natural compiler-thread namespace handoff. The trace does not establish the
+new Foreign owner's eligibility. See the
+[retained cause and candidate](../../engine/verus/candidates/deferred-import-locator/late-handoff/README.md).
+
+Retain immutable bounded original-authority seeds and the exact initial actual
+resolver recipe at construction, without an eligible role. Consume those seeds
+once after successful HIR-to-VIR/trait/lifetime work, before Sources/current
+bindings/keys/workers. Require the current descriptor to equal that initial
+recipe, then classify once using the current compiler-owned namespace and all
+existing strict role checks. Hold one borrowed SourceMap guard through this
+classification, final barrier and publication. Busy, failed, unsupported or
+mutated recipes refuse; classification never promotes an earlier failed role.
+Duplicate handoff cannot retry a consumed slot. No fresh SST work is required
+before lookup, no original metadata is reread and no stock source loader runs.
+
+The completed owner remains immutable. At take/store, exact fresh raw-unit
+binding and a borrowed current namespace validate every used imported owner;
+late Foreign growth or ambiguity refuses without reclassification. Current
+stock diagnostics may naturally load or reject their own recipe, but never
+supply cached coordinates, old raw spans or a restored resolver state.
+
+Use the distinct `sail-prepared/graph-ledger/late-import-handoff-authority/v8`
+domain with intact v7 rejection. Keep the same single 8 MiB family through seed,
+conversion and final ownership; fixed storage, all simultaneous name capacities,
+formatting scratch and Arc/control margin are admitted before allocation.
+Physical disposal precedes quota release, including failed/unused/cancelled
+handoff. Conservative overcharging after seed disposal is permitted; budgets
+and the prospective 500 MiB phase maximum do not increase.
+
+The file-only implementation passes forty-three reduced actual pinned API controls,
+including twenty-nine unchanged controls. This is not complete source or
+runtime qualification. Actual full library/strict checks, new ordinary vstd/
+manifest and every original fourteen-stage oracle remain mandatory. This ADR
+and runtime stay proposed/unselected until executable qualification.
