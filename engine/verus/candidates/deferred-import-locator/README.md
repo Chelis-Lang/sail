@@ -10,6 +10,13 @@ controls from the pending actual source and original fourteen-stage gates. The
 unselected. This candidate introduces no eager source loading or resolver
 mutation. The existing full standard conformance attempt is independent.
 
+The independently reviewed committed bytes now have an authorized private
+ordinary build in progress. [Launch evidence](build-launch.json) records the
+exact builder/archive/patch/features, ordinary-priority two-job actor, private
+target ownership, compiler-only seed inventory and corrected pre-compiler
+archive-transfer setup failure. This launch is not a successful build or source
+qualification, and changes no selected runtime.
+
 The [actual first refusal](../loaded-foreign-authority/delayed-role-review.md)
 is an imported raw-unit span for `vstd/function.rs:151:20: 151:65 (#0)`.
 Constructor and pre-focus states are both Delayed. A LoadedForeign-only snapshot
