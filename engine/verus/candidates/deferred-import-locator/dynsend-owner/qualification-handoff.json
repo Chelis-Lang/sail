@@ -4,7 +4,7 @@
   "status": "not launched",
   "prospective_variant": "73bd8aa61b18ca12",
   "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
-  "controller_sha256": "e5541c4aa0d9a9b69fe1ab7d0db9d0b9bd15d3254665f7af90c77ef7c5e714e8",
+  "controller_sha256": "02411af0cc15ab230f585c437c73eabf2e3046bf745f7abcd5a164dbef27641e",
   "original_script_sha256": {
     "engine/verus/test-real-he.py": "effde8542a0b096aa760b6f24a9d97ef249016cd8aa588129445151a901efb89",
     "engine/verus/test-engine.py": "543be4cecca10c745a4e870511a1e4e7ac841e1c839d190bb2be0f0f03294c5f",
@@ -42,5 +42,11 @@
     "Fresh ordinary vstd2060/0 and complete new runtime manifest",
     "Root manifest/controller review and exact grant",
     "One original14 actor, strict rawstock diagnostics, same-input oracle and genuine previous-revision FOCUS reuse"
-  ]
+  ],
+  "controller_file": "engine/verus/candidates/deferred-import-locator/dynsend-owner/run-qualification.py",
+  "controller_review_delta_sha256": "a4714e4980b6f981ab0ef7f88189cd8c53a4a20a290cb3eab97074cfb35aa664",
+  "source_inventory_asserted_before_launch": true,
+  "generated_bytecode_files": 4,
+  "generated_bytecode_role": "Excluded from authoritative source inventory; original fourteen source files are byte-bound before launch",
+  "ordinary_terminal_pass_required_before_launch": true
 }
