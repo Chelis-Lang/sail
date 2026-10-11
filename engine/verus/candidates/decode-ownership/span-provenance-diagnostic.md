@@ -7,6 +7,16 @@ proof outcomes or any qualification assertion. The selected runtime remains
 unchanged. [The exact identity record](span-provenance-diagnostic.json) marks
 actual build/tests and mismatch capture as pending.
 
+The subsequent [ordinary Linux build record](span-provenance-diagnostic-build.json)
+closes the build stage: fresh vstd verification passed 2,060/0, and all 13 sealed
+runtime artifacts match the recorded manifest. The emulated build took 2,279.6
+seconds at ordinary priority with two build jobs. Copied inactive compiler
+intermediates excluded the changed VIR/driver crates; no runtime artifacts or
+proof receipts were copied. Actual trace tests and mismatch capture remain
+separate: both new actual driver trace controls passed in 51.3 seconds, with
+all 13 sealed artifact hashes unchanged. Mismatch capture remains pending, and
+this diagnostic runtime is neither selected nor qualified.
+
 The failing invocation edits task023 while the selected task013 function remains
 unchanged. Its persisted FOCUS key passes decoding and graph validation but fails
 the exact span-provenance comparison. Local provenance currently binds safe raw
