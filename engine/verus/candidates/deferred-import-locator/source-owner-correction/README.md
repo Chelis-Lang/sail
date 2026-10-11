@@ -33,3 +33,10 @@ Its runtime files, source and failed strict record remain immutable. This is a
 launch record, not a qualified runtime. [Host executable deduplication](host-executable-dedup.json)
 preserves every archived runnable path while sharing exact duplicate bytes after
 holder checks; selected/new/qualification runtime paths are excluded.
+
+[Ordinary build evidence](ordinary-build.json) records this corrected variant's
+fresh 2060/0 vstd proof, 1054.968-second closed build and thirteen-artifact seal.
+The full source library controls and both strict checks are running on these
+exact bytes; no source or product qualification is claimed. The previous a61
+strict failure remains separate, and original fourteen-stage qualification has
+not launched.
