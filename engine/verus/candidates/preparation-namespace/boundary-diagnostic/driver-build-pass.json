@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "scope": "Diagnostic-only driver/image, not source/runtime qualification; no fresh vstd or acceptance credit",
+  "status": "PASS",
+  "elapsed_seconds": 155.95678215499356,
+  "nice": 0,
+  "jobs": 2,
+  "compiler_pid": 768006,
+  "compiler_pgid": 768006,
+  "start_ticks": "5887401",
+  "driver_sha256": "c0559b684a1b568158360ec01a8f9fee8ae296cf18774d91e10446efb66ea861",
+  "full_patch_sha256": "3892328a418109596f6a4a5f3649f5e7d370b19321419c29780d7a3961b44d61",
+  "source_controls_sha256": "6cf37325c65a5c7607fd79625801973b3f7ccce8647364d7641b73dfecfee62a",
+  "build_controller_sha256": "831ec04982987ffe6eb129b440e083ec4cfd9128c786a103b9a31b6c60b47726",
+  "diagnostic_controller_sha256": "e45802d34288d8c2868bcc9c891a4a10ef1c4b5e0d624655eeeee4fdb1ed8521",
+  "copied_receipts": 0,
+  "diagnostic_image_unsealed": true,
+  "donor_manifest_sha256": "acae733747b439a5a7777d446e88f4d25c1e855d015420806c7d0f7456c89e9f",
+  "image_artifacts": {
+    "rust_verify": "c0559b684a1b568158360ec01a8f9fee8ae296cf18774d91e10446efb66ea861",
+    ".vstd-fingerprint": "40c417dd4f6e2a40e4cf68b39d78b19fcc728bb96f090690893f70ef6392d405",
+    "libverus_builtin_macros.so": "85e4597c10585d190b2c7f921901667497883e267682da2f273da5915ac16ff5",
+    ".cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "vstd.vir": "cf8e7b5a273073dc7e07e863c03e2283183f99ca67cda139f269a73ba63b34f4",
+    "libverus_builtin.rlib": "ddb3983e6e2012c65d36c83ccff224627f1c00171e5044e7e799487ac367a7ee",
+    "libverus_state_machines_macros.so": "f61ac47b6ba83d604ec1e279614f92c97610a66e415b44260ae5bbc7165cea8e",
+    "cargo-verus": "553bb2f6cfde3de553f20b0fddfac02eb942ba9dc2a81407c1565aa87b0b8fb1",
+    "version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+    "verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "libvstd.rlib": "7bf372f9df47abafee79555a8832cbd8f11c693854fc10aef5492deb9f01cb8e",
+    "z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+    "verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+  },
+  "four_prior_runtime_seals_equal": true,
+  "dual_container_holders": 0,
+  "dual_container_unreadable_live": 0,
+  "raw_artifacts": {
+    "build.json": {
+      "bytes": 758,
+      "sha256": "d45bd4c586d1fe80cbb9baa17ccebf0dc8a16664d9e3509aa3541ba604d1cc9a"
+    },
+    "build.log": {
+      "bytes": 171,
+      "sha256": "da3a4dbbf7926a8ee3c1bbc7b770be9175f198b1df4ef4deb2d4b54144dc39bf"
+    },
+    "diagnostic-image.json": {
+      "bytes": 3129,
+      "sha256": "2552ca4bced73b5446cca7cd41d6baa2b8dbfd0eb49a83bfb44b0cfa0af09b75"
+    },
+    "dual-container-closure.json": {
+      "bytes": 787,
+      "sha256": "6bd368458e698705ed09b8f1ca6388a54647bb2c939d345cd45f6a83e239d554"
+    },
+    "prior-runtime-after.json": {
+      "bytes": 10794,
+      "sha256": "e83cd3068151b7a2544f4a1011014fb4595981ed55d52f16acaa575b69d2e15c"
+    },
+    "prior-runtime-before.json": {
+      "bytes": 10794,
+      "sha256": "e83cd3068151b7a2544f4a1011014fb4595981ed55d52f16acaa575b69d2e15c"
+    },
+    "source-identity.json": {
+      "bytes": 3097,
+      "sha256": "7507da8f2d73273587dc4893516499691307cc7861c7bc3b0c7d59c6f83930de"
+    }
+  }
+}

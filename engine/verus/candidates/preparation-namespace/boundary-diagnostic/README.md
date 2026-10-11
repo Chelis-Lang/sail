@@ -74,6 +74,12 @@ logs, tested ELF and source hashes (54.537 seconds total), unchanged eight-file
 source/lock and four older complete runtime/source/lock seals, and closed actors.
 The E0308 attempt stays failed. This source-only result does not identify the
 real refusal or qualify a runtime; the original failed qualification is intact.
+The direct driver build passed in 155.957 seconds at two compiler jobs and
+ordinary priority. `driver-build-pass.json` binds its logs, source controls and
+separate image inventory. All four prior runtime seals and the source remained
+unchanged; both container actor audits found zero holders or unreadable live
+processes. This is diagnostic construction evidence only.
+
 The diagnostic controller pair is `build-diagnostic.py` and
 `run-diagnostic.py`. The first builds only the changed driver in the closed
 private compiler target, then copies thirteen sealed donor files to a separate
