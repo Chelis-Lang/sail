@@ -59,3 +59,39 @@ runqueue wait across accepted-to-read, send-to-response and body-read phases.
 A production change requires evidence of avoidable work. The benchmark and
 real-reader workflows remain separate scopes; this failure grants neither
 integration nor latency credit.
+
+## One completed owner observation
+
+The separately instrumented fixture completed successfully after Docker write
+health recovered, with all eight `Hit` results and one GET. All original
+assertions remained enabled. Direct rustc compilation took 7.073 s; the single
+external test invocation took 0.377 s. Caller returns ranged from 138.455 ms to
+142.425 ms. The original failed gate remains failed.
+
+[The exact result record](m7-http-coalescing-owner-result.json) binds the patch,
+controller, compiler, executable, raw archive and original dependency seals.
+Dependency selection used the original daemon test's Cargo fingerprint hashes,
+not newest-file heuristics. All direct libraries and the original test image
+had identical hashes after the diagnostic. Compilation wrote only private
+output, without invoking Cargo or changing the common target.
+
+In this observation, accepted-to-read took 10.839 ms by the existing phase
+markers, rather than the historical 87.207 ms. The same-runtime schedstat CPU
+counter increased by 11.158 ms across the server samples; the server's CPU
+counter increased by 0.585 ms. Across send samples the runtime CPU counter
+increased by 32.722 ms and the helper's by 3.187 ms. Runtime runqueue counters
+did not increase in those intervals. These are non-atomic proc observations,
+not profiler attribution to a function or evidence of the historical cause.
+
+All nine traversals reported complete. Individual sampling costs ranged from
+0.069 ms to 1.015 ms and are retained explicitly. The observations run
+synchronously and can change scheduling. A successful fixture therefore does
+not resolve the original gate failure. The owned test and compiler processes
+both exited normally. The actual diagnostic executable is retained separately
+from its 109,890-byte source/raw archive; neither is a selected product binary.
+No second diagnostic, profile change or production transport change was run.
+
+The supported next question is which work inside the runtime accounts for
+its observed CPU, rather than changing the existing server delay/read or adding
+socket flags. The earlier reqwest-only optimization control worsened measured
+send CPU and wall time; this record supplies no reason to select that profile.
