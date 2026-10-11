@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Reuse validated ordinary Cargo build-script contracts across compatible
+  compiler-family selectors. Consume each shared generation before mutation,
+  recheck after input guards begin, and retain every output unit. Unavailable
+  contracts still force cleaning; exact proof contexts and receipts stay private.
+  Whole-loop performance validation remains pending.
+
 - Avoid repeated Linux runtime identity parsing when the original continuous
   lease binds both exact sidecar paths. Missing coverage retains the original
   parse; all per-read freshness checks remain. No live reader latency gain is

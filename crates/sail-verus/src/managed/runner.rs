@@ -47,6 +47,7 @@ struct Paths {
     runtime: PathBuf,
     run: PathBuf,
     build_inputs: PathBuf,
+    compiler_inputs: PathBuf,
 }
 
 fn input_environment_key(key: &std::ffi::OsStr) -> bool {
@@ -475,6 +476,7 @@ fn prepare(
         receipts: context.join("receipts"),
         runtime: context.join("runtime.json"),
         build_inputs: context.join("build-inputs.json"),
+        compiler_inputs: compiler.join("build-inputs.json"),
         run: context.join("runs").join(run_id),
     };
     for dir in [
@@ -548,6 +550,7 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
         // irrelevant message format after the caller's unchanged Cargo options.
         .arg("--message-format=json-render-diagnostics")
         .args(&config.args[split..])
+        .env("RUSTC_BOOTSTRAP", "1")
         .env("CARGO", &paths.cargo_alias)
         .env("SAIL_MANAGED_CARGO", &config.cargo)
         .env("SAIL_MANAGED_PROXY", &paths.proxy_alias)
@@ -1399,6 +1402,13 @@ pub(crate) fn run_engine(
     let (paths, _ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     drop(owned_paths);
     let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
+    super::build_inputs::family::begin(
+        &paths.compiler_inputs,
+        &compiler_hash,
+        &paths.target,
+        &paths.build_inputs,
+        &data,
+    )?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
     let (sources, source_coverage) = super::source_inputs::load(&source_state);
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
@@ -1436,6 +1446,17 @@ pub(crate) fn run_engine(
     drop(monitored_snapshot);
     let input_barrier = diagnostics.phase(Phase::InputBarrier);
     before.complete &= monitored.complete && coherent.ready_at(super::coherent::Barrier::Input);
+    // Imported observations were first checked before guard acquisition. Check
+    // them again under the original live owners before using shared outputs.
+    // Cleaning a newly changed script prevents learning new bytes beside output
+    // generated from the older bytes, including restored-mtime changes.
+    let late_scripts =
+        super::build_inputs::family::recheck(&paths.build_inputs, &data, &paths.target)?;
+    let late_scripts: Vec<_> = late_scripts
+        .into_iter()
+        .filter(|name| !stale_scripts.contains(name))
+        .collect();
+    clean(config, &paths.target, &late_scripts)?;
     let stamp_before = super::input::mutation_stamp(&before);
     super::configuration::check(&invocation, &config.args)?;
     json(
@@ -1708,6 +1729,15 @@ pub(crate) fn run_engine(
             result.notes.push(format!("SAIL3114: sysroot kernel coverage ended before receipt commit ({}); no current proof receipt is published", sysroots.failure_description()));
             json(&paths.run.join("result.json"), &result)?;
         }
+    }
+    if result.currentness == Currentness::Current && result.exit_code == Some(0) {
+        super::build_inputs::family::publish(
+            &paths.compiler_inputs,
+            &compiler_hash,
+            &paths.target,
+            &paths.build_inputs,
+            &after_data,
+        );
     }
     Ok(result)
 }

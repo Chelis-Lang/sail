@@ -30,7 +30,7 @@ warm proof check. The separate [timeout stage witness](validation/m7-managed-col
 observes actual vstd verification after pre-Cargo setup and ordinary dependency
 compilation; none of those stages alone is established as the entire cause.
 
-The proposed [compiler artifact families](decisions/0036-managed-compiler-artifact-families.md)
+The implemented [compiler artifact families](decisions/0036-managed-compiler-artifact-families.md)
 separate ordinary Cargo dependencies from proof contexts. Only a source-engine
 function selector is omitted from the new compiler-family key; all other runtime,
 argument, configuration and environment identities remain bound. Optional daemon sysroot hint selection likewise omits only this selector under
@@ -40,20 +40,27 @@ has stable executable aliases and a nonblocking exclusive owner through cleaning
 compilation and receipt publication. Concurrent focus contexts sharing that
 family can refuse with SAIL3104 rather than mutate each other's target.
 
-Proof receipts, currentness guards, runtime sidecars, build-script observations
-and committed reports remain private to each complete proof context. Selected
-repair packages remain forced fresh. A fresh Cargo artifact without the exact
-proof receipt still triggers the existing clean-and-reverify path. Every
-unobserved build script, including registry scripts declaring external inputs,
-must run fresh before its observations can authorize retained outputs. Script-free
-ordinary dependencies can reuse Cargo artifacts; script-bearing dependencies and
-build scripts that depend on proof-specific environment paths may rebuild. No
-observations or proof authority are copied across selectors.
+Proof receipts, currentness guards, runtime sidecars, source observations and
+committed reports remain private to each complete proof context. Selected repair
+packages remain forced fresh. A fresh Cargo artifact without the exact proof
+receipt still triggers the existing clean-and-reverify path.
 
-Implementation and product validation of this proposal are pending; no repair
-fixture deadline, cold acceptance bound or benchmark requirement is lengthened.
-The [roadmap](ROADMAP.md) still requires correctness and actual product acceptance
-before a performance claim.
+Ordinary build-script contracts may be reused from the compiler family after
+fresh validation of every declared input and actual Cargo output. A consumed
+family generation prevents aborted builds from leaving stale contracts behind;
+all output units must validate again after the original input guards are live.
+Missing or uncertain coverage forces original cleaning, including registry
+scripts. Old local declarations can supply watch paths but cannot bypass that
+cleaning. Proof-specific or unaudited Cargo-injected environment declarations
+refuse sharing. See the [decision](decisions/0036-managed-compiler-artifact-families.md)
+for the local cache trust boundary and effective environment binding.
+
+The [script-observation diagnostic](validation/m7-compiler-script-observations.md)
+records the avoided cleaning seam and its control scope. The compiler-family
+implementation and affected controls are separate from pending whole-product
+performance validation. No repair fixture
+deadline, cold acceptance bound or benchmark requirement is lengthened. Actual
+whole-product performance and the [roadmap](ROADMAP.md) requirements remain open.
 
 `ci/test-managed.py` now writes per-invocation timing and observation-only
 progress events outside its temporary fixture. On timeout it captures only the

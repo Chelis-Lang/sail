@@ -547,3 +547,15 @@ compare, MCP and late-execution cases. This closes that CI fixture scope; it
 does not erase the earlier emulated `cdb6e6d` timeout or establish its cause.
 Real HumanEval/Vest performance, complete current standard/cache coverage and
 full-result reader latency remain open.
+
+## Ordinary compiler-family script rebuilding
+
+A [reduced real repair diagnostic](validation/m7-compiler-script-observations.md)
+shows repeated ordinary dependency compilation after changing only the source
+selector. Its old context-local ledger cleans registry build scripts even in the
+same compiler-artifact family. The optional family-generation change validates
+fresh ordinary contracts and actual output bytes, consumes certificates before
+mutation, and checks all output units after native guard acquisition. Incomplete
+or unavailable contracts still clean. This is a product optimization awaiting
+whole-loop validation, not an explanation or erasure of the original 120-second
+failure, a transferred proof receipt, or a measured M7 speedup.
