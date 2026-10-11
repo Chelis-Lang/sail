@@ -75,3 +75,11 @@ exact runtime-seal and holder checks, retaining their actual test executables,
 source snapshots and raw failures. Allocated files retired and native/host free
 space observations are recorded separately; shared backing-space changes are
 not attributed to cleanup. No selected/new/qualification runtime file moves.
+
+[Ordinary build launch](ordinary-build-launch.json) records the subsequently
+authorized 73bd feature-bound variant, frozen private builder archive and
+normal-priority two-job actor. The compatible compiler-only seed comes from the
+closed source-control target with changed VIR/driver crates excluded. No
+runtime files, proof receipts or acceptance records are copied. Fresh ordinary
+vstd verification and a complete thirteen-artifact manifest are still required
+from this build; original fourteen-stage qualification has not launched.
