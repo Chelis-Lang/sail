@@ -1,0 +1,529 @@
+{
+  "status": "PASS",
+  "unix_ns": 1791739760386995000,
+  "removed": [
+    {
+      "name": "sail-m7-source-012707a.tar",
+      "bytes": 12154880,
+      "allocated": 12156928,
+      "sha256": "07100030a7d9c9cf19f966d603ef078c0ec75825837771cdd49cc47d45e0e720",
+      "archive_commit": "012707a4838554951fa7913b3b19f7bd5c0a05e1",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-managed-setup-012707a.json",
+        "docs/validation/m7-setup-timer-product-build.json"
+      ],
+      "reproduced_sha256": "07100030a7d9c9cf19f966d603ef078c0ec75825837771cdd49cc47d45e0e720",
+      "reproduced_bytes": 12154880,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/feat/m7-contracts",
+        "refs/heads/feat/m7-guarded-output-service",
+        "refs/heads/fix/m7-compilation-context",
+        "refs/heads/fix/m7-fault-session-cleanup"
+      ],
+      "preserved_git_refs_count": 21
+    },
+    {
+      "name": "sail-m7-source-02fd1fc.tar",
+      "bytes": 9676800,
+      "allocated": 9678848,
+      "sha256": "0261b4243d1ebc05b4657ea6e117e9888d87152443c53d4be5b78db1f557dd3e",
+      "archive_commit": "02fd1fc30f01c71c9d727829534333eb5891d7e4",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-current-product-build.json",
+        "docs/validation/m7-reader-current-original-plan.md"
+      ],
+      "reproduced_sha256": "0261b4243d1ebc05b4657ea6e117e9888d87152443c53d4be5b78db1f557dd3e",
+      "reproduced_bytes": 9676800,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping",
+        "refs/heads/docs/m7-span-rebinding-review",
+        "refs/heads/feat/m7-contracts"
+      ],
+      "preserved_git_refs_count": 27
+    },
+    {
+      "name": "sail-m7-source-1dc732e.tar",
+      "bytes": 6164480,
+      "allocated": 6164480,
+      "sha256": "d55711c5a7719f51d4f6f0865ff2e6e35b8377dd53b64b31eb339d0b4e92ed80",
+      "archive_commit": "1dc732e841427c14da0a39e322c04ee5874a8ca2",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-1dc-b346-repair-cli-mcp-local-failure.json",
+        "docs/validation/m7-1dc-fresh-reader-failure.json",
+        "docs/validation/m7-standard-verismo-timeout-observation.json"
+      ],
+      "reproduced_sha256": "d55711c5a7719f51d4f6f0865ff2e6e35b8377dd53b64b31eb339d0b4e92ed80",
+      "reproduced_bytes": 6164480,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "refs/cleanup/worktrees/m7-http-coalesced-publication",
+        "refs/cleanup/worktrees/m7-http-crypto",
+        "refs/cleanup/worktrees/m7-http-established-fixtures",
+        "refs/cleanup/worktrees/m7-http-stalled-timing"
+      ],
+      "preserved_git_refs_count": 57
+    },
+    {
+      "name": "sail-m7-source-44af609.tar",
+      "bytes": 9093120,
+      "allocated": 9093120,
+      "sha256": "772dcbccd38dd9b5922e226359669fb33d8ef0d78fcbb03bc60eddf063eeece2",
+      "archive_commit": "44af609b65519572cca97cbe80e81e0005686081",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-integrated-gate-44af609.json"
+      ],
+      "reproduced_sha256": "772dcbccd38dd9b5922e226359669fb33d8ef0d78fcbb03bc60eddf063eeece2",
+      "reproduced_bytes": 9093120,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping",
+        "refs/heads/docs/m7-span-rebinding-review",
+        "refs/heads/feat/m7-contracts"
+      ],
+      "preserved_git_refs_count": 28
+    },
+    {
+      "name": "sail-m7-source-5fd7986.tar",
+      "bytes": 7383040,
+      "allocated": 7385088,
+      "sha256": "94506c234c1996e9841d31d1b8d707f1007024ca67adce11c734e75030203536",
+      "archive_commit": "5fd7986e6fe8cfe130cdff848ec6084c97cd1b46",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-acceptance-status-history.md"
+      ],
+      "reproduced_sha256": "94506c234c1996e9841d31d1b8d707f1007024ca67adce11c734e75030203536",
+      "reproduced_bytes": 7383040,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "refs/cleanup/worktrees/m7-http-stalled-timing",
+        "refs/cleanup/worktrees/m7-reader-preparation",
+        "refs/cleanup/worktrees/m7-repair-walkthrough",
+        "refs/heads/docs/m7-current-product-guides"
+      ],
+      "preserved_git_refs_count": 38
+    },
+    {
+      "name": "sail-m7-source-749255e.tar",
+      "bytes": 9216000,
+      "allocated": 9216000,
+      "sha256": "a94270fa04d99ac40482dc993abc0e52fb25920982eda61994555a724a9829ea",
+      "archive_commit": "749255e6f09b700f863e9165ac481a12c9bcc412",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-acceptance-status-history.md",
+        "docs/validation/m7-coalescing-749-diagnostic.json",
+        "docs/validation/m7-http-749-followup.json",
+        "docs/validation/m7-namespace-indexed-filter.json",
+        "docs/validation/m7-reader-freshness-diagnosis.md",
+        "docs/validation/m7-shared-signature-cpu-diagnosis.md"
+      ],
+      "reproduced_sha256": "a94270fa04d99ac40482dc993abc0e52fb25920982eda61994555a724a9829ea",
+      "reproduced_bytes": 9216000,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping",
+        "refs/heads/docs/m7-span-rebinding-review",
+        "refs/heads/feat/m7-contracts"
+      ],
+      "preserved_git_refs_count": 28
+    },
+    {
+      "name": "sail-m7-source-777b86a.tar",
+      "bytes": 10065920,
+      "allocated": 10067968,
+      "sha256": "2795238214b778caaaa534853f0ecfdf064aca523368e2162d818df79dde8025",
+      "archive_commit": "777b86a539f4f6f42f3fab1cf97e176a22f6ac5c",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-http-configured-setup.json",
+        "docs/validation/m7-http-session-replay-777.json",
+        "docs/validation/m7-http-session-replay-777.md",
+        "docs/validation/m7-managed-cold-777-vs-f94.json",
+        "docs/validation/m7-managed-cold-777-vs-f94.md",
+        "docs/validation/m7-managed-cold-stage-777.json",
+        "docs/validation/m7-managed-cold-stage-777.md",
+        "docs/validation/m7-managed-setup-timers.json",
+        "docs/validation/m7-workstream-history-cc0898e.md"
+      ],
+      "reproduced_sha256": "2795238214b778caaaa534853f0ecfdf064aca523368e2162d818df79dde8025",
+      "reproduced_bytes": 10065920,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/feat/m7-contracts",
+        "refs/heads/feat/m7-guarded-output-service",
+        "refs/heads/fix/m7-compilation-context",
+        "refs/heads/fix/m7-fault-session-cleanup"
+      ],
+      "preserved_git_refs_count": 22
+    },
+    {
+      "name": "sail-m7-source-7dc855d.tar",
+      "bytes": 8069120,
+      "allocated": 8069120,
+      "sha256": "35badbb9a81bb1cd7ab7fba766531ece24a7903d4e0e00d3ba20196e756bfd39",
+      "archive_commit": "7dc855d60a480e8668a7a6f7b837eec66e9a5d27",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-acceptance-status-history.md",
+        "docs/validation/m7-http-7dc-followup.json"
+      ],
+      "reproduced_sha256": "35badbb9a81bb1cd7ab7fba766531ece24a7903d4e0e00d3ba20196e756bfd39",
+      "reproduced_bytes": 8069120,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "refs/cleanup/worktrees/m7-http-stalled-timing",
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping"
+      ],
+      "preserved_git_refs_count": 33
+    },
+    {
+      "name": "sail-m7-source-7fcb720.tar",
+      "bytes": 9103360,
+      "allocated": 9105408,
+      "sha256": "25f03fcb900a004290e908042b3839e191713f14b030e761f6551fcb83230b9c",
+      "archive_commit": "7fcb720d7ca824845a3e13cb69fc410356790f16",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-acceptance-status-history.md"
+      ],
+      "reproduced_sha256": "25f03fcb900a004290e908042b3839e191713f14b030e761f6551fcb83230b9c",
+      "reproduced_bytes": 9103360,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping",
+        "refs/heads/docs/m7-span-rebinding-review",
+        "refs/heads/feat/m7-contracts"
+      ],
+      "preserved_git_refs_count": 28
+    },
+    {
+      "name": "sail-m7-source-987aa39.tar",
+      "bytes": 8099840,
+      "allocated": 8101888,
+      "sha256": "22c20cc3307500aecd92a1e3c5b1978b5a7ad98c82757e96a33d3b7705e997ee",
+      "archive_commit": "987aa3974cfa3d8ed5b95bb5257b7d0ded30ca3f",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-http-987-followup.json"
+      ],
+      "reproduced_sha256": "22c20cc3307500aecd92a1e3c5b1978b5a7ad98c82757e96a33d3b7705e997ee",
+      "reproduced_bytes": 8099840,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping",
+        "refs/heads/docs/m7-span-rebinding-review"
+      ],
+      "preserved_git_refs_count": 31
+    },
+    {
+      "name": "sail-m7-source-a9dc753.tar",
+      "bytes": 7075840,
+      "allocated": 7077888,
+      "sha256": "d8d059e2a477db52b47be0d21f3fb91194165e1736bd1a402b6611bad27398e9",
+      "archive_commit": "a9dc7531264de092297d2b793267913f3200b943",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-acceptance-status-history.md",
+        "docs/validation/m7-shared-signature-cpu-diagnosis.md",
+        "docs/validation/m7-shared-signature-cpu-diagnostic.json"
+      ],
+      "reproduced_sha256": "d8d059e2a477db52b47be0d21f3fb91194165e1736bd1a402b6611bad27398e9",
+      "reproduced_bytes": 7075840,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "refs/cleanup/worktrees/m7-http-crypto",
+        "refs/cleanup/worktrees/m7-http-stalled-timing",
+        "refs/cleanup/worktrees/m7-http-verification-cost",
+        "refs/cleanup/worktrees/m7-reader-preparation"
+      ],
+      "preserved_git_refs_count": 43
+    },
+    {
+      "name": "sail-m7-source-ca1412c.tar",
+      "bytes": 6154240,
+      "allocated": 6156288,
+      "sha256": "bc584f7be72c1abab5589d8c39d27ba75dd7c30807de698a0f63ddac0c67b410",
+      "archive_commit": "ca1412c5de7c564066712514d56f15d2cd48a5a2",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-1dc-b346-repair-cli-mcp-local-failure.json"
+      ],
+      "reproduced_sha256": "bc584f7be72c1abab5589d8c39d27ba75dd7c30807de698a0f63ddac0c67b410",
+      "reproduced_bytes": 6154240,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "refs/cleanup/worktrees/m7-http-coalesced-publication",
+        "refs/cleanup/worktrees/m7-http-crypto",
+        "refs/cleanup/worktrees/m7-http-established-fixtures",
+        "refs/cleanup/worktrees/m7-http-stalled-timing"
+      ],
+      "preserved_git_refs_count": 59
+    },
+    {
+      "name": "sail-m7-source-cbd6d60.tar",
+      "bytes": 12001280,
+      "allocated": 12001280,
+      "sha256": "b3ebe573f5905ea78b6befb6b5929fd606199144f6df8ca96d27b51cfaf21dc8",
+      "archive_commit": "cbd6d60f66b6e2976eafd2487e7315843746788a",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-http-setup-contention.json",
+        "docs/validation/m7-http-setup-contention.md",
+        "docs/validation/m7-workstream-history-cc0898e.md"
+      ],
+      "reproduced_sha256": "b3ebe573f5905ea78b6befb6b5929fd606199144f6df8ca96d27b51cfaf21dc8",
+      "reproduced_bytes": 12001280,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/feat/m7-contracts",
+        "refs/heads/feat/m7-guarded-output-service",
+        "refs/heads/fix/m7-compilation-context",
+        "refs/heads/fix/m7-fault-session-cleanup"
+      ],
+      "preserved_git_refs_count": 21
+    },
+    {
+      "name": "sail-m7-source-current.tar",
+      "bytes": 9728000,
+      "allocated": 9728000,
+      "sha256": "de4954d427e061cbeb90f9651e3a8518bdd6d0f71c4f1fe8d25f6eecb5ec35b7",
+      "archive_commit": "b36acc7ed234e3169f1b546d48658b2c5c99b75e",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-current-product-build.json",
+        "docs/validation/m7-installed-mcp-b36.json"
+      ],
+      "reproduced_sha256": "de4954d427e061cbeb90f9651e3a8518bdd6d0f71c4f1fe8d25f6eecb5ec35b7",
+      "reproduced_bytes": 9728000,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping",
+        "refs/heads/docs/m7-span-rebinding-review",
+        "refs/heads/feat/m7-contracts"
+      ],
+      "preserved_git_refs_count": 27
+    },
+    {
+      "name": "sail-m7-source-e0ca5f5.tar",
+      "bytes": 13260800,
+      "allocated": 13262848,
+      "sha256": "451da19432e6ffea002ccfa13248d14a823c097fd81ad10b0269bc2c6b0ccd71",
+      "archive_commit": "e0ca5f5154e74326443181f57f0fd928488159d3",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-standard-tspec-sleeping-observation-e0.json",
+        "docs/validation/m7-verismo-bitflags-e0ca-diagnostic.json"
+      ],
+      "reproduced_sha256": "451da19432e6ffea002ccfa13248d14a823c097fd81ad10b0269bc2c6b0ccd71",
+      "reproduced_bytes": 13260800,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/feat/m7-contracts",
+        "refs/heads/feat/m7-guarded-output-service",
+        "refs/heads/fix/m7-compilation-context",
+        "refs/heads/fix/m7-fault-session-cleanup"
+      ],
+      "preserved_git_refs_count": 21
+    },
+    {
+      "name": "sail-m7-source-f6508ba.tar",
+      "bytes": 8478720,
+      "allocated": 8478720,
+      "sha256": "bf56e8fc3205ab674141f50d2095d1a563b4619a7fcedb47b00f728ad8d34dd5",
+      "archive_commit": "f6508baaeb6b2712647ba09aa97820818af46532",
+      "status": "VERIFIED",
+      "tracked_records": [],
+      "commit_record_references": [
+        "docs/validation/m7-acceptance-status-history.md",
+        "docs/validation/m7-gate-diagnostics.json"
+      ],
+      "reproduced_sha256": "bf56e8fc3205ab674141f50d2095d1a563b4619a7fcedb47b00f728ad8d34dd5",
+      "reproduced_bytes": 8478720,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/cleanup/worktrees/m7-gate-diagnostics",
+        "refs/heads/docs/m7-current-product-guides",
+        "refs/heads/docs/m7-current-workflows",
+        "refs/heads/docs/m7-owned-import-mapping",
+        "refs/heads/docs/m7-span-rebinding-review"
+      ],
+      "preserved_git_refs_count": 30
+    },
+    {
+      "name": "sail-m7-compilation-context-source-corrected.tar",
+      "bytes": 25057280,
+      "allocated": 25059328,
+      "sha256": "73e1af1af58bd6571d42bb859d8bffbdeaf6a09010af11380ac3f07aa8db50a2",
+      "archive_commit": "4c84b535d8241b238af7259ad6d49af32473eaf5",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-compilation-context-receipt-fixture-controls.json"
+      ],
+      "reproduced_sha256": "73e1af1af58bd6571d42bb859d8bffbdeaf6a09010af11380ac3f07aa8db50a2",
+      "reproduced_bytes": 25057280,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/fix/m7-compilation-context"
+      ],
+      "preserved_git_refs_count": 1
+    },
+    {
+      "name": "sail-m7-compilation-context-source-final.tar",
+      "bytes": 25067520,
+      "allocated": 25067520,
+      "sha256": "207bf5309abfdd041b64304a4973685ec2795c126f79c4f0c4784355034b59cf",
+      "archive_commit": "7ccaed8120641f3b13d29607c9e1bee1a7b873d7",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-compilation-context-first-strict.json"
+      ],
+      "reproduced_sha256": "207bf5309abfdd041b64304a4973685ec2795c126f79c4f0c4784355034b59cf",
+      "reproduced_bytes": 25067520,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/fix/m7-compilation-context"
+      ],
+      "preserved_git_refs_count": 1
+    },
+    {
+      "name": "sail-m7-compilation-context-source-strict.tar",
+      "bytes": 25067520,
+      "allocated": 25067520,
+      "sha256": "31d9a7f6204216183468415cae21ba265c90bfd7cdf3eaaab0850f823586112e",
+      "archive_commit": "44f1a5ca6a2b0dcc435472531d27069e01e03575",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-compilation-context-controls.json"
+      ],
+      "reproduced_sha256": "31d9a7f6204216183468415cae21ba265c90bfd7cdf3eaaab0850f823586112e",
+      "reproduced_bytes": 25067520,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/fix/m7-compilation-context"
+      ],
+      "preserved_git_refs_count": 1
+    },
+    {
+      "name": "sail-m7-compilation-context-source.tar",
+      "bytes": 25057280,
+      "allocated": 25059328,
+      "sha256": "29282b6ac9e131abf54c18e281cd2b76facd2848320b909e14b3c311ab4570b7",
+      "archive_commit": "87167af2d4faf43043f88e84d0686a46a3914e2e",
+      "status": "VERIFIED",
+      "tracked_records": [
+        "docs/validation/m7-compilation-context-first-controls.json"
+      ],
+      "reproduced_sha256": "29282b6ac9e131abf54c18e281cd2b76facd2848320b909e14b3c311ab4570b7",
+      "reproduced_bytes": 25057280,
+      "git_archive_exit": 0,
+      "preserved_git_refs": [
+        "refs/heads/fix/m7-compilation-context"
+      ],
+      "preserved_git_refs_count": 1
+    }
+  ],
+  "skipped": [
+    {
+      "name": "sail-m7-source-5c7a079.tar",
+      "bytes": 8837120,
+      "allocated": 8839168,
+      "sha256": "da4365bedd86be734d3e49324c45c138914c6a89b5f179e286a0b2558ac41e47",
+      "archive_commit": "5c7a0798ba5b78f7d5a4feff971b88868f030831",
+      "status": "SKIP",
+      "tracked_records": []
+    },
+    {
+      "name": "sail-m7-source-b346.tar",
+      "bytes": 5918720,
+      "allocated": 5918720,
+      "sha256": "d90a3f05dc2018119fe46d7cd68bc6e842f841989642c36fc21b5ae109870d3d",
+      "archive_commit": "34e9fb4d0234d1dc3e6fa92ad31958ea3664eec8",
+      "status": "SKIP",
+      "tracked_records": []
+    },
+    {
+      "name": "sail-m7-source-baae3eb.tar",
+      "bytes": 6154240,
+      "allocated": 6156288,
+      "sha256": "0270e71b18000019f0996bd7034e8a89ed5a935fa962e52d551511b40644061e",
+      "archive_commit": "baae3eb9e34cccfe18e475f500fb32eb93cc467e",
+      "status": "SKIP",
+      "tracked_records": []
+    },
+    {
+      "name": "sail-m7-source-de36d45.tar",
+      "bytes": 11182080,
+      "allocated": 11182080,
+      "sha256": "81eee8091b2bd2a4f5c4d306c3c0dff2f77ea20b7cee105888a61d272bf0b50c",
+      "archive_commit": "de36d454cf40dd51e5a0f9196163dde380a378d7",
+      "status": "SKIP",
+      "tracked_records": []
+    },
+    {
+      "name": "sail-m7-source-mcp-fix.tar",
+      "bytes": 6154240,
+      "allocated": 6156288,
+      "sha256": "20fd0309166ec12f4901d90f4ea7667ec05a8375500f87ab23bd8d18ee676db8",
+      "archive_commit": "4906c8dfa2891896b6cf6a215a5e2fac01f045c6",
+      "status": "SKIP",
+      "tracked_records": []
+    }
+  ],
+  "removed_count": 20,
+  "removed_allocated_bytes": 245997568,
+  "removed_logical_bytes": 245975040,
+  "host_holder_check": {
+    "method": "lsof exact file list",
+    "exit_code": 1,
+    "stdout_empty": true,
+    "stderr_empty": true
+  },
+  "host_available_before": 3690430464,
+  "host_available_after": 3936841728,
+  "backing_change_not_attributed": true,
+  "git_refs_preserved": true,
+  "active_gate_tar_not_touched": true,
+  "raw_result_sha256": "454810589079ffb2fce1dab3b6aa6945dc0c4253ccb135ddf55ada9e7936dbc9",
+  "scope": "Only closed Git-reproducible host source tar copies; source commits, controllers, logs, raw records and tested images preserved."
+}
