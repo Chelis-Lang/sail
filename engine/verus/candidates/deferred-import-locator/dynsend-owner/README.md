@@ -155,7 +155,8 @@ candidate stays unselected and unqualified.
 
 A [separate diagnostic controller](run-provenance-diagnostic.py) is prepared for
 review, with [static input/flag binding](provenance-diagnostic-review.json).
-It has not run. It binds the already-failed revision 0 source path and all 265
+It was reviewed before the one separate run below. It binds the already-failed
+revision 0 source path and all 265
 source-copy hashes, exact sealed runtime and original compiler flags/context.
 Only fresh owned output paths and the existing unfiltered
 `SAIL_ENGINE_IMPORT_TRACE=1` observation differ; the target filter is absent.
@@ -174,3 +175,29 @@ that correlation. Zero records or only eligible imports leave the cause
 unavailable. The bounded observer records its own refusal marker on overflow;
 no trace failure changes the full proof or preparation eligibility. The
 original failed qualification stays failed regardless of this diagnostic.
+
+
+[Separate diagnostic result](provenance-diagnostic-result.json) completed within
+the same 600-second bound: 47.950 seconds for invocation/observation and 57.346
+seconds for the controller including seal checks. It verified the same nine
+functions; stderr remained byte-exact against the original 234-byte stream and
+typed module/function results matched. Runtime/source/lock seals and the
+265-file input inventory remain unchanged, with no active owned process.
+The actual engine process identity and bounded process observations are hashed
+in the result. No observer cap or unavailable marker occurred.
+
+Six focus import-state records expose five eligible Loaded bindings from
+`vstd/arithmetic/mul.rs`, followed by ineligible imported binding 5705 at
+`vstd/function.rs:138:2: 138:2 (#0)`. That record has initial and pre-focus state
+Delayed, original range 406973–411571 and reason Delayed. It immediately
+precedes the focus fresh-store provenance refusal. The store loop holds
+`PREPARATION_GATE`, and the immutable unavailable record makes provenance
+return before batch/disk publication, which correlates this focus refusal with
+the observed binding. It also excludes a whole-family capture error.
+
+The reason still merges an unsupported absolute/UTF-8/bounded descriptor path
+and a missing matching current Foreign source. The unavailable-state trace
+does not emit the path or match count, so neither cause is established here.
+The three full-phase refusals were not individually traced. This diagnostic
+does not demonstrate a hit, previous-revision reuse, or original qualification
+pass; it supplies narrower evidence for a separately reviewed correction.
