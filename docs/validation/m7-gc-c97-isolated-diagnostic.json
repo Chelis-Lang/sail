@@ -25,7 +25,7 @@
   },
   "diagnostic_launch": {
     "command": [
-      "/work/target/debug/deps/faults-736d6f5a1e37420e",
+      "$FAULTS_ELF",
       "--ignored",
       "--exact",
       "gc_and_clear_during_sessions_only_cost_misses",
