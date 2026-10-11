@@ -127,9 +127,22 @@ I/O can consume that budget; a timeout safely falls back to the local solver.
 Concurrent same-key requests share one in-flight lookup and receive the helper's
 validated result without waiting for the initiating caller to resume. A helper
 that finishes late cannot overwrite a published timeout. Optional transport
-initialization also runs inside that bounded helper; a stalled constructor costs
-a miss, while other lookups can skip initialization in progress. `sail status`
-reads cached transport metrics without constructing or retiring an HTTP runtime.
+initialization starts asynchronously when a daemon binds with an HTTP store
+configured. Setup sends no HTTP request and performs no entry or trust validation;
+all serving checks remain on the lookup path. A single owned setup constructor
+shares the existing constructor gate with lookup helpers. Setup never waits for
+it, and an unconfigured local daemon constructs no HTTP client. A stalled or
+newly configured connection can still cost a miss while initialization is in
+progress. `sail status` reads cached transport metrics without constructing or
+retiring an HTTP runtime.
+
+Shutdown marks an unfinished setup owner abandoned before returning; that owner
+cannot publish its completed client afterward. Completed owners are joined; an
+unfinished blocking constructor is not joined on the bounded serving or shutdown
+path. There is at most one setup owner per daemon and no overlapping constructor
+retries. Failed construction retains the existing five-second reload cadence.
+The [whole-session replay investigation](validation/m7-http-session-replay-777.md)
+records the cold first-fetch failure that motivated this change.
 Credential reload still invalidates old backoff and negative-cache state before
 using the new configuration. Missing entries are
 negative-cached for 60 seconds. Authentication errors, throttling, server errors,

@@ -61,3 +61,29 @@ change compiler optimization, without changing the dependency or algorithm.
 The original failed HTTP deadline and fixed authentic/forged CPU control are
 retained in `docs/validation/m7-shared-signature-cpu-diagnosis.md`; they do not
 establish why the entire original wall-time gap occurred.
+
+### Configured transport preparation at daemon bind
+
+The complete `777b86a` solver suite exposed a cold first-fetch miss: the fresh
+reader returned the exact direct solver output but started Z3 despite published
+signed replies and a session-silence certificate. A separate phase diagnostic
+measured helper dispatch at 106.857 ms, transport initialization completion at
+270.456 ms, body completion at 314.578 ms and final validation at 315.341 ms.
+The foreground had timed out at 301.815 ms. HTTP succeeded; no signature, trust,
+identity or authentication rejection was recorded. See the
+[retained failure](../validation/m7-http-session-replay-777.md).
+
+A configured daemon now launches one optional HTTP constructor asynchronously
+at bind, overlapping construction with ordinary solver identity setup. This
+sends no network request, adds no readiness wait and caches no signature or
+trust decision. Local unconfigured daemons create no HTTP client. Each actual
+lookup retains the original 250 ms fallback deadline and all entry validation.
+Configuration installed after bind can still incur a cold miss.
+
+The setup owner shares the lookup constructor gate. It cannot overlap a second
+constructor, and failed construction retains the existing five-second reload
+cadence. Shutdown marks the owner abandoned under the publication lock, so its
+late result cannot be installed. A finished owner is joined; a constructor still
+blocked in a third-party builder may finish after shutdown, but is not joined on
+that bounded path. Only one such setup owner exists per daemon. This improves
+cold-cache availability without promising that every cold lookup succeeds.

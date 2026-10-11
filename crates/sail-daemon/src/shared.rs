@@ -145,6 +145,7 @@ pub(crate) struct SharedTier {
     store: SharedStore,
     root: PathBuf,
     remote: Arc<initialization::State>,
+    setup: Mutex<Option<initialization::Setup>>,
     pending: Mutex<HashMap<String, Pending>>,
     coalesced: AtomicU64,
     config: SharedConfig,
@@ -166,6 +167,7 @@ impl SharedTier {
                 .unwrap_or_else(|| std::path::Path::new("."))
                 .to_path_buf(),
             remote: Arc::new(initialization::State::default()),
+            setup: Mutex::new(None),
             pending: Mutex::new(HashMap::new()),
             coalesced: AtomicU64::new(0),
             config,
@@ -186,6 +188,16 @@ impl SharedTier {
         }));
         tier.root = root.to_path_buf();
         tier
+    }
+
+    /// Move optional client construction into real daemon setup, without waiting.
+    /// The same constructor gate serializes this owner and lookup helpers.
+    pub fn prepare(&self) {
+        if let Ok(mut setup) = self.setup.lock()
+            && setup.is_none()
+        {
+            *setup = self.remote.prepare(&self.root, &self.config);
+        }
     }
 
     pub fn description(&self) -> Option<String> {
