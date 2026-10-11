@@ -1,8 +1,10 @@
 # Prepared observation-only real RPC stage workflow
 
 This is a prepared plan, not an executed reader qualification. The workflow is
-already authorized; it will run after the tested current Linux product is sealed
-and its actual byte and installation identities are verified. The
+already authorized. Exact current product `0f31c1d` passed the complete 564-test
+workspace gate and 39 solver tests; its byte and installation identities were
+verified and the one observation-only workflow has now started. Its setup and
+reader outcome remain pending. The
 [original447 workflow](m7-current-reader-workflow.md) remains a failed Result
 latency gate, with Rust and retained CLI/MCP unattempted. The subsequent
 [offline reconstruction](m7-current-result-components.md) was not captured wire
@@ -13,8 +15,8 @@ controllers and collectors from the prior attempt. Its [static record](m7-rpc-st
 binds those files. The wrapper validates the exact upcoming product source
 commit and byte-verified private installation against the new product byte/installation record; no
 old product identity is substituted. Concrete native argv, product record, archive,
-installation and before/after inventory hashes will be sealed after root supplies
-the product. These records bind reproducible inputs; the original genuine
+installation and initial inventory hashes are sealed in the prepared record;
+postclosure inventory hashes will be retained at terminal. These records bind reproducible inputs; the original genuine
 Current/full/live producer checks determine admission, not an additional approval
 step.
 
@@ -86,3 +88,9 @@ does not erase the original failed447 scope.
 
 See [reader acceptance](../reader-acceptance.md), [freshness](../freshness.md),
 [the repair workflow](../proof-repair.md) and [the roadmap](../ROADMAP.md).
+
+The fresh installation matches source `0f31c1deec1d1cdaf92704f8b5e4b5e9ef1cfba6`
+and archive `79adceae5bee80c4710e832a561f5d3a89bfbf77560d446360b08947d2eacd12`.
+Exact CLI/shim, source/template, runtime, controller and probe identities are in
+the prepared record. The complete graph must still come from this run's genuine
+producer; these initial byte seals alone do not establish Current or latency.
