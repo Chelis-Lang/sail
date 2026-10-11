@@ -136,11 +136,11 @@ retired without removing binaries, runtime files or raw evidence.
 | Workstream | Current evidence | Required next result |
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
-| Combined implementation | [605 workspace tests and the complete local gate pass](../bench/validation/m7-linux-combined-core-gate-c97de63-emulated-2026-10-11.json), including daemon output owners and guarded build-script generations. | The [solver suite fails 40/41](../bench/validation/m7-linux-combined-core-solver-c97de63-failure-2026-10-11.json): final concurrent sessions in the cache-maintenance fixture time out. Correct and validate the concrete cleanup gap; retain the unresolved historical cause. |
+| Combined implementation | The cleanup-fixed [complete gate passes strict Clippy and 606/607 workspace tests](../bench/validation/m7-linux-combined-core-gate-b63af10-failure-2026-10-11.json), failing the unchanged HTTP coalescing deadline. The separate [solver run passes 39/41](../bench/validation/m7-linux-combined-core-solver-b63af10-failure-2026-10-11.json), including cache maintenance; two attribution failures coincide with the read-only filesystem failure. | Correct HTTP transport overhead and run the complete current gate and solver suite after recovery. Earlier full and isolated passes remain separate. |
 | Repair workflow | [Native CI passes the original complete small fixture in 45.847 seconds](../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json), under unchanged 120/30/5-second bounds. Earlier emulated whole-workflow timeouts remain failed. | Run the rebuilt combined product and complete real HumanEval/Vest workflows. The small fixture does not establish real-project performance. |
 | Responsive reads | The last [original full reader census](validation/m7-descriptor-reader-terminal.md) retains 200 valid samples with four concurrent clients: Status p95 120.526 ms passes; complete Result p95 343.142 ms fails. Component controls for bounded output ownership pass. | Both complete p95 values below 200 ms during actual verification, then original retained CLI/MCP scenarios. No reduced graphs or changed client deadlines. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | The unchanged [benchmark launcher](validation/m7-current-benchmark-launcher.md) and [reader launcher](validation/m7-current-reader-controller.md) are prepared. No current whole-loop speedup result is claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
+| Frozen repair performance | The unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) is running in a fresh namespace after the recorded infrastructure/setup failures; warmups are not measured samples. The full [reader workflow](validation/m7-current-reader-controller.md) is also running. No current whole-loop speedup or reader latency result is claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -169,6 +169,14 @@ is reused; [that failed scope](../bench/validation/m7-linux-repair-benchmark-a96
 is retained. A fresh explicitly named benchmark namespace now isolates work,
 caches and socket selection without copying prior proof state. Reader and
 repair diagnostics also use fresh scopes. These runs remain pending acceptance.
+
+The [recovered repair diagnostic](validation/m7-repair-a960-recovered-setup.md)
+still fails its original 120-second workflow budget, later at MCP repair. Both
+missing-selector paths pass. A completed Current negative regression consumes
+the ordinary build-script generation without republishing it; the next
+same-family check recompiles unchanged macro dependencies. The team is
+implementing ordinary-output retention for fully observed negative verification
+without changing successful proof receipts or `TargetResult.complete`.
 
 [Additional closed build cleanup](validation/m7-closed-core-build-retirement.json)
 retires 758 MB of compiler intermediates, preserving and rehashing every
