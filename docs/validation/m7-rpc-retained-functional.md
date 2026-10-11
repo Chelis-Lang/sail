@@ -55,6 +55,11 @@ expectation changed; reconnect, gap/truncation/duplicate checks and all
 120/30/5 deadlines remain unchanged. Any subsequent real run must identify this
 corrected harness revision; the archived original failure remains a failure.
 
+The one [separately labelled corrected follow-up](m7-rpc-retained-corrected.md)
+passed complete functional coverage with the original bounds and normal fresh
+Current admission. It does not replace this original failure or the reader
+latency failure.
+
 The wrapper took 24.974297 s inclusive. Its owned daemon exited normally with
 code 0 in 0.135078 s; cleanup errors were empty. Product/script byte seals and
 the original exported stage-recorder bytes remained unchanged. The earlier
