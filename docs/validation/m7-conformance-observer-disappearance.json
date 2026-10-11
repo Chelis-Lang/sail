@@ -40,7 +40,25 @@
     "observer_starttime_ticks": 3065923,
     "started_unix_ns": 1791686829894033010,
     "first_complete_sample_elapsed_s": 0.020777624999027466,
-    "terminal": "pending",
-    "raw_evidence_role": "separate task-owned supplementary directory; original output unchanged"
+    "terminal": "bounded output cap",
+    "raw_evidence_role": "separate task-owned supplementary directory; original output unchanged",
+    "terminal_record": {
+      "last_event": {
+        "event": "observation-truncated",
+        "acceptance": false
+      },
+      "last_complete_sample_elapsed_s": 6192.931698870001,
+      "observer_process_absent": true,
+      "exit_code": null,
+      "exit_code_observed": false,
+      "jsonl_bytes": 25147769,
+      "jsonl_sha256": "b1fb6c73384eaea3de1b3ed649f62404aac9120547027115df45ca4b48b7c1d2",
+      "raw_files": 7,
+      "raw_bytes_including_separate_snapshots": 25221539,
+      "terminal_sha256": "60c3754668e19a6d03c0354d71ea9803964aa7cfcb8f00ae636eb576612a26ef",
+      "native_and_host_inventory_verified": true,
+      "full_suite_terminal": false,
+      "sampling_or_output_limit_changed": false
+    }
   }
 }
