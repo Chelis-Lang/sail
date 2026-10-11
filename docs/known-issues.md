@@ -677,3 +677,16 @@ failed attempt and isolating work, caches and socket selection. It performs no
 automatic retries or proof-state transfer. Old process birth grants are not
 reused after restart, and no descendant-closure claim is made for the interrupted
 workflows.
+
+### Retained output overlap optimization remains unvalidated
+
+The [source-only result candidate](validation/m7-result-output-overlap-plan.md)
+addresses an output mutex held across independent input freshness. Overlapping
+readers can otherwise take the original full stdout read/hash path despite an
+established continuously guarded owner. The candidate retains the exact charged
+owner, releases output locks during input checks and runs the original final
+barrier on that same owner. Refusal still performs complete hashing and
+independent freshness. Its affected controls and complete-operation measurements
+are pending; it has not been selected in an installed product. The original
+343.142 ms complete Result p95 failure remains failed, and the original Python
+full-graph collector, four readers, 200 samples and strict 200 ms bound remain.

@@ -59,6 +59,7 @@ struct Record {
     freshness_establish_us: Option<u64>,
     status_save_us: Option<u64>,
     frame_hit: Option<bool>,
+    output_guarded: Option<bool>,
     frame_bytes: Option<usize>,
     currentness: Option<sail_api::jobs::Currentness>,
     write_succeeded: bool,
@@ -297,6 +298,14 @@ impl Trace<'_> {
         }
     }
 
+    /// Distinguishes completed same-owner output validation from the original
+    /// full read/hash fallback. Neither observation authorizes Currentness.
+    pub fn output_guarded(&mut self, guarded: bool) {
+        if let Some(record) = &mut self.record {
+            record.output_guarded = Some(guarded);
+        }
+    }
+
     /// Records the successful child-exit observation relative to this daemon's
     /// diagnostic origin. It is not an inferred output or publication time.
     pub fn child_exited(&mut self) {
@@ -370,6 +379,7 @@ mod tests {
             assert!(trace.begin().is_none());
             assert_eq!(trace.measure(Stage::Write, || 7), 7);
             trace.operation(Operation::WorkerPublication);
+            trace.output_guarded(true);
             trace.child_exited();
             assert_eq!(trace.measure(Stage::FreshnessEstablish, || 11), 11);
             assert!(trace.record.is_none());
@@ -415,7 +425,8 @@ mod tests {
         assert!(!row.write_succeeded);
         let value = serde_json::to_value(row).map_err(io::Error::other)?;
         assert_eq!(value["operation"], "worker_publication");
-        assert_eq!(value.as_object().map(serde_json::Map::len), Some(22));
+        assert_eq!(value["output_guarded"], serde_json::Value::Null);
+        assert_eq!(value.as_object().map(serde_json::Map::len), Some(23));
         Ok(())
     }
 
@@ -442,6 +453,7 @@ mod tests {
             freshness_establish_us: Some(u64::MAX),
             status_save_us: Some(u64::MAX),
             frame_hit: Some(false),
+            output_guarded: Some(false),
             frame_bytes: Some(usize::MAX),
             currentness: Some(sail_api::jobs::Currentness::Historical),
             write_succeeded: false,
@@ -450,6 +462,33 @@ mod tests {
         // counters rather than checking only an ordinary one-row example.
         let bytes = serde_json::to_vec(&vec![maximum; LIMIT]).map_err(io::Error::other)?;
         assert!(bytes.len() + 1024 <= 256 * 1024);
+        Ok(())
+    }
+
+    #[test]
+    fn output_guard_observation_preserves_success_fallback_and_unattempted() -> io::Result<()> {
+        let recorder = enabled();
+        for guarded in [None, Some(false), Some(true)] {
+            let mut trace = recorder.start();
+            trace.operation(Operation::Result);
+            if let Some(guarded) = guarded {
+                trace.output_guarded(guarded);
+            }
+            trace.finish(true);
+        }
+        let rows = recorder
+            .inner
+            .as_ref()
+            .ok_or_else(|| io::Error::other("missing recorder"))?
+            .rows
+            .lock()
+            .map_err(|_| io::Error::other("diagnostic lock poisoned"))?;
+        assert_eq!(
+            rows.iter()
+                .map(|row| row.output_guarded)
+                .collect::<Vec<_>>(),
+            [None, Some(false), Some(true)]
+        );
         Ok(())
     }
 
@@ -469,6 +508,7 @@ mod tests {
             let mut trace = recorder.start();
             trace.operation(Operation::Result);
             trace.frame_hit(true);
+            trace.output_guarded(false);
             trace.frame_bytes(4_312_249);
             assert_eq!(trace.measure(Stage::Lookup, || 23), 23);
             trace.finish(true);
@@ -481,10 +521,9 @@ mod tests {
         assert_eq!(rows.capacity(), capacity);
         assert_eq!(rows.front().map(|row| row.sequence), Some(44));
         assert_eq!(rows.back().map(|row| row.sequence), Some(299));
-        assert!(
-            rows.iter()
-                .all(|row| row.frame_hit == Some(true) && row.lookup_us.is_some())
-        );
+        assert!(rows.iter().all(|row| row.frame_hit == Some(true)
+            && row.output_guarded == Some(false)
+            && row.lookup_us.is_some()));
         assert_eq!(owner.overwritten.load(Ordering::Relaxed), 44);
         Ok(())
     }

@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Prepare a retained-output overlap candidate that releases output locks during
+  independent freshness validation, then checks the same continuously guarded
+  owner again. Complete fallback, payloads and quotas remain unchanged. Source
+  validation and selection are pending; no live latency gain is claimed.
+  Optional RPC metadata distinguishes guarded validation from full-hash fallback.
+
 - Extend existing optional diagnostics with managed result, receipt and ordinary
   dependency publication intervals, plus daemon child-exit, document-read,
   freshness-establishment and status-save timings. Fixed metadata bounds and

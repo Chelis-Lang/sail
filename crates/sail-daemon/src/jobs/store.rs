@@ -182,12 +182,14 @@ pub(super) fn result_frame(
             })
         })
     {
+        trace.output_guarded(true);
         trace.currentness(currentness);
         trace.frame_hit(true);
         return Ok(frames.select(currentness));
     }
     // Failed final output coverage discards its prospective input result and
     // repeats the original complete read/SHA and independent freshness below.
+    trace.output_guarded(false);
     let bytes = match trace.measure(Stage::OutputSeal, || project_bytes(state, job)) {
         Ok(bytes) => bytes,
         Err(error) => {
