@@ -385,15 +385,25 @@ mod transport {
     /// # Errors
     /// Returns connect, framing, unsupported-version and whole-transport budget errors.
     pub fn call(cache_socket: &Path, request: &Request) -> io::Result<Response> {
+        let started = Instant::now();
         let scope = match request {
             Request::Lookup { scope } | Request::Prepare { scope } => scope,
         };
         if !scope.valid() {
             return Err(io::Error::other("SAIL0833: unsupported sysroot scope"));
         }
-        let started = Instant::now();
         let socket = socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None)?;
-        socket.connect_timeout(&socket2::SockAddr::unix(socket_path(cache_socket))?, BUDGET)?;
+        let endpoint = socket2::SockAddr::unix(socket_path(cache_socket))?;
+        let remaining = BUDGET
+            .checked_sub(started.elapsed())
+            .filter(|time| !time.is_zero())
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "SAIL0832: optional sysroot budget elapsed",
+                )
+            })?;
+        socket.connect_timeout(&endpoint, remaining)?;
         socket.peer_addr()?;
         let fd: std::os::fd::OwnedFd = socket.into();
         let mut stream = UnixStream::from(fd);
@@ -548,7 +558,7 @@ mod tests {
         use std::sync::atomic::{AtomicU64, Ordering};
         static SERIAL: AtomicU64 = AtomicU64::new(0);
         for late in [false, true] {
-            let cache = std::env::temp_dir().join(format!(
+            let cache = std::path::Path::new("/tmp").join(format!(
                 "sail-sysroot-rpc-{}-{}",
                 std::process::id(),
                 SERIAL.fetch_add(1, Ordering::Relaxed)
@@ -572,6 +582,94 @@ mod tests {
             worker.join().map_err(|_| "owned fixture thread failed")??;
             std::fs::remove_file(endpoint)?;
         }
+        Ok(())
+    }
+    #[cfg(unix)]
+    #[test]
+    fn complete_snapshot_is_exact_but_disconnect_and_partial_trickle_decline() -> TestResult {
+        use std::io::Write as _;
+        use std::os::unix::net::UnixListener;
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SERIAL: AtomicU64 = AtomicU64::new(0);
+        for behavior in [0, 1, 2] {
+            let cache = std::path::Path::new("/tmp").join(format!(
+                "sail-sr-wire-{}-{}",
+                std::process::id(),
+                SERIAL.fetch_add(1, Ordering::Relaxed)
+            ));
+            let endpoint = super::socket_path(&cache);
+            let listener = UnixListener::bind(&endpoint)?;
+            let expected = Box::new(Snapshot {
+                scope: scope(),
+                generation: "8".repeat(64),
+                rows: vec![super::Row {
+                    path: "/sysroot/lib/std.rlib".into(),
+                    canonical: "/sysroot/lib/std.rlib".into(),
+                    device: 1,
+                    inode: 3,
+                    sha256: "1".repeat(64),
+                }],
+            });
+            let returned = expected.clone();
+            let worker = std::thread::spawn(move || -> std::io::Result<()> {
+                let (mut stream, _) = listener.accept()?;
+                stream.set_nonblocking(false)?;
+                stream.set_read_timeout(Some(std::time::Duration::from_secs(2)))?;
+                stream.set_write_timeout(Some(std::time::Duration::from_secs(2)))?;
+                let _: Request = read_frame(&mut stream)?;
+                if behavior == 1 {
+                    return Ok(());
+                }
+                let response = Response::Lookup(Some(returned));
+                if behavior == 0 {
+                    write_frame(&mut stream, &response)?;
+                } else {
+                    let mut bytes = Vec::new();
+                    write_frame(&mut bytes, &response)?;
+                    for chunk in bytes.chunks(20) {
+                        if stream.write_all(chunk).is_err() {
+                            break;
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(25));
+                    }
+                }
+                Ok(())
+            });
+            let result = super::call(&cache, &Request::Lookup { scope: scope() });
+            if behavior == 0 {
+                assert!(matches!(result?, Response::Lookup(Some(actual)) if actual == expected));
+            } else {
+                assert!(result.is_err());
+            }
+            worker.join().map_err(|_| "owned fixture thread failed")??;
+            std::fs::remove_file(endpoint)?;
+        }
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn full_unix_backlog_cannot_wait_or_false_connect_into_reuse() -> TestResult {
+        let cache =
+            std::path::Path::new("/tmp").join(format!("sail-sr-backlog-{}", std::process::id()));
+        let endpoint = super::socket_path(&cache);
+        let listener = socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None)?;
+        let address = socket2::SockAddr::unix(&endpoint)?;
+        listener.bind(&address)?;
+        listener.listen(1)?;
+        let mut filling = Vec::new();
+        for _ in 0..2 {
+            let socket = socket2::Socket::new(socket2::Domain::UNIX, socket2::Type::STREAM, None)?;
+            socket.connect_timeout(&address, std::time::Duration::from_millis(20))?;
+            socket.peer_addr()?;
+            filling.push(socket);
+        }
+        let started = std::time::Instant::now();
+        assert!(super::call(&cache, &Request::Lookup { scope: scope() }).is_err());
+        assert!(started.elapsed() < std::time::Duration::from_millis(250));
+        drop(filling);
+        drop(listener);
+        std::fs::remove_file(endpoint)?;
         Ok(())
     }
 }
