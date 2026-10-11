@@ -1,0 +1,194 @@
+{
+  "source_commit": "46e1da6b1d932f72b78136dabd6747b8009574e9",
+  "source_archive_sha256": "1f8a139b3e8c5cfe83eb6116190f670a68a20b485f65c54eeb5e2d67cd45cb2f",
+  "product": {
+    "sail": {
+      "bytes": 74887568,
+      "sha256": "67b620fbb511cf31ba9ebf215c52429350a79ccaab5f6cc8b97e2c60e545a26d"
+    },
+    "sail-z3": {
+      "bytes": 11000880,
+      "sha256": "167bccac2908ed1a109660b5254ff6da0bc24b227e8424ba8c521620a8840872"
+    }
+  },
+  "command": [
+    "python3",
+    "ci/test-managed.py",
+    "sealed current sail"
+  ],
+  "scope": "Original unchanged small managed-receipt/CLI/MCP fixture only; separate from HumanEval/Vest, source runtime and real-reader qualification",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "original_verification_timeout_seconds": 240,
+  "status": "passed",
+  "exit_code": 0,
+  "elapsed_seconds": 335.793540583,
+  "raw_log_sha256": "0b68593669dba073e5643cbb70d4131e1c524801681e78170a64d82138693027",
+  "evidence_copy_exit_code": 0,
+  "owner_audits": {
+    "sail-m7-handoff-validation": {
+      "actors": [],
+      "unreadable": [],
+      "fixture_exists": false
+    },
+    "sail-m7-acceptance": {
+      "actors": [],
+      "unreadable": [],
+      "fixture_exists": false
+    }
+  },
+  "raw_evidence": {
+    "managed-02.stderr": {
+      "bytes": 72,
+      "sha256": "80a72ab0b6d57f57833fbff08eb4f1c216d4bb98fd0953be701bdd8ef1a25c8e"
+    },
+    "managed-03.stdout.json": {
+      "bytes": 1947848,
+      "sha256": "d085683c0a9e44d4164119d688a1860b98b7d06bd0f67fd368cd5ed23e83062e"
+    },
+    "managed-04.events.setup-254912-0.jsonl": {
+      "bytes": 2120,
+      "sha256": "a2298481930034748b4f5dc583395b410b3b386dc6aec746da11aa8e9df6e9cd"
+    },
+    "managed-03.events.setup-254660-0.jsonl": {
+      "bytes": 2097,
+      "sha256": "43eae0632421578f16bfc47d266623e5f92a62eda9063663b717a52b00b256b0"
+    },
+    "managed-01.events.jsonl": {
+      "bytes": 806,
+      "sha256": "a2e4e74bc472e219e49e5c9b81f2d2b5f723f604b81c77b7e576e236c4921264"
+    },
+    "managed-02.events.setup-253366-0.jsonl": {
+      "bytes": 2069,
+      "sha256": "d522f39034657087b3ba19a55096eca5b54c3f2c7dc672a6b6a0e874b022d847"
+    },
+    "managed-04.stderr": {
+      "bytes": 396,
+      "sha256": "90fd149cc8fcd90c4f08633ff404c6d518d841e539ec8380653679552896b912"
+    },
+    "cli-submit.stdout.json": {
+      "bytes": 281,
+      "sha256": "3a05ad15dee6723f8816ba64f208fe2673e0614dfa200403b072c1e584049604"
+    },
+    "managed-02.events.jsonl": {
+      "bytes": 629,
+      "sha256": "95492f2c278f647164327af5870eed7b07dc3908cfb0ff5ff7f5d003e850abd7"
+    },
+    "managed-03.stderr": {
+      "bytes": 214,
+      "sha256": "98f778625037458959d2b44888bb37a14f36479f9c8d62a6ab32932273c57835"
+    },
+    "managed-04.events.jsonl": {
+      "bytes": 718,
+      "sha256": "785b07740922d42314c09fcd4ed50e25d8255a898b1df7fd85bc4b3cea8263db"
+    },
+    "managed-01.operation.json": {
+      "bytes": 129,
+      "sha256": "ba76b81fca5e3593049af0ef1f65a4423ef6ce87b49494c30ea4acf0556a769d"
+    },
+    "managed-03.events.jsonl": {
+      "bytes": 807,
+      "sha256": "568e2611d2aa5dcf8215ccd770f07f4e93f9fdc5e9581af1fb94c7d91e63e530"
+    },
+    "cli-submit.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "managed-01.stderr": {
+      "bytes": 737,
+      "sha256": "c31f1b8e03dcc60b525e06fc690df43b329bbbe066c2f62075262e4890dea8a4"
+    },
+    "managed-02.stdout.json": {
+      "bytes": 1947849,
+      "sha256": "04b7654266f018da30395f056d81387b520ed6c4cd66ff028454ef93651a337b"
+    },
+    "managed-04.operation.json": {
+      "bytes": 129,
+      "sha256": "6b015d3e8eeb7951aac169b79b6a4c120688725bd8e18a60ed7d1c8c9eb34eca"
+    },
+    "managed-01.events.setup-248567-0.jsonl": {
+      "bytes": 2201,
+      "sha256": "e0a33e2915fb545dfd44b6933cc106b549185dc7ab1236edd8d11518c6b59cb1"
+    },
+    "managed-01.stdout.json": {
+      "bytes": 1947852,
+      "sha256": "c02fba34bcda202e29ee2a7f578c1b1f18cf23806c813cebbe1d7a8993c14d2a"
+    },
+    "cli-submit.operation.json": {
+      "bytes": 99,
+      "sha256": "2f8c4dec4b8eab01b6ca5a6999e9bf360871571944e1c45316680cc49c75f637"
+    },
+    "managed-03.operation.json": {
+      "bytes": 128,
+      "sha256": "4663a0436a7959a13b99158f086df40cbc22a9aff33c6f3a4cf93774511b4e48"
+    },
+    "cli-result.operation.json": {
+      "bytes": 99,
+      "sha256": "501292d47162d3a70c391b58089db700b3e68b868eff654f06deeb6adc204707"
+    },
+    "cli-result.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "managed-02.operation.json": {
+      "bytes": 129,
+      "sha256": "519bfca32ea065f941a6dd7b81db305350133e1f10ba660a4c837586c04ce7e5"
+    },
+    "managed-04.stdout.json": {
+      "bytes": 1980652,
+      "sha256": "f6b1b3bfa51f5efe256df75f6af8c6724ab7504f092758b4441d9aab9be875e2"
+    },
+    "cli-result.stdout.json": {
+      "bytes": 4424226,
+      "sha256": "e8fc75e2f6504b0ddd1653f0a649507222d2f9837794428ffa6aa84bd50c4fe1"
+    }
+  },
+  "exact_host_native_evidence": true,
+  "original_checks_unchanged": true,
+  "operations": [
+    {
+      "operation": "cli-result",
+      "duration_s": 0.24276762499357574,
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "operation": "cli-submit",
+      "duration_s": 0.19152708299952792,
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "operation": "managed-01",
+      "duration_s": 220.37519672599592,
+      "verification_timeout_s": 240,
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "operation": "managed-02",
+      "duration_s": 12.867265504995885,
+      "verification_timeout_s": 240,
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "operation": "managed-03",
+      "duration_s": 21.19169571800012,
+      "verification_timeout_s": 240,
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "operation": "managed-04",
+      "duration_s": 19.3474317999935,
+      "verification_timeout_s": 240,
+      "returncode": 101,
+      "timed_out": false
+    }
+  ],
+  "raw_archive": {
+    "bytes": 456344,
+    "sha256": "ab66d4799ca9ca4ec67cc881bf2c002b8b58e66732dd24498b44b3d5e221957a",
+    "every_file_verified": true
+  }
+}

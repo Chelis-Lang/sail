@@ -175,8 +175,9 @@ binding optimization now passes the [complete Linux validation](validation/m7-na
 unchanged hardlink regression also detects an unsafe guard-removal variant.
 The [new sealed release](validation/m7-binding-product/installed-product.json)
 builds in 108.350 seconds; the stalled first build remains separately recorded.
-One unchanged live-reader workflow and the original managed fixture are now
-running against exact owned copies. The latest pushed
+One unchanged live-reader workflow is running against its exact owned copy.
+The separate original managed fixture passes in 335.794 seconds, with cold
+verification at 220.375 seconds under the unchanged 240-second bound. The latest pushed
 [native CI revision](../bench/validation/m7-linux-ci-dd33daf-native-2026-10-11.json)
 passes every check in 476 seconds. The separate
 [retained CLI/MCP workflow](validation/m7-rpc-retained-functional.md)
@@ -191,7 +192,7 @@ buffers do not improve complete-client p95; no buffer change is selected.
 
 | Workstream | Current evidence | Remaining product gate |
 |---|---|---|
-| Managed verification | The sealed current product passes the [original managed workflow](validation/m7-managed-current-product.md): cold proof, unchanged complete receipt reuse, missing-receipt recovery, restored-mtime failing edit, and CLI/MCP jobs. Cold verification takes 159.088 s under its original 240 s bound. | Real HumanEval/Vest integration and repair performance; the small receipt fixture does not establish either. |
+| Managed verification | The sealed current product passes the [original managed workflow](validation/m7-managed-current-product.md): cold proof, unchanged complete receipt reuse, missing-receipt recovery, restored-mtime failing edit, and CLI/MCP jobs. The new descriptor-bound product passes again: cold verification takes 220.375 s under its original 240 s bound. | Real HumanEval/Vest integration and repair performance; the small receipt fixture does not establish either. |
 | Preparation across source edits | The late-handoff candidate passes [complete source tests](validation/m7-late-import-handoff-source-controls.md), strict checks and fresh vstd. Its original qualification fails because parallel workers have no diagnostic source map. The [preparation-only namespace correction](../engine/verus/candidates/preparation-namespace/README.md) passes 129 source tests, both strict compiler checks and an ordinary build with fresh vstd; compiler-thread borrowing preserves stock reporter routing and parallelism. | The unchanged thirteen-stage pipeline (fourteen frozen scripts), including previous-revision focused reuse within 600 s; its ninth stage currently fails with zero hits. All candidates remain unselected. |
 | Responsive reads | The current product passes all 89 daemon controls, the full 564-test workspace gate and 39 solver controls. The [original live census](validation/m7-current-reader-workflow.md) fails full Result p95 at 394.713 ms; Status passes. The [stage diagnostic](validation/m7-rpc-stage-workflow.md) also fails complete Result p95 at 403.341 ms; the exact freshness optimization passes 566 workspace and 39 solver controls, but its real reader census remains pending. | Four concurrent readers, 200 samples, both p95 values below 200 ms during active verification; then retained real-project CLI/MCP within their original bounds. |
 | Default and shared caching | The latest complete local gate and native CI pass; native CI completes in 476 s. The previous [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) has 158 Same and one stock Verismo timeout at the original 3,600 s bound. Its cause remains unknown. | Complete current-product standard conformance and cache fill/warm rounds. The failed standard scope remains failed. |
