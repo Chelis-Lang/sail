@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "status": "PASS: separately frozen context-only diagnostic",
+  "execution": "Linux x86_64 Docker Desktop emulation on macOS; concurrent independent root/source work, no causal load inference",
+  "source_commit": "1e8b633572cb680aa27fcebd7dc526ee09278f99",
+  "scope": "separately frozen actual-pinned-sysroot context diagnostic, not acceptance",
+  "control_binary": {
+    "bytes": 31988472,
+    "sha256": "baaa143857ee49197dc08bac0cdc20c54f90c49fc28d0c3fc7f7da52ca6500fc"
+  },
+  "product_before": {
+    "sail": {
+      "bytes": 74534768,
+      "sha256": "55e05b6c92e957c4f4bffaffcc38a4143e4e23a47a18ecfa55c4fa536bf15239"
+    },
+    "sail-z3": {
+      "bytes": 10997176,
+      "sha256": "4fda4ec1b21eb49c6e77dcdacd566576a91f48f8e7a8ebde7726cd087f8e1bf5"
+    }
+  },
+  "product_after": {
+    "sail": {
+      "bytes": 74534768,
+      "sha256": "55e05b6c92e957c4f4bffaffcc38a4143e4e23a47a18ecfa55c4fa536bf15239"
+    },
+    "sail-z3": {
+      "bytes": 10997176,
+      "sha256": "4fda4ec1b21eb49c6e77dcdacd566576a91f48f8e7a8ebde7726cd087f8e1bf5"
+    }
+  },
+  "source_archive": {
+    "bytes": 14274560,
+    "sha256": "86079bc82502b8f1f035b440a2e66f85ea6d81e99a997ec4071b38071c8c01cb"
+  },
+  "diagnostic_patch": {
+    "bytes": 12155,
+    "sha256": "98e8c2f6c48e7756254aefb5bb115178c0ff02a3e688439d6cb60fefeaa9122b"
+  },
+  "controller": {
+    "bytes": 5751,
+    "sha256": "ba9e76b8bc3534df3f288f7b7d3bc183aa6a5cd6c292480ecb5552e2f7963da1"
+  },
+  "runtime": {
+    "cargo-verus": {
+      "bytes": 2756256,
+      "sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+    },
+    "verus": {
+      "bytes": 4708720,
+      "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+    },
+    "rust_verify": {
+      "bytes": 25300048,
+      "sha256": "b8c11e7b626cc85d8a46b90036f0adfec443b7cde1c69d8b182175b92c708af7"
+    },
+    "z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "rustup_toolchain": "1.98.1",
+  "first": {
+    "barrier_refusal": null,
+    "captured_before_local_hashes": 0,
+    "complete_local_barrier": true,
+    "imported": false,
+    "inventory_files": 327,
+    "lookup": "lookup-none",
+    "natural_prepare": "prepare:true"
+  },
+  "second": {
+    "barrier_refusal": null,
+    "captured_before_local_hashes": 327,
+    "complete_local_barrier": true,
+    "imported": true,
+    "inventory_files": 327,
+    "lookup": "lookup-snapshot:327",
+    "natural_prepare": null
+  },
+  "actual_sysroot_roots": {
+    "count": 1,
+    "encoding": "actual discovered ordered native paths retained only in private raw evidence"
+  },
+  "diagnostic_sorted_scope_json_sha256": "23cda8987140ff9c24e5651a133a5c5de74fefe2157e045eade7094e43ab5845",
+  "snapshot_sha256": "f17f34d028e24cd5d71fae46552fa5b020e9be48e1b8dca17d0643ff9906de67",
+  "readiness_elapsed_s": 13.965217964,
+  "construction_cap_s": 120,
+  "whole_rpc_budget_ms": 100,
+  "first_guard_after": true,
+  "second_guard_after": true,
+  "exact_context_keys_equal": true,
+  "complete_ordered_runtime_identity_bytes_equal": true,
+  "operations": [
+    {
+      "context_sha256": "9ef445aec98a753c979d81fcdd21b7a969680280a3e2e160070c4e37b4168269",
+      "elapsed_s": 52.261671066,
+      "error": null
+    },
+    {
+      "context_sha256": "9ef445aec98a753c979d81fcdd21b7a969680280a3e2e160070c4e37b4168269",
+      "elapsed_s": 16.380127841,
+      "error": null
+    }
+  ],
+  "phase_observations": [
+    {
+      "invocation": 1,
+      "records": [
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-binaries",
+          "pid": 520818,
+          "started_ms": 0.068167,
+          "elapsed_ms": 3295.147126
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "helper-identity",
+          "pid": 520818,
+          "started_ms": 3300.845585,
+          "elapsed_ms": 1318.2550840000001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "toolchain-probes",
+          "pid": 520818,
+          "started_ms": 4619.159961,
+          "elapsed_ms": 6389.342586
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-guard",
+          "pid": 520818,
+          "started_ms": 11008.587047,
+          "elapsed_ms": 22114.101885
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-handoff",
+          "pid": 520818,
+          "started_ms": 33122.802057,
+          "elapsed_ms": 105.843084
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-hash",
+          "pid": 520818,
+          "started_ms": 33228.691806999996,
+          "elapsed_ms": 18908.547259
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-barrier",
+          "pid": 520818,
+          "started_ms": 52137.475483,
+          "elapsed_ms": 34.650458
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-fill-hint",
+          "pid": 520818,
+          "started_ms": 52173.062274,
+          "elapsed_ms": 32.029375
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "context-configuration",
+          "pid": 520818,
+          "started_ms": 52205.198566,
+          "elapsed_ms": 53.866917
+        }
+      ],
+      "raw": {
+        "bytes": 1096,
+        "sha256": "af30c810697d58611e049157427fc05eda301e7f7c7705d22f905696ecef444f"
+      }
+    },
+    {
+      "invocation": 2,
+      "records": [
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-binaries",
+          "pid": 520818,
+          "started_ms": 0.00725,
+          "elapsed_ms": 1304.5697089999999
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "helper-identity",
+          "pid": 520818,
+          "started_ms": 1304.6637919999998,
+          "elapsed_ms": 597.5058760000001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "toolchain-probes",
+          "pid": 520818,
+          "started_ms": 1902.254626,
+          "elapsed_ms": 3647.2556680000002
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-guard",
+          "pid": 520818,
+          "started_ms": 5549.599669,
+          "elapsed_ms": 10740.025172
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-handoff",
+          "pid": 520818,
+          "started_ms": 16289.709633,
+          "elapsed_ms": 62.56616700000001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-hash",
+          "pid": 520818,
+          "started_ms": 16352.323049999999,
+          "elapsed_ms": 1.929416
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-barrier",
+          "pid": 520818,
+          "started_ms": 16354.273591,
+          "elapsed_ms": 12.476167
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "context-configuration",
+          "pid": 520818,
+          "started_ms": 16366.844050000002,
+          "elapsed_ms": 12.863332999999999
+        }
+      ],
+      "raw": {
+        "bytes": 1011,
+        "sha256": "cef3a48db6e15836dfa8aabe4638aefd26f51d8dd2f1ad40d133e5c69d9219bc"
+      }
+    }
+  ],
+  "lifecycle": {
+    "test_returncode": 0,
+    "daemon_pid": 520793,
+    "test_pid": 520818,
+    "test_cleanup": {
+      "pid": 520818,
+      "initial_returncode": 0,
+      "forced": false,
+      "returncode": 0
+    },
+    "daemon_cleanup": {
+      "pid": 520793,
+      "initial_returncode": null,
+      "forced": false,
+      "returncode": 0
+    },
+    "elapsed_s": 83.50071262100391,
+    "products_unchanged": true
+  },
+  "raw_files": {
+    "cache/daemon.log": {
+      "bytes": 382,
+      "sha256": "54e02a5a5d0212effd6a41674684d5f29b033f964f5e2bc9ca916b4fe4d67a07"
+    },
+    "cache/runtime-identities/0de5572add12a1f322143294e5645613d9dffa7ee39368c413c5aa0d84e4c401.json": {
+      "bytes": 75327,
+      "sha256": "0de5572add12a1f322143294e5645613d9dffa7ee39368c413c5aa0d84e4c401"
+    },
+    "cache/runtime-identities/9ef445aec98a753c979d81fcdd21b7a969680280a3e2e160070c4e37b4168269.link": {
+      "bytes": 66,
+      "sha256": "30563aa37e0c13fd6d38480e649922c4d4ad28737afe2983e21f7da1b73ff870"
+    },
+    "daemon.stderr": {
+      "bytes": 179,
+      "sha256": "56152d520048df7756e7b526dcbe72ffbc2eed9f8019ab84df0e9f5500f6353d"
+    },
+    "daemon.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "freeze.json": {
+      "bytes": 1415,
+      "sha256": "a498e43e15b9d956cde396bdb4e019421aee07924dfb5721ada0f049cb9caa3a"
+    },
+    "observations/first.identities.json": {
+      "bytes": 75327,
+      "sha256": "0de5572add12a1f322143294e5645613d9dffa7ee39368c413c5aa0d84e4c401"
+    },
+    "observations/first.link.json": {
+      "bytes": 66,
+      "sha256": "30563aa37e0c13fd6d38480e649922c4d4ad28737afe2983e21f7da1b73ff870"
+    },
+    "observations/first.observation.json": {
+      "bytes": 755,
+      "sha256": "83b04ba80b9f4fb14be55b4d9f1cac649be2cbd7a82b749944b92540cca9a0e3"
+    },
+    "observations/first.operation.json": {
+      "bytes": 123,
+      "sha256": "1f7c21e74bb8ea4c9e73350b50a659cdb1ad2ed93431d3e4e3694aa3f8acb9f4"
+    },
+    "observations/published.snapshot.json": {
+      "bytes": 129678,
+      "sha256": "f17f34d028e24cd5d71fae46552fa5b020e9be48e1b8dca17d0643ff9906de67"
+    },
+    "observations/readiness.json": {
+      "bytes": 4093,
+      "sha256": "47f9c87ffdba51656ed9927844d2d0ce4b017cb7f3aa0228a8f683bbf6c4be12"
+    },
+    "observations/second.identities.json": {
+      "bytes": 75327,
+      "sha256": "0de5572add12a1f322143294e5645613d9dffa7ee39368c413c5aa0d84e4c401"
+    },
+    "observations/second.link.json": {
+      "bytes": 66,
+      "sha256": "30563aa37e0c13fd6d38480e649922c4d4ad28737afe2983e21f7da1b73ff870"
+    },
+    "observations/second.observation.json": {
+      "bytes": 754,
+      "sha256": "5feef03ea37c32228089adcee8f8bd59b01478b332cabe4ea9f404f1ce6cc945"
+    },
+    "observations/second.operation.json": {
+      "bytes": 123,
+      "sha256": "1afab3c2c6e72e4462795cd23a3a8dc227446a554c877a8f8b844f9ce25eec1a"
+    },
+    "observations/summary.json": {
+      "bytes": 2030,
+      "sha256": "790a900a2786837083f1a9869de1c4f50d1dd3feb83bd4e0d126a7afa8b5172f"
+    },
+    "setup.events.setup-520818-0.jsonl": {
+      "bytes": 1096,
+      "sha256": "af30c810697d58611e049157427fc05eda301e7f7c7705d22f905696ecef444f"
+    },
+    "setup.events.setup-520818-1.jsonl": {
+      "bytes": 1011,
+      "sha256": "cef3a48db6e15836dfa8aabe4638aefd26f51d8dd2f1ad40d133e5c69d9219bc"
+    },
+    "terminal.json": {
+      "bytes": 745,
+      "sha256": "1266c663b6453e115578bb4fcaeeeb0d891fdac37b5a833466439f3f733ba777"
+    },
+    "test.stderr": {
+      "bytes": 279,
+      "sha256": "98e37103744c20894ebae0b89c20caf63a2024b0a2014bc8595722f9790f9adf"
+    },
+    "test.stdout": {
+      "bytes": 199,
+      "sha256": "8a6aed778c86f0253c54eb3705e5efc3414927ed12dcb5fc1f0c1be88a8d93de"
+    },
+    "workspace/Cargo.toml": {
+      "bytes": 61,
+      "sha256": "362c6ddae0ec1df47392e4e6cb74ead5a0cf97f5635ac15c03382cb36dc2359a"
+    },
+    "workspace/src/lib.rs": {
+      "bytes": 56,
+      "sha256": "7d7289c977d049fafe7b0f4cad6777d8fe04fe8d8a4b87153a9efeadc4878be2"
+    }
+  },
+  "build": {
+    "corrected_no_run": "PASS",
+    "initial_no_run": "FAIL: diagnostic typo Response::Prepare instead of Prepared; corrected before execution",
+    "first_failed_jsonl": {
+      "bytes": 56608,
+      "sha256": "7cd172e342a5940bf920f28b77b8aa0f9d939c3860bf4431ecd02af2dd502beb"
+    },
+    "first_failed_stderr": {
+      "bytes": 249,
+      "sha256": "bc5670574fe69cdf453bab5c1f597cc1bb938d15d6b73ea9515e86982e0a24b6"
+    },
+    "corrected_jsonl": {
+      "bytes": 53743,
+      "sha256": "3e6479aed3ba7cdfd60a9cb89a861eebc6e45dbfd90b0285097259827a8fce05"
+    },
+    "corrected_stderr": {
+      "bytes": 164,
+      "sha256": "0daefcd37d39b4266fb167f14c85f4cd04c9e62754790498e252ecd0e5f490f0"
+    }
+  },
+  "not_qualified": [
+    "Cargo/proof execution",
+    "verified or Current report",
+    "managed cold/warm acceptance",
+    "reader latency",
+    "M7 speedup",
+    "selected source-engine qualification"
+  ],
+  "unchanged_failures": "Original cold/warm failures and red full gates remain separate; no repeat, prewarm, manual Prepare or caller hash submission"
+}
