@@ -137,3 +137,10 @@ collectors and complete owned lifecycle.
 ## Current complete reader attempt
 
 The [current-product run](validation/m7-current-reader-workflow.md) completed genuine Current full preparation in independent baseline and active workspaces, then passed all four original bounded setup checks. The first collector completed all 200 RPC samples through four readers while the same selected-crate verifier remained live. Status p95 was 148.430 ms; complete Result p95 was 394.713 ms, exceeding the unchanged 200 ms requirement. Each Result carried a 4,312,245-byte complete report. The controller stopped there, leaving the Rust census and retained CLI/MCP integration unattempted. This is a retained failure, not reader acceptance. Preparation costs, samples, worker continuity and post-run seals accompany the record.
+
+The [current-product observation-only stage run](validation/m7-rpc-stage-workflow.md)
+retains another complete Current baseline and active proof, then a failed
+original Python Result p95 (403.341 ms; Status 147.290 ms). All 200 admission and
+per-call verifier checks passed; Rust and retained integration were unattempted.
+Its bounded server tail attributes only 43 completed pairs after cleanup
+polling. It is diagnostic evidence, not reader acceptance or source qualification.

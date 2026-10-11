@@ -94,3 +94,12 @@ attribution; it does not claim a remedy. The original four readers, 200 samples,
 strict p95 below 200 ms and five-second RPC bounds remain required. See
 [reader acceptance](reader-acceptance.md), [freshness](freshness.md) and
 [the roadmap](ROADMAP.md).
+
+The [one real current-product observation workflow](validation/m7-rpc-stage-workflow.md)
+completed genuine Current setup but failed original Python Result p95 at
+403.341 ms; Status p95 passed at 147.290 ms. All 200 original admission and
+per-call actual verifier checks passed. Shutdown exported only the latest
+43 completed Result/Status pairs after cleanup polling displaced earlier rows.
+Those complete Result frames were preencoded hits; their write and freshness
+intervals are material, with no demonstrated serialization remedy. Rust and
+retained integration were unattempted in that fail-fast workflow.

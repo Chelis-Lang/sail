@@ -1,6 +1,6 @@
 {
   "kind": "prepared-observation-only-real-rpc-workflow",
-  "state": "single observation-only workflow launched; genuine setup/admission and reader outcome pending",
+  "state": "single workflow terminal FAIL: completeCurrent setup passed, originalPython Resultp95 failed; Rust and retained integration unattempted in this workflow",
   "files": {
     "docs/validation/m7-rpc-stage-workflow.py": {
       "bytes": 14180,
