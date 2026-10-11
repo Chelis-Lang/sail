@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Retain the first failed proof-time barrier and existing namespace reason in
+  managed coverage notes. Preserve original Unknown proof notes when reading a
+  job instead of attributing that uncertainty to a later projection failure.
+
 - Provide fresh service-owned Linux product installation with exact byte grants,
   private executable modes and no existing-destination replacement. Record
   ownership/capability setup prerequisites in the reader controller; keep complete

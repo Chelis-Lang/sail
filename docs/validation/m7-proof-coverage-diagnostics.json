@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "scope": "bounded proof-time failure attribution and projection-note correction; no proof or performance acceptance",
+  "source_base": "08ac830e6c260464cf2a4a2859e2d6ab17075929",
+  "platform": "Linux x86-64 container under Docker Desktop emulation on macOS arm64",
+  "source_files": {
+    "crates/sail-verus/src/managed/coherent.rs": {
+      "bytes": 7482,
+      "sha256": "e8495abedfa0ccfcbabed83412e20a1dc125d7f48f0122a97f2bc1b4f79e5c72"
+    },
+    "crates/sail-verus/src/managed/runner.rs": {
+      "bytes": 78200,
+      "sha256": "ae374c739e8ecc0fa4516361ae21dac447e31edbc45b1327fe1b265e650402b4"
+    },
+    "crates/sail-daemon/src/jobs/store.rs": {
+      "bytes": 19489,
+      "sha256": "ac5845d78bd6e7426fc0e1b3215390d3d24f60599082c49fa5ae7e7dcf64d974"
+    },
+    "Cargo.lock": {
+      "bytes": 53548,
+      "sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 330,
+      "sha256": "47b4a003491604fd1871e4469863e09766ed08a78dbd4d47ed0182a60e027d47"
+    }
+  },
+  "changes": {
+    "original_outer_reason_preserved": true,
+    "validation_order_and_short_circuit_preserved": true,
+    "additional_authority_io": false,
+    "currentness_and_receipt_schema_changes": false,
+    "existing_first_failure_reason_only": true,
+    "first_failed_barrier_internal_enum": true,
+    "warning_only_for_original_current_to_unknown": true
+  },
+  "controls": [
+    {
+      "name": "coherent guard",
+      "passed": 2,
+      "failed": 0,
+      "original_negative_cases": "preexisting writable mapping and restored writes; Current remains rejected"
+    },
+    {
+      "name": "precise namespace",
+      "passed": 9,
+      "failed": 0,
+      "original_controls_unchanged": true
+    },
+    {
+      "name": "read leases",
+      "passed": 13,
+      "failed": 0,
+      "original_controls_unchanged": true
+    },
+    {
+      "name": "currentness note regression",
+      "passed": 3,
+      "failed": 0,
+      "scope": "original Unknown evidence/notes preserved, Current-to-Unknown warning, Current/Historical no uncertainty note"
+    },
+    {
+      "name": "daemon jobs integration",
+      "passed": 6,
+      "failed": 0,
+      "original_controls_unchanged": true
+    }
+  ],
+  "unique_controls_passed": 33,
+  "linux_strict": {
+    "command": "cargo clippy -p sail-verus -p sail-daemon --all-targets -- -D warnings",
+    "exit_code": 0,
+    "elapsed_s": 254.75810070000443
+  },
+  "non_linux_portability": {
+    "scope": "actual coherent.rs module with minimal InputSnapshot fixture, macOS non-Linux branch, not full crate or proof validation",
+    "command": "cargo clippy --manifest-path <private-control>/Cargo.toml -- -D clippy::all -D clippy::pedantic",
+    "exit_code": 0,
+    "elapsed_s": 0.54
+  },
+  "final_source_followup": "Added cfg(non-Linux) receiver use matching original ready; compiled out on Linux. Re-ran both coherent controls on final source: 2/2 passed, 9.93s build, 2.97s tests.",
+  "private_target": true,
+  "shared_cargo_target_used": false,
+  "active_proof_inputs_changed": false,
+  "raw_inventory": {
+    "logs": {
+      "coherent.log": {
+        "bytes": 2547,
+        "sha256": "1bf91333a4a55e65d22944b8f4802156d14349d1383be92899c3b455bf5076cd"
+      },
+      "coherent-final.log": {
+        "bytes": 611,
+        "sha256": "91940226ae19436be3c722879695ee469d36be495596f6e7e572852e04afac4f"
+      },
+      "precise.log": {
+        "bytes": 1260,
+        "sha256": "43fb98a141014bc15d14662d9ab0484889fa068da56e29d9969dd9eb97cebc7b"
+      },
+      "lease.log": {
+        "bytes": 1607,
+        "sha256": "53cb618901213d933da43f005db038585dc264c900c8cff113402483a75ec4f8"
+      },
+      "currentness-notes.log": {
+        "bytes": 3865,
+        "sha256": "9ff1de58b8773553e073f614754209df66ec5833ddf01012b672380bde94b2c8"
+      },
+      "jobs.log": {
+        "bytes": 855,
+        "sha256": "de7f87792649eeb4460f1a4db6c7ad9f477cdf6ba37dcad6eac81ee72e7bb1e5"
+      },
+      "clippy.log": {
+        "bytes": 4260,
+        "sha256": "ccaa1783c31028051747e9163cdc8b5b7b782cd375b15027c0e0ea33a8795a9c"
+      },
+      "checks.json": {
+        "bytes": 449,
+        "sha256": "4519164c2bf762160d7337dea6f3941130541f9a0030e490a2b0881298ff947f"
+      }
+    },
+    "test_binaries": {
+      "sail_verus-c32ebc643cb67536": {
+        "bytes": 31803904,
+        "sha256": "f98c3802fb877174ac98e84c5e604152465761421b655b6cca1b9c017497b3f3"
+      },
+      "sail_daemon-7120b36803901174": {
+        "bytes": 46518912,
+        "sha256": "cd1e8f8e58fb5d91612ee60aaff99b3e3b9823525e8df4e8a401a7529803a7f9"
+      },
+      "jobs-047096cb46b53167": {
+        "bytes": 39629120,
+        "sha256": "b4de64685686dfc1d9f79a4a741696c4a20dddd8d57a0f7acd81f3d63b0528a7"
+      }
+    }
+  },
+  "stage_timings": [
+    {
+      "stage": "precise",
+      "exit_code": 0,
+      "elapsed_s": 7.845872337005858
+    },
+    {
+      "stage": "lease",
+      "exit_code": 0,
+      "elapsed_s": 23.54567651099933
+    },
+    {
+      "stage": "currentness-notes",
+      "exit_code": 0,
+      "elapsed_s": 383.6619920930025
+    },
+    {
+      "stage": "jobs",
+      "exit_code": 0,
+      "elapsed_s": 30.143436848004058
+    },
+    {
+      "stage": "clippy",
+      "exit_code": 0,
+      "elapsed_s": 254.75810070000443
+    }
+  ],
+  "limitations": [
+    "No affected path/event mask or actor is recorded. Labels identify the first failed check, not the event time or cause.",
+    "Existing helper/sweep detailed timing is test-only; sysroot namespace failure remains separately collapsed.",
+    "Historical HE Unknown reports are not recertified or explained by this code change.",
+    "Full workspace/solver/conformance and real reader acceptance are outside these targeted checks.",
+    "At these checks, the original full159 standard run was independent and active on its frozen e0/012 runtime at157 completed units; no result is stitched."
+  ]
+}

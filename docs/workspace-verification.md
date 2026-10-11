@@ -76,6 +76,17 @@ its own context. Incomplete input observation never claims that historical
 proof evidence establishes a current workspace. Exit code and proof outcome
 remain distinct from whether a job's execution finished.
 
+For an Unknown Linux proof, `SAIL3114` coverage notes retain the first failed
+barrier (`input-barrier` or `post-verification`). A
+`native-observation-invalidated` note also retains the existing namespace detail,
+such as `namespace-tracked-input-event` or
+`namespace-event-drain-budget-exhausted`. These labels distinguish observed
+input events from unavailable coverage; they do not identify a particular file
+or explain an event's cause. Job reads preserve the original proof notes. A
+separate current-input-validation warning appears when a previously Current
+report becomes Unknown during projection. See
+[the diagnostic boundary](validation/m7-proof-coverage-diagnostics.md).
+
 ## Jobs that survive the client session
 
 ```sh
