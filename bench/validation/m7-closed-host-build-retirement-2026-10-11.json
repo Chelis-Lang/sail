@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "kind": "closed host compiler cache retirement",
+  "roots": [
+    ".claude/worktrees/m7-sysroot-failure-control/target/debug",
+    ".claude/worktrees/m7-sysroot-failure-control/target/rpc-diagnostics/debug"
+  ],
+  "files": 15657,
+  "allocated_bytes_retired": 2519924736,
+  "preserved_compiled_images": 4230,
+  "preserved_compiled_bytes": 444082088,
+  "archive": {
+    "bytes": 97826765,
+    "sha256": "f53a180aedc8407f3ba47f961dd0e8d85220d220673a8edfd800ec0550b0fdd6"
+  },
+  "inventory_sha256": "3345e333270ccafd3ae2ccb44253704fd35ac1d3195a014bbbee6cae519f59f9",
+  "checks": {
+    "owner_confirmed_no_compiler": true,
+    "native_container_fd_holders": 0,
+    "native_container_unreadable_processes": 0,
+    "host_holders": "Virtualization VM file-sharing handles only; no host compiler uses these paths",
+    "source_inventory_verified_twice": true,
+    "every_compiled_image_archive_rehashed": true
+  },
+  "verification_implementation": "Sequential archive stream; earlier repeated gzip seeks were interrupted before deletion, exit130; all original cache directories remained intact",
+  "excluded": "All raw/source evidence outside these debug directories, native private/common targets and sealed runtimes preserved",
+  "backing_space_reclaimed_not_assumed": true,
+  "closure_elapsed_seconds": 9.451136459
+}
