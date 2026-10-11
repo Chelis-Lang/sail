@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "source_commit": "d20d034087cb9c6c74a66161b76daa512d95221a",
+  "source_archive_sha256": "3040f96230dee9938fb784f374137c138e233b4486f521aebb6b7335e46bcd98",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Independent original pinned-solver suite following complete corrected transport workspace gate; all controls executed, no selected source-engine or real-project performance qualification",
+  "command": "bash ci/run.sh solver",
+  "exit_code": 0,
+  "inclusive_elapsed_seconds": 123.08644637500004,
+  "nextest_elapsed_seconds": 118.947,
+  "tests": {
+    "run": 39,
+    "passed": 39,
+    "failed": 0,
+    "skipped": 528
+  },
+  "original_controls": "Whole-session signed HTTP replay without solver start, daemon/solver death, truncation and corruption, concurrent clients, attribution, seed experiments and real isolated restored-bind-mount fault all pass",
+  "raw_log": {
+    "bytes": 4471,
+    "sha256": "d7020f2086cd3209cffbba74321952a3b0092a0bf95de2fa0c85bdfa2087e5b9"
+  },
+  "qualification": {
+    "independent_solver_suite_pass": true,
+    "m7_accepted": false,
+    "real_readers_retained_cli_mcp_source_original14_and_repair_speed": "pending"
+  }
+}
