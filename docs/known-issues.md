@@ -360,3 +360,7 @@ not establish the old failure's cause. See the
 original solver suite passed 39/39, and the earlier `4472279` timeout is retained.
 
 The later [complete local workspace gate](../bench/validation/m7-linux-core-gate-ec9b682-emulated-2026-10-11.json) passes 543/543 and every remaining step with the same production contracts; the immediately following [39/39 solver suite](../bench/validation/m7-linux-core-solver-ec9b682-emulated-2026-10-11.json) also passes. It does not establish the cause of either earlier failure or qualify source reuse, readers or repair performance.
+
+## Current real-project full-result read latency
+
+The [original current-product reader run](validation/m7-current-reader-workflow.md) establishes genuine complete Current full proofs and admits all 200 Python RPC samples while the same selected verifier remains active. Status p95 is 148.430 ms; full Result p95 is 394.713 ms, failing the unchanged 200 ms requirement. Each Result contains 4,312,245 bytes. Python receives and parses the complete fresh frame and does not use the Rust decoded-result cache. Server frames are already cached, but every read still validates persisted output and current inputs. Transfer, validation and parsing costs are not separated by this run; no cause is inferred. Rust and retained CLI/MCP were not attempted after the original failfast failure. All failed scopes, raw samples and post-run seals remain retained.
