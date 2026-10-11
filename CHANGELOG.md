@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Coordinate the sysroot handoff test fixture's first preparation hint with
+  maintenance startup. Keep production busy refusal, original handoff checks
+  and deadlines; release and join fixture workers on assertion unwind.
+
 - Stop fault-fixture maintenance when a concurrent session assertion unwinds,
   so cleanup cannot hide the original failure behind a scoped thread join.
   Retain the original solver checks and deadlines, with direct phase diagnostics.

@@ -349,3 +349,12 @@ full result, two actual invocations and no reuse. All 1,871 vstd and 331 HumanEv
 full obligations verify; the focus remains provisional. No sysroot loss is
 reproduced, so the original D20 failure's cause remains unestablished. No live
 reader or retained integration test follows from this diagnostic.
+
+The frozen `37e5342` full workspace run failed the independent sysroot handoff
+fixture's single preparation assertion (540/541 passed), with the actual refusal
+reason uncaptured. A test-only startup gate now preserves that assertion while
+coordinating maintenance's first state-lock acquisition. Controlled contention
+shows production preparation and lookup safely decline busy state; this does
+not establish the old failure's cause. See the
+[fixture control scope](validation/m7-sysroot-fixture-startup.md). The separate
+original solver suite passed 39/39, and the earlier `4472279` timeout is retained.
