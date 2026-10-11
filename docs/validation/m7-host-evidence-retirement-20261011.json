@@ -1,0 +1,74 @@
+{
+  "scope": "only two expressly authorized closed host evidence trees",
+  "records": [
+    {
+      "scope": "target/namespace-drain",
+      "archive": "target/evidence-retirement-20261011/namespace-drain.tar.gz",
+      "sha256": "e708a2de252e1a1d87eba4d3b86867589243fc7f178c57622e10e97a14141d04",
+      "archive_bytes": 63226541,
+      "entries": 167,
+      "regular_files": 160,
+      "symlinks": 0,
+      "unique_source_allocated_bytes": 200339456,
+      "source_unchanged": true,
+      "all_archive_members_verified": true,
+      "deleted": true,
+      "uncompressed_allocated_bytes_removed": 200339456,
+      "archive_verified_immediately_before_deletion": true
+    },
+    {
+      "scope": "target/result-cache-margin",
+      "archive": "target/evidence-retirement-20261011/result-cache-margin.tar.gz",
+      "sha256": "2a99d92b405e85fa5fb0e1c588024d718a2a33c7cd8fca2a78dec7cda3ec2f14",
+      "archive_bytes": 42930266,
+      "entries": 1099,
+      "regular_files": 976,
+      "symlinks": 1,
+      "unique_source_allocated_bytes": 166514688,
+      "source_unchanged": true,
+      "all_archive_members_verified": true,
+      "deleted": true,
+      "uncompressed_allocated_bytes_removed": 166514688,
+      "archive_verified_immediately_before_deletion": true
+    }
+  ],
+  "native_ownership": {
+    "sail-m7-handoff-validation": {
+      "checked": 1,
+      "gone_during_census": 0,
+      "holders": [],
+      "unavailable": []
+    },
+    "sail-m7-acceptance": {
+      "checked": 5,
+      "gone_during_census": 0,
+      "holders": [],
+      "unavailable": []
+    }
+  },
+  "host_ownership": [
+    {
+      "scope": "target/namespace-drain",
+      "holders": [],
+      "lsof_exit": 1
+    },
+    {
+      "scope": "target/result-cache-margin",
+      "holders": [],
+      "lsof_exit": 1
+    }
+  ],
+  "mount_inventory": "all-container-mounts.json",
+  "initial_census_self_reference": "initial matches were only the audited Python observer itself; final census explicitly excludes its PID",
+  "version": 1,
+  "source_archive_allocated_bytes": 106164224,
+  "removed_allocated_bytes": 366854144,
+  "net_allocated_bytes_recovered_before_small_inventories": 260689920,
+  "scope_conclusion": "All regular files and symlinks, including tested images and raw evidence, retained in verified archives; only uncompressed closed duplicates removed.",
+  "outside_hardlinks": false,
+  "container_births": {
+    "handoff": "2026-10-11T17:06:30.345746794Z",
+    "acceptance": "2026-10-11T17:06:34.584538213Z"
+  },
+  "foreign_containers_and_active_native_reader_paths_untouched": true
+}
