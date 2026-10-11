@@ -3,7 +3,7 @@
   "status": "file-only exact visibility correction; complete-source rerun pending; unselected",
   "base_patch_sha256": "af7f878479f91471c2f930208bf431cbf3ef993a9537ba5acc66646915b13d3f",
   "full_patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
-  "delta_sha256": "fb499f1582ffe168368daf7dae14b4294cddb51144cc17aa7611557d53ce4603",
+  "delta_sha256": "5c43c05a52a43df0c5db03a3d28a6896ee47947c7386616ea740459816fa029a",
   "source_sha256": {
     "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
     "rust_verify/src/sail_engine.rs": "c6bbc9ba1356d6a2a744073844b0b888956514abb0e9287a1f26949e97cee71d",

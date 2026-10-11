@@ -1,6 +1,6 @@
-diff --git a/rust_verify/src/sail_engine.rs b/rust_verify/src/sail_engine.rs
---- a/rust_verify/src/sail_engine.rs
-+++ b/rust_verify/src/sail_engine.rs
+diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
+--- a/source/rust_verify/src/sail_engine.rs
++++ b/source/rust_verify/src/sail_engine.rs
 @@ -533,7 +533,7 @@
  }
  #[cfg(test)]
