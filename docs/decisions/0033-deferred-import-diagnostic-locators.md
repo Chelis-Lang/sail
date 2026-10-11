@@ -167,3 +167,34 @@ preparation namespace check refused storage before provenance. The proposed
 keeps stock diagnostic routing unchanged and borrows the live map on the compiler
 thread through each preparation transaction. Its file-only controls and distinct
 ownership arithmetic do not constitute executable runtime qualification.
+
+## Proposed extension: exact stock missing-original-range authority
+
+The later [bounded refusal diagnostic](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/revision0-result.json)
+finds three current core/alloc unit spans whose exporting stable crate exists,
+but whose low positions are absent from its complete original range metadata.
+The actual pinned stock control fully consumes the sealed metadata and confirms
+`None` before any loader call for these exact words. The exporting callback's
+source-file arrival and Foreign state were not captured; VI-0014 records that
+limitation. A separate broker retirement correction addresses the observed
+`pair-busy` miss.
+
+Implement a **proposed, unselected** `NoOriginalRange` role, distinct from every
+Loaded or deferred locator. Constructor admission must prove a complete bijection
+between actual original hash/range rows and immutable imported rows. Unknown,
+incomplete, duplicate or ambiguous namespaces refuse this role. Covered spans
+retain every existing role check, even when current stock rendering returns
+`None`. Valid low/high words must have no containing original low-position range.
+
+Bind the complete immutable namespace digest and exact current unit/ID/words/
+spelling. Preserve current SailSpanKey decoding and raw-Arc rebinding; bypass the
+word-only provenance memo for this role. Do not construct coordinates, load a
+file, change Reporter, promote a state or attest source content. Use distinct
+provenance and `sail-prepared/graph-ledger/current-literal-missing-original-range/v10`;
+reject intact v9 and earlier entries. Keep the single 8 MiB family and unchanged
+512 MiB aggregate limit, with the larger inline Record admitted before allocation.
+
+The [file-only implementation and control inventory](../../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
+remain uncompiled and unqualified. Actual complete source/strict checks, fresh
+ordinary runtime/vstd verification, strict original diagnostics and genuine
+previous-revision checked reuse are required before any runtime selection.

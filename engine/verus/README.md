@@ -224,9 +224,11 @@ fixtures, eight prepared-reuse revisions, cancellation/restart, normal driver
 termination, worker-span provenance and preparation encoding. It does
 not substitute for the frozen whole-loop product performance acceptance.
 
-The unselected [Loaded import authority candidate](candidates/loaded-foreign-authority/README.md)
-addresses a measured imported-span session-coordinate miss. It captures original
-metadata and validates the current Loaded Foreign mapping without eager loading,
-with a new preparation domain and unchanged current raw-span binding. Delayed or
-ambiguous authority remains a miss. This implementation has not been compiled or
-qualified and does not change `sail engine install` or the selected runtime.
+Earlier imported-authority candidates and their distinct failures remain in
+[the workstream history](../../docs/validation/m7-workstream-history-cc0898e.md).
+The current corrective source work includes an unselected
+[missing-original-range candidate](candidates/preparation-namespace/no-original-range/README.md).
+It preserves the current stock resolver's exact absence result for a complete,
+known imported metadata namespace and keeps current raw-span rebinding mandatory.
+Its new source controls and runtime qualification are pending. The selected
+runtime and product acceptance status do not change with this file-only export.
