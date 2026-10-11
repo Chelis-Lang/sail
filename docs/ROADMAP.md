@@ -145,12 +145,17 @@ retired without removing binaries, runtime files or raw evidence.
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
 failed whole solver suite. That audit found that test-support timeout cleanup
-can block on its output mutex before killing the child; its correction is in
+can block on its output mutex before killing the child; the cleanup-first correction is
 implemented, without attributing the historical timeout to that gap. The first
 [combined correction gate](../bench/validation/m7-linux-cleanup-control-gate-6b1edb1-failure-2026-10-11.json)
 fails strict Clippy on a test-only closure; workspace tests and solver are
-unattempted there. The direct-method spelling is corrected and its new complete
-gate and solver scope is running.
+unattempted there. The direct-method spelling is corrected. Its
+[new complete gate](../bench/validation/m7-linux-combined-core-gate-b63af10-failure-2026-10-11.json)
+passes strict Clippy and 606 of 607 workspace tests, but the eight-reader HTTP
+coalescing case times out at its unchanged 250 ms budget. One request and seven
+coalesced readers are recorded; all callers fail to receive the signed entry in
+time. Later gate steps and the solver suite are unattempted. The team is
+investigating this failure without changing the deadline or hit oracle.
 
 M7 is **not accepted**. PR #74 remains draft until the required product,
 reader, conformance and performance gates pass. Emulated local Linux runs are

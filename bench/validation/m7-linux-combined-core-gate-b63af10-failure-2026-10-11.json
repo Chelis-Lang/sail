@@ -1,0 +1,235 @@
+{
+  "source_commit": "b63af104fc452594974dac89589817711f187126",
+  "source_archive_sha256": "4385128460192f6cd7e5c5d2b45cd19118ff35ee54d9ded7704a6f5009b1f1ae",
+  "container": "sail-m7-handoff-validation",
+  "source_path": "/tmp/sail-m7-combined-core-b63af10",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete local workspace gate and original pinned-solver suite after test-support cleanup-first correction. Original c97 maintenance timeout retained; no historical cause inferred. Production code equals current a9609e9 installed product; repair, reader, corpus and performance remain separate.",
+  "phases": [
+    {
+      "phase": "gate",
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-combined-core-b63af10",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "-e",
+        "NEXTEST_TEST_THREADS=1",
+        "sail-m7-handoff-validation",
+        "bash",
+        "ci/run.sh",
+        "gate"
+      ],
+      "exit_code": 100,
+      "elapsed_seconds": 651.17593275
+    }
+  ],
+  "container_identity": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T13:43:50.466327086Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "status": "FAIL",
+  "workspace_tests": {
+    "run": 607,
+    "passed": 606,
+    "failed": 1,
+    "solver_skipped": 41,
+    "nextest_elapsed_seconds": 274.152
+  },
+  "strict_clippy": "PASS",
+  "later_gate_steps": "unattempted after nextest failure: examples, doctests, rustdoc, layering, deny, generated benchmark page",
+  "solver": "unattempted",
+  "failure": {
+    "test": "sail-daemon shared::http_tests::concurrent_readers_coalesce_one_http_lookup",
+    "original_lookup_deadline_ms": 250,
+    "original_callers": 8,
+    "original_server_delay_ms": 75,
+    "required_each_hit": true,
+    "required_get_count": 1,
+    "actual_all_hits": false,
+    "actual_requests": 1,
+    "actual_coalesced": 7,
+    "first_lookup": "Timeout",
+    "first_caller_ms": 254.027709,
+    "server_request_bytes": 285,
+    "server_request_headers_complete": true,
+    "cause": "unknown; no causal attribution to host load, emulation or scheduling",
+    "phases_us": [
+      [
+        "client-construction-start",
+        0
+      ],
+      [
+        "client-construction-end",
+        49577
+      ],
+      [
+        "lookup-start",
+        127408
+      ],
+      [
+        "foreground-ready",
+        127414
+      ],
+      [
+        "id-formatted",
+        127551
+      ],
+      [
+        "lookup-start",
+        127580
+      ],
+      [
+        "foreground-ready",
+        127580
+      ],
+      [
+        "id-formatted",
+        127597
+      ],
+      [
+        "lookup-start",
+        127950
+      ],
+      [
+        "foreground-ready",
+        127950
+      ],
+      [
+        "id-formatted",
+        127957
+      ],
+      [
+        "lookup-start",
+        128041
+      ],
+      [
+        "foreground-ready",
+        128041
+      ],
+      [
+        "id-formatted",
+        128048
+      ],
+      [
+        "lookup-start",
+        128443
+      ],
+      [
+        "foreground-ready",
+        128443
+      ],
+      [
+        "id-formatted",
+        128448
+      ],
+      [
+        "lookup-start",
+        128452
+      ],
+      [
+        "foreground-ready",
+        128452
+      ],
+      [
+        "id-formatted",
+        128456
+      ],
+      [
+        "lookup-start",
+        128458
+      ],
+      [
+        "foreground-ready",
+        128458
+      ],
+      [
+        "id-formatted",
+        128464
+      ],
+      [
+        "lookup-start",
+        128467
+      ],
+      [
+        "foreground-ready",
+        128467
+      ],
+      [
+        "id-formatted",
+        128470
+      ],
+      [
+        "table-admitted",
+        140338
+      ],
+      [
+        "spawn-start",
+        141395
+      ],
+      [
+        "helper-start",
+        156585
+      ],
+      [
+        "table-admitted",
+        157198
+      ],
+      [
+        "table-admitted",
+        157517
+      ],
+      [
+        "table-admitted",
+        158132
+      ],
+      [
+        "table-admitted",
+        158392
+      ],
+      [
+        "table-admitted",
+        158460
+      ],
+      [
+        "table-admitted",
+        158511
+      ],
+      [
+        "table-admitted",
+        158547
+      ],
+      [
+        "request-start",
+        175771
+      ],
+      [
+        "request-built",
+        178840
+      ],
+      [
+        "server-accepted",
+        214691
+      ],
+      [
+        "server-read",
+        301898
+      ],
+      [
+        "server-delay-ended",
+        377014
+      ],
+      [
+        "server-sent",
+        377368
+      ]
+    ]
+  },
+  "production_changed_since_a960_release": false,
+  "raw_log_sha256": "cce769aaf20524563c94b5975f2f3e0aaab99c56e4f309d2f99199994b41e2c8",
+  "retained_log_gzip_sha256": "61c8c931f40c1e761daee71c2cfa237f353757546595aa6b51e4899e81d1ed19",
+  "raw_controller_sha256": "383b3d5380c2e356997681a1f22b7c458873584d16d13773938439d50784fa2d"
+}
