@@ -1,28 +1,38 @@
 # Metadata publication integration checklist
 
-Source-only candidate `8b3e4f61296669bb8621f1e85a3d9f1b41a2625b` and controller
-`867a2944c41ef06d6ee56d551da59a2205626429` remain uncompiled and unselected.
+Source-only candidate `8b3e4f61296669bb8621f1e85a3d9f1b41a2625b` remains
+uncompiled and unselected. Original controller `867a2944` remains in Git;
+the corrected controller adds owned cleanup and phase caps before execution.
 The six exact Rust source hashes are in
 [m7-preserve-freshness-metadata-source.json](m7-preserve-freshness-metadata-source.json).
 No compiler, daemon or proof actor ran for this checklist.
 
 1. After the lead grants an exclusively owned **private Linux** source/target,
    use the frozen [control runner](m7-preserve-freshness-metadata-controls.py),
-   SHA `606154ede86e2d73797dfeb9b92dd54437c958f416a7be92b23bb80e75061bb9`.
+   SHA `097b7a7f7a612d0de837e75def6016a6583db38e7ae52cd80551efdcae07e9a2`.
    It checks source identity and counterfactual applicability before mutation.
    Preserve failed scopes, every actual tested executable and the independent
    actor/holder closure census. The exact affected commands are:
 
    ```sh
-   cargo test -p sail-verus --release --lib --message-format=json-render-diagnostics metadata -- --test-threads=1
-   cargo test -p sail-verus --release --lib --message-format=json-render-diagnostics managed::freshness::tests:: -- --test-threads=1
-   cargo clippy -p sail-verus --release --all-targets -- -D warnings
+   cargo test --locked -p sail-verus --release --lib --no-run --message-format=json-render-diagnostics
+   "$SAIL_METADATA_TEST_ELF" metadata --nocapture --test-threads=1
+   "$SAIL_METADATA_TEST_ELF" managed::freshness::tests:: --nocapture --test-threads=1
+   cargo clippy --locked -p sail-verus --release --all-targets -- -D warnings
    ```
 
    The runner then removes only the no-op early return, requires the unchanged
    exact case below to fail at its same-owner assertion, restores positive source
    bytes, and requires that case to pass. Negative and restored-positive tested
-   images are retained before later rebuilds.
+   images are retained before later rebuilds. Each compile or strict phase has
+   a 600-second ownership cap; each test executable has a 180-second cap.
+   These do not change any request or Rust test deadline. Jobs remain one,
+   release profile, with `CARGO_INCREMENTAL=0`. Timeout, interruption or forced
+   group termination makes closure uncertainty sticky, even after leader reap.
+   No later actor, patch or source restoration is allowed before an independent
+   lead audit. TERM and KILL each have a two-second cleanup grace. Nine fake-child
+   and predicate controls passed without launching a native actor. See the
+   [native plan](m7-preserve-freshness-metadata-native-plan.json).
 
    ```text
    managed::freshness::tests::unchanged_metadata_publication_keeps_same_continuous_freshness_owner
