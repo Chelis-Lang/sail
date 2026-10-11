@@ -27,7 +27,8 @@
     "build-candidate.py": "bce38b8f158d824f90d203402e3d3fab8ecc91f0202bbe0daa49a3cb2eb8b72a",
     "close-build.py": "a678a81cfdbe70109c0a3997193bab1d897b207760ef48d928c25e753877b924",
     "run-original-pipeline.py": "941e7fcef81645183da7acf4a256bffa5f84d6bedbfe823e10a2b146da405fd9",
-    "qualification-controller-diff.patch": "fb2a242c456b6bc43793cca1115805e9d4a4027dcd7927297ab733c82ec8385c"
+    "qualification-controller-diff.patch": "fb2a242c456b6bc43793cca1115805e9d4a4027dcd7927297ab733c82ec8385c",
+    "close-qualification.py": "413901a1c71acdb8a7735b1063b748fe4f94242a9e8415789656bfcc64a64616"
   },
   "source_controls": "A exclusive actor; require terminal result/4 exact commands/log SHA/source7/lock/owned closure before seed or build; freeze all evidence input hashes",
   "scheduling": {
