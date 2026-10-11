@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "state": "passed-native-ci-and-small-complete-repair-fixture",
+  "sail_source_commit": "b56b0ff5cb7acaf8f8111dd982a1d0267f7a295b",
+  "run_url": "https://github.com/Chelis-Lang/sail/actions/runs/38148515951",
+  "execution": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "phases": [
+    {
+      "name": "No AI authorship markers",
+      "conclusion": "success",
+      "elapsed_s": 17.0
+    },
+    {
+      "name": "image / CI image",
+      "conclusion": "success",
+      "elapsed_s": 170.0
+    },
+    {
+      "name": "End to end (repair)",
+      "conclusion": "success",
+      "elapsed_s": 289.0
+    },
+    {
+      "name": "Solver tests",
+      "conclusion": "success",
+      "elapsed_s": 173.0
+    },
+    {
+      "name": "Conformance",
+      "conclusion": "success",
+      "elapsed_s": 346.0
+    },
+    {
+      "name": "End to end (managed)",
+      "conclusion": "success",
+      "elapsed_s": 395.0
+    },
+    {
+      "name": "End to end (legacy)",
+      "conclusion": "success",
+      "elapsed_s": 358.0
+    },
+    {
+      "name": "Workspace gate",
+      "conclusion": "success",
+      "elapsed_s": 270.0
+    },
+    {
+      "name": "End to end",
+      "conclusion": "success",
+      "elapsed_s": 6.0
+    },
+    {
+      "name": "CI completion",
+      "conclusion": "success",
+      "elapsed_s": 6.0
+    }
+  ],
+  "longest_job_s": 395.0,
+  "repair": {
+    "version": 1,
+    "kind": "actual-prebuilt-engine-cli-mcp-acceptance",
+    "machine": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "environment_label": "Linux x86-64 prebuilt-engine CI/local container",
+    "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "proof_tool_budget_s": 120,
+    "passed": true,
+    "fixture_vstd": "supported-no-vstd-metadata",
+    "fixture_dependency_verification": "ordinary-full-cargo-plan",
+    "fixture_rust_toolchain": "1.98.1",
+    "sail_sha256": "ff709c5d3216201445f5de034086cfc34003c26631732b7f9a299a75c8bc23cc",
+    "engine_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "elapsed_s": 45.84711948399996,
+    "progress_failures": [],
+    "cleanup_errors": []
+  },
+  "operation_count": 167,
+  "maximum_operation_elapsed_s": 3.2994650250000177,
+  "per_cli_limit_s": 30,
+  "rpc_deadline_s": 5,
+  "conformance": {
+    "cache-fill": {
+      "projects_skipped": 0,
+      "units": 33,
+      "same": 33,
+      "unstable": 0,
+      "different": 0,
+      "infra_error": 0,
+      "functions": 311,
+      "units_with_rlimit_drift": 0
+    },
+    "pass-through": {
+      "projects_skipped": 0,
+      "units": 33,
+      "same": 33,
+      "unstable": 0,
+      "different": 0,
+      "infra_error": 0,
+      "functions": 311,
+      "units_with_rlimit_drift": 0
+    },
+    "cache-warm": {
+      "projects_skipped": 0,
+      "units": 33,
+      "same": 33,
+      "unstable": 0,
+      "different": 0,
+      "infra_error": 0,
+      "functions": 311,
+      "units_with_rlimit_drift": 0
+    }
+  },
+  "archive": {
+    "bytes": 178776,
+    "sha256": "5ff38850ffd89ec1336f178672765f47dadc4e0da8a657eaf8c7feb5f4afb053",
+    "regular_members": 365,
+    "members_manifest_sha256": "d4da281370b1c78eb66dc91544686e2d22ae4a0cf77d51fd94e06c256ce90174"
+  },
+  "scope": "Original complete CLI/MCP repair fixture on its small supported-no-vstd project. This native CI run does not replace the emulated cdb6e6d 120-second failure, qualify later daemon output-owner/build-script generation changes, or accept M7 reader latency, complete standard/cache coverage, or three-round HumanEval/Vest performance. The summary source_commit is the Verus source commit; Sail source is bound separately to the run head.",
+  "original_checks_and_deadlines_unchanged": true
+}

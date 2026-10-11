@@ -162,6 +162,14 @@ in 369.134 seconds. Its separate [pinned-solver suite](../bench/validation/m7-li
 passes all 41 controls. The daemon output-owner service and family build-script
 observation reuse are subsequent changes; whole repair, reader, corpus and
 performance acceptance remain separate.
+The subsequent [native CI record](../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json) passes all ten jobs on `b56b0ff`; the longest
+job takes 395 seconds. The original complete small CLI/MCP repair fixture
+passes in 45.847 seconds with unchanged 120/30/5-second bounds and the selected
+runtime manifest. All three PR conformance rounds give 33/33 Same. This
+native fixture success is separate from the earlier emulated whole-workflow
+timeout and does not accept reader latency, full standard/cache coverage or
+three-round HumanEval/Vest performance. Later daemon output-owner and Cargo
+build-script generation changes require their own combined validation.
 The [candidate history](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
 and [retained workstream history](validation/m7-workstream-history-cc0898e.md)
 preserve the earlier migration, zero-hit and test-fixture failures.

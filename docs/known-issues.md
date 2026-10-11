@@ -538,3 +538,12 @@ original full-workflow failure nor establishes its cause. Bounded process
 snapshots show ordinary dependencies compiling during the selector change, but
 their inventory is explicitly limited. Regression and later CLI/MCP cases were
 not part of this diagnostic.
+
+The later [native CI record](../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json) passes the original complete small repair
+CLI/MCP fixture in 45.847 seconds on native Linux, with all 167 operations
+within their original bounds, no progress failures or cleanup errors, and the
+same selected runtime manifest. It includes regression rejection, explain,
+compare, MCP and late-execution cases. This closes that CI fixture scope; it
+does not erase the earlier emulated `cdb6e6d` timeout or establish its cause.
+Real HumanEval/Vest performance, complete current standard/cache coverage and
+full-result reader latency remain open.
