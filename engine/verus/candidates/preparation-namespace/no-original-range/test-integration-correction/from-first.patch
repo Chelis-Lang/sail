@@ -1,0 +1,124 @@
+diff --git a/source/rust_verify/src/sail_owned_imports.rs b/source/rust_verify/src/sail_owned_imports.rs
+--- a/source/rust_verify/src/sail_owned_imports.rs
++++ b/source/rust_verify/src/sail_owned_imports.rs
+@@ -1246,6 +1246,11 @@
+ }
+ 
+ #[cfg(test)]
++pub(super) fn pending_absence_test(pending:&PendingImportSeeds,words:[u64;2])->Result<(),CaptureFailure>{
++    pending.owned.no_original_range(words).map(|_|())
++}
++
++#[cfg(test)]
+ pub(super) mod drop_probe {
+     use std::sync::{Mutex, mpsc};
+     static HOOK: Mutex<Option<(mpsc::Sender<(usize, usize)>, mpsc::Receiver<()>)>> =
+@@ -1263,8 +1268,3 @@
+         }
+     }
+ }
+-
+-#[cfg(test)]
+-pub(super) fn pending_absence_test(pending:&PendingImportSeeds,words:[u64;2])->Result<(),CaptureFailure>{
+-    pending.owned.no_original_range(words).map(|_|())
+-}
+diff --git a/source/rust_verify/src/sail_owned_imports_tests.rs b/source/rust_verify/src/sail_owned_imports_tests.rs
+--- a/source/rust_verify/src/sail_owned_imports_tests.rs
++++ b/source/rust_verify/src/sail_owned_imports_tests.rs
+@@ -1106,7 +1106,7 @@
+             as_string: "exact current stock unlocated spelling α".into(),
+         };
+         let (value, stale, memo) =
+-            crate::verifier::sail_engine::test_import_literal_provenance_seeded_memo(
++            crate::verifier::sail_test_import_literal_provenance_seeded_memo(
+                 &first,
+                 make(),
+             );
+@@ -1116,7 +1116,7 @@
+         assert_eq!(memo, 1);
+         let mut second = first.clone();
+         second.id += 1;
+-        let (a, b, memo) = crate::verifier::sail_engine::test_import_literal_provenance_pair(
++        let (a, b, memo) = crate::verifier::sail_test_import_literal_provenance_pair(
+             &first,
+             &second,
+             make(),
+@@ -1127,7 +1127,7 @@
+         assert_eq!(memo, 0);
+         second = first.clone();
+         second.as_string.push_str(" changed");
+-        let (a, b, memo) = crate::verifier::sail_engine::test_import_literal_provenance_pair(
++        let (a, b, memo) = crate::verifier::sail_test_import_literal_provenance_pair(
+             &first,
+             &second,
+             make(),
+@@ -1136,7 +1136,7 @@
+         assert_eq!(memo, 0);
+         second = first.clone();
+         second.data = packed(901, 905).to_vec();
+-        let (a, b, _) = crate::verifier::sail_engine::test_import_literal_provenance_pair(
++        let (a, b, _) = crate::verifier::sail_test_import_literal_provenance_pair(
+             &first,
+             &second,
+             make(),
+@@ -1144,13 +1144,13 @@
+         assert_ne!(a, b);
+         second = first.clone();
+         second.raw_span = Arc::new(9u8);
+-        assert!(crate::verifier::sail_engine::test_import_provenance(&second, make()).is_none());
++        assert!(crate::verifier::sail_test_import_provenance(&second, make()).is_none());
+         second = first.clone();
+         second.data.pop();
+-        assert!(crate::verifier::sail_engine::test_import_provenance(&second, make()).is_none());
++        assert!(crate::verifier::sail_test_import_provenance(&second, make()).is_none());
+         second = first.clone();
+         second.data[0] = 8;
+-        assert!(crate::verifier::sail_engine::test_import_provenance(&second, make()).is_none());
++        assert!(crate::verifier::sail_test_import_provenance(&second, make()).is_none());
+     });
+ }
+ 
+@@ -1243,7 +1243,7 @@
+             data: covered.to_vec(),
+             as_string: "current covered but unavailable".into(),
+         };
+-        assert!(crate::verifier::sail_engine::test_import_provenance(&span, owner).is_none());
++        assert!(crate::verifier::sail_test_import_provenance(&span, owner).is_none());
+     });
+ }
+ 
+@@ -1300,7 +1300,7 @@
+             let encoded=encoded.unwrap();let bindings=bindings.unwrap();
+             let (rebound,consumed)=vir::messages::sail_resolve_spans(&bindings,||bincode_next::serde::decode_from_slice::<vir::messages::Span,_>(&encoded,bincode_next::config::legacy())).unwrap();
+             assert_eq!(consumed,encoded.len());assert!(Arc::ptr_eq(&rebound.raw_span,&current.raw_span));
+-            let (direct,broker)=crate::verifier::sail_engine::test_import_literal_worker_namespace(rebound,mapping,&map);
++            let (direct,broker)=crate::verifier::sail_test_import_literal_worker_namespace(rebound,mapping,&map);
+             assert_eq!(direct,Some(expected));assert_eq!(broker,Some(expected));
+         }
+     });
+diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
+--- a/source/rust_verify/src/verifier.rs
++++ b/source/rust_verify/src/verifier.rs
+@@ -57,6 +57,22 @@
+ pub(crate) fn sail_test_import_provenance(span:&vir::messages::Span,
+     mapping:crate::spans::sail_owned_imports::OwnedImportMappings)->Option<String>{
+     sail_engine::test_import_provenance(span,mapping)
++}
++
++#[cfg(test)]
++pub(crate) fn sail_test_import_literal_provenance_pair(first:&vir::messages::Span,second:&vir::messages::Span,
++    mapping:crate::spans::sail_owned_imports::OwnedImportMappings)->(Option<String>,Option<String>,usize){
++    sail_engine::test_import_literal_provenance_pair(first,second,mapping)
++}
++#[cfg(test)]
++pub(crate) fn sail_test_import_literal_provenance_seeded_memo(span:&vir::messages::Span,
++    mapping:crate::spans::sail_owned_imports::OwnedImportMappings)->(Option<String>,String,usize){
++    sail_engine::test_import_literal_provenance_seeded_memo(span,mapping)
++}
++#[cfg(test)]
++pub(crate) fn sail_test_import_literal_worker_namespace(span:vir::messages::Span,
++    mapping:crate::spans::sail_owned_imports::OwnedImportMappings,map:&SourceMap)->(Option<Option<()>>,Option<Option<()>>){
++    sail_engine::test_import_literal_worker_namespace(span,mapping,map)
+ }
+ 
+ #[path = "sail_oracle.rs"]
