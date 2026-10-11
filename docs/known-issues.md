@@ -488,9 +488,9 @@ the internal wait or establish a deadlock.
 
 All 728 retained operation/summary/stream files are archived. The original
 fixture removes its temporary project during cleanup, so unavailable worker
-state cannot be reconstructed from that attempt. A separate reduced diagnostic
-will preserve the same fixture and worker streams under the original relevant
-limits. The full integration remains failed, separate from the passing
+state cannot be reconstructed from that attempt. The separate [reduced diagnostic](../engine/verus/candidates/preparation-namespace/no-original-range/ordinary/repair-selector-diagnostic/README.md)
+preserves its worker streams but also fails the original total budget, during
+the first successful-proof attempt before the missing selector is submitted. The full integration remains failed, separate from the passing
 thirteen-stage source qualification and artifact installation. No deadline or
 assertion was changed.
 
@@ -507,3 +507,7 @@ write probes succeed again. The selected image export was cancelled for low
 space and was never loaded; the running stock diagnostic was interrupted
 without a harness terminal result or a certified process cleanup. Retained
 engine runtime files and original test limits remain unchanged.
+The separate [post-recovery full gate](../bench/validation/m7-linux-selected-source-gate-0155b33-emulated-2026-10-11.json)
+passes all 566 workspace tests and every remaining gate step. This establishes
+that recorded integration scope; it does not reclassify the earlier failure or
+qualify the later compiler-family and reader component changes.

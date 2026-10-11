@@ -136,6 +136,12 @@ private scratch write probes confirm `EROFS`. The selected-runtime image
 for low disk space. Docker subsequently restarts externally, interrupting the
 stock diagnostic without a harness terminal result. Neither interruption
 qualifies the product or replaces the retained failures.
+A separate post-recovery [complete local gate](../bench/validation/m7-linux-selected-source-gate-0155b33-emulated-2026-10-11.json)
+passes all 566 workspace tests and every remaining gate step. It covers the
+selected qualified source patch and coherent artifact pin; later compiler-family
+and reader component changes still require their own combined validation.
+The [original solver suite](../bench/validation/m7-linux-selected-source-solver-0155b33-emulated-2026-10-11.json)
+also passes all 39 pinned-solver and fault-injection controls.
 The [candidate history](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
 and [retained workstream history](validation/m7-workstream-history-cc0898e.md)
 preserve the earlier migration, zero-hit and test-fixture failures.
