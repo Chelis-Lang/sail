@@ -209,3 +209,24 @@ qualification execution. B's private ordinary build has started; its terminal
 result and the original qualification remain pending. The earlier hard-coded
 reporting defect and all earlier source and qualification failures remain
 retained.
+
+The actual ordinary build then closed with exit zero in 1001.791 seconds and
+fresh vstd 2060 verified / 0 errors. An independent read-only native audit
+rehashed closure
+`4274adc1a0aee5fb362bdc8eae4e666fd631466885027cfdaba747ce623fbfbd`
+and manifest
+`54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d`:
+all 13 nonsymlink runtime artifacts and the complete direct-file inventory,
+eight source files, pinned Git identity, lock, patch, and eight retained raw
+build records matched. The build log contains the fresh-vstd rebuild and
+2060/0 outcome. This is ordinary source-build closure, without product or
+performance qualification.
+
+Final qualification freeze
+`b71e9db3e675f5cefef1f1b4475bb2824179fc675d5d2647d5154e09982f3c4e`
+was independently checked against all 14 actual scripts, four external inputs,
+the unchanged launcher and corrected final reporter, and retained successful
+four-phase source-control inputs. The one original actor began at ordinary
+priority with the frozen manifest, unchanged assertions and 600-second limits.
+Its terminal outcome and post-qualification closure remain pending; the
+candidate is unselected and historical failures remain retained.
