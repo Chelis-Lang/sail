@@ -2,7 +2,7 @@
 
 **Private implementation, proposed and unqualified.** The selected installer,
 source patch and runtime pins are unchanged. No compiler or proof was run for
-this candidate. Its identity is in [identity.json](identity.json); its complete
+this latest patch identity. Its identity is in [identity.json](identity.json); its complete
 patch is [loaded-foreign-authority.patch](../loaded-foreign-authority.patch).
 
 The f833 diagnostic established that all454 foreign contributors retain their
@@ -128,3 +128,13 @@ The first static filter draft omitted the space in the retained display spelling
 Review caught this before any compiler or runtime build. The selector and its
 positive control now use the exact retained string; the no-space spelling is an
 explicit negative. No trimming or normalization is used.
+
+The preceding exact e6f patch completed an ordinary vstd2060/0 build and all
+38 VIR/43 driver library controls. Its VIR strict checks passed, but driver
+all-target Clippy failed `items_after_test_module`: the unchanged `drop_probe`
+test module preceded `memo_test_authority`. [The retained failure](e6f-build-and-strict-failure.json)
+keeps that build and runtime unqualified. The current
+[file-only correction](from-e6f-test-layout.patch) moves the identical test module
+to the end. Production code, tests, assertions, domain and admission are unchanged;
+this new full patch still requires actual strict checks and an exact variant build
+before the original qualification pipeline.

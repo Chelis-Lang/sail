@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "scope": "Private source implementation and static patch checks; no compiler/runtime build or qualification",
+  "scope": "Lexical test-module correction and static patch checks; new hash has no compiler/runtime build or qualification",
   "base_patch_sha256": "1aae80f1cbf3f476d14bb19587f321d5818749a665c847c9b48046f073cc8808",
-  "patch_sha256": "e6f54134fd8478b3b82f3d2513da3a883b70a7f6cd08d2af3985c207abf785ef",
-  "delta_sha256": "dbae5d4f95508219341ecf611ffca399c48c57fba187feee79cc026fdbf31876",
+  "patch_sha256": "506679543779f2856899006d7d70420ce85d47cb74c9873a064f97ab82c44984",
+  "delta_sha256": "7ca1bd553d86a8189689fde62a9aa70300793355ea2875186e125855b9c35898",
   "preparation_domain": "sail-prepared/graph-ledger/loaded-foreign-authority/v5",
   "portable_version": 3,
   "mapping_budget_bytes": 8388608,
@@ -13,7 +13,7 @@
     "rust_verify/src/sail_engine.rs": "5e40d257f7be8de9d00ddb122aea0a5e10a9bd756bd6ff5a8f6bf9c5a7748e9d",
     "rust_verify/src/verifier.rs": "e914fc72c9902b6d379f6a7b8e94e1f2a9e03733709a14363ec5c75585e2f8d6",
     "vir/src/context.rs": "f5b642c9e6f7ff6fa5dbe85bf45f908065375ce6ae7abed5b125e42f27959a76",
-    "rust_verify/src/sail_owned_imports.rs": "9f784412f7b93858827557cf2d606fc8ab71080cbe0f0ad4c23fdb303c4f2ba2",
+    "rust_verify/src/sail_owned_imports.rs": "10fbd5f5e9647e5ebb13a6297d198a45037731a7f65c7e1bb6f35c4af271b410",
     "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641"
   },
   "tests": {
@@ -40,5 +40,8 @@
       "exit_code": 0,
       "stderr": ""
     }
-  ]
+  ],
+  "previous_patch_sha256": "e6f54134fd8478b3b82f3d2513da3a883b70a7f6cd08d2af3985c207abf785ef",
+  "test_layout_delta_sha256": "47451f9c2f1e32e1042778a3ef77b2328aa1b7b8c2c72c93e4fd40134c43e89b",
+  "previous_execution_record": "e6f-build-and-strict-failure.json"
 }
