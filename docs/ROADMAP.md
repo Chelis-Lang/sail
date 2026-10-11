@@ -110,6 +110,17 @@ controls exist; compilation, actual resolver-state evidence and complete source/
 previous-revision proof gates remain pending. It is unselected and grants no
 M7 performance or acceptance claim.
 
+Its later `b46efd05` build passes source unit and strict lint checks, but the
+original qualification fails on ordered progress diagnostics and records zero
+restored preparations. The actual first refusal is an imported span whose
+descriptor remains Delayed at both capture and focus. A separately reviewed
+[DeferredLocator proposal](../engine/verus/candidates/deferred-import-locator/README.md)
+and [consumer audit](../engine/verus/candidates/decode-ownership/deferred-locator-consumer-audit.md)
+now guide a bounded implementation. This role preserves an exact diagnostic
+recipe and leaves current compiler resolution untouched; actual resolver,
+ownership and complete source controls are still required. The failed candidate
+remains unselected.
+
 ### Current state
 
 The experimental CLI/MCP workflow is implemented: exact-function repair checks,
@@ -179,6 +190,12 @@ passes all 39 controls, including the real isolated mount-restoration fault.
 The original HTTP concurrency fixture passes; the earlier late-delivery failure
 and its unknown complete cause remain retained. These complete local scopes
 do not qualify source reuse, real-reader latency or repair performance.
+The subsequent `c13b410` [native CI run](../bench/validation/m7-linux-ci-c13b410-native-2026-10-11.json)
+passes every required check: 502 workspace tests, 39 solver controls, original
+managed and repair scenarios, and 33/33 conformance units in each of pass-through,
+fill and warm. The real mount-restoration fault passes. The longest job is 399
+seconds, inside the original 600-second limit. This precedes automatic sysroot
+handoff activation and does not qualify its performance or the source candidate.
 The complete default standard attempt also fails: 156 Same, one diagnostic-order
 Unstable and two unchanged unit timeouts, with no Different verdicts. See
 [the terminal scope](../bench/validation/m7-linux-default-standard-1dc-failure-2026-10-11.json).
@@ -191,10 +208,12 @@ The subsequent unchanged [standalone managed acceptance](validation/m7-managed-s
 on frozen `012707a` passes all original checks: cold 216.080 s, unchanged
 31.947 s, CLI/MCP jobs, missing-receipt recovery and a restored-mtime failed edit.
 The unchanged run still spends 15.992 s hashing sysroots despite zero verifier
-invocations. A bounded local daemon digest handoff is now being implemented
-with overlapping complete caller/daemon guards; no unguarded retained digest
-or benchmark speedup is accepted. A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
-addresses restored mount changes before that handoff is enabled.
+invocations. A bounded local daemon digest handoff is now wired into managed
+verification and `sail serve`, with overlapping complete caller/daemon guards.
+The frozen `7da9579` Linux product build passes; its original fresh cold/warm
+scenario and complete local gate are running. No benchmark speedup is yet
+accepted. A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
+detects restored mount changes throughout that handoff.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
 remains preserved. The
 [installed product build](validation/m7-current-product-build.json) and
