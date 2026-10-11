@@ -162,3 +162,32 @@ and one positive case. It retains each actual executable and dependency file
 before rebuilding, and verifies final source and prior runtime seals. This is
 approved for the one private sensitivity scope; execution remains pending.
 No ordinary runtime or original qualification result is inferred.
+
+The actual sensitivity scope then passed, result
+`5be40db3fba7b031e4ceb38977fd264c63c5712f58637826233bde448647a8ed`:
+the unchanged inequality failed with the same admitted stale digest on both
+sides, and exact positive restoration passed its one case. Both tested images,
+source closure and previous seals are retained. This establishes sensitivity
+of that specific source control, without proof or reuse credit.
+
+The ordinary plan for unselected variant `c77e1a1879302e06` was reviewed with
+builder `084b0372b4b351ab7833b200d7857cee3ba297473fef82b63d8c03a7bf432c0a`
+and build closure
+`39ced274bf50a394f471c7652c5afffbd5f8c35f6fbf7b830767568165ad0b37`.
+Exact source and sensitivity results, raw logs, source/lock and holder checks
+precede builder mutation. Compiler-only seed copies exclude changed VIR,
+macros, driver and vstd entries; no top-level runtime, proof or manifest is
+copied. Fresh vstd 2060/0, complete new 13-artifact inventory, exact eight source
+files and lock, and all four prior runtime seals remain mandatory. No static
+ordinary-build blocker was found.
+
+An independent AST comparison of original pipeline controller
+`8b7a0cf501cfc1a7401da33c59059ad866101b3bb304d29cd879e8639aed1f19`
+confirmed unchanged command, environment and complete 14-script inventory
+against the preceding visibility launcher. All 13 original stages, strict
+diagnostics and 600-second limits remain intact. The proposed post-qualification
+closure still hard-coded the old 9-attempted/8-passed/1-failed outcome; that
+reporting bug was flagged to B before launch. It must validate the actual prefix
+and primary result, accepting full success only with all 13 stages passed and
+retaining any terminal failure and remaining unattempted stages. This does not
+change an oracle. Build and qualification execution remain separately pending.
