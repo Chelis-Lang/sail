@@ -274,3 +274,9 @@ The [independent affected-crate validation](../../bench/validation/m7-linux-sysr
 passes strict all-target checks and all seven original sysroot controls on the
 local Linux container. It retains the original deadline and assertions. A
 complete current workspace gate and real-project acceptance remain required.
+
+The later [complete workspace attempt](../../bench/validation/m7-linux-core-gate-b34b2be-emulated-2026-10-11.json)
+passes 523/528 tests but again declines the positive complete snapshot at its
+original 100 ms deadline. Four HTTP serving controls also fail their existing
+bounds. Readiness polling therefore has a passing affected-control scope, not
+a demonstrated resolution of the full-gate failure. No budget changed.
