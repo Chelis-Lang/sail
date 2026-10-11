@@ -132,7 +132,7 @@ mod linux {
             }
             let paths = [path.clone()];
             let observer =
-                Observer::begin_bounded_with(&paths, &[], Arc::clone(&cancelled), started)?;
+                Observer::begin_files_bounded_with(&paths, Arc::clone(&cancelled), started)?;
             let lease =
                 ReadLease::acquire_bounded(&paths, &stopped, Arc::clone(&cancelled), started)?;
             let mut owner = Self {

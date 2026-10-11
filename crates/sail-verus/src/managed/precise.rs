@@ -201,7 +201,7 @@ mod platform {
         }
 
         pub(super) fn begin(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
-            Self::begin_with(roots, excluded, None)
+            Self::begin_with(roots, excluded, None, false)
         }
         pub(super) fn begin_bounded(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
             Self::begin_bounded_with(roots, excluded, None, Instant::now())
@@ -221,12 +221,31 @@ mod platform {
                     stop,
                     started,
                 }),
+                false,
+            )
+        }
+        pub(super) fn begin_files_bounded_with(
+            roots: &[PathBuf],
+            stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+            started: Instant,
+        ) -> Option<Self> {
+            Self::begin_with(
+                roots,
+                &[],
+                Some(Construction {
+                    left: 16 * 1024 * 1024,
+                    visits: 0,
+                    stop: Some(stop),
+                    started,
+                }),
+                true,
             )
         }
         fn begin_with(
             roots: &[PathBuf],
             excluded: &[PathBuf],
             mut construction: Option<Construction>,
+            files_only: bool,
         ) -> Option<Self> {
             let mounts = super::super::kernel_mounts::Guard::begin()?;
             if let Some(budget) = construction.as_mut() {
@@ -252,7 +271,21 @@ mod platform {
             let mut visited = BTreeSet::new();
             for root in roots {
                 observer.binding(root)?;
-                observer.walk(root, &mut visited, true)?;
+                if files_only {
+                    // Exact output/helper files need their bindings and parent
+                    // watches, never a recursive directory snapshot. A raced
+                    // directory replacement declines instead of entering walk.
+                    match root.canonicalize() {
+                        Ok(path) => {
+                            path.is_file().then_some(())?;
+                            observer.watch(&path)?;
+                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                        Err(_) => return None,
+                    }
+                } else {
+                    observer.walk(root, &mut visited, true)?;
+                }
             }
             for path in roots {
                 if let Some(budget) = observer.construction.as_mut() {
@@ -653,6 +686,13 @@ impl Observer {
     ) -> Option<Self> {
         platform::Observer::begin_bounded_with(roots, excluded, Some(stop), started).map(Self)
     }
+    pub(super) fn begin_files_bounded_with(
+        roots: &[PathBuf],
+        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        started: std::time::Instant,
+    ) -> Option<Self> {
+        platform::Observer::begin_files_bounded_with(roots, stop, started).map(Self)
+    }
     pub(super) fn clean(&mut self) -> bool {
         self.0.clean()
     }
@@ -667,6 +707,20 @@ impl Observer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exact_file_construction_rejects_directory_instead_of_recursing() {
+        let root =
+            std::env::temp_dir().join(format!("sail-observe-file-only-{}", std::process::id()));
+        assert!(std::fs::create_dir(&root).is_ok());
+        let outcome = Observer::begin_files_bounded_with(
+            std::slice::from_ref(&root),
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            std::time::Instant::now(),
+        );
+        assert!(std::fs::remove_dir(root).is_ok());
+        assert!(outcome.is_none());
+    }
     use std::sync::atomic::{AtomicU64, Ordering};
     fn fixture(name: &str) -> PathBuf {
         static SERIAL: AtomicU64 = AtomicU64::new(0);
