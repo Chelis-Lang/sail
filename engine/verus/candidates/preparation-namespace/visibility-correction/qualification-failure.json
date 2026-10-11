@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "status": "FAIL original qualification; unselected/unqualified",
+  "scope": "One unchanged source qualification. Original 14 means frozen script inventory; the qualifier has 13 actual stages. No retry or diagnostic continuation.",
+  "patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+  "manifest_sha256": "acae733747b439a5a7777d446e88f4d25c1e855d015420806c7d0f7456c89e9f",
+  "runtime_variant": "b3b07d47d7542817",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "source_sha256": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_engine.rs": "c6bbc9ba1356d6a2a744073844b0b888956514abb0e9287a1f26949e97cee71d",
+    "rust_verify/src/sail_namespace.rs": "7ad8dc9477dbd8e71add5c205cc25b70fa4664eb95f13df28d729380377ea4fa",
+    "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "254c75c7ff469aeacbb310cf779c62d09906e8f16a0efb4b65d6be513cb6878b",
+    "vir/src/context.rs": "8bcec061b764900da85d35f78c1ff50acf333983d4a5d3de4c2e2cd72d4abfb3"
+  },
+  "runtime_artifacts": {
+    "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verus/source/target-verus/release/.vstd-fingerprint": "40c417dd4f6e2a40e4cf68b39d78b19fcc728bb96f090690893f70ef6392d405",
+    "verus/source/target-verus/release/cargo-verus": "553bb2f6cfde3de553f20b0fddfac02eb942ba9dc2a81407c1565aa87b0b8fb1",
+    "verus/source/target-verus/release/libverus_builtin.rlib": "ddb3983e6e2012c65d36c83ccff224627f1c00171e5044e7e799487ac367a7ee",
+    "verus/source/target-verus/release/libverus_builtin_macros.so": "85e4597c10585d190b2c7f921901667497883e267682da2f273da5915ac16ff5",
+    "verus/source/target-verus/release/libverus_state_machines_macros.so": "f61ac47b6ba83d604ec1e279614f92c97610a66e415b44260ae5bbc7165cea8e",
+    "verus/source/target-verus/release/libvstd.rlib": "7bf372f9df47abafee79555a8832cbd8f11c693854fc10aef5492deb9f01cb8e",
+    "verus/source/target-verus/release/rust_verify": "d34ba8cdda91b365aedda1317e52c92a8a50720338cd6c68c9f368cdd73de81e",
+    "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+    "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+    "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verus/source/target-verus/release/vstd.vir": "cf8e7b5a273073dc7e07e863c03e2283183f99ca67cda139f269a73ba63b34f4",
+    "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+  },
+  "controller_sha256": "93e9870d0a500be957b1effc0d88da79831f3563805b0c812d5e99043972fbbf",
+  "compiler_limit_seconds": 600,
+  "nice": 0,
+  "actor": {
+    "pid": 749402,
+    "pgid": 749402,
+    "started_unix_ns": 1791712802220242302,
+    "exit_code": 1,
+    "elapsed_seconds": 186.00204079400282,
+    "primary_sha256": "1e6ed55940962f881fee11b9b9ceb22f68b2fe382c75760fe4bf2b0389bffff1",
+    "log_sha256": "534589717a91971966c3f5633a8915908389e3ad14e2dc02f9172be9963d5119"
+  },
+  "stage_counts": {
+    "frozen_script_inventory": 14,
+    "total_pipeline_stages": 13,
+    "attempted": 9,
+    "passed": 8,
+    "failed": 1,
+    "not_attempted": 4
+  },
+  "stages": [
+    {
+      "name": "private-graph-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 0.5533255830014241
+    },
+    {
+      "name": "private-span-audit",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 0.33566595899901586
+    },
+    {
+      "name": "old-domain-migration",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 7.197028460999718
+    },
+    {
+      "name": "same-input-hit-controls",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 24.437879387005523
+    },
+    {
+      "name": "source-fixtures",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 41.17980068500037
+    },
+    {
+      "name": "graph-checkpoint",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 62.011871153001266
+    },
+    {
+      "name": "cancel-restart",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 5.977564127999358
+    },
+    {
+      "name": "first-input-delta",
+      "status": "passed",
+      "exit_code": 0,
+      "elapsed_seconds": 24.369481344001542
+    },
+    {
+      "name": "previous-revision-focus",
+      "status": "failed",
+      "exit_code": 1,
+      "elapsed_seconds": 19.153934467001818
+    }
+  ],
+  "not_attempted_stages": [
+    "real-he-same-input",
+    "vir-tests",
+    "air-writer-tests",
+    "driver-tests"
+  ],
+  "frozen_script_sha256": {
+    "engine/verus/test-real-he.py": "effde8542a0b096aa760b6f24a9d97ef249016cd8aa588129445151a901efb89",
+    "engine/verus/test-engine.py": "543be4cecca10c745a4e870511a1e4e7ac841e1c839d190bb2be0f0f03294c5f",
+    "engine/verus/test-prepared.py": "22d0436832438d276ac79ef330dc283b67352157f9bd0c75a9ee89cc34ef1f8f",
+    "engine/verus/test-cancel.py": "c899b388c6005197f561a73c7aeafe7fe8c49e76cbb9f0f04fc56f296e15744d",
+    "engine/verus/candidates/test-graph-ledger.py": "283f05ed2cfb3f19dcd40ca055b315fe74403f93564f56b77ef87dfd8a59e603",
+    "engine/verus/candidates/audit-private-span-boundary.py": "ecaa208f6ead0dd0d0b459ffbc375e2635c44d870caf19d68b6efe1ab9d398f4",
+    "engine/verus/candidates/qualify-same-input.py": "f7ddcf603e2ff7c52a2a107ce97139ee2ccc43c75f558b61d14642762d92cc62",
+    "engine/verus/candidates/test-private-span-cross-edit.py": "80b49c69b84599b606f200157c67cdc1f92e73054905f3a22b11ce839789fc2a",
+    "engine/verus/candidates/audit-graph-ledger.py": "c1385581e251f4f8da24efb3ad176d067e0773b283f92d2253effc5122feb5e6",
+    "engine/verus/candidates/test-same-callback.py": "6cd4d5d18efd8d751de89b7c36dec04c3d26ed11f912cac3a0d9ca9050237295",
+    "engine/verus/candidates/test-key-delta.py": "c3a46a4c530f9e02234614f49cd5fea2ec4b841b1d133d711c10c749344778e6",
+    "engine/verus/candidates/actor-observation.py": "d01de79ee9de89b823d7ccfb0efa1474a2ed4185f519bffd925e8546895edc34",
+    "engine/verus/candidates/test-real-he-same-input.py": "2bb7a3817dd6aecfba438f3dc0ab78aa82012527c3977fcd6365ce5dbcac67d2",
+    "engine/verus/candidates/test-private-span-migration.py": "dd57b4ef82a9f40720946e89ebb18c7aecd915c84df309627c59ca8896f4deaf"
+  },
+  "failed_scope": {
+    "name": "previous-revision-focus",
+    "revision": 0,
+    "assertion_line": 77,
+    "assertion": "hits == len(checks) and hits > 0",
+    "label": "unchecked actual hit",
+    "interpretation": "Zero actual hits and zero checks, not an observed unchecked nonzero hit. Revision1/2 and genuine prior-revision reuse were not reached.",
+    "summary": {
+      "version": 1,
+      "scope": "Module013 source proof and genuine prior-revision focused preparation; not whole-project or product qualification",
+      "engine_verifier_sha256": "d34ba8cdda91b365aedda1317e52c92a8a50720338cd6c68c9f368cdd73de81e",
+      "patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
+      "results": [
+        {
+          "revision": 0,
+          "prior_preparations": [],
+          "edited_source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+          "assertions_completed": false,
+          "exit_code": 0,
+          "full_module_verification": {
+            "encountered-error": false,
+            "encountered-vir-error": false,
+            "success": true,
+            "verified": 9,
+            "errors": 0,
+            "is-verifying-entire-crate": true
+          },
+          "actual_hits": 0,
+          "focus_restores": [],
+          "same_callback_checks": [],
+          "preparation": {
+            "version": 1,
+            "enabled": true,
+            "batch_hits": 0,
+            "persistent_hits": 0,
+            "misses": 4,
+            "peak_retained_bytes": 10201751,
+            "memory_budget_bytes": 536870912,
+            "disk_budget_bytes": 536870912
+          }
+        }
+      ],
+      "controls_completed": false
+    },
+    "stock_verdict_and_func_details_equal": true,
+    "stock_stderr_equal": true,
+    "stdout_stderr_sha256": {
+      "stock.stdout": "b2bdc394a17519b18ccf6772054b229a2c08ee5b6c2b3d11490027346c47a288",
+      "engine.stdout": "d5a84a8b5c72394ce6f594c9e70671655b9dc9fcd98955e8e5ebb7db6d034c26",
+      "stock.stderr": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16",
+      "engine.stderr": "63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16"
+    },
+    "prepared_unavailable_stage_counts": {
+      "source-map": 1,
+      "namespace": 3
+    },
+    "cause": "Used-binding namespace validation refused; the existing events do not identify which binding, raw owner kind, or exact validation reason.",
+    "trace_limit": "Existing import-authority trace is reached by provenance after namespace validation. It does not identify a refused binding before provenance.",
+    "source_map_event_scope": "Separate with_namespace service-availability refusal. An inner namespace refusal returns Some(None); source-map is emitted only for outer None. Existing data does not identify pair/queue/Ready/absence branch."
+  },
+  "independent_closure": {
+    "sha256": "d97b7186d28ef60e7803a0ebeaaf59a46932b03fc1973240a8e2adfc1acf0e5c",
+    "manifest_sha256": "acae733747b439a5a7777d446e88f4d25c1e855d015420806c7d0f7456c89e9f",
+    "new_complete_direct13_unchanged": true,
+    "source8_and_lock_unchanged": true,
+    "three_prior_runtime13_source7_lock_seals_unchanged": true,
+    "owned_pgid_actors": [],
+    "dual_container_holders": {
+      "acceptance": [],
+      "validation": []
+    },
+    "dual_container_unreadable": {
+      "acceptance": [],
+      "validation": []
+    },
+    "empty_controlfile_cleanup_needed": false
+  },
+  "raw_archive": {
+    "sha256": "d8ec7eeaba640c60cdb473fa1b32e324a362cb31aaa7b75702b0b1c053c82382",
+    "bytes": 23736320,
+    "files": 1355,
+    "inventory_sha256": "3ddfac49c9eba6546198b7a0a1a49cb1e197a9f016379ee84b5557813cafe27e",
+    "inventory_hashes_verified_after_host_copy": true
+  },
+  "host_free_bytes": 8375832576,
+  "selected": false,
+  "source_gates_passed": false,
+  "product_qualified": false
+}

@@ -1,11 +1,15 @@
 # Preparation-only live namespace service
 
-Status: unselected file-only correction. Ten reduced helper and actual pinned
-SourceMap API controls pass; complete-source compilation/strict checks, ordinary
-fresh vstd, sealed runtime and all original fourteen qualification stages remain
-pending. The original late-handoff migration failure stays recorded in
+Status: unselected correction. The corrected source passed complete VIR41/41,
+driver88/88 and both strict checks, then an ordinary fresh-vstd build. Its one
+original qualification passed eight of thirteen actual stages and failed the
+ninth at revision 0 with no preparation hits. The fourteen frozen scripts are
+an input inventory, not fourteen completed stages. See the
+[corrected runtime evidence](visibility-correction/README.md). All original
+oracles, compiler flags, internal concurrency and 600-second limits remain.
+
+The preceding late-handoff migration failure stays recorded in
 [qualification-failure.json](../deferred-import-locator/late-handoff/qualification-failure.json).
-No fixture, oracle, compiler flag, thread count or deadline is changed.
 
 The failed new actor verified two functions with empty stderr, but stored no
 preparation: stock parallel workers deliberately pass `None` for the diagnostic
@@ -59,7 +63,8 @@ next while retiring the previous request. Worker-last disposal precedes gate
 release. Thus at most two Shared/box shells overlap. A full-source layout control
 bounds those shells plus pinned native initialization candidates by 4 KiB and
 three whole mpsc blocks plus that margin by 64 KiB. The full-source assertion
-has not yet compiled, so the total physical proof remains pending that gate.
+compiled and passed in the corrected complete-source controls; executable
+qualification remains failed as described above.
 
 The exact pinned std source [audit](platform-allocation-audit.json) records source
 URLs and hashes: Linux uses inline futex state; Darwin OnceBox allocates fixed
@@ -71,7 +76,7 @@ three-block reserve includes a current/retiring block and one sender boundary
 allocation. No arbitrary number of ordinary diagnostic blocks is relabeled as
 preparation retention. The proposed phase maximum is 500 MiB plus 80 KiB, below
 the unchanged 512 MiB aggregate, with independent review and complete-source
-layout proof still required. This is not process RSS or runtime qualification.
+layout controls passed. This is not process RSS or runtime qualification.
 
 Mutex poison, dropped service or failed queue submission refuses preparation.
 Worker cancellation/panic disconnects the service; validator unwind drops its
@@ -103,7 +108,7 @@ python3 engine/verus/candidates/preparation-namespace/test-api.py \
 All original static/domain/fixture/checkpoint/cancel/checked-hit/cross-edit/raw
 stock diagnostic controls remain required under their original 600-second
 compiler bounds. User-facing proof repair remains experimental and this runtime
-has not been built or selected.
+has been built as the corrected private variant but remains unselected.
 
 The [retained scopes](retained-control-scopes.json) keep the first seven-control
 result and subsequent sizing controls separately. The test-only paused-drop hook
