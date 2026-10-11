@@ -136,7 +136,7 @@ retired without removing binaries, runtime files or raw evidence.
 | Workstream | Current evidence | Required next result |
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
-| Combined implementation | The cleanup-fixed [complete gate passes strict Clippy and 606/607 workspace tests](../bench/validation/m7-linux-combined-core-gate-b63af10-failure-2026-10-11.json), failing the unchanged HTTP coalescing deadline. The separate [solver run passes 39/41](../bench/validation/m7-linux-combined-core-solver-b63af10-failure-2026-10-11.json), including cache maintenance; two attribution failures coincide with the read-only filesystem failure. | Correct HTTP transport overhead and run the complete current gate and solver suite after recovery. Earlier full and isolated passes remain separate. |
+| Combined implementation | The [current complete local gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json) passes all 609 workspace tests and every remaining gate step; the original pinned-solver suite passes 41/41. The unchanged HTTP coalescing case passes in this scope. | Current native CI and installed repair validation. Historical failed scopes and their unresolved causes remain separate. |
 | Repair workflow | [Native CI passes the original complete small fixture in 45.847 seconds](../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json), under unchanged 120/30/5-second bounds. Earlier emulated whole-workflow timeouts remain failed. | Run the rebuilt combined product and complete real HumanEval/Vest workflows. The small fixture does not establish real-project performance. |
 | Responsive reads | The last [original full reader census](validation/m7-descriptor-reader-terminal.md) retains 200 valid samples with four concurrent clients: Status p95 120.526 ms passes; complete Result p95 343.142 ms fails. Component controls for bounded output ownership pass. | Both complete p95 values below 200 ms during actual verification, then original retained CLI/MCP scenarios. No reduced graphs or changed client deadlines. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
@@ -154,8 +154,9 @@ unattempted there. The direct-method spelling is corrected. Its
 passes strict Clippy and 606 of 607 workspace tests, but the eight-reader HTTP
 coalescing case times out at its unchanged 250 ms budget. One request and seven
 coalesced readers are recorded; all callers fail to receive the signed entry in
-time. Later gate steps and the solver suite are unattempted. The team is
-investigating this failure without changing the deadline or hit oracle.
+time. Later gate steps and the solver suite are unattempted. The later current gate passes this unchanged check. The original failed
+scope and its unresolved cause remain retained; the deadline and hit oracle
+were not changed.
 
 The separate [cleanup-fixed solver attempt](../bench/validation/m7-linux-combined-core-solver-b63af10-failure-2026-10-11.json)
 passes 39 of 41 cases, including GC/clear in 20.404 seconds. Two attribution
@@ -184,8 +185,9 @@ without changing successful proof receipts or `TargetResult.complete`.
 Independent review is complete. All fifteen [affected Linux controls](validation/m7-negative-compiler-generation-first-controls.md)
 pass, including an actual Cargo dependency reuse check. Their first component
 scope fails strict Clippy on a test-only missing semicolon; that correction is
-integrated. The subsequent complete workspace gate passes strict Clippy and is
-running the remaining checks. Installed-product validation remains pending.
+integrated. The subsequent [complete workspace gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json)
+passes all 609 tests and every remaining step, followed by all 41 original
+pinned-solver controls. Installed-product validation remains pending.
 
 The [async HTTP candidate](decisions/0037-owned-async-shared-http-transport.md)
 passes its 39 affected controls but increases combined helper/I/O CPU and complete
