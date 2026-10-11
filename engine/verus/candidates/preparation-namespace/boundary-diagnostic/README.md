@@ -74,6 +74,19 @@ logs, tested ELF and source hashes (54.537 seconds total), unchanged eight-file
 source/lock and four older complete runtime/source/lock seals, and closed actors.
 The E0308 attempt stays failed. This source-only result does not identify the
 real refusal or qualify a runtime; the original failed qualification is intact.
+The single diagnostic completed in 14.619 seconds. The compiler exited normally
+with the same archived stock verdicts, per-function results and exact stderr;
+the unchanged positive-hit predicate failed. Three correlated worker/compiler
+records identify `UnknownCrate` for core/alloc unit bindings. The helper also
+uses that error for a missing containing original range, so its name does not
+establish crate omission. A separate service record identifies `pair-busy` with
+80 KiB of retained control ownership. These are two distinct observed barriers.
+`revision0-result.json` retains their exact words, identity hashes, predicates
+and seventeen-file raw inventory. Source/input/image and all prior runtime seals
+were unchanged; the independent dual-container closure found zero holders and
+unreadable live processes. The original eight-pass/ninth-fail qualification
+remains failed, and the diagnostic confers no reuse or qualification credit.
+
 The direct driver build passed in 155.957 seconds at two compiler jobs and
 ordinary priority. `driver-build-pass.json` binds its logs, source controls and
 separate image inventory. All four prior runtime seals and the source remained
