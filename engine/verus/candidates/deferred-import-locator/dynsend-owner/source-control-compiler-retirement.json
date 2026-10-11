@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "scope": "Closed owned compiler subdirectories only; all sealed runtimes, source and raw evidence retained",
+  "records": [
+    {
+      "variant_suffix": "closed-dynsend-source-controls",
+      "before_seal": {
+        "direct_file_sha256": {
+          ".cargo-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          ".cargo-artifact-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          ".cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "source_files": {
+          "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+          "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+          "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+          "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+          "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+          "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+          "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395"
+        }
+      },
+      "owned_compiler_actors": [],
+      "target_holders": [],
+      "retained_test_executables": [
+        {
+          "name": "vir-d9a7bf74b1249c1e",
+          "bytes": 4983672,
+          "allocated_bytes": 4984832,
+          "sha256": "44b29e6ef65578435808e4e086313e0ac3e2381169a062a40a95f2be2bb5c8bc"
+        },
+        {
+          "name": "rust_verify-fbadc31d5f770ece",
+          "bytes": 2470672,
+          "allocated_bytes": 2473984,
+          "sha256": "18a269bfdf7ac9f1d5400667fd18a932a88b31acfb42226bef0048c71abc9f33"
+        }
+      ],
+      "retired_sets": [
+        {
+          "directory": "deps",
+          "files": 1194,
+          "apparent_bytes": 1250038214,
+          "allocated_bytes": 1252409344,
+          "inventory_sha256": "ca02a792842df8ad9da4be81d0e52af12f351f5a9b72d7fb962e4e1e68b93939"
+        },
+        {
+          "directory": "build",
+          "files": 429,
+          "apparent_bytes": 99843515,
+          "allocated_bytes": 100831232,
+          "inventory_sha256": "0ffd10d46712b79fa0f2f560b9f57cc0f3e3d6aceb4babec109279e7a1e03a17"
+        },
+        {
+          "directory": ".fingerprint",
+          "files": 2154,
+          "apparent_bytes": 494354,
+          "allocated_bytes": 8839168,
+          "inventory_sha256": "46625e81c27e29af35e4ebfb3ad12bba52ca326c83842872103d49899632b316"
+        },
+        {
+          "directory": "incremental",
+          "files": 0,
+          "apparent_bytes": 0,
+          "allocated_bytes": 0,
+          "inventory_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "after_seal": {
+        "direct_file_sha256": {
+          ".cargo-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          ".cargo-artifact-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          ".cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "source_files": {
+          "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+          "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+          "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+          "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+          "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+          "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+          "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395"
+        }
+      },
+      "old_complete13_seals_unchanged": {
+        "436dd0391e711083": {
+          "manifest_sha256": "75ab161c76783cdbdf1167f665d6d14623341101576e1577e9b0a92598eb24eb",
+          "artifacts": {
+            "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "verus/source/target-verus/release/.vstd-fingerprint": "3b802ab632f76a84cbc41f705a9326acae70a70234c160b41c71680cda62fdab",
+            "verus/source/target-verus/release/cargo-verus": "19c61f8983e3e302e177de78f5d3d235d403ec82338585f678856a0b8f0442c7",
+            "verus/source/target-verus/release/libverus_builtin.rlib": "c8fa21e955d2a771de62a71326a73ea9294ecca2adb80a28a234e2540b70cf6e",
+            "verus/source/target-verus/release/libverus_builtin_macros.so": "8c163089cb55fc3177a7e5505176d3321b6104e19635e0085353605bb12a7f9c",
+            "verus/source/target-verus/release/libverus_state_machines_macros.so": "57cef10cfacf24b1f30ea64252b4a86688ddbef3bc1338fde3c7dc6416b6ecab",
+            "verus/source/target-verus/release/libvstd.rlib": "489578f6a71f8d6e03860abd5341a8f3ca269b3a20aff5b1f3d90b9ede271774",
+            "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+            "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+            "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+            "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "verus/source/target-verus/release/vstd.vir": "fd5624f2bab39223a8da6338f8d3823af4cfec7fe166709fa949f497157c177a",
+            "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+          },
+          "direct_inventory": 13
+        },
+        "29829d2f648fba58": {
+          "manifest_sha256": "13d28be67960d396c6a936133482f3ffdd253ea586f1db93ccc8abb6639c8628",
+          "artifacts": {
+            "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "verus/source/target-verus/release/.vstd-fingerprint": "6b88f77b5f3dfe6ad62e6bda6d3b42e3762d4ae8f3d71d664268613acb5a0e41",
+            "verus/source/target-verus/release/cargo-verus": "c6dbb5e02eb4a650f88c46eb68770ee06b462ef9b7f87dcc4168a285cee2d15e",
+            "verus/source/target-verus/release/libverus_builtin.rlib": "f54a86491972a643aca9194bf3f274e5027548df2f624e405850e7012ec47eb7",
+            "verus/source/target-verus/release/libverus_builtin_macros.so": "cdf8dd2fec69a34bcd9b8c8ddf6ea52854b2e714fd0432bd1dbd53522b3d40c0",
+            "verus/source/target-verus/release/libverus_state_machines_macros.so": "1d6931b6b7b6fe35ef44a0f0095e321cc94c44b6c94209e802e220cd625f2fa7",
+            "verus/source/target-verus/release/libvstd.rlib": "a1eacf3ee522a4c28470518418f5642f57a210fb9f5e996563b9163160fa071c",
+            "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+            "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+            "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+            "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "verus/source/target-verus/release/vstd.vir": "3a4a53b3682b984889afa0163121287fff7c03af5f48bfa8d0e79fc6b2ec71f8",
+            "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+          },
+          "direct_inventory": 13
+        }
+      },
+      "source_control_raw_sha256_unchanged": {
+        "source-checks.json": "7fdb4a4278dbc5f0266ccd499d41d123b8e69957d858ae51d8049487ba21a6c0",
+        "closed-source-checks.json": "1aae0ab7ee8d67ded3f9a95ba7cd33a06f5d8b74159e7e9d4302e56b72822371",
+        "vir-library-tests.log": "45414e936dddfb213aebc725f66ac6e6b2ac2f34343d0b7da8bd0409868eb7f5",
+        "driver-library-tests.log": "6241b0cd925385a3b635a246c497e538f6189cb8bbfe1a10c6047f297a5d8f86",
+        "vir-strict-clippy.log": "e4342bfe4406de754a34b7b2d18b84b7cfdfd604c5e004cf2b08d53216d8d11c",
+        "driver-strict-clippy.log": "79dd4e4c44955eab65fab1243eb719287ff0cdb2d7536126309870306cf2897a",
+        "compiler-seed.json": "13b9b4c49ddeaaf511622427a34bce1e2fb626f5d6aa33ca38789a6015491325"
+      }
+    }
+  ],
+  "started_unix_ns": 1791696722328751043,
+  "native_free_before": 319415586816,
+  "native_free_after": 320017485824,
+  "finished_unix_ns": 1791696801680382010,
+  "runtime_source_and_raw_unchanged": true,
+  "retired_allocated_bytes": 1362079744,
+  "retained_executable_allocated_bytes": 7458816,
+  "controller_sha256": "dfd4a74ea3f648da2d84259ac8526565800855dfa85c2ed040b199449604e0c7",
+  "raw_retirement_sha256": "cfcc3cd417cdeaca9e6eaed5a63d692de793b24bec7273a1cdde34580d3757d2",
+  "host_backing_observations": {
+    "before": {
+      "observed_unix_ns": 1791696696006135000,
+      "host_available_bytes": 7572852736
+    },
+    "after": {
+      "observed_unix_ns": 1791696824335288000,
+      "host_available_bytes": 9500753920
+    }
+  },
+  "backing_reclaim_attribution": "None; native and host free space share concurrent writes and sparse VM backing",
+  "active_build_or_common_target_touched": false
+}

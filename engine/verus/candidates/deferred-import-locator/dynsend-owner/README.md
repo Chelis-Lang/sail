@@ -100,3 +100,13 @@ prepared trace environment was ineffective and was removed before any launch.
 The source trace stays dormant; no actual selected-state evidence is claimed.
 No qualification process has launched. Root must first review the fresh new
 manifest and this controller binding.
+
+[Source-control compiler retirement](source-control-compiler-retirement.json)
+removes only the closed source-control target's regenerable compiler
+subdirectories after the ordinary builder finishes copying its verified seed.
+It retains both actual test executables, source snapshots, all raw check logs
+and the seed inventory. Holder checks are empty, and both preceding complete
+thirteen-artifact runtime seals stay byte-exact. File-allocated retirement and
+native/host free-space observations are separate; shared backing-space changes
+are not attributed to this cleanup. The active ordinary and common targets
+remain protected.
