@@ -15,7 +15,6 @@
     "vir/src/context.rs": "8bcec061b764900da85d35f78c1ff50acf333983d4a5d3de4c2e2cd72d4abfb3"
   },
   "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "control_source_sha256": "264bcf18a9a27811c7238bbf50323e94bd1f41b731149ba66dd31cad64919df3",
   "control_owner_bytes": 16384,
   "permanent_queue_retirement_reserve_bytes": 65536,
   "prospective_phase_max_bytes": 524369920,
@@ -25,5 +24,7 @@
   "api_source_extraction": "namespace.rs is byte-exact complete producer helper, including cfg(test) controls; tests.rs imports it in actual pinned rustc harness",
   "api_core_matches": true,
   "change": "only NamespaceRequest pub(super)\u2192pub(crate); fields stay private, no assertions/lint policy/production operations changed",
-  "prior_source_failure": "../source-controls-failure.json"
+  "prior_source_failure": "../source-controls-failure.json",
+  "api_control_source_sha256": "264bcf18a9a27811c7238bbf50323e94bd1f41b731149ba66dd31cad64919df3",
+  "source_controller_sha256": "4a0fe0529abc90b2e0c2394ab547bbd412d2a955d8b337e405444054b3c25e6d"
 }
