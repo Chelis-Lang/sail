@@ -1,8 +1,11 @@
 # Current negative compiler-generation controls
 
 The source change is `cce420f` with refusal-fixture corrections `3eaff19` and
-`76d08f1`. Independent review found no static authority blocker. Actual native
-controls and installed repair acceptance remain pending. The motivating
+`76d08f1`. Independent review found no static authority blocker. The first
+[native scope](m7-negative-compiler-generation-first-controls.md) passed all 15
+affected tests, then failed strict Clippy on a test-only missing semicolon.
+Correction `7d78ae2` retains every production predicate and assertion; corrected
+strict controls and installed repair acceptance remain pending. The motivating
 [recovered diagnostic](m7-repair-a960-recovered-setup.md) remains a complete
 120-second fixture failure, with no performance credit.
 
