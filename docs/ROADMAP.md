@@ -244,8 +244,10 @@ Priority order for completing this milestone:
    That measurement includes no RPC or Python decoding and does not complete
    the full reader gate. The [transport review](validation/m7-full-result-cost-followup-review.md)
    finds no additional encoding or full-frame copy on cached hits. Separately
-   validate the still-unselected bounded small HTTP body reads against the
-   original eight-reader 250 ms check.
+   include the [selected bounded small HTTP body reads](validation/m7-http-small-known-body-actual-controls.md)
+   in the combined gate. All 38 affected controls, strict checks, read-count
+   sensitivity and the original eight-reader 250 ms comparison pass; that
+   single pair does not establish a stable speedup or resolve earlier failures.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
 5. Measure every frozen HumanEval and Vest repair cycle for three rounds, retaining

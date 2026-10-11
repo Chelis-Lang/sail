@@ -23,7 +23,9 @@ semantic versioning once the API is published.
   dependency publication intervals, plus daemon child-exit, document-read,
   freshness-establishment and status-save timings. Fixed metadata bounds and
   original proof checks, freshness order and deadlines remain unchanged. This
-  instrumentation has not yet established a remaining repair latency cause.
+  retained original-workflow measurements show 4.73–4.88 seconds spent
+  establishing freshness after child exit. Its internal cost breakdown remains
+  unmeasured; whole-workflow acceptance is pending.
 
 - Document the rejected shared HTTP async-adapter experiment. Its complete
   operation was slower despite passing the affected security controls; the
