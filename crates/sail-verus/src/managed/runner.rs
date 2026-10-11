@@ -1375,7 +1375,7 @@ pub(crate) fn run_engine(
     before.observation_paths = monitored.observation_paths;
     drop(monitored_snapshot);
     let input_barrier = diagnostics.phase(Phase::InputBarrier);
-    before.complete &= monitored.complete && coherent.ready();
+    before.complete &= monitored.complete && coherent.ready_at(super::coherent::Barrier::Input);
     let stamp_before = super::input::mutation_stamp(&before);
     super::configuration::check(&invocation, &config.args)?;
     json(
@@ -1543,7 +1543,7 @@ pub(crate) fn run_engine(
     let pending = completed_receipts(&paths.run, &after_data)?;
     let stamp_after = super::input::mutation_stamp(&after);
     let absent = absent.finish();
-    let coherent_complete = coherent.ready();
+    let coherent_complete = coherent.ready_at(super::coherent::Barrier::PostVerification);
     let mut sysroot_complete = sysroots.complete();
     let currentness = if !before.complete
         || !after.complete
@@ -1598,7 +1598,7 @@ pub(crate) fn run_engine(
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = Vec::new();
     if !coherent_complete {
-        notes.push(format!("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification ({}); no current proof receipt is published", coherent.failure_reason()));
+        notes.push(format!("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification ({}); no current proof receipt is published", coherent.failure_description()));
     }
     if !sysroot_complete {
         notes.push(format!("SAIL3114: sysroot byte identities lost continuous kernel coverage ({}); no current proof receipt is published", sysroots.failure_reason()));

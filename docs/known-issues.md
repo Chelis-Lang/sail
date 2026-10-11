@@ -8,6 +8,15 @@ the detailed prior roadmap narrative and its distinct failed/setup scopes.
 
 ## Interactive repair engine (M7)
 
+An Unknown proof and unavailable validation during a later job read are distinct
+conditions. Earlier managed reports collapsed precise namespace failures to
+`native-observation-invalidated`; they cannot establish which event or barrier
+failed. New reports retain the existing static namespace reason and first
+failed barrier without additional probes. They still omit the affected file and
+event cause. The [coverage diagnostic boundary](validation/m7-proof-coverage-diagnostics.md)
+explains the remaining attribution limits. Earlier HE Unknown reports remain
+failed acceptance evidence; these diagnostic changes do not recertify them.
+
 CLI/MCP repair checks, journals, explanations and immutable baselines are
 implemented. The selected source runtime passes source fixtures and the small
 native Linux CLI/MCP scenario. Real human-eval-verus and Vest acceptance is

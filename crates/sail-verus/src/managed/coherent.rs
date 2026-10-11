@@ -6,12 +6,27 @@ use super::InputSnapshot;
 #[cfg(target_os = "linux")]
 use super::{lease::ReadLease, precise::Observer};
 
+#[derive(Clone, Copy)]
+pub(super) enum Barrier {
+    Input,
+    PostVerification,
+}
+impl Barrier {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Input => "input-barrier",
+            Self::PostVerification => "post-verification",
+        }
+    }
+}
+
 pub(super) struct Guard {
     #[cfg(target_os = "linux")]
     observer: Option<Observer>,
     #[cfg(target_os = "linux")]
     lease: Option<ReadLease>,
     failure: Option<&'static str>,
+    failed_barrier: Option<Barrier>,
 }
 impl Guard {
     pub(super) fn begin(snapshot: &InputSnapshot) -> Self {
@@ -32,13 +47,24 @@ impl Guard {
                 observer,
                 lease,
                 failure,
+                failed_barrier: None,
             }
         }
         #[cfg(not(target_os = "linux"))]
         {
             let _ = snapshot;
-            Self { failure: None }
+            Self {
+                failure: None,
+                failed_barrier: None,
+            }
         }
+    }
+    pub(super) fn ready_at(&mut self, barrier: Barrier) -> bool {
+        let ready = self.ready();
+        if !ready {
+            self.failed_barrier.get_or_insert(barrier);
+        }
+        ready
     }
     pub(super) fn ready(&mut self) -> bool {
         if self.failure.is_some() {
@@ -69,6 +95,27 @@ impl Guard {
     }
     pub(super) fn failure_reason(&self) -> &'static str {
         self.failure.unwrap_or("coherent-validation-unavailable")
+    }
+    fn failure_detail(&self) -> Option<&'static str> {
+        #[cfg(target_os = "linux")]
+        if self.failure == Some("native-observation-invalidated") {
+            return self.observer.as_ref().map(Observer::failure_reason);
+        }
+        #[cfg(not(target_os = "linux"))]
+        let _ = self;
+        None
+    }
+    // Only already-recorded static labels: no extra poll, file read or barrier.
+    pub(super) fn failure_description(&self) -> String {
+        let reason = self.failure_reason();
+        match (self.failed_barrier, self.failure_detail()) {
+            (Some(barrier), Some(detail)) => {
+                format!("{reason}; barrier={}; detail={detail}", barrier.label())
+            }
+            (Some(barrier), None) => format!("{reason}; barrier={}", barrier.label()),
+            (None, Some(detail)) => format!("{reason}; detail={detail}"),
+            (None, None) => reason.to_owned(),
+        }
     }
 }
 
@@ -124,8 +171,31 @@ mod tests {
         assert!(std::fs::write(&file, b"good").is_ok());
         assert!(!guard.ready());
         assert_eq!(guard.failure_reason(), "native-observation-invalidated");
+        assert_eq!(
+            guard.failure_detail(),
+            Some("namespace-tracked-input-event")
+        );
         assert!(!guard.ready());
         assert_eq!(guard.failure_reason(), "native-observation-invalidated");
+        drop(guard);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn recorded_failure_detail_and_first_barrier_do_not_revalidate_or_revive() {
+        let root = std::env::temp_dir().join(format!("sail-proof-detail-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let file = root.join("lib.rs");
+        assert!(std::fs::write(&file, b"good").is_ok());
+        let mut guard = Guard::begin(&snapshot(&root));
+        assert!(guard.ready_at(Barrier::Input));
+        assert!(std::fs::write(&file, b"fail").is_ok());
+        assert!(std::fs::write(&file, b"good").is_ok());
+        assert!(!guard.ready_at(Barrier::PostVerification));
+        let description = "native-observation-invalidated; barrier=post-verification; detail=namespace-tracked-input-event";
+        assert_eq!(guard.failure_description(), description);
+        assert!(!guard.ready_at(Barrier::Input));
+        assert_eq!(guard.failure_description(), description);
         drop(guard);
         assert!(std::fs::remove_dir_all(root).is_ok());
     }

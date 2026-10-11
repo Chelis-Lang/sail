@@ -220,12 +220,13 @@ fn encode_result(document: ResultDocument) -> io::Result<Arc<Vec<u8>>> {
     Ok(Arc::new(bytes))
 }
 fn apply_currentness(project: &mut sail_api::project::ProjectResult, currentness: Currentness) {
+    let originally_current = project.currentness == sail_api::project::Currentness::Current;
     project.currentness = match currentness {
         Currentness::Current => sail_api::project::Currentness::Current,
         Currentness::Historical => sail_api::project::Currentness::Historical,
         Currentness::Unknown => sail_api::project::Currentness::Unknown,
     };
-    if currentness == Currentness::Unknown {
+    if currentness == Currentness::Unknown && originally_current {
         project.notes.push("SAIL3114: current input validation is unavailable or still running; native coverage and kernel read leases must be established before claiming Current".to_owned());
     }
 }
@@ -436,6 +437,91 @@ pub(super) fn prune(state: &State, project: &Path) {
     for (_, id) in retained.into_iter().take(remove) {
         if std::fs::remove_dir_all(state.root.join(&id)).is_ok() {
             jobs.remove(&id);
+        }
+    }
+}
+
+#[cfg(test)]
+mod currentness_note_tests {
+    use super::*;
+    use sail_api::project::{Execution, ProjectResult};
+
+    fn project(currentness: sail_api::project::Currentness) -> ProjectResult {
+        ProjectResult {
+            kind: "sail-project-result".to_owned(),
+            schema_version: sail_api::project::SCHEMA_VERSION,
+            run_id: "original-run".to_owned(),
+            workspace: "workspace".to_owned(),
+            context_sha256: "context".to_owned(),
+            input_revision: "revision".to_owned(),
+            currentness,
+            exit_code: Some(0),
+            targets: Vec::new(),
+            execution: Execution::default(),
+            notes: vec![
+                "SAIL3114: native-observation-invalidated; detail=namespace-tracked-input-event"
+                    .to_owned(),
+                "Build-script input declarations were established during this run".to_owned(),
+            ],
+            error: None,
+        }
+    }
+
+    #[test]
+    fn already_unknown_proof_preserves_original_reasons_without_inventing_projection_failure() {
+        let mut report = project(sail_api::project::Currentness::Unknown);
+        let original = report.clone();
+        assert_eq!(
+            classify(report.currentness, "revision", None),
+            Currentness::Unknown
+        );
+        apply_currentness(&mut report, Currentness::Unknown);
+        assert_eq!(report, original);
+    }
+
+    #[test]
+    fn lost_current_projection_keeps_proof_and_adds_validation_warning() {
+        let mut report = project(sail_api::project::Currentness::Current);
+        let original = report.clone();
+        assert_eq!(
+            classify(report.currentness, "revision", None),
+            Currentness::Unknown
+        );
+        apply_currentness(&mut report, Currentness::Unknown);
+        assert_eq!(report.currentness, sail_api::project::Currentness::Unknown);
+        assert_eq!(&report.notes[..original.notes.len()], original.notes);
+        assert_eq!(report.notes.len(), original.notes.len() + 1);
+        assert!(
+            report
+                .notes
+                .last()
+                .is_some_and(|note| note.starts_with("SAIL3114: current input validation"))
+        );
+        report.currentness = original.currentness;
+        report.notes = original.notes.clone();
+        assert_eq!(report, original);
+    }
+
+    #[test]
+    fn current_and_historical_projection_do_not_add_uncertainty_notes() {
+        for (original, projected) in [
+            (
+                sail_api::project::Currentness::Current,
+                Currentness::Current,
+            ),
+            (
+                sail_api::project::Currentness::Current,
+                Currentness::Historical,
+            ),
+            (
+                sail_api::project::Currentness::Historical,
+                Currentness::Historical,
+            ),
+        ] {
+            let mut report = project(original);
+            let notes = report.notes.clone();
+            apply_currentness(&mut report, projected);
+            assert_eq!(report.notes, notes);
         }
     }
 }
