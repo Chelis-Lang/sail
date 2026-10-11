@@ -13,7 +13,7 @@ attempt remains failed. No workaround is selected.
 
 ## Interactive repair engine (M7)
 
-The latest unselected source candidate builds and freshly verifies all 2,060
+The earlier late-handoff source candidate builds and freshly verifies all 2,060
 vstd obligations, but fails the original migration qualification because it
 publishes no prepared lowering. Both fixture proofs succeed. Parallel workers
 correctly omit a diagnostic source map; the candidate mistakenly required that
@@ -41,9 +41,11 @@ digest, [complete compiler controls](../engine/verus/candidates/preparation-name
 pass all 150 tests and both strict checks. The
 [real memo-bypass sensitivity](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/memo-bypass-counterfactual/result.json)
 fails the unchanged assertion with the bypass removed and passes after exact
-source restoration. The separately reviewed ordinary runtime build is active;
-fresh vstd verification, complete runtime closure and original qualification
-remain required. No candidate
+source restoration. The separately reviewed
+[ordinary runtime build](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/ordinary/ordinary-build-result.json)
+passes with fresh verification of all 2,060 vstd obligations and all 13 runtime
+artifacts sealed. Its original thirteen-stage qualification is now running.
+No candidate
 is selected; the final four
 of thirteen stage records were not attempted.
 The fourteen-script inventory is preserved. Stock diagnostic routing and
