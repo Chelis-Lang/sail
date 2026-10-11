@@ -1,0 +1,943 @@
+{
+  "version": 1,
+  "scope": "one unchanged standalone original managed acceptance against frozen 012 product, Linux x86_64 Docker Desktop emulation; stage timings diagnostic only",
+  "source": "012707a4838554951fa7913b3b19f7bd5c0a05e1",
+  "source_archive_sha256": "07100030a7d9c9cf19f966d603ef078c0ec75825837771cdd49cc47d45e0e720",
+  "product": {
+    "sail": {
+      "bytes": 73066264,
+      "sha256": "2bd450688732de61525fc768ba858533bb428517522c04180876585c5c498c6c"
+    },
+    "sail-z3": {
+      "bytes": 10467160,
+      "sha256": "a337030eec201a11f0b351b55bf2000e3e1f50e28f9a47580461e1af090bb80b"
+    }
+  },
+  "input_identities": {
+    "ci/test-managed.py": {
+      "sha256": "a5d212a56e4fdaf9472c597f40f36878a24caab74865a014ca3944948490702b",
+      "bytes": 15159,
+      "copied_name": "test-managed.py"
+    },
+    "ci/managed-evidence.py": {
+      "sha256": "f47632dd991177ff40dc50685dc7e01b83236608b58be9ffaecce086825ca3fb",
+      "bytes": 9487,
+      "copied_name": "managed-evidence.py"
+    },
+    "crates/sail-verus/src/managed/diagnostics.rs": {
+      "sha256": "cb2f9793aef999ac259dc53852e50164a505d5e8d817f94bb46ea9b5e6a4d204",
+      "bytes": 10478,
+      "copied_name": "diagnostics.rs"
+    }
+  },
+  "controller": {
+    "bytes": 3637,
+    "sha256": "1c123578dbe440c52ec78b0855583ab96237323b4470380f718c3241e0cbad67"
+  },
+  "runtime_binary_identities": {
+    "verus": {
+      "bytes": 4708720,
+      "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+    },
+    "cargo-verus": {
+      "bytes": 2756256,
+      "sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+    },
+    "z3": {
+      "bytes": 34954456,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "runtime_selection": {
+    "pinned_binary_release_home": "CI image primary Verus installation",
+    "cargo_verus": "same pinned installation",
+    "solver_source": "primary pinned installation; no override",
+    "source_engine_release_socket_shared_toolchain_target_overrides": "absent"
+  },
+  "started_utc": "2026-10-11T01:40:50.064483+00:00",
+  "finished_utc": "2026-10-11T01:48:17.919208+00:00",
+  "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+  "bounds": {
+    "managed_verification_s": 240,
+    "plain_verus_s": 120,
+    "cli_s": 30,
+    "rpc_s": 5
+  },
+  "preparation": "none: original fresh fixture and cache, no proof copy",
+  "whole_script": {
+    "returncode": 0,
+    "elapsed_s": 447.8269795390006,
+    "original_assertions": "all passed",
+    "stdout": "managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, and restored-mtime failing edit passed"
+  },
+  "operations": [
+    {
+      "operation": "managed-01",
+      "meaning": "cold",
+      "duration_s": 216.0804739310006,
+      "timed_out": false,
+      "returncode": 0,
+      "currentness": "current",
+      "error": null,
+      "notes": [],
+      "execution": {
+        "verifier_invocations": 2,
+        "reused_targets": 0,
+        "wall_ms": 215889.617306
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "requested": true,
+          "complete": true,
+          "reused": false,
+          "summary": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "requested": false,
+          "complete": true,
+          "reused": false,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ],
+      "setup_rows": [
+        {
+          "kind": "managed-setup-phase",
+          "phase": "metadata",
+          "pid": 427351,
+          "started_ms": 0.000458,
+          "elapsed_ms": 3860.43521
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-binaries",
+          "pid": 427351,
+          "started_ms": 3861.5181270000003,
+          "elapsed_ms": 723.1497919999999
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "helper-identity",
+          "pid": 427351,
+          "started_ms": 4584.811377,
+          "elapsed_ms": 402.96
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "toolchain-probes",
+          "pid": 427351,
+          "started_ms": 4987.8037939999995,
+          "elapsed_ms": 1922.418418
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-guard",
+          "pid": 427351,
+          "started_ms": 6910.279378,
+          "elapsed_ms": 3084.047877
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-hash",
+          "pid": 427351,
+          "started_ms": 9994.388796,
+          "elapsed_ms": 15877.605716
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-barrier",
+          "pid": 427351,
+          "started_ms": 25873.015720000003,
+          "elapsed_ms": 18.714624999999998
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "context-configuration",
+          "pid": 427351,
+          "started_ms": 25891.827304,
+          "elapsed_ms": 18.672874999999998
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-context",
+          "pid": 427351,
+          "started_ms": 3861.398418,
+          "elapsed_ms": 22049.236926999998
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "owned-paths",
+          "pid": 427351,
+          "started_ms": 25910.761762,
+          "elapsed_ms": 2.98925
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "initial-snapshot",
+          "pid": 427351,
+          "started_ms": 25913.762720000002,
+          "elapsed_ms": 1857.61846
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-guards",
+          "pid": 427351,
+          "started_ms": 27771.40593,
+          "elapsed_ms": 1019.323958
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "monitored-snapshot",
+          "pid": 427351,
+          "started_ms": 28790.77343,
+          "elapsed_ms": 74.337792
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-barrier",
+          "pid": 427351,
+          "started_ms": 28865.164972,
+          "elapsed_ms": 44.506083000000004
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "target-cleanup",
+          "pid": 427351,
+          "started_ms": 28909.689263,
+          "elapsed_ms": 1.078875
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "invocation-seal",
+          "pid": 427351,
+          "started_ms": 28910.778597,
+          "elapsed_ms": 228.217625
+        }
+      ],
+      "setup_row_file": "reports/managed-01.events.setup-427351-0.jsonl",
+      "setup_span_to_invocation_seal_ms": 29138.996222
+    },
+    {
+      "operation": "managed-02",
+      "meaning": "unchanged reuse",
+      "duration_s": 31.947167140999227,
+      "timed_out": false,
+      "returncode": 0,
+      "currentness": "current",
+      "error": null,
+      "notes": [],
+      "execution": {
+        "verifier_invocations": 0,
+        "reused_targets": 2,
+        "wall_ms": 31800.514057
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "requested": true,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "requested": false,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ],
+      "setup_rows": [
+        {
+          "kind": "managed-setup-phase",
+          "phase": "metadata",
+          "pid": 431841,
+          "started_ms": 0.000541,
+          "elapsed_ms": 1372.915418
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-binaries",
+          "pid": 431841,
+          "started_ms": 1373.615292,
+          "elapsed_ms": 617.529834
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "helper-identity",
+          "pid": 431841,
+          "started_ms": 1991.1760840000002,
+          "elapsed_ms": 229.563959
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "toolchain-probes",
+          "pid": 431841,
+          "started_ms": 2220.7752090000004,
+          "elapsed_ms": 2553.9358349999998
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-guard",
+          "pid": 431841,
+          "started_ms": 4774.815544,
+          "elapsed_ms": 2585.880001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-hash",
+          "pid": 431841,
+          "started_ms": 7360.730337,
+          "elapsed_ms": 15991.549382000001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-barrier",
+          "pid": 431841,
+          "started_ms": 23352.323761,
+          "elapsed_ms": 27.114208
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "context-configuration",
+          "pid": 431841,
+          "started_ms": 23379.469261000002,
+          "elapsed_ms": 17.057667
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-context",
+          "pid": 431841,
+          "started_ms": 1373.540584,
+          "elapsed_ms": 22023.229177
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "owned-paths",
+          "pid": 431841,
+          "started_ms": 23396.922386,
+          "elapsed_ms": 1505.4413339999999
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "initial-snapshot",
+          "pid": 431841,
+          "started_ms": 24902.399262,
+          "elapsed_ms": 74.69675000000001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-guards",
+          "pid": 431841,
+          "started_ms": 24977.129762,
+          "elapsed_ms": 1058.779375
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "monitored-snapshot",
+          "pid": 431841,
+          "started_ms": 26035.958554,
+          "elapsed_ms": 71.962625
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-barrier",
+          "pid": 431841,
+          "started_ms": 26107.977971,
+          "elapsed_ms": 45.47175
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "target-cleanup",
+          "pid": 431841,
+          "started_ms": 26153.479762,
+          "elapsed_ms": 156.567584
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "invocation-seal",
+          "pid": 431841,
+          "started_ms": 26310.076512,
+          "elapsed_ms": 164.901917
+        }
+      ],
+      "setup_row_file": "reports/managed-02.events.setup-431841-0.jsonl",
+      "setup_span_to_invocation_seal_ms": 26474.978429
+    },
+    {
+      "operation": "managed-03",
+      "meaning": "missing selected receipt",
+      "duration_s": 42.091917228000966,
+      "timed_out": false,
+      "returncode": 0,
+      "currentness": "current",
+      "error": null,
+      "notes": [],
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 1,
+        "wall_ms": 41946.669518999995
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "requested": true,
+          "complete": true,
+          "reused": false,
+          "summary": {
+            "functions": 1,
+            "verified": 1,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "requested": false,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ],
+      "setup_rows": [
+        {
+          "kind": "managed-setup-phase",
+          "phase": "metadata",
+          "pid": 436925,
+          "started_ms": 0.00041600000000000003,
+          "elapsed_ms": 1953.7075430000002
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-binaries",
+          "pid": 436925,
+          "started_ms": 1954.8758340000002,
+          "elapsed_ms": 793.682834
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "helper-identity",
+          "pid": 436925,
+          "started_ms": 2748.594376,
+          "elapsed_ms": 457.781583
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "toolchain-probes",
+          "pid": 436925,
+          "started_ms": 3206.406584,
+          "elapsed_ms": 3077.065794
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-guard",
+          "pid": 436925,
+          "started_ms": 6283.551044,
+          "elapsed_ms": 2652.8835019999997
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-hash",
+          "pid": 436925,
+          "started_ms": 8936.467796,
+          "elapsed_ms": 14910.551965
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-barrier",
+          "pid": 436925,
+          "started_ms": 23847.061052,
+          "elapsed_ms": 11.342834
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "context-configuration",
+          "pid": 436925,
+          "started_ms": 23858.454094,
+          "elapsed_ms": 4.829292
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-context",
+          "pid": 436925,
+          "started_ms": 1954.7651670000002,
+          "elapsed_ms": 21908.710844
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "owned-paths",
+          "pid": 436925,
+          "started_ms": 23863.660052,
+          "elapsed_ms": 1380.108168
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "initial-snapshot",
+          "pid": 436925,
+          "started_ms": 25243.79772,
+          "elapsed_ms": 73.881583
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-guards",
+          "pid": 436925,
+          "started_ms": 25317.699010999997,
+          "elapsed_ms": 1345.8466680000001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "monitored-snapshot",
+          "pid": 436925,
+          "started_ms": 26663.61022,
+          "elapsed_ms": 121.335792
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-barrier",
+          "pid": 436925,
+          "started_ms": 26784.984637,
+          "elapsed_ms": 51.057792
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "target-cleanup",
+          "pid": 436925,
+          "started_ms": 26836.059762,
+          "elapsed_ms": 107.93633299999999
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "invocation-seal",
+          "pid": 436925,
+          "started_ms": 26944.035762,
+          "elapsed_ms": 164.831209
+        }
+      ],
+      "setup_row_file": "reports/managed-03.events.setup-436925-0.jsonl",
+      "setup_span_to_invocation_seal_ms": 27108.866971
+    },
+    {
+      "operation": "managed-04",
+      "meaning": "same-size restored-mtime failing edit",
+      "duration_s": 31.272962848001043,
+      "timed_out": false,
+      "returncode": 101,
+      "currentness": "current",
+      "error": null,
+      "notes": [],
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 1,
+        "wall_ms": 31160.07489
+      },
+      "targets": [
+        {
+          "target": "demo",
+          "requested": true,
+          "complete": false,
+          "reused": false,
+          "summary": {
+            "functions": 1,
+            "verified": 0,
+            "failed": 1,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        },
+        {
+          "target": "vstd",
+          "requested": false,
+          "complete": true,
+          "reused": true,
+          "summary": {
+            "functions": 1871,
+            "verified": 1871,
+            "failed": 0,
+            "unknown": 0,
+            "provisional": 0,
+            "unstable": 0
+          }
+        }
+      ],
+      "setup_rows": [
+        {
+          "kind": "managed-setup-phase",
+          "phase": "metadata",
+          "pid": 438154,
+          "started_ms": 0.0006659999999999999,
+          "elapsed_ms": 1335.1575010000001
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-binaries",
+          "pid": 438154,
+          "started_ms": 1337.220584,
+          "elapsed_ms": 902.316708
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "helper-identity",
+          "pid": 438154,
+          "started_ms": 2239.581292,
+          "elapsed_ms": 360.394626
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "toolchain-probes",
+          "pid": 438154,
+          "started_ms": 2600.0268760000004,
+          "elapsed_ms": 1767.018751
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-guard",
+          "pid": 438154,
+          "started_ms": 4367.0917930000005,
+          "elapsed_ms": 1677.183918
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-hash",
+          "pid": 438154,
+          "started_ms": 6044.307543999999,
+          "elapsed_ms": 10794.139963
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "sysroot-barrier",
+          "pid": 438154,
+          "started_ms": 16838.478632000002,
+          "elapsed_ms": 9.443167
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "context-configuration",
+          "pid": 438154,
+          "started_ms": 16847.969382,
+          "elapsed_ms": 5.321292
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "runtime-context",
+          "pid": 438154,
+          "started_ms": 1337.152334,
+          "elapsed_ms": 15516.375215
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "owned-paths",
+          "pid": 438154,
+          "started_ms": 16853.710714999997,
+          "elapsed_ms": 1776.825793
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "initial-snapshot",
+          "pid": 438154,
+          "started_ms": 18630.576425,
+          "elapsed_ms": 68.822958
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-guards",
+          "pid": 438154,
+          "started_ms": 18699.4323,
+          "elapsed_ms": 1157.554417
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "monitored-snapshot",
+          "pid": 438154,
+          "started_ms": 19857.053799999998,
+          "elapsed_ms": 57.825959000000005
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "input-barrier",
+          "pid": 438154,
+          "started_ms": 19914.923384,
+          "elapsed_ms": 38.460750000000004
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "target-cleanup",
+          "pid": 438154,
+          "started_ms": 19953.4123,
+          "elapsed_ms": 1199.421501
+        },
+        {
+          "kind": "managed-setup-phase",
+          "phase": "invocation-seal",
+          "pid": 438154,
+          "started_ms": 21152.875717,
+          "elapsed_ms": 158.686209
+        }
+      ],
+      "setup_row_file": "reports/managed-04.events.setup-438154-0.jsonl",
+      "setup_span_to_invocation_seal_ms": 21311.561926
+    }
+  ],
+  "cli": {
+    "cli-result.operation.json": {
+      "operation": "cli-result",
+      "duration_s": 0.4187579169993114,
+      "returncode": 0,
+      "timed_out": false
+    },
+    "cli-submit.operation.json": {
+      "operation": "cli-submit",
+      "duration_s": 0.10145149999880232,
+      "returncode": 0,
+      "timed_out": false
+    }
+  },
+  "setup_interpretation": "runtime-context inclusive; incomplete killed stages may lack completed rows; timing starts in managed runner after CLI config/daemon setup",
+  "cleanup": {
+    "scope": "post-terminal known-owned actor and fixture check; no global process scan",
+    "known_owned_actors": [
+      {
+        "pid": 427321,
+        "proc_exists": false
+      },
+      {
+        "pid": 427328,
+        "proc_exists": false
+      },
+      {
+        "pid": 427351,
+        "proc_exists": false
+      },
+      {
+        "pid": 431841,
+        "proc_exists": false
+      },
+      {
+        "pid": 432090,
+        "proc_exists": false
+      },
+      {
+        "pid": 436925,
+        "proc_exists": false
+      },
+      {
+        "pid": 438154,
+        "proc_exists": false
+      }
+    ],
+    "fixture_exists": false,
+    "harness_original_finally_completed": true,
+    "unix_ns": 1791683350377379636,
+    "note": "Original harness explicitly terminates/waits its owned daemon in finally; unknown descendant absence is not inferred from global scanning."
+  },
+  "concurrent_team_build": {
+    "scope": "concurrent team build supplied by owning agent; not a causal attribution",
+    "actor_pid": 434052,
+    "process_group": 434052,
+    "started_unix_ns": 1791683156948087130,
+    "source_candidate": "e6f541",
+    "variant": "5678ef0ffc322bdc",
+    "jobs": 2,
+    "priority": 0,
+    "first_two_managed_operations": "completed before this build",
+    "remaining_controller": "may overlap",
+    "no_shared_target_or_fixture_access": true
+  },
+  "raw_artifacts": {
+    "cleanup.json": {
+      "bytes": 807,
+      "sha256": "fe03e7e0b91613101fbc23c88cdb586a3abece337fdcb4a067cc852c9cdf70af"
+    },
+    "concurrent-owned-build.json": {
+      "bytes": 429,
+      "sha256": "2d5e6a6c53d20b44e006147efe4fd692c25cc04d34e79cfbf989efa19072c881"
+    },
+    "controller.json": {
+      "bytes": 47,
+      "sha256": "4cb68329230d97f68643cc11f283cc687a4cba94500d076904a68a23d7c7ecb2"
+    },
+    "metadata.json": {
+      "bytes": 2441,
+      "sha256": "dc0ec90034c434b3116a938c1b2f61a47d48e41ac4fa3c59fa8f459b054a005a"
+    },
+    "reports/cli-result.operation.json": {
+      "bytes": 98,
+      "sha256": "acba41b7c632aa872b3a78ca92bc6598ab6f1d739b693568ac7f83502a48681b"
+    },
+    "reports/cli-result.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reports/cli-result.stdout.json": {
+      "bytes": 4424307,
+      "sha256": "d908443e5fa3a174beb50f9d3f1d5235a2b67f4025f7d32ebe973a48d145e547"
+    },
+    "reports/cli-submit.operation.json": {
+      "bytes": 99,
+      "sha256": "8101a157dc848d81ef1ffcfa6dbc4e77c4b600539122b86cf7b66455c5e2f347"
+    },
+    "reports/cli-submit.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "reports/cli-submit.stdout.json": {
+      "bytes": 281,
+      "sha256": "30339e7ee44b58dd27cf3f5af967a9e76befeb4e2697cce22762eb21fd752e0e"
+    },
+    "reports/managed-01.events.jsonl": {
+      "bytes": 806,
+      "sha256": "78ac69933bf6cd2422a54c5f2a416d6619136ad980dc76eb540c86f58fb39c89"
+    },
+    "reports/managed-01.events.setup-427351-0.jsonl": {
+      "bytes": 1958,
+      "sha256": "8b859bdfdcf4d1922f70d1bc2976766a5b5f6eb238ac6d458d58755c4229675e"
+    },
+    "reports/managed-01.operation.json": {
+      "bytes": 128,
+      "sha256": "fabbd31b50f04967f4e6ebb780bfb40f3dd410fc4830289075dc6f587f697af7"
+    },
+    "reports/managed-01.stderr": {
+      "bytes": 737,
+      "sha256": "bd7b9cb02bedb3d32b3518c9dc035c6cbdca081a4efcbc4b461372ba9e7cc5e5"
+    },
+    "reports/managed-01.stdout.json": {
+      "bytes": 1947933,
+      "sha256": "f36cbf527d8ed3c1725e65b0ccae188249443c8bcb0347fe087d5a21bbc2bd68"
+    },
+    "reports/managed-02.events.jsonl": {
+      "bytes": 629,
+      "sha256": "5f60f2ee27a1d4b55bc3404a397e81a2bf4c0b7182f274d69104c61c9c0c9f7d"
+    },
+    "reports/managed-02.events.setup-431841-0.jsonl": {
+      "bytes": 1951,
+      "sha256": "4ba8b45903bd2319485655397610706a8132b1cec53830f5fdbc475028ee8747"
+    },
+    "reports/managed-02.operation.json": {
+      "bytes": 129,
+      "sha256": "7b4de793d1eb9242a7abd019ffcdb7c8fe5ad3bf4a861824e7cb29d2674fd3f5"
+    },
+    "reports/managed-02.stderr": {
+      "bytes": 72,
+      "sha256": "b2c020f27a01faabb96e5d55c11fd219cf7c484c9cf34b3342bfc8444d934c89"
+    },
+    "reports/managed-02.stdout.json": {
+      "bytes": 1947930,
+      "sha256": "067225084cb49f81ce26eed70f15c8631c3138010ca7ed9ccdc14de048c90db0"
+    },
+    "reports/managed-03.events.jsonl": {
+      "bytes": 807,
+      "sha256": "86136aadf08fe64c569c93dbd6c3dc43b9f52cec4bce5db15831464d4d8a7f93"
+    },
+    "reports/managed-03.events.setup-436925-0.jsonl": {
+      "bytes": 1965,
+      "sha256": "371c3c979cf7a5df5fd5a0398bce48e0b551fa4862fa4c38d9a98d32646b96cc"
+    },
+    "reports/managed-03.operation.json": {
+      "bytes": 129,
+      "sha256": "79b90157338a72eb82d107c701ccef888bd72dc897f59133abfe2ad4dd5d3e94"
+    },
+    "reports/managed-03.stderr": {
+      "bytes": 214,
+      "sha256": "5b86a9a6894a9ede9477b234542937ef7a6c1af451598dfb4ceef6f0ec73b005"
+    },
+    "reports/managed-03.stdout.json": {
+      "bytes": 1947935,
+      "sha256": "096ab17c3b681a2507c783e2935e52a0ac73624b7a4839cfdc722ec905ada209"
+    },
+    "reports/managed-04.events.jsonl": {
+      "bytes": 718,
+      "sha256": "f375c5e59f3e64b7c92e21344f96bd90588a325606685072605750d8278a7f57"
+    },
+    "reports/managed-04.events.setup-438154-0.jsonl": {
+      "bytes": 1975,
+      "sha256": "d7dfc374f78f448e6e6fa4d86fd2d2d8117d73d57d124bab0ea25fad3aff96e0"
+    },
+    "reports/managed-04.operation.json": {
+      "bytes": 131,
+      "sha256": "4a5dc9e491963fb286a2ef48af6cf47fb515f14e20bbe31b39dfeb46c69692d4"
+    },
+    "reports/managed-04.stderr": {
+      "bytes": 396,
+      "sha256": "fb1ac9af019be73b09d52f614b94e6d61a1b0b13bbca91186fad59bab1a59d1f"
+    },
+    "reports/managed-04.stdout.json": {
+      "bytes": 1980726,
+      "sha256": "57a67cbaa79dce16b5b9dd0b341edd04057fcffe87c42220d7a5c1055cf7cbd7"
+    },
+    "stderr.log": {
+      "bytes": 485,
+      "sha256": "7cc74f74cc8a8f9938bd00571e2c171ce3c59d048f2242a836ccca722182d430"
+    },
+    "stdout.log": {
+      "bytes": 107,
+      "sha256": "3d51498e91b0f1921e53c6b5f867a65cf76d37880b74069a800150c49daf3d19"
+    },
+    "terminal.json": {
+      "bytes": 5091,
+      "sha256": "feb7b6cdb675af5e7d6e826a847ba188ca111f2312ae301048cb610e415d83c9"
+    },
+    "product-build.json": {
+      "bytes": 914,
+      "sha256": "dd038311b1375490dcc82bddebe04e4ba29933947e8edb11b1554587ba272d4b"
+    }
+  },
+  "limitations": [
+    "One standalone run does not replace failed full end-to-end aggregates or qualify source-engine M7 acceptance.",
+    "Original 777 timeout and native f94 successful scope remain separately recorded; timings here do not identify previous causes.",
+    "Append-only observation adds overhead; no statistically controlled benchmark or native reference speedup.",
+    "The inclusive runtime-context row must not be added to its child phase durations.",
+    "Known actor absence and original daemon finally cleanup are recorded; no global descendant scan claims.",
+    "Cold and unchanged-reuse operations completed before a concurrent team source build; later operations may overlap it.",
+    "No deadline, proof/compiler input, cache ownership or guard semantics changed."
+  ],
+  "private_complete_archive": {
+    "bytes": 473809,
+    "sha256": "97f87c9998246171a27278e49e68874c41a48cca1c573b05fa0f187181cedc88",
+    "contents": "all private raw reports/timers/cleanup/terminal metadata and complete frozen controller inputs"
+  },
+  "product_build": {
+    "mode": "release, locked, sail-cli/sail-shim bins, CARGO_BUILD_JOBS=2",
+    "exit_code": 0,
+    "elapsed_s": 132.64191037499998,
+    "build_record_sha256": "dd038311b1375490dcc82bddebe04e4ba29933947e8edb11b1554587ba272d4b",
+    "source_archive_identity": "lead build record; tested binary bytes independently verified before and after run"
+  }
+}

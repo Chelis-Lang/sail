@@ -88,8 +88,12 @@ connection setup. A final row is written when its block exits, including error
 returns; a forcibly killed unfinished block may have no completed row. Append
 I/O adds observation overhead and kernel operations are not interruptible by
 these limits. These records diagnose stage costs; they do not extend the
-240-second check or qualify performance, and no cold verifier run has yet been
-repeated with the new subphase timers.
+240-second check or qualify performance. The [first complete timed standalone
+check](validation/m7-managed-setup-012707a.md) passed all original assertions,
+including cold verification, receipt reuse, CLI/MCP jobs and a restored-mtime
+failing edit. Its repeated sysroot hashing remains a measured warm-call cost;
+no production hash reuse or compiler-artifact sharing change follows from that
+one run, and the earlier timeout records remain separate.
 Choose an event destination outside the workspace and other declared inputs;
 otherwise writing diagnostics can itself invalidate source observation. The
 managed acceptance harness already does this. The timer's no-follow creation
