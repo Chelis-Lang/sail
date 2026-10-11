@@ -253,8 +253,10 @@ ordinary runtime build passes in 1,001.791 seconds, freshly verifies all 2,060
 vstd obligations and seals all 13 artifacts. The original qualification is now
 running. Its ninth stage now passes genuine previous-revision focused reuse:
 all three revisions match stock outcomes and exact lowering, with four hits
-and one focused restore on each later revision. The full-project stage and
-remaining compiler controls must still close; product acceptance stays separate.
+and one focused restore on each later revision. The full-project HumanEval stage also passes all three revisions, each with
+441 verified and zero errors; actual same-input hits pass every exact oracle.
+Independent stock transcript instability remains reported separately. The
+remaining three compiler suites must close; product acceptance stays separate.
 
 Priority order for completing this milestone:
 
