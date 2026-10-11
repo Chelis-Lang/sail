@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "status": "prepared; no ordinary launch; targeted sensitivity active separately",
+  "patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+  "delta_sha256": "9415f4a14f8345b09f25978b0deacc7849054b4d20358a2f76e44ad3730b65a9",
+  "source_sha256": {
+    "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+    "rust_verify/src/sail_engine.rs": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+    "rust_verify/src/sail_namespace.rs": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+    "rust_verify/src/sail_owned_imports.rs": "7955d2ccf62699d59fd7e1d4aeda727dcb3539c8fff2fcf32421e3dc9a8aa597",
+    "rust_verify/src/sail_owned_imports_tests.rs": "a0ce98125d8e14b85d05e805d7455e126088afa34e49246606a1163b47cb34d2",
+    "rust_verify/src/spans.rs": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+    "rust_verify/src/verifier.rs": "88c714168ffb02cdb4a4d166813eba5506a4ac5f16d1453fa918158a03cc42ac",
+    "vir/src/context.rs": "c4672b093f7307f4aec248d75fc57381c454253bd948bc6a69141da981bc8f60"
+  },
+  "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "variant_suffix": "c77e1a1879302e06",
+  "features": [
+    "sail-interactive:aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+    "host:x86_64-unknown-linux-gnu",
+    "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+  ],
+  "jobs": 2,
+  "nice": 0,
+  "new_target_copy": false,
+  "source_control_result_sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+  "source_control_inputs": {
+    "result.json": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+    "identity.json": "5b50dced0acfc8407561113aa4f0a1becc0f82685692a8fd9ce4fa95f8fa74a3",
+    "vir-test.log": "489596c9bf04dcbc08c6c987a98eebb186893c6b07eb593ffa84bb437db895a2",
+    "vir-clippy.log": "85ef9aeedf4527a50122b04b79b35cad30a1b117183a6d191372522ffb137951",
+    "rust_verify-test.log": "c53e9f03435ab1fca408a8e660bea9f58d5e6e1dfbe067b9506a369275d7d6c8",
+    "rust_verify-clippy.log": "f7cdff07c243e4ddc4b02b4f0d038d9912087b99ff013d60068684c8abc2bfd5",
+    "source-closure.json": "e136e33b80997c24f36641297bef6ebabe307a76fd1b2fdd2b59686e8f9e1219",
+    "freeze/seal.json": "9c3888688f18105c54a2a8e171834644bdf97ebcadd3d3d3b833ed738e6b19a9"
+  },
+  "sensitivity_required": "Closed exact one-case bypass negative then restored-positive, result+images+closure hashes to be frozen after terminal",
+  "builder_source_archive_sha256": "b9a43bab50243c592f4dbda170eb61ddd26728df647875c364d22b18db06a568",
+  "builder_archive_exception": "Only private interactive.patch changes from sealed955cd584 to fullaaa3; every other entry must exactly match immutable builder archive",
+  "bootstrap_target": "Existing private xtask target; no common writer",
+  "compiler_seed": "Closed positive source target deps/build/fingerprint only; copies, no hardlinks; exclude VIR/driver/vstd and all runtime/proof/seal outputs",
+  "runtime_requirement": "Ordinary fresh vstd2060/0, new complete13 manifest, exactsource8+653lock, allfour priorruntime/source seals and actorclosure",
+  "qualification_requirement": "Exactly original13 stages/14 frozen scripts; unchangedargv/env/600/fullstockdiagnostics/sameinput/genuinepriorrevisionFOCUS; no TRACE/TARGET/retry/selection",
+  "current_host_backing_free_observation": "9.2GiB before preparation; remeasure immediately before launch",
+  "controller_sha256": {
+    "build-candidate.py": "30cf24c84a8253a141c4071f31af9d2f8a978f4a87491875aa6d8560c4c04d4c",
+    "close-build.py": "39ced274bf50a394f471c7652c5afffbd5f8c35f6fbf7b830767568165ad0b37",
+    "run-original-pipeline.py": "8b7a0cf501cfc1a7401da33c59059ad866101b3bb304d29cd879e8639aed1f19",
+    "close-qualification.py": "d62a5d08407a8d7aca7041b5fde5898b07e1bef29fd17bc42071e6e58fec41ab",
+    "controller-diff.patch": "e504a05cffd42500d59dbfd415b660fe7d640e890c1e5f7ed4fb7324e410eda3"
+  }
+}
