@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "source_commit": "37e5342141e6315f3fde626f1ebf41b97ed33a9e",
+  "source_archive_sha256": "c3355c557670555c99388dde923424edc1492912d2bd203e6c3a7098f3d53991",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete workspace gate after test-only maintenance cleanup; no production change from4472279; no stitched pass",
+  "original_bounds_and_assertions_unchanged": true,
+  "m7_accepted": false,
+  "command": "bash ci/run.sh gate",
+  "exit_code": 100,
+  "inclusive_elapsed_seconds": 441.96178554200003,
+  "nextest_elapsed_seconds": 214.151,
+  "tests": {
+    "run": 541,
+    "passed": 540,
+    "failed": 1,
+    "skipped": 39
+  },
+  "failure": {
+    "test": "sail-verus managed::sysroot_cache::linux::tests::independent_handoff_is_exact_and_survives_daemon_loss_after_transfer",
+    "location": "crates/sail-verus/src/managed/sysroot_cache.rs:593",
+    "assertion": "index.prepare(scope)",
+    "whole_test_elapsed_seconds": 0.17,
+    "cause": "Unknown; a static possible startup try_lock race is under review, not established for this run"
+  },
+  "strict_workspace_all_target_clippy": "passed",
+  "remaining_gate_steps": "Unattempted after nextest failure; independent solver suite separately active",
+  "raw_log": {
+    "bytes": 69411,
+    "sha256": "2354029e1169524fbd563ff2730545ee89053aa381bc39d839b2ac6ef7c20168"
+  }
+}
