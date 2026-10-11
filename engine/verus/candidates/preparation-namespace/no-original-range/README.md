@@ -1,10 +1,11 @@
 # Exact stock absence of an original imported range
 
-This is an **unselected, file-only candidate**. Its new controls have not been
-compiled. It combines the independently tested preparation-service retirement
-acknowledgement with a separate `NoOriginalRange` authority. Source controls,
-fresh ordinary vstd verification, the complete runtime manifest and the original
-qualification remain required. The selected runtime is unchanged.
+This is an **unselected candidate**. The corrected complete source controls
+passed 42 VIR and 108 driver tests and both strict checks. The admitted stale-memo
+counterfactual failed at the expected inequality, then the exact restored case
+passed. The [ordinary build](valid-memo-correction/ordinary/ordinary-build-result.json)
+passed with fresh vstd 2060/0 and a complete new thirteen-artifact manifest.
+The original qualification remains pending; the selected runtime is unchanged.
 
 The retained [boundary diagnostic](../boundary-diagnostic/revision0-result.json)
 observed three missing-range refusals and a separate `pair-busy` admission miss.
@@ -61,7 +62,7 @@ application were checked without changing the native source or launching a
 compiler. Existing helper tests are a byte-exact prefix; the prior Deferred
 Reporter tests and positive retirement implementation are retained.
 
-Controls cover stock absence/current SourceMap growth, incomplete
+The added controls cover stock absence/current SourceMap growth, incomplete
 inventories, complete filename/hash/range identity, namespace overflow, raw-unit
 codec rebinding and changed current keys, pending handoff, covered Unavailable
 refusal, prepopulated memo sensitivity, and the actual direct/parallel validator
@@ -89,6 +90,8 @@ zero holders or unreadable live processes. Raw logs, exact source and the actual
 VIR tested executable are archived. The narrow test-shim correction and its
 subsequent invalid-memo-fixture failure remain recorded separately. The
 [valid-fixture correction](valid-memo-correction/README.md) now passes all 42 VIR
-and 108 driver controls and both strict checks. Its separate bypass-removal
-sensitivity and ordinary runtime qualification remain required. Neither failed
-scope is relabelled as passing evidence, and the candidate remains unselected.
+and 108 driver controls and both strict checks. Its actual bypass-removal
+sensitivity and ordinary fresh-vstd build also pass. Neither failed scope is
+relabelled as passing evidence. The candidate remains unselected pending the
+original strict stock diagnostic, same-input and genuine previous-revision
+restore checks.

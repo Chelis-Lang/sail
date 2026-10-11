@@ -157,7 +157,7 @@ and the prospective 500 MiB phase maximum do not increase.
 The file-only implementation passes forty-three reduced actual pinned API controls,
 including twenty-nine unchanged controls. This is not complete source or
 runtime qualification. Actual full library/strict checks, new ordinary vstd/
-manifest and every original fourteen-stage oracle remain mandatory. This ADR
+manifest and the original thirteen-stage pipeline and fourteen-script inventory remain mandatory. This ADR
 and runtime stay proposed/unselected until executable qualification.
 
 The subsequent late-handoff qualification exposed a separate parallel-worker
@@ -195,6 +195,8 @@ reject intact v9 and earlier entries. Keep the single 8 MiB family and unchanged
 512 MiB aggregate limit, with the larger inline Record admitted before allocation.
 
 The [file-only implementation and control inventory](../../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
-remain uncompiled and unqualified. Actual complete source/strict checks, fresh
-ordinary runtime/vstd verification, strict original diagnostics and genuine
-previous-revision checked reuse are required before any runtime selection.
+passed complete source controls (42 VIR/108 driver and both strict checks),
+the admitted stale-memo sensitivity control and ordinary fresh-vstd verification
+(2060/0) with a complete new runtime manifest. The ADR and runtime remain
+proposed/unselected: strict original diagnostics, same-input lowering and genuine
+previous-revision checked reuse are still required before runtime selection.
