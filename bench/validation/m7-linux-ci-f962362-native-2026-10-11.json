@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "source_commit": "f962362670b13ead13483f2fe624052bf10bfd93",
+  "run_id": 38121198863,
+  "url": "https://github.com/Chelis-Lang/sail/actions/runs/38121198863",
+  "execution": "GitHub Actions native Linux x86-64",
+  "scope": "Complete native CI at f962362; separate from retained local emulated solver failure and source/reader qualification",
+  "conclusion": "success",
+  "created_at": "2026-10-11T07:23:24Z",
+  "completed_at": "2026-10-11T07:30:49Z",
+  "inclusive_elapsed_seconds": 445.0,
+  "jobs": [
+    {
+      "name": "No AI authorship markers",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:27Z",
+      "completed_at": "2026-10-11T07:23:39Z"
+    },
+    {
+      "name": "image / CI image",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:27Z",
+      "completed_at": "2026-10-11T07:23:36Z"
+    },
+    {
+      "name": "Solver tests",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:41Z",
+      "completed_at": "2026-10-11T07:26:29Z"
+    },
+    {
+      "name": "Workspace gate",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:41Z",
+      "completed_at": "2026-10-11T07:27:31Z"
+    },
+    {
+      "name": "End to end (repair)",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:41Z",
+      "completed_at": "2026-10-11T07:28:22Z"
+    },
+    {
+      "name": "End to end (legacy)",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:41Z",
+      "completed_at": "2026-10-11T07:30:35Z"
+    },
+    {
+      "name": "End to end (managed)",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:41Z",
+      "completed_at": "2026-10-11T07:28:59Z"
+    },
+    {
+      "name": "Conformance",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:23:41Z",
+      "completed_at": "2026-10-11T07:28:44Z"
+    },
+    {
+      "name": "End to end",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:30:37Z",
+      "completed_at": "2026-10-11T07:30:42Z"
+    },
+    {
+      "name": "CI completion",
+      "conclusion": "success",
+      "started_at": "2026-10-11T07:30:44Z",
+      "completed_at": "2026-10-11T07:30:49Z"
+    }
+  ],
+  "raw_log": {
+    "bytes": 767066,
+    "sha256": "f26aba3ae17e99ec64a4d5d1683be7c9ba34e5746606ab8c5dba635ff799a3cc"
+  }
+}
