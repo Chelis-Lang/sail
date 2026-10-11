@@ -120,5 +120,5 @@ also found none before its byte cap. The new proof's original Guard must bind
 the actual current lockfile. This preserves verification source/selection while
 making no claim that the original historical complete input revision is equal.
 
-The [next original workflow plan](m7-reader-723-original-plan.md) is prepared
+The [next original workflow plan](m7-reader-current-original-plan.md) is prepared
 separately. It does not reuse this diagnostic proof or authorize another launch.
