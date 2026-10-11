@@ -54,9 +54,16 @@ original fixture failure still propagates; complete retention does not convert
 it into success. Even a successful run remains a separately labelled timing
 diagnostic with no acceptance or performance credit.
 
-Twelve pure controls passed without subprocesses. They cover exact retained
+The initial twelve pure controls passed without subprocesses. They cover exact retained
 bytes and exclusion of private records, schema/identity/type refusal, links and
 FIFOs, aggregate read and row bounds, overwritten or absent rings, cleanup
 ordering, original-exception preservation, original run arguments, environment
 restoration and pre-load digest refusal. Exact hashes and scope are in
 [the launcher record](m7-publication-timing-launcher.json).
+
+The current repository version also validates `output_guarded`, giving the
+23-field row schema and thirteen pure controls. The
+[current-product controller](m7-current-publication-controller.md) invokes this
+version from the matching sealed product source, without the old host wrapper's
+hardcoded launcher path/hash or obsolete schema. The earlier launch record and
+failed execution scope remain unchanged.
