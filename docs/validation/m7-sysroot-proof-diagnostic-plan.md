@@ -1,7 +1,8 @@
 # One isolated detailed sysroot proof diagnostic
 
-This is a prepared cause-investigation scope. An installation-only detailed-diagnostic product has been granted; no proof has
-been launched. The concrete wrapper still requires review before its one run. The original
+This plan was frozen before the separately reviewed one-run grant. The
+[single terminal diagnosis](m7-sysroot-proof-diagnostic.md) is now complete;
+its result does not turn this plan into reader or M7 acceptance. The original
 [D20 failure and cleanup](m7-owned-reader-d20.md) remain immutable.
 
 ## Frozen inputs and unavoidable differences
@@ -118,3 +119,6 @@ records contain no historical lockfile hash; a bounded proof-source prefix scan
 also found none before its byte cap. The new proof's original Guard must bind
 the actual current lockfile. This preserves verification source/selection while
 making no claim that the original historical complete input revision is equal.
+
+The [next original workflow plan](m7-reader-723-original-plan.md) is prepared
+separately. It does not reuse this diagnostic proof or authorize another launch.
