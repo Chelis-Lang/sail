@@ -1,0 +1,172 @@
+{
+  "scope": "Actual immutable pinned stock methods + exact sealed metadata; reduced SourceMap namespace fixture, no candidate authority/proof/HIT qualification",
+  "metadata_preflight": {
+    "crate_id": 2208441662476345389,
+    "records": 145,
+    "selected": {
+      "filename_present": true,
+      "filename_absolute": true,
+      "filename_utf8_bytes": 121,
+      "filename_nul_free": true,
+      "filename_sha256": "c500ea87f7cc7c7067c8c19f55c3505eddb40a309edac3c0f22822a7b7781793",
+      "original_start": 406973,
+      "original_end": 411571,
+      "expected_hash_hex": "966a15d4a7885d0f3391df29d6d31a1d"
+    },
+    "input_sha256": "cf8e7b5a273073dc7e07e863c03e2283183f99ca67cda139f269a73ba63b34f4",
+    "input_bytes": 30076214,
+    "suffix_bytes": 22312,
+    "suffix_sha256": "116efc62929ff8fa1c3c941d4977a89fe5bc38c01a3229f8cc2d4779b6e8aa04",
+    "candidate_count": 1,
+    "raw_marker_count": 34584,
+    "scope": "closed-schema allocation/work preflight only; actual pinned serde type/control required"
+  },
+  "pinned_dependencies": {
+    "fingerprint_sha256": {
+      "rust_verify-a4418350c79ef26e/bin-rust_verify.json": "16ed08e5f503fb66f92196cf14b57a3e298b302b27905cb7158ba1e94bad5896",
+      "serde-e6285aa01a023a81/lib-serde": "786751f16102bd9685e29214c70e14f23cecb3fd56863e9bec7696743c739513",
+      "serde-e6285aa01a023a81/lib-serde.json": "4c7af17a3de74c6b755cc394d3734547a72384d00e84abfb84600d10c516576a",
+      "bincode-next-379abfe21ea605bb/lib-bincode_next": "e03fcd44a4081305219be782a15ce160a4361058e83a3cc77d3afeb540044c15",
+      "bincode-next-379abfe21ea605bb/lib-bincode_next.json": "13f8d810b64b8cbfced13563cda2e834b08e089f6b93abf78a20ffb599cca215"
+    },
+    "root_features": "[]",
+    "rustflags": [
+      "--cfg",
+      "proc_macro_span",
+      "--cfg",
+      "verus_keep_ghost",
+      "--cfg",
+      "span_locations",
+      "--cfg",
+      "procmacro2_semver_exempt"
+    ],
+    "root_profile": 1241562680900052086,
+    "dependency_profiles": {
+      "serde": 2040997289075261528,
+      "bincode_next": 12923050971926790240
+    },
+    "dependency_features": {
+      "serde": "[\"alloc\", \"default\", \"derive\", \"rc\", \"serde_derive\", \"std\"]",
+      "bincode_next": "[\"alloc\", \"default\", \"derive\", \"serde\", \"simd\", \"std\"]"
+    },
+    "compiler_identity": 1625334936438085654,
+    "library_sha256": {
+      "libserde-e6285aa01a023a81.rlib": "a591368d9485644177db664c4b9036076dc980501eaa0ee379813c56fb88e324",
+      "libbincode_next-379abfe21ea605bb.rlib": "6691d67edbe7db3ad381a65437229de3b0a88c6f03fe7044df3eca3bf7c37f5a"
+    }
+  },
+  "root_profile_basis": "Actual prior pinned source metadata graph release profile1241562680900052086; excludes separately recorded Clippy check profile",
+  "stock_source_sha256": {
+    "spans.rs": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+    "import_export.rs": "2a80e64eb4886a45e9a4f4f836483df62d7b2045df9367236ee5e825aa7ad592",
+    "messages.rs": "9b2f6f50d4d15463e1cfdbd5e1a29a5ac712c5fb8bcf6309920afa4356bcbb90"
+  },
+  "stock_extracted_sha256": {
+    "ranges": "0f757cdd200e9ba0bab3fe407cc447b862ce9708bd4b2de88e33476ec71c31d2",
+    "unpack": "4340cf16bf7c2a414874718562d6f458fc5412c32b7d788c6f5132f4bd6c2817",
+    "from_air": "766a48070602563ac47c904abb55f6781dfe6359ca35a76b5f3e4adaa62ed0ea",
+    "from_raw": "fa3f5a4b11c6d7ea7124e6412d9378f8065a14fc3614983c625c9b6a50c00b61",
+    "remaining": "b1f56eb95a6941643c116d2c32b71b817da64cf119adff1b1448d3fdfd7da349",
+    "types": "1ccb50e13a45e37e4c6cbb6e01f5f5b0a14d5fc2a78f6c19de56dc46548aafd9",
+    "metadata": "83404f992f74c346969349d56f30062b3179490fc3bd86202581b54dfe538609"
+  },
+  "phases": [
+    {
+      "phase": "compile",
+      "exit_code": 0,
+      "timed_out": false,
+      "limit_seconds": 60,
+      "elapsed_seconds": 1.8933250420013792
+    },
+    {
+      "phase": "test",
+      "exit_code": 0,
+      "timed_out": false,
+      "limit_seconds": 30,
+      "elapsed_seconds": 0.06990941600088263
+    }
+  ],
+  "status": "PASS",
+  "post_vstd_sha256": "cf8e7b5a273073dc7e07e863c03e2283183f99ca67cda139f269a73ba63b34f4",
+  "raw": {
+    "metadata-suffix": {
+      "sha256": "116efc62929ff8fa1c3c941d4977a89fe5bc38c01a3229f8cc2d4779b6e8aa04",
+      "bytes": 22312
+    },
+    "compile.stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "probe": {
+      "sha256": "f6205876f5d0f7dbec163328e1ab3d231d79ff509d3d9c5901ab49528f3de535",
+      "bytes": 2981064
+    },
+    "compile.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "test.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "probe.rs": {
+      "sha256": "63beda8dff61e84c6d0218cf3e895de82c0aa72f143c0b4c6a8e03840a7cf8b8",
+      "bytes": 7555
+    },
+    "test.stdout": {
+      "sha256": "d51db4dbe3e3b6b7c4bcf5765900166709b662c00bb6101d9c776ec60a8085d5",
+      "bytes": 520
+    }
+  },
+  "standalone_stock_style_clippy": {
+    "exit_code": 1,
+    "elapsed_seconds": 1.1349504169993452,
+    "deadline_seconds": 60,
+    "stderr_sha256": "3f64a63dae96f1213d204cb6d82838712dd567d4cf6bd031d35309e766a5ac7d",
+    "interpretation": "Failed8unchanged upstream style lints in isolated crate, no lint allow/method edits; not full source checks. ACK full-source strict controls passed separately."
+  },
+  "initial_setup_failure": {
+    "error_type": "ValueError",
+    "error": "require one actual pinned rust_verify binary fingerprint",
+    "interpretation": "Both release and Clippy check profiles existed; retained release profile from actual prior dependency graph selected explicitly, then exact root/transitive IDs validated",
+    "suffix_sha256": "116efc62929ff8fa1c3c941d4977a89fe5bc38c01a3229f8cc2d4779b6e8aa04"
+  },
+  "initial_schema_compile_failure": [
+    {
+      "phase": "compile",
+      "exit_code": 1,
+      "timed_out": false,
+      "limit_seconds": 60,
+      "elapsed_seconds": 1.18074029199488
+    }
+  ],
+  "interpretation": "Functional pin-control only: proves stock None and zero loader for observed words in complete imported metadata-derived reduced namespace, not live callback namespace/HIT/role qualification; source arrival/Foreign state causing export omission unknown.",
+  "controller_sha256": "d67243b1f61f3f52c28306068703ed8fdc083bbdb72abbf79c1ef30828bc9847",
+  "tests_sha256": "649455d8cdac4d082685de2a3fa55f96f7a0117a70f384c3bb1c0b18aad52108",
+  "pinned_dependency_resolver_sha256": "a7c60a94180a6e49284969871c02083c070659eb66a4cbbca21204aadc017ba8",
+  "preflight_controller_sha256": "c9b20c63061c76a2a4fb4f529a56e94d48aa82900544aa3e2ab63ccf0726c1f1",
+  "retained_control_elf": {
+    "sha256": "f6205876f5d0f7dbec163328e1ab3d231d79ff509d3d9c5901ab49528f3de535",
+    "bytes": 2981064
+  },
+  "raw_scopes_sha256": {
+    "raw/clippy.stderr": "3f64a63dae96f1213d204cb6d82838712dd567d4cf6bd031d35309e766a5ac7d",
+    "raw/clippy.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "raw/compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "raw/test.stdout": "d51db4dbe3e3b6b7c4bcf5765900166709b662c00bb6101d9c776ec60a8085d5",
+    "raw/initial-schema-compile.stderr": "637976c3559e7bd9a924cd0092e5cec2360cf580f5a5b9dae19bee08d13ab262",
+    "raw/compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "raw/test.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_runtime_post_closure": "Exact candidate8/653lock and four13-artifact/source/lock seals rechecked unchanged",
+  "dual_container_ownership_closure": {
+    "sail-m7-acceptance": {
+      "holders": [],
+      "unreadable": []
+    },
+    "sail-m7-handoff-validation": {
+      "holders": [],
+      "unreadable": []
+    }
+  }
+}
