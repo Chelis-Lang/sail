@@ -6,7 +6,9 @@ adds an **uncalled** private helper and unit tests to the pinned fork. It is not
 a correction for the failed c05 cross-edit gate: B's exact first mismatch trace
 must establish whether the affected span is Local or Imported and which field
 changed. The existing [authority review](../decode-ownership/span-rebinding-review.md)
-and every prior failure remain applicable.
+and every prior failure remain applicable. The [relocation review](relocation-review.md)
+now records the measured Imported coordinate shift and the narrower consumer/API
+evidence; selected Loaded/Delayed mapping state remains unobserved.
 
 The [actual API controls](api-controls.json) exercise the proposal against pinned
 Rust source-map types and unchanged extracted stock resolver methods. They are

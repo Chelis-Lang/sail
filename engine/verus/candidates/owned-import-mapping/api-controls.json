@@ -1,23 +1,23 @@
 {
   "version": 1,
   "scope": "Inert source API/ownership proposal; not selected, integrated, ordinarily built or proof-qualified",
-  "proposal_patch_sha256": "300aae450b17634cd884e574c0de09f5d2074a9d7a918d34b79d91f1ff255e56",
+  "proposal_patch_sha256": "002b3002d4017ef94d088a11204216da48b4915ffb11b485816248187bac1aac",
   "source_changes": "Uncalled private module plus unit tests only; no constructor call, key, codec, comparison, resolver state or selected runtime changed",
-  "current_mismatch_trace": "Pending; no actual mismatch field inferred from these fixtures",
+  "current_mismatch_trace": "Measured Imported first mismatch; all454 foreign owner starts shift25, other fields unchanged. Selected Loaded/Delayed state remains pending; no equivalence change authorized by API tests.",
   "final_actual_api_controls": {
     "version": 1,
     "scope": "Inert loaded-import helper; actual pinned source-map types and extracted stock resolver, not source/proof qualification",
     "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
     "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
     "capture_sha256": "1562c8e2f8d43593ab24a8a3334473da01031eeee2fd5636e0d7c772b23a31f1",
-    "tests_sha256": "e78826205884433f21b464fc4436010ea17f4d3fad98bffe912f5f150b580c80",
+    "tests_sha256": "443a8d5d59d92b4d423852356e34a7db4f30aa2dd3be844417d532bd1b31fe16",
     "compile_exit_code": 0,
     "test_exit_code": 0,
-    "probe_sha256": "269d35a398cd1d4f31e3f119f381221b4b9bcfbf674160a688f8bde408145009",
-    "elapsed_seconds": 4.159440042
+    "probe_sha256": "85c0b6072ee0fb8d2ef3be8ed550e6a2eb147a17f25ca71e27db4faa032b0fb3",
+    "elapsed_seconds": 1.4126079999999999
   },
-  "test_count": 9,
-  "raw_record": "target/owned-import-mapping/timing-evidence",
+  "test_count": 11,
+  "raw_record": "target/owned-import-mapping/relocation-corrected",
   "initial_failures": [
     {
       "version": 1,
@@ -42,10 +42,23 @@
       "elapsed_seconds": 1.8458339169999998,
       "compile_stderr_sha256": "d4f16793ca3e9592d7b13f673cb72b54a1279edbec34fe2024489df30953ea7e",
       "raw_record": "target/owned-import-mapping/final"
+    },
+    {
+      "version": 1,
+      "scope": "Inert loaded-import helper; actual pinned source-map types and extracted stock resolver, not source/proof qualification",
+      "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+      "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+      "capture_sha256": "1562c8e2f8d43593ab24a8a3334473da01031eeee2fd5636e0d7c772b23a31f1",
+      "tests_sha256": "c6877bbe3a991a345c78060d79d08b58f99a3ce09a83e76fa9c943943667d8bc",
+      "compile_exit_code": 1,
+      "elapsed_seconds": 1.6797992920000002,
+      "compile_stderr_sha256": "76aa0147e669218f9b78f70482a102ed521e614fb4d90ce0ca1d5d6946b444d7",
+      "raw_record": "target/owned-import-mapping/relocation-evidence",
+      "reason": "E0599: Any+RefUnwindSafe trait object needs the pinned explicit Any cast before .is"
     }
   ],
   "earlier_six_test_helper_pass": "target/owned-import-mapping/corrected/summary.json",
-  "script_sha256": "3631759e366d8caa1f813ea354341e06fa0c4dd1ecad151f3524555da1df0d63",
+  "script_sha256": "8f40dddcb8616d0369b68d4226fcf924c747e4a8aefa11bec6ce85f8f46598e5",
   "stock_source_identity": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
   "pinned_compiler_source_paths": [
     "compiler/rustc_span/src/lib.rs",
@@ -63,6 +76,8 @@
   "controls": [
     "allocation_name_limit_and_last_owner_release_are_bounded",
     "coherent_source_map_relocation_is_observed_without_asserting_equivalence",
+    "current_unit_import_resolver_tracks_exact_twenty_five_byte_loaded_relocation",
+    "delayed_current_unit_import_cannot_borrow_an_existing_foreign_mapping",
     "delayed_missing_and_busy_entries_do_not_load_sources_or_promote_later",
     "disposal_precedes_releasing_the_process_family_admission",
     "exact_bounds_missing_original_and_wrong_current_map_fail_closed",
@@ -74,7 +89,7 @@
   "final_output_hashes": {
     "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "tests.stdout": "f2140f5b5acfbd5a09273ea891af9bd1df67eefe70350584e824c20f08a88e00",
+    "tests.stdout": "49d9fd0e91e7f3a175cd187e5ce9fe1cedeefcbbdec4452760a1a66c9beb07df",
     "tests.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "prior_eight_test_record": {
@@ -90,5 +105,19 @@
     "elapsed_seconds": 3.5913669590000006
   },
   "prior_eight_test_patch_sha256": "47bee309319108e47592c3b7db01062732a2dd1e06bf5fdb1041d100f3708be2",
-  "timing_scope": "One new actual stock-resolver API timing control; pipeline timing/late capture/domain discussion is static, no real-project mismatch established"
+  "timing_scope": "One new actual stock-resolver API timing control; pipeline timing/late capture/domain discussion is static, no real-project mismatch established",
+  "prior_nine_test_record": {
+    "version": 1,
+    "scope": "Inert loaded-import helper; actual pinned source-map types and extracted stock resolver, not source/proof qualification",
+    "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+    "stock_spans_sha256": "79a6cc6d785c284e108449bb26e5fffe4d0e123b98357980f73f622a23eeaae2",
+    "capture_sha256": "1562c8e2f8d43593ab24a8a3334473da01031eeee2fd5636e0d7c772b23a31f1",
+    "tests_sha256": "e78826205884433f21b464fc4436010ea17f4d3fad98bffe912f5f150b580c80",
+    "compile_exit_code": 0,
+    "test_exit_code": 0,
+    "probe_sha256": "269d35a398cd1d4f31e3f119f381221b4b9bcfbf674160a688f8bde408145009",
+    "elapsed_seconds": 4.159440042
+  },
+  "prior_nine_test_patch_sha256": "300aae450b17634cd884e574c0de09f5d2074a9d7a918d34b79d91f1ff255e56",
+  "binding_fixture_scope": "Exact extracted VIR Span declaration and stock from_air_span/from_raw_span methods with actual Rust SourceMap types; prepared Span serde/current binding lookup is not executed by this reduced API fixture"
 }
