@@ -92,7 +92,9 @@ Next work separates measured freshness from full-output/client backpressure
 without removing fields, skipping fresh authority or changing collectors. A
 separate original 120/30/5 real retained CLI/MCP scope may use a genuine original
 baseline only after normal product re-establishment admits Current. It cannot
-turn this failed reader workflow into a pass. See [reader acceptance](../reader-acceptance.md),
+turn this failed reader workflow into a pass. That [separate attempt](m7-rpc-retained-functional.md)
+re-established Current and failed the unchanged wrong-stream cursor assertion;
+later reconnect/cancellation stages were not reached. See [reader acceptance](../reader-acceptance.md),
 [RPC diagnostics](../result-rpc-diagnostics.md), [freshness](../freshness.md),
 [the repair guide](../proof-repair.md), [known issues](../known-issues.md) and
 [the roadmap](../ROADMAP.md).
