@@ -56,10 +56,26 @@ proof receipt or source-input observation is imported from another selector.
    per-output coverage, or conservatively decline sharing for such packages;
    one last record cannot authorize every cached output of that package.
 
-The implementation owner has accepted the watcher interval and effective
-environment findings; the multiple-output finding has been sent for correction.
-Corrected final source bytes and actual controls are pending; this document does
-not approve the draft for production activation.
+The next reviewed draft implements all three corrections: live-owner recheck,
+effective bootstrap binding with explicit invocation, and distinct output
+contracts with whole-package refusal if any unit is invalid. Its file digests
+are `27af110d5793def9df50cae3645821b811cca3b408be6f7a0fc6e9b61af0fc1e`
+(`build_inputs.rs`),
+`327d4f605f3416e067649172e7beadf9d029e206a5bd34703f504e7a3081e489`
+(`build_inputs_family.rs`), and
+`b77325aac006c1ccfc8ea13d2e11cdac566de81e8c2e6982265d9f87c687798f`
+(`runner.rs`). The six new Linux controls are drafted but not executed at this
+review point.
+
+One further correction is required: late recheck computes lost package names by
+set difference. If two distinct package IDs share a name, keeping one valid ID
+can hide the other ID's invalidation and skip cleaning. Compare removed package
+IDs first, then collect their clean names; an ambiguous Cargo package selector
+must fail safely rather than authorize old output. A same-name, different-ID
+control must cover the invalidation of only one package.
+
+Final corrected source bytes and actual controls are pending; this document does
+not approve either draft for production activation.
 
 Required sensitivity includes aborting a later generation, restoring external
 bytes and mtime, and returning to both the old and a new proof context; changing
