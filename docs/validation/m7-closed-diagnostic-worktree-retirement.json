@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "scope": "Confirmed closed diagnostic worktrees; all ignored evidence and actual executables retained in verified archives",
+  "started_unix_ns": 1791698283629297000,
+  "worktrees": [
+    {
+      "name": "m7-sysroot-reuse",
+      "head": "da6f8dc42f7d199a1586aa1f5ed6cb10cb233f42",
+      "branch_preserved": "perf/m7-sysroot-reuse",
+      "files": 774,
+      "logical_bytes": 83588714,
+      "archive": "m7-sysroot-reuse-target.tar.gz",
+      "archive_bytes": 17773845,
+      "archive_sha256": "aefebd984a2a47febf6b781edcff1b7b104ed217e35ec2c57424ab43a8e190f1",
+      "every_ignored_file_verified": true,
+      "open_holders": 0,
+      "status": "retired"
+    },
+    {
+      "name": "m7-sysroot-context-control",
+      "head": "c46f1f85ad45fcc93fe42b23dd3d0bb008c90ec2",
+      "branch_preserved": "test/m7-sysroot-context-control",
+      "files": 783,
+      "logical_bytes": 207655874,
+      "archive": "m7-sysroot-context-control-target.tar.gz",
+      "archive_bytes": 31053948,
+      "archive_sha256": "65fc01fc4f6ccdb1070f3f30564c2357e780a1644e573d83b41a6c4ce81d75e0",
+      "every_ignored_file_verified": true,
+      "open_holders": 0,
+      "status": "retired"
+    }
+  ],
+  "active_inputs_touched": false,
+  "apfs_recovery_attribution": false,
+  "completed_unix_ns": 1791698312213737000,
+  "evidence_archive_directory": ".claude/worktrees/_retired-evidence/m7-host-2026-10-11",
+  "logical_target_bytes": 291244588,
+  "compressed_archive_bytes": 48827793,
+  "initial_attempt": "Host Python lacks hashlib.file_digest; stopped before archive or deletion; corrected bounded streaming SHA-256 used for archive and every-file validation"
+}
