@@ -318,9 +318,10 @@ pub fn read_frame<T: serde::de::DeserializeOwned>(reader: &mut impl Read) -> io:
 #[cfg(unix)]
 mod transport {
     use super::{
-        BUDGET, Duration, Instant, Path, Read, Request, Response, Write, io, read_frame,
-        socket_path, write_frame,
+        BUDGET, Instant, Path, Read, Request, Response, Write, io, read_frame, socket_path,
+        write_frame,
     };
+    use rustix::event::{PollFd, PollFlags, Timespec, poll};
     use std::os::unix::net::UnixStream;
 
     /// Nonblocking connected I/O with a single absolute optional-reuse budget.
@@ -349,13 +350,14 @@ mod transport {
         }
         fn operation<T>(
             &mut self,
+            interest: PollFlags,
             mut run: impl FnMut(&mut UnixStream) -> io::Result<T>,
         ) -> io::Result<T> {
             loop {
                 self.check()?;
                 match run(self.stream) {
                     Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(Duration::from_millis(1));
+                        self.wait(interest)?;
                     }
                     Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
                     result => {
@@ -365,18 +367,35 @@ mod transport {
                 }
             }
         }
+
+        // Readiness is only permission to retry the socket operation. It never
+        // grants reuse or restarts the request-entry budget. Interrupted waits
+        // recompute the remaining time, and late readiness still declines.
+        fn wait(&self, interest: PollFlags) -> io::Result<()> {
+            loop {
+                self.check()?;
+                let remaining = BUDGET.saturating_sub(self.started.elapsed());
+                let timeout = Timespec::try_from(remaining).map_err(io::Error::other)?;
+                let mut descriptors = [PollFd::new(&*self.stream, interest)];
+                match poll(&mut descriptors, Some(&timeout)) {
+                    Ok(_) => return self.check(),
+                    Err(rustix::io::Errno::INTR) => {}
+                    Err(error) => return Err(error.into()),
+                }
+            }
+        }
     }
     impl Read for Bounded<'_> {
         fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
-            self.operation(|s| s.read(bytes))
+            self.operation(PollFlags::IN, |s| s.read(bytes))
         }
     }
     impl Write for Bounded<'_> {
         fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-            self.operation(|s| s.write(bytes))
+            self.operation(PollFlags::OUT, |s| s.write(bytes))
         }
         fn flush(&mut self) -> io::Result<()> {
-            self.operation(Write::flush)
+            self.operation(PollFlags::OUT, Write::flush)
         }
     }
 
