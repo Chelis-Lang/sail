@@ -27,8 +27,11 @@ now identifies three uncovered imported ranges (tracked as
 [VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md)) and a
 distinct actual `pair-busy` admission refusal. The separate
 [retirement acknowledgement](../engine/verus/candidates/preparation-retirement/README.md)
-passes 16 reduced pinned controls; actual compiler controls and a faithful
-unresolved-range role remain under validation. No candidate is selected; the final four of thirteen stage records were not attempted.
+passes 16 reduced pinned controls, 41 VIR and 98 driver tests, and both strict
+compiler checks. Removing the actual adapter's finish call fails its unchanged
+guard-lifetime regression. Ordinary runtime qualification and a faithful
+unresolved-range role remain pending. No candidate is selected; the final four
+of thirteen stage records were not attempted.
 The fourteen-script inventory is preserved. Stock diagnostic routing and
 parallelism remain unchanged; this candidate is unselected. See the
 [exact failure audit](validation/m7-preparation-namespace-qualification-independent-audit.md). See the

@@ -1,4 +1,4 @@
-# VI-0014: Exported foreign spans can lack original source metadata
+# VI-0014: Exported spans can lack original source metadata
 
 - **Status:** open; observed locally, not filed upstream.
 - **Verus:** pinned `0.2026.10.04.426d8b0`, source
@@ -14,13 +14,17 @@
 
 Pinned `source/rust_verify/src/spans.rs` packs every rustc span as the exporting
 local crate ID and its original low/high positions. The constructor puts only
-`ExternalSource::Unneeded` files in `local_files`; Foreign files follow a
-separate import path. `source/rust_verify/src/verifier.rs` exports crate metadata
+`ExternalSource::Unneeded` files in `local_files`. This is an early constructor
+snapshot, before `construct_vir_crate`; Foreign files follow a separate import
+path, and files arriving later are also absent from that snapshot.
+`source/rust_verify/src/verifier.rs` exports crate metadata
 with `original_files: spans.local_files.clone()`.
 
-Consequently a span that originally points into a Foreign core/alloc file can
-carry the exporting vstd crate ID without a corresponding original range in
-that vstd export. In the retained vstd artifact, the three refused low/high
+An exported span can therefore carry the exporting vstd crate ID without a
+corresponding original range in that vstd export. The original SourceFile's
+`external_src` state at constructor capture was not observed. Neither Foreign
+exclusion nor later file arrival is established as the cause of this instance.
+In the retained vstd artifact, the three refused low/high
 ranges are `5083697..5083788`, `3783531..3783599` and `3867539..3867615`.
 Their compiler spellings refer to core's function and allocator traits and
 alloc's boxed implementation. The packed crate word is
@@ -29,9 +33,13 @@ constant to encode in the implementation.
 
 Stock `pos_to_extern_source_file` searches the immutable imported file table.
 `unpack_span` returns `None` if the low position has no containing record;
-that branch precedes the optional source loader. A separate executable stock
-control and typed metadata lineage check are being prepared. Source inspection
-alone does not qualify a new Sail restoration role.
+that branch precedes the optional source loader. The
+[read-only metadata lineage](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/vstd-metadata-lineage.json)
+binds the exact sealed 30,076,214-byte vstd artifact and its 22,312-byte metadata
+suffix: all 145 recorded original ranges omit the three positions. That bounded
+inspection is separate from typed decoding and executable stock-resolver
+controls. Neither the inspection nor source analysis qualifies a new Sail
+restoration role.
 
 The current Sail helper labels both an absent crate and an uncovered original
 range `UnknownCrate`. The diagnostic label therefore does not establish that a
