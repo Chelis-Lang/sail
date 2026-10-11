@@ -1,0 +1,52 @@
+{
+  "source_commit": "34d04c923c8d1378f77e5eae3a6a84edb0fec7df",
+  "source_archive_sha256": "1fd933e1f0386a125f1c9868e3ab95ee7b2562b74f6d0b7efb70ae41321c51b8",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Independent unchanged sail-api sysroot controls and strict affected crate checks after readiness polling; no real-project acceptance inferred",
+  "schema_version": 1,
+  "phases": [
+    {
+      "phase": "strict",
+      "exit_code": 0,
+      "elapsed_seconds": 70.548698167
+    },
+    {
+      "phase": "sysroot",
+      "exit_code": 0,
+      "elapsed_seconds": 135.49731770799997
+    }
+  ],
+  "tests": {
+    "run": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 50,
+    "nextest_elapsed_seconds": 2.091
+  },
+  "unchanged_controls": [
+    "complete buffered response then peer closure",
+    "disconnect and partial trickle",
+    "late response and wrong variant",
+    "full Unix backlog",
+    "frame/version/size and complete scope validation"
+  ],
+  "original_request_entry_budget_ms": 100,
+  "internal_concurrency_unchanged": true,
+  "raw_logs": {
+    "strict.log": {
+      "bytes": 498,
+      "sha256": "032957b0279cc530bcdd50a3d570877f1f903417af42e33ec09c0cb84a1165be"
+    },
+    "sysroot.log": {
+      "bytes": 1617,
+      "sha256": "4f01e1ca5ed2b765a36c128b7f7671dbc3efddbff47483c4bb71609016e2f0c6"
+    }
+  },
+  "qualification": {
+    "affected_strict_and_controls_pass": true,
+    "prior_positive_timeout_cause": "not established",
+    "whole_current_gate": "required separately",
+    "real_project_readers_and_speed": "pending",
+    "m7_accepted": false
+  }
+}
