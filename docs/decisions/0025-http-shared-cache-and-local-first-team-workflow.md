@@ -87,3 +87,26 @@ late result cannot be installed. A finished owner is joined; a constructor still
 blocked in a third-party builder may finish after shutdown, but is not joined on
 that bounded path. Only one such setup owner exists per daemon. This improves
 cold-cache availability without promising that every cold lookup succeeds.
+
+### Revalidate unchanged loopback transport without reconstructing it
+
+Repeated complete workspace gates retain a setup-publication timeout at the
+original 250 ms limit. Their exact complete causes remain unestablished. A
+separate owner observation records material runtime CPU, and the package-only
+optimization control does not show a benefit; its profile stays unselected.
+See [the retained observation](../validation/m7-http-owner-1e8b633.md).
+
+Configuration refresh previously constructed a blocking HTTP runtime before
+comparing it with the current client. Reuse now follows fresh endpoint policy,
+owner-only token read, bounded CA read and PEM validation, and requires exact
+normalized URL, token, CA-byte hash and timeout equality. A missing or invalid
+configuration publishes no client and invalidates prior suppression as before.
+The same initializer and cancellation locks own publication and wakeups; no
+extra constructor, request, signature cache or foreground wait is introduced.
+
+Reuse applies only to permitted literal-loopback HTTP. HTTPS reconstructs on
+refresh because platform trust-root reload is not bound by this configuration
+identity. The existing setup-contention, timeout, credential rotation, forged
+reply and whole-session controls retain their original assertions and limits.
+Focused identity controls and complete gates are required before this change
+can establish a validated scope; it does not reclassify any preceding failure.

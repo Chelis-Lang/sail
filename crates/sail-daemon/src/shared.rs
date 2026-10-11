@@ -846,7 +846,13 @@ mod http_tests {
         assert_eq!(fixture.count.load(Ordering::Relaxed), 0);
         release_tx.send(()).unwrap();
         let result = lookup.join().unwrap();
-        assert!(matches!(result, Lookup::Hit(_)), "lookup: {result:?}");
+        assert!(
+            matches!(result, Lookup::Hit(_)),
+            "lookup: {result:?}; remote: {:?}; phases_us: {:?}; request_read(bytes,error,headers_complete): {:?}",
+            fixture.tier.remote_info(),
+            fixture.phase_report(),
+            fixture.request_report()
+        );
         assert_eq!(fixture.count.load(Ordering::Relaxed), 1);
         fixture.close();
     }

@@ -187,7 +187,14 @@ impl State {
         {
             pause();
         }
-        let mut client = configured.and_then(|c| HttpClient::new(&c, config.timeout).ok());
+        let mut client = configured.and_then(|c| {
+            HttpClient::refresh(
+                &c,
+                config.timeout,
+                previous.as_ref().and_then(|remote| remote.client.as_ref()),
+            )
+            .ok()
+        });
         if let (Some(new), Some(old)) = (&mut client, &previous)
             && old.endpoint == endpoint
             && let Some(previous) = &old.client

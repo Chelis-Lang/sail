@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Reuse an unchanged loopback HTTP connection pool after fresh complete
+  configuration validation, avoiding repeated runtime construction on reload.
+  Keep credential/CA rotation, timeout changes, HTTPS root refresh and signature
+  checks; lookup deadlines remain unchanged.
+
 - Stage automatic Linux sysroot-digest reuse through a trusted local daemon.
   Keep overlapping original caller guards, complete inventory checks and fresh
   executable identities; fall back to local hashing on any unavailable or
