@@ -72,10 +72,13 @@ inotify queue or identify the writer that produced an earlier event.
 ## Next diagnostic seam
 
 Preserve the existing observer role and `failure_reason` at the first failing
-barrier, retaining current short-circuit order and all refusal semantics. Root is
-implementing that diagnostic-only reporting change. A future separately granted
-run can then distinguish namespace versus explicit files and the exact existing
-reason without guessing from phase duration. If event attribution is needed,
+barrier, retaining current short-circuit order and all refusal semantics. That
+diagnostic-only reporting change is implemented; strict checks and all seven
+Linux sysroot controls [pass](m7-sysroot-explicit-detail-control.md). The
+[isolated diagnostic plan](m7-sysroot-proof-diagnostic-plan.md) retains the
+original proof and exchange bounds. Its new evidence can distinguish namespace
+versus explicit files and the exact existing reason without guessing from phase
+duration. If event attribution is needed,
 record a bounded opt-in failure-only mask and root-relative path for the actual
 first tracked event; do not scan unrelated processes or print environment/input
 contents. No exclusion, watch reduction, deadline change or coverage relaxation
