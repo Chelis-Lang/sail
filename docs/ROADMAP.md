@@ -155,6 +155,13 @@ selected qualified source patch and coherent artifact pin; later compiler-family
 and reader component changes still require their own combined validation.
 The [original solver suite](../bench/validation/m7-linux-selected-source-solver-0155b33-emulated-2026-10-11.json)
 also passes all 39 pinned-solver and fault-injection controls.
+A subsequent [combined local gate](../bench/validation/m7-linux-combined-core-gate-73c0370-emulated-2026-10-11.json)
+covers compiler-artifact families, the output-guard library and production
+runtime-identity reuse: all 589 workspace tests and remaining gate steps pass
+in 369.134 seconds. Its separate [pinned-solver suite](../bench/validation/m7-linux-combined-core-solver-73c0370-emulated-2026-10-11.json)
+passes all 41 controls. The daemon output-owner service and family build-script
+observation reuse are subsequent changes; whole repair, reader, corpus and
+performance acceptance remain separate.
 The [candidate history](../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
 and [retained workstream history](validation/m7-workstream-history-cc0898e.md)
 preserve the earlier migration, zero-hit and test-fixture failures.
