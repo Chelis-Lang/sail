@@ -68,3 +68,60 @@ These are allocation and lifecycle requirements for prospective activation,
 not an explanation for the historical Result tail. No payload, collector,
 socket setting, quota ceiling, authority barrier or deadline change is approved
 by this review.
+
+## Reviewed bounded correction
+
+The later file-only `8506ed9` correction closes the fdinfo and recursive-walk
+issues above. Exact-file observation retains original binding and ancestor
+watches, watches the resolved regular file and declines directories. The general
+observer is unchanged. Bounded lease construction reads complete fdinfo with a
+65,537-byte sentinel and refuses more than 65,536 bytes; its exact parser and
+identity checks remain unchanged. It checks cancellation between descriptors.
+
+The subsequent daemon draft `5bf0f882`, following `90bdad4`, has no static
+output-authority or ownership blocker. The original frame key remains exact;
+the same locked output owner brackets independent input freshness. Failure of
+the final output barrier falls through to the original complete output read/SHA
+and another independent freshness check. Fields drop the guard before its
+charge. A queued or constructing task owns the entire charged Frames Arc; an
+in-flight selected response also retains that family. Fixed headroom counts
+33 retiring Frames and 33 output-owner Box shells. Optional cancellation starts
+before either join on endpoint startup failure.
+
+For this supported Linux exec/bootstrap boundary, each original environment
+string is bounded by `MAX_ARG_STRLEN = 32 * PAGE_SIZE`. The observed native page
+size is 4,096 bytes; daemon production code has no process-environment mutation
+route. A conservative 2 MiB allowance covers PATH/interpreter temporaries. This
+is a stated trusted OS/process bootstrap premise, not permission to introduce
+arbitrary environment mutation later.
+
+The conservative construction envelope is:
+
+| Simultaneously retained or transient requested storage | MiB |
+| --- | ---: |
+| Two bounded observer construction envelopes | 32 |
+| Mount snapshot growth/failure and additional mount owner | 6 |
+| Helper JSON, decoded paths, combined copies and request encoding | 8 |
+| Binding/readiness/initial inventory collections | 4 |
+| Aggregate-budget proc reads and key-vector growth | 11 |
+| Supported initial PATH/interpreter temporaries | 2 |
+| Remaining bounded paths, hash and command metadata | 1 |
+| Total | 64 |
+
+This includes retained owner contents, which the separate 16 MiB owner
+reservation deliberately charges again. It is requested-storage accounting,
+not allocator RSS, helper address spaces or kernel memory. In the proc envelope,
+global and fallback descriptor bytes share the same original 2 MiB aggregate
+read budget. Combined old/new byte-buffer growth fits 6 MiB; minimum 33-byte
+valid owned rows bound found-key vector growth by 3 MiB, leaving 2 MiB for the
+remaining bounded metadata. The exact single-output path combines at most one
+output and 1,025 helper paths. Actual source/type-layout and lifecycle controls
+remain required before activation or a performance claim.
+
+The four new daemon controls are meaningful: pending construction cannot invoke
+foreground construction; eviction retains its 80 MiB reservation; the fixed
+slot and one-shot offer cannot overlap constructors; an actual write between
+barriers refuses and permanently invalidates the output owner. A requested
+additional store-level control must demonstrate that a failed final barrier
+really repeats complete output hashing and freshness and preserves full frame
+bytes. The queue-level `None` outcome alone does not establish that integration.
