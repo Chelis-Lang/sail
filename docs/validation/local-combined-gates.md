@@ -55,7 +55,10 @@ birth-checked descendant-group primitives in
 cleanup only for birth-matched groups; uncertainty remains sticky even after the
 leader is reaped. Host Docker transport is separately bounded. Transport loss,
 container change, missing ownership or incomplete group observation stops the
-sequence and requires a separate owner audit. Known-group scans do not prove
+sequence and requires a separate owner audit. Known-group scans retain Z/X rows separately as `terminated_unreaped`: these
+terminated rows cannot execute or hold file descriptors. Live survivors,
+unreadable/unknown rows and incomplete group observation still refuse closure.
+Known-group scans do not prove
 arbitrary orphan absence or discover every short-lived detached descendant.
 The helper never restores source or grants cleanup credit from leader reap.
 
@@ -66,10 +69,15 @@ PASS requires both original phases to exit zero with matching input identity and
 closed recorded ownership. A failed, interrupted or unattempted phase receives
 no skipped-gate credit; earlier failed scopes remain separate.
 
-`python3 scripts/test-local-combined-gates.py` currently passes 23 pure controls on Python 3.12 (the actual extraction control requires
+`python3 scripts/test-local-combined-gates.py` currently passes 26 pure controls on Python 3.12 (the actual extraction control requires
 the standard-library data filter)
 using fake processes and temporary files. They exercise stopping, timeout and
 signal cleanup, sticky uncertainty, transport capture bounds, input substitution,
 exact image retention and full two-phase PASS validation. No native gate, solver,
 Docker action or compiler invocation was performed to validate this helper's
 initial source. Native execution remains a separate recorded scope.
+
+The first dfe3c47 native scope remains FAIL: its gate exited zero, but the
+controller counted terminated, unreaped group members as live survivors and
+never launched solver. The corrected observer does not retrospectively promote
+that scope; a fresh complete gate and solver execution is required.

@@ -240,10 +240,10 @@ def support_module(root):
 
 def group_closure(module, groups):
     """Fixed known-group observation; never claim arbitrary orphan absence."""
-    survivors, unavailable = [], []
+    survivors, unavailable, terminated = [], [], []
     entries = list(Path("/proc").iterdir())
     if len(entries) > module.MAX_SCAN:
-        return {"survivors": [], "unavailable": ["process scan bound"]}
+        return {"survivors": [], "unavailable": ["process scan bound"], "terminated_unreaped": []}
     for entry in entries:
         if not entry.name.isdecimal():
             continue
@@ -252,8 +252,20 @@ def group_closure(module, groups):
             if entry.exists():
                 unavailable.append(int(entry.name))
         elif row["pgid"] in groups.known:
-            survivors.append(row)
-    return {"survivors": survivors, "unavailable": unavailable}
+            if row["state"] in ("Z", "X"):
+                terminated.append(row)
+            else:
+                survivors.append(row)
+    return {"survivors": survivors, "unavailable": unavailable, "terminated_unreaped": terminated}
+
+
+def closed_groups(audit):
+    """Dead rows remain recorded; only live or unavailable ownership refuses."""
+    return (isinstance(audit, dict) and audit.get("survivors") == []
+            and audit.get("unavailable") == []
+            and isinstance(audit.get("terminated_unreaped", []), list)
+            and all(isinstance(row, dict) and row.get("state") in ("Z", "X")
+                    for row in audit.get("terminated_unreaped", [])))
 
 
 def observe_owned(module, groups):
@@ -359,7 +371,7 @@ class OwnedPhaseRunner:
                 self.active = None
                 audit = group_closure(self.module, groups)
                 row["group_closure"] = audit
-                if audit["survivors"] or audit["unavailable"] or groups.partial:
+                if not closed_groups(audit) or groups.partial:
                     self.closure.uncertain("known descendant-group closure incomplete")
                 self.require_idle()
                 self.check()

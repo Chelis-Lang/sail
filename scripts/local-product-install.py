@@ -34,7 +34,7 @@ def prerequisite(g, controller, record, config):
         raise ValueError('exact COMPLETE combined gate and solver PASS required')
     if controller['container_before'] != controller['container_after'] or controller['revision'] != config['revision'] or controller['archive_sha256'] != config['archive_sha256']:
         raise ValueError('combined source/container identity differs')
-    if record.get('jobs') != 2 or record.get('nextest_independent_tests') != 1 or any(p.get('group_closure') != {'survivors': [], 'unavailable': []} for p in record['phases']):
+    if record.get('jobs') != 2 or record.get('nextest_independent_tests') != 1 or any(not g.closed_groups(p.get('group_closure')) for p in record['phases']):
         raise ValueError('complete recorded phase closure/concurrency required')
     if not re.fullmatch('[0-9a-f]{40}', config['revision']):
         raise ValueError('full Git commit required')

@@ -69,6 +69,16 @@ class Controls(unittest.TestCase):
             with self.assertRaises(ValueError):
                 p.prerequisite(g, *args)
 
+    def test_product_requires_no_live_groups_and_retains_dead_row_record(self):
+        controller, record, config = inputs()
+        dead = {'pid': 100, 'state': 'Z'}
+        record['phases'][0]['group_closure']['terminated_unreaped'] = [dead]
+        p.prerequisite(g, controller, record, config)
+        self.assertEqual(record['phases'][0]['group_closure']['terminated_unreaped'], [dead])
+        dead['state'] = 'R'
+        with self.assertRaises(ValueError):
+            p.prerequisite(g, controller, record, config)
+
     def test_original_product_sequence_and_caps(self):
         seen = []
         self.assertTrue(p.product_sequence(lambda *args: seen.append(args) or 0, g.Closure(), ['installer']))
@@ -214,6 +224,19 @@ class Controls(unittest.TestCase):
                     runner.run('release-build', p.BUILD_COMMAND, 600)
             with self.assertRaises(RuntimeError):
                 runner.require_idle()
+    def test_partial_known_groups_still_refuse_even_if_only_dead_rows_remain(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            who = Mock()
+            who.row.return_value = {'pid': 123, 'pgid': 123, 'start': 10}
+            who.Groups.return_value = Mock(known={}, partial=True)
+            closure = g.Closure()
+            runner = g.OwnedPhaseRunner(root, root, '/target', who, closure, {'phases': []}, Mock())
+            audit = {'survivors': [], 'unavailable': [], 'terminated_unreaped': [{'pid': 123, 'state': 'Z'}]}
+            with patch.object(g.subprocess, 'Popen', return_value=Mock(pid=123)), patch.object(g, 'run_owned', return_value=0), patch.object(g, 'group_closure', return_value=audit):
+                with self.assertRaises(RuntimeError):
+                    runner.run('release-build', p.BUILD_COMMAND, 600)
+            self.assertTrue(closure.reasons)
 
 
 if __name__ == '__main__':

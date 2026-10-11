@@ -40,7 +40,9 @@ cap. It creates private owned copies and retains the actual credential and
 
 Both gate and product controllers use the same `OwnedPhaseRunner`, existing
 birth-checked group observation, bounded host transport and sticky cleanup
-uncertainty. Source/identity uncertainty prevents continuation and requires an
+uncertainty. Terminated Z/X rows remain recorded separately and cannot grant
+live-owner closure; live, unreadable or incomplete group observations refuse.
+Source/identity uncertainty prevents continuation and requires an
 independent owner audit; recorded group closure does not prove arbitrary orphan
 absence. Primary outcomes precede final closure checks. Complete raw logs,
 partial failures and original gate records remain retained. On a returned
@@ -56,8 +58,8 @@ only. Installation is not proof Currentness, repair acceptance, source-engine
 qualification or performance evidence. Original product fixtures and benchmarks
 remain separate required scopes.
 
-Eleven new pure controls exercise complete-gate refusal, build-before-install,
+Thirteen new pure controls exercise complete-gate refusal, build-before-install,
 sticky uncertainty, actual common-grant validation, exact installed identity,
 selected engine completeness and the shared phase runner using fake processes.
-The existing 23 pure gate controls also pass on Python 3.12. Native build/install
+The existing 26 pure gate controls also pass on Python 3.12. Native build/install
 execution is pending; these controls launch no Docker, compiler or proof actor.
