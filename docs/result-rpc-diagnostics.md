@@ -13,6 +13,8 @@ SAIL_JOB_RPC_TIMINGS=1 sail serve --cache "$SAIL_CACHE_DIR"
 ```
 
 After normal owned shutdown, read
+`$SAIL_CACHE_DIR/projects/jobs/rpc-timings.json` for the explicit `--cache`
+command above. Default cache selection instead uses
 `$SAIL_CACHE_DIR/results/projects/jobs/rpc-timings.json`. No trace file is written
 during a timed RPC. Do not change a running frozen acceptance daemon or collector
 to enable diagnostics; start a separate explicitly labelled diagnostic scope.
@@ -76,7 +78,9 @@ new retry or increased timeout.
 
 Controls cover default-off behavior, bounded tail/order, contention, poisoned
 storage, late publication, private export and exact complete socket-response
-equivalence for Status, Result and stable errors without launching a worker.
+equivalence for a Cancelled job's Status, null-result Result and stable errors
+without launching a worker. It does not exercise a completed full-report frame
+or a warm complete-frame cache hit.
 Pure environment controls compare selected inputs with diagnostics off/on.
 The [qualification record](validation/m7-rpc-stage-recorder.json) binds the
 implementation bytes, commands and retained development failures. These host

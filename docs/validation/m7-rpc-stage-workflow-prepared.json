@@ -1,0 +1,82 @@
+{
+  "kind": "prepared-observation-only-real-rpc-workflow",
+  "state": "prepared; product grant and concrete launch review pending; no service/proof/census started",
+  "files": {
+    "docs/validation/m7-rpc-stage-workflow.py": {
+      "bytes": 14136,
+      "sha256": "b047fa88c61b57075e192df01a42fb46d397322cdef57eed67217aa45e337790"
+    },
+    "docs/validation/test-m7-rpc-stage-workflow.py": {
+      "bytes": 3320,
+      "sha256": "5af2992d0285c08b877633699de97cd3630e354eef9e6f69a25ea42c35369d9b"
+    },
+    "docs/validation/m7-sysroot-proof-diagnostic.py": {
+      "bytes": 15886,
+      "sha256": "6f29f27975035ed253ec75e6cfbc8f22eaca24a9ad5256e927cf877253b34779"
+    }
+  },
+  "controllers": {
+    "m7-job-read-bench.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    },
+    "m7-native-product.py": {
+      "bytes": 12115,
+      "sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+    },
+    "m7-reader-acceptance.py": {
+      "bytes": 33712,
+      "sha256": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d"
+    },
+    "m7-repair-bench.py": {
+      "bytes": 31040,
+      "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33"
+    },
+    "m7-retained-jobs-acceptance.py": {
+      "bytes": 20198,
+      "sha256": "ba1acf98c39dce9687a4a0e277234296459651dc1580316576c654ceb2154028"
+    }
+  },
+  "probes": {
+    "job_read_bench": {
+      "bytes": 12235200,
+      "sha256": "f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d"
+    },
+    "python-reader-probe.py": {
+      "bytes": 11877,
+      "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+    }
+  },
+  "catalogue": {
+    "bytes": 5510,
+    "sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6"
+  },
+  "selected_manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+  "source_files": 274,
+  "product": "new exact root current release required; no placeholder grants execution",
+  "budgets": {
+    "bounded_setup_s": 600,
+    "collector_process_s": 600,
+    "cli_s": 30,
+    "rpc_s": 5,
+    "clients": 4,
+    "samples_per_collector": 200,
+    "p95_strictly_below_ms": 200
+  },
+  "preparation": "approved separate prepare-contexts setup0 phases then original600 checks; no new retries or copied authority",
+  "checks": [
+    {
+      "command": "python3 docs/validation/test-m7-rpc-stage-workflow.py",
+      "passed": 3,
+      "seconds": 0.168
+    },
+    {
+      "command": "python3 docs/validation/test-m7-current-reader-workflow.py",
+      "passed": 10,
+      "seconds": 0.692,
+      "scope": "unchanged original wrapper controls, separately from new observation controls"
+    }
+  ],
+  "original_protocol_control_scope": "Cancelled/null-result Status and Result plus stable error; not a complete cached full Result",
+  "original_failed_reader_preserved": "m7-current-reader-workflow.json"
+}
