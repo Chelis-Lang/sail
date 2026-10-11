@@ -34,7 +34,7 @@ tty=()
 sail_fault_options=()
 # Match the one CI job whose real fault control needs a private mount namespace.
 if [ "${1:-}" = solver ]; then
-  sail_fault_options=(--cap-add SYS_ADMIN --security-opt seccomp=unconfined)
+  sail_fault_options=(--cap-add SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor=unconfined)
 fi
 docker run --rm ${tty[@]+"${tty[@]}"} ${sail_runtime_env[@]+"${sail_runtime_env[@]}"} ${sail_fault_options[@]+"${sail_fault_options[@]}"} --platform linux/amd64 \
   -v "$PWD:/work" -w /work \

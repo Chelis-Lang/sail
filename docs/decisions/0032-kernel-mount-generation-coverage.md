@@ -42,6 +42,13 @@ The solver job explicitly runs this fault test with isolated mount privileges;
 whole suite retains its existing job timeout. No test mutates a verifier's or
 another project's mount namespace.
 
+The solver container explicitly permits the isolated control through both
+seccomp and AppArmor. Docker's [default AppArmor policy](https://docs.docker.com/engine/security/apparmor/)
+denies mount operations even when the container has `SYS_ADMIN`; merely adding
+the capability would leave native Linux CI unable to exercise this check.
+These exceptions apply only to the solver container, and the control still
+creates a private child namespace before making any mount change.
+
 ## Consequences
 
 Restoring a mount no longer restores retained proof or digest authority. Any
