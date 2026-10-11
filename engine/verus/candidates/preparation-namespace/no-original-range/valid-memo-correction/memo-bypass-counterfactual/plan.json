@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "status": "prepared; no counterfactual run",
+  "full_patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+  "positive_result_sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+  "positive_engine_sha256": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+  "negative_engine_sha256": "871bd25334955e841fe790e3a6078e12a096966783316bd3b345a2af5d60a846",
+  "negative_patch_sha256": "c994c23d0c281848f85336e1639e4cc480ddefae0e96bc8f60582557566c61fc",
+  "controller_sha256": "8ed15302e63bcb5a9a036b04b7eafb98dba9add538d40f480b57aa636865e55c",
+  "scope": "one targeted bypass-removal case then exact positive restoration; unchanged admission and inequality",
+  "compiler_timeout_seconds": 180,
+  "runtime_proof_or_qualification": false
+}
