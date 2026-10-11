@@ -17,7 +17,7 @@ pub(super) struct ReadLease {
     socket: UnixStream,
     kernel: Option<super::kernel_leases::Inventory>,
     bindings: Vec<(PathBuf, PathBuf, u64, u64)>,
-    mounts: String,
+    mounts: super::kernel_mounts::Guard,
     interpreter: PathBuf,
     helper_observer: Observer,
     failure: Option<&'static str>,
@@ -63,7 +63,7 @@ impl ReadLease {
             return None;
         }
         *stage = "mount-inventory";
-        let mounts = std::fs::read_to_string("/proc/self/mountinfo").ok()?;
+        let mounts = super::kernel_mounts::Guard::begin()?;
         *stage = "input-path-bindings";
         let bindings: Vec<_> = paths
             .iter()
@@ -226,11 +226,8 @@ impl ReadLease {
         self.failure
             .unwrap_or("kernel-lease-validation-unavailable")
     }
-    fn bindings_current(&self) -> bool {
-        std::fs::read_to_string("/proc/self/mountinfo")
-            .as_ref()
-            .ok()
-            == Some(&self.mounts)
+    fn bindings_current(&mut self) -> bool {
+        self.mounts.clean()
             && self
                 .bindings
                 .iter()

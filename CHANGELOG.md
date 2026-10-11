@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Invalidate retained Linux proof and sysroot-digest coverage on kernel mount
+  events, including a bind mount restored before the next check. Preserve
+  existing file guards and conservative fallback; test real mount restoration
+  in an isolated namespace as part of the solver suite.
+
 - Let shared-cache lookup helpers wait for concurrent HTTP setup within the
   existing lookup budget. Preserve bounded fallback, credential reload and trust
   checks; avoid an immediate miss when the configured client is still starting.

@@ -87,6 +87,15 @@ writable file description or shared mapping exists, including a mapping that
 survives closing its originating descriptor. Ordinary read-only mode bits or a
 read-only bind mount do not supply that guarantee.
 
+Linux guards also retain a proc mountinfo descriptor and check its kernel event
+generation with a zero-wait poll. A bind mount and restoration invalidates the
+owner even when final mountinfo, path bindings and contents match the originals.
+The notification is latched permanently; a later clean poll cannot renew it.
+Namespace/root identity changes and unavailable polling also refuse reuse. This
+adds one descriptor and a bounded snapshot to each namespace/lease owner, with
+no observation worker or grace period. See [ADR 0032](decisions/0032-kernel-mount-generation-coverage.md)
+and [the isolated real fault control](validation/m7-kernel-mount-generation.json).
+
 The optional lease owner is an embedded Python 3 standard-library helper launched
 with isolated module loading, structured arguments and private bounded socket I/O.
 Sail resolves an absolute interpreter once per establishment and binds its
