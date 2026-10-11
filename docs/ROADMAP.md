@@ -134,6 +134,13 @@ separate. Its [11 targeted controls and strict checks](validation/m7-compilation
 pass, and the rebuilt product installs. The [original repair workflow](../bench/validation/m7-linux-repair-cdb6e6d-failure-2026-10-11.json)
 still fails the 120-second whole budget after two Current successful jobs;
 phase diagnosis and actual whole-workflow acceptance remain required.
+One subsequent [reduced prefix diagnostic](../bench/validation/m7-linux-repair-prefix-diagnostic-cdb6e6d-2026-10-11.json)
+completes success, declaration establishment, resumable events, baseline and
+missing-function assertions in 77.046 seconds internally. The missing selector
+returns `SAIL3122` after complete Current full verification. This is diagnostic
+completion under the original limits, not a pass of the original full repair
+workflow, later CLI/MCP cases or benchmark. Ordinary dependency rebuilding on
+the selector change is being investigated from its retained worker evidence.
 The subsequent [complete local gate](../bench/validation/m7-linux-selected-source-gate-a8bdac6-environment-failure-2026-10-11.json)
 fails with 342 passing and 224 failing workspace cases after the Docker
 filesystem becomes read-only; later gate steps are unattempted. Both actual

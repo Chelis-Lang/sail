@@ -1,8 +1,9 @@
 # Proof events and repair validation
 
 **Experimental (M7):** the CLI/MCP workflow is implemented, with source fixtures
-and small native Linux integration checks. Real-project performance, concurrent
-reader acceptance and the physical preparation-memory bound remain unfinished.
+and small native Linux integration checks. The selected source engine passes its
+preparation-memory and lowering qualification. Complete product integration,
+real-project performance and concurrent reader acceptance remain unfinished.
 See [known issues](known-issues.md) and the
 [acceptance guide](bench/m7-repair-acceptance.md) before relying on performance
 or cross-edit preparation reuse. Stock verification remains the default.
