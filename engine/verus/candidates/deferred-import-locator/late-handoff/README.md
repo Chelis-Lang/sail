@@ -1,8 +1,10 @@
 # Single late compiler-thread import authority handoff
 
-Status: file-only unselected candidate. Forty-three reduced actual pinned API controls
-pass (29 unchanged plus 14 new controls). Complete source library tests, strict
-checks, ordinary runtime build and qualification have not run for these bytes.
+Status: unselected candidate. Forty-three reduced actual pinned API controls
+pass (29 unchanged plus 14 new controls). Independent actual complete source
+controls pass 40/40 VIR and 78/78 driver tests, with both all-targets strict
+Clippy checks passing in 180.872 seconds. Ordinary runtime build and original
+qualification remain pending.
 The selected runtime and every earlier sealed candidate remain unchanged.
 
 The original `0bbc` fourteen-stage qualification remains failed: revision zero
@@ -118,7 +120,7 @@ formatted Reporter stderr or queued diagnostic ordering. The source-only test
 file preserves its entire prior module as a byte-exact prefix, then adds these
 phase controls. Existing scalar four-method Reporter/ReplayMessages, direct
 stock group resolution, raw-binding/hygiene/parent and physical tests remain;
-this patch has not yet compiled those complete-source tests. No new actual
+the independent complete-source checks compiled and passed those controls. No new actual
 sealed-vstd metadata control was executed in this scope; the earlier metadata
 result remains independent, not transferred acceptance.
 
@@ -134,7 +136,9 @@ and a new complete runtime manifest precede the original fourteen-stage oracle.
 Its raw stock diagnostics, every same-input checked hit and genuine previous-
 revision FOCUS remain required under the original 600-second invocation bound.
 No candidate runtime build, qualification retry, hit or performance claim is
-part of this helper result. User-facing proof repair remains experimental.
+part of the helper result. The separate complete-source result retains its own
+raw logs and tested executables; it is not runtime qualification. User-facing
+proof repair remains experimental.
 
 ## Observation boundary kept separate
 
@@ -148,3 +152,26 @@ classification, never a fabricated current namespace snapshot or successful
 live authority. That follow-up is not implemented in the frozen patch and is
 not needed to authorize a hit. Any future diagnostic would retain the primary
 original qualification result independently.
+
+
+## Authorized ordinary build setup
+
+[ordinary-build-plan.json](ordinary-build-plan.json) and the three retained
+controllers bind the exact full/delta/source/lock identities and prospective
+`ba9253e0e3b8c136` feature variant. The private builder's full source inventory
+must match its retained archive before its interactive patch is replaced. Reuse
+the closed existing bootstrap and tested private compiler target; copy only
+verified inactive compiler intermediates with different inodes, excluding VIR,
+driver and vstd outputs. No runtime, proof receipt, marker or seal is copied.
+Record native overlay and host backing free space separately. Preserve actual
+test ELFs, API dependencies/fingerprints, source snapshots, old thirteen-file
+runtime seals and raw evidence before retiring only closed compiler scratch.
+
+The source-control terminal hash and all 27 retained inputs are frozen before
+launch. A fresh ordinary vstd proof, new exact thirteen-artifact manifest and
+source/lock/old-seal/owned-actor closure are mandatory. The retained qualification
+controller changes only candidate/evidence/control bindings; its original
+fourteen scripts, compiler command, environment, raw diagnostics, same-input
+oracle, checked previous-revision FOCUS and 600-second bounds remain unchanged.
+No trace selectors, assertion changes, copied proof acceptance or extra retries
+are introduced. Build launch and qualification remain separately recorded.

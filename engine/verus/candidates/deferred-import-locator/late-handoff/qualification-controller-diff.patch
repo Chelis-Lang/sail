@@ -1,0 +1,44 @@
+--- previous-original-controller.py
++++ late-handoff-original-controller.py
+@@ -1,21 +1,25 @@
+ from pathlib import Path
+ import hashlib,json,os,subprocess,time
+-ROOT=Path('/tmp/sail-m7-original-descriptor-build-evidence')
+-BUILD=Path('/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-0bbc7d378544f972')
++ROOT=Path('/tmp/sail-m7-late-handoff-build-evidence')
++BUILD=Path('/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-ba9253e0e3b8c136')
+ SCRIPTS=Path('/tmp/sail-m7-combined-c39-evidence/qualification-scripts')
+ PIPELINE=SCRIPTS/'engine/verus/candidates/qualify-same-input.py'
+ sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+ assert sha(PIPELINE)=='f7ddcf603e2ff7c52a2a107ce97139ee2ccc43c75f558b61d14642762d92cc62'
+ assert sha(SCRIPTS/'engine/verus/candidates/test-private-span-cross-edit.py')=='80b49c69b84599b606f200157c67cdc1f92e73054905f3a22b11ce839789fc2a'
+-assert sha(ROOT/'candidate.patch')=='1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8'
+-CONTROL_ROOT=Path('/tmp/sail-m7-original-descriptor-source-controls')
+-checks=json.loads((CONTROL_ROOT/'source-control-result.json').read_text()); assert checks['status']=='PASS'
++assert sha(ROOT/'candidate.patch')=='bb9cf6ab85b3316b5a90551dd615864bd564b5e052c0d767fa2b97fb5ba84372'
++CONTROL_ROOT=Path('/tmp/sail-m7-late-handoff-source-controls')
++freeze=json.loads((ROOT/'build-input-freeze.json').read_text())
++for name,digest in freeze['source_control_inputs'].items():assert sha(CONTROL_ROOT/name)==digest
++checks=json.loads((CONTROL_ROOT/'result.json').read_text());assert checks['status']=='PASS'
+ assert len(checks['phases'])==4 and all(p['exit_code']==0 for p in checks['phases'])
+-assert checks['patch_sha256']==sha(ROOT/'candidate.patch')
+-assert sha(CONTROL_ROOT/'source-control-result.json')=='483815d25174bb8b67282b9b942f17cbe8e93f4fd1eaefed01041c2cb948b074'
++assert {p['name'] for p in checks['phases']}=={'vir-test','vir-clippy','rust_verify-test','rust_verify-clippy'}
++for phase in checks['phases']:assert sha(CONTROL_ROOT/(phase['name']+'.log'))==phase['log_sha256']
+ identity=json.loads((ROOT/'identity.json').read_text())
+ for relative,digest in identity['source_sha256'].items(): assert sha(BUILD/'verus/source'/relative)==digest
+ assert sha(BUILD/'verus/source/Cargo.lock')=='653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1'
++closed=json.loads((ROOT/'closed-ordinary-build.json').read_text());assert closed['complete_direct_artifact_inventory'] and closed['fresh_vstd_verified']==2060 and closed['fresh_vstd_errors']==0 and not closed['owned_build_actors']
++assert closed['patch_sha256']==sha(ROOT/'candidate.patch') and closed['manifest_sha256']==sha(BUILD/'sail-build.json')
+ ordinary=json.loads((ROOT/'ordinary-build-result.json').read_text())
+ assert ordinary['exit_code']==0 and ordinary['patch_sha256']==sha(ROOT/'candidate.patch')
+ manifest=json.loads((BUILD/'sail-build.json').read_text())
+@@ -48,7 +52,7 @@
+ command=['python3',str(PIPELINE),'--build',str(BUILD),'--stock','/opt/verus/verus-x86-linux/verus','--z3','/opt/verus/verus-x86-linux/z3','--he','/root/.cache/sail/corpus/human-eval-verus-bbe93f73b0a5','--out',str(ROOT/'original-qualification'),'--execution','linux-x86_64-container-emulated-sharedload','--patch',str(ROOT/'candidate.patch'),'--private-span-boundary','--old-engine','/root/.cache/sail/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-dd8447d5aca0e5c1/verus/source/target-verus/release/verus']
+ env={k:v for k,v in os.environ.items() if not k.startswith('SAIL_ENGINE')}
+ env.update(RUST_TEST_THREADS='1',RUSTC_BOOTSTRAP='1',VERUS_IN_VARGO='1',CARGO_HOME='/opt/cargo',RUSTUP_HOME='/opt/rustup')
+-record={'version':1,'scope':'Original frozen qualification; no selected runtime/product qualification','command':command,'compiler_limits_seconds':600,'assertions_changed':False,'script_sha256':script_inventory,'manifest_sha256':sha(BUILD/'sail-build.json'),'patch_sha256':sha(ROOT/'candidate.patch'),'status':'running','started_unix_ns':time.time_ns(),'independent_source_cases':'serial; internal concurrency unchanged','selected':False,'source_controls_sha256':sha(CONTROL_ROOT/'source-control-result.json')}
++record={'version':1,'scope':'Original frozen qualification; no selected runtime/product qualification','command':command,'compiler_limits_seconds':600,'assertions_changed':False,'script_sha256':script_inventory,'manifest_sha256':sha(BUILD/'sail-build.json'),'patch_sha256':sha(ROOT/'candidate.patch'),'status':'running','started_unix_ns':time.time_ns(),'independent_source_cases':'serial; internal concurrency unchanged','selected':False,'source_controls_sha256':sha(CONTROL_ROOT/'result.json')}
+ started=time.monotonic()
+ with (ROOT/'original-qualification.log').open('wb') as stream:
+  child=subprocess.Popen(command,env=env,stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
