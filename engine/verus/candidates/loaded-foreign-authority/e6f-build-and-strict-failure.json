@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "scope": "Retained exact e6f ordinary build/source controls and strict driver Clippy failure; source runtime unqualified/unselected",
+  "source_patch_sha256": "e6f54134fd8478b3b82f3d2513da3a883b70a7f6cd08d2af3985c207abf785ef",
+  "delta_sha256": "dbae5d4f95508219341ecf611ffca399c48c57fba187feee79cc026fdbf31876",
+  "manifest_sha256": "2468f9555f0626069586233ef7ed9452d2226720cbfdb7727744f8976f68e340",
+  "rust_verify_sha256": "b5cd4a77559c34368b43d0befe293ba92d0824f60f761214d8d19e37698cf489",
+  "ordinary_build": {
+    "passed": true,
+    "elapsed_s": 727.842,
+    "vstd_verified": 2060,
+    "vstd_errors": 0,
+    "complete_artifacts": 13
+  },
+  "library_controls": {
+    "vir_passed": 38,
+    "driver_passed": 43,
+    "serial_cases": true
+  },
+  "strict_checks": {
+    "vir_all_target_clippy": "pass",
+    "driver_all_target_clippy": "failed",
+    "lint": "clippy::items_after_test_module",
+    "test_module": "sail_owned_imports.rs:553 drop_probe",
+    "following_item": "sail_owned_imports.rs:572 memo_test_authority",
+    "elapsed_s": 98.375,
+    "raw_log_sha256": "8e52395e94c722683971241369588769dbb9e0d65a11f090a7d583f64bbf5cbf"
+  },
+  "corrective_scope": "Lexical move of unchanged test-only module after final item; no allow, statement or assertion changes",
+  "qualification_pipeline_started": false,
+  "qualified": false,
+  "selected": false
+}

@@ -943,25 +943,6 @@ new file mode 100644
 +}
 +
 +#[cfg(test)]
-+pub(super) mod drop_probe {
-+    use std::sync::{Mutex, mpsc};
-+    static HOOK: Mutex<Option<(mpsc::Sender<(usize, usize)>, mpsc::Receiver<()>)>> =
-+        Mutex::new(None);
-+    pub(crate) fn install(sent: mpsc::Sender<(usize, usize)>, resume: mpsc::Receiver<()>) {
-+        *HOOK.lock().unwrap() = Some((sent, resume));
-+    }
-+    pub(super) fn after_dispose(length: usize, capacity: usize) {
-+        let hook = HOOK.lock().unwrap().take();
-+        if let Some((sent, resume)) = hook {
-+            sent.send((length, capacity)).unwrap();
-+            resume
-+                .recv_timeout(std::time::Duration::from_secs(1))
-+                .unwrap();
-+        }
-+    }
-+}
-+
-+#[cfg(test)]
 +pub(crate) fn memo_test_authority(content: &str) -> OwnedImportMappings {
 +    // Small synthetic typed fixture for the EXISTING memo/component tests.
 +    // This bypass is test-only, never an acquisition/physical-budget control.
@@ -999,6 +980,25 @@ new file mode 100644
 +            }),
 +        }],
 +        charged: false,
++    }
++}
++
++#[cfg(test)]
++pub(super) mod drop_probe {
++    use std::sync::{Mutex, mpsc};
++    static HOOK: Mutex<Option<(mpsc::Sender<(usize, usize)>, mpsc::Receiver<()>)>> =
++        Mutex::new(None);
++    pub(crate) fn install(sent: mpsc::Sender<(usize, usize)>, resume: mpsc::Receiver<()>) {
++        *HOOK.lock().unwrap() = Some((sent, resume));
++    }
++    pub(super) fn after_dispose(length: usize, capacity: usize) {
++        let hook = HOOK.lock().unwrap().take();
++        if let Some((sent, resume)) = hook {
++            sent.send((length, capacity)).unwrap();
++            resume
++                .recv_timeout(std::time::Duration::from_secs(1))
++                .unwrap();
++        }
 +    }
 +}
 diff --git a/source/rust_verify/src/sail_owned_imports_tests.rs b/source/rust_verify/src/sail_owned_imports_tests.rs
