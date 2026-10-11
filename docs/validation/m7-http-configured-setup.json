@@ -563,5 +563,6 @@
     "sha256": "ac074154bb6c936a3b80a61f3b23d0519a88a1a32fbbda62d624eb38f0d6e8bf",
     "bytes": 362629120,
     "verified_log_members": 81
-  }
+  },
+  "compiled_source_scope": "Private candidate builds exercised the production implementation in42c51f6; initialization module documentation wording was clarified after the initial fixed compile. The later credential diagnostic adds only37f1eca assertion messages. These are explicitly private diagnostic builds, not exact Git-archive Cargo release artifacts; compiler arguments/dependency hashes and raw outputs are retained."
 }
