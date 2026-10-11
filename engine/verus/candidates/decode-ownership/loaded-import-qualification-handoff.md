@@ -1,13 +1,16 @@
 # Loaded-import candidate build and qualification handoff
 
-This is a runnable sequence for a **reviewed, unselected** candidate. Its exact
-full patch is frozen at
-`e6f54134fd8478b3b82f3d2513da3a883b70a7f6cd08d2af3985c207abf785ef`.
-Its [ordinary build record](loaded-import-ordinary-build.json) retains fresh vstd
-2,060/0 and actual library controls. The mandatory driver strict check failed; original source qualification has not
-started. The candidate remains unselected. [The authority review](loaded-import-authority-review.md)
-and [causal diagnostic](span-provenance-causal-diagnostic.json) retain the
-existing failures. A source implementation must receive review before step 2.
+This is a runnable sequence for a **reviewed, unselected** candidate. The corrected
+full patch is `506679543779f2856899006d7d70420ce85d47cb74c9873a064f97ab82c44984`.
+Its [new ordinary build and source-check record](loaded-import-test-layout-build.json)
+retains fresh vstd 2,060/0, 38 VIR and 43 driver library controls, and both strict
+all-target Clippy passes. The original fourteen-stage source qualification is
+running; no restored HIT or product qualification is inferred yet.
+
+The [earlier e6f build record](loaded-import-ordinary-build.json) retains its
+mandatory driver lint failure separately. [The authority review](loaded-import-authority-review.md)
+and [causal diagnostic](span-provenance-causal-diagnostic.json) retain prior
+failures. The selected runtime remains unchanged.
 
 ## Freeze before compilation
 
@@ -120,7 +123,7 @@ Unrelated coordinate relocation alone is only a candidate positive; its actual
 previous-revision restoration and strict fresh-versus-cached/stock controls
 still have to pass.
 
-## Current execution
+## Preserved e6f execution
 
 The ordinary Linux build completed in 727.842 seconds with two build jobs and
 ordinary process priority. All 38 VIR and 43 driver library tests passed with
@@ -163,9 +166,31 @@ moves below the unchanged helper. Its new source hash is
 the other five source hashes remain identical. No authority, runtime logic,
 budget, assertion or lint exception changes.
 
-A fresh feature-bound private variant `b46efd051424968f` is building at ordinary
-priority with two jobs. Its verified inactive compiler seed copied 3,522 files
+The corrected feature-bound private variant `b46efd051424968f` completed its
+ordinary build in 1,055.064 seconds at ordinary priority with two jobs. Its verified inactive compiler seed copied 3,522 files
 (1,090,456,706 bytes) in 15.008 seconds, excluding 103 changed-crate paths, every
 runtime/proof/seal output and hardlinks. The e6f failed candidate remains frozen
-and unselected. New vstd verification, runtime inventory, all source checks and
-the original qualification pipeline are required again.
+and unselected. Fresh vstd 2,060/0, the exact thirteen-artifact inventory and
+all six source hashes plus the lock were independently validated. New actual
+38 VIR and 43 driver tests passed; strict all-target Clippy passed for both.
+Only the reviewed empty Cargo control files were retained after checking no
+open holders; runtime hashes stayed unchanged without resealing. The original
+fourteen-stage pipeline then started with unchanged assertions and 600-second
+compiler bounds. Its outcome remains pending.
+
+## Closed compiler-intermediate cleanup
+
+After the corrected ordinary builder and its descendants closed, inactive c05,
+f833 and e6f compiler intermediates were removed. The
+[cleanup record](loaded-import-compiler-cleanup.json) retains their manifest
+identities, per-file inventory hashes and before/after checks. No active bound
+process or open descriptor held those directories. Every variant's original
+thirteen runtime hashes and exact direct-file inventory matched before and
+after cleanup; no runtime was resealed. Source, locks, prepared entries, probes
+and all raw qualification failures remain retained. The new b46 source-control
+target stays protected.
+
+The removed files occupied 3,275,419,648 allocated bytes and 3,249,564,865 logical
+bytes. Host APFS available space increased from 25,049,512 to 27,749,312 KiB
+during the operation. That backing observation includes concurrent activity;
+the container's much larger apparent free capacity is not host backing space.
