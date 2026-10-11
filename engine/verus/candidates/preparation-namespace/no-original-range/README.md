@@ -61,7 +61,7 @@ application were checked without changing the native source or launching a
 compiler. Existing helper tests are a byte-exact prefix; the prior Deferred
 Reporter tests and positive retirement implementation are retained.
 
-New uncompiled controls cover stock absence/current SourceMap growth, incomplete
+Controls cover stock absence/current SourceMap growth, incomplete
 inventories, complete filename/hash/range identity, namespace overflow, raw-unit
 codec rebinding and changed current keys, pending handoff, covered Unavailable
 refusal, prepopulated memo sensitivity, and the actual direct/parallel validator
@@ -86,5 +86,9 @@ new driver controls did not execute and driver strict was unattempted. This is
 a test integration error, not an observed production authority failure. Source,
 lock and four prior runtime seals were unchanged, and both container audits found
 zero holders or unreadable live processes. Raw logs, exact source and the actual
-VIR tested executable are archived. A narrow test-shim correction is required;
-the failed scope is never relabelled as passing evidence.
+VIR tested executable are archived. The narrow test-shim correction and its
+subsequent invalid-memo-fixture failure remain recorded separately. The
+[valid-fixture correction](valid-memo-correction/README.md) now passes all 42 VIR
+and 108 driver controls and both strict checks. Its separate bypass-removal
+sensitivity and ordinary runtime qualification remain required. Neither failed
+scope is relabelled as passing evidence, and the candidate remains unselected.
