@@ -242,3 +242,9 @@ original→current mapping authority, explicit state evidence and new-domain
 migration refusal. Delayed/local/unknown states remain misses. Compiler/runtime,
 complete source, genuine previous-revision FOCUS and HE/Vest gates are pending.
 Selected runtime pins are unchanged.
+
+The [focused Verismo timeout diagnosis](validation/m7-verismo-diagnostic-plan.md)
+is prepared for one stock unit with a new frozen harness retaining partial
+streams. Its bounded descendant/CPU/descriptor observer has four helper controls;
+no focused proof has run. Both complete standard timeouts and their unknown causes
+remain. This is neither a suite retry nor an optional-engine acceptance result.
