@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "status": "PASS",
+  "scope": "closed privately owned compiler intermediates only; preserved executable/shared library dependencies and fingerprints; no common targets or source/runtime/proof files",
+  "start_unix_ns": 1791728320468638000,
+  "end_unix_ns": 1791728349643660000,
+  "protected_records": 1768,
+  "protected_before_after_equal": true,
+  "preflight": {
+    "sail-m7-acceptance": {
+      "unix_ns": 1791728320979411096,
+      "examined": 4,
+      "holders": [],
+      "unreadable": []
+    },
+    "sail-m7-handoff-validation": {
+      "unix_ns": 1791728321414977054,
+      "examined": 12,
+      "holders": [],
+      "unreadable": []
+    }
+  },
+  "postflight": {
+    "sail-m7-acceptance": {
+      "unix_ns": 1791728349061086761,
+      "examined": 1,
+      "holders": [],
+      "unreadable": []
+    },
+    "sail-m7-handoff-validation": {
+      "unix_ns": 1791728349550447262,
+      "examined": 22,
+      "holders": [],
+      "unreadable": []
+    }
+  },
+  "host_backing_free_before_bytes": 7406899200,
+  "host_backing_free_after_bytes": 9475776512,
+  "backing_free_change_not_causally_attributed": true,
+  "removed_directory_sets": [
+    {
+      "path": "debug/incremental",
+      "files": 5958,
+      "allocated_bytes": 1399930880,
+      "logical_bytes": 1388445825
+    },
+    {
+      "path": "debug/build",
+      "files": 204,
+      "allocated_bytes": 226226176,
+      "logical_bytes": 225770909
+    }
+  ],
+  "removed_dependency_suffixes": [
+    ".rlib",
+    ".rmeta",
+    ".d"
+  ],
+  "files_removed": 6979,
+  "allocated_file_bytes_removed": 2260525056,
+  "logical_file_bytes_removed": 2246803070,
+  "target": "owned shared-trust private Cargo target",
+  "all_204_handoff_records_preserved": true,
+  "all_actual_failure_and_passing_tested_images_preserved": true,
+  "raw_record_inventory": {
+    "protected-after.json": {
+      "sha256": "9dfda85d489426ff9d75c80526664645ef99e81647884a99bd0dfa5d5cf10352",
+      "bytes": 449570
+    },
+    "result.json": {
+      "sha256": "b24d18df2d50ab6460455bb6a3a16c5e34cd7e10b367731a360d0a1e814dfd71",
+      "bytes": 136625
+    },
+    "postflight.json": {
+      "sha256": "b69862075d00cb769d56c5449926ee3aa3d23cf4c460974544d7d101660db405",
+      "bytes": 264
+    },
+    "immediate-pre-removal.json": {
+      "sha256": "e7406e243251a16c9fecbc4a520ecd161c2fe855ae0e81238386de30f441733e",
+      "bytes": 263
+    },
+    "preflight.json": {
+      "sha256": "1a949edcafe02344eeb656b537fdd47770d2257c63fc042b4150838cc3a24d28",
+      "bytes": 264
+    },
+    "protected-before.json": {
+      "sha256": "9dfda85d489426ff9d75c80526664645ef99e81647884a99bd0dfa5d5cf10352",
+      "bytes": 449570
+    },
+    "removed.json": {
+      "sha256": "26879e85222c1b616f7e5d7d2c8e48a31b57deba8486f098b3c8aef1af2a568c",
+      "bytes": 125639
+    }
+  }
+}
