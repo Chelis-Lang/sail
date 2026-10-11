@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "scope": "Exact corrected pinned source library and strict controls only; prospective runtime unbuilt, original14 pending",
+  "status": "passed",
+  "patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+  "actual_library_controls": {
+    "vir": {
+      "passed": 38,
+      "failed": 0
+    },
+    "rust_verify": {
+      "passed": 55,
+      "failed": 0
+    }
+  },
+  "strict_all_targets": {
+    "vir": "passed",
+    "rust_verify": "passed",
+    "warnings_denied": true
+  },
+  "records": [
+    {
+      "name": "vir-library-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "-p",
+        "vir",
+        "--lib",
+        "--",
+        "--test-threads=1"
+      ],
+      "started_unix_ns": 1791694211522230590,
+      "status": "passed",
+      "pid": 560949,
+      "pgid": 560949,
+      "nice": 0,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 85.65876253899478,
+      "log_sha256": "45414e936dddfb213aebc725f66ac6e6b2ac2f34343d0b7da8bd0409868eb7f5"
+    },
+    {
+      "name": "driver-library-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "-p",
+        "rust_verify",
+        "--lib",
+        "--",
+        "--test-threads=1"
+      ],
+      "started_unix_ns": 1791694297811360297,
+      "status": "passed",
+      "pid": 561131,
+      "pgid": 561131,
+      "nice": 0,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 244.96756861099857,
+      "log_sha256": "6241b0cd925385a3b635a246c497e538f6189cb8bbfe1a10c6047f297a5d8f86"
+    },
+    {
+      "name": "vir-strict-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--release",
+        "-p",
+        "vir",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_unix_ns": 1791694543149506424,
+      "status": "passed",
+      "pid": 561572,
+      "pgid": 561572,
+      "nice": 0,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 25.099876762003987,
+      "log_sha256": "e4342bfe4406de754a34b7b2d18b84b7cfdfd604c5e004cf2b08d53216d8d11c"
+    },
+    {
+      "name": "driver-strict-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--release",
+        "-p",
+        "rust_verify",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started_unix_ns": 1791694568692021839,
+      "status": "passed",
+      "pid": 561735,
+      "pgid": 561735,
+      "nice": 0,
+      "jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 59.18715540199628,
+      "log_sha256": "79dd4e4c44955eab65fab1243eb719287ff0cdb2d7536126309870306cf2897a"
+    }
+  ],
+  "source_closure": {
+    "version": 1,
+    "unix_ns": 1791694690213021340,
+    "source_files": {
+      "rust_verify/src/sail_deferred_import_tests.rs": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+      "rust_verify/src/sail_engine.rs": "f3857c37552423e024d3779bee9e1e45c50a569ea9537518c1205a4801163eda",
+      "rust_verify/src/sail_owned_imports.rs": "e35cc17794fcf7eacfca95967051b652f55da28ff85fa08a64b576900070b0ac",
+      "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+      "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+      "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+      "vir/src/context.rs": "8fdc30de3bf3218aae325621ec2b92f5489438bb80f9ba20cf60ffe4de9b4395"
+    },
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "owned_compiler_actors": [],
+    "all_source_bytes_unchanged": true
+  },
+  "prior_failed_runtime_before": {
+    "manifest_sha256": "13d28be67960d396c6a936133482f3ffdd253ea586f1db93ccc8abb6639c8628",
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "6b88f77b5f3dfe6ad62e6bda6d3b42e3762d4ae8f3d71d664268613acb5a0e41",
+      "verus/source/target-verus/release/cargo-verus": "c6dbb5e02eb4a650f88c46eb68770ee06b462ef9b7f87dcc4168a285cee2d15e",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "f54a86491972a643aca9194bf3f274e5027548df2f624e405850e7012ec47eb7",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "cdf8dd2fec69a34bcd9b8c8ddf6ea52854b2e714fd0432bd1dbd53522b3d40c0",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "1d6931b6b7b6fe35ef44a0f0095e321cc94c44b6c94209e802e220cd625f2fa7",
+      "verus/source/target-verus/release/libvstd.rlib": "a1eacf3ee522a4c28470518418f5642f57a210fb9f5e996563b9163160fa071c",
+      "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "3a4a53b3682b984889afa0163121287fff7c03af5f48bfa8d0e79fc6b2ec71f8",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "complete_inventory": 13
+  },
+  "prior_failed_runtime_after": {
+    "manifest_sha256": "13d28be67960d396c6a936133482f3ffdd253ea586f1db93ccc8abb6639c8628",
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "6b88f77b5f3dfe6ad62e6bda6d3b42e3762d4ae8f3d71d664268613acb5a0e41",
+      "verus/source/target-verus/release/cargo-verus": "c6dbb5e02eb4a650f88c46eb68770ee06b462ef9b7f87dcc4168a285cee2d15e",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "f54a86491972a643aca9194bf3f274e5027548df2f624e405850e7012ec47eb7",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "cdf8dd2fec69a34bcd9b8c8ddf6ea52854b2e714fd0432bd1dbd53522b3d40c0",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "1d6931b6b7b6fe35ef44a0f0095e321cc94c44b6c94209e802e220cd625f2fa7",
+      "verus/source/target-verus/release/libvstd.rlib": "a1eacf3ee522a4c28470518418f5642f57a210fb9f5e996563b9163160fa071c",
+      "verus/source/target-verus/release/rust_verify": "f05539c5753153f1d46b773645bb3f9a73e0091fab53dbb0598a16ab6e740dd7",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "3a4a53b3682b984889afa0163121287fff7c03af5f48bfa8d0e79fc6b2ec71f8",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "complete_inventory": 13
+  },
+  "prior_failed_runtime_artifacts_unchanged": true,
+  "compiler_only_seed": {
+    "files": 3678,
+    "bytes": 1238897425,
+    "elapsed_seconds": 18.94286917499994,
+    "inventory_sha256": "13b9b4c49ddeaaf511622427a34bce1e2fb626f5d6aa33ca38789a6015491325",
+    "changed_crates_excluded": true,
+    "hardlinks": false,
+    "runtime_or_proof_or_seal_copied": false
+  },
+  "raw_artifact_hashes": {
+    "driver-strict-clippy.log": "79dd4e4c44955eab65fab1243eb719287ff0cdb2d7536126309870306cf2897a",
+    "owned-compiler-samples.jsonl": "c0efaa3794aacf949d679d6b013ad6ff2be0163e87d4dab2219ab3b4214f8260",
+    "vir-strict-clippy.log": "e4342bfe4406de754a34b7b2d18b84b7cfdfd604c5e004cf2b08d53216d8d11c",
+    "closed-source-checks.json": "1aae0ab7ee8d67ded3f9a95ba7cd33a06f5d8b74159e7e9d4302e56b72822371",
+    "setup.log": "b27f553af73acd8cb69babf24e50eb22c7e203691b2a511adb1523efdd567cfa",
+    "resource-preflight.json": "ade613ce36d9fcc38843d85965262242369c057769916f50ab4198a9adb40262",
+    "compiler-seed.json": "13b9b4c49ddeaaf511622427a34bce1e2fb626f5d6aa33ca38789a6015491325",
+    "source-checks.json": "7fdb4a4278dbc5f0266ccd499d41d123b8e69957d858ae51d8049487ba21a6c0",
+    "previous-runtime-before.json": "c461ffeaf1f19922a1d7b4d14283749918b78fc6cdf0f5d16cdd90e03e62407e",
+    "applied-source.json": "ddc036b56c7401a62344ba035f595292e0a5cea70e1228c76fb7e9e902e8e7f6",
+    "previous-runtime-after.json": "c461ffeaf1f19922a1d7b4d14283749918b78fc6cdf0f5d16cdd90e03e62407e",
+    "driver-library-tests.log": "6241b0cd925385a3b635a246c497e538f6189cb8bbfe1a10c6047f297a5d8f86",
+    "vir-library-tests.log": "45414e936dddfb213aebc725f66ac6e6b2ac2f34343d0b7da8bd0409868eb7f5"
+  },
+  "scheduling": {
+    "jobs": 2,
+    "nice": 0,
+    "independent_test_threads": 1,
+    "internal_concurrency_unchanged": true,
+    "execution": "linux-x86_64-container-emulated-sharedload",
+    "concurrent_work": "Root common workspace gate and independent team diagnostics; no causal scheduling claim"
+  },
+  "ordinary_builder_launched": false,
+  "new_runtime_manifest_created": false,
+  "original14_launched": false,
+  "selected": false,
+  "source_qualified": false,
+  "product_qualified": false,
+  "prior_failures_preserved": [
+    "a61 Arc strict lint",
+    "4a3 Rc E0277"
+  ],
+  "next_required": [
+    "Root exact source-gate/seal review and ordinary build grant",
+    "Fresh ordinary vstd proof and complete new runtime manifest",
+    "Original fourteen-stage strict qualification with original600 compiler bounds and actual prior-revision FOCUS reuse"
+  ]
+}
