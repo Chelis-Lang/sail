@@ -1,0 +1,37 @@
+{
+  "status": "RETIRED_VERIFIED_ARCHIVED_HOST_COPIES",
+  "archive_sha256": "c4d94cf9baf5f11ee249c82cb3ede386852e0791da6da3d855a4a959c7bce9d0",
+  "archive_bytes": 386830878,
+  "regular_members": 2458,
+  "symlink_members": 0,
+  "source_allocated_bytes": 1268195328,
+  "elapsed_seconds": 145.906762042,
+  "deleted": true,
+  "native_fresh_births": {
+    "handoff": "2026-10-11T17:06:30.345746794Z",
+    "acceptance": "2026-10-11T17:06:34.584538213Z"
+  },
+  "native_census": {
+    "handoff": {
+      "scanned": 1,
+      "holders": [],
+      "unreadable": []
+    },
+    "acceptance": {
+      "scanned": 1,
+      "holders": [],
+      "unreadable": []
+    }
+  },
+  "host_fresh_holders": [],
+  "space_before": 9440309248,
+  "space_after": 10561523712,
+  "space_attribution": "Observed backing free during concurrent activity; not an exact physical recovery attribution",
+  "retired_roots": [
+    "retained-prior-worktree-binaries",
+    "preparation-namespace"
+  ],
+  "previous_native_alias_census": "Unavailable500 during Desktop interruption; no deletion used that census",
+  "native_alias_census": "PASS fresh births, one process each, zero holders/unreadable before retirement",
+  "inventory_sha256": "5acc0b7c8d7405e6c126ca0e8585f8d117c3b30f2f91c8978cb5aa9cfe206e08"
+}
