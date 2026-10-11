@@ -1,0 +1,354 @@
+{
+  "version": 1,
+  "status": "PASS",
+  "scope": "Complete actual pinned source controls only; runtime remains unselected",
+  "full_patch_sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+  "delta_sha256": "9415f4a14f8345b09f25978b0deacc7849054b4d20358a2f76e44ad3730b65a9",
+  "controller_sha256": "fe5816dec6ac841fa184001b0f52d0949719e993fd5e94cfe9b3c7df3ac972d2",
+  "primary_result_sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+  "primary": {
+    "status": "PASS",
+    "phases": [
+      {
+        "name": "vir-test",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "test",
+          "-p",
+          "vir",
+          "--release",
+          "--lib",
+          "sail_",
+          "--",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.8715920009999536,
+        "log_sha256": "489596c9bf04dcbc08c6c987a98eebb186893c6b07eb593ffa84bb437db895a2"
+      },
+      {
+        "name": "vir-clippy",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "clippy",
+          "-p",
+          "vir",
+          "--release",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.911491709004622,
+        "log_sha256": "85ef9aeedf4527a50122b04b79b35cad30a1b117183a6d191372522ffb137951"
+      },
+      {
+        "name": "rust_verify-test",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "test",
+          "-p",
+          "rust_verify",
+          "--release",
+          "--lib",
+          "sail_",
+          "--",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 17.933762175001903,
+        "log_sha256": "c53e9f03435ab1fca408a8e660bea9f58d5e6e1dfbe067b9506a369275d7d6c8"
+      },
+      {
+        "name": "rust_verify-clippy",
+        "command": [
+          "cargo",
+          "+1.98.1",
+          "clippy",
+          "-p",
+          "rust_verify",
+          "--release",
+          "--all-targets",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 17.443402425000386,
+        "log_sha256": "f7cdff07c243e4ddc4b02b4f0d038d9912087b99ff013d60068684c8abc2bfd5"
+      }
+    ],
+    "elapsed_seconds": 37.196645392999926
+  },
+  "actual_vir_tests": 42,
+  "actual_driver_tests": 108,
+  "both_strict": "PASS",
+  "source8_lock_unchanged": true,
+  "four_prior13_source_lock_seals_unchanged": true,
+  "dual_container_actor_closure": {
+    "holders": 0,
+    "unreadable_live": 0
+  },
+  "archive_sha256": "32e8d0e3133d87c61cec9923af92048499cd1b25472915dd25867ebeff680c6b",
+  "archive_bytes": 11345920,
+  "freeze_seal_sha256": "9c3888688f18105c54a2a8e171834644bdf97ebcadd3d3d3b833ed738e6b19a9",
+  "raw_inventory": {
+    "applied-source.json": {
+      "sha256": "5b50dced0acfc8407561113aa4f0a1becc0f82685692a8fd9ce4fa95f8fa74a3",
+      "bytes": 3767
+    },
+    "apply.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "base-identity.json": {
+      "sha256": "d86227c65b8e64b5e947ee2303a55caa4a2425dbf29fb1a8b74168fb3694d0d5",
+      "bytes": 3672
+    },
+    "before-source8-lock.json": {
+      "sha256": "df81903d5fb4977b61aa0bae11beeb225367edc948ee3229d1797c9af2f33afc",
+      "bytes": 1065
+    },
+    "before-source8-lock.tar": {
+      "sha256": "94a4c51b8c5d516d3929dc0510a856b18f86c9ae06f582673593b784dcda8512",
+      "bytes": 634880
+    },
+    "current-actor.json": {
+      "sha256": "3bebf103a6f26dbdfe36536a44b22a8fa064bb8effaa7c112b01094cdea30f8f",
+      "bytes": 283
+    },
+    "delta.patch": {
+      "sha256": "9415f4a14f8345b09f25978b0deacc7849054b4d20358a2f76e44ad3730b65a9",
+      "bytes": 1523
+    },
+    "execution.json": {
+      "sha256": "8cb74d59a0944e3098c52bedab54ef24e4d3f9f277f49392dd0606bf4be53a45",
+      "bytes": 246
+    },
+    "freeze/applied-source.json": {
+      "sha256": "5b50dced0acfc8407561113aa4f0a1becc0f82685692a8fd9ce4fa95f8fa74a3",
+      "bytes": 3767
+    },
+    "freeze/apply.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "freeze/base-identity.json": {
+      "sha256": "d86227c65b8e64b5e947ee2303a55caa4a2425dbf29fb1a8b74168fb3694d0d5",
+      "bytes": 3672
+    },
+    "freeze/before-source8-lock.json": {
+      "sha256": "df81903d5fb4977b61aa0bae11beeb225367edc948ee3229d1797c9af2f33afc",
+      "bytes": 1065
+    },
+    "freeze/before-source8-lock.tar": {
+      "sha256": "94a4c51b8c5d516d3929dc0510a856b18f86c9ae06f582673593b784dcda8512",
+      "bytes": 634880
+    },
+    "freeze/current-actor.json": {
+      "sha256": "3bebf103a6f26dbdfe36536a44b22a8fa064bb8effaa7c112b01094cdea30f8f",
+      "bytes": 283
+    },
+    "freeze/delta.patch": {
+      "sha256": "9415f4a14f8345b09f25978b0deacc7849054b4d20358a2f76e44ad3730b65a9",
+      "bytes": 1523
+    },
+    "freeze/execution.json": {
+      "sha256": "8cb74d59a0944e3098c52bedab54ef24e4d3f9f277f49392dd0606bf4be53a45",
+      "bytes": 246
+    },
+    "freeze/full.patch": {
+      "sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+      "bytes": 559493
+    },
+    "freeze/identity.json": {
+      "sha256": "5b50dced0acfc8407561113aa4f0a1becc0f82685692a8fd9ce4fa95f8fa74a3",
+      "bytes": 3767
+    },
+    "freeze/launch.json": {
+      "sha256": "17237ca8786fbb6671a089969299365e2a5318f7545080554606da362e488768",
+      "bytes": 185
+    },
+    "freeze/ownership-after.json": {
+      "sha256": "6c7af39e47367d7b906adf9859c65ff2f37ef42f3a10932c252f52a7ef2ff688",
+      "bytes": 761
+    },
+    "freeze/ownership-before.json": {
+      "sha256": "6c7af39e47367d7b906adf9859c65ff2f37ef42f3a10932c252f52a7ef2ff688",
+      "bytes": 761
+    },
+    "freeze/prior-runtime-after.json": {
+      "sha256": "e83cd3068151b7a2544f4a1011014fb4595981ed55d52f16acaa575b69d2e15c",
+      "bytes": 10794
+    },
+    "freeze/prior-runtime-before.json": {
+      "sha256": "e83cd3068151b7a2544f4a1011014fb4595981ed55d52f16acaa575b69d2e15c",
+      "bytes": 10794
+    },
+    "freeze/progress.json": {
+      "sha256": "cf7bf6a60e1245ce766dc77692b13af6a8dce9a8b13df0b3bea0e6b8c725fb73",
+      "bytes": 1484
+    },
+    "freeze/resource-preflight.json": {
+      "sha256": "8d2718f2fb4ad09f373587772ab7938a2587aa5fc6dc91e9cef2fff0cf22cc7a",
+      "bytes": 108
+    },
+    "freeze/result.json": {
+      "sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+      "bytes": 1707
+    },
+    "freeze/run-source-controls.py": {
+      "sha256": "fe5816dec6ac841fa184001b0f52d0949719e993fd5e94cfe9b3c7df3ac972d2",
+      "bytes": 6552
+    },
+    "freeze/rust_verify-clippy.log": {
+      "sha256": "f7cdff07c243e4ddc4b02b4f0d038d9912087b99ff013d60068684c8abc2bfd5",
+      "bytes": 263
+    },
+    "freeze/rust_verify-test.log": {
+      "sha256": "c53e9f03435ab1fca408a8e660bea9f58d5e6e1dfbe067b9506a369275d7d6c8",
+      "bytes": 12952
+    },
+    "freeze/seal.json": {
+      "sha256": "9c3888688f18105c54a2a8e171834644bdf97ebcadd3d3d3b833ed738e6b19a9",
+      "bytes": 6510
+    },
+    "freeze/source/Cargo.lock": {
+      "sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+      "bytes": 92808
+    },
+    "freeze/source/rust_verify/src/sail_deferred_import_tests.rs": {
+      "sha256": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
+      "bytes": 53794
+    },
+    "freeze/source/rust_verify/src/sail_engine.rs": {
+      "sha256": "0a54a32a8364a047ba8f07fa26277b183d778aa8ab6ff34cdfb719d83096d973",
+      "bytes": 107289
+    },
+    "freeze/source/rust_verify/src/sail_namespace.rs": {
+      "sha256": "8cd5a2ee6827526a89c7bf2c8110bb98836a6b9a4ba9f259492c3cbc80f55077",
+      "bytes": 19018
+    },
+    "freeze/source/rust_verify/src/sail_owned_imports.rs": {
+      "sha256": "7955d2ccf62699d59fd7e1d4aeda727dcb3539c8fff2fcf32421e3dc9a8aa597",
+      "bytes": 54618
+    },
+    "freeze/source/rust_verify/src/sail_owned_imports_tests.rs": {
+      "sha256": "a0ce98125d8e14b85d05e805d7455e126088afa34e49246606a1163b47cb34d2",
+      "bytes": 51720
+    },
+    "freeze/source/rust_verify/src/spans.rs": {
+      "sha256": "4c9f0845b565cd29a9940155f4b87231ca412f56b1d7da6cc0447fdde522f0a7",
+      "bytes": 17055
+    },
+    "freeze/source/rust_verify/src/verifier.rs": {
+      "sha256": "88c714168ffb02cdb4a4d166813eba5506a4ac5f16d1453fa918158a03cc42ac",
+      "bytes": 154124
+    },
+    "freeze/source/vir/src/context.rs": {
+      "sha256": "c4672b093f7307f4aec248d75fc57381c454253bd948bc6a69141da981bc8f60",
+      "bytes": 66703
+    },
+    "freeze/source-closure.json": {
+      "sha256": "e136e33b80997c24f36641297bef6ebabe307a76fd1b2fdd2b59686e8f9e1219",
+      "bytes": 978
+    },
+    "freeze/tested-elf/rust_verify-fbadc31d5f770ece": {
+      "sha256": "f5c0e9eca8da274afbc84b089aec54dd1bceeaf23c4efd88cde6453109b3a49b",
+      "bytes": 3071528
+    },
+    "freeze/tested-elf/rust_verify-fbadc31d5f770ece.d": {
+      "sha256": "08c477e94af27dd5e068e6c37f30606aaae42cfba83c8063c49df23b8cf901cf",
+      "bytes": 5739
+    },
+    "freeze/tested-elf/vir-d9a7bf74b1249c1e": {
+      "sha256": "772b341fff1b93d0364839e3c6060722f0730451735aa2d09074b6eaea8735e0",
+      "bytes": 4992384
+    },
+    "freeze/tested-elf/vir-d9a7bf74b1249c1e.d": {
+      "sha256": "f6c533e48afb0a5224e1ad1b5bcbc77da049af3c5205a895ee8f1c80c162bd48",
+      "bytes": 4252
+    },
+    "freeze/vir-clippy.log": {
+      "sha256": "85ef9aeedf4527a50122b04b79b35cad30a1b117183a6d191372522ffb137951",
+      "bytes": 62
+    },
+    "freeze/vir-test.log": {
+      "sha256": "489596c9bf04dcbc08c6c987a98eebb186893c6b07eb593ffa84bb437db895a2",
+      "bytes": 4351
+    },
+    "full.patch": {
+      "sha256": "aaa3b2e4780c6b410b77ac121ef682c9532fb2eb21552a104fa63243e7a95124",
+      "bytes": 559493
+    },
+    "identity.json": {
+      "sha256": "5b50dced0acfc8407561113aa4f0a1becc0f82685692a8fd9ce4fa95f8fa74a3",
+      "bytes": 3767
+    },
+    "launch.json": {
+      "sha256": "17237ca8786fbb6671a089969299365e2a5318f7545080554606da362e488768",
+      "bytes": 185
+    },
+    "ownership-after.json": {
+      "sha256": "6c7af39e47367d7b906adf9859c65ff2f37ef42f3a10932c252f52a7ef2ff688",
+      "bytes": 761
+    },
+    "ownership-before.json": {
+      "sha256": "6c7af39e47367d7b906adf9859c65ff2f37ef42f3a10932c252f52a7ef2ff688",
+      "bytes": 761
+    },
+    "prior-runtime-after.json": {
+      "sha256": "e83cd3068151b7a2544f4a1011014fb4595981ed55d52f16acaa575b69d2e15c",
+      "bytes": 10794
+    },
+    "prior-runtime-before.json": {
+      "sha256": "e83cd3068151b7a2544f4a1011014fb4595981ed55d52f16acaa575b69d2e15c",
+      "bytes": 10794
+    },
+    "progress.json": {
+      "sha256": "cf7bf6a60e1245ce766dc77692b13af6a8dce9a8b13df0b3bea0e6b8c725fb73",
+      "bytes": 1484
+    },
+    "resource-preflight.json": {
+      "sha256": "8d2718f2fb4ad09f373587772ab7938a2587aa5fc6dc91e9cef2fff0cf22cc7a",
+      "bytes": 108
+    },
+    "result.json": {
+      "sha256": "a693bbe9dc0d240f499b029bd26a24e94412098e586c301c8a26ecfcf66c7808",
+      "bytes": 1707
+    },
+    "run-source-controls.py": {
+      "sha256": "fe5816dec6ac841fa184001b0f52d0949719e993fd5e94cfe9b3c7df3ac972d2",
+      "bytes": 6552
+    },
+    "rust_verify-clippy.log": {
+      "sha256": "f7cdff07c243e4ddc4b02b4f0d038d9912087b99ff013d60068684c8abc2bfd5",
+      "bytes": 263
+    },
+    "rust_verify-test.log": {
+      "sha256": "c53e9f03435ab1fca408a8e660bea9f58d5e6e1dfbe067b9506a369275d7d6c8",
+      "bytes": 12952
+    },
+    "source-closure.json": {
+      "sha256": "e136e33b80997c24f36641297bef6ebabe307a76fd1b2fdd2b59686e8f9e1219",
+      "bytes": 978
+    },
+    "vir-clippy.log": {
+      "sha256": "85ef9aeedf4527a50122b04b79b35cad30a1b117183a6d191372522ffb137951",
+      "bytes": 62
+    },
+    "vir-test.log": {
+      "sha256": "489596c9bf04dcbc08c6c987a98eebb186893c6b07eb593ffa84bb437db895a2",
+      "bytes": 4351
+    }
+  },
+  "limitations": [
+    "No runtime build or fresh vstd for this full patch",
+    "No actual old-domain cache rejection or prior-revision HIT",
+    "No performance or product qualification"
+  ]
+}

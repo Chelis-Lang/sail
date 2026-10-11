@@ -20,3 +20,5 @@ separate. After a positive scope, a separate targeted counterfactual will remove
 only the production absence memo bypass, demonstrating that the successfully
 admitted stale entry makes the unchanged inequality fail. No counterfactual has
 run yet. The runtime stays unselected and the source feature experimental.
+
+Actual corrected complete source controls now passed: VIR 42/42, driver 108/108 and both strict all-target checks, 37.197 seconds. `source-controls.json` retains both tested executables, raw phase logs, unchanged source/lock and four prior runtime inventories, plus zero-holder dual-container closure. This remains a source result, without a new ordinary runtime or previous-revision restore. The separately frozen `memo-bypass-counterfactual/` plan removes only the absence bypass for one targeted case, requires the existing inequality to fail with the admitted digest on both sides, restores the exact positive source, then repeats that one case. It has not run yet.
