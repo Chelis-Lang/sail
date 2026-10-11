@@ -122,3 +122,7 @@ It does not reproduce or explain the earlier D20 coverage loss. Neither reader
 census nor retained CLI/MCP acceptance runs in that diagnostic. A new original
 reader workflow still requires its own genuine Current proofs, unchanged
 collectors and complete owned lifecycle.
+
+## Current complete reader attempt
+
+The [current-product run](validation/m7-current-reader-workflow.md) completed genuine Current full preparation in independent baseline and active workspaces, then passed all four original bounded setup checks. The first collector completed all 200 RPC samples through four readers while the same selected-crate verifier remained live. Status p95 was 148.430 ms; complete Result p95 was 394.713 ms, exceeding the unchanged 200 ms requirement. Each Result carried a 4,312,245-byte complete report. The controller stopped there, leaving the Rust census and retained CLI/MCP integration unattempted. This is a retained failure, not reader acceptance. Preparation costs, samples, worker continuity and post-run seals accompany the record.
