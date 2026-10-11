@@ -86,6 +86,15 @@ No terminal audit blocker was found for the separately granted local package
 and fresh-install scope. Its result remains separate, as do rebuilt-product
 compatibility, publication, runtime selection and reader performance.
 
+The subsequent local package scope passed in 22.541 seconds. Independent
+streaming checks rehashed all 14 archive members and all 14 fresh-installed
+files, including their exact modes and sizes. Archive SHA-256 is
+`41d4996ecd903079df8a3fe3c970e1927b91b8b5ec6a1e45fac640b2db9fa462`
+(36,270,553 bytes); the delivery result SHA-256 is
+`d91a68d6eee961d14cf2b28596764ce992a21aed73464fc2b9602ec5e3086090`.
+The pin has no asset ID. This closes local delivery only; the product checks
+below remain required.
+
 ## Product integration still required
 
 1. Deliver the candidate patch, source lock, runtime manifest and archive pin
