@@ -5,7 +5,17 @@ document reading, freshness establishment and persisted job status. Retained
 stdout alone cannot establish when any of these completed. The original repair
 fixture's total 120-second budget, 30-second CLI bound and five-second cleanup
 bound remain unchanged; new timing fields are observation only and require
-affected validation before a cause or performance claim.
+affected validation before a cause or performance claim. The instrumentation
+passes its controls and strict Clippy, but its [complete workspace run](../bench/validation/m7-linux-publication-timing-core-db4c65f-failure-2026-10-11.json)
+again fails the existing HTTP coalescing deadline (611/612 pass). The separate
+original solver suite passes 41/41; it does not replace that failed gate. An
+instrumented product was used only for a labelled timing diagnostic. That
+[unchanged repair run](../bench/validation/m7-linux-publication-timing-original-repair-db4c65f-failure-2026-10-11.json)
+fails its whole-workflow deadline during the foreground missing-selector case.
+Two completed worker records measure 4.73–4.88 seconds in independent freshness
+setup after child exit, compared with sub-millisecond result parsing. Cold
+publication records were overwritten by the bounded ring and remain unavailable.
+This identifies the next cost to reduce, without changing any proof check.
 
 This page separates product limitations, upstream behavior and unresolved test
 failures. It describes the current M7 development branch; it does not declare

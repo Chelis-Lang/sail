@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "source_commit": "db4c65fe8221884983326c8259a7c2f065df7693",
+  "source_archive_sha256": "fba0ca65a0f4d0bade9774bb269e44e22ae40ec99564637bb7ce31f23ba2650b",
+  "container": "sail-m7-handoff-validation",
+  "source_path": "/tmp/sail-m7-negative-generation-core-db4c65f",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Unqualified timing-only diagnostic product after retained full-gate HTTP failure; separate original solver controls pass. No full-gate, repair, reader, corpus or performance acceptance.",
+  "qualification_credit": false,
+  "separate_solver": {
+    "source_commit": "db4c65fe8221884983326c8259a7c2f065df7693",
+    "command": [
+      "docker",
+      "exec",
+      "-w",
+      "/tmp/sail-m7-negative-generation-core-db4c65f",
+      "-e",
+      "CARGO_BUILD_JOBS=2",
+      "-e",
+      "NEXTEST_TEST_THREADS=1",
+      "sail-m7-handoff-validation",
+      "bash",
+      "ci/run.sh",
+      "solver"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 141.622225167,
+    "scope": "Separate original pinned-solver suite after complete workspace gate failed HTTP deadline. This cannot replace failed whole gate.",
+    "log_sha256": "5a5fb9c724557834046cc68082714564764f4373e47c854b9f86a63c8bf5f087"
+  },
+  "phases": [
+    {
+      "phase": "release-build",
+      "exit_code": 0,
+      "elapsed_seconds": 208.47392391699998,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-negative-generation-core-db4c65f",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "sail-m7-handoff-validation",
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "sail-cli",
+        "-p",
+        "sail-shim"
+      ]
+    },
+    {
+      "phase": "owned-install",
+      "exit_code": 0,
+      "elapsed_seconds": 1.2845234579999953,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-negative-generation-core-db4c65f",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "sail-m7-handoff-validation",
+        "python3",
+        "scripts/m7-native-product.py",
+        "install",
+        "--source",
+        "/work/target/release",
+        "--destination",
+        "/opt/sail-m7-diagnostic-product-db4c65f",
+        "--expected",
+        "/tmp/sail-m7-negative-generation-core-db4c65f/product-expected.json"
+      ]
+    }
+  ],
+  "container_before": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T17:06:30.345746794Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "prerequisite_gate": {
+    "version": 1,
+    "source_commit": "db4c65fe8221884983326c8259a7c2f065df7693",
+    "source_archive_sha256": "fba0ca65a0f4d0bade9774bb269e44e22ae40ec99564637bb7ce31f23ba2650b",
+    "container": "sail-m7-handoff-validation",
+    "source_path": "/tmp/sail-m7-negative-generation-core-db4c65f",
+    "container_before": {
+      "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+      "birth": "2026-10-11T17:06:30.345746794Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "execution": "Local Linux amd64 Docker emulation on arm64 macOS; shared development host",
+    "scope": "Complete local workspace gate and original pinned-solver suite after completed-negative ordinary compiler-generation retention. Async HTTP candidate remains unselected; all previous failed scopes retained. No installed-product, reader, corpus or performance acceptance implied.",
+    "phases": [
+      {
+        "phase": "gate",
+        "command": [
+          "docker",
+          "exec",
+          "-w",
+          "/tmp/sail-m7-negative-generation-core-db4c65f",
+          "-e",
+          "CARGO_BUILD_JOBS=2",
+          "-e",
+          "NEXTEST_TEST_THREADS=1",
+          "sail-m7-handoff-validation",
+          "bash",
+          "ci/run.sh",
+          "gate"
+        ],
+        "exit_code": 100,
+        "elapsed_seconds": 1030.9492408750002
+      }
+    ],
+    "status": "FAIL",
+    "container_after": {
+      "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+      "birth": "2026-10-11T17:06:30.345746794Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    }
+  },
+  "source_before": {
+    "manifest_sha256": "0ddb01db23bacfa81f628a2be2fc61417d2f3b32157b19069db77494682ca7e9",
+    "members": 1354
+  },
+  "artifacts": {
+    "sail": {
+      "bytes": 76287472,
+      "sha256": "4d538338685591f3a0bf61e506fee7402899049684f87139b7f7383d9c3d4a39"
+    },
+    "sail-z3": {
+      "bytes": 11000904,
+      "sha256": "946e6b4ea531def2e9589acfab2f3fe86a5042c31aa3b2c567dd98dfd463adb9"
+    }
+  },
+  "installation": {
+    "authority": "installation-only",
+    "credentials": {
+      "cap_eff": "00000000a82425fb",
+      "cap_lease": false,
+      "fsuid": 0,
+      "gids": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uids": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "directory_mode": "0700",
+    "files": {
+      "sail": {
+        "bytes": 76287472,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "4d538338685591f3a0bf61e506fee7402899049684f87139b7f7383d9c3d4a39",
+        "uid": 0
+      },
+      "sail-z3": {
+        "bytes": 11000904,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "946e6b4ea531def2e9589acfab2f3fe86a5042c31aa3b2c567dd98dfd463adb9",
+        "uid": 0
+      }
+    },
+    "source_modified": false,
+    "version": 1
+  },
+  "product_dir": "/opt/sail-m7-diagnostic-product-db4c65f",
+  "engine_build": "/opt/sail-m7-engine-aaa3-cache/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06",
+  "installation_only": true,
+  "container_after": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T17:06:30.345746794Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "source_after": {
+    "manifest_sha256": "0ddb01db23bacfa81f628a2be2fc61417d2f3b32157b19069db77494682ca7e9",
+    "members": 1354
+  },
+  "source_reused_from_retained_failed_gate": true,
+  "status": "DIAGNOSTIC_BUILD_ONLY"
+}

@@ -1,8 +1,36 @@
 # Publication timing instrumentation
 
-Status: source-only implementation; new controls, strict checks, installed
-product and diagnostic fixture have not run. This record does not replace the
-retained original repair failure or qualify performance.
+Status: instrumentation source `db4c65f` passed strict Clippy and its new
+controls in a complete workspace run, which failed the original shared HTTP
+coalescing deadline (611 of 612 tests passed). The original pinned-solver suite
+passed separately, 41/41. The [failed complete scope](../../bench/validation/m7-linux-publication-timing-core-db4c65f-failure-2026-10-11.json)
+remains failed. An [instrumented diagnostic product](../../bench/validation/m7-linux-publication-timing-diagnostic-product-db4c65f-2026-10-11.json)
+has built and installed, explicitly without qualification credit. The
+[original repair timing run](../../bench/validation/m7-linux-publication-timing-original-repair-db4c65f-failure-2026-10-11.json)
+fails at 120.138 seconds during the missing-selector foreground case; later
+regression and MCP scenarios are unattempted. Cleanup reports no errors, and a
+subsequent owned-path process/descriptor census finds no holders. These
+observations do not replace the retained original repair failure or qualify
+performance.
+
+## Measured publication seam
+
+Two surviving completed worker records spend 4.881 and 4.731 seconds in
+independent freshness establishment after child exit, versus 0.361 and
+0.725 milliseconds parsing the document. Status persistence costs 27.581 and
+5.157 milliseconds. Managed result, receipt and compiler-family publication
+records are also milliseconds. The latest-256 ring overwrites 534 of 790
+started records, so the cold worker's publication interval is unavailable;
+cancelled-worker fields remain absent rather than fabricated. All four bounded
+managed setup files and the ring are retained with their exact hashes.
+
+This isolates a substantial post-exit cost in the observed jobs. It does not
+prove which operation inside freshness causes it or generalize to another host.
+The borrowed-document candidate removes a correct duplicate parse, but these
+measurements defer it as a repair-deadline solution. The next core work targets
+self-invalidating metadata publication and independent freshness construction,
+preserving synchronous readiness, exact runtime/input validation and Current
+classification. No timing observation grants proof or completion authority.
 
 The original a983ab2 repair fixture exhausted its unchanged 120-second total
 budget at the last late-exec poll. Earlier successful, missing-selector and

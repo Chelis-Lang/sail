@@ -350,5 +350,16 @@
   },
   "oracles": "Original complete ci/run.sh gate and solver; HTTP deadline, verdict/diagnostics, resource controls and negative proof receipt guards unchanged.",
   "limitations": "Local Linux amd64 emulation on shared macOS host. No installed repair, live reader, standard corpus or frozen repair performance acceptance. Native CI at the newer branch head remains pending. Historical failed scopes remain failed.",
-  "metadata_capture": "Post-run nextest list in same source/target; Cargo reported up to date in0.28s. Fifty-three actual test ELF identities retained in native shared target."
+  "metadata_capture": "Post-run nextest list in same source/target; Cargo reported up to date in0.28s. Fifty-three actual test ELF identities retained in native shared target.",
+  "retention_update": {
+    "scope": "Later db4 shared-target rebuild; original executions and recorded hashes remain historical and unchanged. Native shared-target paths are mutable, not fresh executable authority.",
+    "observed_replaced_test_images": [
+      "sail-api",
+      "sail-daemon",
+      "sail-verus"
+    ],
+    "other_images_current_identity": "Not checked in this update; no current retention claim.",
+    "original_owned_release_product": "Unchanged; distinct owned a983 executable installation remains available.",
+    "current_affected_test_archive": "docs/validation/m7-publication-tested-images.json"
+  }
 }
