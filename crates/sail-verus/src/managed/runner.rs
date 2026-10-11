@@ -298,24 +298,58 @@ fn context(
         b"sail-runtime-identities".to_vec(),
         identity_sha.clone().into_bytes(),
     );
-    let hash = digest(
-        &serde_json::to_vec(&(
-            1,
-            &config.args,
-            engine,
-            identity,
-            environment.into_iter().collect::<Vec<_>>(),
-        ))
-        .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
-    );
+    let (hash, compiler_hash) = context_hashes(
+        &config.args,
+        engine,
+        &identity,
+        &environment.into_iter().collect::<Vec<_>>(),
+    )?;
     json(&state.join(format!("{hash}.link")), &identity_sha)?;
     drop(configuration);
-    Ok(Context { hash, sysroots })
+    Ok(Context {
+        hash,
+        compiler_hash,
+        sysroots,
+    })
 }
 
 struct Context {
     hash: String,
+    compiler_hash: String,
     sysroots: super::sysroot::Baseline,
+}
+
+fn context_hashes(
+    args: &[String],
+    engine: Option<&crate::engine::Request>,
+    identity: &[(String, String)],
+    environment: &[(Vec<u8>, Vec<u8>)],
+) -> Result<(String, String)> {
+    // Keep the existing proof-context encoding: focus selectors still bind
+    // reports, receipts, runtime validation and prepared invocation contexts.
+    let hash = digest(
+        &serde_json::to_vec(&(1, args, engine, identity, environment))
+            .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
+    );
+    let mut compiler_engine = engine.cloned();
+    if let Some(request) = &mut compiler_engine {
+        request.function = None;
+    }
+    // Only the driver-local focus selector is omitted. Compiler/solver bytes,
+    // arguments, configuration and byte-exact environment remain bound. Cargo
+    // freshness supplies ordinary artifacts; only exact proof receipts can
+    // authorize skipped verification targets.
+    let compiler_hash = digest(
+        &serde_json::to_vec(&(
+            "sail-managed-compiler-artifacts-v1",
+            args,
+            compiler_engine,
+            identity,
+            environment,
+        ))
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
+    );
+    Ok((hash, compiler_hash))
 }
 
 fn actual_wrapper(cargo_verus: &Path) -> Result<PathBuf> {
@@ -397,26 +431,50 @@ fn alias(original: &Path, path: &Path) -> Result<()> {
         .map_err(|e| Error::new("SAIL3104", e.to_string()))
 }
 
-fn prepare(config: &Config, workspace: &Path, hash: &str, run_id: &str) -> Result<(Paths, File)> {
-    let root = config
-        .cache
-        .join("projects")
-        .join(digest(workspace.as_os_str().as_encoded_bytes()));
-    let context = root.join(hash);
-    std::fs::create_dir_all(&context).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+struct Ownership {
+    _context: File,
+    _compiler: File,
+}
+
+fn ownership_lock(directory: &Path) -> Result<File> {
+    std::fs::create_dir_all(directory).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     let lock = OpenOptions::new()
         .create(true)
         .truncate(false)
         .read(true)
         .write(true)
-        .open(context.join("ownership.lock"))
+        .open(directory.join("ownership.lock"))
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     lock.try_lock()
         .map_err(|e| Error::new("SAIL3104", format!("managed target is in use: {e}")))?;
+    Ok(lock)
+}
+
+fn prepare(
+    config: &Config,
+    workspace: &Path,
+    hash: &str,
+    compiler_hash: &str,
+    run_id: &str,
+) -> Result<(Paths, Ownership)> {
+    let root = config
+        .cache
+        .join("projects")
+        .join(digest(workspace.as_os_str().as_encoded_bytes()));
+    let context = root.join(hash);
+    let compiler = root.join("compiler-artifacts").join(compiler_hash);
+    // Both owners survive clean, invocation and receipt publication. Different
+    // focus contexts cannot concurrently clean or modify the shared target.
+    // Acquisition is nonblocking, always context then compiler, with no reverse
+    // edge or change to the caller's deadline.
+    let ownership = Ownership {
+        _context: ownership_lock(&context)?,
+        _compiler: ownership_lock(&compiler)?,
+    };
     let paths = Paths {
-        target: context.join("target"),
-        cargo_alias: context.join("sail-cargo"),
-        proxy_alias: context.join("sail-verus-driver"),
+        target: compiler.join("target"),
+        cargo_alias: compiler.join("sail-cargo"),
+        proxy_alias: compiler.join("sail-verus-driver"),
         receipts: context.join("receipts"),
         runtime: context.join("runtime.json"),
         build_inputs: context.join("build-inputs.json"),
@@ -433,7 +491,7 @@ fn prepare(config: &Config, workspace: &Path, hash: &str, run_id: &str) -> Resul
     }
     alias(&config.sail, &paths.cargo_alias)?;
     alias(&config.sail, &paths.proxy_alias)?;
-    Ok((paths, lock))
+    Ok((paths, ownership))
 }
 
 fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
@@ -1326,7 +1384,11 @@ pub(crate) fn run_engine(
     }
     drop(metadata_phase);
     let context_phase = diagnostics.phase(Phase::RuntimeContext);
-    let Context { hash, mut sysroots } = context(config, engine.as_ref(), &diagnostics)?;
+    let Context {
+        hash,
+        compiler_hash,
+        mut sysroots,
+    } = context(config, engine.as_ref(), &diagnostics)?;
     drop(context_phase);
 
     let run_id = format!(
@@ -1337,7 +1399,7 @@ pub(crate) fn run_engine(
             .map_or(0, |d| d.as_nanos())
     );
     let owned_paths = diagnostics.phase(Phase::OwnedPaths);
-    let (paths, _lock) = prepare(config, &workspace_root, &hash, &run_id)?;
+    let (paths, _ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     drop(owned_paths);
     let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
@@ -1683,6 +1745,306 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn compiler_request(function: Option<&str>) -> crate::engine::Request {
+        crate::engine::Request {
+            function: function.map(str::to_owned),
+            cargo_verus: PathBuf::from("engine/cargo-verus"),
+            manifest: PathBuf::from("engine/sail-build.json"),
+            manifest_sha256: "manifest-bytes".to_owned(),
+            stock_wrapper: PathBuf::from("engine/verus"),
+            artifacts: vec![PathBuf::from("engine/rust_verify")],
+            prepared: PathBuf::from("prepared"),
+        }
+    }
+
+    #[test]
+    fn compiler_artifact_identity_omits_only_the_engine_function()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let args = vec!["-p".to_owned(), "input".to_owned()];
+        let identity = vec![("compiler".to_owned(), "compiler-bytes".to_owned())];
+        let environment = vec![(b"RUSTFLAGS".to_vec(), b"flags".to_vec())];
+        let selected = compiler_request(Some("selected"));
+        let missing = compiler_request(Some("missing"));
+        let full = compiler_request(None);
+        let hashes = |request| context_hashes(&args, request, &identity, &environment);
+        let (proof, compiler) = hashes(Some(&selected))?;
+        assert_eq!(
+            proof,
+            digest(&serde_json::to_vec(&(
+                1,
+                &args,
+                &selected,
+                &identity,
+                &environment
+            ))?)
+        );
+        for request in [&missing, &full] {
+            let (other_proof, other_compiler) = hashes(Some(request))?;
+            assert_ne!(proof, other_proof);
+            assert_eq!(compiler, other_compiler);
+        }
+        assert_ne!(compiler, hashes(None)?.1);
+        let mut variants = vec![selected.clone(); 6];
+        variants[0].cargo_verus = "another/cargo-verus".into();
+        variants[1].manifest = "another/sail-build.json".into();
+        variants[2].manifest_sha256 = "different-manifest".into();
+        variants[3].stock_wrapper = "another/verus".into();
+        variants[4].artifacts.push("another/rust_verify".into());
+        variants[5].prepared = "another/prepared".into();
+        for request in variants {
+            assert_ne!(compiler, hashes(Some(&request))?.1);
+        }
+        assert_ne!(
+            compiler,
+            context_hashes(&[], Some(&selected), &identity, &environment)?.1
+        );
+        assert_ne!(
+            compiler,
+            context_hashes(&args, Some(&selected), &[], &environment)?.1
+        );
+        let changed = vec![(b"RUSTFLAGS".to_vec(), b"different".to_vec())];
+        assert_ne!(
+            compiler,
+            context_hashes(&args, Some(&selected), &identity, &changed)?.1
+        );
+        Ok(())
+    }
+
+    fn compiler_fixture(root: &Path) -> std::result::Result<Config, std::io::Error> {
+        std::fs::create_dir_all(root)?;
+        let sail = root.join("sail");
+        std::fs::write(&sail, b"owned executable")?;
+        Ok(Config {
+            workspace: root.to_owned(),
+            cache: root.join("cache"),
+            sail: sail.clone(),
+            cargo_verus: sail.clone(),
+            cargo: sail.clone(),
+            shim: sail.clone(),
+            z3: sail,
+            socket: None,
+            args: Vec::new(),
+            force: true,
+        })
+    }
+
+    #[test]
+    fn shared_compiler_target_has_exclusive_ownership_and_private_proof_paths()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-compiler-family-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (selected, ownership) = prepare(&config, &root, "selected", "compiler", "first")?;
+        std::fs::create_dir_all(&selected.target)?;
+        let dependency = selected.target.join("ordinary-dependency.rlib");
+        std::fs::write(&dependency, "ordinary dependency")?;
+        let rejected = prepare(&config, &root, "missing", "compiler", "second");
+        assert_eq!(
+            rejected
+                .err()
+                .ok_or("concurrent family owner admitted")?
+                .code,
+            "SAIL3104"
+        );
+        drop(ownership);
+        // Failed family acquisition must also release the new proof-context lock.
+        let (missing, ownership) = prepare(&config, &root, "missing", "compiler", "second")?;
+        assert_eq!(selected.target, missing.target);
+        assert_eq!(selected.cargo_alias, missing.cargo_alias);
+        assert_eq!(selected.proxy_alias, missing.proxy_alias);
+        assert_eq!(std::fs::read(&dependency)?, b"ordinary dependency");
+        assert_ne!(selected.receipts, missing.receipts);
+        assert_ne!(selected.runtime, missing.runtime);
+        assert_ne!(selected.run, missing.run);
+        assert_ne!(selected.build_inputs, missing.build_inputs);
+        let (isolated, isolated_owner) =
+            prepare(&config, &root, "different", "different", "third")?;
+        assert_ne!(missing.target, isolated.target);
+        drop(isolated_owner);
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_family_process_probe() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let Some(root) = std::env::var_os("SAIL_TEST_COMPILER_FAMILY") else {
+            return Ok(());
+        };
+        let result = ownership_lock(Path::new(&root));
+        if std::env::var_os("SAIL_TEST_COMPILER_FAMILY_BUSY").is_some() {
+            assert_eq!(
+                result
+                    .err()
+                    .ok_or("child unexpectedly acquired family")?
+                    .code,
+                "SAIL3104"
+            );
+        } else {
+            drop(result?);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn compiler_family_lock_is_process_exclusive_and_released_on_error_and_unwind()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-compiler-process-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let probe = |busy| -> std::result::Result<(), Box<dyn std::error::Error>> {
+            let family = config
+                .cache
+                .join("projects")
+                .join(digest(root.as_os_str().as_encoded_bytes()))
+                .join("compiler-artifacts/compiler");
+            let mut command = Command::new(std::env::current_exe()?);
+            command
+                .args([
+                    "--exact",
+                    "managed::runner::tests::compiler_family_process_probe",
+                ])
+                .env("SAIL_TEST_COMPILER_FAMILY", family)
+                .env_remove("SAIL_TEST_COMPILER_FAMILY_BUSY");
+            if busy {
+                command.env("SAIL_TEST_COMPILER_FAMILY_BUSY", "1");
+            }
+            let output = command.output()?;
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+            Ok(())
+        };
+        let (_, ownership) = prepare(&config, &root, "context", "compiler", "run")?;
+        probe(true)?;
+        drop(ownership);
+        probe(false)?;
+        let mut broken = config.clone();
+        broken.sail = root.join("missing-executable");
+        assert!(prepare(&broken, &root, "context", "compiler", "error").is_err());
+        let outcome = std::panic::catch_unwind(|| {
+            let owner = prepare(&config, &root, "context", "compiler", "unwind");
+            assert!(owner.is_ok());
+            std::panic::resume_unwind(Box::new("controlled ownership unwind"));
+        });
+        assert!(outcome.is_err());
+        let (_, ownership) = prepare(&config, &root, "context", "compiler", "after")?;
+        drop(ownership);
+        probe(false)?;
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    fn compiler_receipt(paths: &Paths, data: &Value, artifact: &Path) -> Receipt {
+        let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");
+        report.error = None;
+        report.exit_code = Some(0);
+        report.crates.push(sail_api::output::CrateReport {
+            name: Some("input".to_owned()),
+            verus: sail_api::output::VerusResults {
+                verified: Some(0),
+                errors: Some(0),
+                success: Some(true),
+                encountered_vir_error: Some(false),
+            },
+            functions: Vec::new(),
+        });
+        Receipt {
+            version: 2,
+            checksum: String::new(),
+            committed: paths.run.join("committed.json"),
+            package_id: "input".to_owned(),
+            name: "input".to_owned(),
+            kind: vec!["lib".to_owned()],
+            context: "selected".to_owned(),
+            input_revision: target_revision(data, "input"),
+            invocation: Invocation {
+                identity: super::super::receipts::TargetIdentity {
+                    manifest: PathBuf::from(
+                        data["packages"][0]["manifest_path"]
+                            .as_str()
+                            .unwrap_or_default(),
+                    ),
+                    name: "input".to_owned(),
+                    crate_type: "lib".to_owned(),
+                    rustc_args_sha256: "args".to_owned(),
+                },
+                run_id: "run".to_owned(),
+                report,
+                success: true,
+                dependencies: BTreeMap::new(),
+            },
+            artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
+        }
+        .seal()
+    }
+
+    #[test]
+    fn shared_fresh_artifact_cannot_replace_a_focus_context_proof()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-compiler-proof-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "missing", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        let data = serde_json::json!({"workspace_root":root,
+            "workspace_members":["input"], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+                "source":null,"metadata":{"verus":{"verify":true}},
+                "targets":[{"name":"input","kind":["lib"],"src_path":root.join("lib.rs")}]}]});
+        std::fs::create_dir_all(&paths.target)?;
+        let artifact = paths.target.join("input.rlib");
+        std::fs::write(&artifact, "cached compiler artifact")?;
+        std::fs::write(
+            paths.run.join("artifacts.jsonl"),
+            serde_json::to_vec(&serde_json::json!({
+                "reason":"compiler-artifact", "package_id":"input", "fresh":true,
+                "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]
+            }))?,
+        )?;
+        let expected = BTreeSet::from([("input".to_owned(), "input".to_owned(), "lib".to_owned())]);
+        let (targets, missing) = target_records(&paths, &data, "missing", false, &expected)?;
+        assert!(targets.is_empty());
+        assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
+        assert_eq!(std::fs::read_dir(&paths.receipts)?.count(), 0);
+        assert_eq!(
+            std::fs::read_dir(paths.run.join("pending-receipts"))?.count(),
+            0
+        );
+        // Even an intact old focus receipt with identical inputs/artifacts
+        // cannot authorize another selector's skipped proof.
+        let receipt = compiler_receipt(&paths, &data, &artifact);
+        assert!(!receipt.input_revision.is_empty());
+        let path = receipt_path(&paths, "input", "input", &["lib".to_owned()]);
+        json(
+            &paths
+                .run
+                .join("pending-receipts")
+                .join(path.file_name().ok_or("receipt name")?),
+            &receipt,
+        )?;
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        assert!(receipt.valid("selected"));
+        let (targets, missing) = target_records(&paths, &data, "selected", false, &expected)?;
+        assert_eq!(targets.len(), 1);
+        assert!(targets[0].reused);
+        assert!(missing.is_empty());
+        for (context, force) in [("missing", false), ("selected", true)] {
+            let (targets, missing) = target_records(&paths, &data, context, force, &expected)?;
+            assert!(targets.is_empty());
+            assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
+        }
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[cfg(target_os = "linux")]
     #[test]
     fn guarded_sysroot_reads_skip_only_owned_digests_and_fall_back_on_changes()

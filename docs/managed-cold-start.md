@@ -30,25 +30,28 @@ warm proof check. The separate [timeout stage witness](validation/m7-managed-col
 observes actual vstd verification after pre-Cargo setup and ordinary dependency
 compilation; none of those stages alone is established as the entire cause.
 
-The current product does not share Cargo dependency artifacts across those
-targets. A future production compilation cache could remove repeated ordinary
-macro compilation, but it needs its own decision and evidence. A safe key must
-bind the actual compiler/toolchain, target kind/specification, effective flags,
-wrapper behavior, dependency graph and source/configuration/build-script inputs
-by content. Produced artifacts need immutable publication and complete byte
-binding; consumers need private writable targets, so concurrent Cargo runs
-cannot mutate another context's artifacts. Diagnostic paths and compiler-defined
-path-sensitive output must remain correct. Cargo metadata or timestamps alone
-cannot establish this identity.
+The proposed [compiler artifact families](decisions/0036-managed-compiler-artifact-families.md)
+separate ordinary Cargo dependencies from proof contexts. Only a source-engine
+function selector is omitted from the new compiler-family key; all other runtime,
+argument, configuration and environment identities remain bound. A shared family
+has stable executable aliases and a nonblocking exclusive owner through cleaning,
+compilation and receipt publication. Concurrent focus contexts sharing that
+family can refuse with SAIL3104 rather than mutate each other's target.
 
-Verified dependencies such as vstd also require complete matching proof evidence;
-copying their compiled artifacts alone cannot authorize reuse. Existing missing
-receipt handling deliberately cleans and verifies such targets again. A cache
-for ordinary non-verification dependencies and reuse of verified dependency
-reports are different contracts. No shared-target or prewarming change has been
-implemented from the cold-start hypothesis, and no cold acceptance bound has
-been lengthened. The [roadmap](ROADMAP.md) still requires correctness and actual
-product acceptance for any performance claim.
+Proof receipts, currentness guards, runtime sidecars, build-script observations
+and committed reports remain private to each complete proof context. Selected
+repair packages remain forced fresh. A fresh Cargo artifact without the exact
+proof receipt still triggers the existing clean-and-reverify path. Every
+unobserved build script, including registry scripts declaring external inputs,
+must run fresh before its observations can authorize retained outputs. Script-free
+ordinary dependencies can reuse Cargo artifacts; script-bearing dependencies and
+build scripts that depend on proof-specific environment paths may rebuild. No
+observations or proof authority are copied across selectors.
+
+Implementation and product validation of this proposal are pending; no repair
+fixture deadline, cold acceptance bound or benchmark requirement is lengthened.
+The [roadmap](ROADMAP.md) still requires correctness and actual product acceptance
+before a performance claim.
 
 `ci/test-managed.py` now writes per-invocation timing and observation-only
 progress events outside its temporary fixture. On timeout it captures only the
