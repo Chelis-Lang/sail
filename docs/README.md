@@ -30,6 +30,8 @@ The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
+[Managed cold-start diagnosis](managed-cold-start.md) explains preparation stages,
+bounded timeout evidence and dependency-proof requirements.
 The [reader acceptance guide](reader-acceptance.md) explains genuine proof setup,
 owned-job archival, compatible storage layouts and failure handling.
 [Whole-result profiling](result-frame-profile.md) records transfer and complete

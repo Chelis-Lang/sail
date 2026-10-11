@@ -1,7 +1,7 @@
 //! Optional transport initialization owned by daemon setup and bounded lookup helpers.
 
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
 
@@ -18,11 +18,13 @@ struct Remote {
 pub(super) enum Resolution {
     Ready(Option<HttpClient>),
     Initializing,
+    TimedOut,
 }
 
 #[derive(Default)]
 pub(super) struct State {
     current: Mutex<Option<Remote>>,
+    ready: Condvar,
     initializer: Mutex<()>,
     #[cfg(test)]
     pub(super) before_constructor: Mutex<Option<std::sync::Arc<dyn Fn() + Send + Sync>>>,
@@ -121,6 +123,31 @@ impl State {
         self.resolve_inner(root, config, changed_configuration, None)
     }
 
+    /// Only lookup helpers wait for another constructor, within their existing
+    /// lookup budget. The mutex predicate prevents lost publication wakeups.
+    pub(super) fn wait_ready(&self, deadline: Instant) -> Resolution {
+        let Ok(current) = self.current.lock() else {
+            return Resolution::Initializing;
+        };
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        let Ok((current, _)) = self
+            .ready
+            .wait_timeout_while(current, remaining, |current| {
+                current
+                    .as_ref()
+                    .is_none_or(|remote| remote.loaded.elapsed() >= TRUST_RELOAD)
+            })
+        else {
+            return Resolution::Initializing;
+        };
+        match current.as_ref() {
+            Some(remote) if remote.loaded.elapsed() < TRUST_RELOAD => {
+                Resolution::Ready(remote.client.clone())
+            }
+            _ => Resolution::TimedOut,
+        }
+    }
+
     fn resolve_inner(
         &self,
         root: &Path,
@@ -183,20 +210,25 @@ impl State {
             None => None,
         };
         let replaced = if let Ok(mut current) = self.current.lock() {
-            current.replace(Remote {
+            // Invalidate old-configuration suppression before publishing the
+            // replacement. A waiting helper must not pair the new transport
+            // with an old negative lookup or backoff decision.
+            if changed {
+                changed_configuration();
+            }
+            let replaced = current.replace(Remote {
                 loaded: Instant::now(),
                 client: client.clone(),
                 endpoint,
-            })
+            });
+            self.ready.notify_all();
+            replaced
         } else {
             return Resolution::Initializing;
         };
         drop(cancellation);
         // The last reqwest client joins its runtime when dropped. Neither that
         // join nor its construction may hold the foreground snapshot mutex.
-        if changed {
-            changed_configuration();
-        }
         drop(replaced);
         Resolution::Ready(client)
     }
