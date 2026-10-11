@@ -125,9 +125,13 @@ family. The daemon constructs retained-result output owners through a bounded
 background service; foreground reads can fall back to full byte validation.
 The selected output-owner overlap and small exact HTTP-body changes have passed
 component validation. Preserving observers across unchanged metadata publication
-now passes its [complete Linux component replay](validation/m7-preserve-freshness-metadata-replay.md), including sensitivity checks. The next execution is the combined workspace
-and solver gate, then a sealed product run of the original repair and full-reader
-workloads. These changes do not yet establish real-project speedups.
+now passes its [complete Linux component replay](validation/m7-preserve-freshness-metadata-replay.md), including sensitivity checks. A fresh whole workspace gate passes all 634 tests and its remaining checks, but its
+[controller refuses closure](../bench/validation/m7-linux-combined-gate-dfe3c47-closure-failure-2026-10-12.json)
+before solver tests because it counts eleven terminated zombies as survivors.
+An independent per-thread audit confirms those eleven rows have only one exited
+thread each. The failed scope stays failed; a conservative controller correction
+and a new complete workspace/solver run precede the sealed product, original
+repair and full-reader workloads. These changes do not yet establish real-project speedups.
 The [rebuilt combined release](../bench/validation/m7-linux-combined-product-a9609e9-emulated-2026-10-11.json)
 compiles and installs as private byte-identical copies. Its production source
 matches the earlier combined gate's source, whose HTTP deadline check fails;

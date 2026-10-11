@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "status": "FAIL: controller closure classified terminated zombies as survivors",
+  "source_commit": "dfe3c47d6bafacb1d8de384a9e620d9a4e8f597a",
+  "source_archive_sha256": "f4b9618b5842c96b96527aed6ce787292395018945ae5da1b766c6bd922a7f14",
+  "scope": "Full original workspace gate then conditional solver; no product acceptance",
+  "original_gate_exit_code": 0,
+  "original_gate_elapsed_seconds": 413.2960421900001,
+  "workspace_tests": {
+    "passed": 634,
+    "failed": 0,
+    "original_skipped_solver_tests": 41
+  },
+  "remaining_original_gate_checks": "PASS",
+  "original_solver_suite": "UNATTEMPTED after controller refusal",
+  "historical_status_unchanged": true,
+  "closure_failure": {
+    "reported_survivors": 11,
+    "states": [
+      "Z"
+    ],
+    "unavailable": []
+  },
+  "independent_closure": {
+    "status": "independent scope audit PASS; historical controller FAIL unchanged",
+    "live_holders": [],
+    "unreadable": [],
+    "terminated_unreaped": [
+      {
+        "pid": 10190,
+        "state": "Z",
+        "pgid": 10185,
+        "birth": 83483
+      },
+      {
+        "pid": 10193,
+        "state": "Z",
+        "pgid": 10185,
+        "birth": 83484
+      },
+      {
+        "pid": 10564,
+        "state": "Z",
+        "pgid": 10562,
+        "birth": 84182
+      },
+      {
+        "pid": 10577,
+        "state": "Z",
+        "pgid": 10575,
+        "birth": 84247
+      },
+      {
+        "pid": 11228,
+        "state": "Z",
+        "pgid": 11225,
+        "birth": 86398
+      },
+      {
+        "pid": 11319,
+        "state": "Z",
+        "pgid": 11209,
+        "birth": 86548
+      },
+      {
+        "pid": 12081,
+        "state": "Z",
+        "pgid": 12078,
+        "birth": 88978
+      },
+      {
+        "pid": 12082,
+        "state": "Z",
+        "pgid": 12078,
+        "birth": 88978
+      },
+      {
+        "pid": 12444,
+        "state": "Z",
+        "pgid": 12420,
+        "birth": 90473
+      },
+      {
+        "pid": 12454,
+        "state": "Z",
+        "pgid": 12420,
+        "birth": 90504
+      },
+      {
+        "pid": 12779,
+        "state": "Z",
+        "pgid": 12772,
+        "birth": 93759
+      }
+    ],
+    "source_exact": true,
+    "protected_exact": true,
+    "archive_exact": "f4b9618b5842c96b96527aed6ce787292395018945ae5da1b766c6bd922a7f14",
+    "actual_images": [
+      {
+        "path": "/tmp/sail-local-gates-dfe3c47/actual-tested-images/sail_daemon-09399d08fc07cfbb",
+        "bytes": 55418128,
+        "mode": 493,
+        "sha256": "f643c3dfa484475fc4b3b35d9a68c40ac95020b02f4ac569087e6137f0172ac9"
+      },
+      {
+        "path": "/tmp/sail-local-gates-dfe3c47/actual-tested-images/sail_verus-1ff5719aff2dbe51",
+        "bytes": 35005880,
+        "mode": 493,
+        "sha256": "564db6a7b0f7d15ee4e91bc53ed29763ee0845260d630994e2cf10aad7a90b94"
+      },
+      {
+        "path": "/tmp/sail-local-gates-dfe3c47/actual-tested-images/sail_cache-205283184013ccd0",
+        "bytes": 10948040,
+        "mode": 493,
+        "sha256": "dbb3645f8ba7b19404d2172fd2607100ebf9e60be54bf0336feb155653297936"
+      }
+    ],
+    "solver_attempted": false,
+    "limitation": "Initial census used leader state only; later bounded per-thread audit confirms each of eleven rows has one terminated thread with stable birth and membership."
+  },
+  "raw_log_sha256": "85ca6a639cd76ab50417e1f8892a04621e8a2f35a95134e07ea65b547ec9d677",
+  "native_result_sha256": "8cda7425cf4e0c016ba27479d512ed4c191f3a41330eb7e5259e772b8a62744f",
+  "next": "Correct bounded per-thread dead-state classification with zombie-leader/live-sibling controls, then a new complete gate and solver scope; historical FAIL retained.",
+  "terminated_thread_audit_sha256": "9621d31689b0d0f892d726695e0d74e5d11addeec4e11f303400678c41463e4b",
+  "raw_scope_archive": {
+    "archive_bytes": 28829414,
+    "sha256": "191db24cfc66a55e967c71b217b53b355211f357f395084681e1a75329d17159",
+    "verified_regular_members": 12,
+    "tested_images_archive_sha256": "52192152f142e79efafc984d7798938f5128ff25316248de5380f5c425fa1e15"
+  }
+}
