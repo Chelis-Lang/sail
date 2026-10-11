@@ -1,4 +1,4 @@
-# Prepared original reader workflow on detailed product 7238da8
+# Prepared original reader workflow on current product 4472279
 
 This is a launch plan, not an executed workflow. The preceding
 [single proof diagnosis](m7-sysroot-proof-diagnostic.md) establishes only its own
@@ -8,14 +8,17 @@ and grants the concrete new freeze before any installation, setup or proof.
 
 ## Exact product, compiler and controller inputs
 
-Use byte-identical, freshly service-owned copies of the diagnostic product:
+Use newly sealed product source commit
+`44722793489b56be9c2988fc62b709f173b36f22`, including the corrected shared trust and
+configuration path. Its exact release artifact sizes, hashes, source archive and
+installation grant are **pending root's completed build and seal**. This plan
+must not substitute the older diagnostic binaries or invent these identities.
+Root supplies the exact grant before installation or launch.
+
+The invariant compiler/collector inputs remain:
 
 | Input | SHA-256 |
 |---|---|
-| Sail, 74,664,464 bytes | `731f581c95c0eb6d436bb045f177a6deaf9a3298faebdb7dfdcba9dad8335289` |
-| Shim, 11,000,912 bytes | `ddfa36ab78d36d8e7fbfaf7740f19bb7c63a6bab9fa36f39a3e1bf82f3049636` |
-| Product source archive, commit `7238da8406cd3a5d62b8c378949d36832446aed8` | `2c30f98ffdf5aae5881014801ac892cd1327516e17cdcb4e791650debf427096` |
-| Installation-only original grant | `aa83d7fafd8aa8974813e9de2c1651c09b0ae4d832ec046e7e365c3aa389bbc3` |
 | Selected b346 runtime manifest | `4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41` |
 | Unchanged Python collector | `3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720` |
 | Unchanged Rust collector binary, frozen SDK `02fd1fc` | `f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d` |
@@ -26,14 +29,14 @@ The selected runtime is the original pinned Verus commit's
 manifest; no unselected source candidate or changed manifest is substituted.
 The new copies use the reviewed [installer](../native-product-setup.md), a new
 private destination and modes `0700`. Neither the installed diagnostic directory
-nor any old binary is modified. Record exact original grant, installer hash,
+nor any old binary is modified. Record exact new root grant, installer hash,
 new file metadata and byte hashes before and after copying. The new destination
-gets a `freeze.json` containing the installer-returned `files` plus original
-product/grant/source provenance. That metadata permits the original controller's
+gets a `freeze.json` containing the installer-returned `files` plus newly sealed
+current product/grant/source provenance. That metadata permits the original controller's
 unchanged `Run.freeze`; it neither grants Current nor copies any proof authority.
 
 Use the existing frozen `2d6539f` controller bundle, whose files have no Git diff
-against `7238da8`:
+against `4472279`:
 
 | Imported script | SHA-256 |
 |---|---|
@@ -44,7 +47,9 @@ against `7238da8`:
 | `m7-native-product.py` | `f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0` |
 
 Git diff of `crates/sail-api/src/jobs.rs` and its modules between the frozen
-`02fd1fc` probe and product `7238da8` is empty. Keep that exact probe binary and
+`02fd1fc` probe and product `4472279` is empty. Managed/sysroot production
+behavior is unchanged from `7238da8`; the intervening sysroot diff adds only the
+actual explicit-files regression. Keep that exact probe binary and
 source unchanged; no explicit cache opt-in or altered collector is introduced.
 The unchanged repair catalogue is 5,510 bytes with SHA-256
 `6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6`;
@@ -64,9 +69,9 @@ lockfile hash was not retained; the new actual original Guard binds it freshly.
 No old target, cache, receipt, report or leased digest is copied. The controller
 then creates its own independent baseline and active source copies.
 
-Concrete new basenames are `sail-m7-reader-owned-7238da8` for the product,
-`sail-m7-reader-template-7238da8` for the source-only template and
-`sail-m7-reader-original-7238da8` for the workflow output. The output owns its
+Concrete new basenames are `sail-m7-reader-owned-4472279` for the product,
+`sail-m7-reader-template-4472279` for the source-only template and
+`sail-m7-reader-original-4472279` for the workflow output. The output owns its
 `cache` and `cache.sock`; exact absolute native paths belong only in private
 launch metadata. Every path must be absent before creation. Use a new native
 output, cache, socket and product destination, with no existing path replacement. Private per-context Cargo output is allowed; the common Cargo
@@ -130,8 +135,8 @@ amd64 Docker emulation and observed concurrent work without assuming its cause.
 
 ## Scope
 
-This would test the original reader and retained functionality of product
-`7238da8` with the selected b346 baseline. It is not selection or qualification of
+This would test the original reader and retained functionality of the newly
+sealed current product `4472279` with the selected b346 baseline. It is not selection or qualification of
 a newer source engine, a 512 MiB source physical-budget gate, the 2× edit-loop
 benchmark, current full-corpus conformance or M7 overall. The earlier failed D20
 workflow, every failed collector and the completed one-proof diagnostic remain
