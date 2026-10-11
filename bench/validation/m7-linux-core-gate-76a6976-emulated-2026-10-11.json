@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_commit": "76a6976af1dc55b8280af36e6719a9aa2238734d",
+  "source_archive_sha256": "e8a045c503d3084186338958b27acf7aba53b5b8e00949b7696440d24e2a5895",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete combined MCP owned-encoding, daemon frame ownership and optional RPC stage recorder workspace gate; fixed metadata-margin correction still pending separately",
+  "command": "bash ci/run.sh gate",
+  "exit_code": 0,
+  "inclusive_elapsed_seconds": 503.537436,
+  "nextest_elapsed_seconds": 173.588,
+  "tests": {
+    "run": 561,
+    "passed": 561,
+    "failed": 0,
+    "skipped": 39
+  },
+  "strict_workspace_all_target_clippy": "passed",
+  "remaining_gate_steps": "All passed: examples, installed Python, doctests, rustdoc, layering, dependency policy and generated benchmark-page equality",
+  "original_assertions_and_bounds_unchanged": true,
+  "m7_accepted": false,
+  "raw_log": {
+    "bytes": 114168,
+    "sha256": "229a7812a5815e0ae9e26b8b7c862683ab60e043af1f44732f1b39346eebf730"
+  },
+  "qualification": "Complete local workspace gate only; solver, final resource margin, source runtime, real readers, retained integration and performance remain separate scopes"
+}
