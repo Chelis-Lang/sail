@@ -1,6 +1,6 @@
 from pathlib import Path
 import hashlib,json,os,subprocess,time,tarfile,signal
-OUT=Path('/tmp/sail-m7-preparation-namespace-boundary-source-controls');OUT.mkdir(exist_ok=True)
+OUT=Path('/tmp/sail-m7-preparation-namespace-boundary-raw-owner-source-controls');OUT.mkdir(exist_ok=True)
 SOURCE=Path('/tmp/sail-m7-original-descriptor-source-controls/verus/source')
 TARGET=SOURCE/'target-verus'
 PREFIX=Path('/root/.cache/sail/verus-src-build')
@@ -34,9 +34,9 @@ save('resource-preflight.json',{'free_bytes':stat.f_bavail*stat.f_frsize,'nice':
 
 assert sha(OUT/'delta.patch')==IDENTITY['delta_sha256']
 assert sha(OUT/'full.patch')==IDENTITY['full_patch_sha256']
-old=json.loads(Path('/tmp/sail-m7-preparation-namespace-visibility-source-controls/identity.json').read_text())
-assert sha(Path('/tmp/sail-m7-preparation-namespace-visibility-source-controls/result.json'))=='a551ced4f2c56d2bdeb6354773c6591b5cfc0f7b85aa19cdcb48f7e90bba9b71'
-assert json.loads(Path('/tmp/sail-m7-preparation-namespace-visibility-source-controls/result.json').read_text())['status']=='PASS'
+old=json.loads(Path('/tmp/sail-m7-preparation-namespace-boundary-source-controls/identity.json').read_text())
+assert sha(Path('/tmp/sail-m7-preparation-namespace-boundary-source-controls/result.json'))=='1bce59e50d77eb2db68791fedf9b5a57e3e674d54b60f165c39e1c7c09fe6319'
+assert json.loads(Path('/tmp/sail-m7-preparation-namespace-boundary-source-controls/result.json').read_text())['status']=='FAIL'
 assert all(sha(SOURCE/name)==digest for name,digest in old['source_sha256'].items())
 assert sha(SOURCE/'Cargo.lock')==IDENTITY['lock_sha256']
 assert subprocess.check_output(['git','-C',str(SOURCE),'rev-parse','HEAD'],text=True).strip()==BASE

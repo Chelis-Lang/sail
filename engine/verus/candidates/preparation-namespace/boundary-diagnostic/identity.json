@@ -2,11 +2,11 @@
   "version": 1,
   "status": "File-only diagnostic delta; actual control compilation pending; no source/runtime qualification claim",
   "base_patch_sha256": "955cd584c19f99a5dece3d1f69da49b55530457a6ace334d56baf5af724bcf5e",
-  "full_patch_sha256": "586a4380bf85fb0e8ca2db01558bf43b308814d26f00c046e33c4c944bbd06a6",
-  "delta_sha256": "6c22f9830444a8272a4c08d43e603f7ce37cf5ea9ca0cd4963838b1efadb006c",
+  "full_patch_sha256": "3892328a418109596f6a4a5f3649f5e7d370b19321419c29780d7a3961b44d61",
+  "delta_sha256": "5ffe95fa64be63a817f969062e32eeca332bd6fb11edc2a265c3d28c50891e2a",
   "source_sha256": {
     "rust_verify/src/sail_deferred_import_tests.rs": "86f3fb53576fc60bde3e0dc90994f85dc31a681541d0be024a801b65d9ec25d5",
-    "rust_verify/src/sail_engine.rs": "29a3af76b6f6455df835e483c37cca1202a16ffb138d540e9c0ba8f24a4e418e",
+    "rust_verify/src/sail_engine.rs": "2815df2c8761ae9d9242fe262db03240494bd004b8f4cc222bc86763ee05ae59",
     "rust_verify/src/sail_namespace.rs": "7ad8dc9477dbd8e71add5c205cc25b70fa4664eb95f13df28d729380377ea4fa",
     "rust_verify/src/sail_owned_imports.rs": "4aa5cac919e39041c30d2d0ba1a7d5fc93360f3612f0fbcecaed4fadaafa438c",
     "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
@@ -38,5 +38,9 @@
     "shared record/byte cap and unavailable/write failure controls"
   ],
   "lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
-  "source_controller_sha256": "ca982290a8bdcb46a746b25bf4234ad8a7480286fd5089594ef402b1ac5b2f41"
+  "source_controller_sha256": "94d6ec7d85361a03525d83f0dd3236d1e606476de677cea4243ebe7f2a9079ec",
+  "prior_file_only_patch_sha256": "586a4380bf85fb0e8ca2db01558bf43b308814d26f00c046e33c4c944bbd06a6",
+  "from_visibility_sha256": "619380ef3d3ff1b5484454631821b4e18e81734ef8b097745eebead45c2990fd",
+  "test_only_correction": "Add actual RefUnwindSafe marker to new mixed raw owner annotation; no production bytes/assertions change",
+  "prior_failed_scope": "raw-owner-failure.json"
 }

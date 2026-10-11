@@ -1,10 +1,11 @@
 {
   "version": 1,
-  "scope": "File-only patch application, not compilation or qualification",
-  "full_apply_and_reverse_check": true,
-  "delta_apply_and_byte_equality": true,
+  "scope": "File-only exact correction; no compilation or qualification",
+  "full_patch_sha256": "3892328a418109596f6a4a5f3649f5e7d370b19321419c29780d7a3961b44d61",
+  "delta_sha256": "5ffe95fa64be63a817f969062e32eeca332bd6fb11edc2a265c3d28c50891e2a",
+  "full_reverse_and_narrow_apply_checks": true,
   "all8_source_hashes_match": true,
-  "pinned_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
-  "full_patch_sha256": "586a4380bf85fb0e8ca2db01558bf43b308814d26f00c046e33c4c944bbd06a6",
-  "delta_sha256": "6c22f9830444a8272a4c08d43e603f7ce37cf5ea9ca0cd4963838b1efadb006c"
+  "production_engine_bytes_unchanged_from_initial_boundary": true,
+  "test_annotation_only": "RefUnwindSafe marker",
+  "pinned_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
 }
