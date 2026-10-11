@@ -11,6 +11,10 @@ const MAX_FILES: u64 = 64;
 const MAX_ROWS: usize = 64;
 const MAX_BYTES: usize = 16 * 1024;
 
+fn event_destination(path: Option<std::ffi::OsString>) -> Option<std::ffi::OsString> {
+    path.filter(|path| !path.is_empty())
+}
+
 fn file_slot(serial: &AtomicU64) -> Option<u64> {
     serial
         .try_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
@@ -65,7 +69,7 @@ pub(super) struct Diagnostics {
 impl Diagnostics {
     pub(super) fn new() -> Self {
         static SERIAL: AtomicU64 = AtomicU64::new(0);
-        let Some(path) = std::env::var_os("SAIL_JOB_EVENTS") else {
+        let Some(path) = event_destination(std::env::var_os("SAIL_JOB_EVENTS")) else {
             return Self::default();
         };
         let Some(serial) = file_slot(&SERIAL) else {
@@ -256,6 +260,14 @@ mod tests {
         assert_eq!(serial.load(Ordering::Relaxed), MAX_FILES);
         serial.store(u64::MAX, Ordering::Relaxed);
         assert_eq!(file_slot(&serial), None);
+    }
+
+    #[test]
+    fn unset_and_empty_destinations_are_disabled_before_file_slot_allocation() {
+        assert_eq!(event_destination(None), None);
+        assert_eq!(event_destination(Some(std::ffi::OsString::new())), None);
+        let path = std::ffi::OsString::from("outside-workspace/events.jsonl");
+        assert_eq!(event_destination(Some(path.clone())), Some(path));
     }
 
     #[test]

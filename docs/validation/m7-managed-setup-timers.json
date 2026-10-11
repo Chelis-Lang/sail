@@ -51,5 +51,16 @@
   "pending": [
     "Native Linux full gate after lead integration",
     "Actual cold subphase timing run; prior standalone240failure remains failed"
-  ]
+  ],
+  "empty_destination_followup": {
+    "behavior": "Unset or empty SAIL_JOB_EVENTS disables timings before consuming file slot; no relative output",
+    "tests": "Seven diagnostic controls pass natively on macOS; selector regression uses no process-environment mutation",
+    "elapsed_seconds": 0.0,
+    "strict_all_targets_clippy": "pass",
+    "supersedes_initial_source_files": false,
+    "diagnostics_source": {
+      "sha256": "cb2f9793aef999ac259dc53852e50164a505d5e8d817f94bb46ea9b5e6a4d204",
+      "bytes": 10478
+    }
+  }
 }

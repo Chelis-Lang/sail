@@ -60,14 +60,16 @@ Reads use nonblocking, no-follow descriptors and refuse nonregular files, so a
 substituted FIFO cannot make diagnostics wait for a writer. The small evidence
 controls run in the workspace gate; they do not prewarm or invoke Verus.
 
-With the existing `SAIL_JOB_EVENTS` opt-in, managed setup also writes adjacent
+With a nonempty existing `SAIL_JOB_EVENTS` opt-in, managed setup also writes adjacent
 `*.setup-PID-SERIAL.jsonl` files. They record fixed phase names, PID and relative
 start/elapsed milliseconds. They contain no arguments, paths, source,
 configuration, environment values, diagnostics or solver/model contents. Each
 file is created exclusively with mode 0600; an existing file, alias or special
 file disables that output. Limits are 64 files per process, 64 rows and 16 KiB
 per file. Failure, exhaustion or missing parent directories disables this
-optional evidence without changing verification or error handling. There are
+optional evidence without changing verification or error handling. An unset or
+empty destination is a no-op before allocating any file slot; it creates no
+relative timing file. There are
 no observation threads, dependencies or changes to identity inputs.
 
 The phases separate Cargo metadata/initial configuration; complete runtime
