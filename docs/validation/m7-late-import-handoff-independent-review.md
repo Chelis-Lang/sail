@@ -82,6 +82,8 @@ tree, verifies all seven source identities and the lock, and checks the whole
 patch against the pinned source. Both old 13-artifact runtime seals and a small
 before-source/lock backup are retained. It reuses the existing target without
 copying targets or proof receipts. Compiler jobs remain two, independent test
-cases remain serial, and all engine selectors are removed. Results are pending;
-no ordinary runtime build, vstd proof or original qualification was launched by
-this controller.
+cases remain serial, and all engine selectors are removed. The controller closed
+with 40 VIR and 78 driver tests passing, plus both strict all-target checks.
+The [complete source-control record](m7-late-import-handoff-source-controls.md)
+binds the tested binaries, logs and source identities. No ordinary runtime build,
+vstd proof or original qualification was launched by this controller.
