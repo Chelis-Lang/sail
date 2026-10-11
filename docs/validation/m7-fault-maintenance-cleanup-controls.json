@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "scope": "test-only cleanup and diagnostic fix; no original GC solver retry or full gate claim",
+  "base_source": "44722793489b56be9c2988fc62b709f173b36f22",
+  "native_runtime": "Linux x86-64 under local emulation, rustc1.99.0, ordinary priority/jobs2/private reused target",
+  "integration": {
+    "command": "cargo test --locked -p sail-shim --test faults maintenance::tests::foreground_panic_stops_maintenance_before_scope_joins -- --exact --nocapture",
+    "passed": 1,
+    "failed": 0,
+    "test_elapsed_s": 0.01,
+    "dependency_build_elapsed_s": 220
+  },
+  "strict": {
+    "command": "cargo clippy --locked -p sail-shim --all-targets -- -D warnings",
+    "exit_code": 0,
+    "elapsed_s": 77
+  },
+  "native_guard_counterfactual": {
+    "positive": {
+      "exit_code": 0,
+      "external_timeout": false,
+      "elapsed_s": 0.04180991699831793,
+      "entered_marker": true,
+      "source_sha256": "720c4c574ae9e4d29791b892d9067e82b5a580ef69b1881284b14bf95e0e4c29",
+      "binary_sha256": "4e039fa0814c749b558595bad44c065d0a9c74275fff37e6bdca1dc2f2b6dddf"
+    },
+    "old_no_guard": {
+      "exit_code": -9,
+      "external_timeout": true,
+      "elapsed_s": 1.0124339579997468,
+      "entered_marker": true,
+      "source_sha256": "1c13abf956a8c6dbca2ad7e597927d67b279e07656f12c9489bcbfca3a8c1545",
+      "binary_sha256": "2613e46adb862cbd0e38cb83dc4d28e483dc420c7b7467781aef95a9e36e88d7"
+    }
+  },
+  "host_guard_controls": {
+    "positive": {
+      "exit_code": 0,
+      "external_timeout": false,
+      "elapsed_s": 0.31821537499999986,
+      "entered_marker": true,
+      "source_sha256": "720c4c574ae9e4d29791b892d9067e82b5a580ef69b1881284b14bf95e0e4c29",
+      "binary_sha256": "2703a2992af742031789af937941ed613b1fe6353eadb1fc83a73e9fd65ff7bf"
+    },
+    "old_no_guard": {
+      "exit_code": -9,
+      "external_timeout": true,
+      "elapsed_s": 1.0204302089999997,
+      "entered_marker": true,
+      "source_sha256": "1c13abf956a8c6dbca2ad7e597927d67b279e07656f12c9489bcbfca3a8c1545",
+      "binary_sha256": "2d1642cb1e9928d9b695b583d4ef70e79466d33bb98299fab92b0fdcad468964"
+    }
+  },
+  "host_direct_stderr_controls": {
+    "direct_stderr": {
+      "external_timeout": true,
+      "exit_code": -9,
+      "elapsed_s": 1.001691125,
+      "phase_visible_before_body_return": true,
+      "source_sha256": "0e5dc09ebc4fcb6de263c4c89f2290d6d02719d61e1ff545e452104ad381b639",
+      "binary_sha256": "0f696b97dcd03442b6b95d968bf71f558462147efc6ddf0d9b25d0312bd99474"
+    },
+    "old_captured_stderr": {
+      "external_timeout": true,
+      "exit_code": -9,
+      "elapsed_s": 1.0011717500000001,
+      "phase_visible_before_body_return": false,
+      "source_sha256": "6a0cee3b7d6fab218b630a0ed69d990e7343763c01890b410990873b01a3e90c",
+      "binary_sha256": "301bbe48bd3dd86c029d8fa2f3695a4a65b38c2bc668b9de4010698261caf8a5"
+    }
+  },
+  "protected_native_files": {
+    "faults-17cb4de1b5861bc8": {
+      "bytes": 45380288,
+      "sha256": "8034bff6857055a0638cf8fa5c47e994fa1e8187a22649d6523216260047c024"
+    },
+    "sail-z3": {
+      "bytes": 10111456,
+      "sha256": "8086403b18cfd333ef4432a8fb8dc2ec802943c2a598bdffe03a4d3ed6511a82"
+    },
+    "guard-positive-integration.log": {
+      "bytes": 5632,
+      "sha256": "a0b4d93bb4df2ffcb394c7c9d2e5bbca2da7b21f1e1fc077206b2dc585c81045"
+    },
+    "guard-strict.log": {
+      "bytes": 4675,
+      "sha256": "0eeab652678b52f9b0d6438fed471e067022d14c1e2e6da1759803908fd2db26"
+    },
+    "guard-native-controls.json": {
+      "bytes": 636,
+      "sha256": "16839dbbc4b4245f164e2a6701bab47ed494e8088e64c011958d693184f5bc81"
+    },
+    "maintenance-native-positive": {
+      "bytes": 7354904,
+      "sha256": "4e039fa0814c749b558595bad44c065d0a9c74275fff37e6bdca1dc2f2b6dddf"
+    },
+    "maintenance-native-old": {
+      "bytes": 7359624,
+      "sha256": "2613e46adb862cbd0e38cb83dc4d28e483dc420c7b7467781aef95a9e36e88d7"
+    },
+    "positive-native.stdout": {
+      "bytes": 185,
+      "sha256": "45fb573d0b88bddb35e619213f6f787b68530d74973bea6815dccadca0c5d0d9"
+    },
+    "positive-native.stderr": {
+      "bytes": 50,
+      "sha256": "fcafd85b23f3523332506dbbc26b0525d1f0537984c16f8364d710c772b0de94"
+    },
+    "old_no_guard-native.stdout": {
+      "bytes": 16,
+      "sha256": "daf071121a9ffe32bbce44190e37a068c96d08bff63fd7b660dd95b77d786dca"
+    },
+    "old_no_guard-native.stderr": {
+      "bytes": 50,
+      "sha256": "fcafd85b23f3523332506dbbc26b0525d1f0537984c16f8364d710c772b0de94"
+    },
+    "faults.rs": {
+      "bytes": 38876,
+      "sha256": "f4cbacc62710ad098919129e85c20b7a1bc45fe412217e6ad8cc25fcceef97e9"
+    },
+    "maintenance.rs": {
+      "bytes": 2010,
+      "sha256": "720c4c574ae9e4d29791b892d9067e82b5a580ef69b1881284b14bf95e0e4c29"
+    }
+  },
+  "initial_native_control_setup_failure": {
+    "cause": "host docker-cp launched outside task worktree, missing local source; negative Rust compilation then had no source file",
+    "corrected_by": "working directory selection only, unchanged source/assertions",
+    "raw_stderr_sha256": "7d07c9882884465c99243db9a7008c2f4857774e1f428ce1c46154d89c084d28"
+  },
+  "original_failure_preserved": {
+    "workspace_passed": 540,
+    "solver_passed": 38,
+    "solver_failed": 1,
+    "gc_timeout_s": 180.036,
+    "cause": "unknown",
+    "cleanup_defect_is_original_timeout_cause": false
+  },
+  "original_controls_preserved": {
+    "gc_sessions": true,
+    "maintenance_operations": true,
+    "cache_and_reply_oracles": true,
+    "nextest_limit_s": 180,
+    "session_deadline_s": 60,
+    "no_production_change": true,
+    "no_direct_solver_or_reader_lifecycle_change": true
+  },
+  "remaining_scope": "original full gate/solver with these test changes not run; owned session/drain proposal separate"
+}

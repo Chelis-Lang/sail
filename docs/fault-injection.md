@@ -13,8 +13,26 @@ SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all
 ```
 
 Earlier host measurements completed this suite in about nine seconds. Current
-runtime depends on the platform and workload. The latest full solver suite
-passes; an earlier timeout remains unexplained and retained below.
+runtime depends on the platform and workload. Complete solver results apply to
+their frozen artifacts; the unresolved failures below remain failures.
+
+## GC/clear maintenance cleanup
+
+The complete `4472279` workspace gate passed 540 tests, but its solver scope
+passed 38 of 39: GC/clear reached the unchanged 180-second nextest limit.
+The [read-only audit](validation/m7-shared-solver-timeout-447-readonly.md)
+does not establish its cause or the stalled phase.
+
+A separate fixture defect is now controlled: a foreground panic previously
+skipped the maintenance stop flag, leaving `thread::scope` waiting forever.
+The scope now owns a stop-on-drop guard. It preserves normal maintenance,
+all original sessions and cache/reply assertions, and their deadlines. An
+additive controlled-unwind regression requires the worker to exit; a private
+copy without the guard hangs under external supervision. This does not prove
+the original timeout experienced a panic. Fixed phase, PID and elapsed-time
+metadata writes directly to stderr before the next phase, surviving libtest's
+captured-output lifetime. The [lifecycle proposal](validation/m7-fault-owned-lifecycle-proposal.md)
+keeps direct-solver and pipe-owner cleanup changes separate and unimplemented.
 
 ## Retained unresolved timeout
 

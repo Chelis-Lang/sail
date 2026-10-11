@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Stop fault-fixture maintenance when a concurrent session assertion unwinds,
+  so cleanup cannot hide the original failure behind a scoped thread join.
+  Retain the original solver checks and deadlines, with direct phase diagnostics.
+
 - Move shared-cache trust/configuration filesystem work onto owned helpers,
   including startup and refresh. Keep the original lookup deadline and signing
   checks; status can omit unavailable optional snapshots instead of waiting for
