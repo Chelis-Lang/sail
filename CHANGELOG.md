@@ -23,6 +23,8 @@ semantic versioning once the API is published.
   invalid handoff. Bound background ownership and aggregate optional RPC work.
   Bind arbitrary environment bytes as sorted pairs, with bounded streaming
   encoding, so staged reuse is not silently disabled by JSON object-key rules.
+  Wait for optional RPC socket readiness instead of sleeping between retries;
+  retain the original absolute budget and reject late or invalid replies.
 
 - Invalidate retained Linux proof and sysroot-digest coverage on kernel mount
   events, including a bind mount restored before the next check. Preserve

@@ -1108,6 +1108,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 name = "sail-api"
 version = "0.0.0"
 dependencies = [
+ "rustix",
  "sail-key",
  "sail-ledger",
  "serde",

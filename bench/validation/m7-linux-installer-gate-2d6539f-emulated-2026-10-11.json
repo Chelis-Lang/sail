@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "source_commit": "2d6539f642b284d66c1f485570b4a166e721a4b7",
+  "source_archive_sha256": "70f460c400a0ed5616f256291d053260438aab07ff32d4df558f59c1dc01875d",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete current workspace gate including native-product ownership installer and reader-controller preflight; source candidate and real-project qualification remain separate",
+  "command": "bash ci/run.sh gate",
+  "exit_code": 100,
+  "inclusive_elapsed_seconds": 1169.869602333,
+  "nextest_elapsed_seconds": 464.665,
+  "tests": {
+    "run": 528,
+    "passed": 526,
+    "failed": 2,
+    "skipped": 39
+  },
+  "failures": [
+    {
+      "test": "sail-api sysroot::tests::complete_snapshot_is_exact_but_disconnect_and_partial_trickle_decline",
+      "observation": "Positive complete snapshot arm declined at original request-entry100ms budget; negative arms not reached",
+      "nextest_elapsed_seconds": 0.634
+    },
+    {
+      "test": "sail-daemon shared::http_tests::disconnect_hides_cached_transport_without_initializing_or_waiting_for_drop",
+      "observation": "Initial shared lookup expected Hit failed; original250ms serving timeout unchanged",
+      "nextest_elapsed_seconds": 1.104,
+      "transport_setup_ms": 126.125333,
+      "classification_wall_us": 25692
+    }
+  ],
+  "additional_gate_steps": {
+    "python_collectors_and_ci_controls": "passed",
+    "strict_workspace_all_target_clippy": "passed",
+    "post_nextest_steps": "not reached after nextest failure"
+  },
+  "raw_log": {
+    "bytes": 69246,
+    "sha256": "203c1d12f95fcfc5791fabb52d7a47e429b3d7b405e1e54f78d65bce3656dad1"
+  },
+  "qualification": {
+    "complete_local_gate_pass": false,
+    "cause": "not established",
+    "prior_d20_and_native45_gate_passes": "separate source scopes retained",
+    "m7_accepted": false
+  }
+}

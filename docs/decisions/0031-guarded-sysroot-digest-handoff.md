@@ -247,3 +247,25 @@ timeout remains [recorded](../validation/m7-sysroot-activation-7da9579.md).
 The [corrected selector controls](../validation/m7-sysroot-selection-controls.json)
 pass actual byte-key/non-UTF8, exact encoding, changed input and overbudget cases;
 complete integrated acceptance is still required.
+
+## Socket readiness within the original budget
+
+The optional client waits for Unix socket readiness through the already pinned
+`rustix` dependency instead of sleeping one millisecond after each nonblocking
+`WouldBlock`. This adds a direct external dependency to `sail-api`; it changes
+no internal crate dependency edge. The borrowed descriptor has no additional
+worker or retained owner. Readiness permits only another read or write attempt.
+EOF, peer closure, socket errors and incomplete frames remain ordinary refusals.
+
+The request-entry 100 ms deadline is unchanged. Interrupted waits recompute the
+remaining time from that same start; checks still bracket every operation and
+follow decoding and complete snapshot validation. Late readiness cannot grant
+reuse, including on platforms that round a polling timeout upward. The existing
+complete-response control closes its peer after sending the frame; the existing
+disconnect, partial trickle, late response, wrong variant and full backlog
+controls remain unchanged.
+
+The preceding installer gate failed a positive handoff control at its original
+deadline. That observation does not establish its cause or demonstrate that
+readiness waiting fixes it. Validation of this transport change is separate from
+the real-project acceptance and performance measurements.
