@@ -80,6 +80,7 @@ case "$step" in
     python3 scripts/test-m7-ordinary-wait-diagnostic.py
     python3 scripts/test-m7-stock-smt-process-diagnostic.py
     python3 scripts/test-m7-conformance-observation.py
+    python3 scripts/test-m7-tspec-transcript-run.py
     python3 ci/test-engine-artifact.py
     python3 ci/test-repair-lifecycle.py
     cargo fmt --all --check
