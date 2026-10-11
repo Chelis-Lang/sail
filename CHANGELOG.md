@@ -12,7 +12,9 @@ semantic versioning once the API is published.
 - Share managed Cargo dependency artifacts across source-engine focus selectors,
   while keeping exact proof contexts and receipts separate. Serialize shared
   target mutations and retain fresh verification of selected repair packages.
-  Product and performance validation of this change remain pending.
+  Select compatible optional sysroot hints across those selectors while keeping
+  independent caller guards and hashing fallback. Product and performance
+  validation of these changes remain pending.
 
 - Select the qualified optional source engine with conservative imported-range
   absence handling and preparation retirement acknowledgement. Its original

@@ -33,7 +33,9 @@ compilation; none of those stages alone is established as the entire cause.
 The proposed [compiler artifact families](decisions/0036-managed-compiler-artifact-families.md)
 separate ordinary Cargo dependencies from proof contexts. Only a source-engine
 function selector is omitted from the new compiler-family key; all other runtime,
-argument, configuration and environment identities remain bound. A shared family
+argument, configuration and environment identities remain bound. Optional daemon sysroot hint selection likewise omits only this selector under
+a new domain; independent caller kernel/namespace guards, import barriers and
+local-hashing fallback remain unchanged. A shared family
 has stable executable aliases and a nonblocking exclusive owner through cleaning,
 compilation and receipt publication. Concurrent focus contexts sharing that
 family can refuse with SAIL3104 rather than mutate each other's target.
