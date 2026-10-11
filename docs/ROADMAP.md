@@ -128,7 +128,7 @@ targets. Historical passes below establish only their recorded scopes.
 
 | Workstream | Implementation and current validation | Remaining product gate |
 |---|---|---|
-| Repeat verification setup | Guarded daemon sysroot reuse is wired in. The corrected product builds and reaches the automatic fill hint, but its original cold scenario exceeds 240 seconds. A separate actual-sysroot publication/import control is running. | Establish actual guarded reuse, then the original cold/warm managed CLI/MCP scenario, including missing receipts and restored-mtime edits. |
+| Repeat verification setup | The actual pinned-sysroot control passes: natural publication, all 327 eligible hashes imported before local hashing, and exact context/ordered identity equality. The corrected product's original cold scenario exceeds 240 seconds. | Pass the original cold/warm managed CLI/MCP scenario, including missing receipts and restored-mtime edits; the debug context control is not proof acceptance. |
 | Reuse after a source edit | The unselected DeferredLocator candidate has 22 pinned-type helper controls and independent review. Its full private source build is running with actual provenance, codec and Reporter controls added separately. | Complete source checks and original fourteen-stage qualification, including genuine previous-revision focus reuse within 600 seconds. |
 | Shared cache | The corrected whole-session solver control and all 39 independent solver tests pass. The corrected complete workspace gate fails three HTTP controls at their original 250 ms budget (521/524 tests pass). | Resolve the measured delay and pass the complete unchanged gate. |
 | End-to-end acceptance | CLI/MCP repair, journals, explanations, saved baselines and result clients are implemented. Full default standard validation is active. | Complete current standard coverage; real four-reader p95 below 200 ms; retained real-project CLI/MCP; three rounds with at least 2× median repair gains on each of human-eval-verus and Vest. |
@@ -247,6 +247,11 @@ the cause remains unestablished and no combined gate pass is claimed.
 Its [independent original solver suite](../bench/validation/m7-linux-solver-1e8-emulated-2026-10-11.json)
 passes all 39 controls, including signed whole-session replay without starting
 Z3 and the real mount-restoration fault. This does not replace the failed gate.
+The separate [actual pinned-sysroot control](validation/m7-sysroot-context-1e.md)
+passes natural publication and imports all 327 eligible hashes before the second
+local hash loop, preserving the exact context and complete ordered runtime
+identity bytes. It performs no Cargo/proof work and is not release performance
+or managed acceptance.
 A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
 detects restored mount changes throughout that handoff.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
