@@ -62,5 +62,5 @@ record discoveries in this repository.
 
 The [focused default Verismo diagnostic plan](validation/m7-verismo-diagnostic-plan.md)
 describes metadata-only timeout observations, original3600-second limits and
-retained raw evidence. Its prepared helper does not qualify the failed full
+retained raw evidence. Its one successful bitflags diagnostic does not qualify the failed full
 standard run or any source engine.

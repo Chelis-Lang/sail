@@ -1,9 +1,10 @@
 # Focused default Verismo timeout diagnostic
 
-**Prepared, not run.** This is one supplemental diagnosis of the stock plain side
-of `verismo/source/bitflags_verus/src`. The root-provided frozen executable and
-runtime identity are still pending. No build or proof has been launched for this
-plan. [The plan record](m7-verismo-diagnostic-plan.json) separates helper controls
+**Executed once; no timeout reproduced.** The newly frozen e0ca harness ran
+`verismo/source/bitflags_verus/src` with the original3600-second limit and one
+worker. Both ordinary sides completed48/0 and the unit was Same. The result
+diagnoses neither earlier timeout and is not full-standard acceptance. See
+[the terminal record](m7-verismo-bitflags-e0ca-diagnostic.json). [The plan record](m7-verismo-diagnostic-plan.json) separates helper controls
 from executable evidence.
 
 The complete frozen1dc standard run failed:159 units,156 Same, one Anvil Unstable,
@@ -98,6 +99,10 @@ before proposing a production change; do not infer it from sleeping alone.
 Four helper controls passed: stat parsing with nested comm delimiters; nested
 parent ancestry/reuse/unrelated-group exclusion; complete single truncation with
 no later row; aggregate-cap reserved terminal record. They use synthetic metadata
-and files, not a verifier or service. Actual Linux proc behavior, the newly frozen
-harness and the single focused diagnostic remain pending. The original full suite,
+and files, not a verifier or service. The actual Linux observer and focused harness completed normally; their
+separate terminal record retains all raw streams and metadata. Eighteen process
+rows hit the explicit aggregate descriptor bound, with no thread truncation. The
+stock plain side took121994.617ms and Sail115951.455ms; each exited0 with48verified
+and0errors. No recorded actor or zombie remained live after completion. No
+second failed unit or repeat was launched. The original full suite,
 source candidate, real repair performance and live-reader gates remain separate.

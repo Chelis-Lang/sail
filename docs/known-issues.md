@@ -253,7 +253,8 @@ complete source, genuine previous-revision FOCUS and HE/Vest gates are pending.
 Selected runtime pins are unchanged.
 
 The [focused Verismo timeout diagnosis](validation/m7-verismo-diagnostic-plan.md)
-is prepared for one stock unit with a new frozen harness retaining partial
-streams. Its bounded descendant/CPU/descriptor observer has four helper controls;
-no focused proof has run. Both complete standard timeouts and their unknown causes
-remain. This is neither a suite retry nor an optional-engine acceptance result.
+ran one stock unit once with the frozen e0ca harness retaining partial
+streams. Bitflags was Same:48verified/0errors on both sides, with no timeout
+reproduced. [The terminal record](validation/m7-verismo-bitflags-e0ca-diagnostic.json)
+retains streams and bounded metadata;18process rows had explicit descriptor
+truncation. Both complete standard timeouts and their unknown causes remain. This is neither a suite retry nor an optional-engine acceptance result.

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scope": "Prepared supplementary single-unit default conformance diagnosis; no proof/build executed",
-  "state": "awaiting root-provided frozen executable",
+  "state": "Executed once; scoped terminal record separate",
   "acceptance": false,
   "project": "verismo",
   "unit": "verismo/source/bitflags_verus/src",
@@ -10,10 +10,10 @@
   "unit_timeout_seconds": 3600,
   "plain_runs": 1,
   "confirm_runs": 2,
-  "runtime_sha256": null,
-  "source_commit": null,
+  "runtime_sha256": "cd660c860030adcd33dd1df641034e9793773a5ed8ec65545f70ad251acdea8e",
+  "source_commit": "e0ca5f5154e74326443181f57f0fd928488159d3",
   "reviewed_harness_source_commit": "3d802c9074250d7d0b9f3d06d122b8930e33ab52",
-  "actor_started": false,
+  "actor_started": true,
   "original_complete_failed_scope": "bench/validation/m7-linux-default-standard-1dc-failure-2026-10-11.json",
   "earlier_nonterminal_observation": "docs/validation/m7-standard-verismo-timeout-observation.json",
   "controls": {
@@ -42,5 +42,6 @@
     "No new conformance executable/runtime/proof or full-standard acceptance claim",
     "The observer reads metadata only and never actor streams, environment, argv or source/config contents",
     "Observer duration does not bound kernel I/O or actor lifetime"
-  ]
+  ],
+  "terminal_record": "docs/validation/m7-verismo-bitflags-e0ca-diagnostic.json"
 }
