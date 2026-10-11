@@ -123,3 +123,15 @@ The [retained diagnostic](../validation/m7-compiler-script-observations.md)
 shows a repeated dependency build in the same family after selector change. It
 does not prove the cause of the earlier whole-loop timeout. Product and unchanged
 benchmark validation remain required; no fixture or acceptance bound changes.
+
+## Unchanged declaration metadata publication candidate
+
+A source-only Linux candidate compares the exact original serialization before
+replacing local declaration ledgers and context runtime links. Only a complete
+regular-file read with private mode, single link and unchanged named/opened
+identity can avoid the original atomic rename. Every uncertainty uses that
+original publication. This is a write avoidance mechanism, not digest reuse or
+Current authority: existing continuous native owners and all final barriers
+remain mandatory. Family export consumption/publication, receipts and per-run
+configuration retain their original transaction. See the
+[uncompiled candidate and pending controls](../validation/m7-preserve-freshness-metadata-plan.md).

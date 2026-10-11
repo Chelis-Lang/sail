@@ -1,0 +1,12 @@
+--- a/crates/sail-verus/src/managed/files.rs
++++ b/crates/sail-verus/src/managed/files.rs
+@@ -62,9 +62,6 @@
+     #[cfg(target_os = "linux")]
+     {
+         let bytes = serde_json::to_vec(value).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
+-        if metadata_bytes_equal(path, &bytes) {
+-            return Ok(());
+-        }
+         json_bytes(path, &bytes)
+     }
+     #[cfg(not(target_os = "linux"))]

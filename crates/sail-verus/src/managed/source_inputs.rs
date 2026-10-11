@@ -1,6 +1,5 @@
 //! Compiler-declared inputs, including explicit files beneath excluded directories.
 
-use super::files::json;
 use super::receipts::read;
 use crate::Result;
 use serde::{Deserialize, Serialize};
@@ -116,7 +115,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         }
     }
     let paths: Vec<PathBuf> = paths.into_iter().collect();
-    json(
+    super::files::json_metadata(
         path,
         &Inputs {
             paths: paths.clone(),

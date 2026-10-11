@@ -305,7 +305,7 @@ fn context(
         &identity,
         &environment.into_iter().collect::<Vec<_>>(),
     )?;
-    json(&state.join(format!("{hash}.link")), &identity_sha)?;
+    super::files::json_metadata(&state.join(format!("{hash}.link")), &identity_sha)?;
     drop(configuration);
     Ok(Context {
         hash,
@@ -1580,7 +1580,7 @@ pub(crate) fn run_engine(
     clean(config, &paths.target, &late_scripts)?;
     let stamp_before = super::input::mutation_stamp(&before);
     super::configuration::check(&invocation, &config.args)?;
-    json(
+    super::files::json_metadata(
         &paths
             .run
             .parent()
@@ -1726,7 +1726,7 @@ pub(crate) fn run_engine(
     after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
     after_data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
-    json(
+    super::files::json_metadata(
         &paths.build_inputs.with_file_name("input-state.json"),
         &after_data,
     )?;
