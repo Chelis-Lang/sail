@@ -180,6 +180,48 @@ class Controls(unittest.TestCase):
             self.assertEqual(rows['files']['file']['bytes'], 3)
             self.assertEqual(rows['symlinks'], {'alias': 'file'})
 
+    @unittest.skipUnless(hasattr(tarfile, 'data_filter'), 'safe extraction requires Python data filter')
+    def test_actual_git_mode_extraction_and_claude_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive, source = root / 'source.tar', root / 'source'
+            source.mkdir()
+            with tarfile.open(archive, 'w') as handle:
+                member = tarfile.TarInfo('scripts/')
+                member.type, member.mode = tarfile.DIRTYPE, 0o775
+                handle.addfile(member)
+                for name, mode in (('AGENTS.md', 0o664), ('scripts/run', 0o775)):
+                    member = tarfile.TarInfo(name)
+                    member.size, member.mode = 3, mode
+                    handle.addfile(member, io.BytesIO(b'raw'))
+                member = tarfile.TarInfo('CLAUDE.md')
+                member.type, member.linkname, member.mode = tarfile.SYMTYPE, 'AGENTS.md', 0o777
+                handle.addfile(member)
+            expected = m.inventory(archive)
+            # Counterfactual: the original data-filter-only staging loses 0664.
+            with tarfile.open(archive) as handle:
+                handle.extractall(source, filter='data')
+            self.assertEqual((source / 'AGENTS.md').stat().st_mode & 0o777, 0o644)
+            with self.assertRaises(ValueError):
+                m.verify_source(source, expected)
+            m.extract_source(archive, source, expected)
+            m.verify_source(source, expected)
+            self.assertEqual((source / 'AGENTS.md').stat().st_mode & 0o777, 0o664)
+            self.assertEqual((source / 'scripts/run').stat().st_mode & 0o777, 0o775)
+            self.assertEqual((source / 'scripts').stat().st_mode & 0o777, 0o775)
+            self.assertEqual((source / 'CLAUDE.md').readlink(), Path('AGENTS.md'))
+
+    def test_special_permissions_and_unsafe_types_refuse_before_extraction(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / 'source.tar'
+            for mode, kind in ((0o4664, tarfile.REGTYPE), (0o1775, tarfile.DIRTYPE), (0o644, tarfile.FIFOTYPE), (0o644, tarfile.LNKTYPE)):
+                with tarfile.open(archive, 'w') as handle:
+                    member = tarfile.TarInfo('unsafe')
+                    member.mode, member.type = mode, kind
+                    handle.addfile(member)
+                with self.assertRaises(ValueError):
+                    m.inventory(archive)
+
     def test_source_extras_changes_and_modes_refuse(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory)

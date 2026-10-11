@@ -121,7 +121,7 @@ def identity(container, closure=None):
 
 
 def inventory(archive):
-    files, links = {}, {}
+    files, links, directories, seen = {}, {}, {}, set()
     with tarfile.open(archive, "r:") as handle:
         for count, member in enumerate(handle, 1):
             if count > MAX_ROWS:
@@ -129,10 +129,17 @@ def inventory(archive):
             path = Path(member.name)
             if path.is_absolute() or ".." in path.parts or len(member.name.encode()) > 4096:
                 raise ValueError("unsafe archive path")
-            if member.isdir():
-                continue
-            if member.name in files or member.name in links:
+            if member.mode & ~0o777:
+                raise ValueError("special archive permission bits")
+            name = str(path)
+            if name == "." or name != member.name.rstrip("/"):
+                raise ValueError("noncanonical archive path")
+            if name in seen:
                 raise ValueError("duplicate archive member")
+            seen.add(name)
+            if member.isdir():
+                directories[name] = member.mode
+                continue
             if member.issym():
                 if Path(member.linkname).is_absolute() or ".." in Path(member.linkname).parts:
                     raise ValueError("unsafe archive link")
@@ -145,7 +152,33 @@ def inventory(archive):
                 files[member.name] = {"sha256": value.hexdigest(), "bytes": member.size, "mode": member.mode}
             else:
                 raise ValueError("unsupported archive member")
-    return {"files": files, "symlinks": links}
+    for name in seen:
+        if any(str(parent) in links for parent in Path(name).parents):
+            raise ValueError("archive member beneath symlink")
+    return {"files": files, "symlinks": links, "directories": directories}
+
+
+def extract_source(archive, source, expected):
+    """Use the safe data filter, then restore only admitted ordinary Git modes."""
+    if inventory(archive) != expected:
+        raise ValueError("archive differs from admitted inventory")
+    with tarfile.open(archive, "r:") as handle:
+        handle.extractall(source, filter="data")
+    restore_modes(source, expected)
+    verify_source(source, expected)
+
+
+def restore_modes(source, expected):
+    for name, row in expected["files"].items():
+        path = source / name
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise ValueError("extracted regular file changed type")
+        path.chmod(row["mode"])
+    for name, mode in sorted(expected["directories"].items(), key=lambda row: len(Path(row[0]).parts), reverse=True):
+        path = source / name
+        if not stat.S_ISDIR(path.lstat().st_mode):
+            raise ValueError("extracted directory changed type")
+        path.chmod(mode)
 
 
 def verify_source(source, expected):
@@ -168,6 +201,11 @@ def verify_source(source, expected):
                 directories.add(relative)
     expected_directories = {str(parent) for name in set(expected["files"]) | set(expected["symlinks"])
                             for parent in Path(name).parents if str(parent) != "."}
+    if "directories" in expected:
+        expected_directories = set(expected["directories"])
+        for name, mode in expected["directories"].items():
+            if stat.S_IMODE((source / name).lstat().st_mode) != mode:
+                raise ValueError("source directory mode changed")
     if directories != expected_directories:
         raise ValueError("source directory membership changed")
     if actual != set(expected["files"]) | set(expected["symlinks"]):
@@ -485,10 +523,21 @@ def host(args):
         call(command, payload=prepare.encode())
         for name in ("source.tar", "source-inventory.json", "protected.json"):
             call(["docker", "cp", str(args.output / name), args.container + ":" + root + "/" + name], timeout=60)
-        prepare = """import json,tarfile
+        prepare = """import json,tarfile,importlib.util,sys
 from pathlib import Path
+sys.dont_write_bytecode=True
 r=Path(%r);s=Path(%r)
-with tarfile.open(r/'source.tar') as h:h.extractall(s,filter='data')
+with tarfile.open(r/'source.tar') as h:
+ for count,member in enumerate(h,1):
+  p=Path(member.name)
+  if count>8192 or member.mode & ~0o777 or p.is_absolute() or '..' in p.parts or not (member.isfile() or member.isdir() or member.issym()):raise ValueError('unsafe archive member')
+  if member.issym() and (Path(member.linkname).is_absolute() or '..' in Path(member.linkname).parts):raise ValueError('unsafe archive link')
+ h.extractall(s,filter='data')
+spec=importlib.util.spec_from_file_location('gate_setup',s/'scripts/local-combined-gates.py')
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+expected=m.load(r/'source-inventory.json')
+if m.inventory(r/'source.tar') != expected:raise ValueError('archive inventory changed')
+m.restore_modes(s,expected);m.verify_source(s,expected)
 (s/'target').symlink_to(%r)
 print(json.dumps({'pid1_birth':int(Path('/proc/1/stat').read_text().rsplit(')',1)[1].split()[19])}))
 """ % (root, source, args.target)
