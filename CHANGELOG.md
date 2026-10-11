@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Provide fresh service-owned Linux product installation with exact byte grants,
+  private executable modes and no existing-destination replacement. Record
+  ownership/capability setup prerequisites in the reader controller; keep complete
+  production freshness checks and original acceptance bounds unchanged.
+
 - Reuse an unchanged loopback HTTP connection pool after fresh complete
   configuration validation, avoiding repeated runtime construction on reload.
   Keep credential/CA rotation, timeout changes, HTTPS root refresh and signature

@@ -74,6 +74,7 @@ case "$step" in
     python3 scripts/test-m7-job-read-bench.py
     python3 scripts/test-m7-retained-jobs-acceptance.py
     python3 scripts/test-m7-reader-acceptance.py
+    python3 scripts/test-m7-native-product.py
     python3 scripts/test-m7-result-frame-profile.py
     python3 scripts/test-managed-timeout-evidence.py
     python3 scripts/test-m7-conformance-observation.py

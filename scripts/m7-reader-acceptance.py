@@ -33,6 +33,7 @@ HERE = Path(__file__).resolve().parent
 bench = load("warm_reader_workload", HERE / "m7-repair-bench.py")
 protocol = bench.protocol
 retained = load("warm_reader_admission", HERE / "m7-retained-jobs-acceptance.py")
+native_product = load("warm_reader_native_setup", HERE / "m7-native-product.py")
 
 
 def copy_source(source, destination, target_directory):
@@ -334,7 +335,7 @@ class Run:
     def freeze(self):
         self.summary["controller_scripts"] = {name: bench.sha(HERE / name) for name in (
             "m7-reader-acceptance.py", "m7-repair-bench.py",
-            "m7-retained-jobs-acceptance.py", "m7-job-read-bench.py")}
+            "m7-retained-jobs-acceptance.py", "m7-job-read-bench.py", "m7-native-product.py")}
         frozen = json.loads((self.bin / "freeze.json").read_bytes())
         for name in ("sail", "sail-z3"):
             assert frozen["files"][name]["sha256"] == bench.sha(self.bin / name), "product freeze changed"
@@ -342,6 +343,21 @@ class Run:
         for name, path in [("job_read_bench", self.probe_dir / "job_read_bench"),
                            ("python-reader-probe.py", self.args.python_probe.resolve())]:
             assert probe_freeze["files"][name]["sha256"] == bench.sha(path), "collector freeze changed"
+        # Installation checks are environmental prerequisites, never Current authority.
+        product_setup = native_product.audit_products(self.bin)
+        self.summary["product_ownership_prerequisite"] = product_setup
+        self.save()
+        if not product_setup["ownership_prerequisite_met"]:
+            raise ValueError("SAIL0948: installed products need service filesystem UID ownership or effective CAP_LEASE; create new byte-verified copies")
+        inventory = getattr(self.args, "lease_inventory", None)
+        if inventory is not None:
+            rows, digest = native_product.load_json(inventory)
+            setup = native_product.audit_bindings(rows)
+            setup["inventory_sha256"] = digest
+            self.summary["supplied_guard_ownership_prerequisite"] = setup
+            self.save()
+            if not setup["ownership_prerequisite_met"]:
+                raise ValueError("SAIL0948: supplied candidate Guard inventory has foreign-owned files without effective CAP_LEASE")
         self.summary["product_freeze"] = frozen
         self.summary["collector_freeze"] = probe_freeze
         self.save()
@@ -572,6 +588,8 @@ def main():
                         help="unmeasured preparation budget per proof; 0 explicitly prepares to completion with owned cancellation, without changing measured bounds")
     parser.add_argument("--prepare-contexts", action="store_true",
                         help="record an additional unmeasured complete ordinary/exact-context preparation phase before the original bounded setup checks")
+    parser.add_argument("--lease-inventory", type=Path,
+                        help="optional complete original Guard binding array for this exact candidate; setup metadata only, never proof authority")
     parser.add_argument("--keep-daemon", action="store_true", help="retain only the successful owned service for real retained-job inspection")
     args = parser.parse_args()
     if not math.isfinite(args.setup_timeout) or args.setup_timeout < 0:
