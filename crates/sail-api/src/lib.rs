@@ -16,6 +16,7 @@ pub mod proof;
 pub mod protocol;
 pub mod repair;
 pub mod schema;
+pub mod sysroot;
 
 #[cfg(unix)]
 pub mod client;

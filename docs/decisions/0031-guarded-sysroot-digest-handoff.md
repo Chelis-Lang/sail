@@ -126,3 +126,25 @@ space. Resource-count limits and construction/transient reservations remain
 separate requirements before the daemon handoff is enabled. Exhaustive field
 destructuring makes added guard fields require an explicit accounting decision.
 Overflow refuses admission rather than wrapping to a smaller charge.
+
+## Optional endpoint wire contract
+
+The independent `sail_api::sysroot` endpoint uses version1 frames capped at
+1MiB. It appends `.sysroots-v1` to the existing local cache socket path; neither
+the job protocol nor SMT cache keys change. Requests contain at most eight
+sorted exact UTF-8 absolute roots, their actual canonical device/inode bindings,
+the process filesystem root identity, mount namespace and mount inventory
+content digest, and the pre-sysroot runtime-selection content digest. Unsupported
+native encodings decline reuse instead of converting path bytes lossily.
+
+A Lookup response must echo the exact scope and return a sorted complete
+inventory of at most4096 bound files. The caller remains responsible for
+comparing that inventory against its independently guarded actual local files.
+No syntactically valid response alone is authority. Prepare is only a bounded
+maintenance hint; it carries no caller hashes. Collection counts are bounded
+while decoding, and oversize output is refused before any frame bytes are sent.
+Old versions, trailing/truncated JSON, wrong variants and late full responses
+refuse reuse. One100ms budget covers connect/backlog, write, read and validation;
+there is no retry or late promotion. Socket operations remain safe Rust through
+the pinned socket2 dependency. The byte/work caps are explicit; elapsed checks
+do not pretend to interrupt kernel I/O or scheduler suspension.
