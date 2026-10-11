@@ -55,11 +55,15 @@ birth-checked descendant-group primitives in
 cleanup only for birth-matched groups; uncertainty remains sticky even after the
 leader is reaped. Host Docker transport is separately bounded. Transport loss,
 container change, missing ownership or incomplete group observation stops the
-sequence and requires a separate owner audit. Known-group scans retain Z/X rows separately as `terminated_unreaped`: these
-terminated rows cannot execute or hold file descriptors. Live survivors,
-unreadable/unknown rows and incomplete group observation still refuse closure.
-Known-group scans do not prove
-arbitrary orphan absence or discover every short-lived detached descendant.
+sequence and requires a separate owner audit. Proven terminated thread groups
+remain recorded separately as `terminated_unreaped`; a Z/X leader alone is
+insufficient. A bounded task census (at most 64 tasks)
+must contain the exact leader, retain identical membership across three
+snapshots and identical birth/group/state rows across two reads, with every
+thread terminated. Only those complete groups are classified as terminated.
+Live siblings, changing membership/identity/state, unreadable tasks and
+incomplete census refuse closure. Live survivors and incomplete group
+observation also refuse. Known-group scans do not prove arbitrary orphan absence or discover every short-lived detached descendant.
 The helper never restores source or grants cleanup credit from leader reap.
 
 Complete raw gate/solver logs and their hashes remain in the native output root;
@@ -69,7 +73,7 @@ PASS requires both original phases to exit zero with matching input identity and
 closed recorded ownership. A failed, interrupted or unattempted phase receives
 no skipped-gate credit; earlier failed scopes remain separate.
 
-`python3 scripts/test-local-combined-gates.py` currently passes 26 pure controls on Python 3.12 (the actual extraction control requires
+`python3 scripts/test-local-combined-gates.py` currently passes 31 pure controls on Python 3.12 (the actual extraction control requires
 the standard-library data filter)
 using fake processes and temporary files. They exercise stopping, timeout and
 signal cleanup, sticky uncertainty, transport capture bounds, input substitution,

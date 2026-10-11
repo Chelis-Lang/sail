@@ -21,6 +21,7 @@ GATE_LIMIT = 3600
 SOLVER_LIMIT = 1800
 META_LIMIT = 30
 MAX_ROWS = 8192
+MAX_DEAD_TASKS = 64
 MAX_FILE = 512 * 1024 * 1024
 SUPPORT = "scripts/m7-tspec-transcript-run.py"
 
@@ -238,6 +239,63 @@ def support_module(root):
     return module
 
 
+def task_members(pid):
+    """Bound one actual Linux thread-group membership snapshot."""
+    members = []
+    with os.scandir("/proc/" + str(pid) + "/task") as entries:
+        for entry in entries:
+            if not entry.name.isdecimal() or len(members) >= MAX_DEAD_TASKS:
+                raise ValueError("task membership unavailable/over bound")
+            members.append(int(entry.name))
+    return sorted(members)
+
+
+def dead_threads(module, leader, members=None):
+    """A dead leader alone is insufficient: bind a stable all-dead task group."""
+    members = task_members if members is None else members
+    result = {"status": "unavailable", "complete": False, "task_rows": []}
+    try:
+        before = module.row(leader["pid"])
+        if before != leader or before["state"] not in ("Z", "X"):
+            raise ValueError("leader identity/state changed")
+        first = members(leader["pid"])
+        if not first or len(first) > MAX_DEAD_TASKS or len(set(first)) != len(first) or leader["pid"] not in first:
+            raise ValueError("task membership incomplete")
+        rows = []
+        for tid in first:
+            row = module.row(tid)
+            if row is None or row["pid"] != tid or row["pgid"] != leader["pgid"] or row["start"] < leader["start"]:
+                raise ValueError("task identity unreadable/changed")
+            rows.append(row)
+        result["task_rows"] = rows
+        if any(row["state"] not in ("Z", "X") for row in rows):
+            result["status"] = "live" if all(row["state"] in ("Z", "X", "R", "S", "D", "T", "t", "W", "I", "K", "P") for row in rows) else "unavailable"
+            result["reason"] = "live or unknown sibling task"
+            return result
+        if members(leader["pid"]) != first or [module.row(tid) for tid in first] != rows or module.row(leader["pid"]) != before or members(leader["pid"]) != first:
+            raise ValueError("task membership/identity/state changed")
+        result.update(status="terminated", complete=True)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        result["reason"] = str(error)[:256]
+    return result
+
+
+def terminated_row(row):
+    if not isinstance(row, dict) or row.get("state") not in ("Z", "X") or any(type(row.get(key)) is not int or row[key] <= 0 for key in ("pid", "pgid", "start")):
+        return False
+    evidence = row.get("terminated_evidence", {})
+    tasks = evidence.get("task_rows", []) if isinstance(evidence, dict) else []
+    return (isinstance(evidence, dict) and evidence.get("status") == "terminated"
+            and evidence.get("complete") is True and isinstance(tasks, list)
+            and 0 < len(tasks) <= MAX_DEAD_TASKS
+            and all(isinstance(task, dict) and task.get("state") in ("Z", "X")
+                    and type(task.get("pid")) is int and task["pid"] > 0
+                    and type(task.get("start")) is int and task["start"] >= row["start"]
+                    and task.get("pgid") == row["pgid"] for task in tasks)
+            and len({task.get("pid") for task in tasks}) == len(tasks)
+            and any(all(task.get(key) == row[key] for key in ("pid", "pgid", "start", "state")) for task in tasks))
+
+
 def group_closure(module, groups):
     """Fixed known-group observation; never claim arbitrary orphan absence."""
     survivors, unavailable, terminated = [], [], []
@@ -253,7 +311,13 @@ def group_closure(module, groups):
                 unavailable.append(int(entry.name))
         elif row["pgid"] in groups.known:
             if row["state"] in ("Z", "X"):
-                terminated.append(row)
+                evidence = dead_threads(module, row)
+                if evidence["status"] == "terminated":
+                    terminated.append(dict(row, terminated_evidence=evidence))
+                elif evidence["status"] == "live":
+                    survivors.append(dict(row, thread_group_evidence=evidence))
+                else:
+                    unavailable.append({"pid": row["pid"], "dead_thread_group": evidence})
             else:
                 survivors.append(row)
     return {"survivors": survivors, "unavailable": unavailable, "terminated_unreaped": terminated}
@@ -264,8 +328,7 @@ def closed_groups(audit):
     return (isinstance(audit, dict) and audit.get("survivors") == []
             and audit.get("unavailable") == []
             and isinstance(audit.get("terminated_unreaped", []), list)
-            and all(isinstance(row, dict) and row.get("state") in ("Z", "X")
-                    for row in audit.get("terminated_unreaped", [])))
+            and all(terminated_row(row) for row in audit.get("terminated_unreaped", [])))
 
 
 def observe_owned(module, groups):

@@ -269,12 +269,14 @@ class Controls(unittest.TestCase):
             self.assertIn('not inferred', record['files'][0]['execution_identity'])
 
     def test_live_s_and_r_refuse_but_z_and_x_are_retained_separately(self):
-        rows = {pid: {'pid': pid, 'pgid': 100, 'state': state}
+        rows = {pid: {'pid': pid, 'pgid': 100, 'start': pid, 'state': state}
                 for pid, state in enumerate(('S', 'R', 'Z', 'X'), 100)}
         entries = [types.SimpleNamespace(name=str(pid)) for pid in rows]
         module = types.SimpleNamespace(MAX_SCAN=10, row=rows.get)
         groups = types.SimpleNamespace(known={100: {}})
-        with patch.object(m.Path, 'iterdir', return_value=iter(entries)):
+        def evidence(_module, leader):
+            return {'status': 'terminated', 'complete': True, 'task_rows': [leader]}
+        with patch.object(m.Path, 'iterdir', return_value=iter(entries)), patch.object(m, 'dead_threads', side_effect=evidence):
             audit = m.group_closure(module, groups)
         self.assertEqual([r['state'] for r in audit['survivors']], ['S', 'R'])
         self.assertEqual([r['state'] for r in audit['terminated_unreaped']], ['Z', 'X'])
@@ -283,6 +285,51 @@ class Controls(unittest.TestCase):
         self.assertTrue(m.closed_groups(audit))
         audit['terminated_unreaped'][0]['state'] = 'S'
         self.assertFalse(m.closed_groups(audit))
+
+    def test_true_single_thread_zombie_requires_stable_complete_census(self):
+        leader = {'pid': 100, 'pgid': 100, 'start': 10, 'state': 'Z'}
+        module = types.SimpleNamespace(row=lambda _pid: dict(leader))
+        evidence = m.dead_threads(module, leader, members=lambda _pid: [100])
+        self.assertEqual(evidence['status'], 'terminated')
+        self.assertTrue(evidence['complete'])
+        self.assertTrue(m.terminated_row(dict(leader, terminated_evidence=evidence)))
+        self.assertFalse(m.terminated_row(leader))
+
+    def test_zombie_leader_live_or_unknown_sibling_refuses_termination(self):
+        leader = {'pid': 100, 'pgid': 100, 'start': 10, 'state': 'Z'}
+        for state, expected in (('S', 'live'), ('R', 'live'), ('?', 'unavailable')):
+            rows = {100: leader, 101: dict(leader, pid=101, start=11, state=state)}
+            evidence = m.dead_threads(types.SimpleNamespace(row=rows.get), leader, members=lambda _pid: [100, 101])
+            self.assertEqual(evidence['status'], expected)
+            self.assertFalse(evidence['complete'])
+            self.assertFalse(m.terminated_row(dict(leader, terminated_evidence=evidence)))
+
+    def test_unreadable_task_missing_leader_and_census_failure_refuse(self):
+        leader = {'pid': 100, 'pgid': 100, 'start': 10, 'state': 'Z'}
+        module = types.SimpleNamespace(row=lambda pid: leader if pid == 100 else None)
+        cases = (lambda _pid: [100, 101], lambda _pid: [101], Mock(side_effect=PermissionError('unreadable')))
+        for members in cases:
+            evidence = m.dead_threads(module, leader, members=members)
+            self.assertEqual(evidence['status'], 'unavailable')
+            self.assertFalse(evidence['complete'])
+
+    def test_changing_task_membership_birth_and_state_refuse(self):
+        leader = {'pid': 100, 'pgid': 100, 'start': 10, 'state': 'Z'}
+        module = types.SimpleNamespace(row=lambda _pid: dict(leader))
+        evidence = m.dead_threads(module, leader, members=Mock(side_effect=[[100], [100, 101]]))
+        self.assertEqual(evidence['status'], 'unavailable')
+        for changed in (dict(leader, start=11), dict(leader, state='S')):
+            module = types.SimpleNamespace(row=Mock(side_effect=[leader, leader, changed]))
+            evidence = m.dead_threads(module, leader, members=lambda _pid: [100])
+            self.assertEqual(evidence['status'], 'unavailable')
+            self.assertFalse(evidence['complete'])
+
+    def test_dead_task_bound_refuses_before_reading_unbounded_members(self):
+        leader = {'pid': 100, 'pgid': 100, 'start': 10, 'state': 'X'}
+        read = Mock(return_value=leader)
+        evidence = m.dead_threads(types.SimpleNamespace(row=read), leader, members=lambda _pid: list(range(100, 100 + m.MAX_DEAD_TASKS + 1)))
+        self.assertEqual(evidence['status'], 'unavailable')
+        self.assertEqual(read.call_count, 1)
 
     def test_missing_raced_row_is_distinct_from_unreadable_existing_row(self):
         module = types.SimpleNamespace(MAX_SCAN=10, row=lambda _pid: None)
