@@ -192,6 +192,7 @@ pub(super) struct Baseline {
     eligible: BTreeSet<PathBuf>,
     captured: BTreeMap<PathBuf, String>,
     failure: Option<&'static str>,
+    failure_detail: Option<(&'static str, &'static str)>,
     #[cfg(target_os = "linux")]
     protection: Option<Protection>,
 }
@@ -283,6 +284,7 @@ impl Baseline {
             paths: found.paths.clone(),
             captured: BTreeMap::new(),
             failure: (!found.complete).then_some("sysroot-inventory-incomplete"),
+            failure_detail: None,
             #[cfg(target_os = "linux")]
             protection: None,
         };
@@ -337,6 +339,7 @@ impl Baseline {
             eligible,
             captured,
             failure: _,
+            failure_detail: _,
             #[cfg(target_os = "linux")]
             protection,
         } = self;
@@ -446,8 +449,14 @@ impl Baseline {
             let Some(protection) = self.protection.as_mut() else {
                 return false;
             };
-            if !protection.namespace.clean() || !protection.files.clean() {
+            if !protection.namespace.clean() {
                 self.failure = Some("sysroot-namespace-invalidated");
+                self.failure_detail = Some(("namespace", protection.namespace.failure_reason()));
+                return false;
+            }
+            if !protection.files.clean() {
+                self.failure = Some("sysroot-namespace-invalidated");
+                self.failure_detail = Some(("explicit-files", protection.files.failure_reason()));
                 return false;
             }
             if !protection.lease.clean() {
@@ -478,6 +487,16 @@ impl Baseline {
     pub(super) fn failure_reason(&self) -> &'static str {
         self.failure
             .unwrap_or("sysroot-kernel-coverage-unavailable")
+    }
+
+    // Read only static labels saved by the original observation barriers.
+    // No extra native drain, metadata read, lease check or hashing is performed.
+    pub(super) fn failure_description(&self) -> String {
+        let reason = self.failure_reason();
+        match self.failure_detail {
+            Some((barrier, detail)) => format!("{reason}; barrier={barrier}; detail={detail}"),
+            None => reason.to_owned(),
+        }
     }
 }
 
@@ -533,6 +552,15 @@ mod tests {
         std::fs::rename(&library, &moved)?;
         std::fs::rename(&moved, &library)?;
         assert!(!owner.complete());
+        assert_eq!(owner.failure_reason(), "sysroot-namespace-invalidated");
+        let description = owner.failure_description();
+        assert!(description.contains("barrier=namespace; detail=namespace-"));
+        assert!(!owner.complete());
+        assert_eq!(
+            owner.failure_description(),
+            description,
+            "first failure stays sticky"
+        );
         drop(owner);
         let mut owner = baseline(&root);
         assert!(owner.complete());
@@ -617,6 +645,7 @@ mod tests {
         let mut owner = baseline(&root);
         assert!(!owner.complete());
         assert_eq!(owner.failure_reason(), "sysroot-inventory-incomplete");
+        assert_eq!(owner.failure_description(), "sysroot-inventory-incomplete");
         drop(owner);
         std::fs::remove_dir_all(root)?;
         Ok(())

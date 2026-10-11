@@ -36,9 +36,14 @@ event occurred during verification.
 The helper lease and sysroot baseline have separate failure paths. Lease failures
 already retain static binding, interpreter, helper-observer and kernel-inventory
 reasons. Helper acquisition and detailed sweep timing are mainly test-only
-diagnostics. Sysroot namespace/file observer failures are still collapsed to
-`sysroot-namespace-invalidated`. Existing setup sidecars record elapsed phases,
-not barrier outcomes. `SAIL_FRESHNESS_TRACE=1` describes daemon projection stages;
+diagnostics. Earlier sysroot namespace/file observer failures were collapsed to
+`sysroot-namespace-invalidated`. New code retains that outer reason and the first
+failed `namespace` or `explicit-files` observer, with its existing sticky detail.
+It calls the same checks once in the same short-circuit order; formatting reads
+only saved static labels. This extension is awaiting its separate validation.
+The completed D20 active repair remains failed with the older coarse note and
+cannot be attributed retrospectively. Existing setup sidecars record elapsed
+phases, not barrier outcomes. `SAIL_FRESHNESS_TRACE=1` describes daemon projection stages;
 it does not provide the main proof guard's missing historical event details.
 
 The daemon previously appended a generic projection-validation warning to every

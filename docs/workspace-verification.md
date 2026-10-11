@@ -82,7 +82,10 @@ barrier (`input-barrier` or `post-verification`). A
 such as `namespace-tracked-input-event` or
 `namespace-event-drain-budget-exhausted`. These labels distinguish observed
 input events from unavailable coverage; they do not identify a particular file
-or explain an event's cause. Job reads preserve the original proof notes. A
+or explain an event's cause. Sysroot notes likewise distinguish the first failed
+`namespace` or `explicit-files` observer and retain its existing detail. Earlier
+coarse reports cannot be explained retrospectively by these new labels.
+Job reads preserve the original proof notes. A
 separate current-input-validation warning appears when a previously Current
 report becomes Unknown during projection. See
 [the diagnostic boundary](validation/m7-proof-coverage-diagnostics.md).
