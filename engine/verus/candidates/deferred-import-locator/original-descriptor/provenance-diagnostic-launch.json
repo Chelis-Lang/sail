@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "scope": "One separately granted existing-seam provenance diagnostic; not original14 retry or acceptance credit",
+  "controller_sha256": "22e9f44bf09a1bccde9ac6bed559f205075b1892b9a7a762b463c0ee181e214f",
+  "runtime_manifest_sha256": "c9ea656bf1bd5dcb81cd13f7dd4c83e13fdc4804910a8949a5562e81daa4ff0d",
+  "source_inventory_sha256": "dd10bf6fe593a617e71174de432429d6ba9a4eb49974b0c67377bb84988decf5",
+  "pid": 695869,
+  "pgid": 695869,
+  "started_unix_ns": 1791704819990366636,
+  "nice": 0,
+  "compiler_budget_seconds": 600,
+  "new_engine_selector": "SAIL_ENGINE_IMPORT_TRACE=1",
+  "target_filter": null,
+  "status": "terminal; see provenance-diagnostic-result.json",
+  "selected": false,
+  "product_qualified": false
+}

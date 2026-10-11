@@ -164,3 +164,19 @@ Unavailable records expose descriptor refusal and Foreign hash counts; their
 filename strings are not retained, and Local/malformed-unit refusals can remain
 unobserved. Primary streams and predicates are retained before independent
 post-run seal and actor closure. This is diagnosis, with no acceptance credit.
+
+The [one diagnostic result](provenance-diagnostic-result.json) retains compiler
+exit 0 and exact original stock diagnostics/verdicts, while the unchanged
+positive-HIT check still fails. The focused Imported binding was admitted as
+OriginalDescriptor with zero equal-hash Foreign files at construction; before
+focus, the descriptor remained Delayed but one equal-hash Foreign file existed.
+The existing barrier refused it as `ChangedSource`. The trace does not identify
+that new owner, so its eligibility must not be assumed. Its record immediately
+precedes the focused store provenance refusal; other buckets are not localized.
+
+The original post-controller scan also reported its still-waiting Python launch
+parent because that parent argv contains the owned output path. This closure
+assertion failure is retained. A separate check after parent/controller exit
+found no bound actors and identical runtime/source/lock/project seals; no
+verifier leak is inferred. The twenty-file raw diagnostic archive is retained
+by hash. Capture-phase redesign remains read-only pending review.
