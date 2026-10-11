@@ -20,3 +20,9 @@ retained in the record and were corrected without exceptions.
 The complete Linux gate and a real subphase timing run remain pending lead
 integration. These host controls neither replace the failed 240-second cold
 run nor qualify source-engine performance, conformance or live-reader latency.
+
+The follow-up selector control treats unset and empty `SAIL_JOB_EVENTS` alike,
+before file-slot allocation. It uses no process-environment mutation and prevents
+a relative timing file from an empty destination. All seven diagnostic controls
+and strict all-targets Clippy pass on the host after this change; the original
+six-control implementation record remains preserved. No cold run was repeated.
