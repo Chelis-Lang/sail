@@ -3,8 +3,11 @@
 
 import copy
 import importlib.util
+import io
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("retained_acceptance", Path(__file__).with_name("m7-retained-jobs-acceptance.py"))
 harness = importlib.util.module_from_spec(spec)
@@ -108,6 +111,71 @@ class EvidenceAdmissionTests(unittest.TestCase):
             document["result"]["targets"][0]["report"]["crates"][0]["functions"] = functions
             with self.assertRaises(AssertionError):
                 self.admitted(document)
+
+
+class RpcDeadlineTests(unittest.TestCase):
+    """Check the actual collector without waiting or manufacturing proof evidence."""
+
+    def acceptance(self):
+        acceptance = harness.Acceptance.__new__(harness.Acceptance)
+        acceptance.deadline = 120
+        acceptance.request_id = 0
+        acceptance.pending = bytearray()
+        acceptance.operations = []
+        acceptance.mcp = SimpleNamespace(stdin=io.BytesIO(), stdout=SimpleNamespace(fileno=lambda: 0))
+        acceptance.retain = lambda *_: None
+        return acceptance
+
+    def test_mcp_response_uses_rpc_bound_instead_of_cli_bound(self):
+        acceptance = self.acceptance()
+        waits = []
+
+        def readable(read, write, errors, timeout):
+            waits.append(timeout)
+            return read, write, errors
+
+        with patch.object(harness.time, "monotonic", return_value=0), \
+                patch.object(harness.select, "select", side_effect=readable), \
+                patch.object(harness.os, "read", return_value=b'{"id":1,"result":{"ok":true}}\n'):
+            self.assertEqual(acceptance.exchange("tools/call", {}), {"ok": True})
+        self.assertEqual(waits, [harness.protocol.DEADLINE])
+        self.assertEqual(acceptance.operations[0]["elapsed_s"], 0)
+
+    def test_partial_frame_cannot_restart_the_rpc_deadline(self):
+        acceptance = self.acceptance()
+        clock = [0]
+        waits = []
+
+        def readable(read, write, errors, timeout):
+            waits.append(timeout)
+            return read, write, errors
+
+        def partial(_fd, _size):
+            clock[0] = harness.protocol.DEADLINE + .01
+            return b'{"id":1,'
+
+        with patch.object(harness.time, "monotonic", side_effect=lambda: clock[0]), \
+                patch.object(harness.select, "select", side_effect=readable), \
+                patch.object(harness.os, "read", side_effect=partial):
+            with self.assertRaisesRegex(AssertionError, "five-second RPC bound"):
+                acceptance.exchange("tools/call", {})
+        self.assertEqual(waits, [harness.protocol.DEADLINE])
+
+    def test_decoding_is_inside_the_same_rpc_deadline(self):
+        acceptance = self.acceptance()
+        clock = [0]
+        original_loads = harness.json.loads
+
+        def delayed_decode(raw):
+            clock[0] = harness.protocol.DEADLINE + .01
+            return original_loads(raw)
+
+        with patch.object(harness.time, "monotonic", side_effect=lambda: clock[0]), \
+                patch.object(harness.select, "select", side_effect=lambda read, write, errors, _timeout: (read, write, errors)), \
+                patch.object(harness.os, "read", return_value=b'{"id":1,"result":{}}\n'), \
+                patch.object(harness.json, "loads", side_effect=delayed_decode):
+            with self.assertRaisesRegex(AssertionError, "decoding exceeded original five-second RPC bound"):
+                acceptance.exchange("tools/call", {})
 
 
 if __name__ == "__main__":

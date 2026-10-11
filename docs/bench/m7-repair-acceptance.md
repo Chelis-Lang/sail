@@ -150,8 +150,12 @@ cancels that job and requires those processes to stop. The externally supplied
 completed job and its original evidence must survive unchanged. Cleanup cancels
 only the new owned job and closes only this scenario's MCP sessions.
 
-The scenario keeps the 120-second workflow, 30-second command and five-second
-framed RPC limits. All public responses, diagnostics, operation durations and
+The scenario keeps the 120-second workflow, 30-second CLI command and five-second
+RPC limits. Each MCP response, including decoding, uses one absolute five-second
+deadline; a partial frame cannot restart it. A collector audit corrected MCP's
+previous use of the 30-second command allowance before real-project integration
+was qualified. Admission and deadline regressions exercise the actual collector;
+they do not manufacture proof evidence. All public responses, diagnostics, operation durations and
 cleanup outcomes are retained; private environments are not copied. Passing
 this integration does not replace the three-round performance workload, source
 oracle, full corpus conformance, or concurrent-read latency census.

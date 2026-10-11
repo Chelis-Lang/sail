@@ -161,14 +161,14 @@ class Acceptance:
         self.request_id += 1
         message = {"jsonrpc": "2.0", "id": self.request_id, "method": method, "params": parameters}
         before = time.monotonic()
-        response_deadline = before + self.remaining()
+        response_deadline = before + self.remaining(protocol.DEADLINE)
         self.mcp.stdin.write(json.dumps(message).encode() + b"\n")
         self.mcp.stdin.flush()
         # Keep surplus bytes explicitly, so select never overlooks a response
         # already read into a language-level buffered stream.
         while b"\n" not in self.pending:
-            wait = min(self.remaining(), response_deadline - time.monotonic())
-            assert wait > 0 and select.select([self.mcp.stdout], [], [], wait)[0], "actual MCP response exceeded 30-second command bound"
+            wait = min(self.remaining(protocol.DEADLINE), response_deadline - time.monotonic())
+            assert wait > 0 and select.select([self.mcp.stdout], [], [], wait)[0], "actual MCP response exceeded original five-second RPC bound"
             chunk = os.read(self.mcp.stdout.fileno(), 65536)
             assert chunk, "actual MCP closed before its response"
             self.pending.extend(chunk)
@@ -176,8 +176,10 @@ class Acceptance:
         raw, _, surplus = self.pending.partition(b"\n")
         self.pending = bytearray(surplus)
         response = json.loads(raw)
+        elapsed = time.monotonic() - before
+        assert elapsed <= protocol.DEADLINE, "actual MCP decoding exceeded original five-second RPC bound"
         self.retain(f"mcp-{self.request_id:03d}", response)
-        self.operations.append({"operation": "mcp-" + method, "elapsed_s": time.monotonic() - before})
+        self.operations.append({"operation": "mcp-" + method, "elapsed_s": elapsed})
         assert response.get("id") == self.request_id and "error" not in response, response
         return response["result"]
 
