@@ -1,0 +1,109 @@
+{
+  "actual_z3_path_bound_to_selected_inventory": {
+    "bytes": 34954456,
+    "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+  },
+  "antecedent": "m7-rpc-binding-reader-wait-audit.json",
+  "cleanup_interrupt_s": 5,
+  "cleanup_kill_reap_s": 5,
+  "compile_lifecycle_deadline_s": 120,
+  "execution_state": {
+    "compile": "unattempted",
+    "fake_peer_controls": "unattempted",
+    "real_component": "unattempted"
+  },
+  "fake_peer_control_deadline_s": 3,
+  "frozen_files": {
+    "argv.json": {
+      "bytes": 2222,
+      "sha256": "d36938374cdbae7e6a05d6622d58382c8485fdcc32616014da727ad87bd45dbb"
+    },
+    "commands.bin": {
+      "bytes": 358298,
+      "sha256": "ff1aebf727168498cac2186ddfbebd556073b726fa1d8417df11b043f1b2f1bf"
+    },
+    "execution.json": {
+      "bytes": 5261,
+      "sha256": "ad910ca81e5e896efdbf06b58e09f813251942e86875acf3ab09da619f672d47"
+    },
+    "expected-wire.bin": {
+      "bytes": 358317,
+      "sha256": "faa2a5db20d8337c831d66417dedcfe8bc0fb655ecea7460c812ce6e30dd3ed8"
+    },
+    "instrumented-smt_process.rs": {
+      "bytes": 9614,
+      "sha256": "9573c5559bdd7c396e55b35a3f21482cc8c79c0c8923700fccef3b0e19169767"
+    },
+    "m7-stock-smt-process-diagnostic.py": {
+      "bytes": 26048,
+      "sha256": "e64b0963d1cd707516e0eb31c402c971828292c6c183f97120ab3e6614f4d4a4"
+    },
+    "main.rs": {
+      "bytes": 2544,
+      "sha256": "e6e99d08b4214d1e6807f2fa17a8db100ccd690d11ed6172e19619d5b8e01096"
+    },
+    "managed-evidence.py": {
+      "bytes": 10112,
+      "sha256": "c7bf44ba1c204f8730e4aa628f9be9bf2bab07fd3e95e48357fad0c16e5ee8cd"
+    },
+    "prepared.json": {
+      "bytes": 3012,
+      "sha256": "aa6a54ba52adde7648e91b72f052d099ad8c1cdb5e141ee1b591fc9f4270e382"
+    },
+    "test-m7-stock-smt-process-diagnostic.py": {
+      "bytes": 4250,
+      "sha256": "f00984f9d2c29a1fbf1181b7e0425bfb57fe36be0995be1e156d93d68308a0de"
+    }
+  },
+  "historical_cause_unresolved": true,
+  "historical_concurrency_reproduced": false,
+  "historical_wire_capture": false,
+  "kind": "static-only-stock-smt-boundary-preparation",
+  "observations": {
+    "all_task_children": true,
+    "final_drain_rows": 512,
+    "normal_drain_rows": 256,
+    "observer_samples": 3,
+    "pipes_not_consumed": true,
+    "record_bytes": 32,
+    "root_birth_bound": true,
+    "signals_only_owned_group": true,
+    "tail_rows": 256
+  },
+  "operation_deadline_s": 600,
+  "original_failure": "m7-rpc-binding-reader-terminal.json",
+  "product_source": "46e1da6b1d932f72b78136dabd6747b8009574e9",
+  "proof_or_acceptance": false,
+  "pure_controls": {
+    "host": {
+      "passed": 8,
+      "seconds_reported": 0.002
+    },
+    "linux": {
+      "passed": 8,
+      "seconds_reported": 0.009
+    }
+  },
+  "runtime_manifest_sha256": "4b6f48d278e981f9f3ce40b5e8238ffed2409cac61f003c09fd8ee0c2c9a7c41",
+  "scope": "Intent-derived one-batch forwarding-only transport control; no daemon/cache reproduction, proof, source qualification or reader latency credit",
+  "sealed_inventory_count": 16,
+  "static_freeze": {
+    "bytes": 2153,
+    "sha256": "d4cb74aa6aaa0ba9f8a578d531321eb19025c5bfc36dbb6ad406f38cbbd928fd"
+  },
+  "stock_air_sha256": "d11353d624acb6bb9f0e8c104cbcb705f89a4ac0ce479e283cdbc26848e46201",
+  "tools": {
+    "rustc": {
+      "bytes": 645952,
+      "sha256": "859254978c0a0402c32f949f6de0d99aee73be8d15f45aac00ae1448aac51e74"
+    },
+    "solver": {
+      "bytes": 11000880,
+      "sha256": "167bccac2908ed1a109660b5254ff6da0bc24b227e8424ba8c521620a8840872"
+    },
+    "yansi": {
+      "bytes": 667092,
+      "sha256": "83118760c40b2c90bc01f035ee490ff9103154c392fd41aa66529e175071dacb"
+    }
+  }
+}
