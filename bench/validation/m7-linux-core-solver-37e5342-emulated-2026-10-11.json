@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_commit": "37e5342141e6315f3fde626f1ebf41b97ed33a9e",
+  "source_archive_sha256": "c3355c557670555c99388dde923424edc1492912d2bd203e6c3a7098f3d53991",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Independent complete original solver suite after whole workspace gate540/541FAIL; no stitched acceptance; guard and direct phase markers added, sessions/oracles/deadlines unchanged",
+  "command": "bash ci/run.sh solver",
+  "exit_code": 0,
+  "inclusive_elapsed_seconds": 128.221827042,
+  "nextest_elapsed_seconds": 122.694,
+  "tests": {
+    "run": 39,
+    "passed": 39,
+    "failed": 0,
+    "skipped": 541
+  },
+  "original_gc_clear_elapsed_seconds": 8.395,
+  "m7_accepted": false,
+  "original_assertions_and_deadlines_unchanged": true,
+  "earlier_timeout_cause": "Unknown; this independent pass does not identify the original447 timeout cause",
+  "complete_workspace_gate": "m7-linux-core-gate-37e5342-failure-emulated-2026-10-11.json",
+  "raw_log": {
+    "bytes": 4471,
+    "sha256": "9e5aed473e66d945eb433b9e244c9c4ae6631a5b6331e09c0ed0ac53ddf986c5"
+  }
+}
