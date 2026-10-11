@@ -137,7 +137,7 @@ retired without removing binaries, runtime files or raw evidence.
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
 | Combined implementation | The [current complete local gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json) passes all 609 workspace tests and every remaining gate step; the original pinned-solver suite passes 41/41. The unchanged HTTP coalescing case passes in this scope. | Current native CI and installed repair validation. Historical failed scopes and their unresolved causes remain separate. |
-| Repair workflow | [Native CI passes the original complete small fixture in 45.847 seconds](../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json), under unchanged 120/30/5-second bounds. Earlier emulated whole-workflow timeouts remain failed. | Run the rebuilt combined product and complete real HumanEval/Vest workflows. The small fixture does not establish real-project performance. |
+| Repair workflow | The [updated product builds and installs](../bench/validation/m7-linux-negative-generation-product-a983ab2-emulated-2026-10-11.json). Its [original emulated fixture fails at the final late-EXEC step](../bench/validation/m7-linux-negative-generation-repair-a983ab2-failure-2026-10-11.json), after successful repair, missing selectors, full regression rejection and MCP checks. New native CI passes its small repair fixture. | Measure and reduce terminal-publication cost, then complete the original local workflow and real HumanEval/Vest acceptance. Native small-fixture success does not replace local failures or establish real-project performance. |
 | Responsive reads | The last [original full reader census](validation/m7-descriptor-reader-terminal.md) retains 200 valid samples with four concurrent clients: Status p95 120.526 ms passes; complete Result p95 343.142 ms fails. Component controls for bounded output ownership pass. | Both complete p95 values below 200 ms during actual verification, then original retained CLI/MCP scenarios. No reduced graphs or changed client deadlines. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
 | Frozen repair performance | The unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) is interrupted again during preparation by host storage exhaustion and a Docker shutdown. Four warmup records survive; no measured samples do. The reader's active preparation is also interrupted before its census. No current whole-loop speedup or reader latency result is claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
@@ -187,7 +187,14 @@ pass, including an actual Cargo dependency reuse check. Their first component
 scope fails strict Clippy on a test-only missing semicolon; that correction is
 integrated. The subsequent [complete workspace gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json)
 passes all 609 tests and every remaining step, followed by all 41 original
-pinned-solver controls. Installed-product validation remains pending.
+pinned-solver controls. The rebuilt installed product reaches MCP and the final
+late-EXEC step, where the original complete fixture still exceeds 120 seconds.
+Later streams show only the selected crate being checked, without the old macro
+dependency rebuild pattern. Complete late-EXEC output correctly rejects E0499
+by cleanup, but its publication time against the deadline was not retained.
+Completed jobs have 3.17–3.47 seconds beyond the reported runner time, which
+excludes some publication work. Measuring that seam is the next core task;
+no single stage is established as its cause.
 
 The [async HTTP candidate](decisions/0037-owned-async-shared-http-transport.md)
 passes its 39 affected controls but increases combined helper/I/O CPU and complete

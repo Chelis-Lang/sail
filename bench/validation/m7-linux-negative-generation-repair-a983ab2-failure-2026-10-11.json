@@ -1,0 +1,313 @@
+{
+  "version": 1,
+  "scope": "Original real CLI/MCP repair integration, unchanged 120-second whole,30-second CLI and5-second RPC limits; no precompiled fixture or transferred proof receipts",
+  "source_commit": "a983ab200f0c45bf8631534afed1179f781e92e0",
+  "product_artifacts": {
+    "sail": {
+      "bytes": 76260984,
+      "sha256": "5530f02e907df5f3d9781bf24f27a6e44612fa0932da3002bfaf1e11513b5ad0"
+    },
+    "sail-z3": {
+      "bytes": 11000944,
+      "sha256": "62c47482ffa4ea8bb54df76618b625d3e0ee16302eada159c564c7b8946e5fc8"
+    }
+  },
+  "engine_runtime_before": {
+    "files": {
+      "verus/source/target-verus/release/.cargo-build-lock": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "verus/source/target-verus/release/.vstd-fingerprint": {
+        "bytes": 156,
+        "sha256": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655"
+      },
+      "verus/source/target-verus/release/cargo-verus": {
+        "bytes": 2754984,
+        "sha256": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e"
+      },
+      "verus/source/target-verus/release/libverus_builtin.rlib": {
+        "bytes": 928246,
+        "sha256": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902"
+      },
+      "verus/source/target-verus/release/libverus_builtin_macros.so": {
+        "bytes": 13801320,
+        "sha256": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf"
+      },
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+        "bytes": 8565760,
+        "sha256": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6"
+      },
+      "verus/source/target-verus/release/libvstd.rlib": {
+        "bytes": 10236586,
+        "sha256": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2"
+      },
+      "verus/source/target-verus/release/rust_verify": {
+        "bytes": 29811368,
+        "sha256": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55"
+      },
+      "verus/source/target-verus/release/version.txt": {
+        "bytes": 26,
+        "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+      },
+      "verus/source/target-verus/release/verus": {
+        "bytes": 4705336,
+        "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+      },
+      "verus/source/target-verus/release/verus-root": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "verus/source/target-verus/release/vstd.vir": {
+        "bytes": 30076214,
+        "sha256": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27"
+      },
+      "verus/source/target-verus/release/z3": {
+        "bytes": 34954456,
+        "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+      }
+    },
+    "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d"
+  },
+  "command": [
+    "docker",
+    "exec",
+    "-w",
+    "/tmp/sail-m7-negative-generation-core-a983ab2",
+    "sail-m7-handoff-validation",
+    "python3",
+    "/tmp/sail-m7-negative-generation-core-a983ab2/ci/test-repair.py",
+    "--sail",
+    "/opt/sail-m7-core-product-a983ab2/sail",
+    "--engine-build",
+    "/opt/sail-m7-engine-aaa3-cache/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06",
+    "--verus-source",
+    "/root/.cache/sail/corpus/verus-426d8b01e7ff",
+    "--out",
+    "/tmp/sail-m7-core-original-repair-evidence-a983ab2",
+    "--environment-label",
+    "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work"
+  ],
+  "status": "failed",
+  "evidence_path": "/tmp/sail-m7-core-original-repair-evidence-a983ab2",
+  "container_before": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T17:06:30.345746794Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "exit_code": 1,
+  "external_elapsed_seconds": 122.576376042,
+  "log_sha256": "2934e9953e6a45d03fe2ac30b7d017be4f72fcf281950956c7b48ae9c6c5be86",
+  "engine_runtime_after": {
+    "files": {
+      "verus/source/target-verus/release/.cargo-build-lock": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "verus/source/target-verus/release/.vstd-fingerprint": {
+        "bytes": 156,
+        "sha256": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655"
+      },
+      "verus/source/target-verus/release/cargo-verus": {
+        "bytes": 2754984,
+        "sha256": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e"
+      },
+      "verus/source/target-verus/release/libverus_builtin.rlib": {
+        "bytes": 928246,
+        "sha256": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902"
+      },
+      "verus/source/target-verus/release/libverus_builtin_macros.so": {
+        "bytes": 13801320,
+        "sha256": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf"
+      },
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+        "bytes": 8565760,
+        "sha256": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6"
+      },
+      "verus/source/target-verus/release/libvstd.rlib": {
+        "bytes": 10236586,
+        "sha256": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2"
+      },
+      "verus/source/target-verus/release/rust_verify": {
+        "bytes": 29811368,
+        "sha256": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55"
+      },
+      "verus/source/target-verus/release/version.txt": {
+        "bytes": 26,
+        "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+      },
+      "verus/source/target-verus/release/verus": {
+        "bytes": 4705336,
+        "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+      },
+      "verus/source/target-verus/release/verus-root": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "verus/source/target-verus/release/vstd.vir": {
+        "bytes": 30076214,
+        "sha256": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27"
+      },
+      "verus/source/target-verus/release/z3": {
+        "bytes": 34954456,
+        "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+      }
+    },
+    "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d"
+  },
+  "container_after": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T17:06:30.345746794Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "product_after": {
+    "sail": {
+      "bytes": 76260984,
+      "sha256": "5530f02e907df5f3d9781bf24f27a6e44612fa0932da3002bfaf1e11513b5ad0"
+    },
+    "sail-z3": {
+      "bytes": 11000944,
+      "sha256": "62c47482ffa4ea8bb54df76618b625d3e0ee16302eada159c564c7b8946e5fc8"
+    }
+  },
+  "original_budget": {
+    "whole_seconds": 120,
+    "cli_seconds": 30,
+    "rpc_seconds": 5
+  },
+  "internal_elapsed_seconds": 120.22746730400013,
+  "operation_count": 377,
+  "progress_failures": [],
+  "cleanup_errors": [],
+  "phases": [
+    {
+      "phase": "success",
+      "last_response": "success-result-142.stdout.json",
+      "state": "completed",
+      "accepted": true,
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 0,
+        "wall_ms": 39217.964518
+      },
+      "notes": [
+        "Build-script input declarations were established during this run",
+        "Engine applies the requested no-vstd macro mode (VI-0011)."
+      ],
+      "response_sha256": "e4a1055ed424bcd92ea98dce1b371e8e1edb5a076e66c4926661c0976a8ccb9e"
+    },
+    {
+      "phase": "success-established",
+      "last_response": "success-established-result-45.stdout.json",
+      "state": "completed",
+      "accepted": true,
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 0,
+        "wall_ms": 9704.044421
+      },
+      "notes": [
+        "Engine applies the requested no-vstd macro mode (VI-0011)."
+      ],
+      "response_sha256": "745c214c6bd47b0ffe5dd30fe1a396822121d5527baa2db4082f477bf60ca5b0"
+    },
+    {
+      "phase": "missing",
+      "last_response": "missing-result-43.stdout.json",
+      "state": "completed",
+      "accepted": false,
+      "currentness": "current",
+      "exit_code": 0,
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 0,
+        "wall_ms": 9164.762087
+      },
+      "notes": [
+        "Engine applies the requested no-vstd macro mode (VI-0011)."
+      ],
+      "response_sha256": "221892d836bf9f59d24debb6c71ac62d3d2f0c281a64927adeae88578d83c4ce"
+    },
+    {
+      "phase": "full-regression",
+      "last_response": "full-regression-result-45.stdout.json",
+      "state": "completed",
+      "accepted": false,
+      "currentness": "current",
+      "exit_code": 101,
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 0,
+        "wall_ms": 9849.541004
+      },
+      "notes": [
+        "Engine applies the requested no-vstd macro mode (VI-0011)."
+      ],
+      "response_sha256": "07551176d0b33b86882341b210aa8f95cce17b1948379f189b0ba916b72a0ff4"
+    },
+    {
+      "phase": "mcp-repair",
+      "last_response": "mcp-repair-result-41.stdout.json",
+      "state": "completed",
+      "accepted": false,
+      "currentness": "current",
+      "exit_code": 101,
+      "execution": {
+        "verifier_invocations": 1,
+        "reused_targets": 0,
+        "wall_ms": 8686.617796
+      },
+      "notes": [
+        "Engine applies the requested no-vstd macro mode (VI-0011)."
+      ],
+      "response_sha256": "da5059b0dfa15d3be4d03a7645e92cb60eb19acdec248ed44cbd7f3d9e1d5c31"
+    },
+    {
+      "phase": "late-exec",
+      "last_response": "late-exec-result-44.stdout.json",
+      "state": "running",
+      "accepted": null,
+      "currentness": null,
+      "exit_code": null,
+      "execution": null,
+      "notes": null,
+      "response_sha256": "31340a60fd4856eb22f3010c22a18fb80df8981ab40694c1a856f9d176adfbba"
+    }
+  ],
+  "late_worker_output": {
+    "file": "1791740539554-19475-6.worker.stdout",
+    "sha256": "4467a43c40921005798ffc54e70f456153a148c716032bb4eea9057b9b4ab224",
+    "accepted": false,
+    "focus_present": true,
+    "currentness": "current",
+    "exit_code": 101,
+    "execution": {
+      "verifier_invocations": 1,
+      "reused_targets": 0,
+      "wall_ms": 9834.944545999999
+    },
+    "has_E0499": true,
+    "targets_complete": [
+      false
+    ],
+    "limit": "Captured during original cleanup; exact output/completion-publication timing against the120-second boundary was not retained."
+  },
+  "raw_archive": {
+    "archive_bytes": 64398,
+    "archive_sha256": "38eb39a4fa8adbc2b591c4e22d55a243a7ca211d8a4191d6b8e803423eb7d95c",
+    "regular_members": 780,
+    "payload_bytes": 544121,
+    "inventory_sha256": "ed7217c26965ada956f809e87a80ae19209a3106e9197868a71300d6213eaee8"
+  },
+  "closure": {
+    "scanned": 32,
+    "holders": [],
+    "unreadable": [],
+    "native_files_verified": 780
+  },
+  "limitations": "Failed original complete scope; no timeout, oracle or proof authority was changed. Progress to the last late-EXEC step does not replace a pass. No real-project performance or reader acceptance."
+}

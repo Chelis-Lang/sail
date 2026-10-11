@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "source_commit": "a983ab200f0c45bf8631534afed1179f781e92e0",
+  "source_archive_sha256": "8f2d14ace4f1588575675e7e03a2f0970361db867eb642d6c6ed162c2bc5ffb2",
+  "container": "sail-m7-handoff-validation",
+  "source_path": "/tmp/sail-m7-negative-generation-core-a983ab2",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Actual rebuilt Sail release and fresh byte-identical owned installation. No repair, reader, corpus or performance acceptance from compilation.",
+  "phases": [
+    {
+      "phase": "release-build",
+      "exit_code": 0,
+      "elapsed_seconds": 119.68751925,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-negative-generation-core-a983ab2",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "sail-m7-handoff-validation",
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "sail-cli",
+        "-p",
+        "sail-shim"
+      ]
+    },
+    {
+      "phase": "owned-install",
+      "exit_code": 0,
+      "elapsed_seconds": 0.6225988340000015,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/tmp/sail-m7-negative-generation-core-a983ab2",
+        "-e",
+        "CARGO_BUILD_JOBS=2",
+        "sail-m7-handoff-validation",
+        "python3",
+        "scripts/m7-native-product.py",
+        "install",
+        "--source",
+        "/work/target/release",
+        "--destination",
+        "/opt/sail-m7-core-product-a983ab2",
+        "--expected",
+        "/tmp/sail-m7-negative-generation-core-a983ab2/product-expected.json"
+      ]
+    }
+  ],
+  "container_before": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T17:06:30.345746794Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "source_reused_from_complete_gate": true,
+  "source_before": {
+    "manifest_sha256": "ff02e61f285001e86e600b628108621fed23776228c262e12c93131b69ac1250",
+    "members": 1336
+  },
+  "artifacts": {
+    "sail": {
+      "bytes": 76260984,
+      "sha256": "5530f02e907df5f3d9781bf24f27a6e44612fa0932da3002bfaf1e11513b5ad0"
+    },
+    "sail-z3": {
+      "bytes": 11000944,
+      "sha256": "62c47482ffa4ea8bb54df76618b625d3e0ee16302eada159c564c7b8946e5fc8"
+    }
+  },
+  "installation": {
+    "authority": "installation-only",
+    "credentials": {
+      "cap_eff": "00000000a82425fb",
+      "cap_lease": false,
+      "fsuid": 0,
+      "gids": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uids": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "directory_mode": "0700",
+    "files": {
+      "sail": {
+        "bytes": 76260984,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "5530f02e907df5f3d9781bf24f27a6e44612fa0932da3002bfaf1e11513b5ad0",
+        "uid": 0
+      },
+      "sail-z3": {
+        "bytes": 11000944,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "62c47482ffa4ea8bb54df76618b625d3e0ee16302eada159c564c7b8946e5fc8",
+        "uid": 0
+      }
+    },
+    "source_modified": false,
+    "version": 1
+  },
+  "product_dir": "/opt/sail-m7-core-product-a983ab2",
+  "engine_build": "/opt/sail-m7-engine-aaa3-cache/verus-src-build/426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06",
+  "installation_only": true,
+  "container_after": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "birth": "2026-10-11T17:06:30.345746794Z",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+  },
+  "source_after": {
+    "manifest_sha256": "ff02e61f285001e86e600b628108621fed23776228c262e12c93131b69ac1250",
+    "members": 1336
+  },
+  "prerequisite_gate_record": "bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json",
+  "controller_sha256": "56bfe948c8c553802af2f1d03decb5d18deabac6bace0ffab971d4cacff03e62",
+  "logs": {
+    "release-build.log": {
+      "bytes": 1338,
+      "sha256": "64473ff529117dd5e6e27f1c29dc97e40a82d07b1075b1933af5060eed5c96b2"
+    },
+    "owned-install.log": {
+      "bytes": 525,
+      "sha256": "d6afe2aaaaccbd20ce17f34dbc0126e93fed7f7d8f4739af64d5fdc4adec95a7"
+    }
+  },
+  "acceptance": "Preparation only; installed original repair fixture is separate. No reader, corpus or real-project performance acceptance."
+}

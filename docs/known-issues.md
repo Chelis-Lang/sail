@@ -19,8 +19,10 @@ For current experimental repair use:
   [fifteen affected Linux controls](validation/m7-negative-compiler-generation-first-controls.md)
   pass. The [complete current gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json)
   also passes 609 workspace tests and all 41 original solver controls;
-  installed-product validation remains pending. Proof acceptance and successful
-  receipts remain independent.
+  the installed original fixture now reaches the final late-EXEC step but
+  still exceeds its whole-workflow limit. Later streams no longer show the old
+  macro rebuild pattern. Proof acceptance and successful receipts remain
+  independent.
 - Full-result reader latency and real-project repair speed remain unqualified.
   Original workflow scopes are retained with their original bounds; use the
   [roadmap](ROADMAP.md) for current acceptance status.
