@@ -355,10 +355,11 @@ The separate [stock transport component](validation/m7-stock-smt-boundary-termin
 builds and completes its normal fake-peer transfer with exact input bytes and
 child shutdown. Its recorder drops two packets, so the sensitivity control
 fails and the sequence stops before fault controls or the real forwarding arm.
-The separately frozen [bounded metadata queue correction](validation/m7-stock-smt-recorder-correction.md)
-is approved for one compile, normal transfer, four intentional boundary pauses
-and real forwarding arm, stopping on the first failure. Its original deadlines
-remain unchanged. Neither this transfer nor its recorder failure establishes
-the original verification wait's cause. A separate focused ordinary-verification
+The separately frozen [bounded metadata queue correction](validation/m7-stock-smt-recorder-corrected-terminal.md)
+passes its private compile, normal transfer, all four intentional boundary pauses
+and real forwarding arm. The real arm records all 45 rows and 12 response lines
+without metadata loss; its original deadlines remain unchanged. It uses no
+daemon cache or full-project concurrency and does not establish the historical
+verification wait's cause. A separate focused ordinary-verification
 diagnosis is being prepared without the preceding repair preparation or a reader
 census.
