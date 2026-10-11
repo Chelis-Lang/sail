@@ -125,30 +125,25 @@ family. The daemon constructs retained-result output owners through a bounded
 background service; foreground reads can fall back to full byte validation.
 The selected output-owner overlap and small exact HTTP-body changes have passed
 component validation. Preserving observers across unchanged metadata publication
-now passes its [complete Linux component replay](validation/m7-preserve-freshness-metadata-replay.md), including sensitivity checks. A fresh whole workspace gate passes all 634 tests and its remaining checks, but its
-[controller refuses closure](../bench/validation/m7-linux-combined-gate-dfe3c47-closure-failure-2026-10-12.json)
-before solver tests because it counts eleven terminated zombies as survivors.
-An independent per-thread audit confirms those eleven rows have only one exited
-thread each. The failed scope stays failed; a conservative controller correction
-and a new complete workspace/solver run precede the sealed product, original
-repair and full-reader workloads. These changes do not yet establish real-project speedups.
-The [rebuilt combined release](../bench/validation/m7-linux-combined-product-a9609e9-emulated-2026-10-11.json)
-compiles and installs as private byte-identical copies. Its production source
-matches the earlier combined gate's source, whose HTTP deadline check fails;
-installation supplies no acceptance credit. Its [original emulated CLI/MCP fixture](../bench/validation/m7-linux-combined-repair-a9609e9-failure-2026-10-11.json)
-subsequently fails at 120.266 seconds during missing-function validation after
-success, declaration follow-up, events and baseline complete. Later cases are
-unattempted. No deadline changes or native-success substitution apply.
-After all common-target actors closed, [1.59 GB of incremental
-compiler scratch](validation/m7-closed-incremental-retirement-a9609e9.json) was
-retired without removing binaries, runtime files or raw evidence.
+now passes its
+[complete Linux component replay](validation/m7-preserve-freshness-metadata-replay.md),
+including sensitivity checks. Frozen `730a321` subsequently passes the complete
+workspace gate (634 tests and every remaining step), the original solver suite
+(41/41), ordinary release build and private installation. Its fresh original
+CLI/MCP repair fixture passes in 104.575 seconds within the unchanged 120/30/5
+limits, without the timing wrapper or cleanup/progress errors. The
+[portable validation record](validation/m7-core-730a321-validation.md) binds source,
+product, runtime and raw evidence. Native CI also passes every required job.
+Earlier gate/repair failures and the instrumented diagnostic's UNCERTAIN outcome
+remain distinct retained scopes. These results do not establish real-project
+speedups or complete M7 acceptance; PR #74 remains draft.
 
 | Workstream | Current evidence | Required next result |
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
-| Combined implementation | The [earlier complete local gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json) passes all 609 workspace tests and 41 original solver controls. The [subsequent publication-timing gate](../bench/validation/m7-linux-publication-timing-core-db4c65f-failure-2026-10-11.json) passes strict Clippy and 611 of 612 tests, but again fails the unchanged HTTP coalescing deadline; its separate original solver suite passes 41/41. The latest pushed native CI is green; new timing changes remain unpushed. | A complete gate with the latest changes and installed repair validation. Historical failed scopes and their unresolved causes remain separate. |
-| Repair workflow | The [updated product builds and installs](../bench/validation/m7-linux-negative-generation-product-a983ab2-emulated-2026-10-11.json). Its [original emulated fixture fails at the final late-EXEC step](../bench/validation/m7-linux-negative-generation-repair-a983ab2-failure-2026-10-11.json), after successful repair, missing selectors, full regression rejection and MCP checks. A subsequent [timing-only run](../bench/validation/m7-linux-publication-timing-original-repair-db4c65f-failure-2026-10-11.json) again exhausts the original deadline: two completed workers spend 4.73–4.88 seconds establishing independent freshness after child exit; result parsing is sub-millisecond. New native CI passes its small repair fixture. | Reduce measured freshness construction without weakening Current, then complete the original local workflow and real HumanEval/Vest acceptance. Native small-fixture success does not replace local failures or establish real-project performance. |
-| Responsive reads | The last [original full reader census](validation/m7-descriptor-reader-terminal.md) retains 200 valid samples with four concurrent clients: Status p95 120.526 ms passes; complete Result p95 343.142 ms fails. The [selected output overlap change](validation/m7-result-output-overlap-native.md) passes 30 daemon controls, eight primitive controls and strict checks; its separate validation component improves p95 from 19.366 to 12.713 ms. No RPC or Python parsing is included in that component. | Both complete p95 values below 200 ms during actual verification, then original retained CLI/MCP scenarios. No reduced graphs or changed client deadlines. |
+| Combined implementation | Frozen `730a321` passes the [complete local gate and original solver suite](validation/m7-core-730a321-validation.md): 634 workspace tests, all remaining steps, and 41/41 solver tests. [Native CI](https://github.com/Chelis-Lang/sail/actions/runs/38185209382) passes all required checks. | Preserve coherent installed-product validation; historical failed scopes remain failed. |
+| Repair workflow | The same frozen source builds and installs ordinary private products; its [fresh original CLI/MCP fixture](validation/m7-core-730a321-validation.md) passes in 104.575 seconds with original 120/30/5 bounds and full checks. The separate instrumented scope remains UNCERTAIN despite a passing fixture. | Frozen HumanEval/Vest acceptance and measured whole-loop gains. Small-fixture success does not qualify real-project performance. |
+| Responsive reads | The last [original full reader census](validation/m7-descriptor-reader-terminal.md) retains 200 valid samples with four concurrent clients: Status p95 120.526 ms passes; complete Result p95 343.142 ms fails. The [selected output overlap change](validation/m7-result-output-overlap-native.md) passes 30 daemon controls, eight primitive controls and strict checks; its separate validation component improves p95 from 19.366 to 12.713 ms. No RPC or Python parsing is included in that component. | The original current-product workflow is running; no outcome is recorded. Both complete p95 values must be below 200 ms during actual verification, followed by original retained CLI/MCP scenarios. No reduced graphs or changed client deadlines. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
 | Frozen repair performance | The unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) is interrupted again during preparation by host storage exhaustion and a Docker shutdown. Four warmup records survive; no measured samples do. The reader's active preparation is also interrupted before its census. No current whole-loop speedup or reader latency result is claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
 

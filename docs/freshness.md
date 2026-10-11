@@ -268,7 +268,11 @@ the existing continuous native owner for the same context; every input, namespac
 lease and helper barrier remains mandatory, and dirty or absent coverage still
 recollects synchronously. The [complete component replay](validation/m7-preserve-freshness-metadata-replay.md)
 passes metadata, freshness, strict and sensitivity controls. Real source edits
-still invalidate the owner; combined product and repair performance remain pending.
+still invalidate the owner. The [frozen combined gate, ordinary product and
+fresh original repair fixture](validation/m7-core-730a321-validation.md) pass with
+unchanged checks. The small-fixture pass does not isolate the implementation's
+benefit or establish real-project repair performance; reader acceptance remains
+pending.
 
 Real source or declaration changes still invalidate the combined source/runtime
 projection, even when compiler bytes remain unchanged. Independent runtime

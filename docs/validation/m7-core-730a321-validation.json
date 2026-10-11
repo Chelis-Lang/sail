@@ -1,0 +1,218 @@
+{
+  "schema": 1,
+  "source_commit": "730a3210151ca51b7e011121c4795553b0cfa3e5",
+  "status": "PASS for listed scopes; M7 acceptance incomplete",
+  "environment": "Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "source_archive_sha256": "810e2ffb2d23b452bcf669752fccab1d5204d36a0b54dfe8aef8b49f92698f41",
+  "source_inventory_sha256": "a533e364c3c1a8e0cc63f431f03929405a797393371ed39b00e43749f081e007",
+  "source_regular_files": 1419,
+  "source_symlinks": 1,
+  "workspace": {
+    "status": "PASS",
+    "tests_passed": 634,
+    "solver_cases_skipped": 41,
+    "all_gate_steps_passed": true,
+    "phases": [
+      {
+        "name": "gate",
+        "exit_code": 0,
+        "elapsed_seconds": 547.9675909149998,
+        "log_sha256": "8c8a7dcf437bc67057abeb18d7b114ec92bdce5d3f29940863d1a559cdf011da",
+        "known_group_live_survivors": 0,
+        "known_group_unavailable": 0,
+        "terminated_unreaped": 16
+      },
+      {
+        "name": "solver",
+        "exit_code": 0,
+        "elapsed_seconds": 99.85667721200025,
+        "log_sha256": "748ea6f6ba2eef98adbe0424dc1a8478b34d544443bf38a17df80d6649342490",
+        "known_group_live_survivors": 0,
+        "known_group_unavailable": 0,
+        "terminated_unreaped": 6
+      }
+    ],
+    "result_sha256": "4e5c1e2b808910bf4575ec4197f70bd4c8e71cb3d93c1e850d610295f54697af",
+    "controller_sha256": "2136ad66582925aed389fd1b1410368a23001c4f049e6f2a18875a35e796bf6e",
+    "container_before_after_equal": true,
+    "uncertainty": []
+  },
+  "solver": {
+    "status": "PASS",
+    "tests_passed": 41,
+    "workspace_cases_skipped": 634,
+    "original_test_deadlines_unchanged": true
+  },
+  "product": {
+    "status": "PASS",
+    "phases": [
+      {
+        "name": "release-build",
+        "exit_code": 0,
+        "elapsed_seconds": 107.37885775699988,
+        "log_sha256": "af0dc568d1b86daa807aebe6e7f9b08c9f7b057996446af62f1c70c3bf395b21",
+        "known_group_live_survivors": 0,
+        "known_group_unavailable": 0,
+        "terminated_unreaped": 0
+      },
+      {
+        "name": "owned-install",
+        "exit_code": 0,
+        "elapsed_seconds": 2.4749667090000003,
+        "log_sha256": "4f6afd659e7a4dfcc38990f3dd80e096197b7b1a7c3e6d489410b6f9f11bcaf3",
+        "known_group_live_survivors": 0,
+        "known_group_unavailable": 0,
+        "terminated_unreaped": 0
+      }
+    ],
+    "result_sha256": "e25df8ef67374aabbb0f111469ae7b84630591a690b4bc015e20032f54f8a009",
+    "controller_sha256": "d97c16128615d7eb0374a3f25ddb9c4eccb9f08ce24b171c9a48ce048668ae84",
+    "producer_grant_sha256": "955f2766ff5081bc582f71321d3731fc0015ddb723b5628c40bcac021a4fb444",
+    "acceptance_grant_sha256": "92f3f1ef3ea78696b39f38e0c4ba34876cd0566360cbce75d76b249724737cb6",
+    "artifacts": {
+      "sail": {
+        "bytes": 76124712,
+        "sha256": "b5909780cbd2c64092675e8e5ae4e8b1ea8e3521a84c32cebce7981614ba79d3"
+      },
+      "sail-z3": {
+        "bytes": 11000960,
+        "sha256": "4f4be3cb88ee5276d62eeb072e7806a7f6a8c8e48e84e1389bca5ab65df69be7"
+      }
+    },
+    "owned_private_modes": "0700 files and directory",
+    "installed_bytes_equal": true,
+    "authority": "installation-only; original repair is a separate scope",
+    "engine_variant": "426d8b01e7ffb910a36c15e1f870ff985bb61eef-c77e1a1879302e06",
+    "engine_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "engine_artifact_count": 13,
+    "container_before_after_equal": true,
+    "acceptance_installation_caveat": "Initial before-launch guard comparison passed. The host save then called nonexistent reader.sha and raised AttributeError. hashlib subsequently saved the same-birth guard during preparation; installation and byte seals passed."
+  },
+  "original_repair": {
+    "status": "PASS",
+    "fixture_sha256": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7",
+    "timing_wrapper_used": false,
+    "original_limits_seconds": [
+      120,
+      30,
+      5
+    ],
+    "summary_elapsed_seconds": 104.57547896400001,
+    "host_elapsed_seconds": 115.06580333299999,
+    "operations": 339,
+    "progress_failures": [],
+    "cleanup_errors": [],
+    "verus_source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "fixture_vstd": "supported-no-vstd-metadata",
+    "dependency_verification": "ordinary-full-cargo-plan",
+    "result_sha256": "b0b09325f9b17c7ecf7916743fa0c6143dbe2119c87ba500b6744084067a455d",
+    "controller_sha256": "c6fa90b385808d2ed0cdfbb54cbc60fc806a3bb7dce707cc37df73f60331d057",
+    "native_controller_sha256": "768a3537c998597b0a65d9a36779377b309f592d7c147858acc43a7beb62aa01",
+    "raw_archive_sha256": "cea1202b5314de2c4ee7429ce2fa0369465dc4cee9347aae44e411e61f6bf6cb",
+    "raw_archive_bytes": 75044,
+    "phases": [
+      {
+        "name": "original-repair",
+        "exit_code": 0,
+        "elapsed_seconds": 108.73504425700003,
+        "log_sha256": "c04243bf90f20daea45899b082177a73787ca202e169d6264908d59856c494b7",
+        "known_group_live_survivors": 0,
+        "known_group_unavailable": 0,
+        "terminated_unreaped": 0
+      }
+    ],
+    "container_before_after_equal": true,
+    "uncertainty": [],
+    "independent_holder_audit": {
+      "sha256": "40a501c80dd4141b90d2c671a957ddf0d2b9de91960532528361c2488223ad6c",
+      "scanned": 66,
+      "live_candidates": 0,
+      "unavailable": 0,
+      "stable_all_dead_groups": 64,
+      "elapsed_seconds": 0.02515620799977114,
+      "scope": "repair/product/runtime prefixes only; exact self PID/birth excluded; no general orphan certificate"
+    }
+  },
+  "instrumented_observation": {
+    "status": "UNCERTAIN unchanged",
+    "controller_sha256": "89075d55eb25a74dd8dd72756e29712ad7d6f8ee43b12a16e8313f25d718d2c6",
+    "raw_archive_sha256": "2a24135958f62915c457d3ff4fec71b93d33e2bbbe364ec19e243cd3f6146367",
+    "original_fixture_passed": true,
+    "uncertainty_reasons": [
+      "native-closure-unavailable",
+      "docker-exit-unconfirmed"
+    ],
+    "capture_partial": true,
+    "ring_capacity": 256,
+    "started": 755,
+    "dropped": 0,
+    "overwritten": 499,
+    "worker_publication_rows": 4,
+    "freshness_establish_us": [
+      11287,
+      8754,
+      14597,
+      7556
+    ],
+    "acceptance_credit": false,
+    "cold_or_whole_loop_causal_attribution": false
+  },
+  "native_ci": {
+    "run_id": 38185209382,
+    "url": "https://github.com/Chelis-Lang/sail/actions/runs/38185209382",
+    "head_sha": "730a3210151ca51b7e011121c4795553b0cfa3e5",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "No AI authorship markers",
+        "conclusion": "success"
+      },
+      {
+        "name": "image / CI image",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end (managed)",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end (repair)",
+        "conclusion": "success"
+      },
+      {
+        "name": "Solver tests",
+        "conclusion": "success"
+      },
+      {
+        "name": "Conformance",
+        "conclusion": "success"
+      },
+      {
+        "name": "Workspace gate",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end (legacy)",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end",
+        "conclusion": "success"
+      },
+      {
+        "name": "CI completion",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "remaining": {
+    "original_current_product_reader": "running; no outcome recorded",
+    "HumanEval_and_Vest": "three rounds/spread/full oracles and >=2x median each remain outstanding",
+    "complete_standard_and_cache_fill_warm": "outstanding; original158Same+stockVerismo3600timeout scope unchanged",
+    "PR74": "draft; M7 unaccepted"
+  },
+  "closure_limit": "known birth-bound groups and complete dead-task evidence; not arbitrary orphan absence",
+  "historical_failures_reclassified": false,
+  "no_private_environment_values_exported": true
+}

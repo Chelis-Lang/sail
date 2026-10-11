@@ -4,8 +4,9 @@ The original 120-second publication diagnostic retained two completed worker
 freshness fills of 4.73–4.88 seconds and failed at missing foreground. The
 [exact-byte metadata publication implementation](validation/m7-preserve-freshness-metadata-replay.md)
 passes complete component and sensitivity controls and preserves unchanged owners.
-Actual source edits still invalidate them; combined product, whole-loop and reader
-acceptance remain pending.
+Actual source edits still invalidate them. The [frozen `730a321` local gate,
+ordinary product and fresh original repair fixture](validation/m7-core-730a321-validation.md)
+now pass; real-project whole-loop gains and reader acceptance remain pending.
 
 Optional [publication timings](result-rpc-diagnostics.md) separate child exit,
 document reading, freshness establishment and persisted job status. Retained
@@ -41,20 +42,19 @@ For current experimental repair use:
   identifies this mechanism. The branch now retains ordinary contracts only
   after fully observed normal negative verification; its
   [fifteen affected Linux controls](validation/m7-negative-compiler-generation-first-controls.md)
-  pass. The [complete current gate](../bench/validation/m7-linux-combined-core-a983ab2-pass-2026-10-11.json)
-  also passes 609 workspace tests and all 41 original solver controls;
-  the installed original fixture now reaches the final late-EXEC step but
-  still exceeds its whole-workflow limit. Later streams no longer show the old
-  macro rebuild pattern. Proof acceptance and successful receipts remain
-  independent.
+  pass. The [current frozen validation](validation/m7-core-730a321-validation.md)
+  passes 634 workspace tests, all 41 original solver controls and the complete
+  original installed repair fixture within its unchanged 120/30/5 limits. Earlier
+  deadline failures remain retained. Proof acceptance and successful receipts
+  remain independent; real-project performance is still unqualified.
 - Full-result reader latency and real-project repair speed remain unqualified.
   Original workflow scopes are retained with their original bounds; use the
   [roadmap](ROADMAP.md) for current acceptance status.
-- The last complete gate fails the shared HTTP-reader deadline. A small exact
-  body optimization is now selected after 38 affected tests, strict checks and
-  the original concurrent-reader case pass. Its complete workspace run is next;
-  component success does not close the earlier whole-gate failure. The async
-  transport candidate remains rejected after its measured regression. See
+- The unchanged shared HTTP-reader deadline now passes in the complete
+  `730a321` gate. The small exact-body implementation also passes its affected
+  controls and sensitivity. Historical whole-gate failures remain failed; this
+  pass does not identify their cause or establish a stable latency gain. The
+  async transport candidate remains rejected after its measured regression. See
   [HTTP validation](validation/m7-http-small-known-body-actual-controls.md).
 - The selected result-output change reduces validation lock contention while
   preserving independent input and output checks. Its component p95 improves
@@ -707,3 +707,21 @@ all 128 checks remain complete. Source is selected for integration, with
 installed live reader acceptance pending. The original
 343.142 ms complete Result p95 failure remains failed, and the original Python
 full-graph collector, four readers, 200 samples and strict 200 ms bound remain.
+
+## Frozen 730a321 product scopes
+
+The [portable record](validation/m7-core-730a321-validation.md) separates the
+complete local gate and solver pass, ordinary owned product delivery, fresh
+original repair pass, and successful native CI. The original repair fixture ran
+without timing observation and passed all checks in 104.575 seconds, with no
+progress or cleanup errors. Its known-group and independent bounded holder audits
+retain terminated unreaped tasks separately; they are not general orphan-absence
+certificates.
+
+The earlier instrumented `730a321` scope remains UNCERTAIN because timing capture
+was partial and its census included itself. Four retained worker rows report
+7.556–14.597 ms freshness establishment, but initial overwritten rows and the
+complete interval are unavailable. These observations establish no historical
+cause, cold improvement or reader credit. The current original reader workflow
+is running; no outcome is recorded. M7 and draft PR #74 remain unaccepted until
+reader, complete standard/cache and three-round HumanEval/Vest gates pass.
