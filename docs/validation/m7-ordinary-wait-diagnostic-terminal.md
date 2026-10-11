@@ -21,6 +21,11 @@ functions and 331 HumanEval functions, all verified. These are distinct counting
 units, not evidence of missing functions or a changed target. The full report
 remains retained, including both complete target graphs.
 
+The persisted `run-sidecars/result.json` is retained verbatim at 2,158,274 bytes.
+Raw CLI `stdout` is independently retained at 2,158,275 bytes, including its
+trailing LF. The JSON record names both archive members and seals; neither file
+was normalized to derive its seal.
+
 ## What the observations establish
 
 The three snapshots occurred at context-ready (21.716 seconds), target-started
