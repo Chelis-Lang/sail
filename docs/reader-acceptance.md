@@ -13,6 +13,18 @@ output directory and environment label. `--help` lists the required arguments.
 The source-runtime manifest must be accepted by that exact Sail binary; an
 incompatible engine is a setup failure. This workload is local-only.
 
+Before setup, the controller records actual ownership/capability prerequisites
+for both installed product binaries and refuses foreign-owned products without
+effective `CAP_LEASE`. This check does not cover the complete runtime inventory.
+Optional `--lease-inventory candidate-guard-bindings.json` audits every binding
+in the exact candidate's original complete Guard capture and records its hash.
+It cannot prove completeness of an arbitrary supplied list or cover future
+created inputs; stale/changed bindings are refused. Production Guard acquisition
+remains the authority. Use [native product setup](native-product-setup.md) to
+create new byte-identical service-owned copies without changing old seals.
+Neither this preflight nor a successful installation admits a proof, changes
+preparation deadlines or qualifies a selected runtime.
+
 `--setup-timeout 600` is the default preparation budget per invocation.
 `--setup-timeout 0` explicitly permits unmeasured preparation to completion,
 with progress reports and cancellation of owned actors. Neither setting changes

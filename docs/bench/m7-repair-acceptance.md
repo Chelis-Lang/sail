@@ -91,8 +91,12 @@ evidence latency and GNU-time peak RSS alongside medians and round spreads.
 
 Run with scratch projects, runtime, caches and output on the container's native
 Linux filesystem (for example under `/tmp`), then copy the retained output to
-the repository. A Docker Desktop host bind mount cannot establish the required
-kernel freshness coverage. This affects evidence classification, not the
+the repository. Also check the complete guarded inventory's service filesystem UID ownership or
+effective `CAP_LEASE`; native paths alone do not establish lease availability.
+[Native product setup](../native-product-setup.md) creates fresh verified copies
+and records this environmental prerequisite without modifying sealed artifacts
+or bypassing any Currentness check. A Docker Desktop host bind mount cannot
+establish the required kernel freshness coverage. This affects evidence classification, not the
 verification verdict or the permission to run the workload under emulation.
 
 `scripts/m7-job-read-bench.py --socket SOCKET --job COMPLETED_JOB

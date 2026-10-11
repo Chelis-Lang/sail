@@ -42,6 +42,57 @@ class WarmReaderTests(unittest.TestCase):
         run.summary = {"setup": [], "commands": [], "proofs": {}, "worker_archives": {}, "archival_errors": [], "cleanup_errors": [], "unmeasured_preparation": {"enabled": False, "phases": []}}
         return run
 
+    def frozen_runner(self, root):
+        run = self.runner(root)
+        run.bin.mkdir()
+        run.probe_dir = root / "probes"
+        run.probe_dir.mkdir()
+        run.args.python_probe = run.probe_dir / "python-reader-probe.py"
+        for directory, names in [(run.bin, ("sail", "sail-z3")),
+                                 (run.probe_dir, ("job_read_bench", "python-reader-probe.py"))]:
+            files = {}
+            for name in names:
+                (directory / name).write_bytes(name.encode())
+                files[name] = {"sha256": harness.bench.sha(directory / name)}
+            (directory / "freeze.json").write_text(json.dumps({"files": files}))
+        return run
+
+    def test_product_ownership_failure_is_retained_before_any_setup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run = self.frozen_runner(Path(temporary))
+            with patch.object(harness.native_product, "identity", return_value={"fsuid": os.geteuid() + 1, "cap_lease": False}):
+                with self.assertRaisesRegex(ValueError, "SAIL0948"):
+                    run.freeze()
+            self.assertEqual(run.summary["commands"], [])
+            record = run.summary["product_ownership_prerequisite"]
+            self.assertFalse(record["ownership_prerequisite_met"])
+            self.assertFalse(record["currentness_certified"])
+            self.assertEqual(record["supplied_bindings"], 2)
+
+    def test_optional_complete_inventory_audit_does_not_claim_current(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = self.frozen_runner(root)
+            source = root / "runtime-input"
+            source.write_bytes(b"runtime")
+            metadata = source.stat()
+            rows = [{"path": list(os.fsencode(source)), "canonical": list(os.fsencode(source.resolve())),
+                     "device": metadata.st_dev, "inode": metadata.st_ino}]
+            run.args.lease_inventory = root / "guard.json"
+            run.args.lease_inventory.write_text(json.dumps(rows))
+            with patch.object(harness.native_product, "identity", return_value={"fsuid": os.geteuid(), "cap_lease": False}):
+                run.freeze()
+            record = run.summary["supplied_guard_ownership_prerequisite"]
+            self.assertTrue(record["ownership_prerequisite_met"])
+            self.assertFalse(record["currentness_certified"])
+            self.assertEqual(record["inventory_sha256"], harness.bench.sha(run.args.lease_inventory))
+            self.assertIn("m7-native-product.py", run.summary["controller_scripts"])
+            rows[0]["inode"] += 1
+            run.args.lease_inventory.write_text(json.dumps(rows))
+            with patch.object(harness.native_product, "identity", return_value={"fsuid": os.geteuid(), "cap_lease": False}):
+                with self.assertRaisesRegex(ValueError, "binding changed"):
+                    run.freeze()
+
     def test_current_independent_full_proof_and_exact_manifest_are_required(self):
         document = self.document()
         self.assertEqual(harness.setup_state(document["repair"], "manifest", False), "ready")

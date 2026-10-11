@@ -114,7 +114,13 @@ an editor can write. No unsafe Rust or FFI is introduced. Missing Python, denied
 lease ownership, unsupported kernel/filesystem behavior, an existing writable
 mapping, helper loss or unavailable kernel evidence disables the fast path. Unprivileged
 leases require matching file ownership; system-owned runtime files may prevent
-establishment. MacOS retains conservative content revalidation.
+establishment. A root container may lack effective `CAP_LEASE`; ownership must
+match the service's filesystem UID across the complete runtime/source/helper
+inventory, not just the two executables. Use new byte-verified service-owned
+copies or a dedicated container with that specific capability, preserving old
+seals. See [native product setup](native-product-setup.md). Installation metadata
+and ownership audits never certify Current. MacOS retains conservative content
+revalidation.
 
 Established read barriers inspect the helper's kernel-owned lease state rather
 than asking a scheduled Python process for another acknowledgement. Sail binds
