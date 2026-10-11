@@ -601,3 +601,17 @@ fails strict Clippy on a redundant test-only closure. The direct method spelling
 is corrected; neither this lint failure nor its correction identifies the
 historical cache-maintenance stall. Tests and solver were unattempted in that
 failed gate scope.
+
+### Shared HTTP reader deadline in the combined gate
+
+The [b63 complete local gate](../bench/validation/m7-linux-combined-core-gate-b63af10-failure-2026-10-11.json)
+passes strict Clippy and 606 of 607 workspace tests. The concurrent HTTP-reader
+case fails: all eight readers miss the original 250 ms deadline, although they
+coalesce into exactly one GET. The fixture receives complete request headers
+and sends its response after its unchanged 75 ms delay. Retained stage timings
+show the response near the first caller's deadline; they do not identify a
+causal bottleneck or attribute the failure to emulation or machine load.
+The remaining gate steps and pinned-solver suite are unattempted in this scope.
+This failure remains separate from the earlier cache-maintenance timeout and
+its passing focused cleanup controls. No deadline, fixture delay, reader count
+or all-hit assertion has been weakened.
