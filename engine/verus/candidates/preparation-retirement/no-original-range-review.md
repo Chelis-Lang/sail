@@ -100,3 +100,23 @@ with `items_after_test_module`. This is not an authority change, and the frozen
 control scope must retain its actual outcome. If reproduced, move the unchanged
 helper before the module in a new frozen identity; do not suppress the lint or
 change assertions. No actual lint result for this composition is available yet.
+
+The first frozen scope subsequently failed after 148.315 seconds: VIR's 42
+controls and strict check passed, but driver test compilation reported nine
+`E0603` private-module accesses. Driver strict validation was unattempted, so
+the anticipated ordering lint was not an actual result of that scope. Its
+complete raw and closure evidence remain retained in B's `1170b8c`.
+
+The narrow correction was independently applied in small review scratch and
+matched all eight source identities: full patch
+`d1225e56a98dc09e62e7d520ee0ff65ec308520bf801e04237123bdc8feb22f9`,
+delta `b4e50ca99f23265e3f8bc6c31d6f411df76aea42f982525354c074298dfa600f`.
+Only three direct-forwarding `cfg(test)` verifier wrappers, their nine new test
+call paths, and the unchanged Pending helper's lexical location differ. After
+those call-path substitutions, the test assertions and prior prefix are exact;
+production engine, roles, validator, budgets, domain, codec and retirement
+behavior are unchanged. No static blocker was identified. Corrected controller
+`b97d9693138af242529b0d457d6b6d348930ebc546468ea294c21561d88e5356`
+requires the exact failed result and source before running a new complete scope.
+Corrected source tests and strict results remain pending; this review launches
+no compiler, runtime or qualification actor.
