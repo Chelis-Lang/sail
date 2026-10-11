@@ -164,8 +164,12 @@ passes every check in 476 seconds. The separate
 [retained CLI/MCP workflow](validation/m7-rpc-retained-functional.md)
 re-establishes genuine Current evidence, then exposes a wrong-stream cursor
 assertion conflicting with the documented explicit-error contract. Its original
-failure is preserved; the corrected assertion will require the exact stable
-error while preserving reconnect and gap checks.
+failure is preserved. The [corrected retained run](validation/m7-rpc-retained-corrected.md)
+passes exact error refusal, reconnects, complete results, immutable comparisons
+and actual submission/cancellation under the original 120/30/5-second bounds.
+The [complete-transfer component](validation/m7-result-transfer-profile.md)
+finds socket backpressure during concurrent Python parsing, but larger send
+buffers do not improve complete-client p95; no buffer change is selected.
 
 | Workstream | Current evidence | Remaining product gate |
 |---|---|---|
