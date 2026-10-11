@@ -105,5 +105,33 @@
     "The full original unit timeout and remaining units must still run to terminal",
     "The earlier complete failed standard attempt remains separate"
   ],
-  "raw_stream_size_observation_unix_ns": 1791692137671809881
+  "raw_stream_size_observation_unix_ns": 1791692137671809881,
+  "bounded_proc_metadata": {
+    "raw_file": "proc-syscalls.json",
+    "sha256": "91f3e07d302d69089a16ab4b0414121bdfaa8fa48e7a31591ae64e18187762d9",
+    "bytes": 6996,
+    "read_unix_ns": 1791692286155082838,
+    "leader_and_verifier_identity_match_before_and_after": true,
+    "thread_limit": 32,
+    "per_thread_byte_limit": 512,
+    "maps_byte_limit": 65536,
+    "observed_threads": 16,
+    "syscall_number": 98,
+    "operation_counts": {
+      "0x86": 15,
+      "0x80": 1
+    },
+    "common_reported_pc": "0x800000026ef4",
+    "maps_bytes": 4074,
+    "maps_truncated": false,
+    "reported_pc_present_in_recorded_maps": false,
+    "observed_container_header_constants": {
+      "__NR_futex": 98,
+      "FUTEX_LOCK_PI": 6,
+      "FUTEX_PRIVATE_FLAG": 128,
+      "FUTEX_WAIT": 0
+    },
+    "no_debugger_attach_process_pause_memory_or_pipe_read": true,
+    "interpretation_limit": "The native wait metadata does not identify the responsible lock owner, map a user stack, or establish cause"
+  }
 }

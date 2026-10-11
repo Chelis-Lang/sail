@@ -13,6 +13,14 @@ CPU advancement. All 16 observed verifier threads were sleeping, principally
 in `rt_mutex_schedule`; three direct pinned-Z3 children were in `anon_pipe_read`.
 The separately checked stdout, stderr and time files were still empty.
 
+A separate bounded `/proc` metadata read retained all 16 reported thread
+syscalls, with leader and verifier identities checked before and after. They
+report syscall 98: fifteen operations `0x86` and one `0x80`. The container's
+Linux header constants identify futex 98, private flag 128, lock-PI operation 6
+and wait operation 0. The reported common PC is absent from the complete
+recorded maps, so this does not supply a mapped user stack or a lock owner.
+The read attached no debugger and consumed no memory or pipe contents.
+
 These observations establish a sleeping pipeline. They do not identify the
 responsible lock, prove a deadlock, or establish emulation or overlapping work
 as its cause. No debugger attachment, pipe consumption, retry, source change,
