@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "scope": "Standalone guest remote-debug preflight; no proof actor",
+  "fixture_sha256": "c85297b3321d48f93fc7fe9686ff048a85cdabf3a637303213aae0cb724165e5",
+  "status": "FAIL",
+  "diagnostic_only_env": {
+    "ROSETTA_DEBUGSERVER_PORT": "31337"
+  },
+  "actor": {
+    "pid": 451,
+    "pgid": 451,
+    "starttime_ticks": 5579327
+  },
+  "debugger_command": [
+    "gdb",
+    "-nx",
+    "-batch",
+    "/diagnostic/fixture-child",
+    "-ex",
+    "set pagination off",
+    "-ex",
+    "set confirm off",
+    "-ex",
+    "set print frame-arguments none",
+    "-ex",
+    "set remotetimeout 2",
+    "-ex",
+    "set architecture i386:x86-64",
+    "-ex",
+    "target remote 127.0.0.1:31337",
+    "-ex",
+    "break diagnostic_pipe_wait_marker",
+    "-ex",
+    "continue",
+    "-ex",
+    "python exec(\"import pathlib; data=pathlib.Path('/proc/451/maps').read_bytes(); assert len(data)<=65536; pathlib.Path('/diagnostic/remote-child/fixture.maps').write_bytes(data); rows=[line.split() for line in data.decode().splitlines()]; libs={r[-1]:int(r[0].split('-')[0],16)-int(r[2],16) for r in reversed(rows) if len(r)>5 and r[2]=='00000000' and r[-1].endswith(('libc.so.6','ld-linux-x86-64.so.2'))}; [gdb.execute('add-symbol-file '+name+' -o '+hex(bias)) for name,bias in libs.items()]\")",
+    "-ex",
+    "thread apply all bt 12",
+    "-ex",
+    "detach",
+    "-ex",
+    "quit"
+  ],
+  "debugger_exit_code": 0,
+  "debugger_elapsed_seconds": 4.762009960999421,
+  "fixture_exit_code": -5,
+  "checks": {
+    "debugger_exit_zero": true,
+    "both_known_guest_frames": true,
+    "detach_reported": false,
+    "fixture_normal_exit_after_detach": false
+  },
+  "actor_closed": true,
+  "raw_sha256": {
+    "gdb.stdout": "c65339486595943c4a82369dba1ceaa6611dc0af55d5640fcea97efc90de5961",
+    "fixture.maps": "cdd239f510d2fbd68d57d9d1394f4b67a8b830086844649755bfa9a8dc8c80de",
+    "fixture.stdout": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5",
+    "fixture.stderr": "91384627ef3571c7f9447c219a12faa3abac8c5d19e27caa3f5bf4997bd794a8"
+  }
+}

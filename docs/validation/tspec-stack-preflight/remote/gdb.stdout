@@ -1,0 +1,20 @@
+The target architecture is set to "i386:x86-64".
+warning: remote target does not support file transfer, attempting to access files from local filesystem.
+0x00007ffffffe5540 in ?? () from /lib64/ld-linux-x86-64.so.2
+Breakpoint 1 at 0x5555555552e8: file /diagnostic/fixture.c, line 20.
+warning: Probes-based dynamic linker interface failed.
+Reverting to original interface.
+[New Thread 369]
+
+Thread 1 hit Breakpoint 1, diagnostic_pipe_wait_marker () at /diagnostic/fixture.c:20
+20	__attribute__((noinline)) static int diagnostic_pipe_wait_marker(void) {
+
+Thread 2 (Thread 369):
+#0  0x00007fffff647e4f in ?? ()
+#1  0x0000003000000020 in ?? ()
+#2  0x0000000000000000 in ?? ()
+
+Thread 1 (Thread 357):
+#0  diagnostic_pipe_wait_marker () at /diagnostic/fixture.c:20
+#1  0x00005555555553d9 in main () at /diagnostic/fixture.c:33
+Remote connection closed

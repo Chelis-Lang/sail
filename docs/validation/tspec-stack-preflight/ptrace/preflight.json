@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "scope": "Owned known-symbol x86 debugger preflight only; no compiler or proof actor",
+  "fixture_sha256": "ebe31bc6c5a180792c16aca8a58a69375cc38f290b3797137a093b1654bc2b2f",
+  "status": "FAIL",
+  "compile_exit_code": 0,
+  "fixture_binary_sha256": "86c30903b6bcea4fbe348f8e35749491c49e44138b0bd12450753241c9efcde6",
+  "actor": {
+    "pid": 302,
+    "pgid": 302,
+    "starttime_ticks": 5552982
+  },
+  "debugger_command": [
+    "gdb",
+    "-nx",
+    "-batch",
+    "-ex",
+    "set pagination off",
+    "-ex",
+    "set confirm off",
+    "-ex",
+    "set print frame-arguments none",
+    "-ex",
+    "set print thread-events off",
+    "-ex",
+    "attach 302",
+    "-ex",
+    "thread apply all bt 12",
+    "-ex",
+    "detach",
+    "-ex",
+    "quit"
+  ],
+  "debugger_exit_code": 0,
+  "debugger_elapsed_seconds": 0.3445738340014941,
+  "fixture_exit_code": 0,
+  "checks": {
+    "debugger_exit_zero": true,
+    "both_known_guest_frames": false,
+    "detach_reported": false,
+    "fixture_normal_exit_after_detach": true
+  },
+  "actor_closed": true,
+  "raw_sha256": {
+    "run-preflight.py": "dc224b61c550861aa2f9abd7fad9a87121283fbaf805b37b86d8f0669f3f88ef",
+    "fixture": "86c30903b6bcea4fbe348f8e35749491c49e44138b0bd12450753241c9efcde6",
+    "compile.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gdb.stdout": "acded96d7844856d36831884ea24cdfe125bf1db5409b04d02380d9396610326",
+    "package-install.stderr": "f77216c41aadf6c667ac1a602069951966cea350daab793ffe11ae0de1225ddc",
+    "fixture.stdout": "3dfa3fb239f56c778a1e9b33eb31328349edd155a95806dac4378904e88527e5",
+    "fixture.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fixture.c": "ebe31bc6c5a180792c16aca8a58a69375cc38f290b3797137a093b1654bc2b2f",
+    "package-install.stdout": "3da7821f51c30efc68ae12cf4802ee29666e194d2344b2cf94567d65a027b48e",
+    "compile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

@@ -1,0 +1,6 @@
+Couldn't get registers: Input/output error.
+
+Thread 2 (LWP 303 "fixture"):
+Selected thread is running.
+Couldn't write debug register: Input/output error.
+Couldn't write debug register: Input/output error.
