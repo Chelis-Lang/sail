@@ -1,6 +1,6 @@
 # Qualification trace admission review
 
-The original qualification has not launched. Its frozen cross-edit script
+This review preceded the original qualification launch. Its frozen cross-edit script
 constructs both compiler environments by removing every inherited
 `SAIL_ENGINE*` key (`test-private-span-cross-edit.py:48`), then supplies its fixed
 engine settings at lines 51–55. It does not forward `SAIL_ENGINE_IMPORT_TRACE`
