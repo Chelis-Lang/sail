@@ -210,6 +210,12 @@ retires 758 MB of compiler intermediates, preserving and rehashing every
 discovered ELF image and all raw evidence. Active targets and runtimes remain
 untouched.
 
+[Lossless compression of closed host evidence](validation/m7-closed-host-lossless-compression.json)
+replaces seventeen uncompressed tar files with verified gzip representations,
+saving 574 MB of logical storage. Every original byte hash remains recoverable;
+the record maps retired archive paths to their compressed copies. Active native
+builds, qualified runtimes and foreign containers remain untouched.
+
 M7 is **not accepted**. PR #74 remains draft until the required product,
 reader, conformance and performance gates pass. Emulated local Linux runs are
 authorized and labelled; native-host reference reruns are for later. Limits,
