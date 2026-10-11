@@ -145,6 +145,7 @@ class RpcDeadlineTests(unittest.TestCase):
         acceptance = self.acceptance()
         clock = [0]
         waits = []
+        reads = [0]
 
         def readable(read, write, errors, timeout):
             waits.append(timeout)
@@ -152,7 +153,10 @@ class RpcDeadlineTests(unittest.TestCase):
 
         def partial(_fd, _size):
             clock[0] = harness.protocol.DEADLINE + .01
-            return b'{"id":1,'
+            reads[0] += 1
+            # A broken collector must fail the regression promptly rather than
+            # loop forever on an artificial stream that never advances.
+            return b'{"id":1,' if reads[0] == 1 else b'"result":{}}\n'
 
         with patch.object(harness.time, "monotonic", side_effect=lambda: clock[0]), \
                 patch.object(harness.select, "select", side_effect=readable), \
