@@ -1,13 +1,16 @@
 # Exact stock absence of an original imported range
 
-This is an **unselected candidate**. The corrected complete source controls
+This correction is **selected on the in-progress M7 branch**, with its exact
+prebuilt Linux runtime pin. Overall product acceptance remains incomplete. The corrected complete source controls
 passed 42 VIR and 108 driver tests and both strict checks. The admitted stale-memo
 counterfactual failed at the expected inequality, then the exact restored case
 passed. The [ordinary build](valid-memo-correction/ordinary/ordinary-build-result.json)
 passed with fresh vstd 2060/0 and a complete new thirteen-artifact manifest.
 The [whole original source qualification](valid-memo-correction/ordinary/qualification-result.json)
-also passed all thirteen stages and final seals. Product acceptance and runtime
-selection remain pending; the selected runtime is unchanged.
+also passed all thirteen stages and final seals. Local packaging and fresh
+installation match all thirteen runtime files and modes. Rebuilt Sail CLI/MCP
+integration, live reader latency, current-product corpus conformance and repair
+performance remain required. See [the selected engine](../../../README.md).
 
 The retained [boundary diagnostic](../boundary-diagnostic/revision0-result.json)
 observed three missing-range refusals and a separate `pair-busy` admission miss.
@@ -94,6 +97,6 @@ subsequent invalid-memo-fixture failure remain recorded separately. The
 [valid-fixture correction](valid-memo-correction/README.md) now passes all 42 VIR
 and 108 driver controls and both strict checks. Its actual bypass-removal
 sensitivity and ordinary fresh-vstd build also pass. Neither failed scope is
-relabelled as passing evidence. The candidate remains unselected pending the
-original strict stock diagnostic, same-input and genuine previous-revision
-restore checks.
+relabelled as passing evidence. The subsequent complete qualification passes the original strict stock
+diagnostic, same-input and genuine previous-revision restore checks. Earlier
+failures retain their original classification.
