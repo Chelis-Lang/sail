@@ -20,8 +20,13 @@ correctly omit a diagnostic source map; the candidate mistakenly required that
 optional map for preparation. The [preparation-only namespace correction](../engine/verus/candidates/preparation-namespace/README.md)
 now passes 41 VIR and 88 driver tests, both strict compiler checks and an ordinary
 build with fresh vstd, plus [independent review](validation/m7-preparation-namespace-independent-review.md).
-The unchanged fourteen-stage qualification remains required. Stock diagnostic
-routing and parallelism remain unchanged; this candidate is unselected. See the
+The unchanged qualification passes eight stages and fails its ninth
+(previous-revision focus) with zero hits, despite stock/engine 9/0 and exact
+diagnostics. Three namespace refusals and a distinct broker admission refusal
+remain unexplained; the final four of thirteen stage records were not attempted.
+The fourteen-script inventory is preserved. Stock diagnostic routing and
+parallelism remain unchanged; this candidate is unselected. See the
+[exact failure audit](validation/m7-preparation-namespace-qualification-independent-audit.md). See the
 [retained qualification](../engine/verus/candidates/deferred-import-locator/late-handoff/qualification-failure.json).
 
 The daemon's [retained-frame accounting](validation/m7-result-frame-admission-margin.md)
