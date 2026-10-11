@@ -244,7 +244,11 @@ then compiles the driver and passes 83 of 108 controls before a new test fixture
 uses a digest that the existing memo rejects. Its unwrap poisons the serial
 test lock, producing 24 subsequent failures. Driver strict checking is not
 reached. A valid admitted stale digest and a bypass-removal sensitivity control
-are required; production memo admission remains unchanged.
+are required; production memo admission remains unchanged. The
+[valid-fixture source scope](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/source-controls.json)
+now passes all 42 VIR and 108 driver controls plus both strict checks in
+37.197 seconds. The frozen sensitivity test and ordinary runtime/qualification
+remain separate gates.
 
 Priority order for completing this milestone:
 
