@@ -60,6 +60,12 @@ them, including nonterminal/older-record fallback. Buffer disposal and other
 unmarked work can contribute to `total_us`; stage times are not guaranteed to sum
 to the total.
 
+Large `write_us` values may reflect receiver progress rather than server CPU.
+The [complete-result offline control](validation/m7-result-transfer-profile.md)
+separates send wall time, own-thread CPU, receiver transfer and full parsing. Its
+socket-buffer control did not improve complete client p95 materially; no socket
+change is selected, and it is not live-reader acceptance.
+
 Shutdown seals the ring before export and rejects late observations. Export is
 outside serving, capped at 256 KiB, uses a new private mode-0600 temporary file
 and atomically replaces the final trace. It creates no background thread or
