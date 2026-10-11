@@ -130,8 +130,10 @@ passes all required checks: 485 workspace tests, 38 solver controls, all three
 end-to-end phases and three rounds of the 33-unit conformance subset. Its longest
 job is 368 seconds. This preserves the separate local replay failure and does
 not qualify the real-project workload. Configured HTTP transport now starts
-initialization asynchronously at daemon bind; its complete corrected local
-gate is still pending. The latest complete local
+initialization asynchronously at daemon bind. Its complete corrected local
+[workspace gate](../bench/validation/m7-linux-gate-de36-emulated-2026-10-11.json)
+passes all 489 tests and every remaining gate step; the real solver suite is
+running independently. The latest complete local
 [end-to-end attempt](../bench/validation/m7-linux-e2e-777-failure-emulated-2026-10-11.json)
 passes legacy and installed MCP controls but times out during the first cold
 managed dependency build at its unchanged 240-second limit; repair is not reached.
@@ -146,7 +148,11 @@ span provenance for an unchanged function after an unrelated module body edit.
 All early qualification controls and complete outcomes pass; later full
 human-eval qualification was not reached. See the
 [retained source failure](../engine/verus/candidates/decode-ownership/scoped-query-qualification-failure.json).
-The candidate remains unselected while the mismatch is investigated.
+The [causal trace](../engine/verus/candidates/decode-ownership/span-provenance-causal-diagnostic.json)
+reproduces the first imported mismatch: all 454 foreign source-file starts move
+by 25 bytes while their other fields remain unchanged. A stable import-authority
+design still needs actual mapping-state validation and source qualification.
+The candidate remains unselected.
 Complete default standard validation, real-project reader census and both
 twofold repair-loop gains remain pending.
 
