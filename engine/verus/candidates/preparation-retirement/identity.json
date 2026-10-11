@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "status": "file-only candidate; independent static review and pinned helper16 controls + strict PASS; actual source adapter/layout/sensitivity controls pending; unselected",
+  "status": "unselected candidate; actual41VIR/98driver +both strict PASS; helper16 and actual-call-removed expected negatives PASS; ordinary runtime/original qualification pending",
   "base_full_patch_sha256": "3892328a418109596f6a4a5f3649f5e7d370b19321419c29780d7a3961b44d61",
   "base_delta_sha256": "5ffe95fa64be63a817f969062e32eeca332bd6fb11edc2a265c3d28c50891e2a",
   "delta_sha256": "7daffd2be52dfcc4fb66e9600b04b773bad965cbddccc8f2031b262c37e9e341",
@@ -24,6 +24,6 @@
   "native_margin_terms": 10,
   "new_fixed_completion_controls": 1,
   "ordinary_runtime_or_qualification_launched": false,
-  "actual_controls_status": "pinned helper16 PASS, helper-only sensitivity expected failure, isolated strict PASS; full source pending",
+  "actual_controls_status": "PASS helper16, actual41VIR/98driver +both strict, actual-call sensitivity expected exit101 after retained loader setup127",
   "actual_call_removed_counterfactual_sha256": "16a170d5faf80f66072071d5e5ba1789adb927aee4af129d8411e36c8a4841bc"
 }

@@ -1,0 +1,18 @@
+
+running 1 test
+test verifier::sail_engine::namespace_retirement_adapter_tests::actual_worker_adapter_retires_both_success_and_inner_refusal_before_return ... FAILED
+
+failures:
+
+---- verifier::sail_engine::namespace_retirement_adapter_tests::actual_worker_adapter_retires_both_success_and_inner_refusal_before_return stdout ----
+
+thread 'verifier::sail_engine::namespace_retirement_adapter_tests::actual_worker_adapter_retires_both_success_and_inner_refusal_before_return' (775853) panicked at rust_verify/src/sail_engine.rs:1306:13:
+worker returned before compiler guard retirement
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    verifier::sail_engine::namespace_retirement_adapter_tests::actual_worker_adapter_retires_both_success_and_inner_refusal_before_return
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 97 filtered out; finished in 0.02s
+
