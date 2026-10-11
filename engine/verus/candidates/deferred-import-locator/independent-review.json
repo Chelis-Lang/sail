@@ -2,8 +2,8 @@
   "version": 1,
   "scope": "Independent static review of a separate unselected source candidate; no compiler build, test execution or runtime qualification by this review",
   "base_patch_sha256": "506679543779f2856899006d7d70420ce85d47cb74c9873a064f97ab82c44984",
-  "reviewed_patch_sha256": "0beaa97a208a90664250f2d8d67f89ba283df2febc0fec1a8d76745cb6e692e5",
-  "reviewed_delta_sha256": "e9132b2ea39e0a2d72b5617f66b4449fac280ccefc9a538788f60c65f30aa23e",
+  "reviewed_patch_sha256": "a61db9548935194f9d70224652a1056b1efc7bf0b91f55a6918c5220cc4e4672",
+  "reviewed_delta_sha256": "be7f7a12f2a30ac41b40c4eadaf6d8242990f7684ee26e34b4c2d59beadf8554",
   "identified_static_blocker": false,
   "checks": {
     "role_is_exact_deferred_recipe_not_loaded_content": true,
@@ -22,7 +22,10 @@
     "one_mapping_family_admitted_before_allocation": true,
     "path_and_name_growth_share_existing_family": true,
     "physical_records_drop_before_final_quota_release": true,
-    "trace_uses_borrowed_fields_and_existing_bounded_writer": true
+    "trace_uses_borrowed_fields_and_existing_bounded_writer": true,
+    "test_shims_are_cfg_test_only": true,
+    "scalar_replay_uses_actual_four_emission_modes": true,
+    "group_resolution_uses_current_stock_reporter_in_both_arms": true
   },
   "mapping_family_bytes": 8388608,
   "prospective_phase_maximum_bytes": 524288000,
@@ -40,5 +43,13 @@
   ],
   "original_b46_strict_diagnostic_failure_and_zero_hits_preserved": true,
   "selected": false,
-  "qualified": false
+  "qualified": false,
+  "earlier_reviewed_patch_sha256": "0beaa97a208a90664250f2d8d67f89ba283df2febc0fec1a8d76745cb6e692e5",
+  "earlier_reviewed_delta_sha256": "e9132b2ea39e0a2d72b5617f66b4449fac280ccefc9a538788f60c65f30aa23e",
+  "full_source_controls_added_but_uncompiled": [
+    "Actual Deferred provenance path/coordinate/raw-kind control",
+    "Actual Span codec exact current-Arc/id/data/spelling controls",
+    "Actual Reporter and ReplayMessages scalar modes plus current primary/label resolution"
+  ],
+  "reporter_control_capture_scope": "DiagInner level/messages/primary spans/labels for generated cases; not full formatted stderr, unresolved-label dbg output, prepared grouped replay, or QueuedReporter sorting. Group method is called directly on current Reporter in both arms."
 }
