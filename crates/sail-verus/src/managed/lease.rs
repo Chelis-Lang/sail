@@ -23,6 +23,40 @@ pub(super) struct ReadLease {
     failure: Option<&'static str>,
 }
 impl ReadLease {
+    /// Requested Rust storage; native descriptors and helper RSS are separate.
+    #[allow(
+        dead_code,
+        reason = "Used by forthcoming bounded daemon sysroot admission"
+    )]
+    pub(super) fn retained_bytes(&self) -> Option<usize> {
+        let Self {
+            process: _,
+            socket: _,
+            kernel,
+            bindings,
+            mounts,
+            interpreter,
+            helper_observer,
+            failure: _,
+        } = self;
+        let used = std::mem::size_of::<Self>()
+            .checked_add(super::retained::vector(bindings)?)?
+            .checked_add(mounts.capacity())?
+            .checked_add(interpreter.capacity())?
+            .checked_add(helper_observer.retained_bytes()?)?
+            .checked_add(
+                kernel
+                    .as_ref()
+                    .map_or(Some(0), super::kernel_leases::Inventory::retained_bytes)?,
+            )?;
+        bindings
+            .iter()
+            .try_fold(used, |used, (path, canonical, _, _)| {
+                used.checked_add(path.capacity())?
+                    .checked_add(canonical.capacity())
+            })
+    }
+
     #[cfg(test)]
     pub(super) fn stop_owner_for_test(&mut self) -> std::io::Result<()> {
         self.process.kill()?;

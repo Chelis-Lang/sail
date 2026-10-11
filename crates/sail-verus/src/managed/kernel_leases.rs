@@ -150,6 +150,25 @@ pub(super) struct Inventory {
     descriptors: Vec<(u32, Key)>,
 }
 impl Inventory {
+    /// Requested Rust storage, excluding kernel locks and the helper's RSS.
+    #[allow(
+        dead_code,
+        reason = "Used by forthcoming bounded daemon sysroot admission"
+    )]
+    pub(super) fn retained_bytes(&self) -> Option<usize> {
+        let Self {
+            pid: _,
+            started: _,
+            expected,
+            expected_rows,
+            descriptors,
+        } = self;
+        std::mem::size_of::<Self>()
+            .checked_add(super::retained::tree(expected.len())?)?
+            .checked_add(super::retained::vector(expected_rows)?)?
+            .checked_add(super::retained::vector(descriptors)?)
+    }
+
     pub(super) fn bind(pid: u32, fds: &[u32], identities: &[(u64, u64)]) -> Option<Self> {
         if fds.is_empty()
             || fds.len() != identities.len()

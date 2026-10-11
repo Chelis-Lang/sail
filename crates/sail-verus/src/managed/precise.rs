@@ -89,6 +89,40 @@ mod platform {
         bindings: Vec<(PathBuf, Option<(u64, u64)>)>,
     }
     impl Observer {
+        pub(super) fn retained_bytes(&self) -> Option<usize> {
+            let Self {
+                native: _,
+                directories,
+                canonical_watches,
+                tracked,
+                excluded,
+                complete: _,
+                changed: _,
+                failure: _,
+                mounts,
+                bindings,
+            } = self;
+            // inotify0.11.5 owns one Arc<FdGuard> (two atomic counters, fd and
+            // close flag). WatchDescriptor only holds a Weak to that same Arc.
+            let used = std::mem::size_of::<Self>()
+                .checked_add(64)?
+                .checked_add(super::super::retained::hash::<(WatchDescriptor, PathBuf)>(
+                    directories.capacity(),
+                )?)?
+                .checked_add(super::super::retained::tree(canonical_watches.len())?)?
+                .checked_add(super::super::retained::tree(tracked.len())?)?
+                .checked_add(super::super::retained::vector(excluded)?)?
+                .checked_add(super::super::retained::vector(bindings)?)?
+                .checked_add(mounts.capacity())?;
+            directories
+                .values()
+                .chain(canonical_watches.keys())
+                .chain(tracked)
+                .chain(excluded)
+                .chain(bindings.iter().map(|(path, _)| path))
+                .try_fold(used, |used, path| used.checked_add(path.capacity()))
+        }
+
         pub(super) fn begin(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
             let mounts = super::super::kernel_mounts::Guard::begin()?;
             let mut observer = Self {
@@ -454,6 +488,14 @@ mod platform {
 
 pub(super) struct Observer(platform::Observer);
 impl Observer {
+    /// Checked requested-storage charge; excludes native/kernel resources.
+    #[allow(
+        dead_code,
+        reason = "Used by forthcoming bounded daemon sysroot admission"
+    )]
+    pub(super) fn retained_bytes(&self) -> Option<usize> {
+        self.0.retained_bytes()
+    }
     pub(super) fn begin(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
         platform::Observer::begin(roots, excluded).map(Self)
     }
