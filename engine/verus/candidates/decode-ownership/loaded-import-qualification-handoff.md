@@ -4,8 +4,8 @@ This is a runnable sequence for a **reviewed, unselected** candidate. The correc
 full patch is `506679543779f2856899006d7d70420ce85d47cb74c9873a064f97ab82c44984`.
 Its [new ordinary build and source-check record](loaded-import-test-layout-build.json)
 retains fresh vstd 2,060/0, 38 VIR and 43 driver library controls, and both strict
-all-target Clippy passes. The original fourteen-stage source qualification is
-running; no restored HIT or product qualification is inferred yet.
+all-target Clippy passes. The original fourteen-stage source qualification failed at revision 0 of the
+previous-revision FOCUS stage; no source or product qualification is inferred.
 
 The [earlier e6f build record](loaded-import-ordinary-build.json) retains its
 mandatory driver lint failure separately. [The authority review](loaded-import-authority-review.md)
@@ -176,7 +176,7 @@ all six source hashes plus the lock were independently validated. New actual
 Only the reviewed empty Cargo control files were retained after checking no
 open holders; runtime hashes stayed unchanged without resealing. The original
 fourteen-stage pipeline then started with unchanged assertions and 600-second
-compiler bounds. Its outcome remains pending.
+compiler bounds. Its strict failure is retained below.
 
 ## Closed compiler-intermediate cleanup
 
@@ -194,3 +194,36 @@ The removed files occupied 3,275,419,648 allocated bytes and 3,249,564,865 logic
 bytes. Host APFS available space increased from 25,049,512 to 27,749,312 KiB
 during the operation. That backing observation includes concurrent activity;
 the container's much larger apparent free capacity is not host backing space.
+
+## Corrected candidate qualification failure
+
+The [b46 qualification record](loaded-import-qualification-failure.json) retains
+the original pipeline's failure after 236.291 seconds. Eight stages passed,
+including source fixtures, graph checkpoint and cancellation. Revision 0 of
+the previous-revision FOCUS stage failed its exact stock stderr comparison:
+both arms emitted the same three NOTE lines, but the two function-start lines
+arrived in different order. The original assertion, flags, thread policy and
+600-second limits remain unchanged. This is an observed difference, not an
+attribution to an earlier failure or permission to normalize diagnostics.
+Later revisions, full same-input HE and final pipeline source tests were not
+run. No source or product qualification is claimed.
+
+Independently, that revision recorded zero preparation HITs and four provenance
+refusals. The original gate requires actual checked HITs too; NOTE ordering
+does not remove this blocker. A bounded exact-target state diagnostic proved
+the full module 9/0 but emitted zero matching records, which remains unavailable
+evidence. An authorized separate unfiltered diagnostic then captured the first
+refusal: imported `vstd/function.rs:151:20: 151:65 (#0)` was **Delayed at both
+constructor capture and pre-focus validation**. Its original span was
+411214–411259 inside original file range 406973–411571. The raw expected hash
+is retained without inferring its original hash algorithm. No current Loaded
+coordinates were supplied. The Loaded-only policy correctly refused this
+binding before reaching the previously targeted div-mod span.
+
+Both diagnostics used the unchanged admitted 4 MiB/4,096-record observer and
+600-second compiler bound in fresh owned contexts; they do not continue or
+replace the failed original pipeline. All thirteen runtime artifact hashes,
+the exact direct-file inventory, all six source hashes and the source lock
+matched after these runs. The candidate remains frozen and unselected. Any
+future resolution policy requires separate review, a new patch identity and
+the original qualification gates again.
