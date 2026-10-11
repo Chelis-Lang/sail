@@ -8,7 +8,7 @@ patch is [loaded-foreign-authority.patch](../loaded-foreign-authority.patch).
 The f833 diagnostic established that all454 foreign contributors retain their
 identity and content while their session byte starts shift25. The first failed
 binding is Imported id563, words `[2208441662476345389,316229852143522]`, displayed
-as `vstd/arithmetic/div_mod.rs:519:50:519:56 (#0)`. Its old/current provenance was
+as `vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)`. Its old/current provenance was
 recomputed from complete inventories. **Loaded/Delayed state was not captured**
 in that evidence. The implementation must record the actual state before a
 relocation hit can qualify. The earlier strict immediate-progress stderr failure,
@@ -96,7 +96,7 @@ unavailable replacement. Queued callers cannot publish after the sticky stop.
 It uses the existing bounded observer owner/writer; it adds no heap budget.
 Absent tracing leaves this diagnostic path inactive. Supplementary qualification
 can set `SAIL_ENGINE_IMPORT_TRACE_TARGET=div-mod-relocation` to observe only the
-exact spelling `vstd/arithmetic/div_mod.rs:519:50:519:56 (#0)` before record
+exact spelling `vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)` before record
 admission. This fixed display filter supplies no authority and makes no filename
 inference: actual typed state and packed words are still recorded. Unknown target
 tokens skip all observations; omitted target preserves the generic trace. A
@@ -123,3 +123,8 @@ recurs. State evidence must show the actual failing words are eligible Loaded
 Foreign before describing a relocation as fixed. Genuine first FOCUS restore
 from the previous task023 revision is required; same-invocation FULL reuse is
 insufficient. Complete HE/Vest and whole-loop2×/reader gates remain independent.
+
+The first static filter draft omitted the space in the retained display spelling.
+Review caught this before any compiler or runtime build. The selector and its
+positive control now use the exact retained string; the no-space spelling is an
+explicit negative. No trimming or normalization is used.

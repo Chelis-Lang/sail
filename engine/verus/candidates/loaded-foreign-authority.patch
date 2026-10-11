@@ -745,7 +745,7 @@ new file mode 100644
 +fn import_trace_selected(target:Option<&std::ffi::OsStr>,spelling:&str)->bool {
 +    match target {
 +        None=>true,
-+        Some(target) if target==std::ffi::OsStr::new("div-mod-relocation")=>spelling=="vstd/arithmetic/div_mod.rs:519:50:519:56 (#0)",
++        Some(target) if target==std::ffi::OsStr::new("div-mod-relocation")=>spelling=="vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)",
 +        Some(_)=>false,
 +    }
 +}
@@ -1323,10 +1323,10 @@ new file mode 100644
 +    use super::*;
 +    #[test] fn imported_state_target_is_exact_and_does_not_match_neighbours(){
 +        let target=Some(std::ffi::OsStr::new("div-mod-relocation"));
-+        let spelling="vstd/arithmetic/div_mod.rs:519:50:519:56 (#0)";
++        let spelling="vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)";
 +        assert!(import_trace_selected(target,spelling));
 +        assert!(import_trace_selected(None,"unrelated spelling"));
-+        for wrong in ["vstd/arithmetic/div_mod.rs:519:50:519:57 (#0)","vstd/arithmetic/div_mod.rs:519:50:519:56 (#1)","prefix/vstd/arithmetic/div_mod.rs:519:50:519:56 (#0)",""]{assert!(!import_trace_selected(target,wrong));}
++        for wrong in ["vstd/arithmetic/div_mod.rs:519:50:519:56 (#0)","vstd/arithmetic/div_mod.rs:519:50: 519:57 (#0)","vstd/arithmetic/div_mod.rs:519:50: 519:56 (#1)","prefix/vstd/arithmetic/div_mod.rs:519:50: 519:56 (#0)",""]{assert!(!import_trace_selected(target,wrong));}
 +        assert!(!import_trace_selected(Some(std::ffi::OsStr::new("unknown")),spelling));
 +    }
 +    #[test] fn borrowed_map_and_diagnostic_shape_matches_the_existing_bytes(){
