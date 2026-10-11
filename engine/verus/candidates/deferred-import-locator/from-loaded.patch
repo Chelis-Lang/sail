@@ -1,0 +1,1049 @@
+diff --git a/source/rust_verify/src/sail_deferred_import_tests.rs b/source/rust_verify/src/sail_deferred_import_tests.rs
+new file mode 100644
+index 0000000..135546d
+--- /dev/null
++++ b/source/rust_verify/src/sail_deferred_import_tests.rs
+@@ -0,0 +1,643 @@
++use super::sail_owned_imports as capture;
++use super::*;
++use capture::{CaptureFailure, State, sail_capture_loaded_imports};
++use rustc_data_structures::sync::FreezeLock;
++use rustc_span::def_id::CrateNum;
++use rustc_span::source_map::{FileLoader, FilePathMapping, SourceMapInputs};
++use rustc_span::{
++    Pos, RelativeBytePos, SourceFileHash, SourceFileHashAlgorithm, SourceFileLines,
++    StableSourceFileId, Symbol,
++};
++use std::sync::atomic::{AtomicUsize, Ordering};
++
++static SERIAL: Mutex<()> = Mutex::new(());
++fn session(f: impl FnOnce()) {
++    let _guard = SERIAL.lock().unwrap();
++    rustc_span::create_session_if_not_set_then(rustc_span::edition::Edition::Edition2021, |_| f());
++}
++struct CountLoader {
++    reads: Arc<AtomicUsize>,
++    content: Option<String>,
++}
++impl FileLoader for CountLoader {
++    fn file_exists(&self, _: &std::path::Path) -> bool {
++        self.content.is_some()
++    }
++    fn read_file(&self, _: &std::path::Path) -> std::io::Result<String> {
++        self.reads.fetch_add(1, Ordering::SeqCst);
++        self.content
++            .clone()
++            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))
++    }
++    fn read_binary_file(&self, _: &std::path::Path) -> std::io::Result<Arc<[u8]>> {
++        Err(std::io::Error::from(std::io::ErrorKind::Unsupported))
++    }
++    fn current_directory(&self) -> std::io::Result<std::path::PathBuf> {
++        Ok("/".into())
++    }
++}
++fn imported(map: &SourceMap, name: &str, text: &str) -> Arc<rustc_span::SourceFile> {
++    let name = FileName::Custom(name.into());
++    let id =
++        rustc_span::def_id::StableCrateId::new(Symbol::intern("dep"), false, Vec::new(), "1.98.1");
++    map.new_imported_source_file(
++        name.clone(),
++        SourceFileHash::new_in_memory(SourceFileHashAlgorithm::Sha256, text),
++        None,
++        StableSourceFileId::from_filename_for_export(&name, id),
++        text.len() as u32,
++        text.len() as u32,
++        CrateNum::new(2),
++        FreezeLock::new(SourceFileLines::Lines(vec![RelativeBytePos::from_u32(0)])),
++        Vec::new(),
++        Vec::new(),
++        0,
++    )
++}
++fn fixture(
++    content: Option<&str>,
++    prefix: usize,
++) -> (
++    SourceMap,
++    SpanContextX,
++    HashMap<u64, HashMap<Vec<u8>, FileStartEndPos>>,
++    Arc<AtomicUsize>,
++) {
++    let reads = Arc::new(AtomicUsize::new(0));
++    let map = SourceMap::with_inputs(SourceMapInputs {
++        file_loader: Box::new(CountLoader {
++            reads: reads.clone(),
++            content: content.map(str::to_owned),
++        }),
++        path_mapping: FilePathMapping::empty(),
++        hash_kind: SourceFileHashAlgorithm::Sha256,
++        checksum_hash_kind: None,
++    });
++    if prefix > 0 {
++        map.new_source_file(FileName::Custom("prefix".into()), "x".repeat(prefix));
++    }
++    let file = imported(&map, "foreign.rs", "abcdefgh");
++    let path = std::path::PathBuf::from("/exact/deferred.rs");
++    let metadata = HashMap::from([(
++        7,
++        HashMap::from([(
++            file.src_hash.hash_bytes().to_vec(),
++            FileStartEndPos {
++                filename: Some(path.clone()),
++                start_pos: 1000,
++                end_pos: 1008,
++            },
++        )]),
++    )]);
++    let context = SpanContextX {
++        local_crate: rustc_span::def_id::StableCrateId::new(
++            Symbol::intern("local"),
++            false,
++            Vec::new(),
++            "1.98.1",
++        ),
++        next_span_id: std::sync::atomic::AtomicU64::new(1),
++        local_files: HashMap::new(),
++        sail_imports: Mutex::new(None),
++        imported_crates: HashMap::from([(
++            7,
++            CrateInfo {
++                files: vec![ExternSourceFile {
++                    original_start_pos: BytePos(1000),
++                    original_end_pos: BytePos(1008),
++                    info: Arc::new(Mutex::new(ExternSourceInfo::Delayed {
++                        filename: path,
++                        hash: file.src_hash.hash_bytes().to_vec(),
++                    })),
++                }],
++            },
++        )]),
++    };
++    (map, context, metadata, reads)
++}
++fn crate_id(cnum: CrateNum) -> u64 {
++    if cnum == CrateNum::new(2) { 7 } else { 8 }
++}
++fn packed(lo: u32, hi: u32) -> [u64; 2] {
++    [7, (u64::from(lo) << 32) | u64::from(hi)]
++}
++fn capture(
++    context: &SpanContextX,
++    metadata: &HashMap<u64, HashMap<Vec<u8>, FileStartEndPos>>,
++    map: &SourceMap,
++) -> capture::OwnedImportMappings {
++    sail_capture_loaded_imports(&context.imported_crates, metadata, map, crate_id).unwrap()
++}
++fn rustc_thread(f: impl FnOnce() + Send + 'static) {
++    std::thread::Builder::new()
++        .name("rustc".into())
++        .spawn(move || session(f))
++        .unwrap()
++        .join()
++        .unwrap();
++}
++
++#[test]
++fn deferred_capture_and_handoff_do_not_read_or_claim_loaded_coordinates() {
++    session(|| {
++        let (map, context, metadata, reads) = fixture(Some("abcdefgh"), 0);
++        let mut owner = capture(&context, &metadata, &map);
++        owner.revalidate(&context.imported_crates, &map);
++        let (record, recipe) = owner.deferred(packed(1002, 1006)).unwrap();
++        assert_eq!(recipe.loader_path, "/exact/deferred.rs");
++        assert!(matches!(record.state, State::Deferred(_)));
++        assert!(matches!(
++            record.initial.state,
++            capture::ResolverState::Delayed
++        ));
++        assert!(matches!(
++            record.pre_focus.state,
++            capture::ResolverState::Delayed
++        ));
++        assert_eq!((record.initial.start, record.pre_focus.start), (None, None));
++        assert_eq!(
++            owner.current_range(packed(1002, 1006)),
++            Err(CaptureFailure::Delayed)
++        );
++        assert_eq!(reads.load(Ordering::SeqCst), 0);
++        assert_eq!(map.files().len(), 1);
++        assert!(matches!(
++            *context.imported_crates[&7].files[0].info.lock().unwrap(),
++            ExternSourceInfo::Delayed { .. }
++        ));
++        assert_eq!(capture::retained_bytes(), 8 * 1024 * 1024);
++        assert!(matches!(
++            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id),
++            Err(CaptureFailure::Budget)
++        ));
++        drop(owner);
++        assert_eq!(capture::retained_bytes(), 0);
++    });
++}
++
++#[test]
++fn current_stock_success_failure_and_repeat_preserve_the_immutable_recipe() {
++    rustc_thread(|| {
++        for content in [Some("abcdefgh"), Some("wrong!!!"), None] {
++            let (map, context, metadata, reads) = fixture(content, 25);
++            let mut owner = capture(&context, &metadata, &map);
++            owner.revalidate(&context.imported_crates, &map);
++            let current = vir::messages::Span {
++                raw_span: Arc::new(()),
++                id: 17,
++                data: packed(1002, 1006).to_vec(),
++                as_string: "exact current spelling".into(),
++            };
++            assert!(from_raw_span(&current.raw_span).is_none());
++            let first = context.from_air_span(&current, Some(&map));
++            let second = context.from_air_span(&current, Some(&map));
++            assert_eq!(first, second);
++            assert_eq!(reads.load(Ordering::SeqCst), 1);
++            assert_eq!(first.is_some(), content == Some("abcdefgh"));
++            if let Some(span) = first {
++                assert_eq!(span.data().ctxt, rustc_span::SyntaxContext::root());
++                assert_eq!(span.data().parent, None);
++                assert_ne!(
++                    span.data().lo.0,
++                    owner.deferred(packed(1002, 1006)).unwrap().1.foreign.start + 2
++                );
++                assert!(matches!(
++                    *context.imported_crates[&7].files[0].info.lock().unwrap(),
++                    ExternSourceInfo::Loaded { .. }
++                ));
++            } else {
++                assert!(matches!(
++                    *context.imported_crates[&7].files[0].info.lock().unwrap(),
++                    ExternSourceInfo::None
++                ));
++            }
++            assert!(owner.deferred(packed(1002, 1006)).is_ok());
++            assert_eq!(
++                owner.current_range(packed(1002, 1006)),
++                Err(CaptureFailure::Delayed)
++            );
++            drop(owner);
++        }
++    });
++}
++
++#[test]
++fn handoff_refuses_changed_recipe_early_resolution_busy_and_namespace_ambiguity() {
++    session(|| {
++        for variation in 0..6 {
++            let (map, context, metadata, reads) = fixture(Some("abcdefgh"), 0);
++            let mut owner = capture(&context, &metadata, &map);
++            let info = &context.imported_crates[&7].files[0].info;
++            match variation {
++                0 => {
++                    if let ExternSourceInfo::Delayed { filename, .. } = &mut *info.lock().unwrap() {
++                        *filename = "/different/deferred.rs".into();
++                    }
++                }
++                1 => {
++                    if let ExternSourceInfo::Delayed { hash, .. } = &mut *info.lock().unwrap() {
++                        hash[0] ^= 1;
++                    }
++                }
++                2 => {
++                    *info.lock().unwrap() = ExternSourceInfo::None;
++                }
++                3 => {
++                    *info.lock().unwrap() = ExternSourceInfo::Loaded {
++                        start_pos: BytePos(0),
++                        end_pos: BytePos(8),
++                    };
++                }
++                4 => {
++                    imported(&map, "duplicate.rs", "abcdefgh");
++                }
++                _ => {
++                    let guard = info.lock().unwrap();
++                    owner.revalidate(&context.imported_crates, &map);
++                    drop(guard);
++                    assert!(owner.deferred(packed(1002, 1006)).is_err());
++                    continue;
++                }
++            }
++            owner.revalidate(&context.imported_crates, &map);
++            assert!(owner.deferred(packed(1002, 1006)).is_err());
++            assert_eq!(reads.load(Ordering::SeqCst), 0);
++        }
++    });
++}
++
++#[test]
++fn path_original_hash_range_and_ambiguous_owner_controls_refuse_without_io() {
++    session(|| {
++        for path in [
++            "relative.rs".to_owned(),
++            "/nul\0.rs".to_owned(),
++            format!("/{}", "x".repeat(4096)),
++        ] {
++            let (map, context, metadata, reads) = fixture(None, 0);
++            if let ExternSourceInfo::Delayed { filename, .. } =
++                &mut *context.imported_crates[&7].files[0].info.lock().unwrap()
++            {
++                *filename = path.into();
++            }
++            let owner = capture(&context, &metadata, &map);
++            assert!(owner.deferred(packed(1002, 1006)).is_err());
++            assert_eq!(reads.load(Ordering::SeqCst), 0);
++        }
++        let (map, context, mut metadata, reads) = fixture(None, 0);
++        metadata
++            .get_mut(&7)
++            .unwrap()
++            .values_mut()
++            .next()
++            .unwrap()
++            .end_pos += 1;
++        assert!(matches!(
++            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id),
++            Err(CaptureFailure::MissingOriginalHash)
++        ));
++        assert_eq!(reads.load(Ordering::SeqCst), 0);
++        assert_eq!(capture::retained_bytes(), 0);
++        let (map, context, metadata, reads) = fixture(None, 0);
++        imported(&map, "second.rs", "abcdefgh");
++        assert!(matches!(
++            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id),
++            Err(CaptureFailure::AmbiguousContentOwner)
++        ));
++        assert_eq!(reads.load(Ordering::SeqCst), 0);
++        assert_eq!(capture::retained_bytes(), 0);
++    });
++}
++
++#[cfg(unix)]
++#[test]
++fn non_utf8_descriptor_is_a_safe_miss_without_lossy_identity() {
++    use std::os::unix::ffi::OsStringExt;
++    session(|| {
++        let (map, context, metadata, reads) = fixture(None, 0);
++        if let ExternSourceInfo::Delayed { filename, .. } =
++            &mut *context.imported_crates[&7].files[0].info.lock().unwrap()
++        {
++            *filename = std::ffi::OsString::from_vec(b"/bad\xff.rs".to_vec()).into();
++        }
++        let owner = capture(&context, &metadata, &map);
++        assert!(owner.deferred(packed(1002, 1006)).is_err());
++        assert_eq!(reads.load(Ordering::SeqCst), 0);
++    });
++}
++
++#[test]
++fn deferred_physical_disposal_holds_admission_against_a_racing_capture() {
++    session(|| {
++        let (map, context, metadata, _) = fixture(None, 0);
++        let owner = capture(&context, &metadata, &map);
++        let (sent, disposed) = std::sync::mpsc::channel();
++        let (resume, receive) = std::sync::mpsc::channel();
++        capture::drop_probe::install(sent, receive);
++        let dropping = std::thread::spawn(move || drop(owner));
++        let physical = disposed.recv_timeout(std::time::Duration::from_secs(1));
++        let competing =
++            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id);
++        let _ = resume.send(());
++        let joined = dropping.join();
++        assert_eq!(physical.unwrap(), (0, 0));
++        assert!(matches!(competing, Err(CaptureFailure::Budget)));
++        assert!(joined.is_ok());
++        drop(capture(&context, &metadata, &map));
++    });
++}
++
++#[test]
++fn stock_duplicate_stable_id_reuse_never_becomes_a_recipe_content_claim() {
++    rustc_thread(|| {
++        let (map, context, metadata, reads) = fixture(Some("wrong!!!"), 0);
++        let filename = FileName::Real(map.path_mapping().to_real_filename(
++            map.working_dir(),
++            std::path::Path::new("/exact/deferred.rs"),
++        ));
++        let existing = map.new_source_file(filename, "abcdefgh".into());
++        let mut owner = capture(&context, &metadata, &map);
++        owner.revalidate(&context.imported_crates, &map);
++        assert_eq!(reads.load(Ordering::SeqCst), 0);
++        let current = vir::messages::Span {
++            raw_span: Arc::new(()),
++            id: 17,
++            data: packed(1002, 1006).to_vec(),
++            as_string: "same current spelling".into(),
++        };
++        let resolved = context.from_air_span(&current, Some(&map)).unwrap().data();
++        assert_eq!(reads.load(Ordering::SeqCst), 1);
++        // The stock API reads wrong text but returns its prior same-id file.
++        // Follow that current behavior; never certify that loader content.
++        assert_eq!(resolved.lo.0, existing.start_pos.0 + 2);
++        assert_eq!(map.files().len(), 2);
++        assert!(owner.deferred(packed(1002, 1006)).is_ok());
++        assert_eq!(
++            owner.current_range(packed(1002, 1006)),
++            Err(CaptureFailure::Delayed)
++        );
++    });
++}
++
++#[test]
++fn ordered_primary_label_resolution_uses_the_current_descriptor_on_both_arms() {
++    rustc_thread(|| {
++        for content in [Some("abcdefgh"), Some("wrong!!!"), None] {
++            fn arm(
++                content: Option<&str>,
++                prepared: bool,
++            ) -> (Vec<(Option<String>, Option<String>)>, usize) {
++                let (map, context, metadata, reads) = fixture(content, 25);
++                let owner = if prepared {
++                    let mut owner = capture(&context, &metadata, &map);
++                    owner.revalidate(&context.imported_crates, &map);
++                    Some(owner)
++                } else {
++                    None
++                };
++                // Same ordered primary+label recipes; this helper exercises stock
++                // resolver/rendering APIs, NOT rustc's complete Reporter emitter.
++                let span = |lo, hi| vir::messages::Span {
++                    raw_span: Arc::new(()),
++                    id: 17,
++                    data: packed(lo, hi).to_vec(),
++                    as_string: "current raw unit".into(),
++                };
++                let mut rendered = Vec::new();
++                for (primary, label) in [
++                    (span(1002, 1006), span(1001, 1002)),
++                    (span(1006, 1007), span(1000, 1001)),
++                ] {
++                    assert!(from_raw_span(&primary.raw_span).is_none());
++                    let resolve = |span: &vir::messages::Span| {
++                        context
++                            .from_air_span(span, Some(&map))
++                            .map(|s| map.span_to_diagnostic_string(s))
++                    };
++                    rendered.push((resolve(&primary), resolve(&label)));
++                }
++                if let Some(owner) = owner {
++                    assert!(owner.deferred(packed(1002, 1006)).is_ok());
++                }
++                (rendered, reads.load(Ordering::SeqCst))
++            }
++            assert_eq!(arm(content, false), arm(content, true));
++            assert_eq!(arm(content, true).1, 1);
++        }
++    });
++}
++
++#[test]
++fn descriptor_range_spanning_current_files_cannot_be_a_loaded_owner() {
++    session(|| {
++        let (map, context, metadata, reads) = fixture(None, 0);
++        let last = imported(&map, "next.rs", "different");
++        *context.imported_crates[&7].files[0].info.lock().unwrap() = ExternSourceInfo::Loaded {
++            start_pos: BytePos(0),
++            end_pos: BytePos(last.start_pos.0 + last.normalized_source_len.0),
++        };
++        assert!(matches!(
++            sail_capture_loaded_imports(&context.imported_crates, &metadata, &map, crate_id),
++            Err(CaptureFailure::InvalidRange)
++        ));
++        assert_eq!(reads.load(Ordering::SeqCst), 0);
++        assert_eq!(capture::retained_bytes(), 0);
++    });
++}
++
++// These controls are appended to the ACTUAL source test module. They are not
++// executed or stubbed by the reduced SourceMap API harness.
++#[test]
++fn actual_deferred_provenance_is_tagged_path_bound_and_coordinate_independent() {
++    session(|| {
++        fn fingerprint(prefix: usize, path: &str, raw: vir::messages::RawSpan) -> Option<String> {
++            let (map, context, metadata, reads) = fixture(None, prefix);
++            if let ExternSourceInfo::Delayed { filename, .. } =
++                &mut *context.imported_crates[&7].files[0].info.lock().unwrap()
++            {
++                *filename = path.into();
++            }
++            let mut owner = capture(&context, &metadata, &map);
++            owner.revalidate(&context.imported_crates, &map);
++            let span = vir::messages::Span {
++                raw_span: raw,
++                id: 17,
++                data: packed(1002, 1006).to_vec(),
++                as_string: "exact current spelling".into(),
++            };
++            let result = crate::verifier::sail_test_import_provenance(&span, owner);
++            assert_eq!(reads.load(Ordering::SeqCst), 0);
++            result
++        }
++        let baseline = fingerprint(0, "/exact/deferred.rs", Arc::new(())).unwrap();
++        assert_eq!(
++            fingerprint(25, "/exact/deferred.rs", Arc::new(())).unwrap(),
++            baseline
++        );
++        assert_ne!(
++            fingerprint(25, "/different/deferred.rs", Arc::new(())).unwrap(),
++            baseline
++        );
++        assert!(fingerprint(25, "relative.rs", Arc::new(())).is_none());
++        assert!(fingerprint(25, "/exact/deferred.rs", Arc::new(9u64)).is_none());
++    });
++}
++
++#[test]
++fn actual_prepared_span_codec_restores_only_the_exact_current_unit_arc() {
++    session(|| {
++        let current = vir::messages::Span {
++            raw_span: Arc::new(()),
++            id: 17,
++            data: packed(1002, 1006).to_vec(),
++            as_string: "current exact binding".into(),
++        };
++        let encoded =
++            bincode_next::serde::encode_to_vec(&current, bincode_next::config::legacy()).unwrap();
++        let bindings = HashMap::from([(
++            (current.id, current.data.clone(), current.as_string.clone()),
++            current.clone(),
++        )]);
++        let (restored, consumed): (vir::messages::Span, usize) =
++            vir::messages::sail_resolve_spans(&bindings, || {
++                bincode_next::serde::decode_from_slice(&encoded, bincode_next::config::legacy())
++                    .unwrap()
++            });
++        assert_eq!(consumed, encoded.len());
++        assert!(Arc::ptr_eq(&restored.raw_span, &current.raw_span));
++        assert!(((&*restored.raw_span) as &(dyn std::any::Any + Send + Sync)).is::<()>());
++        for variant in 0..3 {
++            let mut changed = current.clone();
++            match variant {
++                0 => changed.id += 1,
++                1 => changed.data[1] += 1,
++                _ => changed.as_string.push('x'),
++            }
++            let altered =
++                bincode_next::serde::encode_to_vec(&changed, bincode_next::config::legacy())
++                    .unwrap();
++            let result = vir::messages::sail_resolve_spans(&bindings, || {
++                bincode_next::serde::decode_from_slice::<vir::messages::Span, _>(
++                    &altered,
++                    bincode_next::config::legacy(),
++                )
++            });
++            assert!(result.is_err());
++        }
++    });
++}
++
++#[test]
++fn actual_reporter_replay_preserves_order_levels_primary_labels_and_current_resolution() {
++    use air::messages::Diagnostics as _;
++    use vir::messages::ToAny as _;
++    #[derive(Default)]
++    struct Emitted(Vec<String>);
++    struct CaptureEmitter {
++        map: Arc<SourceMap>,
++        emitted: Arc<Mutex<Emitted>>,
++    }
++    impl rustc_errors::emitter::Emitter for CaptureEmitter {
++        fn source_map(&self) -> Option<&SourceMap> {
++            Some(&self.map)
++        }
++        fn emit_diagnostic(&mut self, diagnostic: rustc_errors::DiagInner) {
++            let primary = diagnostic
++                .span
++                .primary_spans()
++                .iter()
++                .map(|span| self.map.span_to_diagnostic_string(*span))
++                .collect::<Vec<_>>();
++            let labels = diagnostic
++                .span
++                .span_labels()
++                .into_iter()
++                .map(|label| {
++                    (
++                        self.map.span_to_diagnostic_string(label.span),
++                        format!("{:?}", label.label),
++                    )
++                })
++                .collect::<Vec<_>>();
++            self.emitted.lock().unwrap().0.push(format!(
++                "{:?}|{:?}|{primary:?}|{labels:?}",
++                diagnostic.level(),
++                diagnostic.messages
++            ));
++        }
++    }
++    rustc_thread(|| {
++        fn arm(content: Option<&str>, prepared: bool) -> (Vec<String>, usize) {
++            let (map, context, metadata, reads) = fixture(content, 25);
++            let map = Arc::new(map);
++            let context = Arc::new(context);
++            let owner = if prepared {
++                let mut owner = capture(&context, &metadata, &map);
++                owner.revalidate(&context.imported_crates, &map);
++                Some(owner)
++            } else {
++                None
++            };
++            let emitted = Arc::new(Mutex::new(Emitted::default()));
++            let diagnostics = rustc_errors::DiagCtxt::new(Box::new(CaptureEmitter {
++                map: map.clone(),
++                emitted: emitted.clone(),
++            }));
++            let reporter = crate::verifier::sail_test_stock_reporter(&context, &diagnostics, &map);
++            let imported_span = |lo, hi| vir::messages::Span {
++                raw_span: Arc::new(()),
++                id: 17,
++                data: packed(lo, hi).to_vec(),
++                as_string: "current raw-unit binding".into(),
++            };
++            let messages = (0..4)
++                .map(|index| {
++                    let primary = imported_span(1002, 1006);
++                    let label = imported_span(1001, 1002);
++                    (*vir::messages::note(&primary, format!("ordered message {index}"))
++                        .secondary_label(&label, "current label"))
++                    .clone()
++                })
++                .collect::<Vec<_>>();
++            if prepared {
++                crate::verifier::sail_test_replay_reporter(&messages, &reporter);
++            } else {
++                reporter.report(&Arc::new(messages[0].clone()).to_any());
++                reporter.report_as(
++                    &Arc::new(messages[1].clone()).to_any(),
++                    vir::messages::MessageLevel::Warning,
++                );
++                reporter.report_now(&Arc::new(messages[2].clone()).to_any());
++                reporter.report_as_now(
++                    &Arc::new(messages[3].clone()).to_any(),
++                    vir::messages::MessageLevel::Warning,
++                );
++            }
++            let group = messages
++                .iter()
++                .enumerate()
++                .map(|(index, message)| {
++                    let mut message = message.clone();
++                    message.note = format!("group {index}");
++                    (
++                        Arc::new(message).to_any(),
++                        vir::messages::MessageLevel::Note,
++                    )
++                })
++                .collect();
++            reporter.report_as_multi(group);
++            if let Some(owner) = owner {
++                assert!(owner.deferred(packed(1002, 1006)).is_ok());
++            }
++            let output = std::mem::take(&mut emitted.lock().unwrap().0);
++            assert_eq!(output.len(), 8);
++            (output, reads.load(Ordering::SeqCst))
++        }
++        for content in [Some("abcdefgh"), Some("wrong!!!"), None] {
++            let fresh = arm(content, false);
++            let restored = arm(content, true);
++            assert_eq!(fresh, restored);
++            assert_eq!(restored.1, 1);
++        }
++    });
++}
+diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail_engine.rs
+index a262154..51b7680 100644
+--- a/source/rust_verify/src/sail_engine.rs
++++ b/source/rust_verify/src/sail_engine.rs
+@@ -341,19 +341,28 @@ fn provenance_uncached(span:&vir::messages::Span, sources:&Sources)->Option<Stri
+         if !((&*span.raw_span) as &(dyn std::any::Any+Send+Sync)).is::<()>(){return None;}
+         let packed:[u64;2]=span.data.as_slice().try_into().ok()?;
+         let imports=sources.3.as_ref().ok()?;
+-        let (record,current)=imports.authority(packed).ok()?;
+-        // Current index/start/end are validated translation coordinates, not
+-        // old raw positions. The decoded span still requires the exact current
+-        // (id,data,as_string) binding and its current raw Arc.
++        let record=imports.record(packed).ok()?;
++        let (tag,current,path)=match &record.state {
++            crate::spans::sail_owned_imports::State::Loaded(_)=> {
++                let (_,current)=imports.authority(packed).ok()?;
++                ("imported/loaded-foreign-authority/v2",current,None)
++            },
++            crate::spans::sail_owned_imports::State::Deferred(_)=> {
++                let (_,locator)=imports.deferred(packed).ok()?;
++                ("imported/deferred-locator-authority/v1",&locator.foreign,Some(locator.loader_path.as_str()))
++            },
++            crate::spans::sail_owned_imports::State::Unavailable(_)=>return None,
++        };
++        // Imported metadata identity is not a loaded-content attestation. The
++        // Deferred path remains a recipe for the CURRENT stock Reporter;
++        // neither coordinates nor resolver state are restored by preparation.
+         let stable_id=import_stable_id(current.stable_id);
+         let kind=import_hash_kind(current.hash.kind);
+         bincode_next::serde::encode_into_std_write(&(
+-            "imported/loaded-foreign-authority/v1",packed,record.crate_id,
+-            record.original_start,record.original_end,
+-            &record.expected_hash[..usize::from(record.expected_hash_len)],
++            tag,packed,record.crate_id,record.original_start,record.original_end,
++            &record.expected_hash[..usize::from(record.expected_hash_len)],path,
+             &current.name,kind,current.hash.hash_bytes(),stable_id,
+-            current.normalized_length,current.unnormalized_length,
+-            "root-hygiene/no-parent",
++            current.normalized_length,current.unnormalized_length,"root-hygiene/no-parent",
+         ),&mut writer,bincode_next::config::legacy()).ok()?;
+     }
+     Some(writer.0.finalize().iter().map(|byte|format!("{byte:02x}")).collect())
+@@ -431,6 +440,22 @@ fn trace_import_authority(span:&vir::messages::Span,sources:&Sources,packed:[u64
+                             "stable_id":import_stable_id(owner.stable_id)
+                         ))})?;
+                     },
++                    crate::spans::sail_owned_imports::State::Deferred(locator)=>{
++                        let owner=&locator.foreign;
++                        serde_json::to_writer(&mut *writer,&Observation {version:1,phase,event:"import-authority-state",payload:Fields(fields!(
++                            "id":span.id,"words":packed,"as_string":&span.as_string,"eligible":imports.deferred(packed).is_ok(),
++                            "role":"DeferredLocator","loaded_content":false,"loader_path":&locator.loader_path,
++                            "initial_state":ObservedDebug(&record.initial.state),"pre_focus_state":ObservedDebug(&record.pre_focus.state),
++                            "initial_start":record.initial.start,"initial_end":record.initial.end,
++                            "pre_focus_start":record.pre_focus.start,"pre_focus_end":record.pre_focus.end,
++                            "original_start":record.original_start,"original_end":record.original_end,
++                            "expected_hash":&record.expected_hash[..usize::from(record.expected_hash_len)],
++                            "foreign_index":owner.index,"foreign_start":owner.start,"foreign_end":owner.end,
++                            "normalized_length":owner.normalized_length,"unnormalized_length":owner.unnormalized_length,
++                            "name":&owner.name,"hash_kind":import_hash_kind(owner.hash.kind),"hash":owner.hash.hash_bytes(),
++                            "stable_id":import_stable_id(owner.stable_id)
++                        ))})?;
++                    },
+                     crate::spans::sail_owned_imports::State::Unavailable(reason)=>{
+                         serde_json::to_writer(&mut *writer,&Observation {version:1,phase,event:"import-authority-state",payload:Fields(fields!(
+                             "id":span.id,"words":packed,"as_string":&span.as_string,"eligible":false,
+@@ -778,6 +803,15 @@ impl Verifier {
+     }
+ }
+ 
++#[cfg(test)]
++pub(super) fn test_replay_reporter(messages:&[MessageX],reporter:&Reporter<'_>) {
++    let emissions=[Emission::Report,Emission::ReportAs,Emission::ReportNow,Emission::ReportAsNow];
++    let levels=[MessageLevel::Note,MessageLevel::Warning,MessageLevel::Note,MessageLevel::Warning];
++    assert_eq!(messages.len(),emissions.len());
++    let messages=messages.iter().zip(emissions).zip(levels).map(|((message,emission),level)|(message.clone(),level,emission)).collect();
++    ReplayMessages::admit(messages).unwrap().replay(reporter);
++}
++
+ #[cfg(test)]
+ mod provenance_memo_tests {
+     use super::*;
+diff --git a/source/rust_verify/src/sail_owned_imports.rs b/source/rust_verify/src/sail_owned_imports.rs
+index 36694da..3093a8f 100644
+--- a/source/rust_verify/src/sail_owned_imports.rs
++++ b/source/rust_verify/src/sail_owned_imports.rs
+@@ -1,4 +1,4 @@
+-//! Callback-owned original-to-current authority for existing Loaded foreign imports.
++//! Callback-owned LoadedForeign authority and exact deferred diagnostic recipes.
+ //! Never resolves or loads a source file. Unsupported states remain unavailable.
+ 
+ use super::{CrateInfo, ExternSourceInfo, FileStartEndPos};
+@@ -49,8 +49,15 @@ pub(crate) struct LoadedFile {
+     pub(crate) hash: SourceFileHash,
+ }
+ 
++pub(crate) struct DeferredLocator {
++    // Exact actual descriptor bytes; no canonicalization or source-file read.
++    pub(crate) loader_path: String,
++    pub(crate) foreign: LoadedFile,
++}
++
+ pub(crate) enum State {
+     Loaded(LoadedFile),
++    Deferred(DeferredLocator),
+     Unavailable(CaptureFailure),
+ }
+ 
+@@ -230,16 +237,81 @@ pub(super) fn sail_capture_loaded_imports(
+             let mut expected_hash = [0; 32];
+             expected_hash[..expected.len()].copy_from_slice(expected);
+             let expected_hash_len = expected.len() as u8;
+-            // Copy primitive ranges only; do not clone a Delayed path/hash.
++            // One admitted family holds both roles. Descriptor copying is
++            // bounded before allocation and never calls the current resolver.
++            let mut deferred_path = None;
+             let selected = match file.info.try_lock() {
+                 Ok(state) => match &*state {
+                     ExternSourceInfo::Loaded { start_pos, end_pos } => Ok((start_pos.0, end_pos.0)),
+-                    ExternSourceInfo::Delayed { .. } => Err(CaptureFailure::Delayed),
++                    ExternSourceInfo::Delayed { filename, hash } => {
++                        if hash.as_slice() != expected.as_slice() {
++                            return Err(CaptureFailure::HashMismatch);
++                        }
++                        let path = filename.to_str().filter(|path| {
++                            filename.is_absolute()
++                                && !path.is_empty()
++                                && path.len() <= NAME_LIMIT
++                                && !path.contains('\0')
++                        });
++                        if let Some(path) = path {
++                            let mut matching = files.iter().filter(|current| {
++                                matches!(
++                                    *current.external_src.borrow(),
++                                    ExternalSource::Foreign { .. }
++                                ) && stable_crate_of(current.cnum) == *crate_id
++                                    && current.src_hash.hash_bytes() == expected.as_slice()
++                            });
++                            match (matching.next(), matching.next()) {
++                                (Some(current), None) => {
++                                    // Initial foreign coordinates select metadata
++                                    // only. The descriptor remains Delayed.
++                                    let end = current
++                                        .start_pos
++                                        .0
++                                        .checked_add(current.normalized_source_len.0)
++                                        .ok_or(CaptureFailure::InvalidRange)?;
++                                    if used
++                                        .checked_add(2 * NAME_LIMIT + 1024)
++                                        .filter(|size| *size <= BUDGET)
++                                        .is_none()
++                                    {
++                                        return Err(CaptureFailure::Budget);
++                                    }
++                                    let mut copied = String::new();
++                                    copied
++                                        .try_reserve_exact(path.len())
++                                        .map_err(|_| CaptureFailure::Allocation)?;
++                                    if copied.capacity() > NAME_LIMIT {
++                                        return Err(CaptureFailure::Budget);
++                                    }
++                                    copied.push_str(path);
++                                    used = used
++                                        .checked_add(copied.capacity())
++                                        .ok_or(CaptureFailure::Budget)?;
++                                    deferred_path = Some(copied);
++                                    Ok((current.start_pos.0, end))
++                                }
++                                (None, _) => Err(CaptureFailure::Delayed),
++                                _ => return Err(CaptureFailure::AmbiguousContentOwner),
++                            }
++                        } else {
++                            // Unsupported descriptor remains the old safe miss.
++                            Err(CaptureFailure::Delayed)
++                        }
++                    }
+                     ExternSourceInfo::None => Err(CaptureFailure::Missing),
+                 },
+                 Err(_) => Err(CaptureFailure::Busy),
+             };
+-            let initial = ResolverObservation::from_selected(&selected);
++            let initial = if deferred_path.is_some() {
++                ResolverObservation {
++                    state: ResolverState::Delayed,
++                    start: None,
++                    end: None,
++                }
++            } else {
++                ResolverObservation::from_selected(&selected)
++            };
+             let state = match selected {
+                 Err(reason) => State::Unavailable(reason),
+                 Ok((start, end)) => {
+@@ -255,6 +327,18 @@ pub(super) fn sail_capture_loaded_imports(
+                     if matching.next().is_some() {
+                         return Err(CaptureFailure::AmbiguousCurrentRange);
+                     }
++                    if files.iter().enumerate().any(|(other_index, file)| {
++                        other_index != index
++                            && file
++                                .start_pos
++                                .0
++                                .checked_add(file.normalized_source_len.0)
++                                .is_none_or(|other_end| {
++                                    file.start_pos.0 <= end && start <= other_end
++                                })
++                    }) {
++                        return Err(CaptureFailure::AmbiguousCurrentRange);
++                    }
+                     let originals = original_crate_files
+                         .get(crate_id)
+                         .ok_or(CaptureFailure::MissingOriginalHash)?;
+@@ -311,7 +395,7 @@ pub(super) fn sail_capture_loaded_imports(
+                     used = used
+                         .checked_add(name.text.capacity())
+                         .ok_or(CaptureFailure::Budget)?;
+-                    State::Loaded(LoadedFile {
++                    let owner = LoadedFile {
+                         index,
+                         cnum: current.cnum,
+                         start,
+@@ -321,7 +405,15 @@ pub(super) fn sail_capture_loaded_imports(
+                         name: name.text,
+                         stable_id: current.stable_id,
+                         hash: current.src_hash,
+-                    })
++                    };
++                    if let Some(loader_path) = deferred_path {
++                        State::Deferred(DeferredLocator {
++                            loader_path,
++                            foreign: owner,
++                        })
++                    } else {
++                        State::Loaded(owner)
++                    }
+                 }
+             };
+             owned.records.push(Record {
+@@ -387,6 +479,7 @@ impl OwnedImportMappings {
+         let hi = packed[1] as u32;
+         let current = match &record.state {
+             State::Loaded(current) => current,
++            State::Deferred(_) => return Err(CaptureFailure::Delayed),
+             State::Unavailable(reason) => return Err(*reason),
+         };
+         let new_lo = lo
+@@ -403,6 +496,20 @@ impl OwnedImportMappings {
+         Ok((record, current))
+     }
+ 
++    /// A recipe lookup performs no location resolution. Its role stays Deferred
++    /// even after the current stock Reporter loads or refuses its own descriptor.
++    pub(crate) fn deferred(
++        &self,
++        packed: [u64; 2],
++    ) -> Result<(&Record, &DeferredLocator), CaptureFailure> {
++        let record = self.record(packed)?;
++        match &record.state {
++            State::Deferred(locator) => Ok((record, locator)),
++            State::Unavailable(reason) => Err(*reason),
++            State::Loaded(_) => Err(CaptureFailure::ChangedResolver),
++        }
++    }
++
+     pub(crate) fn current_range(&self, packed: [u64; 2]) -> Result<(u32, u32), CaptureFailure> {
+         let (record, current) = self.authority(packed)?;
+         Ok((
+@@ -412,7 +519,8 @@ impl OwnedImportMappings {
+     }
+ 
+     /// Compiler-thread late barrier, on the SAME admitted owner. New files may
+-    /// introduce ambiguity. Constructor Delayed/None/Busy never become Loaded.
++    /// introduce ambiguity. Delayed recipes must stay exact until this handoff;
++    /// unavailable states are never promoted and no resolver value is written.
+     /// No SourceMap/lock/SourceFile borrow or clone is retained by this method.
+     pub(super) fn revalidate(&mut self, imported: &HashMap<u64, CrateInfo>, map: &SourceMap) {
+         let files = map.files();
+@@ -439,17 +547,45 @@ impl OwnedImportMappings {
+                 }
+             })();
+             record.pre_focus = ResolverObservation::from_selected(&selected);
+-            let State::Loaded(owner) = &record.state else {
+-                continue;
++            let (owner, deferred) = match &record.state {
++                State::Loaded(owner) => (owner, None),
++                State::Deferred(locator) => (&locator.foreign, Some(locator)),
++                State::Unavailable(_) => continue,
+             };
+             let valid = (|| {
+                 if files.len() > RECORD_LIMIT {
+                     return Err(CaptureFailure::Budget);
+                 }
+-                match selected {
+-                    Ok((start, end)) if start == owner.start && end == owner.end => {}
+-                    Err(reason) => return Err(reason),
+-                    _ => return Err(CaptureFailure::ChangedResolver),
++                if let Some(locator) = deferred {
++                    if !matches!(selected, Err(CaptureFailure::Delayed)) {
++                        return Err(CaptureFailure::ChangedResolver);
++                    }
++                    let info = imported
++                        .get(&record.crate_id)
++                        .ok_or(CaptureFailure::ChangedResolver)?;
++                    let mut matching = info.files.iter().filter(|file| {
++                        file.original_start_pos.0 == record.original_start
++                            && file.original_end_pos.0 == record.original_end
++                    });
++                    let file = matching.next().ok_or(CaptureFailure::ChangedResolver)?;
++                    if matching.next().is_some() {
++                        return Err(CaptureFailure::AmbiguousOriginalRange);
++                    }
++                    let state = file.info.try_lock().map_err(|_| CaptureFailure::Busy)?;
++                    match &*state {
++                        ExternSourceInfo::Delayed { filename, hash }
++                            if filename.to_str() == Some(locator.loader_path.as_str())
++                                && hash.as_slice()
++                                    == &record.expected_hash
++                                        [..usize::from(record.expected_hash_len)] => {}
++                        _ => return Err(CaptureFailure::ChangedResolver),
++                    }
++                } else {
++                    match selected {
++                        Ok((start, end)) if start == owner.start && end == owner.end => {}
++                        Err(reason) => return Err(reason),
++                        _ => return Err(CaptureFailure::ChangedResolver),
++                    }
+                 }
+                 let current = files
+                     .get(owner.index)
+@@ -505,6 +641,16 @@ impl OwnedImportMappings {
+                 {
+                     return Err(CaptureFailure::AmbiguousCurrentRange);
+                 }
++                if files.iter().enumerate().any(|(index, file)| {
++                    index != owner.index
++                        && file
++                            .start_pos
++                            .0
++                            .checked_add(file.normalized_source_len.0)
++                            .is_none_or(|end| file.start_pos.0 <= owner.end && owner.start <= end)
++                }) {
++                    return Err(CaptureFailure::AmbiguousCurrentRange);
++                }
+                 // The exact audited formatter writes into a borrowed comparator,
+                 // rather than allocating another complete name or snapshot.
+                 let mut name = NameEquals {
+diff --git a/source/rust_verify/src/spans.rs b/source/rust_verify/src/spans.rs
+index 04aac6e..4f6a3f0 100644
+--- a/source/rust_verify/src/spans.rs
++++ b/source/rust_verify/src/spans.rs
+@@ -14,6 +14,9 @@ pub(crate) mod sail_owned_imports;
+ #[cfg(test)]
+ #[path = "sail_owned_imports_tests.rs"]
+ mod sail_owned_imports_tests;
++#[cfg(test)]
++#[path = "sail_deferred_import_tests.rs"]
++mod sail_deferred_import_tests;
+ 
+ pub(crate) fn to_raw_span(span: Span) -> vir::messages::RawSpan {
+     Arc::new(span.data())
+diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifier.rs
+index 79cf2a1..3ce1863 100644
+--- a/source/rust_verify/src/verifier.rs
++++ b/source/rust_verify/src/verifier.rs
+@@ -3445,3 +3445,12 @@ impl VerifierCallbacksEraseMacro {
+ 
+ pub(crate) fn sail_engine_compiler_started(role:&str) { sail_engine::emit!("compiler-started", {"role":role}); }
+ pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit!("phase-finished", {"success":success}); sail_engine::preparation_summary(); sail_engine::emit!("compiler-sealed", {"success":success,"normal_termination":true}); }
++
++#[cfg(test)]
++pub(crate) fn sail_test_stock_reporter<'a>(spans:&SpanContext, diagnostics:&'a rustc_errors::DiagCtxt, source_map:&'a SourceMap)->Reporter<'a> {
++    Reporter {spans:spans.clone(),compiler_diagnostics:diagnostics,source_map}
++}
++#[cfg(test)]
++pub(crate) fn sail_test_replay_reporter(messages:&[MessageX], reporter:&Reporter<'_>) {
++    sail_engine::test_replay_reporter(messages,reporter);
++}
+diff --git a/source/vir/src/context.rs b/source/vir/src/context.rs
+index 9753a65..0c02ac8 100644
+--- a/source/vir/src/context.rs
++++ b/source/vir/src/context.rs
+@@ -178,7 +178,7 @@ impl serde::Serialize for SailEffectsView<'_> {
+ // Baseline dependency shape differs from v3: the pre-lowering span seed vector
+ // is excluded only behind a private unsupported-read boundary. Old preparations
+ // cannot share this domain even if a caller supplies the same external context.
+-pub const SAIL_PREPARATION_DOMAIN: &str = "sail-prepared/graph-ledger/loaded-foreign-authority/v5";
++pub const SAIL_PREPARATION_DOMAIN: &str = "sail-prepared/graph-ledger/import-locator-authority/v6";
+ const SAIL_KEY_LIMIT:usize=32*1024*1024;
+ struct SailKeyWriter(Vec<u8>);
+ impl std::io::Write for SailKeyWriter {
+@@ -1248,7 +1248,9 @@ mod sail_preparation_tests {
+         let old=sail_encode(&("sail-prepared/graph-ledger/private-span-seed/v4",&input)).unwrap();
+         let new=sail_encode(&(SAIL_PREPARATION_DOMAIN,&input)).unwrap();
+         assert_ne!(old,new,"old imported-owner authority cannot enter the Loaded relocation domain");
+-        assert_eq!(SAIL_PREPARATION_DOMAIN,"sail-prepared/graph-ledger/loaded-foreign-authority/v5");
++        assert_eq!(SAIL_PREPARATION_DOMAIN,"sail-prepared/graph-ledger/import-locator-authority/v6");
++        let previous_loaded = sail_encode(&("sail-prepared/graph-ledger/loaded-foreign-authority/v5", &input)).unwrap();
++        assert_ne!(new, previous_loaded, "intact Loaded-only entries must not enter the Deferred domain");
+     }
+ 
+     #[test]
