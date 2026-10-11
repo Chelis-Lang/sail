@@ -32,7 +32,7 @@
   ],
   "schema_version": 1,
   "scope": "Linux amd64 Docker emulation affected daemon resource ownership controls; no live latency or source-engine acceptance claim",
-  "source_base": "92755da",
+  "source_base": "92755dac5eafb82e65737be5b91cefedc418ea52",
   "original_assertions_and_bounds_unchanged": true,
   "daemon_tests": {
     "passed": 80,
@@ -52,5 +52,31 @@
       "bytes": 19508,
       "sha256": "6c907fb9fa51e3cc2048f2a689f8025dc196141b0b610dd0e8508decb0dc0bd9"
     }
+  },
+  "preserved_failed_drafts": [
+    {
+      "scope": "Initial command setup",
+      "result": "Cargo.toml absent at /work; no compile occurred"
+    },
+    {
+      "scope": "Initial strict draft",
+      "result": "Clippy used_underscore_binding rejected assigned _charge field; corrected to ordinary ownership field"
+    }
+  ],
+  "initial_validation": [
+    {
+      "phase": "strict",
+      "exit_code": 0,
+      "elapsed_seconds": 6.222395417
+    },
+    {
+      "phase": "controls",
+      "exit_code": 0,
+      "elapsed_seconds": 25.421239875
+    }
+  ],
+  "source_archive": {
+    "bytes": 17807360,
+    "sha256": "fd04b5d698922c8b03d0e4788f4339a6bbd7936df225464232a780d5c623b381"
   }
 }
