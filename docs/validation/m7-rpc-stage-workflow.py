@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Observation-only stage attribution around the original real reader workflow.
 
-This local-only wrapper imports frozen, unchanged controllers. Installation and
-launch each require the separately reviewed product grant; preparing this file
-does not authorize a proof. See m7-rpc-stage-workflow-plan.md.
+This local-only wrapper imports frozen, unchanged controllers and verifies the
+current product byte/installation record before the already authorized run. The
+record binds identities; genuine Current/live producer checks admit the workload.
+See m7-rpc-stage-workflow-plan.md.
 """
 import argparse
 import io
@@ -86,8 +87,8 @@ def seal(args, helper):
     stock = {name: support.identity(args.stock_bin_dir / name) for name in ("cargo-verus", "verus", "z3")}
     assert stock == reference["input_seals_before"]["stock"]
     frozen = args.bin_dir / "freeze.json"
-    # Root's sealed installation may have no controller metadata. Static review
-    # can seal that grant directly; execution still requires original Run.freeze.
+    # The sealed installation may have no controller metadata. Static sealing
+    # can bind its byte record; execution still uses original Run.freeze.
     assert args.freeze_only or frozen.is_file(), "original controller freeze metadata required before launch"
     return {"product": product, "product_grant": support.identity(args.product_grant),
             "product_freeze": support.identity(frozen) if frozen.exists() else None,

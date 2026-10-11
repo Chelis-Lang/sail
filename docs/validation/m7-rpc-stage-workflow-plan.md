@@ -1,7 +1,8 @@
 # Prepared observation-only real RPC stage workflow
 
-This is a launch plan, not an executed reader qualification. Root's newly sealed
-current Linux product and a separate launch review are still pending. The
+This is a prepared plan, not an executed reader qualification. The workflow is
+already authorized; it will run after the tested current Linux product is sealed
+and its actual byte and installation identities are verified. The
 [original447 workflow](m7-current-reader-workflow.md) remains a failed Result
 latency gate, with Rust and retained CLI/MCP unattempted. The subsequent
 [offline reconstruction](m7-current-result-components.md) was not captured wire
@@ -10,10 +11,12 @@ or a live producer and cannot admit this workflow.
 Use the [separate wrapper](m7-rpc-stage-workflow.py) with the frozen original
 controllers and collectors from the prior attempt. Its [static record](m7-rpc-stage-workflow-prepared.json)
 binds those files. The wrapper validates the exact upcoming product source
-commit and byte-verified private installation against the new root grant; no
-old product identity is substituted. Concrete native argv, grant, archive,
+commit and byte-verified private installation against the new product byte/installation record; no
+old product identity is substituted. Concrete native argv, product record, archive,
 installation and before/after inventory hashes will be sealed after root supplies
-the product. Preparing this wrapper grants no proof or endpoint operation.
+the product. These records bind reproducible inputs; the original genuine
+Current/full/live producer checks determine admission, not an additional approval
+step.
 
 ## Genuine inputs and original checks
 
