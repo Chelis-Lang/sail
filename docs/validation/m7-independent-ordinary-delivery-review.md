@@ -52,6 +52,40 @@ the full pipeline was still running when this review was written. Prior
 failed qualification scopes remain retained. A passing local archive install
 alone cannot establish compatibility with an existing Sail executable.
 
+## Complete source terminal review
+
+The subsequent [complete qualification record](../../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/ordinary/qualification-result.json)
+closes the original 13 stages on candidate `c77e1a1879302e06`: all passed in
+2,645.966 seconds. The original 14 frozen scripts, compiler flags, 600-second
+limits and assertions remain unchanged. This supersedes the pending state
+above; it does not erase any earlier failed attempt.
+
+An independent read-only terminal audit rehashed all 13 runtime artifacts,
+eight candidate source files, the source lock, all 14 scripts, four external
+inputs and both launcher/reporting controllers. They match the frozen inputs
+and final closure. The primary actor digest is
+`9d43f688795fd61d0e43abb656a9811654d10e40bf64771979c45e2735574f52`,
+the pipeline digest is
+`ec3fccc95f8838ae99a601724d7c4e1070d05d44f492d4b8de68beac01ddde49`,
+and the closure digest is
+`5a01f787900d461c537805cea31dc6431b6b73937176364c69e1a5260cf5ceb9`.
+The retained dual-container ownership scan reports no holders or unreadable
+live processes in the bounded owned source/build scope.
+
+The focused test has four checked persistent hits in each of revisions 1
+and 2, including focused reuse across the unrelated edit. Full HumanEval
+verifies 441 obligations with zero errors in each of three revisions, with
+1, 70 and 11 checked hits respectively. Every restored hit has passing
+same-input ordered-wire, diagnostics, lowering, final-effect and outcome
+comparisons. Revision 0 also retains an independent stock-versus-engine
+transcript difference for `human_eval_160`; the unchanged frozen oracle
+records that difference and requires exact cached-versus-fresh checks from
+the same compiler input. It was neither normalized nor omitted.
+
+No terminal audit blocker was found for the separately granted local package
+and fresh-install scope. Its result remains separate, as do rebuilt-product
+compatibility, publication, runtime selection and reader performance.
+
 ## Product integration still required
 
 1. Deliver the candidate patch, source lock, runtime manifest and archive pin
