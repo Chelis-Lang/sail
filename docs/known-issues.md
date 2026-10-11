@@ -96,8 +96,12 @@ four-reader latency gate has been established. See the
   and later cross-edit revisions were not reached. The candidate remains
   unselected. See the [terminal failure and byte seals](../engine/verus/candidates/deferred-import-locator/dynsend-owner/qualification-failure.json)
   and [independent span-form review](../engine/verus/candidates/deferred-import-locator/dynsend-owner/fresh-provenance-review.md).
-  The separate bounded import-state trace cannot attribute Local or unsupported
-  span-form refusals; its outcome will not replace original qualification.
+  The [separate bounded import-state trace](../engine/verus/candidates/deferred-import-locator/dynsend-owner/provenance-diagnostic-result.json)
+  completes with five eligible Loaded records followed by an ineligible Delayed
+  descriptor. It does not record that descriptor's filename or Foreign-match
+  count, and cannot attribute Local or unsupported span-form refusals. The
+  original-descriptor correction is under implementation; this diagnostic
+  does not replace original qualification.
 - Real other-module edit controls for candidate `2459` found **zero demonstrated
   reuse across edits**. Its one persistent full-phase hit reused preparation
   written by the focused phase in that same invocation. See
