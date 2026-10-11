@@ -5,7 +5,12 @@ process. It starts no test, solver, daemon or compiler and sends no signals.
 The original suite, 60-second session deadlines, 180-second test timeout,
 termination grace, full-byte assertions and result classification stay unchanged.
 Preparation has 15 [pure/fake-proc controls](../../scripts/test-m7-faults-live-observer.py)
-passing; live suite observation has not yet run.
+passing. The first [workspace-only live scope](m7-faults-live-observer-b63.json)
+closed through its stop marker with observer exit 0: 77 polls, two partial
+snapshots, no qualifying process sampled and empty stderr. The root workspace
+gate failed 606/607 at the original HTTP coalescing test; the solver suite was
+unattempted. The 22,122-byte raw JSONL and all ten retained files are sealed.
+This establishes observer startup/stop only, with no solver/TID/pipe coverage.
 
 The caller supplies the finished common-target faults ELF's exact pathname,
 SHA-256 and frozen source commit. Only a regular, caller-owned ELF named
