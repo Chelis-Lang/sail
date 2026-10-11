@@ -133,22 +133,33 @@ controls pass, and independent review confirms immutable recipes, strict role
 classification and bounded constructor scans. The
 [complete pinned source controls](validation/m7-late-import-handoff-source-controls.md)
 pass 40 VIR and 78 driver tests plus both strict all-target checks in 180.872
-seconds. The existing target has been handed off for one ordinary runtime build
-and the original fourteen qualification stages. No source runtime is selected
-from these library controls.
+seconds. The ordinary runtime build now passes in 637.838 seconds, including
+fresh verification of all 2,060 vstd obligations. Its thirteen runtime artifacts,
+seven changed source files and source lock are sealed; independent review and
+the unchanged fourteen qualification stages follow. The candidate remains
+unselected until genuine previous-revision focused reuse passes.
 
 The reader path now moves MCP response graphs and encodes outside its output
 lock, with [46 targeted controls](validation/m7-mcp-output-ownership.md) passing.
 The daemon retains cache charges through evicted in-flight output and accounts
-for buffer capacity; [all 80 daemon controls](validation/m7-result-frame-ownership.md)
-pass. Neither result proves the live reader latency threshold. Bounded optional
+for buffer capacity. The [final admission correction](validation/m7-result-frame-admission-margin.md)
+reserves 6,992 bytes of retirement metadata inside the existing 128 MiB ceiling
+and releases unused variants on uncached replies; all 89 daemon controls and
+strict checks pass. Neither result proves the live reader latency threshold.
+Bounded optional
 [RPC stage timings](result-rpc-diagnostics.md) are implemented, with eight scoped
 controls and strict affected checks passing, to diagnose the retained full Result
-failure without changing collectors or freshness checks. A new complete coherent
-gate and solver run is underway. The last pushed
+failure without changing collectors or freshness checks. The combined
+[workspace gate](../bench/validation/m7-linux-core-gate-76a6976-emulated-2026-10-11.json)
+passes 561 tests and all remaining checks; its separate
+[solver run](../bench/validation/m7-linux-core-solver-76a6976-emulated-2026-10-11.json)
+passes all 39 controls. These runs precede the final admission correction. A
+complete gate and solver run on that correction is underway, followed by a new
+sealed CLI/shim build and the unchanged real-reader workflow with bounded stage
+timings. The last pushed
 [native CI revision](../bench/validation/m7-linux-ci-08435c5-native-2026-10-11.json)
-passes every check in 442 seconds; the newer combined product still needs its
-complete gate and solver run.
+passes every check in 442 seconds. The full Result p95 failure at 394.713 ms
+remains open; local component controls do not replace the live acceptance gate.
 
 | Workstream | Implementation and current validation | Remaining product gate |
 |---|---|---|
