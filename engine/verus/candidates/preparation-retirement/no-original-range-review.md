@@ -92,3 +92,11 @@ prior seals, source closure and engine-selector removal. Static composition is
 approved for that one private source-control scope. Full-source execution is
 pending, and the domain inequality control proves encoded-format separation
 only. Actual cache rejection remains mandatory in the original runtime gate.
+
+A follow-up static pass found a test-layout concern missed in the composition
+ACK: the new `pending_absence_test` function follows the existing `drop_probe`
+test module. Earlier actual pinned strict validation rejected the same pattern
+with `items_after_test_module`. This is not an authority change, and the frozen
+control scope must retain its actual outcome. If reproduced, move the unchanged
+helper before the module in a new frozen identity; do not suppress the lint or
+change assertions. No actual lint result for this composition is available yet.
