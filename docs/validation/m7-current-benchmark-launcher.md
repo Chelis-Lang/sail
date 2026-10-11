@@ -40,10 +40,40 @@ to resolve before execution, not a reason to alter the original wrapper.
 The launcher selects the execution container named in the coherent product
 record and refuses missing or changed prerequisites.
 
+The [acceptance installer](m7-current-benchmark-install.py) resolves that
+constraint by transferring only sealed product bytes and the exact tracked Git
+source archive into new acceptance paths. It verifies the complete extracted
+source inventory before and after using the archive-bound native installer.
+The native installer creates fresh service-owned binaries with mode `0700`;
+existing destinations are refused. It does not transfer a target, cache, receipt
+or proof, and runs neither Cargo nor verification.
+
+The handoff producer record remains unchanged. A separate acceptance execution
+record binds its SHA, source/archive identity and exact binary bytes, records the
+actual destination installation and container birth, and retains the producer's
+actual build phase. The launcher prefers that bound execution record when
+present and refuses a changed producer, wrong bytes or changed container birth.
+The [installation controls](test-m7-current-benchmark-install.py) cover unsafe
+archive paths/links, complete source mutation/extra-file refusal, truthful
+immutable producer derivation, and changed installation/producer identities.
+
 The [pure controls](test-m7-current-benchmark-controller.py) cover duplicate or
 oversized metadata, revision/build/install mismatches, exact wrapper arguments,
-fresh work, ordinary priority and changed-wrapper refusal. They launch no Cargo,
+fresh work, ordinary priority, changed-wrapper refusal and source-preserving
+definition loading. They launch no Cargo,
 daemon, solver or proof actor. Actual whole-loop performance remains pending.
+
+The a9609e9 acceptance byte installation passes: its recorded transfer/install
+transaction takes 18.351 seconds, excluding CLI startup and the initial producer
+record read. The Docker native-installer command takes 1.287 seconds. All 1,434 tracked source
+entries match their exact archive bytes, symlink targets and modes before and
+after installation. A complete post-precheck source seal also passes. The
+prepared-only original benchmark precheck takes 4.199 seconds through its primary
+result, excluding final archival work, with matching
+M6, runtime, source, corpus, product and container-birth seals. These are setup
+results only. No benchmark preparation, Cargo or proof workload has run.
+The [portable record](m7-current-benchmark-launcher.json) retains the producer
+and execution-record identities separately; the producer record is unchanged.
 See [ADR 0036](../decisions/0036-managed-compiler-artifact-families.md) for the
 implemented compiler-family observations and their separate product-validation
 scope, and the [roadmap](../ROADMAP.md) for M7 acceptance.

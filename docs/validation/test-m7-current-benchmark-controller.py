@@ -82,6 +82,17 @@ class Controls(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Original wrapper changed'):
                 M.original_module(directory)
 
+    def test_sealed_definition_load_does_not_write_source_bytecode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / M.ORIGINAL
+            path.parent.mkdir(parents=True)
+            path.write_text('value = 3\nif __name__ == "__main__":\n    raise RuntimeError("must not launch")\n')
+            digest = M.sha(path)
+            with patch.object(M, 'ORIGINAL_SHA', digest):
+                self.assertEqual(M.original_module(directory).value, 3)
+            self.assertFalse((path.parent / '__pycache__').exists())
+            self.assertEqual(M.sha(path), digest)
+
     def test_nonordinary_priority_refused_before_exec(self):
         with patch.object(M.os, 'getpriority', return_value=10), patch.object(M.os, 'execvp') as execute:
             with self.assertRaises(ValueError):
