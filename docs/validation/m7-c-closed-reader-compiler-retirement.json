@@ -1,0 +1,1281 @@
+{
+  "version": 1,
+  "scope": "Only closed C-owned ordinary Sail compiler intermediates; no proof, benchmark or runtime changes",
+  "status": "retired; executable/shared images and provenance preserved",
+  "target_families": [
+    "m7-reader-cb07",
+    "m7-result-client"
+  ],
+  "deleted_subtrees": [
+    "debug",
+    "release"
+  ],
+  "allocation": {
+    "before_unique_allocated_bytes": 2297212928,
+    "before_unique_logical_bytes": 2285275547,
+    "retained_unique_allocated_bytes": 939417600,
+    "retained_unique_logical_bytes": 939887784,
+    "retired_allocated_bytes": 1357795328,
+    "retired_logical_bytes": 1345387763
+  },
+  "retained_images": {
+    "discovered_executable_or_shared_elf_paths": 149,
+    "all_before_after_sha256_match": true,
+    "inventory": {
+      "bytes": 1822771,
+      "sha256": "555aee266db872ab12945b84cd43e997347f2283e155014607d8fff9984b4bf4"
+    },
+    "entries": [
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/generic-array-e1c281c23bd1f564/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/generic-array-e1c281c23bd1f564/build-script-build",
+        "sha256": "818479f9da8e137b7d3cd8226564b4a103be35f64d949f59f4fa9bcd79017941",
+        "bytes": 4712312
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/generic-array-e1c281c23bd1f564/build_script_build-e1c281c23bd1f564",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/generic-array-e1c281c23bd1f564/build_script_build-e1c281c23bd1f564",
+        "sha256": "818479f9da8e137b7d3cd8226564b4a103be35f64d949f59f4fa9bcd79017941",
+        "bytes": 4712312
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/quote-a643a56eb2069f55/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/quote-a643a56eb2069f55/build-script-build",
+        "sha256": "65aa43e1680c63994ae7bda64bc3e2e125c92be836d619504f651876ce11f29d",
+        "bytes": 4648328
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/quote-a643a56eb2069f55/build_script_build-a643a56eb2069f55",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/quote-a643a56eb2069f55/build_script_build-a643a56eb2069f55",
+        "sha256": "65aa43e1680c63994ae7bda64bc3e2e125c92be836d619504f651876ce11f29d",
+        "bytes": 4648328
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/inotify-sys-9a276a094b55e26d/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/inotify-sys-9a276a094b55e26d/build-script-build",
+        "sha256": "ec7947596f0b61a0939669f4cc400968efcd6041a0a47aca58b4ea5ee4f3a4e5",
+        "bytes": 4661024
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/inotify-sys-9a276a094b55e26d/build_script_build-9a276a094b55e26d",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/inotify-sys-9a276a094b55e26d/build_script_build-9a276a094b55e26d",
+        "sha256": "ec7947596f0b61a0939669f4cc400968efcd6041a0a47aca58b4ea5ee4f3a4e5",
+        "bytes": 4661024
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/zmij-d4660f97c989b8f4/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/zmij-d4660f97c989b8f4/build-script-build",
+        "sha256": "05c5c285657d3d6050a5ac2320e819809fff66a4604be1e032b14712d121d66d",
+        "bytes": 4653456
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/zmij-d4660f97c989b8f4/build_script_build-d4660f97c989b8f4",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/zmij-d4660f97c989b8f4/build_script_build-d4660f97c989b8f4",
+        "sha256": "05c5c285657d3d6050a5ac2320e819809fff66a4604be1e032b14712d121d66d",
+        "bytes": 4653456
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/serde_core-551f49ff086546a8/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/serde_core-551f49ff086546a8/build-script-build",
+        "sha256": "489e402fb4120327e03e2ab79e71bdcfb0bc3f8b4f57140e1fe1785b4503ad00",
+        "bytes": 4682576
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/serde_core-551f49ff086546a8/build_script_build-551f49ff086546a8",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/serde_core-551f49ff086546a8/build_script_build-551f49ff086546a8",
+        "sha256": "489e402fb4120327e03e2ab79e71bdcfb0bc3f8b4f57140e1fe1785b4503ad00",
+        "bytes": 4682576
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/serde-07f1456055ac8152/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/serde-07f1456055ac8152/build-script-build",
+        "sha256": "9e477b99a8dcb471727c9b920cfea6efe6e8b27745431b437b6d200715e36e7a",
+        "bytes": 4679752
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/serde-07f1456055ac8152/build_script_build-07f1456055ac8152",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/serde-07f1456055ac8152/build_script_build-07f1456055ac8152",
+        "sha256": "9e477b99a8dcb471727c9b920cfea6efe6e8b27745431b437b6d200715e36e7a",
+        "bytes": 4679752
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/serde_json-b4d1b8e2b93b1ef9/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/serde_json-b4d1b8e2b93b1ef9/build-script-build",
+        "sha256": "05581e63676156f138b13b3356fd9cd67d6a6ee22836420899c70c516f0116d9",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/serde_json-b4d1b8e2b93b1ef9/build_script_build-b4d1b8e2b93b1ef9",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/serde_json-b4d1b8e2b93b1ef9/build_script_build-b4d1b8e2b93b1ef9",
+        "sha256": "05581e63676156f138b13b3356fd9cd67d6a6ee22836420899c70c516f0116d9",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/libc-26f951d8e4cd1423/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/libc-26f951d8e4cd1423/build-script-build",
+        "sha256": "6bb93b39aef3f6a2b2b4ad8323486d9b5d44f36cf9a5757febcfc7eab4c868d6",
+        "bytes": 4773328
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/libc-26f951d8e4cd1423/build_script_build-26f951d8e4cd1423",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/libc-26f951d8e4cd1423/build_script_build-26f951d8e4cd1423",
+        "sha256": "6bb93b39aef3f6a2b2b4ad8323486d9b5d44f36cf9a5757febcfc7eab4c868d6",
+        "bytes": 4773328
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/sha2-asm-e913129b1ee46dd3/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/sha2-asm-e913129b1ee46dd3/build-script-build",
+        "sha256": "55718c7880236ae25ba987634a41c9f80a9902ba718f252cb82bb9fa8f807e1d",
+        "bytes": 5993416
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/sha2-asm-e913129b1ee46dd3/build_script_build-e913129b1ee46dd3",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/sha2-asm-e913129b1ee46dd3/build_script_build-e913129b1ee46dd3",
+        "sha256": "55718c7880236ae25ba987634a41c9f80a9902ba718f252cb82bb9fa8f807e1d",
+        "bytes": 5993416
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/proc-macro2-a8d356aba312f19c/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/proc-macro2-a8d356aba312f19c/build-script-build",
+        "sha256": "42e96126c3adbc01e834512666c97d3a4d9e315efb8baaee310ca07868e86280",
+        "bytes": 4705520
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/build/proc-macro2-a8d356aba312f19c/build_script_build-a8d356aba312f19c",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/build/proc-macro2-a8d356aba312f19c/build_script_build-a8d356aba312f19c",
+        "sha256": "42e96126c3adbc01e834512666c97d3a4d9e315efb8baaee310ca07868e86280",
+        "bytes": 4705520
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/deps/libserde_derive-f2c17979ef7ac19e.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/deps/libserde_derive-f2c17979ef7ac19e.so",
+        "sha256": "1f98513719dd4dd6fa6c2cd25d72461ed8ce52b70566008e3acb84a14c5dd2e5",
+        "bytes": 9337288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/debug/deps/sail_verus-c7bc482be698dac4",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/debug/deps/sail_verus-c7bc482be698dac4",
+        "sha256": "bf92f0241c9b5c29fbb7f6b55906bc082df9ddd3d42fd153b51451252eca44c0",
+        "bytes": 28510488
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/sail",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/sail",
+        "sha256": "7e4f771901aa6542bf28ae4dd6b346fab9846e29e66fc06d2f0631e9a12ecd1d",
+        "bytes": 72196512
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/sail-bench",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/sail-bench",
+        "sha256": "7be7af80a072510107a099285bfbb8d3ca502397503697176ef6e8643118df5b",
+        "bytes": 25444288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/sail-conformance",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/sail-conformance",
+        "sha256": "045f0f358c7781ac0645f2c7daafd33cb5024d92c40119d0d68860ba214b91e7",
+        "bytes": 23360928
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/sail-z3",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/sail-z3",
+        "sha256": "9259e4eda02fa0c3cf55f4773e788bc3b35fcc38a9f38260b423a16c2bd76623",
+        "bytes": 10288096
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/xtask",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/xtask",
+        "sha256": "f8573d3fe46ed6374037da28412a632bd0bb7cd4ae0f0904a5f54722631bd802",
+        "bytes": 22308712
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/examples/check_mcp-82ad3aed18187790",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/examples/check_mcp-82ad3aed18187790",
+        "sha256": "f3aeff85adf94b9f3338719cc272e77e22af1b2acbae982ef66e9f7ec4744ddb",
+        "bytes": 7611880
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/examples/check_mcp",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/examples/check_mcp",
+        "sha256": "f3aeff85adf94b9f3338719cc272e77e22af1b2acbae982ef66e9f7ec4744ddb",
+        "bytes": 7611880
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/examples/check_output-ef43be5f8e3af755",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/examples/check_output-ef43be5f8e3af755",
+        "sha256": "2c614e8e69e5e6dfea57524c35d194c57b264e7679a4ff98c3dd21d9b9574a7e",
+        "bytes": 11636976
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/examples/job_read_bench-575f948bdebf4ab3",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/examples/job_read_bench-575f948bdebf4ab3",
+        "sha256": "6f13f4284f3614845d75e64e831040886138334fca21aed04a6c5b5d7835ba73",
+        "bytes": 12007984
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/examples/check_output",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/examples/check_output",
+        "sha256": "2c614e8e69e5e6dfea57524c35d194c57b264e7679a4ff98c3dd21d9b9574a7e",
+        "bytes": 11636976
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/examples/job_read_bench",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/examples/job_read_bench",
+        "sha256": "6f13f4284f3614845d75e64e831040886138334fca21aed04a6c5b5d7835ba73",
+        "bytes": 12007984
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/quote-8adb325df20be29e/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/quote-8adb325df20be29e/build-script-build",
+        "sha256": "9b84d211ea497ca30bff1f7090f367d36cd20cbfef9666fb39ab5b13ebf9454a",
+        "bytes": 4636208
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/quote-8adb325df20be29e/build_script_build-8adb325df20be29e",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/quote-8adb325df20be29e/build_script_build-8adb325df20be29e",
+        "sha256": "9b84d211ea497ca30bff1f7090f367d36cd20cbfef9666fb39ab5b13ebf9454a",
+        "bytes": 4636208
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/proc-macro2-6120a44798fc6656/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/proc-macro2-6120a44798fc6656/build-script-build",
+        "sha256": "f81f98349651c1ec6707e8b15736642dae4fd1b196fa25fe7e2b00a584858cbd",
+        "bytes": 4694024
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/proc-macro2-6120a44798fc6656/build_script_build-6120a44798fc6656",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/proc-macro2-6120a44798fc6656/build_script_build-6120a44798fc6656",
+        "sha256": "f81f98349651c1ec6707e8b15736642dae4fd1b196fa25fe7e2b00a584858cbd",
+        "bytes": 4694024
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/libc-0db91d5ce43df03e/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/libc-0db91d5ce43df03e/build-script-build",
+        "sha256": "232a4d6b8f0956a868760d0ce8a726256e9f43be3a50fd3e041f7adf9ff4bb23",
+        "bytes": 4747816
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/libc-0db91d5ce43df03e/build_script_build-0db91d5ce43df03e",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/libc-0db91d5ce43df03e/build_script_build-0db91d5ce43df03e",
+        "sha256": "232a4d6b8f0956a868760d0ce8a726256e9f43be3a50fd3e041f7adf9ff4bb23",
+        "bytes": 4747816
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/curve25519-dalek-59bf7826eea06a7e/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/curve25519-dalek-59bf7826eea06a7e/build-script-build",
+        "sha256": "13d14c8e5b9cdbd0cc9d9a07504b2ad66327fe13eebf88239a7865cc05ac9d59",
+        "bytes": 4790504
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/curve25519-dalek-59bf7826eea06a7e/build_script_build-59bf7826eea06a7e",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/curve25519-dalek-59bf7826eea06a7e/build_script_build-59bf7826eea06a7e",
+        "sha256": "13d14c8e5b9cdbd0cc9d9a07504b2ad66327fe13eebf88239a7865cc05ac9d59",
+        "bytes": 4790504
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/icu_properties_data-36edaa0cbdbb4e91/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/icu_properties_data-36edaa0cbdbb4e91/build-script-build",
+        "sha256": "e47a31d9795f57a48333be3904f86c548d9a6ad899e3ef72dca7836bd44540f5",
+        "bytes": 4541288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/icu_properties_data-36edaa0cbdbb4e91/build_script_build-36edaa0cbdbb4e91",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/icu_properties_data-36edaa0cbdbb4e91/build_script_build-36edaa0cbdbb4e91",
+        "sha256": "e47a31d9795f57a48333be3904f86c548d9a6ad899e3ef72dca7836bd44540f5",
+        "bytes": 4541288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/serde_core-d1ee0a8455317400/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/serde_core-d1ee0a8455317400/build-script-build",
+        "sha256": "5f3d44d954ef05a6cbcd1d796ff11753af7466dbc86865b5ae5140662c7a75e8",
+        "bytes": 4665472
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/serde_core-d1ee0a8455317400/build_script_build-d1ee0a8455317400",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/serde_core-d1ee0a8455317400/build_script_build-d1ee0a8455317400",
+        "sha256": "5f3d44d954ef05a6cbcd1d796ff11753af7466dbc86865b5ae5140662c7a75e8",
+        "bytes": 4665472
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/serde_json-028b4770dcb1864e/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/serde_json-028b4770dcb1864e/build-script-build",
+        "sha256": "1e58692d9ce79a6a969328b60b7f56a371c8d376a5d35b32db7879bfd3588890",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/serde_json-028b4770dcb1864e/build_script_build-028b4770dcb1864e",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/serde_json-028b4770dcb1864e/build_script_build-028b4770dcb1864e",
+        "sha256": "1e58692d9ce79a6a969328b60b7f56a371c8d376a5d35b32db7879bfd3588890",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/quote-7eb29cd6adf950ce/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/quote-7eb29cd6adf950ce/build-script-build",
+        "sha256": "97ccbdc3c5eb0f0dae4bed45e578f3188cd3a46470e0167f1da03c47f0b6853f",
+        "bytes": 4636208
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/quote-7eb29cd6adf950ce/build_script_build-7eb29cd6adf950ce",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/quote-7eb29cd6adf950ce/build_script_build-7eb29cd6adf950ce",
+        "sha256": "97ccbdc3c5eb0f0dae4bed45e578f3188cd3a46470e0167f1da03c47f0b6853f",
+        "bytes": 4636208
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/serde-816b0d2ff4f4cfc7/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/serde-816b0d2ff4f4cfc7/build-script-build",
+        "sha256": "159a45cf9bf87ad6d07f1f5e8d767752370dda43c75fed29beb3be2692068f53",
+        "bytes": 4662680
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/serde-816b0d2ff4f4cfc7/build_script_build-816b0d2ff4f4cfc7",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/serde-816b0d2ff4f4cfc7/build_script_build-816b0d2ff4f4cfc7",
+        "sha256": "159a45cf9bf87ad6d07f1f5e8d767752370dda43c75fed29beb3be2692068f53",
+        "bytes": 4662680
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/icu_normalizer_data-c69298a12e26cd73/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/icu_normalizer_data-c69298a12e26cd73/build-script-build",
+        "sha256": "09a4ea9796bc53e79c6c424a231da1737736894985fd9f4dbb259e47a93f3800",
+        "bytes": 4541288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/icu_normalizer_data-c69298a12e26cd73/build_script_build-c69298a12e26cd73",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/icu_normalizer_data-c69298a12e26cd73/build_script_build-c69298a12e26cd73",
+        "sha256": "09a4ea9796bc53e79c6c424a231da1737736894985fd9f4dbb259e47a93f3800",
+        "bytes": 4541288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/sha2-asm-c4cfaf3f736b683f/build_script_build-c4cfaf3f736b683f",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/sha2-asm-c4cfaf3f736b683f/build_script_build-c4cfaf3f736b683f",
+        "sha256": "e6f2904df130130207e4d2cd070b410e4986fd3d60a54656b392df886586c6f3",
+        "bytes": 5940216
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/sha2-asm-c4cfaf3f736b683f/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/sha2-asm-c4cfaf3f736b683f/build-script-build",
+        "sha256": "e6f2904df130130207e4d2cd070b410e4986fd3d60a54656b392df886586c6f3",
+        "bytes": 5940216
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/inotify-sys-9497656af75622b4/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/inotify-sys-9497656af75622b4/build-script-build",
+        "sha256": "79585d0b747ef13c191e6389ae985eea28b54b1a7802c987b6b70098ea826c32",
+        "bytes": 4642984
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/inotify-sys-9497656af75622b4/build_script_build-9497656af75622b4",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/inotify-sys-9497656af75622b4/build_script_build-9497656af75622b4",
+        "sha256": "79585d0b747ef13c191e6389ae985eea28b54b1a7802c987b6b70098ea826c32",
+        "bytes": 4642984
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/httparse-ad7e23c5c6837e99/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/httparse-ad7e23c5c6837e99/build-script-build",
+        "sha256": "d501c87b70e8f1dd2aa48e10d461e1c17b73398329703831a44e9d7a77fcd2bd",
+        "bytes": 4689032
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/httparse-ad7e23c5c6837e99/build_script_build-ad7e23c5c6837e99",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/httparse-ad7e23c5c6837e99/build_script_build-ad7e23c5c6837e99",
+        "sha256": "d501c87b70e8f1dd2aa48e10d461e1c17b73398329703831a44e9d7a77fcd2bd",
+        "bytes": 4689032
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/ring-1879174228f3234c/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/ring-1879174228f3234c/build-script-build",
+        "sha256": "acc4b7946ea6c87cc497fe9eaac99ffb3955a66787ede1ae2effc47197eacc1b",
+        "bytes": 6151264
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/ring-1879174228f3234c/build_script_build-1879174228f3234c",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/ring-1879174228f3234c/build_script_build-1879174228f3234c",
+        "sha256": "acc4b7946ea6c87cc497fe9eaac99ffb3955a66787ede1ae2effc47197eacc1b",
+        "bytes": 6151264
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/proc-macro2-0c59da0200fcd517/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/proc-macro2-0c59da0200fcd517/build-script-build",
+        "sha256": "ac172da551894bd809073c71902132542fd17951be384f1dcc2fc5cf5a78a7b8",
+        "bytes": 4693816
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/proc-macro2-0c59da0200fcd517/build_script_build-0c59da0200fcd517",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/proc-macro2-0c59da0200fcd517/build_script_build-0c59da0200fcd517",
+        "sha256": "ac172da551894bd809073c71902132542fd17951be384f1dcc2fc5cf5a78a7b8",
+        "bytes": 4693816
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/zmij-1c5254faf7373feb/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/zmij-1c5254faf7373feb/build-script-build",
+        "sha256": "e5a3972e972e687e552681f4cd6bc3acf980d3fc3ca2d9936e76b131246a25c6",
+        "bytes": 4641336
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/zmij-1c5254faf7373feb/build_script_build-1c5254faf7373feb",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/zmij-1c5254faf7373feb/build_script_build-1c5254faf7373feb",
+        "sha256": "e5a3972e972e687e552681f4cd6bc3acf980d3fc3ca2d9936e76b131246a25c6",
+        "bytes": 4641336
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/rustls-597fc4e9a9217e3a/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/rustls-597fc4e9a9217e3a/build-script-build",
+        "sha256": "9eadc1c63e5fb8e331ddfbe725170ed8e04a5cc7be252867613cbd82b8db7d8b",
+        "bytes": 4529880
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/rustls-597fc4e9a9217e3a/build_script_build-597fc4e9a9217e3a",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/rustls-597fc4e9a9217e3a/build_script_build-597fc4e9a9217e3a",
+        "sha256": "9eadc1c63e5fb8e331ddfbe725170ed8e04a5cc7be252867613cbd82b8db7d8b",
+        "bytes": 4529880
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/signal-hook-86e1875e417ab0da/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/signal-hook-86e1875e417ab0da/build-script-build",
+        "sha256": "f16bfe83bbaff977ab91b08cc1e86f1ca6133a0300fca5cdfed427f6301839d8",
+        "bytes": 4529880
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/signal-hook-86e1875e417ab0da/build_script_build-86e1875e417ab0da",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/signal-hook-86e1875e417ab0da/build_script_build-86e1875e417ab0da",
+        "sha256": "f16bfe83bbaff977ab91b08cc1e86f1ca6133a0300fca5cdfed427f6301839d8",
+        "bytes": 4529880
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/nix-5014a8aec04b45c1/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/nix-5014a8aec04b45c1/build-script-build",
+        "sha256": "06ef03bcac9b61d908f306043e32b83fd78336f556a9a29c9be5ac430a9b423b",
+        "bytes": 4661376
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/nix-5014a8aec04b45c1/build_script_build-5014a8aec04b45c1",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/nix-5014a8aec04b45c1/build_script_build-5014a8aec04b45c1",
+        "sha256": "06ef03bcac9b61d908f306043e32b83fd78336f556a9a29c9be5ac430a9b423b",
+        "bytes": 4661376
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/libc-573fc8c73b60e1b5/build_script_build-573fc8c73b60e1b5",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/libc-573fc8c73b60e1b5/build_script_build-573fc8c73b60e1b5",
+        "sha256": "f2fc3201749138160da234f83c5c8df21b50eaacdfdcae4a158c5863443b72e3",
+        "bytes": 4747816
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/libc-573fc8c73b60e1b5/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/libc-573fc8c73b60e1b5/build-script-build",
+        "sha256": "f2fc3201749138160da234f83c5c8df21b50eaacdfdcae4a158c5863443b72e3",
+        "bytes": 4747816
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/generic-array-aefa9fcf9c75b2a3/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/generic-array-aefa9fcf9c75b2a3/build-script-build",
+        "sha256": "358653f926aebed5a27d57824e6b836d616712c6c7200f9173e82fb0a2f5ee6a",
+        "bytes": 4693592
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/build/generic-array-aefa9fcf9c75b2a3/build_script_build-aefa9fcf9c75b2a3",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/build/generic-array-aefa9fcf9c75b2a3/build_script_build-aefa9fcf9c75b2a3",
+        "sha256": "358653f926aebed5a27d57824e6b836d616712c6c7200f9173e82fb0a2f5ee6a",
+        "bytes": 4693592
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_conformance-058b625c50a0ab08",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_conformance-058b625c50a0ab08",
+        "sha256": "c7aeec5317887fe6196f74af90c5154cd899e74ab2c9810a07059a748cc94c59",
+        "bytes": 17815384
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_z3-c67639a981b7901c",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_z3-c67639a981b7901c",
+        "sha256": "1a7c37973f0d84b5e9c9cefd5fcdf25f0bc2fd9b2c9de84b4dec0e8703376320",
+        "bytes": 7831432
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail-57ef9347517ec884",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail-57ef9347517ec884",
+        "sha256": "6ecf5553fe273fca51a1426211619f47dcd3d7a995d1025e1060ef743bace35e",
+        "bytes": 9679696
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail-68a2346593e86397",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail-68a2346593e86397",
+        "sha256": "7a9f6f812807439a7f02c12e1e08d3ba8c24954903e514940c19f9a40c5e6297",
+        "bytes": 19622536
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_bench-2972e4ff632e39fe",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_bench-2972e4ff632e39fe",
+        "sha256": "7be7af80a072510107a099285bfbb8d3ca502397503697176ef6e8643118df5b",
+        "bytes": 25444288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_bench-d2e5e7733299f02f",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_bench-d2e5e7733299f02f",
+        "sha256": "bc658ff8d2aac1844395f1414998ab51c466d6fb80c9b766396e3f4c5915e374",
+        "bytes": 18399032
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libzerofrom_derive-f1f95ee0f7b1dcc6.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libzerofrom_derive-f1f95ee0f7b1dcc6.so",
+        "sha256": "bc80195f824f43ee65066d378f77d6f97e540aecd5c5aa6ef21a2e0064a68f22",
+        "bytes": 8190352
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/xtask-585be195e024f252",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/xtask-585be195e024f252",
+        "sha256": "f8573d3fe46ed6374037da28412a632bd0bb7cd4ae0f0904a5f54722631bd802",
+        "bytes": 22308712
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_conformance-dbbb77e966ee8e79",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_conformance-dbbb77e966ee8e79",
+        "sha256": "1ee9779b847505408e3c7ad8d0bec94db1db53223e1b5c4075404c0a1ae1410f",
+        "bytes": 12811392
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_conformance-be76edf3f8562ae1",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_conformance-be76edf3f8562ae1",
+        "sha256": "045f0f358c7781ac0645f2c7daafd33cb5024d92c40119d0d68860ba214b91e7",
+        "bytes": 23360928
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_conformance-418674a72c942689",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_conformance-418674a72c942689",
+        "sha256": "585ca726198534ac64aea7eb8d647f411d029e957813aaf7afd906069625957b",
+        "bytes": 23393576
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail-efd81c302a27c25f",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail-efd81c302a27c25f",
+        "sha256": "1a5a5621904db0fec2fb286ce99541b158a82a5273bbe24d5f43ba787c12d48f",
+        "bytes": 24471856
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail-121376b7d4b1a3ca",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail-121376b7d4b1a3ca",
+        "sha256": "4ce2c683ad4ce0a92931489775cc97e740ec23a437b733ce8f34438e4875b971",
+        "bytes": 47413128
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_z3-522d4d5d2ac9dfcf",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_z3-522d4d5d2ac9dfcf",
+        "sha256": "c3321860d71a3009648e945792220378755809881b4fa05ab2bd8870015bce72",
+        "bytes": 7392976
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_conformance-86f9645183daae32",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_conformance-86f9645183daae32",
+        "sha256": "87fcc119db77f71dfaab9fe6fdcced3e554980fd1ea7a7a5ae2f6d4bc01ed7ad",
+        "bytes": 10694960
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libserde_derive-08e1e461cbc2fc16.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libserde_derive-08e1e461cbc2fc16.so",
+        "sha256": "a35da7c9a356be16e5ece7e3c385198ec1841e74a065247fceefd81635295faa",
+        "bytes": 9235168
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail-c45cfa768e9ef1ea",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail-c45cfa768e9ef1ea",
+        "sha256": "7e4f771901aa6542bf28ae4dd6b346fab9846e29e66fc06d2f0631e9a12ecd1d",
+        "bytes": 72196512
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libyoke_derive-59185e02d16ee6ca.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libyoke_derive-59185e02d16ee6ca.so",
+        "sha256": "c07ccd044c8d303a3b23c6d3f0d019fcf0dd369af27cbac8645d3b45795c40c8",
+        "bytes": 8060040
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_bench-f7a518ee0e2d92a3",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_bench-f7a518ee0e2d92a3",
+        "sha256": "bdc08e666d99c45d7cdc488d09501d633cddbf352e0287f7433330cd484102ed",
+        "bytes": 20983392
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail-8d4cfaa300d3fb55",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail-8d4cfaa300d3fb55",
+        "sha256": "caf172d191be61b2895a6c31491db4b18f3e12a1dacac41c65227aaae0d6442f",
+        "bytes": 57203640
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libserde_derive-e227414dce0b0541.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libserde_derive-e227414dce0b0541.so",
+        "sha256": "e9ae4f2c38f101ffbb2d5498a0f8af3ddcaa85cf19fb6f016aa899d47990e3ed",
+        "bytes": 9240832
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_z3-09ebb9eebdad456a",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_z3-09ebb9eebdad456a",
+        "sha256": "9259e4eda02fa0c3cf55f4773e788bc3b35fcc38a9f38260b423a16c2bd76623",
+        "bytes": 10288096
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libzerovec_derive-7991cc4ded236866.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libzerovec_derive-7991cc4ded236866.so",
+        "sha256": "3d4f14243e78784fda6d63f51073aa4cdc8d7fa133b5aba013817e33089ba30b",
+        "bytes": 8037536
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libserde_derive-0db7c14c6af29073.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libserde_derive-0db7c14c6af29073.so",
+        "sha256": "9df8f5a3829b3c53a950b69519ffa2c5dd38e12ad5e324c424ec84c10847f742",
+        "bytes": 9239896
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_z3-cffbba4df99ee461",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_z3-cffbba4df99ee461",
+        "sha256": "81be6194dc3320db1f61b54d28f1d52c751707417b89f853890437113dd73837",
+        "bytes": 6873968
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libdisplaydoc-c43134aae46b308d.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libdisplaydoc-c43134aae46b308d.so",
+        "sha256": "ede0ae1f7dbd8c6f482d520e03c546949c304d557199e89029c0249ea7b8f450",
+        "bytes": 7855776
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/libcurve25519_dalek_derive-6ed9ee2c2e17c9b6.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/libcurve25519_dalek_derive-6ed9ee2c2e17c9b6.so",
+        "sha256": "81e64a330d20f1a614a0f638a1b7a7fb23cdbfa9592ee165cc0b77a13ae62446",
+        "bytes": 8517288
+      },
+      {
+        "original_relative_path": "m7-reader-cb07/release/deps/sail_bench-1a153d10e30dc5b7",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-reader-cb07/release/deps/sail_bench-1a153d10e30dc5b7",
+        "sha256": "7783f3901d67e605332cce08ee1e66711b6fa6f871d1d9930d009a41bdf1ee0a",
+        "bytes": 15609512
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/examples/result_frame_profile-1f030879e10c1bcc",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/examples/result_frame_profile-1f030879e10c1bcc",
+        "sha256": "e75d385d97d17c90b5cb409ea592bc7e11e14da904d4d94175c01f2d106ffbd0",
+        "bytes": 14682328
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/examples/result_client_profile-aeeb7c5aaed472df",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/examples/result_client_profile-aeeb7c5aaed472df",
+        "sha256": "1e4753548129e0e871225fc304d7d84c20c05eaf3fd93b6b930a1630e2601cba",
+        "bytes": 15994824
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/examples/result_stream_profile-f80e0b752425e838",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/examples/result_stream_profile-f80e0b752425e838",
+        "sha256": "c5f0f8c8ad0e84b43e80f75825aab9afc060240fc74d4b3cde149c67d9092bee",
+        "bytes": 15790168
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/generic-array-e1c281c23bd1f564/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/generic-array-e1c281c23bd1f564/build-script-build",
+        "sha256": "818479f9da8e137b7d3cd8226564b4a103be35f64d949f59f4fa9bcd79017941",
+        "bytes": 4712312
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/generic-array-e1c281c23bd1f564/build_script_build-e1c281c23bd1f564",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/generic-array-e1c281c23bd1f564/build_script_build-e1c281c23bd1f564",
+        "sha256": "818479f9da8e137b7d3cd8226564b4a103be35f64d949f59f4fa9bcd79017941",
+        "bytes": 4712312
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/serde_core-e69dab21d2fc06b6/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/serde_core-e69dab21d2fc06b6/build-script-build",
+        "sha256": "0480d5f6a809ce47ee3081a5eeb79c5fb5b1ab794035908dc31334ad8ca68c44",
+        "bytes": 4682576
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/serde_core-e69dab21d2fc06b6/build_script_build-e69dab21d2fc06b6",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/serde_core-e69dab21d2fc06b6/build_script_build-e69dab21d2fc06b6",
+        "sha256": "0480d5f6a809ce47ee3081a5eeb79c5fb5b1ab794035908dc31334ad8ca68c44",
+        "bytes": 4682576
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/quote-a643a56eb2069f55/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/quote-a643a56eb2069f55/build-script-build",
+        "sha256": "65aa43e1680c63994ae7bda64bc3e2e125c92be836d619504f651876ce11f29d",
+        "bytes": 4648328
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/quote-a643a56eb2069f55/build_script_build-a643a56eb2069f55",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/quote-a643a56eb2069f55/build_script_build-a643a56eb2069f55",
+        "sha256": "65aa43e1680c63994ae7bda64bc3e2e125c92be836d619504f651876ce11f29d",
+        "bytes": 4648328
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/zmij-d4660f97c989b8f4/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/zmij-d4660f97c989b8f4/build-script-build",
+        "sha256": "05c5c285657d3d6050a5ac2320e819809fff66a4604be1e032b14712d121d66d",
+        "bytes": 4653456
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/zmij-d4660f97c989b8f4/build_script_build-d4660f97c989b8f4",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/zmij-d4660f97c989b8f4/build_script_build-d4660f97c989b8f4",
+        "sha256": "05c5c285657d3d6050a5ac2320e819809fff66a4604be1e032b14712d121d66d",
+        "bytes": 4653456
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/serde-07f1456055ac8152/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/serde-07f1456055ac8152/build-script-build",
+        "sha256": "9e477b99a8dcb471727c9b920cfea6efe6e8b27745431b437b6d200715e36e7a",
+        "bytes": 4679752
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/serde-07f1456055ac8152/build_script_build-07f1456055ac8152",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/serde-07f1456055ac8152/build_script_build-07f1456055ac8152",
+        "sha256": "9e477b99a8dcb471727c9b920cfea6efe6e8b27745431b437b6d200715e36e7a",
+        "bytes": 4679752
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/serde_json-b4d1b8e2b93b1ef9/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/serde_json-b4d1b8e2b93b1ef9/build-script-build",
+        "sha256": "05581e63676156f138b13b3356fd9cd67d6a6ee22836420899c70c516f0116d9",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/serde_json-b4d1b8e2b93b1ef9/build_script_build-b4d1b8e2b93b1ef9",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/serde_json-b4d1b8e2b93b1ef9/build_script_build-b4d1b8e2b93b1ef9",
+        "sha256": "05581e63676156f138b13b3356fd9cd67d6a6ee22836420899c70c516f0116d9",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/libc-26f951d8e4cd1423/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/libc-26f951d8e4cd1423/build-script-build",
+        "sha256": "6bb93b39aef3f6a2b2b4ad8323486d9b5d44f36cf9a5757febcfc7eab4c868d6",
+        "bytes": 4773328
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/libc-26f951d8e4cd1423/build_script_build-26f951d8e4cd1423",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/libc-26f951d8e4cd1423/build_script_build-26f951d8e4cd1423",
+        "sha256": "6bb93b39aef3f6a2b2b4ad8323486d9b5d44f36cf9a5757febcfc7eab4c868d6",
+        "bytes": 4773328
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/sha2-asm-e913129b1ee46dd3/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/sha2-asm-e913129b1ee46dd3/build-script-build",
+        "sha256": "55718c7880236ae25ba987634a41c9f80a9902ba718f252cb82bb9fa8f807e1d",
+        "bytes": 5993416
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/sha2-asm-e913129b1ee46dd3/build_script_build-e913129b1ee46dd3",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/sha2-asm-e913129b1ee46dd3/build_script_build-e913129b1ee46dd3",
+        "sha256": "55718c7880236ae25ba987634a41c9f80a9902ba718f252cb82bb9fa8f807e1d",
+        "bytes": 5993416
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/proc-macro2-a8d356aba312f19c/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/proc-macro2-a8d356aba312f19c/build-script-build",
+        "sha256": "42e96126c3adbc01e834512666c97d3a4d9e315efb8baaee310ca07868e86280",
+        "bytes": 4705520
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/build/proc-macro2-a8d356aba312f19c/build_script_build-a8d356aba312f19c",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/build/proc-macro2-a8d356aba312f19c/build_script_build-a8d356aba312f19c",
+        "sha256": "42e96126c3adbc01e834512666c97d3a4d9e315efb8baaee310ca07868e86280",
+        "bytes": 4705520
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/deps/sail_api-565d3ab510966f34",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/deps/sail_api-565d3ab510966f34",
+        "sha256": "3b8e40bc0242cc1c0d44460ebbe5b5d6e6558a5501bfe02bc690c45435ad27c8",
+        "bytes": 19729528
+      },
+      {
+        "original_relative_path": "m7-result-client/debug/deps/libserde_derive-f2c17979ef7ac19e.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/debug/deps/libserde_derive-f2c17979ef7ac19e.so",
+        "sha256": "1f98513719dd4dd6fa6c2cd25d72461ed8ce52b70566008e3acb84a14c5dd2e5",
+        "bytes": 9337288
+      },
+      {
+        "original_relative_path": "m7-result-client/release/examples/result_frame_profile-2bcffb466ac4bcf7",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/examples/result_frame_profile-2bcffb466ac4bcf7",
+        "sha256": "1fbeb9a745460f79e2b144175a1e3288671c74cbb19ca0a4b9fa35026b4b9d28",
+        "bytes": 13787552
+      },
+      {
+        "original_relative_path": "m7-result-client/release/examples/result_frame_profile",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/examples/result_frame_profile",
+        "sha256": "1fbeb9a745460f79e2b144175a1e3288671c74cbb19ca0a4b9fa35026b4b9d28",
+        "bytes": 13787552
+      },
+      {
+        "original_relative_path": "m7-result-client/release/examples/result_client_profile-f7531b21da634ef8",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/examples/result_client_profile-f7531b21da634ef8",
+        "sha256": "22b5c993f0f2ec9f9507a45585235dc8c180cfac1d2612ae2cc6cd8a53cda09e",
+        "bytes": 15011296
+      },
+      {
+        "original_relative_path": "m7-result-client/release/examples/result_client_profile",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/examples/result_client_profile",
+        "sha256": "22b5c993f0f2ec9f9507a45585235dc8c180cfac1d2612ae2cc6cd8a53cda09e",
+        "bytes": 15011296
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/serde_core-78a83b4831586cda/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/serde_core-78a83b4831586cda/build-script-build",
+        "sha256": "c3548eb09bcea9f01ab4b24bf0132f40a61fc605fb5a926c51c5a0faec4e5d0b",
+        "bytes": 4665472
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/serde_core-78a83b4831586cda/build_script_build-78a83b4831586cda",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/serde_core-78a83b4831586cda/build_script_build-78a83b4831586cda",
+        "sha256": "c3548eb09bcea9f01ab4b24bf0132f40a61fc605fb5a926c51c5a0faec4e5d0b",
+        "bytes": 4665472
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/quote-8adb325df20be29e/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/quote-8adb325df20be29e/build-script-build",
+        "sha256": "9b84d211ea497ca30bff1f7090f367d36cd20cbfef9666fb39ab5b13ebf9454a",
+        "bytes": 4636208
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/quote-8adb325df20be29e/build_script_build-8adb325df20be29e",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/quote-8adb325df20be29e/build_script_build-8adb325df20be29e",
+        "sha256": "9b84d211ea497ca30bff1f7090f367d36cd20cbfef9666fb39ab5b13ebf9454a",
+        "bytes": 4636208
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/proc-macro2-6120a44798fc6656/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/proc-macro2-6120a44798fc6656/build-script-build",
+        "sha256": "f81f98349651c1ec6707e8b15736642dae4fd1b196fa25fe7e2b00a584858cbd",
+        "bytes": 4694024
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/proc-macro2-6120a44798fc6656/build_script_build-6120a44798fc6656",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/proc-macro2-6120a44798fc6656/build_script_build-6120a44798fc6656",
+        "sha256": "f81f98349651c1ec6707e8b15736642dae4fd1b196fa25fe7e2b00a584858cbd",
+        "bytes": 4694024
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/serde_json-028b4770dcb1864e/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/serde_json-028b4770dcb1864e/build-script-build",
+        "sha256": "1e58692d9ce79a6a969328b60b7f56a371c8d376a5d35b32db7879bfd3588890",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/serde_json-028b4770dcb1864e/build_script_build-028b4770dcb1864e",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/serde_json-028b4770dcb1864e/build_script_build-028b4770dcb1864e",
+        "sha256": "1e58692d9ce79a6a969328b60b7f56a371c8d376a5d35b32db7879bfd3588890",
+        "bytes": 4541672
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/serde-816b0d2ff4f4cfc7/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/serde-816b0d2ff4f4cfc7/build-script-build",
+        "sha256": "159a45cf9bf87ad6d07f1f5e8d767752370dda43c75fed29beb3be2692068f53",
+        "bytes": 4662680
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/serde-816b0d2ff4f4cfc7/build_script_build-816b0d2ff4f4cfc7",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/serde-816b0d2ff4f4cfc7/build_script_build-816b0d2ff4f4cfc7",
+        "sha256": "159a45cf9bf87ad6d07f1f5e8d767752370dda43c75fed29beb3be2692068f53",
+        "bytes": 4662680
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/sha2-asm-c4cfaf3f736b683f/build_script_build-c4cfaf3f736b683f",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/sha2-asm-c4cfaf3f736b683f/build_script_build-c4cfaf3f736b683f",
+        "sha256": "e6f2904df130130207e4d2cd070b410e4986fd3d60a54656b392df886586c6f3",
+        "bytes": 5940216
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/sha2-asm-c4cfaf3f736b683f/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/sha2-asm-c4cfaf3f736b683f/build-script-build",
+        "sha256": "e6f2904df130130207e4d2cd070b410e4986fd3d60a54656b392df886586c6f3",
+        "bytes": 5940216
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/zmij-1c5254faf7373feb/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/zmij-1c5254faf7373feb/build-script-build",
+        "sha256": "e5a3972e972e687e552681f4cd6bc3acf980d3fc3ca2d9936e76b131246a25c6",
+        "bytes": 4641336
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/zmij-1c5254faf7373feb/build_script_build-1c5254faf7373feb",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/zmij-1c5254faf7373feb/build_script_build-1c5254faf7373feb",
+        "sha256": "e5a3972e972e687e552681f4cd6bc3acf980d3fc3ca2d9936e76b131246a25c6",
+        "bytes": 4641336
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/libc-573fc8c73b60e1b5/build_script_build-573fc8c73b60e1b5",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/libc-573fc8c73b60e1b5/build_script_build-573fc8c73b60e1b5",
+        "sha256": "f2fc3201749138160da234f83c5c8df21b50eaacdfdcae4a158c5863443b72e3",
+        "bytes": 4747816
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/libc-573fc8c73b60e1b5/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/libc-573fc8c73b60e1b5/build-script-build",
+        "sha256": "f2fc3201749138160da234f83c5c8df21b50eaacdfdcae4a158c5863443b72e3",
+        "bytes": 4747816
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/generic-array-aefa9fcf9c75b2a3/build-script-build",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/generic-array-aefa9fcf9c75b2a3/build-script-build",
+        "sha256": "358653f926aebed5a27d57824e6b836d616712c6c7200f9173e82fb0a2f5ee6a",
+        "bytes": 4693592
+      },
+      {
+        "original_relative_path": "m7-result-client/release/build/generic-array-aefa9fcf9c75b2a3/build_script_build-aefa9fcf9c75b2a3",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/build/generic-array-aefa9fcf9c75b2a3/build_script_build-aefa9fcf9c75b2a3",
+        "sha256": "358653f926aebed5a27d57824e6b836d616712c6c7200f9173e82fb0a2f5ee6a",
+        "bytes": 4693592
+      },
+      {
+        "original_relative_path": "m7-result-client/release/deps/libserde_derive-08e1e461cbc2fc16.so",
+        "retained_relative_path": "m7-c-retained-compiler-images-a9609e9/m7-result-client/release/deps/libserde_derive-08e1e461cbc2fc16.so",
+        "sha256": "a35da7c9a356be16e5ece7e3c385198ec1841e74a065247fceefd81635295faa",
+        "bytes": 9235168
+      }
+    ]
+  },
+  "ownership_checks": {
+    "before-sail-m7-acceptance-0.json": {
+      "live_processes": 3,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 517177344,
+      "record": {
+        "bytes": 236,
+        "sha256": "e4dbe964e92a9dbaa066d97bd24a8d7db78ef1e89b50fd4cd4d247a9c6e9cf7a"
+      }
+    },
+    "before-sail-m7-acceptance-1.json": {
+      "live_processes": 3,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 1397055488,
+      "record": {
+        "bytes": 240,
+        "sha256": "4f2dbda523e1272af2a3521e8bce34ed685d35822410a1ca64b6634842e1a9c7"
+      }
+    },
+    "before-sail-m7-acceptance-2.json": {
+      "live_processes": 4,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 218013696,
+      "record": {
+        "bytes": 239,
+        "sha256": "4de13855ff0443de2b92b382288753e6e7788856959e34e677a6c86e57d676ef"
+      }
+    },
+    "before-sail-m7-acceptance-3.json": {
+      "live_processes": 1,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 164966400,
+      "record": {
+        "bytes": 241,
+        "sha256": "66f25035b81565ea2a1262458947fe4243f91e33c1bce00c7b455c074b94dc43"
+      }
+    },
+    "before-sail-m7-handoff-validation-0.json": {
+      "live_processes": 6,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 517177344,
+      "record": {
+        "bytes": 237,
+        "sha256": "7682919b750d67cdaf25357719d21fd7b40e76cf9b9e886dd13d50a4f1d77f2f"
+      }
+    },
+    "before-sail-m7-handoff-validation-1.json": {
+      "live_processes": 7,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 1397055488,
+      "record": {
+        "bytes": 241,
+        "sha256": "5c64df395f1dbdf6c50da6f172fe75472eb6fa6a75e2ef6ead4e1fd5cb23acbd"
+      }
+    },
+    "before-sail-m7-handoff-validation-2.json": {
+      "live_processes": 7,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 218013696,
+      "record": {
+        "bytes": 238,
+        "sha256": "7cae46dba65b3f067e24f1dc9d68cd6722dab8c9f7c9a9e539a3740b6474e3f4"
+      }
+    },
+    "before-sail-m7-handoff-validation-3.json": {
+      "live_processes": 6,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 164966400,
+      "record": {
+        "bytes": 240,
+        "sha256": "4e20d78e836f19d871dd9ce6450785f24adc64685256dde3d373cd7c844a1c47"
+      }
+    },
+    "predelete-sail-m7-acceptance-0.json": {
+      "live_processes": 3,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 431357952,
+      "record": {
+        "bytes": 237,
+        "sha256": "8f2c9a2df0d93aa443db227f38e4c4fd5d3355c8d56f52a76f3cd2115c5f150b"
+      }
+    },
+    "predelete-sail-m7-acceptance-1.json": {
+      "live_processes": 1,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 743456768,
+      "record": {
+        "bytes": 239,
+        "sha256": "54268c5ef7fd05f03e9152a91f4ad48bbe677f7ebd7df2ad00f105e66bf9972e"
+      }
+    },
+    "predelete-sail-m7-acceptance-2.json": {
+      "live_processes": 4,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 99258368,
+      "record": {
+        "bytes": 237,
+        "sha256": "cf8ca4c55bed0102524e6790f1f8cb1490aef74d629fa09d9f5bfc2505e4fb6d"
+      }
+    },
+    "predelete-sail-m7-acceptance-3.json": {
+      "live_processes": 4,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 83722240,
+      "record": {
+        "bytes": 239,
+        "sha256": "970becaa1319c85456e30982068da6c95d0944b3796ec77e6c0864ba819848a1"
+      }
+    },
+    "predelete-sail-m7-handoff-validation-0.json": {
+      "live_processes": 6,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 431357952,
+      "record": {
+        "bytes": 236,
+        "sha256": "e7bc6713682573b30ff4ba37ac8032db803a661a7f5a066d7ec6e7cae2b89889"
+      }
+    },
+    "predelete-sail-m7-handoff-validation-1.json": {
+      "live_processes": 6,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 743456768,
+      "record": {
+        "bytes": 239,
+        "sha256": "3d2780f532469196bd30f7426e90573f33b0daa22f867181cf5934d5e13f4dc6"
+      }
+    },
+    "predelete-sail-m7-handoff-validation-2.json": {
+      "live_processes": 7,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 99258368,
+      "record": {
+        "bytes": 236,
+        "sha256": "4c1d9eb58cd3a1c2607cf637577465f18c551d2897122b76a9bc07b31367d5e6"
+      }
+    },
+    "predelete-sail-m7-handoff-validation-3.json": {
+      "live_processes": 6,
+      "holders": 0,
+      "unreadable_or_ambiguous": 0,
+      "allocated_bytes": 83722240,
+      "record": {
+        "bytes": 238,
+        "sha256": "ebff99e8100c6dbd1ae9d52e63005905ece33a2b6253ff24a7a8fe986a5adcce"
+      }
+    },
+    "host-before.json": {
+      "matches": 0,
+      "scope": "Host process-command metadata check; native FD/map ownership checked separately in both containers",
+      "record": {
+        "bytes": 143,
+        "sha256": "a7eef2829683e84c457c59daf9c0d57212ae9b451384d188338b5165dcae321d"
+      }
+    },
+    "host-predelete.json": {
+      "matches": 0,
+      "scope": "Host process-command metadata check; native FD/map ownership checked separately in both containers",
+      "record": {
+        "bytes": 143,
+        "sha256": "a7eef2829683e84c457c59daf9c0d57212ae9b451384d188338b5165dcae321d"
+      }
+    }
+  },
+  "both_container_roots_absent": true,
+  "protected": [
+    "m7-result-client/evidence",
+    "m7-result-client/component-evidence",
+    "m7-result-client/final-evidence",
+    "m7-result-client/rebuilt-final-evidence",
+    "original c77 selected runtime and source",
+    "M6 and current product installations",
+    "corpus pins",
+    "all original reader raw evidence and proof caches/receipts",
+    "fresh future benchmark inputs and context",
+    "common Cargo target",
+    "other projects and active source-engine builders"
+  ],
+  "accounting_limit": "Unique regular-file inode allocated blocks; not a claim about reclaimed physical host space",
+  "host_df_after": "5.4 GiB available; concurrent changes prevent attributing this solely to retirement",
+  "raw_files": {
+    "before-sail-m7-acceptance-0.json": {
+      "bytes": 236,
+      "sha256": "e4dbe964e92a9dbaa066d97bd24a8d7db78ef1e89b50fd4cd4d247a9c6e9cf7a"
+    },
+    "before-sail-m7-acceptance-0.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-sail-m7-acceptance-1.json": {
+      "bytes": 240,
+      "sha256": "4f2dbda523e1272af2a3521e8bce34ed685d35822410a1ca64b6634842e1a9c7"
+    },
+    "before-sail-m7-acceptance-1.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-sail-m7-acceptance-2.json": {
+      "bytes": 239,
+      "sha256": "4de13855ff0443de2b92b382288753e6e7788856959e34e677a6c86e57d676ef"
+    },
+    "before-sail-m7-acceptance-2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-sail-m7-acceptance-3.json": {
+      "bytes": 241,
+      "sha256": "66f25035b81565ea2a1262458947fe4243f91e33c1bce00c7b455c074b94dc43"
+    },
+    "before-sail-m7-acceptance-3.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-sail-m7-handoff-validation-0.json": {
+      "bytes": 237,
+      "sha256": "7682919b750d67cdaf25357719d21fd7b40e76cf9b9e886dd13d50a4f1d77f2f"
+    },
+    "before-sail-m7-handoff-validation-0.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-sail-m7-handoff-validation-1.json": {
+      "bytes": 241,
+      "sha256": "5c64df395f1dbdf6c50da6f172fe75472eb6fa6a75e2ef6ead4e1fd5cb23acbd"
+    },
+    "before-sail-m7-handoff-validation-1.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-sail-m7-handoff-validation-2.json": {
+      "bytes": 238,
+      "sha256": "7cae46dba65b3f067e24f1dc9d68cd6722dab8c9f7c9a9e539a3740b6474e3f4"
+    },
+    "before-sail-m7-handoff-validation-2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before-sail-m7-handoff-validation-3.json": {
+      "bytes": 240,
+      "sha256": "4e20d78e836f19d871dd9ce6450785f24adc64685256dde3d373cd7c844a1c47"
+    },
+    "before-sail-m7-handoff-validation-3.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "deletion.json": {
+      "bytes": 591,
+      "sha256": "2bfd00f6042c370a8a3abd05a1fe5596bb69669074c9fddd8a1a81d3ed1970a3"
+    },
+    "handoff-post.json": {
+      "bytes": 144,
+      "sha256": "65d01f920f205fccc1604b5512ffef5eec04963c75ee6dc6550108eb19b569cd"
+    },
+    "host-before.json": {
+      "bytes": 143,
+      "sha256": "a7eef2829683e84c457c59daf9c0d57212ae9b451384d188338b5165dcae321d"
+    },
+    "host-df-after.txt": {
+      "bytes": 164,
+      "sha256": "14f111efbb08e87d9d9239d0268274ca3612190713b9ece9a938215e019404d9"
+    },
+    "host-predelete.json": {
+      "bytes": 143,
+      "sha256": "a7eef2829683e84c457c59daf9c0d57212ae9b451384d188338b5165dcae321d"
+    },
+    "inventory.json": {
+      "bytes": 1822771,
+      "sha256": "555aee266db872ab12945b84cd43e997347f2283e155014607d8fff9984b4bf4"
+    },
+    "predelete-sail-m7-acceptance-0.json": {
+      "bytes": 237,
+      "sha256": "8f2c9a2df0d93aa443db227f38e4c4fd5d3355c8d56f52a76f3cd2115c5f150b"
+    },
+    "predelete-sail-m7-acceptance-0.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predelete-sail-m7-acceptance-1.json": {
+      "bytes": 239,
+      "sha256": "54268c5ef7fd05f03e9152a91f4ad48bbe677f7ebd7df2ad00f105e66bf9972e"
+    },
+    "predelete-sail-m7-acceptance-1.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predelete-sail-m7-acceptance-2.json": {
+      "bytes": 237,
+      "sha256": "cf8ca4c55bed0102524e6790f1f8cb1490aef74d629fa09d9f5bfc2505e4fb6d"
+    },
+    "predelete-sail-m7-acceptance-2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predelete-sail-m7-acceptance-3.json": {
+      "bytes": 239,
+      "sha256": "970becaa1319c85456e30982068da6c95d0944b3796ec77e6c0864ba819848a1"
+    },
+    "predelete-sail-m7-acceptance-3.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predelete-sail-m7-handoff-validation-0.json": {
+      "bytes": 236,
+      "sha256": "e7bc6713682573b30ff4ba37ac8032db803a661a7f5a066d7ec6e7cae2b89889"
+    },
+    "predelete-sail-m7-handoff-validation-0.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predelete-sail-m7-handoff-validation-1.json": {
+      "bytes": 239,
+      "sha256": "3d2780f532469196bd30f7426e90573f33b0daa22f867181cf5934d5e13f4dc6"
+    },
+    "predelete-sail-m7-handoff-validation-1.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predelete-sail-m7-handoff-validation-2.json": {
+      "bytes": 236,
+      "sha256": "4c1d9eb58cd3a1c2607cf637577465f18c551d2897122b76a9bc07b31367d5e6"
+    },
+    "predelete-sail-m7-handoff-validation-2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "predelete-sail-m7-handoff-validation-3.json": {
+      "bytes": 238,
+      "sha256": "ebff99e8100c6dbd1ae9d52e63005905ece33a2b6253ff24a7a8fe986a5adcce"
+    },
+    "predelete-sail-m7-handoff-validation-3.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "preserved-images.json": {
+      "bytes": 215,
+      "sha256": "00bb19455d131e21d2ce4066b26eae4517a79128aeeb295f07cb8232c114e07c"
+    },
+    "preserved-images.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
