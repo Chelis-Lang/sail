@@ -8,7 +8,7 @@ loss and unchanged exact wire comparisons. Killed fault controls still have no
 final completion counters and cannot certify general tails.
 
 The real forwarding-only arm exited zero under its unchanged 600-second ceiling.
-It delivered all 23 metadata rows with zero queue/send loss, zero overwrite and
+It delivered all 45 metadata rows for 12 response lines with zero queue/send loss, zero overwrite and
 no missing completed rows. Its controller elapsed 1.831052 seconds externally;
 that is not a full-project verification or latency benchmark. The complete
 seven-step scope took 28.538154 seconds, including the independent private build
