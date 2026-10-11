@@ -1997,6 +1997,7 @@ mod tests {
         )?;
         std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
         let data = serde_json::json!({"workspace_root":root,
+            "sail_cache_directory":config.cache, "target_directory":paths.target,
             "workspace_members":["input"], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
             "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
                 "source":null,"metadata":{"verus":{"verify":true}},
@@ -2034,6 +2035,7 @@ mod tests {
         )?;
         super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
         assert!(receipt.valid("selected"));
+        assert_eq!(receipt.input_revision, target_revision(&data, "input"));
         let (targets, missing) = target_records(&paths, &data, "selected", false, &expected)?;
         assert_eq!(targets.len(), 1);
         assert!(targets[0].reused);
