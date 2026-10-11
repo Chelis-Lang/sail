@@ -10,6 +10,11 @@ semantic versioning once the API is published.
   parse; all per-read freshness checks remain. No live reader latency gain is
   claimed from the component comparison.
 
+- A candidate retained-result output owner uses one bounded daemon constructor,
+  shared frame-cache admission and original complete read/hash fallback. Exact
+  input/runtime freshness remains independent; source controls and the original
+  live reader acceptance are pending.
+
 - Add an unselected Linux library prototype for continuously guarded retained
   output digests. It certifies complete output bytes only; the daemon still uses
   its original read/hash and input freshness checks. No live reader gain is

@@ -1,6 +1,6 @@
 # 0035: Guarded retained output digests
 
-- **Status:** proposed; primitive only, daemon path unselected
+- **Status:** proposed; daemon integration implemented for review, source controls and live reader acceptance pending
 - **Date:** 2026-10-11
 
 ## Context
@@ -40,7 +40,9 @@ remain necessary. Prospective integration must check the output namespace before
 those input checks and check the same original output owner afterward, so their
 observations establish a valid point within the request interval.
 
-No daemon activation is part of the current primitive. Before enabling it,
+The daemon integration candidate uses one owned background constructor and
+keeps foreground RPCs on existing coverage or original complete hashing. It is
+not yet source-qualified or enabled in an installed product. Before enabling it,
 compare the complete prospective validation operation, including the new
 namespace/helper/kernel work and fallback on contention, with the original full
 read-and-hash operation on the same complete retained report. Any helper overhead
@@ -101,3 +103,36 @@ fallback. This supports reviewing bounded integration; it does not enable the
 primitive, explain the original 343.142 ms live p95 or meet the original reader
 gate. The separately measured parent-group candidate remains test-only because
 its tail comparison did not demonstrate an improvement.
+
+## Integration candidate
+
+The [implementation and ownership plan](../validation/m7-guarded-output-integration-plan.md)
+keeps the same 128 MiB frame-family budget. Before any request allocation it
+reserves 16 MiB retained ownership plus 64 MiB constructor scratch; only one
+queued/constructing generation exists. The fixed margin covers a single 1 MiB
+constructor stack, 64 KiB service controls and bounded retiring owner/Frames
+shells. Each foreground coverage operation reserves 16 MiB scratch before any
+barrier. All charges survive actual eviction, construction and in-flight frame
+references. Helper/observer disposal precedes owner refund; surviving outer
+allocation shells belong to the permanent margin. No output owner establishes
+Currentness or changes the complete result payload.
+
+Exact output/helper file coverage avoids recursive directory walks, and bounded
+construction fdinfo uses a complete 64 KiB sentinel read. The general legacy
+observer and inventory APIs keep their previous behavior. Input/runtime freshness
+still runs between the same owner's two barriers; final coverage failure repeats
+the complete original read/hash and independent freshness. Missing, busy, quota
+refused or sticky-invalid coverage always uses that original fallback.
+
+Cancellation and owned constructor join close queued/active construction.
+Cached or in-flight Frames can retain their original owners afterward, and their
+charges remain until actual physical disposal. Constructor spawn failure disables
+the optional path while preserving the original job service. The supported Linux
+exec environment is the existing trusted OS/helper bootstrap; production does
+not mutate that process environment, and its clone storage is charged in the
+construction envelope. Native kernel/helper resources remain separately bounded.
+
+The candidate includes source lifecycle, resource and real output mutation
+controls. They have not yet compiled or executed. All original complete payload,
+collector, four-client/200-sample and five-second bounds remain required; prior
+component measurements are not daemon acceptance or performance qualification.
