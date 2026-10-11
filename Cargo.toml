@@ -15,6 +15,8 @@ repository = "https://github.com/Chelis-Lang/sail"
 # Safe bounded Unix RPC connection setup, including listener backlog pressure.
 socket2 = "=0.6.5"
 inotify = { version = "=0.11.5", default-features = false }
+# Safe Linux polling of the kernel mount-namespace event generation.
+rustix = { version = "=1.1.5", default-features = false, features = ["std", "event", "fs"] }
 sail-smtlib = { path = "crates/sail-smtlib" }
 sail-session = { path = "crates/sail-session" }
 sail-key = { path = "crates/sail-key" }

@@ -114,6 +114,9 @@ jobs:
       packages: read
     container:
       image: ${{ needs.image.outputs.image }}
+      # The restored-mount fault control creates its own private child mount
+      # namespace. No other gate receives mount privileges.
+      options: --cap-add SYS_ADMIN --security-opt seccomp=unconfined
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

@@ -31,7 +31,12 @@ for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OU
 done
 tty=()
 [ -t 1 ] && tty=(-t)
-docker run --rm ${tty[@]+"${tty[@]}"} ${sail_runtime_env[@]+"${sail_runtime_env[@]}"} --platform linux/amd64 \
+sail_fault_options=()
+# Match the one CI job whose real fault control needs a private mount namespace.
+if [ "${1:-}" = solver ]; then
+  sail_fault_options=(--cap-add SYS_ADMIN --security-opt seccomp=unconfined)
+fi
+docker run --rm ${tty[@]+"${tty[@]}"} ${sail_runtime_env[@]+"${sail_runtime_env[@]}"} ${sail_fault_options[@]+"${sail_fault_options[@]}"} --platform linux/amd64 \
   -v "$PWD:/work" -w /work \
   -v sail-ci-target:/work/target \
   -v sail-ci-cache:/root/.cache/sail \

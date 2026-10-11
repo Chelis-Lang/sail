@@ -136,6 +136,14 @@ An ordinary user may lack permission to lease a system-owned Python interpreter.
 macOS takes a conservative path and may require fresh verification.
 See [freshness](freshness.md) and [trust](trust.md).
 
+The development branch now retains a sticky kernel mount-generation guard.
+Earlier mountinfo snapshot comparisons could miss a bind mount restored before
+the next barrier. A real isolated control restores both bytes and mountinfo,
+yet the new namespace and lease consumers correctly remain dirty. Unsupported
+coverage refuses reuse. See [ADR 0032](decisions/0032-kernel-mount-generation-coverage.md)
+and [its scoped validation](validation/m7-kernel-mount-generation.json);
+complete affected gates remain required.
+
 The local Linux container is supported for development and acceptance runs under
 emulation, with that environment recorded. Native Linux reference measurements
 can follow later. Docker VM interruptions invalidate incomplete runs; they do
@@ -167,6 +175,7 @@ not change a test deadline or turn observed failures into passes.
 | Earlier complete Linux workspace gate | Source `62ad095`, 436/436 tests plus all gate steps passed; two test workers | [Record](../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
 | Earlier real solver/fault suite | Source `5fd7986`, all 37 tests passed in 182.337 seconds; the earlier timed-out shared-entry case passed in 13.751 seconds with its original 180-second test and 60-second session limits | [Record](../bench/validation/m7-linux-solver-5fd-emulated-2026-10-10.json) |
 | Latest complete local end-to-end attempt | Frozen `777b86a`: legacy output, JSON/MCP, seed-4 portfolio and all five installed MCP transport controls pass; first managed cold verification exceeds its unchanged 240-second limit. Partial dependency-build stderr is retained; cause remains unestablished. Repair was not reached. | [Complete failure and raw streams](../bench/validation/m7-linux-e2e-777-failure-emulated-2026-10-11.json) |
+| Subsequent standalone managed acceptance | Frozen `012707a`: the unchanged complete managed script passes cold verification in 216.080 s, unchanged reuse in 31.947 s, original CLI/MCP assertions, missing-receipt recovery and a restored-mtime failing edit. No proof/dependency prewarm or deadline changes. It does not replace the earlier aggregate failure or qualify real-project repair/read latency. | [Complete managed result and setup timings](validation/m7-managed-setup-012707a.md) |
 | Earlier complete end-to-end attempt | Source `5fd7986`: legacy output, JSON/MCP and cold/warm seed-4 portfolio checks passed; the first cold managed verification timed out at its unchanged 240-second limit. Repair was not reached. Default fixture scratch cleanup removed its inner stdout/stderr evidence, so the timeout's cause is not established. | [Failure](../bench/validation/m7-linux-e2e-5fd-failure-emulated-2026-10-10.json) |
 | Subsequent isolated repair phase | Same frozen `5fd7986` product and selected runtime: the first repair job remained running at the unchanged 120-second workflow limit. Retained worker stderr ends in dependency compilation; no complete result or later scenario was admitted. All 331 CLI operations returned within their bounds; MCP was not reached. Cleanup reported no errors. | [Failure](../bench/validation/m7-linux-repair-5fd-phase-failure-emulated-2026-10-10.json) |
 | Subsequent HTTP-labelled diagnostic suite | Frozen `987aa39`: 9/12 passed, three shared-reader checks failed with their original bounds; the separately selected direct stalled-response case passed at 119.775 ms. Serial case scheduling retained all internal concurrency. No complete workspace gate or causal resolution is claimed. | [Diagnostic](validation/m7-http-987-followup.json) |

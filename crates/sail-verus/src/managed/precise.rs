@@ -85,12 +85,12 @@ mod platform {
         complete: bool,
         changed: bool,
         failure: Option<&'static str>,
-        mounts: String,
+        mounts: super::super::kernel_mounts::Guard,
         bindings: Vec<(PathBuf, Option<(u64, u64)>)>,
     }
     impl Observer {
         pub(super) fn begin(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
-            let mounts = std::fs::read_to_string("/proc/self/mountinfo").ok()?;
+            let mounts = super::super::kernel_mounts::Guard::begin()?;
             let mut observer = Self {
                 native: Inotify::init().ok()?,
                 directories: HashMap::new(),
@@ -115,7 +115,7 @@ mod platform {
         }
         fn watch(&mut self, directory: &Path) -> Option<()> {
             let canonical = directory.canonicalize().ok()?;
-            if !local_filesystem(&canonical, &self.mounts) {
+            if !local_filesystem(&canonical, self.mounts.snapshot()) {
                 return None;
             }
             if self.canonical_watches.contains_key(&canonical) {
@@ -175,7 +175,7 @@ mod platform {
                 }
                 Ok(_) => {
                     if let Ok(canonical) = path.canonicalize() {
-                        if !local_filesystem(&canonical, &self.mounts) {
+                        if !local_filesystem(&canonical, self.mounts.snapshot()) {
                             return None;
                         }
                         self.tracked.insert(canonical);
@@ -247,11 +247,7 @@ mod platform {
             // Mount operations can change path resolution without ordinary file
             // events. Bindings supplement continuous native observation; they
             // never replace it with metadata-only content trust.
-            if std::fs::read_to_string("/proc/self/mountinfo")
-                .as_ref()
-                .ok()
-                != Some(&self.mounts)
-            {
+            if !self.mounts.clean() {
                 self.complete = false;
                 self.failure
                     .get_or_insert("namespace-mount-inventory-changed");
