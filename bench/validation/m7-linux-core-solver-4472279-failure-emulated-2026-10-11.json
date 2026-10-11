@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "source_commit": "44722793489b56be9c2988fc62b709f173b36f22",
+  "source_archive_sha256": "2d4fcfeac228a9ca8cfe948d31282b3d9247bff0ca4b131593a4ed193e9004f2",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete combined current workspace gate and original solver controls after bounded shared trust/configuration and diagnostic corrections; original checks/deadlines retained; source-runtime and real reader qualification separate",
+  "original_bounds_and_assertions_unchanged": true,
+  "m7_accepted": false,
+  "command": "bash ci/run.sh solver",
+  "exit_code": 100,
+  "inclusive_elapsed_seconds": 310.6955817500001,
+  "nextest_elapsed_seconds": 304.718,
+  "tests": {
+    "run": 39,
+    "passed": 38,
+    "timed_out": 1,
+    "skipped": 540
+  },
+  "failures": [
+    {
+      "test": "sail-shim::faults gc_and_clear_during_sessions_only_cost_misses",
+      "original_timeout_seconds": 180,
+      "elapsed_seconds": 180.036,
+      "stdout": "running1test; testtimedout",
+      "cause": "unestablished; exactownedprocess disappeared before detailed live snapshot; test lifecycle/static deficiencies do not establish timeout phase"
+    }
+  ],
+  "raw_log": {
+    "bytes": 5049,
+    "sha256": "6efab07b272fe2637a34afdd1c85db6467821a504897f278d869149904062276"
+  },
+  "qualification": "Complete original solver suite failed; workspace540PASS remains separate, no retries or stitched pass"
+}

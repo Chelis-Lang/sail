@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_commit": "44722793489b56be9c2988fc62b709f173b36f22",
+  "source_archive_sha256": "2d4fcfeac228a9ca8cfe948d31282b3d9247bff0ca4b131593a4ed193e9004f2",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Complete combined current workspace gate and original solver controls after bounded shared trust/configuration and diagnostic corrections; original checks/deadlines retained; source-runtime and real reader qualification separate",
+  "original_bounds_and_assertions_unchanged": true,
+  "m7_accepted": false,
+  "command": "bash ci/run.sh gate",
+  "exit_code": 0,
+  "inclusive_elapsed_seconds": 526.0879213750001,
+  "nextest_elapsed_seconds": 162.684,
+  "tests": {
+    "run": 540,
+    "passed": 540,
+    "failed": 0,
+    "skipped": 39
+  },
+  "remaining_gate_steps": "All passed: examples, doctests, rustdoc, layering, dependency policy, generated benchmark-page equality",
+  "strict_workspace_all_target_clippy": "passed",
+  "raw_log": {
+    "bytes": 111358,
+    "sha256": "1f7445faea34c183d5d982249a91fb517dd3deee4c7be73d67cd486ac86604a2"
+  },
+  "qualification": "Complete current workspace gate only; solver/source/runtime/reader/performance scopes separate"
+}
