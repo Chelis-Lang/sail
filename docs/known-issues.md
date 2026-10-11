@@ -35,7 +35,10 @@ is implemented with complete imported-table identity and exact current raw-span
 rebinding. Its first compiler scope passes 42 VIR controls and VIR strict, then
 fails driver test compilation through a private-module reference. The failed
 scope is retained. A reviewed test-only integration correction preserves all
-assertions and production code; complete corrected compiler controls, an
+assertions and production code. The following scope exposes an invalid digest
+fixture and preserves its test-lock cascade separately. With a valid admitted
+digest, [complete compiler controls](../engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/source-controls.json)
+pass all 150 tests and both strict checks. A real bypass-removal sensitivity,
 ordinary runtime build and original qualification remain required. No candidate
 is selected; the final four
 of thirteen stage records were not attempted.
