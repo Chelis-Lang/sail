@@ -1,6 +1,6 @@
 # Corrected native ownership: real reader and retained workflow
 
-The [running record](m7-owned-reader-d20.json) freezes one selected-b346
+The [terminal record](m7-owned-reader-d20.json) freezes one selected-b346
 functional/reader-stage attempt on product `d20d034`, with current controller
 `2d6539f`. Fresh byte-identical product copies were created under service UID 0
 with mode `0700`. The earlier sealed products, receipts and
@@ -46,14 +46,29 @@ The original bounded baseline checks then passed. Ordinary full verification
 took 185.670 seconds externally with Current, no notes and three invocations.
 The repair check took 263.771 seconds externally (210.132 seconds reported
 execution), with accepted Current, no notes, one invocation and one reused
-target. Both retained their original 600-second bounds. The active bounded
-checks are running; neither collector nor retained integration has run yet.
+target. Both retained their original 600-second bounds. Active ordinary verification
+also passed in 194.951 seconds. The active repair completed in 299.722 seconds
+externally (274.802 seconds reported execution), but its full evidence was
+Unknown and accepted was false. It verified 331 HumanEval functions in one
+invocation and reused the complete 1871-function vstd result. The note was
+`sysroot-namespace-invalidated`; no declarations note permitted another retry.
+The unchanged controller stopped with `SAIL0942`. Neither collector nor retained
+CLI/MCP integration ran.
 
 The preparation and bounded baseline checks do not establish reader acceptance
 or a measured edit-loop speedup. The complete collector and integration gates
-remain pending. The attempt does not qualify the optional source
+remain unattempted in this failed scope. All prior failures remain preserved. The attempt does not qualify the optional source
 physical budget, 2× edit-loop performance or M7 overall. The root full local
 gate runs concurrently from a separate frozen source tree as the sole writer to
 the common Cargo target; this scenario uses only its private project targets.
 Concurrent work is recorded without asserting a cause for any outcome. See [native setup](../native-product-setup.md)
 and [the reader guide](../reader-acceptance.md) for the contract.
+
+The inclusive workflow took 4913.329 seconds. All before/after frozen input
+seals match. Five completed owned jobs were archived without copy changes or
+archival errors; the owned daemon exited normally with code 0 in 1.668 seconds,
+with no cleanup errors. The private raw archive retains 103 files, including
+actual worker output, proof-source events, per-stage timers, public responses and
+lifecycle evidence; environment-bearing job records are excluded. See the
+[sysroot cause audit](m7-owned-reader-d20-sysroot-audit.md) for what this original
+coarse note establishes and what it cannot establish.
