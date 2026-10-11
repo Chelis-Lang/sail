@@ -339,3 +339,12 @@ The [focused validation](validation/m7-shared-trust-foreground.md) retains all
 failed drafts and demonstrates three paused blocking counterfactuals, final
 23 shared-unit/26 integration controls and strict checks. A subsequent passing
 reader diagnostic does not explain or erase the retained eight-reader timeout.
+
+## Separate detailed sysroot diagnosis
+
+One separately frozen [cause diagnosis](validation/m7-sysroot-proof-diagnostic.md)
+completes within its original 600-second proof budget with an accepted Current
+full result, two actual invocations and no reuse. All 1,871 vstd and 331 HumanEval
+full obligations verify; the focus remains provisional. No sysroot loss is
+reproduced, so the original D20 failure's cause remains unestablished. No live
+reader or retained integration test follows from this diagnostic.

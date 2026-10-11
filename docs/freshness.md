@@ -225,3 +225,12 @@ does not qualify a performance gate. See
 That separate retained-job run refused 13 of 200 reads through bounded owner
 contention; it does not establish the cause of the earlier live census's
 sustained admission-loss tail. Both failures remain recorded.
+
+## Detailed proof diagnosis scope
+
+The [single detailed sysroot proof diagnosis](validation/m7-sysroot-proof-diagnostic.md)
+reports a new complete Current full proof and does not reproduce the older D20
+sysroot-coverage failure. Its new executable/cache identity changes the context;
+no historical receipt supplies authority. The provisional focus remains
+provisional. One Current diagnostic proof establishes neither sustained live
+reader availability nor the original four-reader latency requirement.

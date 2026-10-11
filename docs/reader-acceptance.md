@@ -111,3 +111,14 @@ preparation at its unchanged 600-second bound. Neither reader census ran. See
 [the retained setup record](validation/m7-reader-entry-setup-timeout.md); this
 failure remains separate from the older live-census latency failures and idle
 retained-job diagnostics.
+
+## Recorded single-proof diagnosis
+
+A separately granted [detailed sysroot diagnosis](validation/m7-sysroot-proof-diagnostic.md)
+completes one fresh full HumanEval proof within the original 600-second budget,
+with public Current and accepted evidence. It uses two actual compiler
+invocations, with no preparation or retry; the focus result remains provisional.
+It does not reproduce or explain the earlier D20 coverage loss. Neither reader
+census nor retained CLI/MCP acceptance runs in that diagnostic. A new original
+reader workflow still requires its own genuine Current proofs, unchanged
+collectors and complete owned lifecycle.
