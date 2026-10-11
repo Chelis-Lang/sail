@@ -24,3 +24,10 @@ The exact candidate source/lock and all three old runtime/source/lock seals
 remained unchanged, with no remaining dual-container holders. The preceding
 strict failure stays failed. Fresh ordinary vstd/runtime construction and the
 original qualification remain separate required scopes.
+
+One ordinary build of variant `b3b07d47d7542817` is active after the corrected
+complete-source PASS. `ordinary-build-launch.json` records the exact actor,
+controllers, source-control binding and execution priority. Two jobs run at
+ordinary priority in the private builder. No verification receipt or sealed
+runtime was copied; fresh vstd proof and a complete new runtime manifest remain
+pending. The original qualification has not launched.
