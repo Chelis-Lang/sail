@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "state": "passed-build-and-owned-installation-only",
+  "source_commit": "cdb6e6d1000086baae561efbf824c83ec1718665",
+  "source_archive_sha256": "40e70dd5f78effd8a9d4c1c5473bf4795637088fab9cebbaa9fe6b277a8985e6",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "build_elapsed_s": 132.6098585,
+  "install_elapsed_s": 0.7295990410000002,
+  "artifacts": {
+    "sail": {
+      "bytes": 75543208,
+      "sha256": "c479ef3e52436fc8dbaeb7b04d8ba75c87147d14de88cbeef7bb586a48b6bff8"
+    },
+    "sail-z3": {
+      "bytes": 11000968,
+      "sha256": "78d1c8e0641d8c9f981c1063b3a9b6f79f793690e659f4754e1de923f793dbb8"
+    }
+  },
+  "owned_installation": {
+    "authority": "installation-only",
+    "credentials": {
+      "cap_eff": "00000000a82425fb",
+      "cap_lease": false,
+      "fsuid": 0,
+      "gids": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uids": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "directory_mode": "0700",
+    "files": {
+      "sail": {
+        "bytes": 75543208,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "c479ef3e52436fc8dbaeb7b04d8ba75c87147d14de88cbeef7bb586a48b6bff8",
+        "uid": 0
+      },
+      "sail-z3": {
+        "bytes": 11000968,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "78d1c8e0641d8c9f981c1063b3a9b6f79f793690e659f4754e1de923f793dbb8",
+        "uid": 0
+      }
+    },
+    "source_modified": false,
+    "version": 1
+  },
+  "source_engine_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+  "source_engine_runtime13_unchanged": true,
+  "scope": "Actual rebuilt Sail release and fresh byte-identical owned installation. No repair, reader, corpus or performance acceptance from compilation."
+}
