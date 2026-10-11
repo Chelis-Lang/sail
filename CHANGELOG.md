@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Move shared-cache trust/configuration filesystem work onto owned helpers,
+  including startup and refresh. Keep the original lookup deadline and signing
+  checks; status can omit unavailable optional snapshots instead of waiting for
+  filesystem or client construction.
+
 - Retain the first failed proof-time barrier and existing namespace reason in
   managed coverage notes. Preserve original Unknown proof notes when reading a
   job instead of attributing that uncertainty to a later projection failure.

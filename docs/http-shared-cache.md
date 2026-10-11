@@ -129,9 +129,17 @@ kernel filesystem operation. Graceful interruption removes partial upload files;
 a process killed abruptly may leave private `upload-*` files that an operator can
 remove while the server is stopped.
 
-The daemon's entire shared lookup remains bounded by its existing 250 ms default.
-This is a fallback deadline, not a promise that a cold connection will produce a
-hit. Client construction, transport scheduling, signature validation and request
+Configuration discovery, signing-key directory reads, token/CA loading and
+client construction run on owned helpers, including startup and refresh. Signing
+trust keeps its original five-second reload cadence. A pending refresh does not
+serve entries under an expired key snapshot. No filesystem discovery or key read
+runs on the lookup/status caller.
+
+The daemon's entire shared lookup uses its existing 250 ms default fallback
+deadline. This is not a hard real-time return guarantee: thread scheduling and
+condition-variable mutex reacquisition can delay a caller. Results that reach
+final admission after the deadline are misses. A cold connection may therefore
+produce no hit. Client construction, transport scheduling, signature validation and request
 I/O can consume that budget; a timeout safely falls back to the local solver.
 Concurrent same-key requests share one in-flight lookup and receive the helper's
 validated result without waiting for the initiating caller to resume. A helper
@@ -140,10 +148,25 @@ initialization starts asynchronously when a daemon binds with an HTTP store
 configured. Setup sends no HTTP request and performs no entry or trust validation;
 all serving checks remain on the lookup path. A single owned setup constructor
 shares the existing constructor gate with lookup helpers. Setup never waits for
-it, and an unconfigured local daemon constructs no HTTP client. A stalled or
+client construction. Implicit configuration discovery uses one metadata helper
+and waits at most 100 ms (or the configured lookup timeout, if shorter); explicit
+directory configuration needs no helper. Missing or busy discovery creates no
+setup owner, and an unconfigured local daemon constructs no HTTP client. A stalled or
 newly configured connection can still cost a miss while initialization is in
 progress. `sail status` reads cached transport metrics without constructing or
-retiring an HTTP runtime.
+retiring an HTTP runtime. One bounded presence observation covers its entire
+optional shared-cache section. A busy discovery helper can omit that section;
+busy snapshot locks can omit remote metrics or the last transport status.
+Trusted-key IDs describe only a complete unexpired trust snapshot. The list is
+empty when that snapshot is unavailable or trust refresh is pending, and is
+never used to authorize an entry.
+
+Startup no longer reads or lists malformed trusted-key files in the daemon log.
+Inspect the configured trust directory explicitly with
+`sail cache --cache DIR trust list`; ignored files appear as `ignored:` lines,
+or in the `problems` array with `--json`. Invalid key files still authorize
+nothing. An empty optional status key list can also mean a pending refresh;
+it does not diagnose a malformed key.
 
 Shutdown marks an unfinished setup owner abandoned before returning; that owner
 cannot publish its completed client afterward. Completed owners are joined; an

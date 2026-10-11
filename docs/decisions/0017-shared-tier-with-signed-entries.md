@@ -231,3 +231,30 @@ entries.
   differences that matter;
 - certificate-backed entries as their own tier;
 - the opt-in cross-class mode, if the owner wants it.
+
+### Foreground filesystem boundary correction
+
+The first implementation read signing trust synchronously before starting the
+lookup helper and its receive timeout. HTTP discovery/status also performed
+foreground configuration reads. A stalled trust/configuration mount could exceed
+the documented bound without reaching the helper. This is the concrete defect
+tracked as [issue 76](https://github.com/Chelis-Lang/sail/issues/76); it does not
+establish the cause of retained HTTP wall-time failures.
+
+Trust and configuration reads now belong to existing bounded lookup/setup owners.
+The deadline begins at lookup entry, includes discovery, and is checked after
+copying a coalesced reply. Pending publication stores shared owners so a full
+reply copy cannot hold the result mutex. Foreground publication/cleanup uses
+try-locks; a subsequent bounded table access retires completed owners outside
+the lock. The original 64 helper limit, 250 ms default, five-second trust reload,
+entry checks, backoff and pinned-solver fallback remain intact.
+Retirement removes only the exact finished owner; it cannot remove a newer
+same-key lookup installed by another caller. Admission uses short bounded parks
+on contention, under that same request-entry deadline.
+
+Status uses one optional metadata owner, at most 100 ms and never beyond the
+configured timeout. Old presence answers do not authorize new calls. Busy or
+expired trust snapshots are omitted; status is descriptive, never proof or
+signing authority. No additional dependency or internal layer edge is introduced.
+The paused-I/O controls, retained draft failures and unchanged integration scope
+are recorded in [the focused validation record](../validation/m7-shared-trust-foreground.md).
