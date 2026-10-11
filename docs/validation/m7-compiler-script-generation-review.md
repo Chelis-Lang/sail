@@ -122,3 +122,25 @@ bytes and mtime, and returning to both the old and a new proof context; changing
 declared inputs during watcher setup; and two output contracts for one package
 where the earlier contract becomes stale. Exact Current and receipt checks must
 remain unchanged. No new compiler or proof actor was launched for this review.
+
+## Final affected validation review
+
+Commit `201d084` preserves `build_inputs.rs` and `runner.rs` above. The final
+family helper is
+`28b263c7f03281e3e4b29c37c962faf89cb525656eee1de3e441047c27512e90`;
+managed-only function visibility and test-style corrections close the retained
+initial compilation and strict failures without changing production eligibility.
+The added ordinary `LANG` negative complements the effective bootstrap control.
+
+The independent review rehashed the 13,440,057-byte archive
+`05acea43c8e98614e9ad007c754ba308096b18df41d880177bafef922c60782e`
+and its 17 retained files, then read the final logs: 11 script tests, 13 original
+runner tests and strict all-target `sail-verus` Clippy passed. The archived
+34,085,920-byte tested executable independently hashes to
+`0fc1bc403e269f1428dfdd6b3d4169d48cb3c87a54396f638b705eacd2c6b1ef`.
+The [implementation record](m7-compiler-script-observations.json) retains exact
+commands, source and failed scopes.
+
+This closes affected integration review. A combined gate, rebuilt product and
+unchanged original repair workload remain separate requirements; no project
+proof or timing acceptance was run by the reviewer.

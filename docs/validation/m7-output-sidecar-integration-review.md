@@ -125,3 +125,21 @@ barriers refuses and permanently invalidates the output owner. A requested
 additional store-level control must demonstrate that a failed final barrier
 really repeats complete output hashing and freshness and preserves full frame
 bytes. The queue-level `None` outcome alone does not establish that integration.
+
+The actual `56bb72e` store control closes that coverage gap. Test-only hooks
+observe the real freshness classification and full stdout read; they never
+substitute either outcome. Healthy owner, held owner lock and refused inspection
+quota use the expected original paths. A restored write after the first actual
+freshness call requires one full read and two independent freshness calls, with
+the complete selected frame equal to the original encoder's frame. Wrong SHA
+and oversized persisted bytes retain their original errors. The owned
+constructor is cancelled and joined before outcome assertions.
+
+The first actual affected scope passed six guarded-output controls, one fdinfo
+bound control, one exact-file control, 21 daemon jobs unit controls and all six
+original daemon jobs integration controls. Its whole result remains FAIL because
+strict Clippy rejected startup match spelling. The following test-only
+semicolon failure is also retained; the corrected `169d6d7` complete affected
+scope is still running at this review point. These passes establish neither a
+green complete scope nor the original reader p95. Static quota, shutdown and
+full-fallback review has no remaining blocker.
