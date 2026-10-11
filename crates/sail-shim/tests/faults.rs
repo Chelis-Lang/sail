@@ -11,6 +11,9 @@
 
 mod support;
 
+#[path = "support/maintenance.rs"]
+mod maintenance;
+
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -739,15 +742,31 @@ fn memory_tier_never_serves_what_the_disk_does_not_hold() {
     assert!(assert_cache_correct_except(&rig.cache, &want, &forged) > 0);
 }
 
+// Write directly: libtest otherwise retains eprintln output until a test
+// returns, hiding the last phase if nextest has to terminate a hung test.
+fn gc_phase(started: std::time::Instant, stage: &'static str) {
+    use std::io::Write as _;
+    let metadata = format!(
+        "gc/clear phase: {stage}; pid={}; elapsed_us={}\n",
+        std::process::id(),
+        started.elapsed().as_micros()
+    );
+    let _ = std::io::stderr().write_all(metadata.as_bytes());
+}
+
 #[test]
 #[ignore = "needs SAIL_TEST_Z3"]
 fn gc_and_clear_during_sessions_only_cost_misses() {
+    let started = std::time::Instant::now();
+    gc_phase(started, "daemon setup");
     let rig = Rig::new("gc");
     let inputs = overlapping_inputs();
+    gc_phase(started, "direct baselines");
     let wants: Vec<Vec<Want>> = inputs.iter().map(|i| rig.want(i)).collect();
     let stop = std::sync::atomic::AtomicBool::new(false);
     let disk = sail_cache::DiskCache::new(&rig.cache);
     let rounds = std::thread::scope(|s| {
+        let _stop_on_drop = maintenance::StopOnDrop::new(&stop);
         let maint = s.spawn(|| {
             let mut rounds = 0u32;
             while !stop.load(std::sync::atomic::Ordering::SeqCst) {
@@ -762,17 +781,22 @@ fn gc_and_clear_during_sessions_only_cost_misses() {
             rounds
         });
         // Cold, then warm, with entries vanishing underneath.
+        gc_phase(started, "cold concurrent sessions");
         concurrently(&rig, &inputs, &wants);
+        gc_phase(started, "warm concurrent sessions");
         concurrently(&rig, &inputs, &wants);
         stop.store(true, std::sync::atomic::Ordering::SeqCst);
+        gc_phase(started, "maintenance join");
         maint.join().unwrap_or_default()
     });
     assert!(rounds > 0);
     let all: Vec<Want> = wants.iter().flatten().cloned().collect();
     assert_cache_correct(&rig.cache, &all);
     // Once maintenance stops, the cache fills and serves as usual.
+    gc_phase(started, "final concurrent sessions");
     concurrently(&rig, &inputs, &wants);
     assert!(assert_cache_correct(&rig.cache, &all) > 0);
+    gc_phase(started, "complete");
 }
 
 // ---------------------------------------------------------------------------
