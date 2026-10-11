@@ -456,7 +456,7 @@ mod output_fallback_tests {
             *probe = Some(Probe {
                 restore: Some((path.clone(), bytes.clone())),
                 ..Probe::default()
-            })
+            });
         });
         let restored = result_frame(state, &job, &mut Trace::disabled());
         let restored_probe = counts();

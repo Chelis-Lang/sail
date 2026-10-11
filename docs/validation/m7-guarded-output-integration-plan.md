@@ -1,7 +1,11 @@
 # Daemon output-owner integration plan
 
-Status: file-only implementation under independent review; no compiler run,
-installed daemon activation, RPC benchmark or Currentness claim. Base is `a136edb`; the compiler-family controls and cleanup
+Status: initial native source scope ran 35 passing tests and failed the strict
+startup style check. A strict preflight then exposed one test-only semicolon
+style error. Both exact results and tested images are retained in
+`m7-guarded-output-first-source-controls.json`. Equivalent corrections are under
+private validation; installed activation and reader acceptance remain pending.
+There is no RPC benchmark or Currentness claim. Base is `a136edb`; the compiler-family controls and cleanup
 remain retained on `fix/m7-compilation-context`.
 
 The new path belongs only to the retained Result wire-frame cache. The worker's
@@ -107,7 +111,8 @@ output/helper paths. It retains binding/ancestor watches and refuses a directory
 replacement instead of recursively walking it. The general Observer path is
 unchanged. Bounded ReadLease construction now reads each fdinfo with a 64 KiB
 limit and cancellation between descriptors, rather than unbounded read_to_string.
-These two source controls are not yet compiled or executed.
+Both new source controls passed in the initial native scope. Complete strict
+validation of the corrected candidate remains pending.
 
 The interpreter selection uses the explicit supported Linux exec bootstrap
 boundary. Initial daemon process environment storage is bounded by that kernel's
