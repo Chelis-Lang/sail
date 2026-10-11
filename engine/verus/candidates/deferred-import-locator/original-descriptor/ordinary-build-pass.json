@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "scope": "Ordinary private source build and fresh vstd proof only; original14/product acceptance pending",
+  "closed_unix_ns": 1791703417394012625,
+  "selected": false,
+  "qualified": false,
+  "patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+  "source_files": {
+    "vir/src/context.rs": "48ca863ba0342247ab3499de2e60199ec267c7cbb4d2d431b828be7fd04bd9b7",
+    "rust_verify/src/spans.rs": "a913fd685f1bc0e4019357e9c64994ea4c7e118248d5de92261a78ee0190897c",
+    "rust_verify/src/sail_engine.rs": "97dd2485b03c08c49ca473c2c59e3bb173dd1997f52663130f0e539b8d08b416",
+    "rust_verify/src/sail_owned_imports_tests.rs": "3d0fdda8c736b918ae7249a28440752f531cfe45ace37ac644cc8805f01fa641",
+    "rust_verify/src/sail_deferred_import_tests.rs": "1056058cb50a98fedb98e4016694937e5fc2589e8b22fd1a3374f687bdf641da",
+    "rust_verify/src/verifier.rs": "e98bc0137b37f4dd48d3ac697f686d07a88ad9a548c26e89d254be95a69fbef2",
+    "rust_verify/src/sail_owned_imports.rs": "28816c68622ae75ea0c719adfd28f307a4df83a966473738b53c356dc1ced529"
+  },
+  "manifest_sha256": "c9ea656bf1bd5dcb81cd13f7dd4c83e13fdc4804910a8949a5562e81daa4ff0d",
+  "manifest": {
+    "schema_version": 1,
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+    "rust_toolchain": "1.98.1",
+    "z3_sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+    "features": [
+      "sail-interactive:1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+      "host:x86_64-unknown-linux-gnu",
+      "source-lock:653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1"
+    ],
+    "artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/.vstd-fingerprint": "6b8608d5cfd105fa349ebf66b73f9654dc6eac1cc1bc7535303ff19db29a0077",
+      "verus/source/target-verus/release/cargo-verus": "552f4aadbbf38cdc8972d82b33bf4c718de22f872fcb53adf2b095d1f76012ff",
+      "verus/source/target-verus/release/libverus_builtin.rlib": "458cc5006d6e264c7e478634fade9bfaf661c81cfa84f2c5437deb1461983483",
+      "verus/source/target-verus/release/libverus_builtin_macros.so": "fce543cec01437df9f4e77fac74d4962b3a0ddba3b8dff97653367aa4e0a0729",
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": "9ea05ac7dcf56bf12dd1a6e34022d04fd51d0584ef610d43d1e52b6b5a87367e",
+      "verus/source/target-verus/release/libvstd.rlib": "8527f8950de52b9c1702aa59fd5d3cfc01ea3198176a411716c5aabfddab7961",
+      "verus/source/target-verus/release/rust_verify": "df92641b66cb86a813d3c64c93309ae1acd1ed5047599f580089a4ead8265c72",
+      "verus/source/target-verus/release/version.txt": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620",
+      "verus/source/target-verus/release/verus": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+      "verus/source/target-verus/release/verus-root": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "verus/source/target-verus/release/vstd.vir": "dd23fb2158246a69e711d08c1ab6f074d83792fe50aa40ee98bd98fda3aa9369",
+      "verus/source/target-verus/release/z3": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "build_seconds": 712,
+    "test_binaries": []
+  },
+  "complete_direct_artifact_inventory": true,
+  "owned_build_actors": [],
+  "fresh_vstd_verified": 2060,
+  "fresh_vstd_errors": 0,
+  "ordinary_result": {
+    "version": 1,
+    "exit_code": 0,
+    "elapsed_seconds": 749.928369801004,
+    "patch_sha256": "1ad773b66e1b58dac62936499e37d81179e1138565cc1774d4a79d168fe935a8",
+    "scope": "Ordinary unselected OriginalDescriptor source build; actual source controls passed, original qualification pending"
+  },
+  "source_controls_sha256": "483815d25174bb8b67282b9b942f17cbe8e93f4fd1eaefed01041c2cb948b074",
+  "raw_artifacts": {
+    "ordinary-build.log": {
+      "sha256": "1da072f1acacb62999ba6fa2ea8baccfd607da70e23f964c1689879dbaa9c718",
+      "bytes": 6353
+    },
+    "ordinary-build-result.json": {
+      "sha256": "a3e4feaff0dd2982eb4dae13d549277ea57b82d393c3440a3cde5985369ed162",
+      "bytes": 291
+    },
+    "ordinary-build-actor.json": {
+      "sha256": "8b68c860bec64495b778fe6ecfedc36d4c1a8ef616a861e593282096c2407d7a",
+      "bytes": 466
+    },
+    "compiler-seed.json": {
+      "sha256": "6e405a9667c3bfddaf61b792bf91bea96b976829f57d63cebc9826b73065841a",
+      "bytes": 703053
+    },
+    "applied-source.json": {
+      "sha256": "cd1bd474d7434e6e914e5d32db5e73c87838408e8d57bfd72f29001646e9deb6",
+      "bytes": 973
+    },
+    "builder-before.json": {
+      "sha256": "ef45f70e4ea39d926dfc5df091eda5f364a8e09055974388bc53062f29b2bde0",
+      "bytes": 341
+    },
+    "preceding-runtime-seals.json": {
+      "sha256": "37ed9a3bcdcc3afc6a2934889dc838b8353478e18b9b28124a028b35998246c3",
+      "bytes": 1787
+    },
+    "resource-preflight.json": {
+      "sha256": "d6b786ed8987678b51ceeed34bad5a30c470673a608544d8434214cb2d8595ed",
+      "bytes": 269
+    }
+  },
+  "native_available_bytes": 321639714816,
+  "prior_complete_runtime_seals_unchanged": true,
+  "original14_launched": false,
+  "owned_actor_closure": {
+    "sail-m7-acceptance": {
+      "holders": [],
+      "unreadable_live": []
+    },
+    "sail-m7-handoff-validation": {
+      "holders": [],
+      "unreadable_live": []
+    }
+  },
+  "external_identities": {
+    "sample_unix_ns": 1791703501569882637,
+    "scope": "read-only external/builder identity after ordinary build; no invocation",
+    "files": {
+      "builder_xtask": {
+        "bytes": 18801984,
+        "sha256": "9c9f0b3f77481df9ba4ce914f56528adac25102f67dc82111bd3cac27e82ef5e"
+      },
+      "stock_launcher": {
+        "bytes": 4708720,
+        "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+      },
+      "stock_driver": {
+        "bytes": 25300048,
+        "sha256": "b8c11e7b626cc85d8a46b90036f0adfec443b7cde1c69d8b182175b92c708af7"
+      },
+      "stock_solver": {
+        "bytes": 34954456,
+        "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+      }
+    }
+  },
+  "post_host_backing_free_bytes": 13009833984,
+  "post_host_measurement_unix_ns": 1791703546062724000,
+  "source_control_counts": {
+    "vir": 39,
+    "rust_verify": 64,
+    "strict_all_targets": "both PASS; -D warnings"
+  },
+  "qualification_controller_sha256": "036c30efd2a4020036f01968a1082dd65b7cd84ea57148c86bcabc30ca011872",
+  "raw_inventory": {
+    "actor-closure.json": {
+      "bytes": 163,
+      "sha256": "b60db171f21e8be5080ec5fe5cfa4ca39870a0fe6e2dd9c29bd910dead1dd1f1"
+    },
+    "applied-source.json": {
+      "bytes": 973,
+      "sha256": "cd1bd474d7434e6e914e5d32db5e73c87838408e8d57bfd72f29001646e9deb6"
+    },
+    "build-candidate.py": {
+      "bytes": 10472,
+      "sha256": "f79448253a36cfc43016924ff235a0c48081c4bbb3663c6713c66dcf372eec9f"
+    },
+    "build-input-freeze.json": {
+      "bytes": 860,
+      "sha256": "3150754ae067c1162abacf559ebedf95fb3028f7eff52cf18a8fbafc3c954590"
+    },
+    "builder-before.json": {
+      "bytes": 341,
+      "sha256": "ef45f70e4ea39d926dfc5df091eda5f364a8e09055974388bc53062f29b2bde0"
+    },
+    "close-build.py": {
+      "bytes": 4901,
+      "sha256": "2d98a02b758bc38e64659e67c5ce4b3ce01913ebc5e502b1c9d90fe94190baa1"
+    },
+    "closed-ordinary-build.json": {
+      "bytes": 5340,
+      "sha256": "3fcce639022175f21deedc16933a3cafbf70efde05aba18ba38ffa0edca4e845"
+    },
+    "compiler-seed.json": {
+      "bytes": 703053,
+      "sha256": "6e405a9667c3bfddaf61b792bf91bea96b976829f57d63cebc9826b73065841a"
+    },
+    "controller.log": {
+      "bytes": 723,
+      "sha256": "3484f69ec96471397c4c5b2f5282cfd227c87d7e79e71e8cd043ef0971fcfaaf"
+    },
+    "external-identities.json": {
+      "bytes": 697,
+      "sha256": "8098b15abd32282e8d2e8bd747427add327073a9684617f080fe3111ac0acf39"
+    },
+    "identity.json": {
+      "bytes": 2265,
+      "sha256": "37f46772c279324dd54e7cd08dc1c5b9d58feaf4f88e4d567f7e77bc9a08c904"
+    },
+    "ordinary-build-actor.json": {
+      "bytes": 466,
+      "sha256": "8b68c860bec64495b778fe6ecfedc36d4c1a8ef616a861e593282096c2407d7a"
+    },
+    "ordinary-build-process-samples.jsonl": {
+      "bytes": 592,
+      "sha256": "6e17be9d1f33363d8a390f19ba55f57ceb5259e1b449c1445bed16c6cfdea192"
+    },
+    "ordinary-build-result.json": {
+      "bytes": 291,
+      "sha256": "a3e4feaff0dd2982eb4dae13d549277ea57b82d393c3440a3cde5985369ed162"
+    },
+    "ordinary-build.log": {
+      "bytes": 6353,
+      "sha256": "1da072f1acacb62999ba6fa2ea8baccfd607da70e23f964c1689879dbaa9c718"
+    },
+    "ordinary-runtime-manifest.json": {
+      "bytes": 2106,
+      "sha256": "c9ea656bf1bd5dcb81cd13f7dd4c83e13fdc4804910a8949a5562e81daa4ff0d"
+    },
+    "preceding-runtime-seals.json": {
+      "bytes": 1787,
+      "sha256": "37ed9a3bcdcc3afc6a2934889dc838b8353478e18b9b28124a028b35998246c3"
+    },
+    "resource-preflight.json": {
+      "bytes": 269,
+      "sha256": "d6b786ed8987678b51ceeed34bad5a30c470673a608544d8434214cb2d8595ed"
+    },
+    "setup.log": {
+      "bytes": 319,
+      "sha256": "63ecf1f1629289a8065b75f33c46e94be2db76fcfaba3f50303574904abeabfd"
+    }
+  },
+  "raw_archive": {
+    "label": "ordinary-build-raw.tar",
+    "bytes": 778240,
+    "sha256": "023667c600f51b767eaf4ac515134ae5ea6193d5e7ab516d0a366aed5494d226"
+  }
+}
