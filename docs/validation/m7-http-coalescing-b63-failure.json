@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "gate_revision": "b63af10",
+  "gate_tests": 607,
+  "passed": 606,
+  "failed": [
+    "shared::http_tests::concurrent_readers_coalesce_one_http_lookup"
+  ],
+  "solver_attempted": false,
+  "gate_log_sha256": "cce769aaf20524563c94b5975f2f3e0aaab99c56e4f309d2f99199994b41e2c8",
+  "gate_log_bytes": 82500,
+  "serving_budget_ms": 250,
+  "readers": 8,
+  "fixture_delay_ms": 75,
+  "actual_requests": 1,
+  "coalesced": 7,
+  "returned_hits": 0,
+  "request_header_bytes": 285,
+  "complete_headers": true,
+  "server_accepted_to_read_us": 87207,
+  "lookup_to_server_sent_us": 249960,
+  "caller_elapsed_ms": [
+    254.027709,
+    251.9075,
+    253.983626,
+    251.026501,
+    253.597709,
+    250.327458,
+    254.133333,
+    279.679459
+  ],
+  "cause": "unestablished",
+  "diagnostic_base": "d8a59d2908957105b77e072a465739a7d5be80b0",
+  "diagnostic_patch_sha256": "92b84854f191e9d2c7e3efdd101a926586a38df899ae44339f597b47d04ee749",
+  "diagnostic_executed": false,
+  "production_selected": false
+}
