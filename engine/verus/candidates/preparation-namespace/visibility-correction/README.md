@@ -31,3 +31,11 @@ controllers, source-control binding and execution priority. Two jobs run at
 ordinary priority in the private builder. No verification receipt or sealed
 runtime was copied; fresh vstd proof and a complete new runtime manifest remain
 pending. The original qualification has not launched.
+
+The ordinary build is now PASS:479.578 seconds, fresh vstd2060/0 and the complete
+new thirteen-artifact manifest, with exact source8 and source lock. The build
+actor closed; all three prior runtime/source/lock seals remained unchanged.
+`ordinary-build-pass.json` binds the manifest, raw logs, compiler-only seed and
+controllers. An independent review checked the actual closed bytes and original
+qualification launcher. This is an ordinary build result, not a qualification
+or product acceptance result; the candidate remains unselected.
