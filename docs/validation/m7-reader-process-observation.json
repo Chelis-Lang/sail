@@ -1,0 +1,54 @@
+{
+  "controls": {
+    "queued_child_birth_mismatch": "Queued child birth differs: child omitted with explicit partial-observation error",
+    "real_non_main_thread_child": "Main-task children omit owned child; production all-task helper captures it with stable birth/parent and normal joined fixture closure",
+    "root_birth_mismatch": "Previously bound root birth differs: no actor followed"
+  },
+  "elapsed_s": 0.7218598750041565,
+  "existing_gate": "ci/run.sh already runs scripts/test-managed-timeout-evidence.py; no new gate deadline or exclusion",
+  "exit_code": 0,
+  "historical_limitation": "The retained46 main-task snapshot remains partial; no omitted descendant was recovered retrospectively",
+  "host_result": {
+    "passed": true,
+    "scope": "Linux controls skipped on macOS; native control result separately retained",
+    "skips": 2,
+    "tests": 12
+  },
+  "limits": {
+    "bytes": 1048576,
+    "fds_per_process": 64,
+    "kernel_io_interruptible": false,
+    "processes": 128,
+    "scheduling_budget_seconds": 0.5,
+    "tasks_per_process": 128
+  },
+  "postseals_equal": true,
+  "privacy": "Only compiler-selector facts, process metadata and descriptor targets; no environment, full argv or stream consumption",
+  "scope": "Bounded all-task timeout observation; no proof, workflow repeat or historical recapture",
+  "source": {
+    "ci/managed-evidence.py": {
+      "bytes": 10112,
+      "sha256": "c7bf44ba1c204f8730e4aa628f9be9bf2bab07fd3e95e48357fad0c16e5ee8cd"
+    },
+    "ci/test-managed.py": {
+      "bytes": 15159,
+      "sha256": "a5d212a56e4fdaf9472c597f40f36878a24caab74865a014ca3944948490702b"
+    },
+    "scripts/test-managed-timeout-evidence.py": {
+      "bytes": 12614,
+      "sha256": "9dd73593f0fae11664086711b33ca554a3e1e26811775277e56fe96c381b1967"
+    }
+  },
+  "source_base": "a01ee26 plus frozen observer diff",
+  "test_result": {
+    "passed": 12,
+    "skipped": 0,
+    "stderr": {
+      "bytes": 111,
+      "sha256": "cfdaab72a9c11d6ac95bec52efa0eb7da81a5d4e871dcf3a6f9e5b079873a4ce"
+    },
+    "stderr_text": "............\n----------------------------------------------------------------------\nRan 12 tests in 0.498s\n\nOK\n",
+    "tests": 12
+  },
+  "version": 1
+}

@@ -93,19 +93,29 @@ def compiler_selection(raw):
             "literal_is_vstd": b"--is-vstd" in arguments}
 
 
-def owned_processes(root_pid, capture, proc=Path("/proc")):
-    """Follow only this subprocess's task-child links, never all host processes."""
-    pending = [root_pid]
+def owned_processes(root_pid, capture, proc=Path("/proc"), expected_start_ticks=None):
+    """Follow all owned task-child links, binding queued PID birth identities.
+
+    An external observer can bind the root to its previously recorded birth
+    ticks. Missing or changed identities are partial observation, not evidence
+    that no child exists, and never permission to signal a discovered process.
+    """
+    pending = [(root_pid, expected_start_ticks)]
     seen = set()
     result = []
     while pending and len(seen) < MAX_PROCESSES and capture.available():
-        pid = pending.pop(0)
+        pid, expected = pending.pop(0)
         if pid in seen:
             continue
         seen.add(pid)
         directory = proc / str(pid)
         before = process_stat(capture.read(directory / "stat"))
         if before is None:
+            continue
+        if expected is not None and before["start_ticks"] != expected:
+            capture.limited = True
+            capture.errors.append({"operation": "process-identity", "pid": pid,
+                                   "error": "birth identity changed before observation"})
             continue
         document = {"pid": pid, **before}
         document["compiler_selection"] = compiler_selection(capture.read(directory / "cmdline"))
@@ -151,7 +161,7 @@ def owned_processes(root_pid, capture, proc=Path("/proc")):
                 child_stat = process_stat(capture.read(proc / str(child) / "stat"))
                 if child_stat and child_stat["parent"] == pid:
                     if len(pending) + len(seen) < MAX_PROCESSES:
-                        pending.append(child)
+                        pending.append((child, child_stat["start_ticks"]))
                     else:
                         capture.limited = True
     capture.limited |= bool(pending)
