@@ -51,5 +51,31 @@
     "Actual Span codec exact current-Arc/id/data/spelling controls",
     "Actual Reporter and ReplayMessages scalar modes plus current primary/label resolution"
   ],
-  "reporter_control_capture_scope": "DiagInner level/messages/primary spans/labels for generated cases; not full formatted stderr, unresolved-label dbg output, prepared grouped replay, or QueuedReporter sorting. Group method is called directly on current Reporter in both arms."
+  "reporter_control_capture_scope": "DiagInner level/messages/primary spans/labels for generated cases; not full formatted stderr, unresolved-label dbg output, prepared grouped replay, or QueuedReporter sorting. Group method is called directly on current Reporter in both arms.",
+  "test_owner_correction_review": {
+    "full_patch_sha256": "4a3e19ffe292e830fdb13881c47429adeb94ad6778095590514a83d2990407de",
+    "from_a61_delta_sha256": "398d3a1ef88946247b4b7d82f5916bd2c745662e872069101facbd93d1a14838",
+    "corrected_tests_sha256": "f8fecfdb843b637db4d7f4a1d762bfbbfaa5d8465049cbddc93f0e3d0fdcd32e",
+    "scope": "Independent static comparison against frozen a61; no compiler or qualification actor launched by this review",
+    "changes": [
+      "Scoped std::rc::Rc import inside the existing test",
+      "CaptureEmitter SourceMap owner Arc to Rc",
+      "Same-thread arm SourceMap construction Arc::new to Rc::new"
+    ],
+    "only_cfg_test_module_changed": true,
+    "production_capture_and_reporter_unchanged": true,
+    "all_emission_calls_levels_order_and_assertions_unchanged": true,
+    "source_map_owned_and_consumed_inside_same_rustc_thread": true,
+    "source_controls_on_original_a61_reported_by_owner": {
+      "vir": 38,
+      "driver": 55,
+      "vir_strict": "pass",
+      "driver_strict": "failed arc_with_non_send_sync"
+    },
+    "original_a61_strict_failure_retained": true,
+    "corrected_actual_checks_and_new_manifest_pending": true,
+    "identified_static_blocker": false,
+    "selected": false,
+    "qualified": false
+  }
 }
