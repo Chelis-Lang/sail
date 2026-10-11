@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "state": "failed-pinned-solver-suite",
+  "source_commit": "c97de6310c309e9eab9f066ba0169303045e0947",
+  "source_archive_sha256": "f71b53955bae7f3cfbe231b84a302b4eaa54b70b3bc25d642b1b38301414c328",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "phase": {
+    "phase": "solver",
+    "command": [
+      "docker",
+      "exec",
+      "-w",
+      "/tmp/sail-m7-combined-core-c97de63",
+      "-e",
+      "CARGO_BUILD_JOBS=2",
+      "-e",
+      "NEXTEST_TEST_THREADS=1",
+      "sail-m7-handoff-validation",
+      "bash",
+      "ci/run.sh",
+      "solver"
+    ],
+    "exit_code": 100,
+    "elapsed_seconds": 301.977887709
+  },
+  "workspace_tests": {
+    "run": 605,
+    "passed": 605,
+    "failed": 0,
+    "solver_ignored": 41,
+    "elapsed_s": 215.205
+  },
+  "scope": "Combined qualified source engine, runtime identity reuse, bounded daemon output-owner service and guarded compiler-family script-generation transaction. This is source integration validation; no installed repair, live-reader, full standard/cache or three-round performance acceptance.",
+  "raw_log_sha256": "09b58debb637d13c6acb2907e81a8249865ced367d27b2847468b5bbe142425e",
+  "retained_log_gzip_sha256": "2147b38fb4790c39a7e7b4456309c8be23ca82e2ab12fc70dcf03fe5d4786a5a",
+  "original_checks_and_deadlines_unchanged": true,
+  "solver_tests": {
+    "run": 41,
+    "passed": 40,
+    "timed_out": 1,
+    "elapsed_s": 297.402,
+    "failed_case": "sail-shim::faults gc_and_clear_during_sessions_only_cost_misses",
+    "failed_case_reported_s": 190.034,
+    "nextest_timeout_policy": {
+      "period_s": 60,
+      "terminate_after": 3
+    },
+    "last_recorded_phase": "final concurrent sessions",
+    "last_phase_elapsed_us": 7173875,
+    "cause": "unknown; no failure hidden or deadline changed"
+  }
+}
