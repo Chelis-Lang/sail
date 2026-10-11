@@ -130,7 +130,7 @@ targets. Historical passes below establish only their recorded scopes.
 |---|---|---|
 | Repeat verification setup | Guarded daemon sysroot reuse is wired in. The corrected product builds and reaches the automatic fill hint, but its original cold scenario exceeds 240 seconds. A separate actual-sysroot publication/import control is running. | Establish actual guarded reuse, then the original cold/warm managed CLI/MCP scenario, including missing receipts and restored-mtime edits. |
 | Reuse after a source edit | The unselected DeferredLocator candidate has 22 pinned-type helper controls and independent review. Its full private source build is running with actual provenance, codec and Reporter controls added separately. | Complete source checks and original fourteen-stage qualification, including genuine previous-revision focus reuse within 600 seconds. |
-| Shared cache | The earlier whole-session solver control passes. The corrected complete workspace gate fails three HTTP controls at their original 250 ms budget (521/524 tests pass); its independent solver suite is running. | Resolve the measured delay and pass the complete unchanged gate. |
+| Shared cache | The corrected whole-session solver control and all 39 independent solver tests pass. The corrected complete workspace gate fails three HTTP controls at their original 250 ms budget (521/524 tests pass). | Resolve the measured delay and pass the complete unchanged gate. |
 | End-to-end acceptance | CLI/MCP repair, journals, explanations, saved baselines and result clients are implemented. Full default standard validation is active. | Complete current standard coverage; real four-reader p95 below 200 ms; retained real-project CLI/MCP; three rounds with at least 2× median repair gains on each of human-eval-verus and Vest. |
 
 The experimental CLI/MCP workflow is implemented: exact-function repair checks,
@@ -244,6 +244,9 @@ Its separate [complete workspace gate](validation/m7-http-gate-1e8b633.md)
 passes strict Clippy and 521/524 tests, but three unchanged HTTP controls time
 out. The original eight-reader fixture passes. Later gate steps are not reached;
 the cause remains unestablished and no combined gate pass is claimed.
+Its [independent original solver suite](../bench/validation/m7-linux-solver-1e8-emulated-2026-10-11.json)
+passes all 39 controls, including signed whole-session replay without starting
+Z3 and the real mount-restoration fault. This does not replace the failed gate.
 A [sticky kernel mount-generation guard](decisions/0032-kernel-mount-generation-coverage.md)
 detects restored mount changes throughout that handoff.
 The earlier [missing-fixture failure](../bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json)
