@@ -31,6 +31,19 @@ class Controls(unittest.TestCase):
         g.observe({100: row(100, 1), 102: row(102, 101)})
         self.assertEqual(set(g.known), {100})
 
+    def test_child_predating_recycled_intermediate_parent_not_owned(self):
+        g = m.Groups(row(100, 1))
+        g.observe({100: row(100, 1), 101: row(101, 100, start=30, group=100),
+                   102: row(102, 101, start=20)})
+        self.assertEqual(set(g.known), {100})
+
+    def test_dead_parent_cannot_grant_child_authority(self):
+        g = m.Groups(row(100, 1))
+        parent = row(101, 100, group=100)
+        parent['state'] = 'Z'
+        g.observe({100: row(100, 1), 101: parent, 102: row(102, 101)})
+        self.assertEqual(set(g.known), {100})
+
     def test_reused_leader_refuses_subtree(self):
         g = m.Groups(row(100, 1))
         g.observe({100: row(100, 1, start=11), 102: row(102, 100)})

@@ -41,6 +41,9 @@ certified absent. Controller failure is retained separately from the
 harness's original result. Catchable controller SIGTERM/SIGHUP enters that
 same cleanup through unwind; SIGKILL cannot run cleanup. The initial
 unexecuted controller without those handlers remains retained separately.
+Every admitted child also has a kernel start time at least its live parent's
+start time along the full rooted chain. A child predating a recycled
+intermediate PID or a zombie parent cannot grant cleanup authority.
 
 A supplementary archive copies at most 512 MiB across 4,096 files, with a
 120-second copying deadline. It excludes the private environment file and
@@ -57,7 +60,7 @@ or unavailable filename must remain separately labelled; none alone proves
 which actor stalled. Diagnostic success does not explain the old timeout.
 
 The [preparation record](m7-tspec-transcript-diagnostic-plan.json) binds actual
-Linux validation, script hashes and nine pure ownership/storage controls.
+Linux validation, script hashes and eleven pure ownership/storage controls.
 The first host setup lacked `tomllib`; the first native prepare used the
 unsupported `Path.open(opener=...)` argument. Both setup failures remain
 retained, with no actor launched. The corrected prepare and validation-only

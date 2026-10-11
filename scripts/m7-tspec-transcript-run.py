@@ -60,12 +60,17 @@ class Groups:
         self.partial = False
 
     def observe(self, rows):
-        if not matching(rows.get(self.leader['pid']), self.leader):
+        primary = rows.get(self.leader['pid'])
+        if not matching(primary, self.leader) or primary['state'] in ('Z', 'X'):
             self.partial = True
             return
         owned = {self.leader['pid']}
         while True:
-            added = {pid for pid, r in rows.items() if r['ppid'] in owned and pid not in owned}
+            added = {pid for pid, r in rows.items()
+                     if r['ppid'] in owned and pid not in owned
+                     and rows[r['ppid']]['state'] not in ('Z', 'X')
+                     and r['state'] not in ('Z', 'X')
+                     and r['start'] >= rows[r['ppid']]['start']}
             if not added:
                 break
             owned.update(added)
