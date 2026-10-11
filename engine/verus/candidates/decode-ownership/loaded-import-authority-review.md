@@ -66,3 +66,55 @@ namespace/normalization/range/ambiguity/state negatives, current binding and
 local hygiene controls, physical admission/drop controls, all original source
 tests, fresh vstd, and the original 600-second previous-revision FOCUS and full
 same-input gates. No build is authorized by this review alone.
+
+## Integrated implementation review
+
+The independently inspected private implementation snapshot has complete patch
+SHA-256 `31fb3a561a2970023fda7d1593d7a19476fe5899897763a8d7278424dbf1b323`
+and delta `c049a63642b8961bf990db4617366d1fe051cb1fb3b218835392afbba0c4d2f4`.
+Both patch hashes and all six changed-source hashes matched its identity record.
+This records a static review, with no compilation, runtime test or qualification.
+Any later export needs its own identity check.
+
+The integrated `rust_verify/src/sail_owned_imports.rs` checks record-count and
+`count * size_of<Record> + 1024` before admission/reservation, then checks actual
+capacity. Expected original bytes and their length live inline in that record.
+Bounded name growth includes both old and new buffers. The owner disposes the
+complete record Vec and names before releasing its process-wide admission.
+`spans.rs` moves that same owner out of its slot and revalidates it before one
+shared Arc publication. Late validation retains no second table, compiler/source
+Arc or formatted name.
+
+Current typed hash, stable file ID, namespace, full name and both lengths remain
+exact. Original metadata supplies raw hash bytes without an algorithm tag; the
+candidate keeps those bytes and separately binds the actual current typed hash.
+Initially unsupported states never become eligible, even when ordinary compiler
+work later loads their file. Raw unit imports, exact current binding and local
+position/hygiene/parent checks remain separate requirements. No additional static
+authority or physical-ownership blocker was identified in this snapshot.
+
+The review found and the snapshot corrected generic serializer error-type
+mismatches, missing constructor/failure admission telemetry and repeated trace
+error publication. Owner peak is sampled immediately after admission, before
+allocation can fail; clear preserves the family peak and terminal sampling
+includes it. Added controls cover failed admitted capture, typed-hash-kind-only,
+stable-ID-only and unnormalized-length changes. These controls are source tests
+awaiting actual compilation, rather than reported passes.
+
+The wholly contained 8 MiB family adds to the previously audited 492 MiB maximum:
+the prospective total is 500 MiB under the unchanged 512 MiB limit. The family
+already includes original authority, record/name capacities, growth and
+Arc/control margins; there is no additional seed snapshot to add outside it.
+Existing decoded Portable, memo/effects, reporter, graph scratch and observer
+overlaps remain charged by their earlier phase argument. Admission telemetry
+does not prove transient allocation bounds or compiler RSS.
+
+The bounded trace now includes exact current `as_string`, so a changed imported
+crate ID in a new runtime need not be guessed from the old packed words. All
+serialization failures stop that trace under the emitter lock; a single bounded
+unavailable record replaces the failed frame. One remaining evidence concern is
+that tracing occurs before memo lookup, so duplicates can consume the record/byte
+cap before the known failing binding. Qualification must retain its actual state
+record, or use a separately bounded targeted observation. Exhausted or missing
+evidence cannot establish Loaded authority. This concern does not authorize any
+provenance, cache-key or original-test change.
