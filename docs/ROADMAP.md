@@ -304,3 +304,12 @@ Warm pools could only shorten that small solver-side remainder, so they are
 - A warm Verus frontend.
 - Other verifiers.
 
+## Native-binding reader follow-up
+
+The [original `46e1da6` workflow](validation/m7-rpc-binding-reader-terminal.md)
+retains 950.644 seconds of successful independent full Current preparation,
+then fails its original 600-second baseline ordinary-full prerequisite. No
+reader or retained integration sample is attempted. Preserve this setup failure
+alongside earlier full-Result latency failures. Next diagnosis needs complete
+ownership-bound, all-task process observation; the retained main-task snapshot
+cannot identify the missing verifier/solver stage or establish a timeout cause.

@@ -416,3 +416,13 @@ The later [complete local workspace gate](../bench/validation/m7-linux-core-gate
 ## Current real-project full-result read latency
 
 The [original current-product reader run](validation/m7-current-reader-workflow.md) establishes genuine complete Current full proofs and admits all 200 Python RPC samples while the same selected verifier remains active. Status p95 is 148.430 ms; full Result p95 is 394.713 ms, failing the unchanged 200 ms requirement. Each Result contains 4,312,245 bytes. Python receives and parses the complete fresh frame and does not use the Rust decoded-result cache. Server frames are already cached, but every read still validates persisted output and current inputs. Transfer, validation and parsing costs are not separated by this run; no cause is inferred. Rust and retained CLI/MCP were not attempted after the original failfast failure. All failed scopes, raw samples and post-run seals remain retained.
+# Native-binding workflow prerequisite remains unresolved
+
+The [single original reader workflow on `46e1da6`](validation/m7-rpc-binding-reader-terminal.md)
+produces independent complete Current preparation proofs, then exceeds the
+unchanged 600-second baseline ordinary-full limit. Neither reader census nor
+retained integration runs. Empty stdout, a HumanEval start event and partial
+process metadata do not establish the cause. The partial snapshot followed only
+main-task children and missed possible non-main-thread descendants; use the
+existing bounded all-task observer for future diagnostics. Earlier measured
+Result latency failures remain separate, with no latency credit from this run.
