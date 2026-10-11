@@ -126,6 +126,25 @@ remains unselected.
 The active priorities are complete product workflows, with unchanged acceptance
 targets. Historical passes below establish only their recorded scopes.
 
+Current implementation work advances two blocked paths. The
+[single late imported-authority handoff](../engine/verus/candidates/deferred-import-locator/late-handoff/README.md)
+is implemented as an unselected source candidate: 43 reduced actual pinned API
+controls pass, and independent review confirms immutable recipes, strict role
+classification and bounded constructor scans. Complete source tests and strict
+checks are running before one ordinary runtime build and the original fourteen
+qualification stages. No source runtime is selected from these helper controls.
+
+The reader path now moves MCP response graphs and encodes outside its output
+lock, with [46 targeted controls](validation/m7-mcp-output-ownership.md) passing.
+The daemon retains cache charges through evicted in-flight output and accounts
+for buffer capacity; [all 80 daemon controls](validation/m7-result-frame-ownership.md)
+pass. Neither result proves the live reader latency threshold. Bounded optional
+RPC stage timings are being implemented to diagnose the retained full Result
+failure without changing collectors or freshness checks. The last pushed
+[native CI revision](../bench/validation/m7-linux-ci-08435c5-native-2026-10-11.json)
+passes every check in 442 seconds; the newer combined product still needs its
+complete gate and solver run.
+
 | Workstream | Implementation and current validation | Remaining product gate |
 |---|---|---|
 | Repeat verification setup | The actual pinned-sysroot control passes: natural publication, all 327 eligible hashes imported before local hashing, and exact context/ordered identity equality. The corrected product's original cold scenario exceeds 240 seconds. | Pass the original cold/warm managed CLI/MCP scenario, including missing receipts and restored-mtime edits; the debug context control is not proof acceptance. |
