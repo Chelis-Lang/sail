@@ -76,6 +76,66 @@
     "corrected_actual_checks_and_new_manifest_pending": true,
     "identified_static_blocker": false,
     "selected": false,
+    "qualified": false,
+    "actual_compilation_outcome_reported_by_owner": {
+      "status": "failed",
+      "code": "E0277",
+      "cause": "Pinned DynEmitter requires DynSend; Rc<SourceMap> has an explicit negative DynSend implementation",
+      "vir_controls": 38,
+      "driver_strict_launched": false,
+      "original14_launched": false,
+      "earlier_static_review_scope": "Behavior and assertion comparison did not establish compiler marker compatibility"
+    }
+  },
+  "dynsend_owner_correction_review": {
+    "scope": "Independent static source and exact-delta review; API controls were run by the implementation owner, not this reviewer",
+    "base_full_patch_sha256": "a61db9548935194f9d70224652a1056b1efc7bf0b91f55a6918c5220cc4e4672",
+    "reviewed_full_patch_sha256": "886b9b830eda4a4128fa861557427cbeabae92c170988b123d3bcb271749f508",
+    "reviewed_from_rc_delta_sha256": "aa49d42937880a8b14d7f183125f60c2a8f0376e349de21ec75dfc4e7afdd1a5",
+    "corrected_tests_sha256": "1976dce3e6ecb62b07d19f0f1323b20e49ed51de73c2a6f498a7d963cba2c8ee",
+    "only_change_from_original_a61_test_source": "Three explanatory comment lines and one binding-level clippy::arc_with_non_send_sync allowance",
+    "all_other_patch_sections_byte_identical_to_a61": true,
+    "assertions_emission_methods_levels_order_and_custom_loader_unchanged": true,
+    "pinned_api_justification": [
+      {
+        "path": "compiler/rustc_errors/src/emitter.rs",
+        "line": 50,
+        "fact": "DynEmitter is dyn Emitter + DynSend; the marker is compiler-specific",
+        "sha256": "6d521cf2f56c2b45b0e13f391acbe86818f04920dcb4715f3acdad21328f4591"
+      },
+      {
+        "path": "compiler/rustc_errors/src/lib.rs",
+        "line": 490,
+        "fact": "DiagCtxt::new accepts Box<DynEmitter>",
+        "sha256": "28c8799ba79a764ab576ac5e90687fd0a95f70eb77160ad0e96aa63e204445e7"
+      },
+      {
+        "path": "compiler/rustc_data_structures/src/marker.rs",
+        "line": 34,
+        "fact": "Rc explicitly has !DynSend; Arc has DynSend and DynSync implementations conditional on compiler markers at lines 83 and 166",
+        "sha256": "6cd7ac39352817721797bde8c1cbaf23cd16c158962cc721d9e5f1b66b4f134a"
+      },
+      {
+        "path": "compiler/rustc_session/src/parse.rs",
+        "line": 100,
+        "fact": "Pinned ParseSess uses Arc<SourceMap> and takes the same owner in with_dcx",
+        "sha256": "89df480c3b9c2ddaef18983c8720c4b729a2fceaafc60a093eefe8e8cf8165ba"
+      }
+    ],
+    "api_control_record": "dynsend-owner/api-controls.json",
+    "api_control_source_sha256": "db63ae59a0f7bea87bf3c1c87ff0d77fcf8755db1321222f38ddbaf12c0da64a",
+    "api_control_results_reported_by_owner": {
+      "compile": "pass",
+      "strict_clippy": "pass",
+      "execution": "pass",
+      "unallowed_arc": "expected strict lint failure",
+      "rc": "expected E0277"
+    },
+    "allow_scope": "One cfg(test) map binding; no production lint policy or assertions changed, no constructor-hiding wrapper or unsafe implementation",
+    "identified_static_blocker": false,
+    "original_arc_clippy_and_rc_compile_failures_preserved": true,
+    "corrected_full_source_checks_fresh_vstd_manifest_and_original14_pending": true,
+    "selected": false,
     "qualified": false
   }
 }
