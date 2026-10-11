@@ -95,3 +95,9 @@ otherwise writing diagnostics can itself invalidate source observation. The
 managed acceptance harness already does this. The timer's no-follow creation
 protects its final filename; its parent directory is an explicitly chosen
 private diagnostic destination, not a trust boundary for verification.
+
+The [timer product freeze](validation/m7-setup-timer-product-build.json) records
+the exact Linux Sail/shim bytes built after the complete 498-test workspace gate
+and 38-control solver suite. It is a build scope only; cold-start measurements
+retain their original deadlines and remain separate from source/runtime and
+reader qualification.
