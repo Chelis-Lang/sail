@@ -526,3 +526,15 @@ This does not establish a missing-selector deadlock or an internal phase cause.
 The fixture removes worker state during cleanup; all operation evidence is
 retained separately. Compilation reuse and its targeted controls do not qualify
 the repair loop or performance.
+
+A separate [reduced prefix diagnostic](../bench/validation/m7-linux-repair-prefix-diagnostic-cdb6e6d-2026-10-11.json)
+completes in 77.046 seconds internally (79.816 externally), retaining the original
+success, declaration-establishment, event/resume, baseline and missing-function
+assertions and 120/30/5-second limits. Its three jobs take 34.707, 12.516 and
+29.042 seconds. The missing selector records unavailable focused evidence,
+completes Current full verification and rejects repair with `SAIL3122`.
+It establishes completion in that diagnostic scope; it neither replaces the
+original full-workflow failure nor establishes its cause. Bounded process
+snapshots show ordinary dependencies compiling during the selector change, but
+their inventory is explicitly limited. Regression and later CLI/MCP cases were
+not part of this diagnostic.

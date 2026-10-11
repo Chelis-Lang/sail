@@ -39,7 +39,8 @@ See [live workspace verification](docs/workspace-verification.md).
 ## Experimental proof repair
 
 The optional pinned source engine adds exact-function focus followed by independent
-full-target validation. The CLI/MCP workflow is implemented; M7 source-memory,
+full-target validation. The selected source engine passes its memory and lowering
+qualification. The CLI/MCP workflow is implemented; complete product integration,
 real-reader latency and twofold repair-loop acceptance remain incomplete. Stock
 verification stays the default. See [known issues](docs/known-issues.md).
 

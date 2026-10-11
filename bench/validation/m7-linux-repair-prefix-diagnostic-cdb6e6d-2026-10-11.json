@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "state": "completed-reduced-prefix-diagnostic",
+  "source_commit": "cdb6e6d1000086baae561efbf824c83ec1718665",
+  "execution": "Local Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "scope": "Reduced success-prefix then missing selector only; no whole-suite acceptance/retry credit",
+  "bounds_s": {
+    "whole": 120,
+    "CLI": 30,
+    "ready_RPC": 5
+  },
+  "primary_elapsed_s": 77.04565561800018,
+  "external_elapsed_s": 79.816001125,
+  "original_full_workflow_failure_retained": "m7-linux-repair-cdb6e6d-failure-2026-10-11.json",
+  "fixture_sha256": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7",
+  "observer_sha256": "c7bf44ba1c204f8730e4aa628f9be9bf2bab07fd3e95e48357fad0c16e5ee8cd",
+  "grant_sha256": "c08733e498a2dc0a71ab8275d288d3c7a05659ce351ac0fe0365efc299abbc27",
+  "engine_runtime13_unchanged": true,
+  "engine_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+  "product_sha256": "c479ef3e52436fc8dbaeb7b04d8ba75c87147d14de88cbeef7bb586a48b6bff8",
+  "shim_sha256": "78d1c8e0641d8c9f981c1063b3a9b6f79f793690e659f4754e1de923f793dbb8",
+  "daemon_exit_code": 0,
+  "operations": 266,
+  "jobs": [
+    {
+      "label": "success",
+      "last_result_file": "success-result-117.stdout.json",
+      "job": {
+        "version": 1,
+        "id": "1791729061253-22370-0",
+        "project_dir": "/tmp/sail-m7-repair-context-diagnostic-evidence-cdb6e6d/project",
+        "args": [
+          "--package",
+          "repair_demo",
+          "--lib"
+        ],
+        "state": "completed",
+        "submitted_at_ms": 1791729061253,
+        "started_at_ms": 1791729061260,
+        "finished_at_ms": 1791729095967,
+        "exit_code": 0,
+        "input_revision": "7fd420c2432e5b80b8f318b300c58fd4e07bb1ba9609a83059c7a593ee4f9c9f",
+        "currentness": "current",
+        "error": null
+      },
+      "accepted": true,
+      "full_currentness": "current",
+      "compiler_invocations": 1,
+      "managed_wall_ms": 31394.497639,
+      "selection_error": null,
+      "worker_elapsed_s": 34.707
+    },
+    {
+      "label": "success-established",
+      "last_result_file": "success-established-result-43.stdout.json",
+      "job": {
+        "version": 1,
+        "id": "1791729096146-22370-1",
+        "project_dir": "/tmp/sail-m7-repair-context-diagnostic-evidence-cdb6e6d/project",
+        "args": [
+          "--package",
+          "repair_demo",
+          "--lib"
+        ],
+        "state": "completed",
+        "submitted_at_ms": 1791729096146,
+        "started_at_ms": 1791729096149,
+        "finished_at_ms": 1791729108665,
+        "exit_code": 0,
+        "input_revision": "7fd420c2432e5b80b8f318b300c58fd4e07bb1ba9609a83059c7a593ee4f9c9f",
+        "currentness": "current",
+        "error": null
+      },
+      "accepted": true,
+      "full_currentness": "current",
+      "compiler_invocations": 1,
+      "managed_wall_ms": 9194.007379,
+      "selection_error": null,
+      "worker_elapsed_s": 12.516
+    },
+    {
+      "label": "missing",
+      "last_result_file": "missing-result-97.stdout.json",
+      "job": {
+        "version": 1,
+        "id": "1791729109030-22370-2",
+        "project_dir": "/tmp/sail-m7-repair-context-diagnostic-evidence-cdb6e6d/project",
+        "args": [
+          "--package",
+          "repair_demo",
+          "--lib"
+        ],
+        "state": "completed",
+        "submitted_at_ms": 1791729109030,
+        "started_at_ms": 1791729109033,
+        "finished_at_ms": 1791729138075,
+        "exit_code": 0,
+        "input_revision": "7fd420c2432e5b80b8f318b300c58fd4e07bb1ba9609a83059c7a593ee4f9c9f",
+        "currentness": "current",
+        "error": null
+      },
+      "accepted": false,
+      "full_currentness": "current",
+      "compiler_invocations": 1,
+      "managed_wall_ms": 25709.861969,
+      "selection_error": {
+        "code": "SAIL3122",
+        "message": "exact repair function was not established in the selected target"
+      },
+      "worker_elapsed_s": 29.042
+    }
+  ],
+  "observations": [
+    {
+      "label": "daemon-ready",
+      "limited": false,
+      "errors": [],
+      "processes": 1
+    },
+    {
+      "label": "success-15-seconds",
+      "limited": true,
+      "errors": [],
+      "processes": 12
+    },
+    {
+      "label": "missing-submitted",
+      "limited": true,
+      "errors": [],
+      "processes": 4
+    },
+    {
+      "label": "missing-15-seconds",
+      "limited": true,
+      "errors": [],
+      "processes": 13
+    }
+  ],
+  "raw_evidence": {
+    "sha256": "06d1f78f0a06b441a02c006eaedb87f110d4a2e51cbf69f8b6671600a1f895d3",
+    "bytes": 19431157,
+    "regular_files": 677,
+    "expanded_regular_bytes": 152917420,
+    "excluded": "ordinary Cargo target build files only; native cache remains retained for dependency-rebuild investigation"
+  },
+  "interpretation": "Missing selector emits unavailable evidence, performs full verification, and returns SAIL3122 with Current full evidence. This demonstrates completion in this reduced scope only; it neither replaces the original120-second whole-workflow failure nor establishes its cause. Snapshot process inventory is limited and is not an exhaustive process census. Regression/later CLI/MCP suite and performance acceptance are unattempted."
+}
