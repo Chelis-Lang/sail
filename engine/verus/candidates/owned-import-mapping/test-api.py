@@ -32,17 +32,26 @@ def main():
     types = types.replace("#[derive(Clone, Debug, Deserialize, Serialize)]", "#[derive(Clone, Debug)]")
     ranges = text[text.index("    fn pos_to_extern_source_file("):text.index("    fn pack_span(")]
     unpack = text[text.index("    fn unpack_span("):text.index("    pub(crate) fn get_next_span_id(")]
+    from_air = text[text.index("    pub(crate) fn from_air_span("):text.index("    pub(crate) fn spanned_new<")]
+    from_raw = text[text.index("pub(crate) fn from_raw_span("):text.index("// Note: this produces a span")]
+    messages = (args.source / "vir/src/messages.rs").read_text()
+    span_type = messages[messages.index("pub type RawSpan ="):messages.index("// Private prepared-artifact span binding")]
+
     probe = """#![feature(rustc_private)]
 #![allow(dead_code)]
 extern crate rustc_driver;
 extern crate rustc_span;
 extern crate rustc_data_structures;
+mod vir { pub mod messages { use std::sync::Arc;
+""" + span_type + """
+}}
 mod spans {
 use rustc_span::{BytePos, FileName, Span, SpanData};
 use rustc_span::source_map::SourceMap;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-""" + types + "\nstruct SpanContextX { imported_crates: HashMap<u64, CrateInfo> }\nimpl SpanContextX {\n" + ranges + unpack + "}\n"
+use crate::vir;
+""" + types + "\nstruct SpanContextX { imported_crates: HashMap<u64, CrateInfo> }\nimpl SpanContextX {\n" + ranges + unpack + from_air + "}\n" + from_raw
     probe += f"#[path={json.dumps(str(base / 'capture.rs'))}] mod sail_owned_imports;\n"
     probe += f"#[path={json.dumps(str(base / 'tests.rs'))}] mod tests;\n}}\n"
     (work / "probe.rs").write_text(probe)

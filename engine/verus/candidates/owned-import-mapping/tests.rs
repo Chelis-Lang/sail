@@ -534,3 +534,167 @@ fn ordinary_stock_resolution_can_load_after_capture_but_never_promotes_the_snaps
         drop(cleanup);
     });
 }
+
+#[test]
+fn current_unit_import_resolver_tracks_exact_twenty_five_byte_loaded_relocation() {
+    std::thread::Builder::new()
+        .name("rustc".into())
+        .spawn(|| {
+            session(|| {
+                let mut observed = Vec::new();
+                for prefix_length in [0, 25] {
+                    let map = SourceMap::new(FilePathMapping::empty());
+                    map.new_source_file(
+                        FileName::Custom("prefix".into()),
+                        "x".repeat(prefix_length),
+                    );
+                    let file = imported(&map, "dep.rs", "abcdefgh", 2);
+                    let (context, metadata) = fixture(&file);
+                    let mapping = sail_capture_loaded_imports(
+                        &context.imported_crates,
+                        &metadata,
+                        &map,
+                        crate_id,
+                    )
+                    .unwrap();
+                    let current = vir::messages::Span {
+                        raw_span: Arc::new(()),
+                        id: 563,
+                        data: packed(1002, 1006).to_vec(),
+                        as_string: "dep.rs:1:3:1:7 (#0)".into(),
+                    };
+                    assert!(((&*current.raw_span) as &dyn std::any::Any).is::<()>());
+                    let resolved = context.from_air_span(&current, Some(&map)).unwrap();
+                    assert_eq!(
+                        mapping.current_range(packed(1002, 1006)).unwrap(),
+                        (resolved.data().lo.0, resolved.data().hi.0)
+                    );
+                    assert_eq!(resolved.data().ctxt, rustc_span::SyntaxContext::root());
+                    assert_eq!(resolved.data().parent, None);
+                    let State::Loaded(owner) = &mapping.records()[0].state else {
+                        panic!("expected current Loaded authority")
+                    };
+                    observed.push((
+                        owner.index,
+                        owner.start,
+                        owner.name.clone(),
+                        owner.stable_id,
+                        owner.hash,
+                        (current.id, current.data, current.as_string),
+                        map.span_to_string(
+                            resolved,
+                            rustc_span::RemapPathScopeComponents::DIAGNOSTICS,
+                        ),
+                    ));
+                }
+                assert_eq!(observed[0].0, observed[1].0);
+                assert_eq!(observed[1].1 - observed[0].1, 25);
+                assert_eq!(observed[0].2, observed[1].2);
+                assert_eq!(observed[0].3, observed[1].3);
+                assert_eq!(observed[0].4, observed[1].4);
+                assert_eq!(observed[0].5, observed[1].5);
+                assert_eq!(observed[0].6, observed[1].6);
+                // No preparation eligibility or stored provenance is changed.
+            });
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+#[test]
+fn delayed_current_unit_import_cannot_borrow_an_existing_foreign_mapping() {
+    std::thread::Builder::new()
+        .name("rustc".into())
+        .spawn(|| {
+            session(|| {
+                struct RemoveFile(std::path::PathBuf);
+                impl Drop for RemoveFile {
+                    fn drop(&mut self) {
+                        let _ = std::fs::remove_file(&self.0);
+                    }
+                }
+                let suffix = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos();
+                let path = std::env::temp_dir().join(format!(
+                    "sail-existing-foreign-{}-{suffix}.rs",
+                    std::process::id()
+                ));
+                let cleanup = RemoveFile(path.clone());
+                let map = SourceMap::new(FilePathMapping::empty());
+                let content = "abcdefgh";
+                std::fs::write(&path, content).unwrap();
+                let hash = SourceFileHash::new_in_memory(SourceFileHashAlgorithm::Md5, content);
+                let name = FileName::Custom("existing-foreign".into());
+                let stable_crate = rustc_span::def_id::StableCrateId::new(
+                    Symbol::intern("dep"),
+                    false,
+                    Vec::new(),
+                    "1.98.1",
+                );
+                let foreign = map.new_imported_source_file(
+                    name.clone(),
+                    hash,
+                    None,
+                    StableSourceFileId::from_filename_for_export(&name, stable_crate),
+                    8,
+                    8,
+                    CrateNum::new(2),
+                    FreezeLock::new(SourceFileLines::Lines(vec![RelativeBytePos::from_u32(0)])),
+                    Vec::new(),
+                    Vec::new(),
+                    0,
+                );
+                let (context, metadata) = fixture(&foreign);
+                *context.imported_crates[&7].files[0].info.lock().unwrap() =
+                    ExternSourceInfo::Delayed {
+                        filename: path,
+                        hash: hash.hash_bytes().to_vec(),
+                    };
+                let mapping = sail_capture_loaded_imports(
+                    &context.imported_crates,
+                    &metadata,
+                    &map,
+                    crate_id,
+                )
+                .unwrap();
+                assert_eq!(map.files().len(), 1);
+                assert_eq!(
+                    mapping.current_range(packed(1002, 1006)),
+                    Err(CaptureFailure::Delayed)
+                );
+                let current = vir::messages::Span {
+                    raw_span: Arc::new(()),
+                    id: 563,
+                    data: packed(1002, 1006).to_vec(),
+                    as_string: "same exact current diagnostic binding".into(),
+                };
+                let resolved = context.from_air_span(&current, Some(&map)).unwrap();
+                assert_eq!(map.files().len(), 2);
+                // Stock honours the Delayed descriptor, even though an equal-hash
+                // Foreign source already existed. Its newly loaded Real file wins.
+                assert_ne!(map.span_to_filename(resolved), foreign.name);
+                assert_ne!(resolved.data().lo.0, foreign.start_pos.0 + 2);
+                assert_eq!(
+                    mapping.current_range(packed(1002, 1006)),
+                    Err(CaptureFailure::Delayed)
+                );
+                drop(mapping);
+                assert!(matches!(
+                    sail_capture_loaded_imports(
+                        &context.imported_crates,
+                        &metadata,
+                        &map,
+                        crate_id,
+                    ),
+                    Err(CaptureFailure::NotForeign)
+                ));
+                drop(cleanup);
+            });
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
