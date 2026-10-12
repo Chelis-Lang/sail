@@ -118,12 +118,31 @@ pub fn violations(s: &Sample) -> Vec<Violation> {
                 ),
             ));
         }
-    } else if let Some(error) = &f.baseline_error {
+    } else {
+        m6_violations(s, &mut out);
+    }
+    if f.outcome_sha256.is_none() {
+        out.push(v(
+            "SAIL7106",
+            format!(
+                "no comparable full outcome: {}",
+                f.outcome_error.as_deref().unwrap_or("unknown")
+            ),
+        ));
+    }
+    out
+}
+
+/// The M6-only violations: an invalid baseline (`SAIL7110`), else an outcome
+/// that differs from the catalogue (`SAIL7106`).
+fn m6_violations(s: &Sample, out: &mut Vec<Violation>) {
+    let f = &s.facts;
+    if let Some(error) = &f.baseline_error {
         out.push(v(
             "SAIL7110",
             format!("invalid M6 baseline sample: {error}"),
         ));
-    } else if f.verified != Some(want_verified) {
+    } else if f.verified != Some(s.expected == "verified") {
         out.push(v(
             "SAIL7106",
             format!(
@@ -137,16 +156,6 @@ pub fn violations(s: &Sample) -> Vec<Violation> {
             ),
         ));
     }
-    if f.outcome_sha256.is_none() {
-        out.push(v(
-            "SAIL7106",
-            format!(
-                "no comparable full outcome: {}",
-                f.outcome_error.as_deref().unwrap_or("unknown")
-            ),
-        ));
-    }
-    out
 }
 
 /// Whether `s` is an M6 sample whose focused or full check failed to run to a
