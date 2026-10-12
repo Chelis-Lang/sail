@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Selected combined source 57a319d complete local gate, original solver, ordinary release/private installation and original CLI/MCP repair PASS; separate baseline feature smoke, readers, conformance and benchmark acceptance pending",
+  "status": "Selected combined source 57a319d local gate/solver, release/private/acceptance installations and original repair PASS; original real-project benchmark FAIL during read-only filesystem incident, closure UNKNOWN, zero measured samples; M7 unqualified",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -597,5 +597,39 @@
     "all_command_exits": 0,
     "controller_sha256": "6647a923147f876132676410187ad2e8a960bf3b8276ba0987450e7c96c27273",
     "qualification": "Byte installation only; no Cargo, proof, prewarm, cache or receipt copies. Running original three-round HE/Vest benchmark receives no performance credit."
+  },
+  "original_real_project_benchmark": {
+    "status": "FAIL",
+    "source_commit": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694",
+    "run_id": "fresh-core-inventory",
+    "exit_code": 1,
+    "elapsed_seconds": 695.486217916,
+    "original_rounds": 3,
+    "original_invocation_seconds": 600,
+    "original_minimum_speedup_each_project": 2,
+    "measured_samples": 0,
+    "Vest": "unreached",
+    "retained_warmups_ms": {
+      "M6_ordinary": 200232,
+      "M7_ordinary": 168086,
+      "M6_GCD_focus": 69390,
+      "M7_GCD_attempt0_declaration_establishment": 152552
+    },
+    "retry_terminal": "Not qualified; retained warmups do not establish a completed accepted retry",
+    "observed_infrastructure": "Guest checkpoint writes failed errno30 (read-only filesystem) while host free space was reported136MiB. Both container write probes still returned errno30 after host space reached2.3GiB. Temporal observations do not prove host-space causality.",
+    "closure": "UNKNOWN; closure census exited133 with Qemu create_tempfile assertion; no closed-scope/orphan-absence claim",
+    "source_product_runtime_seals_unchanged": true,
+    "container_identity_birth_unchanged": true,
+    "raw_archive": {
+      "bytes": 370301,
+      "sha256": "a6340a36b03d9a5abc1c10cf39f7a2a9845ee369822f0e62a2da43ceacb682f8"
+    },
+    "evidence_sha256": {
+      "controller.json": "dfbed331e8d1ccbd807ef740599a9c8c1a199b97e2efd8fbeeb29231de389138",
+      "primary.json": "fe45710887f90756a6acae7ef655fddf15826e5019c71d137d4e501892f0cd72",
+      "stderr": "84ec4c6dc751f764f85bacbfdae34c72911baba65dbdfdc33a92b3053b3ef1bd",
+      "native-raw.tar.gz": "a6340a36b03d9a5abc1c10cf39f7a2a9845ee369822f0e62a2da43ceacb682f8"
+    },
+    "qualification": "No real-project performance or M7 acceptance; historical failure immutable. Prepared reader evidence from old container birth must be restaged."
   }
 }

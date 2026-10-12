@@ -267,6 +267,70 @@
       "preservation": "All original contents, file modes, symlink targets and file hashes retained in the verified archive; native/container/build scopes untouched",
       "physical_backing_bytes_reclaimed": "not measured or attributed",
       "qualification": "Storage operation only; no proof/product/performance acceptance"
+    },
+    {
+      "scope": "Three closed Oct10 host probe project-generation subtrees only",
+      "status": "PASS",
+      "operation": "Lossless archive verification and exact original-subtree retirement",
+      "subtrees": [
+        {
+          "closed_host_project_subtree": "sail-live-benchmark-051ufj1u/cache/projects",
+          "entries": 2504,
+          "logical_bytes": 213862251,
+          "archive": {
+            "name": "sail-live-benchmark-051ufj1u-projects-20261012.tar.gz",
+            "bytes": 19396219,
+            "sha256": "872c8c96655a55641d7f31982323abd857f8bf7809b07806a4ea23bf09872cf6"
+          },
+          "elapsed_seconds": 8.458538667,
+          "all_entries_verified": true,
+          "no_holders": true,
+          "exact_original_subtree_removed": true
+        },
+        {
+          "closed_host_project_subtree": "sail-live-benchmark-3xdjs1jd/cache/projects",
+          "entries": 2504,
+          "logical_bytes": 213562705,
+          "archive": {
+            "name": "sail-live-benchmark-3xdjs1jd-projects-20261012.tar.gz",
+            "bytes": 19367276,
+            "sha256": "be0049a858ae83651da0e834153c0afc9228f20c7d0abc3a2f5954f89d61d401"
+          },
+          "elapsed_seconds": 7.209056375000001,
+          "all_entries_verified": true,
+          "no_holders": true,
+          "exact_original_subtree_removed": true
+        },
+        {
+          "closed_host_project_subtree": "sail-live-avddjkn1/cache/projects",
+          "entries": 899,
+          "logical_bytes": 136896870,
+          "archive": {
+            "name": "sail-live-avddjkn1-projects-20261012.tar.gz",
+            "bytes": 11864370,
+            "sha256": "24e4729fbc5ef9136ed3a96b4055ba50a95e22c060bd316711413c1a4adb25a9"
+          },
+          "elapsed_seconds": 4.489979542,
+          "all_entries_verified": true,
+          "no_holders": true,
+          "exact_original_subtree_removed": true
+        }
+      ],
+      "logical_bytes_removed": 564321826,
+      "preservation": "Complete subtree bytes/modes/symlink targets retained in verified archives; outside-project raw logs, caches and fixtures retained. No native/container/build changes.",
+      "preceding_whole_root_attempt": {
+        "status": "REFUSED",
+        "observed_entries": 24481,
+        "unchanged_entry_cap": 20000,
+        "archive_or_deletion": false,
+        "reason": "First whole probe contains24481 entries, beyond the configured20000-entry retirement cap; no archive or oldroot deletion occurred"
+      },
+      "evidence_sha256": {
+        "project_result.json": "b221cb691bb30f5f71756ab1eaca14be7bc4f041fd62d05f846bdfe15c4ba942",
+        "refused_whole_root_result.json": "b5ffcf2d1d32d29297911f4bc08a7d16c1039e40564233bd54f87466c241adba"
+      },
+      "physical_backing_bytes_reclaimed": "not measured or attributed",
+      "qualification": "Storage operation only; no proof/product/performance acceptance"
     }
   ]
 }

@@ -74,9 +74,21 @@ real-project performance receive no transferred credit.
 Acceptance byte installation also passes in 4.291 seconds: all twelve commands
 exit zero, source archive and both container births stay unchanged, and the
 producer's before/after CLI/shim bytes match the owned acceptance installation.
-This copies no Cargo target, proof receipt, cache or prewarm state. The original
-three-round HumanEval/Vest benchmark is running separately and has no performance
-credit at this record's freeze.
+This copies no Cargo target, proof receipt, cache or prewarm state. The separate original three-round HumanEval/Vest benchmark fails after 695.486
+seconds before measurement, with zero samples and Vest unreached. Retained
+warmups are M6 ordinary 200,232 ms, M7 ordinary 168,086 ms, M6 GCD focus
+69,390 ms and M7 GCD declaration-establishment attempt zero 152,552 ms. These
+do not qualify the retry terminal or performance. Guest checkpoint writes fail
+with errno 30 (read-only filesystem) while host free space is reported at
+136 MiB; concurrent observations do not prove a cause. Both-container write
+probes still return errno 30 after host space reaches 2.3 GiB.
+
+Source/product/runtime seals and container birth match, but closure census
+exits 133 with a Qemu temporary-file assertion. Closure is UNKNOWN, without
+a closed-scope or orphan-absence claim. The 370,301-byte raw archive is retained
+and hash-bound in the same record. Original deadlines and oracles remain
+unchanged; earlier passes are not transferred to this failed scope. Prepared
+readers from the old container birth need restaging.
 
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
