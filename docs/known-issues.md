@@ -8,28 +8,29 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
-- **Engine diagnostics name `vstd/seq.rs` where stock names `seq.rs`.** The
-  engine conformance arm found this on `basic_failure.rs`. It is a diagnostic
-  parity defect in engine mode; stock mode is unaffected.
-  [L4 report](reports/rescue/l4-engine-correctness.md).
-- **The byte oracle trips on stock trigger nondeterminism.** On
-  `guide/traits.rs` (7 of 10 runs) and `chapter-6-1.rs`, stock Verus itself
-  chooses triggers nondeterministically
-  ([VI-0015](verus-issues/VI-0015-nondeterministic-trigger-choice.md));
-  verdicts match. The fresh-versus-fresh classification in ADR 0038 is
-  pending, and the oracle cannot start on `vest-generated`.
-- **The 512 MiB preparation budget is not an established bound.** It is a
-  configured limit only; nothing measures process memory against it.
-- **M7 is not faster than M6 yet.** Natively, the HumanEval repair batch is
-  0.94× of M6, because preparation encoding costs more than the single callback
-  saves. On Vest, M7 refuses every function (`SAIL3122`) and loses Currentness
-  (`SAIL3114`).
-  [L1 profile](reports/rescue/l1-phase-profile.md), [Gate 7](validation/m7.md#gate-7-frozen-repair-performance).
-- **Managed focus can fail with `SAIL3107` after a repeated edit.** `cargo verus
-  focus` builds under `<target-dir>/verus-partial` with checksum freshness, but
-  the missing-receipt retry cleans `<target-dir>`. Byte-identical content then
-  produces no receipt. This affects released M6 behaviour.
-  [L1 profile](reports/rescue/l1-phase-profile.md).
+- **M7 is not faster than M6 yet.** In a one-round native smoke run,
+  HumanEval was 1.01× of M6 and Vest 0.77×, and every Vest M7 sample is
+  invalid (`SAIL7102`, see below). The speed work (preparation removal and
+  managed overhead) has not landed yet.
+  [L7b report](reports/rescue/l7b-vest-and-baseline.md), [L1 profile](reports/rescue/l1-phase-profile.md),
+  [Gate 7](validation/m7.md#gate-7-frozen-repair-performance).
+- **Vest results read back through the daemon are always Unknown.** The
+  read-time freshness check needs leases on every file in the workspace,
+  beyond its limits. A simpler check, scoped to the files Cargo used for the
+  target, is in progress. [L7b report](reports/rescue/l7b-vest-and-baseline.md).
+- **Engine fixes await a rebuilt engine runtime.** The pinned runtime still
+  has three defects, each fixed in source but not yet in the runtime: engine
+  diagnostics name `vstd/seq.rs` where stock names `seq.rs`; repeated
+  friendly names (Vest trait impls) refuse focused repairs with `SAIL3122`;
+  and the engine conformance arm fails on `guide/traits.rs`.
+  [L4b report](reports/rescue/l4b-engine-parity.md).
+- **Prepared-lowering reuse is being removed.** It produced no reuse and cost
+  7–40 s per repair run. Its known defects go with it: the 512 MiB budget is
+  accounting only, thread-local span formatting
+  ([#75](https://github.com/Chelis-Lang/sail/issues/75)), uncovered imported
+  metadata ([VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md)),
+  and the same-input oracle's failures on stock trigger nondeterminism
+  ([VI-0015](verus-issues/VI-0015-nondeterministic-trigger-choice.md)).
 - **Repair selectors lose compiler-declared input coverage.** A warmup can
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and
@@ -38,21 +39,17 @@ are in the `archive/m7-contracts-f7103bf` tag.
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
   [Gate 3](validation/m7.md#gate-3-workspace-gate-solver-suite-and-native-ci), [#76](https://github.com/Chelis-Lang/sail/issues/76).
+- **Flaky tests on a loaded Mac.** `sail-api`'s
+  `cancellable::blocked_read_and_write_cancel…` and `sail-verus`'s
+  compiler-family and shared-target lock tests fail intermittently ("would
+  block") under heavy load on macOS; they pass on native Linux. Under
+  investigation.
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls under
-  amd64 emulation. [#68](https://github.com/Chelis-Lang/sail/issues/68),
+  amd64 emulation, which is no longer used for performance or Linux
+  validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),
   [reproduction](../corpus/repros/linux-emulation-verus-stall/).
 - **Managed metadata ignores Cargo `-F` feature aliases.**
   [#78](https://github.com/Chelis-Lang/sail/issues/78).
-- **Thread-local span formatting in interactive preparation.**
-  [#75](https://github.com/Chelis-Lang/sail/issues/75),
-  [reproduction](../corpus/repros/engine-span-data-worker/).
-- **The engine's memory bound is not physically established.** Diagnostic
-  reporters release quota before their nested allocations drop, so the 512 MiB
-  preparation bound is accounting only. The corrective overlays were never
-  selected. [Engine internals](../engine/verus/README.md#prepared-lowering-checkpoint).
-- **Imported metadata ranges are uncovered.** Some imported metadata ranges
-  are not covered, so preparation misses and falls back to fresh lowering.
-  [VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md).
 - **Unknown reports lack attribution.** Namespace and sysroot Unknown reports
   name the reason and the first failed barrier, but not the file or event.
   [Freshness](freshness.md).

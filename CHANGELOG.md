@@ -5,6 +5,17 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Fix managed focused checks (`sail verify --incremental -- --verify-function
+  …`) failing with `SAIL3107` when the source matched the last focused build.
+  Sail now cleans `<target>/verus-partial`, where `cargo verus focus` builds.
+- Fix managed runs that were always Unknown (`SAIL3114
+  native-observer-setup-unavailable`) on workspaces, such as Vest, whose
+  members resolve dependencies the selected package never builds. Proof-time
+  coverage now spans the selected targets' dependency closure; a Cargo unit
+  outside it reports `native-observer-scope-exceeded`.
+- `sail-bench repair` reports `SAIL7110` for an M6 check that ended in a Sail
+  error; such a sample never counts as M6 time.
+
 - Add `sail-bench repair prepare|run`, the M7 repair acceptance workload. It
   replaces `scripts/m7-repair-bench.py`, which stopped at the first refusal.
   The new workload records every M6 (focused then full) and M7 (one repair
