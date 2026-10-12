@@ -282,7 +282,7 @@ fn valid(name: &str, document: &Value) -> bool {
         "save_baseline" | "get_baseline" => {
             matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),
                 Ok(sail_api::jobs::Response::Baseline(baseline))
-                if baseline.version == sail_api::repair::VERSION
+                if baseline.version == sail_api::evidence::VERSION
                     && valid_baseline_name(&baseline.name)
                     && !baseline.job_id.is_empty()
                     && baseline.result.kind == "sail-project-result"

@@ -1,14 +1,14 @@
 //! Baseline tools preserve the original CLI authority and full evidence.
 
 use super::*;
+use sail_api::evidence::Baseline;
 use sail_api::jobs::Response;
 use sail_api::output::VerdictName;
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
-use sail_api::repair::Baseline;
 
 fn baseline(name: &str) -> Baseline {
     Baseline {
-        version: sail_api::repair::VERSION,
+        version: sail_api::evidence::VERSION,
         name: name.into(),
         job_id: "recorded-job".into(),
         result: ProjectResult {

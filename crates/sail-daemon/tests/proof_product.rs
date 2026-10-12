@@ -1,10 +1,10 @@
 //! Product evidence survives job pruning and keeps exact target/function identities.
 #![cfg(unix)]
+use sail_api::evidence::{Change, Reference};
 use sail_api::jobs::{Client, Lifecycle, Mode, Request, Response, Status, Submission};
 use sail_api::output::{Report, TierName, VerdictName};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 use sail_api::proof::Target;
-use sail_api::repair::{Change, Reference};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -100,6 +100,45 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
         error: None,
     })
 }
+#[test]
+fn stock_jobs_have_an_explicitly_empty_terminal_proof_journal()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    let socket = fixture.root.join("jobs.sock");
+    let store = fixture.root.join("jobs");
+    let mut server = sail_daemon::jobs::bind(&socket, &store, &fixture.worker)?.spawn()?;
+    let client = Client::new(&socket);
+    std::fs::write(
+        fixture.root.join("result.json"),
+        serde_json::to_vec(&project()?)?,
+    )?;
+    let first = submit(&client, fixture.request("first"))?;
+    completed(&client, &first.id)?;
+    // Stock workers write no proof events: the journal is an empty, terminal
+    // page with an explicit SAIL0903 gap, and capabilities report the proof-stream version.
+    let Response::ProofEvents(page) = client.call(&Request::ProofEvents {
+        id: first.id.clone(),
+        cursor: sail_api::proof::Cursor::default(),
+        limit: 64,
+    })?
+    else {
+        return Err("proof events response".into());
+    };
+    assert_eq!(page.events, []);
+    assert!(page.terminal);
+    assert!(
+        page.gap
+            .as_deref()
+            .is_some_and(|gap| gap.starts_with("SAIL0903"))
+    );
+    assert!(matches!(
+        client.call(&Request::Capabilities)?,
+        Response::Capabilities { proof_version, repair: true } if proof_version == sail_api::proof::VERSION
+    ));
+    server.shutdown();
+    Ok(())
+}
+
 #[test]
 fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenance()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -207,7 +246,7 @@ fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenanc
 
 fn assert_saved_baseline(
     client: &Client,
-    saved: &sail_api::repair::Baseline,
+    saved: &sail_api::evidence::Baseline,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let Response::Baseline(loaded) = client.call(&Request::GetBaseline {
         name: saved.name.clone(),

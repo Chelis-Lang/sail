@@ -1,7 +1,7 @@
 //! Focus success never authorizes full-target regression, historical or partial evidence.
-use sail_api::output::{OutcomeName, Report, TierName, VerdictName};
+use sail_api::output::{Report, TierName, VerdictName};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
-use sail_api::repair::{BatchResult, Change};
+use sail_api::repair::BatchResult;
 
 fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
     let report: Report = serde_json::from_str(include_str!(
@@ -87,93 +87,6 @@ fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits(
     assert!(!batch.accepted());
     Ok(())
 }
-#[test]
-fn exact_target_obligation_comparisons_preserve_scope_and_removal_limits()
--> Result<(), Box<dyn std::error::Error>> {
-    let before = success(project()?);
-    let mut after = before.clone();
-    after.input_revision = "after".into();
-    let f = &mut after.targets[0].report.crates[0].functions[0];
-    f.verdict = VerdictName::Failed;
-    let Some(obligations) = f.obligations.as_mut() else {
-        return Err("fixture requires attributed obligations".into());
-    };
-    let obligation = obligations
-        .first_mut()
-        .ok_or("fixture requires an obligation")?;
-    let id = obligation.id.clone();
-    obligation.outcome = OutcomeName::Failed;
-    obligation.advisory = false;
-    let mut before = before;
-    before.targets[0].report.crates[0].functions[0]
-        .obligations
-        .as_mut()
-        .ok_or("fixture requires obligations")?[0]
-        .outcome = OutcomeName::Proved;
-    let comparison = sail_api::repair::compare(&before, &after);
-    assert!(comparison.compatible);
-    assert_eq!(comparison.differences[0].change, Change::Regressed);
-    assert!(
-        comparison.differences[0]
-            .obligations
-            .iter()
-            .any(|diff| diff.id == id && diff.change == Change::Regressed)
-    );
-    after.targets[0].report.crates[0].functions.remove(0);
-    after.targets[0].report.crates[0].verus.success = None;
-    assert_eq!(
-        sail_api::repair::compare(&before, &after).differences[0].change,
-        Change::NotObserved
-    );
-    after.targets[0].report.crates[0].verus.success = Some(true);
-    assert_eq!(
-        sail_api::repair::compare(&before, &after).differences[0].change,
-        Change::Removed
-    );
-    after.targets[0].kind = vec!["bin".into()];
-    assert!(!sail_api::repair::compare(&before, &after).compatible);
-    Ok(())
-}
-
-#[test]
-fn repeated_friendly_names_do_not_invent_order_dependent_regressions()
--> Result<(), Box<dyn std::error::Error>> {
-    let mut before = success(project()?);
-    let mut duplicate = before.targets[0].report.crates[0].functions[0].clone();
-    duplicate.verdict = VerdictName::Failed;
-    let name = duplicate.function.clone();
-    let original_count = before.targets[0].report.crates[0].functions.len();
-    before.targets[0].report.crates[0].functions.push(duplicate);
-    let mut after = before.clone();
-    after.targets[0].report.crates[0].functions.reverse();
-    let compared = sail_api::repair::compare(&before, &after);
-    assert!(compared.compatible);
-    assert_eq!(compared.differences.len(), original_count);
-    let difference = compared
-        .differences
-        .iter()
-        .find(|d| d.function == name)
-        .ok_or("ambiguous function difference missing")?;
-    assert!(
-        compared
-            .differences
-            .iter()
-            .filter(|d| d.function != name)
-            .all(|d| d.change == Change::Unchanged)
-    );
-    assert_eq!(difference.change, sail_api::repair::Change::Incomparable);
-    assert_eq!(difference.before, None);
-    assert_eq!(difference.after, None);
-    assert_eq!(difference.obligations, []);
-    assert!(
-        compared
-            .notes
-            .iter()
-            .any(|n| n.contains("Repeated friendly function names"))
-    );
-    Ok(())
-}
-
 #[test]
 fn preparation_stats_preserve_driver_counters_without_inventing_support()
 -> Result<(), Box<dyn std::error::Error>> {

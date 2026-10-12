@@ -1,7 +1,7 @@
 //! Evidence commands make exact identities explicit.
+use sail_api::evidence::Reference;
 use sail_api::jobs::{Request, Response};
 use sail_api::proof::Target;
-use sail_api::repair::Reference;
 use std::io::Write;
 use std::process::ExitCode;
 

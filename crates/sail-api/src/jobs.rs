@@ -185,7 +185,7 @@ pub enum Request {
     /// Compare explicit completed evidence with an earlier job or baseline.
     Compare {
         /// Earlier named baseline or durable job.
-        before: crate::repair::Reference,
+        before: crate::evidence::Reference,
         /// Later completed job identity.
         after: String,
     },
@@ -241,18 +241,20 @@ pub enum Response {
         /// Independent proof stream version.
         proof_version: u32,
         /// Non-stock submission modes are understood and never ignored.
+        /// Absent from services without the engine, which decode as false.
+        #[serde(default)]
         repair: bool,
     },
     /// Ordered, resumable proof observations.
     ProofEvents(crate::proof::Page),
     /// Exact establishing evidence for a failure or proof.
-    Explanation(Box<crate::repair::Explanation>),
+    Explanation(Box<crate::evidence::Explanation>),
     /// Independently retained immutable evidence.
-    Baseline(Box<crate::repair::Baseline>),
+    Baseline(Box<crate::evidence::Baseline>),
     /// Immutable baseline names.
     Baselines(Vec<String>),
     /// Scoped, configuration-aware proof comparison.
-    Comparison(crate::repair::Comparison),
+    Comparison(crate::evidence::Comparison),
     /// One status.
     Status(Status),
     /// Retained jobs, oldest first.

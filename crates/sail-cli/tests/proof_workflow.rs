@@ -1,4 +1,8 @@
-//! Actual command/MCP transport against an explicitly synthetic engine worker.
+//! Actual command/MCP transport for proof events, explanations, baselines and
+//! comparisons, against an explicitly synthetic stock worker.
+//!
+//! Stock verification writes no proof events. The synthetic worker writes one
+//! so the journal transport is exercised end to end.
 #![cfg(unix)]
 use sail_api::jobs::{Client, Lifecycle, Request, Response};
 use sail_api::output::{Report, TierName, VerdictName};
@@ -87,7 +91,6 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         error: None,
     };
     let mut focus = full.clone();
-    focus.exit_code = Some(0);
     for f in focus.targets[0]
         .report
         .crates
@@ -97,19 +100,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         f.tier = TierName::Provisional;
         f.verdict = VerdictName::Provisional;
     }
-    let bundle = sail_api::repair::ResultDocument::from(sail_api::repair::BatchResult {
-        focus: Some(focus.clone()),
-        full,
-        manifest_sha256: "mock-manifest".into(),
-        compiler_invocations: 1,
-        batched: true,
-        selection_error: None,
-        preparation: None,
-    });
-    std::fs::write(
-        fixture.root.join("result.json"),
-        serde_json::to_vec(&bundle)?,
-    )?;
+    std::fs::write(fixture.root.join("result.json"), serde_json::to_vec(&full)?)?;
     std::fs::write(
         fixture.root.join("context.jsonl"),
         format!(
@@ -173,30 +164,15 @@ fn wait(fixture: &Fixture, id: &str) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn installed_cli_and_mcp_share_repair_journal_explanation_and_baseline_contracts()
+fn installed_cli_and_mcp_share_journal_explanation_and_baseline_contracts()
 -> Result<(), Box<dyn std::error::Error>> {
     let (fixture, mut daemon, function) = fixture()?;
-    let submitted = fixture.json(&[
-        "repair-check",
-        "--package",
-        "demo",
-        "--lib",
-        "--function",
-        &function,
-        "--engine",
-        "interactive",
-        "--background",
-        "--output",
-        "json",
-    ])?;
+    let submitted = fixture.json(&["verify", "--background", "--output", "json"])?;
     let id = submitted["id"].as_str().ok_or("job id")?;
     wait(&fixture, id)?;
     let result = fixture.json(&["jobs", "result", id, "--output", "json"])?;
-    assert_eq!(result["value"]["repair"]["accepted"], false);
-    assert_eq!(
-        result["value"]["repair"]["batch"]["compiler_invocations"],
-        1
-    );
+    assert_eq!(result["value"]["result"]["run_id"], "mock-run");
+    assert!(result["value"].get("repair").is_none());
     let page = fixture.json(&["jobs", "events", id, "--output", "json"])?;
     assert_eq!(page["events"][0]["input"]["phase"], "focus");
     assert_eq!(
@@ -280,12 +256,10 @@ fn check_mcp(
         )?["value"]["compatible"],
         true
     );
-    let started = call(
-        4,
-        "start_repair_validation",
-        json!({"package":"demo","kind":"lib","function":function,"engine":"interactive"}),
-    )?;
-    assert!(started["id"].as_str().is_some());
+    assert_eq!(
+        call(4, "list_baselines", json!({}))?["value"],
+        json!(["before"])
+    );
     drop(call);
     drop(input);
     assert!(mcp.wait()?.success());

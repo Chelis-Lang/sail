@@ -3,9 +3,9 @@
 use std::io::{self, Read as _, Write};
 use std::os::unix::fs::OpenOptionsExt as _;
 
+use sail_api::evidence::{Baseline, Comparison, Explanation, Reference, VERSION};
 use sail_api::project::ProjectResult;
 use sail_api::proof::{Cursor, Observation, Target};
-use sail_api::repair::{Baseline, Comparison, Explanation, Reference, VERSION};
 
 use super::{State, get, store};
 
@@ -33,7 +33,7 @@ pub(super) fn explain(
     obligation: Option<&str>,
 ) -> io::Result<Explanation> {
     let result = completed(state, id)?;
-    let mut explanation = sail_api::repair::explain(&result, target, function, obligation)
+    let mut explanation = sail_api::evidence::explain(&result, target, function, obligation)
         .map_err(io::Error::other)?;
     let job = get(state, id)?;
     let mut cursor = Cursor::default();
@@ -186,5 +186,5 @@ pub(super) fn compare(state: &State, before: &Reference, after: &str) -> io::Res
         Reference::Baseline(name) => baseline(state, name)?.result,
     };
     let after = completed(state, after)?;
-    Ok(sail_api::repair::compare(&before, &after))
+    Ok(sail_api::evidence::compare(&before, &after))
 }
