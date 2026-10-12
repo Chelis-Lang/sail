@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "selected b89546c complete gate and original solver PASS; product and unchanged real-project benchmark pending",
+  "status": "selected b89546c complete gate, original solver, ordinary release and private installation PASS; original repair running and real-project benchmark pending",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -88,7 +88,8 @@
   "control_status": "selected real-Cargo retry/export/original-input-barrier control PASS4.775s; complete658 workspace and41 solver PASS; historical failures unchanged",
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
-    "fresh coherent product installation",
+    "original fresh repair fixture terminal outcome",
+    "acceptance product byte installation",
     "unchanged original real-project warmups and benchmark"
   ],
   "fixture_correction": {
@@ -469,7 +470,7 @@
     "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
     "native_validation": "complete local gate PASS: 658/658 workspace tests and all remaining steps; original solver PASS: 41/41",
-    "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim",
+    "product_and_benchmark_validation": "ordinary release and private byte installation PASS; original repair running; unchanged real-project warmups and benchmark pending",
     "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
     "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a"
   },
@@ -486,5 +487,180 @@
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
     "native_validation": "complete gate and solver running; terminal outcome pending",
     "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim"
+  },
+  "product_provenance": {
+    "status": "PASS",
+    "scope": "ordinary release build and owned installation only",
+    "source_commit": "b89546cbf64788976803b832dbfa214575c9ff7b",
+    "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a",
+    "combined_gate_result_sha256": "693c982697eadce13d04e659bf8a5ead48e46ae40d5a3e97085cf00a5d2a0c1f",
+    "execution": "Linux amd64 Docker emulation on arm64 macOS under development load",
+    "raw": {
+      "controller.json": {
+        "bytes": 751,
+        "sha256": "9381030cb654f13e550c043043a81b1bf0188e2910c3da9dd196c11d9c56c8b6"
+      },
+      "result.json": {
+        "bytes": 2138,
+        "sha256": "a3d3819ca9e5f5d3222259a203a6be2ed719c9cdf97d45fc7e525b6b6a1205de"
+      },
+      "product-grant.json": {
+        "bytes": 6907,
+        "sha256": "e84c78a85bab5d20fe0ec8876c62da0f63b195c9164165eb0e64d0891780bbcb"
+      },
+      "release-build.log": {
+        "bytes": 1273,
+        "sha256": "8777b631461b384f0316882b9828f6d735b124e671c6b2e93b6dee190fc49796"
+      },
+      "owned-install.log": {
+        "bytes": 525,
+        "sha256": "f0654c9136b428c14cf70b0307ae0a438917015fbda4389d16e1ec84f0d49d22"
+      }
+    },
+    "artifacts": {
+      "sail": {
+        "bytes": 76777096,
+        "sha256": "10a7c47a4242f7fa271a54737e3341a9600216e261ed24fad1657dc813823f21"
+      },
+      "sail-z3": {
+        "bytes": 11000968,
+        "sha256": "da21cf60b15db73d29c4885f1993e1013f2bcc5f09886197324ee8eddc334e80"
+      }
+    },
+    "phases": [
+      {
+        "name": "release-build",
+        "exit_code": 0,
+        "elapsed_seconds": 108.34633088200007,
+        "limit_seconds": 600,
+        "known_group_survivors": 0,
+        "known_group_unavailable": 0
+      },
+      {
+        "name": "owned-install",
+        "exit_code": 0,
+        "elapsed_seconds": 2.4219585010005176,
+        "limit_seconds": 60,
+        "known_group_survivors": 0,
+        "known_group_unavailable": 0
+      }
+    ],
+    "selected_engine": {
+      "manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+      "runtime_file_count": 13,
+      "files": {
+        "verus/source/target-verus/release/.cargo-build-lock": {
+          "bytes": 0,
+          "mode": 420,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "verus/source/target-verus/release/.vstd-fingerprint": {
+          "bytes": 156,
+          "mode": 420,
+          "sha256": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655"
+        },
+        "verus/source/target-verus/release/cargo-verus": {
+          "bytes": 2754984,
+          "mode": 493,
+          "sha256": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e"
+        },
+        "verus/source/target-verus/release/libverus_builtin.rlib": {
+          "bytes": 928246,
+          "mode": 420,
+          "sha256": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902"
+        },
+        "verus/source/target-verus/release/libverus_builtin_macros.so": {
+          "bytes": 13801320,
+          "mode": 493,
+          "sha256": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf"
+        },
+        "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+          "bytes": 8565760,
+          "mode": 493,
+          "sha256": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6"
+        },
+        "verus/source/target-verus/release/libvstd.rlib": {
+          "bytes": 10236586,
+          "mode": 420,
+          "sha256": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2"
+        },
+        "verus/source/target-verus/release/rust_verify": {
+          "bytes": 29811368,
+          "mode": 493,
+          "sha256": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55"
+        },
+        "verus/source/target-verus/release/version.txt": {
+          "bytes": 26,
+          "mode": 420,
+          "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+        },
+        "verus/source/target-verus/release/verus": {
+          "bytes": 4705336,
+          "mode": 493,
+          "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+        },
+        "verus/source/target-verus/release/verus-root": {
+          "bytes": 0,
+          "mode": 420,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "verus/source/target-verus/release/vstd.vir": {
+          "bytes": 30076214,
+          "mode": 420,
+          "sha256": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27"
+        },
+        "verus/source/target-verus/release/z3": {
+          "bytes": 34954456,
+          "mode": 493,
+          "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+        }
+      }
+    },
+    "installation": {
+      "authority": "installation-only",
+      "credentials": {
+        "cap_eff": "00000000a82425fb",
+        "cap_lease": false,
+        "fsuid": 0,
+        "gids": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "uids": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "directory_mode": "0700",
+      "files": {
+        "sail": {
+          "bytes": 76777096,
+          "gid": 0,
+          "mode": "0700",
+          "sha256": "10a7c47a4242f7fa271a54737e3341a9600216e261ed24fad1657dc813823f21",
+          "uid": 0
+        },
+        "sail-z3": {
+          "bytes": 11000968,
+          "gid": 0,
+          "mode": "0700",
+          "sha256": "da21cf60b15db73d29c4885f1993e1013f2bcc5f09886197324ee8eddc334e80",
+          "uid": 0
+        }
+      },
+      "source_modified": false,
+      "version": 1
+    },
+    "same_container_identity": true,
+    "controller_uncertainty": [],
+    "native_uncertainty": [],
+    "closure": "closed-recorded-scope",
+    "installation_only": true,
+    "source_modified": false,
+    "limit": "ordinary build and byte installation only; no repair, reader, bootstrap historical cause or benchmark credit"
   }
 }
