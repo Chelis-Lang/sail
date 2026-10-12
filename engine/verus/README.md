@@ -233,6 +233,25 @@ directory and default patch path; a new patch needs its own complete run.
 Earlier qualifications and unselected candidates are in the
 `archive/m7-contracts-f7103bf` tag.
 
+## Corpus conformance arm
+
+`sail-conformance engine` (run by `ci/run.sh conformance`) compares this
+runtime's full phase with the stock release on the corpus and runs the
+same-input oracle on every restored hit; see the
+[repair guide](../../docs/proof-repair.md#engine-conformance). On the complete
+fast tier (Linux x86-64, 2026-10-12) it matched 145 of 147 units. Two differ:
+
+- `examples/basic_failure.rs`: a diagnostic span inside vstd renders as
+  `vstd/seq.rs:980:12` from this runtime and `seq.rs:980:12` from the stock
+  release, with or without `SAIL_ENGINE`. The source build's vstd records a
+  different path than the release's, so engine diagnostics that point into
+  vstd differ from stock.
+- `examples/summer_school/chapter-6-1.rs` (and, in most runs,
+  `examples/guide/traits.rs`): the oracle reports a restored hit whose
+  automatic triggers differ from fresh lowering in the same callback. Stock
+  Verus makes both choices between runs (VI-0015); the oracle cannot tell this
+  from a preparation defect.
+
 ## Pinned Linux runtime for CI
 
 `artifact-linux.json` binds the private release asset, archive digest, source

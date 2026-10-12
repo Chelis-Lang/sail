@@ -42,6 +42,12 @@ callback; in ten repetitions, seven reported `ordered_wire_equal: false` and
 difference), and three passed. Without the oracle, every engine transcript
 equalled a transcript stock Verus also produced.
 
+A second instance is `examples/summer_school/chapter-6-1.rs`: ten stock runs
+sent two distinct streams (three and seven runs) that differ in the triggers
+chosen for a `host_has_key` quantifier (301 and 300 `:pattern` attributes).
+The engine conformance arm's oracle reported the same kind of difference for
+this unit's restored hit.
+
 **Root cause (by source reading):**
 `verus@426d8b0:source/vir/src/triggers_auto.rs`, `compute_triggers`. The
 search picks the next variable with `state.remaining_vars.iter().next()` (a

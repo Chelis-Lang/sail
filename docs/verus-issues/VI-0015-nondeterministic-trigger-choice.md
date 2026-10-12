@@ -5,12 +5,13 @@
 - **Found:** 2026-10-12
 - **Reproduction:** `corpus/repros/verus-nondeterministic-trigger-choice/`
 - **Impact on sail:** the source engine's same-input cached-versus-fresh byte
-  oracle (ADR 0027 owner amendment) reports a mismatch on
-  `verus-examples/examples/guide/traits.rs` in most runs, because two
-  lowerings of the same bucket in one process can choose different triggers.
+  oracle (ADR 0027 owner amendment) reports mismatches on
+  `verus-examples/examples/guide/traits.rs` (seven of ten repetitions) and
+  `examples/summer_school/chapter-6-1.rs`, because two lowerings of the same
+  bucket in one process can choose different triggers.
   Both choices are outputs stock Verus also produces, and verdicts and
   diagnostics match plain Verus. The oracle cannot tell this variation from a
-  preparation defect, so the engine conformance arm fails on this unit. Like
+  preparation defect, so the engine conformance arm fails on these units. Like
   VI-0001, it also lowers warm cache hit rates for affected buckets.
 - **Workaround:** none applied. Normalizing or ignoring the difference would
   need an owner decision (charter rule 5; `docs/open-questions.md`).

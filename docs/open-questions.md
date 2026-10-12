@@ -158,7 +158,9 @@ inline with the date and link the ADR that captures it.
     each engine transcript without the oracle equalled a stock transcript byte for byte, and
     verdicts and diagnostics match plain Verus. The oracle cannot distinguish
     this from a preparation defect, so the arm, as wired into
-    `ci/run.sh conformance`, fails on this unit. Options include keeping the
+    `ci/run.sh conformance`, fails on this unit. The complete fast tier
+    found the same kind of mismatch on `summer_school/chapter-6-1.rs`
+    (stock also varies there); its other 109 restored hits passed. Options include keeping the
     engine unqualified until trigger choice is deterministic, disabling
     preparation reuse for buckets whose lowering is order-sensitive, or
     classifying such mismatches as unstable under explicit evidence. No

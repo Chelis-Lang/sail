@@ -120,6 +120,33 @@ process RSS. Peaks and budgets from independent drivers are not summed. Target
 and phase identities appear only when independently bound. An engine without
 this telemetry reports it unavailable, rather than supplying invented zeroes.
 
+## Engine conformance
+
+`sail-conformance engine` is the engine's corpus arm. For each unit it runs
+plain Verus and then the engine with a focused function (the first proved
+function of the plain run) and an invocation-local preparation directory, and
+compares the full phase with the same rules as the other arms, including the
+ADR 0009 unstable classification. It also requires a normal, consistent
+compiler seal, and runs the same-input cached-versus-fresh byte oracle on every
+restored preparation hit; any oracle mismatch or uncovered hit fails the unit.
+`ci/run.sh conformance` runs it after the cache rounds on every tier, using
+`SAIL_ENGINE_BUILD`:
+
+```sh
+ci/local.sh conformance fast pr        # includes the engine arm
+sail-conformance engine --tier standard --project vest --engine-build PATH
+sail-conformance engine --tier fast --filter /guide/ --oracle-fault effects # negative control
+```
+
+`--no-oracle` and `--no-focus` narrow a diagnostic run. `--oracle-fault`
+injects an `order`, `effects` or `body` fault into the oracle's restored arm and
+passes only if every unit with a restored hit reports the mismatch. Use
+`effects`: it changes every restored arm. `order` swaps the first two lowered
+functions, which leaves the solver bytes of many buckets unchanged, and `body`
+needs a constant spec-function body, so neither is a complete control. The oracle
+currently fails on `guide/traits.rs` in most runs because stock trigger choice
+varies within one process (VI-0015, `docs/open-questions.md` question 15).
+
 ## Resumable observations
 
 `jobs events` reads a separate proof journal, independent of the existing target
