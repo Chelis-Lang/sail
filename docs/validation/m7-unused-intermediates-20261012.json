@@ -415,6 +415,93 @@
       "scope_label_correction": "Inherited b895/five-tree label is stale; actual approved156-root inventory, identical post-root IDs and host controller scope bind this operation. Original result unchanged.",
       "preservation": "Per-exact-subtree only; binaries, generated sources, directories, hardlinks and evidence retained; no surrounding debug/project posthash, engine or product ELF target",
       "physical_backing_bytes_reclaimed": "not measured or attributed"
+    },
+    {
+      "scope": "Six exact unused old Verus target-verus/release/deps trees only",
+      "status": "PASS",
+      "mutation_state": "completed-native-pass",
+      "variants": [
+        "59c33e796a8c9f2e",
+        "741d555a573cb9e8",
+        "9a524b7127614bd1",
+        "bfc6b239222f190b",
+        "05cf585f5e90150c",
+        "4d5b31f0c3e8d359"
+      ],
+      "root_suffix": "verus/source/target-verus/release/deps",
+      "inventory_entries_before": 5482,
+      "regular_bytes_before": 6005740586,
+      "removed_files": 3450,
+      "allocated_file_bytes_removed": 5062496256,
+      "logical_regular_bytes_removed": 5055552013,
+      "preserved_entries_after": 2032,
+      "all_remaining_entries_and_six_root_ids_unchanged": true,
+      "protected_hardlinked_files": 54,
+      "pending_unlink": null,
+      "containers_birth_mounts_unchanged": true,
+      "census": {
+        "holders-sail-m7-handoff-validation.json": {
+          "complete": true,
+          "scanned": 38,
+          "live_holders": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 36,
+          "exact_self_excluded": [
+            {
+              "pid": 14790,
+              "ppid": 0,
+              "pgid": 14790,
+              "start": 1115087,
+              "state": "R"
+            }
+          ]
+        },
+        "immediate-holders.json": {
+          "complete": true,
+          "scanned": 2,
+          "live_holders": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 0,
+          "exact_self_excluded": [
+            {
+              "pid": 383,
+              "ppid": 0,
+              "pgid": 383,
+              "start": 1110970,
+              "state": "R"
+            }
+          ]
+        },
+        "holders-sail-m7-acceptance.json": {
+          "complete": true,
+          "scanned": 2,
+          "live_holders": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 0,
+          "exact_self_excluded": [
+            {
+              "pid": 389,
+              "ppid": 0,
+              "pgid": 389,
+              "start": 1115007,
+              "state": "R"
+            }
+          ]
+        }
+      },
+      "helper_sha256": "ac6bef43c0a1493658c369634d0f4171f204831ca9d90243d1174b870716170f",
+      "helper_derivation": "Normalized AST equivalent to reviewed54c35 original except fixed BASE/SCOPE/six ROOTS and operation labels/namespaces; original bounds and admission predicates unchanged",
+      "evidence_sha256": {
+        "controller.json": "27078892fd9b14b66c9ff2f58909a39a4f182d406846db03a0ea4c5da9a07e5f",
+        "inventory.json": "93527bf95c6d7460aecc9161bbbd61828734f8d94bf0b4179b41c5c4722ab067",
+        "sail-m7-acceptance/approved-inventory.json": "93527bf95c6d7460aecc9161bbbd61828734f8d94bf0b4179b41c5c4722ab067",
+        "sail-m7-acceptance/after-inventory.json": "3559647f1b4ca5e8588bb5f263d330f79286ab6b26088f86e94a1ce96b509825",
+        "sail-m7-acceptance/native-result.json": "b2f0caf81d6a1bf499e6113c9eb9ab7e1c4f016274d07d0697c6328dae90e282",
+        "helper-review.json": "aec0d9fc599965516f0fe108b56f4e4d01a92e4e4e010420202cadce65c40e3c"
+      },
+      "preservation": "All executable/ELF/hardlinked and other remaining dependency entries retained. Direct runtime files, source/git/manifests/goldens and actual test images preserved; current selected c77 runtime/source outside selected roots. No surrounding project/release/debug posthash.",
+      "physical_backing_bytes_reclaimed": "not measured or attributed; observed host free space1.8GiB before and6.8GiB afterward is not a DockerRaw reclaim attribution",
+      "qualification": "Storage operation only. Second whole-debug preservation audit still pending; fresh387benchmark running with no performance credit."
     }
   ]
 }
