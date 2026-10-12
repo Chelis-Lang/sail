@@ -47,6 +47,9 @@ working directory to resolve its service. They reject `project_dir`. A relative
 cache override can route these calls to another service after switching projects.
 The [repair walkthrough](proof-repair-walkthrough.md) shows engine setup and the
 complete submission-to-baseline sequence.
+Keep MCP client transcripts and redirected tool output outside watched package
+roots and declared inputs during verification. Creating or updating those files
+inside the project can correctly invalidate the proof's input freshness.
 
 ## Reading completed evidence
 
@@ -423,9 +426,9 @@ On the completed `verification_result`, inspect
 Use the exact package/target/function identities in the report for explanations
 and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argument.
 
-Current c2 passes the [original repair fixture](validation/m7-repair-c2a4b23-terminal.md).
+Current `b89546c` passes the [original repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
 The [complete 730 reader/retained workflow](validation/m7-reader-730a321-terminal.md)
-is historical; current c2 reader replay remains required.
+is historical; current-product reader replay remains required.
 The reader p95 values come from the unchanged Python and Rust collectors, rather
 than an MCP-specific timing census; retained MCP scenarios establish functional
 behavior. Real-project repair performance and complete standard/cache coverage

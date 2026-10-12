@@ -1,7 +1,8 @@
 # Repair workflow walkthrough
 
-This walkthrough covers the implemented experimental workflow. Current c2 passes
-the original repair fixture; the complete concurrent-reader pass is retained on
+This walkthrough covers the implemented experimental workflow. Current `b89546c`
+passes the [original repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json);
+the complete concurrent-reader pass is retained on
 the earlier 730 product. Current reader replay, real-project M7 speed and complete
 standard/cache coverage remain
 unfinished. See [the roadmap](ROADMAP.md),
@@ -33,7 +34,7 @@ that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
 The selected runtime is experimental. Its complete source qualification now
 passes, including ownership accounting, genuine reuse across edits and exact
-full HumanEval results. Current [installed repair checks](validation/m7-repair-c2a4b23-terminal.md)
+full HumanEval results. Current [installed repair checks](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
 and historical [730 reader workflow](validation/m7-reader-730a321-terminal.md) pass separately;
 M7 real-project performance remains unqualified. See
 [engine qualification](../engine/verus/README.md).
@@ -100,21 +101,28 @@ cargo verus verify --package repair_demo --lib
 The demo pins Verus's Rust toolchain from `corpus/toolchain.toml`, separately
 from the Rust toolchain used to build Sail itself.
 
+Keep capture files outside the project package roots and declared inputs. Sail
+observes those roots recursively: writing an event log or result file there
+while verification is running is an input change and can correctly leave the
+proof Unknown. This demo uses a fresh sibling directory for captures; keep it
+available for the later commands.
+
 Submit one exact repair scope and retain its ID:
 
 ```sh
+EVIDENCE_DIR=$(mktemp -d "$PWD/../repair-evidence.XXXXXX")
 repair_check() {
     sail repair-check --package repair_demo --lib \
         --function repair_demo::selected --engine interactive \
         --background --output json
 }
-repair_check > before.submit.json
-BEFORE=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' before.submit.json)
-sail jobs events "$BEFORE" --follow --output jsonl > before.events.jsonl
-sail jobs result "$BEFORE" --output json > before.result.json
-python3 - <<'PY'
-import json
-value = json.load(open("before.result.json"))["value"]
+repair_check > "$EVIDENCE_DIR/before.submit.json"
+BEFORE=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$EVIDENCE_DIR/before.submit.json")
+sail jobs events "$BEFORE" --follow --output jsonl > "$EVIDENCE_DIR/before.events.jsonl"
+sail jobs result "$BEFORE" --output json > "$EVIDENCE_DIR/before.result.json"
+python3 - "$EVIDENCE_DIR/before.result.json" <<'PY'
+import json, sys
+value = json.load(open(sys.argv[1]))["value"]
 assert value["job"]["state"] == "completed" and value["job"]["error"] is None
 assert value["repair"]["accepted"] is True
 assert value["repair"]["batch"]["full"]["currentness"] == "current"
@@ -147,9 +155,9 @@ first. Neither form establishes current proof evidence for an edited workspace.
 Fetch a page and use its returned cursor:
 
 ```sh
-sail jobs events "$BEFORE" --output json > page.json
-STREAM=$(python3 -c 'import json; print(json.load(open("page.json"))["next"]["stream_id"])')
-AFTER=$(python3 -c 'import json; print(json.load(open("page.json"))["next"]["after"])')
+sail jobs events "$BEFORE" --output json > "$EVIDENCE_DIR/page.json"
+STREAM=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["next"]["stream_id"])' "$EVIDENCE_DIR/page.json")
+AFTER=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["next"]["after"])' "$EVIDENCE_DIR/page.json")
 sail jobs events "$BEFORE" --stream "$STREAM" --after "$AFTER" --follow --output jsonl
 ```
 
@@ -176,11 +184,11 @@ verus! {
     pub proof fn other(x: bool) ensures x { }
 }
 RUST
-repair_check > after.submit.json
-AFTER_JOB=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' after.submit.json)
-sail jobs events "$AFTER_JOB" --follow --output jsonl > after.events.jsonl
-sail jobs result "$AFTER_JOB" --output json > after.result.json
-PACKAGE_ID=$(python3 -c 'import json; p=json.load(open("after.result.json"))["value"]["repair"]["batch"]["full"]; print(next(t["package_id"] for t in p["targets"] if t["requested"]))')
+repair_check > "$EVIDENCE_DIR/after.submit.json"
+AFTER_JOB=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$EVIDENCE_DIR/after.submit.json")
+sail jobs events "$AFTER_JOB" --follow --output jsonl > "$EVIDENCE_DIR/after.events.jsonl"
+sail jobs result "$AFTER_JOB" --output json > "$EVIDENCE_DIR/after.result.json"
+PACKAGE_ID=$(python3 -c 'import json,sys; p=json.load(open(sys.argv[1]))["value"]["repair"]["batch"]["full"]; print(next(t["package_id"] for t in p["targets"] if t["requested"]))' "$EVIDENCE_DIR/after.result.json")
 sail explain "$AFTER_JOB" --package-id "$PACKAGE_ID" --target repair_demo \
     --kind lib --function repair_demo::other --output json
 sail compare "$AFTER_JOB" --baseline before-repair --output json
