@@ -4,10 +4,16 @@ Rescue lane L16 asked why an agent's first `sail mcp` verify of a project
 costs tens of seconds when every solver check is a cache hit, and whether
 Sail can avoid re-verifying vstd.
 
-Status: measurement and design. The implementation waits for L7c's rework of
-`sail-verus` `managed/*`; the "after" column is filled when it lands.
+Status: implemented on `rescue/l16-first-contact`. An agent's first MCP
+verify of a project that the CLI (or another session) has verified now takes
+0.7 s instead of 34–45 s, and MCP's second call takes 0.7 s instead of
+6.7 s on human-eval-verus. A project's very first managed run still verifies
+vstd, as plain `cargo verus` does.
 
 ## Environment
+
+Two sessions on the same host type. The first (before L7c) found the cause;
+the second compares the L7c base with this branch.
 
 - **Host.** AWS EC2 `c7i.4xlarge` (16 vCPU), `us-east-1`, Ubuntu 24.04,
   kernel 7.0.0-1014-aws, native x86-64 (`scripts/perf-host.sh up l16`).
@@ -21,6 +27,16 @@ Status: measurement and design. The implementation waits for L7c's rework of
   `213906ec…`.
 - **Driver.** A throwaway script (`measure.py`, sha256 `fccca71a…`, not
   committed). Raw rows: `before.json`, sha256 `fb5e8d6f…`.
+- **Second session.** CI image `sail-ci:f20b6ed477caffa4` (engine pin
+  `4881cd0f`), built natively. Base: `rescue/m7` `b970ccd` (after L7c), `sail`
+  `a480fae4…`. After: this branch rebased on `b970ccd`, `sail` `a889bddc…`.
+  Driver sha256 `ad5d14fb…`; raw rows `base.json` `6a0aaac0…` and
+  `after.json` `8d146f38…`. In this session the driver's build target leaked
+  into the plain arm through `CARGO_TARGET_DIR`, so its second plain project
+  reused the first one's vstd. Those two rows are discarded; a re-run with
+  the driver fixed (sha256 `2475ad08…` for its rows, image
+  `sail-ci:3f31e6fc827f00bf`) again verified vstd in each fresh project:
+  36.0 s and 36.5 s cold, 0.12 s warm.
 - **Agent environment.** The MCP arm adds the variables Claude Code gives a
   tool process (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`,
   `CLAUDE_CODE_SESSION_ID`, `CLAUDE_PID`, `AI_AGENT`, `TERM`, `COLORTERM`,
@@ -210,4 +226,85 @@ It is recorded as a follow-up that needs its own ADR.
 
 ## After
 
-To be measured with the same driver once step 1 is implemented.
+Same driver, base `b970ccd` (after L7c) against this branch. Wall seconds;
+verifier runs in brackets.
+
+**Demo:**
+
+| Run | Base | After |
+|---|---:|---:|
+| CLI, cold | 38.1 (2) | 41.9 (2) |
+| CLI, warm | 0.34 (0) | 0.37 (0) |
+| MCP, agent environment, first | 34.4 (2) | **0.69 (0)** |
+| MCP, same session, second | 1.41 (1) | **0.72 (0)** |
+| MCP, CLI's environment | 1.41 (1) | 0.69 (0) |
+| MCP, new agent session | 34.3 (2) | **0.71 (0)** |
+| Second fresh project, CLI, warm solver | 34.1 (2) | 38.5 (2) |
+
+**human-eval-verus:**
+
+| Run | Base | After |
+|---|---:|---:|
+| Plain `cargo verus verify -p human_eval_verus`, cold | 63.3 | 65.8 |
+| CLI, cold | 65.2 (2) | 64.9 (2) |
+| CLI, warm | 0.38 (0) | 0.39 (0) |
+| MCP, agent environment, first | 45.2 (2) | **0.73 (0)** |
+| MCP, same session, second | 6.66 (1) | **0.71 (0)** |
+| MCP, CLI's environment | 6.66 (1) | 0.73 (0) |
+| MCP, new agent session | 43.4 (2) | **0.73 (0)** |
+| Copy of the project, CLI, warm solver | 46.9 (2) | 45.6 (2) |
+
+- **One context for every client.** After the change every CLI and MCP run
+  of a project shares one context (`c57706550b7f` on human-eval-verus);
+  before, each agent session had its own. MCP answers from the CLI's
+  receipts: 0 verifier runs, both targets reused.
+- **MCP's second call** is 0.71 s against the CLI's 0.39 s, below the 1.7 s
+  parity target. The difference is the MCP server, job submission and
+  polling.
+- **Unchanged costs.** Cold runs and a new project's first run still verify
+  vstd, as plain Verus does: 64.9 s against plain's 65.8 s on
+  human-eval-verus. The demo cold rows differ by about 4 s between arms in a
+  single sample each, within the spread of cold runs here.
+- **Job coalescing** still requires an identical submitted environment
+  (`sail-daemon` `establish_revision`), so an agent's request does not join a
+  running CLI job; it runs separately and reuses its receipts once they
+  exist. Comparing only proof inputs there is a follow-up for the jobs lanes.
+- **CI.** The e2e legacy job's MCP call is still the first managed run of
+  its project, so it still verifies vstd; the managed phase now also checks
+  that an MCP server with different agent variables reuses the CLI's proof.
+
+## Changes
+
+- `crates/sail-verus/src/managed/environment.rs`: the allowlist (with a
+  source per family), the resolved Cargo and rustup homes, and collection of
+  declared variables from dep-info and build-script output.
+- `managed/runner.rs`: the context uses the allowlist and resolved homes;
+  receipts record declared variables. `managed/receipts.rs`: receipt version 3
+  binds them, and reuse requires each to be unchanged.
+- `sail-mcp`: blocking `verify` is no longer forced, merges reused requested
+  reports, and names the establishing run of each.
+- Tests: allowlist and declaration parsing, receipt rejection on a changed
+  declared variable, MCP merge of reused reports, and in
+  `ci/test-managed.py` an MCP server with different agent variables whose
+  blocking `verify` must reuse the CLI's receipt with zero verifier runs.
+- Docs: `docs/freshness.md` (which variables are proof inputs, and the
+  limitation shared with Cargo), `docs/mcp.md`, ADR 0024 (amended),
+  `docs/known-issues.md`, `CHANGELOG.md`.
+
+## Validation
+
+Final tree: this branch rebased on `rescue/m7` `730188e` (engine pin
+`89709da7`), in the CI image `sail-ci:3f31e6fc827f00bf` built natively on the
+l16 host with the committed pin (no source-built engine).
+
+| Check | Result | Log sha256 |
+|---|---|---|
+| `ci/local.sh gate` | passed: fmt, clippy, nextest 524 passed (37 skipped), doctests, rustdoc, layering (15 crates), cargo-deny, links, benchmarks page | `fec9fd75…` |
+| `ci/local.sh solver` | passed: 37/37 | `e01a7da1…` |
+| `ci/local.sh e2e` | passed: legacy identical to `cargo verus verify`; managed acceptance including the new agent-environment MCP check; repair CLI/MCP acceptance | `007e7b05…` |
+| `ci/local.sh conformance fast pr` | passed: 33/33 same, 0 different, in pass-through, cache-fill and cache-warm; engine arm 33/33 same | `4c5722c2…` |
+| `ci/run.sh host` (macOS) | passed: clippy, nextest 500 passed (37 skipped) | `e75ce2ef…` |
+
+The same four gates also passed on the branch rebased on `b970ccd`, in
+`sail-ci:f20b6ed477caffa4`, before the second engine re-pin. Raw logs stay
+outside the repository.
