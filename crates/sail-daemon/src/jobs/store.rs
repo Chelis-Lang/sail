@@ -247,7 +247,7 @@ fn apply_currentness(project: &mut sail_api::project::ProjectResult, currentness
         Currentness::Unknown => sail_api::project::Currentness::Unknown,
     };
     if currentness == Currentness::Unknown && originally_current {
-        project.notes.push("SAIL3114: current input validation is unavailable or still running; native coverage and kernel read leases must be established before claiming Current".to_owned());
+        project.notes.push("SAIL3114: the recorded inputs of this result could not be checked; re-run to obtain a current result".to_owned());
     }
 }
 fn projected_currentness(state: &State, job: &Stored, projection: &Projection) -> Currentness {
