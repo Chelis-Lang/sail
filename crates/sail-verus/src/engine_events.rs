@@ -28,6 +28,13 @@ impl Relay {
             let Some(destination) = destination else {
                 return;
             };
+            // Ends the stream with one `unavailable` event after `ordinal`.
+            let fail = |ordinal: u64, reason: &str| {
+                let _ = append(
+                    &destination,
+                    &unavailable(&runtime, &identity, ordinal + 1, reason),
+                );
+            };
             let mut buffer = Vec::new();
             let mut offset = 0;
             let mut ordinal = 0u64;
@@ -37,23 +44,14 @@ impl Relay {
                         .metadata()
                         .map_or(MAX_SOURCE + 1, |metadata| metadata.len());
                     if length < offset || length > MAX_SOURCE {
-                        let input = unavailable(
-                            &runtime,
-                            &identity,
-                            ordinal + 1,
+                        fail(
+                            ordinal,
                             "source observation file truncated or exceeds 16 MiB",
                         );
-                        let _ = append(&destination, &input);
                         return;
                     }
                     if source.seek(SeekFrom::Start(offset)).is_err() {
-                        let input = unavailable(
-                            &runtime,
-                            &identity,
-                            ordinal + 1,
-                            "cannot seek source observation stream",
-                        );
-                        let _ = append(&destination, &input);
+                        fail(ordinal, "cannot seek source observation stream");
                         return;
                     }
                     let mut bytes = Vec::new();
@@ -62,25 +60,13 @@ impl Relay {
                         .read_to_end(&mut bytes)
                         .is_err()
                     {
-                        let input = unavailable(
-                            &runtime,
-                            &identity,
-                            ordinal + 1,
-                            "cannot read source observation stream",
-                        );
-                        let _ = append(&destination, &input);
+                        fail(ordinal, "cannot read source observation stream");
                         return;
                     }
                     offset += bytes.len() as u64;
                     buffer.extend_from_slice(&bytes);
                     if buffer.len() > MAX_EVENT && !buffer[..MAX_EVENT].contains(&b'\n') {
-                        let input = unavailable(
-                            &runtime,
-                            &identity,
-                            ordinal + 1,
-                            "source observation exceeds 4 MiB",
-                        );
-                        let _ = append(&destination, &input);
+                        fail(ordinal, "source observation exceeds 4 MiB");
                         return;
                     }
                     while let Some(end) = buffer.iter().position(|b| *b == b'\n') {
@@ -98,13 +84,7 @@ impl Relay {
                         continue;
                     }
                     if !buffer.is_empty() {
-                        let input = unavailable(
-                            &runtime,
-                            &identity,
-                            ordinal + 1,
-                            "truncated engine observation",
-                        );
-                        let _ = append(&destination, &input);
+                        fail(ordinal, "truncated engine observation");
                     }
                     return;
                 }

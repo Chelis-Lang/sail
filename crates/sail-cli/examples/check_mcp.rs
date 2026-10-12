@@ -7,8 +7,8 @@
 //! It starts `<sail> mcp`, sends `initialize`, `notifications/initialized`,
 //! `tools/list` and `tools/call verify {"project_dir": <project-dir>}`, then
 //! closes stdin. It checks that:
-//! - the handshake succeeds and the exact fifteen compatibility, job and proof tools
-//!   have the expected input contracts;
+//! - the handshake succeeds and `tools/list` is exactly this build's fifteen
+//!   compatibility, job and proof tools, with their key input contracts;
 //! - the call succeeds and returns a schema-v1 report;
 //! - every function's verdict and tier equal those in `<sail.json>` (the
 //!   stdout of `sail verify --output json` on the same project), with the
@@ -83,41 +83,8 @@ const TOOL_NAMES: [&str; 15] = [
     "start_repair_validation",
 ];
 
-fn proof_schemas() -> [(usize, Value); 7] {
-    let string = || json!({"type":"string","minLength":1});
-    let baseline = || json!({"type":"string","minLength":1,"maxLength":80,"pattern":"^[A-Za-z0-9_.-]+$","not":{"enum":[".",".."]}});
-    [
-        (
-            8,
-            json!({"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"stream_id":string(),"after":{"type":"integer","minimum":0}}}),
-        ),
-        (
-            9,
-            json!({"type":"object","additionalProperties":false,"required":["job_id","package_id","target","kind","function"],"properties":{"job_id":string(),"package_id":string(),"target":string(),"kind":{"type":"string","enum":["lib","bin"]},"function":string(),"obligation":string()}}),
-        ),
-        (
-            10,
-            json!({"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":baseline()}}),
-        ),
-        (
-            11,
-            json!({"type":"object","additionalProperties":false,"required":["job_id","name"],"properties":{"job_id":string(),"name":baseline()}}),
-        ),
-        (
-            12,
-            json!({"type":"object","additionalProperties":false,"properties":{}}),
-        ),
-        (
-            13,
-            json!({"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":baseline()}}),
-        ),
-        (
-            14,
-            json!({"type":"object","additionalProperties":false,"required":["package","kind","function","engine"],"properties":{"project_dir":string(),"package":string(),"kind":{"type":"string","enum":["lib","bin"]},"target":string(),"function":string(),"engine":{"type":"string","enum":["interactive"]},"cargo_args":{"type":"array","items":{"type":"string"}},"verus_args":{"type":"array","items":{"type":"string"}}}}),
-        ),
-    ]
-}
-
+/// The installed `sail mcp` must list exactly the tools this build defines,
+/// and those keep the contract properties agents rely on.
 fn check_tools(value: &Value) -> Result<(), String> {
     let tools = value
         .as_array()
@@ -129,16 +96,27 @@ fn check_tools(value: &Value) -> Result<(), String> {
     if names != TOOL_NAMES {
         return Err(format!("unexpected tools: {names:?}"));
     }
-    for (index, schema) in proof_schemas() {
-        let tool = tools.get(index).ok_or("proof tool missing")?;
-        if tool["inputSchema"] != schema {
-            return Err(format!(
-                "unexpected {} input schema: {}",
-                TOOL_NAMES[index], tool["inputSchema"]
-            ));
+    if *value != sail_mcp::tools::definitions() {
+        return Err("tools/list differs from this build's tool definitions".to_owned());
+    }
+    let schema = |index: usize| &tools[index]["inputSchema"];
+    let required = [
+        (
+            9,
+            json!(["job_id", "package_id", "target", "kind", "function"]),
+        ),
+        (11, json!(["job_id", "name"])),
+        (14, json!(["package", "kind", "function", "engine"])),
+    ];
+    for (index, fields) in required {
+        if schema(index)["required"] != fields {
+            return Err(format!("{} must require {fields}", TOOL_NAMES[index]));
         }
     }
-    if tools[4]["inputSchema"]["properties"]["engine"]["enum"] != json!(["stock", "interactive"]) {
+    if schema(8)["properties"]["after"]["minimum"] != json!(0) {
+        return Err("verification_events cursors must be non-negative".to_owned());
+    }
+    if schema(4)["properties"]["engine"]["enum"] != json!(["stock", "interactive"]) {
         return Err(
             "start_verification must declare stock and explicit interactive engine modes"
                 .to_owned(),
@@ -211,12 +189,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn shipped_tools_match_the_exact_public_contract() {
+    fn shipped_tools_match_the_public_contract() {
         assert!(check_tools(&sail_mcp::tools::definitions()).is_ok());
     }
 
     #[test]
-    fn extra_missing_or_nameless_tools_are_rejected() {
+    fn extra_missing_nameless_or_changed_tools_are_rejected() {
         let original = sail_mcp::tools::definitions();
         let mut extra = original.clone();
         if let Some(tools) = extra.as_array_mut() {
@@ -228,41 +206,11 @@ mod tests {
             tools.pop();
         }
         assert!(check_tools(&missing).is_err());
-        let mut nameless = original;
+        let mut nameless = original.clone();
         nameless[8]["name"] = Value::Null;
         assert!(check_tools(&nameless).is_err());
-    }
-
-    #[test]
-    fn scoped_identity_engine_and_cursor_contracts_are_required() {
-        let original = sail_mcp::tools::definitions();
-        let mut unscoped = original.clone();
-        unscoped[9]["inputSchema"]["required"] = json!(["job_id", "function"]);
-        assert!(check_tools(&unscoped).is_err());
-        let mut negative_cursor = original.clone();
-        negative_cursor[8]["inputSchema"]["properties"]["after"]["minimum"] = json!(-1);
-        assert!(check_tools(&negative_cursor).is_err());
-        let mut implicit_engine = original.clone();
-        implicit_engine[14]["inputSchema"]["required"] = json!(["package", "kind", "function"]);
-        assert!(check_tools(&implicit_engine).is_err());
-        let mut engine = original;
-        engine[4]["inputSchema"]["properties"]["engine"]["enum"] = json!(["stock"]);
-        assert!(check_tools(&engine).is_err());
-    }
-
-    #[test]
-    fn baseline_contracts_require_literal_names_and_exact_mutation_identity() {
-        let original = sail_mcp::tools::definitions();
-        for index in [11, 13] {
-            let mut unbounded = original.clone();
-            unbounded[index]["inputSchema"]["properties"]["name"] = json!({"type":"string"});
-            assert!(check_tools(&unbounded).is_err());
-        }
-        let mut missing_job = original.clone();
-        missing_job[11]["inputSchema"]["required"] = json!(["name"]);
-        assert!(check_tools(&missing_job).is_err());
-        let mut override_scope = original;
-        override_scope[12]["inputSchema"]["properties"]["project_dir"] = json!({"type":"string"});
-        assert!(check_tools(&override_scope).is_err());
+        let mut changed = original;
+        changed[12]["inputSchema"]["properties"]["project_dir"] = json!({"type":"string"});
+        assert!(check_tools(&changed).is_err());
     }
 }

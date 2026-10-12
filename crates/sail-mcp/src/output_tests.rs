@@ -242,7 +242,7 @@ fn concurrent_responses_are_complete_independent_newline_frames() {
 }
 
 #[test]
-fn consuming_wrappers_preserve_complete_text_structured_payload_and_bytes() {
+fn tool_results_carry_the_summary_and_the_complete_structured_payload() {
     for structured in [Value::Null, json!({}), large(1)] {
         for is_error in [false, true] {
             let result = tools::ToolResult {
@@ -250,18 +250,16 @@ fn consuming_wrappers_preserve_complete_text_structured_payload_and_bytes() {
                 structured: structured.clone(),
                 is_error,
             };
-            let original = result.to_json();
-            let consumed = result.into_json();
-            assert_eq!(original, consumed);
-            let text = consumed["content"][1]["text"].as_str().unwrap_or_default();
-            assert_eq!(
-                serde_json::from_str::<Value>(text).ok(),
-                Some(consumed["structuredContent"].clone())
-            );
-            assert_eq!(
-                jsonrpc::line(&jsonrpc::ok(&json!(1), &original)),
-                jsonrpc::line(&jsonrpc::ok_owned(json!(1), consumed))
-            );
+            let expected = json!({
+                "resultType": "complete",
+                "content": [
+                    {"type": "text", "text": "summary λ\n"},
+                    {"type": "text", "text": serde_json::to_string(&structured).unwrap_or_default()},
+                ],
+                "structuredContent": structured,
+                "isError": is_error,
+            });
+            assert_eq!(result.into_json(), expected);
         }
     }
 }

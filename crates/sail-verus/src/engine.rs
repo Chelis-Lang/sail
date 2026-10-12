@@ -118,45 +118,29 @@ impl Installed {
     /// # Errors
     /// `SAIL3120` when its identity or artifact bytes do not match the engine.
     pub fn at(build: &Path, pins: &Pins) -> Result<Self> {
-        let build = build.to_owned();
-        let manifest = Manifest::load(&build).map_err(|e| {
-            Error::new(
-                "SAIL3120",
-                format!("{e}; run cargo xtask build-verus-engine"),
-            )
-        })?;
-        let valid = manifest.commit == pins.verus.commit
-            && manifest.rust_toolchain == pins.verus.rust_toolchain
-            && manifest.features == features()
-            && !manifest.artifacts.is_empty()
-            && manifest.artifacts.iter().all(|(path, hash)| {
-                path.components()
-                    .all(|part| matches!(part, std::path::Component::Normal(_)))
-                    && !hash.is_empty()
-            })
-            && source_build::artifact_hashes(&build).ok().as_ref() == Some(&manifest.artifacts)
-            && pins
-                .assets
-                .get(crate::toolchain::host())
-                .is_some_and(|asset| asset.z3_sha256 == manifest.z3_sha256);
-        let runtime = source_build::checkout_dir(&build).join("source/target-verus/release");
-        if !valid
-            || !["cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"]
-                .iter()
-                .all(|name| runtime.join(name).is_file())
-        {
-            return Err(Error::new(
-                "SAIL3120",
-                "interactive engine identity or runtime artifact validation failed",
-            ));
+        let (manifest, manifest_sha256) = preflight(build, pins)?;
+        if source_build::artifact_hashes(build).ok().as_ref() != Some(&manifest.artifacts) {
+            return Err(invalid());
         }
+        let runtime = runtime_dir(build);
         Ok(Self {
             cargo_verus: runtime.join("cargo-verus"),
             verus: runtime.join("verus"),
-            manifest_sha256: source_build::hash_file(&build.join(source_build::MANIFEST))?,
-            build,
+            manifest_sha256,
+            build: build.to_owned(),
         })
     }
+}
+
+fn runtime_dir(build: &Path) -> PathBuf {
+    source_build::checkout_dir(build).join("source/target-verus/release")
+}
+
+fn invalid() -> Error {
+    Error::new(
+        "SAIL3120",
+        "interactive engine identity or runtime artifact validation failed",
+    )
 }
 
 /// Install provenance exposed by the explicit engine-management command.
@@ -323,8 +307,7 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
         .with_file_name("verus");
     let request = Request {
         function,
-        cargo_verus: source_build::checkout_dir(&build)
-            .join("source/target-verus/release/cargo-verus"),
+        cargo_verus: runtime_dir(&build).join("cargo-verus"),
         manifest: manifest_path,
         manifest_sha256: manifest_sha256.clone(),
         stock_wrapper,
@@ -346,7 +329,7 @@ fn preflight(build: &Path, pins: &Pins) -> Result<(Manifest, String)> {
     })?;
     let manifest: Manifest = serde_json::from_slice(&bytes)
         .map_err(|e| Error::new("SAIL3120", format!("invalid engine manifest: {e}")))?;
-    let runtime = source_build::checkout_dir(build).join("source/target-verus/release");
+    let runtime = runtime_dir(build);
     if manifest.schema_version != source_build::SCHEMA_VERSION
         || manifest.commit != pins.verus.commit
         || manifest.rust_toolchain != pins.verus.rust_toolchain
@@ -365,10 +348,7 @@ fn preflight(build: &Path, pins: &Pins) -> Result<(Manifest, String)> {
             .iter()
             .any(|name| !runtime.join(name).is_file())
     {
-        return Err(Error::new(
-            "SAIL3120",
-            "interactive engine identity or runtime artifact validation failed",
-        ));
+        return Err(invalid());
     }
     Ok((manifest, crate::managed::digest(&bytes)))
 }
@@ -390,7 +370,7 @@ pub(crate) fn validate_request(
         .keys()
         .map(|path| build.join(path))
         .collect();
-    let runtime = source_build::checkout_dir(build).join("source/target-verus/release");
+    let runtime = runtime_dir(build);
     let valid = request
         .manifest
         .file_name()
@@ -401,10 +381,7 @@ pub(crate) fn validate_request(
         && request.artifacts == artifacts
         && source_build::artifact_hashes_with(build, &mut hash)? == manifest.artifacts;
     if !valid {
-        return Err(Error::new(
-            "SAIL3120",
-            "interactive engine identity or runtime artifact validation failed",
-        ));
+        return Err(invalid());
     }
     Ok(())
 }

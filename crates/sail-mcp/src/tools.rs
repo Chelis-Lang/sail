@@ -110,22 +110,7 @@ impl ToolResult {
 
     /// The MCP `CallToolResult`: the summary and the structured result as
     /// text (for clients that ignore `structuredContent`), plus
-    /// `structuredContent`.
-    #[must_use]
-    pub fn to_json(&self) -> Value {
-        json!({
-            "resultType": "complete",
-            "content": [
-                {"type": "text", "text": self.text},
-                {"type": "text", "text": serde_json::to_string(&self.structured).unwrap_or_default()},
-            ],
-            "structuredContent": self.structured,
-            "isError": self.is_error,
-        })
-    }
-
-    /// Consumes this result, moving its complete structured payload into the
-    /// MCP response while retaining the same complete JSON text payload.
+    /// `structuredContent`. Consumes this result, so the payload is moved.
     #[must_use]
     pub fn into_json(self) -> Value {
         let encoded = serde_json::to_string(&self.structured).unwrap_or_default();
