@@ -45,5 +45,6 @@
   "retention": "Complete admitted text/JSON logs, source-control scripts and receipt data were streamed into compact archives. All members were byte-count/SHA verified before scratch deletion. Compiler targets and historical product binaries were retired. Recorded original outcomes are unchanged.",
   "protected": "Selected engine runtime, stock toolchains, M6 baseline, current 387 product, corpus/cache volumes and continuing Cargo target were kept. No global Docker prune or foreign-project cleanup.",
   "known_cleanup_verification_correction": "Loose-file archive verification initially rejected tar hardlink-header size; nothing was deleted. Actual extracted byte count and SHA then matched all 240 text members before deletion.",
-  "next": "Terminal-safe completed-run cleanup is being implemented separately; existing gate is running from a new exact source snapshot using the continuing Cargo target."
+  "next": "Terminal-safe completed-run cleanup is being implemented separately; existing gate is running from a new exact source snapshot using the continuing Cargo target.",
+  "local_evidence_directory": "evidence/2026-10-12-scratch-retirement/ under the local Sail cache"
 }

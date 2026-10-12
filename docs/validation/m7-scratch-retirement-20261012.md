@@ -12,6 +12,9 @@ total about 580 MiB; compiler targets and historical executable copies were
 retired. Receipt data, raw admitted logs, original outcomes and reproduction
 scripts remain in those local archives. Their manifests identify retained
 members; these archives are not complete binary working-tree backups.
+The archives and deletion journals live under
+`evidence/2026-10-12-scratch-retirement/` in the local Sail cache, outside
+disposable temporary storage.
 
 Cleanup also removed 63 obsolete product installations, 20 archived host
 worktree targets, two closed end-to-end workspaces and obsolete build-tree
