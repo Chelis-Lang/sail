@@ -256,14 +256,17 @@ RS
     # Source-engine arm (ADR 0027): the validated prebuilt engine's focused
     # and full phases, the full phase compared with plain Verus like the arms
     # above, and the same-input cached-versus-fresh byte oracle on every
-    # restored preparation hit. The CI image always provides the engine; a
-    # host run without one must opt out explicitly, and CI cannot.
+    # restored preparation hit. Four confirming fresh lowerings keep stock
+    # trigger nondeterminism (VI-0015) from flaking the job: one flaked about
+    # 14% of traits.rs runs, four 0 of 10 (ADR 0038 amendment). The CI image
+    # always provides the engine; a host run without one must opt out
+    # explicitly, and CI cannot.
     if [ "${SAIL_CONFORMANCE_ENGINE:-1}" = 0 ] && [ "${CI:-}" != true ]; then
       echo "conformance: engine arm explicitly skipped (SAIL_CONFORMANCE_ENGINE=0)" >&2
     else
       : "${SAIL_ENGINE_BUILD:?the engine arm needs the validated prebuilt engine (SAIL_ENGINE_BUILD)}"
       ./target/release/sail-conformance engine "${select[@]}" --jobs "$jobs" \
-        --engine-build "$SAIL_ENGINE_BUILD" --out "$out/engine"
+        --engine-build "$SAIL_ENGINE_BUILD" --oracle-fresh-arms 4 --out "$out/engine"
     fi
     ;;
 
