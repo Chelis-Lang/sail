@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Affected declared-source inventory and baseline controls plus strict pass inside failed combined 43d1c29 gate; corrected full gate, solver and product/benchmark pending",
+  "status": "Affected declared-source inventory and baseline controls plus strict and all 673 workspace tests pass inside failed e0bc26e gate; corrected complete gate, solver and product/benchmark pending",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -47,7 +47,7 @@
   ],
   "combined_native_attempts": {
     "scope": "Combined declared-source inventory and MCP baseline lifecycle; original complete gate then solver",
-    "status": "Three initial strict/compile FAIL scopes and one later MCP inventory FAIL preserved; corrected e0bc26e validation pending",
+    "status": "Five original failed combined scopes preserved; latest failure is stale independent MCP example contracts after 673/673 workspace pass; corrected 57a319d validation pending",
     "baseline_issue": "https://github.com/Chelis-Lang/sail/issues/72",
     "attempts": [
       {
@@ -290,6 +290,79 @@
           "all_cargo_artifacts_archived": false
         },
         "qualification": "These actual control passes belong to a failed whole gate; no solver, installed-product, conformance, performance or overall M7 acceptance credit"
+      },
+      {
+        "scope": "sail-local-gates-e0bc26e",
+        "source_commit": "e0bc26e2f35f649d2fd2533eceaff456ff4457aa",
+        "status": "FAIL",
+        "gate_exit_code": 101,
+        "gate_elapsed_seconds": 395.45694822100086,
+        "strict": {
+          "status": "PASS",
+          "cargo_reported_elapsed": "54.49s"
+        },
+        "workspace_nextest": {
+          "elapsed_seconds": 209.892,
+          "run": 673,
+          "passed": 673,
+          "failed": 0,
+          "skipped": 41
+        },
+        "example_check_mcp": {
+          "run": 3,
+          "passed": 2,
+          "failed": 1,
+          "failure": "tests::shipped_tools_match_the_exact_public_contract; exact independent expected list and proof schemas still described 12 tools and 4 proof contracts, rather than authorized 15 tools and 7 contracts"
+        },
+        "corrected_by": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694",
+        "correction_review": {
+          "status": "No identified check weakening in file-only review",
+          "tool_inventory": "Three authorized names inserted; all original names and order retained",
+          "schemas": "Three added baseline schemas and the exact constrained compare baseline name schema; original repair schema unchanged at index14",
+          "old_negatives": "Extra/missing/nameless tools, unscoped identity, negative cursor and both engine checks retained",
+          "repair_engine_negative": "Previously index11, now index14 because three baseline tools precede start_repair_validation; the same missing-engine mutation and refusal assertion remain",
+          "new_negatives": "Unbounded save/get name schemas, missing save job identity and list project_dir override must refuse"
+        },
+        "unattempted": [
+          "doctests",
+          "rustdoc",
+          "layering",
+          "deny",
+          "generated benchmark-page check",
+          "solver"
+        ],
+        "uncertainty": [],
+        "known_groups": {
+          "live_survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 6,
+          "dead_task_evidence_complete": true
+        },
+        "closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+        "container_birth_unchanged": true,
+        "source_archive_sha256": "7216c74a59973f0ca7c45ad6b651dc5928322290e5964885cb3e3fa0b889c7ec",
+        "evidence_sha256": {
+          "controller.json": "8a9d92a247c9697828ffd2f0552abd439aab4b15b93cc352434eda6c0942a073",
+          "result.json": "c7b67e957ba79d617d955ebc662342e39898e9cc8165f3a49761231f5a841b76",
+          "gate.log": "8f5dc3b663739c7274450445352951c8aead27aabc1458625a884af853cdd68e",
+          "source-inventory.json": "7da39dce3d81f3f47e8499d71d6b88c29ca57331defff69b3aeeb9870d1e5951",
+          "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
+        },
+        "retention": {
+          "files": [
+            {
+              "source": "/work/target/debug/deps/sail_verus-1ff5719aff2dbe51",
+              "copy": "0-sail_verus-1ff5719aff2dbe51",
+              "bytes": 37067496,
+              "mode": 493,
+              "sha256": "3a6c63917e3ae99d23336dadf95418792c65c2f2c9a4afbcb255bcd06c988fc3",
+              "execution_identity": "operator-selected copy; execution is not inferred from file presence"
+            }
+          ],
+          "errors": [],
+          "all_cargo_artifacts_archived": false
+        },
+        "qualification": "Workspace and strict passes do not make the failed whole gate pass; solver and a new installed product remain unqualified"
       }
     ],
     "corrected_source_commit": "bdc20a695b32347941e8311fb84e7b9c97d8314d",
@@ -301,7 +374,7 @@
       "test_refactor": "same pruned/restarted baseline read and full payload equality; loaded.as_ref() compares the boxed payload to the saved Baseline",
       "qualification": "file-only source review; no native test or performance credit"
     },
-    "credit": "All four original scopes remain FAIL. The last scope contains actual strict and 672 individual test passes; no complete-gate, solver, installed-product, conformance, performance or M7 acceptance credit.",
-    "latest_corrected_source_commit": "e0bc26e2f35f649d2fd2533eceaff456ff4457aa"
+    "credit": "All five original scopes remain FAIL. Last scope has actual strict and 673/673 workspace passes but no complete-gate, solver, installed-product, conformance, performance or M7 acceptance credit.",
+    "latest_corrected_source_commit": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694"
   }
 }

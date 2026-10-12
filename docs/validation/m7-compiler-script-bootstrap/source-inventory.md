@@ -26,8 +26,21 @@ its expected twelve names omit the three authorized baseline tools. Root's
 `e0bc26e` correction adds only those names, retaining the original order and
 equality assertion. The whole gate remains failed (exit 100, 458.667 seconds);
 solver and remaining gate steps were unattempted. Known groups close without
-uncertainty. The fresh corrected full gate remains pending; individual control
-passes do not supply whole-gate or installed-product acceptance.
+uncertainty. Individual control passes do not supply whole-gate or installed-product acceptance.
+
+The following `e0bc26e` gate passes strict checks and all 673 workspace tests
+(209.892 seconds, 41 solver tests skipped), then fails the independent
+`check_mcp` example: two controls pass, while its exact shipped-tool contract
+still expects twelve names and four proof schemas. Whole-gate exit is 101 after
+395.457 seconds. Doctests, rustdoc, layering, deny, the generated benchmark-page
+check and solver were unattempted. Complete known-group closure, unchanged
+source/protected bytes and birth, and no uncertainty are retained in the same
+record. `57a319d` adds the three authorized names and baseline schemas, including
+the constrained comparison name. Its original missing-engine negative now
+targets repair index 14 rather than 11; the same schema mutation and rejection
+assertion remain. All earlier negatives remain, with new baseline-contract
+negatives added. The fresh complete gate on that correction remains pending;
+neither this failed gate nor workspace success qualifies a new runtime product.
 
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
