@@ -131,6 +131,12 @@ also passes: actual MCP save/list/get, immutable overwrite refusal and restarted
 client reads agree with CLI on full Historical provenance. Its derivative
 supplies no additional original-fixture credit; readers, conformance and real-project performance
 receive no transferred credit.
+The later original three-round `57a319d` benchmark fails before measurement
+during an observed read-only guest filesystem incident, with zero samples and
+Vest unreached. Source/product/runtime seals and birth match, but closure is
+UNKNOWN after census exits 133; no performance or closed-scope claim follows.
+The [existing record](validation/m7-compiler-script-bootstrap/source-inventory.json)
+binds retained warmups and raw failure without assigning an unproven cause.
 Remaining delivery gates are complete current standard/cache conformance and
 the two real-project speed thresholds. PR #74
 remains draft.
