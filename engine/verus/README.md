@@ -238,24 +238,37 @@ Earlier qualifications and unselected candidates are in the
 `sail-conformance engine` (run by `ci/run.sh conformance`) compares this
 runtime's full phase with the stock release on the corpus and runs the
 same-input oracle on every restored hit; see the
-[repair guide](../../docs/proof-repair.md#engine-conformance). On the complete
-fast tier (Linux x86-64, 2026-10-12) it matched 145 of 147 units. Two differ:
+[repair guide](../../docs/proof-repair.md#engine-conformance).
 
-- `examples/basic_failure.rs`: a diagnostic span inside vstd renders as
-  `vstd/seq.rs:980:12` from this runtime and `seq.rs:980:12` from the stock
-  release, with or without `SAIL_ENGINE`. The source build's vstd records a
-  different path than the release's, so engine diagnostics that point into
-  vstd differ from stock.
-- `examples/summer_school/chapter-6-1.rs` (and, in most runs,
-  `examples/guide/traits.rs`): the oracle reports a restored hit whose
-  automatic triggers differ from fresh lowering in the same callback. Stock
-  Verus makes both choices between runs (VI-0015); the oracle cannot tell this
-  from a preparation defect.
+With the pinned runtime (Linux x86-64, 2026-10-12) it matched 145 of 147
+fast-tier units and 11 of the standard tier's other 12 units. The committed
+sources address all three causes, but the pinned runtime predates them and
+must be rebuilt and re-pinned before CI sees the fixes:
 
-On the standard tier's other nine projects (12 units), 11 matched. On
-`vest-generated` the oracle's own initial-state fork differs from the original
-context before any hit (`oracle initial state: independent baseline differs`);
-without the oracle the engine matches plain Verus there.
+- **vstd paths.** A diagnostic span inside vstd rendered as
+  `vstd/seq.rs:980:12` from the engine and `seq.rs:980:12` from the stock
+  release (`examples/basic_failure.rs`). vargo's `vstd_build` compiles
+  `vstd/vstd.rs` from `source`, while the release builds vstd with
+  `cargo-verus build --manifest-path vstd/Cargo.toml` from `source/vstd`.
+  `cargo xtask build-verus-source --interactive-engine` now rebuilds vstd the
+  release's way after `vargo build` (variant feature
+  `vstd-build:cargo-verus-release`); the runtime keeps the same thirteen files.
+- **Stock trigger nondeterminism (VI-0015).** After a mismatch the oracle
+  lowers the bucket again in the same callback (`SAIL_ENGINE_ORACLE_FRESH_ARMS`
+  confirming arms, default 1, at most 8) and records the comparison as
+  `second_fresh`. A differing confirming arm makes the unit unstable; agreeing
+  arms leave a hard failure (ADR 0038, amendment of 2026-10-12).
+- **Oracle initial state on `vest-generated`.** That bucket's bounded baseline
+  encoding was refused for both owners, so they compared as different. The
+  same refusal empties the preparation key, and an empty key is never
+  restored. The oracle now forks the initial owner only when the key exists,
+  records `oracle-not-applicable` otherwise, and names the refused encoding or
+  the differing components if an initial-state check still fails.
+
+A candidate built from these sources (not pinned) matched 145 fast-tier units
+with 2 unstable (`guide/traits.rs`, `summer_school/chapter-6-1.rs`) and no
+differences, and matched plain Verus on `vest-generated`; see
+`docs/reports/rescue/l4b-engine-parity.md`.
 
 ## Pinned Linux runtime for CI
 

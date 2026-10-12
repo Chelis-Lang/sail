@@ -18,10 +18,11 @@
   two fresh lowerings differ, the unit is reported as unstable (its verdicts
   and diagnostics, from an engine run without the oracle, must still match
   plain Verus). If they agree, the mismatch stays a failure. This needs the
-  rebuilt engine runtime that records the confirming arm. In ten engine runs
-  of `traits.rs` on Linux x86-64, the fresh and confirming lowerings produced
-  eight distinct solver streams, and every restored lowering was one of them
-  except one (L4b report).
+  rebuilt engine runtime that records the confirming arm. In each set of ten
+  engine runs of `traits.rs` on Linux x86-64, the fresh and confirming
+  lowerings produced eight or nine distinct solver streams, and most restored
+  lowerings were byte-identical to a fresh lowering from the same ten runs
+  (`docs/reports/rescue/l4b-engine-parity.md`).
 
 The description below is written so it could be filed upstream unchanged.
 
