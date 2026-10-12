@@ -194,9 +194,7 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   what it covers: unit tests of the acceptance and benchmark tooling under
   `scripts/` and of the e2e harness helpers, the profile and bench examples'
   tests, the installed MCP/live-service transport controls (which establish no
-  proof), and the repair engine's provenance and persistent-preparation
-  controls. The same-input byte oracle runs in every `conformance` tier except
-  the PR subset.
+  proof), and the repair engine's provenance checks.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also

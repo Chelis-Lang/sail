@@ -92,27 +92,25 @@ The approved contract is [ADR 0027](decisions/0027-interactive-proof-engine-and-
   cancellation/reconnect handling.
 - Shared complete input observation and responsive job reads, addressing #69.
 
-Exit: exact stock full-result/diagnostic conformance and cached-versus-fresh
-solver bytes from the same compiler input (ADR 0027 amendment); full local corpus
+Exit: the engine's full results and diagnostics match plain Verus on the local corpus
 and affected source tests; established reads below 200 ms p95 during active
 verification; and at least **2× median improvement on each** of frozen
 human-eval-verus and Vest repair catalogues, measured on a native x86-64
 Linux host ([ADR 0038](decisions/0038-m7-rescue.md)). Three rounds and spread
-are required; every sample is recorded and judged afterwards. Batch-local preparation reuse is distinguished
-from persistent reuse across edits. No successful focus is accepted before
+are required; every sample is recorded and judged afterwards. No successful focus is accepted before
 complete current full validation. M7 remains incomplete until these gates pass.
 
 ### Current state
 
 | Gate | Status | Best evidence |
 |---|---|---|
-| Source-engine qualification | Pass | Selected patch `aaa3b2e4`, 13/13 stages |
+| Engine build and qualification | Pending | Rebuild from the Verus fork (ADR 0039) without prepared lowering; the earlier 13-stage qualification covered the removed pipeline ([L7a report](reports/rescue/l7a-preparation.md)) |
 | Engine runtime delivery | Pass | 13 runtime files byte-identical; CI uses the prebuilt pin |
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
 | Responsive reads (p95 < 200 ms) | Pass (native) | Python Result p95 98.9 ms, Rust 34.9 ms on EC2 after the L5 fixes; the emulated 436 ms failure does not reproduce natively |
 | Default and cache conformance | Pass on `main` (native); engine arm open | Standard tier 159/159 in all three rounds on native EC2 for #80 and #81; the engine arm still fails `guide/traits.rs` until the rebuilt runtime is pinned ([L4b report](reports/rescue/l4b-engine-parity.md)) |
-| Frozen repair performance (≥2× each) | Fail (native) | One-round smoke: HumanEval 1.01×, Vest 0.77× with every M7 sample invalid (Unknown on read-back); speed work in progress ([L7b report](reports/rescue/l7b-vest-and-baseline.md), [L1 profile](reports/rescue/l1-phase-profile.md)) |
+| Frozen repair performance (≥2× each) | Fail (native) | One-round candidate after L7a: HumanEval 1.70×, Vest 1.54×, with every Vest M7 sample invalid (Unknown on read-back); three rounds pending ([L7a report](reports/rescue/l7a-preparation.md)) |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented; stock verification stays

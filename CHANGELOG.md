@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Interactive engine: remove prepared-lowering reuse and the same-input
+  oracle. Repairs no longer pay for preparation, and progress events no longer
+  rebuild every function name per obligation. A one-round native candidate
+  measured 1.70× M6 on HumanEval and 1.54× on Vest. Removed
+  `batch.preparation`, `engine.persistent_preparation`,
+  `SAIL_ENGINE_PERSISTENT_PREPARATION` and `sail-conformance engine`'s
+  `--oracle*` options; `sail-bench repair` no longer reports `SAIL7105`.
+
 - Fix managed focused checks (`sail verify --incremental -- --verify-function
   …`) failing with `SAIL3107` when the source matched the last focused build.
   Sail now cleans `<target>/verus-partial`, where `cargo verus focus` builds.
@@ -26,7 +34,6 @@ semantic versioning once the API is published.
   - `SAIL7102`: the full evidence is not Current;
   - `SAIL7103`: M7 used other than one compiler driver;
   - `SAIL7104`: M7 is not a real engine batch;
-  - `SAIL7105`: preparation telemetry is unavailable or over budget;
   - `SAIL7106`: the outcome differs from the catalogue;
   - `SAIL7107`: the M6 and M7 outcomes differ;
   - `SAIL7108`: fewer than three complete rounds;

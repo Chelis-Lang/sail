@@ -147,6 +147,10 @@ inline with the date and link the ADR that captures it.
     implementation must pass before it can qualify a new variant; the old
     failed qualification is not relabelled. See ADR 0027's amendment.
 
+    **Moot 2026-10-12:** the same-input oracle and prepared-lowering reuse
+    were removed (ADR 0038). Engine conformance compares the engine's full
+    results and diagnostics with plain Verus.
+
 15. **Same-input oracle when stock lowering varies within one process.**
 
     The source-engine conformance arm (`sail-conformance engine`) runs the
