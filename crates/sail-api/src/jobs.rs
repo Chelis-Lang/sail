@@ -177,6 +177,11 @@ pub enum Request {
     },
     /// List retained immutable named baselines.
     Baselines,
+    /// Read immutable evidence for its recorded revision, never current inputs.
+    GetBaseline {
+        /// Exact retained baseline name.
+        name: String,
+    },
     /// Compare explicit completed evidence with an earlier job or baseline.
     Compare {
         /// Earlier named baseline or durable job.
@@ -493,6 +498,27 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn baseline_read_has_exact_additive_wire_identity() {
+        let request = Request::GetBaseline {
+            name: "--json".into(),
+        };
+        assert_eq!(
+            serde_json::to_value(&request).unwrap_or_else(|error| unreachable!("{error}")),
+            serde_json::json!({"operation":"get_baseline","name":"--json"})
+        );
+        let mut bytes = Vec::new();
+        assert!(write_frame(&mut bytes, &request).is_ok());
+        assert!(matches!(read_frame::<Request>(&mut bytes.as_slice()),
+            Ok(Request::GetBaseline { name }) if name == "--json"));
+        assert!(
+            serde_json::from_value::<Request>(
+                serde_json::json!({"operation":"unknown_baseline","name":"--json"})
+            )
+            .is_err()
+        );
+    }
+
     #[test]
     fn endpoint_resolution_anchors_only_relative_settings_to_each_caller() {
         let a = Path::new("/workspace/a");

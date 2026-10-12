@@ -27,6 +27,11 @@ fn output(args: &[String]) -> Result<(bool, Vec<String>), String> {
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
+            "--" => {
+                // Preserve literal baseline names, including names such as --json.
+                rest.extend(iter.cloned());
+                break;
+            }
             "--output" => {
                 if iter.next().map(String::as_str) != Some("json") {
                     return Err("expected --output json".into());
@@ -44,11 +49,16 @@ fn request(args: &[String]) -> Result<Request, String> {
         Some("explain") => explain(&args[1..]),
         Some("baseline") => match args.get(1).map(String::as_str) {
             Some("list") if args.len() == 2 => Ok(Request::Baselines),
+            Some("get") if args.len() == 3 => Ok(Request::GetBaseline {
+                name: args[2].clone(),
+            }),
             Some("save") if args.len() == 5 && args[3] == "--job" => Ok(Request::SaveBaseline {
                 id: args[4].clone(),
                 name: args[2].clone(),
             }),
-            _ => Err("usage: baseline save NAME --job JOB | baseline list".into()),
+            _ => Err(
+                "usage: baseline save NAME --job JOB | baseline list | baseline get NAME".into(),
+            ),
         },
         Some("compare") => match args {
             [_, before, after] => Ok(Request::Compare {
@@ -123,7 +133,7 @@ fn human(response: &Response) -> String {
                 .join("\n")
         ),
         Response::Baseline(baseline) => format!(
-            "Saved immutable baseline {} from job {} at revision {}",
+            "Immutable baseline {} from job {} at recorded revision {} (historical evidence)",
             baseline.name, baseline.job_id, baseline.result.input_revision
         ),
         Response::Baselines(names) => {
@@ -152,5 +162,60 @@ fn human(response: &Response) -> String {
             text
         }
         _ => "Unexpected evidence response.".into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn literal_baseline_names_cannot_become_output_options() {
+        for name in ["release", "--json", "--output", "--output=json", "-named"] {
+            let args = ["baseline", "get", "--output", "json", "--", name].map(str::to_owned);
+            let (json, rest) = output(&args).unwrap_or_else(|error| unreachable!("{error}"));
+            assert!(json);
+            assert!(
+                matches!(request(&rest), Ok(Request::GetBaseline { name: actual }) if actual == name)
+            );
+            let args = [
+                "baseline", "save", "--output", "json", "--", name, "--job", "job",
+            ]
+            .map(str::to_owned);
+            let (json, rest) = output(&args).unwrap_or_else(|error| unreachable!("{error}"));
+            assert!(json);
+            assert!(
+                matches!(request(&rest), Ok(Request::SaveBaseline { name: actual, id }) if actual == name && id == "job")
+            );
+            let args = [
+                "compare",
+                "--output",
+                "json",
+                "--",
+                "after",
+                "--baseline",
+                name,
+            ]
+            .map(str::to_owned);
+            let (json, rest) = output(&args).unwrap_or_else(|error| unreachable!("{error}"));
+            assert!(json);
+            assert!(matches!(request(&rest), Ok(Request::Compare {
+                before: Reference::Baseline(actual), after
+            }) if actual == name && after == "after"));
+        }
+        assert!(request(&["baseline".into(), "get".into()]).is_err());
+        assert!(
+            request(&[
+                "baseline".into(),
+                "get".into(),
+                "name".into(),
+                "extra".into()
+            ])
+            .is_err()
+        );
+        assert!(matches!(
+            request(&["baseline".into(), "list".into()]),
+            Ok(Request::Baselines)
+        ));
     }
 }

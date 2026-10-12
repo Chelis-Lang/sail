@@ -40,7 +40,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "install or inspect the optional interactive engine",
     ),
     ("explain", "show exact failure evidence from a retained job"),
-    ("baseline", "save and list immutable verification baselines"),
+    (
+        "baseline",
+        "save, list and read immutable verification baselines",
+    ),
     ("compare", "compare completed jobs or a saved baseline"),
     ("watch", "re-verify the workspace as files change"),
     ("jobs", "inspect, follow, or cancel local verification jobs"),

@@ -1,6 +1,6 @@
 //! Proof explanations and immutable baselines, independent of job pruning.
 
-use std::io::{self, Write};
+use std::io::{self, Read as _, Write};
 use std::os::unix::fs::OpenOptionsExt as _;
 
 use sail_api::project::ProjectResult;
@@ -149,18 +149,41 @@ pub(super) fn baselines(state: &State) -> io::Result<Vec<String>> {
     Ok(names)
 }
 
+pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
+    valid_name(name)?;
+    let file = std::fs::File::open(state.root.join("baselines").join(format!("{name}.json")))
+        .map_err(|error| io::Error::other(format!("SAIL0905: cannot read baseline: {error}")))?;
+    let mut bytes = Vec::new();
+    file.take((sail_api::jobs::MAX_FRAME + 1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|error| io::Error::other(format!("SAIL0905: cannot read baseline: {error}")))?;
+    if bytes.len() > sail_api::jobs::MAX_FRAME {
+        return Err(io::Error::other(
+            "SAIL0814: baseline exceeds RPC limit; retained file remains available",
+        ));
+    }
+    let baseline: Baseline = serde_json::from_slice(&bytes)
+        .map_err(|error| io::Error::other(format!("SAIL0905: invalid baseline: {error}")))?;
+    if baseline.version != VERSION
+        || baseline.name != name
+        || baseline.job_id.is_empty()
+        || baseline.result.kind != "sail-project-result"
+        || baseline.result.schema_version != sail_api::project::SCHEMA_VERSION
+    {
+        return Err(io::Error::other("SAIL0905: baseline identity is corrupt"));
+    }
+    if baseline.result.currentness != sail_api::project::Currentness::Historical {
+        return Err(io::Error::other(
+            "SAIL0905: baseline must retain historical evidence",
+        ));
+    }
+    Ok(baseline)
+}
+
 pub(super) fn compare(state: &State, before: &Reference, after: &str) -> io::Result<Comparison> {
     let before = match before {
         Reference::Job(id) => completed(state, id)?,
-        Reference::Baseline(name) => {
-            valid_name(name)?;
-            let bytes = std::fs::read(state.root.join("baselines").join(format!("{name}.json")))?;
-            let baseline: Baseline = serde_json::from_slice(&bytes).map_err(io::Error::other)?;
-            if baseline.version != VERSION || baseline.name != *name {
-                return Err(io::Error::other("SAIL0905: baseline identity is corrupt"));
-            }
-            baseline.result
-        }
+        Reference::Baseline(name) => baseline(state, name)?.result,
     };
     let after = completed(state, after)?;
     Ok(sail_api::repair::compare(&before, &after))

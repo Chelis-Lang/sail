@@ -147,6 +147,13 @@ fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenanc
     assert!(
         matches!(client.call(&Request::Baselines)?,Response::Baselines(names) if names==vec!["release"])
     );
+    let Response::Baseline(loaded) = client.call(&Request::GetBaseline {
+        name: "release".into(),
+    })?
+    else {
+        return Err("baseline read response".into());
+    };
+    assert_eq!(loaded, saved);
     let Response::Comparison(comparison) = client.call(&Request::Compare {
         before: Reference::Baseline("release".into()),
         after: last.clone(),
@@ -201,6 +208,107 @@ fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenanc
             .is_err()
     );
     server.shutdown();
+    Ok(())
+}
+
+#[test]
+fn baseline_get_preserves_provisional_evidence_and_refuses_corrupt_or_oversized_records()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    let socket = fixture.root.join("jobs.sock");
+    let store = fixture.root.join("jobs");
+    let mut project = project()?;
+    project.targets[0].report.crates[0].functions[0].verdict = VerdictName::Provisional;
+    project.targets[0].report.crates[0].functions[0].tier = TierName::Provisional;
+    std::fs::write(
+        fixture.root.join("result.json"),
+        serde_json::to_vec(&project)?,
+    )?;
+    let mut server = sail_daemon::jobs::bind(&socket, &store, &fixture.worker)?.spawn()?;
+    let client = Client::new(&socket);
+    let job = submit(&client, fixture.request("recorded-revision"))?;
+    completed(&client, &job.id)?;
+    let Response::Baseline(saved) = client.call(&Request::SaveBaseline {
+        id: job.id,
+        name: "literal-name".into(),
+    })?
+    else {
+        return Err("baseline response".into());
+    };
+    let Response::Baseline(loaded) = client.call(&Request::GetBaseline {
+        name: "literal-name".into(),
+    })?
+    else {
+        return Err("baseline read response".into());
+    };
+    assert_eq!(loaded, saved);
+    assert_eq!(loaded.result.currentness, Currentness::Historical);
+    assert_eq!(loaded.result.targets, project.targets);
+    assert!(!loaded.result.targets[0].complete);
+    assert_eq!(
+        loaded.result.targets[0].report.crates[0].functions[0].verdict,
+        VerdictName::Provisional
+    );
+    for name in ["missing", "..", "../escape"] {
+        assert!(
+            client
+                .call(&Request::GetBaseline { name: name.into() })
+                .is_err()
+        );
+    }
+    let path = store.join("baselines/literal-name.json");
+    for corrupt in [
+        serde_json::json!({"version":2}),
+        serde_json::json!({"name":"another"}),
+        serde_json::json!({"job_id":""}),
+        serde_json::json!({"result":{"currentness":"current"}}),
+        serde_json::json!({"result":{"kind":"wrong"}}),
+        serde_json::json!({"result":{"schema_version":2}}),
+    ] {
+        let mut value = serde_json::to_value(&saved)?;
+        let object = corrupt.as_object().ok_or("corruption fixture")?;
+        for (key, replacement) in object {
+            if key == "result" {
+                for (field, replacement) in replacement.as_object().ok_or("result fixture")? {
+                    value[key][field] = replacement.clone();
+                }
+            } else {
+                value[key] = replacement.clone();
+            }
+        }
+        std::fs::write(&path, serde_json::to_vec(&value)?)?;
+        let failure = client.call(&Request::GetBaseline {
+            name: "literal-name".into(),
+        });
+        assert!(matches!(failure, Err(error) if error.to_string().contains("SAIL0905")));
+    }
+    let file = std::fs::File::create(&path)?;
+    file.set_len(u64::try_from(sail_api::jobs::MAX_FRAME)? + 1)?;
+    drop(file);
+    let oversized = client.call(&Request::GetBaseline {
+        name: "literal-name".into(),
+    });
+    server.shutdown();
+    assert!(matches!(oversized, Err(error) if error.to_string().contains("SAIL0814")));
+    Ok(())
+}
+
+#[test]
+fn baseline_save_still_refuses_unfinished_jobs() -> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    std::fs::write(&fixture.worker, "#!/bin/sh\nsleep 30\n")?;
+    let socket = fixture.root.join("jobs.sock");
+    let store = fixture.root.join("jobs");
+    let mut server = sail_daemon::jobs::bind(&socket, &store, &fixture.worker)?.spawn()?;
+    let client = Client::new(&socket);
+    let job = submit(&client, fixture.request("unfinished"))?;
+    let saved = client.call(&Request::SaveBaseline {
+        id: job.id,
+        name: "unfinished".into(),
+    });
+    server.shutdown();
+    assert!(matches!(saved, Err(error) if error.to_string().contains("SAIL0904")));
+    assert!(!store.join("baselines/unfinished.json").exists());
     Ok(())
 }
 

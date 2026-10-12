@@ -299,6 +299,9 @@ fn dispatch(state: &State, request: Request) -> Response {
         Request::SaveBaseline { id, name } => product::save_baseline(state, &id, &name)
             .map(|value| Response::Baseline(Box::new(value))),
         Request::Baselines => product::baselines(state).map(Response::Baselines),
+        Request::GetBaseline { name } => {
+            product::baseline(state, &name).map(|value| Response::Baseline(Box::new(value)))
+        }
         Request::Compare { before, after } => {
             product::compare(state, &before, &after).map(Response::Comparison)
         }

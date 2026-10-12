@@ -18,6 +18,8 @@
 //! - `start_repair_validation`, `verification_events`, `explain_failure` and
 //!   `compare_verification`: independent focus/full repair evidence, provisional
 //!   events, recorded failure details and comparisons (ADR 0027).
+//! - `save_baseline`, `list_baselines` and `get_baseline`: immutable named
+//!   historical evidence, independent of rolling job retention.
 //!
 //! Verification always runs the `sail` binary as a child process, so this
 //! crate depends only on `sail-api` for report types and read-only job clients

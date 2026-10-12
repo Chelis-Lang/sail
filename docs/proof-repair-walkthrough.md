@@ -214,7 +214,7 @@ Job reads, cancellation, events, explanations and comparisons do not accept
 Use a server started in this project, or configure the same absolute
 `SAIL_CACHE_DIR` (and `SAIL_DAEMON_SOCKET`, if overridden) for submission, CLI and
 MCP. A relative cache selected from another directory can make a valid job ID
-unavailable to those reads. Save the named baseline using that same service.
+unavailable to those reads. Baseline operations use that same service.
 After normal MCP initialization, these are `tools/call` parameter objects:
 
 ```json
@@ -227,6 +227,9 @@ Use the returned `structuredContent.id` for subsequent calls:
 {"name":"verification_status","arguments":{"job_id":"JOB_ID"}}
 {"name":"verification_events","arguments":{"job_id":"JOB_ID"}}
 {"name":"verification_result","arguments":{"job_id":"JOB_ID"}}
+{"name":"save_baseline","arguments":{"job_id":"JOB_ID","name":"before-repair"}}
+{"name":"list_baselines","arguments":{}}
+{"name":"get_baseline","arguments":{"name":"before-repair"}}
 ```
 
 The events response is a page; resume with its `next.stream_id` and `next.after`.
@@ -245,7 +248,10 @@ inspect `structuredContent.value.repair.accepted` and the full Current report.
 {"name":"cancel_verification","arguments":{"job_id":"OWNED_RUNNING_JOB_ID"}}
 ```
 
-Save named baselines through the CLI; there is no MCP baseline-save tool.
+Save only after the job completes. The snapshot in `structuredContent.value`
+retains the exact recorded reports, revision and context with `historical`
+currentness. Provisional verdicts and incomplete targets stay unchanged. The
+name is immutable and survives job pruning; it cannot establish today's proof.
 Comparison takes exactly one `baseline` or `before_job`. Library submission omits
 `target`; a binary uses `kind: "bin"` plus `target: "NAME"`. See the
 [MCP schemas](mcp.md) for optional submission arguments and response details.

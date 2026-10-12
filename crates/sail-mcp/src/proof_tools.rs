@@ -10,6 +10,9 @@ pub(super) fn definitions() -> Vec<Value> {
         json!({"name":"verification_events","title":"Read proof observations","description":"Read one bounded page from proof stream v1. Resume using next.stream_id/after. Gap is explicit; early observations remain provisional. Completed target reports independently seal final proof evidence.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"stream_id":string(),"after":{"type":"integer","minimum":0}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"explain_failure","title":"Explain exact failure evidence","description":"Return a function/obligation report, raw models, diagnostics and establishing provenance for an exact package/target/kind identity. Unattributed diagnostics remain explicitly unattributed. No proof edits are generated.","inputSchema":target,"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"compare_verification","title":"Compare verification evidence","description":"Compare a completed job with an explicit earlier job or immutable named baseline. Scope/configuration mismatches are descriptive, never labelled proof regressions; partial scopes cannot prove removal.","inputSchema":{"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":string()}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
+        json!({"name":"save_baseline","title":"Save immutable baseline evidence","description":"Save a completed job under a new immutable name, independently of job retention. Negative, incomplete or provisional evidence remains as reported; saving never proves current inputs or accepts a repair. Existing names cannot be overwritten.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id","name"],"properties":{"job_id":string(),"name":{"type":"string","minLength":1,"maxLength":80,"pattern":"^[A-Za-z0-9_.-]+$"}}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
+        json!({"name":"list_baselines","title":"List immutable baselines","description":"List saved baseline names for this server's local job service. Names are sorted; listing establishes no proof or currentness.","inputSchema":{"type":"object","additionalProperties":false,"properties":{}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
+        json!({"name":"get_baseline","title":"Read immutable baseline evidence","description":"Read version-one baseline evidence for its recorded job, revision, context and exact targets. Currentness is historical, independently of today's workspace and job pruning. Provisional verdicts remain provisional.","inputSchema":{"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"type":"string","minLength":1,"maxLength":80,"pattern":"^[A-Za-z0-9_.-]+$"}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"start_repair_validation","title":"Start focused and full repair validation","description":"Submit an explicit optional interactive-engine batch: exact selected-function phase followed by independent full-target validation. Returns a durable job immediately. Focus success is provisional; accepted requires complete successful Current full evidence and late compiler seal. The engine must be installed and validated; no automated editing.","inputSchema":{"type":"object","additionalProperties":false,"required":["package","kind","function","engine"],"properties":{"project_dir":string(),"package":string(),"kind":{"type":"string","enum":["lib","bin"]},"target":string(),"function":string(),"engine":{"type":"string","enum":["interactive"]},"cargo_args":{"type":"array","items":{"type":"string"}},"verus_args":{"type":"array","items":{"type":"string"}}}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
     ]
 }
@@ -32,7 +35,9 @@ pub(super) fn call(
     match run::run(&ctx.config.sail, &arguments, &project, cancel) {
         Ok(outcome) if outcome.exit_code == Some(0) => {
             match serde_json::from_slice::<Value>(&outcome.stdout) {
-                Ok(document) if valid(name, &document) => ToolResult::ok(
+                Ok(document)
+                    if valid(name, &document)
+                        && requested_baseline_matches(name, args, &document) => ToolResult::ok(
                     "Scoped proof evidence; provisional observations do not authorize a repair."
                         .into(),
                     document,
@@ -60,6 +65,36 @@ fn value(args: &Map<String, Value>, key: &str) -> Result<String, String> {
         .map(str::to_owned)
         .ok_or_else(|| format!("{key} must be a nonempty string, not a flag"))
 }
+fn valid_baseline_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 80
+        && name != "."
+        && name != ".."
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+}
+fn baseline_name(args: &Map<String, Value>, key: &str) -> Result<String, String> {
+    let name = args.get(key).and_then(Value::as_str).unwrap_or("");
+    if valid_baseline_name(name) {
+        Ok(name.to_owned())
+    } else {
+        Err(format!(
+            "{key} must use 1-80 ASCII letters, digits, dots, underscores or hyphens, excluding . and .."
+        ))
+    }
+}
+fn requested_baseline_matches(name: &str, args: &Map<String, Value>, document: &Value) -> bool {
+    match name {
+        "save_baseline" | "get_baseline" => {
+            document["value"]["name"].as_str() == args.get("name").and_then(Value::as_str)
+                && (name != "save_baseline"
+                    || document["value"]["job_id"].as_str()
+                        == args.get("job_id").and_then(Value::as_str))
+        }
+        _ => true,
+    }
+}
 fn arguments(
     name: &str,
     args: &Map<String, Value>,
@@ -75,6 +110,9 @@ fn arguments(
             "obligation",
         ],
         "compare_verification" => &["after_job", "before_job", "baseline"],
+        "save_baseline" => &["job_id", "name"],
+        "list_baselines" => &[],
+        "get_baseline" => &["name"],
         "start_repair_validation" => &[
             "project_dir",
             "package",
@@ -91,6 +129,19 @@ fn arguments(
         return Err(format!("unknown argument {key}"));
     }
     let mut out = match name {
+        "save_baseline" => vec![
+            "baseline".into(),
+            "save".into(),
+            baseline_name(args, "name")?,
+            "--job".into(),
+            value(args, "job_id")?,
+        ],
+        "list_baselines" => vec!["baseline".into(), "list".into()],
+        "get_baseline" => vec![
+            "baseline".into(),
+            "get".into(),
+            baseline_name(args, "name")?,
+        ],
         "verification_events" => {
             let mut out = vec!["jobs".into(), "events".into(), value(args, "job_id")?];
             if args.contains_key("stream_id") {
@@ -137,14 +188,22 @@ fn arguments(
                     "compare".into(),
                     after,
                     "--baseline".into(),
-                    value(args, "baseline")?,
+                    baseline_name(args, "baseline")?,
                 ],
                 _ => return Err("provide exactly one before_job or baseline".into()),
             }
         }
         _ => return repair(args),
     };
-    out.extend(["--output".into(), "json".into()]);
+    if matches!(name, "save_baseline" | "get_baseline") {
+        // Output options precede the literal separator so a valid baseline name
+        // such as --json can never be interpreted as a CLI option.
+        out.splice(2..2, ["--output".into(), "json".into(), "--".into()]);
+    } else if name == "compare_verification" && args.contains_key("baseline") {
+        out.splice(1..1, ["--output".into(), "json".into(), "--".into()]);
+    } else {
+        out.extend(["--output".into(), "json".into()]);
+    }
     Ok((out, None))
 }
 fn repair(args: &Map<String, Value>) -> Result<(Vec<String>, Option<String>), String> {
@@ -214,9 +273,29 @@ fn valid(name: &str, document: &Value) -> bool {
         "compare_verification" => {
             matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),Ok(sail_api::jobs::Response::Comparison(comparison)) if comparison.version==1)
         }
+        "save_baseline" | "get_baseline" => {
+            matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),
+                Ok(sail_api::jobs::Response::Baseline(baseline))
+                if baseline.version == sail_api::repair::VERSION
+                    && valid_baseline_name(&baseline.name)
+                    && !baseline.job_id.is_empty()
+                    && baseline.result.kind == "sail-project-result"
+                    && baseline.result.schema_version == sail_api::project::SCHEMA_VERSION
+                    && baseline.result.currentness == sail_api::project::Currentness::Historical)
+        }
+        "list_baselines" => {
+            matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),
+                Ok(sail_api::jobs::Response::Baselines(names))
+                if names.iter().all(|name| valid_baseline_name(name))
+                    && names.windows(2).all(|pair| pair[0] < pair[1]))
+        }
         _ => false,
     }
 }
+
+#[cfg(test)]
+#[path = "baseline_tools_tests.rs"]
+mod baseline_tests;
 
 #[cfg(test)]
 mod tests {
@@ -270,11 +349,12 @@ mod tests {
             arguments,
             vec![
                 "compare",
+                "--output",
+                "json",
+                "--",
                 "after",
                 "--baseline",
-                "release",
-                "--output",
-                "json"
+                "release"
             ]
         );
         assert!(!valid(

@@ -10,6 +10,14 @@ semantic versioning once the API is published.
   inside its input roots can correctly invalidate freshness. Clarify that the
   completed accepted result precedes saving the example baseline.
 
+- Add MCP `save_baseline`, `list_baselines` and `get_baseline`, plus
+  `sail baseline get`, for immutable recorded evidence independent of job
+  pruning. Existing completed-job and no-overwrite checks remain; reads retain
+  Historical currentness and full provenance without promoting provisional or
+  incomplete reports. Corrupt identities and oversized records fail explicitly.
+  Source implementation and new controls address
+  [#72](https://github.com/Chelis-Lang/sail/issues/72); native validation is pending.
+
 - Clarify interactive CLI/MCP setup: use the same absolute cache/socket overrides
   for engine installation, submission and durable job reads. Those reads do not
   accept `project_dir`. Document returned job-ID and event-cursor fields, and
