@@ -60,7 +60,46 @@ pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Resul
             String::from_utf8_lossy(&output.stderr),
         ));
     }
-    serde_json::from_slice(&output.stdout).map_err(|e| Error::new("SAIL3103", e.to_string()))
+    let mut data: Value = serde_json::from_slice(&output.stdout)
+        .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
+    // Preserve explicit package roles for disabled-script scheduling checks.
+    // Unknown or ambiguous package specs retain original unobserved cleaning.
+    data["sail_selected_package_ids"] =
+        serde_json::to_value(selected_packages(&data, args)).unwrap_or(Value::Null);
+    Ok(data)
+}
+
+fn selected_packages(data: &Value, args: &[String]) -> Option<Vec<String>> {
+    let packages = data["packages"].as_array()?;
+    let mut selected = Vec::new();
+    let mut arguments = args.iter().take_while(|arg| arg.as_str() != "--");
+    while let Some(argument) = arguments.next() {
+        let spec = if argument == "-p" || argument == "--package" {
+            Some(arguments.next()?.as_str())
+        } else if let Some(spec) = argument.strip_prefix("--package=") {
+            Some(spec)
+        } else if let Some(spec) = argument.strip_prefix("-p") {
+            Some(spec.strip_prefix('=').unwrap_or(spec))
+        } else {
+            if argument.starts_with("--package") {
+                return None;
+            }
+            None
+        };
+        let Some(spec) = spec else { continue };
+        let mut matches = packages.iter().filter(|package| {
+            package["id"].as_str() == Some(spec)
+                || package["name"].as_str() == Some(spec)
+                || spec.split_once('@').is_some_and(|(name, version)| {
+                    package["name"].as_str() == Some(name)
+                        && package["version"].as_str() == Some(version)
+                })
+        });
+        let package = matches.next()?;
+        matches.next().is_none().then_some(())?;
+        selected.push(package["id"].as_str()?.to_owned());
+    }
+    Some(selected)
 }
 
 fn collect(
@@ -356,6 +395,50 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn disabled_script_explicit_selection_requires_unique_cargo_package_identity() {
+        let data = serde_json::json!({"packages":[
+            {"id":"root-id","name":"root","version":"1"},
+            {"id":"disabled-id","name":"disabled","version":"2"}]});
+        for args in [
+            vec!["--package", "root"],
+            vec!["-proot"],
+            vec!["-p=root"],
+            vec!["--package=root@1"],
+            vec!["-p", "root-id"],
+        ] {
+            let args = args.into_iter().map(str::to_owned).collect::<Vec<_>>();
+            assert_eq!(
+                super::selected_packages(&data, &args),
+                Some(vec!["root-id".into()])
+            );
+        }
+        assert_eq!(
+            super::selected_packages(&data, &["--package=disabled".into()]),
+            Some(vec!["disabled-id".into()])
+        );
+        for args in [
+            vec!["--package"],
+            vec!["--package="],
+            vec!["-punknown"],
+            vec!["--package=root@2"],
+            vec!["--package-malformed"],
+        ] {
+            let args = args.into_iter().map(str::to_owned).collect::<Vec<_>>();
+            assert_eq!(super::selected_packages(&data, &args), None);
+        }
+        let mut ambiguous = data.clone();
+        ambiguous["packages"][1]["name"] = "root".into();
+        assert_eq!(
+            super::selected_packages(&ambiguous, &["-p".into(), "root".into()]),
+            None
+        );
+        assert_eq!(
+            super::selected_packages(&data, &["--".into(), "-p".into(), "disabled".into()]),
+            Some(Vec::<String>::new())
+        );
+    }
+
     use super::*;
     #[cfg(target_os = "linux")]
     #[test]

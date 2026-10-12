@@ -162,3 +162,29 @@ hashing. All other refusals keep original script cleaning. The implementation is
 uncompiled and unselected; requested retained admission and cooperative streaming
 bounds do not claim an enforced construction/RSS limit or measured speedup.
 See the [candidate, limits and required real-Cargo controls](../validation/m7-compiler-script-bootstrap/README.md).
+
+## Disabled metadata scripts and retry compilation evidence
+
+Cargo metadata includes dependencies behind the exact always-false target
+predicate `cfg(any())`. An unobserved non-workspace, non-resolve-root script can
+be omitted from required coverage only when its unique resolve node has an
+incoming edge and every incoming dependency kind has that exact predicate.
+Workspace/root packages, explicitly selected packages, malformed graphs,
+duplicate node identities, ambiguous selectors, empty edge kinds and alternative
+predicates retain original cleaning and
+incomplete coverage. This scheduling fact does not normalize SMT queries,
+remove input roots, synthesize observations, or change proof authority.
+
+A missing-target retry replaces the artifact journal. When the existing optional
+independent bootstrap owner is held, retry cleaning also includes exact package
+IDs for supported scripts. Cargo must compile them again under that same owner.
+Final-journal `fresh=false`, exact binary/dep-info/output roles, effective
+environment, independent input barriers and the original proof Guard remain
+mandatory. First-pass journals are not merged; `fresh=true` remains refused.
+Without the optional owner, retry cleaning retains its original behavior.
+
+The follow-up real Cargo controls cover disabled dependency scheduling,
+first/reused/rebuilt journals and subsequent original input-barrier readiness.
+They remain uncompiled and unexecuted at source freeze. Product and unchanged
+benchmark recovery are pending; see the
+[source record](../validation/m7-compiler-script-bootstrap/scheduling-recovery.json).

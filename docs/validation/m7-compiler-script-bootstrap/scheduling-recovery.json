@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "scope": "source-only disabled-script coverage and guarded retry fresh-compilation recovery",
+  "status": "uncompiled and unexecuted; product and unchanged benchmark validation pending",
+  "historical_scope": {
+    "product": "c2a4b23",
+    "original_benchmark": "FAIL",
+    "elapsed_seconds": 889.987,
+    "measured_samples": 0,
+    "repair_attempts": 2,
+    "repair_exit_codes": [
+      0,
+      0
+    ],
+    "currentness": "unknown",
+    "accepted": false,
+    "compiler_invocations_each": 3,
+    "note": "Build-script input declarations were established during this run",
+    "raw_archive_sha256": "8f7e07cde3a1b2047175d4a7eed9209402278503ff5a2f90bc5159f20a8822f8"
+  },
+  "retained_private_metadata": {
+    "package_graph": {
+      "bytes": 176983,
+      "sha256": "ae9297e63a7abf0205037f69d37a4b69b61a30cfa0a75bdc7f846674b2aad96a"
+    },
+    "contracts_and_journals": {
+      "bytes": 41327,
+      "sha256": "b0ca34be06e8b06027b306de0712ef84b897ded3f1e6ef2aa1c5f818725c63a4"
+    }
+  },
+  "confirmed_facts": {
+    "metadata_packages": 20,
+    "serde_incoming": "indexmap 2.14.2 only; kind null and exact cfg(any())",
+    "observed_build_script_records": 6,
+    "serde_observed": false,
+    "final_retry_custom_build_fresh": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ],
+    "first_attempt_custom_build_fresh": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "repair_export_present": false,
+    "limit": "first attempt has fresh compilation roles but no export; complete causal explanation and product recovery not established"
+  },
+  "authority": {
+    "exemption": "unobserved uniquely resolved non-workspace/non-root script with only exact false edges; selected target, ambiguous selectors, duplicate nodes and unknown graph refuse",
+    "retry": "same existing optional independent owner; eligible exact package IDs cleaned; final-journal fresh=false unchanged",
+    "unchanged": [
+      "all source/runtime roots",
+      "original proof Guard",
+      "Unknown and target completeness",
+      "proof receipts",
+      "effective environment",
+      "final independent native barriers",
+      "original deadlines and benchmark oracles"
+    ]
+  },
+  "source_sha256": {
+    "crates/sail-verus/src/managed/build_inputs.rs": "04f25c8abb3d467044a4f6f6645e5fe9109a1af40c058672cf62aacb89179fe9",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "eccf4bc65e15d5dee414e35202f45839199383fb68cc48847c08f543608f3ecc",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "7db3998b57ec505283f8493e8918c56dda1e44499a256e53581ad8a5d15d46f7",
+    "crates/sail-verus/src/managed/input.rs": "09ae00da906812e348409fedf6adea8caad4e1a13388dd55ee96d1d518742bf5",
+    "crates/sail-verus/src/managed/runner.rs": "bf02264b3dabf7049fcb68f09a92dc5c0d2ef04d2419a8403fac351f7654c6a5"
+  },
+  "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+  "new_controls": [
+    "disabled_build_script_does_not_require_an_unexecuted_observation",
+    "bootstrap_disabled_dependency_and_retry_keep_fresh_compilation_roles",
+    "bootstrap_retry_clean_preserves_missing_and_refuses_unsupported_script_roles",
+    "disabled_script_explicit_selection_requires_unique_cargo_package_identity"
+  ],
+  "control_status": "drafted, not compiled or executed; original fixtures delegate to unchanged roles when disabled=false",
+  "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
+  "required_next": [
+    "affected native tests and strict checks",
+    "complete combined workspace/solver gate",
+    "fresh coherent product installation",
+    "unchanged original real-project warmups and benchmark"
+  ]
+}

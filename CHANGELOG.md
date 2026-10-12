@@ -12,6 +12,13 @@ semantic versioning once the API is published.
   passes the original repair fixture; reader evidence remains historical 730,
   and real-project performance remains unqualified.
 
+- Prepare a conservative compiler-script recovery correction for the failed c2
+  warmup: exclude only proven always-false non-workspace dependency scripts from
+  unobserved coverage, and freshly compile eligible scripts during a guarded
+  missing-target retry. Proof freshness and receipt checks are unchanged; native
+  and unchanged benchmark validation remain pending. See the
+  [source record](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+
 - Record the unchanged real-project repair benchmark's `730a321` bootstrap
   failure. Unknown input freshness correctly prevents acceptance; no measured
   rounds or speedup are available. Earlier full reader and small repair passes

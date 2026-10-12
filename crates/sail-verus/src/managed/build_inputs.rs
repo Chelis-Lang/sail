@@ -68,6 +68,54 @@ pub(super) fn stale(path: &Path, data: &Value) -> (Vec<String>, Vec<PathBuf>, bo
     stale_environment(path, data, None)
 }
 
+// Cargo metadata retains platform-disabled packages in its resolved graph. The
+// empty any() predicate is false on every target; an unexecuted script behind
+// ONLY such edges cannot establish an observation. Keep workspace/resolve roots,
+// unknown predicates and every ambiguous graph on the original cleaning path.
+fn never_scheduled(data: &Value, id: &str) -> bool {
+    let check = || -> Option<()> {
+        if let Some(selected) = data.get("sail_selected_package_ids") {
+            for selected in selected.as_array()? {
+                (selected.as_str()? != id).then_some(())?;
+            }
+        }
+        let members = data["workspace_members"].as_array()?;
+        for member in members {
+            (member.as_str()? != id).then_some(())?;
+        }
+        let resolve = data["resolve"].as_object()?;
+        let root = resolve.get("root")?;
+        (root.is_null() || root.as_str()? != id).then_some(())?;
+        let nodes = resolve.get("nodes")?.as_array()?;
+        (nodes
+            .iter()
+            .filter(|node| node["id"].as_str() == Some(id))
+            .count()
+            == 1)
+            .then_some(())?;
+        let mut incoming = false;
+        let mut identities = BTreeSet::new();
+        for node in nodes {
+            identities.insert(node["id"].as_str()?).then_some(())?;
+            for dependency in node["deps"].as_array()? {
+                if dependency["pkg"].as_str()? != id {
+                    continue;
+                }
+                let kinds = dependency["dep_kinds"].as_array()?;
+                (!kinds.is_empty()).then_some(())?;
+                for kind in kinds {
+                    let role = kind.get("kind")?;
+                    (role.is_null() || role == "dev" || role == "build").then_some(())?;
+                    (kind["target"].as_str()? == "cfg(any())").then_some(())?;
+                }
+                incoming = true;
+            }
+        }
+        incoming.then_some(())
+    };
+    check().is_some()
+}
+
 pub(super) fn stale_environment(
     path: &Path,
     data: &Value,
@@ -99,6 +147,7 @@ pub(super) fn stale_environment(
         }) && !previous
             .iter()
             .any(|r| r.package_id == package["id"].as_str().unwrap_or_default())
+            && !never_scheduled(data, package["id"].as_str().unwrap_or_default())
         {
             clean.insert(package["name"].as_str().unwrap_or_default().to_owned());
             covered = false;
@@ -185,6 +234,81 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn disabled_build_script_does_not_require_an_unexecuted_observation() {
+        let data = serde_json::json!({"workspace_members":["root"],
+            "packages":[{"id":"disabled", "name":"disabled",
+                "targets":[{"kind":["custom-build"]}]}],
+            "resolve":{"root":"root","nodes":[
+                {"id":"root","deps":[{"pkg":"disabled",
+                    "dep_kinds":[{"kind":null,"target":"cfg(any())"}]}]},
+                {"id":"disabled","deps":[]}]}});
+        let absent = std::env::temp_dir().join(format!(
+            "sail-disabled-script-{}-absent.json",
+            std::process::id()
+        ));
+        assert!(!absent.exists());
+        let (clean, extras, covered) = stale(&absent, &data);
+        assert_eq!(clean, Vec::<String>::new());
+        assert_eq!(extras, Vec::<PathBuf>::new());
+        assert!(covered);
+        let mut variants = Vec::new();
+        for predicate in [
+            serde_json::Value::Null,
+            serde_json::json!("cfg(unix)"),
+            serde_json::json!("cfg(any(unix))"),
+        ] {
+            let mut changed = data.clone();
+            changed["resolve"]["nodes"][0]["deps"][0]["dep_kinds"][0]["target"] = predicate;
+            variants.push(changed);
+        }
+        let mut member = data.clone();
+        member["workspace_members"] = serde_json::json!(["root", "disabled"]);
+        variants.push(member);
+        let mut root = data.clone();
+        root["resolve"]["root"] = serde_json::json!("disabled");
+        variants.push(root);
+        let mut alternate = data.clone();
+        alternate["resolve"]["nodes"][0]["deps"][0]["dep_kinds"] =
+            serde_json::json!([{"kind":null,"target":"cfg(any())"},{"kind":null,"target":null}]);
+        variants.push(alternate);
+        let mut incomplete = data.clone();
+        incomplete["resolve"] = serde_json::Value::Null;
+        variants.push(incomplete);
+        let mut no_edges = data.clone();
+        no_edges["resolve"]["nodes"][0]["deps"] = serde_json::json!([]);
+        variants.push(no_edges);
+        for selection in [serde_json::json!(["disabled"]), serde_json::Value::Null] {
+            let mut changed = data.clone();
+            changed["sail_selected_package_ids"] = selection;
+            variants.push(changed);
+        }
+        for kinds in [serde_json::json!([]), serde_json::Value::Null] {
+            let mut changed = data.clone();
+            changed["resolve"]["nodes"][0]["deps"][0]["dep_kinds"] = kinds;
+            variants.push(changed);
+        }
+        let mut other_edge = data.clone();
+        other_edge["resolve"]["nodes"][1]["deps"] =
+            serde_json::json!([{"pkg":"disabled", "dep_kinds":[{"kind":null,"target":null}]}]);
+        variants.push(other_edge);
+        let mut duplicate = data.clone();
+        duplicate["resolve"]["nodes"] = serde_json::json!([
+            data["resolve"]["nodes"][0],
+            data["resolve"]["nodes"][1],
+            data["resolve"]["nodes"][0]
+        ]);
+        variants.push(duplicate);
+        let mut selected_root = data.clone();
+        selected_root["sail_selected_package_ids"] = serde_json::json!(["root"]);
+        assert!(stale(&absent, &selected_root).2);
+        for changed in variants {
+            let (clean, _, covered) = stale(&absent, &changed);
+            assert_eq!(clean, vec!["disabled"]);
+            assert!(!covered);
+        }
+    }
+
     #[test]
     fn new_focus_context_cleans_registry_scripts_before_learning_external_inputs()
     -> std::result::Result<(), Box<dyn std::error::Error>> {

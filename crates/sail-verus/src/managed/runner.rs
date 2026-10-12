@@ -1707,11 +1707,18 @@ pub(crate) fn run_engine(
     let mut exit = invoke(config, &paths, err)?;
     let (mut targets, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
     if exit == Some(0) && !missing.is_empty() {
-        clean(
-            config,
-            &paths.target,
-            &missing.into_iter().collect::<Vec<_>>(),
-        )?;
+        let mut retry_packages = missing.into_iter().collect::<Vec<_>>();
+        if script_bootstrap.is_some() {
+            // The retry replaces the artifact journal. Preserve independent
+            // compilation authority by actually rebuilding supported scripts,
+            // rather than treating the retry's reused fresh=true binaries as
+            // fresh compilation. The same optional input owner stays alive.
+            retry_packages = super::build_inputs::family::bootstrap::Bootstrap::retry_packages(
+                &data,
+                retry_packages,
+            );
+        }
+        clean(config, &paths.target, &retry_packages)?;
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
             .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
         std::fs::remove_dir_all(paths.run.join("pending-receipts"))

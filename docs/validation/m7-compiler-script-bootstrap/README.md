@@ -143,3 +143,33 @@ byte admission only. They do not establish emulated storage throughput,
 calls can exceed the cooperative budget; supported-script acquisition may
 refuse. The scriptless workload avoids this extra acquisition entirely. The
 original whole workload must decide viability after native controls pass.
+### c2 warmup failure and source-only recovery
+
+The fresh original c2 benchmark failed during warmup after 889.987 seconds,
+before measured samples. Both repair attempts exited zero but remained Unknown
+with build-script declarations established during the run; neither was accepted.
+Current metadata confirms that serde is reachable only through indexmap's exact
+`cfg(any())` edge and never executes, while required observation coverage still
+includes it. The final repair retry journal contains five reused script binaries
+and one newly compiled vstd binary; independent bootstrap correctly refuses
+fresh compilation authority. The first attempt has six newly compiled scripts
+but no export, so these facts do not prove a complete failure explanation.
+
+The source-only follow-up excludes only that provably disabled role from
+unobserved script coverage and rebuilds eligible scripts during the existing
+missing-target retry under the same independent owner. All source/runtime roots,
+proof guards, Unknown handling, receipts and final `fresh=false` checks remain.
+Selecting the disabled package explicitly, or an ambiguous package selector,
+conservatively retains original cleaning. A unique explicit workspace-root
+selection keeps the false-edge exemption. Unsupported
+scripts still prevent publication; extra cleaning can increase first-run cost.
+
+The new real Cargo fixture has an active scripted dependency and a disabled
+script that fails if executed. It requires first-pass fresh compilation, refusal
+of the replaced reused journal, actual retry cleaning/recompilation, independent
+export admission and subsequent input-barrier readiness. It exercises shared
+production retry selection, not actual source-engine verification. Original
+controls remain unchanged. Native tests, strict checks, complete product gate
+and unchanged real-project warmups/benchmark are pending. The
+[source record](scheduling-recovery.json) binds sources and private metadata
+digests; no latency, speedup or M7 acceptance is claimed.
