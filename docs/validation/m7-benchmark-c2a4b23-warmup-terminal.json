@@ -1,0 +1,160 @@
+{
+  "schema": 1,
+  "kind": "original-c2-whole-benchmark-terminal",
+  "status": "FAIL",
+  "scope": "fresh original three-round HumanEval/Vest benchmark; Current warmup refusal before measured samples",
+  "source_commit": "c2a4b2363b415aa2157fc38dc388192125b87109",
+  "source_archive_sha256": "590c4fd2de781a9312393d73d0bd0256bfe92b403be6640eaa6c321f11746a11",
+  "execution_grant_sha256": "f66180acb44bad138566ac494cd436ef79a82b4f7b64463e601ca22f9f6d6d19",
+  "controller_sha256": "b79112b5674b00dc3d16df8ca577c5873b471d48b2e41e3173f993a2ec09df90",
+  "original_bounds": {
+    "rounds": 3,
+    "per_invocation_s": 600,
+    "minimum_median_speedup_each_project": 2
+  },
+  "host_elapsed_s": 889.987016208,
+  "native_elapsed_s": 885.1036707789999,
+  "native_phases": [
+    {
+      "name": "prepare",
+      "status": "PASS",
+      "exit_code": 0,
+      "elapsed_seconds": 7.83418454599996,
+      "log_sha256": "5230c4cdd49e86f56dd0d5e750b21bf6e78194ae4d67e40f4bc9ead3c2e0b7b4"
+    },
+    {
+      "name": "run",
+      "status": "FAIL",
+      "exit_code": 1,
+      "elapsed_seconds": 877.2510925259999,
+      "log_sha256": "2ecb98aca34151c916393ddb0a37ace93f91821ec13ac669534116adf647157d"
+    }
+  ],
+  "terminal_error": "error[SAIL0940]: SAIL0942: repair warmup lacks Current accepted full evidence",
+  "second_required_repair_warmup": {
+    "accepted": false,
+    "compiler_invocations": 3,
+    "batched": true,
+    "focus": {
+      "exit_code": 0,
+      "error": null,
+      "currentness": "unknown",
+      "notes": [
+        "Build-script input declarations were established during this run",
+        "Explicit focused evidence; independent full validation follows"
+      ]
+    },
+    "full": {
+      "exit_code": 0,
+      "error": null,
+      "currentness": "unknown",
+      "notes": [
+        "Build-script input declarations were established during this run"
+      ]
+    }
+  },
+  "results": {
+    "acceptance": {
+      "complete": false
+    },
+    "samples": [],
+    "warmups": [
+      {
+        "kind": "dependencies-and-solver",
+        "mode": "m6",
+        "project": "human-eval-verus",
+        "wall_ms": 202684.80092599997
+      },
+      {
+        "kind": "dependencies-and-solver",
+        "mode": "m7",
+        "project": "human-eval-verus",
+        "wall_ms": 201848.876259
+      },
+      {
+        "function": "human_eval_verus::human_eval_013::compute_gcd",
+        "kind": "focused-context",
+        "mode": "m6",
+        "project": "human-eval-verus",
+        "wall_ms": 102172.64325499992
+      },
+      {
+        "attempt": 0,
+        "function": "human_eval_verus::human_eval_013::compute_gcd",
+        "kind": "repair-context",
+        "mode": "m7",
+        "project": "human-eval-verus",
+        "state": "declarations-established",
+        "wall_ms": 192376.58054599978
+      }
+    ]
+  },
+  "postseals": {
+    "selected_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "runtime_artifacts": 13,
+    "source_files": 8,
+    "source_lock_sha256": "653e5c0c05bebc4d0d083a25c9aab6d3e78d397c3dcdf02b20286e1a5a1715a1",
+    "all_native_pre_post_equal": true
+  },
+  "closure": {
+    "same_container_birth_image": true,
+    "complete": true,
+    "candidates": [],
+    "unreadable": [],
+    "terminated_unreaped": [],
+    "scope": "Bounded post-cleanup metadata census; no environment or signals"
+  },
+  "host_file_seals": {
+    "controller.json": {
+      "bytes": 20916,
+      "sha256": "784a7ff71263012bb66c0069024f09bafe20de6a878658bd263f6a217d9d3671"
+    },
+    "primary.json": {
+      "bytes": 10644,
+      "sha256": "261822a1902fb4ee158f19d5c726bf715885c885d526e2e5f7169b04fb2f1f7a"
+    },
+    "stdout": {
+      "bytes": 57,
+      "sha256": "802d70492aaadfb555a31cbb58bec311eaf94a0f89ea38e8be01784b2d00cbb5"
+    },
+    "stderr": {
+      "bytes": 789,
+      "sha256": "487fb0d516dd14c1e09b63363eeca3b18f9841f287836edae9754493c18ed45a"
+    },
+    "native-raw.tar.gz": {
+      "bytes": 484575,
+      "sha256": "8f7e07cde3a1b2047175d4a7eed9209402278503ff5a2f90bc5159f20a8822f8"
+    }
+  },
+  "selected_archive_member_seals": {
+    "work/results/human-eval-verus/warm-repair-0-1/stdout.json": {
+      "bytes": 2380210,
+      "sha256": "169e8558b98f438abf51e237f687e0ff7947eb3be10f644e95447e9f0df39e09"
+    },
+    "work/results/results.json": {
+      "bytes": 1355,
+      "sha256": "13188abcb1adf6ee2e3a2d191dba4b083502e8d066d740f39114d98ade6d056c"
+    },
+    "work/run.log": {
+      "bytes": 78,
+      "sha256": "2ecb98aca34151c916393ddb0a37ace93f91821ec13ac669534116adf647157d"
+    },
+    "work/controller.json": {
+      "bytes": 8544,
+      "sha256": "0046bdd02c8f07594aef829258ff83220d312ae09f06353b7e309cc1661e905f"
+    }
+  },
+  "archive_verification": {
+    "regular_members": 659,
+    "expanded_regular_bytes": 9771095,
+    "method": "host streaming SHA-256 of every regular member, no extraction; complete compressed archive seal matches controller"
+  },
+  "limitations": [
+    "Verified exit zero does not imply Current or accepted full evidence",
+    "No measured samples, speedup or overall M7 acceptance",
+    "Prior c2 storage interruption and historical 730 binding failure remain separate scopes",
+    "Component/gate/solver/small repair passes do not qualify this failed real-project warmup",
+    "Host here-document read initially refused ENOSPC; subsequent reads streamed via python -c",
+    "This review starts no native actor and changes no original controller/oracle"
+  ]
+}

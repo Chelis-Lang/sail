@@ -147,7 +147,12 @@ It does not qualify current c2 readers; a fresh c2 replay remains required.
 The [c2 original benchmark attempt](validation/m7-benchmark-c2a4b23-interrupted.md)
 is interrupted by host checkpoint ENOSPC. [Separate recovery](validation/m7-benchmark-c2a4b23-recovery.md) retains three
 warmups and no measured samples; fourth M7 focus completion, original terminal,
-closure and final seals remain unknown. Earlier failed gates, repairs and
+closure and final seals remain unknown. A separate fresh
+[completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md)
+fails required Current warmup admission despite exit-zero verification, with
+no measured samples. Its full report names newly established build-script
+declarations; complete postseals and bounded closure do not promote Unknown
+evidence. Earlier failed gates, repairs and
 benchmarks retain their original status; no paired speedup or overall M7
 acceptance follows, and PR #74 remains draft.
 
@@ -158,7 +163,7 @@ acceptance follows, and PR #74 remains draft.
 | Repair workflow | Current c2 [release and private installations](validation/m7-product-c2a4b23-installation.md) pass. Its fresh [complete original CLI/MCP fixture](validation/m7-repair-c2a4b23-terminal.md) passes in 99.719 seconds with 325 operations, original 120/30/5 bounds and no cleanup/progress errors. | Frozen HumanEval/Vest recovery and measured whole-loop gains; small-fixture success does not qualify real-project performance. |
 | Responsive reads | Historical [installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both collectors; each retains 200 total samples across four concurrent clients: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Retained CLI/MCP and immutable-input checks pass in that scope. | Fresh current-c2 replay with the same complete graphs, independent freshness and original latency/lifecycle bounds; no historical pass transfer. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | Current [c2 attempt](validation/m7-benchmark-c2a4b23-interrupted.md) is interrupted on host checkpoint ENOSPC; [Separate recovery](validation/m7-benchmark-c2a4b23-recovery.md) retains three warmups and no measured samples, without a fourth M7 focus terminal or original closure. Historical [730 benchmark](validation/m7-benchmark-730a321-bootstrap-failure.md) fails required full Current warmup admission, with zero measured samples. c2 recovery controls pass, but no real-project benchmark benefit is established. | Recover actual owned outcomes, then complete the original three rounds, spread and at least 2× median improvement on each project with exact oracles; no inference from absent host streams. |
+| Frozen repair performance | A fresh [completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md) fails required Current admission: exit-zero repair warmup remains Unknown with a declarations-established note, and no measured samples. Earlier [storage interruption](validation/m7-benchmark-c2a4b23-interrupted.md), [partial recovery](validation/m7-benchmark-c2a4b23-recovery.md) and historical [730 binding failure](validation/m7-benchmark-730a321-bootstrap-failure.md) remain separate. c2 recovery controls pass, but no real-project benchmark benefit is established. | Correct real-project admission through original guards, then complete the original three rounds, spread and at least 2× median improvement on each project with exact oracles. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -278,8 +283,9 @@ Priority order for completing this milestone:
    standard conformance and cache fill/warm coverage.
 5. Preserve the qualified local controls for optional independent ordinary-build
    recovery; unsupported coverage retains original regeneration and Unknown proofs
-   remain unaccepted. Recover the interrupted c2 benchmark outcomes and establish
-   real-project recovery without claiming the old failed binding's cause.
+   remain unaccepted. Resolve the completed c2 warmup's repeated declaration
+   establishment through original guards; preserve the separate interruption and
+   old binding failure without claiming their causes.
    Then measure every
    frozen HumanEval and Vest repair cycle for three rounds, retaining
    spread and resources; meet at least twofold median improvement on each.

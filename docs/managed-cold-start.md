@@ -59,7 +59,10 @@ for the local cache trust boundary and effective environment binding.
 
 Optional independent ordinary-build recovery passes the complete local controls,
 emission sensitivity and original installed repair fixture on c2. Real-project
-benchmark recovery remains unqualified.
+benchmark recovery remains unqualified: the fresh
+[completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md)
+stops at required Current admission with a declarations-established note, even
+though verification exits zero. No measured samples are admitted.
 When a compatible generation is unavailable, original script cleaning and
 regeneration still occur. Before that mutation, the candidate acquires its own
 continuous coverage of supported script inputs, Cargo configuration and runtime
