@@ -11,10 +11,6 @@ repository.workspace = true
 name = "sail"
 path = "src/main.rs"
 
-[[example]]
-name = "job_read_bench"
-test = true
-
 [dependencies]
 notify.workspace = true
 ctrlc.workspace = true

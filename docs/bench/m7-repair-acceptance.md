@@ -156,102 +156,13 @@ and the workspace gate checks that it is up to date.
 ## Other M7 gates
 
 Read latency during active verification is measured separately by
-`scripts/m7-job-read-bench.py` (four clients, 200 reads, five-second deadline,
-p95 below 200 ms, every read bound to a live selected `rust_verify`). Unknown,
-Historical, unavailable and incomplete samples cannot satisfy it.
+`scripts/reader-gate.sh` (four clients, 200 reads, p95 below 200 ms, every
+sample Current); see [M7 validation, gate 5](../validation/m7.md#gate-5-responsive-reads).
 
 Correctness includes comparing cached and fresh lowering from the same compiler
 input: the actual ordered solver writes, framing and follow-ups. Missing or
 incomplete captures cannot pass. Stock verdict and diagnostic comparisons, and
 the local fast and standard corpus tiers, remain mandatory.
-
-## Real retained-job CLI/MCP integration
-
-`scripts/m7-retained-jobs-acceptance.py` consumes a completed genuine repair job
-from the separate human-eval or Vest workload. It requires accepted Current
-full evidence for exactly one requested package/target/kind and an exact unique
-function. A bounded Cargo metadata query resolves the exact expected package ID;
-job/full revisions must agree and all dependency reports must be complete and
-error-free. It neither establishes that proof nor edits catalogue sources.
-Pass `--sail`, `--project`, `--cache`, `--socket`, `--job`, `--package`, `--target`,
-`--kind`, `--function`, a fresh `--out` directory and `--environment-label`.
-
-The local Linux scenario checks the actual CLI and stdio MCP result, exact
-explanation, immutable named baseline and comparison, explicit missing-job and
-missing-function errors, and a proof cursor resumed across independent MCP
-connections. A cursor from another stream must return the existing explicit
-`SAIL0902` error through its CLI/MCP projection; an actual journal gap remains
-incomplete evidence. Replaying a completed cursor must preserve its exact
-events. The [original conflicting assertion and corrected real run](../validation/m7.md)
-are retained separately. The scenario then submits one explicitly forced owned
-repair, observes its actual worker and descendants through kernel identities,
-cancels that job and requires those processes to stop. The externally supplied
-completed job and its original evidence must survive unchanged. Cleanup cancels
-only the new owned job and closes only this scenario's MCP sessions.
-
-The scenario keeps the 120-second workflow, 30-second CLI command and five-second
-RPC limits. Each MCP response, including decoding, uses one absolute five-second
-deadline; a partial frame cannot restart it. A collector audit corrected MCP's
-previous use of the 30-second command allowance before real-project integration
-was qualified. Admission and deadline regressions exercise the actual collector;
-they do not manufacture proof evidence. All public responses, diagnostics, operation durations and
-cleanup outcomes are retained; private environments are not copied. Passing
-this integration does not replace the three-round performance workload, source
-oracle, full corpus conformance, or concurrent-read latency census.
-
-## Reproducible warm-reader preparation
-
-`scripts/m7-reader-acceptance.py` prepares the reader workload from an explicitly
-supplied source-only Cargo workspace. Supply the immutable product and collector
-directories, their `freeze.json` files, the qualified source runtime, and the
-exact package, target kind and function:
-
-```sh
-python3 scripts/m7-reader-acceptance.py \
-  --bin-dir acceptance/product --source-runtime acceptance/qualified-engine \
-  --source-workspace acceptance/pinned-source-only \
-  --python-probe acceptance/probes/python-reader-probe.py \
-  --probe-bin-dir acceptance/probes --out acceptance/reader-evidence \
-  --package human-eval-verus --target human_eval_verus --kind lib \
-  --function human_eval_verus::human_eval_013::compute_gcd \
-  --environment-label linux-x86_64-local --setup-timeout 0 --keep-daemon
-```
-
-The workspace must already have the corpus's supported Cargo manifest and pinned
-dependency paths. The controller makes fresh baseline and active source copies,
-excluding actual Cargo output; it never copies target artifacts or receipts. In
-each copy it first runs ordinary independent full verification, then establishes
-the exact interactive repair-function context. It records every preparation
-invocation, result, elapsed time and failure. Only the catalogue's explicit
-first-run input-declaration transition permits one establishment rerun. Other
-Unknown, Historical, incomplete, wrong-scope or failed original reports reject
-admission. When the exact owned worker output records an independently complete,
-successful Current full proof but the public daemon projection is temporarily
-Unknown, preparation waits on that same completed job. It records every public
-status and result read and requires eventual public Current; it neither rewrites
-Unknown evidence nor starts another proof for projection establishment.
-
-`--setup-timeout 0` explicitly permits this unmeasured dependency and context
-preparation to finish, with progress output and owned-process cancellation.
-The default preparation budget is 600 seconds per job, covering submission,
-terminal completion and any projection establishment together. Preparation is
-separate from read-latency acceptance: both workspaces must have independently
-complete, successful Current full reports before the measured actor starts.
-The original Python and Rust collectors each retain four clients, 200 samples,
-five-second RPC deadlines, exact selected-crate ancestry and p95 below 200 ms.
-Their own process bound remains 600 seconds. A passing collector cannot replace
-missing or stale full evidence, and the earlier cold 600-second failure remains
-in the acceptance record.
-
-For a new acceptance attempt requiring cold dependency/context preparation,
-use `--prepare-contexts --setup-timeout 600`. It records a distinct unmeasured
-preparation phase in those same owned workspaces, then restores the original
-600-second ordinary and exact-context checks before either frozen collector.
-Ordinary incremental checks may use receipts legitimately established in that
-workspace; the repair submission still completes its independent full proof.
-Retain every preparation job and its total cost. This option cannot change the
-collector bounds or turn the entire acceptance into a zero-timeout run. See
-the [reader guide](../reader-acceptance.md).
 
 `ci/local.sh e2e` retains managed-phase evidence under
 `target/managed-acceptance` and repair evidence under `target/repair-acceptance`;

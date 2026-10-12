@@ -234,19 +234,11 @@ RS
     # Heavyweight and tooling checks that are not product regressions a PR
     # must catch quickly. Run before releases and when changing what they cover.
     local_only release "$@"
-    # Acceptance and benchmark tooling (docs/reader-acceptance.md,
-    # docs/native-product-setup.md, docs/result-frame-profile.md) and the
-    # harness helpers of the e2e phases.
-    python3 scripts/test-m7-owned-actors.py
-    python3 scripts/test-m7-job-read-bench.py
-    python3 scripts/test-m7-retained-jobs-acceptance.py
-    python3 scripts/test-m7-reader-acceptance.py
-    python3 scripts/test-m7-native-product.py
-    python3 scripts/test-m7-result-frame-profile.py
+    # Benchmark tooling (docs/result-frame-profile.md) and the harness
+    # helpers of the e2e phases.
     python3 scripts/test-managed-timeout-evidence.py
     python3 ci/test-repair-lifecycle.py
     python3 ci/test-mcp-live-service-controller.py
-    # job_read_bench's tests already run in the gate (test = true).
     cargo test --locked -p sail-api --example result_frame_profile \
       --example result_client_profile --example result_stream_profile
     sail_checkout="$PWD"

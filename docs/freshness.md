@@ -184,54 +184,12 @@ validation proceeds. It never hashes the full runtime before returning a durable
 job id. MacOS retains conservative full revalidation as a secondary platform;
 Linux latency bounds do not describe that fallback.
 
-## Local product-client read census
+## Reader latency
 
-The independent Python census remains `scripts/m7-job-read-bench.py`. An additive
-Rust probe uses the installed product protocol client, including its complete
-response decoding and unchanged five-second I/O deadlines:
-
-```sh
-cargo build --release -p sail-cli --example job_read_bench
-target/release/examples/job_read_bench \
-  --socket CACHE_SOCKET --job COMPLETED_JOB --active-job RUNNING_JOB \
-  --active-worker OWNED_REPAIR_WORKER_PID \
-  --active-crate human_eval_verus \
-  --environment 'Linux container; record architecture, emulation and load' \
-  --out reader-census.json
-```
-
-It is Linux and local-only: four readers start together and make 200 status/result
-reads. Every sample must preserve Current evidence and both input revisions, with
-no infrastructure error; complete typed project reports and repair envelopes are
-validated without dropping functions. The selected worker must belong to the
-running project's directory. The same non-stopped, non-zombie Rust verifier PID,
-kernel start time and ancestry must be present before and after every timed
-read, with its actual `--crate-name` matching the requested proof crate.
-Dependency compilation, vstd, a stopped process or a different crate do not
-qualify as an independently active selected-target verification.
-Both p95 latencies must stay below 200 ms. Unknown evidence, lost verifier activity,
-RPC errors and slow reads fail; failed samples remain in the result artifact.
-A successful Rust probe does not erase or waive a failed Python census.
-
-Reproduce the complete preparation and both censuses with
-`scripts/m7-reader-acceptance.py`, following
-[the local acceptance guide](bench/m7-repair-acceptance.md#reproducible-warm-reader-preparation).
-Its ordinary full verification and exact repair-function context are separate
-proof-setup steps. Compatible source-engine selectors can share ordinary Cargo
-artifacts, but their proof contexts and receipts remain independent; warming a
-stock target does not by itself establish the repair proof. Setup costs
-and every initial Unknown result are retained. Preparation is not a speedup or
-reader-latency sample, and no copied receipt supplies the baseline proof.
-
-The local a6/b346 reader run is a latency and lifecycle diagnostic of that exact
-older product/runtime pair, not final M7 acceptance or source-candidate selection.
-Earlier failures and interruptions remain in `docs/validation/`, including
-[the cold setup failure](validation/m7.md),
-[the prior reader failure](validation/m7.md) and
-[the interrupted diagnostic](validation/m7.md).
-Cheap Running-status polls, an accepted baseline proof, kernel unit tests and a
-static source review each establish their own narrower facts; none substitutes
-for both complete four-reader censuses under an actual selected-target verifier.
+The M7 reader gate (four clients, 200 Status and Result reads, p95 below
+200 ms, every sample Current while another verification runs) is measured
+with `scripts/reader-gate.sh`; see
+[M7 validation, gate 5](validation/m7.md#gate-5-responsive-reads).
 
 For local diagnosis only, `SAIL_FRESHNESS_TRACE=1` records static freshness
 stage/reason labels and elapsed microseconds on daemon stderr. It emits no input
