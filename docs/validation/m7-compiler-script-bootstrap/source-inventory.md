@@ -162,3 +162,22 @@ Acceptance byte installation separately passes in 4.494 seconds, with exact
 producer/acceptance files, source archive and births. No proof/cache state is
 copied. Current readers, complete standard/cache coverage and new real-project
 performance remain unqualified.
+
+The separate post-recovery frozen 387 benchmark remains FAIL after 1,994.895
+seconds. All three HumanEval contexts become ready, then the first measured GCD
+repair refuses the original one-compiler-driver requirement (SAIL0942). M7's
+full report is Current/accepted, batched is true and notes are empty, but it
+uses three compiler invocations, zero reused targets and 160,632.723 ms runner
+wall time. M6 focus returns Unknown with SAIL3107 after 15.41 external seconds;
+its independent full report is Current/exit zero with three invocations and
+95,344.545 ms runner wall time. These are failed-attempt observations, not
+accepted samples or speedup evidence. Zero samples are retained; Vest is
+unreached. The cause of the three invocations is not established by these facts.
+
+Source/product/runtime seals and container birth match. Native seal closure and
+the complete bounded two-process census pass, with no candidates, unreadable
+rows or unreaped tasks. This does not certify arbitrary orphan absence. The
+935,374-byte raw archive is hash-bound in the existing JSON; scratch and both
+cache trees are excluded from that archive but retained natively. Historical
+57a infrastructure and b895 warmup failures remain unchanged. Current 387
+reader execution is running separately, without an acceptance result.

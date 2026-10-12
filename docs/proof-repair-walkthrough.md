@@ -8,7 +8,7 @@ original 120/30/5 limits. Named-baseline feature smoke passed separately on
 `57a319d`; it supplies no transferred current-product reader or performance credit.
 The [b895 reader/retained pass](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
 remains historical: both unchanged collectors preserve full Current graphs and
-p95 below 200 ms. Current 387 readers are prepared only, without collector or
+p95 below 200 ms. Current 387 readers are running separately, without collector or
 retained-workflow acceptance. Real-project M7 speed and complete standard/cache
 coverage remain unfinished.
 See [the roadmap](ROADMAP.md),

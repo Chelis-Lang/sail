@@ -115,8 +115,8 @@ passes in 89.720/2.282 seconds, followed by exact acceptance byte installation
 in 4.494 seconds. Its unchanged original CLI/MCP repair passes in 90.588
 seconds with 299 operations and original 120/30/5 limits. Current readers,
 complete conformance and real-project performance remain unqualified. The
-current reader scope is prepared only; no collector or retained workflow result
-is claimed. The earlier `b89546c` product's complete local gate, 41/41 original
+current reader execution is running separately; no collector or retained
+workflow acceptance result is claimed. The earlier `b89546c` product's complete local gate, 41/41 original
 solver controls, ordinary release, private and acceptance installations, and
 unchanged CLI/MCP repair fixture pass. The original three-round benchmark failed
 on the first concatenate repair warmup: verification exited zero, but the full
@@ -156,6 +156,12 @@ Ordinary new product release/private/acceptance installations and original
 repair pass separately; broader product acceptance remains pending. The [existing cleanup record](validation/m7-unused-intermediates-20261012.json)
 preserves the initial 20,288-entry refusal and later exact 156-subtree retirement,
 without attributing physical backing-space recovery.
+The separate recovered 387 benchmark also fails before accepted measurement:
+its first measured GCD is Current/accepted and batched, but uses three compiler
+invocations against the original one-driver requirement. It retains zero
+samples and Vest is unreached. Seals/birth match and bounded closure completes;
+[existing evidence](validation/m7-compiler-script-bootstrap/source-inventory.json)
+records the failed attempt without a speedup or invocation-cause claim.
 Remaining delivery gates are complete current standard/cache conformance and
 the two real-project speed thresholds. PR #74
 remains draft.
@@ -350,19 +356,20 @@ Priority order for completing this milestone:
    Preserve failed historical scopes and original bounds.
 2. Preserve the selected 387 [gate, product installations and original repair
    pass](validation/m7-compiler-script-bootstrap/source-inventory.json). Current
-   readers are prepared; neither collector nor retained CLI/MCP has run in that
-   scope. Historical b895 readers remain a separate pass. Preserve complete
+   reader execution is running; no collector or retained CLI/MCP acceptance
+   result is available yet. Historical b895 readers remain a separate pass. Preserve complete
    reports, independent freshness, active-verifier continuity and lifecycle
    limits when executing the current reader workload. These unpaired scopes do
-   not isolate
-   the contribution of metadata preservation, output-owner overlap or dependency
+   not isolate the contribution of metadata preservation, output-owner overlap or dependency
    reuse, and do not establish real-project whole-loop speedups.
 3. Retain source qualification and the selected runtime's exact delivery identity
    alongside product evidence. Keep proof contexts and receipts independent of
    shared ordinary Cargo artifacts; no focused success can replace full validation.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
-5. Complete the running frozen 387 benchmark while preserving the historical
+5. Resolve the frozen 387 benchmark's first measured GCD one-driver refusal
+   without changing its original check; the full result is Current/accepted
+   but uses three compiler invocations. Preserve zero samples and the historical
    b895 Historical warmup refusal and its original Current admission. Qualify
    every frozen HumanEval
    and Vest repair cycle: three rounds, spread and resources, with at least

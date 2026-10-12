@@ -13,8 +13,8 @@ retains 200 total samples, full Current graphs and the same live verifier.
 Python Result/Status p95 is 91.227/56.989 ms; Rust is 83.867/44.371 ms, below
 the original 200 ms bound. Current `387ba80` separately passes its
 [complete gate/solver, product installations and original repair fixture](validation/m7-compiler-script-bootstrap/source-inventory.json).
-Its reader scope is prepared only; neither collector nor retained CLI/MCP has
-run in that scope. The historical b895 pass grants it no reader credit.
+Its reader execution is running separately; no collector or retained CLI/MCP
+acceptance result is available yet. The historical b895 pass grants it no reader credit.
 
 The earlier [frozen `730a321` product](validation/m7-reader-730a321-terminal.md) passes
 this complete workflow: both unchanged four-client collectors retain 200 samples,

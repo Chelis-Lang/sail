@@ -39,6 +39,14 @@ readers, complete standard/cache coverage or real-project repair performance.
 
 For current experimental repair use:
 
+- The frozen 387 post-recovery benchmark fails on its first measured GCD:
+  full verification is Current/accepted and batched, but requires three
+  compiler invocations against the unchanged one-driver check. Zero accepted
+  samples are retained and Vest is unreached. Matching seals and complete
+  bounded closure do not supply performance acceptance or explain the
+  invocation count. The [existing record](validation/m7-compiler-script-bootstrap/source-inventory.json)
+  preserves the full failed scope; current readers are running separately.
+
 - The original real-project `730a321` benchmark fails before measured rounds:
   the second HumanEval repair warmup loses input freshness at a namespace
   binding and correctly returns unaccepted Unknown evidence. The exact changed

@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Selected387ba80 complete gate/solver, ordinary release/private/acceptance installations and original CLI/MCP repair PASS; current readers, complete standard/cache conformance and new real-project benchmark unqualified. Historical57a baseline smoke PASS/benchmark FAIL preserved.",
+  "status": "Selected387ba80 complete gate/solver, release/install and original repair PASS. Frozen original benchmark FAIL first measured GCD one-driver requirement, zero samples/Vest unreached; current readers running without result, standard/performance/M7 unqualified.",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -992,5 +992,100 @@
     "job_elapsed_basis": "GitHub completedAt minus startedAt, including job setup/teardown; no inferred test counts",
     "raw_json_sha256": "9763c830485389c21b81ffb952bfc5e76f602c80a0a5e00e0b729434fffadfd1",
     "qualification": "Native CI at this exact pushed commit only. Later commits, current local readers, complete standard/cache and real-project benchmark receive no transferred acceptance."
+  },
+  "recovered_original_real_project_benchmark": {
+    "status": "FAIL",
+    "source_commit": "387ba808794c2e5d283a35d1150196c0611da84a",
+    "source_archive_sha256": "6017057cfbf3279af6b14a41905b42f21c26f09151666bc6c0909865c69ed230",
+    "run_id": "fresh-post-recovery",
+    "elapsed_seconds": 1994.894653417,
+    "exit_code": 1,
+    "original_rounds": 3,
+    "original_invocation_seconds": 600,
+    "original_minimum_speedup_each_project": 2,
+    "refusal": "error[SAIL0940]: SAIL0942: established repair did not use one compiler driver",
+    "stage": "First measured HumanEval GCD; all three HumanEval contexts ready",
+    "measured_samples": 0,
+    "Vest": "unreached",
+    "M7": {
+      "accepted": true,
+      "full_currentness": "current",
+      "full_exit_code": 0,
+      "batched": true,
+      "compiler_invocations": 3,
+      "reused_targets": 0,
+      "wall_ms": 160632.722531,
+      "notes": []
+    },
+    "M6": {
+      "focus_currentness": "unknown",
+      "focus_error": {
+        "code": "SAIL3100",
+        "message": "error[SAIL3107]: selected Cargo targets did not produce proof receipts after a fresh verification"
+      },
+      "focus_external_elapsed_seconds": 15.41,
+      "full_currentness": "current",
+      "full_exit_code": 0,
+      "full_execution": {
+        "verifier_invocations": 3,
+        "reused_targets": 0,
+        "wall_ms": 95344.545127
+      }
+    },
+    "native_phase_outcomes": [
+      {
+        "name": "prepare",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 6.473205337000763,
+        "log_sha256": "de9f22d305c05acbd6bb5e6f593f184098dbf1b454ad74e30ac1efc0e89fd9e3"
+      },
+      {
+        "name": "run",
+        "status": "FAIL",
+        "exit_code": 1,
+        "elapsed_seconds": 1984.0770774030007,
+        "log_sha256": "f5d7db592c4cb88ad40dd27dba70bc3eac7e06a929cd4cc4f49650dad359cb8e"
+      }
+    ],
+    "before_after_source_product_runtime_seals_equal": true,
+    "container_identity_birth_unchanged": true,
+    "closure_complete": true,
+    "closure": {
+      "scope": "Bounded post-cleanup metadata census; no environment or signals",
+      "candidates": [],
+      "unreadable": [],
+      "terminated_unreaped": [],
+      "census_excluded": [
+        {
+          "pid": 52528,
+          "state": "R",
+          "ppid": 0,
+          "pgid": 52528,
+          "start_ticks": 1320200
+        }
+      ],
+      "complete": true,
+      "scanned": 2,
+      "elapsed_seconds": 0.033761417000278016
+    },
+    "closure_scope": "Complete bounded metadata census of two observed processes only; no arbitrary orphan-absence claim",
+    "raw_archive": {
+      "bytes": 935374,
+      "sha256": "97070961c28e2b8841f3b0c7843ec2a448080968cb982817f0805feda524df07"
+    },
+    "archive_exclusions": [
+      "work/scratch",
+      "work/results/cache-m6",
+      "work/results/cache-m7"
+    ],
+    "native_originals_preserved": true,
+    "evidence_sha256": {
+      "controller.json": "643038cd629c0dd156383342d53fa5fb91af668621b8f9a7cf7669f16fc49a48",
+      "primary.json": "2c0a3909549c5ed9cba6621bcd63cd83aae1e82eac825a949a2506d7ebd5e8b0",
+      "stderr": "110888d4142f63a919cee68f72475962f4f88e285ea9b6513dce4710a67af41b",
+      "native-raw.tar.gz": "97070961c28e2b8841f3b0c7843ec2a448080968cb982817f0805feda524df07"
+    },
+    "qualification": "Current acceptance/batched true does not satisfy the original one-compiler-driver requirement. No speedup/performance/M7 acceptance; no inferred cause for the three invocations. Current reader execution is a separate running scope."
   }
 }

@@ -50,8 +50,8 @@ passes both unchanged collectors: each retains 200 total samples across four
 concurrent clients (100 Result and 100 Status reads), with complete Current
 graphs and p95 below 200 ms, followed by retained CLI/MCP scenarios. The
 [730 reader pass](docs/validation/m7-reader-730a321-terminal.md) remains a separate historical scope.
-Current-product readers are prepared only; no collector or retained-workflow
-result is claimed for 387. Twofold real-project repair-loop improvement and
+Current-product readers are running separately; no collector or retained-workflow
+acceptance result is claimed for 387. Twofold real-project repair-loop improvement and
 complete standard/cache coverage remain outstanding;
 M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
 See [current validation](docs/validation/m7-compiler-script-bootstrap/source-inventory.json) and
@@ -60,7 +60,10 @@ See [current validation](docs/validation/m7-compiler-script-bootstrap/source-inv
 Optional ordinary-build recovery passes its local controls and installed repair
 fixture. The earlier c2 [real-project benchmark](docs/validation/m7-benchmark-c2a4b23-warmup-terminal.md)
 fails Current warmup admission despite exit-zero verification and produces no
-measured samples. Current real-project validation remains unqualified.
+measured samples. The recovered 387 benchmark also fails its original one-driver requirement:
+its first measured GCD full result is Current/accepted but uses three compiler
+invocations. Zero accepted samples are retained and Vest is unreached; no
+real-project speedup or invocation cause is claimed.
 The earlier b895 [whole benchmark](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
 also fails admission: a later repair verifies but its full evidence is Historical.
 It has zero measured samples; the cause remains unestablished.
