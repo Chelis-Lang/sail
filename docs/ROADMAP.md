@@ -122,8 +122,12 @@ Later combined source `57a319d` passes its [complete local gate and original
 solver suite](validation/m7-compiler-script-bootstrap/source-inventory.json):
 673/673 workspace tests, all remaining gate steps and 41/41 solver tests.
 This includes the declared source-inventory repair and MCP baseline lifecycle.
-Its ordinary release/private installation is still running; installed-product
-repair/readers, conformance and real-project performance receive no transferred credit.
+Its ordinary release (93.661 seconds) and owned private installation (2.444
+seconds) also pass with the same source and qualified engine identities. The
+original installed CLI/MCP repair fixture also passes in 95.684 seconds with
+315 operations under unchanged 120/30/5-second limits. Separate named-baseline
+feature smoke is running; readers, conformance and real-project performance
+receive no transferred credit.
 Remaining delivery gates are complete current standard/cache conformance and
 the two real-project speed thresholds. PR #74
 remains draft.

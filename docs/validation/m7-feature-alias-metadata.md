@@ -36,10 +36,14 @@ verifier arguments. This fixture is a source reproduction, not an executed
 current-product or wrong-verdict claim.
 
 The correction factors the actual metadata command constructor and forwards
-only the known `-F` forms unchanged. Draft controls inspect that exact constructor
+only the known `-F` forms unchanged. Two native controls inspect that exact constructor
 for `-F enabled`, `-Fenabled`, `-F=enabled` and both original long forms, repeated
 mixed selectors, manifest/locked flags, the first `--` cutoff and a missing value.
 The request vector is unchanged, so proof/compiler context keys do not normalize
-feature arguments. Native controls, strict and complete-product validation are
-pending. This issue does not explain the separate b895 benchmark failure:
+feature arguments. Both constructor controls pass in the complete `57a319d`
+gate (0.060 and 0.065 seconds), together with strict checks and all 673 workspace
+tests. The [source inventory record](m7-compiler-script-bootstrap/source-inventory.json)
+binds the exact gate log and affected control names. Ordinary release/private
+installation also passes; execution of this feature-gated fixture, installed
+smoke checks and benchmark acceptance remain unqualified. This issue does not explain the separate b895 benchmark failure:
 its original arguments use `--package` and `--lib`, without a feature alias.
