@@ -231,6 +231,12 @@ performance remain outstanding. Emulated local Linux runs are
 authorized and labelled; native-host reference reruns are for later. Limits,
 full reports and exact oracles remain unchanged.
 
+A [separate closed-build cleanup](validation/m7-single-incremental-retirement-20261012.json)
+removes 54 unshared incremental files from one old benchmark compiler family
+(274,223,104 allocated file bytes). It preserves 945 hardlinked files and every
+other entry in that audited subtree. Earlier inventory refusals remain failed;
+this narrow cleanup grants no proof or whole-cache validation credit.
+
 The [retained integration history](validation/m7-core-integration-history-84346e2.md),
 [earlier workstream history](validation/m7-workstream-history-cc0898e.md),
 [known issues](known-issues.md) and [acceptance guide](bench/m7-repair-acceptance.md)
