@@ -166,15 +166,11 @@ pub(super) fn result_frame(
     if job.status.state != Lifecycle::Completed || job.projection.is_none() {
         return encode_result(result(state, job)?).map(Into::into);
     }
-    let key = trace.measure(Stage::FrameKey, || {
-        serde_json::to_vec(job)
-            .map(|bytes| stdout_digest(&bytes))
-            .map_err(io::Error::other)
-    })?;
     let projection = job
         .projection
         .as_ref()
         .ok_or_else(|| io::Error::other("SAIL0816: missing result seal"))?;
+    let key = trace.measure(Stage::FrameKey, || frame_key(job, projection))?;
     if let Some(frames) = trace.measure(Stage::FrameLookup, || state.result_cache.get(&key))
         && let Some(currentness) = state.outputs.validate(&frames, trace, |trace| {
             trace.measure(Stage::Freshness, || {
@@ -252,6 +248,25 @@ pub(super) fn result_frame(
     trace.end(Stage::Encode, encode_started);
     Ok(selected)
 }
+/// Identity of a completed job's immutable frame family. It binds exactly what
+/// the encoded frames are built from: the public status, the result mode and
+/// the sealed stdout digest. Unlike the whole stored record, it excludes the
+/// submission environment, which the frames never contain.
+fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
+    #[derive(Serialize)]
+    struct Key<'a> {
+        status: &'a Status,
+        repair: bool,
+        stdout_sha256: &'a str,
+    }
+    serde_json::to_vec(&Key {
+        status: &job.status,
+        repair: matches!(job.submission.mode, sail_api::jobs::Mode::Repair(_)),
+        stdout_sha256: &projection.stdout_sha256,
+    })
+    .map(|bytes| stdout_digest(&bytes))
+    .map_err(io::Error::other)
+}
 fn encode_result(document: ResultDocument) -> io::Result<Arc<Vec<u8>>> {
     let mut bytes = Vec::new();
     sail_api::jobs::write_frame(&mut bytes, &sail_api::jobs::Response::Result(document))?;
@@ -298,6 +313,25 @@ pub(super) fn status_traced(
         // Older records have no validated projection: retain the complete parse.
         return result(state, job).map(|document| document.job);
     };
+    // A continuously guarded output owner, established for this exact frame
+    // family by an earlier Result, certifies the sealed stdout bytes without
+    // rereading them. Its barriers bracket the independent freshness check
+    // exactly as on the Result path. Otherwise, repeat the complete read/SHA.
+    if let Ok(key) = frame_key(job, projection)
+        && let Some(frames) = state.result_cache.get(&key)
+        && let Some(currentness) = state.outputs.validate(&frames, trace, |trace| {
+            trace.measure(Stage::Freshness, || {
+                projected_currentness(state, job, projection)
+            })
+        })
+    {
+        trace.output_guarded(true);
+        trace.currentness(currentness);
+        let mut status = job.status.clone();
+        status.currentness = currentness;
+        return Ok(status);
+    }
+    trace.output_guarded(false);
     let _validated = trace.measure(Stage::OutputSeal, || project_bytes(state, job))?;
     let mut status = job.status.clone();
     status.currentness = trace.measure(Stage::Freshness, || {
@@ -395,6 +429,109 @@ mod output_fallback_tests {
         let result = result_frame(state, job, &mut Trace::disabled());
         (result, counts())
     }
+    #[cfg(target_os = "linux")]
+    fn measured_status(state: &State, job: &Stored) -> (io::Result<Status>, Probe) {
+        PROBE.with_borrow_mut(|probe| *probe = Some(Probe::default()));
+        let result = status_traced(state, job, &mut Trace::disabled());
+        (result, counts())
+    }
+    #[cfg(target_os = "linux")]
+    fn completed_job(state: &State, root: &Path) -> (Stored, PathBuf, Vec<u8>) {
+        let project =
+            super::currentness_note_tests::project(sail_api::project::Currentness::Current);
+        let bytes =
+            serde_json::to_vec(&project).unwrap_or_else(|error| unreachable!("fixture: {error}"));
+        let mut job = Stored::new(Submission {
+            mode: sail_api::jobs::Mode::Stock,
+            project_dir: root.to_path_buf(),
+            args: Vec::new(),
+            force: false,
+            environment: BTreeMap::new(),
+            input_revision: None,
+        });
+        job.status.state = Lifecycle::Completed;
+        job.projection = Some(Projection::validated(&bytes, &project));
+        let directory = state.root.join(&job.status.id);
+        assert!(std::fs::create_dir_all(&directory).is_ok());
+        let path = directory.join("stdout");
+        assert!(std::fs::write(&path, &bytes).is_ok());
+        (job, path, bytes)
+    }
+
+    /// Status reuses a Result's continuously guarded output owner instead of
+    /// rereading stdout; contention, a write bracketed by its own freshness
+    /// check and any later invalidation all repeat the complete read and hash.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn status_reuses_guarded_output_and_falls_back_on_any_doubt() {
+        static SERIAL: AtomicU64 = AtomicU64::new(0);
+        let root = std::env::temp_dir().join(format!(
+            "sail-store-status-{}-{}",
+            std::process::id(),
+            SERIAL.fetch_add(1, Ordering::Relaxed)
+        ));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let server = super::super::bind(
+            &root.join("socket"),
+            &root.join("jobs"),
+            Path::new("/bin/true"),
+        )
+        .unwrap_or_else(|error| unreachable!("fixture: {error}"));
+        let state = &server.state;
+        let (job, path, bytes) = completed_job(state, &root);
+        let worker = super::super::output_service::Queue::spawn(&state.outputs)
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        // Without any frame family, Status keeps the original complete check.
+        let (unguarded, unguarded_probe) = measured_status(state, &job);
+        let first = result_frame(state, &job, &mut Trace::disabled());
+        let idle = state.outputs.idle_for_test();
+        let projection = job.projection.as_ref().unwrap_or_else(|| unreachable!());
+        let key = frame_key(&job, projection).unwrap_or_else(|e| unreachable!("key: {e}"));
+        let frames = state
+            .result_cache
+            .get(&key)
+            .unwrap_or_else(|| unreachable!("cached family"));
+        let (guarded, guarded_probe) = measured_status(state, &job);
+        let lock = frames
+            .output
+            .lock()
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let (busy, busy_probe) = measured_status(state, &job);
+        drop(lock);
+        PROBE.with_borrow_mut(|probe| {
+            *probe = Some(Probe {
+                restore: Some((path.clone(), bytes.clone())),
+                ..Probe::default()
+            });
+        });
+        let restored = status_traced(state, &job, &mut Trace::disabled());
+        let restored_probe = counts();
+        let (after, after_probe) = measured_status(state, &job);
+        assert!(std::fs::write(&path, b"wrong persisted SHA").is_ok());
+        let (wrong, _) = measured_status(state, &job);
+        state.outputs.stop();
+        let joined = worker.join().is_ok();
+        drop(frames);
+        drop(server);
+        assert!(std::fs::remove_dir_all(&root).is_ok());
+        assert!(idle && joined && first.is_ok());
+        let expected = unguarded.unwrap_or_else(|e| unreachable!("status: {e}"));
+        assert_eq!((unguarded_probe.reads, unguarded_probe.freshness), (1, 1));
+        for status in [guarded, busy, restored, after] {
+            let status = status.unwrap_or_else(|e| unreachable!("status: {e}"));
+            assert_eq!(status.currentness, expected.currentness);
+            assert_eq!(status.id, expected.id);
+        }
+        assert_eq!((guarded_probe.reads, guarded_probe.freshness), (0, 1));
+        assert_eq!((busy_probe.reads, busy_probe.freshness), (1, 1));
+        // A write during the guarded freshness check fails the closing barrier;
+        // the complete read and an independent freshness check follow.
+        assert!(restored_probe.writes_ok);
+        assert_eq!((restored_probe.reads, restored_probe.freshness), (1, 2));
+        // The failed owner is sticky: every later Status rereads.
+        assert_eq!((after_probe.reads, after_probe.freshness), (1, 1));
+        assert!(wrong.is_err_and(|e| e.to_string().starts_with("SAIL0816:")));
+    }
 
     #[cfg(target_os = "linux")]
     #[test]
@@ -438,7 +575,11 @@ mod output_fallback_tests {
             .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         let first = result_frame(state, &job, &mut Trace::disabled());
         let idle = state.outputs.idle_for_test();
-        let key = stdout_digest(&serde_json::to_vec(&job).unwrap_or_default());
+        let key = frame_key(
+            &job,
+            job.projection.as_ref().unwrap_or_else(|| unreachable!()),
+        )
+        .unwrap_or_else(|e| unreachable!("key: {e}"));
         let frames = state
             .result_cache
             .get(&key)
