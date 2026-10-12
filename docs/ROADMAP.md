@@ -110,8 +110,13 @@ candidate.
 
 ### Current state
 
-Closed host build targets were [losslessly archived](validation/m7-closed-host-targets-20261011.md), retaining test images and raw logs while reducing their logical storage by about 805 MB. Active Linux builds and runtimes are preserved.
-A later whole-volume archival failed on host space before removing its original. After Docker recovery, [unused build intermediates](validation/m7-unused-intermediates-20261012.json) were removed from three unreferenced Sail targets: 1.99 GB logical bytes, with all 278 executable/library hashes checked afterward. Data volumes and active targets remain intact; resumed validation uses fresh container identities.
+The selected product is `b89546c`. Its complete local gate, 41/41 original
+solver controls, ordinary release, private and acceptance installations, and
+unchanged CLI/MCP repair fixture pass. The original three-round HumanEval/Vest
+benchmark is running; no measured samples, speedup or M7 acceptance are claimed.
+The remaining delivery gates are fresh readers on this product, complete current
+standard/cache conformance, and the two real-project speed thresholds. PR #74
+remains draft.
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented. Stock verification stays
@@ -155,7 +160,7 @@ are not part of that pushed CI scope.
 The earlier [complete original `730a321` reader workflow](validation/m7-reader-730a321-terminal.md)
 remains a historical pass: both four-client collectors retain 200 total samples,
 complete Current graphs and unchanged p95 limits, followed by retained CLI/MCP.
-It does not qualify current c2 readers; a fresh c2 replay remains required.
+It does not qualify selected b895 readers; a fresh b895 replay remains required.
 The [c2 original benchmark attempt](validation/m7-benchmark-c2a4b23-interrupted.md)
 is interrupted by host checkpoint ENOSPC. [Separate recovery](validation/m7-benchmark-c2a4b23-recovery.md) retains three
 warmups and no measured samples; fourth M7 focus completion, original terminal,
@@ -171,11 +176,11 @@ acceptance follows, and PR #74 remains draft.
 | Workstream | Current evidence | Required next result |
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
-| Combined implementation | Selected `b89546c` passes [658/658 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/README.md), including the new real Cargo recovery and three diagnostic controls. Its ordinary release/private and acceptance byte installations plus fresh original repair fixture pass; original real-project benchmark is running, with no performance claim. Earlier frozen `c2a4b23` passes [651 workspace tests, all remaining gate steps and 41/41 solver tests](validation/m7-core-c2a4b23-validation.md). All ten ordinary-build controls and [on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) pass. [PR CI at `d217`](https://github.com/Chelis-Lang/sail/actions/runs/38194750077) passes all ten jobs. | Install and validate the new coherent product, preserving historical failures; local scopes receive no separate CI credit. |
+| Combined implementation | Selected `b89546c` passes [658/658 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/README.md), including the new real Cargo recovery and three diagnostic controls. Its ordinary release/private and acceptance byte installations plus fresh original repair fixture pass; original real-project benchmark is running, with no performance claim. Earlier frozen `c2a4b23` passes [651 workspace tests, all remaining gate steps and 41/41 solver tests](validation/m7-core-c2a4b23-validation.md). All ten ordinary-build controls and [on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) pass. [PR CI at `d217`](https://github.com/Chelis-Lang/sail/actions/runs/38194750077) passes all ten jobs. | Complete current-product reader, standard/cache and real-project acceptance; retain the installed product identity and historical failures. Local scopes receive no separate CI credit. |
 | Repair workflow | Current `b89546c` [ordinary release, private/acceptance byte installations and original repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json) pass. The fresh fixture completes in 102.476 seconds with 335 operations, original 120/30/5 bounds and no cleanup/progress errors. Earlier c2 [repair pass (99.719 seconds, 325 operations)](validation/m7-repair-c2a4b23-terminal.md) remains a separate pass; poll counts are not benchmark scores. | Frozen HumanEval/Vest recovery and measured whole-loop gains; small-fixture success does not qualify real-project performance. |
-| Responsive reads | Historical [installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both collectors; each retains 200 total samples across four concurrent clients: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Retained CLI/MCP and immutable-input checks pass in that scope. | Fresh current-c2 replay with the same complete graphs, independent freshness and original latency/lifecycle bounds; no historical pass transfer. |
+| Responsive reads | Historical [installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both collectors; each retains 200 total samples across four concurrent clients: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Retained CLI/MCP and immutable-input checks pass in that scope. | Fresh selected-b895 replay with the same complete graphs, independent freshness and original latency/lifecycle bounds; no historical pass transfer. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | A fresh [completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md) fails required Current admission: exit-zero repair warmup remains Unknown with a declarations-established note, and no measured samples. Earlier [storage interruption](validation/m7-benchmark-c2a4b23-interrupted.md), [partial recovery](validation/m7-benchmark-c2a4b23-recovery.md) and historical [730 binding failure](validation/m7-benchmark-730a321-bootstrap-failure.md) remain separate. c2 recovery controls pass, but no real-project benchmark benefit is established. | Correct real-project admission through original guards, then complete the original three rounds, spread and at least 2× median improvement on each project with exact oracles. |
+| Frozen repair performance | The original three-round benchmark is running on installed b895; no measured samples or whole-loop gain are claimed. The [completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md) remains failed on required Current warmup admission. Earlier [storage interruption](validation/m7-benchmark-c2a4b23-interrupted.md), [partial recovery](validation/m7-benchmark-c2a4b23-recovery.md) and historical [730 binding failure](validation/m7-benchmark-730a321-bootstrap-failure.md) remain separate. Recovery controls do not establish real-project benchmark benefit. | Complete the original three rounds, spread and at least 2× median improvement on each project with exact Current admission and oracles. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -263,7 +268,7 @@ pass; its ordinary release/private and acceptance installations plus original
 repair fixture also pass. Whole real-project benchmark is running; no performance
 claim follows. Earlier c2 component sensitivity,
 installation and original repair scopes pass. Reader evidence is still the
-historical 730 product; fresh current-product readers, complete standard/cache
+historical 730 product; fresh selected-b895 readers, complete standard/cache
 coverage and real-project performance remain outstanding. Emulated local Linux runs are
 authorized and labelled; native-host reference reruns are for later. Limits,
 full reports and exact oracles remain unchanged.
@@ -285,27 +290,30 @@ Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Preserve the [current passing original repair fixture](validation/m7-repair-c2a4b23-terminal.md)
-   and repeat the historical [complete reader workflow](validation/m7-reader-730a321-terminal.md)
-   on current c2 product. Their original checks, complete reports, independent
-   freshness and lifecycle limits remain mandatory. The pass does not isolate
-   the contribution of metadata preservation, output-owner overlap or dependency
-   reuse, and it does not establish real-project whole-loop speedups.
+2. Preserve the selected b895 [release, installations and passing original repair
+   fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+   Repeat the historical [complete reader workflow](validation/m7-reader-730a321-terminal.md)
+   on that exact product. Original checks, complete reports, independent
+   freshness and lifecycle limits remain mandatory. The small-fixture pass does
+   not isolate the contribution of metadata preservation, output-owner overlap
+   or dependency reuse, and does not establish real-project whole-loop speedups.
 3. Retain source qualification and the selected runtime's exact delivery identity
    alongside product evidence. Keep proof contexts and receipts independent of
    shared ordinary Cargo artifacts; no focused success can replace full validation.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
-5. Preserve the qualified local controls for optional independent ordinary-build
-   recovery; unsupported coverage retains original regeneration and Unknown proofs
-   remain unaccepted. Resolve the completed c2 warmup's repeated declaration
-   establishment through original guards; preserve the separate interruption and
-   old binding failure without claiming their causes.
-   Then measure every
-   frozen HumanEval and Vest repair cycle for three rounds, retaining
-   spread and resources; meet at least twofold median improvement on each.
+5. Complete the running selected-b895 benchmark over every frozen HumanEval
+   and Vest repair cycle: three rounds, spread and resources, with at least
+   twofold median improvement on each project. Its real Cargo recovery and
+   diagnostic controls pass, but are not real-project performance evidence.
+   Unsupported ordinary-build coverage still regenerates; Unknown proofs remain
+   unaccepted. Preserve the earlier c2 declaration-establishment failure,
+   interruption and old binding failure as separate historical scopes.
 6. Keep user guides, known issues and developer records current. Merge only after
    all required local acceptance and native CI pass.
+
+Closed host build targets were [losslessly archived](validation/m7-closed-host-targets-20261011.md), retaining test images and raw logs while reducing their logical storage by about 805 MB. Active Linux builds and runtimes are preserved.
+A later whole-volume archival failed on host space before removing its original. After Docker recovery, [unused build intermediates](validation/m7-unused-intermediates-20261012.json) were removed from three unreferenced Sail targets: 1.99 GB logical bytes, with all 278 executable/library hashes checked afterward. Data volumes and active targets remain intact; resumed validation uses fresh container identities.
 
 ## Later waves (from the charter's initial scope)
 
