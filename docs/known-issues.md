@@ -782,3 +782,19 @@ original native terminal/closure and final seals remain unknown. This is an infr
 interruption, not evidence that the old 730 root-binding failure recurred or was
 fixed. No benchmark benefit or M7 acceptance is claimed, and original limits and
 oracles remain unchanged.
+
+### Recovered product revalidation retains setup refusals
+
+The [operational record](validation/m7-registry-bytecode-rebind-20261012.json)
+preserves two distinct refusals. The unchanged complete source check first found
+one generated Python bytecode file and its directory, with no changed tracked
+files. The exact file was archived and retired after bounded holder checks;
+the source check was preserved. Subsequent acceptance revalidation passed, but
+handoff revalidation could not find its required M6 executable, so that rebind
+failed and its execution pointer remained unchanged. A separate baseline copy
+first failed its ownership check despite matching bytes. After correcting only
+those copied files, all four fresh source/product revalidations passed and the
+execution pointer was rebound. These setup records provide no new proof,
+benchmark or product qualification credit. The separately
+audited unused Sail registry volume was removed without force; the active
+registry and other projects' volumes remain untouched.
