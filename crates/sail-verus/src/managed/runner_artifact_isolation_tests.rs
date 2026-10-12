@@ -286,7 +286,6 @@ fn repair_selector_migration_does_not_watch_legacy_generated_inputs() -> Isolati
     )?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
     let mut data = fixture.data(&paths, package_id);
-    record_observation_layout(&mut data, Some(&selected));
     let (sources, covered) = source_inputs::update(&source_state, &journal, &data)?;
     assert!(covered && !sources.contains(&legacy_generated));
     assert!(
@@ -296,32 +295,6 @@ fn repair_selector_migration_does_not_watch_legacy_generated_inputs() -> Isolati
     );
     data["sail_source_inputs"] = serde_json::to_value(&sources)?;
     json(&paths.input_state, &data)?;
-    assert_eq!(
-        observation_directory(context, &data)?,
-        paths.build_inputs.parent().ok_or("observations absent")?
-    );
-    let (roots, _) = observation_plan(
-        &fixture.config.cache,
-        &fixture.root,
-        "selected",
-        &BTreeMap::new(),
-    )?;
-    assert!(
-        roots.contains(&source_state)
-            && roots.contains(&paths.build_inputs)
-            && roots.contains(&paths.input_state)
-    );
-    assert!(!roots.contains(&legacy_source) && !roots.contains(&legacy_build));
-    assert!(
-        refresh_context_validated(
-            &fixture.config.cache,
-            &fixture.root,
-            "selected",
-            &BTreeMap::new(),
-            || true
-        )?
-        .complete
-    );
     let before = snapshot_metadata(&data, &[]);
     assert!(before.complete);
     let mut guard = coherent::Guard::begin(&before);
@@ -345,60 +318,7 @@ fn repair_selector_migration_does_not_watch_legacy_generated_inputs() -> Isolati
         std::fs::read_to_string(&historical_receipt)?,
         "historical receipt evidence"
     );
-    data["sail_managed_observation_layout"] = Value::from(2);
-    assert!(observation_directory(context, &data).is_err());
-    assert!(
-        observation_plan(
-            &fixture.config.cache,
-            &fixture.root,
-            "selected",
-            &BTreeMap::new()
-        )
-        .is_ok()
-    );
-    json(&paths.input_state, &data)?;
-    assert!(
-        observation_plan(
-            &fixture.config.cache,
-            &fixture.root,
-            "selected",
-            &BTreeMap::new()
-        )
-        .is_err()
-    );
     drop(owner);
-    Ok(())
-}
-
-#[test]
-fn repair_observation_layout_preserves_default_and_rejects_unknown_schema() -> IsolationResult {
-    let context = Path::new("context");
-    for engine in [None, Some(compiler_request(None))] {
-        let mut data = serde_json::json!({});
-        record_observation_layout(&mut data, engine.as_ref());
-        assert!(data.get("sail_managed_observation_layout").is_none());
-        assert_eq!(observation_directory(context, &data)?, context);
-    }
-    // The same selector is recorded in both original metadata acquisition paths.
-    let engine = compiler_request(Some("application::a"));
-    let mut initial = serde_json::json!({});
-    let mut final_data = serde_json::json!({});
-    record_observation_layout(&mut initial, Some(&engine));
-    record_observation_layout(&mut final_data, Some(&engine));
-    assert_eq!(initial, final_data);
-    assert_eq!(
-        observation_directory(context, &final_data)?,
-        context.join("repair-observations-v1")
-    );
-    for version in [
-        serde_json::json!(null),
-        serde_json::json!("1"),
-        serde_json::json!(0),
-        serde_json::json!(2),
-    ] {
-        final_data["sail_managed_observation_layout"] = version;
-        assert!(observation_directory(context, &final_data).is_err());
-    }
     Ok(())
 }
 

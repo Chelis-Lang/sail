@@ -44,7 +44,6 @@ pub(super) enum Phase {
     InitialSnapshot,
     InputGuards,
     GuardAbsent,
-    GuardWatch,
     GuardCoherent,
     MonitoredSnapshot,
     InputBarrier,

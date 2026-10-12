@@ -8,7 +8,6 @@ publish.workspace = true
 repository.workspace = true
 
 [dependencies]
-notify.workspace = true
 sail-api.workspace = true
 sail-ledger.workspace = true
 sail-smtlib.workspace = true

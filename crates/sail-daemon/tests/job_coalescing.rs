@@ -29,26 +29,7 @@ fn prepare(root: &Path) -> (PathBuf, BTreeMap<String, String>, PathBuf, PathBuf)
         .join("projects")
         .join(workspace_sha)
         .join("fixture-context");
-    let runtime = cache.join("runtime-identities");
     assert!(std::fs::create_dir_all(&context).is_ok());
-    assert!(std::fs::create_dir_all(&runtime).is_ok());
-    write(
-        &context.join("input-state.json"),
-        &serde_json::json!({"workspace_root":project,"target_directory":cache.join("target"),"sail_cache_directory":cache,"packages":[{"id":"fixture","name":"fixture","source":null,"manifest_path":project.join("Cargo.toml"),"targets":[]}]}),
-    );
-    let identities = vec![(
-        worker.display().to_string(),
-        format!(
-            "{:x}",
-            Sha256::digest(std::fs::read(&worker).unwrap_or_default())
-        ),
-    )];
-    let sha = format!(
-        "{:x}",
-        Sha256::digest(serde_json::to_vec(&identities).unwrap_or_default())
-    );
-    write(&runtime.join(format!("{sha}.json")), &identities);
-    write(&runtime.join("fixture-context.link"), &sha);
     let environment = BTreeMap::from([
         ("PATH".to_owned(), "/usr/bin:/bin".to_owned()),
         ("SAIL_CACHE_DIR".to_owned(), cache.display().to_string()),
@@ -116,20 +97,31 @@ fn await_coalescing(
         std::thread::sleep(Duration::from_millis(20));
     }
 }
-fn context_event(
-    cache: &Path,
-    project: &Path,
-    event: &Path,
-    environment: &BTreeMap<String, String>,
-    observed: bool,
-) {
-    let snapshot =
-        sail_verus::managed::refresh_context(cache, project, "fixture-context", environment)
-            .unwrap_or_else(|error| unreachable!("{error}"));
-    assert_eq!(snapshot.complete, observed);
+/// The record a Current run leaves: the digest of each input it depends on.
+fn record(context: &Path, project: &Path) -> String {
+    let files: Vec<(PathBuf, Option<String>)> = ["Cargo.toml", "source.rs"]
+        .iter()
+        .map(|name| {
+            let path = project.join(name);
+            let digest = format!(
+                "{:x}",
+                Sha256::digest(std::fs::read(&path).unwrap_or_default())
+            );
+            (path, Some(digest))
+        })
+        .chain([(project.join(".cargo/config.toml"), None)])
+        .collect();
+    let revision = "fixture-revision".to_owned();
+    write(
+        &context.join("read-check.json"),
+        &serde_json::json!({"version":1,"revision":revision,"files":files}),
+    );
+    revision
+}
+fn context_event(event: &Path, project: &Path, revision: &str) {
     write(
         event,
-        &serde_json::json!({"kind":"context-ready","workspace":project,"context_sha256":"fixture-context","input_revision":snapshot.revision,"complete":true,"source_observation":observed}),
+        &serde_json::json!({"kind":"context-ready","workspace":project,"context_sha256":"fixture-context","input_revision":revision,"complete":true,"source_observation":true}),
     );
 }
 
@@ -140,71 +132,46 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     assert!(std::fs::create_dir_all(&root).is_ok());
     let root = root.canonicalize().unwrap_or(root);
     let (worker, environment, context, event) = prepare(&root);
-    let cache = root.join("cache");
     let project = root.join("project");
-    context_event(&cache, &project, &event, &environment, false);
+    context_event(&event, &project, "fixture-revision");
     let socket = root.join("j.sock");
     let mut handle = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &worker)
         .and_then(sail_daemon::jobs::JobServer::spawn)
         .unwrap_or_else(|error| unreachable!("{error}"));
     let client = Client::new(socket);
+    // Without a record of a Current run, no input revision is known.
     let cold = submit(&client, &root, &environment);
     ready(&client, &root, &cold.id);
+    let started = Instant::now();
     let duplicate = submit(&client, &root, &environment);
-    assert_ne!(
-        cold.id, duplicate.id,
-        "missing compiler observation cannot establish input coverage"
+    assert_ne!(cold.id, duplicate.id, "unrecorded inputs never coalesce");
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "submission must not wait for a verification"
     );
     cancel(&client, &cold.id);
     cancel(&client, &duplicate.id);
-    write(
-        &context.join("source-inputs.json"),
-        &serde_json::json!({"paths":[],"covered":true}),
-    );
-    context_event(&cache, &project, &event, &environment, false);
-    write(
-        &context.join("source-inputs.json"),
-        &serde_json::json!({"paths":[],"covered":true,"by_package":{"fixture":[]}}),
-    );
-    context_event(&cache, &project, &event, &environment, true);
+    let revision = record(&context, &project);
     let warm = submit(&client, &root, &environment);
     ready(&client, &root, &warm.id);
-    let started = Instant::now();
-    let unestablished = submit(&client, &root, &environment);
-    #[cfg(target_os = "linux")]
-    assert_ne!(
-        warm.id, unestablished.id,
-        "compiler declarations alone cannot attest daemon lease coverage"
-    );
-    assert!(
-        started.elapsed() < Duration::from_secs(5),
-        "cold submission must not synchronously hash runtime"
-    );
-    if unestablished.id != warm.id {
-        cancel(&client, &unestablished.id);
-    }
     await_coalescing(&client, &root, &environment, &warm.id);
     assert_eq!(warm.id, submit(&client, &root, &environment).id);
-    // Losing complete declarations invalidates even an established projection.
-    write(
-        &context.join("source-inputs.json"),
-        &serde_json::json!({"paths":[],"covered":false,"by_package":{"fixture":[]}}),
-    );
+    // A lost record can no longer establish equal inputs.
+    let _ = std::fs::remove_file(context.join("read-check.json"));
     let lost = submit(&client, &root, &environment);
     assert_ne!(warm.id, lost.id);
-    let still_lost = submit(&client, &root, &environment);
-    assert_ne!(
-        lost.id, still_lost.id,
-        "incomplete contexts cannot share jobs"
-    );
     cancel(&client, &lost.id);
-    cancel(&client, &still_lost.id);
-    write(
-        &context.join("source-inputs.json"),
-        &serde_json::json!({"paths":[],"covered":true,"by_package":{"fixture":[]}}),
-    );
+    assert_eq!(record(&context, &project), revision);
     await_coalescing(&client, &root, &environment, &warm.id);
-    assert_eq!(warm.id, submit(&client, &root, &environment).id);
+    // A newly created configuration file is an input change.
+    assert!(std::fs::create_dir_all(project.join(".cargo")).is_ok());
+    assert!(std::fs::write(project.join(".cargo/config.toml"), "").is_ok());
+    let configured = submit(&client, &root, &environment);
+    assert_ne!(warm.id, configured.id);
+    cancel(&client, &configured.id);
+    assert!(std::fs::remove_file(project.join(".cargo/config.toml")).is_ok());
+    await_coalescing(&client, &root, &environment, &warm.id);
+    // Restoring the modification time does not hide a content edit.
     let source = project.join("source.rs");
     let modified = std::fs::metadata(&source).and_then(|m| m.modified()).ok();
     assert!(std::fs::write(&source, "modified").is_ok());

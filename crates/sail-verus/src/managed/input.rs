@@ -1,10 +1,10 @@
 //! Cargo metadata and declared input revision tracking.
 
-use super::files::{digest_all, file_digest};
+use super::files::digest_all;
 use crate::{Error, Result};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -22,8 +22,8 @@ pub struct InputSnapshot {
     /// False if declared inputs could not be read completely.
     pub complete: bool,
     pub(crate) observation_paths: BTreeSet<PathBuf>,
-    #[cfg(target_os = "linux")]
-    pub(super) content_paths: BTreeSet<PathBuf>,
+    /// The content digest of every readable input file in `revision`.
+    pub(super) digests: BTreeMap<PathBuf, String>,
 }
 
 fn metadata_command(workspace: &Path, args: &[String], cargo: &Path) -> Command {
@@ -145,28 +145,17 @@ fn collect(
     complete
 }
 
-/// A managed run's snapshot. Its content reads overlap; daemon freshness
-/// readers use `snapshot_metadata_home`, which keeps them sequential.
 pub(super) fn snapshot_metadata(data: &Value, extras: &[PathBuf]) -> InputSnapshot {
     let home = std::env::var_os("CARGO_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
-    snapshot_metadata_with(data, extras, home.as_deref(), true)
+    snapshot_metadata_home(data, extras, home.as_deref())
 }
 
 pub(super) fn snapshot_metadata_home(
     data: &Value,
     extras: &[PathBuf],
     cargo_home: Option<&Path>,
-) -> InputSnapshot {
-    snapshot_metadata_with(data, extras, cargo_home, false)
-}
-
-fn snapshot_metadata_with(
-    data: &Value,
-    extras: &[PathBuf],
-    cargo_home: Option<&Path>,
-    parallel: bool,
 ) -> InputSnapshot {
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     let invocation = Path::new(
@@ -236,7 +225,7 @@ fn snapshot_metadata_with(
             .filter(|p| !excluded_canonical.contains(p)),
     );
     let stamp_before = stamp_paths(&observation_paths);
-    let (revision, readable) = contents_revision(&files, parallel);
+    let (revision, readable, digests) = contents_revision(&files);
     complete &= readable;
     complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
     roots.sort();
@@ -248,8 +237,7 @@ fn snapshot_metadata_with(
         excluded,
         complete,
         observation_paths,
-        #[cfg(target_os = "linux")]
-        content_paths: files,
+        digests,
     }
 }
 
@@ -270,86 +258,108 @@ pub(super) fn closure_scope(
     let Some(closure) = closure else {
         return scoped;
     };
-    let mut inside = Vec::new();
-    let mut outside = Vec::new();
-    let mut manifests = Vec::new();
-    for package in data["packages"].as_array().into_iter().flatten() {
-        let Some(manifest) = package["manifest_path"].as_str().map(Path::new) else {
-            continue;
-        };
-        let Some(directory) = manifest.parent() else {
-            continue;
-        };
-        // An unidentified package is never excluded from coverage.
-        if package["id"].as_str().is_none_or(|id| closure.contains(id)) {
-            inside.push(directory);
-        } else {
-            outside.push(directory);
-        }
-        if data["workspace_members"]
-            .as_array()
-            .is_some_and(|members| members.contains(&package["id"]))
-        {
-            manifests.push(manifest.to_owned());
-        }
-    }
-    scoped.roots.retain(|root| {
-        inside.iter().any(|d| root.starts_with(d)) || !outside.iter().any(|d| root.starts_with(d))
-    });
-    scoped.roots.extend(manifests);
-    if let Some(workspace) = data["workspace_root"].as_str().map(Path::new) {
-        scoped.roots.extend(
-            ["Cargo.toml", "Cargo.lock"]
-                .iter()
-                .map(|name| workspace.join(name))
-                .filter(|path| path.is_file()),
-        );
-    }
+    let scope = Scope::new(data, closure);
+    scoped.roots.retain(|root| scope.contains(root));
+    scoped.roots.extend(scope.manifests);
     scoped.roots.sort();
     scoped.roots.dedup();
     scoped
 }
 
+/// The input digests of `snapshot` that one selection depends on, narrowed by
+/// the same rule as `closure_scope`: files of packages outside `closure` are
+/// dropped, and the workspace manifest, lockfile and member manifests stay.
+/// Without a closure every digest is kept.
+pub(super) fn closure_digests(
+    snapshot: &InputSnapshot,
+    data: &Value,
+    closure: Option<&BTreeSet<String>>,
+) -> BTreeMap<PathBuf, String> {
+    let Some(closure) = closure else {
+        return snapshot.digests.clone();
+    };
+    let scope = Scope::new(data, closure);
+    snapshot
+        .digests
+        .iter()
+        .filter(|(path, _)| scope.contains(path) || scope.manifests.contains(*path))
+        .map(|(path, hash)| (path.clone(), hash.clone()))
+        .collect()
+}
+
+/// Package directories inside and outside one selection's closure, and the
+/// manifests Cargo reads to load the workspace.
+struct Scope {
+    inside: Vec<PathBuf>,
+    outside: Vec<PathBuf>,
+    manifests: Vec<PathBuf>,
+}
+impl Scope {
+    fn new(data: &Value, closure: &BTreeSet<String>) -> Self {
+        let mut scope = Self {
+            inside: Vec::new(),
+            outside: Vec::new(),
+            manifests: Vec::new(),
+        };
+        for package in data["packages"].as_array().into_iter().flatten() {
+            let Some(manifest) = package["manifest_path"].as_str().map(Path::new) else {
+                continue;
+            };
+            let Some(directory) = manifest.parent() else {
+                continue;
+            };
+            // An unidentified package is never excluded from coverage.
+            if package["id"].as_str().is_none_or(|id| closure.contains(id)) {
+                scope.inside.push(directory.to_owned());
+            } else {
+                scope.outside.push(directory.to_owned());
+            }
+            if data["workspace_members"]
+                .as_array()
+                .is_some_and(|members| members.contains(&package["id"]))
+            {
+                scope.manifests.push(manifest.to_owned());
+            }
+        }
+        if let Some(workspace) = data["workspace_root"].as_str().map(Path::new) {
+            scope.manifests.extend(
+                ["Cargo.toml", "Cargo.lock"]
+                    .iter()
+                    .map(|name| workspace.join(name))
+                    .filter(|path| path.is_file()),
+            );
+        }
+        scope
+    }
+    /// Inside a closure package directory (nested packages stay covered), or
+    /// outside every package directory that is not in the closure.
+    fn contains(&self, path: &Path) -> bool {
+        self.inside.iter().any(|d| path.starts_with(d))
+            || !self.outside.iter().any(|d| path.starts_with(d))
+    }
+}
+
 // Preserve the original exact sorted path spelling and digest encoding. Every
 // file is still read completely between the caller's stamps; only the reads
 // overlap, and their digests are folded in the original sorted order.
-fn contents_revision(files: &BTreeSet<PathBuf>, parallel: bool) -> (String, bool) {
+fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathBuf, String>) {
     let mut complete = true;
+    let mut recorded = BTreeMap::new();
     let mut hasher = Sha256::new();
     let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
-    let digests = if parallel {
-        digest_all(&paths)
-    } else {
-        paths.iter().map(|path| file_digest(path)).collect()
-    };
-    for (path, digest) in files.iter().zip(digests) {
+    for (path, digest) in files.iter().zip(digest_all(&paths)) {
         let bytes = path.as_os_str().as_encoded_bytes();
         hasher.update((bytes.len() as u64).to_le_bytes());
         hasher.update(bytes);
         if let Ok(hash) = digest {
             hasher.update(hash.as_bytes());
+            recorded.insert(path.clone(), hash);
         } else {
             complete = false;
             hasher.update(b"unreadable");
         }
     }
-    (format!("{:x}", hasher.finalize()), complete)
-}
-
-#[cfg(target_os = "linux")]
-impl InputSnapshot {
-    // The caller must retain complete native namespace observation plus read
-    // leases covering this inventory from its coherent cold collection through
-    // both read barriers. This hashes ALL mutable contents on EVERY invocation;
-    // it cannot discover new paths and is not standalone freshness evidence.
-    #[cfg(test)]
-    pub(super) fn rehash_guarded_inventory(&self) -> Self {
-        let (revision, readable) = contents_revision(&self.content_paths, false);
-        let mut refreshed = self.clone();
-        refreshed.revision = revision;
-        refreshed.complete &= readable;
-        refreshed
-    }
+    (format!("{:x}", hasher.finalize()), complete, recorded)
 }
 
 // A run-local mutation stamp is separate from logical proof keys: reverting an
@@ -634,18 +644,13 @@ mod tests {
             oracle.update(format!("{:x}", Sha256::digest(contents)).as_bytes());
         }
         assert_eq!(snapshot.revision, format!("{:x}", oracle.finalize()));
-        assert_eq!(
-            snapshot.revision,
-            snapshot.rehash_guarded_inventory().revision
-        );
+        // Every hashed file's digest is retained under its exact path.
+        assert_eq!(snapshot.digests.keys().cloned().collect::<Vec<_>>(), files);
         assert!(std::fs::write(&odd, b"changed").is_ok());
-        let refreshed = snapshot.rehash_guarded_inventory();
+        let refreshed = snapshot_metadata_home(&data, &[], None);
         assert!(refreshed.complete);
         assert_ne!(snapshot.revision, refreshed.revision);
-        assert_eq!(
-            refreshed.revision,
-            snapshot_metadata_home(&data, &[], None).revision
-        );
+        assert_ne!(snapshot.digests.get(&odd), refreshed.digests.get(&odd));
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
     #[test]
@@ -807,8 +812,7 @@ mod tests {
             excluded: vec![ws.join("target")],
             complete: true,
             observation_paths: BTreeSet::new(),
-            #[cfg(target_os = "linux")]
-            content_paths: BTreeSet::new(),
+            digests: std::collections::BTreeMap::new(),
         };
         let unchanged = super::closure_scope(&snapshot, &data, None);
         assert_eq!(unchanged.roots, snapshot.roots);

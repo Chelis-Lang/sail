@@ -20,9 +20,9 @@ use lease::HelperClosure;
 /// The helper closure exists only where the Linux lease helper does.
 #[cfg(not(target_os = "linux"))]
 type HelperClosure = ();
-mod observe;
 #[cfg(target_os = "linux")]
 mod precise;
+mod read_check;
 mod receipts;
 #[cfg(any(target_os = "linux", test))]
 mod retained;

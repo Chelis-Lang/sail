@@ -92,7 +92,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             stop: AtomicBool::new(false),
             activity: Arc::new(AtomicU64::new(0)),
             proofs: crate::proof_journal::Journals::default(),
-            freshness: sail_verus::managed::FreshnessIndex::default(),
+            freshness: sail_verus::managed::FreshnessIndex,
             result_cache,
         }),
     })

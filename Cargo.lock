@@ -1268,7 +1268,6 @@ name = "sail-verus"
 version = "0.0.0"
 dependencies = [
  "inotify",
- "notify",
  "rustix",
  "sail-api",
  "sail-ledger",

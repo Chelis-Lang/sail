@@ -55,15 +55,6 @@ fn effective_value(key: &str, environment: Option<&BTreeMap<String, String>>) ->
     }
 }
 
-#[cfg(target_os = "linux")]
-pub(super) fn observation_paths(path: &Path) -> Vec<PathBuf> {
-    read::<Vec<BuildInput>>(path)
-        .unwrap_or_default()
-        .into_iter()
-        .flat_map(|record| record.paths)
-        .collect()
-}
-
 pub(super) fn stale(path: &Path, data: &Value) -> (Vec<String>, Vec<PathBuf>, bool) {
     stale_environment(path, data, None)
 }

@@ -1343,11 +1343,11 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
     expected
 }
 
-/// Rechecks a persisted result's declared inputs without starting Cargo or Verus.
-/// Caller environment is explicit so daemon status never substitutes its own configuration.
+/// Rechecks a completed result's recorded inputs without starting Cargo or
+/// Verus (see `read_check`).
 ///
 /// # Errors
-/// Returns `SAIL3108` for missing observation state; callers should report unknown freshness.
+/// Returns `SAIL3108` when the context has no record of a Current run.
 pub fn refresh_result(
     cache: &Path,
     result: &ProjectResult,
@@ -1361,178 +1361,18 @@ pub fn refresh_result(
     )
 }
 
-/// Refreshes a running context's persisted input declaration without invoking Cargo.
+/// Rechecks a context's latest Current record without invoking Cargo. The
+/// environment is bound by the context identity itself.
 ///
 /// # Errors
-/// Returns `SAIL3108` until the worker has persisted its context and declarations.
+/// Returns `SAIL3108` until a run of this context has ended Current.
 pub fn refresh_context(
     cache: &Path,
     workspace: &Path,
     context_sha256: &str,
-    environment: &BTreeMap<String, String>,
+    _environment: &BTreeMap<String, String>,
 ) -> Result<super::input::InputSnapshot> {
-    refresh_context_validated(cache, workspace, context_sha256, environment, || {
-        runtime_current(cache, context_sha256)
-    })
-}
-
-fn record_observation_layout(data: &mut Value, engine: Option<&crate::engine::Request>) {
-    if engine.is_some_and(|request| request.function.is_some()) {
-        data["sail_managed_observation_layout"] = Value::from(1);
-    }
-}
-
-fn observation_directory(context: &Path, data: &Value) -> Result<PathBuf> {
-    match data.get("sail_managed_observation_layout") {
-        None => Ok(context.to_owned()),
-        Some(version) if version.as_u64() == Some(1) => Ok(context.join("repair-observations-v1")),
-        Some(_) => Err(Error::new(
-            "SAIL3108",
-            "unsupported ordinary observation layout",
-        )),
-    }
-}
-
-pub(super) fn refresh_context_validated(
-    cache: &Path,
-    workspace: &Path,
-    context_sha256: &str,
-    environment: &BTreeMap<String, String>,
-    runtime_valid: impl FnOnce() -> bool,
-) -> Result<super::input::InputSnapshot> {
-    let context = cache
-        .join("projects")
-        .join(digest(workspace.as_os_str().as_encoded_bytes()))
-        .join(context_sha256);
-    let data: Value = read(&context.join("input-state.json"))
-        .ok_or_else(|| Error::new("SAIL3108", "declared input observation is unavailable"))?;
-    let observations = observation_directory(&context, &data)?;
-    let (_, mut extras, covered) = super::build_inputs::stale_environment(
-        &observations.join("build-inputs.json"),
-        &data,
-        Some(environment),
-    );
-    extras.extend(script_roots(&data));
-    let home = environment
-        .get("CARGO_HOME")
-        .map(PathBuf::from)
-        .or_else(|| {
-            environment
-                .get("HOME")
-                .map(|h| PathBuf::from(h).join(".cargo"))
-        });
-    let mut snapshot = super::input::snapshot_metadata_home(&data, &extras, home.as_deref());
-    let invocation = Path::new(
-        data["sail_invocation_directory"]
-            .as_str()
-            .unwrap_or_else(|| workspace.to_str().unwrap_or_default()),
-    );
-    snapshot.roots.extend(extras);
-    snapshot.roots.extend(super::input::configuration_paths(
-        invocation,
-        home.as_deref(),
-    ));
-    snapshot.roots.extend(runtime_paths(cache, context_sha256));
-    snapshot.roots.sort();
-    snapshot.roots.dedup();
-    let source_state = observations.join("source-inputs.json");
-    let source_coverage = source_state.is_file() && super::source_inputs::load(&source_state).1;
-    let runtime_complete = runtime_valid();
-    snapshot.complete &= covered && source_coverage && runtime_complete;
-    Ok(snapshot)
-}
-
-#[cfg(target_os = "linux")]
-pub(super) fn observation_plan(
-    cache: &Path,
-    workspace: &Path,
-    context_sha256: &str,
-    environment: &BTreeMap<String, String>,
-) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
-    let context = cache
-        .join("projects")
-        .join(digest(workspace.as_os_str().as_encoded_bytes()))
-        .join(context_sha256);
-    let data: Value = read(&context.join("input-state.json"))
-        .ok_or_else(|| Error::new("SAIL3108", "declared input observation is unavailable"))?;
-    let home = environment
-        .get("CARGO_HOME")
-        .map(PathBuf::from)
-        .or_else(|| {
-            environment
-                .get("HOME")
-                .map(|p| PathBuf::from(p).join(".cargo"))
-        });
-    let invocation = Path::new(
-        data["sail_invocation_directory"]
-            .as_str()
-            .unwrap_or_else(|| workspace.to_str().unwrap_or_default()),
-    );
-    let mut roots: Vec<PathBuf> = data["packages"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|p| {
-            p["manifest_path"]
-                .as_str()
-                .and_then(|p| Path::new(p).parent())
-        })
-        .map(Path::to_owned)
-        .collect();
-    roots.extend(
-        data["sail_source_inputs"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .map(PathBuf::from),
-    );
-    let observations = observation_directory(&context, &data)?;
-    roots.extend(super::build_inputs::observation_paths(
-        &observations.join("build-inputs.json"),
-    ));
-    roots.extend(script_roots(&data));
-    roots.extend(super::input::configuration_paths(
-        invocation,
-        home.as_deref(),
-    ));
-    roots.extend(runtime_paths(cache, context_sha256));
-    roots.push(context.join("input-state.json"));
-    for name in ["source-inputs.json", "build-inputs.json"] {
-        roots.push(observations.join(name));
-    }
-    let identities = cache.join("runtime-identities");
-    let link = identities.join(format!("{context_sha256}.link"));
-    if let Some(sha) = read::<String>(&link) {
-        roots.push(identities.join(format!("{sha}.json")));
-    }
-    roots.push(link);
-    roots.sort();
-    roots.dedup();
-    let excluded = ["target_directory", "sail_cache_directory"]
-        .into_iter()
-        .filter_map(|key| data[key].as_str())
-        .map(|p| invocation.join(p))
-        .chain([cache.to_owned()])
-        .collect();
-    Ok((roots, excluded))
-}
-
-#[cfg(target_os = "linux")]
-pub(super) fn runtime_identity(cache: &Path, context: &str) -> Option<(String, Vec<PathBuf>)> {
-    let state = cache.join("runtime-identities");
-    let sha = read::<String>(&state.join(format!("{context}.link")))?;
-    let identities = read::<Vec<(String, String)>>(&state.join(format!("{sha}.json")))?;
-    if sha != digest(&serde_json::to_vec(&identities).ok()?) || identities.is_empty() {
-        return None;
-    }
-    Some((
-        sha,
-        identities
-            .into_iter()
-            .map(|(path, _)| PathBuf::from(path))
-            .collect(),
-    ))
+    super::read_check::check(cache, workspace, context_sha256)
 }
 
 fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
@@ -1545,17 +1385,12 @@ fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
-    // Shared with daemon freshness readers: reads stay sequential there.
-    runtime_matches(cache, context, |paths| {
-        let mut hashed = super::files::FileDigests::default();
-        paths.iter().map(|path| hashed.hash(path)).collect()
-    })
+fn runtime_current(cache: &Path, context: &str) -> bool {
+    runtime_matches(cache, context, hash_all)
 }
 
 /// Complete content digests of every path, read concurrently into one
 /// phase-local map; aliases of one file are read once, as with sequential reads.
-/// Used only by the managed run's own final check, never by daemon readers.
 fn hash_all(paths: &[&Path]) -> Vec<Result<String>> {
     let mut hashed = super::files::FileDigests::default();
     hashed.prefetch(paths.iter().copied());
@@ -1774,7 +1609,6 @@ pub(crate) fn run_engine(
         engine.as_ref(),
     )?;
     drop(owned_paths);
-    record_observation_layout(&mut data, engine.as_ref());
     let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
     let generation_available = super::build_inputs::family::begin(
         &paths.compiler_inputs,
@@ -1858,18 +1692,9 @@ pub(crate) fn run_engine(
         artifacts_within(paths, scope.as_ref()) && artifacts_within(paths, script_scope.as_ref())
     };
     let coverage = super::input::closure_scope(&before, &data, scope.as_ref());
-    // The change watcher and the coherent lease owner are independent; both
-    // are complete before the monitored snapshot below, as before.
-    let (monitor, mut coherent) = std::thread::scope(|threads| {
-        let monitor =
-            threads.spawn(|| super::observe::Observation::begin(&before, &extras, &config.cache));
-        let phase = diagnostics.phase(Phase::GuardCoherent);
-        let coherent = super::coherent::Guard::begin_using(&coverage, helper_closure.as_ref());
-        drop(phase);
-        let _phase = diagnostics.phase(Phase::GuardWatch);
-        (monitor.join(), coherent)
-    });
-    let monitor = monitor.map_err(|_| Error::new("SAIL3104", "input watcher setup failed"))?;
+    let phase = diagnostics.phase(Phase::GuardCoherent);
+    let mut coherent = super::coherent::Guard::begin_using(&coverage, helper_closure.as_ref());
+    drop(phase);
     drop(guards);
     let monitored_snapshot = diagnostics.phase(Phase::MonitoredSnapshot);
     // Establish the revision again after the watcher is live, closing the setup
@@ -1898,7 +1723,7 @@ pub(crate) fn run_engine(
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
         "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
         "context_sha256":hash, "input_revision":before.revision,
-        "complete":before.complete && script_coverage && monitor.complete() && absent.ready(),
+        "complete":before.complete && script_coverage && absent.ready(),
         "source_observation":source_state.is_file()
     }));
     drop(input_barrier);
@@ -1913,7 +1738,6 @@ pub(crate) fn run_engine(
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
         || focused(&config.args)
         || !before.complete
-        || !monitor.complete()
         || !absent.ready();
     let names: BTreeSet<String> = data["packages"]
         .as_array()
@@ -2071,7 +1895,6 @@ pub(crate) fn run_engine(
     };
     drop(post_metadata);
     let post_snapshot = diagnostics.phase(Phase::PostSnapshot);
-    record_observation_layout(&mut after_data, runtime.engine.as_ref());
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
     after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
     after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
@@ -2102,7 +1925,6 @@ pub(crate) fn run_engine(
         || !after.complete
         || !after_coverage
         || !source_coverage
-        || !monitor.complete()
         || !absent.complete
         || {
             let (runtime_complete, covered) =
@@ -2115,11 +1937,7 @@ pub(crate) fn run_engine(
         || stamp_after.is_none()
     {
         Currentness::Unknown
-    } else if before.revision == after.revision
-        && stamp_before == stamp_after
-        && !monitor.changed()
-        && !absent.changed
-    {
+    } else if before.revision == after.revision && stamp_before == stamp_after && !absent.changed {
         Currentness::Current
     } else {
         Currentness::Historical
@@ -2194,6 +2012,24 @@ pub(crate) fn run_engine(
             .map(crate::engine::Request::identity),
     };
     let result_publication = diagnostics.phase(Phase::ResultPublication);
+    if result.currentness == Currentness::Current
+        && let Some(context) = paths.input_state.parent()
+    {
+        // What a later read must find unchanged: this run's final digests of
+        // the selection's dependency closure and every configuration path.
+        let configuration = super::input::configuration_paths(
+            &invocation,
+            std::env::var_os("CARGO_HOME")
+                .map(PathBuf::from)
+                .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
+                .as_deref(),
+        );
+        super::read_check::record(
+            context,
+            &result.input_revision,
+            super::read_check::entries(&after, &after_data, scope.as_ref(), &configuration),
+        )?;
+    }
     json(&paths.run.join("result.json"), &result)?;
     drop(result_publication);
     if result.currentness == Currentness::Current {

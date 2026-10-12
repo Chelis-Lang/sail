@@ -183,8 +183,7 @@ mod tests {
                 excluded: vec![],
                 complete: true,
                 observation_paths: std::collections::BTreeSet::new(),
-                #[cfg(target_os = "linux")]
-                content_paths: std::collections::BTreeSet::new(),
+                digests: std::collections::BTreeMap::new(),
             },
         )
     }

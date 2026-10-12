@@ -162,7 +162,7 @@ mod tests {
             excluded: Vec::new(),
             complete: true,
             observation_paths: BTreeSet::new(),
-            content_paths: BTreeSet::new(),
+            digests: std::collections::BTreeMap::new(),
         }
     }
     #[test]

@@ -23,13 +23,6 @@ pub(super) struct ReadLease {
     failure: Option<&'static str>,
 }
 impl ReadLease {
-    // Membership alone is not authority. The caller must independently read
-    // under this owner and still run its entire fresh clean barrier.
-    pub(super) fn covers_exact_path(&self, path: &Path) -> bool {
-        self.bindings
-            .iter()
-            .any(|(bound, _, _, _)| bound.as_os_str() == path.as_os_str())
-    }
     /// Requested Rust storage; native descriptors and helper RSS are separate.
     #[allow(
         dead_code,
@@ -69,6 +62,7 @@ impl ReadLease {
         self.process.kill()?;
         self.process.wait().map(|_| ())
     }
+    #[cfg(test)]
     pub(super) fn acquire(paths: &[PathBuf]) -> Option<Self> {
         Self::acquire_unbounded(paths, None, false)
     }
@@ -376,12 +370,6 @@ impl ReadLease {
             return false;
         }
         let descriptors = ProcBindings::open();
-        #[cfg(test)]
-        if binding_batch::enabled()
-            && let Some(descriptors) = &descriptors
-        {
-            return binding_batch::matches(descriptors, &self.bindings);
-        }
         self.bindings
             .iter()
             .all(|(path, canonical, device, inode)| {
@@ -389,12 +377,6 @@ impl ReadLease {
             })
     }
 }
-
-// Candidate remains test-only until complete-operation measurements justify
-// selection. Production barriers still perform every original absolute lookup.
-#[cfg(test)]
-#[path = "lease_binding_batch.rs"]
-mod binding_batch;
 
 /// Per-barrier descriptor lookup, with no retained identity or freshness memo.
 struct ProcBindings {
