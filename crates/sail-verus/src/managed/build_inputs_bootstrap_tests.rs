@@ -119,6 +119,10 @@ impl Fixture {
         Self::new_at("")
     }
     fn new_at(member: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::new_with_roles(member, false)
+    }
+    #[allow(clippy::too_many_lines)] // Preserve the original fixture and add one never-target package role.
+    fn new_with_roles(member: &str, disabled: bool) -> Result<Self, Box<dyn std::error::Error>> {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let root = std::env::temp_dir().join(format!(
             "sail-script-bootstrap-{}-{}",
@@ -137,6 +141,38 @@ impl Fixture {
             package.join("Cargo.toml"),
             "[package]\nname=\"sail_bootstrap_fixture\"\nversion=\"0.0.0\"\nedition=\"2024\"\n",
         )?;
+        if disabled {
+            use std::io::Write as _;
+            let mut manifest = std::fs::OpenOptions::new()
+                .append(true)
+                .open(package.join("Cargo.toml"))?;
+            manifest.write_all(b"[workspace]\nmembers=[\".\"]\nexclude=[\"disabled\",\"active\"]\nresolver=\"3\"\n[dependencies]\nsail_active_fixture={path=\"active\"}\n[target.\"cfg(any())\".dependencies]\nsail_disabled_fixture={path=\"disabled\"}\n")?;
+            let active = package.join("active");
+            std::fs::create_dir_all(active.join("src"))?;
+            std::fs::write(
+                active.join("Cargo.toml"),
+                b"[package]\nname=\"sail_active_fixture\"\nversion=\"0.0.0\"\nedition=\"2024\"\n",
+            )?;
+            std::fs::write(
+                active.join("build.rs"),
+                b"fn main() { println!(\"cargo:rerun-if-changed=build.rs\"); }\n",
+            )?;
+            std::fs::write(active.join("src/lib.rs"), b"pub const ACTIVE: u8 = 1;\n")?;
+            let dependency = package.join("disabled");
+            std::fs::create_dir_all(dependency.join("src"))?;
+            std::fs::write(
+                dependency.join("Cargo.toml"),
+                b"[package]\nname=\"sail_disabled_fixture\"\nversion=\"0.0.0\"\nedition=\"2024\"\n",
+            )?;
+            std::fs::write(
+                dependency.join("build.rs"),
+                b"fn main() { panic!(\"disabled script ran\"); }\n",
+            )?;
+            std::fs::write(
+                dependency.join("src/lib.rs"),
+                b"pub const UNUSED: u8 = 0;\n",
+            )?;
+        }
         std::fs::write(
             package.join("build.rs"),
             "fn main() { println!(\"cargo:rerun-if-changed=build.rs\"); std::fs::write(std::path::Path::new(&std::env::var_os(\"OUT_DIR\").unwrap()).join(\"private.rs\"), \"pub const VALUE: u8 = 1;\\n\").unwrap(); }\n",
@@ -831,4 +867,139 @@ fn bootstrap_non_utf8_environment_is_not_absent_authority() -> TestResult {
         assert!(stdout.contains("1 passed; 0 failed"));
     }
     Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // Keep actual first/reused/rebuilt journal and next-generation coverage in one transaction.
+fn bootstrap_disabled_dependency_and_retry_keep_fresh_compilation_roles() -> TestResult {
+    let fixture = Fixture::new_with_roles("", true)?;
+    let packages = fixture.data["packages"]
+        .as_array()
+        .ok_or("packages absent")?;
+    let disabled = packages
+        .iter()
+        .find(|package| package["name"] == "sail_disabled_fixture")
+        .ok_or("disabled package absent")?["id"]
+        .as_str()
+        .ok_or("disabled id absent")?;
+    assert!(super::super::never_scheduled(&fixture.data, disabled));
+    let mut owner = fixture.owner()?;
+    fixture.compile()?;
+    let roles = || -> Result<Vec<Value>, Box<dyn std::error::Error>> {
+        Ok(std::fs::read_to_string(&fixture.journal)?
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<Result<_, _>>()?)
+    };
+    let script_binaries = |records: Vec<Value>| -> Vec<Value> {
+        records
+            .into_iter()
+            .filter(|row| {
+                row["reason"] == "compiler-artifact"
+                    && row["target"]["kind"] == serde_json::json!(["custom-build"])
+            })
+            .collect()
+    };
+    let first = roles()?;
+    assert!(first.iter().all(|row| row["package_id"] != disabled));
+    let first = script_binaries(first);
+    assert_eq!(first.len(), 2);
+    assert!(first.iter().all(|row| row["fresh"] == false));
+    // The original retry truncates the journal. Without the added clean, its
+    // only remaining binary role is reused and must continue to be refused.
+    fixture.compile()?;
+    let reused = script_binaries(roles()?);
+    assert_eq!(reused.len(), 2);
+    assert!(reused.iter().all(|row| row["fresh"] == true));
+    fixture.publish(&mut owner);
+    assert!(!fixture.export.exists());
+    let selected = packages
+        .iter()
+        .find(|package| package["name"] == "sail_bootstrap_fixture")
+        .ok_or("selected package absent")?["id"]
+        .as_str()
+        .ok_or("selected id absent")?
+        .to_owned();
+    let retry = Bootstrap::retry_packages(&fixture.data, vec![selected.clone()]);
+    assert_eq!(retry.len(), 2);
+    assert_eq!(retry[0], selected);
+    assert!(retry.iter().any(|id| id.contains("sail_active_fixture")));
+    assert!(!retry.iter().any(|id| id == disabled));
+    let mut arguments: Vec<_> = ["clean", "--offline", "--locked", "--target-dir"]
+        .map(std::ffi::OsString::from)
+        .into_iter()
+        .collect();
+    arguments.push(fixture.target.as_os_str().to_owned());
+    for id in &retry {
+        arguments.push("--package".into());
+        arguments.push(id.into());
+    }
+    let cleaned = cargo_output(&fixture.root, &arguments)?;
+    assert!(
+        cleaned.status.success(),
+        "clean:{}",
+        String::from_utf8_lossy(&cleaned.stderr)
+    );
+    fixture.compile()?;
+    let rebuilt = script_binaries(roles()?);
+    assert_eq!(rebuilt.len(), 2);
+    assert!(rebuilt.iter().all(|row| row["fresh"] == false));
+    fixture.publish(&mut owner);
+    assert!(fixture.export.is_file());
+    assert!(super::super::begin(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &fixture.data
+    )?);
+    let (clean, _, covered) = build_inputs::stale(&fixture.local, &fixture.data);
+    assert_eq!(clean, Vec::<String>::new());
+    assert!(
+        covered,
+        "second declaration coverage must include no unexecuted script"
+    );
+    assert_eq!(fixture.records()?.len(), 2);
+    let source_state = fixture.target.join("sources.json");
+    let (paths, source_covered) =
+        crate::managed::source_inputs::update(&source_state, &fixture.journal, &fixture.data)?;
+    assert!(source_covered);
+    let mut next = fixture.data.clone();
+    next["sail_source_inputs"] = serde_json::to_value(paths)?;
+    let before = input::snapshot_metadata(&next, &[]);
+    assert!(before.complete);
+    let mut proof = coherent::Guard::begin(&before);
+    fixture.compile()?;
+    assert!(proof.ready_at(coherent::Barrier::PostVerification));
+    // This is the original input barrier, not a new Verus verdict or receipt.
+    // Explicit package selection conservatively restores the original refusal.
+    let mut explicitly_selected = fixture.data.clone();
+    explicitly_selected["sail_selected_package_ids"] = serde_json::json!([disabled]);
+    let (clean, _, covered) = build_inputs::stale(&fixture.local, &explicitly_selected);
+    assert_eq!(clean, vec!["sail_disabled_fixture"]);
+    assert!(!covered);
+    Ok(())
+}
+
+#[test]
+fn bootstrap_retry_clean_preserves_missing_and_refuses_unsupported_script_roles() {
+    let data = serde_json::json!({"packages":[
+        {"id":"supported", "dependencies":[], "targets":[{"kind":["custom-build"]}]},
+        {"id":"build-dependency", "dependencies":[{"kind":"build"}],
+            "targets":[{"kind":["custom-build"]}]},
+        {"id":"multiple", "dependencies":[],
+            "targets":[{"kind":["custom-build"]},{"kind":["custom-build"]}]},
+        {"id":"library", "dependencies":[], "targets":[{"kind":["lib"]}]}]});
+    assert_eq!(
+        Bootstrap::retry_packages(&data, vec!["missing".into()]),
+        vec!["missing", "supported"]
+    );
+    assert_eq!(
+        Bootstrap::retry_packages(&data, vec!["supported".into()]),
+        vec!["supported"]
+    );
+    assert_eq!(
+        Bootstrap::retry_packages(&serde_json::json!({}), vec!["missing".into()]),
+        vec!["missing"]
+    );
 }

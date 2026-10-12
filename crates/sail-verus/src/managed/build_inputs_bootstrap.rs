@@ -31,6 +31,48 @@ pub(in crate::managed) struct Bootstrap {
 }
 
 impl Bootstrap {
+    fn eligible_package(package: &Value) -> bool {
+        package["dependencies"]
+            .as_array()
+            .is_some_and(|dependencies| {
+                dependencies.iter().all(|dependency| {
+                    dependency["kind"].is_null()
+                        || dependency["kind"] == "normal"
+                        || dependency["kind"] == "dev"
+                })
+            })
+            && package["targets"].as_array().is_some_and(|targets| {
+                targets
+                    .iter()
+                    .filter(|target| {
+                        target["kind"]
+                            .as_array()
+                            .is_some_and(|kinds| kinds.len() == 1 && kinds[0] == "custom-build")
+                    })
+                    .count()
+                    == 1
+            })
+    }
+
+    /// Freshly compile supported scripts again when a guarded invocation retries.
+    /// The final journal alone must contain their fresh=false compilation roles.
+    pub(in crate::managed) fn retry_packages(
+        data: &Value,
+        mut missing: Vec<String>,
+    ) -> Vec<String> {
+        if let Some(packages) = data["packages"].as_array().filter(|p| p.len() <= 128) {
+            for package in packages.iter().filter(|p| Self::eligible_package(p)) {
+                if let Some(id) = package["id"].as_str()
+                    && !super::super::never_scheduled(data, id)
+                    && !missing.iter().any(|name| name == id)
+                {
+                    missing.push(id.to_owned());
+                }
+            }
+        }
+        missing
+    }
+
     /// Refuse command-line overrides of the pinned Cargo compilation cwd rule.
     pub(in crate::managed) fn supported_arguments(args: &[String]) -> bool {
         !args
@@ -43,26 +85,10 @@ impl Bootstrap {
         data["packages"].as_array().is_some_and(|packages| {
             packages.len() <= 128
                 && packages.iter().any(|package| {
-                    package["dependencies"]
-                        .as_array()
-                        .is_some_and(|dependencies| {
-                            dependencies.iter().all(|dependency| {
-                                dependency["kind"].is_null()
-                                    || dependency["kind"] == "normal"
-                                    || dependency["kind"] == "dev"
-                            })
-                        })
-                        && package["targets"].as_array().is_some_and(|targets| {
-                            targets
-                                .iter()
-                                .filter(|target| {
-                                    target["kind"].as_array().is_some_and(|kinds| {
-                                        kinds.len() == 1 && kinds[0] == "custom-build"
-                                    })
-                                })
-                                .count()
-                                == 1
-                        })
+                    Self::eligible_package(package)
+                        && package["id"]
+                            .as_str()
+                            .is_some_and(|id| !super::super::never_scheduled(data, id))
                 })
         })
     }
