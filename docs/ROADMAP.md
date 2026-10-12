@@ -327,8 +327,10 @@ A separate whole-archive cleanup removes four closed b895 reader targets
 (1,662,423,040 unique allocated bytes) and passes its postchecks. A five-tree
 benchmark cleanup removes all 5,214 approved entries with verified archive
 backing, then fails because its parent-membership check subtracts `target`
-instead of the actual `debug` basename. That failure remains failed; a separate
-read-only parent/absence and holder check is prepared but unexecuted. The
+instead of the actual `debug` basename. That failure remains failed. A separate
+read-only check reverifies the archive but ends UNCERTAIN after nine descriptor
+holder matches; it grants no surrounding-parent certification. No cause is
+inferred from those matches, and no retry runs while the benchmark is active. The
 [cleanup record](validation/m7-closed-core-build-retirement.json) preserves both
 scopes. Neither scope grants proof, performance or physical host-space credit.
 

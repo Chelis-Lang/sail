@@ -102,7 +102,38 @@
       "inventory_sha256": "5cab492ba13198f968afb0f37835b9902d14eb08b2029a2cc10c28d7490d0cb3",
       "native_terminal_sha256": "f0834f9a71f53149e29605d9bcb14a8488be982067bb250be049031a4ecf299c",
       "failure": "After removing all approved entries, the postcheck incorrectly subtracted the literal target basename from parent membership; all approved roots were named debug. Original FAIL and uncertainty retained.",
-      "separate_read_only_closure": "PREPARED_NOT_EXECUTED; requires exact root absence, original parent identity and membership minus each actual basename, unchanged births/mounts, original bounded holders in both containers and archive reverification. No deletion or promotion of the failed scope."
+      "separate_read_only_closure": {
+        "status": "UNCERTAIN",
+        "exit_code": 1,
+        "controller_sha256": "48807f0e9219288d0a02efac887c549059193636b2ce33553f58321840c88a68",
+        "acceptance_result_sha256": "30ef280b92e37791ba9b673d8175f1e614c3fb726155bf2bac57261bee6887ad",
+        "verifier_sha256": "07a0c4726b8fa3653c5d66c7bfc8a6d1bb264cbc35d2e1e708c34c04cd858ee0",
+        "host_error": "native observation incomplete",
+        "native_error": "holders or incomplete census",
+        "acceptance_census": {
+          "scanned": 12,
+          "complete": false,
+          "descriptor_holder_pids": [
+            531,
+            542,
+            548,
+            549,
+            638,
+            657,
+            658,
+            2207,
+            2208
+          ],
+          "unavailable": []
+        },
+        "archive_reverified": {
+          "bytes": 246397048,
+          "sha256": "ed59d622522885b495100634ce7fe1e60443e0cee42dee712f8e13fe288e7831",
+          "all_members_bytes_modes_links_verified": true
+        },
+        "surrounding_parent_certification": "Unavailable: no parent rows were retained; final parent/absence bracket and handoff census were not reached after the acceptance holder refusal.",
+        "limits": "Original holder policy unchanged. No deletion, process signals, retry or failed-scope promotion; historical inode reuse is not established by this result."
+      }
     },
     "exclusions": "Surrounding source, results, fixtures, qualified runtime/product installations, active targets and all other projects remain outside deletion scope.",
     "space_claim": "Inventory unique allocated blocks only, before archive storage; no exact physical host-space recovery or proof/performance credit."
