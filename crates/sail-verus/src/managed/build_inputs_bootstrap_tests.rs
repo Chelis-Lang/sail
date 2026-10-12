@@ -193,7 +193,9 @@ impl Fixture {
         let mut data: Value = serde_json::from_slice(&metadata.stdout)?;
         let cache = root.join("cache");
         let target = cache.join("target");
-        std::fs::create_dir_all(&target)?;
+        // Match production prepare: Cargo creates and owns the target directory,
+        // including its cache tag. An eagerly created target is not Cargo-owned
+        // and the original package-clean operation correctly refuses it.
         data["sail_cache_directory"] = serde_json::to_value(&cache)?;
         data["target_directory"] = serde_json::to_value(&target)?;
         data["sail_invocation_directory"] = serde_json::to_value(&root)?;
@@ -894,8 +896,13 @@ fn bootstrap_disabled_dependency_and_retry_keep_fresh_compilation_roles() -> Tes
         );
     }
     assert!(build_inputs::never_scheduled(&fixture.data, disabled));
+    assert!(!fixture.target.exists(), "Cargo must create its target");
     let mut owner = fixture.owner()?;
     fixture.compile()?;
+    assert!(
+        fixture.target.join("CACHEDIR.TAG").is_file(),
+        "Cargo must establish target ownership before package clean"
+    );
     let roles = || -> Result<Vec<Value>, Box<dyn std::error::Error>> {
         Ok(std::fs::read_to_string(&fixture.journal)?
             .lines()
