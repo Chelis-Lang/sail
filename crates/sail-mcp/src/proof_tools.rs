@@ -131,7 +131,7 @@ fn arguments(
     if let Some(key) = args.keys().find(|key| !allowed.contains(&key.as_str())) {
         return Err(format!("unknown argument {key}"));
     }
-    let mut out = match name {
+    let out = match name {
         "save_baseline" => vec![
             "baseline".into(),
             "save".into(),
@@ -198,6 +198,9 @@ fn arguments(
         }
         _ => return repair(args),
     };
+    Ok((json_arguments(name, args, out), None))
+}
+fn json_arguments(name: &str, args: &Map<String, Value>, mut out: Vec<String>) -> Vec<String> {
     if matches!(name, "save_baseline" | "get_baseline") {
         // Output options precede the literal separator so a valid baseline name
         // such as --json can never be interpreted as a CLI option.
@@ -207,7 +210,7 @@ fn arguments(
     } else {
         out.extend(["--output".into(), "json".into()]);
     }
-    Ok((out, None))
+    out
 }
 fn repair(args: &Map<String, Value>) -> Result<(Vec<String>, Option<String>), String> {
     if value(args, "engine")? != "interactive" {
