@@ -422,13 +422,34 @@ fn resolve_program(program: &std::ffi::OsStr, workspace: &Path) -> Result<PathBu
 }
 
 fn alias(original: &Path, path: &Path) -> Result<()> {
-    if path.is_file() && file_digest(path)? == file_digest(original)? {
+    // An alias that resolves to the original's own inode is that file, so no
+    // byte comparison could differ. Copies and stale links keep the original
+    // full content comparison and replacement.
+    if same_file(original, path) || path.is_file() && file_digest(path)? == file_digest(original)? {
         return Ok(());
     }
     let _ = std::fs::remove_file(path);
     std::fs::hard_link(original, path)
         .or_else(|_| std::fs::copy(original, path).map(|_| ()))
         .map_err(|e| Error::new("SAIL3104", e.to_string()))
+}
+
+fn same_file(original: &Path, path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        match (std::fs::metadata(original), std::fs::metadata(path)) {
+            (Ok(original), Ok(path)) => {
+                original.is_file() && original.dev() == path.dev() && original.ino() == path.ino()
+            }
+            _ => false,
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (original, path);
+        false
+    }
 }
 
 struct Ownership {
