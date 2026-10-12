@@ -9,7 +9,6 @@ use std::time::Duration;
 use sail_api::jobs::{Currentness, Lifecycle, Mode};
 use sail_api::project::ProjectResult;
 
-use super::rpc_diagnostics::{Operation, Stage, Trace};
 use super::{State, get, lock_error, store};
 
 struct Process(Child);
@@ -45,18 +44,10 @@ pub(super) fn run(state: &State) {
         let Some(id) = id else { break };
         let Ok(job) = get(state, &id) else { continue };
         if !job.status.state.terminal() {
-            let mut trace = state
-                .rpc_diagnostics
-                .start_at(state.rpc_diagnostics.accepted());
-            trace.operation(Operation::WorkerPublication);
-            let result = execute(state, &id, &mut trace);
+            let result = execute(state, &id);
             if result.is_ok() {
-                trace.measure(Stage::FreshnessEstablish, || {
-                    store::establish_freshness(state, &job);
-                });
+                store::establish_freshness(state, &job);
             }
-            let status_save = trace.begin();
-            let mut persisted = false;
             if let Ok(mut jobs) = state.jobs.lock()
                 && let Some(job) = jobs.get_mut(&id)
                 && !job.status.state.terminal()
@@ -82,12 +73,8 @@ pub(super) fn run(state: &State) {
                 if let Err(error) = store::save(&state.root, job) {
                     job.status.state = Lifecycle::InfrastructureError;
                     job.status.error = Some(format!("SAIL0809: cannot persist result: {error}"));
-                } else {
-                    persisted = true;
                 }
             }
-            trace.end(Stage::StatusSave, status_save);
-            trace.finish(persisted);
         }
         state.activity.fetch_sub(1, Ordering::SeqCst);
         store::prune(state, &job.status.project_dir);
@@ -105,11 +92,7 @@ fn next(state: &State) -> Option<String> {
         queue = state.ready.wait(queue).ok()?;
     }
 }
-fn execute(
-    state: &State,
-    id: &str,
-    trace: &mut Trace<'_>,
-) -> io::Result<(Option<i32>, ProjectResult, store::Projection)> {
+fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, store::Projection)> {
     let job = get(state, id)?;
     if job.cancel.load(Ordering::SeqCst) {
         return Err(io::Error::other("cancelled"));
@@ -164,7 +147,6 @@ fn execute(
             store::save(&state.root, job)?;
         }
     }
-    let child_wait = trace.begin();
     let status = loop {
         if state.stop.load(Ordering::SeqCst) || job.cancel.load(Ordering::SeqCst) {
             let _ = Command::new("kill")
@@ -185,11 +167,7 @@ fn execute(
         }
         std::thread::sleep(Duration::from_millis(20));
     };
-    trace.child_exited();
-    trace.end(Stage::ChildWait, child_wait);
-    let (document, projection) = trace.measure(Stage::DocumentRead, || {
-        read_document(&directory, &job.submission.mode)
-    })?;
+    let (document, projection) = read_document(&directory, &job.submission.mode)?;
     if document.exit_code != status.code() {
         return Err(io::Error::other(
             "managed report and process exit status disagree",

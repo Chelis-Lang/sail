@@ -148,10 +148,7 @@ observations do not admit a receipt or generation. Error exits retain the
 original error and record a finished interval when the timer is dropped.
 The existing result `execution.wall_ms` is sampled before these boundaries and
 is unchanged. A retained worker stdout document proves neither its emission
-time nor terminal daemon publication before a deadline. Daemon child-exit,
-document-read, optional freshness establishment and status persistence can be
-observed separately through the existing
-[optional daemon diagnostic ring](result-rpc-diagnostics.md).
+time nor terminal daemon publication before a deadline.
 
 Timing begins in the managed runner, after CLI configuration and daemon
 connection setup. A final row is written when its block exits, including error
@@ -175,16 +172,3 @@ the exact Linux Sail/shim bytes built after the complete 498-test workspace gate
 and 38-control solver suite. It is a build scope only; cold-start measurements
 retain their original deadlines and remain separate from source/runtime and
 reader qualification.
-
-The current daemon Result path enables an optional background output-owner service
-under [ADR0035](decisions/0035-guarded-retained-output-digests.md). It concerns
-persisted stdout bytes, not verification or input Currentness. One background
-constructor may establish continuous output coverage within the existing frame
-budget; foreground requests use that coverage only around their independent
-input/runtime freshness check. Missing, busy, refused or invalid coverage retains
-the full read/hash fallback. The integration passed
-[35 affected native source controls and strict checks](validation/m7.md).
-The later [b895 installed product](validation/m7.md)
-passes the original full reader and retained CLI/MCP workflow. That whole-product
-pass does not isolate this shortcut's latency contribution or establish repair
-speed. Newer source-inventory/baseline changes require their own product validation.

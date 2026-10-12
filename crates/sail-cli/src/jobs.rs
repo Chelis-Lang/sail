@@ -27,7 +27,6 @@ pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
 fn input_environment_key(key: &std::ffi::OsStr) -> bool {
     ![
         "SAIL_JOB_EVENTS",
-        "SAIL_JOB_RPC_TIMINGS",
         "SAIL_MANAGED_FORCE",
         "SAIL_JOB_GUARD_PARENT",
         "SAIL_PROOF_EVENTS",
@@ -344,10 +343,10 @@ mod environment_tests {
     use super::*;
 
     #[test]
-    fn rpc_observation_does_not_change_submitted_environment() {
+    fn job_plumbing_does_not_change_submitted_environment() {
         let original = BTreeMap::from([("RUSTFLAGS", "-C opt-level=0"), ("PATH", "/toolchain")]);
         let mut observed = original.clone();
-        observed.insert("SAIL_JOB_RPC_TIMINGS", "1");
+        observed.insert("SAIL_JOB_EVENTS", "/tmp/events.jsonl");
         let select = |environment: BTreeMap<&str, &str>| {
             environment
                 .into_iter()

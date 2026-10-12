@@ -163,7 +163,7 @@ Findings 2, 3, 5, 6, 7, 9, 12, 14 and 16 therefore optimise or instrument phases
   - the metadata test (about 70 lines);
   - the `SAIL_JOB_RPC_TIMINGS` environment filters in `sail-cli/src/jobs.rs` and `managed/runner.rs`;
   - `docs/result-rpc-diagnostics.md` (168).
-- **Requirement:** [RPC diagnostics](../../result-rpc-diagnostics.md): "The ring retains the latest 256 fixed metadata rows … The initial allocator capacity is refused if it exceeds 512 rows."
+- **Requirement:** RPC diagnostics (`docs/result-rpc-diagnostics.md`, removed by L14): "The ring retains the latest 256 fixed metadata rows … The initial allocator capacity is refused if it exceeds 512 rows."
 - **Goal served:** none. The only consumer is `reader-acceptance-run.py --timings`.
 - **Alternative:** one `tracing` debug line per RPC, if needed later.
 - **Keep:** the Linux blocking-accept change (`configure_accept`) and its test. It was L5's largest real fix, removing a 10 ms accept sleep.

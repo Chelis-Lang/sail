@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Remove the `SAIL_JOB_RPC_TIMINGS` diagnostic and the daemon's
+  `rpc-timings.json` export. Job reads are unchanged: every Status and Result
+  read still re-reads and hashes the job's output and checks input freshness.
+
 - Interactive engine: remove prepared-lowering reuse and the same-input
   oracle. Repairs no longer pay for preparation, and progress events no longer
   rebuild every function name per obligation. A one-round native candidate

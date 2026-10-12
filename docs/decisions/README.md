@@ -37,7 +37,7 @@ Use [the template](0000-template.md) for a new decision.
 - [0032: Sticky kernel mount-generation coverage](0032-kernel-mount-generation-coverage.md)
 - [0033: Exact deferred imported diagnostic locators (proposed candidate)](0033-deferred-import-diagnostic-locators.md)
 - [0034: MCP response encoding ownership](0034-mcp-response-encoding-ownership.md)
-- [0035: Guarded retained output digests (unselected prototype)](0035-guarded-retained-output-digests.md)
+- [0035: Guarded retained output digests (rejected: removed, saved at most 1.6 ms per read)](0035-guarded-retained-output-digests.md)
 - [0036: Managed compiler artifact families (implemented; product validation pending)](0036-managed-compiler-artifact-families.md)
 - [0037: Owned async shared HTTP transport (rejected after comparison)](0037-owned-async-shared-http-transport.md)
 - [0038: M7 rescue: native reference hosts, evidence policy and engine conditions](0038-m7-rescue.md)
