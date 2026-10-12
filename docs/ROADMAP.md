@@ -133,8 +133,9 @@ gives each gate's evidence and its indexed failed attempts, and
      (ADR 0009); effort recording; fault injection; a shared tier of
      signed entries in a directory store (ADR 0017); optional authenticated
      HTTP(S) reading and publication with a self-hosted server (ADR 0025).
-   - **Deferred:** warm solver pools (measured; see below) and the opt-in
-     stack-key mode (ADR 0008 update).
+   - **Planned:** warm, exact-prefix solver sessions for edit-loop cache
+     misses (ADR 0038, direction item 2).
+   - **Deferred:** the opt-in stack-key mode (ADR 0008 update).
 2. **CLI.**
    - **Done:** `sail verify`, `sail watch`, `sail serve`, `sail status`,
      `sail cache`, and the MCP server `sail mcp` (ADR 0016).
@@ -176,8 +177,11 @@ them, on a vstd run on macOS arm64:
 - **The Linux fast-tier warm run** started a solver for only 26 of 1,526
   sessions.
 
-Warm pools could only shorten that small solver-side remainder, so they are
-**deprioritised**. The levers that matter now:
+Across a whole warm run, then, pools could only shorten a small
+solver-side remainder. That finding is about whole runs. In edit loops the
+rescue L6 spike found that a cache miss's latency is mostly solver start-up
+and prefix replay (59 ms of a 72 ms median), so warm exact-prefix sessions
+are back in plan for edit-loop misses (ADR 0038). The levers that matter now:
 - **The warm Verus frontend** (the charter roadmap item), which may need
   Verus's cooperation;
 - **Upstream determinism (VI-0001),** to raise hit rates;
@@ -187,7 +191,7 @@ Warm pools could only shorten that small solver-side remainder, so they are
 
 - Multiple SMT backends.
 - Alethe and Carcara certificates.
-- A Rust pre-solver.
+- A Rust pre-solver (measured no-go for edit-loop latency; ADR 0038).
 - Unsat-core pruning.
 - Instantiation replay.
 - A warm Verus frontend.

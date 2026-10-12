@@ -31,12 +31,14 @@ The owner also set the direction beyond M7: rank work by agent authoring-loop la
 5. **Landing.** PR #74 is replaced by small PRs against `main`. Pre-rescue history is preserved in the tag `archive/m7-contracts-f7103bf`.
 6. **Direction after M7, ranked by agent authoring-loop latency.** Each item starts with its own ADR and a measurement:
    1. a warm Verus frontend across edits (M8);
-   2. a Rust pre-solver for the easy fragment, provisional by default with background Z3 confirmation, gated by differential fuzzing against Z3 (M9);
+   2. warm, exact-prefix solver sessions (the charter's warm solver pools): pinned Z3 processes that have already replayed the identical prefix bytes, so a cache miss after an edit pays for its own solve rather than for process start and prefix replay;
    3. fail-fast, edit-prioritised streaming of results;
    4. opt-in stability modes (unsat-core pruning, instantiation replay, racing portfolios);
    5. sharing between many concurrent agents;
    6. more backends and certificates;
    7. other verifiers.
+
+   A Rust pre-solver for the easy fragment is not on this list. The L6 spike ([report](../reports/rescue/l6-presolver-coverage.md)) found that it covers 8.2% of edit-loop cache misses by count and 0.1% by solve time, and that no edit cycle was fully covered, so it would not shorten an agent's time to a verdict. About 59 ms of a 72 ms median miss is Z3 start-up and prefix replay, which item 2 removes. The pre-solver is reconsidered only if arithmetic-heavy projects measure differently.
 
 ## Consequences
 
