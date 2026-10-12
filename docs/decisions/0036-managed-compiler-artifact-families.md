@@ -106,7 +106,11 @@ Cargo-injected or proof-specific declared environment variables conservatively
 refuse sharing. The one audited exception is `RUSTC_BOOTSTRAP=1`, set by the
 pinned Cargo-Verus and explicitly bound by the managed child command; old
 parent-value observations become stale. No process environment is mutated.
-All other actual environment and tool changes retain family isolation. The
+Sharing also refuses Cargo's dynamic-library path variables, resolved `RUSTDOC`
+and `RUSTC_LINKER`, removed `RUSTFLAGS`, and `DEP_` metadata: their child values
+cannot be certified from the parent environment. The bootstrap and ordinary
+publication paths use the same refusal policy. All other actual environment and
+tool changes retain family isolation. The
 compiler identity includes the actual Sail executable bytes/path; an older
 supported CLI cannot write into a newer binary's family.
 

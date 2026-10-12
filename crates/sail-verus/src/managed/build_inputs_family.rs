@@ -125,30 +125,42 @@ fn output_matches(record: &BuildInput, target: &Path) -> bool {
 fn matches(record: &BuildInput, data: &Value, target: &Path) -> bool {
     record.covered
         && output_matches(record, target)
-        && !record.env.keys().any(|key| {
-            // Cargo/Verus inject per-run variables after the runner captures its
-            // own environment. Do not certify those using the parent values.
-            key.starts_with("SAIL_")
-                || key.starts_with("VERUS_")
-                || key.starts_with("CARGO_")
-                || key.starts_with("RUSTUP_")
-                || [
-                    "CARGO",
-                    "RUSTC",
-                    "RUSTC_WRAPPER",
-                    "RUSTC_WORKSPACE_WRAPPER",
-                    "OUT_DIR",
-                    "HOST",
-                    "TARGET",
-                    "PROFILE",
-                    "OPT_LEVEL",
-                    "DEBUG",
-                    "NUM_JOBS",
-                ]
-                .contains(&key.as_str())
-        })
+        && record.env.keys().all(|key| allowed_environment(key))
         && package_matches(record, data)
         && current(record, None) == (record.digest.clone(), true)
+}
+
+// Parent values do not describe Cargo-injected or removed child variables.
+// RUSTC_BOOTSTRAP is the sole pinned, explicitly invoked exception.
+fn allowed_environment(key: &str) -> bool {
+    key == "RUSTC_BOOTSTRAP"
+        || !(key.starts_with("SAIL_")
+            || key.starts_with("VERUS_")
+            || key.starts_with("CARGO_")
+            || key.starts_with("RUSTUP_")
+            || key.starts_with("DEP_")
+            || [
+                "CARGO",
+                "RUSTC",
+                "RUSTDOC",
+                "RUSTC_LINKER",
+                "RUSTC_WRAPPER",
+                "RUSTC_WORKSPACE_WRAPPER",
+                "RUSTFLAGS",
+                "OUT_DIR",
+                "HOST",
+                "TARGET",
+                "PROFILE",
+                "OPT_LEVEL",
+                "DEBUG",
+                "NUM_JOBS",
+                "LD_LIBRARY_PATH",
+                "DYLD_LIBRARY_PATH",
+                "DYLD_FALLBACK_LIBRARY_PATH",
+                "LIBPATH",
+                "PATH",
+            ]
+            .contains(&key))
 }
 
 fn package_matches(record: &BuildInput, data: &Value) -> bool {
