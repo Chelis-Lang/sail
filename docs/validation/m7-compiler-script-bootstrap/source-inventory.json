@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "implemented source-only; native controls, strict and original product/benchmark pending",
+  "status": "Affected declared-source inventory and baseline controls plus strict pass inside failed combined 43d1c29 gate; corrected full gate, solver and product/benchmark pending",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -25,7 +25,7 @@
     "imported_paths_read_changed_source_bytes_independently_before_acquisition"
   ],
   "existing_control_extension": "content_contract_output_registry_and_compiler_changes_cannot_import adds v1/checksum refusal",
-  "native_controls_executed": false,
+  "native_controls_executed": true,
   "historical_b895_scope": {
     "benchmark": "FAIL before measured samples",
     "worker_source_observation": {
@@ -47,7 +47,7 @@
   ],
   "combined_native_attempts": {
     "scope": "Combined declared-source inventory and MCP baseline lifecycle; original complete gate then solver",
-    "status": "Three first strict/compile FAIL scopes retained; corrected bdc20a6 validation pending",
+    "status": "Three initial strict/compile FAIL scopes and one later MCP inventory FAIL preserved; corrected e0bc26e validation pending",
     "baseline_issue": "https://github.com/Chelis-Lang/sail/issues/72",
     "attempts": [
       {
@@ -136,6 +136,160 @@
           "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
         },
         "retained_images_meaning": "operator-selected copies; neither execution nor gate credit follows from file presence"
+      },
+      {
+        "scope": "sail-local-gates-43d1c29",
+        "source_commit": "43d1c2976f7eb5024fcfb060fe209d1d1a2c8d53",
+        "status": "FAIL",
+        "gate_exit_code": 100,
+        "gate_elapsed_seconds": 458.66660054299973,
+        "strict": {
+          "status": "PASS",
+          "cargo_reported_elapsed": "1m 02s"
+        },
+        "workspace_nextest": {
+          "run_id": "6560e0a4-7164-4169-a46b-2a26a6a460bd",
+          "profile": "ci",
+          "elapsed_seconds": 236.369,
+          "run": 673,
+          "passed": 672,
+          "failed": 1,
+          "skipped": 41
+        },
+        "failure": "Existing sail-cli::mcp handshake_then_every_tool expected 12 exact names but actual discovery includes the three authorized baseline tools (15); original equality assertion failed",
+        "corrected_by": "e0bc26e2f35f649d2fd2533eceaff456ff4457aa",
+        "correction_scope": "Adds save_baseline/list_baselines/get_baseline to the exact expected list; original names, order and assertions retained",
+        "affected_controls": [
+          {
+            "name": "sail-api jobs::tests::baseline_read_has_exact_additive_wire_identity",
+            "status": "PASS",
+            "elapsed_seconds": 0.103
+          },
+          {
+            "name": "sail-cli::bin/sail product_cli::evidence::tests::literal_baseline_names_cannot_become_output_options",
+            "status": "PASS",
+            "elapsed_seconds": 0.072
+          },
+          {
+            "name": "sail-daemon::proof_product baseline_get_preserves_provisional_evidence_and_refuses_corrupt_or_oversized_records",
+            "status": "PASS",
+            "elapsed_seconds": 0.378
+          },
+          {
+            "name": "sail-daemon::proof_product baseline_save_still_refuses_unfinished_jobs",
+            "status": "PASS",
+            "elapsed_seconds": 0.162
+          },
+          {
+            "name": "sail-daemon::proof_product immutable_baseline_survives_pruning_and_restart_without_overwriting_provenance",
+            "status": "PASS",
+            "elapsed_seconds": 1.75
+          },
+          {
+            "name": "sail-mcp proof_tools::baseline_tests::actual_baseline_tool_dispatch_retains_full_graph_and_refuses_bad_cli_reply",
+            "status": "PASS",
+            "elapsed_seconds": 0.21
+          },
+          {
+            "name": "sail-mcp proof_tools::baseline_tests::baseline_arguments_are_exact_literal_cli_requests_without_service_override",
+            "status": "PASS",
+            "elapsed_seconds": 0.095
+          },
+          {
+            "name": "sail-mcp proof_tools::baseline_tests::baseline_definitions_expose_mutation_and_read_only_semantics",
+            "status": "PASS",
+            "elapsed_seconds": 0.096
+          },
+          {
+            "name": "sail-mcp proof_tools::baseline_tests::baseline_response_cannot_claim_currentness_or_substitute_identity",
+            "status": "PASS",
+            "elapsed_seconds": 0.096
+          },
+          {
+            "name": "sail-verus managed::build_inputs::family::bootstrap::tests::family_source_inventory_gives_second_selector_its_original_generated_input_guard",
+            "status": "PASS",
+            "elapsed_seconds": 4.182
+          },
+          {
+            "name": "sail-verus managed::build_inputs::family::sources::tests::typed_source_inventory_refuses_unknown_packages_roles_aliases_and_limits",
+            "status": "PASS",
+            "elapsed_seconds": 0.105
+          },
+          {
+            "name": "sail-verus managed::build_inputs::family::sources::tests::incomplete_or_unattributed_sources_cannot_export_and_private_roots_survive",
+            "status": "PASS",
+            "elapsed_seconds": 0.102
+          },
+          {
+            "name": "sail-verus managed::build_inputs::family::sources::tests::imported_paths_read_changed_source_bytes_independently_before_acquisition",
+            "status": "PASS",
+            "elapsed_seconds": 0.092
+          },
+          {
+            "name": "sail-verus managed::build_inputs::family::tests::content_contract_output_registry_and_compiler_changes_cannot_import",
+            "status": "PASS",
+            "elapsed_seconds": 0.101
+          },
+          {
+            "name": "sail-verus managed::runner::tests::compact_package_specs_bind_expected_targets_and_forced_cleanup",
+            "status": "PASS",
+            "elapsed_seconds": 0.079
+          },
+          {
+            "name": "sail-verus managed::input::tests::metadata_command_forwards_each_exact_cargo_feature_alias",
+            "status": "PASS",
+            "elapsed_seconds": 0.076
+          },
+          {
+            "name": "sail-verus managed::input::tests::metadata_command_retains_repeated_features_and_first_verifier_separator",
+            "status": "PASS",
+            "elapsed_seconds": 0.075
+          },
+          {
+            "name": "sail-cli::proof_workflow installed_cli_and_mcp_share_repair_journal_explanation_and_baseline_contracts",
+            "status": "PASS",
+            "elapsed_seconds": 1.619
+          }
+        ],
+        "unattempted": [
+          "solver",
+          "remaining gate doctests/rustdoc",
+          "layering",
+          "deny",
+          "generated benchmark-page check"
+        ],
+        "uncertainty": [],
+        "known_groups": {
+          "live_survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 13,
+          "dead_task_evidence_complete": true
+        },
+        "closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+        "container_birth_unchanged": true,
+        "source_archive_sha256": "fbb256fa834de271a5ba685f1188fcad952b51e79b91d5a9984c00a6f4348425",
+        "evidence_sha256": {
+          "controller.json": "8a6961a712fad99ffca1d59fe87b8453c746f567331e9c507b3249b6e8ddd42f",
+          "result.json": "16f1b7bd20f2ca68d78af9986a271f3372274db8c607258d1a3a63ea6827a9e8",
+          "gate.log": "208ba442a69479c3895a6954687e829803be354e402b63763fc7ff7bbed33bb0",
+          "source-inventory.json": "5d760918ab1c351fbfc69b70a26fc03e1b24b1655b0c67ad72ac078eeb7099c1",
+          "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
+        },
+        "retention": {
+          "files": [
+            {
+              "source": "/work/target/debug/deps/sail_verus-1ff5719aff2dbe51",
+              "copy": "0-sail_verus-1ff5719aff2dbe51",
+              "bytes": 37067496,
+              "mode": 493,
+              "sha256": "ea4d7bf5ec238aea76df6af0f427bb4902013e66a9b87f71f6227f0f26ab088c",
+              "execution_identity": "operator-selected copy; execution is not inferred from file presence"
+            }
+          ],
+          "errors": [],
+          "all_cargo_artifacts_archived": false
+        },
+        "qualification": "These actual control passes belong to a failed whole gate; no solver, installed-product, conformance, performance or overall M7 acceptance credit"
       }
     ],
     "corrected_source_commit": "bdc20a695b32347941e8311fb84e7b9c97d8314d",
@@ -147,6 +301,7 @@
       "test_refactor": "same pruned/restarted baseline read and full payload equality; loaded.as_ref() compares the boxed payload to the saved Baseline",
       "qualification": "file-only source review; no native test or performance credit"
     },
-    "credit": "All three scopes remain FAIL; no Rust-test, solver, installed-product, conformance, performance or M7 acceptance credit"
+    "credit": "All four original scopes remain FAIL. The last scope contains actual strict and 672 individual test passes; no complete-gate, solver, installed-product, conformance, performance or M7 acceptance credit.",
+    "latest_corrected_source_commit": "e0bc26e2f35f649d2fd2533eceaff456ff4457aa"
   }
 }
