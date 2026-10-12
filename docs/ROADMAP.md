@@ -110,7 +110,7 @@ complete current full validation. M7 remains incomplete until these gates pass.
 | Engine runtime delivery | Pass | 13 runtime files byte-identical; CI uses the prebuilt pin |
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
-| Responsive reads (p95 < 200 ms) | Fail | `387ba80` Python Result p95 436.008 ms; earlier `b89546c` passed |
+| Responsive reads (p95 < 200 ms) | Pass (native) | Python Result p95 98.9 ms, Rust 34.9 ms on EC2 after the L5 fixes; the emulated 436 ms failure does not reproduce natively |
 | Default and cache conformance | Incomplete | PR subset 33/33; standard 158/159 with a stock Verismo timeout |
 | Frozen repair performance (≥2× each) | Fail, never measured | `387ba80` refused at the first measured GCD (three compiler invocations) |
 
