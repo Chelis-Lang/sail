@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Selected387ba80 complete gate/solver, release/install and original repair PASS. Frozen original benchmark FAIL first measured GCD one-driver requirement, zero samples/Vest unreached; current readers running without result, standard/performance/M7 unqualified.",
+  "status": "Selected387ba80 complete gate/solver, release/install and original repair PASS. Original reader FAIL Python Result p95, Rust/retained scope unattempted. Frozen original benchmark FAIL first measured GCD one-driver requirement, zero samples/Vest unreached; standard/performance/M7 unqualified.",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -1086,6 +1086,141 @@
       "stderr": "110888d4142f63a919cee68f72475962f4f88e285ea9b6513dce4710a67af41b",
       "native-raw.tar.gz": "97070961c28e2b8841f3b0c7843ec2a448080968cb982817f0805feda524df07"
     },
-    "qualification": "Current acceptance/batched true does not satisfy the original one-compiler-driver requirement. No speedup/performance/M7 acceptance; no inferred cause for the three invocations. Current reader execution is a separate running scope."
+    "qualification": "Current acceptance/batched true does not satisfy the original one-compiler-driver requirement. No speedup/performance/M7 acceptance; no inferred cause for the three invocations. Current reader execution fails its Python Result p95 bound in a separate scope."
+  },
+  "current_original_reader": {
+    "status": "FAIL",
+    "source_commit": "387ba808794c2e5d283a35d1150196c0611da84a",
+    "scope": "Original unchanged Python-first combined-product reader workflow; no reader or overall M7 acceptance",
+    "external_exit_code": 1,
+    "inclusive_elapsed_s": 884.4459434030014,
+    "primary_error": {
+      "message": "('python-census', 1)",
+      "type": "AssertionError"
+    },
+    "observed_failure": "Python full Result p95 exceeds the unchanged strict <200 ms bound; no underlying latency mechanism established.",
+    "environment": "Linux amd64 Docker emulation on arm64 macOS under development load",
+    "limits": {
+      "clients": 4,
+      "samples_per_collector": 200,
+      "p95_strict_upper_bound_ms": 200,
+      "rpc_budget_s": 5,
+      "cli_budget_s": 30,
+      "setup_invocation_budget_s": 600
+    },
+    "python": {
+      "passed": false,
+      "summary": {
+        "status": {
+          "count": 100,
+          "median_ms": 69.74689599974226,
+          "p95_ms": 137.08441599919752,
+          "max_ms": 173.28729200016824
+        },
+        "result": {
+          "count": 100,
+          "median_ms": 154.65339550064527,
+          "p95_ms": 436.00845799846866,
+          "max_ms": 606.7980000007083
+        }
+      },
+      "current_samples": 200,
+      "continuing_same_verifier_samples": 200,
+      "running_before_and_after_samples": 200,
+      "status_response_bytes": 460,
+      "full_result_response_bytes": 4313119,
+      "establishment_ms": 279.80037500128674,
+      "establishment_reads": 1
+    },
+    "later_stages": {
+      "rust_collector": "not attempted",
+      "retained_cli_mcp": "not attempted"
+    },
+    "immutable_inputs_unchanged": true,
+    "input_seals_equal": true,
+    "product_files": {
+      "sail": {
+        "bytes": 77282592,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "2e0c485b48a8c7b2e6878c621780426bb90fe3fcb171b46834db3ddcbc920a36",
+        "uid": 0
+      },
+      "sail-z3": {
+        "bytes": 11001784,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "025288262cff1d6af95ef762f63f70f343205fc0864fe87f6343f8cec58a2cdf",
+        "uid": 0
+      }
+    },
+    "collector_freeze": {
+      "build": "Unchanged Rust collector rebuilt against staged SDK; original unchanged Python collector; original freezes retained",
+      "collector_source_commit": "6ca0cbef588b6cf1bfafcb9b2308f41016439fd7",
+      "collector_source_sha256": "dcfba2d98259c04dd76327196331aeee478656aa81469fd4c09c04af2699eebe",
+      "execution": "Linux amd64 Docker emulation on arm64 macOS; shared development load",
+      "files": {
+        "job_read_bench": {
+          "bytes": 12235200,
+          "sha256": "f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d"
+        },
+        "python-reader-probe.py": {
+          "bytes": 11877,
+          "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+        }
+      },
+      "source_commit": "02fd1fc"
+    },
+    "controller_scripts": {
+      "m7-job-read-bench.py": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720",
+      "m7-native-product.py": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0",
+      "m7-reader-acceptance.py": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d",
+      "m7-repair-bench.py": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33",
+      "m7-retained-jobs-acceptance.py": "207b45ef034b6c1e947dbb0efdb87368b62d5ef8a4c42ab5768413670f775a11"
+    },
+    "lifecycle": {
+      "cleanup_errors": [],
+      "archival_errors": [],
+      "outer_finalization_errors": [],
+      "daemon_stop_exit_code": 0,
+      "daemon_stop_elapsed_s": 0.3309594999991532,
+      "scope": "Recorded controller cleanup and daemon retirement only; not arbitrary orphan absence."
+    },
+    "retained_evidence": {
+      "archive": "sail-retained-evidence-20261012/handoff.tar.gz",
+      "member_prefix": "sail-m7-current-reader-387ba80-fresh",
+      "selected_regular_members": {
+        "run/summary.json": {
+          "bytes": 127361,
+          "sha256": "59c60d5943fe1a028d61a27492aa535cba0073c85a9cea73c791186e105bc41f"
+        },
+        "run/actor-lifecycle.json": {
+          "bytes": 355,
+          "sha256": "dc1c09027c0c58ac50aadb41860e8befc8270fe49bd6056193856c9353ee5c15"
+        },
+        "external-terminal.json": {
+          "bytes": 63,
+          "sha256": "4546faaca0758a83f17310975f8de092ea551b16cb7322eb657ea694afd6f9ae"
+        },
+        "controller.stdout": {
+          "bytes": 7171,
+          "sha256": "10aaf5fee55d070fd31cac35f52157ef9acbd1c24b40c989d6aca4fa7bdc6177"
+        },
+        "controller.stderr": {
+          "bytes": 1359,
+          "sha256": "3c03a755dfc599b3859a5803b44a90e6d52a9009d872c29b86ce13777947504b"
+        },
+        "run/python-census.json": {
+          "bytes": 144862,
+          "sha256": "8414f9ca6c46512233314961872d29cd16fe0320b60ec04f5ae7c23103f3511d"
+        },
+        "run/python-census/stdout": {
+          "bytes": 345,
+          "sha256": "b1a1e211b36c1b5bfff65f8666655454b8bcd37a884b3552dc36d426860e294d"
+        }
+      },
+      "audit": "Selected bounded regular text/JSON members read from the compact archive; no bulk extraction or native execution."
+    },
+    "qualification": "The historical b895 and730 reader passes remain separate. No current reader/performance/M7 acceptance, no rerun, no inferred emulation or load cause."
   }
 }

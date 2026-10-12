@@ -178,6 +178,15 @@ Source/product/runtime seals and container birth match. Native seal closure and
 the complete bounded two-process census pass, with no candidates, unreadable
 rows or unreaped tasks. This does not certify arbitrary orphan absence. The
 935,374-byte raw archive is hash-bound in the existing JSON; scratch and both
-cache trees are excluded from that archive but retained natively. Historical
+cache trees are excluded from that archive; native originals were retained at
+that scope's freeze. Historical
 57a infrastructure and b895 warmup failures remain unchanged. Current 387
-reader execution is running separately, without an acceptance result.
+reader execution separately fails the unchanged Python Result p95 bound.
+The full workflow lasts 884.446 seconds including preparation; Python retains
+100 Status and 100 Result samples. Status p95 is 137.084 ms and Result p95 is
+436.008 ms, against the strict 200 ms bound. All samples retain Current evidence
+and the same continuing verifier; full Results are exactly 4,313,119 bytes.
+Rust and retained CLI/MCP checks are unattempted. Input seals match and the
+recorded daemon stops successfully; this is not an arbitrary orphan-absence
+claim. Selected compact-archive member hashes are bound in the existing JSON.
+No underlying latency cause or current reader acceptance is established.

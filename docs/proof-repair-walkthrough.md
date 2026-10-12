@@ -8,8 +8,10 @@ original 120/30/5 limits. Named-baseline feature smoke passed separately on
 `57a319d`; it supplies no transferred current-product reader or performance credit.
 The [b895 reader/retained pass](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
 remains historical: both unchanged collectors preserve full Current graphs and
-p95 below 200 ms. Current 387 readers are running separately, without collector or
-retained-workflow acceptance. Real-project M7 speed and complete standard/cache
+p95 below 200 ms. The original 387 reader workflow fails Python Result p95 at
+436.008 ms against the unchanged 200 ms bound; all 200 samples retain Current
+evidence and the same continuing verifier. Rust and retained CLI/MCP checks
+are unattempted, so current reader acceptance remains unfinished. Real-project M7 speed and complete standard/cache
 coverage remain unfinished.
 See [the roadmap](ROADMAP.md),
 [known issues](known-issues.md) and [acceptance requirements](bench/m7-repair-acceptance.md).

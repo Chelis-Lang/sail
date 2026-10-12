@@ -50,8 +50,11 @@ passes both unchanged collectors: each retains 200 total samples across four
 concurrent clients (100 Result and 100 Status reads), with complete Current
 graphs and p95 below 200 ms, followed by retained CLI/MCP scenarios. The
 [730 reader pass](docs/validation/m7-reader-730a321-terminal.md) remains a separate historical scope.
-Current-product readers are running separately; no collector or retained-workflow
-acceptance result is claimed for 387. Twofold real-project repair-loop improvement and
+The original 387 reader workflow fails Python Result p95 (436.008 ms against
+the unchanged 200 ms bound); Status p95 is 137.084 ms. All 200 samples retain
+Current evidence and the same continuing verifier. Rust and retained CLI/MCP
+checks are unattempted, so no current reader acceptance is claimed. Twofold
+real-project repair-loop improvement and
 complete standard/cache coverage remain outstanding;
 M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
 See [current validation](docs/validation/m7-compiler-script-bootstrap/source-inventory.json) and

@@ -466,8 +466,11 @@ followed by passing retained CLI/MCP scenarios. The separate
 [installed baseline feature smoke](validation/m7-mcp-baseline-product-smoke-plan.md)
 on `57a319d` exercises actual save/list/get and restarted-client reads:
 CLI and MCP retain the same complete Historical snapshot, and duplicate save
-refuses overwrite. Current-product readers and real-project performance
-receive no transferred credit from these earlier scopes.
+refuses overwrite. The separate original 387 reader workflow fails Python
+Result p95 at 436.008 ms against the unchanged 200 ms bound, with full Current
+evidence and the same continuing verifier in all 200 samples. Rust and retained
+CLI/MCP checks are unattempted. Current-product readers and real-project
+performance receive no transferred credit from the earlier passing scopes.
 The [730 reader/retained pass](validation/m7-reader-730a321-terminal.md) is a separate historical scope.
 The reader p95 values come from the unchanged Python and Rust collectors, rather
 than an MCP-specific timing census; retained MCP scenarios establish functional

@@ -45,7 +45,11 @@ For current experimental repair use:
   samples are retained and Vest is unreached. Matching seals and complete
   bounded closure do not supply performance acceptance or explain the
   invocation count. The [existing record](validation/m7-compiler-script-bootstrap/source-inventory.json)
-  preserves the full failed scope; current readers are running separately.
+  preserves the full failed scope. The separate original 387 reader workflow
+  fails Python Result p95 at 436.008 ms against the unchanged 200 ms bound
+  (Status p95 137.084 ms). All 200 samples retain Current evidence and the
+  same continuing verifier; each full Result is 4,313,119 bytes. Rust and
+  retained CLI/MCP checks are unattempted. No latency cause is established.
 
 - The original real-project `730a321` benchmark fails before measured rounds:
   the second HumanEval repair warmup loses input freshness at a namespace
