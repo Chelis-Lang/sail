@@ -26,19 +26,20 @@ pub struct InputSnapshot {
     pub(super) content_paths: BTreeSet<PathBuf>,
 }
 
-pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
+fn metadata_command(workspace: &Path, args: &[String], cargo: &Path) -> Command {
     let mut cmd = Command::new(cargo);
     cmd.current_dir(workspace)
         .args(["metadata", "--format-version", "1"]);
     let mut it = args.iter().take_while(|a| a.as_str() != "--");
     while let Some(a) = it.next() {
-        if ["--manifest-path", "--features"].contains(&a.as_str()) {
+        if ["--manifest-path", "--features", "-F"].contains(&a.as_str()) {
             cmd.arg(a);
             if let Some(v) = it.next() {
                 cmd.arg(v);
             }
         } else if a.starts_with("--manifest-path=")
             || a.starts_with("--features=")
+            || a.starts_with("-F")
             || [
                 "--all-features",
                 "--no-default-features",
@@ -51,7 +52,11 @@ pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Resul
             cmd.arg(a);
         }
     }
-    let output = cmd
+    cmd
+}
+
+pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
+    let output = metadata_command(workspace, args, cargo)
         .output()
         .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
     if !output.status.success() {
@@ -395,6 +400,91 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn metadata_command_forwards_each_exact_cargo_feature_alias() {
+        use std::ffi::OsStr;
+        use std::path::Path;
+        for arguments in [
+            vec!["--features", "enabled"],
+            vec!["--features=enabled"],
+            vec!["-F", "enabled"],
+            vec!["-Fenabled"],
+            vec!["-F=enabled"],
+        ] {
+            let args = arguments
+                .iter()
+                .map(|v| (*v).to_owned())
+                .collect::<Vec<_>>();
+            // Inspect the actual constructor used by metadata(), not a second
+            // imitation parser. The pinned Cargo parser owns alias semantics.
+            let command =
+                super::metadata_command(Path::new("workspace"), &args, Path::new("cargo"));
+            let expected = ["metadata", "--format-version", "1"]
+                .into_iter()
+                .chain(arguments)
+                .map(OsStr::new)
+                .collect::<Vec<_>>();
+            assert_eq!(command.get_args().collect::<Vec<_>>(), expected);
+            assert_eq!(command.get_program(), OsStr::new("cargo"));
+            assert_eq!(command.get_current_dir(), Some(Path::new("workspace")));
+            // The original request remains byte-for-byte unchanged for its
+            // independent proof/compiler context serialization.
+            assert_eq!(
+                args.iter().map(String::as_str).collect::<Vec<_>>(),
+                expected
+                    .iter()
+                    .skip(3)
+                    .map(|v| v.to_str().unwrap_or_default())
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn metadata_command_retains_repeated_features_and_first_verifier_separator() {
+        use std::ffi::OsStr;
+        use std::path::Path;
+        let args = [
+            "--manifest-path",
+            "member/Cargo.toml",
+            "-F",
+            "a",
+            "--features=b",
+            "-Fc,d",
+            "-F=e",
+            "--locked",
+            "-pother",
+            "--",
+            "-Fignored",
+            "--features",
+            "ignored",
+        ]
+        .map(str::to_owned);
+        let command = super::metadata_command(Path::new("workspace"), &args, Path::new("cargo"));
+        let expected = [
+            "metadata",
+            "--format-version",
+            "1",
+            "--manifest-path",
+            "member/Cargo.toml",
+            "-F",
+            "a",
+            "--features=b",
+            "-Fc,d",
+            "-F=e",
+            "--locked",
+        ]
+        .map(OsStr::new);
+        assert_eq!(command.get_args().collect::<Vec<_>>(), expected);
+        let missing_value = ["-F".to_owned(), "--".to_owned(), "enabled".to_owned()];
+        let command =
+            super::metadata_command(Path::new("workspace"), &missing_value, Path::new("cargo"));
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            ["metadata", "--format-version", "1", "-F"].map(OsStr::new)
+        );
+    }
+
     #[test]
     fn disabled_script_explicit_selection_requires_unique_cargo_package_identity() {
         let data = serde_json::json!({"packages":[

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Forward Cargo's `-F`, `-Fvalue` and `-F=value` feature aliases to managed
+  metadata, matching the unchanged verification arguments. Context keys retain
+  the original argument bytes. Command-construction controls are drafted;
+  native qualification is pending. See [issue 78](https://github.com/Chelis-Lang/sail/issues/78).
+
 - Prepare a bounded compiler-family source-path inventory for a new repair
   selector. It gives the original cold snapshot its previously declared generated
   includes while retaining independent content reads and every freshness guard.
