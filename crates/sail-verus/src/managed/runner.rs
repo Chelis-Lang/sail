@@ -1551,9 +1551,9 @@ pub(crate) fn run_engine(
             runtime.push(state.join(format!("{identity}.json")));
             runtime.push(link);
         }
-        let owner =
+        let bootstrap_candidate =
             super::build_inputs::family::bootstrap::Bootstrap::begin(&data, &extras, &runtime);
-        owner.filter(|owner| owner.runtime_matches(&config.cache, &hash))
+        bootstrap_candidate.filter(|candidate| candidate.runtime_matches(&config.cache, &hash))
     };
     let mut before = snapshot_metadata(&data, &extras);
     before.complete &= source_coverage;
@@ -1893,11 +1893,12 @@ pub(crate) fn run_engine(
             .filter(|target| target.requested)
             .all(|target| target.complete)
     {
-        if let Some(owner) = script_bootstrap
+        // The report owns the unchanged full proof-context hash at this point.
+        if let Some(certificate) = script_bootstrap
             .as_mut()
-            .filter(|owner| owner.runtime_matches(&config.cache, &hash))
+            .filter(|candidate| candidate.runtime_matches(&config.cache, &result.context_sha256))
         {
-            owner.publish(
+            certificate.publish(
                 &paths.compiler_inputs,
                 &compiler_hash,
                 &paths.target,

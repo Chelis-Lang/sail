@@ -1,6 +1,13 @@
 # Independent ordinary-script bootstrap candidate
 
-This is an uncompiled, unexecuted source candidate. It addresses the concrete
+The corrected candidate is uncompiled and unexecuted. Its first root integration
+failed strict compilation on a moved context hash and a similar local name;
+workspace tests and the solver were unattempted. The correction borrows the
+unchanged full context hash from its owning report and uses unambiguous names.
+A separately identified injected-environment fixture mistake is also corrected:
+an empty export file is not authority; the original route must have no exported
+records, refuse admission and force cleaning. The first failed scope remains
+failed. This source candidate remains unselected. It addresses the concrete
 missing-generation mechanism in the [730 benchmark failure](../m7-benchmark-730a321-bootstrap-failure.md): cleaning a script regenerates a declared Rust include after the original proof snapshot. The proof guard must still reject that changed binding. The exact failed historical binding was not captured; this mechanism is not a historical cause claim.
 
 The optional owner is acquired before cleaning only when a nonempty, entirely
