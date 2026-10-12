@@ -211,17 +211,16 @@ mod tests {
             2
         );
         let abnormal = SEALED_OK.replace(",\"normal_termination\":true", "");
-        assert!(
-            !check(&run, &format!("{abnormal}\n"), None, true)
-                .0
-                .is_empty()
+        assert_ne!(
+            check(&run, &format!("{abnormal}\n"), None, true).0,
+            Vec::<String>::new()
         );
-        assert!(!check(&run, "{broken\n", None, true).0.is_empty());
+        assert_ne!(check(&run, "{broken\n", None, true).0, Vec::<String>::new());
         let twice = format!("{SEALED_OK}\n{SEALED_OK}\n");
-        assert!(!check(&run, &twice, None, true).0.is_empty());
+        assert_ne!(check(&run, &twice, None, true).0, Vec::<String>::new());
         // Cargo units: one seal per verified crate at least.
-        assert!(check(&run, &twice, None, false).0.is_empty());
-        assert!(!check(&run, "", None, false).0.is_empty());
+        assert_eq!(check(&run, &twice, None, false).0, Vec::<String>::new());
+        assert_ne!(check(&run, "", None, false).0, Vec::<String>::new());
     }
 
     #[test]
@@ -238,7 +237,7 @@ mod tests {
         let (issues, _) = check(&run, &events, Some(&[]), true);
         assert!(issues[0].contains("covered 0 of 1"), "{issues:?}");
         // Without the oracle, hits alone are not issues.
-        assert!(check(&run, &events, None, true).0.is_empty());
+        assert_eq!(check(&run, &events, None, true).0, Vec::<String>::new());
     }
 
     #[test]
