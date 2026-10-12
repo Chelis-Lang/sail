@@ -45,7 +45,10 @@ passes, including ownership accounting, genuine reuse across edits and exact
 full HumanEval results. The [b895 installed repair and reader checks](validation/m7.md)
 pass; the [730 reader workflow](validation/m7.md) remains a separate historical pass.
 M7 real-project performance remains unqualified. See
-[engine qualification](../engine/verus/README.md).
+[engine qualification](../engine/verus/README.md). Sail uses that cross-edit
+reuse only with the explicit `SAIL_ENGINE_PERSISTENT_PREPARATION=1` opt-in; by
+default, preparation reuse stays inside one compiler invocation
+([repair guide](proof-repair.md)).
 
 `fetch-verus` installs artifacts but does not put `cargo-verus` on `PATH`:
 configure your ordinary stock launcher on `PATH` or through `SAIL_CARGO_VERUS`.
