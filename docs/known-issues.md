@@ -20,19 +20,20 @@ are in the `archive/m7-contracts-f7103bf` tag.
   pending, and the oracle cannot start on `vest-generated`.
 - **The 512 MiB preparation budget is not an established bound.** It is a
   configured limit only; nothing measures process memory against it.
-- **Real-project repair benchmark refuses before any sample.** At `387ba80`,
-  the first measured HumanEval GCD is Current and accepted but uses three
-  compiler invocations against the one-driver requirement. No samples have
-  been measured and Vest has never been reached. Cause unknown.
-  [Gate 7](validation/m7.md#gate-7-frozen-repair-performance), [#73](https://github.com/Chelis-Lang/sail/issues/73).
+- **M7 is not faster than M6 yet.** Natively, the HumanEval repair batch is
+  0.94× of M6, because preparation encoding costs more than the single callback
+  saves. On Vest, M7 refuses every function (`SAIL3122`) and loses Currentness
+  (`SAIL3114`).
+  [L1 profile](reports/rescue/l1-phase-profile.md), [Gate 7](validation/m7.md#gate-7-frozen-repair-performance).
+- **Managed focus can fail with `SAIL3107` after a repeated edit.** `cargo verus
+  focus` builds under `<target-dir>/verus-partial` with checksum freshness, but
+  the missing-receipt retry cleans `<target-dir>`. Byte-identical content then
+  produces no receipt. This affects released M6 behaviour.
+  [L1 profile](reports/rescue/l1-phase-profile.md).
 - **Repair selectors lose compiler-declared input coverage.** A warmup can
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and
   [#77](https://github.com/Chelis-Lang/sail/issues/77).
-- **Standard-tier conformance is incomplete.** Stock Verus waits on the
-  Verismo tspec unit until its 3,600 s limit. Cache fill/warm on the standard
-  tier has never completed.
-  [VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md), [Gate 6](validation/m7.md#gate-6-default-and-cache-conformance).
 - **Intermittent shared HTTP deadline failures.** The 250 ms
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
