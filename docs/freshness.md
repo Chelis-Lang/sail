@@ -202,8 +202,9 @@ Reproduce the complete preparation and both censuses with
 `scripts/m7-reader-acceptance.py`, following
 [the local acceptance guide](bench/m7-repair-acceptance.md#reproducible-warm-reader-preparation).
 Its ordinary full verification and exact repair-function context are separate
-setup steps: different contexts have different Cargo target directories, so
-warming a stock target does not by itself prepare the repair target. Setup costs
+proof-setup steps. Compatible source-engine selectors can share ordinary Cargo
+artifacts, but their proof contexts and receipts remain independent; warming a
+stock target does not by itself establish the repair proof. Setup costs
 and every initial Unknown result are retained. Preparation is not a speedup or
 reader-latency sample, and no copied receipt supplies the baseline proof.
 
@@ -271,8 +272,9 @@ passes metadata, freshness, strict and sensitivity controls. Real source edits
 still invalidate the owner. The [frozen combined gate, ordinary product and
 fresh original repair fixture](validation/m7-core-730a321-validation.md) pass with
 unchanged checks. The small-fixture pass does not isolate the implementation's
-benefit or establish real-project repair performance; reader acceptance remains
-pending.
+benefit or establish real-project repair performance. The same frozen product's
+[original full reader workflow](validation/m7-reader-730a321-terminal.md) passes
+both Python and Rust collectors with complete reports during actual verification.
 
 Real source or declaration changes still invalidate the combined source/runtime
 projection, even when compiler bytes remain unchanged. Independent runtime

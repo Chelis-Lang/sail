@@ -42,9 +42,11 @@ retained worker rows measure freshness establishment at 11.287, 8.754, 14.597 an
 remain unavailable. These observations do not attribute historical failures,
 prove a cold speedup, qualify reader latency or replace that uncertain scope.
 
-The original current-product reader workflow is running; this record declares
-no result for it. Full p95 bounds, complete standard/cache-fill/warm coverage,
-and three-round HumanEval/Vest improvement of at least 2× each remain outstanding.
+The same installed product subsequently passes the separate
+[original full reader workflow](m7-reader-730a321-terminal.md), with complete
+Python/Rust graphs and unchanged p95 bounds. Complete standard/cache-fill/warm
+coverage and three-round HumanEval/Vest improvement of at least 2× each remain
+outstanding.
 The original 158 Same plus stock Verismo timeout at 3,600 seconds remains a failed
 complete standard scope. Earlier failed and interrupted attempts remain retained.
 M7 is incomplete and PR #74 remains draft and unaccepted.

@@ -1,0 +1,408 @@
+{
+  "version": 1,
+  "kind": "original-complete-installed-reader-terminal",
+  "status": "PASS",
+  "source_commit": "730a3210151ca51b7e011121c4795553b0cfa3e5",
+  "source_archive_sha256": "810e2ffb2d23b452bcf669752fccab1d5204d36a0b54dfe8aef8b49f92698f41",
+  "scope": "Original combined-product reader gates and corrected retained functional scope; no source qualification or overall M7 acceptance",
+  "environment": "Linux amd64 Docker Desktop emulation on arm64 macOS; actual concurrent development work",
+  "platform": "Linux-7.0.12-linuxkit-x86_64-with-glibc2.39",
+  "container": {
+    "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+    "started_at": "2026-10-11T23:02:56.820697964Z",
+    "running": true
+  },
+  "original_bounds": {
+    "clients": 4,
+    "samples_each_collector": 200,
+    "result_samples_each": 100,
+    "status_samples_each": 100,
+    "strict_p95_ms": 200,
+    "rpc_budget_s": 5,
+    "setup_invocation_budget_s": 600,
+    "retained_workflow_cli_rpc_budgets_s": [
+      120,
+      30,
+      5
+    ]
+  },
+  "censuses": {
+    "python-census": {
+      "passed": true,
+      "clients": 4,
+      "samples": 200,
+      "summary": {
+        "result": {
+          "count": 100,
+          "max_ms": 99.41091600012442,
+          "median_ms": 68.48354149997249,
+          "p95_ms": 94.19666699977824
+        },
+        "status": {
+          "count": 100,
+          "max_ms": 68.73016600002302,
+          "median_ms": 42.015749999791296,
+          "p95_ms": 59.895749999668624
+        }
+      },
+      "all_samples_current": true,
+      "all_samples_active_before_and_after": true,
+      "all_samples_have_continuing_full_verifier": true,
+      "verifier_identities": [
+        {
+          "pid": 25385,
+          "start_ticks": 392398,
+          "parent": 25382,
+          "crate_name": "human_eval_verus"
+        }
+      ],
+      "complete_result_response_bytes": 4311179
+    },
+    "rust-census": {
+      "passed": true,
+      "clients": 4,
+      "samples": 200,
+      "summary": {
+        "result": {
+          "count": 100,
+          "max_ms": 470.54870900000003,
+          "median_ms": 45.636812500000005,
+          "p95_ms": 67.483292
+        },
+        "status": {
+          "count": 100,
+          "max_ms": 57.884458,
+          "median_ms": 35.333292,
+          "p95_ms": 50.273417
+        }
+      },
+      "all_samples_current": true,
+      "all_samples_active_before_and_after": true,
+      "all_samples_have_continuing_full_verifier": true,
+      "verifier_identities": [
+        {
+          "pid": 25385,
+          "start_ticks": 392398,
+          "parent": 25382,
+          "crate_name": "human_eval_verus"
+        }
+      ]
+    }
+  },
+  "proofs": {
+    "baseline": {
+      "job": "1791763553923-569-2",
+      "context_sha256": "268a6b36252c5fbe7b0ea7a9f17de6e3b7a6f33ed4edad4caf956ec00f224007",
+      "input_revision": "168a9d4ef9eabbc53b30f21ca4d1e25f17c8f66f9497f13ee21cb93e4bf1762d",
+      "currentness": "current",
+      "exit_code": 0,
+      "repair_accepted": true,
+      "targets": [
+        {
+          "target": "vstd",
+          "complete": true,
+          "requested": false,
+          "reused": true,
+          "summary": {
+            "failed": 0,
+            "functions": 1871,
+            "provisional": 0,
+            "unknown": 0,
+            "unstable": 0,
+            "verified": 1871
+          }
+        },
+        {
+          "target": "human_eval_verus",
+          "complete": true,
+          "requested": true,
+          "reused": false,
+          "summary": {
+            "failed": 0,
+            "functions": 331,
+            "provisional": 0,
+            "unknown": 0,
+            "unstable": 0,
+            "verified": 331
+          }
+        }
+      ]
+    },
+    "active": {
+      "job": "1791763642954-569-3",
+      "context_sha256": "f4e01acffc21ae625c31db324f2fa0c13c1fc9519f1bbda71e2d6aef4743618e",
+      "input_revision": "ba5078309a7ded0d3212b4c00de713687d1372382da9658d903d9cc28fcce9ba",
+      "currentness": "current",
+      "exit_code": 0,
+      "repair_accepted": true,
+      "targets": [
+        {
+          "target": "vstd",
+          "complete": true,
+          "requested": false,
+          "reused": true,
+          "summary": {
+            "failed": 0,
+            "functions": 1871,
+            "provisional": 0,
+            "unknown": 0,
+            "unstable": 0,
+            "verified": 1871
+          }
+        },
+        {
+          "target": "human_eval_verus",
+          "complete": true,
+          "requested": true,
+          "reused": false,
+          "summary": {
+            "failed": 0,
+            "functions": 331,
+            "provisional": 0,
+            "unknown": 0,
+            "unstable": 0,
+            "verified": 331
+          }
+        }
+      ]
+    }
+  },
+  "retained_functional": {
+    "passed": true,
+    "workflow_budget_s": 120,
+    "command_budget_s": 30,
+    "rpc_budget_s": 5,
+    "elapsed_s": 2.708259418000125,
+    "context_sha256": "268a6b36252c5fbe7b0ea7a9f17de6e3b7a6f33ed4edad4caf956ec00f224007",
+    "input_revision": "168a9d4ef9eabbc53b30f21ca4d1e25f17c8f66f9497f13ee21cb93e4bf1762d",
+    "harness_sha256": "207b45ef034b6c1e947dbb0efdb87368b62d5ef8a4c42ab5768413670f775a11",
+    "operations": 23,
+    "cleanup_errors": []
+  },
+  "inclusive_elapsed_s": 855.920338678,
+  "preparation_is_not_latency_sample": true,
+  "unmeasured_preparation_present": true,
+  "product": {
+    "sail": {
+      "bytes": 76124712,
+      "sha256": "b5909780cbd2c64092675e8e5ae4e8b1ea8e3521a84c32cebce7981614ba79d3"
+    },
+    "sail-z3": {
+      "bytes": 11000960,
+      "sha256": "4f4be3cb88ee5276d62eeb072e7806a7f6a8c8e48e84e1389bca5ab65df69be7"
+    }
+  },
+  "installation_prerequisite": {
+    "ownership_met": true,
+    "mode": "0700",
+    "source_modified": false,
+    "runtime_manifest": {
+      "bytes": 2106,
+      "sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d"
+    },
+    "runtime_artifact_count": 13,
+    "installation_grant": {
+      "bytes": 7039,
+      "sha256": "9c410d718f02301e364e0f6b78833fa03328ae13e33a140e50d293fb6bb2072a"
+    },
+    "installation_freeze": {
+      "bytes": 707,
+      "sha256": "38f59c7e67070c906e2e47938b568857c16e019eef98bc7edc10b223ed4e3668"
+    }
+  },
+  "input_binding": {
+    "all_before_after_equal": true,
+    "scripts": {
+      "m7-job-read-bench.py": {
+        "bytes": 11877,
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+      },
+      "m7-native-product.py": {
+        "bytes": 12115,
+        "sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+      },
+      "m7-reader-acceptance.py": {
+        "bytes": 33712,
+        "sha256": "84966d77cd679653b96ab9f05019d51f805538f3d4dd509c1591da1679b7634d"
+      },
+      "m7-repair-bench.py": {
+        "bytes": 31040,
+        "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33"
+      },
+      "m7-retained-jobs-acceptance.py": {
+        "bytes": 20696,
+        "sha256": "207b45ef034b6c1e947dbb0efdb87368b62d5ef8a4c42ab5768413670f775a11"
+      }
+    },
+    "wrapper": {
+      "bytes": 15997,
+      "sha256": "d099b775f47d496ffddc64ca5631aa50cffa6906e28915c38fc10c5b1e5636fc"
+    },
+    "probes": {
+      "job_read_bench": {
+        "bytes": 12235200,
+        "sha256": "f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d"
+      },
+      "python-reader-probe.py": {
+        "bytes": 11877,
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+      }
+    },
+    "stock": {
+      "cargo-verus": {
+        "bytes": 2756256,
+        "sha256": "5b99d7fb9d57e3c86a5d2f6cf6270bbd4109d2950375c6a94ed389a3d6db3941"
+      },
+      "verus": {
+        "bytes": 4708720,
+        "sha256": "2fe2fca366846ec5aaaaaf80edf061f7d19564c097cb9840c7638719e8bc1854"
+      },
+      "z3": {
+        "bytes": 34954456,
+        "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+      }
+    },
+    "source_reference": {
+      "bytes": 107917,
+      "sha256": "9c44758d7a0faea0682d9ff10f6695c7b6d66798e694c203ea74780dce502070"
+    },
+    "catalogue": {
+      "bytes": 5510,
+      "sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6"
+    },
+    "selected_artifacts": {
+      "verus/source/target-verus/release/.cargo-build-lock": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "verus/source/target-verus/release/.vstd-fingerprint": {
+        "bytes": 156,
+        "sha256": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655"
+      },
+      "verus/source/target-verus/release/cargo-verus": {
+        "bytes": 2754984,
+        "sha256": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e"
+      },
+      "verus/source/target-verus/release/libverus_builtin.rlib": {
+        "bytes": 928246,
+        "sha256": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902"
+      },
+      "verus/source/target-verus/release/libverus_builtin_macros.so": {
+        "bytes": 13801320,
+        "sha256": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf"
+      },
+      "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+        "bytes": 8565760,
+        "sha256": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6"
+      },
+      "verus/source/target-verus/release/libvstd.rlib": {
+        "bytes": 10236586,
+        "sha256": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2"
+      },
+      "verus/source/target-verus/release/rust_verify": {
+        "bytes": 29811368,
+        "sha256": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55"
+      },
+      "verus/source/target-verus/release/version.txt": {
+        "bytes": 26,
+        "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+      },
+      "verus/source/target-verus/release/verus": {
+        "bytes": 4705336,
+        "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+      },
+      "verus/source/target-verus/release/verus-root": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "verus/source/target-verus/release/vstd.vir": {
+        "bytes": 30076214,
+        "sha256": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27"
+      },
+      "verus/source/target-verus/release/z3": {
+        "bytes": 34954456,
+        "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+      }
+    }
+  },
+  "terminal": {
+    "outer_exit_code": 0,
+    "cleanup_errors": [],
+    "archival_errors": [],
+    "outer_finalization_errors": [],
+    "retained_service_cleanup": {
+      "exit_code": 0,
+      "forced": false,
+      "wall_s": 0.1254770840000674
+    }
+  },
+  "raw_evidence": {
+    "export_status": "PASS",
+    "member_verification": "Independent full archive regular-member bytes, SHA-256 and modes equal inventory",
+    "regular_members": 171,
+    "expanded_regular_bytes": 184761483,
+    "seals": {
+      "holder-audit-source.py": {
+        "bytes": 2871,
+        "sha256": "51597a4404d8942634bf59336a5958c8674ca3847e1f281a96aa099eb85ae87f"
+      },
+      "summary.json": {
+        "bytes": 458246,
+        "sha256": "c4fa4cde761bc2cd5ae666f3cb42654d9008262be9b73ab8a646d568c2d2a221"
+      },
+      "external-terminal.json": {
+        "bytes": 60,
+        "sha256": "62b1bb05ce7532250a288c74619a44025d9acf8c32756737b2c33ec367617b4b"
+      },
+      "export-controller.py": {
+        "bytes": 1805,
+        "sha256": "a0c7fb85c2be76ff5f995aea255dfcbdd8494edb867b6965283dd5de4498d01a"
+      },
+      "independent-holder-audit.json": {
+        "bytes": 4419,
+        "sha256": "2ac73f5a0379cac5b497289f1675a3da64c644935041d951b25888fc5d83c5fa"
+      },
+      "native-inventory.json": {
+        "bytes": 31163,
+        "sha256": "80e62e31618e512b76f83b25df79bc3726a773ddda109643987fb991fa45bf98"
+      },
+      "native-raw.tar.gz": {
+        "bytes": 11533206,
+        "sha256": "93e526f0b0391837dddfa353a57b5fdbdd7d8299c79c7c2102f0f1ce5331ec6f"
+      }
+    },
+    "verification_record": {
+      "bytes": 1582,
+      "sha256": "99f12ffcc2bddba19a210bce295dc3badb73ab277ce251b85187eeb5b4ead0e5"
+    },
+    "exclusions": [
+      "private-environment.json",
+      "product",
+      "run/active",
+      "run/baseline",
+      "run/cache",
+      "source"
+    ],
+    "native_originals_unchanged": true,
+    "private_environment_or_cache_authority_exported": false
+  },
+  "independent_closure": {
+    "status": "PASS",
+    "scanned_processes": 12,
+    "live_candidates": 0,
+    "unavailable": 0,
+    "stable_complete_all_dead_groups": 10,
+    "elapsed_s": 0.0038050419998398866,
+    "scope": "Reader/product/runtime prefixes; excludes exact audit PID/birth only, no environment reads or signals",
+    "terminated_groups_unreaped": true,
+    "general_orphan_absence_certificate": false
+  },
+  "limits": [
+    "No causal attribution to any individual optimization or historical failure",
+    "Earlier failed, uncertain and interrupted scopes remain unchanged",
+    "No real-project repair speedup or overall M7 acceptance",
+    "Complete current standard/cache-fill/warm and three-round HumanEval/Vest >=2x medians remain outstanding",
+    "PR74 remains draft and unaccepted"
+  ]
+}

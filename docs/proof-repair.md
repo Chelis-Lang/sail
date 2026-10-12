@@ -1,10 +1,11 @@
 # Proof events and repair validation
 
-**Experimental (M7):** the CLI/MCP workflow is implemented, with source fixtures
-and a [complete small native Linux CLI/MCP fixture](../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json).
-The selected source engine passes its preparation-memory and lowering
-qualification. Real-project performance, complete corpus integration and
-concurrent reader acceptance remain unfinished.
+**Experimental (M7):** the selected source engine passes its preparation-memory
+and lowering qualification. The frozen `730a321` product passes the
+[complete original CLI/MCP repair fixture](validation/m7-core-730a321-validation.md)
+and [full concurrent-reader workflow](validation/m7-reader-730a321-terminal.md).
+Real-project performance and complete standard/cache corpus coverage remain
+unfinished.
 See [known issues](known-issues.md) and the
 [acceptance guide](bench/m7-repair-acceptance.md) before relying on performance
 or cross-edit preparation reuse. Stock verification remains the default.

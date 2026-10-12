@@ -7,6 +7,13 @@ copying prior receipts or Cargo output. Preparation verifies the full project
 ordinarily, then establishes the exact repair-function context. Preparation
 costs and failed attempts are retained separately from measured reader latency.
 
+The [frozen `730a321` product](validation/m7-reader-730a321-terminal.md) passes
+this complete workflow: both unchanged four-client collectors retain 200 samples,
+full Current graphs and p95 below 200 ms during actual verification, followed by
+retained CLI/MCP scenarios. Python Result/Status p95 is 94.197/59.896 ms; Rust is
+67.483/50.273 ms. Preparation costs and historical failures remain separate;
+real-project repair speed and complete standard/cache gates are still outstanding.
+
 [Optional RPC stage diagnostics](result-rpc-diagnostics.md) can attribute server
 costs in a separate owned diagnostic scope. They do not change frozen collectors,
 admit proofs or replace the original latency acceptance checks.
@@ -139,7 +146,7 @@ collectors and complete owned lifecycle.
 
 ## Current complete reader attempt
 
-The [current-product run](validation/m7-current-reader-workflow.md) completed genuine Current full preparation in independent baseline and active workspaces, then passed all four original bounded setup checks. The first collector completed all 200 RPC samples through four readers while the same selected-crate verifier remained live. Status p95 was 148.430 ms; complete Result p95 was 394.713 ms, exceeding the unchanged 200 ms requirement. Each Result carried a 4,312,245-byte complete report. The controller stopped there, leaving the Rust census and retained CLI/MCP integration unattempted. This is a retained failure, not reader acceptance. Preparation costs, samples, worker continuity and post-run seals accompany the record.
+The [earlier frozen `4472279` run](validation/m7-current-reader-workflow.md) completed genuine Current full preparation in independent baseline and active workspaces, then passed all four original bounded setup checks. The first collector completed all 200 RPC samples through four readers while the same selected-crate verifier remained live. Status p95 was 148.430 ms; complete Result p95 was 394.713 ms, exceeding the unchanged 200 ms requirement. Each Result carried a 4,312,245-byte complete report. The controller stopped there, leaving the Rust census and retained CLI/MCP integration unattempted. This is a retained failure, not reader acceptance. Preparation costs, samples, worker continuity and post-run seals accompany the record.
 
 The [current-product observation-only stage run](validation/m7-rpc-stage-workflow.md)
 retains another complete Current baseline and active proof, then a failed
