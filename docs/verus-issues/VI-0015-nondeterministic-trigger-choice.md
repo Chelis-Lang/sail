@@ -1,6 +1,7 @@
 # VI-0015: Automatic trigger choice depends on hash iteration order
 
-- **Status:** open (tracked here; not filed upstream; see the README)
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `404a1e30` (fix: choose automatic triggers in a deterministic search order).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-12
 - **Reproduction:** `corpus/repros/verus-nondeterministic-trigger-choice/`
@@ -54,3 +55,20 @@ SMT log comparison, instability studies) sees spurious differences.
 **Suggested fix:** iterate in a deterministic order (for example sort the
 remaining variables and candidate terms by their source position, as the
 final `chosen_triggers` sort already does), or use insertion-ordered maps.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`404a1e30` (fix: choose automatic triggers in a deterministic search order),
+one commit with its regression test
+`source/rust_verify_test/tests/sail_vi0015_trigger_order.rs`, which fails on
+the pinned stock source and passes on the fork. `compute_triggers` visits
+variables in binder order and candidate terms in the order `gather_terms` met
+them (the key that already sorts the final triggers). The search and scoring
+are unchanged, so the chosen trigger is one stock can choose. The test checks
+that eight identical quantifiers in one file get identical triggers; stock
+gave different triggers within one process.
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+Default `sail verify` (stock Verus) keeps this nondeterminism; no workaround
+is needed for correctness.

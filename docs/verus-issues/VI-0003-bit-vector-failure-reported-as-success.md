@@ -1,6 +1,7 @@
 # VI-0003: `--output-json` reports `success: true` for a failed bit-vector query
 
-- **Status:** open (tracked here)
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `11adad41` (fix: record bit-vector failures in the function failure set).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08, building function attribution (ADR 0014); first
   noted from the source in `docs/survey/verus-z3.md` §6
@@ -40,3 +41,19 @@ Sail does not confirm successful timing entries. The raw field, diagnostics
 and exit code are retained. A successful crate with zero errors keeps its
 ordinary Verus results. This conservative fallback closes the unresolved
 false-verification gap without guessing which function failed.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`11adad41` (fix: record bit-vector failures in the function failure set), one
+commit with its regression test
+`source/rust_verify_test/tests/sail_vi0003_bitvector_success.rs`, which fails
+on the pinned stock source and passes on the fork. The `Invalid(None)` path
+that failed bit-vector and Singular queries take now adds the function to
+`func_fails`, as the other error paths do, so its timing entry reports
+`"success": false`. Diagnostics and error counts are unchanged.
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+Still needed for default `sail verify` (stock Verus): Sail's attribution of
+the spun-off bit-vector obligation and its conservative `unknown` policy stay.
+They are consistent with the fork's corrected field.

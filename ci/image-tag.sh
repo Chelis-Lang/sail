@@ -9,7 +9,7 @@ from pathlib import Path
 
 inputs = (
     "ci/Dockerfile", "ci/fetch-verus.py", "ci/engine-artifact.py",
-    "engine/verus/artifact-linux.json", "engine/verus/interactive.patch",
+    "engine/verus/artifact-linux.json", "engine/verus/fork.toml",
     "engine/verus/Cargo.lock", "rust-toolchain.toml", "corpus/toolchain.toml",
 )
 # Read every required input before printing: a missing pin must never produce

@@ -1,0 +1,11 @@
+# Sail's Verus fork, the source of the optional interactive engine
+# (engine/verus/README.md). `cargo xtask build-verus-source --interactive-engine`
+# builds exactly `commit`. Changing it is an engine upgrade: rebuild, run the
+# qualification steps, then pack and re-pin artifact-linux.json.
+[fork]
+repo = "https://github.com/Chelis-Lang/verus"
+branch = "sail"
+commit = "750027a92aea36da19932a54e3781cfd4745eebd"
+# The upstream Verus commit the `sail` branch is rebased on. It must equal
+# corpus/toolchain.toml's [verus] commit.
+upstream = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"

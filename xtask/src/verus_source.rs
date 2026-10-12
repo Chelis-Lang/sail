@@ -19,6 +19,12 @@
 //! `--keep-intermediates`, every build intermediate that the test binaries
 //! do not need at run time is deleted, and `sail-build.json` records the
 //! build. A complete build is left alone unless `--force` is given.
+//!
+//! `--interactive-engine` (`cargo xtask build-verus-engine`) builds the
+//! optional engine instead: the exact commit of Sail's private Verus fork
+//! pinned in `engine/verus/fork.toml`, fetched with a GitHub token, whose
+//! upstream base must be the pinned commit. Local only; CI installs the
+//! prebuilt runtime.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -100,6 +106,89 @@ fn run(cmd: &mut Command) -> Result<()> {
     } else {
         Err(format!("{cmd:?} exited with {status}"))
     }
+}
+
+/// A GitHub token for the private Verus fork: `SAIL_ENGINE_ARTIFACT_TOKEN`
+/// (as for the engine artifact) or else `gh auth token`.
+fn github_token() -> Result<String> {
+    if let Ok(token) = std::env::var("SAIL_ENGINE_ARTIFACT_TOKEN")
+        && !token.trim().is_empty()
+    {
+        return Ok(token.trim().to_owned());
+    }
+    let output = Command::new("gh")
+        .args(["auth", "token"])
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| format!("the Verus fork is private and `gh auth token` failed: {e}"))?;
+    let token = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    if !output.status.success() || token.is_empty() {
+        return Err(
+            "the Verus fork is private: set SAIL_ENGINE_ARTIFACT_TOKEN or run `gh auth login`"
+                .to_owned(),
+        );
+    }
+    Ok(token)
+}
+
+/// Runs `git ARGS` in `dir`, authenticating to GitHub with `token` through a
+/// one-shot credential helper. The token reaches git only through the
+/// environment of this one process and is never printed or stored.
+fn git_with_token(dir: &Path, token: &str, args: &[&str]) -> Result<String> {
+    let output = Command::new("git")
+        .current_dir(dir)
+        .env("SAIL_FORK_TOKEN", token)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .args(["-c", "credential.helper="])
+        .args([
+            "-c",
+            "credential.helper=!f() { echo username=x-access-token; echo \"password=$SAIL_FORK_TOKEN\"; }; f",
+        ])
+        .args(args)
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| format!("failed to run git {}: {e}", args.join(" ")))?;
+    if !output.status.success() {
+        return Err(format!(
+            "git {} exited with {}",
+            args.join(" "),
+            output.status
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+}
+
+/// Fetches exactly the pinned commit of Sail's Verus fork into the build's
+/// checkout (`engine/verus/fork.toml`). The engine variant is built from it
+/// instead of the upstream commit plus a patch. Local only: CI installs the
+/// prebuilt runtime and never builds Verus.
+fn fetch_fork(build: &Path, fork: &sail_verus::engine::Fork) -> Result<PathBuf> {
+    let dir = source_build::checkout_dir(build);
+    let marker = dir.join(".sail-fetched");
+    if std::fs::read_to_string(&marker).is_ok_and(|c| c.trim() == fork.commit) {
+        return Ok(dir);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+    let token = github_token()?;
+    git_with_token(&dir, &token, &["init", "-q"])?;
+    git_with_token(&dir, &token, &["remote", "add", "origin", &fork.repo])?;
+    git_with_token(
+        &dir,
+        &token,
+        &["fetch", "-q", "--depth", "1", "origin", &fork.commit],
+    )?;
+    git_with_token(&dir, &token, &["checkout", "-q", "--detach", "FETCH_HEAD"])?;
+    let head = git_with_token(&dir, &token, &["rev-parse", "HEAD"])?;
+    if head != fork.commit {
+        return Err(format!(
+            "fetched {head}, expected the pinned fork commit {}",
+            fork.commit
+        ));
+    }
+    std::fs::write(&marker, &fork.commit)
+        .map_err(|e| format!("cannot write {}: {e}", marker.display()))?;
+    Ok(dir)
 }
 
 /// The channel in a `rust-toolchain.toml`.
@@ -380,26 +469,25 @@ pub fn build(args: &[String]) -> Result<()> {
     }
     std::fs::create_dir_all(&build)
         .map_err(|e| format!("cannot create {}: {e}", build.display()))?;
-    println!("fetching verus @ {commit} into {}", build.display());
-    let checkout = source_build::fetch_source(&build, commit).map_err(|e| e.to_string())?;
-    if o.engine {
-        let patch = build.join("sail-engine.patch");
-        std::fs::write(&patch, sail_verus::engine::PATCH).map_err(|e| e.to_string())?;
-        let applied = Command::new("git")
-            .current_dir(&checkout)
-            .args(["apply", "--reverse", "--check"])
-            .arg(&patch)
-            .output()
-            .map_err(|e| e.to_string())?
-            .status
-            .success();
-        if !applied {
-            run(Command::new("git")
-                .current_dir(&checkout)
-                .arg("apply")
-                .arg(&patch))?;
+    let checkout = if o.engine {
+        let fork = sail_verus::engine::fork().map_err(|e| e.to_string())?;
+        if fork.upstream != *commit {
+            return Err(format!(
+                "engine/verus/fork.toml is based on {}, but corpus/toolchain.toml pins {commit}",
+                fork.upstream
+            ));
         }
-    }
+        println!(
+            "fetching the Verus fork {} @ {} into {}",
+            fork.repo,
+            fork.commit,
+            build.display()
+        );
+        fetch_fork(&build, &fork)?
+    } else {
+        println!("fetching verus @ {commit} into {}", build.display());
+        source_build::fetch_source(&build, commit).map_err(|e| e.to_string())?
+    };
     if o.engine {
         std::fs::write(
             checkout.join("source/Cargo.lock"),

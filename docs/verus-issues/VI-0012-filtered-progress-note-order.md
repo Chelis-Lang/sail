@@ -1,8 +1,7 @@
 # VI-0012: Filtered verification prints bucket-start notes in arrival order
 
-- **Status:** open; source mechanism established, the separately authorized
-  sealed-runtime two-run control did not reproduce differing order. Recorded
-  locally, not filed upstream.
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `f66f8e22` (fix: report bucket start notes in queue order).
 - **Verus:** pinned `0.2026.10.04.426d8b0`, source commit
   `426d8b01e7ffb910a36c15e1f870ff985bb61eef`.
 - **Found:** 2026-10-11.
@@ -94,3 +93,24 @@ override, normalization or oracle treatment was adopted.
 Retain every raw output and order rather than retrying qualification until it passes.
 Any proposed treatment of progress notes needs an explicit correctness decision;
 the original diagnostic check remains mandatory in the meantime.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`f66f8e22` (fix: report bucket start notes in queue order), one commit with
+its regression test
+`source/rust_verify_test/tests/sail_vi0012_progress_order.rs`, which fails on
+the pinned stock source and passes on the fork. Parallel workers send a
+bucket's start note while they still hold the task queue, so notes reach the
+printing thread in queue order (module buckets are queued sorted by module
+name). The note's text, condition and immediate printing are unchanged. The
+fork does **not** make `--no-report-long-running` suppress these notes: stock
+never omits them, so suppression would be an output stock cannot produce. The
+interleaving of these immediate notes with other buckets' diagnostics remains
+timing-dependent, as in stock. On a c7i.8xlarge host, 2 of 10 stock runs with
+64 trivial modules and 16 threads misordered the notes and 0 of 10 fork runs
+did; the test makes 20 such runs (stock passes all of them about 1% of the
+time).
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+None adopted, as before.

@@ -1,6 +1,7 @@
 # VI-0010: Distinct trait implementations share a friendly function name
 
-- Status: open, tracked locally; no upstream report filed
+- Status: open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `be077769` (feat: add function-path to the timing function breakdown).
 - Found: 2026-10-10
 - Verus: `0.2026.10.04.426d8b0`
 - Reproduction: `corpus/repros/verus-ambiguous-friendly-name/`
@@ -29,3 +30,19 @@ ambiguous display name rather than choose one implementation.
 
 A future upstream identity could include the trait and concrete implementation
 identity consistently in AIR, timing JSON and diagnostics.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`be077769` (feat: add function-path to the timing function breakdown), one
+commit with its regression test
+`source/rust_verify_test/tests/sail_vi0010_function_path.rs`, which fails on
+the pinned stock source and passes on the fork. Each `function-breakdown`
+entry gains a `function-path` field: the crate and the full VIR path,
+including the impl segment (`impl&%N`) that the friendly name replaces, so
+distinct impls are told apart, including several in one module. The `function`
+field is unchanged. `func-details` stays keyed by friendly name.
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+Still needed: Sail declines attribution for repeated friendly names in stock
+runs, and does not yet read `function-path` from engine runs.

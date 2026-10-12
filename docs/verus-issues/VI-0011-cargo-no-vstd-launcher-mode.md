@@ -52,3 +52,16 @@ These timings come from Linux x86-64 emulation under development load.
 A potential upstream fix would determine macro mode from the same effective
 Cargo driver arguments as rust_verify, while preserving contradictory-mode
 rejection. No upstream issue has been filed.
+
+## Sail fork
+
+Not fixed in the fork (2026-10-12): the fix is not trivial. The launcher
+(`source/verus/src/main.rs`) would have to decode the same per-package
+driver-arguments variable that rust_verify reads, which is keyed by
+Cargo-Verus's package id: a hash of the package name, version and manifest
+path computed in `rust_verify/src/cargo_verus.rs`. Doing that in the launcher
+means duplicating that derivation, with its `sha2` dependency, or moving it
+into a crate both binaries share, and checking that only the current package's
+verify-enabled options are read. The optional engine already relocates an
+effective `--no-vstd` (see above), so the issue stays open with that
+workaround.

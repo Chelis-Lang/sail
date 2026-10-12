@@ -6,5 +6,5 @@
 !ci/fetch-verus.py
 !ci/engine-artifact.py
 !engine/verus/artifact-linux.json
-!engine/verus/interactive.patch
+!engine/verus/fork.toml
 !engine/verus/Cargo.lock

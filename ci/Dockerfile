@@ -52,10 +52,10 @@ ENV SAIL_VERUS_HOME=/opt/verus \
     PATH=/opt/verus/verus-x86-linux:/opt/cargo/bin:$PATH
 
 # Optional interactive engine: built and validated locally, never from source
-# in CI. Both the archive and its complete runtime/patch/lock provenance bind
+# in CI. Both the archive and its complete runtime/fork-commit/lock provenance bind
 # to committed inputs. The private asset credential exists only in this mount.
 COPY ci/engine-artifact.py /tmp/ci/
-COPY engine/verus/interactive.patch engine/verus/Cargo.lock /tmp/engine/verus/
+COPY engine/verus/fork.toml engine/verus/Cargo.lock /tmp/engine/verus/
 COPY engine/verus/artifact-linux.json /tmp/pins/
 RUN --mount=type=secret,id=sail_engine_token,required=true \
     SAIL_ENGINE_ARTIFACT_TOKEN="$(cat /run/secrets/sail_engine_token)" \

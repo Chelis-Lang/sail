@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Package and verify a pinned engine runtime without compiling it in CI.
 
-The archive is trusted only through the committed archive digest and exact source
-patch/lock pins. Artifact manifests additionally bind every unpacked runtime file.
+The archive is trusted only through the committed archive digest and the exact
+Verus fork commit (engine/verus/fork.toml) and lock pins. Artifact manifests
+additionally bind every unpacked runtime file.
 """
 
 import argparse
@@ -13,6 +14,7 @@ import os
 from pathlib import Path, PurePosixPath
 import shutil
 import tarfile
+import re
 import tempfile
 import urllib.request
 
@@ -32,6 +34,15 @@ def sha(path):
     return digest.hexdigest()
 
 
+def fork_commit():
+    """The exact Verus fork commit the engine is built from (engine/verus/fork.toml)."""
+    text = (REPO / "engine/verus/fork.toml").read_text()
+    commits = re.findall(r'^commit\s*=\s*"([0-9a-f]{40})"\s*$', text, re.M)
+    if len(commits) != 1:
+        raise ValueError("SAIL0944: engine/verus/fork.toml must pin one full commit SHA")
+    return commits[0]
+
+
 def safe_path(path):
     name = PurePosixPath(path)
     if not path or name.is_absolute() or any(part in (".", "..") for part in name.parts):
@@ -41,7 +52,7 @@ def safe_path(path):
 
 def validate(build, pin):
     manifest = json.loads((build / "sail-build.json").read_text())
-    expected = ["sail-interactive:" + pin["patch_sha256"], "host:x86_64-unknown-linux-gnu",
+    expected = ["sail-fork:" + pin["fork_commit"], "host:x86_64-unknown-linux-gnu",
                 "source-lock:" + pin["source_lock_sha256"], VSTD_BUILD]
     if (manifest["schema_version"] != 1 or manifest["commit"] != pin["commit"]
             or manifest["rust_toolchain"] != pin["rust_toolchain"]
@@ -65,9 +76,9 @@ def validate(build, pin):
 def pack(args):
     build = args.build.resolve()
     manifest = json.loads((build / "sail-build.json").read_text())
-    pin = {"schema_version": 1, "variant": build.name, "commit": manifest["commit"],
+    pin = {"schema_version": 2, "variant": build.name, "commit": manifest["commit"],
            "rust_toolchain": manifest["rust_toolchain"], "z3_sha256": manifest["z3_sha256"],
-           "patch_sha256": sha(REPO / "engine/verus/interactive.patch"),
+           "fork_commit": fork_commit(),
            "source_lock_sha256": sha(REPO / "engine/verus/Cargo.lock")}
     validate(build, pin)
     args.archive.parent.mkdir(parents=True, exist_ok=True)
@@ -126,7 +137,7 @@ def install(archive, pin, cache):
 
 def committed_pin(path):
     pin = json.loads(path.read_text())
-    if (pin["schema_version"] != 1 or pin["patch_sha256"] != sha(REPO / "engine/verus/interactive.patch")
+    if (pin["schema_version"] != 2 or pin["fork_commit"] != fork_commit()
             or pin["source_lock_sha256"] != sha(REPO / "engine/verus/Cargo.lock")):
         raise ValueError("SAIL0944: committed engine artifact is stale; rebuild locally")
     return pin

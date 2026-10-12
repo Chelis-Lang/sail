@@ -1,6 +1,7 @@
 # VI-0001: Nondeterministic SMT output from `arrow_*` accessor order
 
-- **Status:** open (tracked here; not filed upstream; see the README)
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08
 - **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
@@ -64,3 +65,19 @@ requires the preparation byte oracle to compare cached and fresh lowering from
 the same compiler input. Independent stock verdict/diagnostic checks remain,
 and stock transcript instability must be reported. Default solver keys still
 bind actual bytes; Sail does not reorder declarations to hide this issue.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`9a5b2cc8` (fix: generate enum arrow accessors in source order), one commit
+with its regression test
+`source/rust_verify_test/tests/sail_vi0001_accessor_order.rs`, which fails on
+the pinned stock source and passes on the fork. The accessors are generated in
+the order their fields first appear in the source, one of the orders stock can
+emit. The test checks the order of the `arrow_*` declarations in the AIR log;
+stock passes it by chance once in 5,040 runs.
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+Default `sail verify` runs stock Verus, so this variation (and its effect on
+warm cache hit rates) remains there; as before, no workaround is needed for
+correctness and Sail does not reorder declarations.

@@ -1,6 +1,7 @@
 # VI-0007: Errors from different modules are reported in a run-dependent order
 
-- **Status:** open (tracked here; not filed upstream; see the README)
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `f98b87c5` (fix: print bucket diagnostics in bucket order).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-09
 - **Reproduction:** `corpus/repros/verus-nondeterministic-error-order/`
@@ -44,3 +45,20 @@ is unspecified with more than one thread.
 
 **Reproduction:** `repro.sh <install dir> 12 8` next to `test.rs` counts
 distinct stderr outputs over 12 runs.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`f98b87c5` (fix: print bucket diagnostics in bucket order), one commit with
+its regression test
+`source/rust_verify_test/tests/sail_vi0007_error_order.rs`, which fails on the
+pinned stock source and passes on the fork. The printing thread's active
+bucket is always the lowest-numbered unfinished bucket, so diagnostics appear
+in bucket (module) order; a bucket's VIR error is also reported in that order
+instead of immediately. This is the sequence stock prints when its buckets
+happen to report in order. Later buckets' messages wait for earlier buckets.
+The test makes the first module the slowest, so stock prints its error last.
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+Still needed for stock runs: the `rust_verify_test` runner keeps passing
+`--num-threads 1` to both sides (ADR 0019).

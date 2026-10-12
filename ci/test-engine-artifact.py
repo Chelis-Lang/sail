@@ -28,7 +28,7 @@ class ArtifactTests(unittest.TestCase):
             files[str(artifact.RUNTIME / name)] = artifact.sha(path)
         manifest = {"schema_version": 1, "commit": "pinned", "rust_toolchain": "pinned",
                     "z3_sha256": artifact.sha(runtime / "z3"), "artifacts": files,
-                    "features": ["sail-interactive:" + artifact.sha(artifact.REPO / "engine/verus/interactive.patch"),
+                    "features": ["sail-fork:" + artifact.fork_commit(),
                                  "host:x86_64-unknown-linux-gnu", "source-lock:" + artifact.sha(artifact.REPO / "engine/verus/Cargo.lock"),
                                  artifact.VSTD_BUILD]}
         (build / "sail-build.json").write_text(json.dumps(manifest))
@@ -66,11 +66,11 @@ class ArtifactTests(unittest.TestCase):
                 artifact.install(archive, pin, root / "cache")
             self.assertFalse((root / "escaped").exists())
 
-    def test_stale_source_patch_is_rejected_even_if_archive_is_valid(self):
+    def test_stale_fork_commit_is_rejected_even_if_archive_is_valid(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             _, _, pin, pin_path = self.fixture(root)
-            pin["patch_sha256"] = "older-patch"
+            pin["fork_commit"] = "0" * 40
             pin_path.write_text(json.dumps(pin))
             with self.assertRaises(ValueError):
                 artifact.committed_pin(pin_path)

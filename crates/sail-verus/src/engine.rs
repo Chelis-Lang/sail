@@ -1,31 +1,68 @@
 //! Optional source-integrated focus/full proof engine (ADR 0027).
 //!
-//! The engine is a separately hashed pinned Verus build. Stock releases and
-//! stock source builds are never substituted silently.
+//! The engine is a separately hashed Verus build from one pinned commit of
+//! Sail's Verus fork (`engine/verus/fork.toml`). Stock releases and stock
+//! source builds are never substituted silently.
 use std::path::{Path, PathBuf};
 
 use crate::source_build::{self, Manifest};
 use crate::toolchain::Pins;
 use crate::{Error, Result};
 
-/// Patch bytes applied only to the engine's owned source checkout.
-pub const PATCH: &str = include_str!("../../../engine/verus/interactive.patch");
+/// The fork pin: repository, branch, exact commit and upstream base.
+pub const FORK: &str = include_str!("../../../engine/verus/fork.toml");
 /// Source-event sidecar contract version.
 pub const EVENT_VERSION: u32 = 1;
 /// Exact dependency resolution used for the optional source worker.
 pub const SOURCE_LOCK: &str = include_str!("../../../engine/verus/Cargo.lock");
 
-/// Exact source patch identifier; part of build and execution identities.
+/// The `[fork]` table of `engine/verus/fork.toml`.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct Fork {
+    /// Repository URL (private; fetched with a GitHub token).
+    pub repo: String,
+    /// Branch the commit is on.
+    pub branch: String,
+    /// Full commit SHA the engine is built from.
+    pub commit: String,
+    /// Upstream Verus commit the branch is based on.
+    pub upstream: String,
+}
+
+/// The parsed fork pin.
+///
+/// # Errors
+/// `SAIL3120` if `engine/verus/fork.toml` is malformed or its commit is not a
+/// full 40-digit hexadecimal SHA.
+pub fn fork() -> Result<Fork> {
+    #[derive(serde::Deserialize)]
+    struct File {
+        fork: Fork,
+    }
+    let file: File = toml::from_str(FORK)
+        .map_err(|e| Error::new("SAIL3120", format!("invalid engine/verus/fork.toml: {e}")))?;
+    let full_sha = |s: &str| s.len() == 40 && s.bytes().all(|b| b.is_ascii_hexdigit());
+    if !full_sha(&file.fork.commit) || !full_sha(&file.fork.upstream) {
+        return Err(Error::new(
+            "SAIL3120",
+            "engine/verus/fork.toml must pin full commit SHAs",
+        ));
+    }
+    Ok(file.fork)
+}
+
+/// Exact fork commit; part of build and execution identities. A malformed
+/// pin yields an identity no build can have, so validation fails closed.
 #[must_use]
-pub fn patch_sha256() -> String {
-    crate::managed::digest(PATCH.as_bytes())
+pub fn fork_commit() -> String {
+    fork().map_or_else(|_| "invalid-fork-pin".to_owned(), |fork| fork.commit)
 }
 
 /// Features identifying this distinct source variant.
 #[must_use]
 pub fn features() -> Vec<String> {
     vec![
-        format!("sail-interactive:{}", patch_sha256()),
+        format!("sail-fork:{}", fork_commit()),
         format!("host:{}", crate::toolchain::host()),
         format!(
             "source-lock:{}",
@@ -131,8 +168,8 @@ pub struct Status {
     pub commit: String,
     /// Verus Rust toolchain.
     pub rust_toolchain: String,
-    /// Current exact source patch digest.
-    pub patch_sha256: String,
+    /// Exact Verus fork commit the engine is built from.
+    pub fork_commit: String,
     /// Exact dependency resolution digest.
     pub source_lock_sha256: String,
     /// Complete build-manifest digest.
@@ -150,10 +187,10 @@ pub struct Status {
 pub fn status(cache: &Path, pins: &Pins) -> Result<Status> {
     let installed = Installed::locate(cache, pins)?;
     Ok(Status {
-        version: 1,
+        version: 2,
         commit: pins.verus.commit.clone(),
         rust_toolchain: pins.verus.rust_toolchain.clone(),
-        patch_sha256: patch_sha256(),
+        fork_commit: fork_commit(),
         source_lock_sha256: crate::managed::digest(SOURCE_LOCK.as_bytes()),
         manifest_sha256: installed.manifest_sha256,
         build: installed
@@ -708,6 +745,17 @@ fn bounded_document(path: &Path) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fork_pin_is_complete_and_based_on_the_pinned_upstream_commit()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fork = fork()?;
+        let pins: Pins = toml::from_str(include_str!("../../../corpus/toolchain.toml"))?;
+        assert_eq!(fork.upstream, pins.verus.commit);
+        assert_eq!(fork.repo, "https://github.com/Chelis-Lang/verus");
+        assert_eq!(features()[0], format!("sail-fork:{}", fork.commit));
+        Ok(())
+    }
 
     #[test]
     fn context_validation_checks_inventory_and_request_manifest()

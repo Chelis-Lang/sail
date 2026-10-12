@@ -1,6 +1,7 @@
 # VI-0004: every crate in a `cargo verus` run shares one log directory, and each clears it
 
-- **Status:** open (tracked here)
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `750027a9` (fix: give each crate its own log directory under cargo verus).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08, building function attribution (ADR 0014)
 - **Impact on sail:** `sail verify --output json` requests Verus logs only
@@ -36,3 +37,19 @@ sail runs `cargo metadata --no-deps` first. It adds `--log … --log-dir` only
 when exactly one process will log. A fix in Verus could be a log
 subdirectory per crate, or not clearing files it did not write. Either would
 let attribution cover workspaces.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`750027a9` (fix: give each crate its own log directory under cargo verus), one
+commit with its regression test
+`source/rust_verify_test/tests/sail_vi0004_cargo_log_dirs.rs`, which fails on
+the pinned stock source and passes on the fork. Via Cargo, each crate logs to
+`<log-dir>/<crate name>` (a binary to `<log-dir>/<crate name>-bin`) and clears
+only that subdirectory. Direct (non-Cargo) runs keep the given directory. The
+solver log directory (`.verus-solver-log`) is unchanged.
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+Still needed for default `sail verify` (stock Verus): Sail requests logs only
+when one Verus process will write them. Sail's engine adapter runs the
+launcher directly, not through Cargo, so its log layout is unchanged.

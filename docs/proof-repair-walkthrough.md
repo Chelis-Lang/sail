@@ -37,6 +37,11 @@ export PATH="$PWD/target/release:$PATH"
 sail engine status --output json
 ```
 
+`build-verus-engine` builds the commit of Sail's private Verus fork pinned in
+`engine/verus/fork.toml`, so it needs GitHub access to `Chelis-Lang/verus`:
+it uses `SAIL_ENGINE_ARTIFACT_TOKEN` if set, otherwise `gh auth token`.
+`engine status` reports that commit as `fork_commit`.
+
 The source-build command installs the selected engine in the same Sail cache
 that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
