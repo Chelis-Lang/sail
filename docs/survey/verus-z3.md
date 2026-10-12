@@ -155,13 +155,13 @@ around `cargo verus` reaches every `rust_verify`.
   (`:57`).
 - **stdout:** piped. A dedicated reader thread reads it line by line
   (`verus@426d8b0:source/air/src/smt_process.rs:63-100`; see
-  [Reading responses](#reading-responses)).
+  [Batches and the end-of-response marker](#batches-and-the-end-of-response-marker)).
 - **stderr:** not configured, so it is **inherited**: solver stderr goes straight
   to the user's terminal (`verus@426d8b0:source/air/src/smt_process.rs:116-118`
   configure only stdin and stdout).
 - **Environment and working directory:** inherited, because neither is
   overridden in `Command`. The working directory matters for `--profile`,
-  whose trace file path is relative (see [Profiling](#profiling-trace-files)).
+  whose trace file path is relative (see [Prelude: options and declarations](#prelude-options-and-declarations)).
 
 ### One process per what
 
