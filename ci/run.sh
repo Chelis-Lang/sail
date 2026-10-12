@@ -4,7 +4,7 @@
 # locally, so CI and local results come from one definition.
 #
 #   gate                 fmt, clippy, tests, doctests, rustdoc, layering,
-#                        cargo-deny, docs/benchmarks.md freshness
+#                        cargo-deny, docs/benchmarks.md freshness, Markdown links
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
 #   e2e [legacy|managed] Run both phases by default; CI runs them in parallel.
@@ -67,6 +67,7 @@ start_daemon() {
 case "$step" in
   gate)
     bash ci/test-completion.sh
+    python3 scripts/check-links.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
