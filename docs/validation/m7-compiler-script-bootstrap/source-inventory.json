@@ -560,5 +560,42 @@
       "native-raw.tar.gz": "edbc85043e8066a959b505e6a04efdc2ba163c0ce26f70662003e8b982d41f0d"
     },
     "qualification": "Original unchanged repair fixture only. Separate installed named-baseline feature smoke is running at record freeze; readers, complete conformance, real-project performance and overall M7 acceptance remain unqualified."
+  },
+  "acceptance_byte_installation": {
+    "status": "PASS",
+    "elapsed_seconds": 4.291448792,
+    "source_commit": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694",
+    "producer_grant_sha256": "bfa621ca2c19b219ad2ee15f17546eab8c00e50e653f0138fd5c9adfaf98d671",
+    "execution_grant_sha256": "c4b7a4bfc6c70baa9e2ce0492b45b7817f7886dbcf07d1e9655fba78d872f086",
+    "source_archive": {
+      "sha256": "6f49612cba4b396187c32e66be7424dd311c8cb1e0cfe6814d1f66dcd0c93245",
+      "bytes": 27658240,
+      "members": 1641,
+      "expanded_regular_bytes": 26433782,
+      "installer_sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+    },
+    "source_inventory_sha256": "03fd22bd92fde6251549935a576d95887124709f3c64a74abadc700a34c989a9",
+    "producer_and_acceptance_births_unchanged": true,
+    "producer_before_after_and_acceptance_files_equal": true,
+    "files": {
+      "sail": {
+        "bytes": 77283160,
+        "sha256": "08038d3042a4109b7e83fa6097ba8f351ad0211db0980ea1b965733a2c252d3f",
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      },
+      "sail-z3": {
+        "bytes": 11001744,
+        "sha256": "f15b4ef2aae8928dacb262cb7d09b32effe83c208e0c9332cde38a24880a7f92",
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      }
+    },
+    "commands": 12,
+    "all_command_exits": 0,
+    "controller_sha256": "6647a923147f876132676410187ad2e8a960bf3b8276ba0987450e7c96c27273",
+    "qualification": "Byte installation only; no Cargo, proof, prewarm, cache or receipt copies. Running original three-round HE/Vest benchmark receives no performance credit."
   }
 }
