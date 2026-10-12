@@ -331,6 +331,90 @@
       },
       "physical_backing_bytes_reclaimed": "not measured or attributed",
       "qualification": "Storage operation only; no proof/product/performance acceptance"
+    },
+    {
+      "scope": "156 fixed closed shared Cargo debug/incremental subtrees only",
+      "status": "PASS",
+      "mutation_state": "completed-native-pass",
+      "preceding_whole_incremental_inventory": {
+        "status": "FAIL",
+        "observed_entries": 20288,
+        "unchanged_entry_cap": 20000,
+        "mutation_state": "not-attempted",
+        "removed": [],
+        "error": "inventory entry limit",
+        "evidence_sha256": {
+          "controller.json": "ee44eee9534990458f3de44ac48db8e2a7e1d68f3c834d918675370f140c1394",
+          "native-result.stdout": "e575e2f6c58deed0784f3dd8d05e6e16aedddda25158e9586618dea6942a5aac"
+        }
+      },
+      "inventory_entries_before": 15996,
+      "removed_files": 1277,
+      "allocated_file_bytes_removed": 1706610688,
+      "logical_regular_bytes_removed": 1704321583,
+      "preserved_entries_after": 14719,
+      "all_other_entries_and_root_ids_unchanged": true,
+      "protected_hardlinked_files": 29,
+      "containers_birth_mounts_unchanged": true,
+      "census": {
+        "holders-sail-m7-handoff-validation.json": {
+          "complete": true,
+          "scanned": 2,
+          "holders": 0,
+          "unavailable": 0,
+          "exact_self_excluded": [
+            {
+              "pid": 71,
+              "ppid": 0,
+              "pgid": 71,
+              "start": 59821,
+              "state": "R"
+            }
+          ]
+        },
+        "immediate-holders.json": {
+          "complete": true,
+          "scanned": 2,
+          "holders": 0,
+          "unavailable": 0,
+          "exact_self_excluded": [
+            {
+              "pid": 84,
+              "ppid": 0,
+              "pgid": 84,
+              "start": 58803,
+              "state": "R"
+            }
+          ]
+        },
+        "holders-sail-m7-acceptance.json": {
+          "complete": true,
+          "scanned": 2,
+          "holders": 0,
+          "unavailable": 0,
+          "exact_self_excluded": [
+            {
+              "pid": 90,
+              "ppid": 0,
+              "pgid": 90,
+              "start": 59729,
+              "state": "R"
+            }
+          ]
+        }
+      },
+      "helper_sha256": "81c4dadd96ea91a2b9e527b7d11f79dfb17537c74ae847e02bb75faf0ef13b2b",
+      "evidence_sha256": {
+        "controller.json": "55dc49040aa7fe14dc32b5277860e61d7fde403c27a86fce7de3c2e21530dc68",
+        "inventory.json": "d277aa089b09005ffa6b27f1076d33cdc9dce8a4ed059c190d26019a57ee7da9",
+        "sail-m7-acceptance/approved-inventory.json": "d277aa089b09005ffa6b27f1076d33cdc9dce8a4ed059c190d26019a57ee7da9",
+        "sail-m7-acceptance/after-inventory.json": "d4790e3b787b2a7d51a5ada02e94a20e87b0c73368160abd48582a6023de96e7",
+        "sail-m7-acceptance/native-result.json": "2d42978db5783c9779ec614aa9de8511326b28433d78b471527b0959cd59c47e"
+      },
+      "inherited_native_scope_label": "Five fixed closed b895 incremental trees only; complete per-tree preservation, no surrounding-project posthash or proof acceptance",
+      "scope_label_correction": "Inherited b895/five-tree label is stale; actual approved156-root inventory, identical post-root IDs and host controller scope bind this operation. Original result unchanged.",
+      "preservation": "Per-exact-subtree only; binaries, generated sources, directories, hardlinks and evidence retained; no surrounding debug/project posthash, engine or product ELF target",
+      "physical_backing_bytes_reclaimed": "not measured or attributed"
     }
   ]
 }

@@ -631,5 +631,25 @@
       "native-raw.tar.gz": "a6340a36b03d9a5abc1c10cf39f7a2a9845ee369822f0e62a2da43ceacb682f8"
     },
     "qualification": "No real-project performance or M7 acceptance; historical failure immutable. Prepared reader evidence from old container birth must be restaged."
+  },
+  "infrastructure_recovery": {
+    "status": "Root-authorized Desktop restart completed; both container write/fsync checks passed",
+    "container_ids_and_images_unchanged": true,
+    "new_container_births": {
+      "sail-m7-acceptance": "2026-10-12T06:15:08.278338923Z",
+      "sail-m7-handoff-validation": "2026-10-12T06:15:08.277945423Z"
+    },
+    "old_prepared_reader": "Old-birth57a prepared scope invalidated and unexecuted; restaging required",
+    "next_frozen_source": "387ba808794c2e5d283a35d1150196c0611da84a",
+    "change": "Explicit CARGO_INCREMENTAL=0 in local gate phases aligns CI; original Rust oracles/inner deadlines unchanged",
+    "host_pure_controls": {
+      "run": 31,
+      "passed": 30,
+      "skipped": 1,
+      "elapsed_seconds": 0.012,
+      "skip": "Python data-filter support",
+      "performed_by": "root"
+    },
+    "fresh_combined_gate": "RUNNING at record freeze; strict completed49.77s, nextest compilation in progress; no terminal PASS or solver/product credit"
   }
 }
