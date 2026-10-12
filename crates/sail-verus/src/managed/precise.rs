@@ -369,11 +369,14 @@ mod platform {
         }
         fn watch(&mut self, directory: &Path) -> Option<()> {
             let canonical = directory.canonicalize().ok()?;
-            if !local_filesystem(&canonical, self.mounts.snapshot()) {
-                return None;
-            }
+            // A canonical path enters the index only after passing the
+            // local-filesystem check against this owner's immutable mount
+            // snapshot, so a repeat would pass it again: skip only the reparse.
             if self.canonical_watches.contains_key(&canonical) {
                 return Some(());
+            }
+            if !local_filesystem(&canonical, self.mounts.snapshot()) {
+                return None;
             }
             if self.directories.len() >= MAX_WATCHES {
                 return None;
