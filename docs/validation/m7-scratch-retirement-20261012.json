@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-12",
+  "status": "completed",
+  "authorization": "Owner requested removal of all inactive Sail scratch and compact evidence in place of build-tree archives.",
+  "scope": "Completed work only; both containers had no live workload beyond PID1 before each whole-directory archive/deletion.",
+  "containers": {
+    "acceptance": {
+      "status": "PASS",
+      "archive_sha256": "38c224b6e4d11010f3aa479ec606ed7d3ae27fa954de83e442e963274fc37b45",
+      "archive_bytes": 361034301,
+      "files": 129662,
+      "roots": 519,
+      "directory_deletion_exit": 0,
+      "obsolete_product_installs_removed": 44,
+      "compact_archive": "acceptance.tar.gz",
+      "loose_obsolete_files_removed": 378,
+      "closed_e2e_workspaces_removed": 2,
+      "remaining_temp_size": "180 MiB"
+    },
+    "handoff": {
+      "status": "PASS",
+      "archive_sha256": "fbd262898b484a8b0673328df98578c96315e93fa73a84101fe35e1dbb113730",
+      "archive_bytes": 247162494,
+      "files": 68158,
+      "roots": 447,
+      "directory_deletion_exit": 0,
+      "obsolete_product_installs_removed": 19,
+      "compact_archive": "handoff.tar.gz",
+      "remaining_temp_size_before_new_gate": "372 MiB"
+    }
+  },
+  "host": {
+    "retired_worktree_targets_removed": 20,
+    "retired_source_archives_metadata_and_git_recovery_refs": "retained",
+    "retired_worktree_cache_before": "about 3.2 GiB",
+    "retired_worktree_cache_after": "71 MiB",
+    "obsolete_build_archives_removed_bytes": 799987037,
+    "completed_preflight_worktree": "removed; selected commit retained"
+  },
+  "observed_host_free_space": {
+    "before": "414 MiB",
+    "after": "112 GiB",
+    "attribution": "Observed totals include concurrent activity from other projects; not an exclusive reclaimed-byte claim."
+  },
+  "retention": "Complete admitted text/JSON logs, source-control scripts and receipt data were streamed into compact archives. All members were byte-count/SHA verified before scratch deletion. Compiler targets and historical product binaries were retired. Recorded original outcomes are unchanged.",
+  "protected": "Selected engine runtime, stock toolchains, M6 baseline, current 387 product, corpus/cache volumes and continuing Cargo target were kept. No global Docker prune or foreign-project cleanup.",
+  "known_cleanup_verification_correction": "Loose-file archive verification initially rejected tar hardlink-header size; nothing was deleted. Actual extracted byte count and SHA then matched all 240 text members before deletion.",
+  "next": "Terminal-safe completed-run cleanup is being implemented separately; existing gate is running from a new exact source snapshot using the continuing Cargo target."
+}
