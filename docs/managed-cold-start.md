@@ -14,8 +14,8 @@ one-function project first compiles its macro dependencies and verifies vstd,
 which takes tens of seconds. A context changes when the arguments, the engine
 selection, the relevant environment, the Cargo configuration or the installed
 toolchain (Verus, Cargo, rustc, Z3, Sail, the sysroot libraries) changes;
-installed files are identified by device, inode, size, modification and change
-time, so reinstalling or rewriting any of them makes the next run fresh.
+installed files are identified by device, inode, size and modification time,
+so reinstalling or rebuilding any of them makes the next run fresh.
 
 Ordinary Cargo dependencies are shared by contexts that differ only in the
 repair function selected ([ADR 0036](decisions/0036-managed-compiler-artifact-families.md));

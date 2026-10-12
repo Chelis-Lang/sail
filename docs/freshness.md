@@ -60,10 +60,11 @@ A run is Current only when all of the following hold:
   build-script input and compiler-declared include of the resolved packages,
   and the Cargo configuration) is the same after verification as before;
 - the device, inode, size, mode, modification time and change time of every
-  input file and directory, and of every installed toolchain file, are
-  unchanged across the run. The change time cannot be set by user programs,
-  so an edit that was restored during the run, even with its modification time
-  put back, is still caught;
+  input file and directory are unchanged across the run. The change time cannot
+  be set by user programs, so an edit that was restored during the run, even
+  with its modification time put back, is still caught;
+- every installed toolchain file still has the device, inode, size and
+  modification time it had when the run started;
 - on Linux, no absent Cargo configuration file was created during the run, even
   briefly (an inotify watch on those paths tells such a file apart from Cargo's
   own journal writes in its home directory);

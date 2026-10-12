@@ -1312,16 +1312,6 @@ pub fn refresh_context(
     super::read_check::check(cache, workspace, context_sha256)
 }
 
-fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
-    let state = cache.join("runtime-identities");
-    read::<String>(&state.join(format!("{context}.link")))
-        .and_then(|sha| read::<Vec<(String, String)>>(&state.join(format!("{sha}.json"))))
-        .unwrap_or_default()
-        .into_iter()
-        .map(|(path, _)| PathBuf::from(path))
-        .collect()
-}
-
 /// Whether every runtime file of `context` still has its recorded identity
 /// (stat for installed files, content for configuration), checked in parallel.
 fn runtime_current(cache: &Path, context: &str) -> bool {
@@ -1503,7 +1493,6 @@ pub(crate) fn run_engine(
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
             .as_deref(),
     ));
-    before.roots.extend(runtime_paths(&config.cache, &hash));
     if !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
@@ -1702,7 +1691,6 @@ pub(crate) fn run_engine(
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
             .as_deref(),
     ));
-    after.roots.extend(runtime_paths(&config.cache, &hash));
     // Resolve fresh receipt bindings while the input stamp still brackets every
     // content read. A newly discovered include may already belong to another
     // observed package, so global currentness alone does not imply that the
@@ -2651,8 +2639,8 @@ mod tests {
         json(&state.join(format!("{sha}.json")), &identities)?;
         json(&state.join("ctx.link"), &sha)?;
         assert!(runtime_current(&root, "ctx"));
-        // Rewriting an installed file with identical bytes still changes it.
-        std::fs::write(&installed, b"binary")?;
+        // A rewrite that changes the size or modification time changes it.
+        std::fs::write(&installed, b"binary, rebuilt")?;
         assert!(!runtime_current(&root, "ctx"));
         json(
             &state.join(format!("{sha}.json")),

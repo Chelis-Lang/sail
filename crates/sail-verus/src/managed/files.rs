@@ -78,10 +78,11 @@ pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 }
 
 /// Identity of an installed toolchain file without reading its bytes: device,
-/// inode, size, modification and change time. Any write, replacement or
-/// reinstall changes it (the change time cannot be set by user programs), and
-/// any change makes the next run fresh. Elsewhere this falls back to the
-/// complete content digest.
+/// inode, size and modification time. Replacement, reinstallation and ordinary
+/// writes change it, and any change makes the next run fresh; an in-place
+/// rewrite that restores the modification time is not detected. The change time
+/// is left out: Sail's own hard-linked aliases of `sail` change it on every new
+/// compiler family. Elsewhere this falls back to the complete content digest.
 pub(super) fn stat_identity(path: &Path) -> Result<String> {
     #[cfg(unix)]
     {
@@ -89,14 +90,12 @@ pub(super) fn stat_identity(path: &Path) -> Result<String> {
         let m = std::fs::metadata(path)
             .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))?;
         Ok(format!(
-            "stat:{}:{}:{}:{}.{}:{}.{}",
+            "stat:{}:{}:{}:{}.{}",
             m.dev(),
             m.ino(),
             m.size(),
             m.mtime(),
-            m.mtime_nsec(),
-            m.ctime(),
-            m.ctime_nsec()
+            m.mtime_nsec()
         ))
     }
     #[cfg(not(unix))]
