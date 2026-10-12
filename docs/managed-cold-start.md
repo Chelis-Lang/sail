@@ -68,6 +68,10 @@ regeneration still occur. Before that mutation, the candidate acquires its own
 continuous coverage of supported script inputs, Cargo configuration and runtime
 bytes. Only a complete successful Cargo run with matching compilation roles,
 declarations, output seals and final guard checks can establish ordinary contracts.
+Initial regeneration does not guarantee the next invocation is Current:
+proof-source coverage and independent script publication have separate
+requirements. The [first real-project publication review](validation/m7-c2-first-bootstrap-publication-review.md)
+identifies the retained evidence still missing for the c2 refusal.
 The original complete proof transaction is unchanged: Unknown proof evidence
 remains Unknown and cannot create a successful receipt or accepted repair.
 Unsupported paths, aliases, directory declarations, Cargo overrides, environment
