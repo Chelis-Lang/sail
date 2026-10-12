@@ -756,14 +756,29 @@ device/inode or absence state.
 The [corrected ordinary-build candidate](validation/m7-compiler-script-bootstrap/README.md)
 is integrated for validation. Its independent script transaction can retain
 dependency contracts without changing the original proof guard or accepting
-Unknown evidence. Corrected native controls and whole-product recovery remain
-pending; the [602 failures and Cargo format observations](validation/m7-bootstrap-602ec67-gate-failure.md)
+Unknown evidence. The later [c2 local gate and solver](validation/m7-core-c2a4b23-validation.md),
+[emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) and
+[original repair fixture](validation/m7-repair-c2a4b23-terminal.md) pass; original
+real-project recovery remains unqualified. The historical [602 failures and Cargo format observations](validation/m7-bootstrap-602ec67-gate-failure.md)
 and [static review](validation/m7-ordinary-script-bootstrap-review.md) supply no
 historical changed-path attribution or benchmark pass.
 
 The [file-only audit](validation/m7-benchmark-namespace-730-review.md) traces a
 possible cleanup/regeneration cycle without excluding that semantic input or
 weakening any barrier. A [fixed first-mismatch diagnostic candidate](validation/m7-first-binding-mismatch-source.json)
-adds opaque identity detail to existing `SAIL3114` notes. It remains unqualified
-pending native controls; no new proof, benchmark or historical cause claim has
-been made. The original failed scope and all deadlines remain unchanged.
+adds opaque identity detail to existing `SAIL3114` notes. It passes the later
+complete local gate, without retroactively identifying the old failed binding
+or supplying a benchmark cause claim. The original failed scope and all deadlines remain unchanged.
+
+### c2 benchmark interruption leaves native outcomes unknown
+
+The later c2 product passes its complete local gate, original solver and fresh
+original CLI/MCP repair fixture. Its separate
+[original benchmark attempt](validation/m7-benchmark-c2a4b23-interrupted.md) is
+interrupted by host checkpoint `ENOSPC` with empty retained streams, no recorded
+phases and unavailable Docker health responses. Separate [post-restart recovery](validation/m7-benchmark-c2a4b23-recovery.md)
+retains three completed warmups and no measured samples. Fourth M7 focus completion,
+original native terminal/closure and final seals remain unknown. This is an infrastructure
+interruption, not evidence that the old 730 root-binding failure recurred or was
+fixed. No benchmark benefit or M7 acceptance is claimed, and original limits and
+oracles remain unchanged.

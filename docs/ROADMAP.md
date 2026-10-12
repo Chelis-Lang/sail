@@ -127,28 +127,38 @@ The selected output-owner overlap and small exact HTTP-body changes have passed
 component validation. Preserving observers across unchanged metadata publication
 now passes its
 [complete Linux component replay](validation/m7-preserve-freshness-metadata-replay.md),
-including sensitivity checks. Frozen `730a321` subsequently passes the complete
-workspace gate (634 tests and every remaining step), the original solver suite
-(41/41), ordinary release build and private installation. Its fresh original
-CLI/MCP repair fixture passes in 104.575 seconds within the unchanged 120/30/5
-limits, without the timing wrapper or cleanup/progress errors. The
-[portable validation record](validation/m7-core-730a321-validation.md) binds source,
-product, runtime and raw evidence. Native CI also passes every required job.
-The same installed product now passes the [complete original reader workflow](validation/m7-reader-730a321-terminal.md):
-both four-client collectors retain 200 samples, complete Current graphs and
-unchanged p95 limits, followed by retained CLI/MCP scenarios. Earlier gate,
-repair and reader failures and the instrumented diagnostic's UNCERTAIN outcome
-remain distinct retained scopes. These results do not establish real-project
-speedups or complete M7 acceptance; PR #74 remains draft.
+including sensitivity checks. Current frozen `c2a4b23` passes the
+[complete local gate and original solver suite](validation/m7-core-c2a4b23-validation.md):
+651 workspace tests, every remaining gate step and 41/41 solver tests. Optional
+independent ordinary-build recovery passes all ten controls and its separate
+[on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md).
+Exact [release and private installations](validation/m7-product-c2a4b23-installation.md)
+pass, followed by the fresh unchanged
+[original CLI/MCP repair fixture](validation/m7-repair-c2a4b23-terminal.md) in
+99.719 seconds with 325 operations, original 120/30/5 limits and no cleanup or
+progress errors. [PR CI at `d217`](https://github.com/Chelis-Lang/sail/actions/runs/38194750077)
+passes all ten jobs including completion; subsequent selected file-only records
+are not part of that pushed CI scope.
+
+The earlier [complete original `730a321` reader workflow](validation/m7-reader-730a321-terminal.md)
+remains a historical pass: both four-client collectors retain 200 total samples,
+complete Current graphs and unchanged p95 limits, followed by retained CLI/MCP.
+It does not qualify current c2 readers; a fresh c2 replay remains required.
+The [c2 original benchmark attempt](validation/m7-benchmark-c2a4b23-interrupted.md)
+is interrupted by host checkpoint ENOSPC. [Separate recovery](validation/m7-benchmark-c2a4b23-recovery.md) retains three
+warmups and no measured samples; fourth M7 focus completion, original terminal,
+closure and final seals remain unknown. Earlier failed gates, repairs and
+benchmarks retain their original status; no paired speedup or overall M7
+acceptance follows, and PR #74 remains draft.
 
 | Workstream | Current evidence | Required next result |
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
-| Combined implementation | Frozen `730a321` passes the [complete local gate and original solver suite](validation/m7-core-730a321-validation.md): 634 workspace tests, all remaining steps, and 41/41 solver tests. [Native CI](https://github.com/Chelis-Lang/sail/actions/runs/38185209382) passes all required checks. | Preserve coherent installed-product validation; historical failed scopes remain failed. |
-| Repair workflow | The same frozen source builds and installs ordinary private products; its [fresh original CLI/MCP fixture](validation/m7-core-730a321-validation.md) passes in 104.575 seconds with original 120/30/5 bounds and full checks. The separate instrumented scope remains UNCERTAIN despite a passing fixture. | Frozen HumanEval/Vest acceptance and measured whole-loop gains. Small-fixture success does not qualify real-project performance. |
-| Responsive reads | The [original installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both collectors during verification; each retains 200 total samples across four concurrent clients: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Original retained CLI/MCP scenarios and immutable-input checks also pass. Earlier failures remain failed. | This scoped gate is complete. Preserve full graphs, independent freshness and original latency/lifecycle bounds in later products; it does not qualify real-project repair speed. |
+| Combined implementation | Frozen `c2a4b23` passes [651 workspace tests, all remaining gate steps and 41/41 solver tests](validation/m7-core-c2a4b23-validation.md). All ten ordinary-build controls and [on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) pass. [PR CI at `d217`](https://github.com/Chelis-Lang/sail/actions/runs/38194750077) passes all ten jobs. | Preserve coherent installed-product validation and historical failures; later unpushed file-only records receive no separate CI credit. |
+| Repair workflow | Current c2 [release and private installations](validation/m7-product-c2a4b23-installation.md) pass. Its fresh [complete original CLI/MCP fixture](validation/m7-repair-c2a4b23-terminal.md) passes in 99.719 seconds with 325 operations, original 120/30/5 bounds and no cleanup/progress errors. | Frozen HumanEval/Vest recovery and measured whole-loop gains; small-fixture success does not qualify real-project performance. |
+| Responsive reads | Historical [installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both collectors; each retains 200 total samples across four concurrent clients: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Retained CLI/MCP and immutable-input checks pass in that scope. | Fresh current-c2 replay with the same complete graphs, independent freshness and original latency/lifecycle bounds; no historical pass transfer. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | The fresh unchanged `730a321` [whole-loop benchmark](validation/m7-benchmark-730a321-bootstrap-failure.md) fails in the second HumanEval repair warmup: an input-binding change makes full evidence Unknown, so acceptance correctly refuses. Four setup records and zero measured samples survive; Vest was not reached. The corrected [independent ordinary-build recovery candidate](validation/m7-compiler-script-bootstrap/README.md) is integrated for validation; [602 positive failures and exact Cargo path captures](validation/m7-bootstrap-602ec67-gate-failure.md) remain separate. | Qualify corrected native controls and whole-product recovery without proof promotion, then run three original rounds, spread and at least 2× median improvement on each project, with full verdict/diagnostic oracles. |
+| Frozen repair performance | Current [c2 attempt](validation/m7-benchmark-c2a4b23-interrupted.md) is interrupted on host checkpoint ENOSPC; [Separate recovery](validation/m7-benchmark-c2a4b23-recovery.md) retains three warmups and no measured samples, without a fourth M7 focus terminal or original closure. Historical [730 benchmark](validation/m7-benchmark-730a321-bootstrap-failure.md) fails required full Current warmup admission, with zero measured samples. c2 recovery controls pass, but no real-project benchmark benefit is established. | Recover actual owned outcomes, then complete the original three rounds, spread and at least 2× median improvement on each project with exact oracles; no inference from absent host streams. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -231,9 +241,10 @@ recoverable with their byte hashes and metadata; only the verified uncompressed
 copies were retired. Historical interrupted results remain unchanged, and no
 physical disk recovery or validation credit is claimed.
 
-M7 is **not accepted**. PR #74 remains draft: the frozen `730a321` product and
-reader scopes pass, while complete current standard/cache coverage and real-project
-performance remain outstanding. Emulated local Linux runs are
+M7 is **not accepted**. PR #74 remains draft: current c2 gate, solver, component
+sensitivity, installation and original repair scopes pass. Reader evidence is
+still the historical 730 product; fresh c2 readers, complete current standard/cache
+coverage and real-project performance remain outstanding. Emulated local Linux runs are
 authorized and labelled; native-host reference reruns are for later. Limits,
 full reports and exact oracles remain unchanged.
 
@@ -254,9 +265,9 @@ Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Preserve the [passing original installed repair fixture](validation/m7-core-730a321-validation.md)
-   and [complete reader workflow](validation/m7-reader-730a321-terminal.md) as
-   later products change. Their original checks, complete reports, independent
+2. Preserve the [current passing original repair fixture](validation/m7-repair-c2a4b23-terminal.md)
+   and repeat the historical [complete reader workflow](validation/m7-reader-730a321-terminal.md)
+   on current c2 product. Their original checks, complete reports, independent
    freshness and lifecycle limits remain mandatory. The pass does not isolate
    the contribution of metadata preservation, output-owner overlap or dependency
    reuse, and it does not establish real-project whole-loop speedups.
@@ -265,9 +276,10 @@ Priority order for completing this milestone:
    shared ordinary Cargo artifacts; no focused success can replace full validation.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
-5. Qualify the optional independent ordinary-build recovery candidate; unsupported
-   coverage must retain original regeneration and Unknown proofs remain unaccepted.
-   Establish real-project recovery without claiming the old failed binding's cause.
+5. Preserve the qualified local controls for optional independent ordinary-build
+   recovery; unsupported coverage retains original regeneration and Unknown proofs
+   remain unaccepted. Recover the interrupted c2 benchmark outcomes and establish
+   real-project recovery without claiming the old failed binding's cause.
    Then measure every
    frozen HumanEval and Vest repair cycle for three rounds, retaining
    spread and resources; meet at least twofold median improvement on each.
