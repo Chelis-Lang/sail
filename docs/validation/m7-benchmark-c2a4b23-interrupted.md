@@ -1,6 +1,6 @@
 # Interrupted c2a4b23 benchmark attempt
 
-The owner reports the original three-round benchmark host controller exiting 1
+The operator record reports the original three-round benchmark host controller exiting 1
 on `ENOSPC` while writing `primary.tmp`; Docker health probes then time out.
 Retained host `stdout` and `stderr` are both empty. The controller checkpoint
 still says `running` and has no recorded phases. The

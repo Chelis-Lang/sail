@@ -1,16 +1,17 @@
 # Repair workflow walkthrough
 
-This walkthrough covers the implemented experimental workflow. The frozen
-`730a321` product passes the original repair fixture and complete concurrent-reader
-workflow; real-project M7 speed and complete standard/cache coverage remain
+This walkthrough covers the implemented experimental workflow. Current c2 passes
+the original repair fixture; the complete concurrent-reader pass is retained on
+the earlier 730 product. Current reader replay, real-project M7 speed and complete
+standard/cache coverage remain
 unfinished. See [the roadmap](ROADMAP.md),
 [known issues](known-issues.md) and [acceptance requirements](bench/m7-repair-acceptance.md).
 The commands and response fields were checked against the CLI/MCP implementation;
 this documentation change does not constitute a new proof run.
 
 Initial dependency regeneration can still leave proof evidence Unknown.
-The optional [ordinary-build recovery candidate](managed-cold-start.md) is under
-native qualification and changes only dependency-contract retention. It supplies
+Optional [ordinary-build recovery](managed-cold-start.md) passes its local
+controls and changes only dependency-contract retention. It supplies
 no proof acceptance or guaranteed first-run success; unsupported inputs retain
 original cleaning and full validation.
 
@@ -32,8 +33,8 @@ that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
 The selected runtime is experimental. Its complete source qualification now
 passes, including ownership accounting, genuine reuse across edits and exact
-full HumanEval results. The [installed-product checks](validation/m7-core-730a321-validation.md)
-and [full reader workflow](validation/m7-reader-730a321-terminal.md) pass separately;
+full HumanEval results. Current [installed repair checks](validation/m7-repair-c2a4b23-terminal.md)
+and historical [730 reader workflow](validation/m7-reader-730a321-terminal.md) pass separately;
 M7 real-project performance remains unqualified. See
 [engine qualification](../engine/verus/README.md).
 
@@ -56,6 +57,9 @@ stock build is not an interactive engine. Builds under
 `engine/verus/candidates/` remain unselected unless explicitly activated in Sail.
 A successful install/status check establishes runtime identity, not the unfinished
 M7 acceptance claims. Keep the ordinary stock launcher available for fallback.
+Before the first project submission, run `sail engine status --output json` from
+that project's directory with the same cache environment as the MCP launcher.
+This catches a different cache selection before a repair request.
 
 ## Establish a baseline with complete full validation
 
@@ -65,6 +69,10 @@ function below. This small example uses the pinned published `vstd` dependency:
 ```sh
 mkdir -p ../repair-demo/src
 cd ../repair-demo
+cat > rust-toolchain.toml <<'TOML'
+[toolchain]
+channel = "1.98.1"
+TOML
 cat > Cargo.toml <<'TOML'
 [package]
 name = "repair_demo"
@@ -88,6 +96,9 @@ verus! {
 RUST
 cargo verus verify --package repair_demo --lib
 ```
+
+The demo pins Verus's Rust toolchain from `corpus/toolchain.toml`, separately
+from the Rust toolchain used to build Sail itself.
 
 Submit one exact repair scope and retain its ID:
 
@@ -190,6 +201,12 @@ a historical baseline cannot establish today's proof.
 ## Use the same workflow through MCP
 
 Run `sail mcp` in the project directory, or pass `project_dir` to submission.
+Job reads, cancellation, events, explanations and comparisons do not accept
+`project_dir`; they resolve the service from the MCP server's working directory.
+Use a server started in this project, or configure the same absolute
+`SAIL_CACHE_DIR` (and `SAIL_DAEMON_SOCKET`, if overridden) for submission, CLI and
+MCP. A relative cache selected from another directory can make a valid job ID
+unavailable to those reads. Save the named baseline using that same service.
 After normal MCP initialization, these are `tools/call` parameter objects:
 
 ```json
@@ -205,6 +222,11 @@ Use the returned `structuredContent.id` for subsequent calls:
 ```
 
 The events response is a page; resume with its `next.stream_id` and `next.after`.
+In MCP those fields are `structuredContent.next.stream_id` and
+`structuredContent.next.after`; return both as `stream_id` and unsigned `after`
+on the next `verification_events` call. Inspect `gap` before treating the journal
+as complete. Wrong-stream/future cursors fail explicitly rather than becoming a
+gap page.
 MCP does not expose CLI `--follow`. Result evidence has the same envelope:
 inspect `structuredContent.value.repair.accepted` and the full Current report.
 `isError: false` only means the tool call succeeded.
@@ -219,6 +241,8 @@ Save named baselines through the CLI; there is no MCP baseline-save tool.
 Comparison takes exactly one `baseline` or `before_job`. Library submission omits
 `target`; a binary uses `kind: "bin"` plus `target: "NAME"`. See the
 [MCP schemas](mcp.md) for optional submission arguments and response details.
+Once submission returns a durable ID, use `cancel_verification` to cancel that
+job. Cancelling an unrelated lookup or disconnecting MCP does not cancel it.
 
 ## Return to stock verification
 

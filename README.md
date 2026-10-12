@@ -41,19 +41,21 @@ See [live workspace verification](docs/workspace-verification.md).
 
 The optional pinned source engine adds exact-function focus followed by independent
 full-target validation. The selected source engine passes its memory and lowering
-qualification. The frozen `730a321` product passes the complete workspace gate
-(634 tests), original solver suite (41 tests) and original installed CLI/MCP
-repair fixture with unchanged checks.
-The [full reader workflow](docs/validation/m7-reader-730a321-terminal.md) also passes
+qualification. Current `c2a4b23` passes the complete workspace gate (651 tests),
+original solver suite (41 tests), ordinary-build recovery controls and original
+installed CLI/MCP repair fixture with unchanged checks.
+The historical [730 full reader workflow](docs/validation/m7-reader-730a321-terminal.md) passes
 both collectors: each retains 200 total samples across four concurrent clients
 (100 Result and 100 Status reads), with complete Current graphs,
-followed by retained CLI/MCP scenarios. Twofold real-project repair-loop
+followed by retained CLI/MCP scenarios; current c2 readers require a fresh replay.
+Twofold real-project repair-loop
 improvement and complete current standard/cache coverage remain outstanding;
 M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
-See [current validation](docs/validation/m7-core-730a321-validation.md) and
+See [current validation](docs/validation/m7-core-c2a4b23-validation.md) and
 [known issues](docs/known-issues.md).
 
-An optional ordinary-build recovery candidate is under native qualification.
+Optional ordinary-build recovery passes its local controls and installed repair
+fixture; real-project benchmark recovery remains unqualified.
 It can establish dependency contracts after initial regeneration, but never
 promotes an Unknown proof or replaces full verification. Unsupported coverage
 retains original cleaning. See [build recovery](docs/managed-cold-start.md).
@@ -63,6 +65,9 @@ From the Sail checkout, build/register the selected optional source variant with
 Alternatively, `sail engine install --from ENGINE_BUILD_DIR --output json`
 imports a recognized build after validating its provenance and artifact bytes.
 A candidate directory or successful install is not M7 acceptance evidence.
+If you override `SAIL_CACHE_DIR`, use one absolute value for engine installation,
+project CLI commands and the MCP server; changing directories must not select
+another cache. The walkthrough explains MCP job-read routing.
 
 From a project, submit a library repair and retain the returned job ID:
 

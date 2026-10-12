@@ -1,9 +1,10 @@
 # Proof events and repair validation
 
 **Experimental (M7):** the selected source engine passes its preparation-memory
-and lowering qualification. The frozen `730a321` product passes the
-[complete original CLI/MCP repair fixture](validation/m7-core-730a321-validation.md)
-and [full concurrent-reader workflow](validation/m7-reader-730a321-terminal.md).
+and lowering qualification. Current c2 passes the
+[complete original CLI/MCP repair fixture](validation/m7-repair-c2a4b23-terminal.md).
+The [full concurrent-reader pass](validation/m7-reader-730a321-terminal.md) is
+historical 730 evidence; current c2 replay remains required.
 Real-project performance and complete standard/cache corpus coverage remain
 unfinished.
 See [known issues](known-issues.md) and the
@@ -58,8 +59,9 @@ incomplete input coverage cannot authorize a repair.
 A missing or ambiguous exact function records `batch.selection_error` with a
 stable code and prevents acceptance while retaining the independent full report.
 
-Optional ordinary-build recovery is a development candidate pending native
-qualification. It independently guards ordinary script inputs during initial
+Optional ordinary-build recovery passes its local controls; real-project
+benchmark recovery remains unqualified. It independently guards script inputs
+during initial
 regeneration and can retain only dependency contracts. The proof still needs
 its own complete Current full result; an Unknown run remains unaccepted.
 Unsupported paths, configuration, environment or coverage retain original
