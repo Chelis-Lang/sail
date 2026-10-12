@@ -100,7 +100,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
     }
     let bundle = sail_api::repair::ResultDocument::from(sail_api::repair::BatchResult {
         focus: Some(focus.clone()),
-        full,
+        full: Some(full),
         manifest_sha256: "mock-manifest".into(),
         compiler_invocations: 1,
         batched: true,

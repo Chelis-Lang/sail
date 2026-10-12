@@ -40,8 +40,7 @@ impl Drop for Process {
 }
 
 pub(super) fn run(state: &State) {
-    loop {
-        let Some((id, key)) = next(state) else { break };
+    while let Some((id, key)) = next(state) {
         let _running = Running { state, key };
         let Ok(job) = get(state, &id) else { continue };
         if !job.status.state.terminal() {
@@ -207,12 +206,12 @@ fn read_document(
 ) -> io::Result<(ProjectResult, store::Projection)> {
     let bytes = store::read_bytes(&directory.join("stdout"))?;
     let document: ProjectResult = if matches!(mode, Mode::Repair(_)) {
-        let repair: sail_api::repair::ResultDocument =
+        let mut repair: sail_api::repair::ResultDocument =
             serde_json::from_slice(&bytes).map_err(io::Error::other)?;
         if repair.version != sail_api::repair::VERSION {
             return Err(io::Error::other("unsupported repair result version"));
         }
-        repair.batch.full
+        store::full_phase(&mut repair)?
     } else {
         serde_json::from_slice(&bytes).map_err(io::Error::other)?
     };

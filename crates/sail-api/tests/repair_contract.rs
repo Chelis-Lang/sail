@@ -52,10 +52,10 @@ fn success(mut project: ProjectResult) -> ProjectResult {
 #[test]
 fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits()
 -> Result<(), Box<dyn std::error::Error>> {
-    let full = success(project()?);
+    let mut full = success(project()?);
     let mut batch = BatchResult {
         focus: Some(full.clone()),
-        full,
+        full: Some(full.clone()),
         manifest_sha256: "manifest".into(),
         compiler_invocations: 1,
         batched: true,
@@ -69,23 +69,28 @@ fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits(
     });
     let document = sail_api::repair::ResultDocument::from(batch.clone());
     assert!(!document.accepted);
-    assert_eq!(document.batch.full, batch.full);
-    assert_eq!(document.batch.full.exit_code, Some(0));
-    assert!(sail_api::repair::accepted(&document.batch.full));
+    assert_eq!(document.batch.full.as_ref(), Some(&full));
+    assert!(sail_api::repair::accepted(&full));
     batch.selection_error = None;
     assert!(batch.accepted());
-    batch.full.targets[0].report.summary.failed = 1;
-    batch.full.targets[0].report.exit_code = Some(1);
-    batch.full.exit_code = Some(1);
+    // A job result carries the full phase once, as its `result`.
+    batch.full = None;
     assert!(!batch.accepted());
-    batch.full = success(project()?);
-    batch.full.targets[0].complete = false;
-    assert!(!batch.accepted());
-    batch.full = success(project()?);
-    batch.full.currentness = Currentness::Historical;
-    assert!(!batch.accepted());
-    batch.full.currentness = Currentness::Unknown;
-    assert!(!batch.accepted());
+    assert!(batch.accepted_with(&full));
+    let value = serde_json::to_value(sail_api::repair::ResultDocument::from(batch.clone()))?;
+    assert!(value["batch"].get("full").is_none(), "{value}");
+    full.targets[0].report.summary.failed = 1;
+    full.targets[0].report.exit_code = Some(1);
+    full.exit_code = Some(1);
+    assert!(!batch.accepted_with(&full));
+    full = success(project()?);
+    full.targets[0].complete = false;
+    assert!(!batch.accepted_with(&full));
+    full = success(project()?);
+    full.currentness = Currentness::Historical;
+    assert!(!batch.accepted_with(&full));
+    full.currentness = Currentness::Unknown;
+    assert!(!batch.accepted_with(&full));
     Ok(())
 }
 #[test]
@@ -104,7 +109,7 @@ fn engine_fault_and_stock_fallback_never_accept_a_repair() -> Result<(), Box<dyn
     full.targets[0].report.engine = Some(engine(sail_api::output::EngineEstablishment::Engine));
     let mut batch = BatchResult {
         focus: None,
-        full,
+        full: Some(full.clone()),
         manifest_sha256: "ab".repeat(32),
         compiler_invocations: 1,
         batched: true,
@@ -114,12 +119,13 @@ fn engine_fault_and_stock_fallback_never_accept_a_repair() -> Result<(), Box<dyn
     assert!(batch.accepted(), "engine-established control");
     // A target that fell back to stock after an engine fault cannot accept,
     // even if its stock report is complete and successful.
-    batch.full.targets[0].report.engine =
+    full.targets[0].report.engine =
         Some(engine(sail_api::output::EngineEstablishment::StockFallback));
+    batch.full = Some(full.clone());
     assert!(!batch.accepted());
-    assert!(!sail_api::repair::accepted(&batch.full));
+    assert!(!sail_api::repair::accepted(&full));
     // A batch-level fault retains the stock full report but never accepts.
-    batch.full = success(project()?);
+    batch.full = Some(success(project()?));
     assert!(batch.accepted(), "stock-only full control");
     batch.engine_fault = Some(sail_api::output::ErrorInfo {
         code: "SAIL3123".into(),

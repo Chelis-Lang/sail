@@ -272,7 +272,8 @@ job. Cancelling an unrelated lookup or disconnecting MCP does not cancel it.
 An explicitly unavailable or invalid engine returns a setup error. A runtime
 internal failure uses the documented stock fallback and preserves failed engine
 evidence; it cannot fabricate focused evidence or claim a successful batch.
-Inspect `batch.batched`, `batch.focus`, `batch.selection_error` and the full result.
+Inspect `batch.batched`, `batch.focus`, `batch.selection_error` and the full result
+(`batch.full` in `repair-check` output, or `result` in a job result).
 For a setup error, inspect it and cancel any owned unfinished job before
 starting a separate stock run:
 

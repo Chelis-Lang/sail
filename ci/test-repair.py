@@ -156,12 +156,13 @@ def run(args):
                          "--background", "--output", "json"])
             return status["id"], wait_job(status["id"], label)
         def full(value):
+            # A job result carries the full phase once, as `result`.
             document = value["repair"]
-            result = document["batch"]["full"]
+            assert "full" not in document["batch"], "job results must not repeat the full phase"
+            result = value["result"]
             targets = [target for target in result["targets"] if target["requested"]]
             assert len(targets) == 1 and targets[0]["target"] == "repair_demo", targets
             assert targets[0]["kind"] == ["lib"], targets
-            assert value["result"] == result, "generic jobs result must retain independent full evidence"
             return document, result, targets[0]
         try:
             while not Path(env["SAIL_DAEMON_SOCKET"]).exists():

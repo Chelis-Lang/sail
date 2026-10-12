@@ -402,7 +402,7 @@ fn fallback_batch(
         selection_error: None,
         focus: None,
         compiler_invocations: full.execution.verifier_invocations,
-        full,
+        full: Some(full),
         manifest_sha256,
         engine_fault: Some(fault),
     }
@@ -543,7 +543,7 @@ pub fn repair(
         selection_error,
         focus,
         compiler_invocations: full.execution.verifier_invocations,
-        full,
+        full: Some(full),
         manifest_sha256,
         engine_fault: None,
     })

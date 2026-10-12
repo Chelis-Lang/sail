@@ -529,11 +529,15 @@ fn set_outcome(facts: &mut Facts, full: Option<&Value>) {
     }
 }
 
-/// Facts from an M7 repair result document.
+/// Facts from an M7 repair result document: a standalone repair document, or
+/// a job result's `{repair, result}` pair, which carries the full phase once,
+/// as `result`.
 #[must_use]
 pub fn m7_facts(doc: Option<&Value>) -> Facts {
+    let job_result = doc.and_then(|d| d.get("result")).filter(|r| !r.is_null());
+    let doc = doc.map(|d| d.get("repair").unwrap_or(d));
     let batch = doc.and_then(|d| d.get("batch"));
-    let full = batch.and_then(|b| b.get("full"));
+    let full = batch.and_then(|b| b.get("full")).or(job_result);
     let focus = batch.and_then(|b| b.get("focus")).filter(|f| !f.is_null());
     let mut facts = Facts {
         full_currentness: full.and_then(currentness),
@@ -650,6 +654,18 @@ mod tests {
         assert_eq!(f.accepted, Some(true));
         assert_eq!(f.engine_manifest, Some(true));
         assert_eq!(f.focus_present, Some(true));
+
+        let job = json!({"job": {}, "result": full, "repair": {"version": 1, "accepted": true,
+            "batch": {"focus": null, "manifest_sha256": "ab",
+                "compiler_invocations": 1, "batched": true}}});
+        let f = m7_facts(Some(&job));
+        assert_eq!(f.accepted, Some(true));
+        assert_eq!(
+            f.verified,
+            Some(true),
+            "a job result's full phase is its result"
+        );
+        assert_eq!(f.focus_present, Some(false));
 
         let f = m7_facts(None);
         assert_eq!(f.outcome_error.as_deref(), Some("no full report"));

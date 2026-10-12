@@ -388,7 +388,7 @@ fn repair_job_preserves_focus_success_full_failure_and_never_promotes_preliminar
     }
     let batch = sail_api::repair::BatchResult {
         focus: Some(focus.clone()),
-        full: full.clone(),
+        full: Some(full.clone()),
         manifest_sha256: "mock-engine-manifest".into(),
         compiler_invocations: 1,
         batched: true,
@@ -421,7 +421,11 @@ fn repair_job_preserves_focus_success_full_failure_and_never_promotes_preliminar
     let repair = document.repair.ok_or("repair bundle missing")?;
     assert!(!repair.accepted);
     assert_eq!(repair.batch.focus, Some(focus));
-    assert_eq!(repair.batch.full.targets, full.targets);
+    // The full phase is sent once, as the job's `result`.
+    assert_eq!(repair.batch.full, None);
+    let result: sail_api::project::ProjectResult =
+        serde_json::from_value(document.result.ok_or("full result missing")?)?;
+    assert_eq!(result.targets, full.targets);
     assert_eq!(repair.batch.compiler_invocations, 1);
     assert!(repair.batch.batched);
     server.shutdown();

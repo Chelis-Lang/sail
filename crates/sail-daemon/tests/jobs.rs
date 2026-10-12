@@ -344,9 +344,11 @@ fn cached_repair_frames_preserve_all_evidence_and_derive_acceptance() {
         );
         assert!(repair.batch.selection_error.is_some());
         assert!(repair.batch.focus.is_some());
+        // The full phase is sent once, as `result`.
+        assert_eq!(repair.batch.full, None);
         assert_eq!(
-            document.result,
-            serde_json::to_value(&repair.batch.full).ok()
+            document.result.as_ref().map(|result| &result["run_id"]),
+            Some(&full["run_id"])
         );
         assert_eq!(repair.batch.manifest_sha256, "manifest");
         assert_eq!(repair.batch.compiler_invocations, 1);

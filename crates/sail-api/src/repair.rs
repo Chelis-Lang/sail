@@ -14,8 +14,12 @@ pub const VERSION: u32 = 1;
 pub struct BatchResult {
     /// Complete selected-function phase, absent if it did not produce evidence.
     pub focus: Option<ProjectResult>,
-    /// Independent complete requested-target phase.
-    pub full: ProjectResult,
+    /// Independent complete requested-target phase. A standalone repair
+    /// document (the repair worker's output, `sail repair-check --output json`)
+    /// carries it. A job result omits it: the job's `result` is this phase,
+    /// so readers receive the graph once.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub full: Option<ProjectResult>,
     /// Hash of the validated optional engine build manifest.
     pub manifest_sha256: String,
     /// Number of Verus driver subprocesses actually started by this batch.
@@ -37,10 +41,19 @@ pub struct BatchResult {
 impl BatchResult {
     /// Whether selection succeeded and full validation established current complete evidence.
     /// Preliminary focus success cannot authorize a repair, and neither can a
-    /// stock fallback after an engine fault.
+    /// stock fallback after an engine fault. Without a full phase, false.
     #[must_use]
     pub fn accepted(&self) -> bool {
-        self.selection_error.is_none() && self.engine_fault.is_none() && accepted(&self.full)
+        self.full
+            .as_ref()
+            .is_some_and(|full| self.accepted_with(full))
+    }
+
+    /// [`Self::accepted`] with the full phase supplied separately, as in a job
+    /// result whose `result` holds it.
+    #[must_use]
+    pub fn accepted_with(&self, full: &ProjectResult) -> bool {
+        self.selection_error.is_none() && self.engine_fault.is_none() && accepted(full)
     }
 }
 

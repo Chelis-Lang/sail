@@ -11,7 +11,7 @@ fn owned_result_projection_matches_typed_schema_and_moves_the_full_graph() {
     let root = Path::new("/fixture");
     let repair = sail_api::repair::ResultDocument::from(sail_api::repair::BatchResult {
         focus: None,
-        full: project(root),
+        full: None,
         manifest_sha256: "manifest".to_owned(),
         compiler_invocations: 1,
         batched: false,

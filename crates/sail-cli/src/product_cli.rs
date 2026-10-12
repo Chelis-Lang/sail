@@ -70,7 +70,7 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
             },
         ) {
             Ok(Response::Result(document)) if document.job.state.terminal() => {
-                let Some(repair) = document.repair else {
+                let Some(mut repair) = document.repair else {
                     return error(
                         document
                             .job
@@ -80,6 +80,11 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
                         err,
                     );
                 };
+                // A job result carries the full phase once, as `result`; the
+                // standalone repair document carries it as `batch.full`.
+                repair.batch.full = document
+                    .result
+                    .and_then(|result| serde_json::from_value(result).ok());
                 if json {
                     let _ = writeln!(
                         out,
@@ -89,14 +94,17 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
                 } else {
                     let _ = writeln!(
                         out,
-                        "{}: repair {}; full evidence {:?}; {} compiler invocations; batched={}",
+                        "{}: repair {}; full evidence {}; {} compiler invocations; batched={}",
                         status.id,
                         if repair.accepted {
                             "accepted"
                         } else {
                             "not accepted"
                         },
-                        repair.batch.full.currentness,
+                        repair.batch.full.as_ref().map_or_else(
+                            || "unavailable".to_owned(),
+                            |full| format!("{:?}", full.currentness)
+                        ),
                         repair.batch.compiler_invocations,
                         repair.batch.batched
                     );
@@ -164,7 +172,8 @@ pub(crate) fn worker(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
         Ok(batch) => {
             let code = batch
                 .full
-                .exit_code
+                .as_ref()
+                .and_then(|full| full.exit_code)
                 .and_then(|code| u8::try_from(code).ok())
                 .unwrap_or(2);
             let document = sail_api::repair::ResultDocument::from(batch);

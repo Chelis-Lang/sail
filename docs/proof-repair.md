@@ -81,6 +81,16 @@ incomplete input coverage cannot authorize a repair.
 A missing or ambiguous exact function records `batch.selection_error` with a
 stable code and prevents acceptance while retaining the independent full report.
 
+The full report appears once per document. A standalone repair document (the
+foreground `sail repair-check --output json`, and the repair worker's own
+output) carries it as `batch.full`. A job result (`sail jobs result`, MCP
+`get_verification_result`) carries it as the job's `result`, as for every other
+job, and its `repair.batch` omits `full`; `repair.accepted` is still recomputed
+from that `result`. Until the 2026-10-12 change, a job result repeated the full
+report in both places, doubling every reader's frame (about 4.3 MB instead of
+2.2 MB for HumanEval). The repair contract had not shipped, so version one
+changed in place.
+
 Optional ordinary-build recovery passes its local controls; real-project
 benchmark recovery remains unqualified. It independently guards script inputs
 during initial
