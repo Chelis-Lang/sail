@@ -9,9 +9,9 @@ semantic versioning once the API is published.
   (`Chelis-Lang/verus`, pinned in `engine/verus/fork.toml`) instead of the
   upstream commit plus `engine/verus/interactive.patch`. `sail engine status`
   reports `fork_commit` in place of `patch_sha256` (status version 2), and the
-  runtime pin records the fork commit. The fork fixes ten known Verus issues
-  (VI-0001, 0003, 0004, 0005, 0007, 0008, 0009, 0010, 0012, 0015): stable
-  declaration, trigger, diagnostic and progress-note order, correct
+  runtime pin records the fork commit. The fork fixes nine known Verus issues
+  (VI-0001, 0003, 0004, 0005, 0008, 0009, 0010, 0012, 0015): stable
+  declaration, trigger and progress-note order, correct
   `--output-json` success and selection, a `function-path` timing field, and
   per-crate log directories and argument-change re-verification under
   `cargo verus`. Default `sail verify` still runs the stock release.

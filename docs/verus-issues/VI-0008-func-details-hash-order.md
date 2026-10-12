@@ -1,7 +1,7 @@
 # VI-0008: `--output-json` lists `func-details` in hash order
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `4f9cd6d2` (fix: list output-json func-details sorted by name).
+  fixed in Sail's Verus fork by `3b388cf9` (fix: list output-json func-details sorted by name).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-09
 - **Reproduction:** `rust_verify_test`'s
@@ -45,7 +45,7 @@ entries by name before inserting them.
 ## Sail fork
 
 Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`4f9cd6d2` (fix: list output-json func-details sorted by name), one commit
+`3b388cf9` (fix: list output-json func-details sorted by name), one commit
 with its regression test
 `source/rust_verify_test/tests/sail_vi0008_func_details_order.rs`, which fails
 on the pinned stock source and passes on the fork. `func-details` entries are

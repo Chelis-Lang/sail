@@ -1,7 +1,7 @@
 # VI-0005: changing forwarded Verus arguments does not re-verify a fresh crate
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `441d6cd9` (fix: keep verification dep-info in the compile pass).
+  fixed in Sail's Verus fork by `5ee362fa` (fix: keep verification dep-info in the compile pass).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08, building `sail verify --output json` (ADR 0014)
 - **Impact on sail:** when Cargo considers a package up to date, `sail verify
@@ -29,7 +29,7 @@ request.
 ## Sail fork
 
 Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`441d6cd9` (fix: keep verification dep-info in the compile pass), one commit
+`5ee362fa` (fix: keep verification dep-info in the compile pass), one commit
 with its regression test
 `source/rust_verify_test/tests/sail_vi0005_cargo_rerun.rs`, which fails on the
 pinned stock source and passes on the fork. Cause found: rust_verify does
@@ -43,7 +43,7 @@ The first version also did this for unselected dependencies. `cargo verus
 verify` forwards its arguments to every package, including vstd, so Cargo
 rebuilt vstd whenever the arguments changed; Sail's repair loop changes them
 for every function (`--sail-repair-function`), and each repair rebuilt vstd
-and lost Current evidence (`SAIL3114`). Follow-up `b35e9226` (fix: carry
+and lost Current evidence (`SAIL3114`). Follow-up `b757e73e` (fix: carry
 dep-info into the compile pass only for selected packages) limits it to
 packages selected on Cargo's command line (`CARGO_PRIMARY_PACKAGE`);
 dependencies keep stock freshness, and the test also requires that vstd is

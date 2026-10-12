@@ -41,12 +41,19 @@ The fork's branches:
      commit (`--sail-raw=<arg>` in `tests/common/mod.rs`) that the tests use;
   2. last, `feat: interactive repair engine`, the engine itself (formerly
      `engine/verus/interactive.patch`).
+- `pinned/<sha>` tags every fork commit a Sail runtime pin has ever named
+  (for example `pinned/4881cd0f`), so a pinned commit stays reachable after
+  `sail` is rebased or a fix is dropped. Tag the commit when its pin lands.
+- Lanes push their own branches (for example `l12/engine-2`); the lead
+  updates `sail` after review.
 
 Each fix is small and self-contained so it can be rebased, dropped (when a
 Verus release fixes the issue) or reviewed alone. Fix commits change only
 orders, the `--output-json` fields named in their issue, or Cargo freshness
-and log layout; an ordering fix chooses an output stock Verus can also
-produce, never a new one.
+and log layout. An ordering fix must choose an order stock Verus is shown to
+produce (ADR 0039); the engine conformance arm, with its stock confirmation
+runs, checks this. The VI-0007 bucket-order fix failed that check on
+`debug_expand.rs` and was dropped.
 
 `cargo xtask build-verus-engine` fetches exactly the pinned commit (with
 `SAIL_ENGINE_ARTIFACT_TOKEN` or `gh auth token`; the repository is private),
@@ -64,9 +71,10 @@ CI never builds Verus; it installs the prebuilt runtime.
    conflicts per commit.
 3. Run every `sail_vi*` regression test and the `rust_verify_test` suite on
    the rebased branch, and record the results.
-4. After review, fast-forward `sail`, update `corpus/toolchain.toml` and
+4. After review, move `sail` to the branch, update `corpus/toolchain.toml` and
    [fork.toml](fork.toml) together, then do one rebuild, the qualification
-   steps below, and pack, upload and re-pin `artifact-linux.json`.
+   steps below, and pack, upload and re-pin `artifact-linux.json`. Tag the
+   pinned commit `pinned/<sha>`.
 
 ## What the engine commit contains
 

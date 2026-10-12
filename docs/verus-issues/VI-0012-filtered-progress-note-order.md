@@ -1,7 +1,7 @@
 # VI-0012: Filtered verification prints bucket-start notes in arrival order
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `f66f8e22` (fix: report bucket start notes in queue order).
+  fixed in Sail's Verus fork by `984c8e64` (fix: report bucket start notes in queue order).
 - **Verus:** pinned `0.2026.10.04.426d8b0`, source commit
   `426d8b01e7ffb910a36c15e1f870ff985bb61eef`.
 - **Found:** 2026-10-11.
@@ -97,7 +97,7 @@ the original diagnostic check remains mandatory in the meantime.
 ## Sail fork
 
 Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`f66f8e22` (fix: report bucket start notes in queue order), one commit with
+`984c8e64` (fix: report bucket start notes in queue order), one commit with
 its regression test
 `source/rust_verify_test/tests/sail_vi0012_progress_order.rs`, which fails on
 the pinned stock source and passes on the fork. Parallel workers send a

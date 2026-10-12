@@ -1,7 +1,7 @@
 # VI-0004: every crate in a `cargo verus` run shares one log directory, and each clears it
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `750027a9` (fix: give each crate its own log directory under cargo verus).
+  fixed in Sail's Verus fork by `7b3bcba6` (fix: give each crate its own log directory under cargo verus).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08, building function attribution (ADR 0014)
 - **Impact on sail:** `sail verify --output json` requests Verus logs only
@@ -41,7 +41,7 @@ let attribution cover workspaces.
 ## Sail fork
 
 Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`750027a9` (fix: give each crate its own log directory under cargo verus), one
+`7b3bcba6` (fix: give each crate its own log directory under cargo verus), one
 commit with its regression test
 `source/rust_verify_test/tests/sail_vi0004_cargo_log_dirs.rs`, which fails on
 the pinned stock source and passes on the fork. Via Cargo, each crate logs to
