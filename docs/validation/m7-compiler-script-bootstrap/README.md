@@ -6,7 +6,9 @@ remain retained. The third frozen integration (`602ec67`) passed strict checks,
 but its eight bootstrap controls had five passes and three failures: the first
 real-Cargo positive, empty-generation recovery and the reused-binary refusal
 control's initial admissible baseline. Their original assertions are unchanged.
-The whole gate's terminal is separate from those component outcomes.
+That whole gate ended FAIL with 646/649 workspace tests passing; the solver was
+unattempted. Neither the passing negative controls nor the later format
+captures turn those positive failures into acceptance.
 
 Three owned tiny offline Cargo format diagnostics establish the rejected path:
 the single-package prerequisite is `build.rs`; a workspace member emits
