@@ -56,82 +56,46 @@ run of that context yet), requests never coalesce.
 
 A run is Current only when all of the following hold:
 
-- the content revision of its inputs, hashed after its guards are in place and
-  again after verification, is unchanged;
+- the content revision of its inputs (every source, manifest, lockfile,
+  build-script input and compiler-declared include of the resolved packages,
+  and the Cargo configuration) is the same after verification as before;
 - the device, inode, size, mode, modification time and change time of every
-  input file and directory are unchanged across the run. The change time cannot
-  be set by user programs, so an edit restored during the run is still caught;
-- on Linux, kernel read leases on every input in the selected closure stayed
-  unbroken for the whole run, and the mount table generation did not change
-  (below);
-- on Linux, no absent configuration path was created, even briefly;
-- every unit Cargo compiled belongs to the selected closure, and build-script
-  and compiler declarations were complete.
+  input file and directory, and of every installed toolchain file, are
+  unchanged across the run. The change time cannot be set by user programs,
+  so an edit that was restored during the run, even with its modification time
+  put back, is still caught;
+- on Linux, no absent Cargo configuration file was created during the run, even
+  briefly (an inotify watch on those paths tells such a file apart from Cargo's
+  own journal writes in its home directory);
+- every unit Cargo compiled belongs to the selected targets' dependency closure,
+  so the read-time record covers everything that was compiled;
+- the build-script and compiler declarations were complete.
 
-The run-time guard covers the packages Cargo can compile for the selection:
-the dependency closure (every resolved dependency kind) of the selected targets,
-plus the workspace manifest, lockfile and every member manifest. A workspace
-can resolve far more than that. Vest's members resolve registry crates such as
-`wasm-bindgen`, which are never built for `-p vest_lib`. Watching all of them
-exceeded the guard's 8,192-watch bound, so every run was Unknown. Build-script
-coverage likewise does not wait for scripts outside an explicit `-p` selection's
-closure, because they never run for it. After every invocation, each
-`compiler-artifact` and `build-script-executed` record Cargo emitted must name a
-package inside both scopes. Otherwise the guard fails with
-`native-observer-scope-exceeded` and the result is Unknown. Without an exact
-selection or a complete, unambiguous resolve graph, every resolved package stays
-in scope, as before. The whole-workspace input revision and stamps are unchanged,
-so an edit to any package during a run still makes it Historical.
+Otherwise the run is Historical (an input changed) or Unknown (one of the
+checks could not be made), with the note "inputs could not be confirmed
+unchanged; re-run for a current result". Verification itself still runs and
+its report is kept as the record of that run.
 
-### Why the run keeps kernel leases and mount checks
+Build-script coverage does not wait for scripts outside an explicit `-p`
+selection's dependency closure, because they never run for it. Without an exact
+selection or a complete, unambiguous resolve graph, every resolved package is in
+scope.
 
-Content digests and stamps catch every ordinary edit. Two rare cases slip past
-them, and the run-time guard exists to catch exactly these:
+### What these checks do not catch
 
-- **A write through a shared memory mapping.** A process that keeps a source file
-  mapped writable can change its bytes without updating the file's timestamps
-  (while the page is already dirty) and change them back before the run ends.
-  The verifier then checked bytes that neither digest nor stamp shows. A kernel
-  read lease cannot coexist with a writable mapping, and any write breaks it.
-  See `corpus/repros/linux-inotify-mmap/`.
-- **A bind mount placed over an input and removed during the run.** Paths,
-  bytes and the mount table look identical afterwards. The guard watches the
-  kernel's mount generation, which any mount or unmount changes.
+Two rare cases can change the bytes a run verified without changing any
+content digest or stamp, if the change is undone before the run ends:
 
-The absent-path observer catches a configuration file created and deleted
-during the run (Cargo may have read it), without being confused by Cargo's own
-journal writes in its home directory. Kernel leases on the toolchain sysroots
-also let a run reuse sysroot digests at its final check instead of rehashing the
-whole toolchain.
+- a process writing through a writable shared memory mapping of a source file
+  while that page is already dirty, which does not update the file's
+  timestamps;
+- a bind mount placed over an input and removed again, which needs root.
 
-These guards apply only while a run is in progress. Reading a result later uses
-only the content check above.
-
-### The lease helper
-
-Kernel leases are held by an embedded Python 3 standard-library helper launched
-with isolated module loading, structured arguments and private bounded socket
-I/O; Rust cannot handle the lease-break signal without unsafe code. Sail resolves
-an absolute interpreter once per run and binds its loaded standard-library
-files and mapped ELF libraries into the run's context; the helper checks its
-actual loaded closure against that list before and after acquiring leases. It
-owns at most 4,096 file descriptors and exits immediately on `SIGIO`, so an
-editor's write proceeds at once and the run becomes not Current. The helper never
-acquires or renews a lease after readiness, and barriers inspect kernel lease
-state directly, with both complete inventories bounded by 2 MiB (see
-[ADR 0029](decisions/0029-kernel-lease-work-bounds-and-freshness.md)).
-
-Missing Python, denied lease ownership, unsupported filesystems (only local
-ext2/3/4, xfs, btrfs, tmpfs, overlay and zfs are trusted), an existing writable
-mapping or helper loss makes the run Unknown; verification still runs.
-Unprivileged leases require matching file ownership. A root container may lack
-`CAP_LEASE`; see [native product setup](native-product-setup.md). macOS has no
-leases and relies on the content revision and stamps.
-
-The precise observer that supports the guard indexes canonical watch membership.
-A canonical path already in the index skips reparsing the owner's immutable
-mount snapshot; it passed that same check when it was admitted. Canonicalization,
-native masks and the 8,192-watch bound are otherwise unchanged.
+Earlier versions held kernel read leases and watched the mount generation to
+catch these, at a cost of about a quarter of a second on every run and a large
+amount of code. Ordinary editors, formatters and agents write files, which
+these checks do catch. If you run a tool that edits sources through shared
+mappings during verification, re-run after it finishes.
 
 ## Reader latency
 
@@ -139,13 +103,3 @@ The M7 reader gate (four clients, 200 Status and Result reads, p95 below
 200 ms, every sample Current while another verification runs) is measured
 with `scripts/reader-gate.sh`; see
 [M7 validation, gate 5](validation/m7.md#gate-5-responsive-reads).
-
-## First root-binding mismatch diagnosis
-
-When the run-time precise observer refuses a root binding, the completed job's
-`SAIL3114` note can include one fixed first-mismatch row: `root-ordinal`,
-`path-sha256`, and old/new `present(device,inode)`, `absent` or
-`error(errno=...)` states. The ordinal starts at zero in the exact supplied root
-order, and SHA-256 binds the path's native bytes. The digest is an identifier,
-not a secrecy guarantee or freshness authority. No path string, environment value
-or error message is recorded.
