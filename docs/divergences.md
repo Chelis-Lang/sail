@@ -15,9 +15,9 @@ The explicit `--engine interactive` source engine also adapts supported Cargo
 Stock Cargo otherwise chooses the wrong macro mode before decoding that same
 requested option and can fail before checking any proof. This adaptation is
 labelled in the project result's notes and the target's `launcher-options.json`.
-Its oracle is the actual launcher with identical Cargo argument bytes and the
-same effective `--no-vstd`: full diagnostics, function verdicts and complete SMT
-input must agree. Independent full target verification and final compiler checks
+It was checked against the actual launcher with identical Cargo argument
+bytes and the same effective `--no-vstd`: full diagnostics, function verdicts
+and complete SMT input agreed. Independent full target verification and final compiler checks
 remain required. Engine receipts bind the engine manifest, Sail binary and
 Cargo configuration; solver entries still bind the exact actual input bytes and
 solver configuration. See `docs/verus-issues/VI-0011-cargo-no-vstd-launcher-mode.md`.

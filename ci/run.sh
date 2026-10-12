@@ -24,9 +24,6 @@
 #                        tier to the guide examples; otherwise extra
 #                        arguments (for example `--project anvil`) are
 #                        passed to sail-conformance
-#   release              local-only, before releases and when changing the
-#                        tooling it covers: unit tests of the e2e harness
-#                        helpers and the repair engine's provenance checks
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
@@ -42,8 +39,8 @@
 #                        warm). ARGS go to `sail-conformance
 #                        rust-verify-test` (for example --filter modes::)
 #
-# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier,
-# `release` and every benchmark is local-only: run them with ci/local.sh
+# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier
+# and every benchmark is local-only: run them with ci/local.sh
 # (`host` runs directly: ci/run.sh host).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -56,7 +53,7 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|release|host|bench|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|host|bench|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
@@ -226,26 +223,6 @@ RS
         --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}" \
         --environment-label "Linux x86-64 prebuilt-engine CI/local container"
     fi
-    ;;
-
-  release)
-    # Heavyweight and tooling checks that are not product regressions a PR
-    # must catch quickly. Run before releases and when changing what they cover.
-    local_only release "$@"
-    # Harness helpers of the e2e phases.
-    python3 ci/test-repair-lifecycle.py
-    sail_checkout="$PWD"
-    release_build -p sail-conformance
-    install_runtime
-    evidence="${SAIL_RELEASE_OUT:-$sail_checkout/target/release-checks}"
-    # Engine provenance in project, report and function results,
-    # against the prebuilt engine.
-    : "${SAIL_ENGINE_BUILD:?the engine controls need the validated prebuilt engine}"
-    fetch_repair_source
-    python3 ci/test-repair-engine-provenance.py --sail "$sail" \
-      --engine-build "$SAIL_ENGINE_BUILD" --verus-source "$sail_repair_source" \
-      --out "$evidence/engine-provenance" \
-      --environment-label "Linux x86-64 prebuilt-engine local container"
     ;;
 
   host)

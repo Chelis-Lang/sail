@@ -190,9 +190,6 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
   changes to the shim, cache, daemon, keys or harness, and put the summary
   lines in the PR.
-- *Release (local):* `ci/local.sh release`, before releases and when changing
-  what it covers: unit tests of the e2e harness helpers and the repair
-  engine's provenance checks.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also

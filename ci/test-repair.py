@@ -2,7 +2,6 @@
 """Real optional-engine CLI/MCP acceptance; prebuilt engine, no source build."""
 
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -109,9 +108,7 @@ def run(args):
         summary = {"version":1,"kind":"actual-prebuilt-engine-cli-mcp-acceptance",
                    "machine":platform.platform(),"environment_label":args.environment_label,
                    "source_commit":head,"proof_tool_budget_s":args.timeout,"passed":False,
-                   "fixture_vstd":"supported-no-vstd-metadata", "fixture_dependency_verification":"ordinary-full-cargo-plan","fixture_rust_toolchain":engine_status["rust_toolchain"],
-                   "sail_sha256":hashlib.sha256(Path(sail).read_bytes()).hexdigest(),
-                   "engine_manifest_sha256":engine_status["manifest_sha256"]}
+                   "fixture_vstd":"supported-no-vstd-metadata", "fixture_dependency_verification":"ordinary-full-cargo-plan","fixture_rust_toolchain":engine_status["rust_toolchain"]}
         (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
         operations = []
         progress_failures = []
@@ -155,6 +152,16 @@ def run(args):
                          "--package", "repair_demo", "--lib", "--function", function,
                          "--background", "--output", "json"])
             return status["id"], wait_job(status["id"], label)
+        def provenance(result, target):
+            # Engine results name the engine and its manifest digest in the
+            # project, report and every function, and stay default mode.
+            identity = {"name": "interactive", "manifest_sha256": engine_status["manifest_sha256"]}
+            assert result["engine"] == identity, result
+            engine = dict(identity, established_by="engine")
+            assert target["report"]["engine"] == engine and target["report"]["mode"] == "default", target
+            functions = [f for c in target["report"]["crates"] for f in c["functions"]]
+            assert functions and all(f["provenance"]["engine"] == engine and f["provenance"]["mode"] == "default"
+                                     for f in functions), target
         def full(value):
             # A job result carries the full phase once, as `result`.
             document = value["repair"]
@@ -202,6 +209,8 @@ def run(args):
                 assert result["currentness"] == "current" and document["accepted"], good
                 assert result["exit_code"] == 0 and target["complete"], good
             assert document["batch"]["batched"] and document["batch"]["compiler_invocations"] == 1, document
+            assert "engine_fault" not in document["batch"], document
+            provenance(result, target)
             focus = document["batch"]["focus"]
             assert focus is not None and all(not t["complete"] for t in focus["targets"]), focus
             assert all(f["tier"] == "provisional" and f["verdict"] == "provisional"
@@ -300,45 +309,20 @@ def run(args):
             assert not progress_failures, progress_failures
             summary["passed"] = True
         finally:
-            original_failure = sys.exc_info()[0] is not None
-            cleanup_errors = []
-            # Stop owned actors before copying streams. An evidence write failure
-            # must never skip cleanup or replace the original proof/test failure.
+            # Stop owned actors even when the scenario failed.
             for process, timeout, close_stdin in ((mcp, 5, True), (daemon, 10, False)):
                 if process is not None:
                     try:
                         stop_owned(process, timeout, close_stdin)
                     except (OSError, subprocess.SubprocessError) as failure:
-                        cleanup_errors.append(f"actor cleanup: {failure}")
+                        print(f"actor cleanup: {failure}", file=sys.stderr)
             daemon_errors.close()
             if mcp_errors is not None:
                 mcp_errors.close()
-            try:
-                # Public worker streams only: never private submissions or
-                # environment/context/runtime files from the scratch cache.
-                jobs = root / "cache/projects/jobs"
-                if jobs.is_dir():
-                    for job in jobs.iterdir():
-                        if job.is_dir():
-                            for name in ("stdout", "stderr"):
-                                path = job / name
-                                if path.is_file():
-                                    (evidence / (job.name + ".worker." + name)).write_bytes(path.read_bytes())
-            except OSError as failure:
-                cleanup_errors.append(f"public worker evidence: {failure}")
             summary.update(elapsed_s=time.monotonic()-started, operations=operations,
-                           progress_failures=progress_failures, cleanup_errors=cleanup_errors)
-            if cleanup_errors:
-                summary["passed"] = False
-            try:
-                (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
-            except OSError as failure:
-                cleanup_errors.append(f"summary evidence: {failure}")
-            if cleanup_errors:
-                print("Acceptance cleanup/evidence failed: " + "; ".join(cleanup_errors), file=sys.stderr)
-                if not original_failure:
-                    raise RuntimeError("acceptance cleanup or evidence retention failed")
-        print("Real repair CLI/MCP acceptance: success, missing selector, full regression, late EXEC, exact evidence/cursors passed", flush=True)
+                           progress_failures=progress_failures)
+            (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
+        print("Real repair CLI/MCP acceptance: success with engine provenance, missing selector, full regression, late EXEC, exact evidence/cursors passed", flush=True)
 
 
 

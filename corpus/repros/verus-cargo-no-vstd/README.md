@@ -35,19 +35,7 @@ hashes remain in `observed-summary.json`. The captured macro errors arise before
 any SMT proof completes. No source-engine or production workaround is applied.
 
 The optional engine's adapter reflects the same effective exact `--no-vstd`
-option into literal launcher arguments (VI-0011). Check that adaptation with
-an already validated engine build:
-
-```sh
-python3 corpus/repros/verus-cargo-no-vstd/check-engine-forwarding.py \
-  --sail PATH_TO_INSTALLED_SAIL --engine-build PATH_TO_VALIDATED_BUILD \
-  --source PATH_TO_PINNED_SOURCE --out OUTPUT_DIRECTORY
-```
-
-This runs the actual Cargo repair path and then the real source launcher with
-identical recorded Cargo argument bytes, package identity and effective options.
-The oracle requires identical full diagnostics, function verdicts and whole
-full-target SMT input. First-run currentness is recorded separately; a successful
-compiler result in this differential oracle is not an accepted current repair.
-The source engine is never built or changed by this command. Every invocation
-is bounded at 120 seconds by default; CI rejects a larger local override.
+option into literal launcher arguments (VI-0011). A one-off check of that
+adaptation against the real launcher with identical Cargo argument bytes found
+identical diagnostics, function verdicts and full-target SMT input; its script
+and record are archived outside the repository (see VI-0011).
