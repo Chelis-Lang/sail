@@ -34,9 +34,9 @@ projects, unchanged deadlines, source-byte checks and performance gates.
 and dependency-proof requirements.
 The [reader acceptance guide](reader-acceptance.md) gives the native reader
 latency gate and how to run it.
-The [interactive source engine](../engine/verus/README.md) describes the selected
-patch, the prebuilt artifact and the runtime identity. Its [qualification](../engine/verus/qualification-linux.json)
-passes the source-level checks. Long corpus, source-build and benchmark work
+The [interactive source engine](../engine/verus/README.md) describes Sail's
+Verus fork, the prebuilt artifact and the runtime identity. Its checks are in
+the [M7 validation record](validation/m7.md) (Gate 1). Long corpus, source-build and benchmark work
 runs locally, and required CI stays short. Reference performance numbers come
 from a native x86-64 Linux host (`scripts/perf-host.sh`).
 

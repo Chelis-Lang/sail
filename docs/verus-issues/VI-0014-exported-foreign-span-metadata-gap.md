@@ -1,6 +1,8 @@
 # VI-0014: Exported spans can lack original source metadata
 
-- **Status:** open; observed locally, not filed upstream.
+- **Status:** moot (2026-10-12): it affected only prepared-lowering reuse, which
+  rescue lane L7a removed from the engine (ADR 0038). Kept as a record; not
+  filed upstream.
 - **Verus:** pinned `0.2026.10.04.426d8b0`, source
   `426d8b01e7ffb910a36c15e1f870ff985bb61eef`, Rust 1.98.1.
 - **Found:** 2026-10-11 in the optional M7 source-engine qualification.

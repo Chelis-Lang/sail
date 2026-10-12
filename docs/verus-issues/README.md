@@ -34,7 +34,7 @@ place for stock runs; each entry says which.
 | [VI-0011](VI-0011-cargo-no-vstd-launcher-mode.md) | Cargo no-vstd metadata misses launcher macro-mode selection | open | not fixed (not trivial; see entry) | `corpus/repros/verus-cargo-no-vstd/` |
 | [VI-0012](VI-0012-filtered-progress-note-order.md) | Filtered bucket-start notes bypass long-running suppression and print in arrival order | open in stock Verus; fixed in the fork | fixed (order): `f66f8e22` fix: report bucket start notes in queue order | frozen HumanEval module013 source control |
 | [VI-0013](VI-0013-verismo-tspec-stock-wait.md) | Stock Verismo tspec waits until the original unit deadline | open; cause unknown | — | pinned corpus project `verismo`, `source/verismo_tspec/src` |
-| [VI-0014](VI-0014-exported-foreign-span-metadata-gap.md) | Exported spans can lack original source-range metadata | open; conservative reuse refused | — | retained HumanEval diagnostic and reduced typed stock-resolver control; historical export cause unknown |
+| [VI-0014](VI-0014-exported-foreign-span-metadata-gap.md) | Exported spans can lack original source-range metadata | moot: only affected the removed prepared-lowering reuse | — | retained HumanEval diagnostic and reduced typed stock-resolver control; historical export cause unknown |
 | [VI-0015](VI-0015-nondeterministic-trigger-choice.md) | Automatic trigger choice depends on hash iteration order | open in stock Verus; fixed in the fork | fixed: `404a1e30` fix: choose automatic triggers in a deterministic search order | `corpus/repros/verus-nondeterministic-trigger-choice/` |
 
 Z3 behaviour is recorded the same way, as reproductions under

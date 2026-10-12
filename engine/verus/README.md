@@ -1,7 +1,8 @@
 # Optional interactive Verus engine
 
-The patch applies only to the pinned source commit and a separate Sail-managed
-source variant. Stock releases and ordinary `sail verify` are unchanged.
+The engine is a separate Sail-managed source variant built from Sail's Verus
+fork ([ADR 0039](../../docs/decisions/0039-private-verus-fork.md)). Stock
+releases and ordinary `sail verify` are unchanged.
 
 A repair runs fresh Rust frontend, type, mode, trait and ghost lifetime checks,
 then focused verification and an independent full verification in one active
@@ -20,9 +21,57 @@ success: the full JSON, exit status, selected scope and coherent input checks
 still determine authority. Missing or malformed completion, internal panic,
 signal, or malformed full output requires the stock fallback.
 
-## What the patch contains
+## Source: Sail's Verus fork
 
-`interactive.patch` changes four files:
+The engine is built from one commit of Sail's private Verus fork,
+[Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), pinned in
+[fork.toml](fork.toml) (repository, branch, full commit and upstream base).
+The owner decided on 2026-10-12 that Sail stays forked and fixes known Verus
+issues there; nothing is contributed upstream
+([Verus issues](../../docs/verus-issues/README.md)).
+
+The fork's branches:
+
+- `upstream/<short sha>` is an unmodified upstream Verus commit, for example
+  `upstream/426d8b0` (the pin in `corpus/toolchain.toml`) and `upstream/8dea4a2`
+  (the secondary pin).
+- `sail` is that upstream commit plus Sail's commits, in this order:
+  1. one commit per Verus issue fix, each with its regression test under
+     `source/rust_verify_test/tests/sail_vi<NNNN>_*.rs`, plus one harness
+     commit (`--sail-raw=<arg>` in `tests/common/mod.rs`) that the tests use;
+  2. last, `feat: interactive repair engine`, the engine itself (formerly
+     `engine/verus/interactive.patch`).
+
+Each fix is small and self-contained so it can be rebased, dropped (when a
+Verus release fixes the issue) or reviewed alone. Fix commits change only
+orders, the `--output-json` fields named in their issue, or Cargo freshness
+and log layout; an ordering fix chooses an output stock Verus can also
+produce, never a new one.
+
+`cargo xtask build-verus-engine` fetches exactly the pinned commit (with
+`SAIL_ENGINE_ARTIFACT_TOKEN` or `gh auth token`; the repository is private),
+checks that its upstream base equals `corpus/toolchain.toml`'s commit, writes
+the committed [Cargo.lock](Cargo.lock) and builds. The variant's identity
+(`sail-fork:<commit>` feature) and the runtime pin
+([artifact-linux.json](artifact-linux.json), `fork_commit`) bind the commit.
+CI never builds Verus; it installs the prebuilt runtime.
+
+### Upgrading Verus
+
+1. Push the new upstream commit to the fork as `upstream/<short sha>`.
+2. Rebase `sail` onto it (`git rebase --onto upstream/<new> upstream/<old> sail`
+   on a review branch). Drop fixes the release already contains; resolve
+   conflicts per commit.
+3. Run every `sail_vi*` regression test and the `rust_verify_test` suite on
+   the rebased branch, and record the results.
+4. After review, fast-forward `sail`, update `corpus/toolchain.toml` and
+   [fork.toml](fork.toml) together, then do one rebuild, the qualification
+   steps below, and pack, upload and re-pin `artifact-linux.json`.
+
+## What the engine commit contains
+
+The engine commit (`feat: interactive repair engine`, formerly
+`interactive.patch`) changes four files:
 
 - `rust_verify/src/driver.rs`: the fatal-error handling above and the
   `compiler-started` and `compiler-sealed` observations.
@@ -35,7 +84,9 @@ signal, or malformed full output requires the stock fallback.
 - `vir/src/ast_util.rs`: a friendly-name helper that admits a name's bytes
   before allocating it.
 
-`Cargo.lock` is the stock source lock: the patch adds no dependency.
+`Cargo.lock` is the stock source lock (identical to the fork's
+`source/Cargo.lock`): the engine adds no dependency. The build still writes it
+and binds its digest (`source-lock:` feature).
 
 ### Removed: prepared-lowering reuse and the same-input oracle
 
@@ -48,8 +99,9 @@ per repair on HumanEval and 40 s on Vest. The oracle also needed confirming
 fresh arms and an unstable class to stop flaking on stock trigger
 nondeterminism (VI-0015). Both were removed (rescue L7a; ADR 0038). Reuse
 across edits is redesigned for M8 with content-addressed keys. The removed
-patch, its qualification pipeline and its record are in this directory's git
-history and the `archive/m7-contracts-f7103bf` tag.
+patch, its qualification pipeline and its record (`qualification-linux.json`)
+are in this directory's git history and the `archive/m7-contracts-f7103bf`
+tag.
 
 ## Validation
 
@@ -72,12 +124,15 @@ python3 engine/verus/test-cancel.py --engine BUILD/verus/source/target-verus/rel
   --stock STOCK_VERUS --z3 Z3 --out OUT/cancel-restart
 ```
 
-Also run the patched crates' library tests in the build checkout
-(`cargo test --release -p rust_verify --lib`, and likewise `vir` and `air`).
+Also run the changed crates' library tests in the build checkout
+(`cargo test --release -p rust_verify --lib`, and likewise `vir` and `air`),
+and the fork's regression tests (`vargo test --release -p rust_verify_test
+--test sail_vi...`).
 Final performance acceptance uses the frozen repair catalogue and the complete
 focused-plus-full loop ([product acceptance](../../docs/bench/m7-repair-acceptance.md)).
-[qualification-linux.json](qualification-linux.json) records the qualification
-of the runtime currently pinned; a new patch needs its own record.
+The checks of the runtime currently pinned are recorded in
+[the M7 validation record](../../docs/validation/m7.md) (Gate 1, engine build
+and qualification); a new fork commit needs its own run.
 
 ## Corpus conformance arm
 
@@ -94,16 +149,17 @@ rather than `vstd/seq.rs:980:12` (L4b).
 
 ## Pinned Linux runtime for CI
 
-`artifact-linux.json` binds the private release asset, archive digest, source
-commit, patch, lockfile, Rust toolchain and solver. `ci/engine-artifact.py`
+`artifact-linux.json` (schema 2) binds the private release asset, archive
+digest, upstream commit, fork commit (`fork_commit`), lockfile, Rust toolchain
+and solver. `ci/engine-artifact.py`
 checks those pins and every runtime file before installation. The Docker image
 uses a BuildKit secret for the private download; it does not retain that
 credential or build Verus from source. The optional runtime is exercised by
 the real repair CLI/MCP end-to-end phase alongside the stock checks. CI
 downloads these exact prebuilt bytes; it never compiles the engine.
 
-A changed patch needs a new runtime: build it with
-`cargo xtask build-verus-source --interactive-engine`, pack it with
+A new fork commit needs a new runtime: build it with
+`cargo xtask build-verus-engine`, pack it with
 `ci/engine-artifact.py pack`, publish the archive as a private prerelease
 asset and commit the new pin. Until then the committed pin is stale and the CI
 image build refuses it.
