@@ -151,6 +151,31 @@ could not be established. Neither historical nor provisional evidence is a new
 verified claim about current code. Run `verification_result` to obtain complete
 scope, target identity, original report provenance, and counterexample data.
 
+## Evidence tools
+
+These tools read recorded evidence from the local job service through the same
+CLI commands described in
+[workspace verification](workspace-verification.md#evidence-from-completed-jobs).
+They do not accept `project_dir`; they use the server's working directory and
+environment to find the service. No tool here verifies current inputs or
+generates proof edits. `isError: false` means the operation succeeded, not
+that a proof did.
+
+| Tool | Arguments | Result |
+|---|---|---|
+| `verification_events` | `job_id`, optional `stream_id` and unsigned `after` | One bounded page of the proof-event journal, with a reconnect cursor, `gap` and `terminal`. Stock jobs write no proof events today: a finished stock job returns an empty terminal page with a `SAIL0903` gap. |
+| `explain_failure` | `job_id`, `package_id`, `target`, `kind` (`lib` or `bin`), `function`, optional `obligation` | The exact function report, raw models, run diagnostics and establishing provenance. |
+| `compare_verification` | `after_job` and exactly one of `before_job` or `baseline` | A scoped comparison. Context or scope mismatches are `incomparable`, never regressions. |
+| `save_baseline` | `job_id`, `name` | Saves a completed job under a new immutable name. An existing name is refused. |
+| `list_baselines` | none | Sorted saved names. |
+| `get_baseline` | `name` | The complete immutable snapshot, always `historical`. |
+
+Save and get return `structuredContent.response: "baseline"` with the snapshot
+in `structuredContent.value`; list returns `response: "baselines"`. MCP rejects
+a reply whose name, or for save whose job, differs from the request. A
+cancelled save may already have published its record, so inspect the name
+before retrying.
+
 ## Tools
 
 Charter rule 7 holds in every tool. A function whose tier is `provisional`
