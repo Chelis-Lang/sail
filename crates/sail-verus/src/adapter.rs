@@ -624,7 +624,8 @@ fn finish(
     std::io::stderr()
         .write_all(&rest)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let logs = crate::attribution::read_logs(&dir.join("logs")).unwrap_or_default();
+    let logs =
+        crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine)).unwrap_or_default();
     let provenance = if runtime.daemon {
         crate::attribution::Provenance::Records(crate::attribution::read_session_records(
             &dir.join("provenance"),
@@ -752,6 +753,29 @@ fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> 
         files.insert(path, digest?);
     }
     Ok(files)
+}
+
+/// Where the full phase's Verus logs are.
+///
+/// Stock Verus, and therefore the stock fallback, writes them to the given
+/// `--log-dir`. The engine's Verus fork (VI-0004, ADR 0039) runs via Cargo
+/// here and gives each crate its own subdirectory: `<crate name>` for a
+/// library and `<crate name>-bin` for a binary, from Cargo's
+/// `CARGO_CRATE_NAME` and `CARGO_BIN_NAME`, which this driver shares with the
+/// Verus it runs. The focused phase keeps its explicit `focus` directory.
+fn full_log_dir(logs: &Path, engine: Option<&sail_api::output::EngineProvenance>) -> PathBuf {
+    let by_engine =
+        engine.is_some_and(|e| e.established_by == sail_api::output::EngineEstablishment::Engine);
+    match std::env::var("CARGO_CRATE_NAME") {
+        Ok(name) if by_engine && !name.is_empty() => {
+            if std::env::var_os("CARGO_BIN_NAME").is_some() {
+                logs.join(format!("{name}-bin"))
+            } else {
+                logs.join(name)
+            }
+        }
+        _ => logs.to_owned(),
+    }
 }
 
 fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Result<()> {

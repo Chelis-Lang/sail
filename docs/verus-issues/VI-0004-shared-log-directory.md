@@ -51,5 +51,8 @@ solver log directory (`.verus-solver-log`) is unchanged.
 
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Still needed for default `sail verify` (stock Verus): Sail requests logs only
-when one Verus process will write them. Sail's engine adapter runs the
-launcher directly, not through Cargo, so its log layout is unchanged.
+when one Verus process will write them. Sail's engine adapter runs under
+Cargo, so an engine-established full phase logs to the crate subdirectory;
+the adapter reads it from there (`full_log_dir` in
+`crates/sail-verus/src/adapter.rs`), and from the given directory after a
+stock fallback. The focused phase keeps its explicit `focus` directory.
