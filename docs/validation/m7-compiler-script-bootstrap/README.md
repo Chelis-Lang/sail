@@ -173,9 +173,14 @@ production retry selection, not actual source-engine verification. Original
 controls remain unchanged. The combined `b89546c` source passes native
 validation: 658/658 workspace tests, all remaining gate steps and 41/41 original
 solver tests pass. Its ordinary release and private byte installation also pass
-(108.346 and 2.422 seconds respectively). The original fresh repair fixture is
-running with unchanged 120/30/5 limits; no terminal outcome is claimed.
-Acceptance installation and real-project warmups/benchmark remain pending. The
+(108.346 and 2.422 seconds respectively). Byte-identical service-owned acceptance
+installation also passes. The fresh original repair fixture passes in
+102.476 seconds internally (112.975 seconds host-inclusive), with 335 operations,
+unchanged 120/30/5 limits and no progress or cleanup errors. The operation count
+is a functional polling observation, not a benchmark score. The original
+three-round HumanEval/Vest benchmark is running; no outcome or measured
+samples are claimed. Fresh current-product reader qualification remains pending.
+The
 [source record](scheduling-recovery.json) separately binds historical authored
 hashes, selected source hashes and private metadata digests; no latency, speedup
 or M7 acceptance is claimed.
@@ -202,9 +207,9 @@ original-input-barrier control passes in 4.775 seconds. Known phase groups have
 no live or unavailable rows, all retained terminated rows are task-complete, and
 source/protected/PID1 identity is unchanged. The retained ELF is an
 operator-selected copy, not an execution binding. The separate product build
-and installation are recorded in the existing source record; repair and benchmark
-validation remain pending; no historical failure is promoted or performance
-claim established.
+and installation plus the original repair pass are recorded in the existing
+source record; real-project benchmark validation remains pending. No historical
+failure is promoted or performance claim established.
 
 ### Selected optional refusal-stage diagnostic
 
@@ -242,4 +247,5 @@ gate, followed by the original solver suite. The
 [source inventory](refusal-diagnostic.json) preserves authored `f91e21f` hashes
 separately from the selected combined sources, including the merged fixture.
 The existing record seals every phase log, controller, result and source archive.
-There is no installed-product validation or historical first-export cause claim.
+The fresh installed product passes the original repair fixture; no historical
+first-export cause or real-project benchmark performance claim follows.
