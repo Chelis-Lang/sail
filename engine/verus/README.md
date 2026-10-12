@@ -135,26 +135,15 @@ The intended 512 MiB memory bound covers cache-owned allocations and validation
 scratch, including decoded preparations until their validated handoff to the
 active compiler. Fresh compiler working AST/SST after that handoff is reported
 separately. The
-currently selected baseline releases `RecordingReporter` and `FocusReporter`
-diagnostic quota in their `Drop` implementations before Rust drops their message
-vectors and nested cache-owned Arc references. A concurrent reporter can therefore
-admit new ownership while those old allocations remain physically live. The
-baseline's accounting does not establish the claimed aggregate physical bound.
-The unselected [reporter-ownership overlay](candidates/reporter-ownership.patch)
-drops those allocations before releasing quota; its scope and regression checks
-are described in [the candidate README](candidates/README.md). That candidate
-fix is not part of the selected runtime, and this limitation does not qualify or
-select any candidate.
-
-The subsequent unselected [combined preparation candidate](candidates/README.md#combined-bounded-preparation-candidate)
-also bounds decoded allocation, validation scratch, focused reports and source
-observations. Its [decoder audit](candidates/decode-budget/README.md) and
-[observer audit](candidates/observer-budget/README.md) give a conservative
-492 MiB phase maximum. This is an allocation argument requiring combined
-runtime qualification, not a measured or selected guarantee. An allocation-only
-probe admitted 36 of 105 retained human-eval preparations and safely refused
-69 at its fixed 128 MiB decode allowance. Refining that accounting is necessary
-before demonstrating useful reuse; passing empty fixtures cannot establish it.
+selected runtime's `RecordingReporter` and `FocusReporter` release diagnostic
+quota in their `Drop` implementations before Rust drops their message vectors
+and nested cache-owned Arc references, so a concurrent reporter can admit new
+ownership while old allocations are still live. Its accounting therefore does
+not establish the aggregate physical bound. Unselected corrective overlays
+(reporter ownership, bounded decoding, observer budgets; a conservative 492 MiB
+phase argument) were built and partly qualified but never selected; they are
+summarized in [the M7 validation record](../../docs/validation/m7.md) and kept
+in the `archive/m7-contracts-f7103bf` tag.
 
 The value codec can duplicate shared IR nodes while decoding; it does not promise DAG
 sharing or a bound on total compiler RSS. Interpreter state is never cached,
@@ -179,11 +168,8 @@ The current source acceptance contract is the owner-amended
 [ADR 0027](../../docs/decisions/0027-interactive-proof-engine-and-repair-workflow.md):
 compare cached lowering with fresh lowering from the same compiler input using
 independent mutable owners and actual ordered solver writes. Keep independent
-stock verdict/diagnostic checks and report stock transcript instability. The
-separate candidate oracle must execute its positive and adversarial controls;
-its design review is not qualification. Historical independent-stock byte-gate
-failures remain unchanged in their records. See
-[candidate status](candidates/README.md) and
+stock verdict/diagnostic checks and report stock transcript instability. A
+design review is not qualification. See
 [product acceptance](../../docs/bench/m7-repair-acceptance.md).
 
 `test-engine.py` and `test-prepared.py` are local-only differential gates using an already built
@@ -212,8 +198,26 @@ no cached-versus-fresh normalization.
 Prepared ownership remains conservatively admitted within the 512 MiB ceiling;
 unsupported imported metadata falls back to fresh lowering. The source gate and
 its memory controls do not establish process RSS, live-reader latency or repair
-speedup. Earlier selected qualifications and candidate failures remain immutable
-under `qualifications/` and `candidates/`.
+speedup.
+
+### Running the source qualification
+
+`qualify/qualify-same-input.py` is the thirteen-stage pipeline that qualified
+the selected runtime. It needs a sealed source build (its `sail-build.json`
+manifest), the stock Verus and pinned Z3, and a human-eval-verus checkout:
+
+```sh
+python3 engine/verus/qualify/qualify-same-input.py --build BUILD \
+  --stock STOCK_VERUS --z3 Z3 --he HUMAN_EVAL --out OUT --execution LABEL \
+  --patch engine/verus/interactive.patch --private-span-boundary --old-engine OLD_VERUS
+```
+
+The stages call `test-engine.py`, `test-prepared.py` and `test-cancel.py` in
+this directory and the helpers in `qualify/`. The relocated copies differ from
+the frozen inventory recorded in `qualification-linux.json` only in their
+directory and default patch path; a new patch needs its own complete run.
+Earlier qualifications and unselected candidates are in the
+`archive/m7-contracts-f7103bf` tag.
 
 ## Pinned Linux runtime for CI
 
@@ -224,22 +228,14 @@ uses a BuildKit secret for the private download; it does not retain that
 credential or build Verus from source. The optional runtime is exercised by
 the real repair CLI/MCP end-to-end phase alongside the stock checks.
 
-The committed patch and runtime pin now select the missing-original-range and
+The committed patch and runtime pin select the missing-original-range and
 broker-retirement correction. Its ordinary build verified all 2,060 vstd
 obligations, and local packaging plus a fresh install matched all thirteen
-runtime files byte for byte and mode for mode. See the
-[delivery record](../../bench/validation/m7-linux-engine-aaa3b2e4-delivery-2026-10-11.json).
-CI downloads these exact prebuilt bytes; it never compiles the engine.
+runtime files byte for byte and mode for mode (delivery record summarized in
+[the M7 validation record](../../docs/validation/m7.md)). CI downloads these
+exact prebuilt bytes; it never compiles the engine.
 
 This selection is on the in-progress M7 branch. Rebuilt Sail CLI/MCP repair
 checks, complete current-product corpus conformance, established reader latency
 and the frozen HumanEval/Vest repair benchmarks remain required. The private
 prerelease artifact is a runtime prerequisite, not M7 product acceptance.
-
-Earlier imported-authority candidates and their distinct failures remain in
-[the workstream history](../../docs/validation/m7-workstream-history-cc0898e.md).
-The [candidate history](candidates/preparation-namespace/no-original-range/README.md)
-retains the initial compile failure, invalid test fixture, zero-hit predecessor
-and actual memo-bypass sensitivity. The selected role preserves the current
-stock resolver's exact absence result for a complete known imported metadata
-namespace and always requires exact current raw-span rebinding.

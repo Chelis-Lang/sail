@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Local-only source qualification for a separately ordinarily verified candidate.
+
+Does not build or activate a runtime. Product/Vest performance and operational
+acceptance remain separate mandatory gates, even when these source gates pass.
+"""
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import platform
+import shutil
+import subprocess
+import time
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def run(args):
+    out = pathlib.Path(args.out).absolute()
+    out.mkdir(parents=True, exist_ok=False)
+    build = pathlib.Path(args.build).absolute()
+    manifest_path = build / 'sail-build.json'
+    manifest = json.loads(manifest_path.read_text())
+    patch = pathlib.Path(args.patch).absolute() if args.patch else ROOT / 'interactive.patch'
+    assert manifest['commit'] == '426d8b01e7ffb910a36c15e1f870ff985bb61eef'
+    assert manifest['rust_toolchain'] == '1.98.1'
+    assert manifest['features'][0] == 'sail-interactive:' + sha(patch)
+    assert manifest['z3_sha256'] == sha(pathlib.Path(args.z3))
+    for relative, digest in manifest['artifacts'].items():
+        assert sha(build / relative) == digest, ('runtime artifact', relative)
+    runtime = build / 'verus/source/target-verus/release'
+    source = build / 'verus/source'
+    record = {'version': 1, 'scope': 'Source gates only; no product qualification or activation',
+              'patch_sha256': sha(patch), 'manifest_sha256': sha(manifest_path),
+              'artifacts': manifest['artifacts'], 'ordinary_build_seconds': manifest['build_seconds'],
+              'execution': args.execution, 'machine': platform.platform(),
+              'stages': [], 'source_gates_passed': False, 'product_qualified': False}
+    def save():
+        (out / 'pipeline.json').write_text(json.dumps(record, indent=2) + '\n')
+    def stage(name, command, cwd=ROOT):
+        item = {'name': name, 'command': list(map(str, command)), 'status': 'running'}
+        record['stages'].append(item)
+        save()
+        started = time.monotonic()
+        with (out / (name + '.log')).open('wb') as log:
+            result = subprocess.run(list(map(str, command)), cwd=cwd, env=environment,
+                                    stdout=log, stderr=subprocess.STDOUT)
+        item.update(status='passed' if result.returncode == 0 else 'failed',
+                    exit_code=result.returncode, elapsed_seconds=time.monotonic() - started)
+        save()
+        print(name, item['status'], flush=True)
+        if result.returncode:
+            raise SystemExit(result.returncode)
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.startswith('SAIL_ENGINE')}
+    for key in ['RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS', 'RUSTC', 'RUSTDOC',
+                'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'CARGO_BUILD_TARGET_DIR']:
+        environment.pop(key, None)
+    environment.update(RUSTUP_TOOLCHAIN='1.98.1', VARGO_TARGET_DIR=str(runtime),
+                       VERUS_Z3_PATH=args.z3, CARGO_TARGET_DIR=str(source / 'target'),
+                       CARGO_BUILD_JOBS='2')
+    save()
+    stage('private-graph-audit', ['python3', ROOT / 'qualify/audit-graph-ledger.py', '--source', source])
+    common = ['--engine', runtime / 'verus', '--stock', args.stock, '--z3', args.z3]
+    if args.private_span_boundary:
+        stage('private-span-audit', ['python3', ROOT / 'qualify/audit-private-span-boundary.py', '--source', source])
+        assert args.old_engine, 'Explicit sealed old runtime required for migration control'
+        stage('old-domain-migration', ['python3', ROOT / 'qualify/test-private-span-migration.py',
+                                      '--engine', runtime / 'verus', '--old-engine', args.old_engine,
+                                      '--z3', args.z3, '--out', out / 'old-domain-migration'])
+    if args.hit_controls:
+        # Resume only after a separately completed, explicit control sequence
+        # against these exact runtime/solver bytes. Preserve its raw files in
+        # this pipeline instead of rerunning a failed earlier pipeline blindly.
+        previous = pathlib.Path(args.hit_controls).absolute()
+        controls = json.loads((previous / 'summary.json').read_text())
+        assert controls['all_controls_completed'] is True
+        assert controls['engine_verifier_sha256'] == sha(runtime / 'rust_verify')
+        assert controls['z3_sha256'] == sha(pathlib.Path(args.z3))
+        cases = controls['records']
+        assert [case['case'] for case in cases] == ['fill', 'positive', 'order', 'body', 'effects']
+        assert all(case['assertions_completed'] is True for case in cases)
+        assert cases[0]['stock_verdicts_and_diagnostics_equal'] is True
+        assert cases[1]['exit_code'] == 0 and cases[1]['actual_hits'] > 0
+        assert cases[1]['oracle_summaries'] and all(x['passed'] for x in cases[1]['oracle_summaries'])
+        for case in cases[2:]:
+            assert case['exit_code'] != 0 and case['actual_hits'] > 0
+            summaries = case['oracle_summaries']
+            assert any(not x['passed'] and x['restored_hit'] for x in summaries)
+            field = 'lowering_effects_equal' if case['case'] == 'effects' else 'ordered_wire_equal'
+            assert any(not x[field] and x['fresh_sessions'] > 0 for x in summaries)
+        shutil.copytree(previous, out / 'same-input-hit-controls')
+        record['stages'].append({'name': 'same-input-hit-controls', 'status': 'passed',
+                                 'evidence': 'Explicit completed controls copied with raw files',
+                                 'summary_sha256': sha(previous / 'summary.json')})
+        save()
+    else:
+        stage('same-input-hit-controls', ['python3', ROOT / 'qualify/test-same-callback.py',
+                                         *common, '--out', out / 'same-input-hit-controls'])
+    for name, script in [('source-fixtures', ROOT / 'test-engine.py'),
+                         ('graph-checkpoint', ROOT / 'qualify/test-graph-ledger.py'),
+                         ('cancel-restart', ROOT / 'test-cancel.py')]:
+        stage(name, ['python3', script, *common, '--out', out / name])
+    stage('first-input-delta', ['python3', ROOT / 'qualify/test-key-delta.py',
+                              '--engine', runtime / 'verus', '--z3', args.z3,
+                              '--project', args.he, '--out', out / 'first-input-delta'])
+    if args.private_span_boundary:
+        stage('previous-revision-focus', ['python3', ROOT / 'qualify/test-private-span-cross-edit.py', *common,
+                                        '--project', args.he, '--patch', patch, '--out', out / 'previous-revision-focus'])
+    stage('real-he-same-input', ['python3', ROOT / 'qualify/test-real-he-same-input.py', *common,
+                                '--project', args.he, '--out', out / 'real-he-same-input',
+                                '--other-module-edit', '--timeout', '600', '--patch', patch, '--actor-observations',
+                                *(['--require-edited-focus'] if args.private_span_boundary else [])])
+    for name, package, extra in [('vir-tests', 'vir', ['--', '--test-threads=1']), ('air-writer-tests', 'air', ['sail_wire_tests']),
+                                 ('driver-tests', 'rust_verify', [])]:
+        stage(name, ['nice', '-n', '19', 'cargo', 'test', '--release', '-p', package, '--lib', *extra], source)
+    record['source_gates_passed'] = True
+    save()
+    print('Source gates passed; product acceptance remains pending', flush=True)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ['build', 'stock', 'z3', 'he', 'out', 'execution']:
+        parser.add_argument('--' + name, required=True)
+    parser.add_argument('--hit-controls', help='Resume using an explicit completed same-runtime raw control tree')
+    parser.add_argument('--patch', help='Exact candidate patch matching the sealed source build manifest')
+    parser.add_argument('--private-span-boundary', action='store_true', help='Require routed span audit, old-domain rejection and prior-revision focus restore')
+    parser.add_argument('--old-engine', help='Sealed old2421 runtime for genuine dependency migration controls')
+    run(parser.parse_args())
