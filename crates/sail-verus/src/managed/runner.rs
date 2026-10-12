@@ -1690,7 +1690,10 @@ pub(crate) fn run_engine(
     }
     drop(initial_snapshot);
     let guards = diagnostics.phase(Phase::InputGuards);
+    let phase = diagnostics.phase(Phase::GuardAbsent);
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
+    drop(phase);
+    let phase = diagnostics.phase(Phase::GuardWatch);
     let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
     // Proof-time kernel coverage spans the selected targets' dependency
     // closure. Cargo compiles nothing outside it for this selection, which is
@@ -1703,8 +1706,11 @@ pub(crate) fn run_engine(
     let units_in_scope = |paths: &Paths| {
         artifacts_within(paths, scope.as_ref()) && artifacts_within(paths, script_scope.as_ref())
     };
+    drop(phase);
+    let phase = diagnostics.phase(Phase::GuardCoherent);
     let mut coherent =
         super::coherent::Guard::begin(&super::input::closure_scope(&before, &data, scope.as_ref()));
+    drop(phase);
     drop(guards);
     let monitored_snapshot = diagnostics.phase(Phase::MonitoredSnapshot);
     // Establish the revision again after the watcher is live, closing the setup
@@ -1827,6 +1833,7 @@ pub(crate) fn run_engine(
     };
     json(&paths.runtime, &runtime)?;
     drop(seal);
+    let invocation_phase = diagnostics.phase(Phase::Invocation);
     let mut exit = invoke(config, &paths, err)?;
     if !units_in_scope(&paths) {
         coherent.refuse_scope();
@@ -1863,6 +1870,8 @@ pub(crate) fn run_engine(
             ));
         }
     }
+    drop(invocation_phase);
+    let post_observations = diagnostics.phase(Phase::PostObservations);
     super::build_inputs::update(
         &paths.build_inputs,
         &paths.run.join("artifacts.jsonl"),
@@ -1873,7 +1882,11 @@ pub(crate) fn run_engine(
     let (_, mut after_extras, after_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     after_extras.extend(script_roots);
+    drop(post_observations);
+    let post_metadata = diagnostics.phase(Phase::PostMetadata);
     let mut after_data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    drop(post_metadata);
+    let post_snapshot = diagnostics.phase(Phase::PostSnapshot);
     record_observation_layout(&mut after_data, runtime.engine.as_ref());
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
     after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
@@ -1896,6 +1909,8 @@ pub(crate) fn run_engine(
     // pre-invocation target revision contained that particular include.
     let pending = completed_receipts(&paths.run, &after_data)?;
     let stamp_after = super::input::mutation_stamp(&after);
+    drop(post_snapshot);
+    let final_barriers = diagnostics.phase(Phase::FinalBarriers);
     let absent = absent.finish();
     let coherent_complete = coherent.ready_at(super::coherent::Barrier::PostVerification);
     let mut sysroot_complete = sysroots.complete();
@@ -1925,6 +1940,7 @@ pub(crate) fn run_engine(
     } else {
         Currentness::Historical
     };
+    drop(final_barriers);
     if exit == Some(0)
         && expected.iter().any(|(id, name, kind)| {
             !targets.iter().any(|t| {
