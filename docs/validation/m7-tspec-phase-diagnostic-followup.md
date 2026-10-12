@@ -27,12 +27,13 @@ mutable native build tree. They confirm these seams:
 - `source/verismo_tspec/src/math/bits_p.rs:527` expands `N in 0..64` into
   separate `by(bit_vector)` assertions in `proof_bit64_and_rel_mod`.
 - `source/rust_verify/src/verifier.rs:1211` creates the transcript;
-  `:1226–1245` skips the prelude for a bit-vector context. At `:1575`, the
-  right-hand side constructs the new context before assignment disposes the
-  previous `spinoff_context`.
+  `:1226–1245` skips the prelude for a bit-vector context. At `:1533`,
+  `spinoff_context` is a fresh local inside each query iteration, initialized
+  at `:1575`; this assignment does not replace a prior iteration's context.
 - `source/air/src/context.rs:206` launches a solver lazily. Therefore creating
-  the new empty transcript can precede both prior-context disposal and the
-  new solver's first launch/send.
+  the new empty transcript can precede the new solver's first launch/send.
+  The prior iteration's context normally drops at that iteration's end.
+  Neither its actual disposal nor other buckets' disposal was observed.
 - `source/air/src/smt_process.rs:235` disposes the sole command sender before
   waiting for the child. Its writer/reader threads are not joined there.
   The sender close, writer channel EOF, physical solver-stdin disposal and
@@ -61,7 +62,7 @@ of compiler or solver streams:
 
 | Actor | Required entry/completion observations |
 | --- | --- |
-| Verifier worker | New context begin/ready; prior context replacement begin/end; bucket completion and panic forwarding |
+| Verifier worker | New context begin/ready; context field disposal begin/end; bucket completion and panic forwarding |
 | AIR owner | Solver launch begin/end and child PID; batch sequence; command enqueue and read-request enqueue; response wait enter/return; reader ownership restored |
 | Writer | Request receive enter/return; write/marker/flush completion; channel EOF; stdin disposal |
 | Reader | Read-request receive enter/return; pipe read; delimiter recognized; completion send |

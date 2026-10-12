@@ -34,6 +34,12 @@ the detailed prior roadmap narrative and its distinct failed/setup scopes.
 
 For current experimental repair use:
 
+- The original real-project `730a321` benchmark fails before measured rounds:
+  the second HumanEval repair warmup loses input freshness at a namespace
+  binding and correctly returns unaccepted Unknown evidence. The exact changed
+  root was not captured. Ordinary build-script bootstrap is under investigation;
+  generated proof inputs remain guarded. There are no measured speedups and
+  Vest was not reached. See the [failure record](validation/m7-benchmark-730a321-bootstrap-failure.md).
 - A successful focused check still needs complete Current full validation.
   An Unknown result, including a namespace observation failure after the
   verifier finishes, cannot authorize a repair.

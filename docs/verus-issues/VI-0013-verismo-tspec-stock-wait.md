@@ -35,8 +35,9 @@ source-level wait dependency is still needed before choosing a correction.
 The later [transcript diagnostic](../validation/m7-tspec-transcript-interrupted.md)
 was interrupted by filesystem/container failure. Its 3,880 logged batches all
 have responses; the newest bit-vector transcript is empty. Pinned source
-allows that log to exist before disposal of the prior context and before lazy
-solver launch. This narrows the next observation seam, not the historical
+allows that log to exist before its lazy solver launch. The query context is
+a fresh iteration-local value, not an assignment replacing the prior context.
+This narrows the next observation seam, not the historical
 cause. The [phase diagnostic follow-up](../validation/m7-tspec-phase-diagnostic-followup.md)
 specifies the missing context, channel and pipe ownership evidence; no new
 execution is authorized by that plan.
