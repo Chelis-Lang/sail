@@ -116,23 +116,33 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Self::new_at("")
+    }
+    fn new_at(member: &str) -> Result<Self, Box<dyn std::error::Error>> {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let root = std::env::temp_dir().join(format!(
             "sail-script-bootstrap-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
-        std::fs::create_dir_all(root.join("src"))?;
+        let package = root.join(member);
+        std::fs::create_dir_all(package.join("src"))?;
+        if !member.is_empty() {
+            std::fs::write(
+                root.join("Cargo.toml"),
+                format!("[workspace]\nmembers=[{member:?}]\nresolver=\"3\"\n"),
+            )?;
+        }
         std::fs::write(
-            root.join("Cargo.toml"),
+            package.join("Cargo.toml"),
             "[package]\nname=\"sail_bootstrap_fixture\"\nversion=\"0.0.0\"\nedition=\"2024\"\n",
         )?;
         std::fs::write(
-            root.join("build.rs"),
+            package.join("build.rs"),
             "fn main() { println!(\"cargo:rerun-if-changed=build.rs\"); std::fs::write(std::path::Path::new(&std::env::var_os(\"OUT_DIR\").unwrap()).join(\"private.rs\"), \"pub const VALUE: u8 = 1;\\n\").unwrap(); }\n",
         )?;
         std::fs::write(
-            root.join("src/lib.rs"),
+            package.join("src/lib.rs"),
             "include!(concat!(env!(\"OUT_DIR\"), \"/private.rs\"));\n",
         )?;
         // Establish Cargo.lock before the independent input owner is acquired.
@@ -258,6 +268,108 @@ fn bootstrap_actual_cargo_can_publish_ordinary_contract_without_current_proof() 
         !proof.ready(),
         "ordinary publication cannot promote the failed proof guard"
     );
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // Keep real member compilation and compile-cwd refusal controls together.
+fn bootstrap_workspace_member_depinfo_uses_workspace_root() -> TestResult {
+    let fixture = Fixture::new_at("member")?;
+    assert!(!fixture.root.join("build.rs").exists());
+    let mut owner = fixture.owner()?;
+    fixture.compile()?;
+    let record = fixture
+        .records()?
+        .into_iter()
+        .next()
+        .ok_or("record absent")?;
+    let original: Vec<Value> = std::fs::read_to_string(&fixture.journal)?
+        .lines()
+        .map(serde_json::from_str)
+        .collect::<Result<_, _>>()?;
+    assert!(
+        owner
+            .record(&record, &fixture.data, &fixture.target, &original)
+            .is_some()
+    );
+    // Package-parent resolution would look for member/member/build.rs. The
+    // actual pinned Cargo prerequisite must be workspace-relative instead.
+    let binary = original
+        .iter()
+        .find(|artifact| {
+            artifact["reason"] == "compiler-artifact"
+                && artifact["target"]["kind"] == serde_json::json!(["custom-build"])
+        })
+        .ok_or("binary absent")?;
+    let directory = Path::new(
+        binary["filenames"][0]
+            .as_str()
+            .ok_or("binary path absent")?,
+    )
+    .parent()
+    .ok_or("binary directory absent")?;
+    let hash = directory
+        .file_name()
+        .and_then(|name| name.to_str())
+        .and_then(|name| name.rsplit_once('-'))
+        .ok_or("binary hash absent")?
+        .1;
+    let dep_info = directory.join(format!("build_script_build-{hash}.d"));
+    let text = std::fs::read_to_string(dep_info)?;
+    assert!(
+        crate::managed::source_inputs::dependencies(&text)
+            .ok_or("dep-info absent")?
+            .iter()
+            .any(|input| input == "member/build.rs")
+    );
+    fixture.publish(&mut owner);
+    assert!(fixture.export.is_file());
+    assert!(super::super::begin(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &fixture.data
+    )?);
+    let mut wrong = fixture.data.clone();
+    wrong["workspace_root"] = serde_json::to_value(fixture.root.join("member"))?;
+    assert!(
+        owner
+            .record(&record, &wrong, &fixture.target, &original)
+            .is_none()
+    );
+    let mut foreign = fixture.data.clone();
+    foreign["packages"][0]["source"] = serde_json::json!("registry+https://example.invalid");
+    assert!(
+        owner
+            .record(&record, &foreign, &fixture.target, &original)
+            .is_none()
+    );
+    let mut relative = fixture.data.clone();
+    relative["workspace_root"] = serde_json::json!(".");
+    assert!(
+        owner
+            .record(&record, &relative, &fixture.target, &original)
+            .is_none()
+    );
+    assert!(Bootstrap::supported_arguments(&[]));
+    for args in [
+        vec!["-Zroot-dir=member".into()],
+        vec!["-Z".into(), "root-dir=member".into()],
+        vec!["--config=unstable.root-dir=member".into()],
+    ] {
+        assert!(!Bootstrap::supported_arguments(&args));
+    }
+    // The original owner must refuse a changed virtual workspace manifest.
+    std::fs::write(fixture.root.join("Cargo.toml"), "[workspace]\nmembers=[]\n")?;
+    fixture.publish(&mut owner);
+    assert!(!fixture.export.exists());
+    std::fs::create_dir_all(fixture.root.join(".cargo"))?;
+    std::fs::write(
+        fixture.root.join(".cargo/config.toml"),
+        "[unstable]\nroot-dir=\"member\"\n",
+    )?;
+    assert!(Bootstrap::begin(&fixture.data, &[], &[]).is_none());
     Ok(())
 }
 

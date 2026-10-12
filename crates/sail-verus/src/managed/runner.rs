@@ -1540,6 +1540,7 @@ pub(crate) fn run_engine(
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
     let mut script_bootstrap = if generation_available
+        || !super::build_inputs::family::bootstrap::Bootstrap::supported_arguments(&config.args)
         || !super::build_inputs::family::bootstrap::Bootstrap::eligible_workload(&data)
     {
         None

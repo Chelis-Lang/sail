@@ -31,6 +31,13 @@ pub(in crate::managed) struct Bootstrap {
 }
 
 impl Bootstrap {
+    /// Refuse command-line overrides of the pinned Cargo compilation cwd rule.
+    pub(in crate::managed) fn supported_arguments(args: &[String]) -> bool {
+        !args
+            .iter()
+            .any(|arg| arg.starts_with("-Z") || arg == "--config" || arg.starts_with("--config="))
+    }
+
     /// Avoid acquiring or hashing an owner when no supported script can publish.
     pub(in crate::managed) fn eligible_workload(data: &Value) -> bool {
         data["packages"].as_array().is_some_and(|packages| {
@@ -63,6 +70,7 @@ impl Bootstrap {
     /// Acquire independent native/kernel coverage before any script cleaning.
     /// Missing-generation declaration paths are observation roots, not output authority.
     #[cfg(target_os = "linux")]
+    #[allow(clippy::too_many_lines)] // Keep independent acquisition/configuration/final barriers in audit order.
     pub(in crate::managed) fn begin(
         data: &Value,
         extras: &[PathBuf],
@@ -75,8 +83,20 @@ impl Bootstrap {
         Self::eligible_workload(data).then_some(())?;
         // Unrepresentable effective inputs cannot be certified as absent.
         let environment = environment()?;
+        (!environment.keys().any(|key| {
+            key.starts_with("CARGO_UNSTABLE_")
+                || key == "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS"
+        }))
+        .then_some(())?;
+        let workspace = Path::new(data["workspace_root"].as_str()?);
+        (workspace.is_absolute()
+            && workspace.as_os_str().len() <= 4096
+            && workspace.canonicalize().ok()?.as_path() == workspace)
+            .then_some(())?;
         let invocation = Path::new(data["sail_invocation_directory"].as_str()?);
-        let mut roots = Vec::new();
+        // A virtual workspace's manifest and lock are outside member package
+        // roots. Cover these exact compiler configuration inputs separately.
+        let mut roots = vec![workspace.join("Cargo.toml"), workspace.join("Cargo.lock")];
         for package in packages {
             roots.push(
                 Path::new(package["manifest_path"].as_str()?)
@@ -90,10 +110,9 @@ impl Bootstrap {
         let home = std::env::var_os("CARGO_HOME")
             .map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
-        roots.extend(crate::managed::input::configuration_paths(
-            invocation,
-            home.as_deref(),
-        ));
+        let configurations =
+            crate::managed::input::configuration_paths(invocation, home.as_deref());
+        roots.extend_from_slice(&configurations);
         roots.extend(
             [
                 "/Cargo.toml",
@@ -131,6 +150,26 @@ impl Bootstrap {
             .checked_add(lease.retained_bytes()?)?;
         (retained <= 32 * 1024 * 1024).then_some(())?;
         let hashes = hashes(&files, &stop)?;
+        // RUSTC_BOOTSTRAP=1 also enables Cargo's dev channel. Refuse its
+        // unstable config table instead of assuming root-dir cannot be active.
+        for path in configurations {
+            if stop.load(std::sync::atomic::Ordering::Acquire)
+                || started.elapsed() >= std::time::Duration::from_secs(120)
+            {
+                return None;
+            }
+            if !matches!(path.file_name()?.to_str()?, "config" | "config.toml") {
+                continue;
+            }
+            match std::fs::symlink_metadata(&path) {
+                Ok(metadata) => metadata.is_file().then_some(())?,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(_) => return None,
+            }
+            let text = super::bytes(&path)?;
+            let config: toml::Value = toml::from_str(std::str::from_utf8(&text).ok()?).ok()?;
+            (config.get("unstable").is_none() && config.get("include").is_none()).then_some(())?;
+        }
         (observer.clean() && lease.clean()).then_some(())?;
         let owner = Self {
             observer,
@@ -449,18 +488,31 @@ impl Bootstrap {
         let header = text.lines().next()?.split_once(": ")?.0;
         let targets = crate::managed::source_inputs::dependencies(&format!("x: {header}"))?;
         (targets.len() == 1 && Path::new(&targets[0]) == dep_info).then_some(())?;
+        // Cargo emits relative rustc prerequisites from the workspace root,
+        // including member/build.rs for a workspace member. Use the same base
+        // as source_inputs::update, never this process cwd or the package cwd.
+        let workspace = Path::new(data["workspace_root"].as_str()?);
+        (workspace.is_absolute()
+            && workspace.as_os_str().len() <= 4096
+            && workspace.canonicalize().ok()?.as_path() == workspace)
+            .then_some(())?;
         let inputs = crate::managed::source_inputs::dependencies(text)?;
         let source = Path::new(binary["target"]["src_path"].as_str()?)
             .canonicalize()
             .ok()?;
-        inputs
-            .iter()
-            .any(|input| Path::new(input).canonicalize().ok().as_ref() == Some(&source))
-            .then_some(())?;
-        (!inputs.is_empty()).then_some(())?;
+        let mut source_seen = false;
         for input in inputs {
-            self.covered(Path::new(&input))?;
+            if Path::new(&input).is_relative() {
+                // Other Cargo source kinds use the package cwd, not the
+                // workspace cwd. Admit only the pinned local-path branch.
+                (package["source"].is_null() && source.starts_with(workspace)).then_some(())?;
+            }
+            // Keep only one prefixed path at a time; absolute paths are unchanged.
+            let input = workspace.join(input);
+            self.covered(&input)?;
+            source_seen |= input == source;
         }
+        source_seen.then_some(())?;
         // Compilation-time environment declarations must also have the exact
         // effective parent value; Cargo-injected keys are not silently certified.
         for line in text.lines().filter_map(|l| l.strip_prefix("# env-dep:")) {

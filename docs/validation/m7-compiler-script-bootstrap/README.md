@@ -1,15 +1,42 @@
 # Independent ordinary-script bootstrap candidate
 
-The corrected candidate is uncompiled and unexecuted. Its first root integration
-failed strict compilation on a moved context hash and a similar local name;
-workspace tests and the solver were unattempted. The correction borrows the
-unchanged full context hash from its owning report and uses unambiguous names.
-A separately identified injected-environment fixture mistake is also corrected:
-an empty export file is not authority; the original route must have no exported
-records, refuse admission and force cleaning. Both native gate attempts remain failed: the second strict attempt rejected
-import placement and the stack buffer. The correction moves the import and uses
-the same fixed buffer size on heap. Tests and solver were unattempted in both. This source candidate remains unselected. It addresses the concrete
-missing-generation mechanism in the [730 benchmark failure](../m7-benchmark-730a321-bootstrap-failure.md): cleaning a script regenerates a declared Rust include after the original proof snapshot. The proof guard must still reject that changed binding. The exact failed historical binding was not captured; this mechanism is not a historical cause claim.
+The latest source correction is uncompiled, unexecuted and unselected. The
+first two root integrations failed strict compilation before tests; both failures
+remain retained. The third frozen integration (`602ec67`) passed strict checks,
+but its eight bootstrap controls had five passes and three failures: the first
+real-Cargo positive, empty-generation recovery and the reused-binary refusal
+control's initial admissible baseline. Their original assertions are unchanged.
+The whole gate's terminal is separate from those component outcomes.
+
+Three owned tiny offline Cargo format diagnostics establish the rejected path:
+the single-package prerequisite is `build.rs`; a workspace member emits
+`member/build.rs` whether Cargo is invoked from the root or the member. The old
+certificate resolved both against Sail's own current directory. Exact installed
+Cargo source explains the rule: `prepare_rustc` calls `build_base_args`, which
+calls `add_path_args`; `path_args` sets workspace cwd for a local source under
+that workspace. Other source kinds use package cwd and unstable `root-dir` can
+change the base. See the [pinned official path implementation](https://github.com/rust-lang/cargo/blob/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/util/workspace.rs#L128)
+and [source/capture seals](cargo-cwd-source.json).
+
+The correction resolves relative prerequisites one at a time against the exact
+absolute canonical metadata workspace root only for that supported local-path
+role. Absolute prerequisites, the exact dep-info target header, matched script
+source and raw-path equality/native membership checks remain unchanged.
+Unstable/inline command overrides, unstable environment selectors and parsed
+unstable/include Cargo configuration refuse optional acquisition. This matters
+because pinned `RUSTC_BOOTSTRAP=1` also enables Cargo's dev-channel settings.
+The optional owner now covers the exact virtual workspace manifest and lock
+in addition to its member package roots; it does not walk the whole workspace.
+The new real-member control retains the original positive oracle and requires
+wrong-root, foreign-source, relative-root and override refusal plus manifest
+mutation refusal. These corrections have no native validation yet.
+
+The candidate addresses the concrete missing-generation mechanism in the
+[730 benchmark failure](../m7-benchmark-730a321-bootstrap-failure.md): cleaning a
+script regenerates a declared Rust include after the original proof snapshot.
+The proof guard must still reject that changed binding. The exact failed
+historical binding was not captured; this mechanism is not a historical cause
+claim.
 
 The optional owner is acquired before cleaning only when a nonempty, entirely
 eligible family generation is unavailable and metadata has a supported build
@@ -72,7 +99,9 @@ not construction-allocation, allocator-RSS, kernel or child-process limits.
 Bounded JSON can allocate expanded parsed graphs transiently; no whole-peak
 quota is claimed. [Source identities and limits](source.json) bind the draft.
 
-Nine Linux controls are drafted, all unexecuted. They use actual tiny offline
+Ten Linux controls are drafted in this freeze. The older eight-control scope
+has the five passes/three failures above; neither the new non-UTF-8 control nor
+the member control has run. The complete corrected set remains unexecuted. They use actual tiny offline
 Cargo compilation and original native owners: independent publication while the
 proof guard still refuses generated input; fresh-binary/dep-info/environment
 lineage refusal; restored bytes/mtime and cancellation; external aliases,
@@ -84,7 +113,9 @@ two-second termination policy, file-backed captures capped when read at 1 MiB,
 and bounded error cleanup. Exceptional supervisor teardown does not certify
 complete descendant closure. No control fabricates a Current proof.
 
-The [sensitivity patch](disable-publication.patch) removes only new independent
+The [execution procedure](sensitivity-procedure.md) reuses the existing bounded
+owned phase runner and preserves three separate tested images. The
+[sensitivity patch](disable-publication.patch) removes only new independent
 ordinary emission. The unchanged real-Cargo positive must then fail its export
 assertion; restoring exact source must pass. Neither outcome has run. Required
 native checks include the complete affected tests, all-target strict checks,

@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "scope": "official exact installed Cargo source and three isolated format diagnostics; no proof or bootstrap acceptance",
+  "cargo_version": "1.99.0",
+  "cargo_commit": "5f94df4789f005f9a352888e8355ffc645b7ed0e",
+  "files": {
+    "src/util/workspace.rs": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/util/workspace.rs",
+      "sha256": "da9d851cf603c9cbe989c593e4a65b6caa517336d3947fb2151e7c3850a09361",
+      "bytes": 5600
+    },
+    "src/compiler/mod.rs": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/compiler/mod.rs",
+      "sha256": "9ef97e037d3f3b24582dd6ff5f7b98d9531b5b66bf9c474fed13e1392cf28f9d",
+      "bytes": 98709
+    },
+    "src/context/mod.rs": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/context/mod.rs",
+      "sha256": "37e6d1170ff0fcd33be9718703be09563d6142f7fa5be33adb7ddb0c93742594",
+      "bytes": 102600
+    },
+    "src/workspace/features.rs": {
+      "url": "https://raw.githubusercontent.com/rust-lang/cargo/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/workspace/features.rs",
+      "sha256": "5000a0dcfdbf8ced1189ec4a310326e3bd6df75ad96f0cb51c543101a546e647",
+      "bytes": 66459
+    }
+  },
+  "rule": {
+    "compiler_call": "compiler/mod.rs prepare_rustc -> build_base_args -> add_path_args",
+    "path_rule": "util/workspace.rs path_args: local path src under workspace => workspace cwd; other sources => package cwd; unstable root-dir overrides local base",
+    "channel": "workspace/features.rs channel: RUSTC_BOOTSTRAP=1 => dev",
+    "configuration": "context/mod.rs load_unstable_flags_from_config reads unstable table when dev/nightly features enabled"
+  },
+  "captures": [
+    {
+      "scope": "",
+      "result_sha256": "5dc1f3fbb02ae9aa7b4c950a9566bde797fd269a6a6770aee644540af6413e11",
+      "status": "PASS",
+      "phase_exits": [
+        0,
+        0
+      ],
+      "phase_elapsed_seconds": [
+        1.6236572919988248,
+        2.8591928759997245
+      ],
+      "complete_known_group_closure": true,
+      "depinfo_sha256": "1358aab952ce96b472beb773e35707c0210fff9b4dd523ba739d5edeb075b096",
+      "prerequisite": "build.rs"
+    },
+    {
+      "scope": "-member",
+      "result_sha256": "5f5d4ab792f7786e1486478af2d452ffc30dc5a4950c57837d81a92154253ac2",
+      "status": "PASS",
+      "phase_exits": [
+        0,
+        0
+      ],
+      "phase_elapsed_seconds": [
+        1.5733250419998512,
+        2.795633126001121
+      ],
+      "complete_known_group_closure": true,
+      "depinfo_sha256": "daf275047894bf8494135254de0eae5e098f259160444b7debaabf98d932f10b",
+      "prerequisite": "member/build.rs"
+    },
+    {
+      "scope": "-member-cwd",
+      "result_sha256": "1833d59c84b44b29ebeaa5e5dc441f0c9594444dd188f1d5b592a9aac5458cdb",
+      "status": "PASS",
+      "phase_exits": [
+        0,
+        0
+      ],
+      "phase_elapsed_seconds": [
+        2.2760753340007795,
+        3.4460808349995204
+      ],
+      "complete_known_group_closure": true,
+      "depinfo_sha256": "60a0b044ce30bfb40aaa119be09ebb3c342d63bbe2384a123b60cf24c51feb52",
+      "prerequisite": "member/build.rs"
+    }
+  ],
+  "limits": [
+    "Tiny offline Cargo format diagnostics only",
+    "These establish printed prerequisites and closed command ownership, not proof Currentness or full bootstrap acceptance",
+    "Historical 730 failed binding was not observed",
+    "602 failures remain failures; corrected production/test source uncompiled"
+  ]
+}
