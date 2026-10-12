@@ -1,11 +1,15 @@
 # Repair workflow walkthrough
 
-This walkthrough covers the implemented experimental workflow. Current `b89546c`
-passes the [original repair fixture and complete reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
-Both unchanged four-client collectors retain full Current graphs and p95 below
-200 ms; retained CLI/MCP scenarios also pass. This evidence binds b895, not the
-newer baseline/source-inventory implementation whose validation remains pending.
-Real-project M7 speed and complete standard/cache coverage remain unfinished.
+This walkthrough covers the implemented experimental workflow. Current
+`387ba80` passes the [complete local gate, original solver suite, product
+installations and unchanged CLI/MCP repair fixture](validation/m7-compiler-script-bootstrap/source-inventory.json).
+The repair fixture completes in 90.588 seconds with 299 operations under the
+original 120/30/5 limits. Named-baseline feature smoke passed separately on
+`57a319d`; it supplies no transferred current-product reader or performance credit.
+The [b895 reader/retained pass](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+remains historical: both unchanged collectors preserve full Current graphs and
+p95 below 200 ms. Current readers, real-project M7 speed and complete
+standard/cache coverage remain unfinished.
 See [the roadmap](ROADMAP.md),
 [known issues](known-issues.md) and [acceptance requirements](bench/m7-repair-acceptance.md).
 The commands and response fields were checked against the CLI/MCP implementation;

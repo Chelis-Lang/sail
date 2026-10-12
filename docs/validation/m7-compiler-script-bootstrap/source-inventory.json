@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Selected source 387ba80 complete local gate and original solver PASS with explicit CARGO_INCREMENTAL=0; new product qualification pending. Historical57a installed repair PASS and benchmark infrastructure FAIL preserved.",
+  "status": "Selected387ba80 complete gate/solver, ordinary release/private/acceptance installations and original CLI/MCP repair PASS; current readers, complete standard/cache conformance and new real-project benchmark unqualified. Historical57a baseline smoke PASS/benchmark FAIL preserved.",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -747,5 +747,146 @@
       "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
     },
     "qualification": "Complete source gate and original solver only; ordinary new release/install, installed repair/readers, complete conformance, real-project performance and overall M7 acceptance pending."
+  },
+  "recovered_product_installation": {
+    "status": "PASS",
+    "source_commit": "387ba808794c2e5d283a35d1150196c0611da84a",
+    "source_archive_sha256": "6017057cfbf3279af6b14a41905b42f21c26f09151666bc6c0909865c69ed230",
+    "combined_gate_result_sha256": "c82f236aa47210c34e7e17a1de0ddcef626fede12453e489ef6a11cccdb3b8b5",
+    "phases": [
+      {
+        "name": "release-build",
+        "limit_seconds": 600,
+        "build_environment": {
+          "CARGO_BUILD_JOBS": "2",
+          "CARGO_INCREMENTAL": "0",
+          "NEXTEST_TEST_THREADS": "1",
+          "CARGO_TARGET_DIR": "/work/target",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "exit_code": 0,
+        "elapsed_seconds": 89.71971666500008,
+        "log_sha256": "7a539cdd16678f4ad568780804f921093b473984db52bca140af552ad05684d9",
+        "group_closure": {
+          "survivors": [],
+          "unavailable": [],
+          "terminated_unreaped": []
+        }
+      },
+      {
+        "name": "owned-install",
+        "limit_seconds": 60,
+        "build_environment": {
+          "CARGO_BUILD_JOBS": "2",
+          "CARGO_INCREMENTAL": "0",
+          "NEXTEST_TEST_THREADS": "1",
+          "CARGO_TARGET_DIR": "/work/target",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "exit_code": 0,
+        "elapsed_seconds": 2.2819365850000395,
+        "log_sha256": "8c48aaac80cc2bc282e9cb78e9923eaeb95619d0ac4da3e5a99544dc86581fcb",
+        "group_closure": {
+          "survivors": [],
+          "unavailable": [],
+          "terminated_unreaped": []
+        }
+      }
+    ],
+    "artifacts": {
+      "sail": {
+        "bytes": 77282592,
+        "sha256": "2e0c485b48a8c7b2e6878c621780426bb90fe3fcb171b46834db3ddcbc920a36"
+      },
+      "sail-z3": {
+        "bytes": 11001784,
+        "sha256": "025288262cff1d6af95ef762f63f70f343205fc0864fe87f6343f8cec58a2cdf"
+      }
+    },
+    "installation_only": true,
+    "source_modified": false,
+    "installed_directory_and_file_mode": "0700",
+    "selected_engine_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "selected_engine_artifact_count": 13,
+    "transport_exit_code": 0,
+    "uncertainty": [],
+    "closure": "closed-recorded-scope",
+    "evidence_sha256": {
+      "controller.json": "c8206c826b1e4559b1c9342d3cb62d8c5147e34593f4496cc3bfab53609f10a3",
+      "result.json": "b8ea21c2d45c11f09a8cd0d4bd3d32dd7dccb3a0319ac9bfb627f4639c907479",
+      "product-grant.json": "deed3b411250cd37f91f9724de0f61e06697052f8f5116cefd0b49663cffec8e",
+      "release-build.log": "7a539cdd16678f4ad568780804f921093b473984db52bca140af552ad05684d9",
+      "owned-install.log": "8c48aaac80cc2bc282e9cb78e9923eaeb95619d0ac4da3e5a99544dc86581fcb"
+    },
+    "qualification": "Ordinary release/private installation only; original repair passes separately below, no installation-derived proof or broader acceptance."
+  },
+  "recovered_original_repair": {
+    "status": "PASS",
+    "source_commit": "387ba808794c2e5d283a35d1150196c0611da84a",
+    "product_grant_sha256": "deed3b411250cd37f91f9724de0f61e06697052f8f5116cefd0b49663cffec8e",
+    "original_limits_seconds": [
+      120,
+      30,
+      5
+    ],
+    "timing_wrapper_used": false,
+    "fixture_elapsed_seconds": 90.58830354200018,
+    "operations": 299,
+    "native_phase_elapsed_seconds": 95.38667758600013,
+    "controller_elapsed_seconds": 102.641368875,
+    "original_fixture_passed": true,
+    "cleanup_errors": [],
+    "progress_failures": [],
+    "uncertainty": [],
+    "container_identity_birth_unchanged": true,
+    "closure": "known owned groups closed",
+    "group_closure": {
+      "survivors": [],
+      "unavailable": [],
+      "terminated_unreaped": []
+    },
+    "evidence_sha256": {
+      "controller.json": "4ae01c386740190a484f832a3fd8271f957a69f4cd337f1e85ebde4b517ffbdc",
+      "result.json": "a81071b6083711bae4dcee7b69ea2738573e3381d4daf42f231c7bf6fbe14d4b",
+      "original-repair.log": "c04243bf90f20daea45899b082177a73787ca202e169d6264908d59856c494b7",
+      "native-raw.tar.gz": "ac3853fcaf2d7d83b1e75e620c2a9718227eb1d845b2480008a24301d858dd88"
+    },
+    "qualification": "Original unchanged CLI/MCP repair only; current full readers, complete standard/cache and new real-project performance remain unqualified."
+  },
+  "recovered_acceptance_installation": {
+    "status": "PASS",
+    "elapsed_seconds": 4.494031583,
+    "source_commit": "387ba808794c2e5d283a35d1150196c0611da84a",
+    "producer_grant_sha256": "deed3b411250cd37f91f9724de0f61e06697052f8f5116cefd0b49663cffec8e",
+    "execution_grant_sha256": "2cae4f36fc4c6dc100715a17231a86bacc54cd304ae8fc96e0f52161506a674a",
+    "source_archive": {
+      "sha256": "6017057cfbf3279af6b14a41905b42f21c26f09151666bc6c0909865c69ed230",
+      "bytes": 27688960,
+      "members": 1641,
+      "expanded_regular_bytes": 26464700,
+      "installer_sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+    },
+    "producer_before_after_and_acceptance_files_equal": true,
+    "files": {
+      "sail": {
+        "bytes": 77282592,
+        "sha256": "2e0c485b48a8c7b2e6878c621780426bb90fe3fcb171b46834db3ddcbc920a36",
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      },
+      "sail-z3": {
+        "bytes": 11001784,
+        "sha256": "025288262cff1d6af95ef762f63f70f343205fc0864fe87f6343f8cec58a2cdf",
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      }
+    },
+    "container_births_unchanged": true,
+    "commands": 12,
+    "all_command_exits": 0,
+    "controller_sha256": "93e111a56540ec17e8edff3e955c88fbe0958f44ac92ce8fa5206f95339a40c0",
+    "qualification": "Byte installation only; no Cargo, proof, prewarm, cache or receipt copies"
   }
 }
