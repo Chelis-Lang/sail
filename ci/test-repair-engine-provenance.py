@@ -127,12 +127,14 @@ def run(args):
                 remaining(5)
                 time.sleep(.02)
             document, default_full, default_target = submit("default")
+            summary["default_preparation"] = document["batch"].get("preparation")
             assert "engine_fault" not in document["batch"], document
             assert default_full["exit_code"] == 0 and default_target["complete"], document
             provenance(default_full, default_target, False)
             assert not list(root.glob("cache/**/engine-prepared/*.prepared")), "default run persisted preparation"
             env["SAIL_ENGINE_PERSISTENT_PREPARATION"] = "1"
-            _, persisted_full, persisted_target = submit("persistent")
+            persisted_document, persisted_full, persisted_target = submit("persistent")
+            summary["persistent_preparation"] = persisted_document["batch"].get("preparation")
             assert persisted_full["exit_code"] == 0 and persisted_target["complete"], persisted_full
             provenance(persisted_full, persisted_target, True)
             assert persisted_full["context_sha256"] != default_full["context_sha256"], "opt-in shares the default proof context"
