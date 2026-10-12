@@ -81,6 +81,21 @@ plus benchmark deltas for any performance change.
 **Parallel agents** work in separate worktrees under `.claude/worktrees/` on
 their own branches. The lead reviews and merges.
 
+**Native Linux hosts.** Linux validation, gates and all performance work run
+on native x86-64 EC2 hosts (ADR 0038). Use `scripts/perf-host.sh up LANE`,
+`sync`, `run` and `down`, one host per lane so builds and benchmarks never
+contend. `run` passes a GitHub token on stdin (exported as
+`SAIL_ENGINE_ARTIFACT_TOKEN`) for image builds that need private artifacts, and
+`ci/local.sh` builds the CI image natively there. Hosts are tagged `Project=sail`,
+terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and are torn down
+after use; `scripts/perf-host.sh list` must be empty at the end of a session.
+The local emulated container is for quick correctness checks only; never
+measure performance under emulation.
+
+**Workspace hygiene.** Remove worktrees once their branch is merged or
+archived, after checking for uncommitted source. Discard regenerable build
+intermediates freely. Cleanup is routine and is not recorded in git.
+
 ## Repository layout
 
 ```
@@ -175,9 +190,12 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   with Singular and checks tagged deep-tier projects (ADR 0021). It is never a
   required CI job. `SAIL_VERUS_SOURCE_BUILD` explicitly selects a validated
   source variant; binary releases do not support Singular.
-- *Benchmarks (local):* `ci/local.sh bench cold|warm|edit TIER ROUNDS`, or
-  `sail-bench` on the host. Never part of the gate. Record machine details
-  with every result; reference numbers come from Linux x86-64.
+- *Benchmarks (native host):* `ci/local.sh bench cold|warm|edit TIER ROUNDS`, or
+  `sail-bench`, on a `scripts/perf-host.sh` host. Never part of the gate.
+  Record the instance type and region with every result. A benchmark records
+  every sample, including protocol refusals, and continues; gates are judged
+  when the report is generated and a refused sample counts as a failure,
+  never as a dropped sample (ADR 0038).
 - *Fault injection:* `docs/fault-injection.md`, run as part of `solver`.
 
 ## Tracking
@@ -195,3 +213,27 @@ Docs describe the current state. Use repo-relative paths only: no absolute local
 paths and no personal emails. Public APIs carry rustdoc. Record user-visible
 changes in `CHANGELOG.md`. `docs/benchmarks.md` is generated from data under
 `bench/` and never edited by hand.
+
+Documentation is part of implementation and every agent handoff:
+- Update the relevant user guide with commands, setup, observable behavior,
+  errors and material limitations when a feature changes. Link new guides from
+  `docs/README.md` and the main README where users need them.
+- Keep internal design and `docs/ROADMAP.md` current. Distinguish implemented,
+  built, qualified, selected and accepted; record remaining gates and dependencies.
+- Record surprising upstream behavior with a minimal reproduction and local
+  issue entry. Keep Sail defects and unresolved validation failures visible in
+  `docs/known-issues.md`; do not attribute a cause without evidence.
+- Validation records identify source/runtime/environment, actual scope, result
+  and limits. Never describe static review, a fixture pass or a candidate
+  build as real-project acceptance.
+- **Evidence policy (ADR 0038).** One concise Markdown record per acceptance
+  gate (under `docs/validation/`), stating current status and the best evidence.
+  Failed and interrupted attempts stay visible as one indexed line each
+  (commit, date, result, cause or "unknown"). Raw logs and JSON dumps stay
+  outside the repository, cited by sha256. Evidence lands in the PR it
+  qualifies: no evidence-only commits, and no records of cleanup, retirement,
+  ownership or disk hygiene. `docs/ROADMAP.md` shows current state as a short
+  gate table, never as a log. Reports and evidence are Markdown in this
+  repository.
+- Each agent handoff and PR lists the documentation changed or explains why the
+  change has no documentation impact. The lead reviews docs alongside code.

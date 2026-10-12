@@ -30,3 +30,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0025: HTTP shared cache and local-first team workflow](0025-http-shared-cache-and-local-first-team-workflow.md)
 - [0026: Live workspace dependencies](0026-live-workspace-dependencies.md)
 - [0027: Interactive proof engine and repair workflow](0027-interactive-proof-engine-and-repair-workflow.md)
+- [0038: M7 rescue: native reference hosts, evidence policy and engine conditions](0038-m7-rescue.md)
