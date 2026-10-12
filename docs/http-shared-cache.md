@@ -49,6 +49,13 @@ references are saved. Credential files must be regular, owner-only files with
 at least 16 token characters. Connections and disconnects affect new daemon
 lookups within five seconds, without restarting verification jobs.
 
+An unchanged loopback HTTP configuration retains its connection pool after fresh
+endpoint, private-token and CA validation. Rotated credentials, changed CA bytes
+or a changed request timeout replace the transport; invalid configuration disables
+remote lookup. HTTPS refreshes reconstruct the client so platform certificate-root
+behavior remains unchanged. Signing trust and entry verification still run
+independently on every accepted remote reply.
+
 Disconnect removes the remote configuration. It preserves local imported entries
 and trusted public keys. Removing a signing key stops future imports after trust
 reload; previously imported local entries remain until local maintenance removes
@@ -61,6 +68,8 @@ addresses; `localhost` is deliberately not an HTTP exception. URLs cannot contai
 credentials, query strings or fragments. TLS certificates and hostnames are
 verified. `--ca-file FILE.pem` on connect or publication adds a private CA.
 There is no insecure TLS switch, automatic redirect or proxy environment fallback.
+An explicit private CA file must contain at least one PEM certificate; empty or
+non-certificate content is a configuration error.
 
 The server is an HTTP backend. A non-loopback bind requires the explicit
 `--behind-tls-proxy` option. Keep that backend private and expose a TLS reverse
@@ -120,8 +129,53 @@ kernel filesystem operation. Graceful interruption removes partial upload files;
 a process killed abruptly may leave private `upload-*` files that an operator can
 remove while the server is stopped.
 
-The daemon's entire shared lookup remains bounded by its existing 250 ms default.
-Concurrent same-key requests share one in-flight lookup. Missing entries are
+Configuration discovery, signing-key directory reads, token/CA loading and
+client construction run on owned helpers, including startup and refresh. Signing
+trust keeps its original five-second reload cadence. A pending refresh does not
+serve entries under an expired key snapshot. No filesystem discovery or key read
+runs on the lookup/status caller.
+
+The daemon's entire shared lookup uses its existing 250 ms default fallback
+deadline. This is not a hard real-time return guarantee: thread scheduling and
+condition-variable mutex reacquisition can delay a caller. Results that reach
+final admission after the deadline are misses. A cold connection may therefore
+produce no hit. Client construction, transport scheduling, signature validation and request
+I/O can consume that budget; a timeout safely falls back to the local solver.
+Concurrent same-key requests share one in-flight lookup and receive the helper's
+validated result without waiting for the initiating caller to resume. A helper
+that finishes late cannot overwrite a published timeout. Optional transport
+initialization starts asynchronously when a daemon binds with an HTTP store
+configured. Setup sends no HTTP request and performs no entry or trust validation;
+all serving checks remain on the lookup path. A single owned setup constructor
+shares the existing constructor gate with lookup helpers. Setup never waits for
+client construction. Implicit configuration discovery uses one metadata helper
+and waits at most 100 ms (or the configured lookup timeout, if shorter); explicit
+directory configuration needs no helper. Missing or busy discovery creates no
+setup owner, and an unconfigured local daemon constructs no HTTP client. A stalled or
+newly configured connection can still cost a miss while initialization is in
+progress. `sail status` reads cached transport metrics without constructing or
+retiring an HTTP runtime. One bounded presence observation covers its entire
+optional shared-cache section. A busy discovery helper can omit that section;
+busy snapshot locks can omit remote metrics or the last transport status.
+Trusted-key IDs describe only a complete unexpired trust snapshot. The list is
+empty when that snapshot is unavailable or trust refresh is pending, and is
+never used to authorize an entry.
+
+Startup no longer reads or lists malformed trusted-key files in the daemon log.
+Inspect the configured trust directory explicitly with
+`sail cache --cache DIR trust list`; ignored files appear as `ignored:` lines,
+or in the `problems` array with `--json`. Invalid key files still authorize
+nothing. An empty optional status key list can also mean a pending refresh;
+it does not diagnose a malformed key.
+
+Shutdown marks an unfinished setup owner abandoned before returning; that owner
+cannot publish its completed client afterward. Completed owners are joined; an
+unfinished blocking constructor is not joined on the bounded serving or shutdown
+path. There is at most one setup owner per daemon and no overlapping constructor
+retries. Failed construction retains the existing five-second reload cadence.
+A cold first-fetch miss in the whole-session replay test motivated this change.
+Credential reload still invalidates old backoff and negative-cache state before
+using the new configuration. Missing entries are
 negative-cached for 60 seconds. Authentication errors, throttling, server errors,
 transport failures and timeouts cause misses and 30-second backoff; rejected signed
 entries remain misses. A remote failure never changes a verdict or prevents the
@@ -149,3 +203,79 @@ SAIL_TEST_Z3=<pinned-z3> cargo nextest run -p sail-shim \
 Long corpus validation remains local-only. Test CA and private-key fixtures under
 `crates/sail-daemon/tests/fixtures/` are exclusively for loopback tests; renew their
 leaf certificate before October 2027. They must never be used in a deployment.
+
+## Developer serving tests
+
+The concurrent-reader, paused-initiator, status-refresh and disconnect regressions
+establish their real HTTP transport and signing trust on an owned setup helper
+before testing serving. Setup has its own two-second bound, records its actual
+duration, and must send zero requests. Serving still uses the original 250 ms
+lookup deadline, the server's 75 ms response delay, and the original exact
+Hit/Rejected, one-request, signature and initiator-state assertions. Credential
+rotation and invalid-credential rejection still run against the real transport.
+
+Cold construction is tested independently by pausing the actual constructor.
+Followers and status must remain bounded, no request may start while it is paused,
+and a constructor completing after published fallback must skip that obsolete
+request. A timeout is a safe miss; it never authorizes an unverified entry.
+
+This separation follows the retained integrated run at source `d12d4af`, where
+five HTTP fixtures failed before or during their first cold lookup. For example,
+client construction consumed 152 ms before a paused-initiator test's network
+request, and the validated result was published after 398 ms. The 250 ms serving
+assertion failed as recorded. That run remains failed; establishing future
+fixtures does not reinterpret it as a pass or change a production deadline.
+
+Dev/test builds compile `curve25519-dalek` arithmetic with the production release
+optimization level, while retaining debug assertions and overflow checks. The
+same strict signature verification and all negative trust/binding checks run on
+every entry. This removes measured unoptimized arithmetic work from the serving
+budget; the 250 ms deadline and 75 ms delayed-server assertions remain unchanged.
+CPU and wall-time evidence, including the original failed established-transport
+test, is retained in the `archive/m7-contracts-f7103bf` tag. It is a development-build
+improvement, not a production-release speedup or an attribution of every earlier
+wall-time delay to cryptography.
+
+The stalled-response integration test measures cold transport construction, the
+original 50 ms request against a 300 ms server delay, and destruction of the
+owned blocking client inside its unchanged 250 ms total bound. Its phase output
+separates those costs without moving initialization or the runtime join outside
+the assertion. HTTP lookup phase diagnostics retain the original signed-entry
+checks and 75 ms response fixture; isolated CPU and TCP controls are diagnostic
+evidence, not substitutes for the complete concurrent lookup checks.
+
+The retained HTTP follow-up in that tag records a
+negative small-response TCP control and a fixed strict-signature CPU control.
+Neither establishes the cause of the preserved full-gate failures.
+
+## Validation
+
+Every HTTP control keeps the 250 ms lookup bound and every trust check. During
+M7 development, complete workspace gates run under x86 emulation on an arm64
+Mac intermittently failed HTTP elapsed and serving checks at that bound. Their
+cause was never established. Those records are preserved in the
+`archive/m7-contracts-f7103bf` tag.
+
+On a native x86-64 Linux host (EC2 c7i.4xlarge, us-east-1, 2026-10-12), the
+change that introduced this section passed the complete workspace gate
+(359/359 tests), the pinned-solver suite (36/36), all end-to-end phases and the
+PR conformance subset (33/33 Same in pass-through, cache fill and cache warm).
+Those runs establish no performance or remote-deployment qualification.
+
+An unavailable or slow shared store still falls back to local verification.
+No timeout, unsigned reply or diagnostic timing authorizes a cached proof.
+
+### Rejected transport adapter experiment
+
+Production retains the pinned reqwest blocking transport. An owned async-client
+candidate passed 39 affected security and lifecycle controls, including the
+unchanged eight-reader, one-GET fixture. Its once-only complete-operation
+comparison was slower: combined helper and I/O CPU rose from 66.264 ms to
+84.160 ms, and lookup-to-publication wall time rose from 185.680 ms to
+222.422 ms. The smaller body-adapter cost did not justify selection. See
+[ADR 0037](decisions/0037-owned-async-shared-http-transport.md).
+
+The selected implementation reads an exact small HTTP body within the existing
+8 KiB application buffer, avoiding the extra read used only to observe EOF.
+Larger and unknown bodies keep capped streaming. One observed pair supplies no
+stable speedup.
