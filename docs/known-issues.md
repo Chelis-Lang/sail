@@ -8,11 +8,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
-- **The CI image cannot be built from this branch yet.** The engine source
-  (`interactive.patch`, and soon the Verus fork) no longer matches the pinned
-  runtime in `engine/verus/artifact-linux.json`, so the image's engine check
-  refuses it (`SAIL0944`). Lanes run gates against a locally built engine
-  until the rebuilt runtime is pinned (ADR 0039).
+- **Engine arm: one unit differs in diagnostic order.** On the pinned fork
+  runtime (`4881cd0f`), `verus-examples/examples/debug_expand.rs` reports the
+  same 14 errors as stock in a different order: the fork's VI-0007 fix prints
+  module `M4`'s error after the root module's, while stock printed it first
+  in 3/3 confirming runs. That order is not shown to be one stock produces, so
+  the VI-0007 commit is being dropped from the engine (second re-pin, rescue
+  L12). [VI-0007](verus-issues/VI-0007-nondeterministic-error-order.md).
 - **M7 speed is measured in one round only.** One native round per catalogue
   after the rescue work: HumanEval M7 3.46× M6, Vest 1.90×, with every sample
   valid. The gate needs three rounds at ≥2× on each catalogue.

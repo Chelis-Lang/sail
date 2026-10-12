@@ -104,8 +104,8 @@ complete current full validation. M7 remains incomplete until these gates pass.
 
 | Gate | Status | Best evidence |
 |---|---|---|
-| Engine build and qualification | Pass (source checks) | Fork `ddfdf197` (ADR 0039, no prepared lowering): stock fixtures, cancel/restart, library tests and `rust_verify_test` ([L12 report](reports/rescue/l12-fork-fixes.md)) |
-| Engine runtime delivery | Pass | `engine-runtime-ddfdf197-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
+| Engine build and qualification | Pass (source checks) | Fork `4881cd0f` (ADR 0039, no prepared lowering): stock fixtures, cancel/restart, library tests and `rust_verify_test`; engine arm 1 Different (VI-0007, being dropped) ([L12 report](reports/rescue/l12-fork-fixes.md)) |
+| Engine runtime delivery | Pass | `engine-runtime-4881cd0f-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
 | Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
