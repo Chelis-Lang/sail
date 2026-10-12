@@ -66,7 +66,9 @@ A later pass does not erase an earlier failure, and a candidate build or static 
 not qualify a runtime. Reports summarize completed milestones:
 [bootstrap](reports/2026-10-08-bootstrap.md),
 [initial product](reports/2026-10-09-initial-product.md), and
-[live workspace](reports/2026-10-10-live-workspace.md).
+[live workspace](reports/2026-10-10-live-workspace.md). The
+[M7 rescue review](reports/2026-10-12-m7-rescue-review.md) records the state
+of M7 at handover and the decisions in ADR 0038.
 
 [Verus issues](verus-issues/README.md) contain local reproductions and workarounds.
 [Survey documents](survey/README.md) retain Verus/Z3 protocol, solver behavior,

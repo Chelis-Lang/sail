@@ -128,8 +128,8 @@ cmd_down() {
   require_lane "${1:-}"; local lane="$1"; host_of "$lane"
   aws_ec2 terminate-instances --instance-ids "$id" >/dev/null || true
   aws_ec2 wait instance-terminated --instance-ids "$id" || true
-  aws_ec2 delete-security-group --group-id "$sg" || true
-  aws_ec2 delete-key-pair --key-name "$key" || true
+  aws_ec2 delete-security-group --group-id "$sg" >/dev/null || true
+  aws_ec2 delete-key-pair --key-name "$key" >/dev/null || true
   rm -f "$state_dir/$lane".{env,pem,known_hosts}
   echo "$lane down ($id)"
 }

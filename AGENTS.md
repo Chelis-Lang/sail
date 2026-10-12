@@ -81,23 +81,19 @@ plus benchmark deltas for any performance change.
 **Parallel agents** work in separate worktrees under `.claude/worktrees/` on
 their own branches. The lead reviews and merges.
 
-**Shared Docker host.** Assign one lifecycle owner within the team. Other
-agents use existing Sail containers and do not independently restart Docker
-Desktop. Coordinate heavy compiler work so only one shared-target writer runs.
-When another project restarts the daemon, preserve the interrupted scope, wait
-for the existing instance to recover, and check its new container birth and
-write health. Do not reuse old process grants or silently replay a proof. An
-idle Sail container may restart automatically; a validation workflow may not.
+**Native Linux hosts.** Linux validation, gates and all performance work run
+on native x86-64 EC2 hosts (ADR 0038). Use `scripts/perf-host.sh up LANE`,
+`sync`, `run` and `down`, one host per lane so builds and benchmarks never
+contend. `run` supplies the engine artifact token on stdin, and `ci/local.sh`
+builds the CI image natively there. Hosts are tagged `Project=sail`,
+terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and are torn down
+after use; `scripts/perf-host.sh list` must be empty at the end of a session.
+The local emulated container is for quick correctness checks only; never
+measure performance under emulation.
 
-**Workspace hygiene.** Retire unused worktrees after their handoff is integrated.
-Preserve branch references, uncommitted source and raw validation evidence first;
-discard regenerable compiler intermediates. Reuse build targets for continuing
-work instead of accumulating a new target for every diagnostic. Before cleanup,
-check the team's active paths and container mounts; recheck ownership before
-each removal, including paths announced after the initial inventory. Keep active
-jobs, pinned runtimes and data volumes; record what was removed and the space
-recovered. See [workspace hygiene](docs/workspace-hygiene.md) for recovery and
-retention rules.
+**Workspace hygiene.** Remove worktrees once their branch is merged or
+archived, after checking for uncommitted source. Discard regenerable build
+intermediates freely. Cleanup is routine and is not recorded in git.
 
 ## Repository layout
 
@@ -201,9 +197,12 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   with Singular and checks tagged deep-tier projects (ADR 0021). It is never a
   required CI job. `SAIL_VERUS_SOURCE_BUILD` explicitly selects a validated
   source variant; binary releases do not support Singular.
-- *Benchmarks (local):* `ci/local.sh bench cold|warm|edit TIER ROUNDS`, or
-  `sail-bench` on the host. Never part of the gate. Record machine details
-  with every result; reference numbers come from Linux x86-64.
+- *Benchmarks (native host):* `ci/local.sh bench cold|warm|edit TIER ROUNDS`, or
+  `sail-bench`, on a `scripts/perf-host.sh` host. Never part of the gate.
+  Record the instance type and region with every result. A benchmark records
+  every sample, including protocol refusals, and continues; gates are judged
+  when the report is generated and a refused sample counts as a failure,
+  never as a dropped sample (ADR 0038).
 - *Fault injection:* `docs/fault-injection.md`, run as part of `solver`.
 
 ## Tracking
@@ -232,7 +231,16 @@ Documentation is part of implementation and every agent handoff:
   issue entry. Keep Sail defects and unresolved validation failures visible in
   `docs/known-issues.md`; do not attribute a cause without evidence.
 - Validation records identify source/runtime/environment, actual scope, result
-  and limits. Preserve failed and interrupted attempts. Never describe static
-  review, a fixture pass or a candidate build as real-project acceptance.
+  and limits. Never describe static review, a fixture pass or a candidate
+  build as real-project acceptance.
+- **Evidence policy (ADR 0038).** One concise Markdown record per acceptance
+  gate (`docs/validation/`), stating current status and the best evidence.
+  Failed and interrupted attempts stay visible as one indexed line each
+  (commit, date, result, cause or "unknown"). Raw logs and JSON dumps stay
+  outside the repository, cited by sha256. Evidence lands in the PR it
+  qualifies: no evidence-only commits, and no records of cleanup, retirement,
+  ownership or disk hygiene. `docs/ROADMAP.md` shows current state as a short
+  gate table, never as a log. Reports and evidence are Markdown in this
+  repository.
 - Each agent handoff and PR lists the documentation changed or explains why the
   change has no documentation impact. The lead reviews docs alongside code.
