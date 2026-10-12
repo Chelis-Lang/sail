@@ -1,8 +1,9 @@
 # Compiler-family declared source inventory candidate
 
-This source-only candidate addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77).
-Native tests, strict checks, current-product repair and the unchanged full
-benchmark remain pending. No original Historical/Unknown refusal, deadline,
+This implementation addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77).
+Affected native controls and strict checks pass within the failed `43d1c29`
+combined gate. Complete gate/solver, a new installed product and the unchanged
+full benchmark remain pending. No original Historical/Unknown refusal, deadline,
 warmup allowance or receipt predicate changes.
 
 The first three combined native gates remain failed: `2ba2a32` stopped at the
@@ -13,8 +14,20 @@ error in 52.280 seconds. Each gate exited 101 before Rust tests or the solver
 suite, with complete known-group closure and no uncertainty. The existing
 [source inventory record](source-inventory.json) binds each complete result and
 raw log. Root's helper extraction and payload-reference correction preserve
-the original request encoding and full baseline equality assertion. Corrected
-`bdc20a6` validation remains pending; no pass is inferred from these changes.
+the original request encoding and full baseline equality assertion.
+
+The later `43d1c29` gate passes strict checks, then runs 673 workspace tests in
+236.369 seconds: 672 pass, one fails, and 41 solver tests are skipped. All four
+new inventory controls pass, including actual Cargo compilation in 4.182 seconds;
+the baseline wire/parser/dispatch, provisional/corrupt-record, unfinished-save,
+and pruning/restart controls also pass. Compact package and feature-alias controls
+pass. The sole failure is the existing CLI MCP handshake's exact tool inventory:
+its expected twelve names omit the three authorized baseline tools. Root's
+`e0bc26e` correction adds only those names, retaining the original order and
+equality assertion. The whole gate remains failed (exit 100, 458.667 seconds);
+solver and remaining gate steps were unattempted. Known groups close without
+uncertainty. The fresh corrected full gate remains pending; individual control
+passes do not supply whole-gate or installed-product acceptance.
 
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
@@ -51,7 +64,8 @@ that revision when dep-info reveals the include. Restored bytes/mtime must still
 fail the actual continuous guard. Additional controls cover package/role changes,
 ambiguous IDs, generated aliases and target escapes, bounded counts, incomplete
 or legacy attribution, corrupt local ledgers, preserved private roots, stale
-ordinary contracts, checksum and v1 refusal. They are unexecuted source drafts.
+ordinary contracts, checksum and v1 refusal. These source controls pass in the
+failed combined scope above; original product and benchmark qualification remain separate.
 
 The resource policy remains the existing 1 MiB encoded family envelope and
 regular-file read cap, plus at most 128 package entries and 4,096 attributed paths
