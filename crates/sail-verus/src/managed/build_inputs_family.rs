@@ -324,6 +324,7 @@ pub(in crate::managed) fn publish(
     publish_inventory(path, compiler, records, sources);
 }
 
+#[cfg(target_os = "linux")]
 fn publish_records(path: &Path, compiler: &str, records: Vec<BuildInput>) {
     // The independently guarded bootstrap certifies ordinary script outputs,
     // not newly discovered Rust source. Keep its final-barrier write unchanged.

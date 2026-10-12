@@ -66,41 +66,74 @@ struct Record {
 #[serde(rename_all = "kebab-case")]
 pub(super) enum BootstrapStage {
     OwnerEligibility,
+    #[cfg(target_os = "linux")]
     OwnerEnvironment,
+    #[cfg(target_os = "linux")]
     OwnerRoots,
+    #[cfg(target_os = "linux")]
     OwnerObserver,
+    #[cfg(target_os = "linux")]
     OwnerLease,
+    #[cfg(target_os = "linux")]
     OwnerRetained,
+    #[cfg(target_os = "linux")]
     OwnerHashes,
+    #[cfg(target_os = "linux")]
     OwnerConfiguration,
+    #[cfg(target_os = "linux")]
     OwnerBarriers,
+    #[cfg(target_os = "linux")]
     OwnerLedger,
+    #[cfg(any(target_os = "linux", test))]
     OwnerComplete,
     InitialRuntime,
     FinalRuntime,
     PublishLedger,
+    #[cfg(any(target_os = "linux", test))]
     PublishJournal,
+    #[cfg(target_os = "linux")]
     PublishRecordSet,
+    #[cfg(target_os = "linux")]
     PublishCancellation,
+    #[cfg(target_os = "linux")]
     PublishRecordBudget,
+    #[cfg(target_os = "linux")]
     RecordBinding,
+    #[cfg(target_os = "linux")]
     RecordPackage,
+    #[cfg(target_os = "linux")]
     RecordDeclarations,
+    #[cfg(target_os = "linux")]
     RecordDigest,
+    #[cfg(target_os = "linux")]
     RecordEnvironment,
+    #[cfg(target_os = "linux")]
     RecordExecution,
+    #[cfg(target_os = "linux")]
     RecordCompilation,
+    #[cfg(target_os = "linux")]
     RecordSource,
+    #[cfg(target_os = "linux")]
     RecordBinary,
+    #[cfg(target_os = "linux")]
     RecordAliases,
+    #[cfg(target_os = "linux")]
     RecordDepInfo,
+    #[cfg(target_os = "linux")]
     RecordInputs,
+    #[cfg(target_os = "linux")]
     RecordCompilerEnvironment,
+    #[cfg(target_os = "linux")]
     PublishHashes,
+    #[cfg(target_os = "linux")]
     PublishOutputs,
+    #[cfg(target_os = "linux")]
     PublishEnvironment,
+    #[cfg(target_os = "linux")]
     PublishObserver,
+    #[cfg(target_os = "linux")]
     PublishLease,
+    #[cfg(any(target_os = "linux", test))]
     PublishEmission,
 }
 
@@ -111,6 +144,7 @@ pub(super) enum BootstrapOutcome {
     Ready,
     Refused,
     Skipped,
+    #[cfg(any(target_os = "linux", test))]
     Attempted,
 }
 
@@ -138,10 +172,12 @@ impl<'a> BootstrapAttempt<'a> {
         }
     }
 
+    #[cfg(any(target_os = "linux", test))]
     pub(super) fn stage(&mut self, stage: BootstrapStage) {
         self.stage = stage;
     }
 
+    #[cfg(target_os = "linux")]
     pub(super) fn outcome(&mut self, outcome: BootstrapOutcome) {
         self.outcome = outcome;
     }

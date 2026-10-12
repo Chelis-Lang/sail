@@ -5,9 +5,9 @@
 
 #[cfg(target_os = "linux")]
 use super::super::{BuildInput, effective_value};
-use crate::managed::diagnostics::{
-    BootstrapAttempt, BootstrapOutcome, BootstrapStage, Diagnostics,
-};
+#[cfg(target_os = "linux")]
+use crate::managed::diagnostics::BootstrapOutcome;
+use crate::managed::diagnostics::{BootstrapAttempt, BootstrapStage, Diagnostics};
 #[cfg(target_os = "linux")]
 use crate::managed::{lease::ReadLease, precise::Observer};
 use serde_json::Value;
@@ -375,7 +375,11 @@ impl Bootstrap {
     }
 
     #[cfg(not(target_os = "linux"))]
-    #[allow(clippy::too_many_arguments)] // Match the Linux observation-only publication API.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::unused_self,
+        reason = "Match the Linux observation-only publication API."
+    )]
     pub(in crate::managed) fn publish_traced(
         &mut self,
         _: &Path,
@@ -472,6 +476,10 @@ impl Bootstrap {
     }
 
     #[cfg(not(target_os = "linux"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "Match the Linux runtime check; no bootstrap is supported here."
+    )]
     pub(in crate::managed) fn runtime_matches(&self, _: &Path, _: &str) -> bool {
         false
     }

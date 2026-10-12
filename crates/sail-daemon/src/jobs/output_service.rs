@@ -69,7 +69,7 @@ impl Queue {
             .stack_size(STACK_BYTES)
             .spawn(move || queue.run())
     }
-    #[cfg(test)]
+    #[cfg(all(test, target_os = "linux"))]
     pub(super) fn idle_for_test(&self) -> bool {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
         while self.active.load(Ordering::Acquire) && std::time::Instant::now() < deadline {

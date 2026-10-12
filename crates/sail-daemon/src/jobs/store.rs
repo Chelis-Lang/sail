@@ -418,9 +418,11 @@ mod output_fallback_tests {
             }
         });
     }
+    #[cfg(target_os = "linux")]
     fn counts() -> Probe {
         PROBE.with_borrow_mut(|probe| probe.take().unwrap_or_default())
     }
+    #[cfg(target_os = "linux")]
     fn measured(
         state: &State,
         job: &Stored,
