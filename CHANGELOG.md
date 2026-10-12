@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Keep repair walkthrough captures outside watched package roots. Redirected
+  event logs and results are operator records; writing them during a proof
+  inside its input roots can correctly invalidate freshness. Clarify that the
+  completed accepted result precedes saving the example baseline.
+
 - Clarify interactive CLI/MCP setup: use the same absolute cache/socket overrides
   for engine installation, submission and durable job reads. Those reads do not
   accept `project_dir`. Document returned job-ID and event-cursor fields, and

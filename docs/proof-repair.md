@@ -1,10 +1,10 @@
 # Proof events and repair validation
 
 **Experimental (M7):** the selected source engine passes its preparation-memory
-and lowering qualification. Current c2 passes the
-[complete original CLI/MCP repair fixture](validation/m7-repair-c2a4b23-terminal.md).
+and lowering qualification. Current `b89546c` passes the
+[complete original CLI/MCP repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
 The [full concurrent-reader pass](validation/m7-reader-730a321-terminal.md) is
-historical 730 evidence; current c2 replay remains required.
+historical 730 evidence; current-product replay remains required.
 Real-project performance and complete standard/cache corpus coverage remain
 unfinished.
 See [known issues](known-issues.md) and the
@@ -42,6 +42,11 @@ sail repair-check --package demo --lib --function demo::arith::lemma \
 sail jobs events JOB --follow --output jsonl
 sail jobs result JOB --output json
 ```
+
+Keep redirected submission, event and result files outside package roots and
+explicitly declared inputs while verification runs. Those files are operator
+records, and writing them inside a watched package can invalidate input
+freshness. The walkthrough uses a separate sibling capture directory.
 
 For a binary, replace `--lib` with `--bin NAME`. Function names are exact,
 crate-qualified identifiers. This command first checks that selected function,

@@ -41,23 +41,23 @@ See [live workspace verification](docs/workspace-verification.md).
 
 The optional pinned source engine adds exact-function focus followed by independent
 full-target validation. The selected source engine passes its memory and lowering
-qualification. Current `c2a4b23` passes the complete workspace gate (651 tests),
+qualification. Current `b89546c` passes the complete workspace gate (658 tests),
 original solver suite (41 tests), ordinary-build recovery controls and original
 installed CLI/MCP repair fixture with unchanged checks.
 The historical [730 full reader workflow](docs/validation/m7-reader-730a321-terminal.md) passes
 both collectors: each retains 200 total samples across four concurrent clients
 (100 Result and 100 Status reads), with complete Current graphs,
-followed by retained CLI/MCP scenarios; current c2 readers require a fresh replay.
+followed by retained CLI/MCP scenarios; current-product readers require a fresh replay.
 Twofold real-project repair-loop
 improvement and complete current standard/cache coverage remain outstanding;
 M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
-See [current validation](docs/validation/m7-core-c2a4b23-validation.md) and
+See [current validation](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json) and
 [known issues](docs/known-issues.md).
 
 Optional ordinary-build recovery passes its local controls and installed repair
-fixture. A fresh [real-project benchmark](docs/validation/m7-benchmark-c2a4b23-warmup-terminal.md)
+fixture. The earlier c2 [real-project benchmark](docs/validation/m7-benchmark-c2a4b23-warmup-terminal.md)
 fails Current warmup admission despite exit-zero verification and produces no
-measured samples; real-project recovery remains unqualified.
+measured samples. Current real-project validation remains unqualified.
 It can establish dependency contracts after initial regeneration, but never
 promotes an Unknown proof or replaces full verification. Unsupported coverage
 retains original cleaning. See [build recovery](docs/managed-cold-start.md).
@@ -78,6 +78,7 @@ sail repair-check --package demo --lib --function demo::arith::lemma \
   --engine interactive --background --output json
 sail jobs events JOB_ID --follow --output jsonl
 sail jobs result JOB_ID --output json
+# Save only after the completed result has value.repair.accepted = true.
 sail baseline save before-repair --job JOB_ID
 sail compare LATER_JOB_ID --baseline before-repair --output json
 ```
@@ -85,7 +86,9 @@ sail compare LATER_JOB_ID --baseline before-repair --output json
 Submission success and provisional focus observations do not establish a proof.
 Inspect `value.repair.accepted` in the completed result; acceptance requires
 independent complete Current full-target success after compiler completion.
-Saved baselines retain establishing evidence and never prove today's inputs.
+Keep redirected event logs and result files outside watched package roots while
+verification runs; the walkthrough shows a separate capture directory. Saved
+baselines retain establishing evidence and never prove today's inputs.
 [The complete walkthrough](docs/proof-repair-walkthrough.md) includes a runnable
 project, focus-pass/full-failure example, exact failure identities, event cursors,
 cancellation and MCP calls. [The repair contract](docs/proof-repair.md) and
