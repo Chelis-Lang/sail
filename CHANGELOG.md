@@ -12,17 +12,20 @@ semantic versioning once the API is published.
   passes the original repair fixture; reader evidence remains historical 730,
   and real-project performance remains unqualified.
 
-- Prepare an unselected optional bootstrap refusal-stage diagnostic using the
+- Add an optional bootstrap refusal-stage diagnostic using the
   existing bounded setup sink. Fixed rows contain no paths or environment data;
   original checks and proof authority remain unchanged. Host retention controls
-  pass, while Rust/native validation remains pending. See the
+  pass. The selected combined `22d6082` source awaits native validation after a
+  retained strict test failure; installed-product validation remains pending.
+  See the
   [candidate record](docs/validation/m7-compiler-script-bootstrap/refusal-diagnostic.json).
 
-- Prepare a conservative compiler-script recovery correction for the failed c2
-  warmup: exclude only proven always-false non-workspace dependency scripts from
+- Select a conservative compiler-script recovery correction for validation
+  after the failed c2 warmup: exclude only proven always-false non-workspace dependency scripts from
   unobserved coverage, and freshly compile eligible scripts during a guarded
   missing-target retry. Proof freshness and receipt checks are unchanged; native
-  and unchanged benchmark validation remain pending. See the
+  validation of selected `22d6082` and unchanged benchmark validation remain pending.
+  Earlier fixture and strict failures remain retained. See the
   [source record](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
 
 - Record the unchanged real-project repair benchmark's `730a321` bootstrap

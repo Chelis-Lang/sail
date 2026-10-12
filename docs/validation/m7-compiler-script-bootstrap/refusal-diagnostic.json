@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "optional managed-script-bootstrap refusal stage observations",
-  "status": "unselected source-only candidate; Rust/native/product/diagnostic execution pending",
+  "status": "selected combined source 22d6082; d37e388 strict failure retained; current native gate and solver pending",
   "base": "27778b3",
   "source_sha256": {
     "crates/sail-verus/src/managed/diagnostics.rs": "dc82aca20a8a1cadc377e76181b29d1263cf353cc5e626c7784981528a5a7235",
@@ -68,13 +68,80 @@
       "bootstrap_first_refusal_and_disabled_observation_preserve_original_outcome",
       "bootstrap_rows_share_original_limits_and_busy_sink_refuses_observation",
       "bootstrap_observation_preserves_actual_publication_and_first_role_refusal"
-    ]
+    ],
+    "rust_drafted_unexecuted_scope": "authored diagnostic controls; selected d37e388 failed strict before execution; 22d6082 execution pending"
   },
   "limits": [
     "refusal stage is a group of original checks, not an exact exception/cause",
     "unwind or abrupt process loss may prevent a row",
     "no first-export historical attribution from retained old contracts",
-    "not selected into current gate/product; parent may use only after review and actual native validation"
+    "selected source is undergoing native validation; no installed-product or historical first-export attribution"
   ],
-  "publication_observation_order": "Final runtime boolean is retained inline; its sink row is emitted after publish_traced returns. Publication attempt RAII emission follows publish_records on success. No diagnostic I/O occurs between final runtime/input checks and ordinary emission."
+  "publication_observation_order": "Final runtime boolean is retained inline; its sink row is emitted after publish_traced returns. Publication attempt RAII emission follows publish_records on success. No diagnostic I/O occurs between final runtime/input checks and ordinary emission.",
+  "selected_source_scope": {
+    "frozen_commit": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
+    "source_sha256": {
+      "crates/sail-verus/src/managed/diagnostics.rs": "35d47110c8ef7472757f56f66697cd277c35434b59efa3d9b2eadd359313a845",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "c04271acf7029c524e7d63d20fc7417b343fd3c836b640b9c3189d3da5848fa3",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "f9ffbafacb8380ad2a565cfd9572bb1446547db0930889c9e6a72e6c81a20bb4",
+      "crates/sail-verus/src/managed/runner.rs": "4b419de1e35496c15923aac95842e23d67cf35d1521a18ded79d6e5d3728ead0",
+      "scripts/m7-publication-timing-diagnostic.py": "8600d3624b9ac9b7474e913e4f4365aec66a79a3449ec8ed74330d29b7404ab8",
+      "scripts/test-m7-publication-timing-diagnostic.py": "5e3fbcb8b287db2a2c1fa875085d3ff2f7d559b3ced7b2c838ba1d5184192f3e"
+    },
+    "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
+    "native_validation": "complete gate and solver running; terminal outcome pending",
+    "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim"
+  },
+  "attempted_validation": [
+    {
+      "revision": "d37e388e815ab7c3c7f13b72529ad1e7ebc16e13",
+      "source_archive_sha256": "2ed136fc00bf1f1e43c74ac5139075ca5e27b4d80ea92dc0ca902ead3c6f2873",
+      "status": "FAIL",
+      "gate_elapsed_seconds": 52.30393760800007,
+      "gate_exit_code": 101,
+      "failure": "strict clippy::naive_bytecount in diagnostic row-count test before workspace tests or solver",
+      "workspace_tests": "unattempted",
+      "solver": "unattempted",
+      "raw": {
+        "controller.json": {
+          "bytes": 1115,
+          "sha256": "fd74fc37214323aa06568279221c9c227b6759035f592a1dc8bdb56d479e0646"
+        },
+        "result.json": {
+          "bytes": 1843,
+          "sha256": "2e9d88c07fe6566daec935e46ae41841bd0292f761a7df4400c9317f4990f39d"
+        },
+        "gate.log": {
+          "bytes": 5746,
+          "sha256": "873304e7407b02b433ff3e1de0b8122ea7e4f53d4b71893448de09847f9e972c"
+        }
+      },
+      "controller_uncertainty": [],
+      "native_uncertainty": [],
+      "known_group_closure": {
+        "survivors": [],
+        "unavailable": [],
+        "terminated_unreaped": []
+      },
+      "same_container_identity": true,
+      "retention": {
+        "files": [],
+        "errors": [
+          {
+            "index": 0,
+            "error": "[Errno 2] No such file or directory: 'debug/deps/sail_verus-1ff5719aff2dbe51'"
+          }
+        ],
+        "all_cargo_artifacts_archived": false
+      },
+      "retention_error": "requested executable retention incomplete",
+      "limit": "failed strict scope only; no installed-product, recovery or performance qualification"
+    }
+  ],
+  "source_scope": {
+    "frozen_commit": "f91e21ffdad703fc7f591d37db0f87ab082ad2ff",
+    "meaning": "source_sha256 binds authored diagnostic plus observation-order follow-up, not the merged selected fixture or row-count correction",
+    "initial_diagnostic_commit": "ceccff9b7c5b3d1de8a98adffcc13842e762e874"
+  }
 }
