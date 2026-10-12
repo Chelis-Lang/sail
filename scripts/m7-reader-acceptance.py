@@ -30,7 +30,7 @@ def load(name, path):
 
 
 HERE = Path(__file__).resolve().parent
-bench = load("warm_reader_workload", HERE / "m7-repair-bench.py")
+bench = load("warm_reader_workload", HERE / "m7-owned-actors.py")
 protocol = bench.protocol
 retained = load("warm_reader_admission", HERE / "m7-retained-jobs-acceptance.py")
 native_product = load("warm_reader_native_setup", HERE / "m7-native-product.py")
@@ -334,7 +334,7 @@ class Run:
 
     def freeze(self):
         self.summary["controller_scripts"] = {name: bench.sha(HERE / name) for name in (
-            "m7-reader-acceptance.py", "m7-repair-bench.py",
+            "m7-reader-acceptance.py", "m7-owned-actors.py",
             "m7-retained-jobs-acceptance.py", "m7-job-read-bench.py", "m7-native-product.py")}
         frozen = json.loads((self.bin / "freeze.json").read_bytes())
         for name in ("sail", "sail-z3"):

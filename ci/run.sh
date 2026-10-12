@@ -69,8 +69,7 @@ start_daemon() {
 case "$step" in
   gate)
     bash ci/test-completion.sh
-    python3 scripts/test-m7-repair-bench.py
-    python3 scripts/test-m7-repair-bench-lifecycle.py
+    python3 scripts/test-m7-owned-actors.py
     python3 scripts/test-m7-job-read-bench.py
     python3 scripts/test-m7-retained-jobs-acceptance.py
     python3 scripts/test-m7-reader-acceptance.py

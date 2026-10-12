@@ -4,7 +4,8 @@
 //! - [`cold`]: the cold workload with the plain-Verus baseline;
 //! - [`warm`]: the warm, no-change workload with the cache on;
 //! - [`edit`]: the single-function body and specification edit workloads;
-//! - [`report`]: the generated `docs/benchmarks.md`.
+//! - [`report`]: the generated `docs/benchmarks.md`;
+//! - [`repair`]: the M7 repair acceptance workload, recorded then judged.
 //!
 //! Trace analysis over the shim's captured sessions (`SAIL_TRACE_DIR`),
 //! driven by the `sail-bench` binary ([`cli`]):
@@ -30,6 +31,7 @@ pub mod fragility;
 pub mod history;
 pub mod hits;
 pub mod profile;
+pub mod repair;
 pub mod replay;
 pub mod report;
 pub mod seeds;

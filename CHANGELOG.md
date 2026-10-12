@@ -5,6 +5,27 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add `sail-bench repair prepare|run`, the M7 repair acceptance workload. It
+  replaces `scripts/m7-repair-bench.py`, which stopped at the first refusal.
+  The new workload records every M6 (focused then full) and M7 (one repair
+  batch) sample, keeping its refusal, flags and timings, and continues the run.
+  `sail-bench report` applies the gate per catalogue in `docs/benchmarks.md`
+  and lists every failing sample:
+  - `SAIL7101`: an invocation timed out, failed to start or printed no JSON;
+  - `SAIL7102`: the full evidence is not Current;
+  - `SAIL7103`: M7 used other than one compiler driver;
+  - `SAIL7104`: M7 is not a real engine batch;
+  - `SAIL7105`: preparation telemetry is unavailable or over budget;
+  - `SAIL7106`: the outcome differs from the catalogue;
+  - `SAIL7107`: the M6 and M7 outcomes differ;
+  - `SAIL7108`: fewer than three complete rounds;
+  - `SAIL7109`: the median whole-loop speedup is below 2×.
+
+  Committed results are compact. A raw sidecar (`--raw`, by default under
+  `--out`) holds arguments, full errors and canonical outcomes, and its sha256
+  is recorded in the result. Use `--resume` to continue an interrupted run.
+  See [M7 repair acceptance](docs/bench/m7-repair-acceptance.md).
+
 - Retire closed local gate scratch after verifying compact evidence on the
   host and repeating bounded holder checks. Preserve original validation
   outcomes and selected runtimes; historical compiler trees and test binaries
