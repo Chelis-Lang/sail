@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "optional managed-script-bootstrap refusal stage observations",
-  "status": "selected combined source 22d6082; d37e388 strict failure retained; current native gate and solver pending",
+  "status": "selected combined source b89546c; interrupted 22d6082 FAIL and sticky uncertainty retained; fresh native gate and solver pending",
   "base": "27778b3",
   "source_sha256": {
     "crates/sail-verus/src/managed/diagnostics.rs": "dc82aca20a8a1cadc377e76181b29d1263cf353cc5e626c7784981528a5a7235",
@@ -69,7 +69,7 @@
       "bootstrap_rows_share_original_limits_and_busy_sink_refuses_observation",
       "bootstrap_observation_preserves_actual_publication_and_first_role_refusal"
     ],
-    "rust_drafted_unexecuted_scope": "authored diagnostic controls; selected d37e388 failed strict before execution; 22d6082 execution pending"
+    "rust_drafted_unexecuted_scope": "authored diagnostic controls; d37e388 failed strict; 22d6082 interrupted without complete test result; fresh b89546c execution pending"
   },
   "limits": [
     "refusal stage is a group of original checks, not an exact exception/cause",
@@ -79,7 +79,7 @@
   ],
   "publication_observation_order": "Final runtime boolean is retained inline; its sink row is emitted after publish_traced returns. Publication attempt RAII emission follows publish_records on success. No diagnostic I/O occurs between final runtime/input checks and ordinary emission.",
   "selected_source_scope": {
-    "frozen_commit": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
+    "frozen_commit": "b89546cbf64788976803b832dbfa214575c9ff7b",
     "source_sha256": {
       "crates/sail-verus/src/managed/diagnostics.rs": "35d47110c8ef7472757f56f66697cd277c35434b59efa3d9b2eadd359313a845",
       "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "c04271acf7029c524e7d63d20fc7417b343fd3c836b640b9c3189d3da5848fa3",
@@ -90,8 +90,9 @@
     },
     "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
-    "native_validation": "complete gate and solver running; terminal outcome pending",
-    "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim"
+    "native_validation": "fresh complete gate and solver running with corrected absolute ELF retention path; terminal outcome pending",
+    "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim",
+    "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1"
   },
   "attempted_validation": [
     {
@@ -137,11 +138,77 @@
       },
       "retention_error": "requested executable retention incomplete",
       "limit": "failed strict scope only; no installed-product, recovery or performance qualification"
+    },
+    {
+      "revision": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
+      "source_archive_sha256": "669ec10dd2e5d9fcf66f6207e63bb3c13464ef93ea374c0ec8e8cfa894bd203f",
+      "status": "FAIL",
+      "gate_elapsed_seconds": 121.90889884699982,
+      "failure": "native controller signal 15",
+      "error_type": "InterruptedError",
+      "gate_completion": "interrupted before complete; no complete test result",
+      "solver": "unattempted",
+      "reason_for_operator_cancellation": "relative requested ELF retention path did not resolve under target; replacement scope uses absolute path",
+      "raw": {
+        "controller.json": {
+          "bytes": 1115,
+          "sha256": "0d2a55754a47f8c505f4217806b3baad8c4bcb27f6a31c3c4a3e2007df310183"
+        },
+        "result.json": {
+          "bytes": 1684,
+          "sha256": "dc0c9e1bf1cef0d49c90afe3205a45b824038219ca3c6c238166d83f80b7f879"
+        },
+        "gate.log": {
+          "bytes": 6534,
+          "sha256": "cb3b6d9ebb719358a98591eca9af46e04618938ed1b2eecd3277611e1e00d802"
+        }
+      },
+      "controller_uncertainty": [],
+      "native_uncertainty": [
+        "controller signal 15",
+        "phase timeout/interruption"
+      ],
+      "original_closure": "unavailable",
+      "original_closure_error": "closure uncertain; separate owner audit required: controller signal 15, phase timeout/interruption",
+      "separate_closure_audit": {
+        "raw": {
+          "bytes": 30906,
+          "sha256": "0e8f8b8a7d86ce08d4239635737ef8cf34125a779361fc2f231f92bc4e915986"
+        },
+        "exit_code": 0,
+        "same_container_identity": true,
+        "known_group_survivors": 0,
+        "known_group_unavailable": 0,
+        "scanned": 63,
+        "all_process_live_other": 0,
+        "all_process_unavailable": 0,
+        "terminated_unreaped": 61,
+        "all_terminated_tasks_complete": true,
+        "source_protected_unchanged": true,
+        "safe_for_new_independent_actor": true,
+        "limit": "later bounded read-only audit excludes PID1 and census actor; allows a fresh actor, does not change original FAIL, sticky uncertainty or certify closure at interruption"
+      },
+      "limit": "interrupted validation is not qualified or promoted by later closure audit"
     }
   ],
   "source_scope": {
     "frozen_commit": "f91e21ffdad703fc7f591d37db0f87ab082ad2ff",
     "meaning": "source_sha256 binds authored diagnostic plus observation-order follow-up, not the merged selected fixture or row-count correction",
     "initial_diagnostic_commit": "ceccff9b7c5b3d1de8a98adffcc13842e762e874"
+  },
+  "historical_selected_source_scope": {
+    "frozen_commit": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
+    "source_sha256": {
+      "crates/sail-verus/src/managed/diagnostics.rs": "35d47110c8ef7472757f56f66697cd277c35434b59efa3d9b2eadd359313a845",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "c04271acf7029c524e7d63d20fc7417b343fd3c836b640b9c3189d3da5848fa3",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "f9ffbafacb8380ad2a565cfd9572bb1446547db0930889c9e6a72e6c81a20bb4",
+      "crates/sail-verus/src/managed/runner.rs": "4b419de1e35496c15923aac95842e23d67cf35d1521a18ded79d6e5d3728ead0",
+      "scripts/m7-publication-timing-diagnostic.py": "8600d3624b9ac9b7474e913e4f4365aec66a79a3449ec8ed74330d29b7404ab8",
+      "scripts/test-m7-publication-timing-diagnostic.py": "5e3fbcb8b287db2a2c1fa875085d3ff2f7d559b3ced7b2c838ba1d5184192f3e"
+    },
+    "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
+    "native_validation": "complete gate and solver running; terminal outcome pending",
+    "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim"
   }
 }
