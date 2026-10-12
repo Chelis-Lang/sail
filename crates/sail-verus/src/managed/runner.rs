@@ -357,6 +357,21 @@ fn prepare(config: &Config, workspace: &Path, hash: &str, run_id: &str) -> Resul
     Ok((paths, lock))
 }
 
+/// The directory Cargo actually builds in for this invocation's owned target.
+///
+/// `cargo verus focus` does not verify dependencies, so it places its artifacts
+/// in a child `verus-partial` directory of the given target directory
+/// (cargo-verus `src/subcommands.rs`, `verify_deps == false`). It also enables
+/// checksum freshness, so byte-identical source leaves that build fresh and no
+/// verifier runs. Cleaning must address the directory that holds that build.
+fn cargo_build_target(target: &Path, args: &[String]) -> PathBuf {
+    if focused(args) {
+        target.join("verus-partial")
+    } else {
+        target.to_path_buf()
+    }
+}
+
 fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     if packages.is_empty() {
         return Ok(());
@@ -364,7 +379,7 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     let mut cmd = Command::new(&config.cargo);
     cmd.current_dir(&config.workspace)
         .args(["clean", "--target-dir"])
-        .arg(target);
+        .arg(cargo_build_target(target, &config.args));
     for p in packages {
         cmd.arg("-p").arg(p);
     }
@@ -1510,6 +1525,98 @@ mod tests {
             "--verify-function=lemma".to_owned()
         ]));
         assert!(!focused(&["--features".to_owned(), "foo".to_owned()]));
+    }
+
+    /// Regression for the focused `SAIL3107`: `cargo verus focus` builds in
+    /// `<target>/verus-partial` with checksum freshness, so byte-identical
+    /// source is fresh there. The forced and retry cleanups must clean that
+    /// directory, or no verifier runs and no receipt can ever appear.
+    #[test]
+    fn focused_cleanup_rebuilds_byte_identical_partial_source()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-focus-clean-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("src"))?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\nedition='2024'\n[package.metadata.verus]\nverify=true\n[workspace]\n",
+        )?;
+        let source = root.join("src/lib.rs");
+        let bytes = b"pub fn input() -> u32 { 1 }\n";
+        std::fs::write(&source, bytes)?;
+        let target = root.join("owned-target");
+        let config = |args: &[&str]| Config {
+            workspace: root.clone(),
+            cache: root.join("cache"),
+            sail: PathBuf::from("sail"),
+            cargo_verus: PathBuf::from("cargo-verus"),
+            cargo: PathBuf::from("cargo"),
+            shim: PathBuf::from("sail-z3"),
+            z3: PathBuf::from("z3"),
+            socket: None,
+            args: args.iter().map(|&a| a.to_owned()).collect(),
+            force: true,
+        };
+        let focus = config(&["-p", "input", "--", "--verify-function", "input"]);
+        let full = config(&["-p", "input"]);
+        assert_eq!(
+            cargo_build_target(&target, &focus.args),
+            target.join("verus-partial")
+        );
+        assert_eq!(cargo_build_target(&target, &full.args), target);
+        // What cargo-verus runs, minus the verifier wrapper: `verify` checks
+        // in the owned target, `focus` in its `verus-partial` child.
+        let check_in = |dir: &Path| -> std::result::Result<bool, Box<dyn std::error::Error>> {
+            let output = Command::new("cargo")
+                .current_dir(&root)
+                .args(["check", "--offline", "-p", "input", "--message-format=json"])
+                .arg("--target-dir")
+                .arg(dir)
+                .env("CARGO_UNSTABLE_CHECKSUM_FRESHNESS", "true")
+                .env("RUSTC_BOOTSTRAP", "1")
+                .env_remove("RUSTC_WRAPPER")
+                .env_remove("RUSTC_WORKSPACE_WRAPPER")
+                .output()?;
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            output
+                .stdout
+                .split(|b| *b == b'\n')
+                .filter_map(|line| serde_json::from_slice::<Value>(line).ok())
+                .find(|r| r["reason"] == "compiler-artifact" && r["target"]["name"] == "input")
+                .and_then(|r| r["fresh"].as_bool())
+                .ok_or_else(|| "no artifact for the selected package".into())
+        };
+        let check = || check_in(&target.join("verus-partial"));
+        // A full verification shares the owned target.
+        assert!(!check_in(&target)?, "full build compiles");
+        let rewrite = || -> std::io::Result<()> {
+            // Byte-identical content with a later mtime: an edit that repeats
+            // the content last compiled for this focus context.
+            let file = std::fs::OpenOptions::new().write(true).open(&source)?;
+            file.set_len(0)?;
+            std::io::Write::write_all(&mut &file, bytes)?;
+            let later = std::time::SystemTime::now() + std::time::Duration::from_secs(5);
+            file.set_times(std::fs::FileTimes::new().set_modified(later))
+        };
+        assert!(!check()?, "first focused build compiles");
+        rewrite()?;
+        assert!(check()?, "checksum freshness keeps repeated content fresh");
+        // The old behaviour cleaned the outer target only; the build stays fresh.
+        clean(&full, &target, &["input".to_owned()])?;
+        rewrite()?;
+        assert!(
+            check()?,
+            "cleaning the outer target cannot reach the focus build"
+        );
+        // The focused cleanup addresses the directory focus actually uses.
+        clean(&focus, &target, &["input".to_owned()])?;
+        assert!(!check()?, "focused cleanup must force a fresh compilation");
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
     #[test]
     fn lifecycle_only_job_environment_does_not_partition_proofs() {
