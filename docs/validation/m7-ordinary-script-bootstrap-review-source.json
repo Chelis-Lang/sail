@@ -333,6 +333,45 @@
       "authority_ack": true,
       "native_controls_executed_in_this_review": 0,
       "drafted_controls": 8
+    },
+    {
+      "commit": "0a353ee70c60092894f2c2574092df40b0d6b189",
+      "source_manifest": {
+        "path": "docs/validation/m7-compiler-script-bootstrap/source.json",
+        "bytes": 4831,
+        "sha256": "d2effbd9d66290968c38b2bb552f39b4355ce5d2c14363e9a7f4f3cffccd7840"
+      },
+      "source": [
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_family.rs",
+          "bytes": 27398,
+          "sha256": "caef3ba1fa9335237ca2880b61939c634801cea79aea943430a592db9d78d6c8"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_bootstrap.rs",
+          "bytes": 22375,
+          "sha256": "f06d5be3010bc0eb1a649ed23d9f07abdb2f3d4c067f9326490f5123ee1a70cd"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs",
+          "bytes": 24656,
+          "sha256": "b8af1249c0661787eb44c3a8385aad23570eaf6343c4aa8c2f19b12db1c610d8"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/runner.rs",
+          "bytes": 118620,
+          "sha256": "d817c121abea4b71e4558acc96590b47f1ae95683299e91b03ee98808230a1b2"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/source_inputs.rs",
+          "bytes": 7707,
+          "sha256": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+        }
+      ],
+      "authority_ack": true,
+      "native_controls_executed_in_this_review": 0,
+      "drafted_controls": 9,
+      "purpose": "non-UTF-8 input refusal, not proof of relative dep-info publication viability"
     }
   ],
   "environment_followup_conclusion": "Shared refusal covers unaudited Cargo injected/removed child environment. Original publication may write empty records; exact empty records, begin=false and forced clean prove absence of reuse authority. The b4 correction borrows the unchanged report-owned context hash and only renames bootstrap locals."
