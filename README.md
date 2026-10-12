@@ -122,7 +122,11 @@ The daemon keeps replies in memory in front of the disk cache, stops after
 30 minutes without connections or active jobs, and logs to `daemon.log` in the
 cache root.
 `sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
-inspects, checks, shrinks or empties the cache (ADR 0015).
+inspects, checks, shrinks or empties SMT reply entries (ADR 0015). These commands
+do not limit or remove managed compiler targets. Focused repair generations
+trade additional dependency storage and cold setup for isolated certified
+artifacts; their observation migration remains a source candidate with native
+qualification pending. See [workspace hygiene](docs/workspace-hygiene.md).
 
 Teams and CI can share results through a shared store: a directory such as
 an NFS mount or a synced folder. Entries in it are signed, and a machine
