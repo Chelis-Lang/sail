@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "source-only disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "corrected fixture frozen; previous native attempts failed; new complete gate pending",
+  "status": "three failed native validation scopes retained; next narrow fixture repair and complete gate pending",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -85,7 +85,7 @@
     "bootstrap_retry_clean_preserves_missing_and_refuses_unsupported_script_roles",
     "disabled_script_explicit_selection_requires_unique_cargo_package_identity"
   ],
-  "control_status": "original ten bootstrap controls passed in 8ac7740; new real-Cargo role assertion failed before its compile/export checks; corrected fixture awaits full gate",
+  "control_status": "original ten bootstrap controls pass in executed scopes; new real-Cargo fixture passes membership but Cargo clean fails before later retry/export/barrier assertions; repaired fixture unqualified",
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
     "affected native tests and strict checks",
@@ -97,7 +97,7 @@
     "scope": "test-only implicit root membership with existing dependency exclusions, plus explicit non-membership assertions",
     "original_failure": "new real Cargo fixture automatically included active and disabled path dependencies as workspace members; production correctly refused the disabled role before compilation",
     "namespace_correction": "included test module resolves predicate through existing build_inputs import",
-    "status": "metadata-only role confirmed by root; real Cargo control and complete gate pending",
+    "status": "metadata role confirmed; 30a2ede real Cargo control progressed past membership then refused target CACHEDIR.TAG; further fixture repair pending",
     "unchanged": [
       "never_scheduled production check",
       "original fresh=false requirement",
@@ -220,6 +220,41 @@
         "gate.log": {
           "bytes": 87440,
           "sha256": "bb9aef646380e0ced751c41f561c2afd28ba8cfe481710c4d9c9652a1b29e0e4"
+        }
+      }
+    },
+    {
+      "source_commit": "30a2edeb9f30906d5aecf211fa6dcbcf4506f066",
+      "source_archive_sha256": "bd2652aeea3fe75a4dabd5e1536de55e230350f7283cacd50a3a2e15f937b58d",
+      "status": "FAIL",
+      "gate_exit_code": 100,
+      "gate_elapsed_s": 540.117697956,
+      "failure": "new real Cargo fixture passes graph membership then Cargo clean refuses missing or invalid CACHEDIR.TAG at pre-created target; unchanged assertion line 949",
+      "workspace_passed": 654,
+      "workspace_total": 655,
+      "workspace_skipped": 41,
+      "solver": "unattempted",
+      "original_bootstrap_controls_passed": 10,
+      "uncertainty": [],
+      "same_container_birth_image": true,
+      "known_group_closure": {
+        "survivors": 0,
+        "unavailable": 0,
+        "complete_terminated_unreaped_rows": 10,
+        "general_orphan_absence_claim": false
+      },
+      "raw_seals": {
+        "controller.json": {
+          "bytes": 1115,
+          "sha256": "f4be23dd3d5a50efb0bfedbc7c49cb41906eb794e6e441bc747d7f9d94bde5b2"
+        },
+        "result.json": {
+          "bytes": 35157,
+          "sha256": "b829a8eabc0a2aaec57457e0f4ee7a99577bc22b8899c7eeaf3ada0b5685e072"
+        },
+        "gate.log": {
+          "bytes": 87725,
+          "sha256": "df0c33793df4ab9bfd38c39b271f0855aa4520f7caa98263cded22406c7a6645"
         }
       }
     }
