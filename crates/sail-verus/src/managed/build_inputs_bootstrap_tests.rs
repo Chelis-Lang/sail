@@ -882,7 +882,7 @@ fn bootstrap_disabled_dependency_and_retry_keep_fresh_compilation_roles() -> Tes
         .ok_or("disabled package absent")?["id"]
         .as_str()
         .ok_or("disabled id absent")?;
-    assert!(super::super::never_scheduled(&fixture.data, disabled));
+    assert!(build_inputs::never_scheduled(&fixture.data, disabled));
     let mut owner = fixture.owner()?;
     fixture.compile()?;
     let roles = || -> Result<Vec<Value>, Box<dyn std::error::Error>> {
