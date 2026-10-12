@@ -225,6 +225,12 @@ saving 574 MB of logical storage. Every original byte hash remains recoverable;
 the record maps retired archive paths to their compressed copies. Active native
 builds, qualified runtimes and foreign containers remain untouched.
 
+[Closed host conformance evidence](validation/m7-conformance-host-evidence-retirement-20261012.json)
+now lives in two verified gzip archives. All 3,561 original files remain
+recoverable with their byte hashes and metadata; only the verified uncompressed
+copies were retired. Historical interrupted results remain unchanged, and no
+physical disk recovery or validation credit is claimed.
+
 M7 is **not accepted**. PR #74 remains draft: the frozen `730a321` product and
 reader scopes pass, while complete current standard/cache coverage and real-project
 performance remain outstanding. Emulated local Linux runs are

@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "operation": "Owner-authorized host-only lossless conformance evidence compression and exact originals retirement",
+  "private_custody_label": "sail-m7-conformance-evidence-compression-20261012",
+  "archives": [
+    {
+      "original_repo_relative": ".claude/worktrees/m7-default-validation-evidence/conformance-fast",
+      "archive": "conformance-fast.tar.gz",
+      "archive_sha256": "b61d7b9db0bccfc9eb92d6dad8bc03d3dce8b61afe35d497f6038f3d3ae9040c",
+      "archive_bytes": 22340817,
+      "archive_allocated_bytes": 22343680,
+      "regular_files": 2656,
+      "directories": 1331,
+      "original_logical_bytes": 245808689,
+      "original_regular_allocated_bytes": 251076608,
+      "archive_members_verified": 3987,
+      "complete_sha_size_mode_uid_gid_verified": true,
+      "symlinks": 0,
+      "special_members": 0,
+      "source_absent_after_retirement": true
+    },
+    {
+      "original_repo_relative": ".claude/worktrees/m7-default-validation-evidence/conformance-standard",
+      "archive": "conformance-standard.tar.gz",
+      "archive_sha256": "bf6942bebfb568e28f23b1ce7e0615b57a3650c223c123cc0c60139673424829",
+      "archive_bytes": 7893203,
+      "archive_allocated_bytes": 7897088,
+      "regular_files": 905,
+      "directories": 458,
+      "original_logical_bytes": 86011846,
+      "original_regular_allocated_bytes": 87810048,
+      "archive_members_verified": 1363,
+      "complete_sha_size_mode_uid_gid_verified": true,
+      "symlinks": 0,
+      "special_members": 0,
+      "source_absent_after_retirement": true
+    }
+  ],
+  "removed_regular_files": 3561,
+  "removed_empty_directories": 1789,
+  "removed_logical_bytes": 331820535,
+  "removed_regular_allocated_bytes": 338886656,
+  "retained_archive_bytes": 30234020,
+  "retained_archive_allocated_bytes": 30240768,
+  "evidence": {
+    "result.json": "e55727ac69fb291d8391704b886e82e68f30cfbd16ce376d146a3c904742bcba",
+    "manifest.json": "5d0a09b10c2250d1333e62ec83ab3f74b432ab2fa00199ce8fa8e1b73dba2d8e",
+    "retirement.json": "3a6275191f14a7b7340e074eef0a2825f42e443c9f3c86bd00c36a526d69beaa",
+    "post-retirement-manifest.json": "a7cecbe3f18cbec8ff532997e3236a2f6e06ff40cf92ec781482564e86ec7ce3",
+    "removed.jsonl": "c348aab7e68379ddb69f014095c1f8452f8b0d6dafb8163c4774f967280ceed0"
+  },
+  "closure": {
+    "scope": "Only the two exact host evidence directories",
+    "lsof_before_compression_after_compression_and_before_retirement": "Each exact directory returned exit 1 with empty stdout and stderr",
+    "complete_source_inventories_unchanged_before_retirement": true,
+    "every_regular_file_rehashed_with_exact_inode_size_mode_single_link_immediately_before_unlink": true,
+    "archive_sha_and_full_membership_verified_before_and_after_retirement": true,
+    "no_native_or_all_host_closure_claim": true
+  },
+  "preservation": "Archives and complete raw inventories retain every original regular file, including raw failures and runtime images inside these old evidence directories. No VM-referenced worktree, active reader, source archive, current product, qualified engine, native target or old 730 installation was changed.",
+  "authority": "Storage representation only. The historical interrupted standard scope remains interrupted; no conformance, proof, currentness or performance acceptance is created.",
+  "physical_reclamation_claim": false,
+  "commands": [
+    "python3 -B sail-m7-conformance-evidence-compress.py",
+    "python3 -B sail-m7-conformance-evidence-retire.py"
+  ]
+}
