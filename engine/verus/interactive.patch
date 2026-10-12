@@ -3006,7 +3006,7 @@ new file mode 100644
 index 0000000..7a17e2d
 --- /dev/null
 +++ b/source/rust_verify/src/sail_oracle.rs
-@@ -0,0 +1,511 @@
+@@ -0,0 +1,591 @@
 +//! Opt-in diagnostic oracle: two independent owners inside one compiler callback.
 +//! Raw bytes are captured at the actual solver writer, never normalized or hashed
 +//! in place of comparison. This mode is not a production verification speed path.
@@ -3018,6 +3018,8 @@ index 0000000..7a17e2d
 +
 +const RAW_BUDGET: usize = 256 * 1024 * 1024;
 +const DIAGNOSTIC_BUDGET: usize = 16 * 1024 * 1024;
++/// Upper bound on confirming fresh arms after a mismatch (ADR 0038 amendment).
++const MAX_CONFIRMING_ARMS: usize = 8;
 +static GATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
 +static NEXT: AtomicUsize = AtomicUsize::new(0);
 +fn raw_budget() -> Arc<AtomicUsize> {
@@ -3315,13 +3317,31 @@ index 0000000..7a17e2d
 +    let used = raw_budget();
 +    let fresh_arm =
 +        Arc::new(Arm::new(root.join("fresh"), solver.clone(), used.clone()).map_err(io_error)?);
-+    let restored_arm = Arc::new(Arm::new(root.join("restored"), solver, used).map_err(io_error)?);
++    let restored_arm = Arc::new(
++        Arm::new(root.join("restored"), solver.clone(), used.clone()).map_err(io_error)?,
++    );
 +    let mut restored_ctx = fresh
 +        .sail_oracle_fork(krate)
 +        .ok_or_else(|| io_error(std::io::Error::other("independent restored owner")))?;
 +    if !sail_engine::oracle_equal_baselines(&fresh, &restored_ctx) {
 +        return Err(io_error(std::io::Error::other("initial independent baseline differs")));
 +    }
++    // A pristine owner of the same compiler input, never lowered. After a
++    // mismatch, each confirming fresh arm is an independent fork of it: if
++    // two fresh lowerings in this callback differ, stock lowering is
++    // nondeterministic for this bucket (VI-0015) and the mismatch cannot
++    // indict the restored lowering (ADR 0038 amendment).
++    let spare = fresh
++        .sail_oracle_fork(krate)
++        .ok_or_else(|| io_error(std::io::Error::other("independent confirming owner")))?;
++    if !sail_engine::oracle_equal_baselines(&fresh, &spare) {
++        return Err(io_error(std::io::Error::other("initial independent baseline differs")));
++    }
++    let confirming_arms = std::env::var("SAIL_ENGINE_ORACLE_FRESH_ARMS")
++        .ok()
++        .and_then(|value| value.parse::<usize>().ok())
++        .unwrap_or(1)
++        .clamp(1, MAX_CONFIRMING_ARMS);
 +    restored_ctx.sail_restore_effects(
 +        restored
 +            .sail_effects()
@@ -3438,7 +3458,67 @@ index 0000000..7a17e2d
 +    let final_effects_same = sail_engine::oracle_equal_baselines(&fresh, &restored_ctx);
 +    let passed =
 +        wire_same && diagnostic_same && full_same && lowering_effects_same && final_effects_same;
-+    let summary = serde_json::json!({"version":1,"same_callback":true,"restored_hit":true,"passed":passed,"ordered_wire_equal":wire_same,"diagnostics_equal":diagnostic_same,"outcomes_equal":full_same,"lowering_effects_equal":lowering_effects_same,"final_effects_equal":final_effects_same,"fresh_sessions":a.len(),"restored_sessions":b.len(),"fresh_verified":fresh_verifier.count_verified,"fresh_errors":fresh_verifier.count_errors,"restored_verified":restored_verifier.count_verified,"restored_errors":restored_verifier.count_errors,"fault":fault,"bucket":format!("{:?}",bucket)});
++    let second = if passed {
++        serde_json::Value::Null
++    } else {
++        let mut comparisons = Vec::new();
++        let mut equal = true;
++        for ordinal in 0..confirming_arms {
++            let name = format!("fresh{}", ordinal + 2);
++            let mut ctx = spare
++                .sail_oracle_fork(krate)
++                .ok_or_else(|| io_error(std::io::Error::other("independent confirming owner")))?;
++            if !sail_engine::oracle_equal_baselines(&spare, &ctx) {
++                return Err(io_error(std::io::Error::other("initial independent baseline differs")));
++            }
++            let arm =
++                Arc::new(Arm::new(root.join(&name), solver.clone(), used.clone()).map_err(io_error)?);
++            let reporter =
++                Collector::new(&root.join(&name).join("diagnostics.jsonl")).map_err(io_error)?;
++            let mut verifier = shadow(v, root.join(&name), arm.clone(), bucket);
++            let lowered = vir::ast_to_sst_crate::ast_to_sst_krate(
++                &mut ctx,
++                &reporter,
++                &v.get_bucket(bucket).funs,
++                krate,
++            )?;
++            let lowered = vir::poly::poly_krate_for_module(&mut ctx, &lowered);
++            verifier.verify_bucket(&reporter, &lowered, source_map, bucket, &mut ctx)?;
++            if verifier.deferred_errors.len() > 4096 {
++                return Err(io_error(std::io::Error::other("oracle deferred diagnostic count")));
++            }
++            reporter.record(
++                "deferred_errors",
++                &verifier
++                    .deferred_errors
++                    .iter()
++                    .map(|message| (message.clone() as ArcDynMessage, message.level))
++                    .collect::<Vec<_>>(),
++            );
++            let c = arm
++                .complete()
++                .ok_or_else(|| io_error(std::io::Error::other("incomplete confirming wire")))?;
++            let wire = a.len() == c.len()
++                && a.iter().zip(&c).all(|(a, c)| same_file(a, c).unwrap_or(false));
++            let diagnostics = fresh_reporter.valid.get()
++                && reporter.valid.get()
++                && same_file(
++                    &root.join("fresh/diagnostics.jsonl"),
++                    &root.join(&name).join("diagnostics.jsonl"),
++                )
++                .map_err(io_error)?;
++            let outcomes = same_outcomes(&fresh_verifier, &verifier);
++            let effects = sail_engine::oracle_equal_baselines(&fresh, &ctx);
++            let same = wire && diagnostics && outcomes && effects;
++            comparisons.push(serde_json::json!({"arm":name,"equal":same,"ordered_wire_equal":wire,"diagnostics_equal":diagnostics,"outcomes_equal":outcomes,"final_effects_equal":effects,"sessions":c.len()}));
++            if !same {
++                equal = false;
++                break;
++            }
++        }
++        serde_json::json!({"equal":equal,"arms":comparisons.len(),"requested_arms":confirming_arms,"comparisons":comparisons})
++    };
++    let summary = serde_json::json!({"version":1,"same_callback":true,"restored_hit":true,"passed":passed,"ordered_wire_equal":wire_same,"diagnostics_equal":diagnostic_same,"outcomes_equal":full_same,"lowering_effects_equal":lowering_effects_same,"final_effects_equal":final_effects_same,"fresh_sessions":a.len(),"restored_sessions":b.len(),"fresh_verified":fresh_verifier.count_verified,"fresh_errors":fresh_verifier.count_errors,"restored_verified":restored_verifier.count_verified,"restored_errors":restored_verifier.count_errors,"fault":fault,"bucket":format!("{:?}",bucket),"second_fresh":second});
 +    // The small summary contains counts/booleans, not cloned diagnostic or
 +    // outcome graphs. Bound both its allocation and the global artifact quota.
 +    let bytes =
