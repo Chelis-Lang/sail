@@ -369,12 +369,13 @@ mod tests {
         let queue = Queue::new(cache.budget());
         let frames = frame(&cache, "real");
         let initial = queue.budget.used_for_test();
-        let worker = Queue::spawn(&queue).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        // Queue before spawning; see the overlap fixture.
         queue.offer(
             &frames,
             &path,
             &sail_key::QueryKey(sail_key::sha256(bytes)).to_string(),
         );
+        let worker = Queue::spawn(&queue).unwrap_or_else(|e| unreachable!("fixture: {e}"));
         let deadline = Instant::now() + Duration::from_secs(30);
         while queue.active.load(Ordering::Acquire) && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(10));

@@ -34,6 +34,13 @@ impl Fixture {
             "family".to_owned(),
             Frames::new(Arc::new(vec![1]), Arc::new(vec![2]), Arc::new(vec![3])),
         );
+        // Queue the task before the worker exists: `offer` uses a nonblocking
+        // try-lock, and a just-spawned worker can briefly hold the slot mutex.
+        queue.offer(
+            &frames,
+            &path,
+            &sail_key::QueryKey(sail_key::sha256(&bytes)).to_string(),
+        );
         let worker = Queue::spawn(&queue).unwrap_or_else(|error| unreachable!("fixture: {error}"));
         let fixture = Self {
             root,
@@ -44,11 +51,6 @@ impl Fixture {
             frames: Some(frames),
             worker: Some(worker),
         };
-        fixture.queue.offer(
-            fixture.frames(),
-            &fixture.path,
-            &sail_key::QueryKey(sail_key::sha256(&fixture.bytes)).to_string(),
-        );
         assert!(fixture.queue.idle_for_test());
         assert!(
             fixture
