@@ -50,8 +50,9 @@ passes both unchanged collectors: each retains 200 total samples across four
 concurrent clients (100 Result and 100 Status reads), with complete Current
 graphs and p95 below 200 ms, followed by retained CLI/MCP scenarios. The
 [730 reader pass](docs/validation/m7-reader-730a321-terminal.md) remains a separate historical scope.
-Current-product reader acceptance, twofold real-project repair-loop
-improvement and complete standard/cache coverage remain outstanding;
+Current-product readers are prepared only; no collector or retained-workflow
+result is claimed for 387. Twofold real-project repair-loop improvement and
+complete standard/cache coverage remain outstanding;
 M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
 See [current validation](docs/validation/m7-compiler-script-bootstrap/source-inventory.json) and
 [known issues](docs/known-issues.md).

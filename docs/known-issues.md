@@ -37,8 +37,9 @@ For current experimental repair use:
 - The original real-project `730a321` benchmark fails before measured rounds:
   the second HumanEval repair warmup loses input freshness at a namespace
   binding and correctly returns unaccepted Unknown evidence. The exact changed
-  root was not captured. Optional independent ordinary-build recovery is a
-  source candidate pending native qualification; initial regeneration and
+  root was not captured. Optional independent ordinary-build recovery passes
+  selected source controls and the complete local gate; real-project qualification
+  remains open. Initial regeneration and
   unsupported fallback remain, with no proof promotion. The [602 positive-control
   failures and three Cargo path captures](validation/m7-bootstrap-602ec67-gate-failure.md)
   do not establish recovered publication or real-project gains;
@@ -53,9 +54,10 @@ For current experimental repair use:
   identifies this mechanism. The branch now retains ordinary contracts only
   after fully observed normal negative verification; its
   [fifteen affected Linux controls](validation/m7-negative-compiler-generation-first-controls.md)
-  pass. The [current frozen validation](validation/m7-core-730a321-validation.md)
-  passes 634 workspace tests, all 41 original solver controls and the complete
-  original installed repair fixture within its unchanged 120/30/5 limits. Earlier
+  pass. [Current frozen 387 validation](validation/m7-compiler-script-bootstrap/source-inventory.json)
+  passes 673 workspace tests, all remaining gate steps, all 41 original solver
+  controls, product installations and the complete original repair fixture
+  (90.588 seconds, 299 operations) within unchanged 120/30/5 limits. Earlier
   deadline failures remain retained. Proof acceptance and successful receipts
   remain independent; real-project performance is still unqualified.
 - The frozen `730a321` product passes full-result reader latency and retained
@@ -353,8 +355,8 @@ not change a test deadline or turn observed failures into passes.
 | Earlier complete local workspace gate | Frozen `d20d034`: all 528 workspace tests and every remaining gate step pass with the original HTTP limits. Previous timing failures remain retained; no real-project or source-engine acceptance is inferred. | [Complete local pass](../bench/validation/m7-linux-gate-d20d034-emulated-2026-10-11.json) |
 | Latest independent local continuation | Frozen `b34b2be`: installed examples, doctests, rustdoc, layering, dependency policy and generated benchmark-page equality pass after the failed gate. All 39 pinned-solver controls pass, including whole-session HTTP replay without Z3 and the restored-mount fault. This is a separate continuation, not a combined gate pass. | [Independent continuation](../bench/validation/m7-linux-core-continuation-b34b2be-emulated-2026-10-11.json) |
 | Earlier complete local solver suite | Frozen `d20d034`: all 39 original pinned-solver controls pass independently, including signed whole-session HTTP replay without starting Z3 and the restored-mount fault. | [Independent solver pass](../bench/validation/m7-linux-solver-d20d034-emulated-2026-10-11.json) |
-| Current release-product build | Frozen `d20d034`: release build passes; new native service-owned Sail, shim and conformance copies are byte-verified. Old sealed products remain unchanged. No proof or reader qualification follows from the copy. | [Release identity](../bench/validation/m7-linux-product-d20d034-emulated-2026-10-11.json), [ownership setup](native-product-setup.md) |
-| Earlier complete native CI | Frozen `c13b410`: every required job passes, including workspace 502/502, solver 39/39, original managed/repair scenarios and 33/33 conformance units in each round. The real mount-restoration control passes. Longest job is 399 seconds. This predates automatic sysroot handoff and does not qualify source reuse, real readers or repair speed. | [Current native pass](../bench/validation/m7-linux-ci-c13b410-native-2026-10-11.json) |
+| Earlier release-product build | Frozen `d20d034`: release build passes; new native service-owned Sail, shim and conformance copies are byte-verified. Old sealed products remain unchanged. No proof or reader qualification follows from the copy. | [Release identity](../bench/validation/m7-linux-product-d20d034-emulated-2026-10-11.json), [ownership setup](native-product-setup.md) |
+| Earlier complete native CI | Frozen `c13b410`: every required job passes, including workspace 502/502, solver 39/39, original managed/repair scenarios and 33/33 conformance units in each round. The real mount-restoration control passes. Longest job is 399 seconds. This predates automatic sysroot handoff and does not qualify source reuse, real readers or repair speed. | [Earlier native pass](../bench/validation/m7-linux-ci-c13b410-native-2026-10-11.json) |
 | Earlier complete native CI | Frozen `c5a76f1`: all required jobs pass, including workspace 498/498, solver 38/38, all three end-to-end phases and 33/33 conformance units in each original round. Longest job is 318 seconds. The earlier native solver failure remains retained with unknown exact phase cause. | [Earlier native pass](../bench/validation/m7-linux-ci-c5a7-native-2026-10-11.json), [earlier native failure](../bench/validation/m7-linux-ci-d333-native-failure-2026-10-11.json) |
 | Earlier passing native CI | Frozen `f94bbda`: all required jobs pass, including 485 workspace tests, 38 solver controls, legacy/managed/repair end-to-end and 33 conformance units in each of pass-through/fill/warm. Longest job is 368 seconds. This predates the configured HTTP setup fix and does not replace local or real-project acceptance. | [Complete native record](../bench/validation/m7-linux-ci-f94-native-2026-10-11.json) |
 | Earlier complete local workspace failure | Frozen `1e8b633`: strict Clippy and 521/524 tests pass; three original HTTP controls exceed 250 ms. The eight-reader case passes. The credential/disconnect case fails before its negative assertions; later gate steps are not reached. Cause remains unresolved. | [Corrected gate failure](validation/m7-http-gate-1e8b633.md) |
