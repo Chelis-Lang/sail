@@ -4,10 +4,26 @@ This file-only review binds source `730a3210151ca51b7e011121c4795553b0cfa3e5`.
 The [source inventory](m7-result-delivery-730-source.json) records exact bytes.
 No Rust change, Docker call, target read, compilation, daemon, proof or collector
 ran. The independent runtime-owner candidate remains test-only and unselected.
-The current product's original complete reader census is the decision point;
-this review supplies no new latency result or production selection.
+The [recorded complete original reader workflow](m7-reader-730a321-terminal.md)
+now passes both unchanged collectors and retained CLI/MCP. The optional designs
+below are deferred, unnecessary for the current original bound, unselected and
+unmeasured. This review adds no measurement or production change.
 
-## Evidence boundary
+## Current pass and evidence boundary
+
+Product 730 passes four readers and 200 samples per unchanged collector, with
+all Current, revision and live full-verifier predicates intact. Python Result
+p95 is 94.197 ms and Status 59.896 ms; Rust Result p95 is 67.483 ms and Status
+50.273 ms. All are strictly below the original 200 ms bound. Python receives
+and parses the complete 4,311,179-byte Current graph; Rust decodes the complete
+typed graph. The retained CLI/MCP workflow passes its original 120/30/5 bounds.
+The [terminal record](m7-reader-730a321-terminal.json) retains immutable seals,
+normal service exit and empty cleanup/archive/finalization error arrays.
+
+This pass is a different, unpaired scope from the historical failure below.
+It does not isolate a single optimization, establish a paired speedup, erase
+any failed scope or complete M7's separate real-project performance gates.
+No snapshot, Status or extra runtime-owner candidate supplied this pass.
 
 The [older descriptor product46 census](m7-descriptor-reader-terminal.md) failed
 Result p95 at 343.142 ms with all 200 Python samples admitted and the same real
@@ -28,8 +44,8 @@ Neither result identifies the historical live wait or justifies a buffer change.
 Product 730 includes selected guarded-output overlap and exact unchanged metadata
 preservation. Their [output component](m7-result-output-overlap-native.md) and
 [metadata component](m7-preserve-freshness-metadata-replay.md) remain narrower
-than the live reader criterion. No earlier stage measurement certifies the
-current guarded/fallback ratio or current full-client cost.
+than the live reader criterion. The current full-client pass does not isolate the
+guarded/fallback ratio or a causal contribution from either component.
 
 ## Current hot path and allocation map
 
@@ -52,7 +68,7 @@ job before and after each sample. Those active Status reads take the noncomplete
 fast path, whereas timed completed Status reads always validate complete stdout.
 The complete graphs, original Python source and this timing boundary remain fixed.
 
-## Conditional candidate: immutable input snapshot delivery
+## Deferred design: immutable input snapshot delivery
 
 `freshness.rs::refresh_outcome` copies validation.inputs before checking the
 original owner, then copies it again into slot.coherent. `await_validation`
@@ -62,8 +78,9 @@ InputSnapshots include roots/exclusions and two sets of exact path inventories.
 revision-mismatch, Current, Historical and Unknown branch order. This allocation
 seam exists on both Status and Result; no measured share of 51.489 ms is claimed.
 
-If current freshness remains material, the candidate is an immutable snapshot
-inside the existing RuntimeValidation/coherent state, plus a lightweight daemon
+If later scaling measurements show this copying is material, the design is an
+immutable snapshot inside the existing RuntimeValidation/coherent state, plus a
+lightweight daemon
 inspection result. The original validation still runs before return: same
 request, full owner, entry checkpoint, 100 ms owner wait, final pointer/generation
 and outer namespace checks. Native loss still invalidates and runs the original
@@ -81,16 +98,18 @@ independent mutation of full caller snapshots, body/config/sidecar/hardlink/mmap
 changes, helper loss, old checkpoints, context mismatch, generation/owner
 replacement and cancellation remain necessary controls. A copy-count sensitivity
 control should identify the removed inventory copies; whole-operation comparison
-is still required. This design is not implemented or selected.
+is still required. This design is unimplemented, unselected and unmeasured;
+the current bound already passes without it.
 
-## Bounded conditional candidate: completed Status output checks
+## Deferred design: completed Status output checks
 
 `store.rs::status_traced` still always reads and hashes complete stdout even when
 the exact same completed job already has a continuously guarded cached output.
 Unlike Result, it never uses `Queue::validate`. This is concrete repeated server
 work competing with Result readers; it is not an established cause of Result
-p95 and no saving is claimed. If new rows support this cost, the narrow candidate
-is to share the existing output-only owner for completed Status:
+p95 and no saving is claimed. If future workload measurements support this
+cost, the narrow design is to share the existing output-only owner for completed
+Status:
 
 1. Derive the same exact Stored key and retain its existing charged frame family.
    Do not create a new guard, cache Currentness or fill a frame in a Status RPC.
@@ -109,7 +128,8 @@ No extra owner, helper, queue or retained graph is needed. The existing 128 MiB
 family charge survives in-flight eviction. Additional simultaneous scratch
 admissions could nevertheless make guarded Result refuse more often. Selection
 therefore needs a mixed four-reader complete-operation comparison, not a Status
-microbenchmark. This candidate is not implemented while the new census is pending.
+microbenchmark. This design remains unimplemented, unselected and unmeasured;
+it is unnecessary for the current passing original census.
 
 Required controls include exact Status equality for Current/Historical/Unknown,
 no graph copy or owner construction, missing/old records and quota fallback;
@@ -119,7 +139,7 @@ and shutdown/helper loss. A restored-output or substituted-owner sensitivity
 control must fail the prospective fast path and exercise original fallback.
 Both full Result graphs, sizes, wire order and original output errors must stay
 exact. The original four-reader/200-sample strict p95 below 200 ms and five-second
-RPC limits remain the eventual acceptance oracle.
+RPC limits remain mandatory for any future implementation.
 
 ## Admission and delivery limits that require evidence first
 
@@ -134,9 +154,9 @@ generation plus a separately reviewed bounded admission policy. No retry is
 proposed or introduced by this review.
 
 A frame miss can incur full encoding and output construction; a hit cannot be
-made cheaper by another serialization memo. If new Current rows are guarded
-hits with small pre-output cost and large write cost, no copy/serde change is
-supported. Existing write_all already sends the exact complete slice. Larger
+made cheaper by another serialization memo. Guarded Current hits with small
+pre-output cost and large write cost alone support no copy/serde change. No
+additional transport change is selected. Existing write_all already sends the exact complete slice. Larger
 socket buffers, graph trimming, compression/new protocol, altered Python parsing
 and changed reader concurrency or deadlines are outside this review.
 
@@ -144,5 +164,6 @@ A transport design should be considered only after concrete attribution of
 accept/dispatch or send CPU versus receiver backpressure. The current bounded
 ring has no per-call identifier joining all client samples and can overwrite
 early rows. Missing coverage must remain explicit; stage quantiles cannot
-manufacture a complete-client explanation. If the current original census
-passes, no additional candidate is needed to claim that observed scope.
+manufacture a complete-client explanation. The current original census has
+passed; no additional candidate is needed for that observed scope. These designs
+are deferred for potential future scaling, not remedies needed to clear its bound.

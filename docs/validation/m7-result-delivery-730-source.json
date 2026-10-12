@@ -68,7 +68,7 @@
     "rpc_seconds": 5,
     "complete_python_json_decode": true
   },
-  "selection_prerequisite": "actual current-product failure attribution followed by mixed complete-operation controls; no new candidate if the original current census passes",
+  "selection_prerequisite": "No current selection needed: original current reader and retained workflow pass; any future scaling change needs concrete cost evidence and meaningful controls",
   "unchanged_constraints": [
     "complete response graphs and wire order",
     "fresh output-byte seal and independent input currentness on each RPC",
@@ -80,5 +80,13 @@
   "conditional_candidates": [
     "same-path immutable InputSnapshot ownership and lightweight daemon revision/complete inspection; all original barriers and full inspect API retained",
     "existing same-owner guarded output checks for completed Status, with original independent freshness and complete fallback"
-  ]
+  ],
+  "design_status": "deferred-unselected-unmeasured-unnecessary-for-current-original-bound",
+  "recorded_validation": {
+    "path": "docs/validation/m7-reader-730a321-terminal.json",
+    "bytes": 13447,
+    "sha256": "2d41866168a3b41ee4955e45bb0960fc6a2498d9b75a25dd631212c613d811ec",
+    "status": "PASS",
+    "scope": "complete original reader and retained workflow; not a paired causal speedup or overall M7 acceptance"
+  }
 }
