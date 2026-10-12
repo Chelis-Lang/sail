@@ -457,9 +457,11 @@ On the completed `verification_result`, inspect
 Use the exact package/target/function identities in the report for explanations
 and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argument.
 
-Current `b89546c` passes the [original repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
-The [complete 730 reader/retained workflow](validation/m7-reader-730a321-terminal.md)
-is historical; current-product reader replay remains required.
+Frozen `b89546c` passes the [original repair fixture and complete reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+Both unchanged collectors preserve full Current graphs and p95 below 200 ms,
+followed by passing retained CLI/MCP scenarios. The newer baseline/source-inventory
+implementation remains under validation and receives no transferred product credit.
+The [730 reader/retained pass](validation/m7-reader-730a321-terminal.md) is a separate historical scope.
 The reader p95 values come from the unchanged Python and Rust collectors, rather
 than an MCP-specific timing census; retained MCP scenarios establish functional
 behavior. Real-project repair performance and complete standard/cache coverage

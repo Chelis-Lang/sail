@@ -2,9 +2,10 @@
 
 **Experimental (M7):** the selected source engine passes its preparation-memory
 and lowering qualification. Current `b89546c` passes the
-[complete original CLI/MCP repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
-The [full concurrent-reader pass](validation/m7-reader-730a321-terminal.md) is
-historical 730 evidence; current-product replay remains required.
+[complete original CLI/MCP repair fixture and full reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+Both unchanged collectors preserve full Current graphs and p95 below 200 ms;
+retained CLI/MCP scenarios pass. The newer baseline/source-inventory code does
+not inherit this installed-product result and remains under validation.
 Real-project performance and complete standard/cache corpus coverage remain
 unfinished.
 See [known issues](known-issues.md) and the

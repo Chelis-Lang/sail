@@ -84,6 +84,8 @@ sail jobs events JOB_ID --follow --output jsonl
 sail jobs result JOB_ID --output json
 # Save only after the completed result has value.repair.accepted = true.
 sail baseline save before-repair --job JOB_ID
+sail baseline list
+sail baseline get before-repair --output json
 sail compare LATER_JOB_ID --baseline before-repair --output json
 ```
 
@@ -93,6 +95,8 @@ independent complete Current full-target success after compiler completion.
 Keep redirected event logs and result files outside watched package roots while
 verification runs; the walkthrough shows a separate capture directory. Saved
 baselines retain establishing evidence and never prove today's inputs.
+`baseline get` retrieves the complete Historical snapshot even after its job is
+pruned; provisional reports remain provisional. See the [baseline guide](docs/mcp.md).
 [The complete walkthrough](docs/proof-repair-walkthrough.md) includes a runnable
 project, focus-pass/full-failure example, exact failure identities, event cursors,
 cancellation and MCP calls. [The repair contract](docs/proof-repair.md) and
@@ -137,7 +141,9 @@ The asynchronous tools `start_verification`, `verification_status`,
 `verification_result` and `cancel_verification` use the same durable jobs as
 the CLI, so an agent can inspect results while verification continues.
 Experimental repair tools add `start_repair_validation`, `verification_events`,
-`explain_failure` and `compare_verification`. Durable read-only lookups keep
+`explain_failure`, `compare_verification`, `save_baseline`, `list_baselines` and
+`get_baseline`. Baseline tools expose the same immutable Historical evidence as
+the CLI, independently of job pruning. Durable read-only lookups keep
 bounded persistent clients while authorizing each read with a complete fresh
 service reply; writes and verification lifecycle ownership retain their existing
 paths. Register the stdio command `sail mcp`, for example

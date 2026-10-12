@@ -157,7 +157,11 @@ producer also closes and joins on malformed-frame errors. Neither example is a
 product transport option or a replacement for the frozen reader collectors.
 
 The original Python and Rust reader collectors and their four-reader,
-200-sample, 200 ms p95 and five-second RPC requirements remain unchanged. The
+200-sample, 200 ms p95 and five-second RPC requirements remain unchanged. Frozen
+[`b89546c`](validation/m7-compiler-script-bootstrap/scheduling-recovery.json) passes both
+complete collectors and retained CLI/MCP scenarios: Python Result/Status p95
+91.227/56.989 ms and Rust 83.867/44.371 ms. Each collector retains 200 full
+Current samples while the same selected verifier remains live. The separate
 [installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both:
 Python Result/Status p95 94.197/59.896 ms and Rust Result/Status p95 67.483/50.273 ms.
 The Current Result remains a complete graph above 4 MiB; no reduced payload or
@@ -312,7 +316,8 @@ There is no new user flag. Construction and inspection share the existing
 128 MiB frame-retention budget; unavailable quota costs the shortcut. The
 [35 affected controls and strict checks](validation/m7-guarded-output-source-controls.md)
 pass, including real restored-write fallback and complete frame equivalence.
-The installed `730a321` product passes the
+Frozen `b89546c` passes the [original full reader and retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json),
+with full Current graphs and unchanged p95 limits. The earlier `730a321` product passes the
 [original full reader workflow](validation/m7-reader-730a321-terminal.md), including
 both collectors and retained CLI/MCP scenarios. See
 [ADR 0035](decisions/0035-guarded-retained-output-digests.md) and the

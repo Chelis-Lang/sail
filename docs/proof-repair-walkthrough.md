@@ -1,11 +1,12 @@
 # Repair workflow walkthrough
 
 This walkthrough covers the implemented experimental workflow. Current `b89546c`
-passes the [original repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json);
-the complete concurrent-reader pass is retained on
-the earlier 730 product. Current reader replay, real-project M7 speed and complete
-standard/cache coverage remain
-unfinished. See [the roadmap](ROADMAP.md),
+passes the [original repair fixture and complete reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+Both unchanged four-client collectors retain full Current graphs and p95 below
+200 ms; retained CLI/MCP scenarios also pass. This evidence binds b895, not the
+newer baseline/source-inventory implementation whose validation remains pending.
+Real-project M7 speed and complete standard/cache coverage remain unfinished.
+See [the roadmap](ROADMAP.md),
 [known issues](known-issues.md) and [acceptance requirements](bench/m7-repair-acceptance.md).
 The commands and response fields were checked against the CLI/MCP implementation;
 this documentation change does not constitute a new proof run.
@@ -34,8 +35,8 @@ that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
 The selected runtime is experimental. Its complete source qualification now
 passes, including ownership accounting, genuine reuse across edits and exact
-full HumanEval results. Current [installed repair checks](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
-and historical [730 reader workflow](validation/m7-reader-730a321-terminal.md) pass separately;
+full HumanEval results. The [b895 installed repair and reader checks](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+pass; the [730 reader workflow](validation/m7-reader-730a321-terminal.md) remains a separate historical pass.
 M7 real-project performance remains unqualified. See
 [engine qualification](../engine/verus/README.md).
 
@@ -130,6 +131,7 @@ print("Complete Current full validation accepted this baseline")
 PY
 sail baseline save before-repair --job "$BEFORE"
 sail baseline list --output json
+sail baseline get before-repair --output json
 ```
 
 Continue only after the checks succeed. Background submission returns a **Status**
