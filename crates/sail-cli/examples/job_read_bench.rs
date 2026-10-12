@@ -143,7 +143,12 @@ fn run(args: &Args) -> io::Result<bool> {
         .input_revision
         .clone()
         .filter(|revision| current(&done, &args.job, revision))
-        .ok_or_else(|| io::Error::other("the read job is not completed and Current"))?;
+        .ok_or_else(|| {
+            io::Error::other(format!(
+                "the read job is not completed and Current: {:?}, {:?}, {:?}",
+                done.state, done.currentness, done.error
+            ))
+        })?;
     let barrier = std::sync::Barrier::new(CLIENTS);
     let samples: Vec<Sample> = std::thread::scope(|scope| {
         let (client, barrier, revision) = (&client, &barrier, revision.as_str());

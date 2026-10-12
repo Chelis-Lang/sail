@@ -46,22 +46,25 @@ finish() { # wait for job $1 to end; print its result document
   sail jobs result "$1" --output json
 }
 
-# Setup (unmeasured): an ordinary full proof, then the repair context. The
-# first repair run may only establish build-script declarations; the second
-# must be accepted and Current.
-(cd "$out/baseline" && sail verify --incremental --output json "${selection[@]}" >"$out/baseline-verify.json")
-job=
-for attempt in 1 2; do
-  candidate="$(submit baseline)"
-  finish "$candidate" >"$out/baseline-$attempt.json"
-  if [ "$(field value repair accepted <"$out/baseline-$attempt.json")" = True ] &&
-     [ "$(field value result currentness <"$out/baseline-$attempt.json")" = current ]; then
-    job="$candidate"; break
-  fi
-done
-[ -n "$job" ] || { echo "reader-gate: no accepted Current repair job" >&2; exit 1; }
+# Setup (unmeasured), in each copy: an ordinary full proof, then the repair
+# context. A first repair run may only establish build-script declarations;
+# a second must be accepted and Current.
+warm() {
+  (cd "$out/$1" && sail verify --incremental --output json "${selection[@]}" >"$out/$1-verify.json")
+  for attempt in 1 2; do
+    candidate="$(submit "$1")"
+    finish "$candidate" >"$out/$1-$attempt.json"
+    if [ "$(field value repair accepted <"$out/$1-$attempt.json")" = True ] &&
+       [ "$(field value result currentness <"$out/$1-$attempt.json")" = current ]; then
+      echo "$candidate"; return
+    fi
+  done
+  echo "reader-gate: no accepted Current repair job in $1" >&2; exit 1
+}
+job="$(warm baseline)"
+warm active >/dev/null
 
-# Measured: a cold repair job in a second copy is the active verification.
+# Measured: a further repair in the second copy is the active verification.
 # Start reading once its verifier for the selected crate is live, and require
 # the same verifier to be live afterwards.
 active="$(submit active)"
