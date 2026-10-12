@@ -6,8 +6,9 @@ workspace tests and the solver were unattempted. The correction borrows the
 unchanged full context hash from its owning report and uses unambiguous names.
 A separately identified injected-environment fixture mistake is also corrected:
 an empty export file is not authority; the original route must have no exported
-records, refuse admission and force cleaning. The first failed scope remains
-failed. This source candidate remains unselected. It addresses the concrete
+records, refuse admission and force cleaning. Both native gate attempts remain failed: the second strict attempt rejected
+import placement and the stack buffer. The correction moves the import and uses
+the same fixed buffer size on heap. Tests and solver were unattempted in both. This source candidate remains unselected. It addresses the concrete
 missing-generation mechanism in the [730 benchmark failure](../m7-benchmark-730a321-bootstrap-failure.md): cleaning a script regenerates a declared Rust include after the original proof snapshot. The proof guard must still reject that changed binding. The exact failed historical binding was not captured; this mechanism is not a historical cause claim.
 
 The optional owner is acquired before cleaning only when a nonempty, entirely
@@ -31,7 +32,10 @@ sharing except the pinned explicit `RUSTC_BOOTSTRAP=1`. The shared family/bootst
 policy also refuses Cargo dynamic-library variables, `RUSTDOC`, `RUSTC_LINKER`,
 removed `RUSTFLAGS` and dependency metadata. Cargo documents its child environment
 in the [official environment reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts);
-a parent value is not a certificate for an injected child value.
+a parent value is not a certificate for an injected child value. An environment
+with a non-UTF-8 key or value refuses bootstrap before native acquisition;
+a declared key whose current value is non-UTF-8 refuses either publication
+route. Such a value is never encoded as absence or normalized.
 
 At publication, bounded hashes are compared again, exact sealed output contracts
 are reread, the effective environment is checked again, and both independent
@@ -68,13 +72,14 @@ not construction-allocation, allocator-RSS, kernel or child-process limits.
 Bounded JSON can allocate expanded parsed graphs transiently; no whole-peak
 quota is claimed. [Source identities and limits](source.json) bind the draft.
 
-Eight Linux controls are drafted, all unexecuted. They use actual tiny offline
+Nine Linux controls are drafted, all unexecuted. They use actual tiny offline
 Cargo compilation and original native owners: independent publication while the
 proof guard still refuses generated input; fresh-binary/dep-info/environment
 lineage refusal; restored bytes/mtime and cancellation; external aliases,
 directories, build dependencies and duplicate units; helper loss and invalid
 export recovery; empty exports and scriptless fast refusal; joint runtime
-identity/sidecar binding; and actual Cargo dynamic-library environment declaration refusal in both publication routes. Their Cargo supervisor has a 60-second limit plus a
+identity/sidecar binding; and actual Cargo dynamic-library environment declaration refusal in both publication routes; and isolated same-test child processes receiving
+non-UTF-8 keys/values through `Command` without process environment mutation. Their Cargo supervisor has a 60-second limit plus a
 two-second termination policy, file-backed captures capped when read at 1 MiB,
 and bounded error cleanup. Exceptional supervisor teardown does not certify
 complete descendant closure. No control fabricates a Current proof.

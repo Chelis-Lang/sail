@@ -133,6 +133,9 @@ fn matches(record: &BuildInput, data: &Value, target: &Path) -> bool {
 // Parent values do not describe Cargo-injected or removed child variables.
 // RUSTC_BOOTSTRAP is the sole pinned, explicitly invoked exception.
 fn allowed_environment(key: &str) -> bool {
+    if matches!(std::env::var(key), Err(std::env::VarError::NotUnicode(_))) {
+        return false;
+    }
     key == "RUSTC_BOOTSTRAP"
         || !(key.starts_with("SAIL_")
             || key.starts_with("VERUS_")

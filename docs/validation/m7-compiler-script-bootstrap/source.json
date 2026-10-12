@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "scope": "source-only independent ordinary-script bootstrap candidate",
-  "status": "native qualification pending after retained strict failures; unselected product",
+  "status": "native qualification pending after retained strict and bootstrap test failures; unselected product",
   "base": "247cd28",
   "source_sha256": {
-    "crates/sail-verus/src/managed/build_inputs_family.rs": "1f6914fa4dc8a05d5683cb4b4f5aa63bc78352c2343e29df459b75e02a4169ed",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "1e92a925575d02cf12f4b3c0c3ce367104d60e10fa0215bc82bd7fd44b91ba64",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "82adce9e5d6f5de2e3653aac4d115776cd28adc7282eada7634f4811f863e9cd",
+    "crates/sail-verus/src/managed/build_inputs_family.rs": "caef3ba1fa9335237ca2880b61939c634801cea79aea943430a592db9d78d6c8",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "f06d5be3010bc0eb1a649ed23d9f07abdb2f3d4c067f9326490f5123ee1a70cd",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "b8af1249c0661787eb44c3a8385aad23570eaf6343c4aa8c2f19b12db1c610d8",
     "crates/sail-verus/src/managed/runner.rs": "d817c121abea4b71e4558acc96590b47f1ae95683299e91b03ee98808230a1b2",
     "crates/sail-verus/src/managed/source_inputs.rs": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
   },
   "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
-  "draft_linux_controls": 8,
+  "draft_linux_controls": 9,
   "sensitivity": {
     "patch": "docs/validation/m7-compiler-script-bootstrap/disable-publication.patch",
-    "sha256": "d6a5a2c6a29d618bd1bf3bd0693d295bf8a78fbc55d02abae7102e115256841e",
+    "sha256": "b98c55843934dee33e66bf2c76854e6f3a730ac87df07da1104855f818527031",
     "effect": "remove only independent ordinary-generation emission",
     "expected": "unchanged bootstrap export-exists assertion fails; actual outcome unexecuted"
   },
@@ -39,7 +39,8 @@
     "interesting_journal_encoded_bytes": 262144,
     "interesting_journal_rows": 256,
     "journal_line_bytes": 32768,
-    "build_input_records": 128
+    "build_input_records": 128,
+    "hash_buffer_requested_heap_bytes": 65536
   },
   "limits_are_not": [
     "enforced construction allocation or RSS ceiling",
@@ -67,7 +68,7 @@
     "91a2cb8"
   ],
   "initial_native_gate": {
-    "root_source": "e8345f3",
+    "root_source": "e8345f3ac1e64fc9da2125a76f985d927f95f6ed",
     "status": "FAIL during strict compilation; workspace tests and solver unattempted",
     "failures": [
       "runner similar_names owner versus owned",
@@ -77,12 +78,23 @@
   },
   "static_fixture_correction": "Original filtered publication deliberately emits an empty envelope; injected-environment control now requires exact empty records, begin=false and forced clean, instead of incorrect file absence.",
   "second_native_gate": {
-    "root_source": "378a12c",
-    "status": "FAIL during strict linting; workspace tests and solver unattempted",
+    "root_source": "378a12c33238e409af7d77826394fd9b6a5bf27a",
+    "status": "FAIL during strict compilation; tests and solver unattempted",
     "failures": [
-      "items_after_statements import in record",
-      "large_stack_arrays fixed 64 KiB hash buffer"
+      "items_after_statements for MetadataExt import",
+      "large_stack_arrays for 64 KiB hash buffer"
     ],
-    "correction": "Move import before statements and retain identical fixed 64 KiB stream buffer on heap; no predicate or resource admission change."
+    "correction": "Move the same import before statements; allocate the unchanged fixed 64 KiB streaming buffer on heap."
+  },
+  "non_utf8_followup": "Capture rejects any non-UTF-8 key/value before native acquisition; shared declared-key policy refuses VarError::NotUnicode. Isolated bounded same-test subprocesses inject non-UTF-8 LANG value and environment key via Command, with no unsafe process environment mutation.",
+  "third_native_gate": {
+    "root_source": "602ec67",
+    "status": "FAIL after strict PASS; 646/649 workspace tests pass, three bootstrap baseline tests fail; solver and later gate steps unattempted",
+    "failed_controls": [
+      "bootstrap_actual_cargo_can_publish_ordinary_contract_without_current_proof",
+      "bootstrap_empty_generation_and_scriptless_workload_do_not_block_recovery",
+      "bootstrap_reused_binary_unguarded_depinfo_and_injected_env_are_refused"
+    ],
+    "fresh_cargo_diagnostic": "Actual tiny Cargo emits relative build.rs; actual member Cargo emits member/build.rs from both workspace and member launch directories. No compiler working-directory path fix is yet qualified."
   }
 }

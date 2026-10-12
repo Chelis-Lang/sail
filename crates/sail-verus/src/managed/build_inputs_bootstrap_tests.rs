@@ -33,23 +33,30 @@ impl Drop for CargoChild {
 // GNU timeout owns its Cargo process group, TERM at 60 s and KILL after 2 s.
 // File-backed captures avoid pipe-reader joins and retain bounded reads. These
 // local Cargo controls make no orphan or kernel-uninterruptibility guarantee.
-fn cargo_output(
+fn command_output(
     root: &Path,
+    program: &std::ffi::OsStr,
     arguments: &[std::ffi::OsString],
+    environment: &[(&std::ffi::OsStr, &std::ffi::OsStr)],
 ) -> Result<std::process::Output, Box<dyn std::error::Error>> {
     use std::io::Read as _;
     let capture = root.join("cache");
     std::fs::create_dir_all(&capture)?;
     let stdout_path = capture.join("cargo.stdout");
     let stderr_path = capture.join("cargo.stderr");
-    let child = std::process::Command::new("timeout")
+    let mut command = std::process::Command::new("timeout");
+    command
         .args(["--signal=TERM", "--kill-after=2s", "60s"])
-        .arg(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
+        .arg(program)
         .args(arguments)
         .current_dir(root)
         .env("RUSTC_BOOTSTRAP", "1")
         .env_remove("RUSTC_WRAPPER")
-        .env_remove("RUSTC_WORKSPACE_WRAPPER")
+        .env_remove("RUSTC_WORKSPACE_WRAPPER");
+    for (key, value) in environment {
+        command.env(key, value);
+    }
+    let child = command
         .stdout(std::fs::File::create(&stdout_path)?)
         .stderr(std::fs::File::create(&stderr_path)?)
         .spawn()?;
@@ -85,6 +92,18 @@ fn cargo_output(
         stdout: read(&stdout_path)?,
         stderr: read(&stderr_path)?,
     })
+}
+
+fn cargo_output(
+    root: &Path,
+    arguments: &[std::ffi::OsString],
+) -> Result<std::process::Output, Box<dyn std::error::Error>> {
+    command_output(
+        root,
+        &std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()),
+        arguments,
+        &[],
+    )
 }
 
 struct Fixture {
@@ -637,6 +656,67 @@ fn bootstrap_actual_cargo_injected_environment_is_not_parent_authority() -> Test
         "DEP_METADATA",
     ] {
         assert!(!super::super::allowed_environment(key));
+    }
+    Ok(())
+}
+
+#[test]
+fn bootstrap_non_utf8_environment_is_not_absent_authority() -> TestResult {
+    use std::ffi::{OsStr, OsString};
+    use std::os::unix::ffi::OsStringExt as _;
+    let marker = "SAIL_TEST_BOOTSTRAP_NON_UTF8_CHILD";
+    if let Some(mode) = std::env::var_os(marker) {
+        assert!(environment().is_none());
+        let path = std::env::var_os("SAIL_TEST_BOOTSTRAP_DATA").ok_or("child metadata absent")?;
+        let data: Value = serde_json::from_slice(
+            &super::super::bytes(Path::new(&path)).ok_or("child metadata unreadable")?,
+        )?;
+        assert!(Bootstrap::eligible_workload(&data));
+        assert!(Bootstrap::begin(&data, &[], &[]).is_none());
+        if mode.to_str() == Some("value") {
+            assert!(matches!(
+                std::env::var("LANG"),
+                Err(std::env::VarError::NotUnicode(_))
+            ));
+            assert!(!super::super::allowed_environment("LANG"));
+        }
+        return Ok(());
+    }
+    assert!(environment().is_some());
+    assert!(super::super::allowed_environment("LANG"));
+    let fixture = Fixture::new()?;
+    let metadata = fixture.root.join("cache/utf8-test-metadata.json");
+    std::fs::write(&metadata, serde_json::to_vec(&fixture.data)?)?;
+    let arguments = [
+        OsString::from(
+            "managed::build_inputs::family::bootstrap::tests::bootstrap_non_utf8_environment_is_not_absent_authority",
+        ),
+        OsString::from("--exact"),
+        OsString::from("--test-threads=1"),
+    ];
+    let invalid = OsString::from_vec(vec![0xff]);
+    let invalid_key = OsString::from_vec(b"SAIL_TEST_INVALID_\xff".to_vec());
+    for (mode, key, value) in [
+        ("value", OsStr::new("LANG"), invalid.as_os_str()),
+        ("key", invalid_key.as_os_str(), OsStr::new("value")),
+    ] {
+        let output = command_output(
+            &fixture.root,
+            std::env::current_exe()?.as_os_str(),
+            &arguments,
+            &[
+                (OsStr::new(marker), OsStr::new(mode)),
+                (OsStr::new("SAIL_TEST_BOOTSTRAP_DATA"), metadata.as_os_str()),
+                (key, value),
+            ],
+        )?;
+        assert!(
+            output.status.success(),
+            "non-UTF-8 child:{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = std::str::from_utf8(&output.stdout)?;
+        assert!(stdout.contains("1 passed; 0 failed"));
     }
     Ok(())
 }
