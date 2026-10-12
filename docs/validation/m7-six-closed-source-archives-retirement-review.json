@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "kind": "independent-host-lossless-retirement-review",
+  "status": "PASS for mapping and recoverable bytes; no fresh holder or native census",
+  "reviewed_commit": "ff85036ce37ae2e0ca9246f31e61c3e6790678b8",
+  "reviewed_document_sha256": "f564b436729fce9707dfbfaac5ee9dd2ab636ca3af9d9f005230b18625dceef9",
+  "raw_result_seal": {
+    "bytes": 6724,
+    "sha256": "d1263ac19770f7d4f1a5c7f1978f1f308b7fcdcd5f0fd579afd004a17de7a83e"
+  },
+  "retirement_controller_seal": {
+    "bytes": 6797,
+    "sha256": "f2961f320db707da860fcb7b06df685ffb121da7cca97354a9d280461c186ce2"
+  },
+  "records": [
+    {
+      "original_name": "sail-m7-negative-generation-source-a9638b4.tar",
+      "compressed_name": "sail-m7-negative-generation-source-a9638b4.tar.gz",
+      "compressed": {
+        "bytes": 6238247,
+        "sha256": "a9b1308974027ee9c9124ade3c55cfcd4f7b53687ed7670e798c91a5b6f61718"
+      },
+      "decompressed": {
+        "bytes": 25784320,
+        "sha256": "d9278f03d749fe56bcf1710d78e609d8c9ec24ec916207d1944973cd0ca630ba"
+      },
+      "original_path_absent": true,
+      "current_compressed_mode": "0o600"
+    },
+    {
+      "original_name": "sail-m7-fault-cleanup-source.tar",
+      "compressed_name": "sail-m7-fault-cleanup-source.tar.gz",
+      "compressed": {
+        "bytes": 6162648,
+        "sha256": "e3479da80becaa639455d275b03c70e5cd924ea2a39386b2c92f5bee54b21927"
+      },
+      "decompressed": {
+        "bytes": 25518080,
+        "sha256": "c4cc3c818877bc384b7b7b42c8df685d7139f31b5d76445fd3961c4a448cd9e4"
+      },
+      "original_path_absent": true,
+      "current_compressed_mode": "0o600"
+    },
+    {
+      "original_name": "sail-m7-output-service-169d6d7.tar",
+      "compressed_name": "sail-m7-output-service-169d6d7.tar.gz",
+      "compressed": {
+        "bytes": 6111855,
+        "sha256": "3cb3610e22184ca6630c23345e4a1dd0b4efaab1fcda6fb5bb720e8402547403"
+      },
+      "decompressed": {
+        "bytes": 25354240,
+        "sha256": "0ab27aa639f3b56a0a9e71a13fd86da22bcdb9e0db8c42b873d2437b20049ed5"
+      },
+      "original_path_absent": true,
+      "current_compressed_mode": "0o600"
+    },
+    {
+      "original_name": "sail-m7-output-service-617fedc.tar",
+      "compressed_name": "sail-m7-output-service-617fedc.tar.gz",
+      "compressed": {
+        "bytes": 6109344,
+        "sha256": "77f005f828e40b65edf208f81fa92c606f8b09417923d7db6826099f5a2af3ea"
+      },
+      "decompressed": {
+        "bytes": 25344000,
+        "sha256": "966bdc2d89cd49647aa85a7c0cc9bfd7f27c8163abc8c64948446b4c2d3fc595"
+      },
+      "original_path_absent": true,
+      "current_compressed_mode": "0o600"
+    },
+    {
+      "original_name": "sail-m7-output-service-56bb72e.tar",
+      "compressed_name": "sail-m7-output-service-56bb72e.tar.gz",
+      "compressed": {
+        "bytes": 6109265,
+        "sha256": "04bbce265acbe46104e9928afe4b3a03b3d8f9c76f8ec7cb5dc381e61e306db6"
+      },
+      "decompressed": {
+        "bytes": 25344000,
+        "sha256": "b0eceee9a94a4df3636c9462f85b6b316ff5f7cfd6fb08ff6013c304b761aef7"
+      },
+      "original_path_absent": true,
+      "current_compressed_mode": "0o600"
+    },
+    {
+      "original_name": "sail-m7-source-de36d45.tar",
+      "compressed_name": "sail-m7-source-de36d45.tar.gz",
+      "compressed": {
+        "bytes": 2761430,
+        "sha256": "751f8c5d7b8eff810b8eafa8ec21ff084dfbd760765f5b31d6626d6b42e7dcaa"
+      },
+      "decompressed": {
+        "bytes": 11182080,
+        "sha256": "81eee8091b2bd2a4f5c4d306c3c0dff2f77ea20b7cee105888a61d272bf0b50c"
+      },
+      "original_path_absent": true,
+      "current_compressed_mode": "0o600"
+    }
+  ],
+  "raw_holder_logs_empty": true,
+  "original_holder_result": "each original recorded lsof returned1 with zero stdout/stderr before unlink; this review does not retroactively observe holders",
+  "retirement_order_review": "fixed six-file allowlist, original nofollow opened/named identity+SHA checks, complete gzip readback before unlink, immediate bounded lsof, final compressed/decompressed readback; result records each original retirement",
+  "removed_logical_bytes": 138526720,
+  "removed_allocated_bytes": 138530816,
+  "compressed_bytes": 33492789,
+  "compressed_allocated_bytes": 33509376,
+  "logical_representation_savings": 105033931,
+  "allocated_representation_difference": 105021440,
+  "physical_reclamation_claim": false,
+  "scope": "only six closed old host source tar archives; current c2/730 products, proof/benchmark archives, native images and raw logs excluded",
+  "native_actors": false,
+  "qualification_credit": false
+}
