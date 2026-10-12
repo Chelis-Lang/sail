@@ -73,7 +73,7 @@ Each sample records one arm of one cycle in one round. It holds:
   summary, and ordered diagnostics;
 - cache counters from the daemon's `STATS`: replies served, and replies solved
   and recorded;
-- M7 preparation hits and misses;
+- M7 preparation hits and misses, from results recorded before the engine stopped preparing lowering;
 - peak RSS of the command's and the owned daemon's process trees, sampled
   every 100 ms from `/proc`.
 
@@ -104,7 +104,7 @@ Per catalogue, a measured sample fails with each violation it has:
 | `SAIL7102` | The full evidence is not Current |
 | `SAIL7103` | M7 used other than exactly one compiler driver |
 | `SAIL7104` | M7 is not a real source-engine batch: not batched, no engine manifest, no focused evidence, or a selection error |
-| `SAIL7105` | M7 preparation telemetry is unavailable, disabled or outside the budget: version 1, budgets of 512 MiB or less, peak within the memory budget |
+| `SAIL7105` | Retired. It required M7 preparation telemetry; the engine no longer prepares lowering (rescue L7a) |
 | `SAIL7106` | The outcome differs from the catalogue (M7 `accepted`, M6 full exit), or no comparable full outcome exists |
 | `SAIL7110` | An M6 focused or full check reported a Sail error (for example `SAIL3107`) instead of a verification result |
 

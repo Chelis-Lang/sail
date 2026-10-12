@@ -99,14 +99,8 @@ pub fn violations(s: &Sample) -> Vec<Violation> {
                 format!("not a real source-engine batch: {}", batch.join(", ")),
             ));
         }
-        match &s.preparation {
-            None => out.push(v("SAIL7105", "preparation telemetry unavailable")),
-            Some(p) if !p.enabled => out.push(v("SAIL7105", "preparation reuse not enabled")),
-            Some(p) if !p.within_budget => {
-                out.push(v("SAIL7105", "preparation outside the accepted budget"));
-            }
-            Some(_) => {}
-        }
+        // SAIL7105 (preparation telemetry) is retired: the engine no longer
+        // prepares lowering, so there is no telemetry to require.
         if f.accepted != Some(want_verified) {
             out.push(v(
                 "SAIL7106",
@@ -574,7 +568,7 @@ mod tests {
         s.phases[0].timed_out = true;
         s.facts.accepted = Some(false);
         let codes: Vec<&str> = violations(&s).iter().map(|x| x.code).collect();
-        assert_eq!(codes, ["SAIL7101", "SAIL7104", "SAIL7105", "SAIL7106"]);
+        assert_eq!(codes, ["SAIL7101", "SAIL7104", "SAIL7106"]);
         let mut m6 = good("p", 0, "a", Arm::M6, 1.0);
         m6.expected = "errors".to_owned();
         let codes: Vec<&str> = violations(&m6).iter().map(|x| x.code).collect();
