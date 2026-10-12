@@ -774,3 +774,30 @@ fn pre_cancelled_read_never_dials() {
     assert_eq!(result.structured["error"], "cancelled");
     assert_eq!(result.text, "SAIL0813: job read cancelled");
 }
+
+#[test]
+fn blocking_verify_returns_reused_requested_reports_with_their_establishing_run() {
+    let root = std::env::temp_dir();
+    let mut result = project(&root);
+    let mut dependency = result.targets[0].clone();
+    dependency.target = "vstd".to_owned();
+    dependency.requested = false;
+    dependency.reused = true;
+    result.targets[0].reused = true;
+    result.targets[0].complete = true;
+    result.targets.push(dependency);
+    let established = result.targets[0].report.clone();
+    let merged = crate::job_tools::merged_report(&result);
+    assert!(
+        merged
+            .as_ref()
+            .is_some_and(|report| report.crates == established.crates),
+        "a reused requested target keeps its establishing report"
+    );
+    assert_eq!(
+        crate::job_tools::reuse_lines(&result),
+        [
+            "demo: reused the complete report established by run establishing-run for unchanged inputs."
+        ]
+    );
+}

@@ -176,7 +176,11 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert complete["currentness"] == "current", complete
         assert next(t for t in complete["targets"] if t["requested"])["report"] == target["report"]
 
-        mcp = subprocess.Popen([sail, "mcp"], cwd=project, env=env,
+        # An agent's session and terminal variables are not proof inputs: the
+        # MCP server below runs with different ones and must reuse the CLI's proof.
+        agent_env = dict(env, CLAUDE_CODE_SESSION_ID="managed-acceptance-agent",
+                         TERM_SESSION_ID="another-terminal", TERM="dumb")
+        mcp = subprocess.Popen([sail, "mcp"], cwd=project, env=agent_env,
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, text=True)
         def exchange(message):
@@ -213,6 +217,15 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 assert time.monotonic() < deadline, "MCP job did not finish"
                 request_id += 1
                 time.sleep(.1)
+            # Blocking verify reuses the same Current receipt, as the CLI does,
+            # and names the run that established the reused report.
+            verified = exchange({"jsonrpc":"2.0", "id":request_id + 1, "method":"tools/call", "params":{
+                "name":"verify", "arguments":{"project_dir":str(project)}}})
+            assert not verified["isError"], verified
+            blocking = verified["structuredContent"]["project_result"]
+            assert blocking["execution"]["verifier_invocations"] == 0, blocking["execution"]
+            assert next(t for t in blocking["targets"] if t["requested"])["report"] == target["report"]
+            assert target["establishing_run"] in verified["content"][0]["text"], verified["content"][0]["text"]
         finally:
             mcp.stdin.close()
             try:

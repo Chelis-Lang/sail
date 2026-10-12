@@ -28,6 +28,17 @@ semantic versioning once the API is published.
 - Removed the Python kernel-lease helper, the daemon sysroot handoff endpoint
   (`.sysroots-v1` socket) and the kernel-lease notes on `SAIL3114`.
 
+- Managed verification binds only the environment that `cargo verus` treats
+  as input: the variables Cargo, rustc, Verus and Z3 read, plus every variable
+  the project declares through `env!`/`option_env!` or
+  `rerun-if-env-changed`, recorded per receipt. `PATH` and `HOME` count only
+  through the tools and homes they resolve to. Agent sessions, terminals and
+  the CLI therefore share one proof context per project: an agent's first
+  `sail mcp` verify after a CLI run, or in a new session, no longer verifies
+  vstd again. Receipts are version 3; older receipts are not reused.
+- MCP `verify` no longer forces the requested targets fresh. It reuses a
+  Current report for unchanged inputs, as `sail verify --incremental` does,
+  and names the run that established it.
 - The project job service runs jobs from different Cargo workspaces
   concurrently, so several agents sharing one daemon no longer wait for each
   other. `SAIL_JOB_WORKERS` sets the bound (default: a quarter of the available

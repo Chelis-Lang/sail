@@ -4,6 +4,7 @@ mod absent;
 mod build_inputs;
 mod configuration;
 mod diagnostics;
+mod environment;
 mod files;
 mod freshness;
 mod input;

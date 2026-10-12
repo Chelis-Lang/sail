@@ -223,6 +223,9 @@ fn valid_response(arguments: &[String], document: &Value) -> bool {
 }
 
 /// A blocking compatibility call still uses the same durable worker as watch.
+///
+/// It is not forced fresh: like the CLI, a Current receipt for unchanged
+/// inputs is reused, and its establishing report is returned.
 pub(super) fn blocking(
     ctx: &Context,
     request: &RunArgs,
@@ -230,14 +233,7 @@ pub(super) fn blocking(
     cancel: &Cancel,
 ) -> Result<Option<(sail_api::jobs::Status, sail_api::project::ProjectResult)>, ToolResult> {
     let args = request.sail_args(&["verify", "--background", "--output", "json"]);
-    let started = run::run_with_environment(
-        &ctx.config.sail,
-        &args,
-        project,
-        cancel,
-        &[("SAIL_MANAGED_FORCE", "1")],
-    )
-    .map_err(|error| {
+    let started = run::run(&ctx.config.sail, &args, project, cancel).map_err(|error| {
         ToolResult::error(
             format!("SAIL0813: {error}"),
             json!({"error":"service_unavailable"}),
@@ -318,13 +314,12 @@ pub(super) fn blocking(
     }
 }
 
+/// Requested targets' reports, fresh or reused. A reused target carries the
+/// complete report of the run that established it.
 pub(super) fn merged_report(
     result: &sail_api::project::ProjectResult,
 ) -> Option<sail_api::output::Report> {
-    let mut targets = result
-        .targets
-        .iter()
-        .filter(|target| target.requested && !target.reused);
+    let mut targets = result.targets.iter().filter(|target| target.requested);
     let mut report = targets.next()?.report.clone();
     for target in targets {
         let next = &target.report;
@@ -516,4 +511,20 @@ fn missing_obligation(
             json!({"error":"not_found","obligation":id,"job":job}),
         ))
     }
+}
+
+/// One line per requested target whose report was reused, naming the run that
+/// established it (charter rule 7: confirmed results record their provenance).
+pub(super) fn reuse_lines(result: &sail_api::project::ProjectResult) -> Vec<String> {
+    result
+        .targets
+        .iter()
+        .filter(|target| target.requested && target.reused)
+        .map(|target| {
+            format!(
+                "{}: reused the complete report established by run {} for unchanged inputs.",
+                target.target, target.establishing_run
+            )
+        })
+        .collect()
 }

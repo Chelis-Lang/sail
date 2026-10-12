@@ -195,7 +195,7 @@ pub fn definitions() -> Value {
         {
             "name": "verify",
             "title": "Verify with sail",
-            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a short summary and the schema-v1 report (docs/output-schema.md): per-function verdicts (verified, failed, unknown, provisional) with tier and provenance, obligation ids, counterexample models, Verus diagnostics as data, timings and cache sources. `provisional` is never `verified`. Default verification uses a persistent forced-fresh workspace job, while retaining dependency build artifacts. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
+            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a short summary and the schema-v1 report (docs/output-schema.md): per-function verdicts (verified, failed, unknown, provisional) with tier and provenance, obligation ids, counterexample models, Verus diagnostics as data, timings and cache sources. `provisional` is never `verified`. Default verification uses a persistent workspace job: like `sail verify --incremental`, it reuses a Current report for unchanged inputs and says which run established it. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false}
         },
@@ -326,12 +326,16 @@ fn verify(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResu
                     return ToolResult::ok("Cargo completed before any verification target produced a report; see the job diagnostics.".to_owned(), json!({"job":job,"project_result":result}));
                 };
                 let raw = serde_json::to_value(&report).unwrap_or(Value::Null);
-                let text = format!(
+                let mut text = format!(
                     "sail verify: {}\nJob {}; currentness {:?}.",
                     summary::report(&report),
                     job.id,
                     job.currentness
                 );
+                for line in crate::job_tools::reuse_lines(&result) {
+                    text.push('\n');
+                    text.push_str(&line);
+                }
                 let changed = match result.currentness {
                     // Dynamic currentness includes edits after completion, so
                     // historical evidence cannot identify when the edit happened.

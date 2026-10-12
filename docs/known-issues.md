@@ -20,12 +20,11 @@ are in the `archive/m7-contracts-f7103bf` tag.
   valid. The gate needs three rounds at ≥2× on each catalogue.
   [L7c report](reports/rescue/l7c-managed-overhead.md),
   [Gate 7](validation/m7.md#gate-7-frozen-repair-performance).
-- **Agent sessions re-verify vstd and MCP re-verifies every call.** The proof
-  context includes nearly every environment variable, so each new agent
-  session or terminal gets a new Cargo target and verifies vstd again (about
-  35–43 s); MCP's blocking `verify` also forces a fresh run on every call
-  (9.1 s against 1.7 s from the CLI on HumanEval). A fix is in progress.
-  [L10 report](reports/rescue/l10-ci-diet.md).
+- **A project's first managed verify verifies vstd.** As with plain `cargo
+  verus verify` on a fresh target, the first managed run of each project
+  verifies vstd in its own Cargo target (about 31 s natively). Later runs from
+  the CLI, MCP or any agent session reuse it. A shared per-toolchain vstd is a
+  deferred follow-up. [L16 report](reports/rescue/l16-first-contact-vstd.md).
 - **Repair selectors lose compiler-declared input coverage.** A warmup can
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and

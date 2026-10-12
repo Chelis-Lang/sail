@@ -61,7 +61,15 @@ pub(crate) struct Receipt {
     pub artifact_hashes: BTreeMap<PathBuf, String>,
     #[serde(default)]
     pub committed: PathBuf,
+    /// The value, or absence, of every variable a unit of the establishing
+    /// run declared (dep-info `# env-dep:`, build-script
+    /// `rerun-if-env-changed`); reuse requires each to be unchanged.
+    #[serde(default)]
+    pub declared_environment: BTreeMap<String, Option<Vec<u8>>>,
 }
+
+/// Receipts before version 3 did not bind declared environment variables.
+pub(crate) const RECEIPT_VERSION: u32 = 3;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
@@ -71,7 +79,8 @@ impl Receipt {
     }
     pub(crate) fn valid(&self, context: &str) -> bool {
         let checksum = self.clone().seal().checksum;
-        self.version == 2
+        self.version == RECEIPT_VERSION
+            && super::environment::unchanged(&self.declared_environment)
             && read::<Commit>(&self.committed).is_some_and(|commit| {
                 commit.context == self.context
                     && commit.run_id == self.invocation.run_id
@@ -214,7 +223,7 @@ mod tests {
             functions: Vec::new(),
         });
         Receipt {
-            version: 2,
+            version: RECEIPT_VERSION,
             committed,
             checksum: String::new(),
             package_id: "input".to_owned(),
@@ -235,6 +244,7 @@ mod tests {
                 dependencies: BTreeMap::new(),
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
+            declared_environment: BTreeMap::new(),
         }
         .seal()
     }
@@ -257,6 +267,30 @@ mod tests {
         );
         assert!(receipt.valid("ctx"));
         assert!(!receipt.valid("different"));
+        // A declared variable whose value differs from the recorded one: the
+        // establishing run compiled under another value, so nothing is reused.
+        let mut declared = receipt.clone();
+        declared.declared_environment.insert(
+            "SAIL_TEST_DECLARED_UNSET_L16".to_owned(),
+            Some(b"recorded".to_vec()),
+        );
+        let declared = declared.seal();
+        assert!(
+            json(
+                &declared.committed,
+                &Commit {
+                    context: "ctx".to_owned(),
+                    run_id: "run".to_owned(),
+                    receipt_checksums: BTreeSet::from([
+                        receipt.checksum.clone(),
+                        declared.checksum.clone()
+                    ]),
+                }
+            )
+            .is_ok()
+        );
+        assert!(receipt.valid("ctx"));
+        assert!(!declared.valid("ctx"));
         let mut corrupt = receipt.clone();
         corrupt.invocation.report.mode = "other".to_owned();
         assert!(!corrupt.valid("ctx"));

@@ -98,6 +98,40 @@ amount of code. Ordinary editors, formatters and agents write files, which
 these checks do catch. If you run a tool that edits sources through shared
 mappings during verification, re-run after it finishes.
 
+## Which environment variables are proof inputs
+
+A managed proof follows the input model of plain `cargo verus`, which is
+Cargo's own. Two parts of the environment bind a result:
+
+- **What the pinned tools read.** The proof context, and so the Cargo target,
+  binds the current value or absence of every variable in these families:
+  `CARGO_*` and `__CARGO_*` (Cargo configuration); `RUST*` (`RUSTFLAGS`,
+  `RUSTC*`, `RUSTDOC*`, `RUSTUP_*`, `RUST_MIN_STACK`, `RUST_BACKTRACE`,
+  `RUST_LOG`); `VERUS_*`, `__VERUS_*`, `VARGO_*` and `VSTD_KIND` (the Verus
+  launcher, driver and macros); `Z3_*`; `SAIL_*`, except the observation-only
+  job and trace variables; `LD_*` and `DYLD_*` (dynamic loading); and colour,
+  layout and locale (`NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLUMNS`,
+  `LANG`, `LANGUAGE`, `LC_*`).
+- **What the project declares.** After each run Sail collects every variable
+  any unit declares: rustc's `# env-dep:` dep-info lines (`env!`,
+  `option_env!`, and the Verus driver's own declarations) and build scripts'
+  `rerun-if-env-changed`. Each receipt records their values, and it is reused
+  only while every one is unchanged.
+
+`PATH` and `HOME` are not bound as raw values. What they select is: the
+resolved `cargo`, `rustc`, `rustup`, `cargo-verus`, `verus`, `rust_verify`
+and `z3`, identified by path and file stamp, and the resolved Cargo and rustup
+homes with the bytes of every Cargo configuration file. Every other variable,
+such as an agent's session id, `TERM` or `SSH_AUTH_SOCK`, is not a proof
+input, so the CLI, MCP and every agent session or terminal share one proof
+context for a project. Child processes still receive the whole environment.
+
+**Limitation, shared with Cargo.** A build script or proc macro that reads a
+variable without declaring it, including a tool that a build script finds
+through `PATH` (`cc`, `cmake`, `pkg-config`), is invisible: Cargo does not
+rebuild for it, and Sail does not re-verify for it. Declare such reads with
+`cargo:rerun-if-env-changed` in the build script.
+
 ## Reader latency
 
 The M7 reader gate (four clients, 200 Status and Result reads, p95 below

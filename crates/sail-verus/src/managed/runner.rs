@@ -1,9 +1,12 @@
 //! Owned Cargo invocation, artifact validation, and complete report reuse.
 
 use super::diagnostics::{Diagnostics, Phase};
+use super::environment::input_environment_key;
 use super::files::{digest, event, file_digest, json};
 use super::input::{metadata, snapshot_metadata};
-use super::receipts::{Invocation, Receipt, Runtime, artifact_hashes, complete, read};
+use super::receipts::{
+    Invocation, RECEIPT_VERSION, Receipt, Runtime, artifact_hashes, complete, read,
+};
 use crate::{Error, Result};
 use sail_api::project::{Currentness, Execution, ProjectResult, SCHEMA_VERSION, TargetResult};
 use serde_json::Value;
@@ -53,31 +56,6 @@ struct Paths {
     build_inputs: PathBuf,
     input_state: PathBuf,
     compiler_inputs: PathBuf,
-}
-
-fn input_environment_key(key: &std::ffi::OsStr) -> bool {
-    ![
-        "SAIL_PROOF_EVENTS",
-        "SAIL_ENGINE_EVENTS",
-        "SAIL_ENGINE_FOCUS_REPORT",
-        "SAIL_ENGINE",
-        "SAIL_ENGINE_FUNCTION",
-        "SAIL_ENGINE_CONTEXT",
-        "SAIL_JOB_EVENTS",
-        "SAIL_JOB_GUARD_PARENT",
-        "SAIL_MANAGED_FORCE",
-        "SAIL_DAEMON_SOCKET",
-        "SAIL_PROVENANCE_DIR",
-        "SAIL_TRACE_DIR",
-        "SAIL_PROJECT_SOCKET",
-        "PWD",
-        "OLDPWD",
-        "SHLVL",
-        "_",
-    ]
-    .iter()
-    .any(|excluded| key == *excluded)
-        && !key.as_encoded_bytes().starts_with(b"SAIL_MANAGED_")
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -170,6 +148,7 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     let mut environment: BTreeMap<Vec<u8>, Vec<u8>> = std::env::vars_os()
         .filter(|(k, _)| input_environment_key(k))
         .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
+        .chain(super::environment::resolved_homes())
         .collect();
     let rustc = rustc?;
     identity.push((rustc.to_string_lossy().into_owned(), installed(&rustc)?));
@@ -862,6 +841,9 @@ fn target_records(
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
     let calls = invocations(paths);
+    // Every unit's declared variables, as Cargo fingerprints them; their
+    // current values bind each receipt this run publishes.
+    let declared = super::environment::values(&super::environment::declared_names(&paths.target));
     for artifact in artifacts(paths) {
         let Some(package) = data["packages"]
             .as_array()
@@ -932,7 +914,7 @@ fn target_records(
                         .join("pending-receipts")
                         .join(path.file_name().unwrap_or_default()),
                     &Receipt {
-                        version: 2,
+                        version: RECEIPT_VERSION,
                         committed: paths.run.join("committed.json"),
                         checksum: String::new(),
                         package_id: package_id.to_owned(),
@@ -942,6 +924,7 @@ fn target_records(
                         input_revision: input_revision.clone(),
                         invocation: call.clone(),
                         artifact_hashes: hashes,
+                        declared_environment: declared.clone(),
                     }
                     .seal(),
                 )?;
@@ -2086,7 +2069,7 @@ mod tests {
             functions: Vec::new(),
         });
         Receipt {
-            version: 2,
+            version: RECEIPT_VERSION,
             checksum: String::new(),
             committed: paths.run.join("committed.json"),
             package_id: "input".to_owned(),
@@ -2111,6 +2094,7 @@ mod tests {
                 dependencies: BTreeMap::new(),
             },
             artifact_hashes: artifact_hashes(&[artifact.to_owned()]).unwrap_or_default(),
+            declared_environment: BTreeMap::new(),
         }
         .seal()
     }
@@ -2749,7 +2733,7 @@ mod tests {
             "resolve":{"nodes":[{"id":"vstd","dependencies":[]}]}});
         let before = snapshot_metadata(&data, &[]);
         let receipt = Receipt {
-            version: 2,
+            version: RECEIPT_VERSION,
             checksum: String::new(),
             package_id: "vstd".to_owned(),
             name: "vstd".to_owned(),
@@ -2770,6 +2754,7 @@ mod tests {
             },
             artifact_hashes: BTreeMap::new(),
             committed: run.join("committed.json"),
+            declared_environment: BTreeMap::new(),
         }
         .seal();
         let path = run.join("pending-receipts/vstd.json");
@@ -3068,7 +3053,7 @@ mod tests {
         ] {
             assert!(!input_environment_key(std::ffi::OsStr::new(key)));
         }
-        for key in ["RUSTFLAGS", "RUSTC", "PATH", "SAIL_CACHE_DIR"] {
+        for key in ["RUSTFLAGS", "RUSTC", "SAIL_CACHE_DIR"] {
             assert!(input_environment_key(std::ffi::OsStr::new(key)));
         }
         let original = BTreeMap::from([("RUSTFLAGS", "-C opt-level=0")]);

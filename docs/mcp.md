@@ -177,9 +177,10 @@ failure. It does not by itself establish that Z3 exhausted a resource limit.
 
 ### `verify`
 
-Default verification submits a forced-fresh managed workspace job and waits
-for its result. It retains dependency artifacts and returns its schema-v1
-report (`docs/output-schema.md`). The report has per-function verdicts with
+Default verification submits a managed workspace job and waits for its
+result. Like `sail verify --incremental`, it reuses a Current report for
+unchanged inputs instead of verifying again, and the summary names the run that
+established each reused report. It returns its schema-v1 report (`docs/output-schema.md`). The report has per-function verdicts with
 tier and provenance, obligation ids, counterexample models, diagnostics,
 timings and cache sources. The run is recorded for the lookups. Explicit module/function selectors use
 `cargo verus focus`, which is the pinned verifier’s supported partial entry
@@ -229,9 +230,13 @@ Explicit portfolio/fragility paths and older Sail installations retain their
 existing report response; their legacy source snapshots cannot establish complete
 workspace/runtime freshness.
 
-**Complete reports.** Default blocking verification forces the requested
-verification targets fresh, so Cargo's unchanged-target shortcut cannot produce
-an empty successful report. Workspace dependencies remain warm. Partial
+**Complete reports.** A requested target that Cargo finds unchanged is
+reported from its receipt: the complete report of the run that established it,
+for byte-identical inputs and the same proof inputs (see
+[freshness](freshness.md#which-environment-variables-are-proof-inputs)). A
+failed or incomplete run publishes no receipt, so it is verified again on every
+call. The server's own environment, such as an agent's session variables, is
+not a proof input, so MCP and the CLI share results. Partial
 requests preserve their explicit scope. Explicit portfolio/fragility requests
 use their established paths. Builds that fail before verification report their
 diagnostics without inventing per-function verdicts.
