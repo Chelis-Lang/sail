@@ -147,13 +147,7 @@ fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenanc
     assert!(
         matches!(client.call(&Request::Baselines)?,Response::Baselines(names) if names==vec!["release"])
     );
-    let Response::Baseline(loaded) = client.call(&Request::GetBaseline {
-        name: "release".into(),
-    })?
-    else {
-        return Err("baseline read response".into());
-    };
-    assert_eq!(loaded, saved);
+    assert_saved_baseline(&client, &saved)?;
     let Response::Comparison(comparison) = client.call(&Request::Compare {
         before: Reference::Baseline("release".into()),
         after: last.clone(),
@@ -208,6 +202,20 @@ fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenanc
             .is_err()
     );
     server.shutdown();
+    Ok(())
+}
+
+fn assert_saved_baseline(
+    client: &Client,
+    saved: &sail_api::repair::Baseline,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let Response::Baseline(loaded) = client.call(&Request::GetBaseline {
+        name: saved.name.clone(),
+    })?
+    else {
+        return Err("baseline read response".into());
+    };
+    assert_eq!(&loaded, saved);
     Ok(())
 }
 
