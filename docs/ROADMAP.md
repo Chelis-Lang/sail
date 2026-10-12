@@ -476,4 +476,5 @@ variant dependency trees (5,062,496,256 allocated file bytes), preserving all
 and source are outside those trees. This is per-tree preservation, without
 a surrounding debug/release posthash or physical backing-space attribution.
 The fresh post-recovery 387 benchmark is running separately with no performance
-credit; the second whole-debug verification remains pending.
+credit; the separate whole-debug postcheck is UNCERTAIN and supplies no
+surrounding-membership certification.
