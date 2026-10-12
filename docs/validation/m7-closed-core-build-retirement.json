@@ -77,5 +77,34 @@
   ],
   "recovery": "Initial immediate audits failed when ext4 became emergency read-only. Deletion did not run. After Docker recovery native inventory was zero-sized; independently retained host bytes restored the owned metadata only, every ELF rehashed, both-container zero-holder checks repeated, then deletion completed.",
   "protected": "All original ELF images retained/rehashed; raw evidence and target-root records, common debug/release, selected runtime, M6, corpus, current proofs/caches and active targets untouched",
-  "native_retained_image_root": "/work/target/m7-retained-closed-core-images-20261011"
+  "native_retained_image_root": "/work/target/m7-retained-closed-core-images-20261011",
+  "separate_whole_archive_retirements_20261012": {
+    "scope": "Fixed closed b895 reader target trees and benchmark debug trees only; complete verified archives preserve regular bytes, modes and hardlink shape, including executable images. Separate from the ordinary incremental-file predicate.",
+    "reader_four_targets": {
+      "status": "PASS",
+      "removed_entries": 4229,
+      "unique_allocated_bytes": 1662423040,
+      "archive_bytes": 553589989,
+      "archive_sha256": "ca7618bdef67220dfcec65b275c6077ba860966ff40d09c5d582b8692ce2ca35",
+      "controller_sha256": "b8d457449f63c48403657f2f85f6fa7cde043d8236f46e6cc3cf4b11e8184df7",
+      "surrounding_parent_check": "PASS"
+    },
+    "benchmark_five_debug_trees": {
+      "status": "FAIL",
+      "removed_entries": 5214,
+      "removed_set_matches_approved_inventory": true,
+      "pending_unlink": null,
+      "inventory_unique_allocated_bytes": 1118019584,
+      "archive_bytes": 246397048,
+      "archive_sha256": "ed59d622522885b495100634ce7fe1e60443e0cee42dee712f8e13fe288e7831",
+      "archive_verified_before_removal": true,
+      "controller_sha256": "8dabf8e8185c9c3de1944c8c1cb735fdeaf10770188985ce52f7128ab4c5a656",
+      "inventory_sha256": "5cab492ba13198f968afb0f37835b9902d14eb08b2029a2cc10c28d7490d0cb3",
+      "native_terminal_sha256": "f0834f9a71f53149e29605d9bcb14a8488be982067bb250be049031a4ecf299c",
+      "failure": "After removing all approved entries, the postcheck incorrectly subtracted the literal target basename from parent membership; all approved roots were named debug. Original FAIL and uncertainty retained.",
+      "separate_read_only_closure": "PREPARED_NOT_EXECUTED; requires exact root absence, original parent identity and membership minus each actual basename, unchanged births/mounts, original bounded holders in both containers and archive reverification. No deletion or promotion of the failed scope."
+    },
+    "exclusions": "Surrounding source, results, fixtures, qualified runtime/product installations, active targets and all other projects remain outside deletion scope.",
+    "space_claim": "Inventory unique allocated blocks only, before archive storage; no exact physical host-space recovery or proof/performance credit."
+  }
 }

@@ -323,6 +323,15 @@ removes 54 unshared incremental files from one old benchmark compiler family
 other entry in that audited subtree. Earlier inventory refusals remain failed;
 this narrow cleanup grants no proof or whole-cache validation credit.
 
+A separate whole-archive cleanup removes four closed b895 reader targets
+(1,662,423,040 unique allocated bytes) and passes its postchecks. A five-tree
+benchmark cleanup removes all 5,214 approved entries with verified archive
+backing, then fails because its parent-membership check subtracts `target`
+instead of the actual `debug` basename. That failure remains failed; a separate
+read-only parent/absence and holder check is prepared but unexecuted. The
+[cleanup record](validation/m7-closed-core-build-retirement.json) preserves both
+scopes. Neither scope grants proof, performance or physical host-space credit.
+
 The [retained integration history](validation/m7-core-integration-history-84346e2.md),
 [earlier workstream history](validation/m7-workstream-history-cc0898e.md),
 [known issues](known-issues.md) and [acceptance guide](bench/m7-repair-acceptance.md)
