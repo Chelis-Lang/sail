@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "source-only disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "uncompiled and unexecuted; product and unchanged benchmark validation pending",
+  "status": "corrected fixture frozen; previous native attempts failed; new complete gate pending",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -14,9 +14,15 @@
     ],
     "currentness": "unknown",
     "accepted": false,
-    "compiler_invocations_each": 3,
     "note": "Build-script input declarations were established during this run",
-    "raw_archive_sha256": "8f7e07cde3a1b2047175d4a7eed9209402278503ff5a2f90bc5159f20a8822f8"
+    "raw_archive_sha256": "8f7e07cde3a1b2047175d4a7eed9209402278503ff5a2f90bc5159f20a8822f8",
+    "compiler_invocations_by_attempt": [
+      2,
+      3
+    ],
+    "invocation_count_basis": "exact first and second archived public batch reports; counts are not performance credit",
+    "first_public_batch_sha256": "14360fdb0b036eaf4ac2614f50a577b312daaeb4b200a4297b4ecd86ece45b2e",
+    "second_public_batch_sha256": "169e8558b98f438abf51e237f687e0ff7947eb3be10f644e95447e9f0df39e09"
   },
   "retained_private_metadata": {
     "package_graph": {
@@ -79,7 +85,7 @@
     "bootstrap_retry_clean_preserves_missing_and_refuses_unsupported_script_roles",
     "disabled_script_explicit_selection_requires_unique_cargo_package_identity"
   ],
-  "control_status": "drafted, not compiled or executed; original fixtures delegate to unchanged roles when disabled=false",
+  "control_status": "original ten bootstrap controls passed in 8ac7740; new real-Cargo role assertion failed before its compile/export checks; corrected fixture awaits full gate",
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
     "affected native tests and strict checks",
@@ -114,6 +120,109 @@
     "metadata_capture": {
       "bytes": 1662,
       "sha256": "2d74fc8371ae77c47bc3191d5b7df8b6f54988d16efde6654dd6e03dd177a51e"
+    },
+    "metadata_only_captures": [
+      {
+        "scope": "explicit dot membership includes both nested path dependencies",
+        "exit_code": 0,
+        "workspace_member_count": 3,
+        "bytes": 1848,
+        "sha256": "b4303a79308cb791b13f37dfc51cc6e7d27cd731f5de9a6dd815b5b5e93d618a",
+        "qualification_credit": false
+      },
+      {
+        "scope": "nested workspace attempt refuses multiple workspace roots",
+        "exit_code": 101,
+        "workspace_member_count": null,
+        "bytes": 605,
+        "sha256": "580e4b057e58899cd9d247414a296c5f068d82ea6141e54aa261623923078725",
+        "qualification_credit": false
+      },
+      {
+        "scope": "implicit root plus existing excludes gives only root membership; exact false edge retained",
+        "exit_code": 0,
+        "workspace_member_count": 1,
+        "bytes": 1662,
+        "sha256": "2d74fc8371ae77c47bc3191d5b7df8b6f54988d16efde6654dd6e03dd177a51e",
+        "qualification_credit": false
+      }
+    ]
+  },
+  "source_scope": {
+    "frozen_commit": "27778b34a8a2ea1de6bf5d698b929d1b3ba8bd0b",
+    "meaning": "source_sha256 binds corrected fixture at this immutable commit only, not later gates or changes",
+    "historical_first_draft_commit": "91c1c74685a31d7aeb824575ff4efb729429fdde",
+    "historical_first_draft_source_sha256": {
+      "crates/sail-verus/src/managed/build_inputs.rs": "04f25c8abb3d467044a4f6f6645e5fe9109a1af40c058672cf62aacb89179fe9",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "eccf4bc65e15d5dee414e35202f45839199383fb68cc48847c08f543608f3ecc",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "7db3998b57ec505283f8493e8918c56dda1e44499a256e53581ad8a5d15d46f7",
+      "crates/sail-verus/src/managed/input.rs": "09ae00da906812e348409fedf6adea8caad4e1a13388dd55ee96d1d518742bf5",
+      "crates/sail-verus/src/managed/runner.rs": "bf02264b3dabf7049fcb68f09a92dc5c0d2ef04d2419a8403fac351f7654c6a5"
     }
-  }
+  },
+  "attempted_validation": [
+    {
+      "source_commit": "cb19249a493bd8020b764f89e236ad445d443137",
+      "source_archive_sha256": "41555051c6f676c4b2a8233bd7464c650502c3f086f8619580fd3566aa0dc222",
+      "status": "FAIL",
+      "gate_exit_code": 101,
+      "gate_elapsed_s": 56.403337067000166,
+      "failure": "E0425 at new test predicate namespace, before workspace tests",
+      "solver": "unattempted",
+      "original_bootstrap_controls_passed": 0,
+      "uncertainty": [],
+      "known_group_closure": {
+        "survivors": 0,
+        "unavailable": 0,
+        "complete_terminated_unreaped_rows": 0,
+        "general_orphan_absence_claim": false
+      },
+      "raw_seals": {
+        "controller.json": {
+          "bytes": 1115,
+          "sha256": "84a769579954650397f1fde6f30c4139459293ada977f3f4a5373ae0bf24a7b8"
+        },
+        "result.json": {
+          "bytes": 1953,
+          "sha256": "701c8c2810927b82623cb98004865ca4596312651396d29340773ebd9fe2c17d"
+        },
+        "gate.log": {
+          "bytes": 5825,
+          "sha256": "41f0738c15d41687eaef5cdc4b3bf64ba002f1b1e88a8e92f2f4f2cd09710f47"
+        }
+      }
+    },
+    {
+      "source_commit": "8ac77402f1ace5f5f262c054ea6765cde3881af2",
+      "source_archive_sha256": "e3b18a86bbaf87ff989476ad800b1a618e4d30efdcca606b8e9eaf3ff9b1cdb2",
+      "status": "FAIL",
+      "gate_exit_code": 100,
+      "gate_elapsed_s": 403.4192464749999,
+      "failure": "new real Cargo never_scheduled assertion at line 885; 654/655 workspace tests pass, 41 skipped",
+      "solver": "unattempted",
+      "original_bootstrap_controls_passed": 10,
+      "uncertainty": [],
+      "known_group_closure": {
+        "survivors": 0,
+        "unavailable": 0,
+        "complete_terminated_unreaped_rows": 9,
+        "general_orphan_absence_claim": false
+      },
+      "raw_seals": {
+        "controller.json": {
+          "bytes": 1115,
+          "sha256": "036753aaa9f14c932fa6f9a7ecf5e9f7a4943b24c38182857abc852aae381ed0"
+        },
+        "result.json": {
+          "bytes": 30257,
+          "sha256": "fb28a9fb9ff0ad72bb18d82a59ae39b2e8f12b5f3dea8eeba936b3e72d1a4eae"
+        },
+        "gate.log": {
+          "bytes": 87440,
+          "sha256": "bb9aef646380e0ced751c41f561c2afd28ba8cfe481710c4d9c9652a1b29e0e4"
+        }
+      }
+    }
+  ],
+  "validation_limits": "failure scopes and metadata-only reproductions do not qualify new current fixture, installed product, first export recovery or benchmark performance; original assertions and oracle unchanged"
 }
