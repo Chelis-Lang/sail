@@ -6,26 +6,14 @@ mod configuration;
 mod diagnostics;
 mod files;
 mod freshness;
-mod guarded_output;
 mod input;
-#[cfg(target_os = "linux")]
-mod kernel_leases;
-#[cfg(target_os = "linux")]
-mod kernel_mounts;
-#[cfg(target_os = "linux")]
-mod lease;
-#[cfg(target_os = "linux")]
-mod precise;
 mod read_check;
 mod receipts;
-#[cfg(any(target_os = "linux", test))]
-mod retained;
 mod runner;
 mod source_inputs;
 
 pub(crate) use files::{digest, event, file_digest, json};
 pub use freshness::FreshnessIndex;
-pub use guarded_output::{GUARDED_OUTPUT_RETAINED_BYTES, GuardedOutput};
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
 pub(crate) use runner::run_engine;

@@ -465,12 +465,6 @@ mod tests {
         let mtime = file.metadata()?.modified()?;
         std::fs::write(&f.input, "fail")?;
         file.set_times(std::fs::FileTimes::new().set_modified(mtime))?;
-        // This is the precise acquisition gap: the original owner starts after
-        // mutation and legitimately observes the new bytes as pristine.
-        let mut observer =
-            crate::managed::precise::Observer::begin(std::slice::from_ref(&f.input), &[])
-                .ok_or("actual native observer unavailable")?;
-        assert!(observer.clean());
         assert_eq!(
             recheck(&f.local, &f.data, &f.target)?,
             vec!["registry-script"]

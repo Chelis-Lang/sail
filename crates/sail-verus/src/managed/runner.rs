@@ -64,7 +64,6 @@ fn input_environment_key(key: &std::ffi::OsStr) -> bool {
         "SAIL_ENGINE_FUNCTION",
         "SAIL_ENGINE_CONTEXT",
         "SAIL_JOB_EVENTS",
-        "SAIL_JOB_RPC_TIMINGS",
         "SAIL_JOB_GUARD_PARENT",
         "SAIL_MANAGED_FORCE",
         "SAIL_DAEMON_SOCKET",
@@ -3063,7 +3062,6 @@ mod tests {
     fn lifecycle_only_job_environment_does_not_partition_proofs() {
         for key in [
             "SAIL_JOB_EVENTS",
-            "SAIL_JOB_RPC_TIMINGS",
             "SAIL_JOB_GUARD_PARENT",
             "SAIL_MANAGED_FORCE",
             "SAIL_MANAGED_PROXY",
@@ -3075,7 +3073,7 @@ mod tests {
         }
         let original = BTreeMap::from([("RUSTFLAGS", "-C opt-level=0")]);
         let mut observed = original.clone();
-        observed.insert("SAIL_JOB_RPC_TIMINGS", "1");
+        observed.insert("SAIL_JOB_EVENTS", "events.jsonl");
         let inputs = |values: BTreeMap<&str, &str>| {
             values
                 .into_iter()
