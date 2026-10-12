@@ -1,6 +1,6 @@
 # 0029: Kernel lease work bounds and freshness
 
-- **Status:** accepted
+- **Status:** superseded by 0041 (lease parts)
 - **Date:** 2026-10-10
 
 ## Context

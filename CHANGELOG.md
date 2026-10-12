@@ -5,6 +5,19 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Managed runs are 1–3 s faster per edit cycle and warm unchanged runs take
+  0.4–1.6 s. Sail now checks a result's currentness by rehashing exactly the
+  files the verified target depended on, and identifies toolchain files by
+  their file stats. Large workspaces such as Vest now read back Current
+  instead of Unknown. A result is never shown as Current when any input it
+  depended on may have changed; in doubt it reads back Unknown with the note
+  "inputs could not be confirmed unchanged; re-run". See
+  [freshness](docs/freshness.md) for the rare cases this does not detect.
+- Concurrent managed runs on one workspace now wait for a busy target
+  (`SAIL_MANAGED_LOCK_WAIT_SECS`) instead of failing with `SAIL3104`.
+- Removed the Python kernel-lease helper, the daemon sysroot handoff endpoint
+  (`.sysroots-v1` socket) and the kernel-lease notes on `SAIL3114`.
+
 - The project job service runs jobs from different Cargo workspaces
   concurrently, so several agents sharing one daemon no longer wait for each
   other. `SAIL_JOB_WORKERS` sets the bound (default: a quarter of the available

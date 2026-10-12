@@ -1,6 +1,6 @@
 # 0031: Guarded sysroot digest handoff between managed commands
 
-- **Status:** proposed
+- **Status:** superseded by 0041
 - **Date:** 2026-10-11
 
 ## Context

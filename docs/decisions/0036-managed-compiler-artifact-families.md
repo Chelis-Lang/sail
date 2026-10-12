@@ -1,6 +1,6 @@
 # 0036: Managed compiler artifact families
 
-- **Status:** implemented; whole-product validation pending
+- **Status:** implemented; its guarded build-script bootstrap is superseded by 0041
 - **Date:** 2026-10-11
 
 ## Context

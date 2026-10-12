@@ -108,9 +108,9 @@ complete current full validation. M7 remains incomplete until these gates pass.
 | Engine runtime delivery | Pass | 13 runtime files byte-identical; CI uses the prebuilt pin |
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
-| Responsive reads (p95 < 200 ms) | Pass (native) | Result p95 46.8–48.5 ms, Status 21.6–28.4 ms on EC2 with `scripts/reader-gate.sh` (rescue L14); the emulated 436 ms failure does not reproduce natively |
+| Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
 | Default and cache conformance | Pass on `main` (native); engine arm open | Standard tier 159/159 in all three rounds on native EC2 for #80 and #81; the engine arm still fails `guide/traits.rs` until the rebuilt runtime is pinned ([L4b report](reports/rescue/l4b-engine-parity.md)) |
-| Frozen repair performance (≥2× each) | Fail (native) | One-round candidate after L7a: HumanEval 1.70×, Vest 1.54×, with every Vest M7 sample invalid (Unknown on read-back); three rounds pending ([L7a report](reports/rescue/l7a-preparation.md)) |
+| Frozen repair performance (≥2× each) | Pending (native) | One round after the rescue speed work: HumanEval 3.46×, Vest 1.90×, all samples valid; three rounds pending on the rebuilt engine ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented; stock verification stays

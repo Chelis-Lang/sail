@@ -1,6 +1,6 @@
 # 0032: Sticky kernel mount-generation coverage
 
-- **Status:** accepted
+- **Status:** superseded by 0041
 - **Date:** 2026-10-11
 
 ## Context
