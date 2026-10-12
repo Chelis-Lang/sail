@@ -93,7 +93,12 @@ fn only_initial_connect_failures_admit_startup_fallback() -> io::Result<()> {
         .ok_or_else(|| io::Error::other("cancel ignored"))?;
     assert!(!cancelled.is_pre_rpc_connect_failure());
     assert_eq!(cancelled.io_error().kind(), io::ErrorKind::Interrupted);
-    let server = Server::start(|stream, _| {
+    // The peer closes only after the RPC reached it. Closing straight after
+    // accept races the client's connect check on macOS, where getpeername
+    // fails once the peer has gone: no RPC bytes were sent then, so that
+    // outcome is a genuine pre-RPC connect failure, not the case tested here.
+    let server = Server::start(|mut stream, _| {
+        let _: Request = read_frame(&mut stream)?;
         let _ = stream.shutdown(Shutdown::Both);
         Ok(())
     })?;
@@ -132,6 +137,18 @@ fn negotiated_rpc_cannot_retry_after_second_connect_failure() -> io::Result<()> 
     Ok(())
 }
 
+/// Four times the default send plus receive buffer of a Unix stream socket on
+/// this platform (Linux about 208 KiB each, macOS 8 KiB), at least 256 KiB.
+fn blocking_payload() -> io::Result<usize> {
+    let (sender, receiver) = UnixStream::pair()?;
+    let buffered = socket2::SockRef::from(&sender)
+        .send_buffer_size()?
+        .saturating_add(socket2::SockRef::from(&receiver).recv_buffer_size()?);
+    let payload = buffered.saturating_mul(4).max(256 * 1024);
+    assert!(payload < super::super::MAX_FRAME / 2);
+    Ok(payload)
+}
+
 #[test]
 fn blocked_read_and_write_cancel_and_leave_no_polling_monitor() -> io::Result<()> {
     for blocked_write in [false, true] {
@@ -151,9 +168,13 @@ fn blocked_read_and_write_cancel_and_leave_no_polling_monitor() -> io::Result<()
         let client = Client::with_result_decoding_cache(&server.socket);
         let cancelled = AtomicBool::new(false);
         let polls = AtomicUsize::new(0);
+        // The blocked-write body only has to exceed what the kernel can buffer
+        // between the two ends. A fixed 8 MiB body made the debug-build
+        // serialization (before any byte is sent) take about 0.9 s, which
+        // missed the 2 s readiness wait on a loaded Mac.
         let request = if blocked_write {
             Request::Result {
-                id: "x".repeat(8 * 1024 * 1024),
+                id: "x".repeat(blocking_payload()?),
             }
         } else {
             request()
