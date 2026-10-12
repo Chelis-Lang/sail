@@ -127,7 +127,7 @@ class CursorIdentityTests(unittest.TestCase):
         return acceptance
 
     def test_original_non_error_expectation_refuses_the_existing_product(self):
-        evidence = Path(__file__).resolve().parent.parent / "docs/validation/m7-rpc-retained-functional.json"
+        evidence = Path(__file__).resolve().parent.parent / "scripts/fixtures/m7-rpc-retained-wrong-stream.json"
         actual = ast.literal_eval(harness.json.loads(evidence.read_text())["original_harness"]["failure"]["message"])
         self.assertEqual(actual, self.existing_projection())
         # This reproduces the original harness's first failed assertion on the

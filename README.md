@@ -39,40 +39,21 @@ See [live workspace verification](docs/workspace-verification.md).
 
 ## Experimental proof repair
 
-The optional pinned source engine adds exact-function focus followed by independent
-full-target validation. The selected source engine passes its memory and lowering
-qualification. Current `387ba80` passes the [complete workspace gate (673 tests),
-original solver suite (41 tests), product installations and original installed
-CLI/MCP repair fixture](docs/validation/m7-compiler-script-bootstrap/source-inventory.json)
-with unchanged checks. Named-baseline feature smoke passed separately on `57a319d`.
-The [historical b895 full reader workflow](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
-passes both unchanged collectors: each retains 200 total samples across four
-concurrent clients (100 Result and 100 Status reads), with complete Current
-graphs and p95 below 200 ms, followed by retained CLI/MCP scenarios. The
-[730 reader pass](docs/validation/m7-reader-730a321-terminal.md) remains a separate historical scope.
-The original 387 reader workflow fails Python Result p95 (436.008 ms against
-the unchanged 200 ms bound); Status p95 is 137.084 ms. All 200 samples retain
-Current evidence and the same continuing verifier. Rust and retained CLI/MCP
-checks are unattempted, so no current reader acceptance is claimed. Twofold
-real-project repair-loop improvement and
-complete standard/cache coverage remain outstanding;
-M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
-See [current validation](docs/validation/m7-compiler-script-bootstrap/source-inventory.json) and
+The optional pinned source engine adds exact-function focus followed by
+independent full-target validation. Stock verification stays the default. The
+selected engine passes its source qualification, and the current product
+passes the workspace gate, the solver suite and the original installed CLI/MCP
+repair fixture. M7 is **not accepted**. Reader latency currently fails its
+200 ms p95 bound, the frozen real-project repair benchmark has no measured
+samples, and complete standard/cache conformance is outstanding. All local
+measurements so far were taken under x86 emulation and are not reference
+numbers. See [M7 validation](docs/validation/m7.md) and
 [known issues](docs/known-issues.md).
 
-Optional ordinary-build recovery passes its local controls and installed repair
-fixture. The earlier c2 [real-project benchmark](docs/validation/m7-benchmark-c2a4b23-warmup-terminal.md)
-fails Current warmup admission despite exit-zero verification and produces no
-measured samples. The recovered 387 benchmark also fails its original one-driver requirement:
-its first measured GCD full result is Current/accepted but uses three compiler
-invocations. Zero accepted samples are retained and Vest is unreached; no
-real-project speedup or invocation cause is claimed.
-The earlier b895 [whole benchmark](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
-also fails admission: a later repair verifies but its full evidence is Historical.
-It has zero measured samples; the cause remains unestablished.
-It can establish dependency contracts after initial regeneration, but never
-promotes an Unknown proof or replaces full verification. Unsupported coverage
-retains original cleaning. See [build recovery](docs/managed-cold-start.md).
+Optional ordinary-build recovery can establish dependency contracts after the
+initial regeneration. It never promotes an Unknown proof or replaces full
+verification, and unsupported coverage keeps the original cleaning. See
+[build recovery](docs/managed-cold-start.md).
 
 From the Sail checkout, build/register the selected optional source variant with
 `cargo xtask build-verus-engine`, then inspect `sail engine status --output json`.
@@ -155,9 +136,7 @@ the CLI, so an agent can inspect results while verification continues.
 Experimental repair tools add `start_repair_validation`, `verification_events`,
 `explain_failure`, `compare_verification`, `save_baseline`, `list_baselines` and
 `get_baseline`. Baseline tools expose the same immutable Historical evidence as
-the CLI, independently of job pruning. Their separate installed
-[feature smoke](docs/validation/m7-mcp-baseline-product-smoke-plan.md) passes on
-`57a319d`, including overwrite refusal and full CLI/MCP snapshot equality.
+the CLI, independently of job pruning.
 Durable read-only lookups keep
 bounded persistent clients while authorizing each read with a complete fresh
 service reply; writes and verification lifecycle ownership retain their existing
@@ -182,9 +161,10 @@ cargo nextest run --workspace
 
 The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automatically.
 
-Retire completed local run scratch after verified evidence retention and holder
-checks. The [workspace hygiene guide](docs/workspace-hygiene.md) describes the
-automatic local-gate cleanup and separate reader/benchmark handoff.
+Reference builds, gates and benchmarks run on a native x86-64 Linux host
+created by `scripts/perf-host.sh`. The
+[workspace hygiene guide](docs/workspace-hygiene.md) covers local worktrees,
+targets and containers.
 
 ## Portfolio and fragility
 

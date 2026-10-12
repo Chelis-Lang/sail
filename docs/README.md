@@ -37,32 +37,18 @@ owned-job archival, compatible storage layouts and failure handling.
 [Whole-result profiling](result-frame-profile.md) records transfer and complete
 response decoding costs without changing reader acceptance.
 The [interactive source engine](../engine/verus/README.md) describes the selected
-qualified patch, coherent prebuilt artifact, exact lowering oracle and runtime
-identity. Its [qualification](../engine/verus/qualification-linux.json) passes
-the source-level checks. Frozen b895 passes the [original installed repair and
-reader/retained workflows](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
-Newer baseline/source-inventory code still requires its own native and installed-product validation.
-Real-project performance and complete standard/cache coverage remain open.
-The historical [source preparation audit](../engine/verus/candidates/decode-budget/README.md)
-records allocation ownership, phase bounds and outstanding combined-runtime
-checks for the unselected engine candidate.
-Its [closed ownership refinement](../engine/verus/candidates/decode-ownership/README.md)
-records exact audited routes, retained payload probes and safe budget refusals.
-Long corpus, source-build and benchmark work runs locally in the Linux container;
-required CI remains short.
-The [frozen local combined gate helper](validation/local-combined-gates.md)
-retains exact source, raw failures and bounded phase ownership when running the
-workspace gate followed by the original solver suite in an existing container.
-The [local product controller](validation/local-product-install.md) requires that
-complete validation before ordinary release construction and owned installation;
-its grant carries delivery evidence, not proof or performance acceptance.
+qualified patch, the prebuilt artifact, the exact lowering oracle and the
+runtime identity. Its [qualification](../engine/verus/qualification-linux.json)
+passes the source-level checks. Long corpus, source-build and benchmark work
+runs locally, and required CI stays short. Reference performance numbers come
+from a native x86-64 Linux host (`scripts/perf-host.sh`).
 
-Evidence lives in `bench/validation/`, `docs/validation/` and
-`engine/verus/qualifications/` or `engine/verus/candidates/qualifications/`.
-[The retained M7 status history](validation/m7-acceptance-status-history.md)
-keeps earlier failed, interrupted and setup-only scopes out of the current
-roadmap. Each record applies to its stated source, runtime and environment.
-A later pass does not erase an earlier failure, and a candidate build or static review does
+[M7 validation](validation/m7.md) gives each M7 acceptance gate's status, best
+evidence and indexed failed or interrupted attempts. Raw logs stay outside the
+repository and are cited by SHA-256. Earlier per-run records and unselected
+engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
+Each record applies to its stated source, runtime and environment. A later pass
+does not erase an earlier failure, and a candidate build or static review does
 not qualify a runtime. Reports summarize completed milestones:
 [bootstrap](reports/2026-10-08-bootstrap.md),
 [initial product](reports/2026-10-09-initial-product.md), and
@@ -74,8 +60,3 @@ of M7 at handover and the decisions in ADR 0038.
 [Survey documents](survey/README.md) retain Verus/Z3 protocol, solver behavior,
 corpus and prior-art research. Upstream reports are a human decision; agents
 record discoveries in this repository.
-
-The [focused default Verismo diagnostic plan](validation/m7-verismo-diagnostic-plan.md)
-describes metadata-only timeout observations, original3600-second limits and
-retained raw evidence. Its one successful bitflags diagnostic does not qualify the failed full
-standard run or any source engine.

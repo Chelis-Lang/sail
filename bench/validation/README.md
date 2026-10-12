@@ -194,17 +194,3 @@ are 13.01 and 10.41 seconds, versus 4.11 and 3.55 seconds plain. These emulated
 observations establish receipt reuse, not native reference performance or a
 speedup. They are distinct successful retries; earlier timeout and job-result
 failure artifacts remain recorded with unresolved causes.
-
-## M7 repair integration
-
-`m7-repair-cli-mcp-native-linux-2026-10-10.json` retains the successful
-prebuilt-engine CI integration run at `f111b55`. It exercises actual Cargo
-verification through CLI and MCP, provisional focus followed by complete full
-validation, failure explanations, named baselines and regression comparison,
-resumable events, missing selectors, and rejection of a late EXEC error. The
-supported tiny no-vstd fixture preserves Cargo's full dependency plan. The
-120-second proof budget and command/RPC deadlines remain unchanged.
-
-The artifact binds the tested source, runtime manifest, Sail executable and
-raw summary. This is integration evidence; the frozen human-eval-verus/Vest
-repair workloads and concurrent-reader acceptance remain separate M7 gates.

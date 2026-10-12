@@ -1,9 +1,0 @@
-
-running 4 tests
-test model_fixed_controls_fit_existing_small_retirement_margin ... ok
-test normal_finish_waits_for_real_retirement_then_drops_last_owner_under_gate ... ok
-test old_disconnect_allows_gate_to_unlock_before_service_retirement ... ok
-test worker_unwind_drop_still_disconnects_without_acknowledgement_wait ... ok
-
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-

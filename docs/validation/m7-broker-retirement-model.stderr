@@ -1,4 +1,0 @@
-
-thread 'worker_unwind_drop_still_disconnects_without_acknowledgement_wait' (122962937) panicked at docs/validation/broker-retirement-proposal.rs:180:13:
-controlled worker unwind
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,0 +1,8 @@
+{
+  "source": "docs/validation/m7-rpc-retained-functional.json at tag archive/m7-contracts-f7103bf",
+  "original_harness": {
+    "failure": {
+      "message": "{'content': [{'text': 'SAIL0907: proof operation failed: error[SAIL0906]: SAIL0902: cursor belongs to another proof stream\\n', 'type': 'text'}, {'text': '{\"exit_code\":2}', 'type': 'text'}], 'isError': True, 'resultType': 'complete', 'structuredContent': {'exit_code': 2}}"
+    }
+  }
+}

@@ -150,7 +150,7 @@ missing-function errors, and a proof cursor resumed across independent MCP
 connections. A cursor from another stream must return the existing explicit
 `SAIL0902` error through its CLI/MCP projection; an actual journal gap remains
 incomplete evidence. Replaying a completed cursor must preserve its exact
-events. The [original conflicting assertion and corrected real run](../validation/m7-rpc-retained-corrected.md)
+events. The [original conflicting assertion and corrected real run](../validation/m7.md)
 are retained separately. The scenario then submits one explicitly forced owned
 repair, observes its actual worker and descendants through kernel identities,
 cancels that job and requires those processes to stop. The externally supplied
@@ -233,57 +233,13 @@ service available for the retained CLI/MCP scenario above, with its actual PID,
 baseline job ID and input revision in `summary.json`. These are setup and test
 tools, not new proof modes or evidence that the performance gates have passed.
 
-## Retained acceptance progress (2026-10-10)
+## Acceptance status
 
-M7 remains in progress. Passing integration checks do not substitute for the
-real-project performance and exact-input gates.
+[M7 validation](../validation/m7.md) records each gate's current status, best
+evidence and indexed failed attempts. Passing integration checks do not
+substitute for the real-project performance and exact-input gates.
 
-| Check | Observed result | Evidence |
-|---|---|---|
-| Native Linux CI repair CLI/MCP integration | Passed 215 operations with unchanged deadlines, including cancellation and baseline comparison; uses the small no-vstd fixture | `bench/validation/m7-repair-cli-mcp-native-linux-2026-10-10.json` |
-| Final d19/b346 local CLI/MCP integration | Failed unchanged 120-second bound on the first cold no-vstd job; Cargo printed Finished in 82 seconds, no managed result before cleanup; final phase unresolved | `docs/validation/m7-d19-b346-repair-cli-mcp-local-failure.json` |
-| Earlier 2cce/b346 native Linux CI repair CLI/MCP integration | Passed the actual small no-vstd scenario in 46.790 seconds with unchanged bounds: Current one-driver batch, provisional events, missing-selector full preservation, rejected regressions/late EXEC, raw model and CLI/MCP baseline tools; 169 CLI operations | `docs/validation/m7-2cce-b346-repair-cli-mcp-native-success.json` |
-| Earlier b56b0ff/selected-AAA3 native Linux CI complete repair fixture | Passed in 45.847 seconds, all 167 operations within original 120/30/5-second bounds, including regression, missing selector, explain/compare, MCP and late EXEC. Small supported-no-vstd scope only; emulated failure and real-project/reader targets remain open | [Record](../../bench/validation/m7-linux-native-ci-b56b0ff-repair-2026-10-11.json) |
-| Corrected 1dc/b346 local CLI/MCP integration | Failed unchanged 120-second bound on first cold no-vstd job; a live `rust_verify` descendant remained at 107 seconds, no full result before cleanup; callback phase unresolved | `docs/validation/m7-1dc-b346-repair-cli-mcp-local-failure.json` |
-| Corrected source variant, host differential tests | Eleven exact fixtures, eight prepared revisions, cancellation/restart, three provenance regressions, three driver-termination regressions and the preserved worker-TLS reproduction pass | `engine/verus/qualification-host.json` |
-| Corrected source variant, Linux qualification | Eleven exact fixtures, eight prepared revisions, cancellation/restart, driver and provenance regressions, and preparation encoding pass; vstd verifies 2,060 obligations | `engine/verus/qualification-linux.json` |
-| Corrected source variant, real human-eval | Two full callbacks each verify 441 obligations without the worker TLS panic; exact differential and selected persistent-restore assertions fail | `engine/verus/qualifications/cd40e16e-real-he-failure.json` |
-| Established concurrent reads, prior inventory variant | Failed: 82/200 Current reads, status p95 372.334 ms and result p95 454.569 ms; all samples have an actual live verifier | `docs/validation/m7-f111-reader-failure.json` |
-| Frozen whole repair loops | No qualified measured samples yet; the earlier run failed during context warm-up | Whole-loop acceptance remains outstanding |
-| Full default fast tier, earlier frozen variant | Pass-through and fill each match 147/147; warm has 146 Same and one vstd infrastructure timeout | Original timeout remains a failure; the later traced diagnostic does not replace it |
-| Frozen 1dc default fast tier, later complete run | All 147 units / 3,450 functions match in pass-through, fill and warm; standard phase lost its container before completion | [Immutable completed and interrupted phases](../../bench/validation/m7-default-corpus-1dc-interrupted-emulated-2026-10-10.json) |
-| Integrated 62ad Linux workspace gate | Full gate passed, including 436/436 nextest tests with two case workers; internal concurrency fixtures unchanged | [Gate record](../../bench/validation/m7-linux-gate-62ad-emulated-2026-10-10.json) |
-| Integrated 62ad real solver suite | 36/37 passed; shared-entry forgery test timed out at its original 180-second limit; diagnosis pending | [Failure record](../../bench/validation/m7-linux-solver-62ad-failure-emulated-2026-10-10.json) |
-| Integrated d12 workspace gate | 431/436 passed; five HTTP-cache concurrency tests failed, with original limits and assertions retained | [Failure record](../../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json) |
-| Integrated a9 workspace gate | 435/436 passed after separate actual transport/trust establishment; one verified paused-initiator check still fails under its original serving assertions | [Failure record](../../bench/validation/m7-linux-gate-a9-failure-emulated-2026-10-10.json) |
-| Integrated 5fd workspace gate | All 439 workspace tests and every gate step passed; caller-entry coalescing and strict development arithmetic optimization included, original HTTP assertions/deadlines unchanged | [Gate record](../../bench/validation/m7-linux-gate-5fd-emulated-2026-10-10.json) |
-| Integrated 5fd real solver suite | 37/37 passed in 182.337 seconds, including the shared-entry fault case in 13.751 seconds with unchanged 180-second test and 60-second session limits; original timeout cause remains unresolved | [Record](../../bench/validation/m7-linux-solver-5fd-emulated-2026-10-10.json) |
-| Integrated 5fd complete end-to-end attempt | Legacy output/JSON/MCP and seeded portfolio checks pass; cold managed verification exceeds its original 240-second limit, so repair is not attempted. This aggregate remains failed. | [Failure](../../bench/validation/m7-linux-e2e-5fd-failure-emulated-2026-10-10.json) |
-| Subsequent isolated 5fd repair phase | The first repair job remains running at the original 120-second total deadline. Last retained stderr shows dependency compilation; no accepted full result or later scenario. Original 30-second CLI and five-second RPC bounds unchanged. This cannot replace the failed aggregate. | [Failure](../../bench/validation/m7-linux-repair-5fd-phase-failure-emulated-2026-10-10.json) |
-| Subsequent integrated 7dc workspace gate | 437/439 tests passed; verified delivery and stalled-request elapsed checks failed their unchanged 250 ms bounds. Completion/Python/fmt/Clippy passed; steps after nextest were not attempted. | [Failure](../../bench/validation/m7-linux-gate-7dc-failure-emulated-2026-10-10.json) |
-| Integrated d12 real solver suite | 37/37 passed in 114.446 seconds, including the previously timed-out case in 9.652 seconds; original timeout cause remains unresolved | [Record](../../bench/validation/m7-linux-solver-d12-emulated-2026-10-10.json) |
-| Candidate 2459 ordinary source build | Passed build and source controls; independent-stock human-eval byte qualification failed and candidate remains unselected | [Build](../../engine/verus/candidates/qualifications/2459-linux-build.json), [failed qualification](../../engine/verus/candidates/qualifications/2459-linux.json) |
-| Candidate 2459 other-module edit | Stock and engine outcomes and 114 transcripts match, but zero demonstrated reuse across edits; one full hit reused this invocation's focus preparation | [Control](../../engine/verus/candidates/qualifications/2459-other-module-edit.json) |
-| Candidate 2421 source build and hit controls | Ordinary build/vstd passed; corrected observable declaration-order, body and effects controls all exercised actual restored hits; complete source/product qualification remains pending | [Retained first failure](../../engine/verus/candidates/qualifications/2421-linux-first-attempt.json), [completed controls](../../engine/verus/candidates/qualifications/2421-linux-hit-controls.json) |
-| Candidate 2421 complete source attempt | All 106 restored/fresh bucket comparisons complete, but authoritative unchanged-revision full validation times out at 600 seconds without a report or normal seal; later gates not reached | [Failure](../../engine/verus/candidates/qualifications/2421-linux-resumed-failure.json) |
-| a6/b346 real reader diagnostic | Genuine public Current baseline and independent active preparation passed; Python census failed: 125/200 complete admission checks, result p95 402.821 ms; all 200 observations retained an actual selected verifier. Rust and retained CLI/MCP not attempted | [Complete failure record](../validation/m7-a6-b346-reader-census-failure.json) |
-| Separate retained-job contention profile | No active verifier or new proof; 187/200 Current, 13 Unknown with recorded validation-owner waits. Full traced timings fail acceptance, original job bytes unchanged; original live failure cause remains unknown | [Diagnostic](../validation/m7-retained-proof-freshness-profile.json) |
-| Caller-entry coalescing diagnostic | No active verifier or new proof; 200/200 Current with unchanged guards. Traced status p95 209.120 ms and result p95 407.420 ms still fail the 200 ms target; original retained job files unchanged | [Diagnostic](../validation/m7-reader-entry-coalescing-diagnostic.json) |
-| Fresh caller-entry real reader setup | Ordinary human-eval baseline preparation timed out at 600.227 seconds; no complete target report or Current baseline, neither collector nor retained CLI/MCP attempted | [Setup failure](../validation/m7-reader-entry-setup-timeout.md) |
-| Strict shared-signature CPU controls | Fixed 16-check valid/forged controls show development arithmetic cost falling from approximately 310/320 ms to 4–7 ms. Original HTTP deadlines, strict forgery refusal and all binding checks remain; subsequent integrated 5fd gate passed | [Diagnostic](../validation/m7-shared-signature-cpu-diagnostic.json) |
-
-The human-eval input difference is confined to the already recorded stock
-declaration-order variation in `human_eval_160`. All other 113 full SMT inputs,
-diagnostics, counters and function details match. The second fresh callback
-restores only one preparation and misses 105; this does not establish useful
-reuse across edits. Both failures remain visible, without normalization or an
-acceptance waiver.
-
-Input digest retention under continuous kernel guards and the worker's guarded
-sysroot baseline have additional invalidation tests. Their real-project gains
-still need measuring. The additive Rust probe described in `docs/freshness.md`
-uses the actual product client; the original Python census and its failures
-remain independent evidence.
+## Engine termination and fallback
 
 The current source variant explicitly marks normal driver termination. Internal
 compiler panics escape without a terminal seal; ordinary failed proofs and
