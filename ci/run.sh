@@ -224,6 +224,12 @@ RS
         --verus-source "$sail_repair_source" \
         --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}" \
         --environment-label "Linux x86-64 prebuilt-engine CI/local container"
+      # Engine provenance and the explicit persistent-preparation opt-in,
+      # including corrupted persistent entries, against the same engine.
+      python3 "$PWD/ci/test-repair-engine-provenance.py" --sail "$sail" \
+        --engine-build "$SAIL_ENGINE_BUILD" --verus-source "$sail_repair_source" \
+        --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}/engine-provenance" \
+        --environment-label "Linux x86-64 prebuilt-engine CI/local container"
     fi
     ;;
 
