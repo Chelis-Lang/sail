@@ -93,9 +93,8 @@ def run(args):
             assert engine.returncode != 0 and b"E0499" in engine.stderr, "late borrow error disappeared"
         results.append({"fixture": name, "exit_code": engine.returncode, "diagnostics_sha256": hashlib.sha256(engine.stderr).hexdigest(),
                         "full_sessions": [{"name": p.name, "bytes": len(pipe(p)), "input_sha256": hashlib.sha256(pipe(p)).hexdigest()} for p in engine_logs],
-                        "normal_termination": events[-1]["payload"]["normal_termination"],
-                        "prepared_hits": sum(e["event"] == "prepared-hit" for e in events)})
-        print(name, "matches", "prepared hits", results[-1]["prepared_hits"], flush=True)
+                        "normal_termination": events[-1]["payload"]["normal_termination"]})
+        print(name, "matches", flush=True)
     summary = {"version": 1, "machine": platform.platform(), "engine_sha256": sha(pathlib.Path(args.engine)),
                "engine_verifier_sha256": sha(pathlib.Path(args.engine).with_name("rust_verify")),
                "stock_sha256": sha(pathlib.Path(args.stock)), "z3_sha256": sha(pathlib.Path(args.z3)), "results": results}

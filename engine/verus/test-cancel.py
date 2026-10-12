@@ -42,7 +42,7 @@ child.stdin.close();sys.exit(child.wait())
     env.update(VERUS_Z3_PATH=str(wrapper), SAIL_TEST_Z3=args.z3, SAIL_TEST_BLOCKED=str(marker),
                SAIL_ENGINE='interactive', SAIL_ENGINE_FUNCTION='demo::selected',
                SAIL_ENGINE_CONTEXT='local-cancel-v1:' + oracle.sha(pathlib.Path(args.engine).with_name('rust_verify')),
-               SAIL_ENGINE_PREPARED_DIR=str(root/'prepared'), SAIL_ENGINE_EVENTS=str(events),
+               SAIL_ENGINE_EVENTS=str(events),
                SAIL_ENGINE_FOCUS_REPORT=str(root/'focus.json'))
     command = [args.engine,str(source),'--no-vstd','--crate-name','demo','-V','use-crate-name','--output-json','--time','--no-report-long-running']
     with (root/'cancel.stdout').open('wb') as output, (root/'cancel.stderr').open('wb') as error:
