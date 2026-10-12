@@ -412,7 +412,11 @@ class OwnedPhaseRunner:
         self.record["phases"].append(row)
         started, groups = time.monotonic(), None
         env = os.environ.copy()
-        env.update(CARGO_BUILD_JOBS="2", NEXTEST_TEST_THREADS="1", CARGO_TARGET_DIR=self.target, PYTHONDONTWRITEBYTECODE="1")
+        env.update(CARGO_BUILD_JOBS="2", CARGO_INCREMENTAL="0", NEXTEST_TEST_THREADS="1",
+                   CARGO_TARGET_DIR=self.target, PYTHONDONTWRITEBYTECODE="1")
+        row["build_environment"] = {key: env[key] for key in
+                                    ("CARGO_BUILD_JOBS", "CARGO_INCREMENTAL", "NEXTEST_TEST_THREADS",
+                                     "CARGO_TARGET_DIR", "PYTHONDONTWRITEBYTECODE")}
         try:
             with (self.root / (name + ".log")).open("wb") as log:
                 self.spawning = True

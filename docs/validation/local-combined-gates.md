@@ -44,6 +44,11 @@ the native controller also binds PID 1's birth. Protected files must match their
 inventory before and after each phase.
 
 Cargo jobs remain two and nextest independent test concurrency remains one.
+Like required CI, local phases set `CARGO_INCREMENTAL=0` and record this build
+setting with the other bounded execution settings. This prevents repeated frozen
+checkouts from accumulating disposable Rust incremental state in the shared
+target. It changes neither the test selection nor any acceptance deadline or
+oracle. The helper does not delete existing incremental state.
 The local outer caps are 3,600 seconds for the whole gate and 1,800 seconds for
 the whole solver suite. They leave every original per-test deadline, ignored-test
 selection, oracle and failure predicate unchanged. These generous local caps
