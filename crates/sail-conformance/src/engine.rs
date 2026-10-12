@@ -53,6 +53,9 @@ pub struct EngineStats {
     /// Failed summaries whose two fresh lowerings differ from each other
     /// (VI-0015): unstable, not failures.
     pub oracle_unstable: usize,
+    /// Buckets the oracle did not fork because their bounded preparation key
+    /// was refused, so no restore was possible there.
+    pub oracle_not_applicable: usize,
     /// Why each failed summary was classified as it was.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub oracle_confirmations: Vec<String>,
@@ -184,6 +187,7 @@ pub fn check(
                 _ => issues.push("engine preparation restore has no source".to_owned()),
             },
             Some("phase-finished") if event["phase"] == "focus" => stats.focus_established = true,
+            Some("oracle-not-applicable") => stats.oracle_not_applicable += 1,
             _ => {}
         }
     }
@@ -284,8 +288,9 @@ mod tests {
     #[test]
     fn consistent_single_seal_passes_and_counts_hits() {
         let events = format!(
-            "{}\n{}\n{}\n{SEALED_OK}\n",
+            "{}\n{}\n{}\n{}\n{SEALED_OK}\n",
             r#"{"version":1,"phase":"focus","event":"phase-finished","payload":{}}"#,
+            r#"{"version":1,"phase":"full","event":"oracle-not-applicable","payload":{"bucket":"b","reason":"preparation key refused"}}"#,
             r#"{"version":1,"phase":"full","event":"prepared-restored","payload":{"source":"batch","bytes":1}}"#,
             r#"{"version":1,"phase":"full","event":"prepared-restored","payload":{"source":"persistent","bytes":1}}"#,
         );
@@ -302,6 +307,7 @@ mod tests {
             (stats.batch_hits, stats.file_hits, stats.oracle_checks),
             (1, 1, 2)
         );
+        assert_eq!(stats.oracle_not_applicable, 1);
     }
 
     #[test]

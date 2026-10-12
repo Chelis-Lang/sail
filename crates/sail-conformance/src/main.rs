@@ -244,6 +244,7 @@ struct EngineSummary {
     oracle_hard_failures: usize,
     oracle_unstable: usize,
     oracle_unstable_units: usize,
+    oracle_not_applicable: usize,
 }
 
 #[derive(Serialize)]
@@ -654,7 +655,7 @@ fn summary_line(report: &Report) -> String {
     };
     let engine = s.engine.as_ref().map_or_else(String::new, |e| {
         format!(
-            "; engine {}: {} focused units, {} units with {} restored preparation hits, {} oracle checks, {} oracle failures ({} hard, {} unstable in {} units){}",
+            "; engine {}: {} focused units, {} units with {} restored preparation hits, {} oracle checks, {} oracle failures ({} hard, {} unstable in {} units), {} buckets without a preparation key{}",
             e.manifest_sha256.get(..12).unwrap_or_default(),
             e.focused_units,
             e.units_with_hits,
@@ -664,6 +665,7 @@ fn summary_line(report: &Report) -> String {
             e.oracle_hard_failures,
             e.oracle_unstable,
             e.oracle_unstable_units,
+            e.oracle_not_applicable,
             if e.oracle { "" } else { " (oracle off)" }
         )
     });
@@ -792,6 +794,7 @@ fn run(o: &Options) -> Result<ExitCode, String> {
             totals.oracle_hard_failures += stats.oracle_hard_failures;
             totals.oracle_unstable += stats.oracle_unstable;
             totals.oracle_unstable_units += usize::from(stats.oracle_unstable > 0);
+            totals.oracle_not_applicable += stats.oracle_not_applicable;
         }
         summary.engine = Some(totals);
     }
