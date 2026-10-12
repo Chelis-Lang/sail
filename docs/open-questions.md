@@ -160,7 +160,9 @@ inline with the date and link the ADR that captures it.
     this from a preparation defect, so the arm, as wired into
     `ci/run.sh conformance`, fails on this unit. The complete fast tier
     found the same kind of mismatch on `summer_school/chapter-6-1.rs`
-    (stock also varies there); its other 109 restored hits passed. Options include keeping the
+    (stock also varies there); its other 109 restored hits passed. On the
+    standard tier, the oracle could not fork `vest-generated`'s initial
+    lowering state at all, so that unit also fails with the oracle on. Options include keeping the
     engine unqualified until trigger choice is deterministic, disabling
     preparation reuse for buckets whose lowering is order-sensitive, or
     classifying such mismatches as unstable under explicit evidence. No

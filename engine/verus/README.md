@@ -252,6 +252,11 @@ fast tier (Linux x86-64, 2026-10-12) it matched 145 of 147 units. Two differ:
   Verus makes both choices between runs (VI-0015); the oracle cannot tell this
   from a preparation defect.
 
+On the standard tier's other nine projects (12 units), 11 matched. On
+`vest-generated` the oracle's own initial-state fork differs from the original
+context before any hit (`oracle initial state: independent baseline differs`);
+without the oracle the engine matches plain Verus there.
+
 ## Pinned Linux runtime for CI
 
 `artifact-linux.json` binds the private release asset, archive digest, source
