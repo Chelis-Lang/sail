@@ -49,6 +49,56 @@ class Controls(unittest.TestCase):
         g.observe({100: row(100, 1, start=11), 102: row(102, 100)})
         self.assertTrue(g.partial)
         self.assertEqual(set(g.known), {100})
+        self.assertEqual(g.first_refusal['reason'], 'primary-unavailable-or-dead-or-rebound')
+
+    def test_default_cumulative_budget_stays_partial_after_children_exit(self):
+        primary = row(100, 1)
+        g = m.Groups(primary)
+        self.assertEqual(g.max_groups, 256)
+        # At most one child is present per scan; terminated history still counts.
+        for pid in range(101, 356):
+            g.observe({100: primary, pid: row(pid, 100, start=pid)})
+        self.assertEqual(len(g.known), 256)
+        self.assertFalse(g.partial)
+        g.observe({100: primary, 356: row(356, 100, start=356)})
+        self.assertTrue(g.partial)
+        self.assertNotIn(356, g.known)
+        self.assertEqual(g.first_refusal['reason'], 'group-budget-exhausted')
+        first = dict(g.first_refusal)
+        g.observe({100: primary})
+        g.observe({100: row(100, 1, start=11)})
+        self.assertTrue(g.partial)
+        self.assertEqual(g.first_refusal, first)
+        sent = []
+        g.signal_live(read={100: primary, 356: row(356, 100)}.get,
+                      send=lambda *value: sent.append(value))
+        self.assertEqual(sent, [(100, signal.SIGKILL)])
+
+    def test_selected_budget_is_bounded_and_saturation_still_refuses(self):
+        primary = row(100, 1)
+        g = m.Groups(primary, max_groups=8192)
+        for pid in range(101, 8292):
+            g.observe({100: primary, pid: row(pid, 100, start=pid)})
+        self.assertEqual(len(g.known), 8192)
+        self.assertFalse(g.partial)
+        g.observe({100: primary, 8292: row(8292, 100, start=8292)})
+        self.assertTrue(g.partial)
+        self.assertEqual(g.first_refusal['group_budget'], 8192)
+        for budget in (0, -1, True, '8192', m.MAX_SCAN + 1):
+            with self.assertRaises(ValueError):
+                m.Groups(primary, max_groups=budget)
+
+    def test_selected_budget_does_not_grant_recycled_group_signal_authority(self):
+        primary = row(100, 1)
+        g = m.Groups(primary, max_groups=8192)
+        g.observe({100: primary, 102: row(102, 100, start=20)})
+        g.observe({100: primary, 102: row(102, 100, start=21)})
+        self.assertTrue(g.partial)
+        self.assertEqual(g.first_refusal['reason'], 'known-group-birth-changed')
+        sent = []
+        g.signal_live(read={102: row(102, 100, start=21)}.get,
+                      send=lambda *value: sent.append(value))
+        self.assertEqual(sent, [])
 
     def test_cleanup_rechecks_birth_and_group(self):
         g = m.Groups(row(100, 1))

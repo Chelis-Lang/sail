@@ -78,7 +78,7 @@ PASS requires both original phases to exit zero with matching input identity and
 closed recorded ownership. A failed, interrupted or unattempted phase receives
 no skipped-gate credit; earlier failed scopes remain separate.
 
-`python3 scripts/test-local-combined-gates.py` currently passes 31 pure controls on Python 3.12 (the actual extraction control requires
+`python3 scripts/test-local-combined-gates.py` currently has 33 pure controls on Python 3.12 (the actual extraction control requires
 the standard-library data filter)
 using fake processes and temporary files. They exercise stopping, timeout and
 signal cleanup, sticky uncertainty, transport capture bounds, input substitution,
@@ -90,3 +90,39 @@ The first dfe3c47 native scope remains FAIL: its gate exited zero, but the
 controller counted terminated, unreaped group members as live survivors and
 never launched solver. The corrected observer does not retrospectively promote
 that scope; a fresh complete gate and solver execution is required.
+
+## Cumulative group budget and first-refusal evidence
+
+The `e95b8bd` native gate retained exactly 256 group leaders, the original
+`Groups` limit. Its workspace checks completed 674/675 with strict checks passing;
+solver was unattempted. Final recorded closure had no live or unavailable rows
+and 12 complete all-dead task groups, but earlier `Groups.partial` made closure
+uncertainty sticky. That record does not contain the first partial reason, so
+the saturated count supports a cumulative-budget explanation without excluding
+an earlier birth mismatch or process-scan overflow. The failed scope and its
+uncertainty remain unchanged; a later separate owner audit cannot promote it.
+
+The group budget counts all retained leaders over the phase, including exited
+children, rather than only simultaneous live processes. `Groups` still defaults
+to 256 for the transcript experiment and every unchanged caller. Only the local
+full workspace/solver helper explicitly selects its existing 8,192-row budget,
+so hundreds of independent test sessions can retain complete ownership evidence.
+The shared ordinary-product installer retains the default. Caller budgets must
+be positive integers no greater than the existing process-scan bound; saturation
+at either budget still refuses further retention and remains sticky. This is a
+count/serialization bound, not an allocator or RSS quota.
+
+One fixed first-refusal record now captures a stable reason, retained count,
+budget and optional numeric PID/birth identities. It includes no environment,
+paths, argv or proof data. Later observations cannot replace that first reason
+or clear partial coverage. Final full known-group scanning, all-dead thread
+evidence, birth-matched signal authority, original commands/deadlines and test
+oracles are unchanged. No group is exempted or silently forgotten.
+
+Host-only pure controls exercise the original 256-group cumulative saturation,
+8,192-group selection and saturation, exact signal/birth refusal and sticky first
+reason. The actual shared phase-runner control retains more than 256 fake groups
+and records its selected budget; the installer control proves its default call
+is unchanged. Results were 14 transcript, 33 combined (one Python 3.9 data-filter
+control skipped), and 13 installer controls, with no child, Docker, Cargo or
+proof execution. A fresh native gate is required for the new caller scope.

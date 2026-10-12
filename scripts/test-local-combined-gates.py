@@ -361,6 +361,44 @@ class Controls(unittest.TestCase):
             m.observe_owned(module, groups)
         groups.observe.assert_not_called()
 
+    def test_explicit_workspace_budget_retains_more_than_transcript_default(self):
+        support_spec = importlib.util.spec_from_file_location('group_support', Path(__file__).with_name('m7-tspec-transcript-run.py'))
+        support = importlib.util.module_from_spec(support_spec)
+        support_spec.loader.exec_module(support)
+        leader = {'pid': 100, 'ppid': 1, 'pgid': 100, 'start': 10, 'state': 'S'}
+        module = types.SimpleNamespace(row=lambda _pid: leader, Groups=support.Groups)
+        def observe(_child, _limit, groups, _module, _closure, _observe):
+            self.assertEqual(groups.max_groups, 8192)
+            for pid in range(101, 778):
+                groups.observe({100: leader, pid: dict(leader, pid=pid, pgid=pid, ppid=100, start=pid)})
+            self.assertEqual(len(groups.known), 678)
+            self.assertFalse(groups.partial)
+            return 0
+        with tempfile.TemporaryDirectory() as directory:
+            root, record = Path(directory), {'phases': []}
+            runner = m.OwnedPhaseRunner(root, root, '/target', module, m.Closure(), record, lambda: None,
+                                        group_budget=m.MAX_ROWS)
+            with patch.object(m.subprocess, 'Popen', return_value=Mock(pid=100)), patch.object(m, 'run_owned', side_effect=observe), patch.object(m, 'group_closure', return_value={'survivors': [], 'unavailable': [], 'terminated_unreaped': []}):
+                self.assertEqual(runner.run('gate', m.phase_command('gate'), 3600), 0)
+            self.assertEqual(record['phases'][0]['ownership_group_budget'], 8192)
+            self.assertFalse(record['phases'][0]['ownership_partial'])
+            self.assertIsNone(record['phases'][0]['ownership_first_refusal'])
+
+    def test_scan_bound_records_refusal_without_clearing_partial(self):
+        leader = {'pid': 100, 'ppid': 1, 'pgid': 100, 'start': 10, 'state': 'S'}
+        support_spec = importlib.util.spec_from_file_location('scan_support', Path(__file__).with_name('m7-tspec-transcript-run.py'))
+        support = importlib.util.module_from_spec(support_spec)
+        support_spec.loader.exec_module(support)
+        groups = support.Groups(leader)
+        module = types.SimpleNamespace(MAX_SCAN=1, row=lambda _pid: leader)
+        context = Mock()
+        context.__enter__ = Mock(return_value=iter([types.SimpleNamespace(name='100'), types.SimpleNamespace(name='101')]))
+        context.__exit__ = Mock(return_value=False)
+        with patch.object(m.os, 'scandir', return_value=context):
+            m.observe_owned(module, groups)
+        self.assertTrue(groups.partial)
+        self.assertEqual(groups.first_refusal['reason'], 'process-scan-budget-exhausted')
+
 
 if __name__ == '__main__':
     unittest.main()

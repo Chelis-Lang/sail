@@ -53,16 +53,29 @@ def matching(actual, pinned):
 
 class Groups:
     """Retain only group leaders observed in a live pinned parent's subtree."""
-    def __init__(self, leader):
+    def __init__(self, leader, max_groups=MAX_GROUPS):
         assert leader['pgid'] == leader['pid']
+        if type(max_groups) is not int or not 1 <= max_groups <= MAX_SCAN:
+            raise ValueError('invalid bounded group budget')
         self.leader = leader
         self.known = {leader['pid']: leader}
+        self.max_groups = max_groups
         self.partial = False
+        self.first_refusal = None
+
+    def mark_partial(self, reason, pid=None, pinned_start=None, observed_start=None):
+        """Retain one fixed diagnostic; a later clean scan never refunds refusal."""
+        self.partial = True
+        if self.first_refusal is None:
+            self.first_refusal = {'reason': reason, 'known_groups': len(self.known),
+                                  'group_budget': self.max_groups, 'pid': pid,
+                                  'pinned_start': pinned_start, 'observed_start': observed_start}
 
     def observe(self, rows):
         primary = rows.get(self.leader['pid'])
         if not matching(primary, self.leader) or primary['state'] in ('Z', 'X'):
-            self.partial = True
+            self.mark_partial('primary-unavailable-or-dead-or-rebound', self.leader['pid'],
+                              self.leader['start'], None if primary is None else primary['start'])
             return
         owned = {self.leader['pid']}
         while True:
@@ -78,12 +91,12 @@ class Groups:
             r = rows[pid]
             if r['pid'] != r['pgid']:
                 continue
-            if pid not in self.known and len(self.known) >= MAX_GROUPS:
-                self.partial = True
+            if pid not in self.known and len(self.known) >= self.max_groups:
+                self.mark_partial('group-budget-exhausted', pid, observed_start=r['start'])
                 continue
             previous = self.known.get(pid)
             if previous is not None and not matching(r, previous):
-                self.partial = True
+                self.mark_partial('known-group-birth-changed', pid, previous['start'], r['start'])
                 continue
             self.known[pid] = dict(r)
 
@@ -114,7 +127,7 @@ def scan(groups):
                 continue
             scanned += 1
             if scanned > MAX_SCAN:
-                groups.partial = True
+                groups.mark_partial('process-scan-budget-exhausted')
                 break
             r = row(int(entry.name))
             if r is not None:
@@ -258,6 +271,8 @@ def run(args):
             record['cleanup'] = groups.signal_live()
             record['retained_groups'] = list(groups.known.values())
             record['ownership_partial'] = groups.partial
+            record['ownership_group_budget'] = groups.max_groups
+            record['ownership_first_refusal'] = groups.first_refusal
         elif process is not None and process.poll() is None:
             # A failed initial identity capture grants only the Popen child,
             # not any guessed descendant group.

@@ -341,7 +341,7 @@ def observe_owned(module, groups):
                 continue
             count += 1
             if count > module.MAX_SCAN:
-                groups.partial = True
+                groups.mark_partial('process-scan-budget-exhausted')
                 return
             value = module.row(int(entry.name))
             if value is not None:
@@ -389,10 +389,11 @@ def run_owned(child, limit, groups, module, closure, observe):
 
 class OwnedPhaseRunner:
     """Shared birth-checked phase lifecycle for local gates and product install."""
-    def __init__(self, root, source, target, module, closure, record, check):
+    def __init__(self, root, source, target, module, closure, record, check, group_budget=None):
         self.root, self.source, self.target = root, source, target
         self.module, self.closure, self.record, self.check = module, closure, record, check
         self.active, self.spawning = None, False
+        self.group_budget = group_budget
 
     def interrupt(self, number, _frame):
         self.closure.uncertain("controller signal " + str(number))
@@ -427,7 +428,8 @@ class OwnedPhaseRunner:
                 if pinned is None or pinned["pgid"] != self.active.pid:
                     self.closure.uncertain("phase birth unavailable")
                     raise RuntimeError("phase birth unavailable; owner audit required")
-                groups = self.module.Groups(pinned)
+                groups = (self.module.Groups(pinned) if self.group_budget is None
+                          else self.module.Groups(pinned, max_groups=self.group_budget))
                 row["owner"] = pinned
                 # Put potentially failing checkpoint inside the owned wait cleanup.
                 def observe(value):
@@ -449,6 +451,9 @@ class OwnedPhaseRunner:
                 row["log_sha256"] = sha(self.root / (name + ".log"))
             if groups is not None:
                 row["known_groups"] = list(groups.known.values())
+                row["ownership_partial"] = groups.partial
+                row["ownership_group_budget"] = groups.max_groups
+                row["ownership_first_refusal"] = groups.first_refusal
             save(self.root / "result.json", self.record)
 
 
@@ -501,7 +506,8 @@ def native(root):
         first = module.row(1)
         if first is None or first["start"] != config["pid1_birth"]:
             raise ValueError("container birth changed")
-    runner = OwnedPhaseRunner(root, source, config["target"], module, closure, record, check)
+    runner = OwnedPhaseRunner(root, source, config["target"], module, closure, record, check,
+                              group_budget=MAX_ROWS)
     for number in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(number, runner.interrupt)
     def run(name, command, limit):

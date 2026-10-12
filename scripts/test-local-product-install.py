@@ -196,7 +196,7 @@ class Controls(unittest.TestCase):
             owner = {'pid': 123, 'pgid': 123, 'start': 10}
             who = Mock()
             who.row.return_value = owner
-            groups = Mock(leader=owner, known={123: owner}, partial=False)
+            groups = Mock(leader=owner, known={123: owner}, partial=False, max_groups=256, first_refusal=None)
             who.Groups.return_value = groups
             check = Mock()
             runner = g.OwnedPhaseRunner(root, root, '/external/target', who, g.Closure(), record, check)
@@ -204,6 +204,8 @@ class Controls(unittest.TestCase):
             with patch.object(g.subprocess, 'Popen', return_value=child) as spawn, patch.object(g, 'run_owned', return_value=0), patch.object(g, 'group_closure', return_value={'survivors': [], 'unavailable': []}):
                 self.assertEqual(runner.run('release-build', p.BUILD_COMMAND, 600), 0)
             self.assertEqual(check.call_count, 2)
+            who.Groups.assert_called_once_with(owner)
+            self.assertEqual(record["phases"][0]["ownership_group_budget"], 256)
             self.assertTrue(spawn.call_args.kwargs['start_new_session'])
             self.assertEqual(spawn.call_args.kwargs['env']['CARGO_BUILD_JOBS'], '2')
             self.assertEqual(record['phases'][0]['owner'], owner)
@@ -216,7 +218,7 @@ class Controls(unittest.TestCase):
             root = Path(directory)
             who = Mock()
             who.row.return_value = {'pid': 123, 'pgid': 123, 'start': 10}
-            who.Groups.return_value = Mock(known={}, partial=False)
+            who.Groups.return_value = Mock(known={}, partial=False, max_groups=256, first_refusal=None)
             closure = g.Closure()
             runner = g.OwnedPhaseRunner(root, root, '/target', who, closure, {'phases': []}, Mock())
             with patch.object(g.subprocess, 'Popen', return_value=Mock(pid=123)), patch.object(g, 'run_owned', return_value=0), patch.object(g, 'group_closure', return_value={'survivors': [{'pid': 123}], 'unavailable': []}):
@@ -229,7 +231,7 @@ class Controls(unittest.TestCase):
             root = Path(directory)
             who = Mock()
             who.row.return_value = {'pid': 123, 'pgid': 123, 'start': 10}
-            who.Groups.return_value = Mock(known={}, partial=True)
+            who.Groups.return_value = Mock(known={}, partial=True, max_groups=256, first_refusal={"reason": "group-budget-exhausted"})
             closure = g.Closure()
             runner = g.OwnedPhaseRunner(root, root, '/target', who, closure, {'phases': []}, Mock())
             audit = {'survivors': [], 'unavailable': [], 'terminated_unreaped': [{'pid': 123, 'state': 'Z'}]}
