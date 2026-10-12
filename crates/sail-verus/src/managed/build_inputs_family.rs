@@ -322,7 +322,6 @@ pub(in crate::managed) fn publish(
     publish_inventory(path, compiler, records, sources);
 }
 
-#[cfg(target_os = "linux")]
 fn publish_inventory(
     path: &Path,
     compiler: &str,
