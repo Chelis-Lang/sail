@@ -24,9 +24,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Verismo tspec unit until its 3,600 s limit. Cache fill/warm on the standard
   tier has never completed.
   [VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md), [Gate 6](validation/m7.md#gate-6-default-and-cache-conformance).
-- **Native gate failure on `rescue/m7`.** `restored_output_write_invalidates_both_overlapping_input_observations`
-  (`sail-daemon`) failed on a native x86-64 host and passed under emulation.
-  Cause unknown. [Gate 3](validation/m7.md#gate-3-workspace-gate-solver-suite-and-native-ci).
+- **Output-owner offers are dropped while the worker holds the slot.**
+  `Queue::offer` uses a nonblocking try-lock and does not retry. This is
+  fail-safe: the frame falls back to original hashing. It made four
+  `sail-daemon` fixtures fail on native hosts until they offered before
+  spawning the worker. Production offers made during a worker's brief lock
+  still lose the owned-output fast path.
+  [Gate 3](validation/m7.md#gate-3-workspace-gate-solver-suite-and-native-ci).
 - **Intermittent shared HTTP deadline failures.** The 250 ms
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
