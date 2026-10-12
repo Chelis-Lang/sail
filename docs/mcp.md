@@ -376,6 +376,9 @@ a snapshot of the project's sources taken just before the run.
 The optional interactive engine is selected explicitly and must be installed as a
 validated Sail-managed pinned build. `start_verification` accepts `engine: stock`
 or `engine: interactive`; stock is the default.
+Use `sail engine status --output json` to inspect the selected installation;
+see the [repair walkthrough](proof-repair-walkthrough.md) for setup and a complete
+focus/full regression example.
 
 - `start_repair_validation` requires `package`, `kind` (`lib` or `bin`), exact
   crate-qualified `function`, and `engine: interactive`. A binary also requires
@@ -396,6 +399,21 @@ or `engine: interactive`; stock is the default.
 Save named baselines through `sail baseline save NAME --job JOB`. See
 [`proof-repair.md`](proof-repair.md) for currentness, compiler-seal and journal
 retention contracts.
+
+Submission returns `structuredContent.id`; it only acknowledges a durable job.
+On the completed `verification_result`, inspect
+`structuredContent.value.repair.accepted` and the independent full report.
+`isError: false` means the tool operation succeeded, not that a proof succeeded.
+Use the exact package/target/function identities in the report for explanations
+and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argument.
+
+The frozen `730a321` installed product passes the
+[original repair fixture](validation/m7-core-730a321-validation.md) and
+[complete reader/retained workflow](validation/m7-reader-730a321-terminal.md).
+The reader p95 values come from the unchanged Python and Rust collectors, rather
+than an MCP-specific timing census; retained MCP scenarios establish functional
+behavior. Real-project repair performance and complete standard/cache coverage
+remain pending. PR #74 is draft, and M7 remains experimental.
 
 ## Live read transport validation
 
