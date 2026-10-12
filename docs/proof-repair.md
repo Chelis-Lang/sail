@@ -87,8 +87,8 @@ output) carries it as `batch.full`. A job result (`sail jobs result`, MCP
 `get_verification_result`) carries it as the job's `result`, as for every other
 job, and its `repair.batch` omits `full`; `repair.accepted` is still recomputed
 from that `result`. Until the 2026-10-12 change, a job result repeated the full
-report in both places, doubling every reader's frame (about 4.3 MB instead of
-2.2 MB for HumanEval). The repair contract had not shipped, so version one
+report in both places, doubling every reader's frame (4.9 MB instead of 2.5 MB
+for a HumanEval repair). The repair contract had not shipped, so version one
 changed in place.
 
 Optional ordinary-build recovery passes its local controls; real-project

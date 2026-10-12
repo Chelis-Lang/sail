@@ -107,14 +107,30 @@ sail jobs result JOB --output json
 sail jobs cancel JOB
 ```
 
-Background verification returns immediately with a durable job identity. One
-worker runs by default. Identical in-flight requests coalesce once complete
+Background verification returns immediately with a durable job identity.
+Identical in-flight requests coalesce once complete
 remembered input coverage establishes the same revision. Cold requests without
 that evidence remain distinct, so an unseen edit cannot be swallowed. Status,
 logs and previous results remain available while another verification runs.
 Cancellation terminates the worker's process group, including Cargo-Verus and
 its solvers. If the daemon restarts during verification, the unfinished job
 becomes an infrastructure error rather than silently continuing.
+
+### Concurrent jobs
+
+Several agents can share one daemon. Jobs from different Cargo workspaces run
+concurrently, up to `SAIL_JOB_WORKERS` at a time. The default is a quarter of
+the available cores, between 1 and 4, because each job already runs Verus and
+Z3 in parallel; values from 1 to 64 are accepted, and anything else uses the
+default. The daemon reads the variable when it starts.
+
+Jobs in the same workspace run one at a time, in submission order: a later job
+waits in `queued` until the earlier one finishes, rather than failing on the
+workspace's managed target. The daemon identifies a workspace by the outermost
+directory above the project (or its `--manifest-path`) that holds a
+`Cargo.toml`, so nested packages of one workspace share a queue. Separate
+`sail verify --incremental` processes outside the daemon still use the managed
+runner's own lock, which refuses a busy target with `SAIL3104`.
 
 The local job endpoint has its own protocol version and owner-only socket.
 Job records and diagnostics are private files; the last twenty terminal jobs

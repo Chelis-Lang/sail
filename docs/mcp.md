@@ -101,8 +101,11 @@ CLI paths. See [the client contract](result-client.md).
   short summary, then the same structured result as JSON text (for clients
   that ignore `structuredContent`).
 - **Concurrency and cancellation.** Tool calls run on their own threads, so
-  `ping` and cancellation are served while a verification runs. Runs in one
-  project are serialised through the local job service in default mode. Lookups
+  `ping` and cancellation are served while a verification runs. The local job
+  service runs jobs from different Cargo workspaces concurrently, up to
+  `SAIL_JOB_WORKERS` at once (default: a quarter of the cores, from 1 to 4), and
+  queues jobs in the same workspace behind each other (see
+  [concurrent jobs](workspace-verification.md#concurrent-jobs)). Lookups
   inspect completed evidence without waiting for a newer verifier to finish.
   `notifications/cancelled` kills the run's whole process group (`cargo
   verus`, Verus, shims, solvers), as `sail watch` does, and the call gets no

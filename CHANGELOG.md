@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The project job service runs jobs from different Cargo workspaces
+  concurrently, so several agents sharing one daemon no longer wait for each
+  other. `SAIL_JOB_WORKERS` sets the bound (default: a quarter of the available
+  cores, from 1 to 4). Jobs in the same workspace still run one at a time, in
+  submission order, and queue rather than fail.
+- Repair job results carry the full report once, as `result`; `repair.batch`
+  no longer repeats it as `full`, halving the frame every reader receives
+  (4.9 MB to 2.5 MB on a HumanEval repair). Foreground `sail repair-check --output
+  json` still prints a standalone repair document with `batch.full`.
+
 - `sail-bench repair` no longer records peak RSS or writes a raw sidecar;
   `--raw` is removed. Each invocation's command, stdout and stderr stay under
   `--out`. The report drops its preparation and peak-RSS columns.
