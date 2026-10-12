@@ -770,7 +770,7 @@ adds opaque identity detail to existing `SAIL3114` notes. It passes the later
 complete local gate, without retroactively identifying the old failed binding
 or supplying a benchmark cause claim. The original failed scope and all deadlines remain unchanged.
 
-### c2 benchmark interruption leaves native outcomes unknown
+### c2 benchmark scopes remain unqualified
 
 The later c2 product passes its complete local gate, original solver and fresh
 original CLI/MCP repair fixture. Its separate
@@ -782,6 +782,16 @@ original native terminal/closure and final seals remain unknown. This is an infr
 interruption, not evidence that the old 730 root-binding failure recurred or was
 fixed. No benchmark benefit or M7 acceptance is claimed, and original limits and
 oracles remain unchanged.
+
+A separate fresh [completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md)
+fails required Current admission before measured samples. Its second
+`compute_gcd` repair warmup verifies with exit 0 and no execution error, but
+focused/full evidence remains Unknown and unaccepted. The full report names
+only newly established build-script declarations. Original bounds and oracles
+remain unchanged; the retained same-birth closure and postseals are complete.
+This is a real-project admission failure, separate from the earlier storage
+interruption and historical 730 native-binding note. Passing component and
+small repair scopes do not qualify this failed benchmark.
 
 ### Recovered product revalidation retains setup refusals
 

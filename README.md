@@ -55,7 +55,9 @@ See [current validation](docs/validation/m7-core-c2a4b23-validation.md) and
 [known issues](docs/known-issues.md).
 
 Optional ordinary-build recovery passes its local controls and installed repair
-fixture; real-project benchmark recovery remains unqualified.
+fixture. A fresh [real-project benchmark](docs/validation/m7-benchmark-c2a4b23-warmup-terminal.md)
+fails Current warmup admission despite exit-zero verification and produces no
+measured samples; real-project recovery remains unqualified.
 It can establish dependency contracts after initial regeneration, but never
 promotes an Unknown proof or replaces full verification. Unsupported coverage
 retains original cleaning. See [build recovery](docs/managed-cold-start.md).
