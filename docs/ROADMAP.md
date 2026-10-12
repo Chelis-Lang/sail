@@ -112,8 +112,11 @@ candidate.
 
 The selected product is `b89546c`. Its complete local gate, 41/41 original
 solver controls, ordinary release, private and acceptance installations, and
-unchanged CLI/MCP repair fixture pass. The original three-round HumanEval/Vest
-benchmark is running; no measured samples, speedup or M7 acceptance are claimed.
+unchanged CLI/MCP repair fixture pass. The original three-round benchmark failed
+on the first concatenate repair warmup: verification exited zero, but the full
+result was Historical and unaccepted. GCD had reached Current admission on its
+second attempt with three compiler invocations; this does not explain the later refusal. There are zero measured
+samples, Vest is unreached, and no speedup or M7 acceptance is claimed.
 The remaining delivery gates are fresh readers on this product, complete current
 standard/cache conformance, and the two real-project speed thresholds. PR #74
 remains draft.
@@ -146,16 +149,17 @@ retain earlier failures and interruption uncertainty. Its ordinary release
 CLI/shim and selected-runtime identities. Acceptance byte installation also
 passes. The fresh original 120/30/5 repair fixture passes in 102.476 seconds
 (112.975 seconds host-inclusive), with 335 operations and no cleanup/progress
-errors. The original three-round HumanEval/Vest benchmark is running, with no
-terminal outcome or measured samples claimed; fresh current-product readers
-remain pending.
+errors. The [original three-round benchmark](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+fails the later concatenate warmup on Historical full evidence, with zero measured
+samples and Vest unreached. Fresh current-product reader validation is running;
+its terminal outcome remains pending.
 Exact [release and private installations](validation/m7-product-c2a4b23-installation.md)
 pass, followed by the fresh unchanged
 [original CLI/MCP repair fixture](validation/m7-repair-c2a4b23-terminal.md) in
 99.719 seconds with 325 operations, original 120/30/5 limits and no cleanup or
-progress errors. [PR CI at `d217`](https://github.com/Chelis-Lang/sail/actions/runs/38194750077)
-passes all ten jobs including completion; subsequent selected file-only records
-are not part of that pushed CI scope.
+progress errors. [Current PR CI at `b8f77cb`](https://github.com/Chelis-Lang/sail/actions/runs/38203450354)
+passes all ten jobs including completion; later unpushed documentation is outside
+that CI scope.
 
 The earlier [complete original `730a321` reader workflow](validation/m7-reader-730a321-terminal.md)
 remains a historical pass: both four-client collectors retain 200 total samples,
@@ -176,11 +180,11 @@ acceptance follows, and PR #74 remains draft.
 | Workstream | Current evidence | Required next result |
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
-| Combined implementation | Selected `b89546c` passes [658/658 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/README.md), including the new real Cargo recovery and three diagnostic controls. Its ordinary release/private and acceptance byte installations plus fresh original repair fixture pass; original real-project benchmark is running, with no performance claim. Earlier frozen `c2a4b23` passes [651 workspace tests, all remaining gate steps and 41/41 solver tests](validation/m7-core-c2a4b23-validation.md). All ten ordinary-build controls and [on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) pass. [PR CI at `d217`](https://github.com/Chelis-Lang/sail/actions/runs/38194750077) passes all ten jobs. | Complete current-product reader, standard/cache and real-project acceptance; retain the installed product identity and historical failures. Local scopes receive no separate CI credit. |
+| Combined implementation | Selected `b89546c` passes [658/658 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/README.md), including the new real Cargo recovery and three diagnostic controls. Its ordinary release/private and acceptance byte installations plus fresh original repair fixture pass; original real-project benchmark fails at Historical warmup with zero samples and no performance claim. Earlier frozen `c2a4b23` passes [651 workspace tests, all remaining gate steps and 41/41 solver tests](validation/m7-core-c2a4b23-validation.md). All ten ordinary-build controls and [on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) pass. [Current PR CI at `b8f77cb`](https://github.com/Chelis-Lang/sail/actions/runs/38203450354) passes all ten jobs; later unpushed documentation is outside that scope. | Complete current-product reader, standard/cache and real-project acceptance; retain the installed product identity and historical failures. Local scopes receive no separate CI credit. |
 | Repair workflow | Current `b89546c` [ordinary release, private/acceptance byte installations and original repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json) pass. The fresh fixture completes in 102.476 seconds with 335 operations, original 120/30/5 bounds and no cleanup/progress errors. Earlier c2 [repair pass (99.719 seconds, 325 operations)](validation/m7-repair-c2a4b23-terminal.md) remains a separate pass; poll counts are not benchmark scores. | Frozen HumanEval/Vest recovery and measured whole-loop gains; small-fixture success does not qualify real-project performance. |
 | Responsive reads | Historical [installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both collectors; each retains 200 total samples across four concurrent clients: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Retained CLI/MCP and immutable-input checks pass in that scope. | Fresh selected-b895 replay with the same complete graphs, independent freshness and original latency/lifecycle bounds; no historical pass transfer. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | The original three-round benchmark is running on installed b895; no measured samples or whole-loop gain are claimed. The [completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md) remains failed on required Current warmup admission. Earlier [storage interruption](validation/m7-benchmark-c2a4b23-interrupted.md), [partial recovery](validation/m7-benchmark-c2a4b23-recovery.md) and historical [730 binding failure](validation/m7-benchmark-730a321-bootstrap-failure.md) remain separate. Recovery controls do not establish real-project benchmark benefit. | Complete the original three rounds, spread and at least 2× median improvement on each project with exact Current admission and oracles. |
+| Frozen repair performance | Installed `b89546c` [original benchmark](validation/m7-compiler-script-bootstrap/scheduling-recovery.json) fails after 989.042 seconds: GCD second repair is Current/accepted, but concatenate first repair is Historical/unaccepted despite exit-zero verification. No full notes identify the cause ([Sail #77](https://github.com/Chelis-Lang/sail/issues/77)); zero measured samples and Vest unreached. The [completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md) remains failed on required Current warmup admission. Earlier [storage interruption](validation/m7-benchmark-c2a4b23-interrupted.md), [partial recovery](validation/m7-benchmark-c2a4b23-recovery.md) and historical [730 binding failure](validation/m7-benchmark-730a321-bootstrap-failure.md) remain separate. Recovery controls do not establish real-project benchmark benefit. | Complete the original three rounds, spread and at least 2× median improvement on each project with exact Current admission and oracles. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -265,8 +269,8 @@ physical disk recovery or validation credit is claimed.
 
 M7 is **not accepted**. PR #74 remains draft: selected `b89546c` gate and solver
 pass; its ordinary release/private and acceptance installations plus original
-repair fixture also pass. Whole real-project benchmark is running; no performance
-claim follows. Earlier c2 component sensitivity,
+repair fixture also pass. Whole real-project benchmark fails on Historical warmup
+admission with zero measured samples; no performance claim follows. Earlier c2 component sensitivity,
 installation and original repair scopes pass. Reader evidence is still the
 historical 730 product; fresh selected-b895 readers, complete standard/cache
 coverage and real-project performance remain outstanding. Emulated local Linux runs are
@@ -302,7 +306,8 @@ Priority order for completing this milestone:
    shared ordinary Cargo artifacts; no focused success can replace full validation.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
-5. Complete the running selected-b895 benchmark over every frozen HumanEval
+5. Diagnose the retained selected-b895 Historical warmup refusal, preserving its
+   failed scope and original Current admission. Qualify every frozen HumanEval
    and Vest repair cycle: three rounds, spread and resources, with at least
    twofold median improvement on each project. Its real Cargo recovery and
    diagnostic controls pass, but are not real-project performance evidence.

@@ -4,7 +4,7 @@ The corrected implementation passes the [complete c2a4b23 local gate and solver]
 and separate [emission sensitivity](../m7-bootstrap-c2a4b23-sensitivity.md).
 Exact [release and byte installation](../m7-product-c2a4b23-installation.md) also
 pass, followed by the [unchanged complete original repair fixture](../m7-repair-c2a4b23-terminal.md).
-Original real-project benchmark recovery and performance remain pending. The
+Original real-project benchmark recovery and performance remain unqualified. The
 first two root integrations failed strict compilation before tests; both failures
 remain retained. The third frozen integration (`602ec67`) passed strict checks,
 but its eight bootstrap controls had five passes and three failures: the first
@@ -178,14 +178,22 @@ installation also passes. The fresh original repair fixture passes in
 102.476 seconds internally (112.975 seconds host-inclusive), with 335 operations,
 unchanged 120/30/5 limits and no progress or cleanup errors. The operation count
 is a functional polling observation, not a benchmark score. The original
-three-round HumanEval/Vest benchmark is running; no outcome or measured
-samples are claimed. Fresh current-product reader qualification remains pending.
-The
+three-round benchmark failed after 989.042 seconds host-inclusive. GCD reached
+Current accepted full evidence with three compiler invocations on its second
+repair attempt; the next
+`concatenate_impl` first repair exited zero but its full result was Historical,
+unaccepted, with three compiler invocations and no full notes. The original
+Current-admission check refused it (`SAIL0942`); there are zero measured samples
+and Vest is unreached. The cause remains unestablished and is tracked in
+[Sail #77](https://github.com/Chelis-Lang/sail/issues/77). Original
+rounds, invocation limits and speed thresholds remain unchanged. Fresh current
+reader validation is running with no terminal result claimed. The
 [source record](scheduling-recovery.json) separately binds historical authored
 hashes, selected source hashes and private metadata digests; no latency, speedup
 or M7 acceptance is claimed.
 
-The selected scheduling-recovery follow-up remains unqualified. Its
+The selected scheduling-recovery follow-up remains unqualified for real-project
+performance. Its
 [existing source and attempted-validation record](scheduling-recovery.json)
 preserves the initial test namespace compilation failure and two complete
 workspace failures (654/655 passing). The last executed real Cargo fixture
@@ -208,7 +216,8 @@ no live or unavailable rows, all retained terminated rows are task-complete, and
 source/protected/PID1 identity is unchanged. The retained ELF is an
 operator-selected copy, not an execution binding. The separate product build
 and installation plus the original repair pass are recorded in the existing
-source record; real-project benchmark validation remains pending. No historical
+source record; real-project benchmark validation fails at the later Historical
+warmup. No historical
 failure is promoted or performance claim established.
 
 ### Selected optional refusal-stage diagnostic

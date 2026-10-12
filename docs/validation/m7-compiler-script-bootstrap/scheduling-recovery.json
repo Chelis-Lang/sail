@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "selected b89546c complete gate, original solver, ordinary release/private+acceptance installation and original repair PASS; whole original real-project benchmark running",
+  "status": "selected b89546c gate/solver/release/installations/original repair PASS; real-project benchmark FAIL at concatenate Historical warmup with zero measured samples; fresh current reader running; terminal pending",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -88,7 +88,8 @@
   "control_status": "selected real-Cargo retry/export/original-input-barrier control PASS4.775s; complete658 workspace and41 solver PASS; historical failures unchanged",
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
-    "unchanged original real-project warmups and three-round benchmark terminal result",
+    "diagnose actual refused Historical warmup without weakening Current admission",
+    "qualify original three-round benchmark with exact oracles and speed thresholds",
     "fresh full-reader qualification on current product"
   ],
   "fixture_correction": {
@@ -469,7 +470,7 @@
     "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
     "native_validation": "complete local gate PASS: 658/658 workspace tests and all remaining steps; original solver PASS: 41/41",
-    "product_and_benchmark_validation": "ordinary release/private+acceptance installation and fresh original120/30/5repair PASS; unchanged original3round real-project benchmark running with no outcome or samples claimed",
+    "product_and_benchmark_validation": "release/private+acceptance installations and original repair PASS; original benchmark FAIL at Historical warmup, zero samples and Vest unreached; fresh current reader running; terminal pending",
     "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
     "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a"
   },
@@ -828,5 +829,252 @@
     "installation_only": true,
     "source_modified": false,
     "limit": "byte installation only; no Cargo, proof, prewarm or receipt copying"
+  },
+  "real_project_benchmark_attempts": [
+    {
+      "status": "FAIL",
+      "source_commit": "b89546cbf64788976803b832dbfa214575c9ff7b",
+      "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a",
+      "execution_product_grant_sha256": "655ace601d885ce9ee22aa1892181e7867df703de5332dd44f0e1d5873fc559b",
+      "controller_source_sha256": "b79112b5674b00dc3d16df8ca577c5873b471d48b2e41e3173f993a2ec09df90",
+      "host_elapsed_seconds": 989.0420800420001,
+      "native_elapsed_seconds": 985.6871900719998,
+      "exit_code": 1,
+      "original_rounds": 3,
+      "original_invocation_seconds": 600,
+      "minimum_speedup_each_project": 2,
+      "original_wrapper_sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c",
+      "catalogue_sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6",
+      "corpus_pins": {
+        "human-eval-verus": "bbe93f73b0a5802c438501f9a2106f9126bd2eea",
+        "vest": "11af01ddaef76cceded03517cd48764adb9d35b1"
+      },
+      "warmups": [
+        {
+          "kind": "dependencies-and-solver",
+          "mode": "m6",
+          "project": "human-eval-verus",
+          "wall_ms": 168916.57741000017
+        },
+        {
+          "kind": "dependencies-and-solver",
+          "mode": "m7",
+          "project": "human-eval-verus",
+          "wall_ms": 181088.60399900004
+        },
+        {
+          "function": "human_eval_verus::human_eval_013::compute_gcd",
+          "kind": "focused-context",
+          "mode": "m6",
+          "project": "human-eval-verus",
+          "wall_ms": 83007.13578700015
+        },
+        {
+          "attempt": 0,
+          "function": "human_eval_verus::human_eval_013::compute_gcd",
+          "kind": "repair-context",
+          "mode": "m7",
+          "project": "human-eval-verus",
+          "state": "declarations-established",
+          "wall_ms": 163909.11936599968
+        },
+        {
+          "attempt": 1,
+          "function": "human_eval_verus::human_eval_013::compute_gcd",
+          "kind": "repair-context",
+          "mode": "m7",
+          "project": "human-eval-verus",
+          "state": "ready",
+          "wall_ms": 150776.19006799976
+        },
+        {
+          "function": "human_eval_verus::human_eval_028::concatenate_impl",
+          "kind": "focused-context",
+          "mode": "m6",
+          "project": "human-eval-verus",
+          "wall_ms": 69566.3690729998
+        }
+      ],
+      "measured_samples": 0,
+      "acceptance_complete": false,
+      "vest": "unreached",
+      "failure": "SAIL0942: concatenate_impl first repair warmup lacks Current accepted full evidence; full Historical, exit zero, error None, accepted false, three compiler invocations and empty full notes",
+      "failure_cause": "unestablished; GCD second-attempt Current admission does not establish later Historical cause",
+      "proof_reports": [
+        {
+          "member": "./work/results/human-eval-verus/warm-repair-0-0/stdout.json",
+          "bytes": 2379988,
+          "sha256": "4bdd49343dd5468f613b9cc762f466fc52877ffb155c647985ac8afff1766e3a",
+          "accepted": false,
+          "compiler_invocations": 2,
+          "full": {
+            "error": null,
+            "exit_code": 0,
+            "currentness": "historical",
+            "notes": [
+              "Build-script input declarations were established during this run"
+            ]
+          }
+        },
+        {
+          "member": "./work/results/human-eval-verus/warm-repair-0-1/stdout.json",
+          "bytes": 2379246,
+          "sha256": "dec48997584ebd35d8faa38c16fecf9748f01e262d758a68dd0c0c18f2053c91",
+          "accepted": true,
+          "compiler_invocations": 3,
+          "full": {
+            "error": null,
+            "exit_code": 0,
+            "currentness": "current",
+            "notes": []
+          }
+        },
+        {
+          "member": "./work/results/human-eval-verus/warm-repair-1-0/stdout.json",
+          "bytes": 2379858,
+          "sha256": "6a2d20512f5cee6fe068cd51b1bf137e4bec3779915450ebe5ff6ff53f544546",
+          "accepted": false,
+          "compiler_invocations": 3,
+          "full": {
+            "error": null,
+            "exit_code": 0,
+            "currentness": "historical",
+            "notes": []
+          }
+        }
+      ],
+      "raw": {
+        "controller.json": {
+          "bytes": 20917,
+          "sha256": "76ff4095cc0dc9cdfcdb3a293c4be9b7a2f7959e930c368b7602266efc614283"
+        },
+        "primary.json": {
+          "bytes": 10644,
+          "sha256": "644279373de12c0161fdc3ed15651d2453ed62947a9850c1d4cde2963397f646"
+        },
+        "stdout": {
+          "bytes": 57,
+          "sha256": "efdde37353edb379d6e7106a5118b7995e1c8fcd53480184102c0d57f04a50ec"
+        },
+        "stderr": {
+          "bytes": 789,
+          "sha256": "cc8bcfaef4d61699beaea22a61ac256b956ec08b895a67fba889fdb74794292a"
+        },
+        "native-raw.tar.gz": {
+          "bytes": 595969,
+          "sha256": "3c134d9d6d6d074082d5b854415ac8ac1c9787c56cb380141c09aa4003087589"
+        }
+      },
+      "archive_member_seals": {
+        "./work/results/results.json": {
+          "bytes": 1817,
+          "sha256": "eefba55e1d5939e91f5709fa71af47800da2accfd8e19be80401e00b96c70c1b"
+        },
+        "./work/run.log": {
+          "bytes": 78,
+          "sha256": "2ecb98aca34151c916393ddb0a37ace93f91821ec13ac669534116adf647157d"
+        },
+        "./work/controller.json": {
+          "bytes": 8538,
+          "sha256": "a941bfc5a8e09e99d4db36a98a13dd2027d488d3136926c1930e4850c6178fc2"
+        }
+      },
+      "native_phases": [
+        {
+          "name": "prepare",
+          "status": "PASS",
+          "elapsed_seconds": 5.440621501999885,
+          "exit_code": 0
+        },
+        {
+          "name": "run",
+          "status": "FAIL",
+          "elapsed_seconds": 980.167534485,
+          "exit_code": 1
+        }
+      ],
+      "protected_before_after_equal": true,
+      "same_container_birth": true,
+      "closure": {
+        "scope": "Bounded post-cleanup metadata census; no environment or signals",
+        "candidates": [],
+        "unreadable": [],
+        "terminated_unreaped": [],
+        "complete": true,
+        "scanned": 2,
+        "elapsed_seconds": 0.025638500000241038
+      },
+      "closure_complete": true,
+      "native_work_preserved": true,
+      "archive_exclusions": [
+        "work/scratch",
+        "work/results/cache-m6",
+        "work/results/cache-m7"
+      ],
+      "limits": "warmup observations only; zero measured samples, no speedup or M7 acceptance; no historical c2/730 cause attribution or automatic retry",
+      "issue": "https://github.com/Chelis-Lang/sail/issues/77"
+    }
+  ],
+  "current_ci": {
+    "head_commit": "b8f77cb293e98c92fd48589ac3d44d012eebce62",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "No AI authorship markers",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "image / CI image",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end (managed)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end (repair)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Workspace gate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end (legacy)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Conformance",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Solver tests",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "End to end",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "CI completion",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "run_url": "https://github.com/Chelis-Lang/sail/actions/runs/38203450354",
+    "operator_record": {
+      "bytes": 17322,
+      "sha256": "59f9d4161991673b26f3b31ac725f230de40774bb5502e40501d8a22898be7ba"
+    },
+    "limit": "CI scope at this exact head; later unpushed documentation is outside its scope; does not replace failed local benchmark or current reader result"
   }
 }
