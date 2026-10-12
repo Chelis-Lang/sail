@@ -35,7 +35,10 @@ from filename or presence.
 The [602 failed positive controls](m7-bootstrap-602ec67-gate-failure.md) and
 [earlier strict failures](m7-core-244d51d-validation.md) remain failed. This scope
 qualifies the corrected local controls, not installed recovery or real-project
-performance. Separate remove-only-publication sensitivity, coherent product
-delivery and unchanged original repair/benchmark scenarios remain outstanding.
+performance. Separate [remove-only-publication sensitivity](m7-bootstrap-c2a4b23-sensitivity.md)
+also passes its unchanged positive/failing-counterfactual/restored controls.
+Exact [release and byte installation](m7-product-c2a4b23-installation.md) also
+pass separately, as does the [unchanged original repair fixture](m7-repair-c2a4b23-terminal.md).
+The original real-project benchmark remains outstanding.
 No reader, corpus, benchmark or historical-730 changed-binding claim follows;
 proof currentness, receipts and acceptance rules remain unchanged.

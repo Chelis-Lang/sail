@@ -1,0 +1,281 @@
+{
+  "schema": 1,
+  "kind": "ordinary-script-bootstrap-on-off-on-component",
+  "status": "PASS for component sensitivity; no product/proof/performance credit",
+  "source_commit": "c2a4b2363b415aa2157fc38dc388192125b87109",
+  "source_archive_sha256": "590c4fd2de781a9312393d73d0bd0256bfe92b403be6640eaa6c321f11746a11",
+  "patch_sha256": "e69485c680115222e5db2c7ec8d68af105fb3cc12ccd0ea0b08971eb44c193c9",
+  "controller_sha256": "ab1d40f3494d22bdf09b204a404663c705a3a6175f8aafce04d7f67d669965e2",
+  "exact_test": "managed::build_inputs::family::bootstrap::tests::bootstrap_actual_cargo_can_publish_ordinary_contract_without_current_proof",
+  "negative_assertion": "independent ordinary-script contract must escape absent-generation bootstrap",
+  "negative_effect": "remove only independent ordinary-generation emission; unchanged explicit export assertion fails",
+  "external_inclusive_seconds": 73.80823454099999,
+  "phases": [
+    {
+      "name": "positive-compile",
+      "exit_code": 0,
+      "limit_seconds": 600,
+      "elapsed_seconds": 17.475993925001603,
+      "log_sha256": "b7a223b5bfe58f7ff184446ad2afc83797880328389b244e6382862f6b83109c"
+    },
+    {
+      "name": "positive-test",
+      "exit_code": 0,
+      "limit_seconds": 180,
+      "elapsed_seconds": 3.967572001998633,
+      "log_sha256": "dc7ee208d9b1c0d0e119e22e4ca65ec2bd4320890ed45300796ab021bb9a9882"
+    },
+    {
+      "name": "negative-compile",
+      "exit_code": 0,
+      "limit_seconds": 600,
+      "elapsed_seconds": 10.563581005000742,
+      "log_sha256": "0bcfa5f12184c0ed8a1509831a423b5c2422d22bd2274192ab29180df96b7622"
+    },
+    {
+      "name": "negative-test",
+      "exit_code": 101,
+      "limit_seconds": 180,
+      "elapsed_seconds": 4.205913211000734,
+      "log_sha256": "7e2c06f31a02e610586a92a9abe030adb2dd2cd3c713296b1d6e0d51f669463e"
+    },
+    {
+      "name": "restored-compile",
+      "exit_code": 0,
+      "limit_seconds": 600,
+      "elapsed_seconds": 9.962500378998811,
+      "log_sha256": "8a9d41071f7e1cb5c51c4ac256177a3594c868830c9b96138a41b18276bc461a"
+    },
+    {
+      "name": "restored-test",
+      "exit_code": 0,
+      "limit_seconds": 180,
+      "elapsed_seconds": 4.16311266899902,
+      "log_sha256": "e1808c60e636d874a1f59cedd6992614a02e1da863ce30d467a3e439b3d9d535"
+    }
+  ],
+  "executed_retained_images": [
+    {
+      "phase": "positive",
+      "source_sha256": "2874cfbf2934da55b23c0b8417b72b3823407c345267ebef7491f6be5c2842b5",
+      "archive_member": "positive-image/retained-images/0-sail_verus-603b4bec6a479bf8",
+      "bytes": 35626416,
+      "mode": "0o755",
+      "sha256": "ec7c7a94238fd748ae3832833a972071ceade06e6a6b52b5e0633a5849f7e8fc",
+      "execution": "original phase command directly executes this retained image with unchanged exact test selector"
+    },
+    {
+      "phase": "negative",
+      "source_sha256": "b207c62761af67b43674e06b314b01d38005521ce5fb7a65e983b0233499818e",
+      "archive_member": "negative-image/retained-images/0-sail_verus-603b4bec6a479bf8",
+      "bytes": 35627552,
+      "mode": "0o755",
+      "sha256": "47d0492dbc2393cfadc0c41c6f8c64fb965940357371a27d22ae5d775c197cd5",
+      "execution": "original phase command directly executes this retained image with unchanged exact test selector"
+    },
+    {
+      "phase": "restored",
+      "source_sha256": "2874cfbf2934da55b23c0b8417b72b3823407c345267ebef7491f6be5c2842b5",
+      "archive_member": "restored-image/retained-images/0-sail_verus-603b4bec6a479bf8",
+      "bytes": 35626416,
+      "mode": "0o755",
+      "sha256": "ec7c7a94238fd748ae3832833a972071ceade06e6a6b52b5e0633a5849f7e8fc",
+      "execution": "original phase command directly executes this retained image with unchanged exact test selector"
+    }
+  ],
+  "source_restored": true,
+  "container_before": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+    "birth": "2026-10-11T23:02:56.824417131Z",
+    "created": "2026-10-11T02:56:50.201399875Z"
+  },
+  "container_after": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+    "birth": "2026-10-11T23:02:56.824417131Z",
+    "created": "2026-10-11T02:56:50.201399875Z"
+  },
+  "transport_exit_code": 0,
+  "uncertainty": [],
+  "known_group_closure": {
+    "live": 0,
+    "unavailable": 0,
+    "terminated_unreaped": 0,
+    "scope": "original recorded actor groups; not arbitrary orphan absence"
+  },
+  "original_terminal_checks": "source/protected bytes and PID1 unchanged",
+  "host_file_seals": {
+    "config.json": {
+      "bytes": 852,
+      "sha256": "93918723e54939e36da3fd17613c6fe859a2372d2e34fb5dc72427dfca649a66"
+    },
+    "controller.json": {
+      "bytes": 1072,
+      "sha256": "aaa4bdf164e0258c3f299d8528f79fd5dce3340c8f5e47cd91bde14744bddcf7"
+    },
+    "grant.json": {
+      "bytes": 1076,
+      "sha256": "03428e9822de0fec746c28cabb6a9ccec4285d6773723e4ea0aeda6772640efe"
+    },
+    "native-raw.tar.gz": {
+      "bytes": 29552061,
+      "sha256": "f308d0f464c8b2e0672b82e11d426c9b1210ba8597d8ebfa844a14c246263818"
+    },
+    "negative-compile.log": {
+      "bytes": 51307,
+      "sha256": "0bcfa5f12184c0ed8a1509831a423b5c2422d22bd2274192ab29180df96b7622"
+    },
+    "negative-test.log": {
+      "bytes": 929,
+      "sha256": "7e2c06f31a02e610586a92a9abe030adb2dd2cd3c713296b1d6e0d51f669463e"
+    },
+    "positive-compile.log": {
+      "bytes": 51803,
+      "sha256": "b7a223b5bfe58f7ff184446ad2afc83797880328389b244e6382862f6b83109c"
+    },
+    "positive-test.log": {
+      "bytes": 250,
+      "sha256": "dc7ee208d9b1c0d0e119e22e4ca65ec2bd4320890ed45300796ab021bb9a9882"
+    },
+    "preflight.json": {
+      "bytes": 7679,
+      "sha256": "843e38a034d0ba7ba88e130e37c1093d3cfb65b25e88680ecd178f1888b96356"
+    },
+    "preflight.py": {
+      "bytes": 1069,
+      "sha256": "247de558e23b7727b535b96a80830532e29def9caeb80495f4ee55f4ca39fd38"
+    },
+    "primary.json": {
+      "bytes": 8905,
+      "sha256": "2de97fb43e606756e06f15318ecb91e40704f31286a04a16302b274ac194ac26"
+    },
+    "restored-compile.log": {
+      "bytes": 51307,
+      "sha256": "8a9d41071f7e1cb5c51c4ac256177a3594c868830c9b96138a41b18276bc461a"
+    },
+    "restored-test.log": {
+      "bytes": 250,
+      "sha256": "e1808c60e636d874a1f59cedd6992614a02e1da863ce30d467a3e439b3d9d535"
+    },
+    "result.json": {
+      "bytes": 9031,
+      "sha256": "66d25facebb57d823506636851f6aac015b4f30f0881c41e896eafc3d0bd1d7f"
+    },
+    "transport.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "native_archive_regular_member_seals": {
+    "result.json": {
+      "bytes": 9031,
+      "mode": "0o644",
+      "sha256": "66d25facebb57d823506636851f6aac015b4f30f0881c41e896eafc3d0bd1d7f"
+    },
+    "negative-image/retained-images/0-sail_verus-603b4bec6a479bf8": {
+      "bytes": 35627552,
+      "mode": "0o755",
+      "sha256": "47d0492dbc2393cfadc0c41c6f8c64fb965940357371a27d22ae5d775c197cd5"
+    },
+    "restored-compile.log": {
+      "bytes": 51307,
+      "mode": "0o644",
+      "sha256": "8a9d41071f7e1cb5c51c4ac256177a3594c868830c9b96138a41b18276bc461a"
+    },
+    "negative-test.log": {
+      "bytes": 929,
+      "mode": "0o644",
+      "sha256": "7e2c06f31a02e610586a92a9abe030adb2dd2cd3c713296b1d6e0d51f669463e"
+    },
+    "primary.json": {
+      "bytes": 8905,
+      "mode": "0o644",
+      "sha256": "2de97fb43e606756e06f15318ecb91e40704f31286a04a16302b274ac194ac26"
+    },
+    "restored-image/retained-images/0-sail_verus-603b4bec6a479bf8": {
+      "bytes": 35626416,
+      "mode": "0o755",
+      "sha256": "ec7c7a94238fd748ae3832833a972071ceade06e6a6b52b5e0633a5849f7e8fc"
+    },
+    "positive-compile.log": {
+      "bytes": 51803,
+      "mode": "0o644",
+      "sha256": "b7a223b5bfe58f7ff184446ad2afc83797880328389b244e6382862f6b83109c"
+    },
+    "restored-test.log": {
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "e1808c60e636d874a1f59cedd6992614a02e1da863ce30d467a3e439b3d9d535"
+    },
+    "protected.json": {
+      "bytes": 6276,
+      "mode": "0o644",
+      "sha256": "c57d07b7cc908012347c1817304b4ee0f573e3219db1c6bad421ff2cffe902f5"
+    },
+    "local-combined-gates.py": {
+      "bytes": 34557,
+      "mode": "0o755",
+      "sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc"
+    },
+    "negative-compile.log": {
+      "bytes": 51307,
+      "mode": "0o644",
+      "sha256": "0bcfa5f12184c0ed8a1509831a423b5c2422d22bd2274192ab29180df96b7622"
+    },
+    "source.tar": {
+      "bytes": 27125760,
+      "mode": "0o644",
+      "sha256": "590c4fd2de781a9312393d73d0bd0256bfe92b403be6640eaa6c321f11746a11"
+    },
+    "owner.json": {
+      "bytes": 85,
+      "mode": "0o644",
+      "sha256": "5a9ca5a140734e1314203fc2c7fe30601511785c85dd02eb93d4fcecc920cddf"
+    },
+    "config.json": {
+      "bytes": 852,
+      "mode": "0o644",
+      "sha256": "93918723e54939e36da3fd17613c6fe859a2372d2e34fb5dc72427dfca649a66"
+    },
+    "source-inventory.json": {
+      "bytes": 289997,
+      "mode": "0o644",
+      "sha256": "d6303e8d385c957e7ba8dfa96fd01d07d61382bd1374a1a71ef4b32d72d5929c"
+    },
+    "positive-image/retained-images/0-sail_verus-603b4bec6a479bf8": {
+      "bytes": 35626416,
+      "mode": "0o755",
+      "sha256": "ec7c7a94238fd748ae3832833a972071ceade06e6a6b52b5e0633a5849f7e8fc"
+    },
+    "positive-test.log": {
+      "bytes": 250,
+      "mode": "0o644",
+      "sha256": "dc7ee208d9b1c0d0e119e22e4ca65ec2bd4320890ed45300796ab021bb9a9882"
+    },
+    "grant.json": {
+      "bytes": 1076,
+      "mode": "0o644",
+      "sha256": "03428e9822de0fec746c28cabb6a9ccec4285d6773723e4ea0aeda6772640efe"
+    },
+    "sensitivity-run.py": {
+      "bytes": 11549,
+      "mode": "0o755",
+      "sha256": "ab1d40f3494d22bdf09b204a404663c705a3a6175f8aafce04d7f67d669965e2"
+    },
+    "disable-publication.patch": {
+      "bytes": 424,
+      "mode": "0o644",
+      "sha256": "e69485c680115222e5db2c7ec8d68af105fb3cc12ccd0ea0b08971eb44c193c9"
+    }
+  },
+  "verification": "host-only independent streaming SHA/length checks of every retained file and every archive regular member; phase logs, source/patch/controller identities and directly executed image members match original records",
+  "limits": "compile 600 seconds, exact single test 180 seconds; original test assertions unchanged",
+  "not_claimed": [
+    "installed product recovery",
+    "original real-project warmups or benchmark",
+    "historical 730 changed-binding attribution",
+    "proof Current promotion",
+    "performance savings"
+  ]
+}
