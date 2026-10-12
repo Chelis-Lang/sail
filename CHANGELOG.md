@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Prepare a bounded compiler-family source-path inventory for a new repair
+  selector. It gives the original cold snapshot its previously declared generated
+  includes while retaining independent content reads and every freshness guard.
+  Proof receipts remain selector-specific. Source controls and product validation
+  are pending; the original `b89546c` benchmark failure remains unchanged. See
+  [issue 77](https://github.com/Chelis-Lang/sail/issues/77) and the
+  [candidate scope](docs/validation/m7-compiler-script-bootstrap/source-inventory.md).
+
 - Keep repair walkthrough captures outside watched package roots. Redirected
   event logs and results are operator records; writing them during a proof
   inside its input roots can correctly invalidate freshness. Clarify that the

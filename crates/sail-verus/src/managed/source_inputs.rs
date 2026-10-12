@@ -8,11 +8,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 #[derive(Default, Serialize, Deserialize)]
-struct Inputs {
-    paths: Vec<PathBuf>,
-    covered: bool,
+pub(super) struct Inputs {
+    pub(super) paths: Vec<PathBuf>,
+    pub(super) covered: bool,
     #[serde(default)]
-    by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
+    pub(super) by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
 }
 
 pub(super) fn load(path: &Path) -> (Vec<PathBuf>, bool) {
