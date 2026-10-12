@@ -65,7 +65,7 @@ fn fake_service(
                 if unexpected {
                     Response::List(vec![])
                 } else {
-                    Response::Error("SAIL0998: original result-read failure".into())
+                    Response::Error("SAIL0814: original result-read failure".into())
                 }
             }
             Request::Cancel { id, superseded } => {
@@ -73,7 +73,7 @@ fn fake_service(
                 cancellations.push(id);
                 // Cleanup failure must not mask the original response error.
                 let response = if unexpected {
-                    Response::Error("SAIL0999: cleanup unavailable".into())
+                    Response::Error("SAIL0815: cleanup unavailable".into())
                 } else {
                     status.state = Lifecycle::Cancelled;
                     Response::Status(status)
@@ -127,12 +127,12 @@ fn polling_errors_and_unexpected_responses_cancel_only_the_owned_job() {
             stderr.contains(if unexpected {
                 "unexpected repair response"
             } else {
-                "SAIL0998: original result-read failure"
+                "SAIL0814: original result-read failure"
             }),
             "{stderr}"
         );
         assert!(
-            !stderr.contains("SAIL0999"),
+            !stderr.contains("SAIL0815"),
             "cleanup masked the original error"
         );
         let cancelled = server

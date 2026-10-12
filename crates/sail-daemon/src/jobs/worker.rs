@@ -72,7 +72,7 @@ pub(super) fn run(state: &State) {
                 }
                 if let Err(error) = store::save(&state.root, job) {
                     job.status.state = Lifecycle::InfrastructureError;
-                    job.status.error = Some(format!("SAIL0809: cannot persist result: {error}"));
+                    job.status.error = Some(format!("SAIL0808: cannot persist result: {error}"));
                 }
             }
         }

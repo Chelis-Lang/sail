@@ -275,7 +275,7 @@ pub fn write_frame<T: Serialize>(writer: &mut impl Write, body: &T) -> io::Resul
     })
     .map_err(io::Error::other)?;
     if bytes.len() > MAX_FRAME {
-        return Err(io::Error::other("SAIL0801: job frame exceeds limit"));
+        return Err(io::Error::other("SAIL0802: job frame exceeds limit"));
     }
     let size = u32::try_from(bytes.len()).map_err(io::Error::other)?;
     writer.write_all(&size.to_be_bytes())?;
@@ -292,7 +292,7 @@ pub fn read_frame<T: serde::de::DeserializeOwned>(reader: &mut impl Read) -> io:
     reader.read_exact(&mut length)?;
     let size = usize::try_from(u32::from_be_bytes(length)).map_err(io::Error::other)?;
     if size > MAX_FRAME {
-        return Err(io::Error::other("SAIL0801: job frame exceeds limit"));
+        return Err(io::Error::other("SAIL0802: job frame exceeds limit"));
     }
     let mut bytes = vec![0; size];
     reader.read_exact(&mut bytes)?;

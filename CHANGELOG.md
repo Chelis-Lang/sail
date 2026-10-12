@@ -5,6 +5,27 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Error codes are listed, with what to do about each, in
+  [docs/errors.md](docs/errors.md); `cargo xtask check-error-codes` and a
+  workspace test keep that list and the code in step. Codes that named
+  internal states were folded into user-meaningful ones. Scripts matching the
+  old codes should match the new ones:
+
+  | Old | New | Meaning now |
+  |---|---|---|
+  | `SAIL0801` | `SAIL0802` | job RPC protocol error (malformed, oversized or incompatible frame) |
+  | `SAIL0804` | `SAIL0899` | internal job-service error (new code) |
+  | `SAIL0809` | `SAIL0808` | the job failed or its result could not be saved |
+  | `SAIL0814` (missing RPC response only) | `SAIL0899` | internal job-service error |
+  | `SAIL0901` | `SAIL0902` | proof event rejected; the stream has a gap |
+  | `SAIL0902` (journal lock and load failures only) | `SAIL0999` | internal proof-stream error (new meaning) |
+  | `SAIL0104` (no cache directory, `sail verify`) | `SAIL3001` | no cache directory |
+  | `SAIL1002`–`SAIL1008` | `SAIL1001` | malformed SMT-LIB input |
+  | `SAIL2005`, `SAIL2006` | `SAIL2004` | cannot start or keep track of the solver |
+  | `SAIL3110` | `SAIL3111` | the managed adapter failed |
+  | `SAIL3121` | `SAIL3123` | interactive engine fault; stock result reported |
+
+  `SAIL7105` (a retired repair-gate check) is no longer used.
 - Removed `sail-bench seeds` and `sail-bench history`. Their survey results
   stay in `bench/results/`; `sail-bench profile` is the remaining trace
   analysis and no longer takes `--quiet`.

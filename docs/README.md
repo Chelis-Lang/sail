@@ -18,6 +18,7 @@ experimental features and validation limits are identified explicitly.
 | Understand trust boundaries and opt-in verdict differences | [Trust](trust.md), [divergences](divergences.md) |
 | Check supported verifier versions and measured performance | [Compatibility](compatibility.md), [generated benchmarks](benchmarks.md) |
 | Find limitations and unresolved failures | [Known issues](known-issues.md) |
+| Look up an error code | [Error codes](errors.md) |
 
 ## Developing and validating Sail
 
@@ -30,8 +31,8 @@ The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
-[Managed cold-start diagnosis](managed-cold-start.md) explains preparation stages
-and dependency-proof requirements.
+[Managed runs](managed-cold-start.md) explains what the first managed run costs
+and when receipts are reused.
 The [reader acceptance guide](reader-acceptance.md) gives the native reader
 latency gate and how to run it.
 The [interactive source engine](../engine/verus/README.md) describes Sail's

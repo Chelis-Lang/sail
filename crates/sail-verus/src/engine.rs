@@ -488,17 +488,17 @@ pub fn repair(
     let mut selection_error = None;
     let gathered = (|| -> Result<()> {
         for entry in std::fs::read_dir(run.join("sidecars"))
-            .map_err(|e| Error::new("SAIL3121", e.to_string()))?
+            .map_err(|e| Error::new("SAIL3123", e.to_string()))?
         {
-            let entry = entry.map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+            let entry = entry.map_err(|e| Error::new("SAIL3123", e.to_string()))?;
             let path = entry.path().join("focus.report.json");
             if !path.is_file() {
                 continue;
             }
             let focus: FocusTarget = serde_json::from_slice(
-                &std::fs::read(path).map_err(|e| Error::new("SAIL3121", e.to_string()))?,
+                &std::fs::read(path).map_err(|e| Error::new("SAIL3123", e.to_string()))?,
             )
-            .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+            .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
             if focus.function != function {
                 continue;
             }

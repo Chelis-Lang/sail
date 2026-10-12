@@ -38,7 +38,7 @@ substring. It removes only that delimited token from the child's two selected
 packed environment values, preserving every other token and byte, and inserts
 the literal option once. Simply duplicating the option was experimentally
 rejected by rust_verify with `Option 'no-vstd' given more than once`. Duplicate
-effective requests and contradictory macro modes fail closed with `SAIL3121`.
+effective requests and contradictory macro modes fail closed as an engine fault (`SAIL3123`, formerly `SAIL3121`).
 Its stock fallback preserves the same relocated arguments and environment. The ordinary stock/default adapter is unchanged.
 Each adaptation records `launcher-options.json` alongside the target's report,
 with the run, context, exact Cargo package, target, kind and forwarded option.

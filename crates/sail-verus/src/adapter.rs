@@ -14,7 +14,7 @@ use std::process::{Command, ExitCode, Stdio};
 fn required(name: &str) -> Result<OsString> {
     std::env::var_os(name)
         .filter(|v| !v.is_empty())
-        .ok_or_else(|| Error::new("SAIL3110", format!("private adapter missing {name}")))
+        .ok_or_else(|| Error::new("SAIL3111", format!("private adapter missing {name}")))
 }
 
 pub(crate) struct InvocationLog<'a> {
@@ -76,7 +76,7 @@ fn cargo() -> Result<ExitCode> {
         return cmd
             .status()
             .map(status)
-            .map_err(|e| Error::new("SAIL3110", e.to_string()));
+            .map_err(|e| Error::new("SAIL3111", e.to_string()));
     }
     cmd.env("SAIL_MANAGED_WRAPPER", required("RUSTC_WRAPPER")?)
         .env("RUSTC_WRAPPER", required("SAIL_MANAGED_PROXY")?);
@@ -87,13 +87,13 @@ fn cargo() -> Result<ExitCode> {
         .create(true)
         .append(true)
         .open(path)
-        .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let mut child = cmd
         .spawn()
-        .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     if let Some(stdout) = child.stdout.take() {
         for line in std::io::BufReader::new(stdout).split(b'\n') {
-            let line = line.map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+            let line = line.map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&line)
                 && matches!(
                     value["reason"].as_str(),
@@ -103,18 +103,18 @@ fn cargo() -> Result<ExitCode> {
                 records
                     .write_all(&line)
                     .and_then(|()| records.write_all(b"\n"))
-                    .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             }
             std::io::stdout()
                 .write_all(&line)
                 .and_then(|()| std::io::stdout().write_all(b"\n"))
-                .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         }
     }
     child
         .wait()
         .map(status)
-        .map_err(|e| Error::new("SAIL3110", e.to_string()))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))
 }
 
 fn argument(args: &[OsString], flag: &str) -> Option<String> {
@@ -156,7 +156,7 @@ fn cargo_driver_options(id: &str) -> Result<DriverOptions> {
         Ok(value) => Ok(Some(value)),
         Err(std::env::VarError::NotPresent) => Ok(None),
         Err(error) => Err(Error::new(
-            "SAIL3121",
+            "SAIL3123",
             format!("invalid effective Cargo driver arguments: {error}"),
         )),
     })
@@ -202,7 +202,7 @@ fn cargo_driver_options_with(
         })
     {
         return Err(Error::new(
-            "SAIL3121",
+            "SAIL3123",
             "contradictory effective Cargo launcher modes",
         ));
     }
@@ -213,7 +213,7 @@ fn cargo_driver_options_with(
         > 1
     {
         return Err(Error::new(
-            "SAIL3121",
+            "SAIL3123",
             "duplicate effective Cargo no-vstd mode",
         ));
     }
@@ -241,7 +241,7 @@ fn relocate_no_vstd(
         .any(|argument| argument == "--no-vstd")
     {
         return Err(Error::new(
-            "SAIL3121",
+            "SAIL3123",
             "duplicate literal and effective Cargo no-vstd mode",
         ));
     }
@@ -362,7 +362,7 @@ fn driver() -> Result<ExitCode> {
     let options = if runtime.engine.is_some() {
         let id = cargo_package_id().ok_or_else(|| {
             Error::new(
-                "SAIL3121",
+                "SAIL3123",
                 "engine invocation lacks its Cargo package identity",
             )
         })?;
@@ -508,7 +508,7 @@ fn driver() -> Result<ExitCode> {
     if runtime.engine.is_some() {
         std::io::stderr()
             .write_all(&stderr)
-            .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+            .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
     finish(
         &runtime,
@@ -542,16 +542,16 @@ pub(crate) fn engine_output(
     }
     std::fs::write(dir.join("engine.failed.stdout"), &captured.stdout)
         .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &captured.stderr))
-        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     let _ = std::fs::remove_file(dir.join("focus.source.json"));
     for directory in [dir.join("logs"), dir.join("provenance")] {
         if directory.exists() {
             std::fs::remove_dir_all(&directory)
-                .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+                .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
         }
     }
     std::fs::create_dir_all(dir.join("provenance"))
-        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     for key in [
         "SAIL_ENGINE",
         "SAIL_ENGINE_FUNCTION",
@@ -566,11 +566,11 @@ pub(crate) fn engine_output(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     invocation_log.record(&mut child)?;
     let output = child
         .wait_with_output()
-        .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     Ok((output, false))
 }
 
@@ -784,12 +784,12 @@ fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Resul
         return Ok(());
     }
     let source: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(path).map_err(|e| Error::new("SAIL3121", e.to_string()))?,
+        &std::fs::read(path).map_err(|e| Error::new("SAIL3123", e.to_string()))?,
     )
-    .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     let function = source["function"]
         .as_str()
-        .ok_or_else(|| Error::new("SAIL3121", "focused source evidence has no function"))?;
+        .ok_or_else(|| Error::new("SAIL3123", "focused source evidence has no function"))?;
     let logs = crate::attribution::read_logs(&dir.join("logs/focus")).unwrap_or_default();
     let docs = vec![source["verus"].clone()];
     let attr = crate::attribution::attribute(
@@ -1203,7 +1203,7 @@ mod tests {
         );
         assert!(
             cargo_driver_options_with("this", |_| Err(Error::new(
-                "SAIL3121",
+                "SAIL3123",
                 "invalid argument encoding"
             )))
             .is_err()
@@ -1220,7 +1220,7 @@ mod tests {
                     format!("__VERUS_DRIVER_ARGS_SEP__{conflicting}")
                 }))
             });
-            assert_eq!(result.err().map(|error| error.code), Some("SAIL3121"));
+            assert_eq!(result.err().map(|error| error.code), Some("SAIL3123"));
         }
     }
 
@@ -1253,7 +1253,7 @@ mod tests {
             relocate_no_vstd(&options, &["--no-vstd".into()])
                 .err()
                 .map(|error| error.code),
-            Some("SAIL3121")
+            Some("SAIL3123")
         );
         assert_eq!(
             cargo_driver_options_with("this", |_| Ok(Some(
@@ -1261,7 +1261,7 @@ mod tests {
             )))
             .err()
             .map(|error| error.code),
-            Some("SAIL3121")
+            Some("SAIL3123")
         );
     }
 

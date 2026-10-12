@@ -232,7 +232,7 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                             .map(|frame| (None, Some(frame))),
                         Ok(request) => Ok((Some(dispatch(&state, request)), None)),
                         Err(error) => {
-                            Ok((Some(Response::Error(format!("SAIL0801: {error}"))), None))
+                            Ok((Some(Response::Error(format!("SAIL0802: {error}"))), None))
                         }
                     };
                     let write = match outcome {
@@ -246,7 +246,9 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                             &mut stream,
                             &Response::Error(error.to_string()),
                         ),
-                        Ok((None, None)) => Err(io::Error::other("SAIL0814: missing RPC response")),
+                        Ok((None, None)) => Err(io::Error::other(
+                            "SAIL0899: internal error: missing RPC response; please report it",
+                        )),
                     };
                     if write.is_err() {
                         let _ = sail_api::jobs::write_frame(&mut stream, &Response::Error("SAIL0814: result exceeds RPC limit; retained files are available in the private job store".to_owned()));
@@ -341,7 +343,7 @@ fn dispatch(state: &State, request: Request) -> Response {
     result.unwrap_or_else(|error| Response::Error(error.to_string()))
 }
 fn lock_error<T>(_: std::sync::PoisonError<T>) -> io::Error {
-    io::Error::other("SAIL0804: job state lock poisoned")
+    io::Error::other("SAIL0899: internal error: job state lock poisoned; please report it")
 }
 fn get(state: &State, id: &str) -> io::Result<Stored> {
     state

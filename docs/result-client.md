@@ -44,8 +44,8 @@ by byte offset.
 
 Connection and I/O failures return `io::Error`, and a service `Response::Error`
 is returned as an `io::Error` carrying its `SAIL` code. Framing rejects bodies
-over 32 MiB with `SAIL0801` and an incompatible envelope version with
-`SAIL0802`. Each read and write has a five-second timeout.
+over 32 MiB and an incompatible envelope version with `SAIL0802`
+([error codes](errors.md)). Each read and write has a five-second timeout.
 
 `Client::call_with` also hands the caller a clone of the connected stream.
 Shutting that clone down from another thread abandons the call; `sail mcp` uses

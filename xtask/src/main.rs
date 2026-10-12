@@ -1,6 +1,7 @@
 //! Repository automation. Run as `cargo xtask <command>`.
 #![forbid(unsafe_code)]
 
+mod error_codes;
 mod layering;
 mod verus;
 mod verus_source;
@@ -14,6 +15,8 @@ const USAGE: &str = "usage: cargo xtask <command>
 commands:
     install-hooks   copy tracked git hooks into the shared hooks directory
     check-layering  verify internal crate dependencies follow the charter DAG
+    check-error-codes
+                    verify docs/errors.md lists exactly the SAIL codes in use
     protect-main    apply branch protection to main on GitHub (PR mode)
     build-verus-engine [--force] [--keep-intermediates]
                     build the isolated optional interactive proof engine
@@ -30,6 +33,7 @@ fn main() -> ExitCode {
     let result = match cmd.as_deref() {
         Some("install-hooks") => install_hooks(),
         Some("check-layering") => check_layering(),
+        Some("check-error-codes") => error_codes::check(&workspace_root()),
         Some("protect-main") => protect_main(),
         Some("fetch-verus") => verus::fetch(),
         Some("build-verus-engine") => {

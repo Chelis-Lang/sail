@@ -99,7 +99,7 @@ pub fn violations(s: &Sample) -> Vec<Violation> {
                 format!("not a real source-engine batch: {}", batch.join(", ")),
             ));
         }
-        // SAIL7105 (preparation telemetry) is retired: the engine no longer
+        // The former preparation telemetry check is retired: the engine no longer
         // prepares lowering, so there is no telemetry to require.
         if f.accepted != Some(want_verified) {
             out.push(v(

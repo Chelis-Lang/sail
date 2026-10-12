@@ -464,7 +464,7 @@ published its immutable record; inspect the name before retrying.
 
 `get_baseline` adds a read-only job operation without changing the protocol
 version or existing save/list operations. An older running service rejects the
-unknown request with `SAIL0801`; it does not return an empty baseline. Update and
+unknown request with `SAIL0802`; it does not return an empty baseline. Update and
 restart that service before using get. Saving and listing remain compatible with
 the existing service operations.
 
