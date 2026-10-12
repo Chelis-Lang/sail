@@ -106,3 +106,21 @@ uncompiled and unexecuted. The original target-isolation source record remains
 immutable; [the follow-up record](m7-repair-artifact-isolation/migration-source.json)
 binds the new bytes and both narrow counterfactual patches. Native qualification
 and the unchanged whole benchmark/reader are pending.
+
+## Initial native failure and narrow corrections
+
+The original target-isolation gate completed 674/675 workspace controls with
+strict checks passing; the solver scope was unattempted. Its real-Cargo receipt
+fixture failed the unchanged reuse assertion. The old synthetic helper sealed
+only the first artifact filename, while the production matcher requires the
+complete Cargo filename set, including any existing VIR companions. The corrected
+fixture seals that complete observed set and explicitly checks set and revision
+parity before calling the unchanged matcher. Artifact stability, one compiler
+call, exact receipt validation and mutation refusal assertions remain.
+
+Preparation also creates the versioned ordinary-observation directory explicitly
+before any ledger publication. This removes a missing-parent error without
+depending on which optional writer runs first. The original gate remains failed;
+[the correction record](m7-repair-artifact-isolation/correction-source.json) binds
+these new source-only bytes. Migration controls, corrected native reuse and the
+whole product remain unqualified until fresh execution.

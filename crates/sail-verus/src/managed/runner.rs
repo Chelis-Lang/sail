@@ -499,6 +499,7 @@ fn prepare(
         run: context.join("runs").join(run_id),
     };
     for dir in [
+        &observations,
         &paths.receipts,
         &paths.run,
         &paths.run.join("invocations"),

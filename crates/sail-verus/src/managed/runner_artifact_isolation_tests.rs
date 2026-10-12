@@ -172,6 +172,7 @@ fn repair_selector_layout_keeps_defaults_shared_and_exports_private() -> Isolati
     )?;
     assert_ne!(first.target, plain.target);
     assert_ne!(first.compiler_inputs, plain.compiler_inputs);
+    assert!(first.build_inputs.parent().is_some_and(Path::is_dir));
     assert_eq!(
         first.build_inputs.parent(),
         Some(
@@ -436,6 +437,26 @@ fn repair_selector_real_cargo_preserves_dependency_receipt_and_one_driver() -> I
     let mut receipt = compiler_receipt(&first, &data, &artifact);
     receipt.package_id.clone_from(&package_id);
     receipt.input_revision = target_revision(&data, &package_id);
+    // The actual Cargo artifact can include both rlib and rmeta. Match the
+    // production receipt's complete observed set, not the single-file helper.
+    let mut dependency_files: Vec<PathBuf> = dependency["filenames"]
+        .as_array()
+        .ok_or("dependency filenames absent")?
+        .iter()
+        .map(|path| {
+            path.as_str()
+                .map(PathBuf::from)
+                .ok_or("invalid dependency filename")
+        })
+        .collect::<std::result::Result<_, _>>()?;
+    dependency_files.extend(
+        dependency_files
+            .clone()
+            .into_iter()
+            .map(|path| path.with_extension("vir"))
+            .filter(|path| path.is_file()),
+    );
+    receipt.artifact_hashes = artifact_hashes(&dependency_files)?;
     let receipt = receipt.seal();
     let path = receipt_path(&first, &package_id, "input", &["lib".to_owned()]);
     json(
@@ -493,6 +514,35 @@ fn repair_selector_real_cargo_preserves_dependency_receipt_and_one_driver() -> I
         .ok_or("reused dependency artifact absent")?;
     assert_eq!(dependency["fresh"], true);
     assert!(receipt.valid("selected"));
+    assert_eq!(
+        receipt.input_revision,
+        target_revision(&fixture.data(&again, &package_id), &package_id)
+    );
+    let mut observed_files: BTreeSet<PathBuf> = dependency["filenames"]
+        .as_array()
+        .ok_or("reused filenames absent")?
+        .iter()
+        .map(|path| {
+            path.as_str()
+                .map(PathBuf::from)
+                .ok_or("invalid reused filename")
+        })
+        .collect::<std::result::Result<_, _>>()?;
+    observed_files.extend(
+        observed_files
+            .clone()
+            .into_iter()
+            .map(|path| path.with_extension("vir"))
+            .filter(|path| path.is_file()),
+    );
+    assert_eq!(
+        receipt
+            .artifact_hashes
+            .keys()
+            .cloned()
+            .collect::<BTreeSet<_>>(),
+        observed_files
+    );
     std::fs::write(
         again.run.join("artifacts.jsonl"),
         serde_json::to_vec(dependency)?,
