@@ -186,11 +186,19 @@ unaccepted, with three compiler invocations and no full notes. The original
 Current-admission check refused it (`SAIL0942`); there are zero measured samples
 and Vest is unreached. The cause remains unestablished and is tracked in
 [Sail #77](https://github.com/Chelis-Lang/sail/issues/77). Original
-rounds, invocation limits and speed thresholds remain unchanged. Fresh current
-reader validation is running with no terminal result claimed. The
+rounds, invocation limits and speed thresholds remain unchanged. The separate
+original b895 reader workflow passes both unchanged four-client collectors:
+each retains 200 total samples, including 100 Result and 100 Status reads.
+Python Result/Status p95 is 91.227/56.989 ms; Rust is 83.867/44.371 ms, below the
+original strict 200 ms limit. Python receives the complete 4,310,817-byte Result
+graph. All samples retain Current evidence and the same birth-bound active
+verifier; retained CLI/MCP passes with original 120/30/5 bounds. Inclusive
+setup and execution take 712.307 seconds. Input seals match and normal owned
+shutdown has no cleanup or archive errors. This qualifies only b895; newer
+source-inventory and baseline-tool implementations remain untested. The
 [source record](scheduling-recovery.json) separately binds historical authored
-hashes, selected source hashes and private metadata digests; no latency, speedup
-or M7 acceptance is claimed.
+hashes, selected source hashes and private metadata digests. This reader pass
+is not a paired causal speedup or whole-project M7 acceptance.
 
 The selected scheduling-recovery follow-up remains unqualified for real-project
 performance. Its

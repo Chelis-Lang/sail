@@ -44,10 +44,11 @@ full-target validation. The selected source engine passes its memory and lowerin
 qualification. Current `b89546c` passes the complete workspace gate (658 tests),
 original solver suite (41 tests), ordinary-build recovery controls and original
 installed CLI/MCP repair fixture with unchanged checks.
-The historical [730 full reader workflow](docs/validation/m7-reader-730a321-terminal.md) passes
-both collectors: each retains 200 total samples across four concurrent clients
-(100 Result and 100 Status reads), with complete Current graphs,
-followed by retained CLI/MCP scenarios; current-product readers require a fresh replay.
+The [current b895 full reader workflow](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+passes both unchanged collectors: each retains 200 total samples across four
+concurrent clients (100 Result and 100 Status reads), with complete Current
+graphs and p95 below 200 ms, followed by retained CLI/MCP scenarios. The
+[730 reader pass](docs/validation/m7-reader-730a321-terminal.md) remains a separate historical scope.
 Twofold real-project repair-loop
 improvement and complete current standard/cache coverage remain outstanding;
 M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
