@@ -1,6 +1,6 @@
 # Rescue lane L7c: managed overhead and read-time currentness
 
-Status: done. Diagnostic and engineering evidence, not acceptance evidence.
+Status: done. Diagnostic and engineering evidence, not acceptance evidence. The raw output of the final runs was lost (see Raw evidence).
 
 ## Summary
 
@@ -37,6 +37,8 @@ Status: done. Diagnostic and engineering evidence, not acceptance evidence.
   - Before: `rescue/m7` `d4b8651`, sail `761dc397…`.
   - After: this branch at `aa545b3`, sail `e57e23fc…`. The later commits only
     delete code that managed runs no longer call, plus docs.
+  - Branch on L15: `4afe831`, rebased onto `rescue/m7` `0427ece`. It was used
+    for the L15 symptoms, the reader gate, one repair round and the gates.
   - Round 1, for the per-stage table: `2167bd9` (before) against `ef0b520`, an
     earlier version of this branch.
 
@@ -160,7 +162,56 @@ These are Python clients, so Result times include parsing the full document.
 
 ## `sail-bench repair`, one round
 
-PENDING
+This is the unchanged harness: M6 is a stock managed focused check followed by
+a full check; M7 is one `repair-check` batch. Both arms use the same binary. A
+single round gives `SAIL7108` (fewer than 3 rounds) by design, so these rows
+are not gate verdicts. Loop totals are summed over the five cycles, in seconds.
+
+| Catalogue | Binary | M6 loop | M7 loop | M7 speedup | M7 first actionable | Failing M7 samples |
+|---|---|---:|---:|---:|---:|---|
+| HumanEval | before `d4b8651` | 133.5 | 46.6 | 2.86× | 5.0 s | none |
+| HumanEval | after `aa545b3` | 104.4 | 30.7 | 3.40× | 3.4 s | none |
+| HumanEval | branch `4afe831` (on L15) | 102.6 | 29.7 | 3.46× | 3.3 s | none |
+| Vest | before `d4b8651` | 325.3 | 178.7 | 1.82× | 16.0 s | **all 5**: `SAIL7102` (Unknown), 4 also `SAIL7106` |
+| Vest | after `aa545b3` | 284.8 | 152.2 | 1.87× | 13.4–13.9 s | none |
+| Vest | branch `4afe831` (on L15) | – | – | 1.90× | – | none |
+
+- **Vest samples are now valid.** Every M7 Vest sample is Current and passes
+  the harness's checks.
+- **Vest selection.** The selected function is now established. The source
+  engine built from `rescue/m7`'s patch includes L7a's and L7b's focus fixes,
+  so `SAIL3122` no longer occurs.
+- **Vest stays below 2×.** It is at 1.9×; the remaining gap is Verus's own
+  per-edit work (lever 4 in L1).
+- **Outlier.** HumanEval's `strlen-repaired-attempt` M6 cycle takes 62–71 s in
+  every arm. That is M6's full check after a failing attempt, which is the same
+  before and after this lane.
+
+## L15 symptoms
+
+These are the three symptoms other lanes hit on the earlier code, each rerun
+on the branch, `4afe831`, rebased onto L15's `0427ece`:
+
+1. **Reader gate, `scripts/reader-gate.sh`.**
+   - *Before:* `0427ece` fails: "the read job is not completed and Current:
+     Completed, Unknown".
+   - *After:* the branch passes. Status p50/p95/p99 is 5.7/9.8/10.4 ms, Result
+     is 18.0/25.7/30.8 ms, there are no invalid samples, and every read is
+     Current while the second repair verifies.
+2. **Historical repair jobs with `SAIL3114 … namespace-tracked-input-event`
+   on L12's fork engine.** That event came from the precise namespace
+   observer. The observer and every caller of it are deleted, so the label
+   cannot occur. Repair jobs on the branch, built from source with the
+   current patch, ended Current in every profile run, every reader-gate job
+   and all ten M7 samples above. L12's fork engine was not available on this
+   host, so the original reproduction was not rerun.
+3. **Concurrent `sail verify --incremental` on one HumanEval workspace,
+   outside the daemon, after one warm run.**
+
+   | Binary | 2 concurrent | 4 concurrent |
+   |---|---|---|
+   | `0427ece` | 1 failed `SAIL3104`; 1 Current | 3 failed `SAIL3104`; 1 Current |
+   | branch | both Current | all four Current |
 
 ## Changes and why each is safe
 
@@ -294,9 +345,29 @@ earlier. The content and stamp checks now provide Currentness without it.
 - **macOS.** `ci/run.sh host` passed: clippy, then nextest 550/550 at
   `d0898d6`. One macOS-only compile error from the bootstrap removal was fixed
   in `d0898d6`.
-- **Gates.** These ran in the existing CI image, because the image for this
-  tree cannot be built (see "Blocked image" below), with
-  `SAIL_ENGINE_BUILD` set to the source-built engine: PENDING.
+- **Gates on the branch, `4afe831`.** These ran in the existing CI image,
+  because the image for this tree cannot be built (see "Blocked image"
+  below), with `SAIL_ENGINE_BUILD` set to the source-built engine of the
+  current patch.
+  - `ci/run.sh gate` passed:
+    - fmt and clippy;
+    - nextest 519 passed, 37 skipped;
+    - doctests and rustdoc;
+    - layering ok (15 crates);
+    - cargo-deny: advisories, bans, licenses and sources ok;
+    - links;
+    - the benchmarks page.
+  - `ci/run.sh solver` passed, with 37/37 ignored-tier tests, including the
+    shim fault-injection suite.
+  - `ci/run.sh e2e` passed all three phases:
+    - legacy: identical to `cargo verus verify`;
+    - managed: cold, unchanged, CLI/MCP jobs, missing receipt,
+      restored-mtime failing edit and repeated focus;
+    - repair: success, missing selector, full regression, late EXEC, and exact
+      evidence and cursors.
+  - `ci/run.sh conformance fast pr` passed. The pass-through, cache-warm and
+    engine arms each compared 33 units, all the same, with 0 unstable and 0
+    different (311 functions).
 - **Freshness and fault-injection tests.** These are covered by the gate and
   solver runs:
   - `read_check` tests: unchanged files, restored-mtime edits, new
@@ -369,22 +440,49 @@ Candidates for other lanes:
 
 ## Commits
 
-On `rescue/m7` `5e99481`:
-- `ed4e5f8` and earlier: round-1 optimisations
-  - `dc1d929` timing phases;
-  - `5800799` alias inode;
-  - `fbf9ad7` rustc cache;
-  - `503db44` mount reparse;
-  - `95b4b98` parallel reads;
-  - `fe6d88a` overlaps;
-- `b92eef2` read-time recorded-input check;
-- `f8de8e0` stat toolchain identity and removal of the run-time guards;
-- `b1f16fd` lock wait;
-- `d0898d6` macOS fix;
-- `6369225` change-time fix;
-- `4ce8494` lease helper and observer deletion;
-- docs commits.
+On `rescue/m7` `0427ece`, oldest first:
+
+| Commit | Change |
+|---|---|
+| `dc0b4fd` | timing phases |
+| `8442965` | alias inode |
+| `b6324f6` | `cargo clean` rustc cache |
+| `9684909` | mount reparse |
+| `c1b6c24` | parallel reads |
+| `5f4ffa7` | overlapped setup |
+| `bdae8c0` | docs |
+| `c1d11df` | read-time recorded-input check |
+| `ab534e9` | docs |
+| `3bfd1a2` | stat toolchain identity; run-time guards removed |
+| `87d168d` | lock wait |
+| `a78324c` | docs |
+| `f51f500` | macOS fix |
+| `05fd168` | report |
+| `49da421` | change-time fix |
+| `1bebfba` | lease helper and observer deleted |
+| `ff43e25`, `4afe831`, this commit | docs |
 
 ## Raw evidence
 
-Kept in `~/sail-raw-evidence/l7c/` (see `SHA256SUMS`): PENDING.
+Kept in `~/sail-raw-evidence/l7c/`. `SHA256SUMS` there covers:
+
+| File | sha256 |
+|---|---|
+| `l7c-campaign1.tgz`: round 1 and the probes (`2167bd9` vs `ef0b520`; all records, setup timings, traces, strace runs) | `471848bb688cbc3759b7a06ab3727e15930455bb7d4ed09b6c45e3ed8f81206f` |
+| `host-macos.log`: `ci/run.sh host` on macOS | `7aed8f395ebeeb16bcd78a8c173c4fc0a2da3ce2600f4814a1b5e503dcce048d` |
+| `l7c-profile.py`: measurement driver | `d9a7679ccb4b061e7423bb3efc3c21327941fcf8477497bd730ce981b7ea9535` |
+| `l7c-aggregate.py` | `e31ead7cfd05faf426f30946e7a9efbd6b38a006ce749777ec46871d5e191ec0` |
+| `readback.py` | `9d495ec4a1139c67457907dd18a000b0f7ea2d79a130621e9d291ac1b1bfdf65` |
+| `round6.sh`: final profiles, reader runs and repair benches | `5b856f576d1923ba4e264631c60ab23738c0c95e2679d682caa25fa64e9e7317` |
+| `round7.sh`: L15 symptoms, reader gate and branch repair rounds | `55449cd92529757571019999290bbfddafd3b2b8c639546e5844a2084f0121ea` |
+| `gates.sh` | `2bbbe7e46dae5c0a5714c4cfecc3ff07e709897946c407c36028654b452346ae` |
+| `image-build.log` | `8c0ac4e6653f4c8ae9c69580dfd5dec76000c04f3c9ccd8fd9e40693364e29f7` |
+
+**Lost raw evidence.** The raw output of the final rounds 5–7 and the gate
+logs was lost: per-run records, reader censuses, `sail-bench` result files and
+`ci/run.sh` logs. The host's 480-minute self-termination fired while their
+archive was downloading. The figures in this report were transcribed from
+those runs' summaries during the session; the gate figures come from the
+logs' summary lines. To reproduce: `round6.sh`, `round7.sh` and `gates.sh`
+on a new `c7i.4xlarge`, with an engine built from source from the current
+patch. The host is down (`scripts/perf-host.sh down l7c`).
