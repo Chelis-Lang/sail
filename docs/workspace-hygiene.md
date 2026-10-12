@@ -48,8 +48,8 @@ migration is pending; the original `387ba80` one-driver benchmark and reader
 failures remain failed. This layout is neither a disk bound nor a measured
 performance improvement.
 
-For disposable validation caches, retire the complete closed run using the
-helper below after compact evidence transport and fresh idle/holder checks.
+For disposable validation caches, retire the complete closed run after compact
+evidence transport and fresh idle/holder checks.
 Keep selected products, runtimes, corpus pins and required source outside that
 scratch root. Compiler bytes may then be retired with their identity records;
 do not create giant target archives or retain every historical executable.
@@ -65,103 +65,12 @@ has closed. Membership, birth-bound holders, descriptors, mappings and outside
 hardlinks need checked treatment through teardown, with partial removal recorded
 separately. This API does not exist today; SMT-cache GC is not its substitute.
 
-## Completed local runs
-
-[scripts/retire-completed-run.py](../scripts/retire-completed-run.py) retires one
-explicit, owned native `sail-*` directory directly under temporary storage. It
-requires a terminal PASS or FAIL with complete closure evidence, then performs
-fresh bounded holder checks in both Sail containers and an idle-process check
-in the target container. Live processes, unavailable observations, mounted
-storage, protected-path overlap, special files or exceeded limits refuse
-cleanup. It sends no signals and performs no retries.
-
-The helper inventories at most 20,000 entries and 8 GiB of regular-file bytes.
-It archives complete text, JSON, source and receipt files, capped at 128 MiB,
-with full byte hashes and mode checks. Compiler target trees and historical
-binaries are excluded from the archive. Symlinks are recorded and unlinked
-without traversal; hardlinked evidence gets full content backing, and remaining
-outside links survive. Each native capture, holder or retirement phase shares
-one 300-second cooperative deadline across its operations; metadata, holder
-reads and transport also have separate finite bounds.
-These are operational limits, not a memory or hard filesystem-latency guarantee.
-
-Only after the host archive is fully verified does the helper recheck membership,
-births and holders, then unlink exact original bindings with checks on every
-ancestor. Its journal records a completed prefix count, last removed name and
-pending operation on failure, bound to the exact inventory and deletion order.
-It does not repeatedly rewrite an ever-growing full removal list. The terminal
-record includes the full removed set only after completion.
-An uncertain or interrupted cleanup stays uncertain; inspect its retained record
-and use a separate ownership audit before further action.
-
-The first native cleanup smoke for `e95b8bd` refused capture before deletion:
-only the containing directory's mtime/ctime differed, with the exact run root
-and members unchanged. That UNCERTAIN cleanup and original failed gate remain
-unchanged. Parent binding now records only device, inode, mode and ownership,
-matching the deletion check; unrelated sibling activity does not change the
-inventory. Root and member metadata still receive their original exact checks,
-and replaced parents, roots or children refuse. Native correction validation is
-pending a fresh audit; no cleanup success is inferred from the pure controls.
-
-The helper currently leaves its private `sail-run-retirement-*` support directory
-in both containers, including native compact archive backing. The host
-`controller.json.native_output` identifies these directories; they are temporary
-support, not a retained cache. After verifying all terminal/progress/support
-records and archive hashes on the host, explicitly retire them through a
-separate bounded fixed-directory audit of both births and current holders.
-That disposal must follow confirmed helper exit and preserve uncertain attempts;
-it must not recursively invoke this helper and create another support directory.
-Automatic support disposal remains unimplemented.
-
-`scripts/local-combined-gates.py` now performs this retirement after original
-source/product checks and complete phase-log retention. The native gate result
-stays unchanged; `controller.json.retirement` reports cleanup independently.
-The host controller exits nonzero if retirement is unavailable or incomplete.
-Durable evidence defaults to the Sail cache's `evidence/completed-runs` directory;
-`--retirement-output` selects a new host directory outside temporary storage.
-An explicit external `--source` and the shared compiler target remain untouched.
-The default source inside the run root is retired after retaining its exact
-source archive; a subsequent build must stage that archive into a fresh path.
-
-For the existing reader and benchmark controllers, first retain the complete
-terminal records and raw logs and complete their original closure checks. They
-do not yet automatically hand off retirement. Use the helper afterwards, with
-the original terminal record, exact native root, required full logs/receipts and
-external protected paths from that run's retained inventory:
-
-```sh
-python3 -B scripts/retire-completed-run.py \
-  --container "$RUN_CONTAINER" --root "$RUN_ROOT" \
-  --output "$DURABLE_EVIDENCE_DIR" --terminal-record "$TERMINAL_RECORD" \
-  --protected "$SELECTED_PRODUCT" --protected "$SELECTED_RUNTIME" \
-  --protected "$SOURCE_ROOT" --protected "$SHARED_TARGET" \
-  --required "$NATIVE_TERMINAL_RELATIVE" --required "$FULL_LOG_RELATIVE" \
-  --host-evidence "$RETAINED_SOURCE_ARCHIVE"
-```
-
-Each variable must come from the actual run record; paths to required native
-files are relative to the fixed root. Repeat `--required` for all indispensable
-streams and receipts. A benchmark host `controller.json` has a bounded
-`closure` census; reader retention needs an equally complete closure record.
-Missing closure is a deferred retirement, not permission to manufacture a
-successful record. Preserve corpus pins, selected source and runtime outside
-the disposable root. An overlapping protected path must be relocated and
-resealed through the normal setup before whole-root retirement.
+## Containers and evidence
 
 Inspect stopped containers and dangling images individually. Remove containers
 without deleting their volumes. Preserve active containers and data volumes;
 avoid a global prune while other projects are building.
 
-The [M7 cleanup record](validation/m7-workspace-cleanup.json) records retired
-checkouts, compiler files, preservation checks and observed free space. Recovery
-archives live under the local Sail cache in
-`retired-worktrees-2026-10-10/<worktree>/`. Each directory contains
-`source.tar.gz`, `metadata.json` and staged/unstaged patches, plus `target/` when
-raw artifacts were retained. Its recorded `refs/cleanup/worktrees/<worktree>`
-reference restores the commit; unpack the source archive into that checkout to
-restore the actual working files. The patches also retain staging information.
-
-One newly active diagnostic checkout was mistakenly included in that cleanup.
-Its archived edits and commit survived; the agent recovered them into a protected
-checkout and restarted from committed native Linux source. The interrupted
-compile remains a setup failure. No tests ran in that interrupted attempt.
+Raw logs and archives stay outside the repository and are cited by SHA-256 from
+the concise validation records (see [M7 validation](validation/m7.md)). Cleanup,
+retirement and disk-space records are not kept in git.

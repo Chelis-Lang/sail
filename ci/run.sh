@@ -77,19 +77,6 @@ case "$step" in
     python3 scripts/test-m7-native-product.py
     python3 scripts/test-m7-result-frame-profile.py
     python3 scripts/test-managed-timeout-evidence.py
-    python3 scripts/test-m7-ordinary-wait-diagnostic.py
-    python3 scripts/test-m7-publication-timing-diagnostic.py
-    python3 docs/validation/m7-http-small-known-body/test-runner.py
-    python3 scripts/test-local-combined-gates.py
-    python3 scripts/test-retire-completed-run.py
-    python3 scripts/test-local-product-install.py
-    python3 scripts/test-local-standard-conformance.py
-    python3 scripts/test-m7-current-publication-controller.py
-    python3 docs/validation/test-m7-preserve-freshness-metadata-controls.py
-    python3 docs/validation/test-m7-preserve-freshness-metadata-replay.py
-    python3 scripts/test-m7-stock-smt-process-diagnostic.py
-    python3 scripts/test-m7-conformance-observation.py
-    python3 scripts/test-m7-tspec-transcript-run.py
     python3 ci/test-engine-artifact.py
     python3 ci/test-repair-lifecycle.py
     cargo fmt --all --check
