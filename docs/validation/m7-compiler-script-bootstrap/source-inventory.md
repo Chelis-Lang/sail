@@ -1,9 +1,10 @@
 # Compiler-family declared source inventory candidate
 
 This implementation addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77).
-Affected native controls and strict checks pass within the failed `43d1c29`
-combined gate. Complete gate/solver, a new installed product and the unchanged
-full benchmark remain pending. No original Historical/Unknown refusal, deadline,
+Selected combined source `57a319d` passes the complete local gate and original
+solver suite. Ordinary release/private installation is still pending at this
+record's freeze; installed repair/readers, conformance and the unchanged full
+benchmark remain unqualified on this source. No original Historical/Unknown refusal, deadline,
 warmup allowance or receipt predicate changes.
 
 The first three combined native gates remain failed: `2ba2a32` stopped at the
@@ -39,8 +40,18 @@ record. `57a319d` adds the three authorized names and baseline schemas, includin
 the constrained comparison name. Its original missing-engine negative now
 targets repair index 14 rather than 11; the same schema mutation and rejection
 assertion remain. All earlier negatives remain, with new baseline-contract
-negatives added. The fresh complete gate on that correction remains pending;
-neither this failed gate nor workspace success qualifies a new runtime product.
+negatives added. Neither this failed gate nor workspace success qualifies a new runtime product.
+
+The separate fresh `57a319d` scope passes the entire gate in 426.213 seconds:
+673/673 workspace tests (199.182 seconds, 41 solver tests skipped), all four
+independent MCP example contracts, and all remaining gate steps. The original
+solver suite then passes 41/41 in 75.490 phase seconds (71.559 nextest seconds).
+Both commands and the host transport exit zero. Source archive, source/protected
+inventory and container/PID1 identity remain unchanged, with no live known-group
+survivors, unavailable rows or uncertainty. Fully audited terminated unreaped
+tasks remain recorded separately; this is not an arbitrary orphan-absence claim.
+These are native gate/solver results, not installed-product or performance
+acceptance. All five earlier failed scopes remain failed and retained.
 
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
@@ -77,8 +88,8 @@ that revision when dep-info reveals the include. Restored bytes/mtime must still
 fail the actual continuous guard. Additional controls cover package/role changes,
 ambiguous IDs, generated aliases and target escapes, bounded counts, incomplete
 or legacy attribution, corrupt local ledgers, preserved private roots, stale
-ordinary contracts, checksum and v1 refusal. These source controls pass in the
-failed combined scope above; original product and benchmark qualification remain separate.
+ordinary contracts, checksum and v1 refusal. These source controls also pass in
+the complete combined scope above; original product and benchmark qualification remain separate.
 
 The resource policy remains the existing 1 MiB encoded family envelope and
 regular-file read cap, plus at most 128 package entries and 4,096 attributed paths

@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Affected declared-source inventory and baseline controls plus strict and all 673 workspace tests pass inside failed e0bc26e gate; corrected complete gate, solver and product/benchmark pending",
+  "status": "Selected combined source 57a319d complete local gate and original solver PASS; ordinary release/install and new product/benchmark acceptance pending",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -47,7 +47,7 @@
   ],
   "combined_native_attempts": {
     "scope": "Combined declared-source inventory and MCP baseline lifecycle; original complete gate then solver",
-    "status": "Five original failed combined scopes preserved; latest failure is stale independent MCP example contracts after 673/673 workspace pass; corrected 57a319d validation pending",
+    "status": "Five historical failed scopes preserved unchanged; later separate 57a319d complete gate and solver PASS recorded below",
     "baseline_issue": "https://github.com/Chelis-Lang/sail/issues/72",
     "attempts": [
       {
@@ -374,7 +374,98 @@
       "test_refactor": "same pruned/restarted baseline read and full payload equality; loaded.as_ref() compares the boxed payload to the saved Baseline",
       "qualification": "file-only source review; no native test or performance credit"
     },
-    "credit": "All five original scopes remain FAIL. Last scope has actual strict and 673/673 workspace passes but no complete-gate, solver, installed-product, conformance, performance or M7 acceptance credit.",
+    "credit": "These five historical scopes remain FAIL. The separate later completion grants native gate/solver credit only, never rewrites these failures or qualifies an installed product, conformance, performance or M7.",
     "latest_corrected_source_commit": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694"
+  },
+  "combined_native_completion": {
+    "scope": "sail-local-gates-57a319d",
+    "status": "PASS",
+    "source_commit": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694",
+    "source_archive_sha256": "6f49612cba4b396187c32e66be7424dd311c8cb1e0cfe6814d1f66dcd0c93245",
+    "controller_sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc",
+    "transport_exit_code": 0,
+    "jobs": 2,
+    "nextest_independent_tests": 1,
+    "phases": [
+      {
+        "name": "gate",
+        "command": [
+          "bash",
+          "ci/run.sh",
+          "gate"
+        ],
+        "limit_seconds": 3600,
+        "exit_code": 0,
+        "elapsed_seconds": 426.2129903599998,
+        "log_sha256": "88d10eb42f1439d9a7e79bcb6d23180f01c74d58f6b90639a5cb00ad4609f26d",
+        "known_group_closure": {
+          "live_survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 10,
+          "dead_task_evidence_complete": true
+        }
+      },
+      {
+        "name": "solver",
+        "command": [
+          "bash",
+          "ci/run.sh",
+          "solver"
+        ],
+        "limit_seconds": 1800,
+        "exit_code": 0,
+        "elapsed_seconds": 75.49032540900043,
+        "log_sha256": "0b98734f88d25ca9a83f9647e87b7a10da75859d9c08cb291aa9572bb5758ca5",
+        "known_group_closure": {
+          "live_survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 9,
+          "dead_task_evidence_complete": true
+        }
+      }
+    ],
+    "workspace_nextest": {
+      "run": 673,
+      "passed": 673,
+      "failed": 0,
+      "skipped": 41,
+      "elapsed_seconds": 199.182
+    },
+    "original_solver_nextest": {
+      "run": 41,
+      "passed": 41,
+      "failed": 0,
+      "skipped": 673,
+      "elapsed_seconds": 71.559
+    },
+    "remaining_gate_steps": "PASS: examples including all four exact MCP contracts, doctests, rustdoc, layering, deny and generated benchmark-page check",
+    "source_and_protected_inventory": "Controller final closure records exact source/protected bytes and PID1 unchanged",
+    "container_identity_birth_unchanged": true,
+    "uncertainty": [],
+    "closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+    "retention": {
+      "files": [
+        {
+          "source": "/work/target/debug/deps/sail_verus-1ff5719aff2dbe51",
+          "copy": "0-sail_verus-1ff5719aff2dbe51",
+          "bytes": 37067496,
+          "mode": 493,
+          "sha256": "0ab0cc18dc4c1f0bee0c5c0f7148603d87dd42e5098968da8b114b1735b18b81",
+          "execution_identity": "operator-selected copy; execution is not inferred from file presence"
+        }
+      ],
+      "errors": [],
+      "all_cargo_artifacts_archived": false
+    },
+    "evidence_sha256": {
+      "controller.json": "093b9163668c6575b056a678d28ebc29a8152cdafb053728b0ee05975bc71592",
+      "result.json": "dc964c9556cffd1626134b0c5abf997695edf7d5222372cf01acbade8715b3fe",
+      "gate.log": "88d10eb42f1439d9a7e79bcb6d23180f01c74d58f6b90639a5cb00ad4609f26d",
+      "solver.log": "0b98734f88d25ca9a83f9647e87b7a10da75859d9c08cb291aa9572bb5758ca5",
+      "source-inventory.json": "97713bd89d77cda5fad103a5a78ee1b2ce974e3c044228adde856734c7db118e",
+      "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
+    },
+    "qualification": "Complete local gate and original solver only. Ordinary release/private installation still pending at record time; no installed-product repair/readers, conformance, real-project performance or overall M7 acceptance credit.",
+    "historical_failures": "All five earlier scopes and failed benchmark remain unchanged; no stitched qualification"
   }
 }
