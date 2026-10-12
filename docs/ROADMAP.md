@@ -111,8 +111,8 @@ complete current full validation. M7 remains incomplete until these gates pass.
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
 | Responsive reads (p95 < 200 ms) | Pass (native) | Python Result p95 98.9 ms, Rust 34.9 ms on EC2 after the L5 fixes; the emulated 436 ms failure does not reproduce natively |
-| Default and cache conformance | Pass on `main` (native); engine arm open | Standard tier 159/159 in all three rounds on native EC2 for #80 and #81; the engine arm fails `guide/traits.rs` (VI-0015) and one diagnostic-path case |
-| Frozen repair performance (≥2× each) | Fail (native) | HumanEval M7 14.8 s vs M6 14.0 s (0.94×); Vest has no M7 sample ([L1 profile](reports/rescue/l1-phase-profile.md)) |
+| Default and cache conformance | Pass on `main` (native); engine arm open | Standard tier 159/159 in all three rounds on native EC2 for #80 and #81; the engine arm still fails `guide/traits.rs` until the rebuilt runtime is pinned ([L4b report](reports/rescue/l4b-engine-parity.md)) |
+| Frozen repair performance (≥2× each) | Fail (native) | One-round smoke: HumanEval 1.01×, Vest 0.77× with every M7 sample invalid (Unknown on read-back); speed work in progress ([L7b report](reports/rescue/l7b-vest-and-baseline.md), [L1 profile](reports/rescue/l1-phase-profile.md)) |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented; stock verification stays
