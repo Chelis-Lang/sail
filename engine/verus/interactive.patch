@@ -103,7 +103,7 @@ diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail
 new file mode 100644
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,362 @@
+@@ -0,0 +1,381 @@
 +//! Private interactive session: focused phase and bounded observation for one compiler callback.
 +use super::*;
 +use std::cell::{Cell,RefCell};
@@ -206,9 +206,28 @@ new file mode 100644
 +    let total=state.charged.checked_add(charge)?;if total>2*1024*1024{return None;}
 +    state.values.try_reserve(1).ok()?;state.values.insert(key,1);state.charged=total;Some(0)
 +}
++// Friendly-name multiplicity of one crate, built once per crate. Scanning every
++// function per obligation made progress observation quadratic and serialized
++// all verification workers on the global friendly-name lock.
++const UNIQUE_NAMES_BYTES:usize=64*1024*1024;
++static UNIQUE_NAMES:std::sync::Mutex<Option<(usize,Option<HashMap<String,u32>>)>>=std::sync::Mutex::new(None);
++fn unique_names(krate:&Krate)->Option<HashMap<String,u32>>{
++    let mut names=HashMap::new();let mut bytes=0usize;
++    for function in krate.functions.iter(){
++        let name=vir::ast_util::sail_bounded_friendly_name(&function.x.name.path,OBSERVER_NAMES)?;
++        bytes=bytes.checked_add(name.capacity())?.checked_add(64)?;if bytes>UNIQUE_NAMES_BYTES{return None;}
++        let count=names.entry(name).or_insert(0u32);*count=count.saturating_add(1);
++    }
++    Some(names)
++}
 +fn unique(v:&Verifier,fun:&Fun)->bool {
 +    let Some(name)=vir::ast_util::sail_bounded_friendly_name(&fun.path,OBSERVER_NAMES)else{return false;};
-+    v.vir_crate.as_ref().is_some_and(|krate|krate.functions.iter().filter(|function|vir::ast_util::sail_bounded_friendly_name(&function.x.name.path,OBSERVER_NAMES).as_deref()==Some(name.as_str())).take(2).count()==1)
++    let Some(krate)=v.vir_crate.as_ref()else{return false;};
++    let key=Arc::as_ptr(krate) as usize;
++    let Ok(mut slot)=UNIQUE_NAMES.lock()else{return false;};
++    if slot.as_ref().is_none_or(|(owner,_)|*owner!=key){*slot=Some((key,unique_names(krate)));}
++    // An unavailable table (name or size budget) reports nothing as unique.
++    slot.as_ref().and_then(|(_,names)|names.as_ref()).and_then(|names|names.get(&name)).copied()==Some(1)
 +}
 +pub(super) fn progress_start(v:&Verifier,fun:&Fun,comment:&str,description:&str,spinoff:Option<usize>,checks:usize)->Option<Progress> {
 +    if !active(){return None;}
@@ -233,7 +252,7 @@ new file mode 100644
 +        }
 +    }}
 +}
-+fn clear() { if let Ok(mut ordinals)=ORDINALS.lock(){*ordinals=None;} }
++fn clear() { if let Ok(mut ordinals)=ORDINALS.lock(){*ordinals=None;} if let Ok(mut names)=UNIQUE_NAMES.lock(){*names=None;} }
 +fn dispose_report_messages(messages:&mut RefCell<Messages>,charge:u64){
 +    // Release every retained Arc and the Vec allocation before quota becomes
 +    // available to a concurrent reporter. Compiler-owned clones remain outside
