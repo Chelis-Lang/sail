@@ -3,7 +3,10 @@
 import copy
 import importlib.util
 import json
+import io
 from pathlib import Path
+import shutil
+import tarfile
 import tempfile
 import types
 import unittest
@@ -50,7 +53,148 @@ def grant_inputs():
     return config, record, artifacts, installation
 
 
+def retired_fixture(base):
+    """Real compact archive/inventory, qualified source tar and immutable originals."""
+    r = p.module(Path(p.__file__).with_name('retire-completed-run.py'), 'retirement_fixture')
+    original, backing, scratch = base / 'original', base / 'backing', base / 'scratch'
+    for path in (original, backing, scratch, backing / 'host-evidence'):
+        path.mkdir()
+    controller, result, config = inputs()
+    controller['native_root'] = '/tmp/sail-local-gates-fixture'
+    with tarfile.open(original / 'source.tar', 'w') as archive:
+        item = tarfile.TarInfo('Cargo.lock')
+        raw = b'exact frozen lock\n'
+        item.size, item.mode = len(raw), 0o644
+        archive.addfile(item, io.BytesIO(raw))
+    source_hash = g.sha(original / 'source.tar')
+    config['archive_sha256'] = controller['archive_sha256'] = result['archive_sha256'] = source_hash
+    for phase in result['phases']:
+        log = scratch / (phase['name'] + '.log')
+        log.write_bytes((phase['name'] + ' original raw\n\n').encode())
+        phase['log_sha256'] = g.sha(log)
+    records = {'config.json': config, 'result.json': result,
+               'source-inventory.json': g.inventory(original / 'source.tar'), 'protected.json': {'files': []}}
+    for name, value in records.items():
+        g.save(scratch / name, value)
+        shutil.copyfile(scratch / name, original / name)
+    plan = r.inventory(scratch)
+    r.archive(scratch, plan, backing / 'evidence.tar.gz')
+    plan['root'] = controller['native_root']
+    r.save(backing / 'inventory.json', plan)
+    identity = {'handoff': {'birth': 'original'}, 'acceptance': {'birth': 'original'}}
+    retirement = {'status': 'PASS', 'original_status': 'PASS', 'removed': True,
+                  'root': controller['native_root'], 'containers_before': identity, 'containers_after': identity,
+                  'verified_evidence': {'archive_sha256': g.sha(backing / 'evidence.tar.gz'),
+                                       'inventory_sha256': g.sha(backing / 'inventory.json'),
+                                       'full_evidence_bytes': plan['evidence_bytes']}, 'host_evidence': []}
+    for name in ('source.tar', 'source-inventory.json', 'protected.json', 'result.json'):
+        path = backing / 'host-evidence' / name
+        shutil.copyfile(original / name, path)
+        retirement['host_evidence'].append({'name': name, 'bytes': path.stat().st_size, 'sha256': g.sha(path)})
+    r.save(backing / 'original-terminal.json', dict(result, native_root=controller['native_root']))
+    r.save(backing / 'controller.json', retirement)
+    controller['retirement'] = retirement
+    g.save(original / 'controller.json', controller)
+    return original, backing, base / 'restored'
+
+
 class Controls(unittest.TestCase):
+    def test_restaging_restores_exact_records_without_source_or_history_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            original, backing, restored = retired_fixture(Path(directory))
+            before = {str(path): path.read_bytes() for root in (original, backing) for path in root.rglob('*') if path.is_file()}
+            source = Path(directory) / 'externally-present-source'
+            source.mkdir()
+            (source / 'unchanged').write_bytes(b'original source')
+            provenance = p.restage_gate(g, original, backing, restored)
+            self.assertFalse(provenance['re_execution'])
+            self.assertEqual(provenance['authority'], 'restored-qualified-evidence')
+            config = {'gate_restaging': provenance, 'gate_config': g.load(original / 'config.json'),
+                      'gate_controller': g.load(original / 'controller.json'),
+                      'gate_inputs': {name: g.sha(restored / name) for name in [*provenance['files'], 'restaging.json']}}
+            p.verify_restaging(g, restored, config)
+            self.assertEqual(before, {str(path): path.read_bytes() for root in (original, backing) for path in root.rglob('*') if path.is_file()})
+            self.assertEqual((source / 'unchanged').read_bytes(), b'original source')
+            self.assertEqual((restored / 'gate.log').read_bytes(), b'gate original raw\n\n')
+            self.assertEqual(config['gate_config']['source'], inputs()[2]['source'])
+
+    def test_restaging_requires_original_pass_retirement_and_stable_births(self):
+        for mutation in (lambda row: row.update(status='FAIL'), lambda row: row.update(removed=False),
+                         lambda row: row.update(original_status='FAIL'), lambda row: row.update(root='/tmp/other'),
+                         lambda row: row.update(containers_after={'birth': 'changed'})):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                original, backing, restored = retired_fixture(Path(directory))
+                retirement = g.load(backing / 'controller.json')
+                mutation(retirement)
+                g.save(backing / 'controller.json', retirement)
+                controller = g.load(original / 'controller.json')
+                controller['retirement'] = retirement
+                g.save(original / 'controller.json', controller)
+                with self.assertRaises(ValueError):
+                    p.restage_gate(g, original, backing, restored)
+                self.assertFalse(restored.exists())
+
+    def test_restaging_missing_corrupted_and_partial_archives_refuse(self):
+        for variant in ('corrupt', 'missing', 'partial'):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory() as directory:
+                original, backing, restored = retired_fixture(Path(directory))
+                if variant == 'missing':
+                    (backing / 'evidence.tar.gz').unlink()
+                elif variant == 'corrupt':
+                    (backing / 'evidence.tar.gz').write_bytes(b'wrong raw archive')
+                else:
+                    with tarfile.open(backing / 'evidence.tar.gz', 'w:gz'):
+                        pass
+                    retirement = g.load(backing / 'controller.json')
+                    retirement['verified_evidence']['archive_sha256'] = g.sha(backing / 'evidence.tar.gz')
+                    g.save(backing / 'controller.json', retirement)
+                    controller = g.load(original / 'controller.json')
+                    controller['retirement'] = retirement
+                    g.save(original / 'controller.json', controller)
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    p.restage_gate(g, original, backing, restored)
+                self.assertFalse(restored.exists())
+
+    def test_restaging_does_not_rebind_wrong_source_or_relax_qualification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            original, backing, restored = retired_fixture(Path(directory))
+            config = g.load(original / 'config.json')
+            config['source'] = '/tmp/sail-m7-current-source-' + config['revision'][:7]
+            g.save(original / 'config.json', config)
+            with self.assertRaisesRegex(ValueError, 'common product grant path'):
+                p.restage_gate(g, original, backing, restored)
+            self.assertFalse(restored.exists())
+
+    def test_restaging_source_archive_and_retained_original_must_match(self):
+        for name in ('source.tar', 'original-terminal.json', 'source-inventory.json'):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                original, backing, restored = retired_fixture(Path(directory))
+                path = backing / ('host-evidence' if name != 'original-terminal.json' else '') / name
+                path.write_bytes(b'{}')
+                with self.assertRaises(ValueError):
+                    p.restage_gate(g, original, backing, restored)
+
+    def test_restaged_raw_replacement_and_mode_changes_refuse(self):
+        for variant in ('bytes', 'mode', 'symlink', 'record'):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory() as directory:
+                original, backing, restored = retired_fixture(Path(directory))
+                provenance = p.restage_gate(g, original, backing, restored)
+                config = {'gate_restaging': provenance, 'gate_config': g.load(original / 'config.json'),
+                          'gate_controller': g.load(original / 'controller.json'),
+                          'gate_inputs': {name: g.sha(restored / name) for name in [*provenance['files'], 'restaging.json']}}
+                path = restored / 'gate.log'
+                if variant == 'bytes':
+                    path.write_bytes(b'changed')
+                elif variant == 'mode':
+                    path.chmod(0o700)
+                elif variant == 'symlink':
+                    path.unlink()
+                    path.symlink_to(original / 'result.json')
+                else:
+                    config['gate_config']['source'] = '/different/source'
+                with self.assertRaises(ValueError):
+                    p.verify_restaging(g, restored, config)
+
     def test_exact_complete_gate_required(self):
         controller, record, config = inputs()
         p.prerequisite(g, controller, record, config)

@@ -10,6 +10,8 @@ import shutil
 import signal
 import stat
 import sys
+import tarfile
+import time
 
 sys.dont_write_bytecode = True
 BUILD_LIMIT = 600
@@ -40,6 +42,146 @@ def prerequisite(g, controller, record, config):
         raise ValueError('full Git commit required')
     if config['source'] != '/tmp/sail-m7-core-product-source-' + config['revision'][:7]:
         raise ValueError('source does not match common product grant path')
+
+
+def regular_hash(r, path, limit, deadline):
+    metadata = path.lstat()
+    if not stat.S_ISREG(metadata.st_mode):
+        raise ValueError('retained evidence must be an ordinary file')
+    return r.sha(path, limit=limit, deadline=deadline)
+
+
+def restage_gate(g, gate_output, backing, destination):
+    """Restore verified retired records, never their source tree or qualification."""
+    r = module(Path(__file__).with_name('retire-completed-run.py'), 'gate_retirement')
+    deadline = time.monotonic() + r.PHASE_SECONDS
+    controller = g.load(gate_output / 'controller.json')
+    config = g.load(gate_output / 'config.json')
+    result = g.load(gate_output / 'result.json')
+    prerequisite(g, controller, result, config)
+    retirement = r.load(backing / 'controller.json')
+    if (retirement != controller.get('retirement') or retirement.get('status') != 'PASS'
+            or retirement.get('original_status') != 'PASS' or retirement.get('removed') is not True
+            or retirement.get('root') != controller['native_root']
+            or not retirement.get('containers_before')
+            or retirement['containers_before'] != retirement.get('containers_after')):
+        raise ValueError('exact complete successful gate retirement required')
+    if r.load(backing / 'original-terminal.json') != dict(result, native_root=controller['native_root']):
+        raise ValueError('retired original terminal differs')
+    sealed = retirement['verified_evidence']
+    archive, inventory = backing / 'evidence.tar.gz', backing / 'inventory.json'
+    if (regular_hash(r, archive, r.MAX_EVIDENCE_BYTES, deadline) != sealed['archive_sha256']
+            or regular_hash(r, inventory, r.MAX_METADATA, deadline) != sealed['inventory_sha256']):
+        raise ValueError('retained archive/inventory differs')
+    plan = r.load(inventory)
+    r.validate_plan(Path(controller['native_root']), plan)
+    if plan['evidence_bytes'] != sealed['full_evidence_bytes']:
+        raise ValueError('retained evidence accounting differs')
+    r.verify_archive(archive, plan, deadline)
+    required = {'source-inventory.json', 'protected.json', 'config.json', 'result.json'}
+    required.update(phase['name'] + '.log' for phase in result['phases'])
+    members = {name for name, row in plan['entries'].items() if row.get('retained')}
+    if not required <= members:
+        raise ValueError('incomplete retained gate evidence')
+    host_rows = retirement['host_evidence']
+    if len({row['name'] for row in host_rows}) != len(host_rows):
+        raise ValueError('duplicate retained host evidence')
+    for row in host_rows:
+        name = r.relative_name(row['name'])
+        path = backing / 'host-evidence' / name
+        if path.lstat().st_size != row['bytes'] or regular_hash(r, path, r.MAX_SCRATCH_BYTES, deadline) != row['sha256']:
+            raise ValueError('retained host evidence differs')
+    rows = {row['name']: row for row in host_rows}
+    for name in ('source.tar', 'source-inventory.json', 'protected.json', 'result.json'):
+        if name not in rows or regular_hash(r, gate_output / name, r.MAX_SCRATCH_BYTES, deadline) != rows[name]['sha256']:
+            raise ValueError('original/retained host evidence differs')
+    source_archive = backing / 'host-evidence/source.tar'
+    if rows['source.tar']['sha256'] != config['archive_sha256']:
+        raise ValueError('qualified source archive differs')
+    # Only after all backing checks: create a NEW directory, never restore source.
+    destination.mkdir(mode=0o700, exist_ok=False)
+    extracted = set()
+    with tarfile.open(archive, 'r|gz') as packed:
+        for item in packed:
+            if (item.name not in members or item.name in extracted or not item.isfile()
+                    or item.size != plan['entries'][item.name]['bytes']
+                    or item.mode != stat.S_IMODE(plan['entries'][item.name]['mode'])):
+                raise ValueError('restaging archive member changed')
+            path = destination / r.relative_name(item.name)
+            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            count = 0
+            with packed.extractfile(item) as incoming, path.open('xb') as outgoing:
+                while block := incoming.read(1024**2):
+                    count += len(block)
+                    if count > item.size or time.monotonic() >= deadline:
+                        raise ValueError('evidence restaging time bound')
+                    outgoing.write(block)
+            path.chmod(item.mode)
+            extracted.add(item.name)
+    if extracted != members:
+        raise ValueError('restaging archive membership changed')
+    # Recheck the extracted bytes against the original inventory, including modes.
+    files = {}
+    for name in members:
+        row, path = plan['entries'][name], destination / name
+        if (path.lstat().st_size != row['bytes'] or stat.S_IMODE(path.lstat().st_mode) != stat.S_IMODE(row['mode'])
+                or regular_hash(r, path, r.MAX_EVIDENCE_BYTES, deadline) != row['sha256']):
+            raise ValueError('restaged member differs')
+        files[name] = {'bytes': row['bytes'], 'mode': stat.S_IMODE(row['mode']), 'sha256': row['sha256']}
+    for name in ('config.json', 'result.json', 'source-inventory.json', 'protected.json'):
+        if g.load(destination / name) != g.load(gate_output / name):
+            raise ValueError('restaged/original gate record differs')
+    for phase in result['phases']:
+        if files[phase['name'] + '.log']['sha256'] != phase['log_sha256']:
+            raise ValueError('original gate raw log differs')
+    if g.inventory(source_archive) != g.load(destination / 'source-inventory.json'):
+        raise ValueError('qualified source membership differs')
+    for name, original in (('source.tar', source_archive), ('qualified-controller.json', gate_output / 'controller.json')):
+        shutil.copyfile(original, destination / name)
+        (destination / name).chmod(0o600)
+        digest = regular_hash(r, destination / name, r.MAX_SCRATCH_BYTES, deadline)
+        if digest != regular_hash(r, original, r.MAX_SCRATCH_BYTES, deadline):
+            raise ValueError('restaged original copy differs')
+        if name == 'source.tar' and digest != config['archive_sha256']:
+            raise ValueError('qualified source changed during restoration')
+        files[name] = {'bytes': (destination / name).stat().st_size, 'mode': 0o600, 'sha256': digest}
+    provenance = {'authority': 'restored-qualified-evidence', 're_execution': False,
+                  'original_native_root': controller['native_root'], 'source': config['source'],
+                  'retirement_controller_sha256': regular_hash(r, backing / 'controller.json', r.MAX_METADATA, deadline),
+                  'retained_archive_sha256': sealed['archive_sha256'],
+                  'retained_inventory_sha256': sealed['inventory_sha256'], 'files': files}
+    g.save(destination / 'restaging.json', provenance)
+    # Refuse a backing replacement during restoration as well as corrupted members.
+    if (r.load(backing / 'controller.json') != retirement
+            or regular_hash(r, archive, r.MAX_EVIDENCE_BYTES, deadline) != sealed['archive_sha256']
+            or regular_hash(r, inventory, r.MAX_METADATA, deadline) != sealed['inventory_sha256']):
+        raise ValueError('retained backing changed during restoration')
+    return provenance
+
+
+def verify_restaging(g, gate_root, config):
+    directory = gate_root.lstat()
+    if (not stat.S_ISDIR(directory.st_mode) or stat.S_IMODE(directory.st_mode) != 0o700
+            or directory.st_uid != os.geteuid()):
+        raise ValueError('private owned restaging directory required')
+    provenance = g.load(gate_root / 'restaging.json')
+    if (provenance != config['gate_restaging'] or provenance['authority'] != 'restored-qualified-evidence'
+            or provenance['re_execution'] is not False or provenance['source'] != config['gate_config']['source']
+            or provenance['original_native_root'] != config['gate_controller']['native_root']
+            or g.load(gate_root / 'config.json') != config['gate_config']
+            or g.load(gate_root / 'qualified-controller.json') != config['gate_controller']):
+        raise ValueError('restaged gate provenance differs')
+    if set(config['gate_inputs']) != set(provenance['files']) | {'restaging.json'}:
+        raise ValueError('restaged gate inventory differs')
+    if g.sha(gate_root / 'restaging.json') != config['gate_inputs']['restaging.json']:
+        raise ValueError('restaging record seal differs')
+    for name, row in provenance['files'].items():
+        path = gate_root / name
+        metadata = path.lstat()
+        if (Path(name).is_absolute() or '..' in Path(name).parts or not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_size != row['bytes'] or stat.S_IMODE(metadata.st_mode) != row['mode']
+                or g.sha(path) != row['sha256'] or config['gate_inputs'][name] != row['sha256']):
+            raise ValueError('restaged gate bytes/mode/type differs')
 
 
 def engine_seal(g, source, expected):
@@ -124,6 +266,7 @@ def native(root):
     # Import the archived lifecycle helper, and bind it to the running file.
     if g.sha(Path(g.__file__)) != config['helper_sha256']:
         raise ValueError('combined lifecycle helper differs')
+    verify_restaging(g, gate_root, config)
     who = g.support_module(gate_root)
     owner = who.row(os.getpid())
     if owner is None:
@@ -133,6 +276,7 @@ def native(root):
     record = {'status': 'RUNNING', 'phases': [], 'scope': 'ordinary release build and owned installation only', 'jobs': 2}
     closure = g.Closure()
     def check():
+        verify_restaging(g, gate_root, config)
         for name, digest in config['gate_inputs'].items():
             if g.sha(gate_root / name) != digest:
                 raise ValueError('combined gate evidence changed')
@@ -227,20 +371,25 @@ def host(args):
         if g.sha(archive) != gate_config['archive_sha256']:
             raise ValueError('complete combined source archive changed')
         archived = g.inventory(archive)
-        for name, actual in (('scripts/local-product-install.py', Path(__file__)), ('scripts/local-combined-gates.py', Path(g.__file__))):
+        for name, actual in (('scripts/local-product-install.py', Path(__file__)), ('scripts/local-combined-gates.py', Path(g.__file__)),
+                             ('scripts/retire-completed-run.py', Path(__file__).with_name('retire-completed-run.py'))):
             if archived['files'][name]['sha256'] != g.sha(actual):
                 raise ValueError('running product/lifecycle helper differs from gate archive')
+        evidence = args.output / 'qualified-gate-evidence'
+        provenance = restage_gate(g, args.gate_output, args.retained_gate, evidence)
         config = {'gate_controller': prior, 'gate_config': gate_config, 'container': args.container,
                   'execution': args.execution, 'execution_container_birth': {'id': before['id'], 'image': before['image'], 'created': before['created'], 'started_at': before['birth']},
-                  'gate_root': prior['native_root'], 'engine': g.load(args.engine),
+                  'gate_root': str(Path(args.native_root) / 'qualified-gate-evidence'),
+                  'gate_restaging': provenance, 'engine': g.load(args.engine),
                   'helper_sha256': g.sha(Path(g.__file__)),
                   'product_dir': '/opt/sail-m7-core-product-' + gate_config['revision'][:7],
-                  'gate_inputs': {name: g.sha(args.gate_output / name) for name in ('source.tar', 'source-inventory.json', 'protected.json', 'config.json', 'result.json')}}
+                  'gate_inputs': {name: g.sha(evidence / name) for name in [*provenance['files'], 'restaging.json']}}
         g.save(args.output / 'product-config.json', config)
         shutil.copy2(archive, args.output / 'source.tar')
         command = ['docker', 'exec', '-i', args.container, 'python3', '-B', '-']
         call(command, payload=("from pathlib import Path\nPath(%r).mkdir(mode=0o700,exist_ok=False)\n" % args.native_root).encode())
         call(['docker', 'cp', str(args.output / 'product-config.json'), args.container + ':' + args.native_root + '/product-config.json'])
+        call(['docker', 'cp', str(evidence), args.container + ':' + args.native_root + '/qualified-gate-evidence'])
         remote = gate_config['source'] + '/scripts/local-product-install.py'
         with (args.output / 'transport.log').open('wb') as log:
             result = call(['docker', 'exec', args.container, 'python3', '-B', remote, '--native', args.native_root],
@@ -288,6 +437,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--native', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--gate-output', type=Path)
+    parser.add_argument('--retained-gate', type=Path, help='exact verified completed-run retirement backing')
     parser.add_argument('--container')
     parser.add_argument('--native-root')
     parser.add_argument('--output', type=Path)
@@ -296,8 +446,8 @@ def main():
     args = parser.parse_args()
     if args.native:
         return native(args.native)
-    if not all((args.gate_output, args.container, args.native_root, args.output, args.engine, args.execution)):
-        parser.error('host mode requires gate-output/container/native-root/output/engine/execution')
+    if not all((args.gate_output, args.retained_gate, args.container, args.native_root, args.output, args.engine, args.execution)):
+        parser.error('host mode requires gate-output/retained-gate/container/native-root/output/engine/execution')
     return host(args)
 
 

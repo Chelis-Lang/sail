@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Restore fully verified compact gate evidence into new product-owned records
+  before local installation. Original qualification, source paths and raw logs
+  stay unchanged; automatic retirement must have passed. The corrected helper
+  still requires a new complete gate before native use. See
+  [local product construction](docs/validation/local-product-install.md).
+
 - Retire closed local gate scratch after verifying compact evidence on the
   host and repeating bounded holder checks. Preserve original validation
   outcomes and selected runtimes; historical compiler trees and test binaries
