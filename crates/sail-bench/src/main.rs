@@ -44,7 +44,9 @@ const USAGE: &str = "usage:
                     [--verus-arg ARG]... [--name NAME] [--shim PATH]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
-  sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
+  sail-bench presolver-capture --out DIR [--loops F] [--edits F] [--repair F]
+                    [--tier fast|standard|deep] [--filter SUBSTR] [--shim PATH]
+  sail-bench profile|seeds|history|presolver ...   (trace analyses; run one for its usage)";
 
 /// Which corpus units to run.
 struct Selection<'a> {
@@ -476,6 +478,131 @@ fn agent_loop_cmd(args: &[String]) -> Result<(), String> {
     write_result(out, o.name, &p)
 }
 
+/// `presolver-capture`: traced edit sequences for the pre-solver coverage
+/// spike (experimental; see `sail_bench::presolver::capture`).
+#[allow(clippy::too_many_lines)] // Option parsing plus the capture loop.
+fn presolver_capture_cmd(args: &[String]) -> Result<(), String> {
+    use sail_bench::presolver::capture;
+    let mut out: Option<PathBuf> = None;
+    let mut rest = Vec::new();
+    let mut repair: Option<PathBuf> = None;
+    let mut catalogues = false;
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--out" => out = it.next().map(PathBuf::from),
+            "--repair" => {
+                repair = it.next().map(PathBuf::from);
+                catalogues = true;
+            }
+            "--loops" | "--edits" => {
+                catalogues = true;
+                rest.push(arg.clone());
+                rest.extend(it.next().cloned());
+            }
+            _ => rest.push(arg.clone()),
+        }
+    }
+    let out = out.ok_or_else(|| format!("--out is required\n{USAGE}"))?;
+    let tier_given = rest.iter().any(|a| a == "--tier");
+    let o = parse_options(&rest)?;
+    let p = prepare(o.shim.clone())?;
+    let mut seqs = Vec::new();
+    if catalogues && rest.iter().any(|a| a == "--loops") {
+        seqs.extend(capture::from_loops(
+            &sail_bench::agent_loop::Catalogue::load(&o.loops)?,
+        ));
+    }
+    if catalogues && rest.iter().any(|a| a == "--edits") {
+        seqs.extend(capture::from_edits(&edit::Catalogue::load(&o.edits)?));
+    }
+    if let Some(r) = &repair {
+        seqs.extend(capture::from_repair(r)?);
+    }
+    let mut projects: Vec<String> = seqs
+        .iter()
+        .filter_map(|s| s.unit.split('/').next().map(str::to_owned))
+        .collect();
+    projects.sort();
+    projects.dedup();
+    let mut units = Vec::new();
+    if !projects.is_empty() {
+        let selection = Selection {
+            tier: Tier::Deep,
+            projects: &projects,
+            filter: None,
+        };
+        units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
+    }
+    if tier_given {
+        let selection = Selection {
+            tier: o.tier,
+            projects: &o.projects,
+            filter: o.filter.as_deref(),
+        };
+        let cold = select_units(
+            &selection,
+            &p.corpus,
+            &p.installed,
+            &p.cache,
+            &p.scratch.join("cold"),
+        )?;
+        for u in &cold {
+            seqs.push(capture::Sequence {
+                id: format!(
+                    "cold-{}",
+                    u.id.chars()
+                        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+                        .collect::<String>()
+                ),
+                unit: u.id.clone(),
+                cycles: vec![capture::Cycle {
+                    name: "c00-initial".to_owned(),
+                    chain: Vec::new(),
+                    expected: None,
+                }],
+            });
+        }
+        units.extend(cold);
+    }
+    if let Some(f) = o.filter.as_deref().filter(|_| !tier_given) {
+        seqs.retain(|s| s.id.contains(f) || s.unit.contains(f));
+    }
+    std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+    eprintln!("presolver-capture: {} sequences", seqs.len());
+    let mut records = Vec::new();
+    for s in &seqs {
+        let Some(unit) = units.iter().find(|u| u.id == s.unit) else {
+            eprintln!("{}: unit {} is not available; skipped", s.id, s.unit);
+            continue;
+        };
+        for r in capture::run_sequence(&p.installed, &p.shim, &p.scratch, &out, s, unit) {
+            eprintln!(
+                "{:<40} {:<36} {:>8.0} ms  {} (expected {}){}",
+                r.sequence,
+                r.cycle,
+                r.wall_ms.unwrap_or(0.0),
+                r.outcome.as_deref().unwrap_or("n/a"),
+                r.expected.as_deref().unwrap_or("-"),
+                r.error
+                    .as_deref()
+                    .map(|e| format!("  ERROR {e}"))
+                    .unwrap_or_default()
+            );
+            records.push(r);
+        }
+    }
+    let manifest = serde_json::json!({
+        "schema_version": 1,
+        "sail_commit": sail_commit(),
+        "verus_release": p.installed.pins.verus.release,
+        "machine": machine_info(),
+        "cycles": records,
+    });
+    let text = serde_json::to_string_pretty(&manifest).map_err(|e| e.to_string())?;
+    std::fs::write(out.join("manifest.json"), text + "\n").map_err(|e| e.to_string())
+}
+
 fn history_replay_cmd(args: &[String]) -> Result<(), String> {
     use sail_bench::replay;
     let (mut project, mut count, mut rest) = (None::<String>, 10usize, Vec::new());
@@ -781,7 +908,7 @@ fn main() -> ExitCode {
     }
     if matches!(
         args.first().map(String::as_str),
-        Some("profile" | "seeds" | "history")
+        Some("profile" | "seeds" | "history" | "presolver")
     ) {
         return sail_bench::cli::run(args);
     }
@@ -794,6 +921,7 @@ fn main() -> ExitCode {
         Some("fragility") => fragility_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
+        Some("presolver-capture") => presolver_capture_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
     };
     match result {

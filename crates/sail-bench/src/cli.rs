@@ -4,6 +4,8 @@
 //! sail-bench profile <trace-dir>... [--json out.json]
 //! sail-bench seeds   <trace-dir>... --z3 <path> [--seeds N] [--jobs J] [--json out.json]
 //! sail-bench history <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
+//! sail-bench presolver <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
+//!                      [--save DIR] [--replay-every N] [--rlimit R]
 //! ```
 //!
 //! Common options: `--timeout-secs T` (safety net per solver process,
@@ -28,6 +30,8 @@ usage:
   sail-bench profile <trace-dir>... [--json out.json]
   sail-bench seeds   <trace-dir>... --z3 <path> [--seeds N] [--jobs J] [--json out.json]
   sail-bench history <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
+  sail-bench presolver <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
+                       [--save DIR] [--replay-every N] [--rlimit R]
 options:
   --timeout-secs T   safety-net wall-clock limit per solver process (default 600)
   --examples K       examples kept in reports (default 20)
@@ -58,6 +62,12 @@ pub struct Args {
     pub all_checks: bool,
     /// `--quiet`.
     pub quiet: bool,
+    /// `--save` (presolver: where to save example queries).
+    pub save: Option<PathBuf>,
+    /// `--replay-every` (presolver).
+    pub replay_every: u64,
+    /// `--rlimit` (presolver oracle queries).
+    pub rlimit: u64,
 }
 
 fn number<T: std::str::FromStr>(flag: &str, value: Option<&str>) -> Result<T, BenchError> {
@@ -76,7 +86,10 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Args, BenchError>
     let command = it
         .next()
         .ok_or_else(|| BenchError::Usage(USAGE.to_owned()))?;
-    if !matches!(command.as_str(), "profile" | "seeds" | "history") {
+    if !matches!(
+        command.as_str(),
+        "profile" | "seeds" | "history" | "presolver"
+    ) {
         return Err(BenchError::Usage(format!(
             "unknown command `{command}`\n{USAGE}"
         )));
@@ -92,6 +105,9 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Args, BenchError>
         examples: 20,
         all_checks: false,
         quiet: false,
+        save: None,
+        replay_every: 0,
+        rlimit: 50_000_000,
     };
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -113,6 +129,15 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Args, BenchError>
             "--jobs" => a.jobs = number("--jobs", it.next().as_deref())?,
             "--timeout-secs" => a.timeout_secs = number("--timeout-secs", it.next().as_deref())?,
             "--examples" => a.examples = number("--examples", it.next().as_deref())?,
+            "--save" => {
+                a.save = Some(
+                    it.next()
+                        .map(PathBuf::from)
+                        .ok_or_else(|| BenchError::Usage("--save needs a path".to_owned()))?,
+                );
+            }
+            "--replay-every" => a.replay_every = number("--replay-every", it.next().as_deref())?,
+            "--rlimit" => a.rlimit = number("--rlimit", it.next().as_deref())?,
             "--all-checks" => a.all_checks = true,
             "--quiet" => a.quiet = true,
             flag if flag.starts_with("--") => {
@@ -204,6 +229,23 @@ pub fn execute(a: &Args) -> Result<String, BenchError> {
                 write_json(path, &report)?;
             }
             Ok(crate::history::render(&report))
+        }
+        ("presolver", Some(solver)) => {
+            let report = crate::presolver::presolver(
+                &solver,
+                &a.dirs,
+                &crate::presolver::Options {
+                    jobs: a.jobs,
+                    examples: a.examples,
+                    save: a.save.clone(),
+                    replay_every: a.replay_every,
+                    rlimit: a.rlimit,
+                },
+            )?;
+            if let Some(path) = &a.json {
+                write_json(path, &report)?;
+            }
+            Ok(crate::presolver::render(&report))
         }
         _ => Err(BenchError::Usage(USAGE.to_owned())),
     }

@@ -29,6 +29,7 @@ pub mod error;
 pub mod fragility;
 pub mod history;
 pub mod hits;
+pub mod presolver;
 pub mod profile;
 pub mod replay;
 pub mod report;
