@@ -456,6 +456,7 @@ fn prepare(
     hash: &str,
     compiler_hash: &str,
     run_id: &str,
+    engine: Option<&crate::engine::Request>,
 ) -> Result<(Paths, Ownership)> {
     let root = config
         .cache
@@ -471,14 +472,22 @@ fn prepare(
         _context: ownership_lock(&context)?,
         _compiler: ownership_lock(&compiler)?,
     };
+    // A repair selector keeps its certified dependency bytes alive when another
+    // selector verifies the same family. Ordinary and full-engine calls retain
+    // their existing shared target; proof keys and family ownership are unchanged.
+    let generation = if engine.is_some_and(|request| request.function.is_some()) {
+        compiler.join("repair-targets-v1").join(hash)
+    } else {
+        compiler.clone()
+    };
     let paths = Paths {
-        target: compiler.join("target"),
+        target: generation.join("target"),
         cargo_alias: compiler.join("sail-cargo"),
         proxy_alias: compiler.join("sail-verus-driver"),
         receipts: context.join("receipts"),
         runtime: context.join("runtime.json"),
         build_inputs: context.join("build-inputs.json"),
-        compiler_inputs: compiler.join("build-inputs.json"),
+        compiler_inputs: generation.join("build-inputs.json"),
         run: context.join("runs").join(run_id),
     };
     for dir in [
@@ -1524,7 +1533,14 @@ pub(crate) fn run_engine(
             .map_or(0, |d| d.as_nanos())
     );
     let owned_paths = diagnostics.phase(Phase::OwnedPaths);
-    let (paths, _ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
+    let (paths, _ownership) = prepare(
+        config,
+        &workspace_root,
+        &hash,
+        &compiler_hash,
+        &run_id,
+        engine.as_ref(),
+    )?;
     drop(owned_paths);
     let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
     let generation_available = super::build_inputs::family::begin(
@@ -1988,6 +2004,9 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    include!("runner_artifact_isolation_tests.rs");
     fn compiler_request(function: Option<&str>) -> crate::engine::Request {
         crate::engine::Request {
             function: function.map(str::to_owned),
@@ -2083,11 +2102,11 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("sail-compiler-family-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
-        let (selected, ownership) = prepare(&config, &root, "selected", "compiler", "first")?;
+        let (selected, ownership) = prepare(&config, &root, "selected", "compiler", "first", None)?;
         std::fs::create_dir_all(&selected.target)?;
         let dependency = selected.target.join("ordinary-dependency.rlib");
         std::fs::write(&dependency, "ordinary dependency")?;
-        let rejected = prepare(&config, &root, "missing", "compiler", "second");
+        let rejected = prepare(&config, &root, "missing", "compiler", "second", None);
         assert_eq!(
             rejected
                 .err()
@@ -2097,7 +2116,7 @@ mod tests {
         );
         drop(ownership);
         // Failed family acquisition must also release the new proof-context lock.
-        let (missing, ownership) = prepare(&config, &root, "missing", "compiler", "second")?;
+        let (missing, ownership) = prepare(&config, &root, "missing", "compiler", "second", None)?;
         assert_eq!(selected.target, missing.target);
         assert_eq!(selected.cargo_alias, missing.cargo_alias);
         assert_eq!(selected.proxy_alias, missing.proxy_alias);
@@ -2107,7 +2126,7 @@ mod tests {
         assert_ne!(selected.run, missing.run);
         assert_ne!(selected.build_inputs, missing.build_inputs);
         let (isolated, isolated_owner) =
-            prepare(&config, &root, "different", "different", "third")?;
+            prepare(&config, &root, "different", "different", "third", None)?;
         assert_ne!(missing.target, isolated.target);
         drop(isolated_owner);
         drop(ownership);
@@ -2167,20 +2186,20 @@ mod tests {
             assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
             Ok(())
         };
-        let (_, ownership) = prepare(&config, &root, "context", "compiler", "run")?;
+        let (_, ownership) = prepare(&config, &root, "context", "compiler", "run", None)?;
         probe(true)?;
         drop(ownership);
         probe(false)?;
         let mut broken = config.clone();
         broken.sail = root.join("missing-executable");
-        assert!(prepare(&broken, &root, "context", "compiler", "error").is_err());
+        assert!(prepare(&broken, &root, "context", "compiler", "error", None).is_err());
         let outcome = std::panic::catch_unwind(|| {
-            let owner = prepare(&config, &root, "context", "compiler", "unwind");
+            let owner = prepare(&config, &root, "context", "compiler", "unwind", None);
             assert!(owner.is_ok());
             std::panic::resume_unwind(Box::new("controlled ownership unwind"));
         });
         assert!(outcome.is_err());
-        let (_, ownership) = prepare(&config, &root, "context", "compiler", "after")?;
+        let (_, ownership) = prepare(&config, &root, "context", "compiler", "after", None)?;
         drop(ownership);
         probe(false)?;
         std::fs::remove_dir_all(root)?;
@@ -2248,7 +2267,7 @@ mod tests {
                 std::process::id()
             ));
             let config = compiler_fixture(&root)?;
-            let (paths, ownership) = prepare(&config, &root, "negative", "compiler", "run")?;
+            let (paths, ownership) = prepare(&config, &root, "negative", "compiler", "run", None)?;
             let data = serde_json::json!({"packages":[{
                 "id":"input", "name":"input", "manifest_path":root.join("Cargo.toml")
             }]});
@@ -2667,7 +2686,7 @@ mod tests {
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-compiler-proof-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
-        let (paths, ownership) = prepare(&config, &root, "missing", "compiler", "run")?;
+        let (paths, ownership) = prepare(&config, &root, "missing", "compiler", "run", None)?;
         std::fs::write(
             root.join("Cargo.toml"),
             "[package]\nname='input'\nversion='0.1.0'\n",

@@ -1,0 +1,11 @@
+--- a/crates/sail-verus/src/managed/runner.rs
++++ b/crates/sail-verus/src/managed/runner.rs
+@@ -476,7 +476,7 @@
+     // selector verifies the same family. Ordinary and full-engine calls retain
+     // their existing shared target; proof keys and family ownership are unchanged.
+     let generation = if engine.is_some_and(|request| request.function.is_some()) {
+-        compiler.join("repair-targets-v1").join(hash)
++        compiler.clone()
+     } else {
+         compiler.clone()
+     };

@@ -55,6 +55,13 @@ then independently checks the full requested target in the engine's compiler
 batch. It does not change what existing `verify --function` means. Additional
 scope filters are rejected because they would defeat full validation.
 
+The repair-artifact isolation candidate gives each exact selector its own
+dependency build generation. Initial setup can compile dependencies again and
+uses additional cache space, but another selector cannot overwrite the artifact
+bytes tied to that selector's proof receipts. Stock and full-engine calls retain
+their existing shared compiler-family target. This source change is not yet
+native-qualified; see the [candidate and validation requirements](validation/m7-repair-artifact-isolation.md).
+
 The version-one repair bundle retains separate `batch.focus` and `batch.full`
 project results, engine manifest identity and actual compiler-invocation count.
 `batched` describes actual engine support. `accepted` is recomputed from the full

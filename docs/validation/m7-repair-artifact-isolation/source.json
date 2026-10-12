@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "status": "source-only; native controls, sensitivity, strict checks and whole-product validation unexecuted",
+  "base_commit": "5d9f0017e4d6b274eae2f16c8102df1d1e0ffb9f",
+  "production_change": "explicit engine function isolates target and ordinary generation export by unchanged full proof context; other preparation branches unchanged",
+  "preserved": "proof/family hashes, aliases, lock ordering, target_records/retry, receipt/native/input/runtime guards and all acceptance oracles",
+  "retained_receipt_archive_sha256": "45893285ea65fe5a53e780b55b31c482d9477942bd13e3848086f3ba554bcc2f",
+  "draft_controls": [
+    "managed::runner::tests::repair_selector_layout_keeps_defaults_shared_and_exports_private",
+    "managed::runner::tests::repair_selector_real_cargo_preserves_dependency_receipt_and_one_driver"
+  ],
+  "counterfactual": "only isolated generation path replaced by original shared compiler directory; assertions unchanged",
+  "source_files": {
+    "crates/sail-verus/src/managed/runner.rs": {
+      "sha256": "838730203719bf06c15d71a32cd21184c06d74188791e5ccf6bfc1e9df3e280d",
+      "bytes": 123316
+    },
+    "crates/sail-verus/src/managed/runner_artifact_isolation_tests.rs": {
+      "sha256": "0b053d9732407d7b81058ae7de2322fe7a3f5de7ac050808ef6a56baa1b10df2",
+      "bytes": 12089
+    },
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": {
+      "sha256": "41cca181223227c463125aa3ac557c85cf2bb50b4fd942aa67e7fbf7e19ca30a",
+      "bytes": 30354
+    },
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": {
+      "sha256": "ba5d82eb4c3d7305a9ec6e25b032bb493ad2cad3264deb249dd975e04b24c4fc",
+      "bytes": 44825
+    },
+    "Cargo.lock": {
+      "sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+      "bytes": 53548
+    },
+    "docs/validation/m7-repair-artifact-isolation/shared-target-counterfactual.patch": {
+      "sha256": "24fd2dabff1a8d353d2c45bbc97d8de684854039e51103f7b0a86b335b2e4ff5",
+      "bytes": 491
+    }
+  }
+}

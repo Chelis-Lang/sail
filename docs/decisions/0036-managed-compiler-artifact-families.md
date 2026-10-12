@@ -26,6 +26,29 @@ complete proof context. Local build-script observations also remain there; an
 optional family export certifies ordinary generated-output contracts for reuse,
 never proof receipts or Currentness.
 
+Repair requests with an explicit function now use a versioned target generation
+inside the compiler family, keyed by their unchanged complete proof context.
+Their ordinary generation export uses the same private generation directory.
+The family executable aliases and nonblocking ownership lock remain shared.
+Stock calls and source-engine full calls without a function retain the original
+shared target and export. No old shared artifact or another selector's proof
+receipt is copied into a repair generation.
+
+This separation addresses a concrete collision in the original `387ba80`
+benchmark: three ready repair selectors had vstd receipts with the same input
+revision, but different artifact hashes at the same shared paths. A later
+selector's full verification correctly invalidated the earlier selector's
+byte-bound receipt. The first measured repair then required three drivers and
+failed the unchanged one-driver check. Dependency preflight alone could reduce
+a repeat invocation but would still need a dependency driver; it cannot satisfy
+that check. See the [isolation candidate and controls](../validation/m7-repair-artifact-isolation.md).
+
+Each repair selector therefore incurs its own cold dependency compilation and
+uses additional disk space. After its own declaration/receipt establishment,
+other selectors cannot overwrite its certified dependency bytes. Actual
+one-driver reuse, original repair deadlines and real-project speed remain
+validation requirements, not consequences inferred from this layout.
+
 The version-2 export may also carry a typed compiler-declared source **path
 inventory**, attributed to exact Cargo package identities. It is published only
 by the original final Current transaction; the independent script bootstrap does
@@ -80,9 +103,10 @@ source engine, selected package, proof result or freshness guard is substituted.
 
 ## Consequences
 
-Changing only a source-engine focus selector can reuse ordinary dependency
-artifacts. The new artifact namespace has a one-time cold setup and serializes
-focus contexts that share a compiler family. Other request fields, arguments,
+Ordinary and full-engine calls retain compiler-family artifact sharing. Explicit
+repair selectors retain their own artifact generations; changing the selector
+requires cold setup for that generation. The family lock still serializes
+contexts that share the family. Other request fields, arguments,
 runtime bytes and environment changes isolate families. Source and Cargo
 configuration changes retain their existing content and Cargo freshness guards.
 

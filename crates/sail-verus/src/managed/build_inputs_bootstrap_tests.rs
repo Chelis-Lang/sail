@@ -33,7 +33,7 @@ impl Drop for CargoChild {
 // GNU timeout owns its Cargo process group, TERM at 60 s and KILL after 2 s.
 // File-backed captures avoid pipe-reader joins and retain bounded reads. These
 // local Cargo controls make no orphan or kernel-uninterruptibility guarantee.
-fn command_output(
+pub(in crate::managed) fn command_output(
     root: &Path,
     program: &std::ffi::OsStr,
     arguments: &[std::ffi::OsString],

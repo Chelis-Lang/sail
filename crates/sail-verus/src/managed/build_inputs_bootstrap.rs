@@ -708,3 +708,6 @@ fn hashes(files: &[PathBuf], stop: &std::sync::atomic::AtomicBool) -> Option<Vec
 #[cfg(all(test, target_os = "linux"))]
 #[path = "build_inputs_bootstrap_tests.rs"]
 mod tests;
+
+#[cfg(all(test, target_os = "linux"))]
+pub(in crate::managed) use tests::command_output as test_command_output;
