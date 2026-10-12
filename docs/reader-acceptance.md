@@ -107,7 +107,8 @@ and preserved at the tag `archive/m7-contracts-f7103bf`:
 
 ## Developer checks
 
-`python3 scripts/test-m7-reader-acceptance.py` runs the fast controller
+`python3 scripts/test-m7-reader-acceptance.py` (part of `ci/local.sh release`,
+not CI) runs the fast controller
 regressions: both job layouts, ambiguity, missing output, record, scope,
 revision and seal mismatches, substituted directories, symlinks, FIFOs, duplicate
 JSON fields and unchanged public-proof admission. These fixtures do not replace

@@ -141,10 +141,10 @@ stock declaration order can vary between processes but not within one
 (VI-0001), which would excuse a real defect. The summary line reports oracle
 failures as hard and unstable counts.
 `ci/run.sh conformance` runs it after the cache rounds on every tier, using
-`SAIL_ENGINE_BUILD`:
+`SAIL_ENGINE_BUILD`; the PR subset that CI runs passes `--no-oracle`:
 
 ```sh
-ci/local.sh conformance fast pr        # includes the engine arm
+ci/local.sh conformance fast pr        # includes the engine arm, without the oracle
 sail-conformance engine --tier standard --project vest --engine-build PATH
 sail-conformance engine --tier fast --filter /guide/ --oracle-fault effects # negative control
 ```

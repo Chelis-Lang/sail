@@ -14,17 +14,25 @@
 #                        and exit, a schema-v1 document agreeing with
 #                        Verus's own --output-json; then one `verify` call
 #                        through `sail mcp`, agreeing with that document;
-#                        managed receipts, durable jobs, asynchronous MCP and
-#                        supplementary installed read-transport controls;
+#                        managed receipts, durable jobs and asynchronous MCP;
 #                        repair CLI/MCP against a validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
 #                        cache on (fill, then warm), then the source-engine
-#                        arm (validated prebuilt engine vs plain Verus, with
-#                        the same-input byte oracle). `pr` limits the fast
-#                        tier to the guide examples; otherwise extra
-#                        arguments (for example `--project anvil`) are
-#                        passed to sail-conformance
+#                        arm (validated prebuilt engine vs plain Verus). `pr`
+#                        limits the fast tier to the guide examples and runs
+#                        the engine arm without the same-input byte oracle;
+#                        otherwise extra arguments (for example `--project
+#                        anvil`) are passed to sail-conformance
+#   release              local-only, before releases and when changing the
+#                        tooling it covers: unit tests of the acceptance and
+#                        benchmark tooling and of the profile/bench examples,
+#                        installed MCP/live-service transport controls, and
+#                        the repair engine's provenance and persistent-
+#                        preparation controls
+#   host                 local-only, outside the image, on the developer's
+#                        own machine (macOS or Linux): clippy and the
+#                        non-solver tests
 #   bench WORKLOAD TIER ROUNDS
 #                        a sail-bench workload (cold|warm|edit)
 #   build-verus-source [--force] [--keep-intermediates]
@@ -37,24 +45,45 @@
 #                        warm). ARGS go to `sail-conformance
 #                        rust-verify-test` (for example --filter modes::)
 #
-# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier and
-# every benchmark is local-only: run them with ci/local.sh.
+# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier,
+# `release` and every benchmark is local-only: run them with ci/local.sh
+# (`host` runs directly: ci/run.sh host).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # CI runs only the fast, per-PR steps (ADR 0013). Long runs are local-only.
 local_only() {
   if [ "${CI:-}" = true ]; then
-    echo "ci/run.sh: '$*' is local-only (ADR 0013); run it with ci/local.sh" >&2
+    echo "ci/run.sh: '$*' is local-only (ADR 0013); run it locally (see AGENTS.md Gates)" >&2
     exit 2
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|bench|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|release|host|bench|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
   cargo build --release --locked -p sail-cli -p sail-shim "$@"
+}
+
+# Copies the release runtime under /tmp and sets $sail. A host-mounted
+# checkout can have an unsupported FUSE ancestor even when target/ is a Linux
+# volume. Execute exact copied runtime bytes under /tmp, so managed freshness
+# can observe every runtime path on the native kernel.
+install_runtime() {
+  sail_runtime="$(mktemp -d /tmp/sail-e2e-runtime.XXXXXX)"
+  trap 'rm -rf "$sail_runtime"' EXIT
+  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_runtime/"
+  chmod 700 "$sail_runtime/sail" "$sail_runtime/sail-z3"
+  sail="$sail_runtime/sail"
+}
+
+# Fetches the pinned Verus source that repair fixtures use for Cargo's
+# ordinary builtin/macro dependencies; sets $sail_repair_source. The engine
+# runtime comes from the image; this never builds Verus.
+fetch_repair_source() {
+  ./target/release/sail-conformance fetch --tier fast --project verus-examples
+  sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-426d8b01e7ff"
 }
 
 # Starts a cache daemon on a fresh cache; sets $sock, $cache and $daemon.
@@ -71,22 +100,14 @@ start_daemon() {
 case "$step" in
   gate)
     bash ci/test-completion.sh
-    python3 scripts/test-m7-owned-actors.py
-    python3 scripts/test-m7-job-read-bench.py
-    python3 scripts/test-m7-retained-jobs-acceptance.py
-    python3 scripts/test-m7-reader-acceptance.py
-    python3 scripts/test-m7-native-product.py
-    python3 scripts/test-m7-result-frame-profile.py
-    python3 scripts/test-managed-timeout-evidence.py
+    # The image's engine installer: corrupt or stale runtimes never install.
     python3 ci/test-engine-artifact.py
-    python3 ci/test-repair-lifecycle.py
     python3 scripts/check-links.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
-    cargo test --locked -p sail-cli --example check_mcp --example job_read_bench
-    cargo test --locked -p sail-api --example result_frame_profile \
-      --example result_client_profile --example result_stream_profile
+    # check_mcp drives the e2e legacy phase; its own unit tests stay here.
+    cargo test --locked -p sail-cli --example check_mcp
     cargo test --workspace --doc --locked
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
     cargo xtask check-layering
@@ -113,14 +134,7 @@ case "$step" in
     esac
     sail_checkout="$PWD"
     release_build
-    # A host-mounted checkout can have an unsupported FUSE ancestor even when
-    # target/ is a Linux volume. Execute exact copied runtime bytes under /tmp,
-    # so managed freshness can observe every runtime path on the native kernel.
-    sail_runtime="$(mktemp -d /tmp/sail-e2e-runtime.XXXXXX)"
-    trap 'rm -rf "$sail_runtime"' EXIT
-    cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_runtime/"
-    chmod 700 "$sail_runtime/sail" "$sail_runtime/sail-z3"
-    sail="$sail_runtime/sail"
+    install_runtime
     sail_managed_test="$sail_checkout/ci/test-managed.py"
     if [ "$phase" = full ] || [ "$phase" = legacy ]; then
       cargo build --release --locked -p sail-cli --example check_output --example check_mcp
@@ -197,14 +211,7 @@ RS
       bash "$sail_portfolio_test"
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ]; then
-      # Actual installed MCP and job-service transport, without proving anything.
-      # Separate raw evidence shares the managed artifact's retained directory.
-      # It supplements the unchanged pinned-verifier acceptance below.
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
-      python3 "$sail_checkout/ci/test-mcp-live-service-controller.py"
-      python3 "$sail_checkout/ci/test-mcp-live-service.py" "$sail" \
-        --out "$sail_managed_evidence/mcp-live-service" \
-        --execution "Linux x86-64 CI/local container transport control"
       # Bounded complete-report receipts: reuse, missing evidence and a failing
       # proof edit with restored timestamps, compared with the pinned Verus.
       # Keep timeout/error output outside the fixture's TemporaryDirectory.
@@ -216,21 +223,57 @@ RS
       cd "$sail_checkout"
       : "${SAIL_ENGINE_BUILD:?repair acceptance requires the validated prebuilt engine}"
       release_build -p sail-conformance
-      # Fetch pinned source for Cargo's ordinary builtin/macro dependencies.
-      # The engine runtime comes from the image; this never builds Verus.
-      ./target/release/sail-conformance fetch --tier fast --project verus-examples
-      sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-426d8b01e7ff"
+      fetch_repair_source
       python3 "$PWD/ci/test-repair.py" --sail "$sail" --engine-build "$SAIL_ENGINE_BUILD" \
         --verus-source "$sail_repair_source" \
         --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}" \
         --environment-label "Linux x86-64 prebuilt-engine CI/local container"
-      # Engine provenance and the explicit persistent-preparation opt-in,
-      # including corrupted persistent entries, against the same engine.
-      python3 "$PWD/ci/test-repair-engine-provenance.py" --sail "$sail" \
-        --engine-build "$SAIL_ENGINE_BUILD" --verus-source "$sail_repair_source" \
-        --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}/engine-provenance" \
-        --environment-label "Linux x86-64 prebuilt-engine CI/local container"
     fi
+    ;;
+
+  release)
+    # Heavyweight and tooling checks that are not product regressions a PR
+    # must catch quickly. Run before releases and when changing what they cover.
+    local_only release "$@"
+    # Acceptance and benchmark tooling (docs/reader-acceptance.md,
+    # docs/native-product-setup.md, docs/result-frame-profile.md) and the
+    # harness helpers of the e2e phases.
+    python3 scripts/test-m7-owned-actors.py
+    python3 scripts/test-m7-job-read-bench.py
+    python3 scripts/test-m7-retained-jobs-acceptance.py
+    python3 scripts/test-m7-reader-acceptance.py
+    python3 scripts/test-m7-native-product.py
+    python3 scripts/test-m7-result-frame-profile.py
+    python3 scripts/test-managed-timeout-evidence.py
+    python3 ci/test-repair-lifecycle.py
+    python3 ci/test-mcp-live-service-controller.py
+    # job_read_bench's tests already run in the gate (test = true).
+    cargo test --locked -p sail-api --example result_frame_profile \
+      --example result_client_profile --example result_stream_profile
+    sail_checkout="$PWD"
+    release_build -p sail-conformance
+    install_runtime
+    evidence="${SAIL_RELEASE_OUT:-$sail_checkout/target/release-checks}"
+    # Actual installed MCP and job-service transport, without proving anything.
+    python3 ci/test-mcp-live-service.py "$sail" \
+      --out "$evidence/mcp-live-service" \
+      --execution "Linux x86-64 local container transport control"
+    # Engine provenance and the explicit persistent-preparation opt-in,
+    # including corrupted persistent entries, against the prebuilt engine.
+    : "${SAIL_ENGINE_BUILD:?the engine controls need the validated prebuilt engine}"
+    fetch_repair_source
+    python3 ci/test-repair-engine-provenance.py --sail "$sail" \
+      --engine-build "$SAIL_ENGINE_BUILD" --verus-source "$sail_repair_source" \
+      --out "$evidence/engine-provenance" \
+      --environment-label "Linux x86-64 prebuilt-engine local container"
+    ;;
+
+  host)
+    # Code must build, lint and test on macOS and Linux alike. CI runs only
+    # Linux, so run this on a Mac before pushing platform-specific changes.
+    local_only host "$@"
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+    cargo nextest run --workspace --locked --profile ci
     ;;
 
   conformance)
@@ -255,18 +298,21 @@ RS
     [ "$entries" -gt 0 ]
     # Source-engine arm (ADR 0027): the validated prebuilt engine's focused
     # and full phases, the full phase compared with plain Verus like the arms
-    # above, and the same-input cached-versus-fresh byte oracle on every
-    # restored preparation hit. Four confirming fresh lowerings keep stock
-    # trigger nondeterminism (VI-0015) from flaking the job: one flaked about
-    # 14% of traits.rs runs, four 0 of 10 (ADR 0038 amendment). The CI image
-    # always provides the engine; a host run without one must opt out
+    # above. Other tiers also run the same-input cached-versus-fresh byte
+    # oracle on every restored preparation hit, with four confirming fresh
+    # lowerings so stock trigger nondeterminism (VI-0015) cannot flake it (ADR
+    # 0038 amendment). The PR subset keeps only the user-level comparison:
+    # the oracle guards preparation reuse, which is not on by default. The CI
+    # image always provides the engine; a host run without one must opt out
     # explicitly, and CI cannot.
     if [ "${SAIL_CONFORMANCE_ENGINE:-1}" = 0 ] && [ "${CI:-}" != true ]; then
       echo "conformance: engine arm explicitly skipped (SAIL_CONFORMANCE_ENGINE=0)" >&2
     else
       : "${SAIL_ENGINE_BUILD:?the engine arm needs the validated prebuilt engine (SAIL_ENGINE_BUILD)}"
+      oracle=(--oracle-fresh-arms 4)
+      if [ "${1:-}" = pr ]; then oracle=(--no-oracle); fi
       ./target/release/sail-conformance engine "${select[@]}" --jobs "$jobs" \
-        --engine-build "$SAIL_ENGINE_BUILD" --oracle-fresh-arms 4 --out "$out/engine"
+        --engine-build "$SAIL_ENGINE_BUILD" "${oracle[@]}" --out "$out/engine"
     fi
     ;;
 

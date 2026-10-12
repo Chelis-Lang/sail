@@ -41,6 +41,10 @@ acting. The charter's appendix records corrections made since it was written.
   Changing the crate dependency graph is a decision.
 - **Solver identity is explicit.** Never assume a single solver in the cache,
   verdict model or query representation.
+- **macOS and Linux both.** Code must build, lint and test on macOS and
+  Linux. Linux-only code is `cfg`-gated. CI runs only Linux, so run
+  `ci/run.sh host` on a Mac before pushing changes that touch
+  platform-specific code.
 
 ## Commit messages and authorship
 
@@ -150,12 +154,17 @@ Run the same steps locally in the same image with `ci/local.sh`:
 ci/local.sh gate                  # fmt, clippy, tests, doctests, rustdoc, layering, deny, benchmarks page
 ci/local.sh solver                # every test that needs the pinned Z3 (incl. fault injection)
 ci/local.sh e2e                   # `sail verify` vs `cargo verus verify`: identical output
-ci/local.sh conformance fast pr   # the PR conformance subset, pass-through and cache-on
+ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
+ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
 On the host, the fast loop is still `cargo nextest run --workspace` plus the
 gate commands in `ci/run.sh`. `cargo xtask fetch-verus` installs the pinned
 Verus for host runs.
+
+CI serves rapid iteration: it catches regressions quickly and cheaply, and each
+job should finish in about four minutes. Acceptance-, evidence- and
+release-style checks belong in the local tiers below, never in CI.
 
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
@@ -165,9 +174,8 @@ with `main` before merging. The `End to end` check aggregates three parallel
 phases, legacy, managed and repair, and succeeds only when all complete successfully.
 `ci/local.sh e2e` runs all three; `e2e legacy`, `e2e managed` or `e2e repair`
 selects a phase for diagnosis. No phase may be skipped to authorize a merge.
-The managed phase includes installed MCP/live-service read controls with separate
-retained evidence before the unchanged proof-receipt and pinned-verifier checks.
-Those transport controls establish no proof or reader/performance qualification.
+Evidence directories and conformance reports are uploaded only when a job
+fails.
 The optional repair engine is a locally qualified prebuilt runtime pinned in
 `engine/verus/artifact-linux.json`. The CI image validates its archive, source
 patch, source lock and every runtime file; CI never compiles Verus from source.
@@ -182,6 +190,15 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
   changes to the shim, cache, daemon, keys or harness, and put the summary
   lines in the PR.
+- *Release (local):* `ci/local.sh release`, before releases and when changing
+  what it covers: unit tests of the acceptance and benchmark tooling under
+  `scripts/` and of the e2e harness helpers, the profile and bench examples'
+  tests, the installed MCP/live-service transport controls (which establish no
+  proof), and the repair engine's provenance and persistent-preparation
+  controls. The same-input byte oracle runs in every `conformance` tier except
+  the PR subset.
+- *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
+  Run it before pushing changes that touch platform-specific code.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
   suite (4,695 cases, including 58 ignored), plain vs `sail-z3` test by test,

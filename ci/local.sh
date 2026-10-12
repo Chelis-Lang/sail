@@ -5,6 +5,7 @@
 #   ci/local.sh solver
 #   ci/local.sh e2e
 #   ci/local.sh conformance fast pr
+#   ci/local.sh release              (local-only; see AGENTS.md Gates)
 #
 # The image is linux/amd64 (the reference platform; Verus publishes no Linux
 # arm64 build), so on Apple silicon it runs under emulation: correct, but
@@ -24,7 +25,7 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
   unset sail_engine_token
 fi
 sail_runtime_env=()
-for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_BUILD_JOBS SAIL_BENCH_LABEL; do
+for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_RELEASE_OUT SAIL_BUILD_JOBS SAIL_BENCH_LABEL; do
   if sail_env_value="$(printenv "$sail_env_name")"; then
     sail_runtime_env+=(-e "$sail_env_name=$sail_env_value")
   fi

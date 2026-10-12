@@ -3,8 +3,10 @@ name: ci
 # Every push to main and every PR: the six required checks, and nothing
 # else. Jobs after the authorship check run inside the CI image
 # (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps `ci/local.sh`
-# runs locally. Each job must stay well under its 10-minute limit. Long runs
-# (standard and deep conformance tiers, benchmarks) are local-only.
+# runs locally. CI serves rapid iteration: each job should finish in about
+# four minutes and must stay well under its 10-minute limit. Long, release
+# and acceptance-style runs (standard and deep conformance tiers, `release`,
+# benchmarks, the macOS `host` check) are local-only.
 
 on:
   push:
@@ -195,7 +197,7 @@ jobs:
         env:
           SAIL_MANAGED_ACCEPTANCE_OUT: ${{ runner.temp }}/managed-acceptance
       - name: Retain managed acceptance evidence
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: managed-acceptance
@@ -203,7 +205,8 @@ jobs:
           if-no-files-found: ignore
 
   e2e-repair:
-    # Focused evidence, full acceptance, late compiler errors and CLI/MCP tools.
+    # Repair CLI/MCP against the prebuilt engine: focused evidence, full
+    # acceptance and late compiler errors.
     name: End to end (repair)
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
@@ -232,7 +235,7 @@ jobs:
         env:
           SAIL_REPAIR_ACCEPTANCE_OUT: ${{ runner.temp }}/repair-acceptance
       - name: Retain actual repair evidence
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: repair-acceptance
@@ -241,7 +244,8 @@ jobs:
 
   conformance:
     # The PR subset of the fast tier: plain Verus vs sail-z3, pass-through and
-    # with the cache on (fill, then warm).
+    # with the cache on (fill, then warm), then the prebuilt engine's full
+    # phase vs plain Verus.
     name: Conformance
     needs: [no-ai-authorship, image]
     runs-on: ubuntu-latest
@@ -271,7 +275,7 @@ jobs:
           SAIL_CONFORMANCE_OUT: ${{ runner.temp }}/conformance-out
         run: ci/run.sh conformance fast pr
       - name: Upload reports
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: conformance-reports

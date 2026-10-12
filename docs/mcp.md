@@ -516,12 +516,11 @@ Success requires the MCP server to exit normally with code zero within five
 seconds after stdin EOF, followed by complete stdout EOF without a cancelled
 reply. Forced termination is failure cleanup and cannot establish success.
 All owned actors are stopped before their scratch directory is removed.
-`ci/local.sh e2e managed` includes this control before the unchanged managed
-proof acceptance. Three separate Python-child controller controls reject an
-abnormal exit or ignored EOF and accept a normal completed stream; they do not
-stand in for installed MCP or verifier acceptance. CI retains raw messages,
-stderr and summary under
-`managed-acceptance/mcp-live-service`, alongside the original proof evidence.
+`ci/local.sh release` runs this control; it is not part of CI. Three separate
+Python-child controller controls reject an abnormal exit or ignored EOF and
+accept a normal completed stream; they do not stand in for installed MCP or
+verifier acceptance. The release step keeps raw messages, stderr and summary
+under `target/release-checks/mcp-live-service` (or `$SAIL_RELEASE_OUT`).
 
 The [frozen b36 installed run](validation/m7.md) passed all five
 unchanged controls on the hardened product, including normal EOF exit. Its
