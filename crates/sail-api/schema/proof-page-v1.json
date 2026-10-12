@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sail.invalid/schema/proof-page-v1.json",
+  "title": "Sail resumable proof page v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "next",
+    "events",
+    "terminal",
+    "gap"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "next": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stream_id",
+        "after"
+      ],
+      "properties": {
+        "stream_id": {
+          "type": "string"
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "proof-event-v1.json"
+      }
+    },
+    "terminal": {
+      "type": "boolean"
+    },
+    "gap": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

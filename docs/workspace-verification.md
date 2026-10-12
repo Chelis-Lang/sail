@@ -92,6 +92,58 @@ per workspace are retained. Managed proof receipts are separate from that
 history, so pruning old jobs does not discard evidence needed for current
 incremental reports.
 
+## Evidence from completed jobs
+
+```sh
+sail jobs events JOB [--stream ID] [--after N] [--follow] [--output jsonl|json]
+sail explain JOB --package-id ID --target NAME --kind lib|bin --function F [--obligation O] [--output json]
+sail baseline save NAME --job JOB
+sail baseline list
+sail baseline get NAME --output json
+sail compare BEFORE_JOB AFTER_JOB [--output json]
+sail compare AFTER_JOB --baseline NAME [--output json]
+```
+
+These commands read recorded evidence. None of them verifies current inputs or
+generates proof edits.
+
+- **Proof events.** `sail jobs events` reads one bounded page of the job's
+  version-one proof-event journal, with a resumable cursor (`next.stream_id`
+  and `next.after`). A gap is reported explicitly, and `terminal` is set once
+  the job has finished. Event observations are provisional; only completed
+  target reports carry final evidence. `--follow` streams JSONL pages until
+  the job is terminal. **Stock verification writes no proof events today.** A
+  finished stock job returns an empty terminal page whose `gap` is
+  `SAIL0903: this job produced no interactive proof stream`. The producer
+  arrives with the optional interactive engine (ADR 0027).
+- **Explanations.** `sail explain` selects one function by exact package ID,
+  target name, target kind and crate-qualified function name. It returns that
+  function's complete report (obligations, models and provenance), the run's
+  diagnostics and the establishing run. A missing or ambiguous identity fails
+  with `SAIL0904`. Diagnostics are not assigned to a function by line-window
+  heuristics, so `diagnostic_attribution_complete` is `false`. Diagnostics that
+  a proof event explicitly links to the function are added to
+  `attributed_diagnostics`.
+- **Baselines.** `sail baseline save` copies a completed job's project result
+  under an immutable name. Names use 1-80 ASCII letters, digits, dots,
+  underscores or hyphens, excluding `.` and `..`. An existing name is never
+  overwritten (`SAIL0905`). A baseline is always `historical` evidence for its
+  recorded input revision. It survives job pruning and daemon restarts.
+  Provisional, failed or incomplete evidence is kept as reported. To pass a
+  name that looks like an option, put the output options first:
+  `sail baseline get --output json -- --json`.
+- **Comparisons.** `sail compare` classifies each target/function as
+  `unchanged`, `regressed`, `became_unknown`, `recovered`, `added`, `removed`,
+  `not_observed`, `incomparable` or `changed`. Transitions are labelled as
+  regressions only when the verification context and the requested scopes
+  agree. A partial scope reports `not_observed`, never `removed`. Repeated
+  friendly function names are `incomparable` (VI-0010).
+
+The job endpoint name includes its proof-contract version
+(`jobs-v1-proof-v1-*.sock`), so a client never reaches an older job service
+that lacks these operations. A `capabilities` request reports the supported
+proof-stream version.
+
 ## Watch and agent tools
 
 ```sh

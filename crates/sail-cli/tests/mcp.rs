@@ -215,6 +215,12 @@ exit 1
             "verification_status",
             "verification_result",
             "cancel_verification",
+            "verification_events",
+            "explain_failure",
+            "compare_verification",
+            "save_baseline",
+            "list_baselines",
+            "get_baseline",
         ]
     );
 

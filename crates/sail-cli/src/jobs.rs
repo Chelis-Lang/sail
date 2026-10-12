@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
 
-use sail_api::jobs::{Client, Request, Response, Status, Submission};
+use sail_api::jobs::{Client, Mode, Request, Response, Status, Submission};
 
 pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
     std::env::vars_os()
@@ -16,6 +16,7 @@ pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
                 "SAIL_JOB_EVENTS",
                 "SAIL_MANAGED_FORCE",
                 "SAIL_JOB_GUARD_PARENT",
+                "SAIL_PROOF_EVENTS",
             ]
             .iter()
             .any(|value| key == value)
@@ -83,6 +84,7 @@ pub(crate) fn submit(client: &Client, args: &[String]) -> Result<Status, String>
     // Unknown revisions cannot safely coalesce across intervening input edits.
     let input_revision = None;
     let submission = Submission {
+        mode: Mode::Stock,
         project_dir,
         args,
         force: std::env::var("SAIL_MANAGED_FORCE").is_ok_and(|value| value == "1"),
@@ -153,6 +155,9 @@ pub(crate) fn background(args: &[String], out: &mut dyn Write, err: &mut dyn Wri
 
 /// Runs `sail jobs list|status|result|cancel|logs ID [--follow] [--output json]`.
 pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    if args.first().is_some_and(|arg| arg == "events") {
+        return crate::product_cli::events(&args[1..], out, err);
+    }
     let mut run = || -> Result<(), String> {
         let (json, follow, args) = job_arguments(args)?;
         let client = connect_or_start()?;
@@ -260,6 +265,7 @@ fn response_text(response: &Response) -> String {
         }
         Response::Chunk(chunk) => chunk.text.clone(),
         Response::Error(error) => error.clone(),
+        _ => "Unsupported job response; request structured output.".to_owned(),
     }
 }
 
