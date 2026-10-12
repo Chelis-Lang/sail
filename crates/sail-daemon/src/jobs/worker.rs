@@ -1,4 +1,5 @@
-//! Single FIFO worker, without holding the status lock during verification.
+//! Verification workers: each runs one job at a time, without holding the
+//! status lock during verification.
 
 use std::io;
 use std::os::unix::process::CommandExt as _;
@@ -40,8 +41,8 @@ impl Drop for Process {
 
 pub(super) fn run(state: &State) {
     loop {
-        let id = next(state);
-        let Some(id) = id else { break };
+        let Some((id, key)) = next(state) else { break };
+        let _running = Running { state, key };
         let Ok(job) = get(state, &id) else { continue };
         if !job.status.state.terminal() {
             let result = execute(state, &id);
@@ -80,14 +81,28 @@ pub(super) fn run(state: &State) {
         store::prune(state, &job.status.project_dir);
     }
 }
-fn next(state: &State) -> Option<String> {
+/// Releases a job's workspace when its worker finishes with it, and wakes
+/// the workers so a job queued behind it can start.
+struct Running<'a> {
+    state: &'a State,
+    key: std::path::PathBuf,
+}
+impl Drop for Running<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut queue) = self.state.queue.lock() {
+            queue.finish(&self.key);
+        }
+        self.state.ready.notify_all();
+    }
+}
+fn next(state: &State) -> Option<(String, std::path::PathBuf)> {
     let mut queue = state.queue.lock().ok()?;
     loop {
         if state.stop.load(Ordering::SeqCst) {
             return None;
         }
-        if let Some(id) = queue.pop_front() {
-            return Some(id);
+        if let Some(job) = queue.take() {
+            return Some(job);
         }
         queue = state.ready.wait(queue).ok()?;
     }

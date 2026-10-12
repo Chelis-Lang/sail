@@ -1,11 +1,13 @@
-//! Durable, FIFO project verification jobs on a separate local endpoint.
+//! Durable project verification jobs on a separate local endpoint. Jobs run
+//! concurrently on a small worker pool, one at a time per Cargo workspace.
 
 mod product;
 mod result_cache;
+mod schedule;
 mod store;
 mod worker;
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use std::io::{self, Write as _};
 use std::os::unix::fs::PermissionsExt as _;
 use std::os::unix::net::{UnixListener, UnixStream};
@@ -25,7 +27,7 @@ struct State {
     root: PathBuf,
     executable: PathBuf,
     jobs: Mutex<BTreeMap<String, Stored>>,
-    queue: Mutex<VecDeque<String>>,
+    queue: Mutex<schedule::Queue>,
     ready: Condvar,
     stop: AtomicBool,
     activity: Arc<AtomicU64>,
@@ -34,11 +36,12 @@ struct State {
     result_cache: result_cache::ResultCache,
 }
 
-/// A bound project endpoint; it owns one FIFO verification worker.
+/// A bound project endpoint; it owns a bounded pool of verification workers.
 pub struct JobServer {
     socket: PathBuf,
     listener: UnixListener,
     state: Arc<State>,
+    workers: usize,
 }
 
 /// Lifetime and idle-activity handle for a running project service.
@@ -46,7 +49,7 @@ pub struct JobHandle {
     socket: PathBuf,
     state: Arc<State>,
     listener: Option<JoinHandle<()>>,
-    worker: Option<JoinHandle<()>>,
+    workers: Vec<JoinHandle<()>>,
 }
 
 /// Binds an endpoint and recovers retained job records. Unfinished records
@@ -79,11 +82,12 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
     Ok(JobServer {
         socket,
         listener,
+        workers: schedule::workers(),
         state: Arc::new(State {
             root,
             executable,
             jobs: Mutex::new(jobs),
-            queue: Mutex::new(VecDeque::new()),
+            queue: Mutex::new(schedule::Queue::default()),
             ready: Condvar::new(),
             stop: AtomicBool::new(false),
             activity: Arc::new(AtomicU64::new(0)),
@@ -95,15 +99,35 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
 }
 
 impl JobServer {
-    /// Starts the endpoint and single verifier worker.
+    /// Overrides the number of concurrent verifier workers (at least one).
+    #[must_use]
+    pub fn with_workers(mut self, workers: usize) -> Self {
+        self.workers = workers.max(1);
+        self
+    }
+    /// Starts the endpoint and `SAIL_JOB_WORKERS` verifier workers.
     ///
     /// # Errors
     /// Returns thread creation errors.
     pub fn spawn(self) -> io::Result<JobHandle> {
-        let worker_state = Arc::clone(&self.state);
-        let worker = std::thread::Builder::new()
-            .name("sail-project-worker".to_owned())
-            .spawn(move || worker::run(&worker_state))?;
+        let mut workers = Vec::new();
+        for index in 0..self.workers {
+            let worker_state = Arc::clone(&self.state);
+            match std::thread::Builder::new()
+                .name(format!("sail-project-worker-{index}"))
+                .spawn(move || worker::run(&worker_state))
+            {
+                Ok(worker) => workers.push(worker),
+                Err(error) => {
+                    self.state.stop.store(true, Ordering::SeqCst);
+                    self.state.ready.notify_all();
+                    for worker in workers {
+                        let _ = worker.join();
+                    }
+                    return Err(error);
+                }
+            }
+        }
         let endpoint_state = Arc::clone(&self.state);
         let listener = self.listener;
         let endpoint = std::thread::Builder::new()
@@ -114,12 +138,14 @@ impl JobServer {
                 socket: self.socket,
                 state: self.state,
                 listener: Some(listener),
-                worker: Some(worker),
+                workers,
             }),
             Err(error) => {
                 self.state.stop.store(true, Ordering::SeqCst);
                 self.state.ready.notify_all();
-                let _ = worker.join();
+                for worker in workers {
+                    let _ = worker.join();
+                }
                 Err(error)
             }
         }
@@ -150,7 +176,7 @@ impl JobHandle {
             let _ = UnixStream::connect(&self.socket);
             let _ = thread.join();
         }
-        if let Some(thread) = self.worker.take() {
+        for thread in self.workers.drain(..) {
             let _ = thread.join();
         }
         let _ = std::fs::remove_file(&self.socket);
@@ -337,6 +363,7 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     if submission.input_revision.is_none() {
         establish_revision(state, &mut submission)?;
     }
+    let key = schedule::workspace_key(&submission.project_dir, &submission.args);
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
     if let Some(job) = jobs.values().find(|job| {
         !job.status.state.terminal()
@@ -359,7 +386,7 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     let status = job.status.clone();
     jobs.insert(id.clone(), job);
     state.activity.fetch_add(1, Ordering::SeqCst);
-    state.queue.lock().map_err(lock_error)?.push_back(id);
+    state.queue.lock().map_err(lock_error)?.push(id, key);
     state.ready.notify_one();
     Ok(status)
 }

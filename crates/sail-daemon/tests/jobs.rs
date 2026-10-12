@@ -354,3 +354,33 @@ fn cached_repair_frames_preserve_all_evidence_and_derive_acceptance() {
     handle.shutdown();
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn independent_workspaces_run_concurrently_and_one_workspace_queues() {
+    let (root, executable, socket) = fixture("sleep 30");
+    assert!(std::fs::create_dir_all(root.join("other")).is_ok());
+    let mut handle = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &executable)
+        .map(|server| server.with_workers(2))
+        .and_then(sail_daemon::jobs::JobServer::spawn)
+        .unwrap_or_else(|error| unreachable!("{error}"));
+    let client = Client::new(&socket);
+    let first = submit(&client, submission(&root, "first"));
+    let same = submit(&client, submission(&root, "same"));
+    let mut other = submission(&root, "other");
+    other.project_dir = root.join("other");
+    let other = submit(&client, other);
+    wait(&client, &first.id, |state| state == Lifecycle::Running);
+    wait(&client, &other.id, |state| state == Lifecycle::Running);
+    assert_eq!(status(&client, &same.id).state, Lifecycle::Queued);
+    assert!(
+        client
+            .call(&Request::Cancel {
+                id: first.id,
+                superseded: true
+            })
+            .is_ok()
+    );
+    wait(&client, &same.id, |state| state == Lifecycle::Running);
+    handle.shutdown();
+    let _ = std::fs::remove_dir_all(root);
+}
