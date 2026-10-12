@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Shared HTTP cache: move trust and configuration filesystem work onto owned
+  helpers, so status and lookups never block on a stalled mount (#76). Start a
+  configured HTTP client asynchronously when the daemon binds, let lookups wait
+  for that setup within the existing 250 ms budget, and deliver verified replies
+  directly to concurrent readers. Reuse an unchanged loopback connection pool on
+  reload, read exact small bodies without an extra EOF read, and reject a
+  private CA file that contains no PEM certificate.
+  Lookup deadlines, signature and trust checks and the local-solver
+  fallback are unchanged. Development and test builds optimize
+  `curve25519-dalek` arithmetic; release builds are unchanged. See
+  [the HTTP shared cache guide](docs/http-shared-cache.md).
+
 - Add explicit managed workspace verification with complete per-target reports,
   successful proof receipts, and verification-context isolation. Linux supports
   precise missing-configuration observation; macOS remains conservative and may
