@@ -1802,7 +1802,7 @@ pub(crate) fn run_engine(
         super::build_inputs::stale(&paths.build_inputs, &data);
     after_extras.extend(script_roots);
     let mut after_data = metadata(&config.workspace, &config.args, &config.cargo)?;
-    record_observation_layout(&mut after_data, engine.as_ref());
+    record_observation_layout(&mut after_data, runtime.engine.as_ref());
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
     after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
     after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
