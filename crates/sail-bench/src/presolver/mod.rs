@@ -1026,7 +1026,7 @@ pub fn presolver(solver: &Solver, dirs: &[PathBuf], o: &Options) -> Result<Repor
             lat_setup.push(*setup);
             lat_total.push(*total);
             lat_solve.push(row.solve_us);
-            if covered && row.miss.is_some_and(|m| m.0) {
+            if covered && row.edit && row.miss.is_some_and(|m| m.0) {
                 lat_cov_miss.push(*total);
             }
         }
