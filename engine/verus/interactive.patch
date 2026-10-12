@@ -1619,7 +1619,7 @@ diff --git a/source/rust_verify/src/sail_engine.rs b/source/rust_verify/src/sail
 new file mode 100644
 --- /dev/null
 +++ b/source/rust_verify/src/sail_engine.rs
-@@ -0,0 +1,1381 @@
+@@ -0,0 +1,1393 @@
 +//! Private batch session: all retained spans belong to the active compiler callback.
 +use super::*;
 +use std::cell::{Cell,RefCell};
@@ -1811,6 +1811,18 @@ new file mode 100644
 +    // both bounded baseline Vecs are dropped before another prep operation.
 +    let Ok(_guard)=PREPARATION_GATE.lock()else{return false;};
 +    match(a.sail_baseline(),b.sail_baseline()){(Some(a),Some(b))=>a==b,_=>false}
++}
++// Why an oracle initial-state comparison failed: which bounded encoding was
++// refused, or which named components differ. Diagnostic text only.
++pub(super) fn oracle_initial_difference(a:&vir::context::Ctx,b:&vir::context::Ctx)->String{
++    let Ok(_guard)=PREPARATION_GATE.lock()else{return "preparation gate unavailable".into();};
++    match(a.sail_baseline().is_some(),b.sail_baseline().is_some()){
++        (true,true)=>match(a.sail_oracle_components(),b.sail_oracle_components()){
++            (Some(x),Some(y))=>format!("components differ: {}",x.iter().zip(&y).filter(|(l,r)|l.1!=r.1).map(|(l,_)|l.0).collect::<Vec<_>>().join(",")),
++            _=>"baselines differ; components unavailable".into(),
++        },
++        (x,y)=>format!("bounded baseline encoding refused: original encoded {x}, independent encoded {y}"),
++    }
 +}
 +pub(super) fn oracle_enabled()->bool{active() && std::env::var_os("SAIL_ENGINE_ORACLE_DIR").is_some()}
 +// Observation is independently bounded, never part of proof acceptance.
@@ -6392,17 +6404,22 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
          bucket_id: &BucketId,
          mut global_ctx: vir::context::GlobalCtx,
      ) -> Result<vir::context::GlobalCtx, VirErr> {
-@@ -1969,9 +2016,24 @@
+@@ -1969,9 +2016,29 @@
              vir::printer::write_krate(&mut file, &pruned_krate, &self.args.log_args.vir_log_option);
          }
  
 +        sail_engine::oracle_capture_components(&ctx)?;
-+        let oracle_initial=if sail_engine::oracle_enabled(){
-+            let independent=ctx.sail_oracle_fork(&pruned_krate).ok_or_else(||io_vir_err("oracle independent initial owner".into(),std::io::Error::other("unsupported initial state")))?;
-+            if !sail_engine::oracle_equal_baselines(&ctx,&independent){return Err(io_vir_err("oracle initial state".into(),std::io::Error::other("independent baseline differs")));}
-+            Some(independent)
-+        }else{None};
 +        let checkpoint_key = sail_engine::bucket_key(self, bucket_id, &pruned_krate, &ctx);
++        // A bucket whose bounded preparation key is refused is never restored
++        // (take_bucket misses on an empty key), so the oracle has no hit to check.
++        let oracle_initial=if sail_engine::oracle_enabled() && !checkpoint_key.is_empty(){
++            let independent=ctx.sail_oracle_fork(&pruned_krate).ok_or_else(||io_vir_err("oracle independent initial owner".into(),std::io::Error::other("unsupported initial state")))?;
++            if !sail_engine::oracle_equal_baselines(&ctx,&independent){let why=sail_engine::oracle_initial_difference(&ctx,&independent);return Err(io_vir_err("oracle initial state".into(),std::io::Error::other(format!("independent baseline differs ({why})"))));}
++            Some(independent)
++        }else{
++            if sail_engine::oracle_enabled(){sail_engine::emit!("oracle-not-applicable", {"bucket":bucket_name,"reason":"preparation key refused"});}
++            None
++        };
 +        let krate_sst = if let Some((cached,messages)) = sail_engine::take_bucket(&checkpoint_key,&pruned_krate,source_map,preparation_queue,&mut ctx) {
 +            sail_engine::emit!("prepared-hit", {"bucket":bucket_name});
 +            if let Some(independent)=oracle_initial{sail_oracle::verify(self,&pruned_krate,source_map,bucket_id,independent,&ctx,&cached,&messages)?;}
@@ -6418,7 +6435,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
              &self.get_bucket(bucket_id).funs,
              &pruned_krate,
          )?;
-@@ -1988,10 +2050,15 @@
+@@ -1988,10 +2055,15 @@
              return Ok(ctx.free());
          }
          let krate_sst = vir::poly::poly_krate_for_module(&mut ctx, &krate_sst);
@@ -6434,7 +6451,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
          global_ctx = ctx.free();
  
          let time_verify_end = Instant::now();
-@@ -2015,11 +2082,11 @@
+@@ -2015,11 +2087,11 @@
      fn verify_crate_inner(
          &mut self,
          compiler: &Compiler,
@@ -6448,7 +6465,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
          let krate = self.vir_crate.clone().expect("vir_crate should be initialized");
          let air_no_span = self.air_no_span.clone().expect("air_no_span should be initialized");
  
-@@ -2174,6 +2241,7 @@
+@@ -2174,6 +2246,7 @@
                                      &reporter,
                                      &thread_krate,
                                      None,
@@ -6456,7 +6473,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
                                      &bucket_id,
                                      task,
                                  );
-@@ -2213,13 +2281,13 @@
+@@ -2213,13 +2286,13 @@
              let mut active_bucket = None;
              let mut num_done = 0;
              let mut local_msgs: VecDeque<ReporterMessage> = VecDeque::new();
@@ -6471,7 +6488,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
                      ReporterMessage::Messages(id, mut msgs, now) => {
                          // The multi-message "Messages" gives us a chance to sort the messages
                          // for clearer diagnostics.
-@@ -2526,9 +2594,10 @@
+@@ -2526,9 +2599,10 @@
  
              for bucket_id in &bucket_ids {
                  global_ctx = self.verify_bucket_outer(
@@ -6483,7 +6500,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
                      bucket_id,
                      global_ctx,
                  )?;
-@@ -2563,20 +2632,20 @@
+@@ -2563,20 +2637,20 @@
                  chosen.manual,
              ) {
                  (ShowTriggers::Selective, true, false) if chosen.low_confidence => {
@@ -6509,7 +6526,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
                  }
                  (
                      ShowTriggers::Selective
-@@ -2619,7 +2688,7 @@
+@@ -2619,7 +2693,7 @@
          let time_verify_crate_start = Instant::now();
  
          let result = if !self.args.no_verify || self.args.build_sst {
@@ -6518,7 +6535,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
          } else {
              Ok(())
          };
-@@ -3313,7 +3382,9 @@
+@@ -3313,7 +3387,9 @@
          }
  
          self.spans = Some(spans);
@@ -6528,7 +6545,7 @@ diff --git a/source/rust_verify/src/verifier.rs b/source/rust_verify/src/verifie
  
          rustc_driver::Compilation::Stop
      }
-@@ -3392,3 +3463,44 @@
+@@ -3392,3 +3468,44 @@
          }
      }
  }
