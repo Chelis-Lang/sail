@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "scope": "source-only disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "selected combined source b89546c; interrupted 22d6082 FAIL and sticky uncertainty retained; fresh native gate and solver pending",
+  "scope": "disabled-script coverage and guarded retry fresh-compilation recovery",
+  "status": "selected b89546c complete gate and original solver PASS; product and unchanged real-project benchmark pending",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -85,11 +85,9 @@
     "bootstrap_retry_clean_preserves_missing_and_refuses_unsupported_script_roles",
     "disabled_script_explicit_selection_requires_unique_cargo_package_identity"
   ],
-  "control_status": "historical original ten controls passed; repaired real-Cargo fixture and selected diagnostic controls await complete native execution at b89546c",
+  "control_status": "selected real-Cargo retry/export/original-input-barrier control PASS4.775s; complete658 workspace and41 solver PASS; historical failures unchanged",
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
-    "affected native tests and strict checks",
-    "complete combined workspace/solver gate",
     "fresh coherent product installation",
     "unchanged original real-project warmups and benchmark"
   ],
@@ -97,7 +95,7 @@
     "scope": "test-only implicit root membership with existing dependency exclusions, plus explicit non-membership assertions",
     "original_failure": "new real Cargo fixture automatically included active and disabled path dependencies as workspace members; production correctly refused the disabled role before compilation",
     "namespace_correction": "included test module resolves predicate through existing build_inputs import",
-    "status": "narrow target-tag repair selected; d37e388 strict failure and 22d6082 interruption retained; fresh b89546c gate pending",
+    "status": "target-tag fixture repair validated in selected b89546c complete gate; historical membership/tag/strict/interrupted outcomes retained",
     "unchanged": [
       "never_scheduled production check",
       "original fresh=false requirement",
@@ -353,6 +351,109 @@
         "limit": "later bounded read-only audit excludes PID1 and census actor; allows a fresh actor, does not change original FAIL, sticky uncertainty or certify closure at interruption"
       },
       "limit": "interrupted validation is not qualified or promoted by later closure audit"
+    },
+    {
+      "revision": "b89546cbf64788976803b832dbfa214575c9ff7b",
+      "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a",
+      "status": "PASS",
+      "controller_source_sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc",
+      "raw": {
+        "controller.json": {
+          "bytes": 1115,
+          "sha256": "8e47b593c2be4820e0976a41d78c79f6b1dded2a825979e9cf9dc559776c92fc"
+        },
+        "result.json": {
+          "bytes": 36656,
+          "sha256": "693c982697eadce13d04e659bf8a5ead48e46ae40d5a3e97085cf00a5d2a0c1f"
+        },
+        "gate.log": {
+          "bytes": 130073,
+          "sha256": "a065a4e8b9ce930b0518739fcbf5152e1cb0aad97d35dd6dde9594678053155a"
+        },
+        "solver.log": {
+          "bytes": 4779,
+          "sha256": "3745089772d923fc811c671ddbda39646733498116efc277935fb217b65888b2"
+        }
+      },
+      "phases": [
+        {
+          "name": "gate",
+          "command": [
+            "bash",
+            "ci/run.sh",
+            "gate"
+          ],
+          "limit_seconds": 3600,
+          "elapsed_seconds": 414.744612857,
+          "exit_code": 0,
+          "workspace_passed": 658,
+          "workspace_total": 658,
+          "skipped": 41,
+          "known_group_closure": {
+            "survivors": 0,
+            "unavailable": 0,
+            "terminated_unreaped": 6,
+            "all_terminated_tasks_complete": true
+          }
+        },
+        {
+          "name": "solver",
+          "command": [
+            "bash",
+            "ci/run.sh",
+            "solver"
+          ],
+          "limit_seconds": 1800,
+          "elapsed_seconds": 73.91174061699985,
+          "exit_code": 0,
+          "passed": 41,
+          "total": 41,
+          "excluded": 658,
+          "known_group_closure": {
+            "survivors": 0,
+            "unavailable": 0,
+            "terminated_unreaped": 6,
+            "all_terminated_tasks_complete": true
+          }
+        }
+      ],
+      "affected_controls": [
+        {
+          "name": "bootstrap_disabled_dependency_and_retry_keep_fresh_compilation_roles",
+          "status": "PASS",
+          "elapsed_seconds": 4.775
+        },
+        {
+          "name": "bootstrap_observation_preserves_actual_publication_and_first_role_refusal",
+          "status": "PASS",
+          "elapsed_seconds": 2.349
+        },
+        {
+          "name": "bootstrap_first_refusal_and_disabled_observation_preserve_original_outcome",
+          "status": "PASS",
+          "elapsed_seconds": 0.067
+        },
+        {
+          "name": "bootstrap_rows_share_original_limits_and_busy_sink_refuses_observation",
+          "status": "PASS",
+          "elapsed_seconds": 0.063
+        }
+      ],
+      "controller_uncertainty": [],
+      "native_uncertainty": [],
+      "same_container_identity": true,
+      "source_protected_pid1_closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+      "retained_operator_selected_images": [
+        {
+          "bytes": 36312120,
+          "mode": 493,
+          "sha256": "b1e1eaea4fd4abe4e6e9ef242512c7f82967d1722fb55e53f273e92a24b3dac1",
+          "execution_identity": "operator-selected copy; execution is not inferred from file presence"
+        }
+      ],
+      "retention_errors": [],
+      "all_cargo_artifacts_archived": false,
+      "limit": "local coherent gate and original solver validation only; operator-selected ELF copy is not actual executed-image binding; no installed-product, first-export historical cause, reader or benchmark performance credit"
     }
   ],
   "validation_limits": "failure scopes and metadata-only reproductions do not qualify new current fixture, installed product, first export recovery or benchmark performance; original assertions and oracle unchanged",
@@ -367,9 +468,10 @@
     },
     "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
-    "native_validation": "fresh complete gate and solver running with corrected absolute ELF retention path; terminal outcome pending",
+    "native_validation": "complete local gate PASS: 658/658 workspace tests and all remaining steps; original solver PASS: 41/41",
     "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim",
-    "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1"
+    "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
+    "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a"
   },
   "historical_selected_source_scope": {
     "frozen_commit": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
