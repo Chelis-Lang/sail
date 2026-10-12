@@ -414,8 +414,39 @@ focus/full regression example.
 - `compare_verification` takes `after_job` and exactly one `before_job` or
   immutable `baseline`. Context/scope mismatches and unobserved functions stay
   explicit; they are not labelled proof regressions.
+- `save_baseline` takes `job_id` and `name`. The job must have completed under
+  the existing service checks. An existing name cannot be overwritten. Failed,
+  unknown, provisional or incomplete target evidence is retained as reported;
+  saving does not accept a repair or create a proof receipt.
+- `list_baselines` takes no arguments and returns sorted saved names.
+- `get_baseline` takes `name` and returns the complete immutable snapshot,
+  including the recorded job, input revision, context, targets and reports.
+  Its currentness is always `historical`; it never revalidates today's workspace.
 
-Save named baselines through `sail baseline save NAME --job JOB`. See
+Baseline operations resolve the same local job service as job reads. They do not accept
+`project_dir`; use the server's working directory and the same absolute cache
+and socket overrides as submission. Names use 1–80 ASCII letters, digits, dots,
+underscores or hyphens, excluding `.` and `..`. The CLI equivalents are
+`sail baseline save NAME --job JOB`, `sail baseline list` and
+`sail baseline get NAME --output json`. For a literal name that looks like an
+option, place output options first: `sail baseline get --output json -- --json`.
+
+Save/get return the existing job response envelope:
+`structuredContent.response` is `baseline`, with a version-one snapshot in
+`structuredContent.value`. List returns `response: baselines` and a string array
+in `value`. No baseline operation reports a new Current proof. MCP rejects a
+response with the wrong requested name or, for save, the wrong original job.
+The existing local RPC payload limit remains; oversized evidence fails rather
+than returning a truncated graph. A cancelled save call may already have
+published its immutable record; inspect the name before retrying.
+
+`get_baseline` adds a read-only job operation without changing the protocol
+version or existing save/list operations. An older running service rejects the
+unknown request with `SAIL0801`; it does not return an empty baseline. Update and
+restart that service before using get. Saving and listing remain compatible with
+the existing service operations.
+
+See
 [`proof-repair.md`](proof-repair.md) for currentness, compiler-seal and journal
 retention contracts.
 

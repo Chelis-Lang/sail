@@ -122,6 +122,7 @@ sail explain JOB --package-id PACKAGE_ID --target demo --kind lib \
   --function demo::arith::lemma --output json
 sail baseline save before-repair --job JOB
 sail baseline list
+sail baseline get before-repair --output json
 sail compare LATER_JOB --baseline before-repair --output json
 sail compare BEFORE_JOB AFTER_JOB --output json
 ```
@@ -145,8 +146,13 @@ are also incomparable: Sail cannot identify one implementation from that name
 and never lets timing-entry order select a regression.
 
 The corresponding MCP tools are `start_repair_validation`,
-`verification_events`, `explain_failure` and `compare_verification`. Existing
-`start_verification` accepts an explicit `engine` choice. See
+`verification_events`, `explain_failure` and `compare_verification`.
+`save_baseline`, `list_baselines` and `get_baseline` expose the same immutable
+service records to agents. Save still requires a completed job; read validates
+the record's version/name identity and Historical currentness before returning
+the complete report. Invalid, corrupt or oversized records fail explicitly.
+These operations do not create proof receipts, change target completeness or
+promote provisional verdicts. `start_verification` accepts an explicit `engine` choice. See
 [`mcp.md`](mcp.md). Machine-readable contracts are in
 `crates/sail-api/schema/proof-event-v1.json`, `proof-page-v1.json` and
 `repair-result-v1.json`.
