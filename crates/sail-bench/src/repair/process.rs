@@ -291,9 +291,7 @@ struct Observer {
 impl Observer {
     fn new(socket: &Path, dir: &Path) -> Self {
         Self {
-            client: sail_api::jobs::Client::without_result_decoding_cache(
-                sail_api::jobs::socket_path(socket),
-            ),
+            client: sail_api::jobs::Client::new(sail_api::jobs::socket_path(socket)),
             stderr: dir.join("stderr.txt"),
             dir: dir.to_path_buf(),
             job: None,

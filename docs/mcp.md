@@ -63,32 +63,21 @@ can still block writes. This does not establish a live-reader latency gain or a
 bound on temporary response memory. See [ADR 0034](decisions/0034-mcp-response-encoding-ownership.md)
 and the [scoped controls](validation/m7.md).
 
-Job status, completed results, counterexamples and cached-result lookups use
-persistent service clients inside `sail mcp`. Each lookup still opens a bounded
-connection and reads the complete fresh service reply. The service determines
-source currentness; an earlier decoded report cannot authorize a later lookup.
-Changing a model, job ID, currentness or any other reply byte invalidates decoded
-reuse. Historical evidence remains labelled historical.
-
-Relative `SAIL_CACHE_DIR` and `SAIL_DAEMON_SOCKET` settings resolve from each
-operation's project directory, just as they do for the CLI. Switching projects
-or restarting a service does not reuse an earlier authorization. Missing or refused connections use the existing CLI read path, including
-service startup and legacy support. Once a direct request starts, it has an
-absolute five-second transport deadline and is never retried through the CLI.
-Cancellation shuts down the owned read connection and joins its monitor; a late
-response is discarded. Invalid versions, response variants and job IDs fail
-without a retry.
-Verification submission, repair submission and cancellation retain the existing
-CLI process ownership. Proof events and explanation/comparison tools retain
-their current CLI paths.
-
-Eight endpoint handles share one 128 MiB decoded-frame budget, including entries
-still used by concurrent calls after eviction. This bounds retained cache entry
-ownership; returned tool graphs, temporary parsing/serialization and process RSS
-are outside that budget. Replies larger than the cache
-eligibility limit still work normally without retention. No MCP latency gain is
-claimed from the separate client-codec measurements; product measurements remain
-necessary. See [the client contract](result-client.md).
+Job status, completed results, counterexamples and cached-result lookups read
+the jobs service socket directly inside `sail mcp`, without spawning a CLI
+child. Each read opens a connection and reads the complete fresh service reply;
+the service determines source currentness, and Historical evidence remains
+labelled historical. Relative `SAIL_CACHE_DIR` and `SAIL_DAEMON_SOCKET`
+settings resolve from each operation's project directory, as they do for the
+CLI. A missing or refused connection uses the CLI read path instead, including
+service startup and legacy support. Once a direct read starts it is never
+retried through the CLI: a failure returns `SAIL0813` with structured
+`{"error":"read_failed"}`, and an invalid version, response variant or job ID
+returns `{"error":"invalid_response"}`. Cancellation shuts down the read
+connection at once (`{"error":"cancelled"}`), and a late reply is discarded.
+Verification submission, repair submission and cancellation keep the CLI
+process ownership. Proof events and explanation/comparison tools keep their
+CLI paths. See [the client contract](result-client.md).
 
 ## Protocol
 

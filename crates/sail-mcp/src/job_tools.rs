@@ -170,17 +170,13 @@ fn unsupported_response() -> ToolResult {
 fn read_error(error: crate::job_clients::ReadError) -> ToolResult {
     match error {
         crate::job_clients::ReadError::InvalidResponse => unsupported_response(),
-        crate::job_clients::ReadError::CancelledBefore => ToolResult::error(
-            "SAIL0813: cannot contact project service: cancelled".to_owned(),
-            json!({"error":"service_unavailable"}),
-        ),
-        crate::job_clients::ReadError::CancelledRead => ToolResult::error(
-            "SAIL0813: job operation failed: ".to_owned(),
-            json!({"exit_code":null}),
+        crate::job_clients::ReadError::Cancelled => ToolResult::error(
+            "SAIL0813: job read cancelled".to_owned(),
+            json!({"error":"cancelled"}),
         ),
         crate::job_clients::ReadError::Operation(error) => ToolResult::error(
-            format!("SAIL0813: job operation failed: error[SAIL0811]: {error}\n"),
-            json!({"exit_code":2}),
+            format!("SAIL0813: job read failed: {error}"),
+            json!({"error":"read_failed"}),
         ),
     }
 }
@@ -482,8 +478,7 @@ fn read_or_cli(
             crate::job_clients::ReadError::InvalidResponse => {
                 std::io::Error::other("SAIL0813: invalid job response")
             }
-            crate::job_clients::ReadError::CancelledBefore
-            | crate::job_clients::ReadError::CancelledRead => {
+            crate::job_clients::ReadError::Cancelled => {
                 std::io::Error::new(std::io::ErrorKind::Interrupted, "cancelled")
             }
         });

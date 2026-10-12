@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail_api::jobs::Client` no longer caches decoded Results. Removed
+  `Client::with_result_decoding_cache`, `without_result_decoding_cache`,
+  `with_socket`, `call_cancellable` and `CancellableError`; use `Client::new`
+  and `call`, or `call_with` to abandon a call by shutting down its stream.
+- `sail mcp` direct job reads report plain errors: `SAIL0813: job read failed:
+  …` (`{"error":"read_failed"}`) and `SAIL0813: job read cancelled`
+  (`{"error":"cancelled"}`), instead of reproducing the CLI's error text and
+  exit code.
+
 - Remove the `SAIL_JOB_RPC_TIMINGS` diagnostic and the daemon's
   `rpc-timings.json` export. Job reads are unchanged: every Status and Result
   read still re-reads and hashes the job's output and checks input freshness.

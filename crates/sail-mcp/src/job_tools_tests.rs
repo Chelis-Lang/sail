@@ -574,12 +574,8 @@ fn post_request_protocol_failure_never_retries_cli() {
         &Cancel::default(),
     );
     assert!(result.is_error);
-    assert_eq!(result.structured["exit_code"], 2);
-    assert!(
-        result
-            .text
-            .contains("SAIL0813: job operation failed: error[SAIL0811]:")
-    );
+    assert_eq!(result.structured["error"], "read_failed");
+    assert!(result.text.starts_with("SAIL0813: job read failed:"));
     assert!(
         !marker.exists(),
         "no second request after receiving a frame"
@@ -644,12 +640,7 @@ fn cancellation_interrupts_owned_read_and_does_not_retry_cli() {
     assert!(result.is_ok(), "cancel must not wait for the read deadline");
     let result = result.unwrap_or_else(|error| unreachable!("{error}"));
     assert!(result.is_error);
-    assert!(
-        result
-            .structured
-            .get("exit_code")
-            .is_some_and(Value::is_null)
-    );
+    assert_eq!(result.structured["error"], "cancelled");
     assert!(worker.finish());
     assert!(server.finish());
 }
@@ -767,7 +758,7 @@ fn missing_endpoint_uses_original_cli_read_without_caching_authority() {
 }
 
 #[test]
-fn pre_cancelled_read_keeps_the_existing_startup_error_projection() {
+fn pre_cancelled_read_never_dials() {
     let mut fixture = Fixture::new();
     fixture.context.jobs = Some(crate::job_clients::ReadClients::at(
         fixture.root.join("must-not-dial.sock"),
@@ -780,9 +771,6 @@ fn pre_cancelled_read_keeps_the_existing_startup_error_projection() {
     cancel.cancel();
     let result = call(&fixture.context, "verification_status", &args, &cancel);
     assert!(result.is_error);
-    assert_eq!(result.structured["error"], "service_unavailable");
-    assert_eq!(
-        result.text,
-        "SAIL0813: cannot contact project service: cancelled"
-    );
+    assert_eq!(result.structured["error"], "cancelled");
+    assert_eq!(result.text, "SAIL0813: job read cancelled");
 }

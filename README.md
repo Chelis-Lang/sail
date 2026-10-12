@@ -137,14 +137,11 @@ Experimental repair tools add `start_repair_validation`, `verification_events`,
 `explain_failure`, `compare_verification`, `save_baseline`, `list_baselines` and
 `get_baseline`. Baseline tools expose the same immutable Historical evidence as
 the CLI, independently of job pruning.
-Durable read-only lookups keep
-bounded persistent clients while authorizing each read with a complete fresh
-service reply; writes and verification lifecycle ownership retain their existing
-paths. Register the stdio command `sail mcp`, for example
+Durable read-only lookups read the jobs service directly, each with a complete
+fresh service reply; writes and verification lifecycle ownership retain their
+existing paths. Register the stdio command `sail mcp`, for example
 `claude mcp add --transport stdio sail -- sail mcp`. See [MCP setup and
-schemas](docs/mcp.md), or [the persistent Rust SDK](docs/result-client.md).
-Neither client decoding reuse nor offline timing grants proof authority or a
-live-reader latency guarantee.
+schemas](docs/mcp.md), or [the Rust SDK](docs/result-client.md).
 
 - `docs/CHARTER.md`: mission, scope and the correctness contract.
 - `AGENTS.md`: how to work in this repo (humans and agents).

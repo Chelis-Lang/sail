@@ -8,15 +8,6 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[cfg(unix)]
-mod cancellable;
-#[cfg(unix)]
-pub use cancellable::CancellableError;
-#[cfg(unix)]
-mod decoded;
-#[cfg(unix)]
-mod ownership;
-
 /// Project job protocol version.
 pub const VERSION: u32 = 1;
 /// Maximum request or response frame (32 MiB).
@@ -401,61 +392,18 @@ fn endpoint_path(path: &Path) -> PathBuf {
 }
 
 /// A timeout-bounded local client. Every call receives a complete fresh frame.
-///
-/// [`Client::new`] stages bounded decoding reuse after repeated byte-identical
-/// Result frames; every returned response is
-/// independently owned. No RPC or freshness decision is cached. See
-/// `docs/result-client.md` for the retained-storage audit.
 #[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct Client {
     socket: PathBuf,
-    decoded: Option<std::sync::Arc<decoded::Cache>>,
 }
 #[cfg(unix)]
 impl Client {
     /// A client for `socket`; no connection or side effect until a call.
-    ///
-    /// The first eligible Result retains its validated frame only. A second
-    /// identical fresh frame can promote decoding reuse; no RPC is cached.
     #[must_use]
     pub fn new(socket: impl Into<PathBuf>) -> Self {
         Self {
             socket: socket.into(),
-            decoded: Some(std::sync::Arc::new(decoded::Cache::staged())),
-        }
-    }
-    /// An uncached client; every response is parsed in full.
-    #[must_use]
-    pub fn without_result_decoding_cache(socket: impl Into<PathBuf>) -> Self {
-        Self {
-            socket: socket.into(),
-            decoded: None,
-        }
-    }
-    /// A persistent client with immediate exact-fresh-frame decoding reuse.
-    ///
-    /// Clones share one cache; every RPC still receives its complete fresh
-    /// frame. The first eligible Result incurs an extra independent graph
-    /// clone. [`Client::new`] instead retains only the first exact frame and
-    /// promotes decoding reuse after a second identical response.
-    #[must_use]
-    pub fn with_result_decoding_cache(socket: impl Into<PathBuf>) -> Self {
-        Self {
-            socket: socket.into(),
-            decoded: Some(std::sync::Arc::default()),
-        }
-    }
-    /// Rebinds the endpoint while sharing this client's optional decoding budget.
-    ///
-    /// A bounded endpoint table can keep one aggregate cache family, including
-    /// in-flight entries from evicted endpoints. Every call receives the new
-    /// endpoint's complete fresh frame; byte equality never replaces an RPC.
-    #[must_use]
-    pub fn with_socket(&self, socket: impl Into<PathBuf>) -> Self {
-        Self {
-            socket: socket.into(),
-            decoded: self.decoded.clone(),
         }
     }
     /// Sends one RPC with five-second I/O deadlines.
@@ -463,8 +411,20 @@ impl Client {
     /// # Errors
     /// Returns connection, framing, timeout, or server errors.
     pub fn call(&self, request: &Request) -> io::Result<Response> {
+        self.call_with(request, |_| {})
+    }
+    /// Like [`Client::call`], first handing `connected` a clone of the
+    /// connected stream. Another thread can shut that clone down to abandon
+    /// the call; `connected` is not called when the connection fails.
+    ///
+    /// # Errors
+    /// Returns connection, framing, timeout, or server errors.
+    pub fn call_with(
+        &self,
+        request: &Request,
+        connected: impl FnOnce(std::os::unix::net::UnixStream),
+    ) -> io::Result<Response> {
         use std::os::unix::net::UnixStream;
-        let admission = self.decoded.as_ref().map(|cache| cache.begin());
         if matches!(request, Request::Submit { submission } if submission.mode != Mode::Stock)
             && !matches!(
                 self.call(&Request::Capabilities)?,
@@ -479,18 +439,12 @@ impl Client {
             ));
         }
         let mut stream = UnixStream::connect(&self.socket)?;
+        connected(stream.try_clone()?);
         let timeout = Some(std::time::Duration::from_secs(5));
         stream.set_read_timeout(timeout)?;
         stream.set_write_timeout(timeout)?;
         write_frame(&mut stream, request)?;
-        let response = match &self.decoded {
-            Some(cache) => cache.read_at(
-                &mut stream,
-                admission.ok_or_else(|| io::Error::other("SAIL0806: missing decode admission"))?,
-            )?,
-            None => read_frame(&mut stream)?,
-        };
-        match response {
+        match read_frame(&mut stream)? {
             Response::Error(message) => Err(io::Error::other(message)),
             response => Ok(response),
         }
