@@ -87,6 +87,8 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
             }
         } else if let Some(v) = s.strip_prefix("--package=") {
             packages.push(v.to_owned());
+        } else if let Some(v) = s.strip_prefix("-p") {
+            packages.push(v.strip_prefix('=').unwrap_or(v).to_owned());
         }
     }
     if packages.is_empty() {
@@ -1065,6 +1067,8 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
             _ => {
                 if let Some(v) = a.strip_prefix("--package=") {
                     selected_names.push(v);
+                } else if let Some(v) = a.strip_prefix("-p") {
+                    selected_names.push(v.strip_prefix('=').unwrap_or(v));
                 }
                 if let Some(v) = a.strip_prefix("--exclude=") {
                     excluded.push(v);
@@ -3013,6 +3017,40 @@ mod tests {
             BTreeSet::from([("a".to_owned(), "a".to_owned(), "bin".to_owned())])
         );
         assert!(expected_targets(&data, &["-p".to_owned(), "missing".to_owned()]).is_empty());
+    }
+
+    #[test]
+    fn compact_package_specs_bind_expected_targets_and_forced_cleanup() {
+        let data = serde_json::json!({"workspace_members":["a","b"],
+            "workspace_default_members":["a"],"resolve":{"root":null,"nodes":[]},
+            "packages":[
+                {"id":"a","name":"a","version":"1.0.0",
+                    "metadata":{"verus":{"verify":true}},
+                    "targets":[{"name":"a","kind":["lib"]}]},
+                {"id":"b","name":"b","version":"2.0.0",
+                    "metadata":{"verus":{"verify":true}},
+                    "targets":[{"name":"b","kind":["lib"]}]}]});
+        let names = BTreeSet::from(["a".to_owned(), "b".to_owned()]);
+        let wanted = BTreeSet::from([("b".to_owned(), "b".to_owned(), "lib".to_owned())]);
+        for (argument, spec) in [("-pb", "b"), ("-p=b", "b"), ("-pb@2.0.0", "b@2.0.0")] {
+            let args = vec![argument.to_owned(), "--lib".to_owned()];
+            assert_eq!(expected_targets(&data, &args), wanted);
+            assert_eq!(selected(&args, &names), vec![spec.to_owned()]);
+        }
+        assert_eq!(
+            expected_targets(&data, &[]),
+            BTreeSet::from([("a".to_owned(), "a".to_owned(), "lib".to_owned())])
+        );
+        let repeated = vec!["-pb".to_owned(), "--package=a".to_owned()];
+        assert_eq!(expected_targets(&data, &repeated).len(), 2);
+        assert_eq!(
+            selected(&repeated, &names),
+            vec!["b".to_owned(), "a".to_owned()]
+        );
+        let separated = vec!["-pb".to_owned(), "--".to_owned(), "-pa".to_owned()];
+        assert_eq!(expected_targets(&data, &separated), wanted);
+        assert_eq!(selected(&separated, &names), vec!["b".to_owned()]);
+        assert!(expected_targets(&data, &["-punknown".to_owned()]).is_empty());
     }
     #[test]
     fn focused_proof_selection_is_never_whole_target_coverage() {

@@ -26,6 +26,13 @@ semantic versioning once the API is published.
   Source implementation and new controls address
   [#72](https://github.com/Chelis-Lang/sail/issues/72); native validation is pending.
 
+- Prepare a managed package-selection correction: compact `-papp` and `-p=app`
+  select the same expected verification targets and forced package cleanup as
+  `-p app`. A non-default workspace member previously could trigger `SAIL3107`
+  after Cargo completed the requested verification. Exact command arguments,
+  proof contexts and receipt checks remain unchanged. Source controls are
+  drafted; native validation is pending.
+
 - Clarify interactive CLI/MCP setup: use the same absolute cache/socket overrides
   for engine installation, submission and durable job reads. Those reads do not
   accept `project_dir`. Document returned job-ID and event-cursor fields, and
