@@ -1,0 +1,44 @@
+{
+  "status": "FILE_ONLY_UNEXECUTED",
+  "controller": "scripts/retire-old-functional-two-incremental.py",
+  "controller_sha256": "958970a765b08f741e327c667e0de3f99c55370651f0b9c75c9c15e906bba651",
+  "inventory_root": "/tmp/sail-m7-retained-functional-1e-real/cache/projects",
+  "removal_roots": [
+    "/tmp/sail-m7-retained-functional-1e-real/cache/projects/eaec40e0c3f85be4088de7e277655ec2d95236310ce9a35d3a6e55f191dc93ba/7a647bc547e72b80f194a67b9a8e9ce5c1526960cc3137e620dff38df63f9a62/target/debug/incremental",
+    "/tmp/sail-m7-retained-functional-1e-real/cache/projects/eaec40e0c3f85be4088de7e277655ec2d95236310ce9a35d3a6e55f191dc93ba/1ea2dd8353b95b7a7a201f86fac6ede364b4fb1ebd4b4ec50bc2e44fe60f41c5/target/debug/incremental"
+  ],
+  "limits": {
+    "entries": 20000,
+    "regular_bytes": 8589934592,
+    "inventory_seconds": 300
+  },
+  "admission": "Only descendants of the two exact incremental roots: regular single-link non-executable non-ELF .o/.rmeta/.rlib/.bin/.lock or lock. No directory removal.",
+  "preservation": "Hash and compare all project files, directories and safe links before/after; unknown files, executable and ELF bytes, all hardlinks, source, receipts, ledgers and non-incremental outputs stay. Raw records, engine/prepared/v2 and products outside projects are untouched, not certified by this inventory.",
+  "historical_failures": "Earlier two-cache entry-limit and hardlink refusals, old deps and earlier inventory attempts remain separate; no new native execution or deletion authorized by this file.",
+  "execution": "Root inventory-only in a fresh external evidence namespace; review exact inventory and candidate allocated totals before separately authorized retirement. Approval cannot change namespace, bounds or predicate. Host Docker transport failure ends the scope uncertain, without retry or native-closure claim.",
+  "guard_provenance": {
+    "schema": 1,
+    "source_commit": "d5bee62a4d359eb5ec043dd6c16a9177e32150da",
+    "source_path": "scripts/retire-old-benchmark-single-incremental.py",
+    "source_sha256": "b2c62607087d6057e60e53007880e20ef553b59a90b83ec64556afd66e444ed1",
+    "canonical_ast": "JSON of AST node type plus ordered fields; attributes excluded; bytes literals tagged as bytes_hex; only empty type_params omitted for Python 3.9/3.12 parser compatibility",
+    "function_ast_sha256": {
+      "row": "d39c500a541465f2e2d9cf483ccc019b967941e3fe762443a57e776322b0bf21",
+      "holders": "2959fcc50bcf86cb9c300bc2432d9b90aaed5726c2fa9c155873e727ed627ada",
+      "canonical_mounts": "f0cb187ecfd1bee7d959b9eca2de9bb6f8ed95b3da2a70d608f7f9ddc1afca14",
+      "same_inspections": "fc455dc2686f853e683a2229a93f6beecf4353a835452b7f79d4bc56bb71a820",
+      "inspect_all": "1598572fe1932787482f2a4f4a7705f3613c5100ca3cce7010192a700a6bf17b",
+      "aliases": "b225163eb42a935714c610db1086c36fa88b450c49ea18755b2bd00db08eb1bb",
+      "directory_id": "5eaa804744dcc2f4a9fe58146bb2b462b3c659da70a06b21cf8cde9307052ad1",
+      "open_regular": "889d8504655fa408e4941338f64a5845b269090a54d8351bd137cc708c46d130",
+      "compare_preserved": "c240c3817d8ad2e45c5edbbe221ed8a985efb411e69497d6e1782f59c8a48f09"
+    },
+    "initial_selected_root_scope": "Two predecessor-dependent controls ERROR because the historical helper was not selected. No native inventory or cleanup followed; this scope remains failed.",
+    "correction": "The same guard comparisons use these immutable hashes derived from the exact executed historical helper; no deletion helper or import is selected."
+  },
+  "pure_controls": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-retire-old-functional-two-incremental.py",
+    "passed": 7,
+    "native_execution": false
+  }
+}
