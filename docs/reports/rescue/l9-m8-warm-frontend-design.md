@@ -205,6 +205,12 @@ No new layering edges are expected; check with `cargo xtask check-layering`.
 - **Q2.** Are vouched memo hits acceptable as Confirmed engine provenance?
 - **Q3.** Should M8 drop M7's separate focused phase in favour of prioritised scheduling?
 
+**Answered 2026-10-12 (lead, owner agreed to build the better cache design):**
+- Q1: yes. The engine emits declarations in source order and picks triggers in a fixed order. Stock Verus can already produce those orders, and determinism makes cached-versus-fresh an exact test.
+- Q2: no allow-list vouching. A bucket is memoised only after every one of its checks was answered by the pinned Z3, fresh or from the result cache; a hit is then Confirmed with memo provenance.
+- Q3: yes. The edited functions are scheduled first within one run instead of a separate focused phase.
+- M7's prepared-lowering reuse and its oracle are deleted, not retained behind a flag.
+
 **Limits.**
 - E1 is a proxy. The log omits the SCC and global projections and may omit printer fields, so it can over-estimate hits.
 - Timings come from one loaded M3 and are not reference measurements.
