@@ -356,6 +356,7 @@ impl Bootstrap {
         target: &Path,
         artifacts: &[Value],
     ) -> Option<()> {
+        use std::os::unix::fs::MetadataExt as _;
         (record.covered
             && super::package_matches(record, data)
             && super::output_matches(record, target))
@@ -434,7 +435,6 @@ impl Bootstrap {
         (hash.len() == 16 && hash.bytes().all(|b| b.is_ascii_hexdigit())).then_some(())?;
         let stem = format!("build_script_build-{hash}");
         let linked = directory.join(&stem);
-        use std::os::unix::fs::MetadataExt as _;
         let original = std::fs::metadata(filename).ok()?;
         let alias = std::fs::metadata(&linked).ok()?;
         (original.is_file()
@@ -500,7 +500,7 @@ fn hashes(files: &[PathBuf], stop: &std::sync::atomic::AtomicBool) -> Option<Vec
     // aggregate read bound, not retained allocation or a throughput promise.
     let mut remaining = 4 * 1024 * 1024 * 1024_u64;
     let mut result = Vec::with_capacity(files.len());
-    let mut buffer = [0_u8; 65536];
+    let mut buffer = vec![0_u8; 65536].into_boxed_slice();
     for file in files {
         let fd = rustix::fs::open(
             file,

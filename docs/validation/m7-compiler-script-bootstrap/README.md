@@ -49,7 +49,7 @@ missing, malformed, uncovered and ambiguous lineage within that boundary; it
 makes no malicious-omission claim.
 
 Each hash pass admits at most 4 GiB aggregate and 256 MiB per file, using a fixed
-64 KiB buffer. A refused read can consume one further buffer before its byte
+64 KiB heap buffer. A refused read can consume one further buffer before its byte
 limit is detected. Each pass has a cooperative 30-second clock and cancellation
 checks between reads. Native acquisition uses the existing bounded APIs. These
 checks cannot interrupt a blocked filesystem operation, and existing helper
