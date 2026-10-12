@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "status": "FILE_ONLY; seven host pure controls PASS; native inventory unexecuted",
+  "controller": "scripts/inventory-old-benchmark-single-deps.py",
+  "controller_sha256": "c87cea181173c62af54ca3204669fc21cc8653e226d8bac285522df83b21081e",
+  "controls": "scripts/test-inventory-old-benchmark-single-deps.py",
+  "controls_sha256": "0a912c155b94922a86357377f4608a8bdb2e618222eb4057e88c2aa84b5a9d26",
+  "namespace_label": "sail-m7-current-benchmark-a9609e9-after-recovery-2",
+  "scope_relative": "work/results/cache-m7/projects/060a93ccf65eb083f7bad4d53d8ffa3622c37e60fd2ded4740dc62a945ac5502/compiler-artifacts/8d76a018e1973c200f43355399b80321bf8c171b548a75815e344fa859bdd1c5/target/debug/deps",
+  "policy": "Hash all entries within this one fixed old subtree; classify only direct regular .o/.rmeta/.rlib files with a single link, no execute bits and no ELF prefix. Preserve all hardlinks, ELF/shared libraries, executables, nested files and unknown suffixes.",
+  "outside_scope": "Build outputs, fingerprints, ordinary ledgers, receipts, raw proof records, source, runtime and all current targets.",
+  "execution": "Root-owned separate inventory grant required. No native actor launched, no retirement mode or approval flag exists, and no unlink code remains. No CLI scope override.",
+  "guards": "Audited dual-container identity/birth, complete canonical mounts/alias mapping, bounded all-task dead-state proof and exact self-birth exclusion; cmd/cwd/FD/maps checks without environment reads. These functions are unchanged from the previous single-incremental helper. Unknown, changed, incomplete or live holders refuse.",
+  "bounds": {
+    "entries": 20000,
+    "regular_bytes": 8589934592,
+    "inventory_seconds": 300,
+    "holder_seconds": 30
+  },
+  "eligible_bytes": null,
+  "estimate_limitation": "The retained successful prior inventory covers incremental only, not sibling deps or build. Fresh native inventory is needed before a byte or link-count estimate.",
+  "retained_history": {
+    "prior_incremental_inventory_sha256": "5b8c6d3cc3faa7e2b7f4bd9b94889862b3ea73504115cdb5fb52b56b762c597d",
+    "prior_incremental_after_sha256": "8d8a1b12d5443f7b47126b963bd161b88318c553c8d96a05f3439e5e28205924",
+    "already_removed_single_link_candidates": 54,
+    "already_removed_allocated_bytes": 274223104,
+    "protected_hardlinked_incremental_files": 945
+  },
+  "first_host_control_failure": "The exact-root test initially searched a concatenated Python source expression as a literal; corrected only the fixture to compare imported fixed scope constants. No native scope or deletion occurred."
+}
