@@ -1,7 +1,7 @@
 # Rescue lane L12: Verus issue fixes in Sail's fork
 
-- Branch: `l12-fork-fixes` (Sail), on `rescue/m7` (`3fecedf`); fork branch `l12/fixes`
-  on [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), cut from
+- Branch: `l12-fork-fixes` (Sail), on `rescue/m7` (`fc5416e`); fork branches `l12/fixes`
+  (fixes, fast-forwarded into `sail` as `750027a9`) and `l12/engine` (`4881cd0f`) on [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), cut from
   `sail` (= upstream `426d8b0`).
 - Host: EC2 `c7i.8xlarge` (32 vCPU, us-east-1), lane `l12`, native x86-64
   Linux (Ubuntu 24.04), Rust 1.98.1, pinned Z3 4.16.0 from the
@@ -41,6 +41,7 @@ the fork (VI-0012's stock failure is probabilistic; see below).
 | VI-0009 | `338202a5` fix: omit unselected functions from function timing | +15 −1 (`verifier.rs`) | `sail_vi0009_selected_timing`: `--verify-function good` lists only `good` |
 | VI-0010 | `be077769` feat: add function-path to the timing function breakdown | +17 (`main.rs`) | `sail_vi0010_function_path`: two `S::check` impls get distinct `function-path` values |
 | VI-0005 | `441d6cd9` fix: keep verification dep-info in the compile pass | +41 (`cargo_verus_dep_tracker.rs`, `driver.rs`, `verifier.rs`) | `sail_vi0005_cargo_rerun`: same arguments stay fresh, changed `--rlimit` re-verifies |
+| VI-0005 (follow-up) | `b35e9226` fix: carry dep-info into the compile pass only for selected packages (on `l12/engine`) | +9 −2 (`verifier.rs`) | `sail_vi0005_cargo_rerun` also requires that the vstd path dependency is not rebuilt |
 | VI-0004 | `750027a9` fix: give each crate its own log directory under cargo verus | +29 (`verifier.rs`) | `sail_vi0004_cargo_log_dirs`: library and binary logs both kept, in their own subdirectories |
 
 Notes:
