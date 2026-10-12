@@ -459,8 +459,12 @@ and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argume
 
 Frozen `b89546c` passes the [original repair fixture and complete reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
 Both unchanged collectors preserve full Current graphs and p95 below 200 ms,
-followed by passing retained CLI/MCP scenarios. The newer baseline/source-inventory
-implementation remains under validation and receives no transferred product credit.
+followed by passing retained CLI/MCP scenarios. Newer `57a319d` passes its local
+gate, original repair fixture and separate
+[installed baseline feature smoke](validation/m7-mcp-baseline-product-smoke-plan.md).
+Actual save/list/get and restarted-client reads preserve the same complete
+Historical snapshot through CLI and MCP; duplicate save refuses overwrite.
+Current-product readers and real-project performance receive no transferred credit.
 The [730 reader/retained pass](validation/m7-reader-730a321-terminal.md) is a separate historical scope.
 The reader p95 values come from the unchanged Python and Rust collectors, rather
 than an MCP-specific timing census; retained MCP scenarios establish functional
