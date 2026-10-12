@@ -217,7 +217,25 @@ fn baseline_definitions_expose_mutation_and_read_only_semantics() {
             .cloned()
             .unwrap_or_else(|| json!([]));
         assert_eq!(actual, json!(required));
+        if name != "list_baselines" {
+            assert_eq!(
+                definition["inputSchema"]["properties"]["name"],
+                baseline_schema()
+            );
+            assert_eq!(
+                definition["inputSchema"]["properties"]["name"]["not"],
+                json!({"enum":[".",".."]})
+            );
+        }
     }
+    let compare = definitions
+        .iter()
+        .find(|definition| definition["name"] == "compare_verification")
+        .unwrap_or_else(|| unreachable!("comparison missing"));
+    assert_eq!(
+        compare["inputSchema"]["properties"]["baseline"],
+        baseline_schema()
+    );
 }
 
 #[cfg(unix)]
