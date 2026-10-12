@@ -26,6 +26,7 @@ filed as is.
 | [VI-0013](VI-0013-verismo-tspec-stock-wait.md) | Stock Verismo tspec waits until the original unit deadline | open; cause unknown | pinned corpus project `verismo`, `source/verismo_tspec/src` |
 
 | [VI-0014](VI-0014-exported-foreign-span-metadata-gap.md) | Exported spans can lack original source-range metadata | open; conservative reuse refused | retained HumanEval diagnostic and reduced typed stock-resolver control; historical export cause unknown |
+| [VI-0015](VI-0015-nondeterministic-trigger-choice.md) | Automatic trigger choice depends on hash iteration order | open; engine same-input oracle fails on `guide/traits.rs` | `corpus/repros/verus-nondeterministic-trigger-choice/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).

@@ -146,3 +146,20 @@ inline with the date and link the ADR that captures it.
     mutable owners and records diagnostic/effect/outcome comparisons. Its
     implementation must pass before it can qualify a new variant; the old
     failed qualification is not relabelled. See ADR 0027's amendment.
+
+15. **Same-input oracle when stock lowering varies within one process.**
+
+    The source-engine conformance arm (`sail-conformance engine`) runs the
+    owner-amended same-input oracle on every restored preparation hit. On
+    `verus-examples/examples/guide/traits.rs` it fails in most runs (seven of
+    ten repetitions on Linux x86-64): the restored focused-phase lowering and
+    a fresh lowering in the same callback chose different automatic triggers
+    for one quantifier (VI-0015). Stock Verus makes both choices across runs,
+    each engine transcript without the oracle equalled a stock transcript byte for byte, and
+    verdicts and diagnostics match plain Verus. The oracle cannot distinguish
+    this from a preparation defect, so the arm, as wired into
+    `ci/run.sh conformance`, fails on this unit. Options include keeping the
+    engine unqualified until trigger choice is deterministic, disabling
+    preparation reuse for buckets whose lowering is order-sensitive, or
+    classifying such mismatches as unstable under explicit evidence. No
+    normalization or classification change has been made.

@@ -21,3 +21,14 @@ input must agree. Independent full target verification and final compiler checks
 remain required. Engine receipts bind the engine manifest, Sail binary and
 Cargo configuration; solver entries still bind the exact actual input bytes and
 solver configuration. See `docs/verus-issues/VI-0011-cargo-no-vstd-launcher-mode.md`.
+
+The source engine is not a verdict-changing mode: its reports keep
+`mode: default` and record `engine` provenance, and `sail-conformance engine`
+compares its full phase with plain Verus. One engine option is opt-in because
+its correctness rests on a key's dependency coverage rather than content
+addressing alone (charter rule 6): `SAIL_ENGINE_PERSISTENT_PREPARATION=1`
+reuses prepared lowering across invocations and edits. It is not intended to
+change any verdict, but a real hit is not compared with fresh lowering at
+runtime. It is part of the proof context, so its receipts never collide with
+default ones, and results report `engine.persistent_preparation: true`.
+Without it, preparation reuse stays inside one compiler invocation.

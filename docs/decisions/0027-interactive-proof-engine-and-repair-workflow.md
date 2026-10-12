@@ -13,6 +13,17 @@ manifest. Interactive requests reject missing or incompatible installations;
 an engine fault invalidates its preparation state and falls back to stock
 verification without manufacturing a successful receipt.
 
+Per target, an engine driver whose output lacks a normal compiler seal, whose
+seal contradicts its exit status or `--output-json` document, or whose output
+is malformed reruns the exact stock invocation. That target's report is the
+stock report, labelled `engine.established_by: stock-fallback`; it publishes no
+proof receipt and cannot accept a repair. A fault that stops the engine run
+before any target can fall back (for example while the engine identifies its
+toolchain) runs an independent stock full verification instead. A repair then
+records `batch.engine_fault` (`SAIL3123`), retains the stock `full` report and
+is never accepted. Errors that also stop stock verification are returned
+unchanged.
+
 `sail repair-check --function F --engine interactive` performs a focused check
 and an independent full validation in one compiler callback for one source
 revision. Package and library/binary selection are explicit. Rust checking
@@ -36,8 +47,20 @@ Preparation reuse caches lowering, not verification verdicts. Keys bind all
 semantic global inputs, exact bucket membership and order, settings, source
 and span bindings, and naming/counter state. Entries restore all mutable
 lowering and diagnostic effects. Unknown coverage, changed spans or incomplete
-checkpoint support cause a miss. The global preparation budget is 512 MiB,
-with one active workspace verification worker. The engine preserves stock Verus
+checkpoint support cause a miss. The configured global preparation budget is
+512 MiB, with one active workspace verification worker; the selected runtime's
+accounting does not establish it as a physical memory bound (see
+`docs/known-issues.md` and `engine/verus/README.md`).
+
+By default, preparation reuse stays inside one compiler invocation: Sail gives
+each engine driver a private preparation directory that is removed when it
+exits. Persistent reuse across invocations and edits keys on Verus's pruned
+crate and a selected argument tuple, and a real hit is not compared with fresh
+lowering at runtime, so it would make correctness depend on that key's
+dependency coverage (charter rule 6). It therefore requires the explicit
+`SAIL_ENGINE_PERSISTENT_PREPARATION=1` opt-in, which is part of the proof
+context and is reported as `engine.persistent_preparation` in project, report
+and function provenance. The engine preserves stock Verus
 bucket concurrency; a global preparation gate serializes cache admission,
 encoding and restoration. Batch-local reuse and reuse across edits
 are reported separately: an ephemeral Cargo driver must not claim persistent
@@ -47,7 +70,11 @@ cross-edit cache hits.
 
 Repair output retains separate focused and full ProjectResults, exact target
 identity (package ID, name and kind), revision/context identity and engine
-provenance. Background repair validation uses the same durable job machinery
+provenance. Engine provenance is additive in the version-one schemas: the
+project result's `engine` names the engine, its manifest digest and the
+preparation policy; each engine-requested report and function adds
+`engine.established_by` (`engine` or `stock-fallback`). Stock output omits
+these fields and is byte-for-byte unchanged. Background repair validation uses the same durable job machinery
 as CLI and MCP verification. Submission options negotiate a new worker
 capability/socket version so an old worker cannot silently ignore interactive
 engine or repair semantics.
@@ -122,7 +149,10 @@ catalogues, and a failed speed gate remains visible.
 
 Correctness compares full verdicts and diagnostics with independent stock
 runs, and cached versus fresh lowering solver input bytes from the same
-compiler input (the owner amendment below). Include full regressions after a
+compiler input (the owner amendment below). The `sail-conformance engine` arm
+does both on the corpus: the engine's full phase against plain Verus with the
+ADR 0009 comparison, and the same-input oracle on every restored hit; it runs
+with `ci/run.sh conformance` on every tier. Include full regressions after a
 successful focus, late borrow/EXEC
 errors, bitvector failures, recursive obligations, duplicated diagnostics,
 stale span checkpoints, preserved-mtime content edits, aliases/configuration

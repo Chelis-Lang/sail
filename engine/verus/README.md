@@ -18,8 +18,9 @@ reported proof, VIR and late EXEC errors. This flag describes completion, not
 success: the full JSON, exit status, selected scope and coherent input checks
 still determine authority. Missing or malformed completion, internal panic,
 signal, or malformed full output requires the stock fallback. The source patch
-and installed runtime identity change; the prepared codec remains version 2
-because no typed lowering representation changed.
+and installed runtime identity change. The selected patch's portable
+checkpoint format is version 3 (`PortableView`/`Portable` in `sail_engine.rs`);
+a restore rejects every other version.
 
 ## Prepared lowering checkpoint
 
@@ -86,9 +87,10 @@ We bound and validate that token before encoding it. Neither SpanData Debug nor
 interners for long or complex spans. The minimal reproduction is in
 `corpus/repros/engine-span-data-worker/`.
 
-Local provenance has a new `local/raw-fields/v2` domain, the complete constructor
-key has a v2 domain, and portable checkpoints require version 2. Older entries
-cannot be restored. Every miss runs the same exact field/owner hashing as a memo
+Local provenance has a `local/raw-fields/v2` domain, the complete constructor
+key uses the `sail-prepared/graph-ledger/current-literal-missing-original-range/v10`
+domain, and portable checkpoints require version 3. Older entries cannot be
+restored. Every miss runs the same exact field/owner hashing as a memo
 hit, and every current span binding is still resolved and checked. No raw Span,
 TyCtxt, or SourceMap is retained across callbacks. The memo never survives
 `finish_cache` or a compiler callback. Its fixed table never
@@ -154,6 +156,18 @@ process RSS; temporary budget arithmetic above is separate. `batch_hits` counts
 RAM-entry restores, and `persistent_hits` counts validated file restores. Parallel
 workers can restore files written earlier in the same batch, so the persistent
 count alone does not prove reuse across edits.
+
+Sail passes `SAIL_ENGINE_PREPARED_DIR` to every engine driver. By default it
+names a directory private to that one compiler invocation, removed when the
+driver exits: the focused phase can serve the same invocation's full phase, but
+no entry reaches another invocation or source revision. Persistent cross-edit
+reuse under `<cache>/engine-prepared` requires the explicit
+`SAIL_ENGINE_PERSISTENT_PREPARATION=1` opt-in, because its key binds Verus's
+pruned crate and a selected argument tuple and a real hit is not compared with
+fresh lowering at runtime (charter rule 6). The opt-in is part of the proof
+context and is reported as `engine.persistent_preparation`. An engine fault
+removes the persistent directory's entries. The runtime is unchanged by this
+policy; it only reads the directory Sail names.
 
 Persistent files bind version, exact input key and body digest. A distinct
 shared directory limit of 512 MiB includes committed and temporary files;

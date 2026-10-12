@@ -69,6 +69,7 @@ omitted when no portfolio was requested.
 | `diagnostics` | array | Verus's diagnostics as data (see [Diagnostics](#diagnostics)). |
 | `summary` | object | Counts over all functions: `functions`, `verified`, `failed`, `unknown`, `provisional`, `unstable`. |
 | `error` | object \| null | `code` and `message` when sail could not run Verus at all. |
+| `engine` | object (optional) | Only for an explicitly selected source engine (ADR 0027); see [Engine provenance](#engine-provenance). Omitted for stock verification. |
 
 A crate has a `name` (from its functions' paths), `verus` (Verus's own
 `verified`, `errors`, `success` and `encountered_vir_error`), and `functions`,
@@ -85,7 +86,7 @@ sorted by name.
 | `tier` | `confirmed` or `provisional`. |
 | `unstable` | Whether any of its answers could plausibly differ between plain Verus runs: a proof that used more than half its rlimit, or a give-up from resource exhaustion or near the limit (ADR 0009); also true when explicit replay measurement observes both proofs and failures. |
 | `verus_success` | Verus's own `success` for it, verbatim. Incomplete for bit-vector queries (`docs/verus-issues/VI-0003`). |
-| `provenance` | `mode`; optional portfolio `configuration.seed`; `source` (`fresh`, `cache`, `mixed` or `unrecorded`); `checks_solved`, `checks_served` and `checks_unrecorded`. |
+| `provenance` | `mode`; optional portfolio `configuration.seed`; `source` (`fresh`, `cache`, `mixed` or `unrecorded`); `checks_solved`, `checks_served` and `checks_unrecorded`; optional `engine` for source-engine results ([Engine provenance](#engine-provenance)). |
 | `timing` | `smt_micros` and `rlimit`, as Verus reports them. |
 | `fragility` | `{score, runs, proved}` after an explicit complete replay measurement; otherwise `null`, with attribution notes when measurement is incomplete. |
 | `obligations` | Its obligations, or `null` if attribution was unavailable for it. |
@@ -198,6 +199,23 @@ A function's `provenance.source` summarises its checks:
 - `mixed`: some of each;
 - `unrecorded`: at least one check has no record.
 
+## Engine provenance
+
+Reports from the optional `interactive` source engine (`--engine interactive`,
+ADR 0027) carry an `engine` object at the top level and in every function's
+`provenance`:
+
+| Field | Meaning |
+|---|---|
+| `name` | `interactive`. |
+| `manifest_sha256` | SHA-256 of the validated engine build manifest. |
+| `established_by` | `engine`: the engine's complete, sealed full phase produced the report. `stock-fallback`: the engine faulted and the exact stock Verus invocation produced it; such a report publishes no proof receipt and cannot accept a repair. |
+| `persistent_preparation` | Whether the explicit `SAIL_ENGINE_PERSISTENT_PREPARATION=1` opt-in enabled cross-edit prepared-lowering reuse. Reuse within one compiler invocation is always available. |
+
+`mode` stays `default`: the engine is not a verdict-changing mode, and its
+conformance arm compares it with plain Verus. Managed project results add the
+same identity (without `established_by`) as a top-level `engine` field.
+
 ## Diagnostics
 
 Each top-level `error`, `warning`, `note` or `help` block on stderr becomes
@@ -232,6 +250,9 @@ removed, renamed, or given a different meaning; any such change is version 2.
 Consumers must ignore fields they do not know. The published JSON Schema is
 strict (`additionalProperties: false`), so that sail's own tests catch drift.
 Validate against the schema of the version you were built for.
+
+The optional `engine` fields above were added within version 1. They are
+omitted for stock verification, whose documents are byte-for-byte unchanged.
 
 With `--portfolio accept-first-proof`, optional `portfolio` evidence records the
 ordered seeds, each independent attempt (report, exit, timing, infrastructure

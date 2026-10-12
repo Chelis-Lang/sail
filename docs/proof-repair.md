@@ -19,10 +19,20 @@ unfinished M7 acceptance.
 
 The optional `interactive` engine is a Sail-managed build of the pinned Verus
 source. It is selected explicitly. Stock verification retains its existing
-behavior. An unavailable or invalid engine returns a setup error. An internal
-runtime failure retains its failed evidence and falls back to stock full verification;
-missing focused evidence cannot be fabricated or labelled a successful batch.
-Inspect `batch.batched`, focus and selection errors alongside the full report.
+behavior. An unavailable or invalid engine returns a setup error (`SAIL3120`).
+An internal runtime failure retains its failed evidence and falls back to stock
+full verification; missing focused evidence cannot be fabricated or labelled a
+successful batch. A target whose engine driver crashed, produced malformed
+output, or sealed without normal termination or inconsistently with its exit
+status and output reports the exact stock result with
+`engine.established_by: stock-fallback`, publishes no proof receipt and cannot
+accept the repair. A fault before any target could run falls back to an
+independent stock full verification and records `batch.engine_fault`
+(`SAIL3123`); the repair is not accepted. Either fault removes persistent
+preparation entries when that opt-in is enabled. Inspect `batch.batched`,
+focus, selection errors and `engine_fault` alongside the full report, whose
+reports and functions name their `engine` provenance
+([output schema](output-schema.md#engine-provenance)).
 
 Inspect or register an already built validated engine:
 
@@ -83,6 +93,22 @@ cleaning. See [build recovery and limits](managed-cold-start.md).
 The private worker exits with the full phase's status so a completed proof is
 not mistaken for an infrastructure failure; the public repair command exits
 nonzero when the repair is not accepted.
+
+Prepared-lowering reuse stays inside one compiler invocation by default: each
+engine driver gets a private preparation directory, removed when it exits, so
+the focused phase can serve the same driver's full phase but nothing is reused
+across invocations or edits. Persistent cross-edit reuse under
+`<cache>/engine-prepared` is an explicit opt-in:
+
+```sh
+SAIL_ENGINE_PERSISTENT_PREPARATION=1 sail repair-check ... --engine interactive
+```
+
+Its key binds Verus's pruned crate and a selected argument tuple, and a real
+hit is not compared with fresh lowering at runtime, so correctness would depend
+on that key's dependency coverage (charter rule 6). The opt-in is part of the
+proof context (its results and receipts never mix with default ones) and every
+result reports `engine.persistent_preparation: true`.
 
 Optional `batch.preparation` records retain source-reported counters separately
 for each observed Verus driver. `batch_hits` counts restores from the in-memory
