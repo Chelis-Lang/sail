@@ -131,13 +131,20 @@ impl Cache {
         }
         Ok(envelope.body)
     }
+    /// The slot. Every critical section only clones, compares, takes or
+    /// replaces one `Arc` (old entries drop after the guard), so waiting is
+    /// bounded. `try_lock` silently dropped admissions, promotions and
+    /// publications whenever concurrent callers touched the slot at once.
+    /// A poisoned slot is treated as unavailable: decode fresh, retain nothing.
+    fn slot(&self) -> Option<std::sync::MutexGuard<'_, Option<Arc<Entry>>>> {
+        self.entry.lock().ok()
+    }
     fn is_current(&self, expected: &Arc<Entry>) -> bool {
-        self.entry
-            .try_lock()
-            .is_ok_and(|slot| slot.as_ref().is_some_and(|now| Arc::ptr_eq(now, expected)))
+        self.slot()
+            .is_some_and(|slot| slot.as_ref().is_some_and(|now| Arc::ptr_eq(now, expected)))
     }
     fn snapshot(&self) -> Option<Arc<Entry>> {
-        self.entry.try_lock().ok()?.as_ref().map(Arc::clone)
+        self.slot()?.as_ref().map(Arc::clone)
     }
     fn base_size(bytes: usize) -> Option<usize> {
         bytes.checked_add(size_of::<Entry>() + 2 * size_of::<usize>())
@@ -168,7 +175,7 @@ impl Cache {
         self.publish(entry, None);
     }
     fn publish(&self, entry: Arc<Entry>, expected: Option<&Arc<Entry>>) {
-        if let Ok(mut slot) = self.entry.try_lock() {
+        if let Some(mut slot) = self.slot() {
             if expected.is_some_and(|expected| {
                 !slot.as_ref().is_some_and(|now| Arc::ptr_eq(now, expected))
             }) {
@@ -193,9 +200,9 @@ impl Cache {
             return;
         };
         if expected.is_none() {
-            let old = match self.entry.try_lock() {
-                Ok(mut slot) => slot.take(),
-                Err(_) => return,
+            let old = match self.slot() {
+                Some(mut slot) => slot.take(),
+                None => return,
             };
             drop(old);
         }
@@ -722,6 +729,10 @@ mod tests {
                                 Err(error) => return Err(error),
                             }
                         };
+                        // BSD/macOS accepted sockets inherit the listener's
+                        // O_NONBLOCK; a read before the request arrived then
+                        // failed with WouldBlock and dropped the connection.
+                        stream.set_nonblocking(false)?;
                         stream.set_read_timeout(Some(Duration::from_secs(5)))?;
                         stream.set_write_timeout(Some(Duration::from_secs(5)))?;
                         let _: super::super::Request = super::super::read_frame(&mut stream)?;
