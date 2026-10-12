@@ -20,7 +20,11 @@ files. Newly learned raw aliases are refused even if they later resolve to a
 guarded canonical file. Directory/default contracts and build dependencies are
 unsupported. Every declared compilation/execution environment value must match
 the guarded effective environment; per-run or Cargo-injected declarations refuse
-sharing except the pinned explicit `RUSTC_BOOTSTRAP=1`.
+sharing except the pinned explicit `RUSTC_BOOTSTRAP=1`. The shared family/bootstrap
+policy also refuses Cargo dynamic-library variables, `RUSTDOC`, `RUSTC_LINKER`,
+removed `RUSTFLAGS` and dependency metadata. Cargo documents its child environment
+in the [official environment reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts);
+a parent value is not a certificate for an injected child value.
 
 At publication, bounded hashes are compared again, exact sealed output contracts
 are reread, the effective environment is checked again, and both independent
@@ -57,13 +61,13 @@ not construction-allocation, allocator-RSS, kernel or child-process limits.
 Bounded JSON can allocate expanded parsed graphs transiently; no whole-peak
 quota is claimed. [Source identities and limits](source.json) bind the draft.
 
-Seven Linux controls are drafted, all unexecuted. They use actual tiny offline
+Eight Linux controls are drafted, all unexecuted. They use actual tiny offline
 Cargo compilation and original native owners: independent publication while the
 proof guard still refuses generated input; fresh-binary/dep-info/environment
 lineage refusal; restored bytes/mtime and cancellation; external aliases,
 directories, build dependencies and duplicate units; helper loss and invalid
-export recovery; empty exports and scriptless fast refusal; and joint runtime
-identity/sidecar binding. Their Cargo supervisor has a 60-second limit plus a
+export recovery; empty exports and scriptless fast refusal; joint runtime
+identity/sidecar binding; and actual Cargo dynamic-library environment declaration refusal in both publication routes. Their Cargo supervisor has a 60-second limit plus a
 two-second termination policy, file-backed captures capped when read at 1 MiB,
 and bounded error cleanup. Exceptional supervisor teardown does not certify
 complete descendant closure. No control fabricates a Current proof.

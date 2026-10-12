@@ -4,14 +4,14 @@
   "status": "uncompiled and unexecuted; unselected",
   "base": "247cd28",
   "source_sha256": {
-    "crates/sail-verus/src/managed/build_inputs_family.rs": "26159283bab134b2cdbce1acefb7b672b44371598d85f2eda5d5f1d6cc413d00",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "a2c1d7410d6b032bf21b5f320b056eb7168cef30b1314634f476e07efdc14456",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "7e646e8cc9d4f34e2a80a42f865529496b60402d568db49d0ab863123dfebcdc",
+    "crates/sail-verus/src/managed/build_inputs_family.rs": "1f6914fa4dc8a05d5683cb4b4f5aa63bc78352c2343e29df459b75e02a4169ed",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "651968991537c1849296d31cda92923f25f2d59ed4349d05d410a2300bd46581",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "53d1c1636987ced2ed6d301cc222c535fb7b8fd2a4d8c899858eab1c2c776540",
     "crates/sail-verus/src/managed/runner.rs": "7e558e1116ce4ede2aca4d329171fff45adedcd8870156ddd0fd371566d80a7d",
     "crates/sail-verus/src/managed/source_inputs.rs": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
   },
   "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
-  "draft_linux_controls": 7,
+  "draft_linux_controls": 8,
   "sensitivity": {
     "patch": "docs/validation/m7-compiler-script-bootstrap/disable-publication.patch",
     "sha256": "d6a5a2c6a29d618bd1bf3bd0693d295bf8a78fbc55d02abae7102e115256841e",
@@ -60,5 +60,7 @@
     "remove-only-emission real-Cargo sensitivity and restored positive",
     "whole combined gate and original solver",
     "original two-warmup real-project benchmark and unchanged original repair fixture"
-  ]
+  ],
+  "previous_uncompiled_freeze": "f697201db80717ec4d2d94c53855d7cbb22bf59f",
+  "injected_environment_followup": "Shared family/bootstrap policy also refuses dynamic-library path injection, RUSTDOC/RUSTC_LINKER, removed RUSTFLAGS and DEP_ metadata; actual Cargo declaration control drafted."
 }

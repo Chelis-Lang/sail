@@ -527,7 +527,7 @@ fn bootstrap_empty_generation_and_scriptless_workload_do_not_block_recovery() ->
         &fixture.local,
         &fixture.data
     )?);
-    assert!(allowed_environment("RUSTC_BOOTSTRAP"));
+    assert!(super::super::allowed_environment("RUSTC_BOOTSTRAP"));
     assert_eq!(
         effective_value("RUSTC_BOOTSTRAP", Some(&owner.environment)).as_deref(),
         Some("1")
@@ -580,5 +580,49 @@ fn bootstrap_runtime_identity_and_metadata_are_jointly_guarded() -> TestResult {
     assert!(!owner.runtime_matches(&cache, "context"));
     fixture.publish(&mut owner);
     assert!(!fixture.export.exists());
+    Ok(())
+}
+
+#[test]
+fn bootstrap_actual_cargo_injected_environment_is_not_parent_authority() -> TestResult {
+    let fixture = Fixture::new()?;
+    let build = fixture.root.join("build.rs");
+    let text = std::fs::read_to_string(&build)?;
+    std::fs::write(
+        &build,
+        text.replace(
+            "fn main() {",
+            "fn main() { println!(\"cargo:rerun-if-env-changed=LD_LIBRARY_PATH\");",
+        ),
+    )?;
+    let mut owner = fixture.owner()?;
+    fixture.compile()?;
+    let record = fixture
+        .records()?
+        .into_iter()
+        .next()
+        .ok_or("record absent")?;
+    assert!(record.env.contains_key("LD_LIBRARY_PATH"));
+    assert!(record.covered);
+    assert!(super::super::output_matches(&record, &fixture.target));
+    fixture.publish(&mut owner);
+    assert!(!fixture.export.exists());
+    super::super::publish(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &fixture.data,
+    );
+    assert!(!fixture.export.exists());
+    for key in [
+        "RUSTDOC",
+        "RUSTC_LINKER",
+        "RUSTFLAGS",
+        "LD_LIBRARY_PATH",
+        "DEP_METADATA",
+    ] {
+        assert!(!super::super::allowed_environment(key));
+    }
     Ok(())
 }

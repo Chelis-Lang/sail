@@ -379,7 +379,7 @@ impl Bootstrap {
         }
         (self.record_digest(record)? == record.digest).then_some(())?;
         for (key, value) in &record.env {
-            allowed_environment(key).then_some(())?;
+            super::allowed_environment(key).then_some(())?;
             (effective_value(key, Some(&self.environment)) == *value).then_some(())?;
         }
         let calls: Vec<_> = artifacts
@@ -467,33 +467,10 @@ impl Bootstrap {
                 .split_once('=')
                 .map_or((line, None), |(k, v)| (k, Some(v)));
             let actual = effective_value(key, Some(&self.environment));
-            (actual.as_deref() == expected && allowed_environment(key)).then_some(())?;
+            (actual.as_deref() == expected && super::allowed_environment(key)).then_some(())?;
         }
         Some(())
     }
-}
-
-#[cfg(target_os = "linux")]
-fn allowed_environment(key: &str) -> bool {
-    key == "RUSTC_BOOTSTRAP"
-        || !(key.starts_with("SAIL_")
-            || key.starts_with("VERUS_")
-            || key.starts_with("CARGO_")
-            || key.starts_with("RUSTUP_")
-            || [
-                "CARGO",
-                "RUSTC",
-                "RUSTC_WRAPPER",
-                "RUSTC_WORKSPACE_WRAPPER",
-                "OUT_DIR",
-                "HOST",
-                "TARGET",
-                "PROFILE",
-                "OPT_LEVEL",
-                "DEBUG",
-                "NUM_JOBS",
-            ]
-            .contains(&key))
 }
 
 #[cfg(target_os = "linux")]
