@@ -159,7 +159,9 @@ the current corpus.
 - **Conformance.** The standard tier and the edit catalogues, with the mode
   on and off. Per-function verdicts and diagnostics must match plain Verus,
   with unstable units classified as in ADR 0009.
-- **No-history replay.** `sail-bench history` over the standard tier.
+- **No-history replay.** `sail-bench history` over the standard tier. The
+  tool was removed after L11 (rescue L17); restore it from tag
+  `archive/l11-warm-sessions-spike` when this work starts.
   Verdicts and labels must agree, and the measured history spread
   recalibrates the 1% threshold.
 - **Fault injection** (`docs/fault-injection.md`):

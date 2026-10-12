@@ -93,6 +93,10 @@ sail-bench history traces      --z3 $V/z3 --jobs 4 --json history-examples.json
 sail-bench history traces-vstd --z3 $V/z3 --jobs 4 --json history-vstd.json
 ```
 
+The `seeds` and `history` subcommands were removed later (rescue lane L17).
+They remain in the repository's history, for example at tag
+`archive/l11-warm-sessions-spike`; the results are in `bench/results/`.
+
 `sail-bench history` with `--all-checks` gives the per-check data used for
 the ratio figures below. Each analysis took 20 to 45 s of wall time with 4
 jobs. None of the solver runs hit the tool's safety-net timeout.

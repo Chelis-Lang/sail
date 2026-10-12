@@ -9,14 +9,11 @@
 //! sail-bench repair prepare|run ...   (M7 repair acceptance; see sail_bench::repair)
 //! sail-bench report [--out docs/benchmarks.md] FILE...
 //! sail-bench profile <trace-dir>... [--json out.json]
-//! sail-bench seeds   <trace-dir>... --z3 <path> [--seeds N] [--jobs J] [--json out.json]
-//! sail-bench history <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
 //! ```
 //!
 //! `warm` and `edit` start `sail serve` (found next to this binary, like
 //! `sail-z3`) with a fresh cache per unit or edit round; see ADR 0012.
-//! `profile`, `seeds` and `history` analyse shim traces; see
-//! [`sail_bench::cli`].
+//! `profile` analyses shim traces; see [`sail_bench::cli`].
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
@@ -49,7 +46,7 @@ const USAGE: &str = "usage:
                     [--project ID]... [--filter CYCLE_SUBSTR] [--timeout-secs S] [--resume]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
-  sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
+  sail-bench profile <trace-dir>... [--json PATH]";
 
 /// Which corpus units to run.
 struct Selection<'a> {
@@ -947,10 +944,7 @@ fn main() -> ExitCode {
         println!("{USAGE}");
         return ExitCode::SUCCESS;
     }
-    if matches!(
-        args.first().map(String::as_str),
-        Some("profile" | "seeds" | "history")
-    ) {
+    if matches!(args.first().map(String::as_str), Some("profile")) {
         return sail_bench::cli::run(args);
     }
     let result = match args.first().map(String::as_str) {

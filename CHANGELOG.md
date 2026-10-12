@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Removed `sail-bench seeds` and `sail-bench history`. Their survey results
+  stay in `bench/results/`; `sail-bench profile` is the remaining trace
+  analysis and no longer takes `--quiet`.
 - The optional interactive engine is built from Sail's Verus fork
   (`Chelis-Lang/verus`, pinned in `engine/verus/fork.toml`) instead of the
   upstream commit plus `engine/verus/interactive.patch`. `sail engine status`
