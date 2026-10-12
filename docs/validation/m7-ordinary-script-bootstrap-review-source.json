@@ -242,7 +242,7 @@
     "original_oracles_or_deadlines_changed": false
   },
   "remaining_validation": [
-    "eight affected Linux controls",
+    "ten affected Linux controls",
     "remove-only-independent-publication sensitivity and restored positive",
     "affected all-target strict checks",
     "combined gate and original solver",
@@ -374,5 +374,65 @@
       "purpose": "non-UTF-8 input refusal, not proof of relative dep-info publication viability"
     }
   ],
-  "environment_followup_conclusion": "Shared refusal covers unaudited Cargo injected/removed child environment. Original publication may write empty records; exact empty records, begin=false and forced clean prove absence of reuse authority. The b4 correction borrows the unchanged report-owned context hash and only renames bootstrap locals."
+  "environment_followup_conclusion": "Shared refusal covers unaudited Cargo injected/removed child environment. Original publication may write empty records; exact empty records, begin=false and forced clean prove absence of reuse authority. The b4 correction borrows the unchanged report-owned context hash and only renames bootstrap locals.",
+  "workspace_path_followup_review": {
+    "commit": "ebcd6f5328664abc10ae915acffc6b3dfc6331c2",
+    "authority_ack": true,
+    "remaining_static_blocker": false,
+    "source": [
+      {
+        "path": "crates/sail-verus/src/managed/build_inputs_family.rs",
+        "bytes": 27398,
+        "sha256": "caef3ba1fa9335237ca2880b61939c634801cea79aea943430a592db9d78d6c8"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/build_inputs_bootstrap.rs",
+        "bytes": 25331,
+        "sha256": "2874cfbf2934da55b23c0b8417b72b3823407c345267ebef7491f6be5c2842b5"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs",
+        "bytes": 28625,
+        "sha256": "931dbf03c15eaf90e1ced1005b6bee93218393c9b41136fcf8ee8e09d7815788"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/runner.rs",
+        "bytes": 118717,
+        "sha256": "9a9be06d242c3a0ee7068700146952c05215f1cc57334c222d57118a331341e8"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/source_inputs.rs",
+        "bytes": 7707,
+        "sha256": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+      }
+    ],
+    "source_manifest": {
+      "path": "docs/validation/m7-compiler-script-bootstrap/source.json",
+      "bytes": 5979,
+      "sha256": "b932f04ca00ab88189894e1c8e0a01cba80c7cad5f6551f57a9f2fa2001c8072"
+    },
+    "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "cargo_cwd_source_manifest": {
+      "path": "docs/validation/m7-compiler-script-bootstrap/cargo-cwd-source.json",
+      "bytes": 3595,
+      "sha256": "ebcef4d5d1b6d2252a29c856610896182908ac1fe55ad868e0247fc17b191550"
+    },
+    "all_three_capture_result_depinfo_and_duration_seals_independently_match": true,
+    "sensitivity_patch_sha256": "e69485c680115222e5db2c7ec8d68af105fb3cc12ccd0ea0b08971eb44c193c9",
+    "drafted_controls": 10,
+    "native_controls_executed_in_this_review": 0,
+    "supported_role": "canonical absolute metadata workspace; relative local-path source under workspace only; exact header, source, raw membership and joint native barriers; absolute inputs unchanged",
+    "override_refusals": [
+      "actual config.args -Z or --config",
+      "CARGO_UNSTABLE_* and test-channel override",
+      "guarded config unstable/include tables"
+    ],
+    "extra_guarded_inputs": [
+      "exact virtual workspace Cargo.toml",
+      "exact virtual workspace Cargo.lock"
+    ],
+    "allocation_correction": "one joined prerequisite at a time; no duplicate prefixed path vector",
+    "source_manifest_stale_terminal_wording": "third_native_gate says terminal pending; actual 602 terminal FAIL bound separately in m7-bootstrap-602ec67-gate-failure.json",
+    "oracles_or_proof_authority_changed": false
+  }
 }
