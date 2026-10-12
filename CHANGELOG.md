@@ -15,20 +15,19 @@ semantic versioning once the API is published.
 - Add an optional bootstrap refusal-stage diagnostic using the
   existing bounded setup sink. Fixed rows contain no paths or environment data;
   original checks and proof authority remain unchanged. Host retention controls
-  pass. The selected combined `b89546c` source awaits native validation after a
-  retained strict test failure and an interrupted validation scope. Later closure
-  observations do not promote that interrupted result; product validation remains
-  pending.
+  pass. Selected `b89546c` passes the complete 658-test gate and 41-test solver
+  suite, including all three new diagnostic controls. Earlier strict and
+  interrupted outcomes remain retained; product validation remains pending.
   See the
   [candidate record](docs/validation/m7-compiler-script-bootstrap/refusal-diagnostic.json).
 
 - Select a conservative compiler-script recovery correction for validation
   after the failed c2 warmup: exclude only proven always-false non-workspace
-  dependency scripts from
-  unobserved coverage, and freshly compile eligible scripts during a guarded
-  missing-target retry. Proof freshness and receipt checks are unchanged; native
-  validation of selected `b89546c` and unchanged benchmark validation remain pending.
-  Earlier fixture and strict failures remain retained. See the
+  dependency scripts from unobserved coverage, and freshly compile eligible scripts during a guarded
+  missing-target retry. Proof freshness and receipt checks are unchanged. Selected
+  `b89546c` passes the real Cargo recovery control, complete gate and solver;
+  product and unchanged benchmark validation remain pending. Earlier fixture,
+  strict and interrupted outcomes remain retained. See the
   [source record](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
 
 - Record the unchanged real-project repair benchmark's `730a321` bootstrap

@@ -170,8 +170,9 @@ script that fails if executed. It requires first-pass fresh compilation, refusal
 of the replaced reused journal, actual retry cleaning/recompilation, independent
 export admission and subsequent input-barrier readiness. It exercises shared
 production retry selection, not actual source-engine verification. Original
-controls remain unchanged. The combined `b89546c` source is selected for native
-validation; its complete gate and solver are pending. Fresh product and unchanged
+controls remain unchanged. The combined `b89546c` source passes native
+validation: 658/658 workspace tests, all remaining gate steps and 41/41 original
+solver tests pass. Fresh product and unchanged
 real-project warmups/benchmark remain pending. The
 [source record](scheduling-recovery.json) separately binds historical authored
 hashes, selected source hashes and private metadata digests; no latency, speedup
@@ -194,8 +195,13 @@ audit found no live or unavailable known-group or other process rows, with
 unchanged. That later audit permits a fresh actor; it does not promote the
 interrupted scope or certify its earlier closure. Fresh `b89546c` validation
 uses the corrected absolute retention path and unchanged production sources;
-its gate and solver are pending. No production guard, oracle, deadline or
-performance claim changed.
+its complete gate and original solver now pass. The real Cargo retry/export/
+original-input-barrier control passes in 4.775 seconds. Known phase groups have
+no live or unavailable rows, all retained terminated rows are task-complete, and
+source/protected/PID1 identity is unchanged. The retained ELF is an
+operator-selected copy, not an execution binding. Product and benchmark
+validation remain pending; no historical failure is promoted or performance
+claim established.
 
 ### Selected optional refusal-stage diagnostic
 
@@ -228,7 +234,9 @@ disabled serialization and first refusal, shared sink limits/contention, and
 actual Cargo publication with observation on/off plus an unchanged
 unsupported-role refusal. The selected `d37e388` gate failed strict checks before
 executing them. Corrected `22d6082` validation was interrupted with sticky
-uncertainty; fresh `b89546c` native validation remains pending. The
+uncertainty. Fresh `b89546c` passes all three new Rust controls within the complete
+gate, followed by the original solver suite. The
 [source inventory](refusal-diagnostic.json) preserves authored `f91e21f` hashes
 separately from the selected combined sources, including the merged fixture.
+The existing record seals every phase log, controller, result and source archive.
 There is no installed-product validation or historical first-export cause claim.
