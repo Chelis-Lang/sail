@@ -96,10 +96,9 @@ Exit: exact stock full-result/diagnostic conformance and cached-versus-fresh
 solver bytes from the same compiler input (ADR 0027 amendment); full local corpus
 and affected source tests; established reads below 200 ms p95 during active
 verification; and at least **2× median improvement on each** of frozen
-human-eval-verus and Vest repair catalogues in the local Linux container.
-The owner will rerun reference measurements on a native Linux host later;
-container emulation is labelled and does not block implementation. Three
-rounds and spread are required. Batch-local preparation reuse is distinguished
+human-eval-verus and Vest repair catalogues, measured on a native x86-64
+Linux host ([ADR 0038](decisions/0038-m7-rescue.md)). Three rounds and spread
+are required; every sample is recorded and judged afterwards. Batch-local preparation reuse is distinguished
 from persistent reuse across edits. No successful focus is accepted before
 complete current full validation. M7 remains incomplete until these gates pass.
 
