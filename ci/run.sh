@@ -19,17 +19,16 @@
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
 #                        cache on (fill, then warm), then the source-engine
-#                        arm (validated prebuilt engine vs plain Verus). `pr`
-#                        limits the fast tier to the guide examples and runs
-#                        the engine arm without the same-input byte oracle;
-#                        otherwise extra arguments (for example `--project
-#                        anvil`) are passed to sail-conformance
+#                        arm (validated prebuilt engine vs plain Verus on
+#                        verdicts and diagnostics). `pr` limits the fast
+#                        tier to the guide examples; otherwise extra
+#                        arguments (for example `--project anvil`) are
+#                        passed to sail-conformance
 #   release              local-only, before releases and when changing the
 #                        tooling it covers: unit tests of the acceptance and
 #                        benchmark tooling and of the profile/bench examples,
 #                        installed MCP/live-service transport controls, and
-#                        the repair engine's provenance and persistent-
-#                        preparation controls
+#                        the repair engine's provenance checks
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
@@ -298,21 +297,14 @@ RS
     [ "$entries" -gt 0 ]
     # Source-engine arm (ADR 0027): the validated prebuilt engine's focused
     # and full phases, the full phase compared with plain Verus like the arms
-    # above. Other tiers also run the same-input cached-versus-fresh byte
-    # oracle on every restored preparation hit, with four confirming fresh
-    # lowerings so stock trigger nondeterminism (VI-0015) cannot flake it (ADR
-    # 0038 amendment). The PR subset keeps only the user-level comparison:
-    # the oracle guards preparation reuse, which is not on by default. The CI
-    # image always provides the engine; a host run without one must opt out
-    # explicitly, and CI cannot.
+    # above. The CI image always provides the engine; a host run without one
+    # must opt out explicitly, and CI cannot.
     if [ "${SAIL_CONFORMANCE_ENGINE:-1}" = 0 ] && [ "${CI:-}" != true ]; then
       echo "conformance: engine arm explicitly skipped (SAIL_CONFORMANCE_ENGINE=0)" >&2
     else
       : "${SAIL_ENGINE_BUILD:?the engine arm needs the validated prebuilt engine (SAIL_ENGINE_BUILD)}"
-      oracle=(--oracle-fresh-arms 4)
-      if [ "${1:-}" = pr ]; then oracle=(--no-oracle); fi
       ./target/release/sail-conformance engine "${select[@]}" --jobs "$jobs" \
-        --engine-build "$SAIL_ENGINE_BUILD" "${oracle[@]}" --out "$out/engine"
+        --engine-build "$SAIL_ENGINE_BUILD" --out "$out/engine"
     fi
     ;;
 

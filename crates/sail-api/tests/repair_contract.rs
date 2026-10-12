@@ -60,7 +60,6 @@ fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits(
         compiler_invocations: 1,
         batched: true,
         selection_error: None,
-        preparation: None,
         engine_fault: None,
     };
     assert!(batch.accepted());
@@ -96,13 +95,11 @@ fn engine_fault_and_stock_fallback_never_accept_a_repair() -> Result<(), Box<dyn
         name: "interactive".into(),
         manifest_sha256: "ab".repeat(32),
         established_by,
-        persistent_preparation: false,
     };
     let mut full = success(project()?);
     full.engine = Some(sail_api::project::EngineIdentity {
         name: "interactive".into(),
         manifest_sha256: "ab".repeat(32),
-        persistent_preparation: false,
     });
     full.targets[0].report.engine = Some(engine(sail_api::output::EngineEstablishment::Engine));
     let mut batch = BatchResult {
@@ -112,7 +109,6 @@ fn engine_fault_and_stock_fallback_never_accept_a_repair() -> Result<(), Box<dyn
         compiler_invocations: 1,
         batched: true,
         selection_error: None,
-        preparation: None,
         engine_fault: None,
     };
     assert!(batch.accepted(), "engine-established control");
@@ -136,55 +132,5 @@ fn engine_fault_and_stock_fallback_never_accept_a_repair() -> Result<(), Box<dyn
     let schema: serde_json::Value =
         serde_json::from_str(include_str!("../schema/repair-result-v1.json"))?;
     assert!(schema["properties"]["batch"]["properties"]["engine_fault"].is_object());
-    Ok(())
-}
-#[test]
-fn preparation_stats_preserve_driver_counters_without_inventing_support()
--> Result<(), Box<dyn std::error::Error>> {
-    let raw = r#"{"version":1,"enabled":true,"batch_hits":2,"persistent_hits":1,"misses":3,"peak_retained_bytes":1024,"memory_budget_bytes":4096,"disk_budget_bytes":8192}"#;
-    let stats: sail_api::repair::PreparationStats = serde_json::from_str(raw)?;
-    assert_eq!(stats.batch_hits, 2);
-    assert_eq!(stats.persistent_hits, 1);
-    assert_eq!(stats.peak_retained_bytes, 1024);
-    assert!(stats.target.is_none() && stats.phase.is_none());
-    assert_eq!(
-        serde_json::to_value(&stats)?,
-        serde_json::from_str::<serde_json::Value>(raw)?
-    );
-    for malformed in [
-        raw.replace("\"version\":1", "\"version\":2"),
-        raw.replace("\"batch_hits\":2", "\"batch_hits\":-1"),
-        raw.replace("\"batch_hits\":2", "\"batch_hits\":18446744073709551616"),
-        raw.replace("\"batch_hits\":2", "\"batch_hits\":2,\"batch_hits\":3"),
-        raw.replace("\"enabled\":true", "\"enabled\":true,\"verified\":true"),
-    ] {
-        assert!(
-            serde_json::from_str::<sail_api::repair::PreparationStats>(&malformed).is_err(),
-            "{malformed}"
-        );
-    }
-    let old = BatchResult {
-        focus: None,
-        full: success(project()?),
-        manifest_sha256: "manifest".into(),
-        compiler_invocations: 1,
-        batched: true,
-        selection_error: None,
-        preparation: None,
-        engine_fault: None,
-    };
-    let json = serde_json::to_value(&old)?;
-    assert!(json.get("preparation").is_none());
-    let decoded: BatchResult = serde_json::from_value(json)?;
-    assert!(decoded.preparation.is_none());
-    let with_stats = BatchResult {
-        preparation: Some(vec![stats]),
-        ..old.clone()
-    };
-    assert_eq!(
-        with_stats.accepted(),
-        old.accepted(),
-        "telemetry cannot authorize proof acceptance"
-    );
     Ok(())
 }

@@ -393,7 +393,6 @@ fn repair_job_preserves_focus_success_full_failure_and_never_promotes_preliminar
         compiler_invocations: 1,
         batched: true,
         selection_error: None,
-        preparation: None,
         engine_fault: None,
     };
     let mut stored = sail_api::repair::ResultDocument::from(batch);

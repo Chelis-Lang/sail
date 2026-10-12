@@ -6,8 +6,6 @@
 //!                        [--trace] [--out DIR] [--shim PATH]
 //! sail-conformance engine [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--out DIR] [--engine-build PATH] [--no-focus]
-//!                        [--no-oracle] [--oracle-fault KIND]
-//!                        [--oracle-fresh-arms N]
 //! sail-conformance rust-verify-test [--filter S]... [--every N] [--jobs N] ...
 //! ```
 //!
@@ -15,17 +13,7 @@
 //! Verus, 1 if any unit differs, and 2 on usage or infrastructure errors.
 //! `engine` is the source-engine arm (ADR 0027): the optional interactive
 //! engine's full phase against plain Verus, with the same comparison and
-//! instability rules, plus completion-seal and same-input byte-oracle checks.
-//! With `--oracle-fault`, it is a negative control instead: it exits 0 only
-//! if every unit with a restored preparation hit reports the injected
-//! mismatch, at least one such unit exists, and at least one injected
-//! mismatch is confirmed hard (a second fresh lowering reproduces the first).
-//!
-//! A failed oracle check is confirmed by the oracle's second, independent
-//! fresh lowering in the same callback (ADR 0038, amendment of 2026-10-12):
-//! if the two fresh lowerings differ, the unit is `unstable` (VI-0015),
-//! provided an engine run without the oracle matches plain Verus; if they
-//! agree, the mismatch is a hard failure.
+//! instability rules on verdicts and diagnostics, plus a completion-seal check.
 #![forbid(unsafe_code)]
 
 mod rust_verify_test;
@@ -36,9 +24,7 @@ use std::process::ExitCode;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use sail_conformance::engine::{
-    Confirmation, EngineStats, ORACLE_MISMATCH, OracleRecord, confirm, oracle_records,
-};
+use sail_conformance::engine::EngineStats;
 use sail_conformance::{Comparison, Verdict, classify};
 use sail_verus::corpus::{Corpus, Tier, Unit};
 use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit, run_unit};
@@ -53,18 +39,13 @@ const USAGE: &str = "usage:
 
   sail-conformance engine [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                          [--jobs N] [--out DIR] [--plain-runs N] [--confirm-runs N]
-                         [--engine-build PATH] [--no-focus] [--no-oracle]
-                         [--oracle-fault order|effects|body] [--oracle-fresh-arms N]
+                         [--engine-build PATH] [--no-focus]
 
   sail-conformance rust-verify-test ...   (see `rust-verify-test --help`)
 
   --engine-build PATH  the validated interactive engine build (default
                     $SAIL_ENGINE_BUILD)
   --no-focus        run only the engine's full phase (no focused selector)
-  --no-oracle       skip the same-input cached-versus-fresh byte oracle
-  --oracle-fault K  negative control: inject oracle fault K and require detection
-  --oracle-fresh-arms N  confirming fresh lowerings after an oracle mismatch
-                    (default 1, at most 8; ADR 0038)
 
   --plain-runs N    plain Verus runs per unit up front (default 1)
   --confirm-runs N  extra plain runs when sail differs, to tell plain-Verus
@@ -84,9 +65,6 @@ struct Options {
     confirm_runs: usize,
     engine_build: Option<PathBuf>,
     focus: bool,
-    oracle: bool,
-    oracle_fault: Option<String>,
-    oracle_fresh_arms: usize,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -107,9 +85,6 @@ fn parse(args: &[String]) -> Result<Options, String> {
             .filter(|v| !v.is_empty())
             .map(PathBuf::from),
         focus: true,
-        oracle: true,
-        oracle_fault: None,
-        oracle_fresh_arms: 1,
     };
     while let Some(arg) = it.next() {
         let mut value = || {
@@ -144,23 +119,6 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--out" => o.out = Some(value()?.into()),
             "--engine-build" => o.engine_build = Some(value()?.into()),
             "--no-focus" => o.focus = false,
-            "--no-oracle" => o.oracle = false,
-            "--oracle-fault" => {
-                let fault = value()?;
-                if !["order", "effects", "body"].contains(&fault.as_str()) {
-                    return Err(format!(
-                        "--oracle-fault must be order, effects or body\n{USAGE}"
-                    ));
-                }
-                o.oracle_fault = Some(fault);
-            }
-            "--oracle-fresh-arms" => {
-                o.oracle_fresh_arms = value()?
-                    .parse()
-                    .ok()
-                    .filter(|n| (1..=8).contains(n))
-                    .ok_or_else(|| "--oracle-fresh-arms needs a number from 1 to 8".to_owned())?;
-            }
             "--shim" => o.shim = Some(value()?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
@@ -234,17 +192,7 @@ struct Summary {
 #[derive(Serialize, Default)]
 struct EngineSummary {
     manifest_sha256: String,
-    oracle: bool,
-    oracle_fault: Option<String>,
     focused_units: usize,
-    units_with_hits: usize,
-    hits: usize,
-    oracle_checks: usize,
-    oracle_failures: usize,
-    oracle_hard_failures: usize,
-    oracle_unstable: usize,
-    oracle_unstable_units: usize,
-    oracle_not_applicable: usize,
 }
 
 #[derive(Serialize)]
@@ -362,20 +310,14 @@ struct EngineArm {
     verus: PathBuf,
     cargo_verus: PathBuf,
     focus: bool,
-    oracle: bool,
-    oracle_fault: Option<String>,
-    oracle_fresh_arms: usize,
 }
 
 impl EngineArm {
-    fn run(&self, function: Option<&String>, oracle: bool) -> Solver {
+    fn run(&self, function: Option<&String>) -> Solver {
         Solver::Engine(EngineRun {
             verus: self.verus.clone(),
             cargo_verus: self.cargo_verus.clone(),
             function: function.cloned(),
-            oracle,
-            oracle_fault: self.oracle_fault.clone().filter(|_| oracle),
-            oracle_fresh_arms: Some(self.oracle_fresh_arms),
         })
     }
 }
@@ -469,32 +411,8 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
     }
 }
 
-/// The engine with the same focus and no oracle, and its seal issues.
-fn engine_without_oracle(
-    cx: &Context,
-    engine: &EngineArm,
-    unit: &Unit,
-    base: &Path,
-    function: Option<&String>,
-    single_crate: bool,
-) -> Result<(RunRecord, Vec<String>), String> {
-    let dir = base.join("engine-no-oracle");
-    let run = run_unit(cx.installed, unit, &engine.run(function, false), &dir)
-        .map_err(|e| e.to_string())?;
-    let events = std::fs::read_to_string(dir.join(sail_verus::run::engine_files::EVENTS))
-        .unwrap_or_default();
-    let (issues, _) = sail_conformance::engine::check(&run, &events, None, single_crate);
-    Ok((
-        run,
-        issues
-            .into_iter()
-            .map(|i| format!("without oracle: {i}"))
-            .collect(),
-    ))
-}
-
 /// The engine arm for one unit: the engine's full phase against plain Verus
-/// with ADR 0009 confirmation, plus the engine-only seal and oracle checks.
+/// with ADR 0009 confirmation, plus the engine-only seal check.
 fn compare_engine(
     cx: &Context,
     engine: &EngineArm,
@@ -511,57 +429,15 @@ fn compare_engine(
     };
     let single_crate = unit.build == sail_verus::corpus::Build::Verus;
     let work = base.join("engine");
-    let run = match run_unit(
-        cx.installed,
-        unit,
-        &engine.run(function.as_ref(), engine.oracle),
-        &work,
-    ) {
+    let run = match run_unit(cx.installed, unit, &engine.run(function.as_ref()), &work) {
         Ok(run) => run,
         Err(e) => return infra_error(unit, e.to_string()),
     };
     let events = std::fs::read_to_string(work.join(sail_verus::run::engine_files::EVENTS))
         .unwrap_or_default();
-    let records = engine
-        .oracle
-        .then(|| oracle_records(&work.join(sail_verus::run::engine_files::ORACLE)));
-    let summaries: Option<Vec<serde_json::Value>> = records
-        .as_ref()
-        .map(|r| r.iter().map(|x| x.summary.clone()).collect());
-    let (mut issues, mut stats) =
-        sail_conformance::engine::check(&run, &events, summaries.as_deref(), single_crate);
+    let (issues, mut stats) = sail_conformance::engine::check(&run, &events, single_crate);
     stats.focus_function.clone_from(&function);
-    // ADR 0038 amendment: a mismatch whose two independent fresh lowerings
-    // differ is stock nondeterminism (VI-0015), not a failure.
-    let failed: Vec<&OracleRecord> = records.iter().flatten().filter(|r| r.failed()).collect();
-    let mut verdict_run = None;
-    for c in failed.iter().map(|f| confirm(f)) {
-        match c {
-            Confirmation::Unstable(why) => {
-                stats.oracle_unstable += 1;
-                stats.oracle_confirmations.push(format!("unstable: {why}"));
-            }
-            Confirmation::Hard(why) => {
-                stats.oracle_hard_failures += 1;
-                stats.oracle_confirmations.push(format!("hard: {why}"));
-                issues.push(format!("{ORACLE_MISMATCH}hard: {why}"));
-            }
-        }
-    }
-    if stats.oracle_unstable > 0 && stats.oracle_hard_failures == 0 {
-        // The oracle stops the run at its first mismatch, so verdicts and
-        // diagnostics come from an engine run without the oracle, with the
-        // same focus; it must still match plain Verus.
-        issues.retain(|i| !i.starts_with(ORACLE_MISMATCH));
-        match engine_without_oracle(cx, engine, unit, base, function.as_ref(), single_crate) {
-            Ok((no_oracle, more)) => {
-                issues.extend(more);
-                verdict_run = Some(no_oracle);
-            }
-            Err(e) => return infra_error(unit, e),
-        }
-    }
-    let compared = verdict_run.as_ref().unwrap_or(&run);
+    let compared = &run;
     let mut c = classify(&plains, compared);
     for _ in 0..cx.confirm_runs {
         if c.verdict != Verdict::Different {
@@ -579,17 +455,9 @@ fn compare_engine(
         c = classify(&plains, compared);
     }
     if !issues.is_empty() {
-        // Engine completion and hard oracle failures are never instability.
+        // Engine completion failures are never instability.
         c.verdict = Verdict::Different;
         c.comparison.differences.extend(issues);
-    } else if stats.oracle_unstable > 0 && c.verdict == Verdict::Same {
-        c.verdict = Verdict::Unstable;
-    }
-    if stats.oracle_unstable > 0 {
-        c.unstable.push(format!(
-            "same-input oracle: {} restored hit(s) whose two independent fresh lowerings differ (VI-0015)",
-            stats.oracle_unstable
-        ));
     }
     UnitReport {
         id: unit.id.clone(),
@@ -655,18 +523,9 @@ fn summary_line(report: &Report) -> String {
     };
     let engine = s.engine.as_ref().map_or_else(String::new, |e| {
         format!(
-            "; engine {}: {} focused units, {} units with {} restored preparation hits, {} oracle checks, {} oracle failures ({} hard, {} unstable in {} units), {} buckets without a preparation key{}",
+            "; engine {}: {} focused units",
             e.manifest_sha256.get(..12).unwrap_or_default(),
             e.focused_units,
-            e.units_with_hits,
-            e.hits,
-            e.oracle_checks,
-            e.oracle_failures,
-            e.oracle_hard_failures,
-            e.oracle_unstable,
-            e.oracle_unstable_units,
-            e.oracle_not_applicable,
-            if e.oracle { "" } else { " (oracle off)" }
         )
     });
     format!(
@@ -699,9 +558,6 @@ fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<(EngineArm, S
             verus: engine.verus,
             cargo_verus: engine.cargo_verus,
             focus: o.focus,
-            oracle: o.oracle || o.oracle_fault.is_some(),
-            oracle_fault: o.oracle_fault.clone(),
-            oracle_fresh_arms: o.oracle_fresh_arms,
         },
         engine.manifest_sha256,
     )))
@@ -756,9 +612,6 @@ fn run(o: &Options) -> Result<ExitCode, String> {
             verus: arm.verus.clone(),
             cargo_verus: arm.cargo_verus.clone(),
             focus: arm.focus,
-            oracle: arm.oracle,
-            oracle_fault: arm.oracle_fault.clone(),
-            oracle_fresh_arms: arm.oracle_fresh_arms,
         }),
     };
     let mut units = run_all(units, o.jobs, &cx);
@@ -778,23 +631,13 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         summary.functions += u.comparison.functions;
         summary.units_with_rlimit_drift += usize::from(!u.comparison.rlimit_drift.is_empty());
     }
-    if let Some((arm, manifest_sha256)) = &engine {
+    if let Some((_, manifest_sha256)) = &engine {
         let mut totals = EngineSummary {
             manifest_sha256: manifest_sha256.clone(),
-            oracle: arm.oracle,
-            oracle_fault: arm.oracle_fault.clone(),
             ..EngineSummary::default()
         };
         for stats in units.iter().filter_map(|u| u.engine.as_ref()) {
             totals.focused_units += usize::from(stats.focus_established);
-            totals.units_with_hits += usize::from(stats.hits() > 0);
-            totals.hits += stats.hits();
-            totals.oracle_checks += stats.oracle_checks;
-            totals.oracle_failures += stats.oracle_failures;
-            totals.oracle_hard_failures += stats.oracle_hard_failures;
-            totals.oracle_unstable += stats.oracle_unstable;
-            totals.oracle_unstable_units += usize::from(stats.oracle_unstable > 0);
-            totals.oracle_not_applicable += stats.oracle_not_applicable;
         }
         summary.engine = Some(totals);
     }
@@ -819,36 +662,6 @@ fn run(o: &Options) -> Result<ExitCode, String> {
     std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     println!("{}\nreport: {}", summary_line(&report), path.display());
     let s = &report.summary;
-    if let Some(engine) = s.engine.as_ref().filter(|e| e.oracle_fault.is_some()) {
-        // Negative control: every unit with a restored hit must report the
-        // injected oracle mismatch, and there must be at least one such unit.
-        let undetected = report
-            .units
-            .iter()
-            .filter(|u| {
-                u.engine
-                    .as_ref()
-                    .is_some_and(|e| e.hits() > 0 && e.oracle_failures == 0)
-            })
-            .count();
-        // At least one injected mismatch must survive confirmation as a
-        // hard failure: stable fresh lowering never excuses a real mismatch.
-        let detected =
-            engine.units_with_hits > 0 && undetected == 0 && engine.oracle_hard_failures > 0;
-        println!(
-            "oracle negative control ({}): {} units with restored hits, {undetected} without a detected mismatch, {} confirmed hard, {} unstable: {}",
-            engine.oracle_fault.as_deref().unwrap_or_default(),
-            engine.units_with_hits,
-            engine.oracle_hard_failures,
-            engine.oracle_unstable,
-            if detected { "detected" } else { "NOT DETECTED" }
-        );
-        return Ok(if detected {
-            ExitCode::SUCCESS
-        } else {
-            ExitCode::from(1)
-        });
-    }
     Ok(if s.different > 0 {
         ExitCode::from(1)
     } else if s.infra_error > 0 {

@@ -411,18 +411,10 @@ fn driver() -> Result<ExitCode> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let source_events = dir.join("engine.events.jsonl");
-    // Without the explicit persistent opt-in, preparation files live only for
-    // this one compiler invocation: its focused phase can serve its own full
-    // phase, but nothing survives into another invocation or source revision.
-    let batch_prepared = dir.join("engine-prepared-batch");
     if let Some(engine) = &runtime.engine {
         cmd.env("SAIL_ENGINE", "interactive")
             .env("SAIL_ENGINE_EVENTS", &source_events)
             .env("SAIL_ENGINE_CONTEXT", &runtime.context_sha256)
-            .env(
-                "SAIL_ENGINE_PREPARED_DIR",
-                engine.prepared.as_deref().unwrap_or(&batch_prepared),
-            )
             .env("SAIL_ENGINE_FOCUS_REPORT", dir.join("focus.source.json"));
         if let Some(function) = &engine.function {
             cmd.env("SAIL_ENGINE_FUNCTION", function);
@@ -479,10 +471,6 @@ fn driver() -> Result<ExitCode> {
     if let Some(relay) = relay {
         relay.finish();
     }
-    if runtime.engine.is_some() {
-        // Invocation-local preparation state never outlives its compiler.
-        let _ = std::fs::remove_dir_all(&batch_prepared);
-    }
     let mut established = None;
     let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
         let mut stock = Command::new(&engine.stock_wrapper);
@@ -504,13 +492,7 @@ fn driver() -> Result<ExitCode> {
             stderr,
             status: exit,
         };
-        let (output, trusted) = engine_output(
-            &dir,
-            stock,
-            captured,
-            &invocation_log,
-            engine.prepared.as_deref(),
-        )?;
+        let (output, trusted) = engine_output(&dir, stock, captured, &invocation_log)?;
         if trusted {
             save_focus(&runtime, &identity, &dir)?;
         }
@@ -542,32 +524,6 @@ fn driver() -> Result<ExitCode> {
     Ok(status(exit))
 }
 
-/// Removes persistent prepared-lowering entries after an engine fault. The
-/// source engine writes them under the same `cache.lock`; an unavailable lock
-/// or directory leaves nothing to invalidate. Best effort: a later engine run
-/// still validates every entry's digest and key before restoring it.
-pub(crate) fn invalidate_preparation(root: &Path) {
-    let Ok(lock) = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(root.join("cache.lock"))
-    else {
-        return;
-    };
-    if lock.lock().is_err() {
-        return;
-    }
-    for entry in std::fs::read_dir(root).into_iter().flatten().flatten() {
-        let path = entry.path();
-        if path
-            .extension()
-            .is_some_and(|extension| extension == "prepared" || extension == "tmp")
-        {
-            let _ = std::fs::remove_file(path);
-        }
-    }
-}
-
 /// Retains interrupted engine evidence and restarts the exact stock compiler
 /// invocation. Engine observations and focused evidence cannot seal a report
 /// without the independent complete full document and normal process exit.
@@ -576,7 +532,6 @@ pub(crate) fn engine_output(
     mut stock: Command,
     captured: std::process::Output,
     invocation_log: &InvocationLog<'_>,
-    persistent_preparation: Option<&Path>,
 ) -> Result<(std::process::Output, bool)> {
     if crate::engine_events::completed(
         &dir.join("engine.events.jsonl"),
@@ -588,10 +543,6 @@ pub(crate) fn engine_output(
     std::fs::write(dir.join("engine.failed.stdout"), &captured.stdout)
         .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &captured.stderr))
         .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
-    // ADR 0027: an engine fault invalidates its preparation state.
-    if let Some(root) = persistent_preparation {
-        invalidate_preparation(root);
-    }
     let _ = std::fs::remove_file(dir.join("focus.source.json"));
     for directory in [dir.join("logs"), dir.join("provenance")] {
         if directory.exists() {
@@ -607,7 +558,6 @@ pub(crate) fn engine_output(
         "SAIL_ENGINE_EVENTS",
         "SAIL_ENGINE_FOCUS_REPORT",
         "SAIL_ENGINE_CONTEXT",
-        "SAIL_ENGINE_PREPARED_DIR",
     ] {
         stock.env_remove(key);
     }
@@ -951,7 +901,7 @@ mod tests {
                 "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
                 "stock",
             ]).arg(reply).args(["crate path.rs", "--", "literal;$(untouched)"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log, None)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
             assert!(!trusted);
             assert_eq!(output.stdout, stock_document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");
@@ -987,14 +937,11 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn engine_fault_invalidates_only_persistent_preparation_entries()
+    fn completed_engine_is_trusted_and_a_crash_falls_back_to_stock()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let root =
-            std::env::temp_dir().join(format!("sail-engine-invalidate-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("sail-engine-crash-{}", std::process::id()));
         let dir = root.join("sidecar");
-        let prepared = root.join("prepared");
         std::fs::create_dir_all(&dir)?;
-        std::fs::create_dir_all(&prepared)?;
         let starts = dir.join("starts");
         let log = InvocationLog {
             directory: &starts,
@@ -1002,14 +949,7 @@ mod tests {
             target: "demo",
         };
         let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
-        let seed = |prepared: &Path| -> std::io::Result<()> {
-            std::fs::write(prepared.join("cache.lock"), b"")?;
-            std::fs::write(prepared.join("key.prepared"), b"entry")?;
-            std::fs::write(prepared.join("key.42.tmp"), b"partial")?;
-            std::fs::write(prepared.join("unrelated.txt"), b"kept")
-        };
-        // Control: a completed engine run keeps its persistent entries.
-        seed(&prepared)?;
+        // Control: a completed engine run is trusted as is.
         std::fs::write(
             dir.join("engine.events.jsonl"),
             include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
@@ -1017,24 +957,19 @@ mod tests {
         let captured = capture_engine(&log, success, "0")?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "exit 2"]);
-        let (_, trusted) = engine_output(&dir, stock, captured, &log, Some(&prepared))?;
+        let (_, trusted) = engine_output(&dir, stock, captured, &log)?;
         assert!(trusted);
-        assert!(prepared.join("key.prepared").is_file());
-        // An injected engine crash (exit 101, no seal) falls back to stock and
-        // removes every prepared and temporary entry under the cache lock.
+        // An injected engine crash (exit 101, no seal) falls back to stock.
         std::fs::remove_file(dir.join("engine.events.jsonl"))?;
         let captured = capture_engine(&log, success, "101")?;
         let reply = dir.join("stock.output");
         std::fs::write(&reply, success)?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "cat \"$1\"", "stock"]).arg(&reply);
-        let (output, trusted) = engine_output(&dir, stock, captured, &log, Some(&prepared))?;
+        let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
         assert!(!trusted);
         assert_eq!(output.stdout, success);
-        assert!(!prepared.join("key.prepared").exists());
-        assert!(!prepared.join("key.42.tmp").exists());
-        assert!(prepared.join("unrelated.txt").is_file());
-        assert!(prepared.join("cache.lock").is_file());
+        assert!(dir.join("engine.failed.stdout").is_file());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -1071,7 +1006,6 @@ mod tests {
             manifest_sha256: "ab".repeat(32),
             stock_wrapper: PathBuf::new(),
             artifacts: Vec::new(),
-            prepared: None,
         };
         let mut engine = build();
         mark_engine(
@@ -1098,10 +1032,6 @@ mod tests {
             assert_eq!(
                 engine.map(|engine| engine.established_by),
                 Some(sail_api::output::EngineEstablishment::StockFallback)
-            );
-            assert_eq!(
-                engine.map(|engine| engine.persistent_preparation),
-                Some(false)
             );
         }
         // Stock serialization is unchanged: no engine fields appear.
@@ -1152,7 +1082,7 @@ mod tests {
             stock
                 .current_dir(&dir)
                 .args(["-c", "touch stock.started; exit 2"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log, None)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
             assert!(trusted);
             assert_eq!(output.stdout, document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");

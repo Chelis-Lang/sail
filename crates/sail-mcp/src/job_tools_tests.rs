@@ -16,7 +16,6 @@ fn owned_result_projection_matches_typed_schema_and_moves_the_full_graph() {
         compiler_invocations: 1,
         batched: false,
         selection_error: None,
-        preparation: None,
         engine_fault: None,
     });
     for repair in [None, Some(Box::new(repair))] {

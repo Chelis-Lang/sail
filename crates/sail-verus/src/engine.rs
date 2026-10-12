@@ -214,23 +214,6 @@ pub(crate) struct Request {
     pub manifest_sha256: String,
     pub stock_wrapper: PathBuf,
     pub artifacts: Vec<PathBuf>,
-    /// Persistent cross-edit prepared-lowering directory. `None` (the default)
-    /// keeps preparation reuse inside one compiler invocation (charter rule 6);
-    /// `Some` only with the explicit [`PERSISTENT_PREPARATION_ENV`] opt-in.
-    pub prepared: Option<PathBuf>,
-}
-
-/// Explicit opt-in for persistent cross-edit prepared-lowering reuse.
-///
-/// Persistent entries are keyed on Verus's pruned crate and a selected argument
-/// tuple, and a real hit is not compared with fresh lowering at runtime, so the
-/// reuse depends on that key's dependency coverage (charter rule 6). It is off
-/// by default and recorded in result provenance when enabled.
-pub const PERSISTENT_PREPARATION_ENV: &str = "SAIL_ENGINE_PERSISTENT_PREPARATION";
-
-/// Whether the caller explicitly opted in to persistent preparation reuse.
-fn persistent_preparation_requested() -> bool {
-    std::env::var(PERSISTENT_PREPARATION_ENV).as_deref() == Ok("1")
 }
 
 /// Borrowed request identity for compiler artifacts and optional sysroot hints.
@@ -243,7 +226,6 @@ pub(crate) struct ArtifactRequest<'a> {
     manifest_sha256: &'a str,
     stock_wrapper: &'a Path,
     artifacts: &'a [PathBuf],
-    prepared: Option<&'a Path>,
 }
 
 impl Request {
@@ -258,7 +240,6 @@ impl Request {
             manifest_sha256,
             stock_wrapper,
             artifacts,
-            prepared,
         } = self;
         ArtifactRequest {
             function: None,
@@ -267,7 +248,6 @@ impl Request {
             manifest_sha256,
             stock_wrapper,
             artifacts,
-            prepared: prepared.as_deref(),
         }
     }
 
@@ -280,16 +260,14 @@ impl Request {
             name: "interactive".to_owned(),
             manifest_sha256: self.manifest_sha256.clone(),
             established_by,
-            persistent_preparation: self.prepared.is_some(),
         }
     }
 
-    /// Project-level engine identity and preparation-reuse policy.
+    /// Project-level engine identity.
     pub(crate) fn identity(&self) -> sail_api::project::EngineIdentity {
         sail_api::project::EngineIdentity {
             name: "interactive".to_owned(),
             manifest_sha256: self.manifest_sha256.clone(),
-            persistent_preparation: self.prepared.is_some(),
         }
     }
 }
@@ -308,8 +286,6 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
         .with_file_name("verus");
     let request = Request {
         function,
-        prepared: persistent_preparation_requested()
-            .then(|| config.workspace.join(&config.cache).join("engine-prepared")),
         cargo_verus: source_build::checkout_dir(&build)
             .join("source/target-verus/release/cargo-verus"),
         manifest: manifest_path,
@@ -405,20 +381,17 @@ pub fn verify(
     err: &mut dyn std::io::Write,
 ) -> Result<sail_api::project::ProjectResult> {
     let (request, _) = request(config, None)?;
-    let prepared = request.prepared.clone();
     match crate::managed::run_engine(config, err, Some(request)) {
         Ok(mut result) => {
             launcher_notes(&run_directory(config, &result), &mut result);
             Ok(result)
         }
-        Err(error) => {
-            stock_fallback(config, err, error, prepared.as_deref()).map(|(result, _)| result)
-        }
+        Err(error) => stock_fallback(config, err, error).map(|(result, _)| result),
     }
 }
 
 /// Repair evidence after a batch-level engine fault: the stock full result
-/// only, never focused evidence, preparation counters or acceptance.
+/// only, never focused evidence or acceptance.
 fn fallback_batch(
     full: sail_api::project::ProjectResult,
     fault: sail_api::output::ErrorInfo,
@@ -431,14 +404,13 @@ fn fallback_batch(
         compiler_invocations: full.execution.verifier_invocations,
         full,
         manifest_sha256,
-        preparation: None,
         engine_fault: Some(fault),
     }
 }
 
 /// ADR 0027: an engine fault that escapes every per-target fallback (for
-/// example a crash while the engine identifies its toolchain) invalidates the
-/// engine's preparation state and falls back to independent stock verification.
+/// example a crash while the engine identifies its toolchain) falls back to
+/// independent stock verification.
 /// The stock result is labelled and never accepts a repair. Missing or
 /// incompatible installations (`SAIL3120`) are rejected instead, and an error
 /// that also stops stock verification is returned unchanged.
@@ -446,16 +418,12 @@ fn stock_fallback(
     config: &crate::managed::Config,
     err: &mut dyn std::io::Write,
     error: Error,
-    prepared: Option<&Path>,
 ) -> Result<(
     sail_api::project::ProjectResult,
     sail_api::output::ErrorInfo,
 )> {
     if error.code == "SAIL3120" {
         return Err(error);
-    }
-    if let Some(root) = prepared {
-        crate::adapter::invalidate_preparation(root);
     }
     let fault = sail_api::output::ErrorInfo {
         code: "SAIL3123".into(),
@@ -493,11 +461,10 @@ pub fn repair(
     let (request, manifest_sha256) = request(config, Some(function.to_owned()))?;
     let mut config = config.clone();
     config.force = true;
-    let prepared = request.prepared.clone();
     let mut full = match crate::managed::run_engine(&config, err, Some(request)) {
         Ok(full) => full,
         Err(error) => {
-            let (full, fault) = stock_fallback(&config, err, error, prepared.as_deref())?;
+            let (full, fault) = stock_fallback(&config, err, error)?;
             return Ok(fallback_batch(full, fault, manifest_sha256));
         }
     };
@@ -578,7 +545,6 @@ pub fn repair(
         compiler_invocations: full.execution.verifier_invocations,
         full,
         manifest_sha256,
-        preparation: preparation(&run),
         engine_fault: None,
     })
 }
@@ -667,15 +633,6 @@ pub(crate) struct FocusTarget {
     pub report: sail_api::output::Report,
 }
 
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct PreparationEvent {
-    version: u32,
-    phase: String,
-    event: String,
-    payload: sail_api::repair::PreparationStats,
-}
-
 fn completed_driver(run: &Path, sidecar: &Path) -> bool {
     let valid = || -> Option<bool> {
         if sidecar.join("engine.failed.stdout").try_exists().ok()? {
@@ -748,66 +705,6 @@ fn bounded_document(path: &Path) -> Option<Vec<u8>> {
     (bytes.len() as u64 <= LIMIT).then_some(bytes)
 }
 
-fn preparation(run: &Path) -> Option<Vec<sail_api::repair::PreparationStats>> {
-    use std::io::Read as _;
-    let mut paths = std::fs::read_dir(run.join("sidecars"))
-        .ok()?
-        .filter_map(std::result::Result::ok)
-        .map(|entry| entry.path().join("engine.events.jsonl"))
-        .collect::<Vec<_>>();
-    paths.sort();
-    let mut stats = Vec::new();
-    for path in paths {
-        if !path
-            .parent()
-            .is_some_and(|sidecar| completed_driver(run, sidecar))
-        {
-            continue;
-        }
-        let file = std::fs::File::open(path).ok()?;
-        if file.metadata().ok()?.len() > 16 * 1024 * 1024 {
-            return None;
-        }
-        let mut bytes = Vec::new();
-        file.take(16 * 1024 * 1024 + 1)
-            .read_to_end(&mut bytes)
-            .ok()?;
-        if bytes.len() > 16 * 1024 * 1024 {
-            return None;
-        }
-        let mut summary = None;
-        for line in bytes
-            .split(|byte| *byte == b'\n')
-            .filter(|line| !line.is_empty())
-        {
-            let value: serde_json::Value = serde_json::from_slice(line).ok()?;
-            if value["event"] != "preparation-summary" {
-                continue;
-            }
-            if summary.is_some() {
-                return None;
-            }
-            let event: PreparationEvent = serde_json::from_slice(line).ok()?;
-            if event.version != 1
-                || event.phase != "full"
-                || event.event != "preparation-summary"
-                || event.payload.peak_retained_bytes > event.payload.memory_budget_bytes
-                || (!event.payload.enabled
-                    && (event.payload.batch_hits != 0 || event.payload.persistent_hits != 0))
-                || event.payload.target.is_some()
-                || event.payload.phase.is_some()
-            {
-                return None;
-            }
-            summary = Some(event.payload);
-        }
-        if let Some(summary) = summary {
-            stats.push(summary);
-        }
-    }
-    (!stats.is_empty()).then_some(stats)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -846,7 +743,6 @@ mod tests {
             manifest_sha256: source_build::hash_file(&path)?,
             stock_wrapper: PathBuf::new(),
             artifacts: manifest.artifacts.keys().map(|p| root.join(p)).collect(),
-            prepared: None,
         };
         let mut reads = std::collections::BTreeMap::new();
         validate_request(&request, |path| {
@@ -915,9 +811,7 @@ mod tests {
         assert!(serde_json::from_str::<LauncherAdaptation>(&duplicate).is_err());
     }
 
-    fn preparation_fixture(
-        root: &Path,
-    ) -> std::result::Result<PathBuf, Box<dyn std::error::Error>> {
+    fn driver_fixture(root: &Path) -> std::result::Result<PathBuf, Box<dyn std::error::Error>> {
         let identity = crate::managed::TargetIdentity {
             manifest: root.join("Cargo.toml"),
             name: "demo".into(),
@@ -966,20 +860,16 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn real_stock_fallback_never_admits_old_preparation_summary()
+    fn real_stock_fallback_is_never_a_completed_driver()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root =
-            std::env::temp_dir().join(format!("sail-preparation-fallback-{}", std::process::id()));
-        let sidecar = preparation_fixture(&root)?;
-        let summary = r#"{"version":1,"phase":"full","event":"preparation-summary","payload":{"version":1,"enabled":true,"batch_hits":1,"persistent_hits":2,"misses":1,"peak_retained_bytes":123,"memory_budget_bytes":512,"disk_budget_bytes":512}}"#;
+            std::env::temp_dir().join(format!("sail-engine-fallback-{}", std::process::id()));
+        let sidecar = driver_fixture(&root)?;
         let seal = include_str!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
-        std::fs::write(
-            sidecar.join("engine.events.jsonl"),
-            format!("{summary}\n{seal}"),
-        )?;
+        std::fs::write(sidecar.join("engine.events.jsonl"), seal)?;
         assert!(
-            preparation(&root).is_some(),
-            "control completed evidence must admit counters"
+            completed_driver(&root, &sidecar),
+            "control: completed evidence is a completed driver"
         );
         let captured = std::process::Command::new("/bin/sh")
             .args(["-c", "printf 'interrupted'; exit 101"])
@@ -997,27 +887,26 @@ mod tests {
                 .ok_or("missing run id")?,
             target: "demo",
         };
-        let (output, trusted) =
-            crate::adapter::engine_output(&sidecar, stock, captured, &log, None)?;
+        let (output, trusted) = crate::adapter::engine_output(&sidecar, stock, captured, &log)?;
         assert!(!trusted);
         assert_eq!(output.status.code(), Some(0));
         assert_eq!(output.stdout, std::fs::read(sidecar.join("verus.stdout"))?);
         assert!(sidecar.join("engine.failed.stdout").is_file());
         assert!(sidecar.join("engine.events.jsonl").is_file());
         assert!(
-            preparation(&root).is_none(),
-            "valid old terminal/full bytes cannot admit crashed engine counters"
+            !completed_driver(&root, &sidecar),
+            "valid old terminal/full bytes cannot make a crashed engine complete"
         );
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
 
     #[test]
-    fn preparation_requires_matching_retained_driver_document()
+    fn completed_driver_requires_matching_retained_driver_document()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root =
-            std::env::temp_dir().join(format!("sail-preparation-document-{}", std::process::id()));
-        let sidecar = preparation_fixture(&root)?;
+            std::env::temp_dir().join(format!("sail-engine-document-{}", std::process::id()));
+        let sidecar = driver_fixture(&root)?;
         let events = include_str!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
         std::fs::write(sidecar.join("engine.events.jsonl"), events)?;
         assert!(completed_driver(&root, &sidecar));
@@ -1048,54 +937,6 @@ mod tests {
         assert!(!completed_driver(&root, &sidecar));
         std::fs::remove_file(record)?;
         assert!(!completed_driver(&root, &sidecar));
-        std::fs::remove_dir_all(root)?;
-        Ok(())
-    }
-
-    #[test]
-    fn preparation_requires_one_valid_sealed_summary()
-    -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let root = std::env::temp_dir().join(format!("sail-preparation-{}", std::process::id()));
-        let sidecar = preparation_fixture(&root)?;
-        let path = sidecar.join("engine.events.jsonl");
-        let seal = r#"{"version":1,"phase":"full","event":"compiler-sealed","payload":{"success":true,"normal_termination":true}}"#;
-        let summary = r#"{"version":1,"phase":"full","event":"preparation-summary","payload":{"version":1,"enabled":true,"batch_hits":0,"persistent_hits":2,"misses":1,"peak_retained_bytes":123,"memory_budget_bytes":512,"disk_budget_bytes":512}}"#;
-        std::fs::write(&path, format!("{seal}\n"))?;
-        assert!(
-            preparation(&root).is_none(),
-            "old source has no fabricated counters"
-        );
-        let legacy = seal.replace(",\"normal_termination\":true", "");
-        std::fs::write(&path, format!("{summary}\n{legacy}\n"))?;
-        assert!(
-            preparation(&root).is_none(),
-            "legacy terminal is not trustworthy completion"
-        );
-        std::fs::write(&path, format!("{summary}\n{seal}\n"))?;
-        let stats = preparation(&root).ok_or("valid counters unavailable")?;
-        assert_eq!(stats.len(), 1);
-        assert_eq!(stats[0].persistent_hits, 2);
-        assert!(stats[0].target.is_none());
-        std::fs::write(&path, format!("{summary}\n"))?;
-        assert!(
-            preparation(&root).is_none(),
-            "interrupted source cannot report counters"
-        );
-        std::fs::write(&path, format!("{summary}\n{summary}\n{seal}\n"))?;
-        assert!(
-            preparation(&root).is_none(),
-            "duplicate summaries are ambiguous"
-        );
-        let duplicate = summary.replace("\"misses\":1", "\"misses\":1,\"misses\":2");
-        std::fs::write(&path, format!("{duplicate}\n{seal}\n"))?;
-        assert!(
-            preparation(&root).is_none(),
-            "duplicate fields cannot be hidden by Value parsing"
-        );
-        let excessive =
-            summary.replace("\"peak_retained_bytes\":123", "\"peak_retained_bytes\":513");
-        std::fs::write(&path, format!("{excessive}\n{seal}\n"))?;
-        assert!(preparation(&root).is_none());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

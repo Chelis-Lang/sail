@@ -88,8 +88,7 @@
       "additionalProperties": false,
       "required": [
         "name",
-        "manifest_sha256",
-        "persistent_preparation"
+        "manifest_sha256"
       ],
       "properties": {
         "name": {
@@ -97,9 +96,6 @@
         },
         "manifest_sha256": {
           "type": "string"
-        },
-        "persistent_preparation": {
-          "type": "boolean"
         }
       }
     },

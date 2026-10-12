@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
-"""Real prebuilt-engine provenance and persistent-preparation controls (ADR 0027).
+"""Real prebuilt-engine provenance controls (ADR 0027).
 
 Runs beside the unchanged repair acceptance fixture (ci/test-repair.py) and
-reuses its process helpers. It checks, against the actual engine:
-- default engine results name the engine, its manifest digest and
-  invocation-local preparation reuse in project, report and function
-  provenance, with mode still `default`;
-- persistent cross-edit preparation is used only with the explicit
-  SAIL_ENGINE_PERSISTENT_PREPARATION=1 opt-in, is recorded in provenance,
-  and has its own proof context;
-- corrupting every persistent entry leaves the full-phase verdicts and
-  completeness unchanged (the entries are rejected, not restored).
+reuses its process helpers. It checks, against the actual engine, that engine
+results name the engine and its manifest digest in project, report and
+function provenance, with mode still `default`, and that the batch carries no
+prepared-lowering telemetry (the engine has none).
 """
 
 import argparse
@@ -57,7 +52,6 @@ def run(args):
             "use verus_builtin::*;\nuse verus_builtin_macros::*;\nverus! {\n" + acceptance.GOOD + "\n}\n")
         env = dict(os.environ, SAIL_CACHE_DIR=str(root / "cache"), SAIL_DAEMON_SOCKET=str(root / "d.sock"))
         env.pop("VSTD_KIND", None)
-        env.pop("SAIL_ENGINE_PERSISTENT_PREPARATION", None)
         setup = acceptance.execute([sail, "engine", "install", "--from", str(engine), "--output", "json"], project, env, 30)
         (evidence / "engine-install.stdout.json").write_bytes(setup.stdout)
         setup.check_returncode()
@@ -110,9 +104,8 @@ def run(args):
                 attempt += 1
                 time.sleep(.25)
 
-        def provenance(full, target, persistent):
-            identity = {"name": "interactive", "manifest_sha256": status["manifest_sha256"],
-                        "persistent_preparation": persistent}
+        def provenance(full, target):
+            identity = {"name": "interactive", "manifest_sha256": status["manifest_sha256"]}
             assert full["engine"] == identity, full
             engine = dict(identity, established_by="engine")
             assert target["report"]["engine"] == engine, target
@@ -127,37 +120,17 @@ def run(args):
                 remaining(5)
                 time.sleep(.02)
             document, default_full, default_target = submit("default")
-            summary["default_preparation"] = document["batch"].get("preparation")
+            assert "preparation" not in document["batch"], document
             assert "engine_fault" not in document["batch"], document
             assert default_full["exit_code"] == 0 and default_target["complete"], document
-            provenance(default_full, default_target, False)
-            assert not list(root.glob("cache/**/engine-prepared/*.prepared")), "default run persisted preparation"
-            env["SAIL_ENGINE_PERSISTENT_PREPARATION"] = "1"
-            persisted_document, persisted_full, persisted_target = submit("persistent")
-            summary["persistent_preparation"] = persisted_document["batch"].get("preparation")
-            assert persisted_full["exit_code"] == 0 and persisted_target["complete"], persisted_full
-            provenance(persisted_full, persisted_target, True)
-            assert persisted_full["context_sha256"] != default_full["context_sha256"], "opt-in shares the default proof context"
-            entries = sorted(root.glob("cache/**/engine-prepared/*.prepared"))
-            assert entries, "explicit persistent preparation wrote no entry"
-            for entry in entries:
-                data = bytearray(entry.read_bytes())
-                data[-1] ^= 1
-                entry.write_bytes(bytes(data))
-            summary["corrupted_entries"] = len(entries)
-            corrupted_document, corrupted_full, corrupted_target = submit("persistent-corrupt")
-            assert corrupted_full["exit_code"] == 0 and corrupted_target["complete"], corrupted_full
-            provenance(corrupted_full, corrupted_target, True)
-            assert verdicts(corrupted_target) == verdicts(persisted_target) == verdicts(default_target), corrupted_full
-            summary["corrupted_preparation"] = corrupted_document["batch"].get("preparation")
+            provenance(default_full, default_target)
             summary["passed"] = True
         finally:
-            env.pop("SAIL_ENGINE_PERSISTENT_PREPARATION", None)
             acceptance.stop_owned(daemon, 10)
             daemon_errors.close()
             summary.update(elapsed_s=time.monotonic() - started, operations=operations)
             (evidence / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
-    print("Engine provenance controls: default and opt-in provenance, corrupted persistent entries rejected", flush=True)
+    print("Engine provenance controls: project, report and function provenance", flush=True)
 
 
 if __name__ == "__main__":

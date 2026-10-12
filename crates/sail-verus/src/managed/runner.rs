@@ -59,8 +59,6 @@ fn input_environment_key(key: &std::ffi::OsStr) -> bool {
         "SAIL_ENGINE",
         "SAIL_ENGINE_FUNCTION",
         "SAIL_ENGINE_CONTEXT",
-        "SAIL_ENGINE_PREPARED_DIR",
-        "SAIL_ENGINE_PERSISTENT_PREPARATION",
         "SAIL_JOB_EVENTS",
         "SAIL_JOB_RPC_TIMINGS",
         "SAIL_JOB_GUARD_PARENT",
@@ -600,7 +598,6 @@ fn invoke(config: &Config, paths: &Paths, err: &mut dyn Write) -> Result<Option<
         .env_remove("SAIL_ENGINE_EVENTS")
         .env_remove("SAIL_ENGINE_FOCUS_REPORT")
         .env_remove("SAIL_ENGINE_CONTEXT")
-        .env_remove("SAIL_ENGINE_PREPARED_DIR")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
@@ -2129,7 +2126,6 @@ mod tests {
             manifest_sha256: "manifest-bytes".to_owned(),
             stock_wrapper: PathBuf::from("engine/verus"),
             artifacts: vec![PathBuf::from("engine/rust_verify")],
-            prepared: Some(PathBuf::from("prepared")),
         }
     }
 
@@ -2166,15 +2162,12 @@ mod tests {
             assert_eq!(compiler, other_compiler);
         }
         assert_ne!(compiler, hashes(None)?.1);
-        let mut variants = vec![selected.clone(); 7];
+        let mut variants = vec![selected.clone(); 5];
         variants[0].cargo_verus = "another/cargo-verus".into();
         variants[1].manifest = "another/sail-build.json".into();
         variants[2].manifest_sha256 = "different-manifest".into();
         variants[3].stock_wrapper = "another/verus".into();
         variants[4].artifacts.push("another/rust_verify".into());
-        variants[5].prepared = Some("another/prepared".into());
-        // Opt-in persistent preparation is a distinct compiler/proof context.
-        variants[6].prepared = None;
         for request in variants {
             assert_ne!(compiler, hashes(Some(&request))?.1);
         }
@@ -2970,7 +2963,6 @@ mod tests {
             manifest: path,
             stock_wrapper: launcher.clone(),
             artifacts: manifest.artifacts.keys().map(|p| root.join(p)).collect(),
-            prepared: Some(root.join("prepared")),
         };
         let config = Config {
             workspace: root.clone(),

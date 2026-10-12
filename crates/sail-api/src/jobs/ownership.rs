@@ -144,13 +144,11 @@ owned_struct!(crate::output::Report {
 owned_struct!(crate::output::EngineProvenance {
     name,
     manifest_sha256,
-    established_by,
-    persistent_preparation
+    established_by
 });
 owned_struct!(crate::project::EngineIdentity {
     name,
-    manifest_sha256,
-    persistent_preparation
+    manifest_sha256
 });
 owned_enum!(crate::output::EngineEstablishment {
     Engine,
@@ -308,18 +306,6 @@ owned_struct!(crate::project::Execution {
     reused_targets,
     wall_ms
 });
-owned_struct!(crate::repair::PreparationStats {
-    version,
-    enabled,
-    batch_hits,
-    persistent_hits,
-    misses,
-    peak_retained_bytes,
-    memory_budget_bytes,
-    disk_budget_bytes,
-    target,
-    phase
-});
 owned_struct!(crate::repair::BatchResult {
     focus,
     full,
@@ -327,7 +313,6 @@ owned_struct!(crate::repair::BatchResult {
     compiler_invocations,
     batched,
     selection_error,
-    preparation,
     engine_fault
 });
 owned_struct!(crate::repair::ResultDocument {

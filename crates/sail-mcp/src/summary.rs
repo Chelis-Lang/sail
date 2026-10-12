@@ -251,7 +251,6 @@ mod tests {
             name: "interactive".into(),
             manifest_sha256: "ab".repeat(32),
             established_by: sail_api::output::EngineEstablishment::Engine,
-            persistent_preparation: false,
         };
         engine.provenance.engine = Some(provenance.clone());
         assert_eq!(

@@ -79,13 +79,12 @@
   "$defs": {
     "engine": {
       "type": "object",
-      "required": ["name", "manifest_sha256", "established_by", "persistent_preparation"],
+      "required": ["name", "manifest_sha256", "established_by"],
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string" },
         "manifest_sha256": { "type": "string" },
-        "established_by": { "enum": ["engine", "stock-fallback"] },
-        "persistent_preparation": { "type": "boolean" }
+        "established_by": { "enum": ["engine", "stock-fallback"] }
       }
     },
     "solver_configuration": {

@@ -41,15 +41,13 @@ pub struct ProjectResult {
     pub engine: Option<EngineIdentity>,
 }
 
-/// The validated source engine and preparation-reuse policy of a project run.
+/// The validated source engine of a project run.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EngineIdentity {
     /// The engine name (`interactive`).
     pub name: String,
     /// SHA-256 of the validated engine build manifest, as lowercase hex.
     pub manifest_sha256: String,
-    /// Whether opt-in persistent cross-edit prepared-lowering reuse was enabled.
-    pub persistent_preparation: bool,
 }
 
 /// Relationship of a result to the workspace's current declared inputs.

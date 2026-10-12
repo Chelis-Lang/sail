@@ -47,9 +47,8 @@ pub enum Solver {
 
 /// How the engine conformance arm runs the interactive source engine.
 ///
-/// Every run gets its own event journal, focus report and invocation-local
-/// prepared-lowering directory under its work directory, matching the product
-/// default (no persistent cross-edit reuse).
+/// Every run gets its own event journal and focus report under its work
+/// directory.
 #[derive(Debug, Clone)]
 pub struct EngineRun {
     /// The engine's `verus` launcher.
@@ -59,13 +58,6 @@ pub struct EngineRun {
     /// Exact crate-qualified function for the focused phase, if any. The
     /// independent full phase always runs and is what is compared.
     pub function: Option<String>,
-    /// Run the same-input cached-versus-fresh byte oracle on every prepared hit.
-    pub oracle: bool,
-    /// Deliberate oracle fault (`order`, `effects` or `body`), for negative controls.
-    pub oracle_fault: Option<String>,
-    /// Confirming fresh lowerings the oracle makes after a mismatch (ADR 0038
-    /// amendment); `None` leaves the engine's default of one.
-    pub oracle_fresh_arms: Option<usize>,
 }
 
 /// Files the engine writes under a unit's work directory.
@@ -74,10 +66,6 @@ pub mod engine_files {
     pub const EVENTS: &str = "engine.events.jsonl";
     /// Focused-phase report.
     pub const FOCUS: &str = "engine.focus.json";
-    /// Invocation-local prepared-lowering directory.
-    pub const PREPARED: &str = "engine-prepared";
-    /// Same-input byte-oracle evidence.
-    pub const ORACLE: &str = "engine-oracle";
 }
 
 /// Flags added to every run.
@@ -710,7 +698,6 @@ fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &So
         "SAIL_ENGINE",
         "SAIL_ENGINE_EVENTS",
         "SAIL_ENGINE_FOCUS_REPORT",
-        "SAIL_ENGINE_PREPARED_DIR",
         "SAIL_ENGINE_CONTEXT",
     ] {
         cmd.env_remove(key);
@@ -746,39 +733,15 @@ fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &So
 
 /// The interactive engine's private controls, all scoped to `work`.
 fn engine_env(cmd: &mut Command, installed: &Installed, engine: &EngineRun, work: &Path) {
-    for key in [
-        "SAIL_ENGINE_FUNCTION",
-        "SAIL_ENGINE_ORACLE_DIR",
-        "SAIL_ENGINE_ORACLE_Z3",
-        "SAIL_ENGINE_ORACLE_FAULT",
-        "SAIL_ENGINE_ORACLE_FRESH_ARMS",
-        "SAIL_ENGINE_ORACLE_COMPONENTS",
-        "SAIL_ENGINE_ORACLE_COMPONENT_MODULE",
-    ] {
-        cmd.env_remove(key);
-    }
+    cmd.env_remove("SAIL_ENGINE_FUNCTION");
     // The same pinned solver bytes as the plain side.
     cmd.env("VERUS_Z3_PATH", &installed.z3)
         .env("SAIL_ENGINE", "interactive")
         .env("SAIL_ENGINE_EVENTS", work.join(engine_files::EVENTS))
         .env("SAIL_ENGINE_FOCUS_REPORT", work.join(engine_files::FOCUS))
-        .env(
-            "SAIL_ENGINE_PREPARED_DIR",
-            work.join(engine_files::PREPARED),
-        )
         .env("SAIL_ENGINE_CONTEXT", "sail-conformance-engine-v1");
     if let Some(function) = &engine.function {
         cmd.env("SAIL_ENGINE_FUNCTION", function);
-    }
-    if engine.oracle {
-        cmd.env("SAIL_ENGINE_ORACLE_DIR", work.join(engine_files::ORACLE))
-            .env("SAIL_ENGINE_ORACLE_Z3", &installed.z3);
-        if let Some(fault) = &engine.oracle_fault {
-            cmd.env("SAIL_ENGINE_ORACLE_FAULT", fault);
-        }
-        if let Some(arms) = engine.oracle_fresh_arms {
-            cmd.env("SAIL_ENGINE_ORACLE_FRESH_ARMS", arms.to_string());
-        }
     }
 }
 

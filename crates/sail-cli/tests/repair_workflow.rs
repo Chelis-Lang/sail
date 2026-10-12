@@ -105,7 +105,6 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         compiler_invocations: 1,
         batched: true,
         selection_error: None,
-        preparation: None,
         engine_fault: None,
     });
     std::fs::write(

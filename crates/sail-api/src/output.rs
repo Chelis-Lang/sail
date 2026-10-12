@@ -70,9 +70,6 @@ pub struct EngineProvenance {
     pub manifest_sha256: String,
     /// Whether the engine or the stock fallback produced the evidence.
     pub established_by: EngineEstablishment,
-    /// Whether opt-in persistent cross-edit prepared-lowering reuse was enabled.
-    /// Reuse within one compiler invocation is always available to the engine.
-    pub persistent_preparation: bool,
 }
 
 /// Which verifier produced the evidence of an engine-requested report.
@@ -740,7 +737,6 @@ mod tests {
             name: "interactive".to_owned(),
             manifest_sha256: "ab".repeat(32),
             established_by: EngineEstablishment::StockFallback,
-            persistent_preparation: true,
         };
         let mut r = stock.clone();
         r.engine = Some(engine.clone());
@@ -774,7 +770,6 @@ mod tests {
         let identity = crate::project::EngineIdentity {
             name: "interactive".to_owned(),
             manifest_sha256: "cd".repeat(32),
-            persistent_preparation: false,
         };
         let identity = serde_json::to_value(identity).unwrap_or_default();
         assert_eq!(
