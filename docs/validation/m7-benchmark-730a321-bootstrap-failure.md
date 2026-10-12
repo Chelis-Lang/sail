@@ -57,6 +57,12 @@ future mismatches by path digest and captured identity without extra barrier
 I/O. Neither candidate has native qualification yet. The original failed
 namespace remains untouched; a corrected product requires a fresh run.
 
+A read-only terminal runtime-size diagnostic finds 418 identity records totaling
+1,852,005,612 logical bytes, with a largest file of 199,557,488 bytes. A bootstrap
+hash budget of one GiB would refuse this workload before considering package
+inputs. The candidate therefore needs an explicit adequate streaming budget;
+this size observation is neither a hash qualification nor a timing result.
+
 The [complete workspace/solver and original small repair fixture](m7-core-730a321-validation.md)
 and [complete reader/retained workflow](m7-reader-730a321-terminal.md) are distinct
 passing scopes. They do not replace this failure. M7 remains unaccepted and
