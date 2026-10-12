@@ -64,25 +64,10 @@ impl ReadLease {
     }
     #[cfg(test)]
     pub(super) fn acquire(paths: &[PathBuf]) -> Option<Self> {
-        Self::acquire_unbounded(paths, None, false)
-    }
-    /// The managed run's own owners: as `acquire`, reusing a closure manifest
-    /// probed earlier in the same run when it names the same interpreter, and
-    /// overlapping the helper's complete closure reads. The helper still
-    /// checks its own loaded closure against that list before and after
-    /// acquiring leases, so a stale list refuses ownership.
-    pub(super) fn acquire_using(paths: &[PathBuf], known: Option<&HelperClosure>) -> Option<Self> {
-        Self::acquire_unbounded(paths, known, true)
-    }
-    fn acquire_unbounded(
-        paths: &[PathBuf],
-        known: Option<&HelperClosure>,
-        parallel: bool,
-    ) -> Option<Self> {
         let mut stage = "input-file-limit";
         #[cfg(test)]
         let started = std::time::Instant::now();
-        let lease = Self::acquire_at_stage(paths, &mut stage, None, None, known, parallel);
+        let lease = Self::acquire_at_stage(paths, &mut stage, None, None);
         #[cfg(test)]
         if lease.is_none() {
             eprintln!(
@@ -107,8 +92,6 @@ impl ReadLease {
             &mut "input-file-limit",
             Some(cancelled),
             Some((stop, started)),
-            None,
-            false,
         )
     }
     #[allow(
@@ -123,8 +106,6 @@ impl ReadLease {
             std::sync::Arc<std::sync::atomic::AtomicBool>,
             std::time::Instant,
         )>,
-        known: Option<&HelperClosure>,
-        parallel: bool,
     ) -> Option<Self> {
         if paths.len() > 4096 || cancelled.is_some_and(|cancelled| cancelled()) {
             return None;
@@ -132,13 +113,7 @@ impl ReadLease {
         *stage = "interpreter-resolution";
         let interpreter = interpreter()?;
         *stage = "helper-runtime-closure";
-        // A manifest probed earlier in this run is the same pre-observer probe
-        // result; the observer, baseline digests and helper checks below are
-        // unchanged and still bind the actual launched closure.
-        let closure = match known.filter(|known| known.interpreter == interpreter) {
-            Some(known) => known.paths.clone(),
-            None => helper_paths_with(&interpreter, cancelled)?,
-        };
+        let closure = helper_paths_with(&interpreter, cancelled)?;
         *stage = "helper-native-observer";
         let helper_observer = if cancelled.is_some() {
             let (stop, started) = stop?;
@@ -147,7 +122,7 @@ impl ReadLease {
             Observer::begin(&closure, &[])?
         };
         *stage = "helper-baseline-digests";
-        let baseline = helper_digests_with(&closure, cancelled, parallel)?;
+        let baseline = helper_digests_with(&closure, cancelled)?;
         let mut paths = paths.to_vec();
         paths.extend(closure.iter().filter(|p| p.is_file()).cloned());
         paths.sort();
@@ -262,7 +237,7 @@ impl ReadLease {
         } else {
             super::kernel_leases::Inventory::bind(lease.process.id(), &fds, &identities)
         };
-        let validation = lease.validate_initial(&closure, &baseline, stage, cancelled, parallel)?;
+        let validation = lease.validate_initial(&closure, &baseline, stage, cancelled)?;
         if let Err(reason) = validation {
             *stage = reason;
             #[cfg(test)]
@@ -292,7 +267,6 @@ impl ReadLease {
         baseline: &[Option<String>],
         stage: &mut &'static str,
         cancelled: Option<&dyn Fn() -> bool>,
-        parallel: bool,
     ) -> Option<std::result::Result<(), &'static str>> {
         let validation = if self.kernel.is_none() {
             Err("kernel-lease-inventory-binding-unavailable")
@@ -300,7 +274,7 @@ impl ReadLease {
             Err("lease-binding-invalidated")
         } else {
             *stage = "helper-final-digests";
-            if helper_digests_with(closure, cancelled, parallel)? != baseline {
+            if helper_digests_with(closure, cancelled)? != baseline {
                 Err("helper-byte-identity-invalidated")
             } else if !self.helper_observer.clean() {
                 Err("helper-observation-invalidated")
@@ -361,6 +335,7 @@ impl ReadLease {
         }
         true
     }
+    #[cfg(test)]
     pub(super) fn failure_reason(&self) -> &'static str {
         self.failure
             .unwrap_or("kernel-lease-validation-unavailable")
@@ -518,13 +493,7 @@ fn interpreter() -> Option<PathBuf> {
 fn helper_digests_with(
     paths: &[PathBuf],
     cancelled: Option<&dyn Fn() -> bool>,
-    parallel: bool,
 ) -> Option<Vec<Option<String>>> {
-    // Only the managed run's own owners overlap these reads; daemon freshness
-    // and bounded construction keep the original sequential reads.
-    if parallel && cancelled.is_none() {
-        return helper_digests(paths);
-    }
     let mut read = 0u64;
     paths
         .iter()
@@ -539,40 +508,6 @@ fn helper_digests_with(
                 Some(None)
             } else {
                 None
-            }
-        })
-        .collect()
-}
-/// The unbounded classification of `helper_digests_with`: each path is a
-/// regular file read completely, absent, or refused. Classification happens
-/// once per path and the complete reads overlap.
-fn helper_digests(paths: &[PathBuf]) -> Option<Vec<Option<String>>> {
-    let present: Vec<bool> = paths
-        .iter()
-        .map(|path| {
-            if path.is_file() {
-                Some(true)
-            } else if !path.exists() {
-                Some(false)
-            } else {
-                None
-            }
-        })
-        .collect::<Option<_>>()?;
-    let files: Vec<&Path> = paths
-        .iter()
-        .zip(&present)
-        .filter(|(_, present)| **present)
-        .map(|(path, _)| path.as_path())
-        .collect();
-    let mut digests = super::files::digest_all(&files).into_iter();
-    present
-        .into_iter()
-        .map(|present| {
-            if present {
-                digests.next()?.ok().map(Some)
-            } else {
-                Some(None)
             }
         })
         .collect()
@@ -631,38 +566,6 @@ fn bounded_digest(path: &Path, read: &mut u64, cancelled: &dyn Fn() -> bool) -> 
         hasher.update(&buffer[..count]);
     }
     Some(format!("{:x}", hasher.finalize()))
-}
-/// One managed run's probe of the helper interpreter's loaded closure. It is
-/// never retained across runs and grants no authority by itself.
-#[derive(Clone)]
-pub(super) struct HelperClosure {
-    interpreter: PathBuf,
-    paths: Vec<PathBuf>,
-}
-
-pub(super) fn helper_closure() -> Option<HelperClosure> {
-    let interpreter = interpreter()?;
-    let paths = helper_paths(&interpreter)?;
-    Some(HelperClosure { interpreter, paths })
-}
-
-pub(super) fn helper_identity(closure: &HelperClosure) -> Option<Vec<(String, String)>> {
-    let paths = &closure.paths;
-    let files: Vec<&Path> = paths
-        .iter()
-        .filter(|p| p.is_file())
-        .map(PathBuf::as_path)
-        .collect();
-    // Complete reads of every closure file overlap; any unreadable or
-    // non-UTF-8 member still withholds the whole optional identity.
-    files
-        .iter()
-        .zip(super::files::digest_all(&files))
-        .map(|(path, digest)| Some((path.to_str()?.to_owned(), digest.ok()?)))
-        .collect()
-}
-fn helper_paths(interpreter: &Path) -> Option<Vec<PathBuf>> {
-    helper_paths_with(interpreter, None)
 }
 fn helper_paths_with(
     interpreter: &Path,

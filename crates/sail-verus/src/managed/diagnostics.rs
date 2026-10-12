@@ -23,41 +23,20 @@ fn file_slot(serial: &AtomicU64) -> Option<u64> {
         .ok()
 }
 
-/// Fixed labels exclude paths, configuration, source and environment contents.
+/// Coarse fixed labels; they exclude paths, configuration, source and
+/// environment contents. `runtime-context` overlaps `metadata`, whose row
+/// records only the remaining wait.
 #[derive(Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum Phase {
     Metadata,
     RuntimeContext,
-    RuntimeBinaries,
-    HelperIdentity,
-    ToolchainProbes,
-    SysrootGuard,
-    #[cfg(target_os = "linux")]
-    SysrootHandoff,
-    SysrootHash,
-    SysrootBarrier,
-    #[cfg(target_os = "linux")]
-    SysrootFillHint,
-    ContextConfiguration,
-    OwnedPaths,
-    InitialSnapshot,
-    InputGuards,
-    GuardAbsent,
-    GuardCoherent,
-    MonitoredSnapshot,
-    InputBarrier,
+    Inputs,
     TargetCleanup,
-    InvocationSeal,
     Invocation,
     TargetRecords,
-    PostObservations,
-    PostMetadata,
-    PostSnapshot,
-    FinalBarriers,
-    ResultPublication,
-    ReceiptPublication,
-    CompilerFamilyPublication,
+    PostRun,
+    Publication,
 }
 
 #[derive(serde::Serialize)]
@@ -67,136 +46,6 @@ struct Record {
     pid: u32,
     started_ms: f64,
     elapsed_ms: f64,
-}
-
-/// Fixed bootstrap stage labels carry no package, path or environment data.
-#[derive(Clone, Copy, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub(super) enum BootstrapStage {
-    OwnerEligibility,
-    #[cfg(target_os = "linux")]
-    OwnerEnvironment,
-    #[cfg(target_os = "linux")]
-    OwnerRoots,
-    #[cfg(target_os = "linux")]
-    OwnerObserver,
-    #[cfg(target_os = "linux")]
-    OwnerLease,
-    #[cfg(target_os = "linux")]
-    OwnerRetained,
-    #[cfg(target_os = "linux")]
-    OwnerHashes,
-    #[cfg(target_os = "linux")]
-    OwnerConfiguration,
-    #[cfg(target_os = "linux")]
-    OwnerBarriers,
-    #[cfg(target_os = "linux")]
-    OwnerLedger,
-    #[cfg(any(target_os = "linux", test))]
-    OwnerComplete,
-    InitialRuntime,
-    FinalRuntime,
-    PublishLedger,
-    #[cfg(any(target_os = "linux", test))]
-    PublishJournal,
-    #[cfg(target_os = "linux")]
-    PublishRecordSet,
-    #[cfg(target_os = "linux")]
-    PublishCancellation,
-    #[cfg(target_os = "linux")]
-    PublishRecordBudget,
-    #[cfg(target_os = "linux")]
-    RecordBinding,
-    #[cfg(target_os = "linux")]
-    RecordPackage,
-    #[cfg(target_os = "linux")]
-    RecordDeclarations,
-    #[cfg(target_os = "linux")]
-    RecordDigest,
-    #[cfg(target_os = "linux")]
-    RecordEnvironment,
-    #[cfg(target_os = "linux")]
-    RecordExecution,
-    #[cfg(target_os = "linux")]
-    RecordCompilation,
-    #[cfg(target_os = "linux")]
-    RecordSource,
-    #[cfg(target_os = "linux")]
-    RecordBinary,
-    #[cfg(target_os = "linux")]
-    RecordAliases,
-    #[cfg(target_os = "linux")]
-    RecordDepInfo,
-    #[cfg(target_os = "linux")]
-    RecordInputs,
-    #[cfg(target_os = "linux")]
-    RecordCompilerEnvironment,
-    #[cfg(target_os = "linux")]
-    PublishHashes,
-    #[cfg(target_os = "linux")]
-    PublishOutputs,
-    #[cfg(target_os = "linux")]
-    PublishEnvironment,
-    #[cfg(target_os = "linux")]
-    PublishObserver,
-    #[cfg(target_os = "linux")]
-    PublishLease,
-    #[cfg(any(target_os = "linux", test))]
-    PublishEmission,
-}
-
-/// An observation never grants authority; emission is only an attempted write.
-#[derive(Clone, Copy, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub(super) enum BootstrapOutcome {
-    Ready,
-    Refused,
-    Skipped,
-    #[cfg(any(target_os = "linux", test))]
-    Attempted,
-}
-
-#[derive(serde::Serialize)]
-struct BootstrapRecord {
-    kind: &'static str,
-    stage: BootstrapStage,
-    outcome: BootstrapOutcome,
-    pid: u32,
-}
-
-/// Record only the stage at which an attempt ended, including early returns.
-pub(super) struct BootstrapAttempt<'a> {
-    diagnostics: Option<&'a Diagnostics>,
-    stage: BootstrapStage,
-    outcome: BootstrapOutcome,
-}
-
-impl<'a> BootstrapAttempt<'a> {
-    pub(super) fn new(diagnostics: Option<&'a Diagnostics>, stage: BootstrapStage) -> Self {
-        Self {
-            diagnostics,
-            stage,
-            outcome: BootstrapOutcome::Refused,
-        }
-    }
-
-    #[cfg(any(target_os = "linux", test))]
-    pub(super) fn stage(&mut self, stage: BootstrapStage) {
-        self.stage = stage;
-    }
-
-    #[cfg(target_os = "linux")]
-    pub(super) fn outcome(&mut self, outcome: BootstrapOutcome) {
-        self.outcome = outcome;
-    }
-}
-
-impl Drop for BootstrapAttempt<'_> {
-    fn drop(&mut self) {
-        if let Some(diagnostics) = self.diagnostics {
-            diagnostics.bootstrap(self.stage, self.outcome);
-        }
-    }
 }
 
 struct Sink {
@@ -224,11 +73,6 @@ impl Diagnostics {
             &Path::new(&path)
                 .with_extension(format!("setup-{}-{serial}.jsonl", std::process::id())),
         )
-    }
-
-    #[cfg(all(test, target_os = "linux"))]
-    pub(in crate::managed) fn for_test(path: &Path) -> Self {
-        Self::create_at(path)
     }
 
     fn create_at(path: &Path) -> Self {
@@ -273,17 +117,6 @@ impl Diagnostics {
                 pid: std::process::id(),
                 started_ms: started.duration_since(origin).as_secs_f64() * 1000.0,
                 elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
-            })
-        });
-    }
-
-    pub(super) fn bootstrap(&self, stage: BootstrapStage, outcome: BootstrapOutcome) {
-        self.emit(|| {
-            serde_json::to_vec(&BootstrapRecord {
-                kind: "managed-script-bootstrap",
-                stage,
-                outcome,
-                pid: std::process::id(),
             })
         });
     }
@@ -355,7 +188,7 @@ mod tests {
         let diagnostics = Diagnostics::create_at(&path);
         {
             let _outer = diagnostics.phase(Phase::RuntimeContext);
-            let _inner = diagnostics.phase(Phase::RuntimeBinaries);
+            let _inner = diagnostics.phase(Phase::Inputs);
         }
         assert!(failing_step(&diagnostics).is_err());
         let rows = std::fs::read_to_string(&path)?;
@@ -364,7 +197,7 @@ mod tests {
             .map(serde_json::from_str)
             .collect::<Result<_, _>>()?;
         assert_eq!(rows.len(), 3);
-        assert_eq!(rows[0]["phase"], "runtime-binaries");
+        assert_eq!(rows[0]["phase"], "inputs");
         assert_eq!(rows[1]["phase"], "runtime-context");
         assert_eq!(rows[2]["phase"], "metadata");
         for row in rows {
@@ -372,39 +205,6 @@ mod tests {
             assert_eq!(row["kind"], "managed-setup-phase");
             assert!(row["elapsed_ms"].as_f64().is_some_and(|v| v >= 0.0));
             assert!(row["started_ms"].as_f64().is_some_and(|v| v >= 0.0));
-        }
-        drop(diagnostics);
-        std::fs::remove_dir_all(root)?;
-        Ok(())
-    }
-
-    #[test]
-    fn publication_phases_keep_fixed_schema_and_original_failure() -> TestResult {
-        let root = fixture()?;
-        let path = root.join("publication");
-        let diagnostics = Diagnostics::create_at(&path);
-        drop(diagnostics.phase(Phase::ResultPublication));
-        let outcome = {
-            let _receipt = diagnostics.phase(Phase::ReceiptPublication);
-            Err::<(), _>(std::io::Error::other("original publication error"))
-        };
-        assert_eq!(
-            outcome.err().ok_or("publication error lost")?.to_string(),
-            "original publication error"
-        );
-        drop(diagnostics.phase(Phase::CompilerFamilyPublication));
-        let rows: Vec<serde_json::Value> = std::fs::read_to_string(&path)?
-            .lines()
-            .map(serde_json::from_str)
-            .collect::<Result<_, _>>()?;
-        assert_eq!(rows.len(), 3);
-        for (row, phase) in rows.iter().zip([
-            "result-publication",
-            "receipt-publication",
-            "compiler-family-publication",
-        ]) {
-            assert_eq!(row["phase"], phase);
-            assert_eq!(row.as_object().map(serde_json::Map::len), Some(5));
         }
         drop(diagnostics);
         std::fs::remove_dir_all(root)?;
@@ -515,66 +315,6 @@ mod tests {
         assert_eq!(std::fs::read(&path)?, [] as [u8; 0]);
         drop(diagnostics.phase(Phase::Metadata));
         assert_ne!(std::fs::read(&path)?, [] as [u8; 0]);
-        drop(diagnostics);
-        std::fs::remove_dir_all(root)?;
-        Ok(())
-    }
-    #[test]
-    fn bootstrap_first_refusal_and_disabled_observation_preserve_original_outcome() -> TestResult {
-        let root = fixture()?;
-        let path = root.join("bootstrap");
-        let diagnostics = Diagnostics::create_at(&path);
-        let refuse = |diagnostics: Option<&Diagnostics>| -> Option<()> {
-            let mut observation = BootstrapAttempt::new(diagnostics, BootstrapStage::PublishLedger);
-            observation.stage(BootstrapStage::PublishJournal);
-            None::<()>?;
-            observation.stage(BootstrapStage::PublishEmission);
-            Some(())
-        };
-        assert_eq!(refuse(None), None);
-        let disabled = Diagnostics::default();
-        assert_eq!(refuse(Some(&disabled)), None);
-        let encoded = std::cell::Cell::new(false);
-        disabled.emit(|| {
-            encoded.set(true);
-            serde_json::to_vec(&true)
-        });
-        assert!(
-            !encoded.get(),
-            "disabled diagnostics must not serialize a row"
-        );
-        assert_eq!(refuse(Some(&diagnostics)), None);
-        let rows: Vec<serde_json::Value> = std::fs::read_to_string(&path)?
-            .lines()
-            .map(serde_json::from_str)
-            .collect::<Result<_, _>>()?;
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0]["kind"], "managed-script-bootstrap");
-        assert_eq!(rows[0]["stage"], "publish-journal");
-        assert_eq!(rows[0]["outcome"], "refused");
-        assert_eq!(rows[0].as_object().map(serde_json::Map::len), Some(4));
-        drop(diagnostics);
-        std::fs::remove_dir_all(root)?;
-        Ok(())
-    }
-
-    #[test]
-    fn bootstrap_rows_share_original_limits_and_busy_sink_refuses_observation() -> TestResult {
-        let root = fixture()?;
-        let path = root.join("bootstrap-limits");
-        let diagnostics = Diagnostics::create_at(&path);
-        {
-            let _borrowed = diagnostics.sink.borrow_mut();
-            diagnostics.bootstrap(BootstrapStage::OwnerComplete, BootstrapOutcome::Ready);
-        }
-        assert_eq!(std::fs::metadata(&path)?.len(), 0);
-        for _ in 0..=MAX_ROWS {
-            diagnostics.bootstrap(BootstrapStage::PublishEmission, BootstrapOutcome::Attempted);
-        }
-        let bytes = std::fs::read(&path)?;
-        assert!(bytes.len() <= MAX_BYTES);
-        assert_eq!(std::str::from_utf8(&bytes)?.lines().count(), MAX_ROWS);
-        assert!(diagnostics.sink.borrow().is_none());
         drop(diagnostics);
         std::fs::remove_dir_all(root)?;
         Ok(())

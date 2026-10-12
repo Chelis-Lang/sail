@@ -33,11 +33,6 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
 pub(super) struct FileDigests(BTreeMap<PathBuf, String>);
 
 impl FileDigests {
-    pub(super) fn contains(&self, path: &Path) -> bool {
-        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
-        self.0.contains_key(&canonical)
-    }
-
     pub(super) fn hash(&mut self, path: &Path) -> Result<String> {
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
         if let Some(hash) = self.0.get(&canonical) {
@@ -82,85 +77,42 @@ pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     json_bytes(path, &bytes)
 }
 
-/// Avoids replacing an unchanged private input-declaration sidecar on Linux.
-/// Byte equality only avoids a write; independent native freshness and every
-/// proof/input barrier remain responsible for authority. Uncertain identities,
-/// aliases and all other platforms retain the original atomic publication.
-pub(crate) fn json_metadata<T: Serialize>(path: &Path, value: &T) -> Result<()> {
-    #[cfg(target_os = "linux")]
+/// Identity of an installed toolchain file without reading its bytes: device,
+/// inode, size, modification and change time. Any write, replacement or
+/// reinstall changes it (the change time cannot be set by user programs), and
+/// any change makes the next run fresh. Elsewhere this falls back to the
+/// complete content digest.
+pub(super) fn stat_identity(path: &Path) -> Result<String> {
+    #[cfg(unix)]
     {
-        let bytes = serde_json::to_vec(value).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
-        if metadata_bytes_equal(path, &bytes) {
-            return Ok(());
-        }
-        json_bytes(path, &bytes)
+        use std::os::unix::fs::MetadataExt as _;
+        let m = std::fs::metadata(path)
+            .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))?;
+        Ok(format!(
+            "stat:{}:{}:{}:{}.{}:{}.{}",
+            m.dev(),
+            m.ino(),
+            m.size(),
+            m.mtime(),
+            m.mtime_nsec(),
+            m.ctime(),
+            m.ctime_nsec()
+        ))
     }
-    #[cfg(not(target_os = "linux"))]
-    json(path, value)
+    #[cfg(not(unix))]
+    {
+        file_digest(path)
+    }
 }
 
-#[cfg(target_os = "linux")]
-fn metadata_bytes_equal(path: &Path, bytes: &[u8]) -> bool {
-    metadata_bytes_equal_after_read(path, bytes, || {})
-}
-
-#[cfg(target_os = "linux")]
-fn metadata_bytes_equal_after_read(path: &Path, bytes: &[u8], after_read: impl FnOnce()) -> bool {
-    use rustix::fs::{Mode, OFlags, open};
-    use std::os::unix::fs::MetadataExt as _;
-
-    let identity = |metadata: &std::fs::Metadata| {
-        (
-            metadata.dev(),
-            metadata.ino(),
-            metadata.uid(),
-            metadata.gid(),
-            metadata.nlink(),
-            metadata.mode(),
-            metadata.len(),
-            metadata.mtime(),
-            metadata.mtime_nsec(),
-            metadata.ctime(),
-            metadata.ctime_nsec(),
-        )
-    };
-    let matches = || -> std::io::Result<bool> {
-        let before = std::fs::symlink_metadata(path)?;
-        if !before.is_file()
-            || before.nlink() != 1
-            || before.mode() & 0o7777 != 0o600
-            || u64::try_from(bytes.len()).ok() != Some(before.len())
-        {
-            return Ok(false);
-        }
-        let descriptor = open(
-            path,
-            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC | OFlags::NOFOLLOW,
-            Mode::empty(),
-        )?;
-        let mut file = std::fs::File::from(descriptor);
-        if identity(&before) != identity(&file.metadata()?) {
-            return Ok(false);
-        }
-        let mut buffer = [0u8; 16384];
-        let mut offset = 0usize;
-        while offset < bytes.len() {
-            let count = file.read(&mut buffer[..(bytes.len() - offset).min(16384)])?;
-            if count == 0 || bytes[offset..offset + count] != buffer[..count] {
-                return Ok(false);
-            }
-            offset += count;
-        }
-        // An independently checked EOF refuses growth; before/after descriptor
-        // and no-follow name identities refuse replacement during comparison.
-        if file.read(&mut buffer[..1])? != 0 {
-            return Ok(false);
-        }
-        after_read();
-        Ok(identity(&before) == identity(&file.metadata()?)
-            && identity(&before) == identity(&std::fs::symlink_metadata(path)?))
-    };
-    matches().unwrap_or(false)
+/// Whether `path` still has the recorded identity: a `stat:` identity is
+/// compared by stat, anything else as a complete content digest.
+pub(super) fn identity_matches(path: &Path, expected: &str) -> bool {
+    if expected.starts_with("stat:") {
+        stat_identity(path).is_ok_and(|actual| actual == expected)
+    } else {
+        file_digest(path).is_ok_and(|actual| actual == expected)
+    }
 }
 
 fn json_bytes(path: &Path, bytes: &[u8]) -> Result<()> {
@@ -189,135 +141,5 @@ pub(crate) fn event(value: &serde_json::Value) {
         && let Ok(bytes) = serde_json::to_vec(value)
     {
         let _ = file.write_all(&bytes).and_then(|()| file.write_all(b"\n"));
-    }
-}
-
-#[cfg(all(test, target_os = "linux"))]
-mod metadata_tests {
-    use super::*;
-    use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _, symlink};
-    use std::sync::atomic::{AtomicU64, Ordering};
-
-    type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
-    struct Fixture(PathBuf);
-    impl Fixture {
-        fn new() -> std::io::Result<Self> {
-            static SERIAL: AtomicU64 = AtomicU64::new(0);
-            let root = std::env::temp_dir().join(format!(
-                "sail-metadata-write-{}-{}",
-                std::process::id(),
-                SERIAL.fetch_add(1, Ordering::Relaxed)
-            ));
-            std::fs::create_dir(&root)?;
-            Ok(Self(root))
-        }
-    }
-    impl Drop for Fixture {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
-
-    #[test]
-    fn unchanged_metadata_keeps_inode_and_exact_bytes_across_chunk_boundaries() -> TestResult {
-        let root = Fixture::new()?;
-        let path = root.0.join("state.json");
-        let value = serde_json::json!({"exact": "x".repeat(32769)});
-        json_metadata(&path, &value)?;
-        let before = std::fs::metadata(&path)?;
-        let bytes = std::fs::read(&path)?;
-        json_metadata(&path, &value)?;
-        let after = std::fs::metadata(&path)?;
-        assert_eq!((after.dev(), after.ino()), (before.dev(), before.ino()));
-        assert_eq!(after.modified()?, before.modified()?);
-        assert_eq!(std::fs::read(&path)?, bytes);
-        assert!(metadata_bytes_equal(&path, &serde_json::to_vec(&value)?));
-        Ok(())
-    }
-
-    #[test]
-    fn changed_or_equivalent_but_nonidentical_metadata_uses_original_atomic_write() -> TestResult {
-        let root = Fixture::new()?;
-        let path = root.0.join("state.json");
-        let value = serde_json::json!({"x": 1});
-        json(&path, &value)?;
-        for old in [b"{\"x\": 1}".as_slice(), b"{\"x\":2}", b"{\"x\":1}\n"] {
-            std::fs::write(&path, old)?;
-            let before = std::fs::metadata(&path)?;
-            assert!(!metadata_bytes_equal(&path, &serde_json::to_vec(&value)?));
-            json_metadata(&path, &value)?;
-            assert_ne!(std::fs::metadata(&path)?.ino(), before.ino());
-            assert_eq!(std::fs::read(&path)?, serde_json::to_vec(&value)?);
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn symlink_hardlink_and_nonprivate_mode_never_take_noop_path() -> TestResult {
-        let root = Fixture::new()?;
-        let path = root.0.join("state.json");
-        let other = root.0.join("external.json");
-        let value = serde_json::json!({"exact": true});
-        let bytes = serde_json::to_vec(&value)?;
-        json(&other, &value)?;
-        symlink(&other, &path)?;
-        assert!(!metadata_bytes_equal(&path, &bytes));
-        json_metadata(&path, &value)?;
-        assert!(!std::fs::symlink_metadata(&path)?.is_symlink());
-        assert_eq!(std::fs::read(&other)?, bytes);
-        std::fs::remove_file(&path)?;
-        std::fs::hard_link(&other, &path)?;
-        assert!(!metadata_bytes_equal(&path, &bytes));
-        json_metadata(&path, &value)?;
-        assert_ne!(
-            std::fs::metadata(&path)?.ino(),
-            std::fs::metadata(&other)?.ino()
-        );
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644))?;
-        assert!(!metadata_bytes_equal(&path, &bytes));
-        json_metadata(&path, &value)?;
-        assert_eq!(std::fs::metadata(&path)?.mode() & 0o777, 0o600);
-        Ok(())
-    }
-
-    #[test]
-    fn same_bytes_name_replacement_during_comparison_refuses_noop() -> TestResult {
-        let root = Fixture::new()?;
-        let path = root.0.join("state.json");
-        let value = serde_json::json!({"exact": true});
-        json(&path, &value)?;
-        let before = std::fs::metadata(&path)?;
-        let mut replacement = Ok(());
-        assert!(!metadata_bytes_equal_after_read(
-            &path,
-            &serde_json::to_vec(&value)?,
-            || {
-                replacement = json(&path, &value);
-            }
-        ));
-        replacement?;
-        assert_ne!(std::fs::metadata(&path)?.ino(), before.ino());
-        assert_eq!(std::fs::read(&path)?, serde_json::to_vec(&value)?);
-        Ok(())
-    }
-
-    #[test]
-    fn absent_or_unavailable_metadata_preserves_original_write_and_error() -> TestResult {
-        let root = Fixture::new()?;
-        let path = root.0.join("state.json");
-        let value = serde_json::json!([]);
-        assert!(!metadata_bytes_equal(&path, &serde_json::to_vec(&value)?));
-        json_metadata(&path, &value)?;
-        assert_eq!(std::fs::read(&path)?, serde_json::to_vec(&value)?);
-        let missing = root.0.join("absent/state.json");
-        let original = json(&missing, &value).err();
-        let candidate = json_metadata(&missing, &value).err();
-        assert!(
-            original
-                .as_ref()
-                .is_some_and(|error| error.code == "SAIL3102")
-        );
-        assert_eq!(candidate, original);
-        Ok(())
     }
 }

@@ -115,7 +115,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         }
     }
     let paths: Vec<PathBuf> = paths.into_iter().collect();
-    super::files::json_metadata(
+    super::files::json(
         path,
         &Inputs {
             paths: paths.clone(),

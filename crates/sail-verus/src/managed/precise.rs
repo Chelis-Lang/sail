@@ -511,6 +511,7 @@ mod platform {
             }
             Some(())
         }
+        #[cfg(test)]
         pub(super) fn files(&self) -> Vec<PathBuf> {
             let mut files: Vec<_> = self
                 .directories
@@ -605,9 +606,11 @@ mod platform {
                 }
             }
         }
+        #[cfg(test)]
         pub(super) fn failure_reason(&self) -> &'static str {
             self.failure.unwrap_or("namespace-coverage-unavailable")
         }
+        #[cfg(test)]
         pub(super) fn binding_mismatch(&self) -> Option<BindingMismatch> {
             self.binding_mismatch
         }
@@ -758,14 +761,6 @@ impl Observer {
     pub(super) fn begin_bounded(roots: &[PathBuf], excluded: &[PathBuf]) -> Option<Self> {
         platform::Observer::begin_bounded(roots, excluded).map(Self)
     }
-    pub(super) fn begin_bounded_with(
-        roots: &[PathBuf],
-        excluded: &[PathBuf],
-        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
-        started: std::time::Instant,
-    ) -> Option<Self> {
-        platform::Observer::begin_bounded_with(roots, excluded, Some(stop), started).map(Self)
-    }
     pub(super) fn begin_files_bounded_with(
         roots: &[PathBuf],
         stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -776,13 +771,16 @@ impl Observer {
     pub(super) fn clean(&mut self) -> bool {
         self.0.clean()
     }
+    #[cfg(test)]
     pub(super) fn files(&self) -> Vec<PathBuf> {
         self.0.files()
     }
+    #[cfg(test)]
     pub(super) fn failure_reason(&self) -> &'static str {
         self.0.failure_reason()
     }
     /// Returns recorded metadata only; never repeats a poll or identity read.
+    #[cfg(test)]
     pub(super) fn binding_mismatch(&self) -> Option<BindingMismatch> {
         self.0.binding_mismatch()
     }

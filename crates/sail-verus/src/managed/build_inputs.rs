@@ -262,7 +262,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
         });
         previous.push(record);
     }
-    super::files::json_metadata(path, &previous)
+    super::files::json(path, &previous)
 }
 
 #[cfg(test)]

@@ -14,6 +14,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
+/// The one note for a result whose inputs could not be confirmed unchanged.
+pub(crate) const INPUTS_UNCONFIRMED: &str =
+    "SAIL3114: inputs could not be confirmed unchanged; re-run for a current result";
+
 /// Explicit managed verification environment; no caller Cargo artifacts are changed.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -102,19 +106,12 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     clippy::too_many_lines,
     reason = "The context explicitly enumerates all executable and environment bindings."
 )]
-fn context(
-    config: &Config,
-    engine: Option<&crate::engine::Request>,
-    diagnostics: &Diagnostics,
-) -> Result<Context> {
-    let binaries = diagnostics.phase(Phase::RuntimeBinaries);
+fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<Context> {
     let mut identity = Vec::new();
     let mut hashed = super::files::FileDigests::default();
     if let Some(engine) = engine {
-        // Shares only this phase's actual byte reads: no retained metadata or
-        // digest cache can authorize a different invocation's engine. No probe
-        // process starts before this validation, so an unvalidated engine is
-        // never executed.
+        // The engine install is validated by content before anything of it is
+        // executed; its files then join the identity like the stock toolchain.
         hashed.prefetch(
             [engine.manifest.as_path(), engine.stock_wrapper.as_path()]
                 .into_iter()
@@ -122,17 +119,15 @@ fn context(
         );
         crate::engine::validate_request(engine, |path| hashed.hash(path))?;
     }
-    // Independent probe processes, the optional helper manifest and the
-    // pre-guard content reads overlap. Every result is consumed below in the
-    // original order, so identity rows, the pre-guard digest set and the first
-    // reported error are unchanged; no digest leaves this phase-local map.
+    // The two sysroot probes are independent processes; their results are
+    // consumed in the original order, so the first reported error is unchanged.
     let wrapper = actual_wrapper(&config.cargo_verus);
     let rustc = resolve_program(
         &std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()),
         &config.workspace,
     );
     let rustup = resolve_program(std::ffi::OsStr::new("rustup"), &config.workspace);
-    let probes = std::thread::scope(|scope| {
+    let (cargo_probe, verifier_probe) = std::thread::scope(|scope| {
         let cargo_probe = rustc.as_ref().ok().map(|rustc| {
             scope.spawn(move || {
                 Command::new(rustc)
@@ -145,38 +140,15 @@ fn context(
             .as_ref()
             .ok()
             .map(|wrapper| scope.spawn(move || verifier_sysroot(wrapper, &config.workspace)));
-        #[cfg(target_os = "linux")]
-        let helper = scope.spawn(|| {
-            let closure = super::lease::helper_closure();
-            let identity = closure.as_ref().and_then(super::lease::helper_identity);
-            (closure, identity)
-        });
-        let verifier_runtime = wrapper
-            .as_ref()
-            .ok()
-            .map(|w| w.with_file_name("rust_verify"));
-        let mut pre_guard: Vec<&Path> = vec![
-            config.sail.as_path(),
-            config.cargo_verus.as_path(),
-            config.cargo.as_path(),
-            config.z3.as_path(),
-            config.shim.as_path(),
-        ];
-        pre_guard.extend(
-            [wrapper.as_ref(), rustc.as_ref(), rustup.as_ref()]
-                .into_iter()
-                .filter_map(|path| path.ok().map(PathBuf::as_path))
-                .chain(verifier_runtime.as_deref()),
-        );
-        hashed.prefetch(pre_guard);
         let failed = || Error::new("SAIL3104", "toolchain probe thread failed");
-        Probes {
-            cargo: cargo_probe.map(|probe| probe.join().map_err(|_| failed())),
-            verifier: verifier_probe.map(|probe| probe.join().map_err(|_| failed())),
-            #[cfg(target_os = "linux")]
-            helper: helper.join().unwrap_or((None, None)),
-        }
+        (
+            cargo_probe.map(|probe| probe.join().map_err(|_| failed())),
+            verifier_probe.map(|probe| probe.join().map_err(|_| failed())),
+        )
     });
+    // Installed executables, engine files and sysroot libraries are identified
+    // by stat: any change to them changes the context, so the next run is fresh.
+    let installed = |path: &Path| super::files::stat_identity(path);
     for path in [
         &config.sail,
         &config.cargo_verus,
@@ -184,45 +156,25 @@ fn context(
         &config.z3,
         &config.shim,
     ] {
-        identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
+        identity.push((path.to_string_lossy().into_owned(), installed(path)?));
     }
     if let Some(engine) = engine {
         for path in [&engine.manifest, &engine.stock_wrapper]
             .into_iter()
             .chain(engine.artifacts.iter())
         {
-            identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
+            identity.push((path.to_string_lossy().into_owned(), installed(path)?));
         }
     }
-    drop(binaries);
-    let helper = diagnostics.phase(Phase::HelperIdentity);
-    // Python is an optional Linux freshness dependency. Its exact interpreter,
-    // loaded stdlib and ELF closure join the context; unavailable coverage still
-    // permits fresh verification but the coherent guard cannot publish Current.
-    #[cfg(target_os = "linux")]
-    if let Some(helper) = probes.helper.1 {
-        identity.extend(helper);
-    }
-    // The same probe's closure list serves this run's lease acquisitions.
-    #[cfg(target_os = "linux")]
-    let helper_closure = probes.helper.0;
-    #[cfg(not(target_os = "linux"))]
-    let helper_closure: Option<super::HelperClosure> = None;
-    drop(helper);
-    let toolchains = diagnostics.phase(Phase::ToolchainProbes);
     let wrapper = wrapper?;
-    identity.push((
-        wrapper.to_string_lossy().into_owned(),
-        hashed.hash(&wrapper)?,
-    ));
+    identity.push((wrapper.to_string_lossy().into_owned(), installed(&wrapper)?));
     let mut environment: BTreeMap<Vec<u8>, Vec<u8>> = std::env::vars_os()
         .filter(|(k, _)| input_environment_key(k))
         .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
         .collect();
     let rustc = rustc?;
-    identity.push((rustc.to_string_lossy().into_owned(), hashed.hash(&rustc)?));
-    let actual = probes
-        .cargo
+    identity.push((rustc.to_string_lossy().into_owned(), installed(&rustc)?));
+    let actual = cargo_probe
         .ok_or_else(|| Error::new("SAIL3104", "cannot identify Rust toolchain"))??
         .map_err(|e| Error::new("SAIL3104", format!("cannot identify Rust toolchain: {e}")))?;
     if !actual.status.success() {
@@ -232,86 +184,21 @@ fn context(
         ));
     }
     let rustup = rustup?;
-    identity.push((rustup.to_string_lossy().into_owned(), hashed.hash(&rustup)?));
+    identity.push((rustup.to_string_lossy().into_owned(), installed(&rustup)?));
     let cargo_sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
-    let verifier_sysroot = probes
-        .verifier
+    let verifier_sysroot = verifier_probe
         .ok_or_else(|| Error::new("SAIL3104", "cannot identify verifier toolchain"))???;
-    let installed_sysroots = BTreeSet::from([cargo_sysroot, verifier_sysroot]);
     identity.push((
         config
             .cargo_verus
             .with_file_name("rust_verify")
             .to_string_lossy()
             .into_owned(),
-        hashed.hash(&wrapper.with_file_name("rust_verify"))?,
+        installed(&wrapper.with_file_name("rust_verify"))?,
     ));
-    drop(toolchains);
-    let guard = diagnostics.phase(Phase::SysrootGuard);
-    // Observe all installed-target namespaces before inventory collection and
-    // acquire kernel leases before the first eligible byte read. Earlier hashes
-    // remain ineligible: this owner cannot authorize a pre-guard digest.
-    let mut sysroots = super::sysroot::Baseline::begin_using(
-        &installed_sysroots,
-        |path| hashed.contains(path),
-        helper_closure.as_ref(),
-    );
-    drop(guard);
-    #[cfg(target_os = "linux")]
-    let (handoff_scope, imported) = {
-        let phase = diagnostics.phase(Phase::SysrootHandoff);
-        let scope = config.socket.as_ref().and_then(|_| {
-            let selection =
-                super::sysroot_selection::selection(&config.args, engine, &identity, &environment)?;
-            super::sysroot_cache::scope(&installed_sysroots, selection)
-        });
-        let imported = config
-            .socket
-            .as_ref()
-            .zip(scope.as_ref())
-            .is_some_and(|(socket, scope)| {
-                let request = sail_api::sysroot::Request::Lookup {
-                    scope: scope.clone(),
-                };
-                match sail_api::sysroot::call(socket, &request) {
-                    Ok(sail_api::sysroot::Response::Lookup(Some(snapshot))) => {
-                        sysroots.import(scope, &snapshot)
-                    }
-                    _ => false,
-                }
-            });
-        drop(phase);
-        (scope, imported)
-    };
-    let sysroot_bytes = diagnostics.phase(Phase::SysrootHash);
-    for path in sysroots.paths().to_vec() {
-        // Remote rows can populate only the independently protected Baseline,
-        // never the phase-local FileDigests cache or pre-guard executable aliases.
-        let hash = match sysroots.captured(&path) {
-            Some(hash) => hash.to_owned(),
-            None => hashed.hash(&path)?,
-        };
-        sysroots.capture(&path, &hash);
-        identity.push((path.to_string_lossy().into_owned(), hash));
+    for path in sysroot_files(&BTreeSet::from([cargo_sysroot, verifier_sysroot]))? {
+        identity.push((path.to_string_lossy().into_owned(), installed(&path)?));
     }
-    drop(sysroot_bytes);
-    let barrier = diagnostics.phase(Phase::SysrootBarrier);
-    let sysroots_complete = sysroots.complete();
-    drop(barrier);
-    #[cfg(target_os = "linux")]
-    if sysroots_complete
-        && !imported
-        && let Some((socket, scope)) = config.socket.as_ref().zip(handoff_scope)
-    {
-        let phase = diagnostics.phase(Phase::SysrootFillHint);
-        // Independent construction starts only after this caller's original
-        // complete hash barrier. No request contains caller-computed digests.
-        let _ = sail_api::sysroot::call(socket, &sail_api::sysroot::Request::Prepare { scope });
-        drop(phase);
-    }
-    #[cfg(not(target_os = "linux"))]
-    let _ = sysroots_complete;
-    let configuration = diagnostics.phase(Phase::ContextConfiguration);
     // The exact Cargo configuration bytes join the context, not only its path.
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
@@ -375,33 +262,61 @@ fn context(
         &identity,
         &environment.into_iter().collect::<Vec<_>>(),
     )?;
-    super::files::json_metadata(&state.join(format!("{hash}.link")), &identity_sha)?;
-    drop(configuration);
+    super::files::json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(Context {
         hash,
         compiler_hash,
-        sysroots,
-        helper: helper_closure,
     })
 }
 
-/// Results of the independent toolchain probes, consumed in original order.
-struct Probes {
-    cargo: Option<Result<std::io::Result<std::process::Output>>>,
-    verifier: Option<Result<Result<PathBuf>>>,
-    #[cfg(target_os = "linux")]
-    helper: (
-        Option<super::lease::HelperClosure>,
-        Option<Vec<(String, String)>>,
-    ),
+/// Files of the installed sysroots that compilation can load: `bin/rustc`,
+/// `bin/cargo`, the files directly in `lib/` and in each `lib/rustlib/*/lib/`.
+fn sysroot_files(sysroots: &BTreeSet<PathBuf>) -> Result<Vec<PathBuf>> {
+    let unreadable =
+        |e: std::io::Error| Error::new("SAIL3104", format!("cannot list sysroot: {e}"));
+    let mut files = BTreeSet::new();
+    let directory = |dir: &Path, files: &mut BTreeSet<PathBuf>| -> Result<()> {
+        match std::fs::read_dir(dir) {
+            Ok(entries) => {
+                for entry in entries {
+                    let path = entry.map_err(unreadable)?.path();
+                    if path.is_file() {
+                        files.insert(path);
+                    }
+                }
+                Ok(())
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(unreadable(error)),
+        }
+    };
+    for sysroot in sysroots {
+        for name in ["rustc", "cargo"] {
+            let path = sysroot.join("bin").join(name);
+            if path.is_file() {
+                files.insert(path);
+            }
+        }
+        directory(&sysroot.join("lib"), &mut files)?;
+        match std::fs::read_dir(sysroot.join("lib/rustlib")) {
+            Ok(entries) => {
+                for entry in entries {
+                    let library = entry.map_err(unreadable)?.path().join("lib");
+                    if library.is_dir() {
+                        directory(&library, &mut files)?;
+                    }
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(unreadable(error)),
+        }
+    }
+    Ok(files.into_iter().collect())
 }
 
 struct Context {
     hash: String,
     compiler_hash: String,
-    sysroots: super::sysroot::Baseline,
-    /// This run's helper closure probe, reused by its coherent lease owner.
-    helper: Option<super::HelperClosure>,
 }
 
 fn context_hashes(
@@ -1385,89 +1300,24 @@ fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Whether every runtime file of `context` still has its recorded identity
+/// (stat for installed files, content for configuration), checked in parallel.
 fn runtime_current(cache: &Path, context: &str) -> bool {
-    runtime_matches(cache, context, hash_all)
-}
-
-/// Complete content digests of every path, read concurrently into one
-/// phase-local map; aliases of one file are read once, as with sequential reads.
-fn hash_all(paths: &[&Path]) -> Vec<Result<String>> {
-    let mut hashed = super::files::FileDigests::default();
-    hashed.prefetch(paths.iter().copied());
-    paths.iter().map(|path| hashed.hash(path)).collect()
-}
-
-fn runtime_matches(
-    cache: &Path,
-    context: &str,
-    hash_all: impl FnOnce(&[&Path]) -> Vec<Result<String>>,
-) -> bool {
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
     let identities = identity_sha
         .as_ref()
         .and_then(|sha| read::<Vec<(String, String)>>(&state.join(format!("{sha}.json"))));
-    identities.as_ref().is_some_and(|paths| {
+    identities.as_ref().is_some_and(|rows| {
         identity_sha
             .as_ref()
-            .is_some_and(|sha| *sha == digest(&serde_json::to_vec(paths).unwrap_or_default()))
-            && {
-                // Every listed file is still read completely and compared; only
-                // the reads overlap. A missing digest can never match.
-                let files: Vec<&Path> = paths.iter().map(|(path, _)| Path::new(path)).collect();
-                let digests = hash_all(&files);
-                digests.len() == paths.len()
-                    && paths
-                        .iter()
-                        .zip(digests)
-                        .all(|((_, expected), digest)| digest.as_ref() == Ok(expected))
-            }
-    })
-}
-
-fn proof_runtime_current(
-    cache: &Path,
-    context: &str,
-    sysroots: &mut super::sysroot::Baseline,
-) -> (bool, bool) {
-    proof_runtime_current_with(cache, context, sysroots, hash_all)
-}
-
-fn proof_runtime_current_with(
-    cache: &Path,
-    context: &str,
-    sysroots: &mut super::sysroot::Baseline,
-    hash_all: impl FnOnce(&[&Path]) -> Vec<Result<String>>,
-) -> (bool, bool) {
-    if !sysroots.clean() {
-        return (runtime_current(cache, context), sysroots.complete());
-    }
-    let matches = runtime_matches(cache, context, |paths| {
-        // Guarded sysroot captures are used exactly as before; every other
-        // runtime file is read again in this final check.
-        let unguarded: Vec<&Path> = paths
-            .iter()
-            .copied()
-            .filter(|path| sysroots.captured(path).is_none())
-            .collect();
-        let mut fresh = hash_all(&unguarded).into_iter();
-        paths
-            .iter()
-            .map(|path| match sysroots.captured(path) {
-                Some(hash) => Ok(hash.clone()),
-                None => fresh
-                    .next()
-                    .unwrap_or_else(|| Err(Error::new("SAIL3104", "runtime digest unavailable"))),
+            .is_some_and(|sha| *sha == digest(&serde_json::to_vec(rows).unwrap_or_default()))
+            && crate::parallel::in_order(rows, |(path, expected)| {
+                super::files::identity_matches(Path::new(path), expected)
             })
-            .collect()
-    });
-    if sysroots.complete() {
-        (matches, true)
-    } else {
-        // A lost barrier never certifies reuse, even if restored bytes happen to
-        // match. Rehash through the original oracle and retain uncertainty.
-        (runtime_current(cache, context), false)
-    }
+            .into_iter()
+            .all(|matches| matches)
+    })
 }
 
 fn script_roots(data: &Value) -> Vec<PathBuf> {
@@ -1559,7 +1409,7 @@ pub(crate) fn run_engine(
     let (data, context_result, metadata_phase) = std::thread::scope(|scope| {
         let pending = scope.spawn(|| metadata(&config.workspace, &config.args, &config.cargo));
         let context_phase = diagnostics.phase(Phase::RuntimeContext);
-        let context_result = context(config, engine.as_ref(), &diagnostics);
+        let context_result = context(config, engine.as_ref());
         drop(context_phase);
         let metadata_phase = diagnostics.phase(Phase::Metadata);
         let data = pending
@@ -1588,8 +1438,6 @@ pub(crate) fn run_engine(
     let Context {
         hash,
         compiler_hash,
-        mut sysroots,
-        helper: helper_closure,
     } = context_result?;
 
     let run_id = format!(
@@ -1599,7 +1447,7 @@ pub(crate) fn run_engine(
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos())
     );
-    let owned_paths = diagnostics.phase(Phase::OwnedPaths);
+    let inputs = diagnostics.phase(Phase::Inputs);
     let (paths, _ownership) = prepare(
         config,
         &workspace_root,
@@ -1608,9 +1456,7 @@ pub(crate) fn run_engine(
         &run_id,
         engine.as_ref(),
     )?;
-    drop(owned_paths);
-    let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
-    let generation_available = super::build_inputs::family::begin(
+    super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
         &paths.target,
@@ -1626,42 +1472,6 @@ pub(crate) fn run_engine(
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
-    let mut script_bootstrap = if generation_available
-        || !super::build_inputs::family::bootstrap::Bootstrap::supported_arguments(&config.args)
-        || !super::build_inputs::family::bootstrap::Bootstrap::eligible_workload(&data)
-    {
-        diagnostics.bootstrap(
-            super::diagnostics::BootstrapStage::OwnerEligibility,
-            super::diagnostics::BootstrapOutcome::Skipped,
-        );
-        None
-    } else {
-        let mut runtime = runtime_paths(&config.cache, &hash);
-        let state = config.cache.join("runtime-identities");
-        let link = state.join(format!("{hash}.link"));
-        if let Some(identity) = read::<String>(&link) {
-            runtime.push(state.join(format!("{identity}.json")));
-            runtime.push(link);
-        }
-        let bootstrap_candidate = super::build_inputs::family::bootstrap::Bootstrap::begin_traced(
-            &data,
-            &extras,
-            &runtime,
-            Some(&diagnostics),
-        );
-        bootstrap_candidate.filter(|candidate| {
-            let matches = candidate.runtime_matches(&config.cache, &hash);
-            diagnostics.bootstrap(
-                super::diagnostics::BootstrapStage::InitialRuntime,
-                if matches {
-                    super::diagnostics::BootstrapOutcome::Ready
-                } else {
-                    super::diagnostics::BootstrapOutcome::Refused
-                },
-            );
-            matches
-        })
-    };
     let mut before = snapshot_metadata(&data, &extras);
     before.complete &= source_coverage;
     before.roots.extend(super::input::configuration_paths(
@@ -1675,36 +1485,17 @@ pub(crate) fn run_engine(
     if !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
-    drop(initial_snapshot);
-    let guards = diagnostics.phase(Phase::InputGuards);
-    let phase = diagnostics.phase(Phase::GuardAbsent);
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
-    drop(phase);
-    // Proof-time kernel coverage spans the selected targets' dependency
-    // closure. Cargo compiles nothing outside it for this selection, which is
-    // checked against Cargo's own unit records after every invocation; the
-    // whole-workspace revision and stamps still bind every other package.
-    // Build-script coverage likewise treats scripts outside an explicit
-    // selection's closure as never scheduled; the same unit check binds it.
+    // Cargo must compile nothing outside the selected targets' dependency
+    // closure; the read-time record covers exactly that closure. Build-script
+    // coverage likewise treats scripts outside an explicit selection's closure
+    // as never scheduled; the same unit check binds it.
     let scope = selected_closure(&data, &expected);
     let script_scope = super::build_inputs::selection_closure(&data);
     let units_in_scope = |paths: &Paths| {
         artifacts_within(paths, scope.as_ref()) && artifacts_within(paths, script_scope.as_ref())
     };
-    let coverage = super::input::closure_scope(&before, &data, scope.as_ref());
-    let phase = diagnostics.phase(Phase::GuardCoherent);
-    let mut coherent = super::coherent::Guard::begin_using(&coverage, helper_closure.as_ref());
-    drop(phase);
-    drop(guards);
-    let monitored_snapshot = diagnostics.phase(Phase::MonitoredSnapshot);
-    // Establish the revision again after the watcher is live, closing the setup
-    // interval between metadata collection and native observation.
-    let monitored = snapshot_metadata(&data, &extras);
-    before.revision = monitored.revision;
-    before.observation_paths = monitored.observation_paths;
-    drop(monitored_snapshot);
-    let input_barrier = diagnostics.phase(Phase::InputBarrier);
-    before.complete &= monitored.complete && coherent.ready_at(super::coherent::Barrier::Input);
+    let mut outside_scope = false;
     // Imported observations were first checked before guard acquisition. Check
     // them again under the original live owners before using shared outputs.
     // Cleaning a newly changed script prevents learning new bytes beside output
@@ -1718,7 +1509,7 @@ pub(crate) fn run_engine(
     clean(config, &paths.target, &late_scripts)?;
     let stamp_before = super::input::mutation_stamp(&before);
     super::configuration::check(&invocation, &config.args)?;
-    super::files::json_metadata(&paths.input_state, &data)?;
+    super::files::json(&paths.input_state, &data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
         "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
@@ -1726,7 +1517,7 @@ pub(crate) fn run_engine(
         "complete":before.complete && script_coverage && absent.ready(),
         "source_observation":source_state.is_file()
     }));
-    drop(input_barrier);
+    drop(inputs);
     // The solver's provenance digest is a complete read that overlaps target
     // cleanup; the final runtime check still reads the solver again.
     let solver_digest = {
@@ -1768,7 +1559,6 @@ pub(crate) fn run_engine(
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
-    let seal = diagnostics.phase(Phase::InvocationSeal);
     let source_engine = engine.is_some();
     let runtime = Runtime {
         run_id: run_id.clone(),
@@ -1823,14 +1613,11 @@ pub(crate) fn run_engine(
         engine,
     };
     json(&paths.runtime, &runtime)?;
-    drop(seal);
     let invocation_phase = diagnostics.phase(Phase::Invocation);
     let mut exit = invoke(config, &paths, err)?;
     drop(invocation_phase);
     let records_phase = diagnostics.phase(Phase::TargetRecords);
-    if !units_in_scope(&paths) {
-        coherent.refuse_scope();
-    }
+    outside_scope |= !units_in_scope(&paths);
     // The post-run Cargo metadata starts once the verifier invocation has
     // ended and overlaps the receipt checks, which never read it. A retry
     // discards it and reads metadata again after its own invocation.
@@ -1843,17 +1630,7 @@ pub(crate) fn run_engine(
     let (mut targets, missing) = records?;
     if exit == Some(0) && !missing.is_empty() {
         after_metadata = None;
-        let mut retry_packages = missing.into_iter().collect::<Vec<_>>();
-        if script_bootstrap.is_some() {
-            // The retry replaces the artifact journal. Preserve independent
-            // compilation authority by actually rebuilding supported scripts,
-            // rather than treating the retry's reused fresh=true binaries as
-            // fresh compilation. The same optional input owner stays alive.
-            retry_packages = super::build_inputs::family::bootstrap::Bootstrap::retry_packages(
-                &data,
-                retry_packages,
-            );
-        }
+        let retry_packages = missing.into_iter().collect::<Vec<_>>();
         clean(config, &paths.target, &retry_packages)?;
         std::fs::write(paths.run.join("artifacts.jsonl"), [])
             .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
@@ -1861,9 +1638,7 @@ pub(crate) fn run_engine(
             .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
         exit = invoke(config, &paths, err)?;
-        if !units_in_scope(&paths) {
-            coherent.refuse_scope();
-        }
+        outside_scope |= !units_in_scope(&paths);
         let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
         targets = retried;
         if !missing.is_empty() {
@@ -1874,7 +1649,7 @@ pub(crate) fn run_engine(
         }
     }
     drop(records_phase);
-    let post_observations = diagnostics.phase(Phase::PostObservations);
+    let post_run = diagnostics.phase(Phase::PostRun);
     super::build_inputs::update(
         &paths.build_inputs,
         &paths.run.join("artifacts.jsonl"),
@@ -1885,22 +1660,18 @@ pub(crate) fn run_engine(
     let (_, mut after_extras, after_coverage) =
         super::build_inputs::stale(&paths.build_inputs, &data);
     after_extras.extend(script_roots);
-    drop(post_observations);
-    let post_metadata = diagnostics.phase(Phase::PostMetadata);
     let mut after_data = match after_metadata {
         Some(after) => {
             after.unwrap_or_else(|_| Err(Error::new("SAIL3103", "Cargo metadata reader failed")))?
         }
         None => metadata(&config.workspace, &config.args, &config.cargo)?,
     };
-    drop(post_metadata);
-    let post_snapshot = diagnostics.phase(Phase::PostSnapshot);
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
     after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
     after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
     after_data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
-    super::files::json_metadata(&paths.input_state, &after_data)?;
+    super::files::json(&paths.input_state, &after_data)?;
     let mut after = snapshot_metadata(&after_data, &after_extras);
     after.roots.extend(super::input::configuration_paths(
         &invocation,
@@ -1916,23 +1687,14 @@ pub(crate) fn run_engine(
     // pre-invocation target revision contained that particular include.
     let pending = completed_receipts(&paths.run, &after_data)?;
     let stamp_after = super::input::mutation_stamp(&after);
-    drop(post_snapshot);
-    let final_barriers = diagnostics.phase(Phase::FinalBarriers);
     let absent = absent.finish();
-    let coherent_complete = coherent.ready_at(super::coherent::Barrier::PostVerification);
-    let mut sysroot_complete = sysroots.complete();
     let currentness = if !before.complete
         || !after.complete
         || !after_coverage
         || !source_coverage
         || !absent.complete
-        || {
-            let (runtime_complete, covered) =
-                proof_runtime_current(&config.cache, &hash, &mut sysroots);
-            sysroot_complete = covered;
-            !runtime_complete || !covered
-        }
-        || !coherent_complete
+        || outside_scope
+        || !runtime_current(&config.cache, &hash)
         || stamp_before.is_none()
         || stamp_after.is_none()
     {
@@ -1942,7 +1704,7 @@ pub(crate) fn run_engine(
     } else {
         Currentness::Historical
     };
-    drop(final_barriers);
+    drop(post_run);
     if exit == Some(0)
         && expected.iter().any(|(id, name, kind)| {
             !targets.iter().any(|t| {
@@ -1969,11 +1731,8 @@ pub(crate) fn run_engine(
     let reused_targets =
         u64::try_from(targets.iter().filter(|t| t.reused).count()).unwrap_or(u64::MAX);
     let mut notes = Vec::new();
-    if !coherent_complete {
-        notes.push(format!("SAIL3114: coherent kernel leases or native input coverage were unavailable or broken during verification ({}); no current proof receipt is published", coherent.failure_description()));
-    }
-    if !sysroot_complete {
-        notes.push(format!("SAIL3114: sysroot byte identities lost continuous kernel coverage ({}); no current proof receipt is published", sysroots.failure_description()));
+    if currentness == Currentness::Unknown {
+        notes.push(INPUTS_UNCONFIRMED.to_owned());
     }
     if !script_coverage {
         notes.push("Build-script input declarations were established during this run".to_owned());
@@ -1989,7 +1748,7 @@ pub(crate) fn run_engine(
             "SAIL3123: the interactive engine faulted for {fallbacks} target(s); their exact stock Verus results are reported and publish no proof receipt"
         ));
     }
-    let mut result = ProjectResult {
+    let result = ProjectResult {
         kind: "sail-project-result".to_owned(),
         schema_version: SCHEMA_VERSION,
         run_id,
@@ -2011,7 +1770,7 @@ pub(crate) fn run_engine(
             .as_ref()
             .map(crate::engine::Request::identity),
     };
-    let result_publication = diagnostics.phase(Phase::ResultPublication);
+    let publication = diagnostics.phase(Phase::Publication);
     if result.currentness == Currentness::Current
         && let Some(context) = paths.input_state.parent()
     {
@@ -2031,28 +1790,12 @@ pub(crate) fn run_engine(
         )?;
     }
     json(&paths.run.join("result.json"), &result)?;
-    drop(result_publication);
     if result.currentness == Currentness::Current {
-        let _receipt_publication = diagnostics.phase(Phase::ReceiptPublication);
         for (path, receipt) in pending {
             json(&path, &receipt)?;
         }
-        if !super::receipts::publish_guarded(
-            &paths.run,
-            &paths.receipts,
-            &result.context_sha256,
-            || sysroots.complete(),
-        )? {
-            // Coverage may have ended during the marker write, after the
-            // earlier guarded comparison. Recheck actual runtime bytes through
-            // the original oracle; uncertainty remains regardless of equality.
-            let _ = runtime_current(&config.cache, &result.context_sha256);
-            result.currentness = Currentness::Unknown;
-            result.notes.push(format!("SAIL3114: sysroot kernel coverage ended before receipt commit ({}); no current proof receipt is published", sysroots.failure_description()));
-            json(&paths.run.join("result.json"), &result)?;
-        }
+        super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
     }
-    let family_publication = diagnostics.phase(Phase::CompilerFamilyPublication);
     publish_compiler_generation(
         &paths,
         &after_data,
@@ -2065,46 +1808,7 @@ pub(crate) fn run_engine(
             args: &config.args,
         },
     );
-    if result.exit_code == Some(0)
-        && result.error.is_none()
-        && !focused(&config.args)
-        && result
-            .targets
-            .iter()
-            .filter(|target| target.requested)
-            .all(|target| target.complete)
-    {
-        // The report owns the unchanged full proof-context hash at this point.
-        let mut final_runtime = None;
-        if let Some(certificate) = script_bootstrap.as_mut().filter(|candidate| {
-            let matches = candidate.runtime_matches(&config.cache, &result.context_sha256);
-            final_runtime = Some(matches);
-            matches
-        }) {
-            certificate.publish_traced(
-                &paths.compiler_inputs,
-                &compiler_hash,
-                &paths.target,
-                &paths.build_inputs,
-                &after_data,
-                &paths.run.join("artifacts.jsonl"),
-                Some(&diagnostics),
-            );
-        }
-        // Observe only after the original runtime/input checks and publication
-        // attempt: the positive check-to-emission interval contains no sink I/O.
-        if let Some(matches) = final_runtime {
-            diagnostics.bootstrap(
-                super::diagnostics::BootstrapStage::FinalRuntime,
-                if matches {
-                    super::diagnostics::BootstrapOutcome::Ready
-                } else {
-                    super::diagnostics::BootstrapOutcome::Refused
-                },
-            );
-        }
-    }
-    drop(family_publication);
+    drop(publication);
     Ok(result)
 }
 
@@ -2892,69 +2596,46 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
-    fn guarded_sysroot_reads_skip_only_owned_digests_and_fall_back_on_changes()
+    fn runtime_identity_compares_stats_of_installed_files_and_bytes_of_configuration()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let root = PathBuf::from("/tmp").join(format!("sail-runtime-guard-{}", std::process::id()));
-        let sysroot = root.join("sysroot");
-        std::fs::create_dir_all(sysroot.join("bin"))?;
-        std::fs::create_dir_all(sysroot.join("lib/rustlib/host/lib"))?;
-        let rustc = sysroot.join("bin/rustc");
-        let library = sysroot.join("lib/rustlib/host/lib/std.rlib");
-        let other = root.join("z3");
-        for path in [&rustc, &library, &other] {
-            std::fs::write(path, b"good")?;
-        }
-        let mut owner =
-            super::super::sysroot::Baseline::begin(&BTreeSet::from([sysroot]), |path| {
-                path == rustc
-            });
-        assert!(owner.complete());
-        let mut identities = Vec::new();
-        for path in [&rustc, &library, &other] {
-            let hash = file_digest(path)?;
-            owner.capture(path, &hash);
-            identities.push((path.to_string_lossy().into_owned(), hash));
-        }
+        let root = std::env::temp_dir().join(format!("sail-runtime-stat-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root)?;
+        let installed = root.join("rustc");
+        let configuration = root.join("config.toml");
+        std::fs::write(&installed, b"binary")?;
+        std::fs::write(&configuration, b"[build]")?;
+        let identities = vec![
+            (
+                installed.to_string_lossy().into_owned(),
+                super::super::files::stat_identity(&installed)?,
+            ),
+            (
+                configuration.to_string_lossy().into_owned(),
+                file_digest(&configuration)?,
+            ),
+        ];
         let state = root.join("runtime-identities");
         std::fs::create_dir_all(&state)?;
         let sha = digest(&serde_json::to_vec(&identities)?);
-        let identity_path = state.join(format!("{sha}.json"));
-        json(&identity_path, &identities)?;
+        json(&state.join(format!("{sha}.json")), &identities)?;
         json(&state.join("ctx.link"), &sha)?;
-        let mut read_paths = Vec::new();
-        assert_eq!(
-            proof_runtime_current_with(&root, "ctx", &mut owner, |paths| {
-                paths
-                    .iter()
-                    .map(|path| {
-                        read_paths.push(path.to_path_buf());
-                        file_digest(path)
-                    })
-                    .collect()
-            }),
-            (true, true)
+        assert!(runtime_current(&root, "ctx"));
+        // Rewriting an installed file with identical bytes still changes it.
+        std::fs::write(&installed, b"binary")?;
+        assert!(!runtime_current(&root, "ctx"));
+        json(
+            &state.join(format!("{sha}.json")),
+            &vec![
+                identities[0].clone(),
+                (identities[1].0.clone(), "forged".to_owned()),
+            ],
+        )?;
+        assert!(
+            !runtime_current(&root, "ctx"),
+            "a changed record never matches"
         );
-        assert_eq!(read_paths, vec![rustc, other]);
-        identities[1].1 = "forged-digest".to_owned();
-        json(&identity_path, &identities)?;
-        assert_eq!(
-            proof_runtime_current(&root, "ctx", &mut owner),
-            (false, true)
-        );
-        identities[1].1 = file_digest(&library)?;
-        json(&identity_path, &identities)?;
-        // Restore the actual bytes after a write, but deliberately poison the
-        // old capture. Lost coverage must read fresh bytes, not this old value.
-        std::fs::write(&library, b"fail")?;
-        std::fs::write(&library, b"good")?;
-        owner.capture(&library, "poisoned-capture");
-        assert_eq!(
-            proof_runtime_current(&root, "ctx", &mut owner),
-            (true, false)
-        );
-        drop(owner);
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -3018,7 +2699,7 @@ mod tests {
             force: true,
         };
         std::fs::write(runtime.join("z3"), b"tampered")?;
-        let error = context(&config, Some(&request), &Diagnostics::default())
+        let error = context(&config, Some(&request))
             .err()
             .ok_or("corrupt engine was accepted")?;
         assert_eq!(error.code, "SAIL3120");

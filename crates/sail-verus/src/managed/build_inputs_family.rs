@@ -15,8 +15,6 @@ use std::io::Read as _;
 use std::io::Write;
 use std::path::Path;
 
-#[path = "build_inputs_bootstrap.rs"]
-pub(in crate::managed) mod bootstrap;
 #[path = "build_inputs_sources.rs"]
 mod sources;
 
@@ -231,7 +229,7 @@ pub(in crate::managed) fn recheck(
         .map(|(_, name)| name.clone())
         .collect();
     let clean = clean.into_iter().collect();
-    super::super::files::json_metadata(local, &retained)?;
+    super::super::files::json(local, &retained)?;
     Ok(clean)
 }
 
@@ -271,7 +269,7 @@ pub(in crate::managed) fn begin(
                 if let Some(inputs) = admitted {
                     // This is only an inventory. The caller subsequently reads
                     // every declared byte and acquires all original owners.
-                    if super::super::files::json_metadata(&source_state, &inputs).is_err() {
+                    if super::super::files::json(&source_state, &inputs).is_err() {
                         available = false;
                     }
                 } else {
@@ -295,7 +293,7 @@ pub(in crate::managed) fn begin(
             records.push(prior);
         }
     }
-    super::super::files::json_metadata(local, &records)?;
+    super::super::files::json(local, &records)?;
     Ok(available)
 }
 
@@ -325,12 +323,6 @@ pub(in crate::managed) fn publish(
 }
 
 #[cfg(target_os = "linux")]
-fn publish_records(path: &Path, compiler: &str, records: Vec<BuildInput>) {
-    // The independently guarded bootstrap certifies ordinary script outputs,
-    // not newly discovered Rust source. Keep its final-barrier write unchanged.
-    publish_inventory(path, compiler, records, None);
-}
-
 fn publish_inventory(
     path: &Path,
     compiler: &str,

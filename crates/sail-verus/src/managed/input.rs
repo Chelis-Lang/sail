@@ -249,6 +249,7 @@ pub(super) fn snapshot_metadata_home(
 /// member manifest are added, since Cargo reads them to load the workspace.
 /// The caller must refuse coverage if Cargo compiles a unit outside
 /// `closure`. Without a closure the snapshot is returned unchanged.
+#[cfg(test)]
 pub(super) fn closure_scope(
     snapshot: &InputSnapshot,
     data: &Value,

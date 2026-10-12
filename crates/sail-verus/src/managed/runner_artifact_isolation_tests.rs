@@ -95,16 +95,15 @@ exec "$@"
         };
         arguments.extend(["--target-dir".into(), paths.target.as_os_str().to_owned()]);
         let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-        let result = super::super::build_inputs::family::bootstrap::test_command_output(
-            &self.root,
-            &cargo,
-            &arguments,
-            &[
-                (OsStr::new("RUSTC_WRAPPER"), self.wrapper.as_os_str()),
-                (OsStr::new("SAIL_TEST_CALLS"), self.calls.as_os_str()),
-                (OsStr::new("SAIL_TEST_SELECTOR"), OsStr::new(selector)),
-            ],
-        )?;
+        let result = std::process::Command::new(&cargo)
+            .args(&arguments)
+            .current_dir(&self.root)
+            .env("RUSTC_BOOTSTRAP", "1")
+            .env_remove("RUSTC_WORKSPACE_WRAPPER")
+            .env("RUSTC_WRAPPER", self.wrapper.as_os_str())
+            .env("SAIL_TEST_CALLS", self.calls.as_os_str())
+            .env("SAIL_TEST_SELECTOR", OsStr::new(selector))
+            .output()?;
         assert!(
             result.status.success(),
             "{}",
@@ -243,7 +242,7 @@ fn repair_selector_layout_keeps_defaults_shared_and_exports_private() -> Isolati
     reason = "One migration transaction retains legacy evidence and tests its deletion against the original native owner."
 )]
 fn repair_selector_migration_does_not_watch_legacy_generated_inputs() -> IsolationResult {
-    use super::super::{coherent, source_inputs};
+    use super::super::source_inputs;
     let fixture = IsolationFixture::new()?;
     let selected = compiler_request(Some("application::a"));
     let (paths, owner) = prepare(
@@ -297,15 +296,11 @@ fn repair_selector_migration_does_not_watch_legacy_generated_inputs() -> Isolati
     json(&paths.input_state, &data)?;
     let before = snapshot_metadata(&data, &[]);
     assert!(before.complete);
-    let mut guard = coherent::Guard::begin(&before);
-    assert!(guard.ready_at(coherent::Barrier::Input));
     // A later shared-target cleanup must not invalidate this migrated owner.
     std::fs::remove_file(&legacy_generated)?;
     let after = snapshot_metadata(&data, &[]);
     assert!(after.complete);
     assert_eq!(before.revision, after.revision);
-    assert!(guard.ready_at(coherent::Barrier::PostVerification));
-    drop(guard);
     let mut old_data = data.clone();
     old_data["sail_source_inputs"] = serde_json::to_value(source_inputs::load(&legacy_source).0)?;
     assert!(!snapshot_metadata(&old_data, &[]).complete);
