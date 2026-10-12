@@ -529,10 +529,7 @@ mod tests {
         }
         let bytes = std::fs::read(&path)?;
         assert!(bytes.len() <= MAX_BYTES);
-        assert_eq!(
-            bytes.iter().filter(|byte| **byte == b'\n').count(),
-            MAX_ROWS
-        );
+        assert_eq!(std::str::from_utf8(&bytes)?.lines().count(), MAX_ROWS);
         assert!(diagnostics.sink.borrow().is_none());
         drop(diagnostics);
         std::fs::remove_dir_all(root)?;
