@@ -117,9 +117,24 @@ whole family is bound, with its current value or its absence:
 | `VERUS_*`, `VARGO_*`, `VSTD_KIND` | Verus driver and launcher (`VERUS_Z3_PATH`, `VERUS_SINGULAR_PATH`, `VERUS_ROOT`, `VERUS_DRIVER_*`), `builtin_macros` (`VSTD_KIND`, an undeclared proc-macro read) | verus@426d8b0 `rust_verify/src/driver.rs`, `verus/src/main.rs`, `air/src/singular_manager.rs`, `builtin_macros/src/lib.rs` |
 | `Z3_*` | none known in Z3 4.16.0; bound conservatively | — |
 | `SAIL_*`, except the existing observation-only exclusions | Sail's shim, cache and daemon selection | `managed/runner.rs` exclusion list |
-| `PATH`, `HOME` | program resolution (rustup proxies, `cc`), Cargo and rustup home discovery | Cargo book (`CARGO_HOME` default); rustup book |
 | `LD_*`, `DYLD_*` | dynamic loading of `librustc_driver` and Z3 | ld.so(8), dyld(1) |
 | `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLUMNS`, `LANG`, `LANGUAGE`, `LC_*` | colour and layout of rendered diagnostics, locale | the lead's list; kept conservatively |
+
+`PATH` and `HOME` are not bound as raw values: agents and terminals routinely
+differ in both, and binding them would bring the repeated first runs back.
+What they decide for a proof is bound instead:
+
+- `PATH` selects which `cargo`, `rustc`, `rustup`, `cargo-verus`, `verus`
+  and `z3` run. Sail resolves each to an absolute path and binds its identity
+  (path and bytes, or L7c's stat-based identity) in the runtime identity.
+- `HOME` locates the Cargo and rustup homes. Sail binds the resolved
+  `CARGO_HOME` and `RUSTUP_HOME` paths (explicit value, or the `HOME`
+  default) and the bytes of every Cargo configuration file it finds, as the
+  context already does for configuration files.
+
+Tools that build scripts find through `PATH` (`cc`, `cmake`, `pkg-config`)
+are undeclared reads, which Cargo does not fingerprint either; they join the
+documented limitation below.
 
 Variables outside (a) that the tools read without changing verdicts or
 diagnostics stay outside: `TERM` (Cargo's progress bar, which managed mode's
@@ -141,7 +156,8 @@ This is Cargo's freshness model: Sail reuses a result exactly when plain
 `cargo verus` would consider the build fresh, and it binds the values by
 content rather than trusting Cargo's tracking (rule 6). Child processes still
 receive the whole environment. Undeclared reads by a build script or proc
-macro remain a limitation shared with Cargo; `VSTD_KIND` is the one such read
+macro, including tools a build script finds through `PATH`, remain a
+limitation shared with Cargo; `VSTD_KIND` is the one such read
 in the pinned toolchain, and (a) binds it.
 
 Expected effect: MCP, CLI and new agent sessions on the same project share
