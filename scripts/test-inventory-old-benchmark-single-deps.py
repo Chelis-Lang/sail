@@ -2,7 +2,9 @@
 """Host-only exact-scope policy controls; no native or cleanup actor."""
 import ast
 import copy
+import hashlib
 import importlib.util
+import json
 import os
 from pathlib import Path
 import stat
@@ -20,10 +22,13 @@ class Controls(unittest.TestCase):
         return types.SimpleNamespace(st_nlink=links, st_mode=stat.S_IFREG | mode)
 
     def test_one_exact_fixed_sibling_and_original_bounds(self):
-        spec = importlib.util.spec_from_file_location('old_incremental', HERE / 'retire-old-benchmark-single-incremental.py')
-        old = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(old)
-        self.assertEqual(M.SCOPE, old.SCOPE.replace('/debug/incremental', '/debug/deps'))
+        previous_scope = ('/tmp/sail-m7-current-benchmark-a9609e9-after-recovery-2/work/results/'
+                          'cache-m7/projects/'
+                          '060a93ccf65eb083f7bad4d53d8ffa3622c37e60fd2ded4740dc62a945ac5502/'
+                          'compiler-artifacts/'
+                          '8d76a018e1973c200f43355399b80321bf8c171b548a75815e344fa859bdd1c5/'
+                          'target/debug/incremental')
+        self.assertEqual(M.SCOPE, previous_scope.replace('/debug/incremental', '/debug/deps'))
         self.assertEqual(M.ROOTS, (M.SCOPE,))
         self.assertEqual((M.MAX_FILES, M.MAX_BYTES), (20000, 8 * 1024**3))
         self.assertEqual(M.SUFFIXES, ('.o', '.rmeta', '.rlib'))
@@ -73,15 +78,28 @@ class Controls(unittest.TestCase):
             M.compare_preserved(inventory, M.inventory((str(root),)), [])
 
     def test_same_audited_holder_birth_mount_and_file_guards(self):
-        def functions(name):
-            return {n.name: ast.dump(n, include_attributes=False)
-                    for n in ast.parse((HERE / name).read_text()).body
-                    if isinstance(n, ast.FunctionDef)}
-        old = functions('retire-old-benchmark-single-incremental.py')
-        new = functions('inventory-old-benchmark-single-deps.py')
-        for name in ('row', 'holders', 'canonical_mounts', 'same_inspections', 'inspect_all',
-                     'aliases', 'directory_id', 'open_regular', 'compare_preserved'):
-            self.assertEqual(old[name], new[name], name)
+        def canonical(value):
+            if isinstance(value, ast.AST):
+                return {'node': type(value).__name__,
+                        'fields': [[name, canonical(item)] for name, item in ast.iter_fields(value)
+                                   if name != 'type_params' or item]}
+            if isinstance(value, list):
+                return [canonical(item) for item in value]
+            if isinstance(value, bytes):
+                return {'bytes_hex': value.hex()}
+            return value
+        provenance = json.loads((HERE.parent / 'docs/validation/m7-old-benchmark-deps-guard-provenance.json').read_text())
+        self.assertEqual(provenance['source_sha256'],
+                         'b2c62607087d6057e60e53007880e20ef553b59a90b83ec64556afd66e444ed1')
+        nodes = {n.name: n for n in ast.parse((HERE / 'inventory-old-benchmark-single-deps.py').read_text()).body
+                 if isinstance(n, ast.FunctionDef)}
+        names = ('row', 'holders', 'canonical_mounts', 'same_inspections', 'inspect_all',
+                 'aliases', 'directory_id', 'open_regular', 'compare_preserved')
+        self.assertEqual(set(provenance['function_ast_sha256']), set(names))
+        for name in names:
+            actual = hashlib.sha256(json.dumps(canonical(nodes[name]), ensure_ascii=True,
+                                               separators=(',', ':')).encode()).hexdigest()
+            self.assertEqual(actual, provenance['function_ast_sha256'][name], name)
 
     def test_inventory_approval_shape_cannot_widen_fixed_namespace(self):
         name = M.SCOPE + '/libordinary.rlib'
