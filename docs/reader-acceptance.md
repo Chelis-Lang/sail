@@ -1,187 +1,119 @@
-# Real warm-reader acceptance
+# Reader acceptance
 
-`scripts/m7-reader-acceptance.py` runs the local reader workload against frozen
-Sail binaries, a compatible installed source engine, and a prepared source-only
-Cargo workspace. It prepares independent baseline and active copies without
-copying prior receipts or Cargo output. Preparation verifies the full project
-ordinarily, then establishes the exact repair-function context. Preparation
-costs and failed attempts are retained separately from measured reader latency.
+The M7 reader gate requires established Status and complete Result reads below
+200 ms p95 on Linux while a selected-crate verification is running. Four
+concurrent clients read the same complete, Current repair job. The client RPC
+deadline is 5 s. Two collectors run in turn, the Python probe
+(`scripts/m7-job-read-bench.py`) and the Rust probe
+(`crates/sail-cli/examples/job_read_bench`). Each retains 200 samples, 100 Status
+and 100 Result. Every sample must be Current for the job's input revision, with
+the same live verifier process before and after the RPC. Retained CLI/MCP
+scenarios then run against the same service, with 120 s workflow, 30 s command
+and 5 s RPC limits.
 
-The [frozen `b89546c` product](validation/m7.md)
-passes both unchanged collectors and retained CLI/MCP scenarios. Each collector
-retains 200 total samples, full Current graphs and the same live verifier.
-Python Result/Status p95 is 91.227/56.989 ms; Rust is 83.867/44.371 ms, below
-the original 200 ms bound. Current `387ba80` separately passes its
-[complete gate/solver, product installations and original repair fixture](validation/m7.md).
-Its original reader workflow fails Python Result p95 at 436.008 ms against
-the unchanged 200 ms bound; Status p95 is 137.084 ms. All 200 samples retain
-Current evidence and the same continuing verifier. Every full Result is
-4,313,119 bytes. Rust and retained CLI/MCP checks are unattempted after the
-Python failure. The retained facts do not isolate a latency cause, and the
-historical b895 pass grants no current reader credit.
+## Current state
 
-The earlier [frozen `730a321` product](validation/m7.md) passes
-this complete workflow: both unchanged four-client collectors retain 200 samples,
-full Current graphs and p95 below 200 ms during actual verification, followed by
-retained CLI/MCP scenarios. Python Result/Status p95 is 94.197/59.896 ms; Rust is
-67.483/50.273 ms. Preparation costs and historical failures remain separate;
-real-project repair speed and complete standard/cache gates are still outstanding.
+Native Linux, `c7i.4xlarge` in `us-east-1` (ADR 0038). Every run passed both
+collectors and the retained CLI/MCP scenarios. Full Results were about 4.05 MB,
+with complete graphs of all-verified functions for vstd (1,871) and HumanEval (331).
 
-[Optional RPC stage diagnostics](result-rpc-diagnostics.md) can attribute server
-costs in a separate owned diagnostic scope. They do not change frozen collectors,
-admit proofs or replace the original latency acceptance checks.
+| Product | Runs | Python Status p50/p95/p99 | Python Result p50/p95/p99 | Rust Status p50/p95/p99 | Rust Result p50/p95/p99 |
+|---|---:|---|---|---|---|
+| L5 readers branch (`be2246c`) | 3 | 46.4 / 68.6 / 84.5 | 72.1 / 101.9 / 115.7 | 25.5 / 34.0 / 38.8 | 27.3 / 43.6 / 71.4 |
+| `73a3b46` (`rescue/m7`) | 3 | 39.9 / 80.0 / 94.6 | 70.5 / 100.5 / 110.1 | 32.6 / 39.7 / 41.5 | 42.9 / 69.9 / 82.7 |
+| `387ba80` | 1 | 32.3 / 63.3 / 69.3 | 72.2 / 93.3 / 97.1 | 34.0 / 45.2 / 46.7 | 43.3 / 67.4 / 91.3 |
+| `b89546c` | 1 | 36.5 / 61.5 / 67.4 | 75.4 / 96.6 / 102.2 | 32.9 / 44.7 / 49.9 | 43.4 / 67.2 / 85.7 |
 
-Pass the frozen product and probe directories, qualified source-runtime root,
-prepared source workspace, exact package/target/kind/function, Python probe,
-output directory and environment label. `--help` lists the required arguments.
-The source-runtime manifest must be accepted by that exact Sail binary; an
-incompatible engine is a setup failure. This workload is local-only.
+All values are milliseconds, pooled over the listed runs, using the collectors'
+own quantile rule. See [the L5 report](reports/rescue/l5-readers.md) for the
+fixes, the attribution and raw evidence hashes.
 
-Before setup, the controller records actual ownership/capability prerequisites
-for both installed product binaries and refuses foreign-owned products without
-effective `CAP_LEASE`. This check does not cover the complete runtime inventory.
-Optional `--lease-inventory candidate-guard-bindings.json` audits every binding
-in the exact candidate's original complete Guard capture and records its hash.
-It cannot prove completeness of an arbitrary supplied list or cover future
-created inputs; stale/changed bindings are refused. Production Guard acquisition
-remains the authority. Use [native product setup](native-product-setup.md) to
-create new byte-identical service-owned copies without changing old seals.
-Neither this preflight nor a successful installation admits a proof, changes
-preparation deadlines or qualifies a selected runtime.
+The Python collector's timed window shares the interpreter lock with three
+other reader threads. Those threads scan `/proc` and parse 4 MB Results, so
+its spread is larger than the server-side change. The Rust collector tracks
+server-side cost more closely.
 
-`--setup-timeout 600` is the default preparation budget per invocation.
-`--setup-timeout 0` explicitly permits unmeasured preparation to completion,
-with progress reports and cancellation of owned actors. Neither setting changes
-the 30-second command and five-second RPC bounds, or the four-reader,
-200-sample census with a p95 below 200 milliseconds. A real complete, successful,
-public `Current` baseline and a continuously running selected-crate verifier
-are prerequisites. Both independent collectors must pass before the controller
-reports success. `--keep-daemon` retains only a successful owned service for
-subsequent retained-job CLI/MCP inspection.
+## Method
 
-`--prepare-contexts --setup-timeout 600` explicitly adds a separately recorded,
-unmeasured preparation phase before the original bounded setup checks. In each
-fresh, owned workspace it completes the full ordinary verification and exact
-repair-function context with the same source, arguments, runtime and private
-cache. No receipt or Cargo output is copied from another run. Every preparation
-command, full proof, job ID and total wall time is retained; progress and owned
-cancellation remain active. Preparation is not a latency sample or a performance
-claim, and its cost must accompany any resulting acceptance record.
+1. `scripts/perf-host.sh up LANE`, `sync LANE`, then build the CI image on the
+   host (`ci/local.sh` builds it on first use; `run` supplies the engine token).
+2. In a container from that image, build the product and probe:
+   `cargo build --release --locked -p sail-cli -p sail-shim --bins --example job_read_bench`.
+   Give each source tree its own target directory, or copy it with fresh
+   mtimes. Cargo's workspace-relative dep-info can otherwise treat an older
+   synced tree as fresh against another tree's artifacts.
+3. Prepare the source-only HumanEval workspace as `m7-repair-bench.py prepare`
+   does. Use `human-eval-verus` at the `corpus/repair-edits.json` commit, with
+   the `cargo_wrapper` `Cargo.toml` whose `vstd` path names `source/vstd` of a
+   Verus checkout at the catalogue's `verus_commit`. Then run
+   `cargo generate-lockfile` with the engine's Rust toolchain.
+4. Run:
 
-After preparation, the existing ordinary and repair-context setup checks still
-have their original 600-second bounds. This frozen controller sets
-`SAIL_MANAGED_FORCE=1`, so the ordinary `verify --incremental` check cleans the
-selected target and invokes its compiler again. Preparation warms dependencies
-and establishes contexts; it does not turn this forced check into receipt-only
-reuse. Ordinary and repair contexts keep separate target/receipt directories.
-The repair submission and public complete Current admission remain
-unchanged. Neither collector, the 600-second collector process bound, five-second
-RPC nor p95 threshold changes. The explicit preparation flag requires a positive
-subsequent setup budget: it cannot turn these bounded checks into a whole
-`--setup-timeout 0` run. The earlier cold setup timeout remains a failure.
+   ```sh
+   python3 scripts/reader-acceptance-run.py --install-from "$CARGO_TARGET_DIR" \
+     --bin-dir PRODUCT --probe-bin-dir PROBE --source-workspace WORKSPACE \
+     --source-runtime /opt/sail-engine --stock-bin-dir /opt/verus/verus-x86-linux \
+     --out NEW_DIR --environment-label "native c7i.4xlarge us-east-1"
+   ```
 
-A completed job may temporarily have an unavailable freshness projection. The
-controller can wait on that same job only when its original owned output was
-accepted, independently complete and Current, and its public Unknown result
-matches the precise unavailable-projection transformation. Raw output never
-admits a proof. Public Current must eventually be observed within the same
-preparation budget. Failed, incomplete, changed or generally Unknown original
-proofs remain failures; the existing single declaration-establishment transition
-is the only permitted proof rerun.
+   `--install-from` creates new product and probe directories with their
+   `freeze.json` records. The script drives the unchanged
+   `scripts/m7-reader-acceptance.py` controller with `--prepare-contexts`, a
+   600 s setup budget and a retained service, then runs
+   `scripts/m7-retained-jobs-acceptance.py`. It prints p50/p95/p99 per collector.
+   A run takes about seven minutes on a `c7i.4xlarge`.
+5. `scripts/perf-host.sh down LANE`.
 
-## Retained-job evidence
+The controller copies the source into independent baseline and active
+workspaces without prior receipts or Cargo output. It records an unmeasured full
+preparation of each, then the original 600 s ordinary and exact repair-context
+checks. It then starts the measured active proof, waits for its live
+`human_eval_verus` verifier, and runs both collectors. It admits each census only
+if all 200 samples are Current, with the same input revision, crate and
+continuing verifier. Owned jobs are archived from exactly one of
+`projects/jobs/<id>` or `results/projects/jobs/<id>`, through descriptors that
+refuse symlinks, FIFOs and substituted directories, and are then cancelled.
+Raw output never admits a proof.
 
-The controller supports exactly these two private job layouts under its own
-cache:
+## Diagnostics
 
-- `projects/jobs/<job-id>` for older daemons;
-- `results/projects/jobs/<job-id>` for newer daemons.
+`--timings` sets `SAIL_JOB_RPC_TIMINGS=1` and `SAIL_FRESHNESS_TRACE=1` on the
+owned daemon ([RPC diagnostics](result-rpc-diagnostics.md)). Such a run is a
+diagnostic, not an acceptance sample. On the native host, a Status or Result
+spends about 18-24 ms p50 in freshness validation. Most of that is the kernel
+read-lease barrier: about 5 ms of binding lookups for ~1,180 leased files and
+two `/proc/locks` sweeps of ~225 KB at about 3-7 ms each. The output seal costs
+about 1.6 ms and socket output of a 4 MB frame about 1.7 ms. Concurrent readers
+already share an in-flight freshness validation when it started after they
+arrived; about half of all reads did so.
 
-Exactly one directory must exist. Missing or duplicate layouts fail explicitly;
-the controller does not choose the first match. It verifies the record's job ID,
-version and submission scope. Reads used for freshness-establishment waiting
-also match the public job's workspace, arguments and input revision, and verify
-the exact stdout seal when present. Directory and file descriptors refuse
-symlinks, path traversal and non-regular files, including FIFOs. Holding the
-opened directory prevents its later replacement from redirecting a read.
+## Earlier attempts
 
-`worker-output/<job-id>/` contains available stdout, stderr and event streams,
-plus `archive.json` with the selected layout, copied-byte hashes, missing files
-and any detected changes during copying. A completed job with missing stdout is
-an archival failure. Queued jobs that never started can explicitly record missing
-worker files. The private `record.json`, including its environment, is not copied.
-Archival errors appear in `summary.json`, prevent a passing acceptance result and
-do not bypass owned-job cancellation. An earlier proof or census failure remains
-recorded even if archival also fails.
+Under Linux amd64 emulation on arm64 macOS (superseded by ADR 0038):
 
-The original frozen controller looked only in the newer layout. An older-daemon
-run exposed that lookup mismatch: its job records remained in the legacy path,
-while the controller checked the newer path. The cache itself and its
-authoritative public proof remained intact. The revised resolver applies only to
-future controller freezes. Running controller files must not be edited in place.
+- `4472279`, 2026-10-11: failed, Python Result p95 394.7 ms; cause unknown
+  ([record](validation/m7-current-reader-workflow.md)).
+- `0f31c1d`, 2026-10-11, stage diagnostic: failed, Python Result p95 403.3 ms
+  ([record](validation/m7-rpc-stage-workflow.md)).
+- `8e09eaa` and the native-binding product: setup timed out at the 600 s
+  ordinary baseline check ([record](validation/m7-reader-entry-setup-timeout.md),
+  [record](validation/m7-rpc-binding-reader-terminal.md)).
+- `730a321`, 2026-10-12: passed, Python Result/Status p95 94.2/59.9 ms, Rust
+  67.5/50.3 ms ([record](validation/m7-reader-730a321-terminal.md)).
+- `b89546c`, 2026-10-12: passed, Python 91.2/57.0 ms, Rust 83.9/44.4 ms
+  ([record](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)).
+- `387ba80`, 2026-10-12: failed, Python Result p95 436.0 ms, Status 137.1 ms;
+  Rust and retained checks not attempted. The same commit passes natively
+  (93.3 ms). The read path is unchanged since `b89546c`, so the emulated
+  failure is not a code regression. Its cause is unknown.
 
 ## Developer checks
 
-The daemon bounds retained complete-result cache storage while preserving full
-responses. Capacity remains charged through in-flight output after eviction;
-quota pressure serves an uncached response. This is a cache-retention bound,
-not a bound on cold encoding or process RSS. See the
-[ownership validation](validation/m7.md). Freshness
-validation and the original reader thresholds remain unchanged.
-
-Run `python3 scripts/test-m7-reader-acceptance.py` for the fast harness regressions.
-They use actual old/new filesystem layouts and cover ambiguity, missing output,
-record/scope/revision/seal mismatches, substituted directories, symlinked files,
-FIFOs, duplicate JSON fields and unchanged public-proof admission. These fixtures
-are not substitutes for actual CLI/MCP or four-reader acceptance.
-
-See [the proof-repair guide](proof-repair.md) for the public commands exercised
-by these workloads.
-
-## Recorded setup failure
-
-The frozen `8e09eaa` reader-stage attempt timed out during ordinary baseline
-preparation at its unchanged 600-second bound. Neither reader census ran. See
-[the retained setup record](validation/m7.md); this
-failure remains separate from the older live-census latency failures and idle
-retained-job diagnostics.
-
-## Recorded single-proof diagnosis
-
-A separately granted [detailed sysroot diagnosis](validation/m7.md)
-completes one fresh full HumanEval proof within the original 600-second budget,
-with public Current and accepted evidence. It uses two actual compiler
-invocations, with no preparation or retry; the focus result remains provisional.
-It does not reproduce or explain the earlier D20 coverage loss. Neither reader
-census nor retained CLI/MCP acceptance runs in that diagnostic. A new original
-reader workflow still requires its own genuine Current proofs, unchanged
-collectors and complete owned lifecycle.
-
-## Current complete reader attempt
-
-The [earlier frozen `4472279` run](validation/m7.md) completed genuine Current full preparation in independent baseline and active workspaces, then passed all four original bounded setup checks. The first collector completed all 200 RPC samples through four readers while the same selected-crate verifier remained live. Status p95 was 148.430 ms; complete Result p95 was 394.713 ms, exceeding the unchanged 200 ms requirement. Each Result carried a 4,312,245-byte complete report. The controller stopped there, leaving the Rust census and retained CLI/MCP integration unattempted. This is a retained failure, not reader acceptance. Preparation costs, samples, worker continuity and post-run seals accompany the record.
-
-The [current-product observation-only stage run](validation/m7.md)
-retains another complete Current baseline and active proof, then a failed
-original Python Result p95 (403.341 ms; Status 147.290 ms). All 200 admission and
-per-call verifier checks passed; Rust and retained integration were unattempted.
-Its bounded server tail attributes only 43 completed pairs after cleanup
-polling. It is diagnostic evidence, not reader acceptance or source qualification.
-
-The subsequent [native-binding product workflow](validation/m7.md)
-establishes independent complete Current preparation proofs, then times out in
-the original 600-second baseline ordinary-full check. No census or retained
-integration is attempted. The successful preparation does not substitute for
-that failed prerequisite. Its separately retained process snapshot is partial:
-main-task child traversal omitted descendants launched by other Cargo tasks.
-The [all-task observer control](validation/m7.md)
-now demonstrates that coverage on a real worker-thread child and rejects PID
-birth changes. It improves future diagnosis, without recapturing old state or
-admitting a timed-out proof.
-
-One separately scoped [focused ordinary diagnosis](validation/m7.md)
-then completed under the same 600-second bound, FORCE policy and ordinary
-context, with a Current full report and unchanged post-run seals. Its successful
-cached solver path did not reproduce the historical wait. Partial all-task
-snapshots and a capped closure scan remain explicitly incomplete. No reader
-census, retained integration or acceptance claim follows from this diagnostic.
+`python3 scripts/test-m7-reader-acceptance.py` runs the fast controller
+regressions: both job layouts, ambiguity, missing output, record, scope,
+revision and seal mismatches, substituted directories, symlinks, FIFOs, duplicate
+JSON fields and unchanged public-proof admission. These fixtures do not replace
+a real four-reader run. See [the proof-repair guide](proof-repair.md) for the
+public commands these workloads exercise, and
+[native product setup](native-product-setup.md) for installed-product lease
+ownership.

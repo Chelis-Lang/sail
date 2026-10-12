@@ -305,12 +305,21 @@ latency or the separate real-reader acceptance.
 
 The current daemon source enables one optional background constructor for
 `managed::GuardedOutput` on Linux. Established continuous namespace and read-lease
-coverage can avoid rereading and hashing persisted worker stdout. Both output
-barriers bracket the original independent input/runtime freshness check; output
-coverage alone cannot make a proof Current. Missing, busy, quota-refused or
-invalid coverage uses the complete original read/hash path. If the final output
-barrier fails, the daemon repeats that full read/hash and independent freshness
-check before serving the complete response.
+coverage can avoid rereading and hashing persisted worker stdout. A Result
+establishes the owner for its frame family; Status then reuses that same owner
+instead of rereading stdout. Both output barriers bracket the original
+independent input/runtime freshness check; output coverage alone cannot make a
+proof Current. Missing, quota-refused or invalid coverage, or a barrier lock not
+obtained within 50 ms, uses the complete original read/hash path. If the final
+output barrier fails, the daemon repeats that full read/hash and independent
+freshness check before serving the response. Frame families are keyed by the
+public status, result mode and sealed stdout digest.
+
+Owner construction reserves 80 MiB of the shared budget while it runs, and each
+guarded check reserves 16 MiB. Once a daemon retains frame families for several
+large jobs, these reservations are often refused. In the native reader workload,
+86 of 88 sampled guarded checks fell back to the full read/hash path, which
+costs about 1.6 ms for a 4 MB report ([reader acceptance](reader-acceptance.md)).
 
 There is no new user flag. Construction and inspection share the existing
 128 MiB frame-retention budget; unavailable quota costs the shortcut. The

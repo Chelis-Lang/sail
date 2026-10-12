@@ -32,8 +32,8 @@ projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
 [Managed cold-start diagnosis](managed-cold-start.md) explains preparation stages,
 bounded timeout evidence and dependency-proof requirements.
-The [reader acceptance guide](reader-acceptance.md) explains genuine proof setup,
-owned-job archival, compatible storage layouts and failure handling.
+The [reader acceptance guide](reader-acceptance.md) gives the native reader
+latency gate, its current results and how to run it.
 [Whole-result profiling](result-frame-profile.md) records transfer and complete
 response decoding costs without changing reader acceptance.
 The [interactive source engine](../engine/verus/README.md) describes the selected
