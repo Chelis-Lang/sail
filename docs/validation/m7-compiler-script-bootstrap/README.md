@@ -204,6 +204,12 @@ was persisted. A refusal stage identifies a group of original checks, not a
 historical causal attribution. The original proof result, receipts, quotas,
 owner fields, cancellation and fallback remain unchanged. The existing public-only
 retention validator admits only this closed extra schema with the same bounds.
+The final runtime row is deferred until the original publication call returns.
+Inside publication, stage assignments only update fixed enums; the attempt's
+sink emission happens on return, after `publish_records` on the positive path.
+Thus no diagnostic I/O is inserted between the final runtime/input checks and
+the ordinary contract write. A successful attempt row may precede its final
+runtime observation row; row order is observation order, not extra authority.
 
 Fourteen host Python retention controls pass. Three new Rust controls are drafted
 but uncompiled/unexecuted: disabled serialization and first refusal, shared sink

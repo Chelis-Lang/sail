@@ -7,7 +7,7 @@
     "crates/sail-verus/src/managed/diagnostics.rs": "dc82aca20a8a1cadc377e76181b29d1263cf353cc5e626c7784981528a5a7235",
     "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "c04271acf7029c524e7d63d20fc7417b343fd3c836b640b9c3189d3da5848fa3",
     "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "fb351e79500187cee70ed08bfb997bb82e37113ea10e46a7f9eb8938759d2cc5",
-    "crates/sail-verus/src/managed/runner.rs": "78865d12356587e157fad4e41ced3e023ade99229fe1c38dcbc3704444acda6b",
+    "crates/sail-verus/src/managed/runner.rs": "4b419de1e35496c15923aac95842e23d67cf35d1521a18ded79d6e5d3728ead0",
     "scripts/m7-publication-timing-diagnostic.py": "8600d3624b9ac9b7474e913e4f4365aec66a79a3449ec8ed74330d29b7404ab8",
     "scripts/test-m7-publication-timing-diagnostic.py": "5e3fbcb8b287db2a2c1fa875085d3ff2f7d559b3ced7b2c838ba1d5184192f3e"
   },
@@ -75,5 +75,6 @@
     "unwind or abrupt process loss may prevent a row",
     "no first-export historical attribution from retained old contracts",
     "not selected into current gate/product; parent may use only after review and actual native validation"
-  ]
+  ],
+  "publication_observation_order": "Final runtime boolean is retained inline; its sink row is emitted after publish_traced returns. Publication attempt RAII emission follows publish_records on success. No diagnostic I/O occurs between final runtime/input checks and ordinary emission."
 }
