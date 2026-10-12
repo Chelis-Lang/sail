@@ -43,6 +43,21 @@ through verification, final validation and receipt publication. A preexisting wr
 conflicting write, replacement or lost coverage makes the result Unknown and
 prevents current receipt publication. Fresh Rust verification still runs.
 
+The invocation guard covers the packages Cargo can compile for the selection:
+the dependency closure (every resolved dependency kind) of the selected targets,
+plus the workspace manifest, lockfile and every member manifest. A workspace
+can resolve far more than that. Vest's members resolve registry crates such as
+`wasm-bindgen`, which are never built for `-p vest_lib`. Watching all of them
+exceeded the guard's 8,192-watch bound, so every run was Unknown. Build-script
+coverage likewise does not wait for scripts outside an explicit `-p` selection's
+closure, because they never run for it. After every invocation, each
+`compiler-artifact` and `build-script-executed` record Cargo emitted must name a
+package inside both scopes. Otherwise the guard fails with
+`native-observer-scope-exceeded` and the result is Unknown. Without an exact
+selection or a complete, unambiguous resolve graph, every resolved package stays
+in scope, as before. The whole-workspace input revision and stamps are unchanged,
+so an edit to any package still makes evidence Historical.
+
 A projection combines two independent mechanisms:
 
 - Kernel read leases on every existing declared regular source, configuration,

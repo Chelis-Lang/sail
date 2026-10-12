@@ -25,7 +25,15 @@ sample first. The gate is applied afterwards, when the report is generated.
     M6's `--package` selects the same scope as M7's `--lib`. Vest's `vest_lib`
     also has a `test` target, which neither selection builds.
 - **Arms.**
-  - *M6* is the frozen commit `0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca`. It runs
+  - *M6* is built from the branch `rescue/m6-baseline`, commit
+    `26f124f52dbf51d6c94178778873e96ac5e072ef`. That is the frozen M6 commit
+    `0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca` (the catalogue's
+    `baseline_commit`) plus one backported fix and its test. Unpatched M6
+    cleans `<target-dir>` before a focused check, but `cargo verus focus` builds
+    in `<target-dir>/verus-partial` with checksum freshness. A cycle whose edit
+    repeats content already compiled for that focus context therefore ran no
+    verifier and failed with `SAIL3107` in about a second. That failure is not
+    an M6 result. The M6 arm runs
     `verify --incremental --output json --package P -- --verify-only-module M
     --verify-function F` (the focused check), then `verify --incremental --output
     json --package P` (the full check).
@@ -98,6 +106,12 @@ Per catalogue, a measured sample fails with each violation it has:
 | `SAIL7104` | M7 is not a real source-engine batch: not batched, no engine manifest, no focused evidence, or a selection error |
 | `SAIL7105` | M7 preparation telemetry is unavailable, disabled or outside the budget: version 1, budgets of 512 MiB or less, peak within the memory budget |
 | `SAIL7106` | The outcome differs from the catalogue (M7 `accepted`, M6 full exit), or no comparable full outcome exists |
+| `SAIL7110` | An M6 focused or full check reported a Sail error (for example `SAIL3107`) instead of a verification result |
+
+An M6 sample with `SAIL7110` or `SAIL7101` is an invalid baseline sample: it
+measured no M6 loop. Its time is never counted as M6 time, so its round is
+incomplete. Counting it could only make M7 look faster. A failing M7 sample
+keeps its time.
 
 The catalogue passes only if all of the following hold. Otherwise it fails:
 
@@ -111,8 +125,9 @@ The **whole-loop total** of an arm in a round is the sum of its cycles' sample
 wall times. The **speedup** is the median over complete rounds of the M6
 whole-loop total, divided by the same median for M7.
 
-Failing samples stay in the totals and are listed. They are never dropped and
-never count as passes. A subset run (`--project`, `--filter`) is incomplete by
+Failing samples stay in the totals and are listed, except invalid M6 baseline
+samples, which are listed but excluded from M6's totals as described above.
+No failing sample is dropped from the list or counts as a pass. A subset run (`--project`, `--filter`) is incomplete by
 construction. The report also shows round spread (min–max), per-cycle medians,
 nearest-rank p95 and maximum cycle wall time, first-actionable p95, M7 driver
 counts and Current/accepted status, cache served/solved counts, preparation
@@ -122,11 +137,12 @@ hits/misses and peak RSS.
 
 Reference numbers come from native x86-64 Linux: an EC2 host from
 `scripts/perf-host.sh`, running the CI image. Build M6 `sail` and `sail-z3`
-from `0fde777` in a separate source tree. Then run:
+from `rescue/m6-baseline` (`26f124f`) in a separate source tree, for example
+from `git archive 26f124f`. Then run:
 
 ```sh
 sail-bench repair prepare --scratch SCRATCH
-sail-bench repair run --m6 M6/sail --m6-commit 0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca \
+sail-bench repair run --m6 M6/sail --m6-commit 26f124f52dbf51d6c94178778873e96ac5e072ef \
   --m7 target/release/sail --m7-commit SHA --engine /opt/sail-engine \
   --scratch SCRATCH --out OUT --environment "native x86-64 Linux, EC2 c7i.4xlarge" \
   --name repair-acceptance-LABEL [--raw ~/sail-raw-evidence/LABEL.raw.json] \
