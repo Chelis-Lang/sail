@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "source-only disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "three failed native validation scopes retained; next narrow fixture repair and complete gate pending",
+  "status": "selected combined source 22d6082; d37e388 strict failure retained; current native gate and solver pending",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -85,7 +85,7 @@
     "bootstrap_retry_clean_preserves_missing_and_refuses_unsupported_script_roles",
     "disabled_script_explicit_selection_requires_unique_cargo_package_identity"
   ],
-  "control_status": "original ten bootstrap controls pass in executed scopes; new real-Cargo fixture passes membership but Cargo clean fails before later retry/export/barrier assertions; repaired fixture unqualified",
+  "control_status": "historical original ten controls passed; repaired real-Cargo fixture and selected diagnostic controls await complete native execution at 22d6082",
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
     "affected native tests and strict checks",
@@ -97,7 +97,7 @@
     "scope": "test-only implicit root membership with existing dependency exclusions, plus explicit non-membership assertions",
     "original_failure": "new real Cargo fixture automatically included active and disabled path dependencies as workspace members; production correctly refused the disabled role before compilation",
     "namespace_correction": "included test module resolves predicate through existing build_inputs import",
-    "status": "metadata role confirmed; 30a2ede real Cargo control progressed past membership then refused target CACHEDIR.TAG; further fixture repair pending",
+    "status": "narrow target-tag repair selected; d37e388 failed strict diagnostic test before execution; corrected 22d6082 gate pending",
     "unchanged": [
       "never_scheduled production check",
       "original fresh=false requirement",
@@ -146,7 +146,8 @@
         "sha256": "2d74fc8371ae77c47bc3191d5b7df8b6f54988d16efde6654dd6e03dd177a51e",
         "qualification_credit": false
       }
-    ]
+    ],
+    "historical_status": "metadata role confirmed; 30a2ede real Cargo control progressed past membership then refused target CACHEDIR.TAG; further fixture repair pending"
   },
   "source_scope": {
     "frozen_commit": "27778b34a8a2ea1de6bf5d698b929d1b3ba8bd0b",
@@ -257,7 +258,65 @@
           "sha256": "df0c33793df4ab9bfd38c39b271f0855aa4520f7caa98263cded22406c7a6645"
         }
       }
+    },
+    {
+      "revision": "d37e388e815ab7c3c7f13b72529ad1e7ebc16e13",
+      "source_archive_sha256": "2ed136fc00bf1f1e43c74ac5139075ca5e27b4d80ea92dc0ca902ead3c6f2873",
+      "status": "FAIL",
+      "gate_elapsed_seconds": 52.30393760800007,
+      "gate_exit_code": 101,
+      "failure": "strict clippy::naive_bytecount in diagnostic row-count test before workspace tests or solver",
+      "workspace_tests": "unattempted",
+      "solver": "unattempted",
+      "raw": {
+        "controller.json": {
+          "bytes": 1115,
+          "sha256": "fd74fc37214323aa06568279221c9c227b6759035f592a1dc8bdb56d479e0646"
+        },
+        "result.json": {
+          "bytes": 1843,
+          "sha256": "2e9d88c07fe6566daec935e46ae41841bd0292f761a7df4400c9317f4990f39d"
+        },
+        "gate.log": {
+          "bytes": 5746,
+          "sha256": "873304e7407b02b433ff3e1de0b8122ea7e4f53d4b71893448de09847f9e972c"
+        }
+      },
+      "controller_uncertainty": [],
+      "native_uncertainty": [],
+      "known_group_closure": {
+        "survivors": [],
+        "unavailable": [],
+        "terminated_unreaped": []
+      },
+      "same_container_identity": true,
+      "retention": {
+        "files": [],
+        "errors": [
+          {
+            "index": 0,
+            "error": "[Errno 2] No such file or directory: 'debug/deps/sail_verus-1ff5719aff2dbe51'"
+          }
+        ],
+        "all_cargo_artifacts_archived": false
+      },
+      "retention_error": "requested executable retention incomplete",
+      "limit": "failed strict scope only; no installed-product, recovery or performance qualification"
     }
   ],
-  "validation_limits": "failure scopes and metadata-only reproductions do not qualify new current fixture, installed product, first export recovery or benchmark performance; original assertions and oracle unchanged"
+  "validation_limits": "failure scopes and metadata-only reproductions do not qualify new current fixture, installed product, first export recovery or benchmark performance; original assertions and oracle unchanged",
+  "selected_source_scope": {
+    "frozen_commit": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
+    "source_sha256": {
+      "crates/sail-verus/src/managed/build_inputs.rs": "04f25c8abb3d467044a4f6f6645e5fe9109a1af40c058672cf62aacb89179fe9",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "c04271acf7029c524e7d63d20fc7417b343fd3c836b640b9c3189d3da5848fa3",
+      "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "f9ffbafacb8380ad2a565cfd9572bb1446547db0930889c9e6a72e6c81a20bb4",
+      "crates/sail-verus/src/managed/input.rs": "09ae00da906812e348409fedf6adea8caad4e1a13388dd55ee96d1d518742bf5",
+      "crates/sail-verus/src/managed/runner.rs": "4b419de1e35496c15923aac95842e23d67cf35d1521a18ded79d6e5d3728ead0"
+    },
+    "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
+    "native_validation": "complete gate and solver running; terminal outcome pending",
+    "product_and_benchmark_validation": "pending; no proof, first-export recovery or performance claim"
+  }
 }

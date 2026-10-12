@@ -143,7 +143,8 @@ byte admission only. They do not establish emulated storage throughput,
 calls can exceed the cooperative budget; supported-script acquisition may
 refuse. The scriptless workload avoids this extra acquisition entirely. The
 original whole workload must decide viability after native controls pass.
-### c2 warmup failure and source-only recovery
+
+### c2 warmup failure and selected recovery follow-up
 
 The fresh original c2 benchmark failed during warmup after 889.987 seconds,
 before measured samples. Both repair attempts exited zero but remained Unknown
@@ -155,7 +156,7 @@ and one newly compiled vstd binary; independent bootstrap correctly refuses
 fresh compilation authority. The first attempt has six newly compiled scripts
 but no export, so these facts do not prove a complete failure explanation.
 
-The source-only follow-up excludes only that provably disabled role from
+The selected follow-up excludes only that provably disabled role from
 unobserved script coverage and rebuilds eligible scripts during the existing
 missing-target retry under the same independent owner. All source/runtime roots,
 proof guards, Unknown handling, receipts and final `fresh=false` checks remain.
@@ -169,25 +170,29 @@ script that fails if executed. It requires first-pass fresh compilation, refusal
 of the replaced reused journal, actual retry cleaning/recompilation, independent
 export admission and subsequent input-barrier readiness. It exercises shared
 production retry selection, not actual source-engine verification. Original
-controls remain unchanged. Native tests, strict checks, complete product gate
-and unchanged real-project warmups/benchmark are pending. The
-[source record](scheduling-recovery.json) binds sources and private metadata
-digests; no latency, speedup or M7 acceptance is claimed.
+controls remain unchanged. The combined `22d6082` source is selected for native
+validation; its complete gate and solver are pending. Fresh product and unchanged
+real-project warmups/benchmark remain pending. The
+[source record](scheduling-recovery.json) separately binds historical authored
+hashes, selected source hashes and private metadata digests; no latency, speedup
+or M7 acceptance is claimed.
 
-The later scheduling-recovery follow-up remains unqualified. Its
+The selected scheduling-recovery follow-up remains unqualified. Its
 [existing source and attempted-validation record](scheduling-recovery.json)
 preserves the initial test namespace compilation failure and two complete
-workspace failures (654/655 passing). The latest real Cargo fixture passes its
-graph-membership assertion, then Cargo refuses to clean the pre-created target
+workspace failures (654/655 passing). The last executed real Cargo fixture
+passes its graph-membership assertion, then Cargo refuses to clean the pre-created target
 because `CACHEDIR.TAG` is missing or invalid. Original ten bootstrap controls
 pass; the new fixture's later retry/export/barrier assertions and solver suite
-are not completed in that scope. A narrow fixture repair is pending, with no
-production guard, oracle, deadline or performance claim changed.
+are not completed in that scope. A narrow target-tag fixture repair was selected
+in `d37e388`, whose gate then failed strict diagnostic row-count checks before
+tests or solver. The test-only row-count correction is selected in `22d6082`;
+its gate and solver are pending. No production guard, oracle, deadline or
+performance claim changed.
 
+### Selected optional refusal-stage diagnostic
 
-### Optional refusal-stage diagnostic candidate
-
-A separate unselected source-only candidate uses the existing opt-in managed
+The selected diagnostic uses the existing opt-in managed
 setup sink to record which original bootstrap operation returned unavailable.
 Each attempt emits one fixed row with kind, stage, outcome and PID. Acquisition,
 initial/final runtime matching, publication role groups and final native barriers
@@ -211,9 +216,11 @@ Thus no diagnostic I/O is inserted between the final runtime/input checks and
 the ordinary contract write. A successful attempt row may precede its final
 runtime observation row; row order is observation order, not extra authority.
 
-Fourteen host Python retention controls pass. Three new Rust controls are drafted
-but uncompiled/unexecuted: disabled serialization and first refusal, shared sink
-limits/contention, and actual Cargo publication with observation on/off plus an
-unchanged unsupported-role refusal. This candidate is not selected into the
-current production gate or product. See its
-[source inventory](refusal-diagnostic.json).
+Fourteen host Python retention controls pass. The three new Rust controls cover
+disabled serialization and first refusal, shared sink limits/contention, and
+actual Cargo publication with observation on/off plus an unchanged
+unsupported-role refusal. The selected `d37e388` gate failed strict checks before
+executing them; corrected `22d6082` native validation is pending. The
+[source inventory](refusal-diagnostic.json) preserves authored `f91e21f` hashes
+separately from the selected combined sources, including the merged fixture.
+There is no installed-product validation or historical first-export cause claim.
