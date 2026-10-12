@@ -80,6 +80,26 @@ measurements. Long tests stay local-only; every required CI job remains below
 ten minutes. Persistent Verus internals, solver pools, normalization, stack-only
 keys and new SMT backends remain deferred.
 
+## M7: Interactive proof engine and repair workflow (in progress)
+
+M7 is developed on the integration branch `rescue/m7` and lands on `main` in
+small PRs ([ADR 0038](decisions/0038-m7-rescue.md)). None of it is on `main`
+yet. The planned order is:
+
+1. evidence product: named baselines, `sail compare`, `sail explain` and the
+   proof-event journal;
+2. shared HTTP cache changes, in parallel with 1;
+3. managed freshness, guarded sysroots and compiler artifact families;
+4. the responsive job read path;
+5. the optional interactive engine and repair workflow, with its contract
+   (ADR 0027) and the engine conditions of ADR 0038.
+
+Exit gates, measured on a native x86-64 Linux host: exact stock conformance,
+established job reads below 200 ms p95 during active verification, and at
+least a 2x median improvement on each frozen repair catalogue
+(human-eval-verus and Vest), over at least three rounds with every sample
+recorded. M7 is not accepted until these gates pass.
+
 ## Later waves (from the charter's initial scope)
 
 1. **Caching.**
