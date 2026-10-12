@@ -1,7 +1,9 @@
 # Repair workflow walkthrough
 
-This walkthrough covers the implemented experimental workflow. It does not
-establish the unfinished M7 speed or concurrent-reader latency claims. See [the roadmap](ROADMAP.md),
+This walkthrough covers the implemented experimental workflow. The frozen
+`730a321` product passes the original repair fixture and complete concurrent-reader
+workflow; real-project M7 speed and complete standard/cache coverage remain
+unfinished. See [the roadmap](ROADMAP.md),
 [known issues](known-issues.md) and [acceptance requirements](bench/m7-repair-acceptance.md).
 The commands and response fields were checked against the CLI/MCP implementation;
 this documentation change does not constitute a new proof run.
@@ -24,8 +26,10 @@ that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
 The selected runtime is experimental. Its complete source qualification now
 passes, including ownership accounting, genuine reuse across edits and exact
-full HumanEval results. Rebuilt-product checks and the M7 speed and reader
-latency targets remain separate; see [engine qualification](../engine/verus/README.md).
+full HumanEval results. The [installed-product checks](validation/m7-core-730a321-validation.md)
+and [full reader workflow](validation/m7-reader-730a321-terminal.md) pass separately;
+M7 real-project performance remains unqualified. See
+[engine qualification](../engine/verus/README.md).
 
 `fetch-verus` installs artifacts but does not put `cargo-verus` on `PATH`:
 configure your ordinary stock launcher on `PATH` or through `SAIL_CARGO_VERUS`.

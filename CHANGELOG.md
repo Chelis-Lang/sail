@@ -8,22 +8,24 @@ semantic versioning once the API is published.
 - Release retained-output locks during
   independent freshness validation, then check the same continuously guarded
   owner again. Complete fallback, payloads and quotas remain unchanged. Native
-  component controls and strict checks pass; installed live latency acceptance
-  remains pending.
+  component controls and strict checks pass. The installed `730a321` product
+  passes the unchanged complete Python/Rust reader workflow and retained CLI/MCP
+  scenarios; real-project repair performance remains pending.
   Optional RPC metadata distinguishes guarded validation from full-hash fallback.
 - Read exact small HTTP bodies within the existing 8 KiB allocation, avoiding
   an extra EOF read while retaining capped streaming for larger or unknown
   bodies, original timeouts and trust checks. All 38 affected controls, strict
   checks, read-count sensitivity and the original concurrent-reader comparison
   pass. The complete `730a321` workspace gate and original installed repair
-  fixture also pass; live reader and real-project acceptance remain pending;
-  the single observed pair establishes no stable speedup. See the
+  fixture and full reader workflow also pass. Real-project acceptance remains
+  pending; the single observed pair establishes no stable speedup. See the
   [control record](docs/validation/m7-http-small-known-body-actual-controls.md).
 - Preserve exact unchanged private declaration metadata and runtime links on
   Linux, keeping an existing continuous freshness observer. All component
   controls and counterfactual checks pass; edits still invalidate observation.
   The combined gate, ordinary product and original repair fixture pass at
-  `730a321`; measured real-project gains and reader acceptance remain pending.
+  `730a321`, together with complete original concurrent reads. Measured
+  real-project gains and complete standard/cache coverage remain pending.
 
 - Extend existing optional diagnostics with managed result, receipt and ordinary
   dependency publication intervals, plus daemon child-exit, document-read,
@@ -64,7 +66,8 @@ semantic versioning once the API is published.
   shared frame-cache admission and original complete read/hash fallback. Exact
   input/runtime freshness remains independent. The implementation passed 35
   affected native tests and strict checks. The installed original `730a321`
-  repair fixture passes; original live reader acceptance remains pending.
+  repair fixture and original complete live reader workflow pass; real-project
+  repair performance remains pending.
 
 - Add a Linux primitive for continuously guarded retained output digests. It
   certifies complete output bytes only; the daemon retains its original read/hash
@@ -74,14 +77,17 @@ semantic versioning once the API is published.
   while keeping exact proof contexts and receipts separate. Serialize shared
   target mutations and retain fresh verification of selected repair packages.
   Select compatible optional sysroot hints across those selectors while keeping
-  independent caller guards and hashing fallback. Product and performance
-  validation of these changes remain pending.
+  independent caller guards and hashing fallback. Product validation now
+  includes the frozen `730a321` product's original repair and
+  full reader workflows; real-project performance remains pending.
 
 - Select the qualified optional source engine with conservative imported-range
   absence handling and preparation retirement acknowledgement. Its original
   thirteen-stage source qualification passes, including genuine reuse across
   edits and three complete HumanEval revisions. Publish a digest-pinned prebuilt
-  Linux runtime for CI; M7 product integration and performance remain pending.
+  Linux runtime for CI. Frozen `730a321` passes the combined local gates,
+  original repair fixture and full reader workflow; real-project performance
+  and complete standard/cache coverage remain pending.
 
 - Optimize Linux managed input path checks using owned descriptors, with exact
   pathname/inode checks and the existing conservative fallback. Reader latency

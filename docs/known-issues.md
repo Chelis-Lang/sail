@@ -6,7 +6,8 @@ freshness fills of 4.73–4.88 seconds and failed at missing foreground. The
 passes complete component and sensitivity controls and preserves unchanged owners.
 Actual source edits still invalidate them. The [frozen `730a321` local gate,
 ordinary product and fresh original repair fixture](validation/m7-core-730a321-validation.md)
-now pass; real-project whole-loop gains and reader acceptance remain pending.
+now pass. The same product's [original full reader workflow](validation/m7-reader-730a321-terminal.md)
+also passes both collectors; real-project whole-loop gains remain pending.
 
 Optional [publication timings](result-rpc-diagnostics.md) separate child exit,
 document reading, freshness establishment and persisted job status. Retained
@@ -47,9 +48,10 @@ For current experimental repair use:
   original installed repair fixture within its unchanged 120/30/5 limits. Earlier
   deadline failures remain retained. Proof acceptance and successful receipts
   remain independent; real-project performance is still unqualified.
-- Full-result reader latency and real-project repair speed remain unqualified.
-  Original workflow scopes are retained with their original bounds; use the
-  [roadmap](ROADMAP.md) for current acceptance status.
+- The frozen `730a321` product passes full-result reader latency and retained
+  CLI/MCP scenarios with unchanged checks. Real-project repair speed and complete
+  standard/cache coverage remain unqualified. Earlier failed reader scopes remain
+  retained; use the [roadmap](ROADMAP.md) for current acceptance status.
 - The unchanged shared HTTP-reader deadline now passes in the complete
   `730a321` gate. The small exact-body implementation also passes its affected
   controls and sensitivity. Historical whole-gate failures remain failed; this
@@ -58,9 +60,11 @@ For current experimental repair use:
   [HTTP validation](validation/m7-http-small-known-body-actual-controls.md).
 - The selected result-output change reduces validation lock contention while
   preserving independent input and output checks. Its component p95 improves
-  from 19.366 to 12.713 ms, but the original complete Result census still fails
-  at 343.142 ms. The new component result excludes socket transfer and client
-  JSON parsing; the full reader workload must be rerun.
+  from 19.366 to 12.713 ms; that component excludes socket transfer and client
+  JSON parsing. The earlier 343.142 ms complete Result failure remains failed.
+  The later [original `730a321` workflow](validation/m7-reader-730a321-terminal.md)
+  passes Python Result p95 94.197 ms and Rust Result p95 67.483 ms. These whole-path
+  results do not isolate any individual implementation's contribution.
 
 The original stock Verismo tspec deadline failure is now tracked locally as
 [VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md). Sleeping compiler
@@ -286,8 +290,8 @@ while still requiring EOF. Historical cancellation failures remain separate.
   original fail-fast controller did not reach Rust or retained CLI/MCP checks.
   See [the complete record](validation/m7-reader-prepared-terminal.md).
   Staged ordinary SDK decoding reuse is implemented, with allocation and
-  promotion-recovery controls. Its final live census remains pending; it cannot
-  retroactively qualify this failed run.
+  promotion-recovery controls. The later original `730a321` live workflow passes
+  separately; it cannot retroactively qualify this failed run.
 - The older frozen reader controller assumed the newer `results/projects/jobs`
   storage layout, while a6 stores jobs under `projects/jobs`. Public proof
   evidence remained intact, but automatic raw archival could omit those files.
@@ -692,7 +696,7 @@ automatic retries or proof-state transfer. Old process birth grants are not
 reused after restart, and no descendant-closure claim is made for the interrupted
 workflows.
 
-### Retained output overlap has component validation, not live acceptance
+### Retained output overlap and later complete reader validation
 
 The [reviewed result change](validation/m7-result-output-overlap-plan.md)
 addresses an output mutex held across independent input freshness. Overlapping
@@ -703,10 +707,12 @@ barrier on that same owner. Refusal still performs complete hashing and
 independent freshness. Its [native affected controls and strict checks](validation/m7-result-output-overlap-native.md)
 pass after a test-only naming correction; the first strict failure is preserved.
 A complete-output/real-fixture-input component reduces p95 by 6.653 ms while
-all 128 checks remain complete. Source is selected for integration, with
-installed live reader acceptance pending. The original
-343.142 ms complete Result p95 failure remains failed, and the original Python
-full-graph collector, four readers, 200 samples and strict 200 ms bound remain.
+all 128 checks remain complete. The later
+[installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both
+original collectors and retained CLI/MCP scenarios. The original 343.142 ms
+complete Result p95 failure remains failed. Four readers, 200 samples per
+collector, full graphs and the strict 200 ms bound remain unchanged; the live pass
+does not isolate the component's contribution.
 
 ## Frozen 730a321 product scopes
 
@@ -722,6 +728,7 @@ The earlier instrumented `730a321` scope remains UNCERTAIN because timing captur
 was partial and its census included itself. Four retained worker rows report
 7.556–14.597 ms freshness establishment, but initial overwritten rows and the
 complete interval are unavailable. These observations establish no historical
-cause, cold improvement or reader credit. The current original reader workflow
-is running; no outcome is recorded. M7 and draft PR #74 remain unaccepted until
-reader, complete standard/cache and three-round HumanEval/Vest gates pass.
+cause, cold improvement or reader credit. The later separate
+[original reader workflow](validation/m7-reader-730a321-terminal.md) passes both
+collectors and retained CLI/MCP scenarios. M7 and draft PR #74 remain unaccepted
+until complete standard/cache and three-round HumanEval/Vest gates pass.

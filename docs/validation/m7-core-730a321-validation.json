@@ -207,12 +207,16 @@
     ]
   },
   "remaining": {
-    "original_current_product_reader": "running; no outcome recorded",
     "HumanEval_and_Vest": "three rounds/spread/full oracles and >=2x median each remain outstanding",
     "complete_standard_and_cache_fill_warm": "outstanding; original158Same+stockVerismo3600timeout scope unchanged",
     "PR74": "draft; M7 unaccepted"
   },
   "closure_limit": "known birth-bound groups and complete dead-task evidence; not arbitrary orphan absence",
   "historical_failures_reclassified": false,
-  "no_private_environment_values_exported": true
+  "no_private_environment_values_exported": true,
+  "subsequent_reader_validation": {
+    "status": "PASS",
+    "record": "docs/validation/m7-reader-730a321-terminal.json",
+    "scope": "Same installed product; separate original full collector and retained-functional workflow"
+  }
 }

@@ -127,7 +127,11 @@ producer also closes and joins on malformed-frame errors. Neither example is a
 product transport option or a replacement for the frozen reader collectors.
 
 The original Python and Rust reader collectors and their four-reader,
-200-sample, 200 ms p95 and five-second RPC requirements remain unchanged.
+200-sample, 200 ms p95 and five-second RPC requirements remain unchanged. The
+[installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both:
+Python Result/Status p95 94.197/59.896 ms and Rust Result/Status p95 67.483/50.273 ms.
+The Current Result remains a complete graph above 4 MiB; no reduced payload or
+changed deadline supplies this result.
 Offline decoding or cloning improvements do not qualify those gates or the
 M7 edit-loop performance target. See [freshness](freshness.md),
 [the repair workflow](proof-repair-walkthrough.md) and
@@ -278,7 +282,9 @@ There is no new user flag. Construction and inspection share the existing
 128 MiB frame-retention budget; unavailable quota costs the shortcut. The
 [35 affected controls and strict checks](validation/m7-guarded-output-source-controls.md)
 pass, including real restored-write fallback and complete frame equivalence.
-Installed combined-product reader acceptance remains pending. See
+The installed `730a321` product passes the
+[original full reader workflow](validation/m7-reader-730a321-terminal.md), including
+both collectors and retained CLI/MCP scenarios. See
 [ADR 0035](decisions/0035-guarded-retained-output-digests.md) and the
 [retained original reader failure](validation/m7-descriptor-reader-terminal.md).
 
@@ -322,8 +328,11 @@ complete output barrier. Refusal retains the full read/hash fallback. This adds
 no flag, partial response or Currentness memo. Native affected controls and
 strict checks pass. A separate four-reader component reduced complete output
 and fixture-input validation p95 from 19.37 to 12.71 ms. That comparison excludes
-RPC transfer and Python parsing; installed live reader acceptance remains
-pending. See the [complete component scope](validation/m7-result-output-overlap-native.md).
+RPC transfer and Python parsing. The later
+[installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) separately
+passes complete Python and Rust reads during verification; it does not isolate
+this change's contribution. See the
+[complete component scope](validation/m7-result-output-overlap-native.md).
 Optional diagnostic rows
 distinguish successful guarded output validation from full-hash fallback through
 `output_guarded`; `frame_hit` alone does not establish which validation ran.
