@@ -13,8 +13,15 @@
   diagnostics match plain Verus. The oracle cannot tell this variation from a
   preparation defect, so the engine conformance arm fails on these units. Like
   VI-0001, it also lowers warm cache hit rates for affected buckets.
-- **Workaround:** none applied. Normalizing or ignoring the difference would
-  need an owner decision (charter rule 5; `docs/open-questions.md`).
+- **Workaround:** no normalization. Under ADR 0038's amendment of 2026-10-12,
+  the oracle lowers a mismatching bucket again in the same callback; if the
+  two fresh lowerings differ, the unit is reported as unstable (its verdicts
+  and diagnostics, from an engine run without the oracle, must still match
+  plain Verus). If they agree, the mismatch stays a failure. This needs the
+  rebuilt engine runtime that records the confirming arm. In ten engine runs
+  of `traits.rs` on Linux x86-64, the fresh and confirming lowerings produced
+  eight distinct solver streams, and every restored lowering was one of them
+  except one (L4b report).
 
 The description below is written so it could be filed upstream unchanged.
 

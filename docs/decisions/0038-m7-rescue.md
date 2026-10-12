@@ -43,3 +43,43 @@ The owner also set the direction beyond M7: rank work by agent authoring-loop la
 - Performance iteration takes minutes instead of tens of minutes, and timing tests run at their real speed.
 - The M7 speed gate becomes measurable. If it fails on a catalogue, that failure is recorded together with its phase profile, and the speed claim is re-scoped here rather than met by adding mechanism.
 - The repository stays reviewable. Detailed history remains reachable through the archive tag.
+
+## Amendment (2026-10-12): oracle mismatches under stock trigger nondeterminism
+
+Resolves open question 15. The lead decided this under the owner's delegation.
+
+**Context.** The same-input byte oracle (ADR 0027) compares a restored
+preparation's lowering with a fresh lowering in the same compiler callback.
+Stock automatic trigger choice depends on hash iteration order (VI-0015), so
+two fresh lowerings of one bucket in one process can differ. On
+`guide/traits.rs` the oracle mismatched in most runs while every restored
+lowering was a stream that fresh lowering also produced.
+
+**Decision.**
+- When the oracle finds a mismatch, it lowers the bucket again from an
+  independent owner of the same compiler input, in the same callback, and
+  compares that fresh arm with the first one: ordered solver bytes,
+  diagnostics, outcomes and lowering effects.
+- If the two fresh arms differ, the unit is **unstable**: reported separately,
+  like ADR 0009's unstable functions, and not a failure. Its verdicts and
+  diagnostics must still match plain Verus, which an engine run with the same
+  focus and without the oracle establishes.
+- If the fresh arms agree and the restored arm differs, it is a **hard
+  failure**. A missing or incomplete confirming arm is also a hard failure.
+- Confirming fresh arms come only from the same callback. Fresh lowerings from
+  separate processes are not evidence: stock declaration order can vary
+  between processes while staying fixed within one (VI-0001), which would
+  excuse a real defect. A negative control showed this on
+  `guide/datatypes.rs`.
+- One confirming arm is the default. The conformance arm can ask for up to
+  eight (`--oracle-fresh-arms`); a hard failure then needs all of them to
+  reproduce the first fresh arm.
+
+**Consequences.**
+- The engine runtime's oracle records the confirming arms (`second_fresh` in
+  its summary), so this needs a rebuilt engine runtime; with an older runtime
+  every mismatch stays hard.
+- Summary lines report oracle failures as hard and unstable counts.
+- Trigger choice has many outcomes on some buckets, so a single confirming arm
+  reproduces the first by chance in a fraction of runs, and such a run is a
+  hard failure. That rate is measured and reported with the rebuild.

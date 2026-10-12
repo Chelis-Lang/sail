@@ -63,6 +63,9 @@ pub struct EngineRun {
     pub oracle: bool,
     /// Deliberate oracle fault (`order`, `effects` or `body`), for negative controls.
     pub oracle_fault: Option<String>,
+    /// Confirming fresh lowerings the oracle makes after a mismatch (ADR 0038
+    /// amendment); `None` leaves the engine's default of one.
+    pub oracle_fresh_arms: Option<usize>,
 }
 
 /// Files the engine writes under a unit's work directory.
@@ -748,6 +751,7 @@ fn engine_env(cmd: &mut Command, installed: &Installed, engine: &EngineRun, work
         "SAIL_ENGINE_ORACLE_DIR",
         "SAIL_ENGINE_ORACLE_Z3",
         "SAIL_ENGINE_ORACLE_FAULT",
+        "SAIL_ENGINE_ORACLE_FRESH_ARMS",
         "SAIL_ENGINE_ORACLE_COMPONENTS",
         "SAIL_ENGINE_ORACLE_COMPONENT_MODULE",
     ] {
@@ -771,6 +775,9 @@ fn engine_env(cmd: &mut Command, installed: &Installed, engine: &EngineRun, work
             .env("SAIL_ENGINE_ORACLE_Z3", &installed.z3);
         if let Some(fault) = &engine.oracle_fault {
             cmd.env("SAIL_ENGINE_ORACLE_FAULT", fault);
+        }
+        if let Some(arms) = engine.oracle_fresh_arms {
+            cmd.env("SAIL_ENGINE_ORACLE_FRESH_ARMS", arms.to_string());
         }
     }
 }

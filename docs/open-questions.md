@@ -167,3 +167,12 @@ inline with the date and link the ADR that captures it.
     preparation reuse for buckets whose lowering is order-sensitive, or
     classifying such mismatches as unstable under explicit evidence. No
     normalization or classification change has been made.
+
+    **Answered 2026-10-12 (lead, under the owner's delegation):** on a
+    mismatch, the oracle lowers the bucket again from an independent owner of
+    the same compiler input in the same callback. If the two fresh lowerings
+    differ, the unit is unstable (reported separately, like ADR 0009) and an
+    engine run without the oracle must still match plain Verus's verdicts and
+    diagnostics. If they agree, the mismatch is a hard failure. Fresh
+    lowerings from separate processes are not evidence (VI-0001). See ADR
+    0038's amendment of 2026-10-12.
