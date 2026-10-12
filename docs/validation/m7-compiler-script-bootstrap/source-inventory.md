@@ -5,6 +5,17 @@ Native tests, strict checks, current-product repair and the unchanged full
 benchmark remain pending. No original Historical/Unknown refusal, deadline,
 warmup allowance or receipt predicate changes.
 
+The first three combined native gates remain failed: `2ba2a32` stopped at the
+MCP argument helper's 104/100-line lint in 28.533 seconds; `3a3657f` stopped at
+the baseline pruning/restart control's 106/100-line lint in 40.867 seconds;
+`238a2d4` stopped at the extracted assertion's `Box<Baseline>`/`Baseline` type
+error in 52.280 seconds. Each gate exited 101 before Rust tests or the solver
+suite, with complete known-group closure and no uncertainty. The existing
+[source inventory record](source-inventory.json) binds each complete result and
+raw log. Root's helper extraction and payload-reference correction preserve
+the original request encoding and full baseline equality assertion. Corrected
+`bdc20a6` validation remains pending; no pass is inferred from these changes.
+
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
 worker's own stdout, without declaration-transition notes. The retained

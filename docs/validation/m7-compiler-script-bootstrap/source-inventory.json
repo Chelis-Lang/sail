@@ -44,5 +44,109 @@
     "currentness classification and complete proof predicates",
     "independent Bootstrap final-barrier publication order",
     "original benchmark arguments, warmups, deadlines and acceptance oracle"
-  ]
+  ],
+  "combined_native_attempts": {
+    "scope": "Combined declared-source inventory and MCP baseline lifecycle; original complete gate then solver",
+    "status": "Three first strict/compile FAIL scopes retained; corrected bdc20a6 validation pending",
+    "baseline_issue": "https://github.com/Chelis-Lang/sail/issues/72",
+    "attempts": [
+      {
+        "scope": "sail-local-gates-2ba2a32",
+        "source_commit": "2ba2a3262ec348e8ffb5226ea77f4189015b363c",
+        "status": "FAIL",
+        "gate_exit_code": 101,
+        "gate_elapsed_seconds": 28.532868638,
+        "failure": "Clippy too_many_lines: proof_tools::arguments 104/100",
+        "corrected_by": "3a3657fa993d13e7b3969200ffabb773552ef800",
+        "rust_tests": "not attempted",
+        "solver": "not attempted",
+        "uncertainty": [],
+        "closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+        "known_groups": {
+          "live_survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 1,
+          "dead_task_evidence_complete": true
+        },
+        "container_birth_unchanged": true,
+        "source_archive_sha256": "f40a52cfe4fa514cd6c58578b346275252acfdf8052baf3fa1f3040b0073766a",
+        "evidence_sha256": {
+          "controller.json": "90eda130ad78d880f098315acd928fe9bedbbab86d4b1aa80bb3ce3750a0efb7",
+          "result.json": "6e32da95cc9a572d26c9e50d171c01bbfacae2f547798d9f709a16dc0114d91f",
+          "gate.log": "cdf90a1458c43f719997dba6c53976e11998a808ec9427f5a1832f98cd291746",
+          "source-inventory.json": "85add54a534da244a17b4170b3fcbe6e0bb66ddcc8b60e9a6aaf7870bc93b361",
+          "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
+        },
+        "retained_images_meaning": "operator-selected copies; neither execution nor gate credit follows from file presence"
+      },
+      {
+        "scope": "sail-local-gates-3a3657f",
+        "source_commit": "3a3657fa993d13e7b3969200ffabb773552ef800",
+        "status": "FAIL",
+        "gate_exit_code": 101,
+        "gate_elapsed_seconds": 40.867082436,
+        "failure": "Clippy too_many_lines: immutable_baseline_survives_pruning_and_restart_without_overwriting_provenance 106/100",
+        "corrected_by": "e65f94820d8814d5b85526ded6cb92c713fc9801",
+        "rust_tests": "not attempted",
+        "solver": "not attempted",
+        "uncertainty": [],
+        "closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+        "known_groups": {
+          "live_survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 0,
+          "dead_task_evidence_complete": true
+        },
+        "container_birth_unchanged": true,
+        "source_archive_sha256": "bfeb03fe60adc2545d67213f662f4c1c768098a5b5e81286e4881d1bfadabece",
+        "evidence_sha256": {
+          "controller.json": "328dee01820b7fb0372ab1074048ae745155510dbd09b1012f0be9af29478d6e",
+          "result.json": "14be8cbbcc09049bf9dc4475a3189500828d4087eb2e7b56e99b867c380057c3",
+          "gate.log": "63d62ba70ab9b6d45bd6eb7010301098747151589d2761f20ae239c3e19f4957",
+          "source-inventory.json": "01ef6084245d3460f793e7cdf52431a9a4060f85bc5b2a0c89282676c1000de1",
+          "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
+        },
+        "retained_images_meaning": "operator-selected copies; neither execution nor gate credit follows from file presence"
+      },
+      {
+        "scope": "sail-local-gates-238a2d4",
+        "source_commit": "238a2d4d3e9032624d798eda5006308ea13f942d",
+        "status": "FAIL",
+        "gate_exit_code": 101,
+        "gate_elapsed_seconds": 52.28038444,
+        "failure": "E0277: new assert_saved_baseline helper compared Box<Baseline> with Baseline",
+        "corrected_by": "bdc20a695b32347941e8311fb84e7b9c97d8314d",
+        "rust_tests": "not attempted",
+        "solver": "not attempted",
+        "uncertainty": [],
+        "closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+        "known_groups": {
+          "live_survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 1,
+          "dead_task_evidence_complete": true
+        },
+        "container_birth_unchanged": true,
+        "source_archive_sha256": "b1e373485e5f6f50bd3e0cf74d79e7d047229c211be386dbf31e610f75d1d065",
+        "evidence_sha256": {
+          "controller.json": "e4129fea5c943113bba97375dfe19ade53491cf5001a331ad81fee0b1bad8184",
+          "result.json": "d655631e1045c837ba2fdab76f431af50db2d6fa0a70136e3e37bb31faf520b6",
+          "gate.log": "f65d2a109abf11ba5427f76382391d581ff8ebced19c2cfcc3e5c258dd622d46",
+          "source-inventory.json": "92116cfd88a651e65a1de9b78490bd828bbda8081ec06bf0dd9f342f7812ae98",
+          "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
+        },
+        "retained_images_meaning": "operator-selected copies; neither execution nor gate credit follows from file presence"
+      }
+    ],
+    "corrected_source_commit": "bdc20a695b32347941e8311fb84e7b9c97d8314d",
+    "static_baseline_review": {
+      "status": "No identified semantic change from the frozen c156591 lifecycle after the narrow root refactors",
+      "operations": "save/list/get and literal-name comparison retain the same exact CLI request construction",
+      "save_authority": "completed-job and atomic no-overwrite guards unchanged",
+      "read_authority": "bounded version/name/job/kind/schema/Historical loader unchanged; no Current or provisional promotion",
+      "test_refactor": "same pruned/restarted baseline read and full payload equality; loaded.as_ref() compares the boxed payload to the saved Baseline",
+      "qualification": "file-only source review; no native test or performance credit"
+    },
+    "credit": "All three scopes remain FAIL; no Rust-test, solver, installed-product, conformance, performance or M7 acceptance credit"
+  }
 }
