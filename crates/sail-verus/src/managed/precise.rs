@@ -3,9 +3,78 @@
 
 use std::path::{Path, PathBuf};
 
+/// The resolved state from an already-required root identity observation.
+/// This fixed representation owns no path, message or native resource.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum BindingState {
+    Absent,
+    Present { device: u64, inode: u64 },
+    Error { errno: Option<i32> },
+}
+impl From<Option<(u64, u64)>> for BindingState {
+    fn from(identity: Option<(u64, u64)>) -> Self {
+        match identity {
+            Some((device, inode)) => Self::Present { device, inode },
+            None => Self::Absent,
+        }
+    }
+}
+impl std::fmt::Display for BindingState {
+    fn fmt(&self, output: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Absent => output.write_str("absent"),
+            Self::Present { device, inode } => write!(output, "present({device},{inode})"),
+            Self::Error { errno: Some(errno) } => write!(output, "error(errno={errno})"),
+            Self::Error { errno: None } => output.write_str("error(errno=unavailable)"),
+        }
+    }
+}
+
+/// First root mismatch, captured from the same identity call that refuses use.
+/// The digest names exact native path bytes without retaining or exposing them.
+/// The ordinal refers to the original supplied root order, starting at zero.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct BindingMismatch {
+    pub(super) path_sha256: [u8; 32],
+    pub(super) root_ordinal: usize,
+    pub(super) previous: BindingState,
+    pub(super) current: BindingState,
+}
+impl BindingMismatch {
+    fn from_observation(
+        root_ordinal: usize,
+        path: &Path,
+        previous: Option<(u64, u64)>,
+        current: &std::io::Result<Option<(u64, u64)>>,
+    ) -> Self {
+        use sha2::Digest as _;
+
+        Self {
+            path_sha256: sha2::Sha256::digest(path.as_os_str().as_encoded_bytes()).into(),
+            root_ordinal,
+            previous: previous.into(),
+            current: match current {
+                Ok(identity) => (*identity).into(),
+                Err(error) => BindingState::Error {
+                    errno: error.raw_os_error(),
+                },
+            },
+        }
+    }
+}
+impl std::fmt::Display for BindingMismatch {
+    fn fmt(&self, output: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(output, "root-ordinal={}; path-sha256=", self.root_ordinal)?;
+        for byte in self.path_sha256 {
+            write!(output, "{byte:02x}")?;
+        }
+        write!(output, "; old={}; new={}", self.previous, self.current)
+    }
+}
+
 #[cfg(target_os = "linux")]
 mod platform {
-    use super::{Path, PathBuf};
+    use super::{BindingMismatch, Path, PathBuf};
     use inotify::{EventMask, Inotify, WatchDescriptor, WatchMask};
     use std::collections::{BTreeMap, BTreeSet, HashMap};
     use std::ops::Bound::{Included, Unbounded};
@@ -155,6 +224,7 @@ mod platform {
         complete: bool,
         changed: bool,
         failure: Option<&'static str>,
+        binding_mismatch: Option<BindingMismatch>,
         mounts: super::super::kernel_mounts::Guard,
         bindings: Vec<(PathBuf, Option<(u64, u64)>)>,
         construction: Option<Construction>,
@@ -170,6 +240,7 @@ mod platform {
                 complete: _,
                 changed: _,
                 failure: _,
+                binding_mismatch: _,
                 mounts,
                 bindings,
                 construction,
@@ -264,6 +335,7 @@ mod platform {
                 complete: true,
                 changed: false,
                 failure: None,
+                binding_mismatch: None,
                 mounts,
                 bindings: Vec::new(),
                 construction,
@@ -459,14 +531,16 @@ mod platform {
                     .get_or_insert("namespace-mount-inventory-changed");
                 return false;
             }
-            if self
-                .bindings
-                .iter()
-                .any(|(p, old)| identity(p).as_ref().ok() != Some(old))
-            {
-                self.complete = false;
-                self.failure.get_or_insert("namespace-root-binding-changed");
-                return false;
+            for (ordinal, (path, previous)) in self.bindings.iter().enumerate() {
+                let current = identity(path);
+                if current.as_ref().ok() != Some(previous) {
+                    self.complete = false;
+                    self.failure.get_or_insert("namespace-root-binding-changed");
+                    self.binding_mismatch.get_or_insert_with(|| {
+                        BindingMismatch::from_observation(ordinal, path, *previous, &current)
+                    });
+                    return false;
+                }
             }
             let deadline = Instant::now() + Duration::from_millis(20);
             let mut buffer = vec![0; 65536];
@@ -530,6 +604,9 @@ mod platform {
         }
         pub(super) fn failure_reason(&self) -> &'static str {
             self.failure.unwrap_or("namespace-coverage-unavailable")
+        }
+        pub(super) fn binding_mismatch(&self) -> Option<BindingMismatch> {
+            self.binding_mismatch
         }
     }
     #[cfg(test)]
@@ -702,6 +779,10 @@ impl Observer {
     pub(super) fn failure_reason(&self) -> &'static str {
         self.0.failure_reason()
     }
+    /// Returns recorded metadata only; never repeats a poll or identity read.
+    pub(super) fn binding_mismatch(&self) -> Option<BindingMismatch> {
+        self.0.binding_mismatch()
+    }
 }
 
 #[cfg(test)]
@@ -779,6 +860,7 @@ mod tests {
             .unwrap_or_else(|| unreachable!("fixture"));
         assert!(observer.files().contains(&generated));
         assert!(observer.clean());
+        assert!(observer.binding_mismatch().is_none());
         let monitored = super::super::input::snapshot_metadata_home(&data, &[], None);
         assert!(monitored.complete);
         assert_eq!(before.revision, monitored.revision);
@@ -805,7 +887,21 @@ mod tests {
         assert!(std::fs::write(&generated, "pub const GENERATED: bool = true;\n").is_ok());
         assert!(!observer.clean());
         assert_eq!(observer.failure_reason(), "namespace-root-binding-changed");
+        let mismatch = observer
+            .binding_mismatch()
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert_eq!(mismatch.previous, BindingState::Absent);
+        assert!(matches!(mismatch.current, BindingState::Present { .. }));
+        assert_eq!(
+            mismatch.root_ordinal,
+            before
+                .roots
+                .iter()
+                .position(|path| path == &generated)
+                .unwrap_or_else(|| unreachable!("fixture"))
+        );
         assert!(!observer.clean());
+        assert_eq!(observer.binding_mismatch(), Some(mismatch));
         drop(observer);
         // A new original acquisition can observe the new output. This does not
         // authorize the earlier proof or bypass family-generation admission.
@@ -845,12 +941,116 @@ mod tests {
         );
         assert!(!observer.clean());
         assert_eq!(observer.failure_reason(), "namespace-root-binding-changed");
+        let mismatch = observer
+            .binding_mismatch()
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert_eq!(
+            mismatch.previous,
+            BindingState::Present {
+                device: original.dev(),
+                inode: original.ino()
+            }
+        );
+        assert_eq!(
+            mismatch.current,
+            BindingState::Present {
+                device: replacement.dev(),
+                inode: replacement.ino()
+            }
+        );
         drop(observer);
         assert!(std::fs::remove_file(retired).is_ok());
         let after = super::super::input::snapshot_metadata_home(&data, &[], None);
         assert!(after.complete);
         assert_eq!(before.revision, after.revision);
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn first_binding_mismatch_uses_root_order_and_survives_later_changes() {
+        use sha2::Digest as _;
+
+        let root = fixture("binding-first");
+        let first = root.join("source/first.rs");
+        let second = root.join("source/second.rs");
+        assert!(std::fs::write(&first, b"good").is_ok());
+        assert!(std::fs::write(&second, b"good").is_ok());
+        // Deliberately opposite lexical order: the supplied order is the
+        // existing predicate's short-circuit order and diagnostic ordinal.
+        let mut observer = Observer::begin(&[second.clone(), first.clone()], &[])
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(observer.clean());
+        let retained = observer.retained_bytes();
+        assert!(retained.is_some());
+        assert!(std::fs::rename(&second, root.join("retired-second")).is_ok());
+        assert!(std::fs::rename(&first, root.join("retired-first")).is_ok());
+        assert!(!observer.clean());
+        let mismatch = observer
+            .binding_mismatch()
+            .unwrap_or_else(|| unreachable!("fixture"));
+        let expected: [u8; 32] = sha2::Sha256::digest(second.as_os_str().as_encoded_bytes()).into();
+        assert_eq!(mismatch.root_ordinal, 0);
+        assert_eq!(mismatch.path_sha256, expected);
+        assert_eq!(mismatch.current, BindingState::Absent);
+        assert_eq!(observer.retained_bytes(), retained);
+        assert!(std::fs::rename(root.join("retired-second"), &second).is_ok());
+        assert!(!observer.clean());
+        assert_eq!(observer.binding_mismatch(), Some(mismatch));
+        drop(observer);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn binding_metadata_error_preserves_same_call_errno() {
+        let root = fixture("binding-error");
+        let file = root.join("source/lib.rs");
+        assert!(std::fs::write(&file, b"good").is_ok());
+        let mut observer = Observer::begin(std::slice::from_ref(&file), &[])
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(observer.clean());
+        assert!(std::fs::rename(root.join("source"), root.join("retired-source")).is_ok());
+        assert!(std::fs::write(root.join("source"), b"not a directory").is_ok());
+        assert!(!observer.clean());
+        assert_eq!(observer.failure_reason(), "namespace-root-binding-changed");
+        let mismatch = observer
+            .binding_mismatch()
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert_eq!(
+            mismatch.current,
+            BindingState::Error {
+                errno: Some(rustix::io::Errno::NOTDIR.raw_os_error())
+            }
+        );
+        drop(observer);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn mismatch_storage_is_fixed_and_unknown_errno_reveals_no_error_message() {
+        let error = std::io::Error::other("private path and environment must not escape");
+        let mismatch = BindingMismatch::from_observation(
+            usize::MAX,
+            Path::new("private"),
+            Some((u64::MAX, u64::MAX)),
+            &Err(error),
+        );
+        assert_eq!(mismatch.current, BindingState::Error { errno: None });
+        let description = mismatch.to_string();
+        assert!(description.contains("new=error(errno=unavailable)"));
+        assert!(!description.contains("private"));
+        assert!(!description.contains("environment"));
+        assert!(description.len() < 256);
+        let widest = BindingMismatch {
+            current: BindingState::Present {
+                device: u64::MAX,
+                inode: u64::MAX,
+            },
+            ..mismatch
+        };
+        assert!(widest.to_string().len() < 256);
+        assert!(std::mem::size_of::<Option<BindingMismatch>>() <= 128);
+        // A content digest is diagnostic identity only. It never replaces the
+        // original native failure, source inventory or any proof barrier.
     }
 
     #[test]

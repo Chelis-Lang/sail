@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "kind": "independent-host-terminal-metadata-seal-and-membership-audit",
+  "native_or_target_access": false,
+  "new_proof_or_benchmark": false,
+  "historical_first_mismatch_captured": false,
+  "metadata": {
+    "bytes": 888735,
+    "sha256": "c8f470e4459f5966fbf873593ddaaa203a1898d4657bb119a0a5998d34e0dc40"
+  },
+  "capture_record": {
+    "bytes": 2156,
+    "sha256": "76947a125c271327438560fe89cd18790e3d9907f7ea687feb3e97163d28ca3f",
+    "capture_script_sha256": "aa655d4134dc614e522d394b67f0649bcf1eeabf7056ee8326f384089cb9b671",
+    "recorded_scope": "terminal read-only supplemental metadata; exact changed root unobserved",
+    "container_before_after_equal": true
+  },
+  "embedded_file_count": 11,
+  "embedded_raw_byte_and_sha_checks": "all 11 match",
+  "files": [
+    {
+      "path": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0/runtime.json",
+      "bytes": 10783,
+      "sha256": "72853372a21fc6095a2bb35b7ade82e47ca25cb41bbdca3e37b5fbe7b4270fe3",
+      "device": 54,
+      "inode": 2635504,
+      "mode": 384
+    },
+    {
+      "path": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0/input-state.json",
+      "bytes": 231008,
+      "sha256": "2caac4ceeeb194ddddd13db248209d8e1c9df067f583e9c2967b79708d22819a",
+      "device": 54,
+      "inode": 2663127,
+      "mode": 384
+    },
+    {
+      "path": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0/source-inputs.json",
+      "bytes": 130327,
+      "sha256": "c29bee64ba4b1d5b3d3968a5470e508d92e88a13af1e0dcbd56f9fc74e94f45e",
+      "device": 54,
+      "inode": 2635495,
+      "mode": 384
+    },
+    {
+      "path": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0/build-inputs.json",
+      "bytes": 5231,
+      "sha256": "58c7a9c3f1b6741de5dff6701a9ad5e88aefcd2bf28884d9b94fb1a62ffb8c01",
+      "device": 54,
+      "inode": 2663126,
+      "mode": 384
+    },
+    {
+      "path": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0/runs/33403-1791764307414349381/artifacts.jsonl",
+      "bytes": 29812,
+      "sha256": "396279aba157358ff2a15d20ff077757245278166bd8ff9ff65451882ab723fb",
+      "device": 54,
+      "inode": 2635505,
+      "mode": 420
+    },
+    {
+      "path": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2/runtime.json",
+      "bytes": 14207,
+      "sha256": "d81fa7c02850154c3af678c366ebe3a361ec8799b85dba7b19460abccc26ea10",
+      "device": 54,
+      "inode": 2664272,
+      "mode": 384
+    },
+    {
+      "path": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2/input-state.json",
+      "bytes": 231008,
+      "sha256": "844e81fa94534943d7feff71dbae6fb94719d1ee48681d099d23d1ef1790545a",
+      "device": 54,
+      "inode": 2668630,
+      "mode": 384
+    },
+    {
+      "path": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2/source-inputs.json",
+      "bytes": 130327,
+      "sha256": "ca358ab86df8cf45d97ff991be3bd4ec3f01626f3405f4639f9ab190aa963d4c",
+      "device": 54,
+      "inode": 2664256,
+      "mode": 384
+    },
+    {
+      "path": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2/build-inputs.json",
+      "bytes": 5231,
+      "sha256": "001578257cf6d43be21702540af8bc7dfc503cc54315941353bddff5f627be8e",
+      "device": 54,
+      "inode": 2671901,
+      "mode": 384
+    },
+    {
+      "path": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2/runs/41839-1791764615771953134/artifacts.jsonl",
+      "bytes": 29812,
+      "sha256": "608eb6a761f2c409302e916d1d2f4cf4b70f93e215bd36410cb61f45561c56cc",
+      "device": 54,
+      "inode": 2664266,
+      "mode": 420
+    },
+    {
+      "path": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2/runs/49378-1791764783682487379/artifacts.jsonl",
+      "bytes": 29807,
+      "sha256": "995ba4533e9168e331a6588067e1bec9cdbea9daabb71996b34434b428ddcd99",
+      "device": 54,
+      "inode": 2664265,
+      "mode": 420
+    }
+  ],
+  "contexts": [
+    {
+      "context_sha256": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0",
+      "compiler_family_sha256": "c99b5cd0bc895df728588ab0033adf1f46be3ecc36056f77902b843d8f9d4de1",
+      "terminal_source_count": 551,
+      "terminal_input_state_source_count": 551,
+      "source_coverage": true,
+      "generated_source_count": 1,
+      "generated_source": {
+        "relative_to_target": "debug/build/serde_core-90770f6d060cf0d0/out/private.rs",
+        "path_sha256": "291fa46e9efbc8a95a6938ec42725fa2021ada126b19c12414c765675d43f188",
+        "device": 54,
+        "inode": 2635664,
+        "bytes": 90,
+        "included_in_input_state": true,
+        "inside_metadata_target_directory": false,
+        "inside_sail_cache_directory": true,
+        "source_package_ids": [
+          "registry+https://github.com/rust-lang/crates.io-index#serde_core@1.0.229"
+        ]
+      },
+      "terminal_build_record_count": 6,
+      "matching_script_contracts": [
+        {
+          "package_id": "registry+https://github.com/rust-lang/crates.io-index#serde_core@1.0.229",
+          "package_name": "serde_core",
+          "covered": true,
+          "sealed_output_present": true,
+          "declared_path_count": 1,
+          "declares_generated_source_as_script_input": false
+        }
+      ],
+      "family_export_exists": false
+    },
+    {
+      "context_sha256": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2",
+      "compiler_family_sha256": "69976c80240f04e736569ba235557925cd10e1a6088d5606d16f95f3bb57807a",
+      "terminal_source_count": 551,
+      "terminal_input_state_source_count": 551,
+      "source_coverage": true,
+      "generated_source_count": 1,
+      "generated_source": {
+        "relative_to_target": "debug/build/serde_core-90770f6d060cf0d0/out/private.rs",
+        "path_sha256": "3c590f909ed403d0e1a994296af7b6062113e328951b1e4a873a292c3c39d0ea",
+        "device": 54,
+        "inode": 2664427,
+        "bytes": 90,
+        "included_in_input_state": true,
+        "inside_metadata_target_directory": false,
+        "inside_sail_cache_directory": true,
+        "source_package_ids": [
+          "registry+https://github.com/rust-lang/crates.io-index#serde_core@1.0.229"
+        ]
+      },
+      "terminal_build_record_count": 6,
+      "matching_script_contracts": [
+        {
+          "package_id": "registry+https://github.com/rust-lang/crates.io-index#serde_core@1.0.229",
+          "package_name": "serde_core",
+          "covered": true,
+          "sealed_output_present": true,
+          "declared_path_count": 1,
+          "declares_generated_source_as_script_input": false
+        }
+      ],
+      "family_export_exists": false
+    }
+  ],
+  "limit": "Terminal state only: no pre-clean or observer-acquisition bindings, no claim of the actual historical failed path."
+}
