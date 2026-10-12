@@ -457,3 +457,12 @@ one HumanEval invocation and reuses vstd through the normal receipt path. All
 113 completed shim records report cached replies without starting a solver.
 Its bounded process snapshots remain partial. This success does not explain
 the historical timeout or supply reader latency or repair acceptance.
+
+The later [exact unused Verus dependency cleanup](validation/m7-unused-intermediates-20261012.json)
+retires 3,450 single-link non-executable/non-ELF compiler files across six old
+variant dependency trees (5,062,496,256 allocated file bytes), preserving all
+2,032 other entries, 54 hardlinks and six root identities. Selected c77 runtime
+and source are outside those trees. This is per-tree preservation, without
+a surrounding debug/release posthash or physical backing-space attribution.
+The fresh post-recovery 387 benchmark is running separately with no performance
+credit; the second whole-debug verification remains pending.
