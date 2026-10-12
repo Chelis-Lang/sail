@@ -728,9 +728,10 @@ The later [frozen b895 reader/retained workflow](validation/m7-compiler-script-b
 also passes both original collectors and retained CLI/MCP scenarios: Python
 Result/Status p95 91.227/56.989 ms and Rust 83.867/44.371 ms, with complete Current
 graphs and the same verifier live throughout each collector. Earlier failures
-remain failed. The newer baseline/source-inventory implementation remains under
-validation; no installed-product, conformance or repair-performance credit is
-transferred from b895.
+remain failed. Current `387ba80` separately passes its [complete gate/solver,
+product installations and original repair fixture](validation/m7-compiler-script-bootstrap/source-inventory.json);
+its full reader acceptance, complete conformance and real-project performance
+remain unqualified. No reader or performance credit is transferred from b895.
 
 ## Frozen 730a321 product scopes
 

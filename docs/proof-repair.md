@@ -1,13 +1,13 @@
 # Proof events and repair validation
 
 **Experimental (M7):** the selected source engine passes its preparation-memory
-and lowering qualification. Current `b89546c` passes the
-[complete original CLI/MCP repair fixture and full reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
-Both unchanged collectors preserve full Current graphs and p95 below 200 ms;
-retained CLI/MCP scenarios pass. The newer baseline/source-inventory code does
-not inherit this installed-product result and remains under validation.
-Real-project performance and complete standard/cache corpus coverage remain
-unfinished.
+and lowering qualification. Current `387ba80` passes the
+[complete gate, original solver, product installations and original CLI/MCP
+repair fixture](validation/m7-compiler-script-bootstrap/source-inventory.json).
+The `57a319d` named-baseline feature smoke and
+[b895 full reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+remain separate historical passes. Current readers, real-project performance
+and complete standard/cache corpus coverage remain unfinished.
 See [known issues](known-issues.md) and the
 [acceptance guide](bench/m7-repair-acceptance.md) before relying on performance
 or cross-edit preparation reuse. Stock verification remains the default.

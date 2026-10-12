@@ -2,8 +2,10 @@
 
 This implementation addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77).
 Current selected source `387ba80` passes its complete local gate and original
-solver suite with explicit `CARGO_INCREMENTAL=0`; its new product validation
-remains pending. Earlier `57a319d` passes its separate gate/solver, ordinary
+solver suite with explicit `CARGO_INCREMENTAL=0`, followed by ordinary
+release and private installation. Its original installed repair fixture and
+acceptance byte installation also pass. Earlier `57a319d` passes its separate
+gate/solver, ordinary
 release and owned private installation. Its original installed CLI/MCP repair
 fixture and separate [installed baseline feature smoke](../m7-mcp-baseline-product-smoke-plan.md)
 also pass. Current readers, conformance and the unchanged full benchmark
@@ -144,3 +146,19 @@ The resource policy remains the existing 1 MiB encoded family envelope and
 regular-file read cap, plus at most 128 package entries and 4,096 attributed paths
 of at most 4,096 OS-string bytes each. These limits bound this new inventory,
 not total managed allocation or RSS. See [ADR 0036](../../decisions/0036-managed-compiler-artifact-families.md).
+
+The recovered-source ordinary release passes in 89.720 seconds and owned private
+installation in 2.282 seconds, under unchanged 600/60-second caps. Both phases
+exit zero with no uncertainty and closed recorded groups; the exact same source
+archive, CLI/shim byte identities and thirteen-artifact engine manifest are bound
+in the [existing record](source-inventory.json). This is installation-only
+evidence, without inherited reader, conformance or performance acceptance.
+
+The new original CLI/MCP repair passes in 90.588 fixture seconds with 299
+operations, unchanged 120/30/5-second limits, no timing wrapper and no cleanup,
+progress or uncertainty errors. Native phase and host controller durations are
+95.387 and 102.641 seconds; known owned groups close and container birth matches.
+Acceptance byte installation separately passes in 4.494 seconds, with exact
+producer/acceptance files, source archive and births. No proof/cache state is
+copied. Current readers, complete standard/cache coverage and new real-project
+performance remain unqualified.
