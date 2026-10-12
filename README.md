@@ -178,6 +178,10 @@ cargo nextest run --workspace
 
 The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automatically.
 
+Retire completed local run scratch after verified evidence retention and holder
+checks. The [workspace hygiene guide](docs/workspace-hygiene.md) describes the
+automatic local-gate cleanup and separate reader/benchmark handoff.
+
 ## Portfolio and fragility
 
 An explicit seed portfolio can try independent complete verification runs:

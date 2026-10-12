@@ -579,6 +579,30 @@ def validate_paths(source, target, output):
         raise ValueError("source must not contain native evidence output")
 
 
+def retire_closed_gate(args, result, frozen):
+    """Retirement is separate from validation, with its own conservative refusal."""
+    try:
+        directory = Path(__file__).parent
+        names = ("retire-completed-run.py", "local-combined-gates.py", "retire-old-functional-two-incremental.py")
+        for name in names:
+            if sha(directory / name) != frozen["files"]["scripts/" + name]["sha256"]:
+                raise ValueError("cleanup helper differs from frozen source")
+        spec = importlib.util.spec_from_file_location("completed_gate_retirement", directory / names[0])
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        helper.terminal_closed(result)
+        protected = [args.target] + [row["path"] for row in load(args.protected)["files"]]
+        required = ["result.json", "config.json", "protected.json", "source-inventory.json"]
+        required += [phase["name"] + ".log" for phase in result["phases"]]
+        output = args.retirement_output or (Path.home() / ".cache/sail/evidence/completed-runs" / Path(args.native_root).name)
+        retained = [args.output / name for name in ("source.tar", "source-inventory.json", "protected.json", "transport.log", "result.json")]
+        return helper.retire_run(args.container, args.native_root, output,
+                                 dict(result, native_root=args.native_root), protected, required, retained)
+    except BaseException as error:
+        return {"status": "UNCERTAIN", "removed": False, "original_status": result.get("status"),
+                "error_type": type(error).__name__, "error": str(error)[:256]}
+
+
 def host(args):
     closure = Closure()
     args.output.mkdir(mode=0o700, exist_ok=False)
@@ -666,6 +690,7 @@ print(json.dumps({'pid1_birth':int(Path('/proc/1/stat').read_text().rsplit(')',1
             if sha(args.output / name) != phase["log_sha256"]:
                 raise ValueError("retained raw phase log differs")
         report["status"] = result_record["status"]
+        report["retirement"] = retire_closed_gate(args, result_record, frozen)
     except BaseException as error:
         closure.uncertain("transport/setup/interruption closure unavailable")
         report.update(status="FAIL", error_type=type(error).__name__, error=str(error))
@@ -679,9 +704,12 @@ print(json.dumps({'pid1_birth':int(Path('/proc/1/stat').read_text().rsplit(')',1
     finally:
         report["uncertainty"] = closure.reasons
         report["native_root"] = root
-        report["native_evidence"] = "retained in new private native root; no source restoration/deletion"
+        report["native_evidence"] = ("compact evidence verified on host; closed native scratch retired; historical images nonreexecutable"
+                                     if report.get("retirement", {}).get("removed") else
+                                     "native scratch retained; retirement deferred or uncertain; explicit audit required")
         save(args.output / "controller.json", report)
-    return 0 if report["status"] == "PASS" and not closure.reasons else 1
+    return 0 if (report["status"] == "PASS" and not closure.reasons
+                 and report.get("retirement", {}).get("status") == "PASS") else 1
 
 
 def main():
@@ -695,6 +723,7 @@ def main():
     parser.add_argument("--target", default="/work/target")
     parser.add_argument("--source", help="new exact native source path; defaults to native-root/source")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--retirement-output", type=Path, help="new durable host evidence directory outside /tmp; defaults to Sail evidence cache")
     parser.add_argument("--protected", type=Path)
     parser.add_argument("--retain-elf", action="append", default=[])
     args = parser.parse_args()

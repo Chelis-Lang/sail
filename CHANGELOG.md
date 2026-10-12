@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Retire closed local gate scratch after verifying compact evidence on the
+  host and repeating bounded holder checks. Preserve original validation
+  outcomes and selected runtimes; historical compiler trees and test binaries
+  become nonreexecutable without rebuilding. The reusable cleanup helper also
+  supports separately closed reader and benchmark runs. Uncertain closure
+  defers cleanup. See [workspace hygiene](docs/workspace-hygiene.md).
+
 - Prepare proof-context-private Cargo targets and ordinary generation exports
   for explicit interactive repair selectors. Ready selectors previously
   overwrote each other's certified dependency artifacts in a shared target,

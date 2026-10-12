@@ -81,6 +81,7 @@ case "$step" in
     python3 scripts/test-m7-publication-timing-diagnostic.py
     python3 docs/validation/m7-http-small-known-body/test-runner.py
     python3 scripts/test-local-combined-gates.py
+    python3 scripts/test-retire-completed-run.py
     python3 scripts/test-local-product-install.py
     python3 scripts/test-local-standard-conformance.py
     python3 scripts/test-m7-current-publication-controller.py
