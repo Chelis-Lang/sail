@@ -255,6 +255,142 @@ impl Drop for Fixture {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)] // Keep the actual Cargo on/import/off comparison and owned cleanup together.
+fn family_source_inventory_gives_second_selector_its_original_generated_input_guard() -> TestResult
+{
+    use crate::managed::source_inputs;
+    let fixture = Fixture::new()?;
+    fixture.compile()?;
+    let state = fixture.local.with_file_name("source-inputs.json");
+    let (paths, covered) = source_inputs::update(&state, &fixture.journal, &fixture.data)?;
+    assert!(covered);
+    assert!(paths.iter().any(|p| p.starts_with(&fixture.target)));
+    let mut established = fixture.data.clone();
+    established["sail_source_inputs"] = serde_json::to_value(&paths)?;
+    let before = input::snapshot_metadata(&established, &[]);
+    assert!(before.complete);
+    let mut guard = coherent::Guard::begin(&before);
+    fixture.compile()?;
+    let (paths, covered) = source_inputs::update(&state, &fixture.journal, &fixture.data)?;
+    assert!(covered);
+    established["sail_source_inputs"] = serde_json::to_value(paths)?;
+    let after = input::snapshot_metadata(&established, &[]);
+    assert!(after.complete);
+    assert_eq!(before.revision, after.revision);
+    assert!(guard.ready_at(coherent::Barrier::PostVerification));
+    // This exercises the normal guarded publication route. No Verus verdict or
+    // receipt is manufactured by this tiny ordinary Cargo fixture.
+    super::super::publish(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &fixture.data,
+    );
+    let export = super::super::read(&fixture.export).ok_or("generation missing")?;
+    assert!(export.sources.is_some());
+    let next = fixture.root.join("cache/selector-b/local.json");
+    std::fs::create_dir_all(next.parent().ok_or("context parent missing")?)?;
+    assert!(super::super::begin(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &next,
+        &fixture.data,
+    )?);
+    assert!(!fixture.export.exists());
+    assert_eq!(
+        build_inputs::stale(&next, &fixture.data).0,
+        Vec::<String>::new()
+    );
+    let next_state = next.with_file_name("source-inputs.json");
+    let (imported, covered) = source_inputs::load(&next_state);
+    assert!(covered);
+    assert_eq!(
+        source_inputs::packages(&next_state),
+        source_inputs::packages(&state)
+    );
+    let mut selected = fixture.data.clone();
+    selected["sail_source_inputs"] = serde_json::to_value(&imported)?;
+    let ready = input::snapshot_metadata(&selected, &[]);
+    assert!(ready.complete);
+    let mut guard = coherent::Guard::begin(&ready);
+    fixture.compile()?;
+    let (actual, covered) = source_inputs::update(&next_state, &fixture.journal, &fixture.data)?;
+    assert!(covered);
+    selected["sail_source_inputs"] = serde_json::to_value(actual)?;
+    let final_inputs = input::snapshot_metadata(&selected, &[]);
+    assert!(final_inputs.complete);
+    assert_eq!(ready.revision, final_inputs.revision);
+    assert!(guard.ready_at(coherent::Barrier::PostVerification));
+    // Exact production counterfactual: retain a valid ordinary script envelope
+    // while omitting only its optional path inventory. The old selector seam
+    // must still change the original revision when Cargo reveals private.rs.
+    super::super::publish(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &fixture.data,
+    );
+    let mut export = super::super::read(&fixture.export).ok_or("counterfactual missing")?;
+    export.sources = None;
+    export.checksum = super::super::checksum(&export).ok_or("checksum missing")?;
+    crate::managed::files::json(&fixture.export, &export)?;
+    let legacy = fixture.root.join("cache/selector-c/local.json");
+    std::fs::create_dir_all(legacy.parent().ok_or("context parent missing")?)?;
+    assert!(super::super::begin(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &legacy,
+        &fixture.data,
+    )?);
+    let legacy_state = legacy.with_file_name("source-inputs.json");
+    assert!(!legacy_state.exists());
+    let uncovered = input::snapshot_metadata(&fixture.data, &[]);
+    let (actual, covered) = source_inputs::update(&legacy_state, &fixture.journal, &fixture.data)?;
+    assert!(covered);
+    let mut discovered = fixture.data.clone();
+    discovered["sail_source_inputs"] = serde_json::to_value(actual)?;
+    assert_ne!(
+        uncovered.revision,
+        input::snapshot_metadata(&discovered, &[]).revision
+    );
+    let generated = imported
+        .iter()
+        .find(|p| p.starts_with(&fixture.target))
+        .ok_or("generated source missing")?;
+    let file = std::fs::File::open(generated)?;
+    let mtime = file.metadata()?.modified()?;
+    let original = std::fs::read(generated)?;
+    let mut guard = coherent::Guard::begin(&ready);
+    std::fs::write(generated, b"pub const VALUE: u8 = 2;\n")?;
+    std::fs::write(generated, original)?;
+    file.set_times(std::fs::FileTimes::new().set_modified(mtime))?;
+    assert!(!guard.ready_at(coherent::Barrier::PostVerification));
+    assert!(!fixture.root.join("cache/selector-b/receipts").exists());
+    // A consumed generation cannot supply another context after an interrupted
+    // owner. That next selector retains original script cleaning and no source
+    // import; B's private inventory is never used as a fallback authority.
+    let interrupted = fixture.root.join("cache/selector-d/local.json");
+    std::fs::create_dir_all(interrupted.parent().ok_or("context parent missing")?)?;
+    assert!(!super::super::begin(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &interrupted,
+        &fixture.data,
+    )?);
+    assert!(!interrupted.with_file_name("source-inputs.json").exists());
+    assert_eq!(
+        build_inputs::stale(&interrupted, &fixture.data).0,
+        vec!["sail_bootstrap_fixture"]
+    );
+    Ok(())
+}
+
+#[test]
 fn bootstrap_actual_cargo_can_publish_ordinary_contract_without_current_proof() -> TestResult {
     let fixture = Fixture::new()?;
     assert!(!super::super::begin(

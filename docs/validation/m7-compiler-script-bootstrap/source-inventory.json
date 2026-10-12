@@ -1,0 +1,48 @@
+{
+  "kind": "source-only-compiler-family-declared-source-inventory",
+  "issue": "https://github.com/Chelis-Lang/sail/issues/77",
+  "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
+  "status": "implemented source-only; native controls, strict and original product/benchmark pending",
+  "source_sha256": {
+    "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
+    "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
+    "crates/sail-verus/src/managed/source_inputs.rs": "2f3e3f3601b1d5aa57b945ec3171c6a456248385069183cec99c7f2835e197e4",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "8a50c25b8e261f5646032081391c2944aba66a6875d82d7ed9628454f7f9811b",
+    "Cargo.lock": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb"
+  },
+  "family_export_version": 2,
+  "bounds": {
+    "envelope_bytes": 1048576,
+    "package_entries": 128,
+    "attributed_path_memberships": 4096,
+    "path_os_bytes": 4096,
+    "qualification": "serialized/read and post-parse count bounds, not heap/RSS quota"
+  },
+  "new_controls": [
+    "family_source_inventory_gives_second_selector_its_original_generated_input_guard",
+    "typed_source_inventory_refuses_unknown_packages_roles_aliases_and_limits",
+    "incomplete_or_unattributed_sources_cannot_export_and_private_roots_survive",
+    "imported_paths_read_changed_source_bytes_independently_before_acquisition"
+  ],
+  "existing_control_extension": "content_contract_output_registry_and_compiler_changes_cannot_import adds v1/checksum refusal",
+  "native_controls_executed": false,
+  "historical_b895_scope": {
+    "benchmark": "FAIL before measured samples",
+    "worker_source_observation": {
+      "gcd_ready": true,
+      "concatenate": false
+    },
+    "terminal_paths_each": 551,
+    "terminal_generated_paths_each": 1,
+    "terminal_ledger_bytes": 646596,
+    "terminal_ledger_sha256": "30acca50d2eaada504bf78bb20be2dc32938bd0d89a1db21c89a322ba71b2635",
+    "limit": "end-state ledgers and public phase rows, not historical native owner captures"
+  },
+  "unchanged": [
+    "full proof context and private receipts",
+    "fresh source content reads and all native/kernel/input barriers",
+    "currentness classification and complete proof predicates",
+    "independent Bootstrap final-barrier publication order",
+    "original benchmark arguments, warmups, deadlines and acceptance oracle"
+  ]
+}

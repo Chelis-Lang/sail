@@ -21,10 +21,42 @@ separate, domain-tagged compiler-artifact digest over the same exact arguments,
 engine request, runtime identity and byte-exact environment, clearing only the
 engine request's function field. Keep stock and source-engine requests distinct.
 Compiler artifacts and executable aliases live in this family. Runtime sidecars,
-source observations, proof receipts, committed reports and runs stay under the
+content observations, proof receipts, committed reports and runs stay under the
 complete proof context. Local build-script observations also remain there; an
 optional family export certifies ordinary generated-output contracts for reuse,
 never proof receipts or Currentness.
+
+The version-2 export may also carry a typed compiler-declared source **path
+inventory**, attributed to exact Cargo package identities. It is published only
+by the original final Current transaction; the independent script bootstrap does
+not certify newly learned Rust source paths. Before a new selector's original
+snapshot, `family::begin` consumes and revalidates the export, then merges an
+admitted inventory into that selector's private source ledger. Earlier private
+paths and incomplete coverage are retained. Every imported file is read and
+guarded anew by the original snapshot, namespace, kernel and final input checks;
+the export contains no reusable source content observation, Current verdict or
+proof receipt. This addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77):
+a new selector can otherwise learn an unchanged generated include only after
+verification and correctly become Historical.
+
+The inventory binds package ID, name, version, source, manifest and targets.
+Names must be absolute canonical regular-file paths within that package's source
+directory, or within its own already validated build-script output unit's `out`
+directory under the exact family target. Other cache paths, external unknown
+roles, aliases, missing files, ambiguous package identities and incomplete or
+unattributed inventories refuse sharing. Refused source inventories keep the
+original fresh-cleaning path; absent optional inventories retain the existing
+ordinary-script-only behavior. Newer source discoveries can still require the
+original declaration transition. No filesystem glob or another context's raw
+ledger supplies authority.
+
+The existing 1 MiB envelope/read bound also covers the optional inventory. It
+admits at most 128 package entries and 4,096 attributed paths, each at most 4,096
+OS-string bytes. Local merge uses the same bounds and refuses corrupt ledgers.
+These are bounded new serialization/inventory limits, not an allocator or RSS
+quota. Version-1 envelopes are refused rather than promoted. Checksums and
+compilation records retain ADR 0036's trusted private Cargo-artifact boundary;
+they do not authenticate fabricated journals against a trusted local writer.
 
 The optional daemon sysroot hint selection also uses a distinct versioned domain
 and the same borrowed function-independent request view. This changes selection

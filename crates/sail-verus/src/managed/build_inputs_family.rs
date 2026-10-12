@@ -17,6 +17,8 @@ use std::path::Path;
 
 #[path = "build_inputs_bootstrap.rs"]
 pub(in crate::managed) mod bootstrap;
+#[path = "build_inputs_sources.rs"]
+mod sources;
 
 const MAX_BYTES: usize = 1024 * 1024;
 
@@ -26,6 +28,7 @@ struct Export {
     version: u32,
     compiler: String,
     records: Vec<BuildInput>,
+    sources: Option<sources::Inventory>,
     checksum: String,
 }
 
@@ -48,7 +51,13 @@ fn encode(value: &impl Serialize) -> Option<Vec<u8>> {
     Some(writer.0)
 }
 fn checksum(export: &Export) -> Option<String> {
-    encode(&(export.version, &export.compiler, &export.records)).map(|v| digest(&v))
+    encode(&(
+        export.version,
+        &export.compiler,
+        &export.records,
+        &export.sources,
+    ))
+    .map(|v| digest(&v))
 }
 
 #[cfg(target_os = "linux")]
@@ -236,7 +245,7 @@ pub(in crate::managed) fn begin(
     data: &Value,
 ) -> Result<bool> {
     let export = read(path).filter(|export| {
-        export.version == 1
+        export.version == 2
             && export.compiler == compiler
             && checksum(export).as_ref() == Some(&export.checksum)
     });
@@ -251,8 +260,27 @@ pub(in crate::managed) fn begin(
         || (Vec::new(), false),
         |export| {
             let count = export.records.len();
-            let records = eligible(export.records, data, target);
-            let available = count != 0 && count == records.len();
+            let mut records = eligible(export.records, data, target);
+            let mut available = count != 0 && count == records.len();
+            if let Some(sources) = export.sources {
+                let source_state = local.with_file_name("source-inputs.json");
+                let admitted = available
+                    .then(|| sources.admit(data, &records, target))
+                    .flatten()
+                    .and_then(|inputs| sources::merge(&source_state, inputs));
+                if let Some(inputs) = admitted {
+                    // This is only an inventory. The caller subsequently reads
+                    // every declared byte and acquires all original owners.
+                    if super::super::files::json_metadata(&source_state, &inputs).is_err() {
+                        available = false;
+                    }
+                } else {
+                    available = false;
+                }
+                if !available {
+                    records.clear();
+                }
+            }
             (records, available)
         },
     );
@@ -287,14 +315,32 @@ pub(in crate::managed) fn publish(
         data,
         target,
     );
-    publish_records(path, compiler, records);
+    let sources = sources::Inventory::capture(
+        &local.with_file_name("source-inputs.json"),
+        data,
+        &records,
+        target,
+    );
+    publish_inventory(path, compiler, records, sources);
 }
 
 fn publish_records(path: &Path, compiler: &str, records: Vec<BuildInput>) {
+    // The independently guarded bootstrap certifies ordinary script outputs,
+    // not newly discovered Rust source. Keep its final-barrier write unchanged.
+    publish_inventory(path, compiler, records, None);
+}
+
+fn publish_inventory(
+    path: &Path,
+    compiler: &str,
+    records: Vec<BuildInput>,
+    sources: Option<sources::Inventory>,
+) {
     let mut export = Export {
-        version: 1,
+        version: 2,
         compiler: compiler.to_owned(),
         records,
+        sources,
         checksum: String::new(),
     };
     let Some(sum) = checksum(&export) else {
@@ -497,6 +543,8 @@ mod tests {
             "compiler",
             "incomplete",
             "duplicate",
+            "old-version",
+            "checksum",
         ] {
             std::fs::write(&f.input, "good")?;
             let record = f.record("host", &f.input, &[])?;
@@ -525,6 +573,17 @@ mod tests {
                     let mut export = read(&f.export).ok_or("export missing")?;
                     export.records[0].covered = false;
                     export.checksum = checksum(&export).ok_or("checksum failed")?;
+                    json(&f.export, &export)?;
+                }
+                "old-version" => {
+                    let mut export = read(&f.export).ok_or("export missing")?;
+                    export.version = 1;
+                    export.checksum = checksum(&export).ok_or("checksum failed")?;
+                    json(&f.export, &export)?;
+                }
+                "checksum" => {
+                    let mut export = read(&f.export).ok_or("export missing")?;
+                    export.checksum = "invalid".to_owned();
                     json(&f.export, &export)?;
                 }
                 _ => {}
