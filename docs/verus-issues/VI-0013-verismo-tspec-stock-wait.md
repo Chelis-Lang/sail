@@ -32,6 +32,15 @@ The harness was draining output on independent threads and polling its original
 deadline; no capture-file write wait was sampled. A full userspace stack or
 source-level wait dependency is still needed before choosing a correction.
 
+The later [transcript diagnostic](../validation/m7-tspec-transcript-interrupted.md)
+was interrupted by filesystem/container failure. Its 3,880 logged batches all
+have responses; the newest bit-vector transcript is empty. Pinned source
+allows that log to exist before disposal of the prior context and before lazy
+solver launch. This narrows the next observation seam, not the historical
+cause. The [phase diagnostic follow-up](../validation/m7-tspec-phase-diagnostic-followup.md)
+specifies the missing context, channel and pipe ownership evidence; no new
+execution is authorized by that plan.
+
 The earlier standard attempt also timed out in `bitflags_verus`; one separate
 ordinary bitflags diagnostic later completed both sides, 48 verified and zero
 errors. That scoped pass neither explains nor reclassifies either earlier
