@@ -137,6 +137,13 @@ Vest unreached. Source/product/runtime seals and birth match, but closure is
 UNKNOWN after census exits 133; no performance or closed-scope claim follows.
 The [existing record](validation/m7-compiler-script-bootstrap/source-inventory.json)
 binds retained warmups and raw failure without assigning an unproven cause.
+An authorized Desktop restart restores both write/fsync probes with unchanged
+container IDs/images and new births. Old prepared 57a readers remain unexecuted
+and require restaging. Fresh source `387ba80` explicitly disables Cargo
+incremental compilation in local gates to match CI; its new complete gate is
+running, with no terminal PASS claim. The [existing cleanup record](validation/m7-unused-intermediates-20261012.json)
+preserves the initial 20,288-entry refusal and later exact 156-subtree retirement,
+without attributing physical backing-space recovery.
 Remaining delivery gates are complete current standard/cache conformance and
 the two real-project speed thresholds. PR #74
 remains draft.
