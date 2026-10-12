@@ -10,6 +10,10 @@
 //!    (`SAIL7109`). A whole-loop total is the sum of a round's cycle wall
 //!    times for one arm.
 //!
+//! An M6 sample whose focused or full check failed to produce a result
+//! (`SAIL7110`, or `SAIL7101`) is invalid: it fails the gate, and its time is
+//! never counted as M6 time, so its round is incomplete.
+//!
 //! Warm-ups are never judged. A failing sample is reported, never dropped.
 
 use std::collections::BTreeSet;
@@ -114,6 +118,11 @@ pub fn violations(s: &Sample) -> Vec<Violation> {
                 ),
             ));
         }
+    } else if let Some(error) = &f.baseline_error {
+        out.push(v(
+            "SAIL7110",
+            format!("invalid M6 baseline sample: {error}"),
+        ));
     } else if f.verified != Some(want_verified) {
         out.push(v(
             "SAIL7106",
@@ -138,6 +147,18 @@ pub fn violations(s: &Sample) -> Vec<Violation> {
         ));
     }
     out
+}
+
+/// Whether `s` is an M6 sample whose focused or full check failed to run to a
+/// result: a Sail error (`SAIL7110`) or a failed invocation (`SAIL7101`).
+/// Such a sample measures no baseline loop, so its time is never M6 time and
+/// its round is incomplete. Counting it could only flatter M7.
+#[must_use]
+pub fn invalid_baseline(s: &Sample, found: &[Violation]) -> bool {
+    s.arm == Some(Arm::M6)
+        && found
+            .iter()
+            .any(|x| x.code == "SAIL7101" || x.code == "SAIL7110")
 }
 
 /// A measured sample that fails the gate.
@@ -243,8 +264,12 @@ fn tally(f: &RepairFile, project: &str, cycles: &[&str]) -> Tally {
                 };
                 match s {
                     Some(s) => {
-                        *slot = slot.map(|t| t + s.wall_ms);
                         let found = violations(s);
+                        *slot = if invalid_baseline(s, &found) {
+                            None
+                        } else {
+                            slot.map(|t| t + s.wall_ms)
+                        };
                         if !found.is_empty() {
                             failing.push(Failing {
                                 round,
@@ -484,6 +509,41 @@ mod tests {
         assert_eq!(codes, ["SAIL7102", "SAIL7103"]);
         // Its time still counts: totals are over every recorded sample.
         assert_eq!(v.m7_median_ms, Some(1000.0));
+    }
+
+    #[test]
+    fn a_failed_m6_check_is_an_invalid_sample_never_m6_time() {
+        let mut f = file(3, &["a"], 3000.0, 1000.0);
+        // A fast SAIL3107 focus must not count as baseline time.
+        if let Some(s) = f.samples.iter_mut().find(|s| s.arm == Some(Arm::M6)) {
+            s.facts.baseline_error = Some("focused check failed: SAIL3107: x".to_owned());
+            s.wall_ms = 10.0;
+        }
+        let v = judge_project(&f, "p", &["a"], 3, 2.0);
+        assert!(!v.passed);
+        let codes: Vec<&str> = v
+            .failing
+            .iter()
+            .flat_map(|x| &x.violations)
+            .map(|x| x.code)
+            .collect();
+        assert_eq!(codes, ["SAIL7110"]);
+        assert_eq!(v.m6_round_totals.first(), Some(&None));
+        assert_eq!(v.complete_rounds, 2);
+        assert!(v.reasons.iter().any(|r| r.starts_with("SAIL7108")));
+        assert_eq!(v.m6_median_ms, Some(3000.0));
+        // A timed-out M6 invocation is equally no baseline time.
+        let mut f = file(3, &["a"], 3000.0, 1000.0);
+        if let Some(s) = f.samples.iter_mut().find(|s| s.arm == Some(Arm::M6)) {
+            s.phases[0].timed_out = true;
+        }
+        let v = judge_project(&f, "p", &["a"], 3, 2.0);
+        assert_eq!(v.m6_round_totals.first(), Some(&None));
+        // M7 failures stay in M7's totals (see above); only M6 is excluded.
+        assert!(!invalid_baseline(
+            &good("p", 0, "a", Arm::M7, 1.0),
+            &[super::v("SAIL7101", "x")]
+        ));
     }
 
     #[test]

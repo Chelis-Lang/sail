@@ -317,6 +317,12 @@ pub struct Facts {
     /// Full exit code was zero.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verified: Option<bool>,
+    /// M6: the focused or full check reported a Sail error (for example
+    /// `SAIL3107`) instead of a verification result. Such a baseline sample
+    /// is invalid and is never counted as M6 time (truncated in the compact
+    /// result).
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "truncated")]
+    pub baseline_error: Option<String>,
 }
 
 /// One recorded sample: one arm of one cycle in one round, or a warm-up.
@@ -446,6 +452,7 @@ impl RawRecord {
         let notes = [
             s.facts.selection_error.as_ref(),
             s.facts.outcome_error.as_ref(),
+            s.facts.baseline_error.as_ref(),
         ]
         .into_iter()
         .flatten()
@@ -598,10 +605,21 @@ pub fn m6_facts(focus: Option<&Value>, full: Option<&Value>) -> Facts {
             (Some(a), Some(b)) => Some(a + b),
             (a, b) => a.or(b),
         },
+        baseline_error: sail_error("focused", focus).or_else(|| sail_error("full", full)),
         ..Facts::default()
     };
     set_outcome(&mut facts, full);
     facts
+}
+
+/// The Sail error a project document reports instead of a result, if any.
+fn sail_error(label: &str, project: Option<&Value>) -> Option<String> {
+    let error = project?.get("error").filter(|e| !e.is_null())?;
+    let text = |key: &str| error.get(key).and_then(Value::as_str);
+    Some(match (text("code"), text("message")) {
+        (Some(code), Some(message)) => format!("{label} check failed: {code}: {message}"),
+        _ => format!("{label} check failed: {error}"),
+    })
 }
 
 fn set_outcome(facts: &mut Facts, full: Option<&Value>) {
@@ -745,6 +763,22 @@ mod tests {
         assert_eq!(f.focus_currentness.as_deref(), Some("historical"));
         assert_eq!(f.compiler_invocations, Some(2));
         assert_eq!(f.verified, Some(true));
+        assert_eq!(f.baseline_error, None);
+
+        // A focused check that ends in a Sail error is not a result.
+        let mut failed = project(1, "unknown");
+        failed["error"] = json!({"code": "SAIL3107", "message": "no receipt"});
+        let f = m6_facts(Some(&failed), Some(&full));
+        assert_eq!(
+            f.baseline_error.as_deref(),
+            Some("focused check failed: SAIL3107: no receipt")
+        );
+        assert_eq!(f.verified, Some(true), "the full outcome is still read");
+        let f = m6_facts(Some(&focus), Some(&failed));
+        assert_eq!(
+            f.baseline_error.as_deref(),
+            Some("full check failed: SAIL3107: no receipt")
+        );
 
         let doc = json!({"version": 1, "accepted": true, "batch": {
             "focus": full, "full": full, "manifest_sha256": "ab",
