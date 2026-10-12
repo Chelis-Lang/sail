@@ -5,6 +5,20 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add evidence commands for completed jobs: `sail explain`, immutable named
+  baselines (`sail baseline save|list|get`) and `sail compare` against an
+  earlier job or baseline, plus the MCP tools `explain_failure`,
+  `save_baseline`, `list_baselines`, `get_baseline` and
+  `compare_verification`. Comparisons label transitions as regressions only
+  when contexts and scopes agree. Baselines are always historical and survive
+  job pruning. Add a version-one proof-event journal (`sail jobs events`, MCP
+  `verification_events`) with resumable cursors. Stock verification writes no
+  proof events yet, so a finished stock job returns an empty terminal page
+  with an explicit `SAIL0903` gap until the optional interactive engine lands. The job endpoint socket is now
+  `jobs-v1-proof-v1-*.sock`; a running older job service is not reused. See
+  [workspace verification](docs/workspace-verification.md#evidence-from-completed-jobs)
+  and [the MCP guide](docs/mcp.md#evidence-tools).
+
 - Add explicit managed workspace verification with complete per-target reports,
   successful proof receipts, and verification-context isolation. Linux supports
   precise missing-configuration observation; macOS remains conservative and may

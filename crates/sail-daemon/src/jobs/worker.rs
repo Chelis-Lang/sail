@@ -97,6 +97,9 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
     let stdout = store::output(&directory.join("stdout"))?;
     let stderr = store::output(&directory.join("stderr"))?;
     store::output(&directory.join("events.jsonl"))?;
+    // Proof-event source for the journal. Stock verification writes no
+    // proof events, so the journal serves empty pages for stock jobs.
+    store::output(&directory.join("proof-source.jsonl"))?;
     let mut command = Command::new(&state.executable);
     command
         .arg("verify")
@@ -107,6 +110,7 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
         .env_clear()
         .envs(&job.submission.environment)
         .env("SAIL_JOB_EVENTS", directory.join("events.jsonl"))
+        .env("SAIL_PROOF_EVENTS", directory.join("proof-source.jsonl"))
         .env("SAIL_JOB_GUARD_PARENT", "1")
         .stdin(Stdio::piped())
         .stdout(stdout)

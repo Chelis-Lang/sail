@@ -12,6 +12,7 @@ mod measurement;
 mod ops;
 mod portfolio;
 mod portfolio_scope;
+mod product_cli;
 mod remote_cache;
 mod report;
 #[cfg(test)]
@@ -29,6 +30,12 @@ const COMMANDS: &[(&str, &str)] = &[
         "verify",
         "verify a crate; accepts the same arguments as `cargo verus verify`",
     ),
+    ("explain", "show exact failure evidence from a retained job"),
+    (
+        "baseline",
+        "save, list and read immutable verification baselines",
+    ),
+    ("compare", "compare completed jobs or a saved baseline"),
     ("watch", "re-verify the workspace as files change"),
     ("jobs", "inspect, follow, or cancel local verification jobs"),
     (
@@ -80,6 +87,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("_portfolio-attempt") => {
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
         }
+        Some("explain" | "baseline" | "compare") => product_cli::evidence(args, out, err),
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), out, err),
         Some("jobs") => jobs::run(args.get(1..).unwrap_or_default(), out, err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),

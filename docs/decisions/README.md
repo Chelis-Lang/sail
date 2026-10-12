@@ -29,3 +29,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0024: Persistent workspace jobs and live clients](0024-persistent-workspace-jobs-and-live-clients.md)
 - [0025: HTTP shared cache and local-first team workflow](0025-http-shared-cache-and-local-first-team-workflow.md)
 - [0026: Live workspace dependencies](0026-live-workspace-dependencies.md)
+- [0027: Interactive proof engine and repair workflow](0027-interactive-proof-engine-and-repair-workflow.md)

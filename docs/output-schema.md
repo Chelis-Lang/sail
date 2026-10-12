@@ -225,6 +225,16 @@ Verus can overwrite a spinoff's log when two ops of one function both spin
 off (survey §6). `unmatched_sessions` counts cached solver sessions that
 matched no log.
 
+## Related documents
+
+Durable jobs wrap this report in a project result
+(`crates/sail-api/schema/project-result-v1.json`). The proof-event journal
+read by `sail jobs events` and MCP `verification_events` has its own
+version-one schemas: `crates/sail-api/schema/proof-event-v1.json` for one
+event and `crates/sail-api/schema/proof-page-v1.json` for a page. Events never
+replace the completed report; a provisional observation is never a verified
+claim.
+
 ## Compatibility
 
 Within schema version 1, fields are only ever added. A field is never

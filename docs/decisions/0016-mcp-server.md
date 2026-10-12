@@ -151,3 +151,16 @@ permitted to depend only on `sail-api` (`xtask/src/layering.rs`).
   - clients need resources (for example the report as a resource) or
     progress notifications for long runs;
   - legacy clients disappear.
+
+## Proof-evidence tools (2026-10-12)
+
+Six tools expose recorded evidence: `verification_events`, `explain_failure`,
+`compare_verification`, `save_baseline`, `list_baselines` and `get_baseline`.
+Like the verification tools, each runs the `sail` binary as a child process
+(`sail jobs events`, `sail explain`, `sail compare`, `sail baseline`) and
+validates the versioned reply with `sail-api` types before returning it. The
+crate's only internal dependency stays `sail-api`. Arguments are allow-listed
+per tool, and values that look like options are refused, so an argument cannot
+become a CLI flag; baseline names are passed after a literal `--`. A reply with
+the wrong version, response variant, baseline name or job is an error. None of
+these tools reports a new current proof.

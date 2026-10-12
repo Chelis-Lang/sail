@@ -310,7 +310,13 @@ mod tests {
                 "start_verification",
                 "verification_status",
                 "verification_result",
-                "cancel_verification"
+                "cancel_verification",
+                "verification_events",
+                "explain_failure",
+                "compare_verification",
+                "save_baseline",
+                "list_baselines",
+                "get_baseline"
             ]
         );
         assert!(by_id(&r, 3)["result"].is_object());

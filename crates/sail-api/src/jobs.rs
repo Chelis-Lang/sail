@@ -16,6 +16,10 @@ pub const MAX_FRAME: usize = 32 * 1024 * 1024;
 /// A verification request. The environment belongs to its submitting client.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Submission {
+    /// Verification mode. Older clients omit it and mean stock verification;
+    /// an unknown mode is refused rather than silently run as stock.
+    #[serde(default)]
+    pub mode: Mode,
     /// Absolute Cargo project directory.
     pub project_dir: PathBuf,
     /// Verification arguments, without the `verify` subcommand or output flags.
@@ -26,6 +30,19 @@ pub struct Submission {
     pub environment: BTreeMap<String, String>,
     /// Content revision observed by the submitting client.
     pub input_revision: Option<String>,
+}
+
+/// Verification execution mode.
+///
+/// Only stock pinned-Verus verification exists today. The tagged encoding
+/// leaves room for explicitly negotiated modes; a service that does not know a
+/// mode fails to decode the submission instead of ignoring it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "selection", rename_all = "snake_case")]
+pub enum Mode {
+    /// Existing stock pinned Verus verification.
+    #[default]
+    Stock,
 }
 
 /// Durable lifecycle, independent of the proof outcome.
@@ -118,6 +135,49 @@ pub struct Chunk {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 pub enum Request {
+    /// Report the product contracts this endpoint supports.
+    Capabilities,
+    /// Read bounded version-one proof observations using a resumable cursor.
+    ProofEvents {
+        /// Durable job identity.
+        id: String,
+        /// Last consumed event; stream identity must match on reconnect.
+        cursor: crate::proof::Cursor,
+        /// Maximum event count, clamped by the service.
+        limit: usize,
+    },
+    /// Explain an exact reported target/function, preserving raw evidence.
+    Explain {
+        /// Durable completed job identity.
+        id: String,
+        /// Complete Cargo target identity.
+        target: crate::proof::Target,
+        /// Exact crate-qualified function.
+        function: String,
+        /// Optional exact obligation id.
+        obligation: Option<String>,
+    },
+    /// Save independent immutable proof evidence outside job retention.
+    SaveBaseline {
+        /// Completed evidence source.
+        id: String,
+        /// Immutable owner-selected name.
+        name: String,
+    },
+    /// List retained immutable named baselines.
+    Baselines,
+    /// Read immutable evidence for its recorded revision, never current inputs.
+    GetBaseline {
+        /// Exact retained baseline name.
+        name: String,
+    },
+    /// Compare explicit completed evidence with an earlier job or baseline.
+    Compare {
+        /// Earlier named baseline or durable job.
+        before: crate::evidence::Reference,
+        /// Later completed job identity.
+        after: String,
+    },
     /// Submit or coalesce an identical in-flight request.
     Submit {
         /// Requested verification.
@@ -165,6 +225,21 @@ pub enum Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "response", content = "value", rename_all = "snake_case")]
 pub enum Response {
+    /// Supported product contracts.
+    Capabilities {
+        /// Independent proof stream version.
+        proof_version: u32,
+    },
+    /// Ordered, resumable proof observations.
+    ProofEvents(crate::proof::Page),
+    /// Exact establishing evidence for a failure or proof.
+    Explanation(Box<crate::evidence::Explanation>),
+    /// Independently retained immutable evidence.
+    Baseline(Box<crate::evidence::Baseline>),
+    /// Immutable baseline names.
+    Baselines(Vec<String>),
+    /// Scoped, configuration-aware proof comparison.
+    Comparison(crate::evidence::Comparison),
     /// One status.
     Status(Status),
     /// Retained jobs, oldest first.
@@ -235,7 +310,7 @@ pub fn socket_path(cache_socket: &Path) -> PathBuf {
             let _ = write!(value, "{byte:02x}");
             value
         });
-    cache_socket.with_file_name(format!("jobs-v1-{suffix}.sock"))
+    cache_socket.with_file_name(format!("jobs-v1-proof-v1-{suffix}.sock"))
 }
 
 fn endpoint_path(path: &Path) -> PathBuf {
@@ -294,6 +369,40 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn baseline_read_has_exact_additive_wire_identity() {
+        let request = Request::GetBaseline {
+            name: "--json".into(),
+        };
+        assert_eq!(
+            serde_json::to_value(&request).unwrap_or_else(|error| unreachable!("{error}")),
+            serde_json::json!({"operation":"get_baseline","name":"--json"})
+        );
+        let mut bytes = Vec::new();
+        assert!(write_frame(&mut bytes, &request).is_ok());
+        assert!(matches!(read_frame::<Request>(&mut bytes.as_slice()),
+            Ok(Request::GetBaseline { name }) if name == "--json"));
+        assert!(
+            serde_json::from_value::<Request>(
+                serde_json::json!({"operation":"unknown_baseline","name":"--json"})
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn stock_mode_is_the_default_and_unknown_modes_are_refused() {
+        let submission = serde_json::json!({
+            "project_dir": "/p", "args": [], "force": false,
+            "environment": {}, "input_revision": null
+        });
+        let decoded: Submission = serde_json::from_value(submission.clone())
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        assert_eq!(decoded.mode, Mode::Stock);
+        let mut repair = submission;
+        repair["mode"] = serde_json::json!({"kind": "repair", "selection": {}});
+        assert!(serde_json::from_value::<Submission>(repair).is_err());
+    }
     #[cfg(unix)]
     #[test]
     fn endpoint_aliases_share_the_same_namespace_before_and_after_startup() {
@@ -328,7 +437,7 @@ mod tests {
         });
         assert_eq!(
             socket_path(&endpoint),
-            endpoint.with_file_name(format!("jobs-v1-{suffix}.sock"))
+            endpoint.with_file_name(format!("jobs-v1-proof-v1-{suffix}.sock"))
         );
         drop(listener);
         let _ = std::fs::remove_dir_all(root);

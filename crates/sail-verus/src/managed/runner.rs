@@ -50,6 +50,8 @@ struct Paths {
 
 fn input_environment_key(key: &std::ffi::OsStr) -> bool {
     ![
+        // Observation-only output paths set by the job worker.
+        "SAIL_PROOF_EVENTS",
         "SAIL_JOB_EVENTS",
         "SAIL_JOB_GUARD_PARENT",
         "SAIL_MANAGED_FORCE",
@@ -1514,6 +1516,7 @@ mod tests {
     #[test]
     fn lifecycle_only_job_environment_does_not_partition_proofs() {
         for key in [
+            "SAIL_PROOF_EVENTS",
             "SAIL_JOB_EVENTS",
             "SAIL_JOB_GUARD_PARENT",
             "SAIL_MANAGED_FORCE",

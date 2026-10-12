@@ -61,6 +61,7 @@ fn prepare(root: &Path) -> (PathBuf, BTreeMap<String, String>, PathBuf, PathBuf)
 }
 fn submit(client: &Client, root: &Path, environment: &BTreeMap<String, String>) -> Status {
     let submission = Submission {
+        mode: sail_api::jobs::Mode::Stock,
         project_dir: root.join("project"),
         args: vec![],
         force: false,

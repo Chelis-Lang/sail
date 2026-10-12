@@ -189,6 +189,7 @@ pub fn definitions() -> Value {
     ]);
     if let Some(list) = definitions.as_array_mut() {
         list.extend(crate::job_tools::definitions(&run_schema()));
+        list.extend(crate::proof_tools::definitions());
     }
     definitions
 }
@@ -206,6 +207,12 @@ pub fn call(
         | "verification_status"
         | "verification_result"
         | "cancel_verification" => crate::job_tools::call(ctx, name, args, cancel),
+        "verification_events"
+        | "explain_failure"
+        | "compare_verification"
+        | "save_baseline"
+        | "list_baselines"
+        | "get_baseline" => crate::proof_tools::call(ctx, name, args, cancel),
         "verify" => verify(ctx, args, cancel),
         "counterexample" => counterexample(ctx, args),
         "cached_result" => cached_result(ctx, args),
