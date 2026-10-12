@@ -95,40 +95,82 @@ Findings:
    managed run of its project; legacy `sail verify` uses the project's own
    target. Plain Verus would also pay vstd on a fresh target, so step 1 does
    not remove it. The same holds for `managed-01` in the managed phase.
-4. **Separate cost:** MCP's blocking `verify` sets `SAIL_MANAGED_FORCE=1`,
-   so every call re-verifies the selected crate (9.1 s on human-eval-verus
-   against 1.7 s for a warm CLI run). This is outside L16's scope.
+4. **MCP forces every call.** MCP's blocking `verify` sets
+   `SAIL_MANAGED_FORCE=1`, so every call re-verifies the selected crate
+   (9.1 s on human-eval-verus against 1.7 s for a warm CLI run). See below.
 
-## Step 1 design: session-only environment variables
+## Step 1 design: bind what Cargo treats as input
 
-Exclude from the proof context and the compiler family a named set of
-variables that describe the user's session rather than the build:
+The lead replaced the original denylist of agent and terminal variables
+with an allowlist: a denylist misses every harness and terminal nobody named
+(Codex, Cursor, VS Code, CI systems). The proof context and the compiler
+family bind the same environment that `cargo verus` itself treats as an
+input, in two parts.
 
-| Variables | Why they cannot change a verdict or a diagnostic |
-|---|---|
-| `CLAUDECODE`, `CLAUDE_CODE_*`, `CLAUDE_PID`, `CLAUDE_EFFORT`, `AI_AGENT` | Agent harness identity. No pinned tool reads them: Cargo, rustc, cargo-verus, the Verus driver, Z3 and Sail's shim read none of them (Verus's own reads are `VERUS_*`, `VARGO_TARGET_DIR`, `VSTD_KIND`, `CARGO*`). |
-| `TERM`, `COLORTERM`, `TERM_PROGRAM`, `TERM_PROGRAM_VERSION` | Terminal capabilities. Managed mode pipes every Cargo, rustc and Verus stream, so colour is off whatever they say; forced colour (`CARGO_TERM_COLOR`, `CLICOLOR_FORCE`, `NO_COLOR`) stays bound. |
-| `TERM_SESSION_ID`, `ITERM_SESSION_ID`, `TMUX_PANE`, `WINDOWID`, `SSH_AUTH_SOCK`, `SSH_AGENT_PID` | Per-terminal or per-agent identifiers that no compiler or solver reads. |
-| `GIT_EDITOR`, `EDITOR`, `VISUAL`, `PAGER` | Interactive tools; never invoked during verification. |
+**(a) Variables the pinned tools are documented or known to read.** The
+whole family is bound, with its current value or its absence:
 
-Terminal width (`COLUMNS`) and locale variables stay bound: rustc can use
-them for diagnostic layout.
+| Family | Read by | Source |
+|---|---|---|
+| `CARGO_*`, `__CARGO_*` | Cargo configuration (`CARGO_BUILD_*`, `CARGO_PROFILE_*`, `CARGO_TARGET_*`, `CARGO_HOME`, `CARGO_TERM_*`, `CARGO_UNSTABLE_*`, `CARGO_ENCODED_RUSTFLAGS` ...) | Cargo book, "Environment variables Cargo reads" and "Configuration: environment variables" |
+| `RUST*` (`RUSTFLAGS`, `RUSTDOCFLAGS`, `RUSTC`, `RUSTC_WRAPPER`, `RUSTC_WORKSPACE_WRAPPER`, `RUSTC_BOOTSTRAP`, `RUSTDOC`, `RUSTUP_*`, `RUST_MIN_STACK`, `RUST_BACKTRACE`, `RUST_LOG`, ...) | Cargo, rustup's toolchain selection, rustc. `RUST_BACKTRACE` and `RUST_LOG`/`RUSTC_LOG` change the stderr of a compiler crash or log | Cargo book; rustup book "Environment variables"; std `RUST_MIN_STACK`/`RUST_BACKTRACE` docs |
+| `VERUS_*`, `VARGO_*`, `VSTD_KIND` | Verus driver and launcher (`VERUS_Z3_PATH`, `VERUS_SINGULAR_PATH`, `VERUS_ROOT`, `VERUS_DRIVER_*`), `builtin_macros` (`VSTD_KIND`, an undeclared proc-macro read) | verus@426d8b0 `rust_verify/src/driver.rs`, `verus/src/main.rs`, `air/src/singular_manager.rs`, `builtin_macros/src/lib.rs` |
+| `Z3_*` | none known in Z3 4.16.0; bound conservatively | — |
+| `SAIL_*`, except the existing observation-only exclusions | Sail's shim, cache and daemon selection | `managed/runner.rs` exclusion list |
+| `PATH`, `HOME` | program resolution (rustup proxies, `cc`), Cargo and rustup home discovery | Cargo book (`CARGO_HOME` default); rustup book |
+| `LD_*`, `DYLD_*` | dynamic loading of `librustc_driver` and Z3 | ld.so(8), dyld(1) |
+| `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLUMNS`, `LANG`, `LANGUAGE`, `LC_*` | colour and layout of rendered diagnostics, locale | the lead's list; kept conservatively |
 
-The remaining risk is project code that reads one of these variables. Two
-ways are declared to the toolchain, and Sail binds them by content:
+Variables outside (a) that the tools read without changing verdicts or
+diagnostics stay outside: `TERM` (Cargo's progress bar, which managed mode's
+pipes disable), proxy variables (network fetches of checksum-pinned
+packages), `TMPDIR` (scratch files only).
 
-- `env!`/`option_env!` (and tracked proc-macro reads) appear as
-  `# env-dep:NAME` in rustc's dep-info;
-- build scripts declare `cargo:rerun-if-env-changed=NAME`.
+**(b) Every variable any unit declares.** rustc writes `# env-dep:NAME` into
+dep-info for `env!`, `option_env!` and tracked reads; the Verus driver
+declares its own (`VERUS_Z3_PATH`, `VERUS_SINGULAR_PATH`) the same way
+(`rust_verify/src/cargo_verus_dep_tracker.rs`); build scripts declare
+`cargo:rerun-if-env-changed=NAME`. After each run Sail collects the union of
+these names over every unit in the run's Cargo target and records each
+name's value (or absence) in the receipt. A receipt is reused only when every
+recorded name still has that value. The same names stay in Cargo's own
+fingerprints, so the shared compiler family rebuilds exactly when Cargo
+would.
 
-If any unit of a run declares a session-only variable, that run publishes no
-receipts, so nothing it establishes is ever reused under another value.
-Undeclared reads by a build script or proc macro remain invisible, exactly as
-they are to Cargo and so to plain `cargo verus`; this boundary is documented
-in `docs/freshness.md`.
+This is Cargo's freshness model: Sail reuses a result exactly when plain
+`cargo verus` would consider the build fresh, and it binds the values by
+content rather than trusting Cargo's tracking (rule 6). Child processes still
+receive the whole environment. Undeclared reads by a build script or proc
+macro remain a limitation shared with Cargo; `VSTD_KIND` is the one such read
+in the pinned toolchain, and (a) binds it.
 
 Expected effect: MCP, CLI and new agent sessions on the same project share
 one context, so a CLI warm run makes MCP's first run warm and vice versa.
+
+## MCP's per-call forced verification
+
+MCP's blocking `verify` submits its job with `SAIL_MANAGED_FORCE=1`
+(`crates/sail-mcp/src/job_tools.rs`), which re-verifies every requested
+target. It arrived in `71f74bb` ("share durable workspace verification across
+watch and MCP", squashed into #67) together with a report merge that drops
+reused targets (`merged_report` keeps `requested && !reused`). ADR 0024 records
+it as: "Default blocking verify uses a forced-fresh job and preserves its
+report-v1 response, selecting only requested fresh targets." `docs/mcp.md`
+gives the reason: "so Cargo's unchanged-target shortcut cannot produce an
+empty successful report."
+
+That reason no longer applies. A reused target carries its establishing
+run's complete report, and the managed acceptance test asserts that the
+reused report equals the establishing one. A receipt is only published for a
+successful, complete report under Current evidence for byte-identical inputs,
+so reusing it cannot give a different verdict. Failed or incomplete runs
+publish no receipt and always re-verify. The force therefore prevents no
+wrong answer. The fix is to drop it, merge reused requested targets into the
+report, and say in the summary which run established a reused report
+(rule 7).
+
+Target: an MCP second call on human-eval-verus at CLI warm parity (about
+1.7 s, against 9.1 s before).
 
 ## Step 2: a shared verified vstd
 
