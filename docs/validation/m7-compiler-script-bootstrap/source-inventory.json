@@ -888,5 +888,109 @@
     "all_command_exits": 0,
     "controller_sha256": "93e111a56540ec17e8edff3e955c88fbe0958f44ac92ce8fa5206f95339a40c0",
     "qualification": "Byte installation only; no Cargo, proof, prewarm, cache or receipt copies"
+  },
+  "current_native_ci": {
+    "status": "PASS",
+    "source_commit": "213852a8e1d3bca09b4f9e159419df9e9575073a",
+    "branch": "feat/m7-contracts",
+    "run_id": 38230865073,
+    "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073",
+    "run_status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "No AI authorship markers",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:17Z",
+        "completed_at": "2026-10-12T09:36:36Z",
+        "elapsed_seconds": 19.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750009689"
+      },
+      {
+        "name": "image / CI image",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:17Z",
+        "completed_at": "2026-10-12T09:36:23Z",
+        "elapsed_seconds": 6.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750010116"
+      },
+      {
+        "name": "Conformance",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:39Z",
+        "completed_at": "2026-10-12T09:42:10Z",
+        "elapsed_seconds": 331.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750141719"
+      },
+      {
+        "name": "Solver tests",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:39Z",
+        "completed_at": "2026-10-12T09:39:28Z",
+        "elapsed_seconds": 169.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750141810"
+      },
+      {
+        "name": "End to end (managed)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:39Z",
+        "completed_at": "2026-10-12T09:44:23Z",
+        "elapsed_seconds": 464.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750141821"
+      },
+      {
+        "name": "End to end (legacy)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:39Z",
+        "completed_at": "2026-10-12T09:44:12Z",
+        "elapsed_seconds": 453.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750141832"
+      },
+      {
+        "name": "End to end (repair)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:39Z",
+        "completed_at": "2026-10-12T09:41:44Z",
+        "elapsed_seconds": 305.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750141852"
+      },
+      {
+        "name": "Workspace gate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:36:39Z",
+        "completed_at": "2026-10-12T09:43:26Z",
+        "elapsed_seconds": 407.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114750141897"
+      },
+      {
+        "name": "End to end",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:44:26Z",
+        "completed_at": "2026-10-12T09:44:32Z",
+        "elapsed_seconds": 6.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114752876340"
+      },
+      {
+        "name": "CI completion",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-12T09:44:34Z",
+        "completed_at": "2026-10-12T09:44:39Z",
+        "elapsed_seconds": 5.0,
+        "url": "https://github.com/Chelis-Lang/sail/actions/runs/38230865073/job/114752927387"
+      }
+    ],
+    "job_elapsed_basis": "GitHub completedAt minus startedAt, including job setup/teardown; no inferred test counts",
+    "raw_json_sha256": "9763c830485389c21b81ffb952bfc5e76f602c80a0a5e00e0b729434fffadfd1",
+    "qualification": "Native CI at this exact pushed commit only. Later commits, current local readers, complete standard/cache and real-project benchmark receive no transferred acceptance."
   }
 }

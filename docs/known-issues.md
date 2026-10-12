@@ -32,6 +32,11 @@ that branch released or accepted. The [roadmap](ROADMAP.md) tracks remaining wor
 The [retained status history](validation/m7-acceptance-status-history.md) preserves
 the detailed prior roadmap narrative and its distinct failed/setup scopes.
 
+[Native CI at `213852a`](https://github.com/Chelis-Lang/sail/actions/runs/38230865073)
+passes all ten completed jobs, including completion. The [existing record](validation/m7-compiler-script-bootstrap/source-inventory.json)
+binds its exact commit and job durations; it does not qualify local current
+readers, complete standard/cache coverage or real-project repair performance.
+
 For current experimental repair use:
 
 - The original real-project `730a321` benchmark fails before measured rounds:
