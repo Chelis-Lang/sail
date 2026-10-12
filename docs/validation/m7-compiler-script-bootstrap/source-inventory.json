@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Selected combined source 57a319d local gate/solver, release/private/acceptance installations and original repair PASS; original real-project benchmark FAIL during read-only filesystem incident, closure UNKNOWN, zero measured samples; M7 unqualified",
+  "status": "Selected source 387ba80 complete local gate and original solver PASS with explicit CARGO_INCREMENTAL=0; new product qualification pending. Historical57a installed repair PASS and benchmark infrastructure FAIL preserved.",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -650,6 +650,102 @@
       "skip": "Python data-filter support",
       "performed_by": "root"
     },
-    "fresh_combined_gate": "RUNNING at record freeze; strict completed49.77s, nextest compilation in progress; no terminal PASS or solver/product credit"
+    "fresh_combined_gate": "PASS in separate consumed scope387ba80; no transferred new-product qualification"
+  },
+  "recovered_native_completion": {
+    "status": "PASS",
+    "source_commit": "387ba808794c2e5d283a35d1150196c0611da84a",
+    "source_archive_sha256": "6017057cfbf3279af6b14a41905b42f21c26f09151666bc6c0909865c69ed230",
+    "controller_sha256": "8a41af83384584fd13a4fde4344c05ee226a984548ab4de60236c2e33595a307",
+    "phases": [
+      {
+        "name": "gate",
+        "command": [
+          "bash",
+          "ci/run.sh",
+          "gate"
+        ],
+        "limit_seconds": 3600,
+        "build_environment": {
+          "CARGO_BUILD_JOBS": "2",
+          "CARGO_INCREMENTAL": "0",
+          "NEXTEST_TEST_THREADS": "1",
+          "CARGO_TARGET_DIR": "/work/target",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "exit_code": 0,
+        "elapsed_seconds": 434.4456322379999,
+        "log_sha256": "03db7c03cb2ab19837896c36c160cb49f851ce476acce64348127a70e49961cc",
+        "closure_counts": {
+          "survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 9
+        }
+      },
+      {
+        "name": "solver",
+        "command": [
+          "bash",
+          "ci/run.sh",
+          "solver"
+        ],
+        "limit_seconds": 1800,
+        "build_environment": {
+          "CARGO_BUILD_JOBS": "2",
+          "CARGO_INCREMENTAL": "0",
+          "NEXTEST_TEST_THREADS": "1",
+          "CARGO_TARGET_DIR": "/work/target",
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "exit_code": 0,
+        "elapsed_seconds": 75.51945949300011,
+        "log_sha256": "482c1ccee1bdc5a5b5d3f2bffe6d3f17efd22ae3aa1f4c7ff705749cdfd5def3",
+        "closure_counts": {
+          "survivors": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 10
+        }
+      }
+    ],
+    "workspace_nextest": {
+      "run": 673,
+      "passed": 673,
+      "skipped": 41,
+      "elapsed_seconds": 207.567
+    },
+    "solver_nextest": {
+      "run": 41,
+      "passed": 41,
+      "skipped": 673,
+      "elapsed_seconds": 71.496
+    },
+    "remaining_gate_steps": "PASS: strict, examples, doctests, rustdoc, layering, deny and generated benchmark-page check",
+    "build_environment": "Linux amd64 Docker emulation on arm64 macOS; root sole heavy actor, jobs2/nextest1. Recorded development execution, no quiet-machine or performance claim.",
+    "container_identity_birth": {
+      "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+      "birth": "2026-10-12T06:15:08.277945423Z",
+      "created": "2026-10-11T02:56:50.201399875Z"
+    },
+    "container_identity_birth_unchanged": true,
+    "source_and_protected_bytes_unchanged": true,
+    "transport_exit_code": 0,
+    "uncertainty": [],
+    "closure": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+    "terminated_task_evidence": "Every recorded unreaped row has complete stable all-dead task evidence; no live known-group survivors/unavailable, no arbitrary orphan-absence claim",
+    "retention": {
+      "files": [],
+      "errors": [],
+      "all_cargo_artifacts_archived": false
+    },
+    "evidence_sha256": {
+      "controller.json": "369f2d3a15c6c603dcaea51c7c55a8d86eb387fc173e6ec815b430dab6b3cc05",
+      "result.json": "c82f236aa47210c34e7e17a1de0ddcef626fede12453e489ef6a11cccdb3b8b5",
+      "gate.log": "03db7c03cb2ab19837896c36c160cb49f851ce476acce64348127a70e49961cc",
+      "solver.log": "482c1ccee1bdc5a5b5d3f2bffe6d3f17efd22ae3aa1f4c7ff705749cdfd5def3",
+      "source-inventory.json": "249b8745080c94661130e4b7834e5bf7a94c77963ed8e3896d94d7486ccbcc70",
+      "protected.json": "437712bc72e4ed28f5bf28c7ada3099b2ca3c7d8f4d86106f6f631c1daf34093"
+    },
+    "qualification": "Complete source gate and original solver only; ordinary new release/install, installed repair/readers, complete conformance, real-project performance and overall M7 acceptance pending."
   }
 }

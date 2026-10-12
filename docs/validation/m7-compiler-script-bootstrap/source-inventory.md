@@ -1,12 +1,13 @@
 # Compiler-family declared source inventory candidate
 
 This implementation addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77).
-Selected combined source `57a319d` passes the complete local gate and original
-solver suite, followed by an ordinary release build and owned private installation.
-The original installed CLI/MCP repair fixture also passes. The separate
-[installed baseline feature smoke](../m7-mcp-baseline-product-smoke-plan.md) later
-passes on the same product. Readers, conformance and the unchanged full benchmark
-remain unqualified on this source. No original Historical/Unknown refusal, deadline,
+Current selected source `387ba80` passes its complete local gate and original
+solver suite with explicit `CARGO_INCREMENTAL=0`; its new product validation
+remains pending. Earlier `57a319d` passes its separate gate/solver, ordinary
+release and owned private installation. Its original installed CLI/MCP repair
+fixture and separate [installed baseline feature smoke](../m7-mcp-baseline-product-smoke-plan.md)
+also pass. Current readers, conformance and the unchanged full benchmark
+remain unqualified. No original Historical/Unknown refusal, deadline,
 warmup allowance or receipt predicate changes.
 
 The first three combined native gates remain failed: `2ba2a32` stopped at the
@@ -89,6 +90,17 @@ a closed-scope or orphan-absence claim. The 370,301-byte raw archive is retained
 and hash-bound in the same record. Original deadlines and oracles remain
 unchanged; earlier passes are not transferred to this failed scope. Prepared
 readers from the old container birth need restaging.
+
+After authorized infrastructure recovery, a separate complete `387ba80` gate
+passes in 434.446 seconds: all 673 workspace tests (207.567 nextest seconds),
+strict checks and every remaining gate step. The original solver suite passes
+41/41 in 75.519 phase seconds (71.496 nextest seconds). Both phases explicitly
+use Cargo jobs two, nextest concurrency one and incremental compilation zero.
+Source archive, source/protected inventories, container identity/birth and PID1
+remain bound and unchanged, with no live known-group survivors or unavailable
+rows; complete all-dead task evidence is retained for unreaped rows. Root was
+the sole heavy actor in the development emulation environment. No quiet-machine,
+new installed-product or performance qualification follows from these passes.
 
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
