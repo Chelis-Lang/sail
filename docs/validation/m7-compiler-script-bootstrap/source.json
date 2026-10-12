@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "scope": "source-only independent ordinary-script bootstrap candidate",
-  "status": "uncompiled and unexecuted; unselected",
+  "status": "native qualification pending after retained strict failures; unselected product",
   "base": "247cd28",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "1f6914fa4dc8a05d5683cb4b4f5aa63bc78352c2343e29df459b75e02a4169ed",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "651968991537c1849296d31cda92923f25f2d59ed4349d05d410a2300bd46581",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "1e92a925575d02cf12f4b3c0c3ce367104d60e10fa0215bc82bd7fd44b91ba64",
     "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "82adce9e5d6f5de2e3653aac4d115776cd28adc7282eada7634f4811f863e9cd",
     "crates/sail-verus/src/managed/runner.rs": "d817c121abea4b71e4558acc96590b47f1ae95683299e91b03ee98808230a1b2",
     "crates/sail-verus/src/managed/source_inputs.rs": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
@@ -75,5 +75,14 @@
     ],
     "correction": "Unambiguous bootstrap variable; borrow unchanged context_sha256 from the owning report. Production predicates unchanged."
   },
-  "static_fixture_correction": "Original filtered publication deliberately emits an empty envelope; injected-environment control now requires exact empty records, begin=false and forced clean, instead of incorrect file absence."
+  "static_fixture_correction": "Original filtered publication deliberately emits an empty envelope; injected-environment control now requires exact empty records, begin=false and forced clean, instead of incorrect file absence.",
+  "second_native_gate": {
+    "root_source": "378a12c",
+    "status": "FAIL during strict linting; workspace tests and solver unattempted",
+    "failures": [
+      "items_after_statements import in record",
+      "large_stack_arrays fixed 64 KiB hash buffer"
+    ],
+    "correction": "Move import before statements and retain identical fixed 64 KiB stream buffer on heap; no predicate or resource admission change."
+  }
 }
