@@ -2,8 +2,8 @@
   "schema_version": 1,
   "scope": "file-only executable on/off/on caller; no native Cargo or sensitivity run",
   "status": "nine pure host controls PASS; native execution pending root grant",
-  "controller_sha256": "368b72ac1cfe538cb4667784a6b36d923de5ad86294b84535409d54e18f3a84d",
-  "pure_controls_sha256": "4d7e32fe2bd38aef223bfe555ed36f42188a451fc60411f9a757e2b96cf47a63",
+  "controller_sha256": "ab1d40f3494d22bdf09b204a404663c705a3a6175f8aafce04d7f67d669965e2",
+  "pure_controls_sha256": "e478979e1489eecd6003486b55b277c95d911646677009cc9f0a9a3069294cff",
   "lifecycle_helper": "scripts/local-combined-gates.py",
   "lifecycle_helper_sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc",
   "patch_sha256": "e69485c680115222e5db2c7ec8d68af105fb3cc12ccd0ea0b08971eb44c193c9",
@@ -42,5 +42,7 @@
     "aggregate_headroom_bytes": 2442961684,
     "largest_file_headroom_bytes": 68877968,
     "scope": "static arithmetic only; no measured throughput, construction peak, phase viability or benchmark acceptance"
-  }
+  },
+  "environment": "inherited controller hash BEFORE explicit five effective compiler/test overrides; no environment values exported",
+  "ownership_scope": "recorded prior gate/solver group audit plus root-exclusive target grant; no arbitrary orphan-absence certificate"
 }
