@@ -59,6 +59,11 @@ impl Guard {
             }
         }
     }
+    /// Cargo compiled a unit outside the observed dependency closure, so this
+    /// guard never covered all of its inputs. Sticky, like every failure.
+    pub(super) fn refuse_scope(&mut self) {
+        self.failure.get_or_insert("native-observer-scope-exceeded");
+    }
     pub(super) fn ready_at(&mut self, barrier: Barrier) -> bool {
         let ready = self.ready();
         if !ready {

@@ -116,6 +116,39 @@ fn never_scheduled(data: &Value, id: &str) -> bool {
     check().is_some()
 }
 
+/// The packages Cargo can schedule for an explicit package selection: the
+/// selected packages and everything they reach through any resolved
+/// dependency kind. `None` without an explicit, unambiguous selection or a
+/// complete, unambiguous resolve graph; then every package is a candidate.
+/// The runner refuses Current evidence if Cargo reports a unit outside it.
+pub(super) fn selection_closure(data: &Value) -> Option<BTreeSet<String>> {
+    let selected = data.get("sail_selected_package_ids")?.as_array()?;
+    let nodes = data["resolve"]["nodes"].as_array()?;
+    let mut closure = BTreeSet::new();
+    let mut pending = Vec::new();
+    for id in selected {
+        let id = id.as_str()?;
+        if closure.insert(id.to_owned()) {
+            pending.push(id.to_owned());
+        }
+    }
+    if pending.is_empty() {
+        return None;
+    }
+    while let Some(id) = pending.pop() {
+        let mut matches = nodes.iter().filter(|n| n["id"].as_str() == Some(&id));
+        let node = matches.next()?;
+        matches.next().is_none().then_some(())?;
+        for dependency in node["dependencies"].as_array()? {
+            let dependency = dependency.as_str()?;
+            if closure.insert(dependency.to_owned()) {
+                pending.push(dependency.to_owned());
+            }
+        }
+    }
+    Some(closure)
+}
+
 pub(super) fn stale_environment(
     path: &Path,
     data: &Value,
@@ -136,8 +169,18 @@ pub(super) fn stale_environment(
     // A shared compiler target can contain an older script output even when
     // this proof context has no observation. Registry scripts can consume
     // external inputs too: clean every unobserved script before learning its
-    // declared inputs beside Cargo's output.
+    // declared inputs beside Cargo's output. A script outside an explicit
+    // selection's dependency closure is never scheduled for it, like a
+    // platform-disabled one; the runner checks that against Cargo's units.
+    let scheduled = selection_closure(data);
     for package in data["packages"].as_array().into_iter().flatten() {
+        if scheduled.as_ref().is_some_and(|closure| {
+            package["id"]
+                .as_str()
+                .is_some_and(|id| !closure.contains(id))
+        }) {
+            continue;
+        }
         if package["targets"].as_array().is_some_and(|targets| {
             targets.iter().any(|t| {
                 t["kind"]
@@ -234,6 +277,56 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn unselected_workspace_scripts_do_not_require_an_observation() {
+        let script = |id: &str| serde_json::json!({"id": id, "name": id, "targets": [{"kind": ["custom-build"]}]});
+        let data = serde_json::json!({"workspace_members": ["lib", "bench"],
+            "sail_selected_package_ids": ["lib"],
+            "packages": [script("lib"), script("syn"), script("bench"), script("wasm")],
+            "resolve": {"root": null, "nodes": [
+                {"id": "lib", "dependencies": ["syn"]},
+                {"id": "syn", "dependencies": []},
+                {"id": "bench", "dependencies": ["lib", "wasm"]},
+                {"id": "wasm", "dependencies": []}]}});
+        assert_eq!(
+            selection_closure(&data),
+            Some(BTreeSet::from(["lib".to_owned(), "syn".to_owned()]))
+        );
+        let absent = std::env::temp_dir().join(format!(
+            "sail-unselected-script-{}-absent.json",
+            std::process::id()
+        ));
+        assert!(!absent.exists());
+        // Scripts in the closure still need observations; the others never run.
+        let (clean, _, covered) = stale(&absent, &data);
+        assert_eq!(clean, vec!["lib", "syn"]);
+        assert!(!covered);
+        // Without an explicit, complete selection every script is a candidate.
+        let mut variants = Vec::new();
+        for selection in [serde_json::json!([]), serde_json::Value::Null] {
+            let mut changed = data.clone();
+            changed["sail_selected_package_ids"] = selection;
+            variants.push(changed);
+        }
+        let mut missing_node = data.clone();
+        missing_node["resolve"]["nodes"] =
+            serde_json::json!([{"id": "lib", "dependencies": ["syn"]}]);
+        variants.push(missing_node);
+        let mut duplicate = data.clone();
+        duplicate["resolve"]["nodes"][1]["id"] = serde_json::json!("lib");
+        variants.push(duplicate);
+        let mut no_edges = data.clone();
+        no_edges["resolve"]["nodes"][0] = serde_json::json!({"id": "lib"});
+        variants.push(no_edges);
+        for changed in variants {
+            assert_eq!(selection_closure(&changed), None);
+            assert_eq!(
+                stale(&absent, &changed).0,
+                vec!["bench", "lib", "syn", "wasm"]
+            );
+        }
+    }
+
     #[test]
     fn disabled_build_script_does_not_require_an_unexecuted_observation() {
         let data = serde_json::json!({"workspace_members":["root"],

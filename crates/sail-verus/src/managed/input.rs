@@ -242,6 +242,63 @@ pub(super) fn snapshot_metadata_home(
     }
 }
 
+/// `snapshot` narrowed for proof-time kernel coverage of one selection.
+///
+/// A root inside the directory of a resolved package outside `closure` is
+/// dropped, unless it is also inside the directory of a package in `closure`
+/// (nested packages stay covered). The workspace manifest, lockfile and every
+/// member manifest are added, since Cargo reads them to load the workspace.
+/// The caller must refuse coverage if Cargo compiles a unit outside
+/// `closure`. Without a closure the snapshot is returned unchanged.
+pub(super) fn closure_scope(
+    snapshot: &InputSnapshot,
+    data: &Value,
+    closure: Option<&BTreeSet<String>>,
+) -> InputSnapshot {
+    let mut scoped = snapshot.clone();
+    let Some(closure) = closure else {
+        return scoped;
+    };
+    let mut inside = Vec::new();
+    let mut outside = Vec::new();
+    let mut manifests = Vec::new();
+    for package in data["packages"].as_array().into_iter().flatten() {
+        let Some(manifest) = package["manifest_path"].as_str().map(Path::new) else {
+            continue;
+        };
+        let Some(directory) = manifest.parent() else {
+            continue;
+        };
+        // An unidentified package is never excluded from coverage.
+        if package["id"].as_str().is_none_or(|id| closure.contains(id)) {
+            inside.push(directory);
+        } else {
+            outside.push(directory);
+        }
+        if data["workspace_members"]
+            .as_array()
+            .is_some_and(|members| members.contains(&package["id"]))
+        {
+            manifests.push(manifest.to_owned());
+        }
+    }
+    scoped.roots.retain(|root| {
+        inside.iter().any(|d| root.starts_with(d)) || !outside.iter().any(|d| root.starts_with(d))
+    });
+    scoped.roots.extend(manifests);
+    if let Some(workspace) = data["workspace_root"].as_str().map(Path::new) {
+        scoped.roots.extend(
+            ["Cargo.toml", "Cargo.lock"]
+                .iter()
+                .map(|name| workspace.join(name))
+                .filter(|path| path.is_file()),
+        );
+    }
+    scoped.roots.sort();
+    scoped.roots.dedup();
+    scoped
+}
+
 // Preserve the original exact sorted path spelling and digest encoding.
 fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool) {
     let mut complete = true;
@@ -689,6 +746,79 @@ mod tests {
         assert!(before.complete && after.complete);
         assert_ne!(before.revision, after.revision);
         assert_eq!(after.roots, vec![dependency]);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn closure_scope_drops_only_unselected_package_directories() {
+        use std::collections::BTreeSet;
+        use std::path::PathBuf;
+        let root = std::env::temp_dir().join(format!("sail-scope-test-{}", std::process::id()));
+        let ws = root.join("ws");
+        for dir in [
+            "ws/lib/src",
+            "ws/bench/src",
+            "registry/criterion",
+            "registry/syn",
+        ] {
+            assert!(std::fs::create_dir_all(root.join(dir)).is_ok());
+        }
+        assert!(std::fs::write(ws.join("Cargo.toml"), "[workspace]").is_ok());
+        assert!(std::fs::write(ws.join("Cargo.lock"), "").is_ok());
+        let package = |id: &str, dir: &PathBuf| serde_json::json!({"id": id, "manifest_path": dir.join("Cargo.toml")});
+        let data = serde_json::json!({
+        "workspace_root": ws, "workspace_members": ["lib", "bench"],
+        "packages": [
+            package("lib", &ws.join("lib")), package("bench", &ws.join("bench")),
+            package("syn", &root.join("registry/syn")),
+            package("criterion", &root.join("registry/criterion")),
+            {"manifest_path": root.join("registry/unknown/Cargo.toml")}
+        ]});
+        let snapshot = super::InputSnapshot {
+            workspace: ws.clone(),
+            revision: String::new(),
+            roots: vec![
+                ws.join("lib"),
+                ws.join("bench"),
+                root.join("registry/syn"),
+                root.join("registry/criterion"),
+                root.join("registry/unknown"),
+                PathBuf::from("/opt/toolchain/lib/librustc.so"),
+            ],
+            excluded: vec![ws.join("target")],
+            complete: true,
+            observation_paths: BTreeSet::new(),
+            #[cfg(target_os = "linux")]
+            content_paths: BTreeSet::new(),
+        };
+        let unchanged = super::closure_scope(&snapshot, &data, None);
+        assert_eq!(unchanged.roots, snapshot.roots);
+        let closure = BTreeSet::from(["lib".to_owned(), "syn".to_owned()]);
+        let scoped = super::closure_scope(&snapshot, &data, Some(&closure));
+        let mut expected = vec![
+            ws.join("lib"),
+            root.join("registry/syn"),
+            root.join("registry/unknown"),
+            PathBuf::from("/opt/toolchain/lib/librustc.so"),
+            ws.join("lib/Cargo.toml"),
+            ws.join("bench/Cargo.toml"),
+            ws.join("Cargo.toml"),
+            ws.join("Cargo.lock"),
+        ];
+        expected.sort();
+        assert_eq!(scoped.roots, expected);
+        assert_eq!(scoped.excluded, snapshot.excluded);
+        // A selected package nested inside an unselected one stays covered.
+        let nested = serde_json::json!({"workspace_root": ws, "packages": [
+            package("outer", &ws), package("lib", &ws.join("lib"))]});
+        let snapshot = super::InputSnapshot {
+            roots: vec![ws.clone(), ws.join("lib")],
+            ..snapshot
+        };
+        let only_lib = BTreeSet::from(["lib".to_owned()]);
+        let scoped = super::closure_scope(&snapshot, &nested, Some(&only_lib));
+        assert!(scoped.roots.contains(&ws.join("lib")));
+        assert!(!scoped.roots.contains(&ws));
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
 }

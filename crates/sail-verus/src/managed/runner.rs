@@ -1013,9 +1013,13 @@ fn target_records(
     Ok((results, missing))
 }
 
-fn target_revision(data: &Value, package_id: &str) -> String {
-    let mut closure = BTreeSet::from([package_id.to_owned()]);
-    let mut pending = vec![package_id.to_owned()];
+/// Package ids reachable from `roots` through every resolved dependency kind.
+fn dependency_closure<'a>(
+    data: &Value,
+    roots: impl IntoIterator<Item = &'a str>,
+) -> BTreeSet<String> {
+    let mut closure: BTreeSet<String> = roots.into_iter().map(str::to_owned).collect();
+    let mut pending: Vec<String> = closure.iter().cloned().collect();
     while let Some(id) = pending.pop() {
         if let Some(node) = data["resolve"]["nodes"]
             .as_array()
@@ -1035,6 +1039,43 @@ fn target_revision(data: &Value, package_id: &str) -> String {
             }
         }
     }
+    closure
+}
+
+/// The packages Cargo can compile for the selected targets, or `None` when
+/// the selection is not known exactly (then every resolved package counts).
+fn selected_closure(
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+) -> Option<BTreeSet<String>> {
+    (!expected.is_empty())
+        .then(|| dependency_closure(data, expected.iter().map(|(id, _, _)| id.as_str())))
+}
+
+/// Whether every unit Cargo reported in this run belongs to `closure`. An
+/// unparsable record or a unit outside it refuses proof-time coverage.
+fn artifacts_within(paths: &Paths, closure: Option<&BTreeSet<String>>) -> bool {
+    let Some(closure) = closure else {
+        return true;
+    };
+    std::fs::read_to_string(paths.run.join("artifacts.jsonl")).is_ok_and(|text| {
+        text.lines()
+            .filter(|line| !line.trim().is_empty())
+            .all(|line| {
+                serde_json::from_str::<Value>(line).is_ok_and(|record| {
+                    let unit = record["reason"] == "compiler-artifact"
+                        || record["reason"] == "build-script-executed";
+                    !unit
+                        || record["package_id"]
+                            .as_str()
+                            .is_some_and(|id| closure.contains(id))
+                })
+            })
+    })
+}
+
+fn target_revision(data: &Value, package_id: &str) -> String {
+    let closure = dependency_closure(data, [package_id]);
     let mut package_data = data.clone();
     let mut packages: Vec<Value> = data["packages"]
         .as_array()
@@ -1654,7 +1695,19 @@ pub(crate) fn run_engine(
     let guards = diagnostics.phase(Phase::InputGuards);
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
     let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
-    let mut coherent = super::coherent::Guard::begin(&before);
+    // Proof-time kernel coverage spans the selected targets' dependency
+    // closure. Cargo compiles nothing outside it for this selection, which is
+    // checked against Cargo's own unit records after every invocation; the
+    // whole-workspace revision and stamps still bind every other package.
+    // Build-script coverage likewise treats scripts outside an explicit
+    // selection's closure as never scheduled; the same unit check binds it.
+    let scope = selected_closure(&data, &expected);
+    let script_scope = super::build_inputs::selection_closure(&data);
+    let units_in_scope = |paths: &Paths| {
+        artifacts_within(paths, scope.as_ref()) && artifacts_within(paths, script_scope.as_ref())
+    };
+    let mut coherent =
+        super::coherent::Guard::begin(&super::input::closure_scope(&before, &data, scope.as_ref()));
     drop(guards);
     let monitored_snapshot = diagnostics.phase(Phase::MonitoredSnapshot);
     // Establish the revision again after the watcher is live, closing the setup
@@ -1778,6 +1831,9 @@ pub(crate) fn run_engine(
     json(&paths.runtime, &runtime)?;
     drop(seal);
     let mut exit = invoke(config, &paths, err)?;
+    if !units_in_scope(&paths) {
+        coherent.refuse_scope();
+    }
     let (mut targets, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
     if exit == Some(0) && !missing.is_empty() {
         let mut retry_packages = missing.into_iter().collect::<Vec<_>>();
@@ -1798,6 +1854,9 @@ pub(crate) fn run_engine(
             .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
         exit = invoke(config, &paths, err)?;
+        if !units_in_scope(&paths) {
+            coherent.refuse_scope();
+        }
         let (retried, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
         targets = retried;
         if !missing.is_empty() {
@@ -3136,6 +3195,46 @@ mod tests {
             "--verify-function=lemma".to_owned()
         ]));
         assert!(!focused(&["--features".to_owned(), "foo".to_owned()]));
+    }
+
+    #[test]
+    fn coherent_scope_is_the_selected_closure_and_cargo_must_stay_inside()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let data = serde_json::json!({"resolve": {"nodes": [
+            {"id": "lib", "dependencies": ["vstd"]},
+            {"id": "vstd", "dependencies": ["syn"]},
+            {"id": "syn", "dependencies": []},
+            {"id": "bench", "dependencies": ["lib", "criterion"]},
+            {"id": "criterion", "dependencies": []}]}});
+        let expected = BTreeSet::from([("lib".to_owned(), "lib".to_owned(), "lib".to_owned())]);
+        let closure = selected_closure(&data, &expected);
+        assert_eq!(
+            closure,
+            Some(BTreeSet::from(["lib", "syn", "vstd"].map(str::to_owned)))
+        );
+        assert_eq!(selected_closure(&data, &BTreeSet::new()), None);
+        let root = std::env::temp_dir().join(format!("sail-scope-units-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "scope", "compiler", "run", None)?;
+        let unit = |reason: &str, id: &str| {
+            serde_json::json!({"reason": reason, "package_id": id}).to_string() + "\n"
+        };
+        let mut journal = unit("compiler-artifact", "lib")
+            + &unit("build-script-executed", "syn")
+            + &unit("compiler-message", "bench");
+        std::fs::write(paths.run.join("artifacts.jsonl"), &journal)?;
+        assert!(artifacts_within(&paths, closure.as_ref()));
+        journal += &unit("compiler-artifact", "criterion");
+        std::fs::write(paths.run.join("artifacts.jsonl"), &journal)?;
+        assert!(!artifacts_within(&paths, closure.as_ref()));
+        assert!(artifacts_within(&paths, None));
+        std::fs::write(paths.run.join("artifacts.jsonl"), "{not json\n")?;
+        assert!(!artifacts_within(&paths, closure.as_ref()));
+        std::fs::remove_file(paths.run.join("artifacts.jsonl"))?;
+        assert!(!artifacts_within(&paths, closure.as_ref()));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     /// Regression for the focused `SAIL3107`: `cargo verus focus` builds in
