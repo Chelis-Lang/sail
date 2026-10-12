@@ -118,6 +118,12 @@ result was Historical and unaccepted. GCD had reached Current admission on its
 second attempt with three compiler invocations; this does not explain the later refusal. There are zero measured
 samples, Vest is unreached, and no speedup or M7 acceptance is claimed.
 The separate original b895 reader and retained CLI/MCP workflow passes.
+Later combined source `57a319d` passes its [complete local gate and original
+solver suite](validation/m7-compiler-script-bootstrap/source-inventory.json):
+673/673 workspace tests, all remaining gate steps and 41/41 solver tests.
+This includes the declared source-inventory repair and MCP baseline lifecycle.
+Its ordinary release/private installation is still running; installed-product
+repair/readers, conformance and real-project performance receive no transferred credit.
 Remaining delivery gates are complete current standard/cache conformance and
 the two real-project speed thresholds. PR #74
 remains draft.
