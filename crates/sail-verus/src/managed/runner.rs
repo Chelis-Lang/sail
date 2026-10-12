@@ -60,6 +60,7 @@ fn input_environment_key(key: &std::ffi::OsStr) -> bool {
         "SAIL_ENGINE_FUNCTION",
         "SAIL_ENGINE_CONTEXT",
         "SAIL_ENGINE_PREPARED_DIR",
+        "SAIL_ENGINE_PERSISTENT_PREPARATION",
         "SAIL_JOB_EVENTS",
         "SAIL_JOB_RPC_TIMINGS",
         "SAIL_JOB_GUARD_PARENT",
@@ -1893,6 +1894,12 @@ pub(crate) fn run_engine(
             "Requested function/module scope is partial; whole-target reuse is disabled".to_owned(),
         );
     }
+    let fallbacks = engine_fallbacks(&targets);
+    if fallbacks > 0 {
+        notes.push(format!(
+            "SAIL3123: the interactive engine faulted for {fallbacks} target(s); their exact stock Verus results are reported and publish no proof receipt"
+        ));
+    }
     let mut result = ProjectResult {
         kind: "sail-project-result".to_owned(),
         schema_version: SCHEMA_VERSION,
@@ -1910,6 +1917,10 @@ pub(crate) fn run_engine(
         },
         notes,
         error: None,
+        engine: runtime
+            .engine
+            .as_ref()
+            .map(crate::engine::Request::identity),
     };
     let result_publication = diagnostics.phase(Phase::ResultPublication);
     json(&paths.run.join("result.json"), &result)?;
@@ -1990,6 +2001,19 @@ pub(crate) fn run_engine(
     Ok(result)
 }
 
+/// Targets established in this run by the stock fallback after an engine fault.
+fn engine_fallbacks(targets: &[TargetResult]) -> usize {
+    targets
+        .iter()
+        .filter(|target| {
+            !target.reused
+                && target.report.engine.as_ref().is_some_and(|engine| {
+                    engine.established_by == sail_api::output::EngineEstablishment::StockFallback
+                })
+        })
+        .count()
+}
+
 fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)>> {
     std::fs::read_dir(run.join("pending-receipts"))
         .map_err(|e| Error::new("SAIL3107", e.to_string()))?
@@ -2031,7 +2055,7 @@ mod tests {
             manifest_sha256: "manifest-bytes".to_owned(),
             stock_wrapper: PathBuf::from("engine/verus"),
             artifacts: vec![PathBuf::from("engine/rust_verify")],
-            prepared: PathBuf::from("prepared"),
+            prepared: Some(PathBuf::from("prepared")),
         }
     }
 
@@ -2068,13 +2092,15 @@ mod tests {
             assert_eq!(compiler, other_compiler);
         }
         assert_ne!(compiler, hashes(None)?.1);
-        let mut variants = vec![selected.clone(); 6];
+        let mut variants = vec![selected.clone(); 7];
         variants[0].cargo_verus = "another/cargo-verus".into();
         variants[1].manifest = "another/sail-build.json".into();
         variants[2].manifest_sha256 = "different-manifest".into();
         variants[3].stock_wrapper = "another/verus".into();
         variants[4].artifacts.push("another/rust_verify".into());
-        variants[5].prepared = "another/prepared".into();
+        variants[5].prepared = Some("another/prepared".into());
+        // Opt-in persistent preparation is a distinct compiler/proof context.
+        variants[6].prepared = None;
         for request in variants {
             assert_ne!(compiler, hashes(Some(&request))?.1);
         }
@@ -2310,6 +2336,7 @@ mod tests {
                 },
                 notes: Vec::new(),
                 error: None,
+                engine: None,
             };
             let fixture = Self {
                 root,
@@ -2869,7 +2896,7 @@ mod tests {
             manifest: path,
             stock_wrapper: launcher.clone(),
             artifacts: manifest.artifacts.keys().map(|p| root.join(p)).collect(),
-            prepared: root.join("prepared"),
+            prepared: Some(root.join("prepared")),
         };
         let config = Config {
             workspace: root.clone(),

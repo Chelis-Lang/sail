@@ -203,7 +203,7 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
         .collect();
     let sail_z3 = match &cx.sail {
         Solver::Shim { shim, .. } => shim.display().to_string(),
-        Solver::Plain => String::new(),
+        Solver::Plain | Solver::Engine(_) => String::new(),
     };
     let note = format!(
         "test: {id}\n\

@@ -63,6 +63,7 @@ fn full() -> Report {
             checks_solved: 0,
             checks_served: 1,
             checks_unrecorded: 0,
+            engine: None,
         },
         timing: Timing {
             smt_micros: Some(447),
@@ -122,6 +123,7 @@ fn full() -> Report {
             code: "SAIL0101".to_owned(),
             message: "x".to_owned(),
         }),
+        engine: None,
     }
 }
 
@@ -145,6 +147,7 @@ fn minimal() -> Report {
         diagnostics: Vec::new(),
         summary: Summary::default(),
         error: None,
+        engine: None,
     }
 }
 

@@ -804,6 +804,7 @@ mod currentness_note_tests {
                 "Build-script input declarations were established during this run".to_owned(),
             ],
             error: None,
+            engine: None,
         }
     }
 

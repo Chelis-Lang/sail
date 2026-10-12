@@ -411,11 +411,18 @@ fn driver() -> Result<ExitCode> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let source_events = dir.join("engine.events.jsonl");
+    // Without the explicit persistent opt-in, preparation files live only for
+    // this one compiler invocation: its focused phase can serve its own full
+    // phase, but nothing survives into another invocation or source revision.
+    let batch_prepared = dir.join("engine-prepared-batch");
     if let Some(engine) = &runtime.engine {
         cmd.env("SAIL_ENGINE", "interactive")
             .env("SAIL_ENGINE_EVENTS", &source_events)
             .env("SAIL_ENGINE_CONTEXT", &runtime.context_sha256)
-            .env("SAIL_ENGINE_PREPARED_DIR", &engine.prepared)
+            .env(
+                "SAIL_ENGINE_PREPARED_DIR",
+                engine.prepared.as_deref().unwrap_or(&batch_prepared),
+            )
             .env("SAIL_ENGINE_FOCUS_REPORT", dir.join("focus.source.json"));
         if let Some(function) = &engine.function {
             cmd.env("SAIL_ENGINE_FUNCTION", function);
@@ -472,6 +479,11 @@ fn driver() -> Result<ExitCode> {
     if let Some(relay) = relay {
         relay.finish();
     }
+    if runtime.engine.is_some() {
+        // Invocation-local preparation state never outlives its compiler.
+        let _ = std::fs::remove_dir_all(&batch_prepared);
+    }
+    let mut established = None;
     let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
         let mut stock = Command::new(&engine.stock_wrapper);
         stock
@@ -492,10 +504,21 @@ fn driver() -> Result<ExitCode> {
             stderr,
             status: exit,
         };
-        let (output, trusted) = engine_output(&dir, stock, captured, &invocation_log)?;
+        let (output, trusted) = engine_output(
+            &dir,
+            stock,
+            captured,
+            &invocation_log,
+            engine.prepared.as_deref(),
+        )?;
         if trusted {
             save_focus(&runtime, &identity, &dir)?;
         }
+        established = Some(engine.provenance(if trusted {
+            sail_api::output::EngineEstablishment::Engine
+        } else {
+            sail_api::output::EngineEstablishment::StockFallback
+        }));
         (output.stdout, output.stderr, output.status)
     } else {
         (stdout, stderr, exit)
@@ -505,8 +528,44 @@ fn driver() -> Result<ExitCode> {
             .write_all(&stderr)
             .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
     }
-    finish(&runtime, identity, &dir, &stdout, &stderr, exit.code())?;
+    finish(
+        &runtime,
+        identity,
+        &dir,
+        &Captured {
+            stdout: &stdout,
+            stderr: &stderr,
+            exit: exit.code(),
+        },
+        established.as_ref(),
+    )?;
     Ok(status(exit))
+}
+
+/// Removes persistent prepared-lowering entries after an engine fault. The
+/// source engine writes them under the same `cache.lock`; an unavailable lock
+/// or directory leaves nothing to invalidate. Best effort: a later engine run
+/// still validates every entry's digest and key before restoring it.
+pub(crate) fn invalidate_preparation(root: &Path) {
+    let Ok(lock) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(root.join("cache.lock"))
+    else {
+        return;
+    };
+    if lock.lock().is_err() {
+        return;
+    }
+    for entry in std::fs::read_dir(root).into_iter().flatten().flatten() {
+        let path = entry.path();
+        if path
+            .extension()
+            .is_some_and(|extension| extension == "prepared" || extension == "tmp")
+        {
+            let _ = std::fs::remove_file(path);
+        }
+    }
 }
 
 /// Retains interrupted engine evidence and restarts the exact stock compiler
@@ -517,6 +576,7 @@ pub(crate) fn engine_output(
     mut stock: Command,
     captured: std::process::Output,
     invocation_log: &InvocationLog<'_>,
+    persistent_preparation: Option<&Path>,
 ) -> Result<(std::process::Output, bool)> {
     if crate::engine_events::completed(
         &dir.join("engine.events.jsonl"),
@@ -528,6 +588,10 @@ pub(crate) fn engine_output(
     std::fs::write(dir.join("engine.failed.stdout"), &captured.stdout)
         .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &captured.stderr))
         .map_err(|e| Error::new("SAIL3121", e.to_string()))?;
+    // ADR 0027: an engine fault invalidates its preparation state.
+    if let Some(root) = persistent_preparation {
+        invalidate_preparation(root);
+    }
     let _ = std::fs::remove_file(dir.join("focus.source.json"));
     for directory in [dir.join("logs"), dir.join("provenance")] {
         if directory.exists() {
@@ -560,14 +624,49 @@ pub(crate) fn engine_output(
     Ok((output, false))
 }
 
+struct Captured<'a> {
+    stdout: &'a [u8],
+    stderr: &'a [u8],
+    exit: Option<i32>,
+}
+
+/// Records engine provenance on a report and each of its functions.
+pub(crate) fn mark_engine(
+    report: &mut sail_api::output::Report,
+    engine: &sail_api::output::EngineProvenance,
+) {
+    for function in report
+        .crates
+        .iter_mut()
+        .flat_map(|krate| &mut krate.functions)
+    {
+        function.provenance.engine = Some(engine.clone());
+    }
+    report.engine = Some(engine.clone());
+}
+
+/// Whether a completed report may publish a whole-target proof receipt. A
+/// stock fallback after an engine fault reports the stock verdicts but never
+/// manufactures a successful engine receipt (ADR 0027).
+fn receipt_success(report: &sail_api::output::Report, report_args: &[String]) -> bool {
+    let fallback = report.engine.as_ref().is_some_and(|engine| {
+        engine.established_by == sail_api::output::EngineEstablishment::StockFallback
+    });
+    crate::managed::receipt_complete(report) && !crate::managed::focused(report_args) && !fallback
+}
+
 fn finish(
     runtime: &Runtime,
     identity: TargetIdentity,
     dir: &Path,
-    stdout: &[u8],
-    stderr: &[u8],
-    exit: Option<i32>,
+    captured: &Captured<'_>,
+    engine: Option<&sail_api::output::EngineProvenance>,
 ) -> Result<()> {
+    let Captured {
+        stdout,
+        stderr,
+        exit,
+    } = *captured;
     std::fs::write(dir.join("verus.stdout"), stdout)
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -595,7 +694,7 @@ fn finish(
                 .unwrap_or(report_args.len()),
         );
     }
-    let report = crate::report::build(&crate::report::Inputs {
+    let mut report = crate::report::build(&crate::report::Inputs {
         args: &report_args,
         exit_code: exit,
         solver_path: Some(runtime.z3.to_string_lossy().into_owned()),
@@ -604,8 +703,10 @@ fn finish(
         attribution: &attr,
         diagnostics: &crate::diagnostics::parse(&rendered_diagnostics(stderr)),
     });
-    let success =
-        crate::managed::receipt_complete(&report) && !crate::managed::focused(&report_args);
+    if let Some(engine) = engine {
+        mark_engine(&mut report, engine);
+    }
+    let success = receipt_success(&report, &report_args);
     let dependencies = driver_dependencies()?;
     let invocation = Invocation {
         identity,
@@ -850,7 +951,7 @@ mod tests {
                 "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
                 "stock",
             ]).arg(reply).args(["crate path.rs", "--", "literal;$(untouched)"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log, None)?;
             assert!(!trusted);
             assert_eq!(output.stdout, stock_document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");
@@ -882,6 +983,130 @@ mod tests {
         }
         std::fs::remove_dir_all(root)?;
         Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn engine_fault_invalidates_only_persistent_preparation_entries()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-engine-invalidate-{}", std::process::id()));
+        let dir = root.join("sidecar");
+        let prepared = root.join("prepared");
+        std::fs::create_dir_all(&dir)?;
+        std::fs::create_dir_all(&prepared)?;
+        let starts = dir.join("starts");
+        let log = InvocationLog {
+            directory: &starts,
+            run_id: "run",
+            target: "demo",
+        };
+        let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
+        let seed = |prepared: &Path| -> std::io::Result<()> {
+            std::fs::write(prepared.join("cache.lock"), b"")?;
+            std::fs::write(prepared.join("key.prepared"), b"entry")?;
+            std::fs::write(prepared.join("key.42.tmp"), b"partial")?;
+            std::fs::write(prepared.join("unrelated.txt"), b"kept")
+        };
+        // Control: a completed engine run keeps its persistent entries.
+        seed(&prepared)?;
+        std::fs::write(
+            dir.join("engine.events.jsonl"),
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
+        )?;
+        let captured = capture_engine(&log, success, "0")?;
+        let mut stock = Command::new("/bin/sh");
+        stock.args(["-c", "exit 2"]);
+        let (_, trusted) = engine_output(&dir, stock, captured, &log, Some(&prepared))?;
+        assert!(trusted);
+        assert!(prepared.join("key.prepared").is_file());
+        // An injected engine crash (exit 101, no seal) falls back to stock and
+        // removes every prepared and temporary entry under the cache lock.
+        std::fs::remove_file(dir.join("engine.events.jsonl"))?;
+        let captured = capture_engine(&log, success, "101")?;
+        let reply = dir.join("stock.output");
+        std::fs::write(&reply, success)?;
+        let mut stock = Command::new("/bin/sh");
+        stock.args(["-c", "cat \"$1\"", "stock"]).arg(&reply);
+        let (output, trusted) = engine_output(&dir, stock, captured, &log, Some(&prepared))?;
+        assert!(!trusted);
+        assert_eq!(output.stdout, success);
+        assert!(!prepared.join("key.prepared").exists());
+        assert!(!prepared.join("key.42.tmp").exists());
+        assert!(prepared.join("unrelated.txt").is_file());
+        assert!(prepared.join("cache.lock").is_file());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn stock_fallback_reports_engine_provenance_without_a_receipt() {
+        let (documents, _) = crate::attribution::json_documents(include_bytes!(
+            "../tests/fixtures/engine-terminal/success.json"
+        ));
+        let attribution = crate::attribution::attribute(
+            &documents,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            None,
+        );
+        let build = || {
+            crate::report::build(&crate::report::Inputs {
+                args: &[],
+                exit_code: Some(0),
+                solver_path: None,
+                solver_sha256: None,
+                daemon: false,
+                attribution: &attribution,
+                diagnostics: &[],
+            })
+        };
+        let stock = build();
+        assert!(stock.engine.is_none());
+        assert!(receipt_success(&stock, &[]), "stock control publishes");
+        let request = crate::engine::Request {
+            function: None,
+            cargo_verus: PathBuf::new(),
+            manifest: PathBuf::new(),
+            manifest_sha256: "ab".repeat(32),
+            stock_wrapper: PathBuf::new(),
+            artifacts: Vec::new(),
+            prepared: None,
+        };
+        let mut engine = build();
+        mark_engine(
+            &mut engine,
+            &request.provenance(sail_api::output::EngineEstablishment::Engine),
+        );
+        assert!(receipt_success(&engine, &[]));
+        let mut fallback = build();
+        mark_engine(
+            &mut fallback,
+            &request.provenance(sail_api::output::EngineEstablishment::StockFallback),
+        );
+        assert!(!receipt_success(&fallback, &[]));
+        // Verdicts are the stock verdicts; only provenance differs.
+        assert_eq!(fallback.crates.len(), stock.crates.len());
+        for (marked, original) in fallback
+            .crates
+            .iter()
+            .flat_map(|krate| &krate.functions)
+            .zip(stock.crates.iter().flat_map(|krate| &krate.functions))
+        {
+            assert_eq!(marked.verdict, original.verdict);
+            let engine = marked.provenance.engine.as_ref();
+            assert_eq!(
+                engine.map(|engine| engine.established_by),
+                Some(sail_api::output::EngineEstablishment::StockFallback)
+            );
+            assert_eq!(
+                engine.map(|engine| engine.persistent_preparation),
+                Some(false)
+            );
+        }
+        // Stock serialization is unchanged: no engine fields appear.
+        let text = serde_json::to_string(&stock).unwrap_or_default();
+        assert!(!text.contains("\"engine\""), "{text}");
     }
 
     #[cfg(unix)]
@@ -927,7 +1152,7 @@ mod tests {
             stock
                 .current_dir(&dir)
                 .args(["-c", "touch stock.started; exit 2"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            let (output, trusted) = engine_output(&dir, stock, captured, &log, None)?;
             assert!(trusted);
             assert_eq!(output.stdout, document);
             assert_eq!(output.stderr, b"original engine diagnostic\n");

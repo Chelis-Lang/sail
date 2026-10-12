@@ -4,11 +4,20 @@
 //! sail-conformance fetch [--tier T] [--project P]...
 //! sail-conformance run   [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--trace] [--out DIR] [--shim PATH]
+//! sail-conformance engine [--tier T] [--project P]... [--filter S] [--jobs N]
+//!                        [--out DIR] [--engine-build PATH] [--no-focus]
+//!                        [--no-oracle] [--oracle-fault KIND]
 //! sail-conformance rust-verify-test [--filter S]... [--every N] [--jobs N] ...
 //! ```
 //!
 //! `run` exits 0 when every unit is the same under sail as under plain
 //! Verus, 1 if any unit differs, and 2 on usage or infrastructure errors.
+//! `engine` is the source-engine arm (ADR 0027): the optional interactive
+//! engine's full phase against plain Verus, with the same comparison and
+//! instability rules, plus completion-seal and same-input byte-oracle checks.
+//! With `--oracle-fault`, it is a negative control instead: it exits 0 only
+//! if every unit with a restored preparation hit reports the injected
+//! mismatch, and at least one such unit exists.
 #![forbid(unsafe_code)]
 
 mod rust_verify_test;
@@ -19,9 +28,10 @@ use std::process::ExitCode;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use sail_conformance::engine::EngineStats;
 use sail_conformance::{Comparison, Verdict, classify};
 use sail_verus::corpus::{Corpus, Tier, Unit};
-use sail_verus::run::{RunRecord, Solver, machine_info, prepare_unit, run_unit};
+use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit, run_unit};
 use sail_verus::toolchain::{Installed, Pins};
 use serde::Serialize;
 
@@ -31,7 +41,18 @@ const USAGE: &str = "usage:
                          [--jobs N] [--trace] [--out DIR] [--shim PATH]
                          [--plain-runs N] [--confirm-runs N]
 
+  sail-conformance engine [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
+                         [--jobs N] [--out DIR] [--plain-runs N] [--confirm-runs N]
+                         [--engine-build PATH] [--no-focus] [--no-oracle]
+                         [--oracle-fault order|effects|body]
+
   sail-conformance rust-verify-test ...   (see `rust-verify-test --help`)
+
+  --engine-build PATH  the validated interactive engine build (default
+                    $SAIL_ENGINE_BUILD)
+  --no-focus        run only the engine's full phase (no focused selector)
+  --no-oracle       skip the same-input cached-versus-fresh byte oracle
+  --oracle-fault K  negative control: inject oracle fault K and require detection
 
   --plain-runs N    plain Verus runs per unit up front (default 1)
   --confirm-runs N  extra plain runs when sail differs, to tell plain-Verus
@@ -49,6 +70,10 @@ struct Options {
     shim: Option<PathBuf>,
     plain_runs: usize,
     confirm_runs: usize,
+    engine_build: Option<PathBuf>,
+    focus: bool,
+    oracle: bool,
+    oracle_fault: Option<String>,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -65,6 +90,12 @@ fn parse(args: &[String]) -> Result<Options, String> {
         shim: None,
         plain_runs: 1,
         confirm_runs: 2,
+        engine_build: std::env::var_os("SAIL_ENGINE_BUILD")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from),
+        focus: true,
+        oracle: true,
+        oracle_fault: None,
     };
     while let Some(arg) = it.next() {
         let mut value = || {
@@ -97,6 +128,18 @@ fn parse(args: &[String]) -> Result<Options, String> {
                     .map_err(|_| "--confirm-runs needs a number".to_owned())?;
             }
             "--out" => o.out = Some(value()?.into()),
+            "--engine-build" => o.engine_build = Some(value()?.into()),
+            "--no-focus" => o.focus = false,
+            "--no-oracle" => o.oracle = false,
+            "--oracle-fault" => {
+                let fault = value()?;
+                if !["order", "effects", "body"].contains(&fault.as_str()) {
+                    return Err(format!(
+                        "--oracle-fault must be order, effects or body\n{USAGE}"
+                    ));
+                }
+                o.oracle_fault = Some(fault);
+            }
             "--shim" => o.shim = Some(value()?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
@@ -141,6 +184,9 @@ struct UnitReport {
     infra_error: Option<String>,
     plain: Option<Side>,
     sail: Option<Side>,
+    /// Engine arm only: what the engine reported beyond Verus's output.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    engine: Option<EngineStats>,
 }
 
 #[derive(Serialize)]
@@ -159,6 +205,21 @@ struct Summary {
     infra_error: usize,
     functions: usize,
     units_with_rlimit_drift: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    engine: Option<EngineSummary>,
+}
+
+/// Engine-arm totals.
+#[derive(Serialize, Default)]
+struct EngineSummary {
+    manifest_sha256: String,
+    oracle: bool,
+    oracle_fault: Option<String>,
+    focused_units: usize,
+    units_with_hits: usize,
+    hits: usize,
+    oracle_checks: usize,
+    oracle_failures: usize,
 }
 
 #[derive(Serialize)]
@@ -268,6 +329,16 @@ struct Context<'a> {
     trace: bool,
     plain_runs: usize,
     confirm_runs: usize,
+    engine: Option<EngineArm>,
+}
+
+/// The source-engine arm's configuration.
+struct EngineArm {
+    verus: PathBuf,
+    cargo_verus: PathBuf,
+    focus: bool,
+    oracle: bool,
+    oracle_fault: Option<String>,
 }
 
 fn infra_error(unit: &Unit, message: String) -> UnitReport {
@@ -281,6 +352,7 @@ fn infra_error(unit: &Unit, message: String) -> UnitReport {
         infra_error: Some(message),
         plain: None,
         sail: None,
+        engine: None,
     }
 }
 
@@ -314,6 +386,9 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
             Ok(p) => plains.push(p),
             Err(e) => return infra_error(unit, e.to_string()),
         }
+    }
+    if let Some(engine) = &cx.engine {
+        return compare_engine(cx, engine, unit, base, plains);
     }
     let solver = Solver::Shim {
         shim: cx.shim.to_path_buf(),
@@ -351,7 +426,105 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
         infra_error: None,
         plain: plains.first().map(Side::from),
         sail: Some(Side::from(&sail)),
+        engine: None,
     }
+}
+
+/// The engine arm for one unit: the engine's full phase against plain Verus
+/// with ADR 0009 confirmation, plus the engine-only seal and oracle checks.
+fn compare_engine(
+    cx: &Context,
+    engine: &EngineArm,
+    unit: &Unit,
+    base: &Path,
+    mut plains: Vec<RunRecord>,
+) -> UnitReport {
+    let function = if engine.focus {
+        plains
+            .first()
+            .and_then(sail_conformance::engine::focus_function)
+    } else {
+        None
+    };
+    let solver = Solver::Engine(EngineRun {
+        verus: engine.verus.clone(),
+        cargo_verus: engine.cargo_verus.clone(),
+        function: function.clone(),
+        oracle: engine.oracle,
+        oracle_fault: engine.oracle_fault.clone(),
+    });
+    let work = base.join("engine");
+    let run = match run_unit(cx.installed, unit, &solver, &work) {
+        Ok(run) => run,
+        Err(e) => return infra_error(unit, e.to_string()),
+    };
+    let events = std::fs::read_to_string(work.join(sail_verus::run::engine_files::EVENTS))
+        .unwrap_or_default();
+    let summaries = engine
+        .oracle
+        .then(|| oracle_summaries(&work.join(sail_verus::run::engine_files::ORACLE)));
+    let (issues, mut stats) = sail_conformance::engine::check(
+        &run,
+        &events,
+        summaries.as_deref(),
+        unit.build == sail_verus::corpus::Build::Verus,
+    );
+    stats.focus_function = function;
+    let mut c = classify(&plains, &run);
+    for _ in 0..cx.confirm_runs {
+        if c.verdict != Verdict::Different {
+            break;
+        }
+        match run_unit(
+            cx.installed,
+            unit,
+            &Solver::Plain,
+            &base.join(format!("plain-{}", plains.len() + 1)),
+        ) {
+            Ok(p) => plains.push(p),
+            Err(e) => return infra_error(unit, e.to_string()),
+        }
+        c = classify(&plains, &run);
+    }
+    if !issues.is_empty() {
+        // Engine completion and oracle failures are never plain instability.
+        c.verdict = Verdict::Different;
+        c.comparison.differences.extend(issues);
+    }
+    UnitReport {
+        id: unit.id.clone(),
+        expected: unit.expected.clone(),
+        verdict: c.verdict,
+        comparison: c.comparison,
+        plain_runs: c.plain_runs,
+        unstable: c.unstable,
+        infra_error: None,
+        plain: plains.first().map(Side::from),
+        sail: Some(Side::from(&run)),
+        engine: Some(stats),
+    }
+}
+
+/// Every oracle `summary.json` under `dir`; an unreadable one counts as failed.
+fn oracle_summaries(dir: &Path) -> Vec<serde_json::Value> {
+    let mut out = Vec::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return out;
+    };
+    let mut paths: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
+    paths.sort();
+    for path in paths {
+        let summary = path.join("summary.json");
+        if path.is_dir() {
+            out.push(
+                std::fs::read(&summary)
+                    .ok()
+                    .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+                    .unwrap_or_else(|| serde_json::json!({"passed": false, "missing": true})),
+            );
+        }
+    }
+    out
 }
 
 fn run_all(units: Vec<Unit>, jobs: usize, cx: &Context) -> Vec<UnitReport> {
@@ -402,8 +575,21 @@ fn summary_line(report: &Report) -> String {
             .collect();
         format!(" ({})", list.join("; "))
     };
+    let engine = s.engine.as_ref().map_or_else(String::new, |e| {
+        format!(
+            "; engine {}: {} focused units, {} units with {} restored preparation hits, {} oracle checks, {} oracle failures{}",
+            e.manifest_sha256.get(..12).unwrap_or_default(),
+            e.focused_units,
+            e.units_with_hits,
+            e.hits,
+            e.oracle_checks,
+            e.oracle_failures,
+            if e.oracle { "" } else { " (oracle off)" }
+        )
+    });
     format!(
-        "conformance ({} tier): {} units, {} same, {} unstable, {} different, {} infra errors; {} functions compared; {} units with rlimit drift; {} projects skipped{skipped}",
+        "{}conformance ({} tier): {} units, {} same, {} unstable, {} different, {} infra errors; {} functions compared; {} units with rlimit drift; {} projects skipped{skipped}{engine}",
+        if s.engine.is_some() { "engine " } else { "" },
         report.tier,
         s.units,
         s.same,
@@ -416,15 +602,42 @@ fn summary_line(report: &Report) -> String {
     )
 }
 
+/// Locates and validates the engine build for the `engine` command.
+fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<(EngineArm, String)>, String> {
+    if o.command != "engine" {
+        return Ok(None);
+    }
+    let build = o.engine_build.as_ref().ok_or_else(|| {
+        format!("error[SAIL3120]: engine needs --engine-build or SAIL_ENGINE_BUILD\n{USAGE}")
+    })?;
+    let engine = sail_verus::engine::Installed::at(build, &installed.pins)
+        .map_err(|e| format!("error[{}]: {e}", e.code))?;
+    Ok(Some((
+        EngineArm {
+            verus: engine.verus,
+            cargo_verus: engine.cargo_verus,
+            focus: o.focus,
+            oracle: o.oracle || o.oracle_fault.is_some(),
+            oracle_fault: o.oracle_fault.clone(),
+        },
+        engine.manifest_sha256,
+    )))
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "one linear run: select, execute, summarize and report"
+)]
 fn run(o: &Options) -> Result<ExitCode, String> {
     let (corpus, installed, cache) = load()?;
+    let engine = engine_arm(o, &installed)?;
     let shim = match &o.shim {
         Some(p) => p.clone(),
         None => std::env::current_exe()
             .map_err(|e| e.to_string())?
             .with_file_name("sail-z3"),
     };
-    if !shim.is_file() {
+    if engine.is_none() && !shim.is_file() {
         return Err(format!(
             "error[SAIL3030]: shim not found at {} (build it with `cargo build --release -p sail-shim`, or pass --shim)",
             shim.display()
@@ -456,6 +669,13 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         trace: o.trace,
         plain_runs: o.plain_runs,
         confirm_runs: o.confirm_runs,
+        engine: engine.as_ref().map(|(arm, _)| EngineArm {
+            verus: arm.verus.clone(),
+            cargo_verus: arm.cargo_verus.clone(),
+            focus: arm.focus,
+            oracle: arm.oracle,
+            oracle_fault: arm.oracle_fault.clone(),
+        }),
     };
     let mut units = run_all(units, o.jobs, &cx);
     units.sort_by(|a, b| a.id.cmp(&b.id));
@@ -473,6 +693,22 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         }
         summary.functions += u.comparison.functions;
         summary.units_with_rlimit_drift += usize::from(!u.comparison.rlimit_drift.is_empty());
+    }
+    if let Some((arm, manifest_sha256)) = &engine {
+        let mut totals = EngineSummary {
+            manifest_sha256: manifest_sha256.clone(),
+            oracle: arm.oracle,
+            oracle_fault: arm.oracle_fault.clone(),
+            ..EngineSummary::default()
+        };
+        for stats in units.iter().filter_map(|u| u.engine.as_ref()) {
+            totals.focused_units += usize::from(stats.focus_established);
+            totals.units_with_hits += usize::from(stats.hits() > 0);
+            totals.hits += stats.hits();
+            totals.oracle_checks += stats.oracle_checks;
+            totals.oracle_failures += stats.oracle_failures;
+        }
+        summary.engine = Some(totals);
     }
     let report = Report {
         schema_version: 1,
@@ -495,6 +731,31 @@ fn run(o: &Options) -> Result<ExitCode, String> {
     std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     println!("{}\nreport: {}", summary_line(&report), path.display());
     let s = &report.summary;
+    if let Some(engine) = s.engine.as_ref().filter(|e| e.oracle_fault.is_some()) {
+        // Negative control: every unit with a restored hit must report the
+        // injected oracle mismatch, and there must be at least one such unit.
+        let undetected = report
+            .units
+            .iter()
+            .filter(|u| {
+                u.engine
+                    .as_ref()
+                    .is_some_and(|e| e.hits() > 0 && e.oracle_failures == 0)
+            })
+            .count();
+        let detected = engine.units_with_hits > 0 && undetected == 0;
+        println!(
+            "oracle negative control ({}): {} units with restored hits, {undetected} without a detected mismatch: {}",
+            engine.oracle_fault.as_deref().unwrap_or_default(),
+            engine.units_with_hits,
+            if detected { "detected" } else { "NOT DETECTED" }
+        );
+        return Ok(if detected {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::from(1)
+        });
+    }
     Ok(if s.different > 0 {
         ExitCode::from(1)
     } else if s.infra_error > 0 {
@@ -520,7 +781,7 @@ fn main() -> ExitCode {
         });
     }
     let result = parse(&args).and_then(|o| match o.command.as_str() {
-        "run" => run(&o),
+        "run" | "engine" => run(&o),
         "fetch" => {
             let (corpus, installed, cache) = load()?;
             let n = select(&o, &corpus, &cache, &installed.pins.verus)?

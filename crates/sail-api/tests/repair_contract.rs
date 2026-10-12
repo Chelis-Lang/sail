@@ -29,6 +29,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
         execution: Execution::default(),
         notes: vec![],
         error: None,
+        engine: None,
     })
 }
 fn success(mut project: ProjectResult) -> ProjectResult {
@@ -60,6 +61,7 @@ fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits(
         batched: true,
         selection_error: None,
         preparation: None,
+        engine_fault: None,
     };
     assert!(batch.accepted());
     batch.selection_error = Some(sail_api::output::ErrorInfo {
@@ -88,6 +90,54 @@ fn focused_success_does_not_hide_full_regression_late_compiler_failure_or_edits(
     Ok(())
 }
 #[test]
+fn engine_fault_and_stock_fallback_never_accept_a_repair() -> Result<(), Box<dyn std::error::Error>>
+{
+    let engine = |established_by| sail_api::output::EngineProvenance {
+        name: "interactive".into(),
+        manifest_sha256: "ab".repeat(32),
+        established_by,
+        persistent_preparation: false,
+    };
+    let mut full = success(project()?);
+    full.engine = Some(sail_api::project::EngineIdentity {
+        name: "interactive".into(),
+        manifest_sha256: "ab".repeat(32),
+        persistent_preparation: false,
+    });
+    full.targets[0].report.engine = Some(engine(sail_api::output::EngineEstablishment::Engine));
+    let mut batch = BatchResult {
+        focus: None,
+        full,
+        manifest_sha256: "ab".repeat(32),
+        compiler_invocations: 1,
+        batched: true,
+        selection_error: None,
+        preparation: None,
+        engine_fault: None,
+    };
+    assert!(batch.accepted(), "engine-established control");
+    // A target that fell back to stock after an engine fault cannot accept,
+    // even if its stock report is complete and successful.
+    batch.full.targets[0].report.engine =
+        Some(engine(sail_api::output::EngineEstablishment::StockFallback));
+    assert!(!batch.accepted());
+    assert!(!sail_api::repair::accepted(&batch.full));
+    // A batch-level fault retains the stock full report but never accepts.
+    batch.full = success(project()?);
+    assert!(batch.accepted(), "stock-only full control");
+    batch.engine_fault = Some(sail_api::output::ErrorInfo {
+        code: "SAIL3123".into(),
+        message: "interactive engine fault".into(),
+    });
+    let document = sail_api::repair::ResultDocument::from(batch.clone());
+    assert!(!document.accepted);
+    let value = serde_json::to_value(&document)?;
+    assert_eq!(value["batch"]["engine_fault"]["code"], "SAIL3123");
+    let schema: serde_json::Value =
+        serde_json::from_str(include_str!("../schema/repair-result-v1.json"))?;
+    assert!(schema["properties"]["batch"]["properties"]["engine_fault"].is_object());
+    Ok(())
+}
 fn preparation_stats_preserve_driver_counters_without_inventing_support()
 -> Result<(), Box<dyn std::error::Error>> {
     let raw = r#"{"version":1,"enabled":true,"batch_hits":2,"persistent_hits":1,"misses":3,"peak_retained_bytes":1024,"memory_budget_bytes":4096,"disk_budget_bytes":8192}"#;
@@ -120,6 +170,7 @@ fn preparation_stats_preserve_driver_counters_without_inventing_support()
         batched: true,
         selection_error: None,
         preparation: None,
+        engine_fault: None,
     };
     let json = serde_json::to_value(&old)?;
     assert!(json.get("preparation").is_none());

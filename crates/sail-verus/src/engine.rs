@@ -206,7 +206,23 @@ pub(crate) struct Request {
     pub manifest_sha256: String,
     pub stock_wrapper: PathBuf,
     pub artifacts: Vec<PathBuf>,
-    pub prepared: PathBuf,
+    /// Persistent cross-edit prepared-lowering directory. `None` (the default)
+    /// keeps preparation reuse inside one compiler invocation (charter rule 6);
+    /// `Some` only with the explicit [`PERSISTENT_PREPARATION_ENV`] opt-in.
+    pub prepared: Option<PathBuf>,
+}
+
+/// Explicit opt-in for persistent cross-edit prepared-lowering reuse.
+///
+/// Persistent entries are keyed on Verus's pruned crate and a selected argument
+/// tuple, and a real hit is not compared with fresh lowering at runtime, so the
+/// reuse depends on that key's dependency coverage (charter rule 6). It is off
+/// by default and recorded in result provenance when enabled.
+pub const PERSISTENT_PREPARATION_ENV: &str = "SAIL_ENGINE_PERSISTENT_PREPARATION";
+
+/// Whether the caller explicitly opted in to persistent preparation reuse.
+fn persistent_preparation_requested() -> bool {
+    std::env::var(PERSISTENT_PREPARATION_ENV).as_deref() == Ok("1")
 }
 
 /// Borrowed request identity for compiler artifacts and optional sysroot hints.
@@ -219,7 +235,7 @@ pub(crate) struct ArtifactRequest<'a> {
     manifest_sha256: &'a str,
     stock_wrapper: &'a Path,
     artifacts: &'a [PathBuf],
-    prepared: &'a Path,
+    prepared: Option<&'a Path>,
 }
 
 impl Request {
@@ -243,7 +259,29 @@ impl Request {
             manifest_sha256,
             stock_wrapper,
             artifacts,
-            prepared,
+            prepared: prepared.as_deref(),
+        }
+    }
+
+    /// Provenance for a report this request established, or fell back from.
+    pub(crate) fn provenance(
+        &self,
+        established_by: sail_api::output::EngineEstablishment,
+    ) -> sail_api::output::EngineProvenance {
+        sail_api::output::EngineProvenance {
+            name: "interactive".to_owned(),
+            manifest_sha256: self.manifest_sha256.clone(),
+            established_by,
+            persistent_preparation: self.prepared.is_some(),
+        }
+    }
+
+    /// Project-level engine identity and preparation-reuse policy.
+    pub(crate) fn identity(&self) -> sail_api::project::EngineIdentity {
+        sail_api::project::EngineIdentity {
+            name: "interactive".to_owned(),
+            manifest_sha256: self.manifest_sha256.clone(),
+            persistent_preparation: self.prepared.is_some(),
         }
     }
 }
@@ -262,7 +300,8 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
         .with_file_name("verus");
     let request = Request {
         function,
-        prepared: config.workspace.join(&config.cache).join("engine-prepared"),
+        prepared: persistent_preparation_requested()
+            .then(|| config.workspace.join(&config.cache).join("engine-prepared")),
         cargo_verus: source_build::checkout_dir(&build)
             .join("source/target-verus/release/cargo-verus"),
         manifest: manifest_path,
@@ -358,9 +397,72 @@ pub fn verify(
     err: &mut dyn std::io::Write,
 ) -> Result<sail_api::project::ProjectResult> {
     let (request, _) = request(config, None)?;
-    let mut result = crate::managed::run_engine(config, err, Some(request))?;
-    launcher_notes(&run_directory(config, &result), &mut result);
-    Ok(result)
+    let prepared = request.prepared.clone();
+    match crate::managed::run_engine(config, err, Some(request)) {
+        Ok(mut result) => {
+            launcher_notes(&run_directory(config, &result), &mut result);
+            Ok(result)
+        }
+        Err(error) => {
+            stock_fallback(config, err, error, prepared.as_deref()).map(|(result, _)| result)
+        }
+    }
+}
+
+/// Repair evidence after a batch-level engine fault: the stock full result
+/// only, never focused evidence, preparation counters or acceptance.
+fn fallback_batch(
+    full: sail_api::project::ProjectResult,
+    fault: sail_api::output::ErrorInfo,
+    manifest_sha256: String,
+) -> sail_api::repair::BatchResult {
+    sail_api::repair::BatchResult {
+        batched: false,
+        selection_error: None,
+        focus: None,
+        compiler_invocations: full.execution.verifier_invocations,
+        full,
+        manifest_sha256,
+        preparation: None,
+        engine_fault: Some(fault),
+    }
+}
+
+/// ADR 0027: an engine fault that escapes every per-target fallback (for
+/// example a crash while the engine identifies its toolchain) invalidates the
+/// engine's preparation state and falls back to independent stock verification.
+/// The stock result is labelled and never accepts a repair. Missing or
+/// incompatible installations (`SAIL3120`) are rejected instead, and an error
+/// that also stops stock verification is returned unchanged.
+fn stock_fallback(
+    config: &crate::managed::Config,
+    err: &mut dyn std::io::Write,
+    error: Error,
+    prepared: Option<&Path>,
+) -> Result<(
+    sail_api::project::ProjectResult,
+    sail_api::output::ErrorInfo,
+)> {
+    if error.code == "SAIL3120" {
+        return Err(error);
+    }
+    if let Some(root) = prepared {
+        crate::adapter::invalidate_preparation(root);
+    }
+    let fault = sail_api::output::ErrorInfo {
+        code: "SAIL3123".into(),
+        message: format!(
+            "interactive engine fault ({}): {error}; independent stock verification follows",
+            error.code
+        ),
+    };
+    let _ = writeln!(err, "warning[SAIL3123]: {}", fault.message);
+    let mut result = crate::managed::run_engine(config, err, None)?;
+    result.notes.push(format!(
+        "SAIL3123: the interactive engine faulted ({}); this is an independent stock Verus result and cannot accept a repair",
+        error.code
+    ));
+    Ok((result, fault))
 }
 
 /// Runs one focused repair pass and independent full validation in compiler batches.
@@ -383,7 +485,14 @@ pub fn repair(
     let (request, manifest_sha256) = request(config, Some(function.to_owned()))?;
     let mut config = config.clone();
     config.force = true;
-    let mut full = crate::managed::run_engine(&config, err, Some(request))?;
+    let prepared = request.prepared.clone();
+    let mut full = match crate::managed::run_engine(&config, err, Some(request)) {
+        Ok(full) => full,
+        Err(error) => {
+            let (full, fault) = stock_fallback(&config, err, error, prepared.as_deref())?;
+            return Ok(fallback_batch(full, fault, manifest_sha256));
+        }
+    };
     let run = run_directory(&config, &full);
     launcher_notes(&run, &mut full);
     let mut selected = Vec::new();
@@ -462,6 +571,7 @@ pub fn repair(
         full,
         manifest_sha256,
         preparation: preparation(&run),
+        engine_fault: None,
     })
 }
 
@@ -728,7 +838,7 @@ mod tests {
             manifest_sha256: source_build::hash_file(&path)?,
             stock_wrapper: PathBuf::new(),
             artifacts: manifest.artifacts.keys().map(|p| root.join(p)).collect(),
-            prepared: root.join("prepared"),
+            prepared: None,
         };
         let mut reads = std::collections::BTreeMap::new();
         validate_request(&request, |path| {
@@ -879,7 +989,8 @@ mod tests {
                 .ok_or("missing run id")?,
             target: "demo",
         };
-        let (output, trusted) = crate::adapter::engine_output(&sidecar, stock, captured, &log)?;
+        let (output, trusted) =
+            crate::adapter::engine_output(&sidecar, stock, captured, &log, None)?;
         assert!(!trusted);
         assert_eq!(output.status.code(), Some(0));
         assert_eq!(output.stdout, std::fs::read(sidecar.join("verus.stdout"))?);

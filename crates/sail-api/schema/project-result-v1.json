@@ -83,6 +83,26 @@
         "type": "string"
       }
     },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "manifest_sha256",
+        "persistent_preparation"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "type": "string"
+        },
+        "persistent_preparation": {
+          "type": "boolean"
+        }
+      }
+    },
     "error": {
       "type": [
         "object",

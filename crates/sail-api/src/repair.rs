@@ -79,14 +79,20 @@ pub struct BatchResult {
     /// `None` means unavailable, never an invented collection of zero counters.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preparation: Option<Vec<PreparationStats>>,
+    /// The engine faulted before any target could fall back individually
+    /// (ADR 0027). `full` is then an independent stock verification, retained
+    /// as evidence; it never accepts the repair.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine_fault: Option<crate::output::ErrorInfo>,
 }
 
 impl BatchResult {
     /// Whether selection succeeded and full validation established current complete evidence.
-    /// Preliminary focus success cannot authorize a repair.
+    /// Preliminary focus success cannot authorize a repair, and neither can a
+    /// stock fallback after an engine fault.
     #[must_use]
     pub fn accepted(&self) -> bool {
-        self.selection_error.is_none() && accepted(&self.full)
+        self.selection_error.is_none() && self.engine_fault.is_none() && accepted(&self.full)
     }
 }
 
@@ -106,6 +112,9 @@ pub fn accepted(full: &ProjectResult) -> bool {
                 && target.report.summary.unknown == 0
                 && target.report.summary.provisional == 0
                 && !target.report.crates.is_empty()
+                && target.report.engine.as_ref().is_none_or(|engine| {
+                    engine.established_by == crate::output::EngineEstablishment::Engine
+                })
                 && target.report.crates.iter().all(|report| {
                     report.verus.success == Some(true)
                         && report.verus.encountered_vir_error != Some(true)

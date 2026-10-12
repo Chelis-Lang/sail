@@ -584,6 +584,10 @@ fn one_result(
         "configuration": f.provenance.configuration,
         "freshness": fresh,
     });
+    // Engine provenance is additive: stock lookups keep their exact shape.
+    if let Some(engine) = &f.provenance.engine {
+        s["engine"] = json!(engine);
+    }
     if let Some(id) = &a.obligation {
         let id = format!(
             "{}#{}",
@@ -619,7 +623,7 @@ fn all_results(p: &ProjectRecord, project: &Path, now: &store::Snapshot) -> Tool
     let functions: Vec<Value> = found
         .iter()
         .map(|f| {
-            json!({
+            let mut row = json!({
                 "function": f.function.function,
                 "verdict": summary::verdict_name(summary::effective_verdict(f.function)),
                 "tier": f.function.tier,
@@ -629,7 +633,11 @@ fn all_results(p: &ProjectRecord, project: &Path, now: &store::Snapshot) -> Tool
                 "configuration": f.function.provenance.configuration,
                 "run": f.run.run,
                 "status": runs.get(&f.run.run).map_or(Value::Null, |r| r["status"].clone()),
-            })
+            });
+            if let Some(engine) = &f.function.provenance.engine {
+                row["engine"] = json!(engine);
+            }
+            row
         })
         .collect();
     let mut text = found

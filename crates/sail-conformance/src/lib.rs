@@ -27,6 +27,7 @@
 
 use std::collections::BTreeMap;
 
+pub mod engine;
 pub mod rvt;
 
 use sail_verus::run::RunRecord;

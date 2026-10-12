@@ -54,6 +54,36 @@ pub struct Report {
     pub summary: Summary,
     /// Set when `sail verify` itself could not run Verus.
     pub error: Option<ErrorInfo>,
+    /// Source-engine provenance, present only for an explicitly selected
+    /// engine (ADR 0027). Stock reports omit it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine: Option<EngineProvenance>,
+}
+
+/// How an explicitly selected source engine established a report or function
+/// (charter rule 7, ADR 0027). Absent for stock verification.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EngineProvenance {
+    /// The engine name (`interactive`).
+    pub name: String,
+    /// SHA-256 of the validated engine build manifest, as lowercase hex.
+    pub manifest_sha256: String,
+    /// Whether the engine or the stock fallback produced the evidence.
+    pub established_by: EngineEstablishment,
+    /// Whether opt-in persistent cross-edit prepared-lowering reuse was enabled.
+    /// Reuse within one compiler invocation is always available to the engine.
+    pub persistent_preparation: bool,
+}
+
+/// Which verifier produced the evidence of an engine-requested report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EngineEstablishment {
+    /// The engine's complete, sealed full-phase output.
+    Engine,
+    /// The engine faulted; the exact stock Verus invocation's output is
+    /// reported instead, and it never yields a proof receipt or accepted repair.
+    StockFallback,
 }
 
 /// A solver configuration establishing a complete portfolio attempt.
@@ -273,6 +303,9 @@ pub struct ProvenanceReport {
     pub checks_served: u64,
     /// Checks with no provenance record.
     pub checks_unrecorded: u64,
+    /// Source-engine provenance; absent for stock verification.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine: Option<EngineProvenance>,
 }
 
 /// Time and effort, as Verus reports them.
@@ -598,6 +631,7 @@ impl From<&FunctionRecord> for FunctionReport {
                 checks_solved: sources.solved,
                 checks_served: sources.served,
                 checks_unrecorded: sources.unrecorded,
+                engine: None,
             },
             timing: Timing {
                 smt_micros: f.smt_micros,
@@ -692,6 +726,67 @@ mod tests {
         let s = SourceSpan::parse("garbage");
         assert_eq!((s.file, s.line), (None, None));
         assert_eq!(s.text, "garbage");
+    }
+    #[test]
+    fn engine_provenance_is_additive_and_matches_the_schemas() {
+        let stock: Report = serde_json::from_str(include_str!(
+            "../../sail-cli/tests/fixtures/attr/report.golden.json"
+        ))
+        .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        // Stock documents serialize exactly as before: no engine fields.
+        let stock_text = serde_json::to_string(&stock).unwrap_or_default();
+        assert!(!stock_text.contains("\"engine\""));
+        let engine = EngineProvenance {
+            name: "interactive".to_owned(),
+            manifest_sha256: "ab".repeat(32),
+            established_by: EngineEstablishment::StockFallback,
+            persistent_preparation: true,
+        };
+        let mut r = stock.clone();
+        r.engine = Some(engine.clone());
+        for f in r.crates.iter_mut().flat_map(|c| &mut c.functions) {
+            f.provenance.engine = Some(engine.clone());
+        }
+        let schema = serde_json::from_str(JSON_SCHEMA).unwrap_or_default();
+        let value = serde_json::to_value(&r).unwrap_or_default();
+        assert_eq!(
+            crate::schema::validate(&schema, &value),
+            Vec::<String>::new()
+        );
+        assert_eq!(value["engine"]["established_by"], "stock-fallback");
+        let mut wrong = value.clone();
+        wrong["engine"]["established_by"] = serde_json::json!("default");
+        assert_ne!(
+            crate::schema::validate(&schema, &wrong),
+            Vec::<String>::new()
+        );
+        let mut wrong = value;
+        if let Some(engine) = wrong["engine"].as_object_mut() {
+            engine.remove("manifest_sha256");
+        }
+        assert_ne!(
+            crate::schema::validate(&schema, &wrong),
+            Vec::<String>::new()
+        );
+        let project: serde_json::Value =
+            serde_json::from_str(include_str!("../schema/project-result-v1.json"))
+                .unwrap_or_default();
+        let identity = crate::project::EngineIdentity {
+            name: "interactive".to_owned(),
+            manifest_sha256: "cd".repeat(32),
+            persistent_preparation: false,
+        };
+        let identity = serde_json::to_value(identity).unwrap_or_default();
+        assert_eq!(
+            crate::schema::validate(&project["properties"]["engine"], &identity),
+            Vec::<String>::new()
+        );
+        let mut extra = identity;
+        extra["established_by"] = serde_json::json!("engine");
+        assert_ne!(
+            crate::schema::validate(&project["properties"]["engine"], &extra),
+            Vec::<String>::new()
+        );
     }
     #[test]
     fn portfolio_evidence_matches_the_schema() {

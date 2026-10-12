@@ -138,7 +138,23 @@ owned_struct!(crate::output::Report {
     crates,
     diagnostics,
     summary,
-    error
+    error,
+    engine
+});
+owned_struct!(crate::output::EngineProvenance {
+    name,
+    manifest_sha256,
+    established_by,
+    persistent_preparation
+});
+owned_struct!(crate::project::EngineIdentity {
+    name,
+    manifest_sha256,
+    persistent_preparation
+});
+owned_enum!(crate::output::EngineEstablishment {
+    Engine,
+    StockFallback
 });
 owned_struct!(crate::output::SolverConfiguration { seed });
 owned_struct!(crate::output::PortfolioAttempt {
@@ -197,7 +213,8 @@ owned_struct!(crate::output::ProvenanceReport {
     source,
     checks_solved,
     checks_served,
-    checks_unrecorded
+    checks_unrecorded,
+    engine
 });
 owned_struct!(crate::output::Timing { smt_micros, rlimit });
 owned_struct!(crate::output::Fragility {
@@ -273,7 +290,8 @@ owned_struct!(crate::project::ProjectResult {
     targets,
     execution,
     notes,
-    error
+    error,
+    engine
 });
 owned_struct!(crate::project::TargetResult {
     package_id,
@@ -309,7 +327,8 @@ owned_struct!(crate::repair::BatchResult {
     compiler_invocations,
     batched,
     selection_error,
-    preparation
+    preparation,
+    engine_fault
 });
 owned_struct!(crate::repair::ResultDocument {
     version,

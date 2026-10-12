@@ -246,6 +246,11 @@ fn convert(
                 checks_solved: 0,
                 checks_served: 0,
                 checks_unrecorded: 0,
+                // A provisional source observation still names its producer.
+                engine: runtime
+                    .engine
+                    .as_ref()
+                    .map(|engine| engine.provenance(sail_api::output::EngineEstablishment::Engine)),
             },
             timing: sail_api::output::Timing {
                 smt_micros: raw["payload"]["smt_micros"].as_u64(),
@@ -322,7 +327,16 @@ pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
     let Some(terminal) = terminal(path) else {
         return false;
     };
-    if terminal.payload.normal_termination != Some(true) || terminal.payload.success.is_none() {
+    let Some(sealed_success) = terminal
+        .payload
+        .success
+        .filter(|_| terminal.payload.normal_termination == Some(true))
+    else {
+        return false;
+    };
+    // The seal and the process must agree: Verus exits 0 exactly when the
+    // complete driver (proof, VIR and late EXEC checks) succeeded.
+    if (exit == Some(0)) != sealed_success {
         return false;
     }
     let (documents, remainder) = crate::attribution::json_documents(stdout);
@@ -350,6 +364,15 @@ pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
     let Some(vir_error) = results["encountered-vir-error"].as_bool() else {
         return false;
     };
+    // A seal contradicting the document it accompanies is not completion
+    // evidence: neither a reported success nor a VIR error may be overruled.
+    if results["success"]
+        .as_bool()
+        .is_some_and(|success| success != sealed_success)
+        || (vir_error && sealed_success)
+    {
+        return false;
+    }
     // Normal compiler errors and ordinary failed proofs retain their exact
     // document. The terminal marker, not diagnostic text, excludes internal
     // panic termination that older producers folded into this same shape.
@@ -477,6 +500,46 @@ mod tests {
         repeated.extend_from_slice(late);
         assert!(!completed(&path, &repeated, Some(1)));
         assert!(!completed(&path, &vec![b' '; MAX_RESULT + 1], Some(1)));
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
+    #[test]
+    fn contradictory_seal_is_not_completion() -> Result<(), Box<dyn std::error::Error>> {
+        let path =
+            std::env::temp_dir().join(format!("sail-engine-contradict-{}", std::process::id()));
+        let sealed_success =
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
+        let sealed_failure =
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-failure.jsonl");
+        let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
+        let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
+        let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
+        // Controls: consistent seals, documents and exits are complete.
+        std::fs::write(&path, sealed_success)?;
+        assert!(completed(&path, success, Some(0)));
+        std::fs::write(&path, sealed_failure)?;
+        assert!(completed(&path, proof, Some(1)));
+        assert!(completed(&path, late, Some(1)));
+        // A successful seal cannot overrule a failed document or exit.
+        std::fs::write(&path, sealed_success)?;
+        for (document, exit) in [
+            (proof.as_slice(), 1),
+            (proof.as_slice(), 0),
+            (late.as_slice(), 0),
+            (success.as_slice(), 1),
+        ] {
+            assert!(!completed(&path, document, Some(exit)), "{exit}");
+        }
+        let mut vir: Value = serde_json::from_slice(proof)?;
+        vir["verification-results"] =
+            serde_json::json!({"encountered-error":true,"encountered-vir-error":true});
+        assert!(!completed(&path, &serde_json::to_vec(&vir)?, Some(0)));
+        // A failed seal cannot accompany a successful document or exit 0.
+        std::fs::write(&path, sealed_failure)?;
+        assert!(!completed(&path, success, Some(0)));
+        assert!(!completed(&path, success, Some(1)));
+        assert!(!completed(&path, proof, Some(0)));
+        assert!(completed(&path, &serde_json::to_vec(&vir)?, Some(1)));
         std::fs::remove_file(path)?;
         Ok(())
     }

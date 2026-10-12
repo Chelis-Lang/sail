@@ -79,7 +79,7 @@ mod tests {
             manifest_sha256: "manifest-bytes".to_owned(),
             stock_wrapper: "engine/verus".into(),
             artifacts: vec!["engine/rust_verify".into()],
-            prepared: "prepared".into(),
+            prepared: Some("prepared".into()),
         };
         let args = vec!["--lib".to_owned()];
         let identity = vec![("compiler".to_owned(), "compiler-bytes".to_owned())];
@@ -101,7 +101,7 @@ mod tests {
         variants[2].manifest_sha256 = "different-manifest".into();
         variants[3].stock_wrapper = "another/verus".into();
         variants[4].artifacts.push("another/rust_verify".into());
-        variants[5].prepared = "another/prepared".into();
+        variants[5].prepared = Some("another/prepared".into());
         for request in variants {
             assert_ne!(expected, select(Some(&request)));
         }

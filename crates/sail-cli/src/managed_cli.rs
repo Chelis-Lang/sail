@@ -110,6 +110,7 @@ fn failure(
                 code: "SAIL3100".into(),
                 message: message.into(),
             }),
+            engine: None,
         };
         let _ = writeln!(
             out,

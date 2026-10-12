@@ -104,6 +104,10 @@ pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
                 if let Some(error) = &repair.batch.selection_error {
                     let _ = writeln!(err, "error[{}]: {}", error.code, error.message);
                 }
+                if let Some(fault) = &repair.batch.engine_fault {
+                    // ADR 0027: the full report is an independent stock run.
+                    let _ = writeln!(err, "error[{}]: {}", fault.code, fault.message);
+                }
                 return ExitCode::from(u8::from(!repair.accepted));
             }
             Ok(Response::Result(_)) => std::thread::sleep(Duration::from_millis(100)),

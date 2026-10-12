@@ -34,6 +34,22 @@ pub struct ProjectResult {
     pub notes: Vec<String>,
     /// Setup or infrastructure failure, never a solver verdict.
     pub error: Option<crate::output::ErrorInfo>,
+    /// Explicitly selected source engine (ADR 0027); absent for stock runs.
+    /// Each target report records whether the engine or its stock fallback
+    /// established it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine: Option<EngineIdentity>,
+}
+
+/// The validated source engine and preparation-reuse policy of a project run.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EngineIdentity {
+    /// The engine name (`interactive`).
+    pub name: String,
+    /// SHA-256 of the validated engine build manifest, as lowercase hex.
+    pub manifest_sha256: String,
+    /// Whether opt-in persistent cross-edit prepared-lowering reuse was enabled.
+    pub persistent_preparation: bool,
 }
 
 /// Relationship of a result to the workspace's current declared inputs.

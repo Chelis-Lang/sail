@@ -41,6 +41,40 @@ pub enum Solver {
         /// sessions (ADR 0011). `None` runs pure pass-through.
         daemon_socket: Option<PathBuf>,
     },
+    /// The optional interactive source engine (ADR 0027) with the pinned Z3.
+    Engine(EngineRun),
+}
+
+/// How the engine conformance arm runs the interactive source engine.
+///
+/// Every run gets its own event journal, focus report and invocation-local
+/// prepared-lowering directory under its work directory, matching the product
+/// default (no persistent cross-edit reuse).
+#[derive(Debug, Clone)]
+pub struct EngineRun {
+    /// The engine's `verus` launcher.
+    pub verus: PathBuf,
+    /// The engine's `cargo-verus` frontend.
+    pub cargo_verus: PathBuf,
+    /// Exact crate-qualified function for the focused phase, if any. The
+    /// independent full phase always runs and is what is compared.
+    pub function: Option<String>,
+    /// Run the same-input cached-versus-fresh byte oracle on every prepared hit.
+    pub oracle: bool,
+    /// Deliberate oracle fault (`order`, `effects` or `body`), for negative controls.
+    pub oracle_fault: Option<String>,
+}
+
+/// Files the engine writes under a unit's work directory.
+pub mod engine_files {
+    /// Source observation journal (JSONL).
+    pub const EVENTS: &str = "engine.events.jsonl";
+    /// Focused-phase report.
+    pub const FOCUS: &str = "engine.focus.json";
+    /// Invocation-local prepared-lowering directory.
+    pub const PREPARED: &str = "engine-prepared";
+    /// Same-input byte-oracle evidence.
+    pub const ORACLE: &str = "engine-oracle";
 }
 
 /// Flags added to every run.
@@ -481,10 +515,11 @@ pub fn run_unit(
     } else {
         None
     };
-    let program = if cargo {
-        &installed.cargo_verus
-    } else {
-        &installed.verus
+    let program = match (solver, cargo) {
+        (Solver::Engine(engine), true) => &engine.cargo_verus,
+        (Solver::Engine(engine), false) => &engine.verus,
+        (_, true) => &installed.cargo_verus,
+        (_, false) => &installed.verus,
     };
     if !program.is_file() {
         return Err(Error::new(
@@ -508,6 +543,9 @@ pub fn run_unit(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     solver_env(&mut cmd, installed, unit, solver);
+    if let Solver::Engine(engine) = solver {
+        engine_env(&mut cmd, installed, engine, work);
+    }
     let started = Instant::now();
     let output = run_with_timeout_retaining(&mut cmd, unit_timeout(), Some(work))
         .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
@@ -665,6 +703,15 @@ impl<R: std::io::Read> std::io::Read for RetainedReader<R> {
 
 /// Sets the solver environment for one side of a comparison.
 fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &Solver) {
+    for key in [
+        "SAIL_ENGINE",
+        "SAIL_ENGINE_EVENTS",
+        "SAIL_ENGINE_FOCUS_REPORT",
+        "SAIL_ENGINE_PREPARED_DIR",
+        "SAIL_ENGINE_CONTEXT",
+    ] {
+        cmd.env_remove(key);
+    }
     cmd.env_remove("VERUS_Z3_PATH")
         .env_remove("SAIL_Z3_PATH")
         .env_remove("SAIL_TRACE_DIR")
@@ -690,6 +737,40 @@ fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &So
         }
         if let Some(socket) = daemon_socket {
             cmd.env("SAIL_DAEMON_SOCKET", socket);
+        }
+    }
+}
+
+/// The interactive engine's private controls, all scoped to `work`.
+fn engine_env(cmd: &mut Command, installed: &Installed, engine: &EngineRun, work: &Path) {
+    for key in [
+        "SAIL_ENGINE_FUNCTION",
+        "SAIL_ENGINE_ORACLE_DIR",
+        "SAIL_ENGINE_ORACLE_Z3",
+        "SAIL_ENGINE_ORACLE_FAULT",
+        "SAIL_ENGINE_ORACLE_COMPONENTS",
+        "SAIL_ENGINE_ORACLE_COMPONENT_MODULE",
+    ] {
+        cmd.env_remove(key);
+    }
+    // The same pinned solver bytes as the plain side.
+    cmd.env("VERUS_Z3_PATH", &installed.z3)
+        .env("SAIL_ENGINE", "interactive")
+        .env("SAIL_ENGINE_EVENTS", work.join(engine_files::EVENTS))
+        .env("SAIL_ENGINE_FOCUS_REPORT", work.join(engine_files::FOCUS))
+        .env(
+            "SAIL_ENGINE_PREPARED_DIR",
+            work.join(engine_files::PREPARED),
+        )
+        .env("SAIL_ENGINE_CONTEXT", "sail-conformance-engine-v1");
+    if let Some(function) = &engine.function {
+        cmd.env("SAIL_ENGINE_FUNCTION", function);
+    }
+    if engine.oracle {
+        cmd.env("SAIL_ENGINE_ORACLE_DIR", work.join(engine_files::ORACLE))
+            .env("SAIL_ENGINE_ORACLE_Z3", &installed.z3);
+        if let Some(fault) = &engine.oracle_fault {
+            cmd.env("SAIL_ENGINE_ORACLE_FAULT", fault);
         }
     }
 }

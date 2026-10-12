@@ -361,6 +361,7 @@ mod tests {
                 complete: true,
                 report,
             }],
+            engine: None,
         };
         let status = Status {
             version: 1,
