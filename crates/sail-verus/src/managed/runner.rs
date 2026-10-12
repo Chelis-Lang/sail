@@ -553,7 +553,12 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
         return Ok(());
     }
     let mut cmd = Command::new(&config.cargo);
+    // Cargo-Verus builds with a different rustc fingerprint, so a clean that
+    // rewrote the target's rustc-info cache would force the following build to
+    // probe its compiler driver again. The clean neither reads nor writes that
+    // cache; Cargo still probes rustc for this invocation itself.
     cmd.current_dir(&config.workspace)
+        .env("CARGO_CACHE_RUSTC_INFO", "0")
         .args(["clean", "--target-dir"])
         .arg(cargo_build_target(target, &config.args));
     for p in packages {
