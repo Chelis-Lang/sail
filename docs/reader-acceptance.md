@@ -89,19 +89,17 @@ arrived; about half of all reads did so.
 
 ## Earlier attempts
 
-Under Linux amd64 emulation on arm64 macOS (superseded by ADR 0038):
+Under Linux amd64 emulation on arm64 macOS (superseded by ADR 0038). The
+per-run records are condensed in [M7 validation, gate 5](validation/m7.md#gate-5-responsive-reads)
+and preserved at the tag `archive/m7-contracts-f7103bf`:
 
-- `4472279`, 2026-10-11: failed, Python Result p95 394.7 ms; cause unknown
-  ([record](validation/m7-current-reader-workflow.md)).
-- `0f31c1d`, 2026-10-11, stage diagnostic: failed, Python Result p95 403.3 ms
-  ([record](validation/m7-rpc-stage-workflow.md)).
+- `4472279`, 2026-10-11: failed, Python Result p95 394.7 ms; cause unknown.
+- `0f31c1d`, 2026-10-11, stage diagnostic: failed, Python Result p95 403.3 ms.
 - `8e09eaa` and the native-binding product: setup timed out at the 600 s
-  ordinary baseline check ([record](validation/m7-reader-entry-setup-timeout.md),
-  [record](validation/m7-rpc-binding-reader-terminal.md)).
+  ordinary baseline check.
 - `730a321`, 2026-10-12: passed, Python Result/Status p95 94.2/59.9 ms, Rust
-  67.5/50.3 ms ([record](validation/m7-reader-730a321-terminal.md)).
-- `b89546c`, 2026-10-12: passed, Python 91.2/57.0 ms, Rust 83.9/44.4 ms
-  ([record](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)).
+  67.5/50.3 ms.
+- `b89546c`, 2026-10-12: passed, Python 91.2/57.0 ms, Rust 83.9/44.4 ms.
 - `387ba80`, 2026-10-12: failed, Python Result p95 436.0 ms, Status 137.1 ms;
   Rust and retained checks not attempted. The same commit passes natively
   (93.3 ms). The read path is unchanged since `b89546c`, so the emulated
