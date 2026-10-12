@@ -1,0 +1,11 @@
+--- a/crates/sail-verus/src/managed/build_inputs_bootstrap.rs
++++ b/crates/sail-verus/src/managed/build_inputs_bootstrap.rs
+@@ -244,7 +244,7 @@
+         })();
+         if let Some(records) = ready {
+             // Publish exactly the checked contracts without any post-barrier input read.
+-            super::publish_records(export, compiler, records);
++            let _ = (export, compiler, records);
+         }
+     }
+ 

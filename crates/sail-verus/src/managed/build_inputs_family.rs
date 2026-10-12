@@ -15,6 +15,9 @@ use std::io::Read as _;
 use std::io::Write;
 use std::path::Path;
 
+#[path = "build_inputs_bootstrap.rs"]
+pub(in crate::managed) mod bootstrap;
+
 const MAX_BYTES: usize = 1024 * 1024;
 
 #[derive(Serialize, Deserialize)]
@@ -216,7 +219,7 @@ pub(in crate::managed) fn begin(
     target: &Path,
     local: &Path,
     data: &Value,
-) -> Result<()> {
+) -> Result<bool> {
     let export = read(path).filter(|export| {
         export.version == 1
             && export.compiler == compiler
@@ -229,7 +232,15 @@ pub(in crate::managed) fn begin(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(error) => return Err(Error::new("SAIL3102", error.to_string())),
     }
-    let mut records = export.map_or_else(Vec::new, |export| eligible(export.records, data, target));
+    let (mut records, available) = export.map_or_else(
+        || (Vec::new(), false),
+        |export| {
+            let count = export.records.len();
+            let records = eligible(export.records, data, target);
+            let available = count != 0 && count == records.len();
+            (records, available)
+        },
+    );
     let admitted: BTreeSet<_> = records.iter().map(|r| r.package_id.clone()).collect();
     // Preserve earlier declarations only as observation roots, never as reuse
     // authorization. This keeps the original declarations-establishment next
@@ -241,7 +252,8 @@ pub(in crate::managed) fn begin(
             records.push(prior);
         }
     }
-    super::super::files::json_metadata(local, &records)
+    super::super::files::json_metadata(local, &records)?;
+    Ok(available)
 }
 
 /// Optional publication after the original final Current transaction. The
@@ -260,6 +272,10 @@ pub(in crate::managed) fn publish(
         data,
         target,
     );
+    publish_records(path, compiler, records);
+}
+
+fn publish_records(path: &Path, compiler: &str, records: Vec<BuildInput>) {
     let mut export = Export {
         version: 1,
         compiler: compiler.to_owned(),
@@ -353,7 +369,7 @@ mod tests {
             Ok(())
         }
         fn begin(&self, local: &Path, compiler: &str) -> Result<()> {
-            begin(&self.export, compiler, &self.target, local, &self.data)
+            begin(&self.export, compiler, &self.target, local, &self.data).map(|_| ())
         }
     }
     impl Drop for Fixture {

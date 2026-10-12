@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "scope": "source-only independent ordinary-script bootstrap candidate",
+  "status": "uncompiled and unexecuted; unselected",
+  "base": "247cd28",
+  "source_sha256": {
+    "crates/sail-verus/src/managed/build_inputs_family.rs": "26159283bab134b2cdbce1acefb7b672b44371598d85f2eda5d5f1d6cc413d00",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "a2c1d7410d6b032bf21b5f320b056eb7168cef30b1314634f476e07efdc14456",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "7e646e8cc9d4f34e2a80a42f865529496b60402d568db49d0ab863123dfebcdc",
+    "crates/sail-verus/src/managed/runner.rs": "7e558e1116ce4ede2aca4d329171fff45adedcd8870156ddd0fd371566d80a7d",
+    "crates/sail-verus/src/managed/source_inputs.rs": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+  },
+  "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+  "draft_linux_controls": 7,
+  "sensitivity": {
+    "patch": "docs/validation/m7-compiler-script-bootstrap/disable-publication.patch",
+    "sha256": "d6a5a2c6a29d618bd1bf3bd0693d295bf8a78fbc55d02abae7102e115256841e",
+    "effect": "remove only independent ordinary-generation emission",
+    "expected": "unchanged bootstrap export-exists assertion fails; actual outcome unexecuted"
+  },
+  "observed_terminal_runtime": {
+    "files": 418,
+    "bytes": 1852005612,
+    "largest_file_bytes": 199557488,
+    "scope": "post-terminal stat inventory only; no original failed binding attribution"
+  },
+  "limits": {
+    "packages": 128,
+    "files": 4096,
+    "path_bytes": 4096,
+    "hash_bytes_per_pass": 4294967296,
+    "hash_bytes_per_file": 268435456,
+    "hash_chunk_bytes": 65536,
+    "hash_phase_cooperative_seconds": 30,
+    "observer_and_lease_retained_admission_bytes": 33554432,
+    "full_owner_retained_admission_bytes": 41943040,
+    "environment_string_capacities_bytes": 1048576,
+    "encoded_local_ledger_or_journal_bytes": 1048576,
+    "interesting_journal_encoded_bytes": 262144,
+    "interesting_journal_rows": 256,
+    "journal_line_bytes": 32768,
+    "build_input_records": 128
+  },
+  "limits_are_not": [
+    "enforced construction allocation or RSS ceiling",
+    "hard real-time interruptibility of filesystem calls",
+    "proof deadline extensions",
+    "measured support for current HumanEval runtime"
+  ],
+  "unchanged": [
+    "proof Guard, Unknown and Current classification",
+    "target completeness and proof receipts",
+    "full selector-bound proof context",
+    "exclusive compiler-family ownership",
+    "original benchmark and repair oracles/deadlines"
+  ],
+  "trusted_boundary": "ADR0036 private Cargo/rustc artifacts: post-run dep-info is not authenticated against fabricated omission",
+  "native_validation_required": [
+    "complete affected tests and all-target strict",
+    "remove-only-emission real-Cargo sensitivity and restored positive",
+    "whole combined gate and original solver",
+    "original two-warmup real-project benchmark and unchanged original repair fixture"
+  ]
+}

@@ -67,7 +67,7 @@ loading behavior.
 
 The exclusive owner consumes the export before any cleaning or invocation.
 Interrupted, infrastructure-failed, incomplete and non-Current runs cannot leave
-an earlier generation certifying rewritten output. An absent generation forces cleaning even when an
+an earlier generation certifying rewritten output through the original proof-bound publication path. An absent generation forces cleaning even when an
 older private context has observations. Its old declaration paths remain only
 as uncovered watch roots, so the original declaration-establishment transition
 can acquire the necessary inventory; they grant no output reuse. A fresh export
@@ -135,3 +135,26 @@ Current authority: existing continuous native owners and all final barriers
 remain mandatory. Family export consumption/publication, receipts and per-run
 configuration retain their original transaction. See the
 [uncompiled candidate and pending controls](../validation/m7-preserve-freshness-metadata-plan.md).
+
+
+## Independently guarded declaration bootstrap candidate
+
+The original Current-only publication can fail to establish an ordinary script
+export when cleaning recreates an explicitly tracked generated Rust include.
+The proof namespace refusal remains correct. A source-only Linux candidate adds
+an independent package/configuration/runtime input owner before cleaning for
+missing or rejected generations. It supports only freshly compiled, single-unit
+ordinary scripts with no build dependencies and pre-acquired regular-file
+compilation/execution declarations. Runtime, output lineage and effective
+injected environment are independently checked; final exact output contracts
+are reread before the final native input barriers. Within the existing trusted
+Cargo-artifact boundary, this owner may publish ordinary contracts after a
+normal exit-zero invocation while the proof stays Unknown. It never publishes
+proof authority or weakens the original Guard.
+
+Empty or wholly/partially rejected generations do not suppress this optional
+bootstrap. No supported metadata script means no optional acquisition or runtime
+hashing. All other refusals keep original script cleaning. The implementation is
+uncompiled and unselected; requested retained admission and cooperative streaming
+bounds do not claim an enforced construction/RSS limit or measured speedup.
+See the [candidate, limits and required real-Cargo controls](../validation/m7-compiler-script-bootstrap/README.md).
