@@ -234,13 +234,10 @@ RS
     # Heavyweight and tooling checks that are not product regressions a PR
     # must catch quickly. Run before releases and when changing what they cover.
     local_only release "$@"
-    # Benchmark tooling (docs/result-frame-profile.md) and the harness
-    # helpers of the e2e phases.
+    # Harness helpers of the e2e phases.
     python3 scripts/test-managed-timeout-evidence.py
     python3 ci/test-repair-lifecycle.py
     python3 ci/test-mcp-live-service-controller.py
-    cargo test --locked -p sail-api --example result_frame_profile \
-      --example result_client_profile --example result_stream_profile
     sail_checkout="$PWD"
     release_build -p sail-conformance
     install_runtime

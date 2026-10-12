@@ -225,7 +225,7 @@ Findings 2, 3, 5, 6, 7, 9, 12, 14 and 16 therefore optimise or instrument phases
 ### 14. Exact allocator accounting in the result frame cache: simplify (high)
 
 - **What:** `crates/sail-daemon/src/jobs/result_cache.rs` (467): `Budget`, `Charge`, `ADMISSION_MARGIN` (sized from BTree nodes and Arc headers "for Rust 1.99"), `REFUND_GATE`, owner retention and `retained_size`.
-- **Requirement:** [Result frame profile](../../result-frame-profile.md): "The daemon already retains three immutable, preencoded frames per cached job." The rescue review called out the "byte-exact allocator accounting".
+- **Requirement:** Result frame profile (`docs/result-frame-profile.md`, removed by L14): "The daemon already retains three immutable, preencoded frames per cached job." The rescue review called out the "byte-exact allocator accounting".
 - **Goal served:** G2. It avoids re-encoding a 4 MB frame per read, so keep the cache itself.
 - **Alternative:** an LRU of about 16 entries mapping a key to `[Arc<Vec<u8>>; 3]`, capped by the sum of `frame.len()`, in about 80 lines.
 - **Risk:** memory is bounded slightly less precisely.

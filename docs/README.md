@@ -34,8 +34,6 @@ projects, unchanged deadlines, source-byte checks and performance gates.
 bounded timeout evidence and dependency-proof requirements.
 The [reader acceptance guide](reader-acceptance.md) gives the native reader
 latency gate, its current results and how to run it.
-[Whole-result profiling](result-frame-profile.md) records transfer and complete
-response decoding costs without changing reader acceptance.
 The [interactive source engine](../engine/verus/README.md) describes the selected
 patch, the prebuilt artifact and the runtime identity. Its [qualification](../engine/verus/qualification-linux.json)
 passes the source-level checks. Long corpus, source-build and benchmark work
