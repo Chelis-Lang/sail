@@ -377,6 +377,7 @@ fn queue_stores(
 /// when the solver exits, nothing will ever answer the commands the client
 /// is waiting on, so the shim exits with the solver's status, as
 /// pass-through does.
+#[allow(clippy::too_many_lines, reason = "L11 experimental timing")]
 fn output_side(
     mut from: impl Read,
     mut child: Child,
@@ -421,6 +422,10 @@ fn output_side(
             break;
         }
         let chunk = buf.get(..n).unwrap_or_default();
+        let arrived = crate::l11::now();
+        if all.is_empty() {
+            crate::l11::with(|t| t.first_output = Some(arrived));
+        }
         all.extend_from_slice(chunk);
         let mut items: Vec<Item> = Vec::new();
         splitter.push(chunk, &mut items);
@@ -434,6 +439,17 @@ fn output_side(
             if seen == skip && forward_from.is_none() {
                 forward_from = Some(start);
             }
+            if seen + 1 == skip {
+                crate::l11::with(|t| t.replay_done = Some(arrived));
+            }
+            if seen >= skip {
+                let tail = all.get(start..).unwrap_or_default();
+                if tail.starts_with(b"sat") || tail.starts_with(b"unknown") {
+                    crate::l11::with(|t| {
+                        t.first_failure.get_or_insert(arrived);
+                    });
+                }
+            }
             prev = Some((seen, start));
             seen += 1;
         }
@@ -443,6 +459,12 @@ fn output_side(
             if !write_out(all.get(forwarded.max(f)..).unwrap_or_default()) {
                 forwarding_ok = false;
                 break;
+            }
+            if forwarded <= f {
+                let at = crate::l11::now();
+                crate::l11::with(|t| {
+                    t.first_forward.get_or_insert(at);
+                });
             }
             forwarded = all.len();
         }
@@ -513,6 +535,8 @@ fn start_solver(
         .stderr(child_stderr)
         .spawn()
         .ok()?;
+    let spawned = crate::l11::now();
+    crate::l11::with(|t| t.spawned = Some(spawned));
     let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
         let _ = child.kill();
         let _ = child.wait();
@@ -536,6 +560,8 @@ fn start_solver(
         output,
     };
     s.write(raw);
+    let written = crate::l11::now();
+    crate::l11::with(|t| t.raw_written = Some(written));
     Some(s)
 }
 
@@ -639,8 +665,10 @@ fn observe(
 /// solver without recording. A connection that failed mid-exchange is never
 /// reused, so a late reply can never be read as the answer to a later
 /// request.
+#[allow(clippy::too_many_lines, reason = "L11 experimental timing")]
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
     let (client, mut prefix) = connect(socket, solver)?;
+    crate::l11::begin();
     let mut session = Session::new();
     let mut splitter = CommandSplitter::new();
     let mut raw: Vec<u8> = Vec::new();
@@ -715,6 +743,15 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 continue;
             }
             // Miss: start the solver with the whole input so far.
+            let at = crate::l11::now();
+            crate::l11::with(|t| {
+                t.miss = Some(at);
+                t.miss_kind = Some("command");
+                t.miss_served = served;
+                t.miss_start_offset = Some(item.offset);
+                t.miss_end_offset = Some(item.offset + item.bytes.len() as u64);
+                t.miss_command = Some(name.clone());
+            });
             let Some(s) = start_solver(solver, args, &raw, served, expect, client.take()) else {
                 return Some(ExitCode::from(1));
             };
@@ -767,6 +804,7 @@ fn finish_run(
     };
     let (code, started) = finish_input(solving, client, solver, args, &end);
     record_provenance(raw, end.served, started);
+    crate::l11::finish(raw, end.served, started);
     code
 }
 
@@ -795,14 +833,23 @@ fn finish_input(
     match solving {
         Some(s) => (Some(s.finish(end.terminal)), true),
         None if !certified => (
-            start_solver(
-                solver,
-                args,
-                end.raw,
-                end.served,
-                Expect::Stop,
-                client.take(),
-            )
+            {
+                let at = crate::l11::now();
+                crate::l11::with(|t| {
+                    t.miss = Some(at);
+                    t.miss_kind = Some("end");
+                    t.miss_served = end.served;
+                    t.miss_start_offset = Some(end.raw.len() as u64);
+                });
+                start_solver(
+                    solver,
+                    args,
+                    end.raw,
+                    end.served,
+                    Expect::Stop,
+                    client.take(),
+                )
+            }
             .map(|s| s.finish(end.terminal)),
             true,
         ),

@@ -948,6 +948,143 @@ fn hits_cmd(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+/// `presolver-capture`: traced edit sequences for the pre-solver coverage
+/// spike (experimental; see `sail_bench::warmcap`).
+#[allow(clippy::too_many_lines)] // Option parsing plus the capture loop.
+fn warm_capture_cmd(args: &[String]) -> Result<(), String> {
+    use sail_bench::warmcap;
+    let mut out: Option<PathBuf> = None;
+    let mut rest = Vec::new();
+    let mut repair: Option<PathBuf> = None;
+    let mut catalogues = false;
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--out" => out = it.next().map(PathBuf::from),
+            "--repair" => {
+                repair = it.next().map(PathBuf::from);
+                catalogues = true;
+            }
+            "--loops" | "--edits" => {
+                catalogues = true;
+                rest.push(arg.clone());
+                rest.extend(it.next().cloned());
+            }
+            _ => rest.push(arg.clone()),
+        }
+    }
+    let out = out.ok_or_else(|| format!("--out is required\n{USAGE}"))?;
+    let tier_given = rest.iter().any(|a| a == "--tier");
+    let o = parse_options(&rest)?;
+    let p = prepare(o.shim.clone())?;
+    let sail = daemon::locate_sail(o.sail.clone())?;
+    let rounds = o.rounds.unwrap_or(1);
+    let mut seqs = Vec::new();
+    if catalogues && rest.iter().any(|a| a == "--loops") {
+        seqs.extend(warmcap::from_loops(
+            &sail_bench::agent_loop::Catalogue::load(&o.loops)?,
+        ));
+    }
+    if catalogues && rest.iter().any(|a| a == "--edits") {
+        seqs.extend(warmcap::from_edits(&edit::Catalogue::load(&o.edits)?));
+    }
+    if let Some(r) = &repair {
+        seqs.extend(warmcap::from_repair(r)?);
+    }
+    let mut projects: Vec<String> = seqs
+        .iter()
+        .filter_map(|s| s.unit.split('/').next().map(str::to_owned))
+        .collect();
+    projects.sort();
+    projects.dedup();
+    let mut units = Vec::new();
+    if !projects.is_empty() {
+        let selection = Selection {
+            tier: Tier::Deep,
+            projects: &projects,
+            filter: None,
+        };
+        units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
+    }
+    if tier_given {
+        let selection = Selection {
+            tier: o.tier,
+            projects: &o.projects,
+            filter: o.filter.as_deref(),
+        };
+        let cold = select_units(
+            &selection,
+            &p.corpus,
+            &p.installed,
+            &p.cache,
+            &p.scratch.join("cold"),
+        )?;
+        for u in &cold {
+            seqs.push(warmcap::Sequence {
+                id: format!(
+                    "cold-{}",
+                    u.id.chars()
+                        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+                        .collect::<String>()
+                ),
+                unit: u.id.clone(),
+                cycles: vec![warmcap::Cycle {
+                    name: "c00-initial".to_owned(),
+                    chain: Vec::new(),
+                    expected: None,
+                }],
+            });
+        }
+        units.extend(cold);
+    }
+    if let Some(f) = o.filter.as_deref().filter(|_| !tier_given) {
+        seqs.retain(|s| s.id.contains(f) || s.unit.contains(f));
+    }
+    std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+    eprintln!("warm-capture: {} sequences", seqs.len());
+    let mut records = Vec::new();
+    for round in 0..rounds {
+        for s in &seqs {
+            let Some(unit) = units.iter().find(|u| u.id == s.unit) else {
+                eprintln!("{}: unit {} is not available; skipped", s.id, s.unit);
+                continue;
+            };
+            for r in warmcap::run_sequence(
+                &p.installed,
+                (&p.shim, &sail),
+                &p.scratch,
+                &out,
+                (s, round),
+                unit,
+            ) {
+                eprintln!(
+                    "r{} {:<40} {:<36} {:>8.0} ms  {} (expected {}){}",
+                    r.round,
+                    r.sequence,
+                    r.cycle,
+                    r.wall_ms.unwrap_or(0.0),
+                    r.outcome.as_deref().unwrap_or("n/a"),
+                    r.expected.as_deref().unwrap_or("-"),
+                    r.error
+                        .as_deref()
+                        .map(|e| format!("  ERROR {e}"))
+                        .unwrap_or_default()
+                );
+                records.push(r);
+            }
+        }
+    }
+    let manifest = serde_json::json!({
+        "schema_version": 1,
+        "sail_commit": sail_commit(),
+        "verus_release": p.installed.pins.verus.release,
+        "machine": machine_info(),
+        "cycles": records,
+    });
+    let text = serde_json::to_string_pretty(&manifest).map_err(|e| e.to_string())?;
+    std::fs::write(out.join("manifest.json"), text + "\n").map_err(|e| e.to_string())
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if matches!(
@@ -973,6 +1110,7 @@ fn main() -> ExitCode {
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("repair") => repair_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
+        Some("warm-capture") => warm_capture_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
     };
     match result {

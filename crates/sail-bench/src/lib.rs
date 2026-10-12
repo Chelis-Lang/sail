@@ -38,6 +38,7 @@ pub mod seeds;
 pub mod solver;
 pub mod trace;
 pub mod warm;
+pub mod warmcap;
 
 pub use sail_portfolio::{parallel, stats, transcript};
 

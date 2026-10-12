@@ -22,6 +22,8 @@
 mod cached;
 #[cfg(unix)]
 mod cached_stderr;
+#[cfg(unix)]
+mod l11;
 mod trace;
 
 use std::ffi::OsString;
