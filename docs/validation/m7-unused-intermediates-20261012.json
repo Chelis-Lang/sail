@@ -14,5 +14,108 @@
   "active_targets_and_data_volumes_touched": false,
   "inventory_sha256": "79908b4d14ba3e1b5acf657014fd20cc21b47d17379849867d0d462b46cd45f4",
   "archive_failure": "m7-unused-default-target-archive-failure.json",
-  "docker_restart": "Authorized restart; new births recorded independently before any resumed validation"
+  "docker_restart": "Authorized restart; new births recorded independently before any resumed validation",
+  "operations": [
+    {
+      "operation": "closed-c2-recovered-owned-four-incremental-trees",
+      "status": "PASS",
+      "executor": "Root; B verified retained host evidence only, no native action",
+      "scope_basename": "sail-m7-current-benchmark-c2a4b23-recovered-owned",
+      "roots_relative_to_scope": {
+        "work/results/cache-m6/projects/cc4a4cb6a7997bb75d2e8b20331eacaf879e21e8e4f07587179d29d6ef581446/5b89235d512014bfaaa996692fc31b52a79ef5ad0f95469dd8f5dac79900f287/target/debug/incremental": {
+          "device": 55,
+          "inode": 1374858,
+          "mode": 16877
+        },
+        "work/results/cache-m6/projects/cc4a4cb6a7997bb75d2e8b20331eacaf879e21e8e4f07587179d29d6ef581446/04917399c5d579eee8d828fe877068182d9abf9cfde62979d297776ef61b24d4/target/verus-partial/debug/incremental": {
+          "device": 55,
+          "inode": 2772457,
+          "mode": 16877
+        },
+        "work/results/cache-m7/projects/cc4a4cb6a7997bb75d2e8b20331eacaf879e21e8e4f07587179d29d6ef581446/compiler-artifacts/871c69817cf49c1466286c64367dc772463e0a9e9910981ca3a21c5fe66dbab2/target/debug/incremental": {
+          "device": 55,
+          "inode": 2773609,
+          "mode": 16877
+        },
+        "work/results/cache-m7/projects/cc4a4cb6a7997bb75d2e8b20331eacaf879e21e8e4f07587179d29d6ef581446/compiler-artifacts/29493cc0286baad7b166fc44a8300bcb5a06cdff3b6ee1505b9995b94f3e9ac7/target/debug/incremental": {
+          "device": 55,
+          "inode": 1317830,
+          "mode": 16877
+        }
+      },
+      "preservation_scope": "Complete inventory and posthash of these four exact trees only; no surrounding-project or whole-cache posthash.",
+      "policy": "Unchanged single-link regular non-executable non-ELF suffix-only Rust scratch admission. Hardlinks, ELF/executable images, other files and all directories preserved; runtime/products/receipts/scripts/archives/raw evidence outside these roots never selected.",
+      "controller_sha256": "e192321722232f34f5b409179158569a4c1499cab4e06ec196e599916a3b2bfa",
+      "base_compact_controller_sha256": "9ca7a7e04cd08696dcab0fbf535a50f1b5aa8654528304b3f0a2cc27b0debc25",
+      "scope_only_diff_sha256": "12387ef39055730370b42b54a110f1b7a473b5ef87c80e2a4ef6c7398380b925",
+      "shared_task_guard_sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc",
+      "host_pure_controls_passed": 9,
+      "inventory_scope": "sail-m7-c2-recovered-incremental-inventory-20261012-root",
+      "retirement_scope": "sail-m7-c2-recovered-incremental-retirement-20261012-root",
+      "native_inventory_status": "PASS",
+      "native_retirement_status": "PASS",
+      "retirement_command_index": 14,
+      "retirement_command_exit_code": 0,
+      "retirement_stdout_matches_native_result": true,
+      "mutation_state": "completed-native-pass",
+      "original_entries": 3349,
+      "preserved_entries": 3169,
+      "removed_files": 180,
+      "allocated_file_bytes_removed": 857669632,
+      "logical_bytes_removed": 857344394,
+      "original_regular_bytes": 1079560649,
+      "remaining_regular_bytes": 222216255,
+      "protected_hardlinked_files": 40,
+      "host_rechecks": {
+        "approved_and_fresh_inventory_equal": true,
+        "exact_approved_candidate_list_removed": true,
+        "every_other_entry_identity_mode_size_sha_unchanged": true,
+        "all_four_root_ids_unchanged": true,
+        "all40_hardlinked_files_unchanged": true,
+        "original_compare_preserved_passed": true,
+        "final_container_birth_identity_full_mount_records_unchanged": true
+      },
+      "immediate_pre_unlink_census": {
+        "complete": true,
+        "scanned": 2,
+        "live_holders": 0,
+        "unavailable": 0,
+        "terminated_unreaped": 0,
+        "exact_self_excluded": 1
+      },
+      "final_dual_container_census": {
+        "sail-m7-acceptance": {
+          "complete": true,
+          "scanned": 2,
+          "live_holders": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 0,
+          "exact_self_excluded": 1
+        },
+        "sail-m7-handoff-validation": {
+          "complete": true,
+          "scanned": 99,
+          "live_holders": 0,
+          "unavailable": 0,
+          "terminated_unreaped": 97,
+          "exact_self_excluded": 1
+        }
+      },
+      "evidence_sha256": {
+        "inventory/controller.json": "56abdc3010f1ed7e96d7f1b54c920a313d605dae1af47b4d76c1287af7afb20a",
+        "inventory/inventory.json": "da11248e2f65e89112f065e2036e556944506873cf20af1d4528781bb6f53cd4",
+        "retirement/controller.json": "515aeeb5a4c8272b3d3402e3af1209189b3940d9e2c97ea1755d73181db2c6fd",
+        "retirement/inventory.json": "da11248e2f65e89112f065e2036e556944506873cf20af1d4528781bb6f53cd4",
+        "retirement/14.stdout": "77240ea2878a9e270515c43065ce1d20a8c66db4817c5916ab0c9569cd8a291b",
+        "retirement/sail-m7-acceptance/approved-inventory.json": "da11248e2f65e89112f065e2036e556944506873cf20af1d4528781bb6f53cd4",
+        "retirement/sail-m7-acceptance/after-inventory.json": "3ba2544714c0646c41c6bc63d327090ba1603c9419eb2e5eebf3c3459871a8ea",
+        "retirement/sail-m7-acceptance/native-result.json": "4c771da338c2b8978fe72385cfc80c2708801469f64ba9700b7e45600ac62d16",
+        "retirement/sail-m7-acceptance/immediate-holders.json": "247eb8fb4d7c6a29fdd8628858703d3cc389fe982abc7438086e50bb03da554b",
+        "retirement/sail-m7-acceptance/holders-sail-m7-acceptance.json": "6ff5b0a68f344af7660be0ba011dcfde769617475e0d0ba8afec84981bf70b62",
+        "retirement/sail-m7-handoff-validation/holders-sail-m7-handoff-validation.json": "539bc0643c891363d0b2eb911efd35de222993334aee8178ad42c1ef3c42d45a"
+      },
+      "historical_failure_policy": "Original failed c2 benchmark and prior failed cleanup scopes remain unchanged; this operation grants no proof reuse or product acceptance.",
+      "physical_backing_bytes_reclaimed": "not measured or attributed"
+    }
+  ]
 }
