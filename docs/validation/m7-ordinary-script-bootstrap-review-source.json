@@ -1,0 +1,258 @@
+{
+  "schema": 1,
+  "kind": "independent-file-only-ordinary-script-bootstrap-review",
+  "status": "final static ACK; native controls and whole-product validation pending",
+  "source_baseline": "730a3210151ca51b7e011121c4795553b0cfa3e5",
+  "metadata": {
+    "bytes": 888735,
+    "sha256": "c8f470e4459f5966fbf873593ddaaa203a1898d4657bb119a0a5998d34e0dc40"
+  },
+  "script_depinfo": {
+    "bytes": 30747,
+    "sha256": "d0765d2c8001e31c63cd285afbc838057b69d6e1a15e7d6f68851466772dc3b9",
+    "count": 12,
+    "all_embedded_byte_sha_checks": true,
+    "env_dep_line_count": 0,
+    "observed_first_rule_inputs": "one build.rs each"
+  },
+  "journals": [
+    {
+      "context_sha256": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0",
+      "run_id": "33403-1791764307414349381",
+      "bytes": 29812,
+      "sha256": "396279aba157358ff2a15d20ff077757245278166bd8ff9ff65451882ab723fb",
+      "compiler_artifact_count": 23,
+      "custom_build_count": 6,
+      "all_custom_build_fresh_false": true,
+      "build_script_event_count": 6,
+      "build_finished_event_count": 0
+    },
+    {
+      "context_sha256": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2",
+      "run_id": "41839-1791764615771953134",
+      "bytes": 29812,
+      "sha256": "608eb6a761f2c409302e916d1d2f4cf4b70f93e215bd36410cb61f45561c56cc",
+      "compiler_artifact_count": 23,
+      "custom_build_count": 6,
+      "all_custom_build_fresh_false": true,
+      "build_script_event_count": 6,
+      "build_finished_event_count": 0
+    },
+    {
+      "context_sha256": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2",
+      "run_id": "49378-1791764783682487379",
+      "bytes": 29807,
+      "sha256": "995ba4533e9168e331a6588067e1bec9cdbea9daabb71996b34434b428ddcd99",
+      "compiler_artifact_count": 23,
+      "custom_build_count": 6,
+      "all_custom_build_fresh_false": true,
+      "build_script_event_count": 6,
+      "build_finished_event_count": 0
+    }
+  ],
+  "native_or_target_access": false,
+  "cargo_or_proof_or_benchmark": false,
+  "historical_first_failed_root_identified": false,
+  "production_selection": "lead review; static authority ACK is not native qualification",
+  "trust_boundary": "Cargo/rustc-produced private artifacts; checksums and fresh=false do not authenticate malicious unknown-dependency omission",
+  "resource_scope": "retained admission and requested construction limits, not total peak allocation or RSS",
+  "script_roles": [
+    {
+      "context_sha256": "8664edcf169990b2c267aec578b5a3fa1d3a4e958fdff0a38b26683147e67aa0",
+      "script_roles": [
+        {
+          "package_name": "quote",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "proc-macro2",
+          "declared_path_count": 2,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [
+            "RUSTC_BOOTSTRAP"
+          ],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "verus_syn",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "serde_core",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "verus_prettyplease",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "vstd",
+          "declared_path_count": 0,
+          "declared_unique_path_count": 0,
+          "declared_environment_keys": [
+            "RUST_MIN_STACK"
+          ],
+          "metadata_build_dependency_count": 0
+        }
+      ]
+    },
+    {
+      "context_sha256": "dee82f610f54dda83dbec83e42d4d08b1ecb6f5c24a58d2f83aae0a8251bbcf2",
+      "script_roles": [
+        {
+          "package_name": "quote",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "verus_syn",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "proc-macro2",
+          "declared_path_count": 2,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [
+            "RUSTC_BOOTSTRAP"
+          ],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "serde_core",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "verus_prettyplease",
+          "declared_path_count": 1,
+          "declared_unique_path_count": 1,
+          "declared_environment_keys": [],
+          "metadata_build_dependency_count": 0
+        },
+        {
+          "package_name": "vstd",
+          "declared_path_count": 0,
+          "declared_unique_path_count": 0,
+          "declared_environment_keys": [
+            "RUST_MIN_STACK"
+          ],
+          "metadata_build_dependency_count": 0
+        }
+      ]
+    }
+  ],
+  "initial_reviewed_draft": [
+    {
+      "path": "crates/sail-verus/src/managed/build_inputs_bootstrap.rs",
+      "bytes": 19650,
+      "sha256": "76727b27a417b2a764c0f50ef3903c462a0ad83f691075a4b19f55e0eec93b0d"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs",
+      "bytes": 11944,
+      "sha256": "5f1b3fba5b54b81c91836c4bf2e9885a7e8767d9365139849bd91b7e215d81da"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/build_inputs_family.rs",
+      "bytes": 26998,
+      "sha256": "26159283bab134b2cdbce1acefb7b672b44371598d85f2eda5d5f1d6cc413d00"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/runner.rs",
+      "bytes": 118375,
+      "sha256": "3c489e930200f68315e45d879a64f4c483c13c646548a60cd2fe80b9d1e11e5e"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/source_inputs.rs",
+      "bytes": 7707,
+      "sha256": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/lease.rs",
+      "bytes": 47984,
+      "sha256": "5145ed27e45e2103ccde0c49a378c9f63a93a0efa594b96c891c0fdfd9a5709a"
+    }
+  ],
+  "final_static_review": {
+    "commit": "f697201db80717ec4d2d94c53855d7cbb22bf59f",
+    "authority_ack": true,
+    "remaining_static_blocker": false,
+    "source": [
+      {
+        "path": "crates/sail-verus/src/managed/build_inputs_family.rs",
+        "bytes": 26998,
+        "sha256": "26159283bab134b2cdbce1acefb7b672b44371598d85f2eda5d5f1d6cc413d00"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/build_inputs_bootstrap.rs",
+        "bytes": 22927,
+        "sha256": "a2c1d7410d6b032bf21b5f320b056eb7168cef30b1314634f476e07efdc14456"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs",
+        "bytes": 20008,
+        "sha256": "7e646e8cc9d4f34e2a80a42f865529496b60402d568db49d0ab863123dfebcdc"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/runner.rs",
+        "bytes": 118467,
+        "sha256": "7e558e1116ce4ede2aca4d329171fff45adedcd8870156ddd0fd371566d80a7d"
+      },
+      {
+        "path": "crates/sail-verus/src/managed/source_inputs.rs",
+        "bytes": 7707,
+        "sha256": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+      }
+    ],
+    "source_manifest": {
+      "path": "docs/validation/m7-compiler-script-bootstrap/source.json",
+      "bytes": 3038,
+      "sha256": "ff0f911e210cc225eef1a2aff91e0a1452495f51064b25ada1009d0b0f098ba9"
+    },
+    "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+    "closed_findings": [
+      "newly learned raw aliases refused",
+      "retained owner accounting uses exhaustive fields",
+      "growing-file per-file and aggregate read checks",
+      "valid dep-info header retained in outside-input sensitivity",
+      "final sealed output recheck before input barriers",
+      "finite Cargo supervisor with bounded exceptional reap and explicit descendant uncertainty"
+    ],
+    "controls_drafted": 7,
+    "native_controls_executed_in_this_review": 0,
+    "original_oracles_or_deadlines_changed": false
+  },
+  "remaining_validation": [
+    "seven affected Linux controls",
+    "remove-only-independent-publication sensitivity and restored positive",
+    "affected all-target strict checks",
+    "combined gate and original solver",
+    "original two-warmup benchmark and whole repair fixture"
+  ],
+  "limits": [
+    "Private dep-info trust boundary excludes fabricated unknown-input omission",
+    "40 MiB retained admission is not construction allocation, total managed memory, child resource or RSS bound",
+    "4 GiB aggregate /256 MiB file /30s cooperative hash phases unmeasured for complete runtime",
+    "Blocking filesystem calls and exceptional supervisor descendant closure are not hard bounded promises",
+    "Historical first changed binding is not identified"
+  ]
+}
