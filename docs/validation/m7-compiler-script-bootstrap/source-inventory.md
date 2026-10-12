@@ -70,6 +70,13 @@ and final seals match, with known owned groups closed. Separate named-baseline
 feature smoke is running at this freeze; readers, complete conformance and
 real-project performance receive no transferred credit.
 
+Acceptance byte installation also passes in 4.291 seconds: all twelve commands
+exit zero, source archive and both container births stay unchanged, and the
+producer's before/after CLI/shim bytes match the owned acceptance installation.
+This copies no Cargo target, proof receipt, cache or prewarm state. The original
+three-round HumanEval/Vest benchmark is running separately and has no performance
+credit at this record's freeze.
+
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
 worker's own stdout, without declaration-transition notes. The retained

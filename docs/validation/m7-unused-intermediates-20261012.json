@@ -218,6 +218,55 @@
       },
       "historical_failure_policy": "Original b895 benchmark failures and earlier failed cleanup scopes remain unchanged; this cleanup grants no proof reuse or product acceptance.",
       "physical_backing_bytes_reclaimed": "not measured or attributed"
+    },
+    {
+      "scope": "Closed Oct10 host Sail managed probe only",
+      "status": "PASS",
+      "operation": "Complete lossless archive, content/mode/symlink verification and exact original-root retirement",
+      "inventory_entries": 11808,
+      "logical_regular_bytes_removed": 876926799,
+      "archive": {
+        "name": "sail-managed-probe-20261012.tar.gz",
+        "bytes": 109852695,
+        "sha256": "4e63e6efa4c359302e8e3e705db67e9f2923c04be5b90ff817374db29e9e1d18"
+      },
+      "elapsed_seconds": 12.160793125000001,
+      "complete_original_inventory_identity_unchanged_before_delete": true,
+      "full_archive_content_verified": true,
+      "exact_original_root_absent": true,
+      "holder_checks": {
+        "before_archive": {
+          "command": [
+            "lsof",
+            "-n",
+            "-P",
+            "+D",
+            "closed-managed-probe-root"
+          ],
+          "exit_code": 1,
+          "stdout_empty": true,
+          "stderr_empty": true
+        },
+        "before_retirement": {
+          "command": [
+            "lsof",
+            "-n",
+            "-P",
+            "+D",
+            "closed-managed-probe-root"
+          ],
+          "exit_code": 1,
+          "stdout_empty": true,
+          "stderr_empty": true
+        }
+      },
+      "evidence_sha256": {
+        "inventory.json": "2b728df9f850dab40459632077809fd9e43607e1f5794ace2adfcaff29627150",
+        "result.json": "15bf8232eb1f6937b2da56b78373649ec8d4088a67fe9300f96313b6293a3026"
+      },
+      "preservation": "All original contents, file modes, symlink targets and file hashes retained in the verified archive; native/container/build scopes untouched",
+      "physical_backing_bytes_reclaimed": "not measured or attributed",
+      "qualification": "Storage operation only; no proof/product/performance acceptance"
     }
   ]
 }
