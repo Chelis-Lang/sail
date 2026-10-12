@@ -129,8 +129,9 @@ waits in `queued` until the earlier one finishes, rather than failing on the
 workspace's managed target. The daemon identifies a workspace by the outermost
 directory above the project (or its `--manifest-path`) that holds a
 `Cargo.toml`, so nested packages of one workspace share a queue. Separate
-`sail verify --incremental` processes outside the daemon still use the managed
-runner's own lock, which refuses a busy target with `SAIL3104`.
+`sail verify --incremental` processes outside the daemon wait on the managed
+runner's own lock for up to `SAIL_MANAGED_LOCK_WAIT_SECS` seconds (default
+1,800) and then fail with `SAIL3104`.
 
 The local job endpoint has its own protocol version and owner-only socket.
 Job records and diagnostics are private files; the last twenty terminal jobs
