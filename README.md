@@ -104,10 +104,9 @@ The daemon keeps replies in memory in front of the disk cache, stops after
 cache root.
 `sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
 inspects, checks, shrinks or empties SMT reply entries (ADR 0015). These commands
-do not limit or remove managed compiler targets. Focused repair generations
-trade additional dependency storage and cold setup for isolated certified
-artifacts; their observation migration remains a source candidate with native
-qualification pending. See [workspace hygiene](docs/workspace-hygiene.md).
+do not limit or remove managed compiler targets. See
+[disk use and cleanup](docs/workspace-hygiene.md) for where those live and how
+to reclaim them.
 
 Teams and CI can share results through a shared store: a directory such as
 an NFS mount or a synced folder. Entries in it are signed, and a machine
@@ -160,8 +159,8 @@ The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automat
 
 Reference builds, gates and benchmarks run on a native x86-64 Linux host
 created by `scripts/perf-host.sh`. The
-[workspace hygiene guide](docs/workspace-hygiene.md) covers local worktrees,
-targets and containers.
+[disk use guide](docs/workspace-hygiene.md) covers local worktrees, targets
+and containers.
 
 ## Portfolio and fragility
 

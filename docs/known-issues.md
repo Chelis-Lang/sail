@@ -49,7 +49,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   run are not detected; see [freshness](freshness.md) and [trust](trust.md).
 - A successful focused check still needs complete Current full validation.
 - There is no managed compiler-target quota or generation GC. See
-  [workspace hygiene](workspace-hygiene.md#managed-compiler-targets).
+  [disk use and cleanup](workspace-hygiene.md#managed-compiler-targets).
 
 ## Verus and Z3
 
