@@ -154,3 +154,12 @@ For publication attribution on a newly sealed product, the
 uses the repository's current 23-field timing launcher and original repair
 fixture. Its pure failure controls provide no new product timing or acceptance
 credit. Transport loss remains uncertain; it cannot certify native shutdown.
+
+The [product 730 delivery review](validation/m7-result-delivery-730-review.md)
+maps current complete-frame hits, guarded output/fallback, independent freshness
+and unchanged Python parsing. Cached socket writes hold no full-graph encoding
+or cache lock. Freshness inspection still copies full input path inventories for daemon
+consumers that only need revision/complete, and completed Status still reads and
+hashes stdout. Immutable snapshot delivery and sharing the existing output-only
+owner are conditional designs, not enabled optimizations or latency claims. The original full reader census remains
+required, and no additional transport change is selected by that review.
