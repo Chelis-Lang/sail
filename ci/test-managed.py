@@ -268,6 +268,18 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert b"postcondition not satisfied" in plain.stderr, plain.stderr.decode()
         assert b"postcondition not satisfied" in failed_run.stderr, failed_run.stderr.decode()
 
-        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, and restored-mtime failing edit passed")
+        # Repeat a focused check over byte-identical source. cargo verus focus
+        # builds in <target>/verus-partial with checksum freshness, so the
+        # forced cleanup must clean that directory; cleaning the outer target
+        # left the crate fresh, ran no verifier and failed with SAIL3107.
+        source.write_text(good)
+        for attempt in range(3):
+            focus_run, focused, focus_target = managed("--", "--verify-root", "--verify-function", "max")
+            assert focus_run.returncode == 0 and focused["exit_code"] == 0, (attempt, diagnostic(focused))
+            assert focused["execution"]["verifier_invocations"] >= 1, (attempt, focused["execution"])
+            assert not focus_target["reused"], (attempt, focus_target)
+            source.write_text(good)
+
+        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit and repeated focus passed")
     finally:
         stop_daemon()
