@@ -219,5 +219,6 @@ retained history. This does not select a separately proposed authority or change
 stock diagnostic loading. Rebuilt Sail CLI/MCP integration, current-product
 conformance, live reader latency and the complete repair performance catalogues
 remain required before M7 acceptance. See
-[the qualification](../../engine/verus/qualification-linux.json) and
+the qualification (`engine/verus/qualification-linux.json`, retired with the
+patch; in the `archive/m7-contracts-f7103bf` tag) and
 [delivery](../validation/m7.md).
