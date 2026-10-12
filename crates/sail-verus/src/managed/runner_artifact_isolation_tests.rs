@@ -185,26 +185,25 @@ fn repair_selector_layout_keeps_defaults_shared_and_exports_private() -> Isolati
     );
     assert_eq!(first.proxy_alias, plain.proxy_alias);
     assert_eq!(first.cargo_alias, plain.cargo_alias);
-    assert!(
-        prepare(
-            &fixture.config,
-            &fixture.root,
-            "b",
-            "family",
-            "run",
-            Some(&b)
-        )
-        .is_err()
-    );
-    drop(owner);
-    let (other, owner) = prepare(
-        &fixture.config,
-        &fixture.root,
-        "b",
-        "family",
-        "run",
-        Some(&b),
-    )?;
+    // Another selector of the same family waits for the owner instead of
+    // sharing or failing.
+    let (other, owner) = std::thread::scope(|scope| {
+        let waiting = scope.spawn(|| {
+            prepare(
+                &fixture.config,
+                &fixture.root,
+                "b",
+                "family",
+                "run",
+                Some(&b),
+            )
+        });
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert!(!waiting.is_finished(), "concurrent family owner admitted");
+        drop(owner);
+        waiting.join()
+    })
+    .map_err(|_| "waiter panicked")??;
     assert_ne!(first.target, other.target);
     assert_ne!(first.compiler_inputs, other.compiler_inputs);
     assert_eq!(first.proxy_alias, other.proxy_alias);

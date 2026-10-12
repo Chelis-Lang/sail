@@ -463,10 +463,32 @@ fn ownership_lock(directory: &Path) -> Result<File> {
         .write(true)
         .open(directory.join("ownership.lock"))
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
-    lock.try_lock()
-        .map_err(|e| Error::new("SAIL3104", format!("managed target is in use: {e}")))?;
-    Ok(lock)
+    // Another managed run of the same workspace holds the target: wait for it,
+    // up to `SAIL_MANAGED_LOCK_WAIT_SECS` (default 30 minutes). A cancelled
+    // job's process is killed, which releases or abandons the wait.
+    let wait = std::env::var("SAIL_MANAGED_LOCK_WAIT_SECS")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .map_or(LOCK_WAIT, std::time::Duration::from_secs);
+    let deadline = Instant::now() + wait;
+    loop {
+        match lock.try_lock() {
+            Ok(()) => return Ok(lock),
+            Err(std::fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Err(e) => {
+                return Err(Error::new(
+                    "SAIL3104",
+                    format!("managed target is in use: {e}"),
+                ));
+            }
+        }
+    }
 }
+
+/// How long a managed run waits for another run of the same workspace.
+const LOCK_WAIT: std::time::Duration = std::time::Duration::from_mins(30);
 
 fn prepare(
     config: &Config,
@@ -1955,15 +1977,20 @@ mod tests {
         std::fs::create_dir_all(&selected.target)?;
         let dependency = selected.target.join("ordinary-dependency.rlib");
         std::fs::write(&dependency, "ordinary dependency")?;
-        let rejected = prepare(&config, &root, "missing", "compiler", "second", None);
-        assert_eq!(
-            rejected
-                .err()
-                .ok_or("concurrent family owner admitted")?
-                .code,
-            "SAIL3104"
-        );
+        // A concurrent run of the same family waits for the owner, then proceeds.
+        let waiting = std::thread::spawn({
+            let config = config.clone();
+            let root = root.clone();
+            move || {
+                prepare(&config, &root, "waiting", "compiler", "second", None)
+                    .map(|(_, ownership)| drop(ownership))
+                    .map_err(|e| e.code)
+            }
+        });
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert!(!waiting.is_finished(), "concurrent family owner admitted");
         drop(ownership);
+        assert_eq!(waiting.join().map_err(|_| "waiter panicked")?, Ok(()));
         // Failed family acquisition must also release the new proof-context lock.
         let (missing, ownership) = prepare(&config, &root, "missing", "compiler", "second", None)?;
         assert_eq!(selected.target, missing.target);
@@ -2024,7 +2051,9 @@ mod tests {
                 .env("SAIL_TEST_COMPILER_FAMILY", family)
                 .env_remove("SAIL_TEST_COMPILER_FAMILY_BUSY");
             if busy {
-                command.env("SAIL_TEST_COMPILER_FAMILY_BUSY", "1");
+                command
+                    .env("SAIL_TEST_COMPILER_FAMILY_BUSY", "1")
+                    .env("SAIL_MANAGED_LOCK_WAIT_SECS", "0");
             }
             let output = command.output()?;
             assert!(
