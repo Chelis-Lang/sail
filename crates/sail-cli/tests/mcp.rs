@@ -218,6 +218,9 @@ exit 1
             "verification_events",
             "explain_failure",
             "compare_verification",
+            "save_baseline",
+            "list_baselines",
+            "get_baseline",
             "start_repair_validation",
         ]
     );
