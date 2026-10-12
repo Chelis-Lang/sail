@@ -112,9 +112,71 @@ fn context(
     let mut hashed = super::files::FileDigests::default();
     if let Some(engine) = engine {
         // Shares only this phase's actual byte reads: no retained metadata or
-        // digest cache can authorize a different invocation's engine.
+        // digest cache can authorize a different invocation's engine. No probe
+        // process starts before this validation, so an unvalidated engine is
+        // never executed.
+        hashed.prefetch(
+            [engine.manifest.as_path(), engine.stock_wrapper.as_path()]
+                .into_iter()
+                .chain(engine.artifacts.iter().map(PathBuf::as_path)),
+        );
         crate::engine::validate_request(engine, |path| hashed.hash(path))?;
     }
+    // Independent probe processes, the optional helper manifest and the
+    // pre-guard content reads overlap. Every result is consumed below in the
+    // original order, so identity rows, the pre-guard digest set and the first
+    // reported error are unchanged; no digest leaves this phase-local map.
+    let wrapper = actual_wrapper(&config.cargo_verus);
+    let rustc = resolve_program(
+        &std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()),
+        &config.workspace,
+    );
+    let rustup = resolve_program(std::ffi::OsStr::new("rustup"), &config.workspace);
+    let probes = std::thread::scope(|scope| {
+        let cargo_probe = rustc.as_ref().ok().map(|rustc| {
+            scope.spawn(move || {
+                Command::new(rustc)
+                    .args(["--print", "sysroot"])
+                    .current_dir(&config.workspace)
+                    .output()
+            })
+        });
+        let verifier_probe = wrapper
+            .as_ref()
+            .ok()
+            .map(|wrapper| scope.spawn(move || verifier_sysroot(wrapper, &config.workspace)));
+        #[cfg(target_os = "linux")]
+        let helper = scope.spawn(|| {
+            let closure = super::lease::helper_closure();
+            let identity = closure.as_ref().and_then(super::lease::helper_identity);
+            (closure, identity)
+        });
+        let verifier_runtime = wrapper
+            .as_ref()
+            .ok()
+            .map(|w| w.with_file_name("rust_verify"));
+        let mut pre_guard: Vec<&Path> = vec![
+            config.sail.as_path(),
+            config.cargo_verus.as_path(),
+            config.cargo.as_path(),
+            config.z3.as_path(),
+            config.shim.as_path(),
+        ];
+        pre_guard.extend(
+            [wrapper.as_ref(), rustc.as_ref(), rustup.as_ref()]
+                .into_iter()
+                .filter_map(|path| path.ok().map(PathBuf::as_path))
+                .chain(verifier_runtime.as_deref()),
+        );
+        hashed.prefetch(pre_guard);
+        let failed = || Error::new("SAIL3104", "toolchain probe thread failed");
+        Probes {
+            cargo: cargo_probe.map(|probe| probe.join().map_err(|_| failed())),
+            verifier: verifier_probe.map(|probe| probe.join().map_err(|_| failed())),
+            #[cfg(target_os = "linux")]
+            helper: helper.join().unwrap_or((None, None)),
+        }
+    });
     for path in [
         &config.sail,
         &config.cargo_verus,
@@ -138,12 +200,17 @@ fn context(
     // loaded stdlib and ELF closure join the context; unavailable coverage still
     // permits fresh verification but the coherent guard cannot publish Current.
     #[cfg(target_os = "linux")]
-    if let Some(helper) = super::lease::helper_identity() {
+    if let Some(helper) = probes.helper.1 {
         identity.extend(helper);
     }
+    // The same probe's closure list serves this run's lease acquisitions.
+    #[cfg(target_os = "linux")]
+    let helper_closure = probes.helper.0;
+    #[cfg(not(target_os = "linux"))]
+    let helper_closure: Option<super::HelperClosure> = None;
     drop(helper);
     let toolchains = diagnostics.phase(Phase::ToolchainProbes);
-    let wrapper = actual_wrapper(&config.cargo_verus)?;
+    let wrapper = wrapper?;
     identity.push((
         wrapper.to_string_lossy().into_owned(),
         hashed.hash(&wrapper)?,
@@ -152,15 +219,11 @@ fn context(
         .filter(|(k, _)| input_environment_key(k))
         .map(|(k, v)| (k.as_encoded_bytes().to_vec(), v.as_encoded_bytes().to_vec()))
         .collect();
-    let rustc = resolve_program(
-        &std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()),
-        &config.workspace,
-    )?;
+    let rustc = rustc?;
     identity.push((rustc.to_string_lossy().into_owned(), hashed.hash(&rustc)?));
-    let actual = Command::new(&rustc)
-        .args(["--print", "sysroot"])
-        .current_dir(&config.workspace)
-        .output()
+    let actual = probes
+        .cargo
+        .ok_or_else(|| Error::new("SAIL3104", "cannot identify Rust toolchain"))??
         .map_err(|e| Error::new("SAIL3104", format!("cannot identify Rust toolchain: {e}")))?;
     if !actual.status.success() {
         return Err(Error::new(
@@ -168,10 +231,12 @@ fn context(
             String::from_utf8_lossy(&actual.stderr),
         ));
     }
-    let rustup = resolve_program(std::ffi::OsStr::new("rustup"), &config.workspace)?;
+    let rustup = rustup?;
     identity.push((rustup.to_string_lossy().into_owned(), hashed.hash(&rustup)?));
     let cargo_sysroot = PathBuf::from(String::from_utf8_lossy(&actual.stdout).trim());
-    let verifier_sysroot = verifier_sysroot(&wrapper, &config.workspace)?;
+    let verifier_sysroot = probes
+        .verifier
+        .ok_or_else(|| Error::new("SAIL3104", "cannot identify verifier toolchain"))???;
     let installed_sysroots = BTreeSet::from([cargo_sysroot, verifier_sysroot]);
     identity.push((
         config
@@ -186,8 +251,11 @@ fn context(
     // Observe all installed-target namespaces before inventory collection and
     // acquire kernel leases before the first eligible byte read. Earlier hashes
     // remain ineligible: this owner cannot authorize a pre-guard digest.
-    let mut sysroots =
-        super::sysroot::Baseline::begin(&installed_sysroots, |path| hashed.contains(path));
+    let mut sysroots = super::sysroot::Baseline::begin_using(
+        &installed_sysroots,
+        |path| hashed.contains(path),
+        helper_closure.as_ref(),
+    );
     drop(guard);
     #[cfg(target_os = "linux")]
     let (handoff_scope, imported) = {
@@ -313,13 +381,27 @@ fn context(
         hash,
         compiler_hash,
         sysroots,
+        helper: helper_closure,
     })
+}
+
+/// Results of the independent toolchain probes, consumed in original order.
+struct Probes {
+    cargo: Option<Result<std::io::Result<std::process::Output>>>,
+    verifier: Option<Result<Result<PathBuf>>>,
+    #[cfg(target_os = "linux")]
+    helper: (
+        Option<super::lease::HelperClosure>,
+        Option<Vec<(String, String)>>,
+    ),
 }
 
 struct Context {
     hash: String,
     compiler_hash: String,
     sysroots: super::sysroot::Baseline,
+    /// This run's helper closure probe, reused by its coherent lease owner.
+    helper: Option<super::HelperClosure>,
 }
 
 fn context_hashes(
@@ -1633,11 +1715,24 @@ pub(crate) fn run_engine(
     }
     let started = Instant::now();
     let diagnostics = Diagnostics::new();
-    let metadata_phase = diagnostics.phase(Phase::Metadata);
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
     super::configuration::check(&invocation, &config.args)?;
-    let mut data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    // Cargo metadata and the runtime context are independent: neither reads
+    // the other's result. They overlap, and their results are consumed in the
+    // original order, so the first reported error is unchanged.
+    let (data, context_result, metadata_phase) = std::thread::scope(|scope| {
+        let pending = scope.spawn(|| metadata(&config.workspace, &config.args, &config.cargo));
+        let context_phase = diagnostics.phase(Phase::RuntimeContext);
+        let context_result = context(config, engine.as_ref(), &diagnostics);
+        drop(context_phase);
+        let metadata_phase = diagnostics.phase(Phase::Metadata);
+        let data = pending
+            .join()
+            .unwrap_or_else(|_| Err(Error::new("SAIL3103", "Cargo metadata reader failed")));
+        (data, context_result, metadata_phase)
+    });
+    let mut data = data?;
     data["sail_invocation_directory"] = Value::String(invocation.to_string_lossy().into_owned());
     data["sail_cache_directory"] = Value::String(config.cache.to_string_lossy().into_owned());
     let workspace_root = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
@@ -1655,13 +1750,12 @@ pub(crate) fn run_engine(
         ));
     }
     drop(metadata_phase);
-    let context_phase = diagnostics.phase(Phase::RuntimeContext);
     let Context {
         hash,
         compiler_hash,
         mut sysroots,
-    } = context(config, engine.as_ref(), &diagnostics)?;
-    drop(context_phase);
+        helper: helper_closure,
+    } = context_result?;
 
     let run_id = format!(
         "{}-{}",
@@ -1752,8 +1846,6 @@ pub(crate) fn run_engine(
     let phase = diagnostics.phase(Phase::GuardAbsent);
     let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
     drop(phase);
-    let phase = diagnostics.phase(Phase::GuardWatch);
-    let monitor = super::observe::Observation::begin(&before, &extras, &config.cache);
     // Proof-time kernel coverage spans the selected targets' dependency
     // closure. Cargo compiles nothing outside it for this selection, which is
     // checked against Cargo's own unit records after every invocation; the
@@ -1765,11 +1857,19 @@ pub(crate) fn run_engine(
     let units_in_scope = |paths: &Paths| {
         artifacts_within(paths, scope.as_ref()) && artifacts_within(paths, script_scope.as_ref())
     };
-    drop(phase);
-    let phase = diagnostics.phase(Phase::GuardCoherent);
-    let mut coherent =
-        super::coherent::Guard::begin(&super::input::closure_scope(&before, &data, scope.as_ref()));
-    drop(phase);
+    let coverage = super::input::closure_scope(&before, &data, scope.as_ref());
+    // The change watcher and the coherent lease owner are independent; both
+    // are complete before the monitored snapshot below, as before.
+    let (monitor, mut coherent) = std::thread::scope(|threads| {
+        let monitor =
+            threads.spawn(|| super::observe::Observation::begin(&before, &extras, &config.cache));
+        let phase = diagnostics.phase(Phase::GuardCoherent);
+        let coherent = super::coherent::Guard::begin_using(&coverage, helper_closure.as_ref());
+        drop(phase);
+        let _phase = diagnostics.phase(Phase::GuardWatch);
+        (monitor.join(), coherent)
+    });
+    let monitor = monitor.map_err(|_| Error::new("SAIL3104", "input watcher setup failed"))?;
     drop(guards);
     let monitored_snapshot = diagnostics.phase(Phase::MonitoredSnapshot);
     // Establish the revision again after the watcher is live, closing the setup
@@ -1802,6 +1902,12 @@ pub(crate) fn run_engine(
         "source_observation":source_state.is_file()
     }));
     drop(input_barrier);
+    // The solver's provenance digest is a complete read that overlaps target
+    // cleanup; the final runtime check still reads the solver again.
+    let solver_digest = {
+        let z3 = config.z3.clone();
+        std::thread::spawn(move || file_digest(&z3))
+    };
     let cleanup = diagnostics.phase(Phase::TargetCleanup);
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
@@ -1844,7 +1950,9 @@ pub(crate) fn run_engine(
         run_id: run_id.clone(),
         args: config.args.clone(),
         z3: config.z3.clone(),
-        z3_sha256: file_digest(&config.z3)?,
+        z3_sha256: solver_digest
+            .join()
+            .unwrap_or_else(|_| file_digest(&config.z3))?,
         daemon: config.socket.is_some(),
         sidecars: paths.run.join("sidecars"),
         invocations: paths.run.join("invocations"),
@@ -1894,11 +2002,23 @@ pub(crate) fn run_engine(
     drop(seal);
     let invocation_phase = diagnostics.phase(Phase::Invocation);
     let mut exit = invoke(config, &paths, err)?;
+    drop(invocation_phase);
+    let records_phase = diagnostics.phase(Phase::TargetRecords);
     if !units_in_scope(&paths) {
         coherent.refuse_scope();
     }
-    let (mut targets, missing) = target_records(&paths, &data, &hash, forced, &expected)?;
+    // The post-run Cargo metadata starts once the verifier invocation has
+    // ended and overlaps the receipt checks, which never read it. A retry
+    // discards it and reads metadata again after its own invocation.
+    let (records, after_metadata) = std::thread::scope(|threads| {
+        let after = threads.spawn(|| metadata(&config.workspace, &config.args, &config.cargo));
+        let records = target_records(&paths, &data, &hash, forced, &expected);
+        (records, after.join())
+    });
+    let mut after_metadata = Some(after_metadata);
+    let (mut targets, missing) = records?;
     if exit == Some(0) && !missing.is_empty() {
+        after_metadata = None;
         let mut retry_packages = missing.into_iter().collect::<Vec<_>>();
         if script_bootstrap.is_some() {
             // The retry replaces the artifact journal. Preserve independent
@@ -1929,7 +2049,7 @@ pub(crate) fn run_engine(
             ));
         }
     }
-    drop(invocation_phase);
+    drop(records_phase);
     let post_observations = diagnostics.phase(Phase::PostObservations);
     super::build_inputs::update(
         &paths.build_inputs,
@@ -1943,7 +2063,12 @@ pub(crate) fn run_engine(
     after_extras.extend(script_roots);
     drop(post_observations);
     let post_metadata = diagnostics.phase(Phase::PostMetadata);
-    let mut after_data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    let mut after_data = match after_metadata {
+        Some(after) => {
+            after.unwrap_or_else(|_| Err(Error::new("SAIL3103", "Cargo metadata reader failed")))?
+        }
+        None => metadata(&config.workspace, &config.args, &config.cargo)?,
+    };
     drop(post_metadata);
     let post_snapshot = diagnostics.phase(Phase::PostSnapshot);
     record_observation_layout(&mut after_data, runtime.engine.as_ref());

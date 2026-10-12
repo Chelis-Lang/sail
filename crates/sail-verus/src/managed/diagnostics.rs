@@ -51,6 +51,7 @@ pub(super) enum Phase {
     TargetCleanup,
     InvocationSeal,
     Invocation,
+    TargetRecords,
     PostObservations,
     PostMetadata,
     PostSnapshot,

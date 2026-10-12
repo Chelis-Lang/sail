@@ -15,6 +15,11 @@ mod kernel_leases;
 mod kernel_mounts;
 #[cfg(target_os = "linux")]
 mod lease;
+#[cfg(target_os = "linux")]
+use lease::HelperClosure;
+/// The helper closure exists only where the Linux lease helper does.
+#[cfg(not(target_os = "linux"))]
+type HelperClosure = ();
 mod observe;
 #[cfg(target_os = "linux")]
 mod precise;

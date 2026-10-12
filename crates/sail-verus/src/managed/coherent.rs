@@ -29,13 +29,21 @@ pub(super) struct Guard {
     failed_barrier: Option<Barrier>,
 }
 impl Guard {
+    #[cfg(test)]
     pub(super) fn begin(snapshot: &InputSnapshot) -> Self {
+        Self::begin_using(snapshot, None)
+    }
+    /// `helper` is this run's earlier helper closure probe, if any.
+    pub(super) fn begin_using(
+        snapshot: &InputSnapshot,
+        helper: Option<&super::HelperClosure>,
+    ) -> Self {
         #[cfg(target_os = "linux")]
         {
             let observer = Observer::begin(&snapshot.roots, &snapshot.excluded);
             let lease = observer
                 .as_ref()
-                .and_then(|o| ReadLease::acquire(&o.files()));
+                .and_then(|o| ReadLease::acquire_using(&o.files(), helper));
             let failure = if observer.is_none() {
                 Some("native-observer-setup-unavailable")
             } else if lease.is_none() {
@@ -52,7 +60,7 @@ impl Guard {
         }
         #[cfg(not(target_os = "linux"))]
         {
-            let _ = snapshot;
+            let _ = (snapshot, helper);
             Self {
                 failure: None,
                 failed_barrier: None,

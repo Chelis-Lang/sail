@@ -198,15 +198,25 @@ pub(super) struct Baseline {
 }
 
 impl Baseline {
+    #[cfg(test)]
     pub(super) fn begin(
         sysroots: &BTreeSet<PathBuf>,
         already_hashed: impl Fn(&Path) -> bool,
+    ) -> Self {
+        Self::begin_using(sysroots, already_hashed, None)
+    }
+    /// `helper` is this run's earlier helper closure probe, if any.
+    pub(super) fn begin_using(
+        sysroots: &BTreeSet<PathBuf>,
+        already_hashed: impl Fn(&Path) -> bool,
+        helper: Option<&super::HelperClosure>,
     ) -> Self {
         Self::begin_with(
             sysroots,
             already_hashed,
             #[cfg(target_os = "linux")]
             None,
+            helper,
         )
     }
     #[cfg(target_os = "linux")]
@@ -224,7 +234,7 @@ impl Baseline {
             return None;
         }
         let cancellation = Cancellation { stop, started };
-        let mut owner = Self::begin_with(sysroots, |_| false, Some(&cancellation));
+        let mut owner = Self::begin_with(sysroots, |_| false, Some(&cancellation), None);
         (owner.complete()
             && !cancellation.cancelled()
             && owner.retained_bytes()? <= 16 * 1024 * 1024)
@@ -234,6 +244,7 @@ impl Baseline {
         sysroots: &BTreeSet<PathBuf>,
         already_hashed: impl Fn(&Path) -> bool,
         #[cfg(target_os = "linux")] bounded: Option<&Cancellation>,
+        helper: Option<&super::HelperClosure>,
     ) -> Self {
         #[cfg(target_os = "linux")]
         let observe = |roots: &[PathBuf], excluded: &[PathBuf]| {
@@ -310,7 +321,7 @@ impl Baseline {
                         bounded.started,
                     )?
                 } else {
-                    ReadLease::acquire(&found.paths)?
+                    ReadLease::acquire_using(&found.paths, helper)?
                 };
                 (inventory_controlled(sysroots, bounded.is_some(), bounded) == found).then_some(
                     Protection {
@@ -328,6 +339,7 @@ impl Baseline {
         }
         #[cfg(not(target_os = "linux"))]
         {
+            let _ = helper;
             baseline
         }
     }
