@@ -124,3 +124,15 @@ native checks include the complete affected tests, all-target strict checks,
 fresh combined gate/solver, original two-warmup real-project benchmark and the
 unchanged whole repair fixture. No third warmup, oracle change, proof retry or
 performance credit is included.
+
+The observed runtime size requires at least 61,733,520.4 bytes/second
+(about 58.87 MiB/second) to finish a single hash pass within its cooperative
+30-second budget, before package inputs or native acquisition work. Two passes
+read at least 3,704,011,224 runtime bytes. The 4 GiB aggregate cap leaves
+2,442,961,684 bytes for other guarded inputs; the largest observed runtime file
+is 68,877,968 bytes below the per-file cap. These size calculations establish
+byte admission only. They do not establish emulated storage throughput,
+30-second viability, or original 120/600-second performance. Blocking filesystem
+calls can exceed the cooperative budget; supported-script acquisition may
+refuse. The scriptless workload avoids this extra acquisition entirely. The
+original whole workload must decide viability after native controls pass.

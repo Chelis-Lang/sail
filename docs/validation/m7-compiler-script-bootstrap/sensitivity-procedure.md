@@ -1,7 +1,9 @@
 # Ordinary-script bootstrap sensitivity procedure
 
-This is a file-only execution plan. The root coordinator owns every native
-command. Run it after the corrected source passes its complete affected checks;
+The [thin native caller](sensitivity-run.py) implements this procedure without
+another process-ownership implementation. Nine [pure controls](test-sensitivity-run.py)
+passed on the host; no native compilation or sensitivity phase has run. The root
+coordinator owns every native command. Run it after the corrected source passes its complete affected checks;
 the existing failed source scopes retain their FAIL status. The planned outcome
 is a fresh positive/negative/restored-positive component scope, not a product or
 benchmark qualification.
@@ -51,8 +53,10 @@ argv. Execute that immutable copy:
 1. Positive source: require exit 0, that exact test case, and exactly one passed,
    zero failed. Record complete owned closure before mutation.
 2. After `require_idle()` and independent source/protected/birth checks, apply
-   `git apply --check` and then the immutable
-   [disable-only-emission patch](disable-publication.patch). Its SHA is bound in
+   the immutable [disable-only-emission patch](disable-publication.patch).
+   The caller recomputes its complete unified diff from exactly one emission
+   replacement and requires byte equality with that frozen patch before writing
+   the one changed file. Its SHA is bound in
    [source.json](source.json). Verify the single changed file byte-for-byte
    against the patched frozen original; every other source member is unchanged.
    Compile, retain the new actual ELF under a different phase directory and run
@@ -76,3 +80,32 @@ outcomes into the new scope. Full affected tests, all-target strict checks and
 fresh combined gate/solver remain separate mandatory checks. The unchanged
 original repair fixture and original two-warmup real benchmark must measure the
 actual integrated product before any correctness or speed claim.
+
+The root stages a NEW outside-target scope with `source.tar`,
+`source-inventory.json`, `protected.json`, `disable-publication.patch`, the exact
+pinned `local-combined-gates.py`, `config.json` and `grant.json`. Config and grant
+bind the full revision, NEW absent source path, existing target path, PID1 birth,
+externally inspected container ID/image/birth, and SHA-256 of the archive,
+inventory, protected inventory, patch and this controller. The grant has
+`status: GRANTED`, `scope: ordinary-script-bootstrap-sensitivity` and the actual
+root-owned preflight `holder_audit` with empty `survivors` and `unavailable`.
+Protected files include the current engine, products and prior tested images.
+The caller verifies/extracts the entire source, creates only its external target
+symlink and checks all bindings around every compiler/test phase. Host transport
+must retain its own before/after Docker identity checks; native PID1 checks do
+not independently obtain Docker IDs. Source-derived helper code is imported
+only after exact archive extraction verification.
+
+```sh
+python3 sensitivity-run.py --root "$SAIL_BOOTSTRAP_SCOPE"
+```
+
+No source mutation occurs in exceptional finalization. A failed negative scope
+may deliberately leave the exact negative source in place, marked unrestored;
+an independent owner audit is required before its disposal/restoration. The
+existing `cancel_native` route can use this caller's saved birth-bound
+`owner.json` for cooperative interruption. `primary.json` precedes final
+source/protected checks; `result.json` records any closure failure. The three
+retained images have a combined 512 MiB cap, and capture reads have a 32 MiB cap.
+The optional certificate's production source remains unchanged by this caller
+commit.

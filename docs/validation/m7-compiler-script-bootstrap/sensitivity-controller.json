@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "scope": "file-only executable on/off/on caller; no native Cargo or sensitivity run",
+  "status": "nine pure host controls PASS; native execution pending root grant",
+  "controller_sha256": "368b72ac1cfe538cb4667784a6b36d923de5ad86294b84535409d54e18f3a84d",
+  "pure_controls_sha256": "4d7e32fe2bd38aef223bfe555ed36f42188a451fc60411f9a757e2b96cf47a63",
+  "lifecycle_helper": "scripts/local-combined-gates.py",
+  "lifecycle_helper_sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc",
+  "patch_sha256": "e69485c680115222e5db2c7ec8d68af105fb3cc12ccd0ea0b08971eb44c193c9",
+  "production_source_manifest": "docs/validation/m7-compiler-script-bootstrap/source.json",
+  "production_source_sha256": {
+    "crates/sail-verus/src/managed/build_inputs_family.rs": "caef3ba1fa9335237ca2880b61939c634801cea79aea943430a592db9d78d6c8",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "2874cfbf2934da55b23c0b8417b72b3823407c345267ebef7491f6be5c2842b5",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "931dbf03c15eaf90e1ced1005b6bee93218393c9b41136fcf8ee8e09d7815788",
+    "crates/sail-verus/src/managed/runner.rs": "9a9be06d242c3a0ee7068700146952c05215f1cc57334c222d57118a331341e8",
+    "crates/sail-verus/src/managed/source_inputs.rs": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+  },
+  "caps": {
+    "compiler_seconds": 600,
+    "test_seconds": 180,
+    "capture_read_bytes": 33554432,
+    "compiler_message_bytes": 1048576,
+    "all_retained_elf_bytes": 536870912
+  },
+  "unchanged": [
+    "exact original real-Cargo positive assertion",
+    "inner Cargo GNU timeout60 TERM plus2 KILL",
+    "production source except isolated remove-only-emission counterfactual",
+    "proof guard/currentness/receipts/original120/600 performance oracles"
+  ],
+  "ownership": [
+    "external root-owned target/container preflight grant",
+    "existing OwnedPhaseRunner and sticky Closure, no new process ownership",
+    "exact current PID1 birth and all-source/protected checks around every phase",
+    "fresh per-phase compile record and copied actual ELF executed before overwrite",
+    "uncertainty or failure stops: no automatic source restoration or subsequent actor"
+  ],
+  "runtime_size_only": {
+    "observed_runtime_bytes": 1852005612,
+    "minimum_bytes_per_second_for_30_seconds": 61733520.4,
+    "runtime_bytes_two_passes": 3704011224,
+    "aggregate_headroom_bytes": 2442961684,
+    "largest_file_headroom_bytes": 68877968,
+    "scope": "static arithmetic only; no measured throughput, construction peak, phase viability or benchmark acceptance"
+  }
+}
