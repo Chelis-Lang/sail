@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "selected b89546c complete gate, original solver, ordinary release and private installation PASS; original repair running and real-project benchmark pending",
+  "status": "selected b89546c complete gate, original solver, ordinary release/private+acceptance installation and original repair PASS; whole original real-project benchmark running",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -88,9 +88,8 @@
   "control_status": "selected real-Cargo retry/export/original-input-barrier control PASS4.775s; complete658 workspace and41 solver PASS; historical failures unchanged",
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
-    "original fresh repair fixture terminal outcome",
-    "acceptance product byte installation",
-    "unchanged original real-project warmups and benchmark"
+    "unchanged original real-project warmups and three-round benchmark terminal result",
+    "fresh full-reader qualification on current product"
   ],
   "fixture_correction": {
     "scope": "test-only implicit root membership with existing dependency exclusions, plus explicit non-membership assertions",
@@ -470,7 +469,7 @@
     "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
     "native_validation": "complete local gate PASS: 658/658 workspace tests and all remaining steps; original solver PASS: 41/41",
-    "product_and_benchmark_validation": "ordinary release and private byte installation PASS; original repair running; unchanged real-project warmups and benchmark pending",
+    "product_and_benchmark_validation": "ordinary release/private+acceptance installation and fresh original120/30/5repair PASS; unchanged original3round real-project benchmark running with no outcome or samples claimed",
     "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
     "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a"
   },
@@ -662,5 +661,172 @@
     "installation_only": true,
     "source_modified": false,
     "limit": "ordinary build and byte installation only; no repair, reader, bootstrap historical cause or benchmark credit"
+  },
+  "original_repair_validation": {
+    "status": "PASS",
+    "scope": "Complete original CLI/MCP repair; scoped known-group closure only",
+    "source_commit": "b89546cbf64788976803b832dbfa214575c9ff7b",
+    "product_grant_sha256": "e84c78a85bab5d20fe0ec8876c62da0f63b195c9164165eb0e64d0891780bbcb",
+    "original_limits": [
+      120,
+      30,
+      5
+    ],
+    "inner_elapsed_seconds": 102.47608738000054,
+    "native_phase_elapsed_seconds": 106.72492209099983,
+    "host_elapsed_seconds": 112.975031,
+    "operations": 335,
+    "operation_count_limit": "poll count for this functional fixture;335 vs historical325 is not a benchmark score",
+    "progress_failures": [],
+    "cleanup_errors": [],
+    "timing_wrapper_used": false,
+    "original_fixture_sha256": "9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7",
+    "native_controller_matches_c2_only_literal_revision_replacement": true,
+    "raw": {
+      "controller.json": {
+        "bytes": 1267,
+        "sha256": "b8531a2aaf38640ec4cbc9b688e81a5dd987fe5cd69b1d2608787ca3e5fc5376"
+      },
+      "result.json": {
+        "bytes": 48300,
+        "sha256": "985769548f949e8ab7d8b4a6da363dace428c0cf8f4a888788b0d1236d06bcd7"
+      },
+      "native-controller.py": {
+        "bytes": 3245,
+        "sha256": "92125e77079e33084ee49ceb21c8157d700037c8f4bf66b0575afb1429e7eed8"
+      },
+      "original-repair.log": {
+        "bytes": 117,
+        "sha256": "c04243bf90f20daea45899b082177a73787ca202e169d6264908d59856c494b7"
+      },
+      "native-raw.tar.gz": {
+        "bytes": 75419,
+        "sha256": "b18808ce60f9e2ddcc19bd16dcf01bfd2bbf4b027af4efaf8108427cdcb92c4b"
+      }
+    },
+    "same_container_identity": true,
+    "source_product_runtime_final_checks": "original protected/source/engine/PID1/product checks in owned phase runner; unchanged after successful completion",
+    "native_uncertainty": [],
+    "closure": "known owned groups closed",
+    "known_group_survivors": 0,
+    "known_group_unavailable": 0,
+    "limit": "original functional fixture only; no full-reader latency, real-project benchmark or overall M7 acceptance"
+  },
+  "acceptance_installation": {
+    "status": "PASS",
+    "scope": "Byte installation only; no Cargo, proof, prewarm, cache or receipt copies",
+    "source_commit": "b89546cbf64788976803b832dbfa214575c9ff7b",
+    "elapsed_seconds": 4.762627541,
+    "raw": {
+      "controller.json": {
+        "bytes": 11924,
+        "sha256": "ff401172fbb27948807416be829ca8ee9c36d45e2c250126dc05690a091a8669"
+      },
+      "execution_product_grant.json": {
+        "bytes": 6792,
+        "sha256": "655ace601d885ce9ee22aa1892181e7867df703de5332dd44f0e1d5873fc559b"
+      }
+    },
+    "producer_grant_sha256": "e84c78a85bab5d20fe0ec8876c62da0f63b195c9164165eb0e64d0891780bbcb",
+    "controller_source_sha256": "ef90e9218050f0a77f911fd951fd359ecd095a4668f805217d07f0d89dcf126f",
+    "helper_sha256": "b79112b5674b00dc3d16df8ca577c5873b471d48b2e41e3173f993a2ec09df90",
+    "source_archive": {
+      "sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a",
+      "bytes": 27484160,
+      "members": 1633,
+      "expanded_regular_bytes": 26260832,
+      "installer_sha256": "f2d52accdb735a14de0e8ae09f6297271391f652db45622320a133fed23f0ff0"
+    },
+    "source_inventory_sha256": "0a409075a0dbdc3ce80b29463d845f57655f374400d559410c70401813ffbda2",
+    "source_archive_after_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a",
+    "source_verifier_sha256": "8080340128605a5f79721c939a4c5658b249fe2e17fcdb8b5672688fcd7a0cc8",
+    "commands": [
+      {
+        "name": "destination-check",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "create-staging",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "source-extraction",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "source-inventory-copy",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "source-verification",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "receive-sail",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "stage-sail",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "receive-sail-z3",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "stage-sail-z3",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "expected-copy",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "owned-install",
+        "status": "PASS",
+        "exit_code": 0
+      },
+      {
+        "name": "source-verification-after",
+        "status": "PASS",
+        "exit_code": 0
+      }
+    ],
+    "producer_birth_equal": true,
+    "acceptance_birth_equal": true,
+    "producer_product_equal": true,
+    "acceptance_product_byteidentical": true,
+    "installed_files": {
+      "sail": {
+        "bytes": 76777096,
+        "sha256": "10a7c47a4242f7fa271a54737e3341a9600216e261ed24fad1657dc813823f21",
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      },
+      "sail-z3": {
+        "bytes": 11000968,
+        "sha256": "da21cf60b15db73d29c4885f1993e1013f2bcc5f09886197324ee8eddc334e80",
+        "uid": 0,
+        "gid": 0,
+        "mode": "0700"
+      }
+    },
+    "execution_fsuid": 0,
+    "runtime_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "runtime_files_equal_to_producer": true,
+    "installation_only": true,
+    "source_modified": false,
+    "limit": "byte installation only; no Cargo, proof, prewarm or receipt copying"
   }
 }
