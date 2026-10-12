@@ -73,6 +73,8 @@ impl Bootstrap {
         let packages = data["packages"].as_array()?;
         (packages.len() <= 128).then_some(())?;
         Self::eligible_workload(data).then_some(())?;
+        // Unrepresentable effective inputs cannot be certified as absent.
+        let environment = environment()?;
         let invocation = Path::new(data["sail_invocation_directory"].as_str()?);
         let mut roots = Vec::new();
         for package in packages {
@@ -128,7 +130,6 @@ impl Bootstrap {
             .retained_bytes()?
             .checked_add(lease.retained_bytes()?)?;
         (retained <= 32 * 1024 * 1024).then_some(())?;
-        let environment = environment()?;
         let hashes = hashes(&files, &stop)?;
         (observer.clean() && lease.clean()).then_some(())?;
         let owner = Self {
@@ -478,9 +479,8 @@ fn environment() -> Option<std::collections::BTreeMap<String, String>> {
     let mut result = std::collections::BTreeMap::new();
     let mut bytes = 0usize;
     for (key, value) in std::env::vars_os() {
-        let (Ok(key), Ok(value)) = (key.into_string(), value.into_string()) else {
-            continue;
-        };
+        let key = key.into_string().ok()?;
+        let value = value.into_string().ok()?;
         bytes = bytes
             .checked_add(key.capacity())?
             .checked_add(value.capacity())?;
