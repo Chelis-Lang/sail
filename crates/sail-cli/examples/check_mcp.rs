@@ -7,7 +7,7 @@
 //! It starts `<sail> mcp`, sends `initialize`, `notifications/initialized`,
 //! `tools/list` and `tools/call verify {"project_dir": <project-dir>}`, then
 //! closes stdin. It checks that:
-//! - the handshake succeeds and the exact twelve compatibility, job and proof tools
+//! - the handshake succeeds and the exact fifteen compatibility, job and proof tools
 //!   have the expected input contracts;
 //! - the call succeeds and returns a schema-v1 report;
 //! - every function's verdict and tier equal those in `<sail.json>` (the
@@ -65,7 +65,7 @@ fn exchange(sail: &str, project: &str) -> Result<Vec<Value>, String> {
     Ok(out)
 }
 
-const TOOL_NAMES: [&str; 12] = [
+const TOOL_NAMES: [&str; 15] = [
     "verify",
     "counterexample",
     "cached_result",
@@ -77,11 +77,15 @@ const TOOL_NAMES: [&str; 12] = [
     "verification_events",
     "explain_failure",
     "compare_verification",
+    "save_baseline",
+    "list_baselines",
+    "get_baseline",
     "start_repair_validation",
 ];
 
-fn proof_schemas() -> [(usize, Value); 4] {
+fn proof_schemas() -> [(usize, Value); 7] {
     let string = || json!({"type":"string","minLength":1});
+    let baseline = || json!({"type":"string","minLength":1,"maxLength":80,"pattern":"^[A-Za-z0-9_.-]+$","not":{"enum":[".",".."]}});
     [
         (
             8,
@@ -93,10 +97,22 @@ fn proof_schemas() -> [(usize, Value); 4] {
         ),
         (
             10,
-            json!({"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":string()}}),
+            json!({"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":baseline()}}),
         ),
         (
             11,
+            json!({"type":"object","additionalProperties":false,"required":["job_id","name"],"properties":{"job_id":string(),"name":baseline()}}),
+        ),
+        (
+            12,
+            json!({"type":"object","additionalProperties":false,"properties":{}}),
+        ),
+        (
+            13,
+            json!({"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":baseline()}}),
+        ),
+        (
+            14,
             json!({"type":"object","additionalProperties":false,"required":["package","kind","function","engine"],"properties":{"project_dir":string(),"package":string(),"kind":{"type":"string","enum":["lib","bin"]},"target":string(),"function":string(),"engine":{"type":"string","enum":["interactive"]},"cargo_args":{"type":"array","items":{"type":"string"}},"verus_args":{"type":"array","items":{"type":"string"}}}}),
         ),
     ]
@@ -227,10 +243,26 @@ mod tests {
         negative_cursor[8]["inputSchema"]["properties"]["after"]["minimum"] = json!(-1);
         assert!(check_tools(&negative_cursor).is_err());
         let mut implicit_engine = original.clone();
-        implicit_engine[11]["inputSchema"]["required"] = json!(["package", "kind", "function"]);
+        implicit_engine[14]["inputSchema"]["required"] = json!(["package", "kind", "function"]);
         assert!(check_tools(&implicit_engine).is_err());
         let mut engine = original;
         engine[4]["inputSchema"]["properties"]["engine"]["enum"] = json!(["stock"]);
         assert!(check_tools(&engine).is_err());
+    }
+
+    #[test]
+    fn baseline_contracts_require_literal_names_and_exact_mutation_identity() {
+        let original = sail_mcp::tools::definitions();
+        for index in [11, 13] {
+            let mut unbounded = original.clone();
+            unbounded[index]["inputSchema"]["properties"]["name"] = json!({"type":"string"});
+            assert!(check_tools(&unbounded).is_err());
+        }
+        let mut missing_job = original.clone();
+        missing_job[11]["inputSchema"]["required"] = json!(["name"]);
+        assert!(check_tools(&missing_job).is_err());
+        let mut override_scope = original;
+        override_scope[12]["inputSchema"]["properties"]["project_dir"] = json!({"type":"string"});
+        assert!(check_tools(&override_scope).is_err());
     }
 }
