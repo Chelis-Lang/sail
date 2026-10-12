@@ -58,6 +58,9 @@ Optional ordinary-build recovery passes its local controls and installed repair
 fixture. The earlier c2 [real-project benchmark](docs/validation/m7-benchmark-c2a4b23-warmup-terminal.md)
 fails Current warmup admission despite exit-zero verification and produces no
 measured samples. Current real-project validation remains unqualified.
+The current b895 [whole benchmark](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+also fails admission: a later repair verifies but its full evidence is Historical.
+It has zero measured samples; the cause remains unestablished.
 It can establish dependency contracts after initial regeneration, but never
 promotes an Unknown proof or replaces full verification. Unsupported coverage
 retains original cleaning. See [build recovery](docs/managed-cold-start.md).
