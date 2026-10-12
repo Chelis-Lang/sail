@@ -173,3 +173,13 @@ controls remain unchanged. Native tests, strict checks, complete product gate
 and unchanged real-project warmups/benchmark are pending. The
 [source record](scheduling-recovery.json) binds sources and private metadata
 digests; no latency, speedup or M7 acceptance is claimed.
+
+The later scheduling-recovery follow-up remains unqualified. Its
+[existing source and attempted-validation record](scheduling-recovery.json)
+preserves the initial test namespace compilation failure and two complete
+workspace failures (654/655 passing). The latest real Cargo fixture passes its
+graph-membership assertion, then Cargo refuses to clean the pre-created target
+because `CACHEDIR.TAG` is missing or invalid. Original ten bootstrap controls
+pass; the new fixture's later retry/export/barrier assertions and solver suite
+are not completed in that scope. A narrow fixture repair is pending, with no
+production guard, oracle, deadline or performance claim changed.
