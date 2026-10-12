@@ -67,6 +67,22 @@ class Controls(unittest.TestCase):
             self.assertEqual(target.stat().st_mode & 0o777, 0o600)
             self.assertEqual(hashlib.sha256(target.read_bytes()).hexdigest(), row["sha256"])
 
+
+    def test_bootstrap_fixed_rows_share_setup_retention_and_refuse_private_fields(self):
+        row = {"kind": "managed-script-bootstrap", "stage": "publish-emission",
+               "outcome": "attempted", "pid": 4}
+        data = json.dumps(setup()).encode() + b"\n" + json.dumps(row).encode() + b"\n"
+        self.assertEqual(diagnostic.validate(data, False), 2)
+        self.assertEqual(diagnostic.validate(json.dumps(row).encode(), False), 1)
+        for key, value in (("path", "/private"), ("stage", "unknown"),
+                           ("outcome", "published"), ("pid", True)):
+            changed = dict(row)
+            changed[key] = value
+            with self.assertRaises(AssertionError):
+                diagnostic.validate(json.dumps(changed).encode(), False)
+        with self.assertRaises(AssertionError):
+            diagnostic.validate((json.dumps(row).encode() + b"\n") * 65, False)
+
     def test_schema_refuses_private_payload_duplicates_nonfinite_and_boolean_numbers(self):
         cases = []
         value = rpc()

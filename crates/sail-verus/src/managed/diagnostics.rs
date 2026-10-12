@@ -61,6 +61,100 @@ struct Record {
     elapsed_ms: f64,
 }
 
+/// Fixed bootstrap stage labels carry no package, path or environment data.
+#[derive(Clone, Copy, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum BootstrapStage {
+    OwnerEligibility,
+    OwnerEnvironment,
+    OwnerRoots,
+    OwnerObserver,
+    OwnerLease,
+    OwnerRetained,
+    OwnerHashes,
+    OwnerConfiguration,
+    OwnerBarriers,
+    OwnerLedger,
+    OwnerComplete,
+    InitialRuntime,
+    FinalRuntime,
+    PublishLedger,
+    PublishJournal,
+    PublishRecordSet,
+    PublishCancellation,
+    PublishRecordBudget,
+    RecordBinding,
+    RecordPackage,
+    RecordDeclarations,
+    RecordDigest,
+    RecordEnvironment,
+    RecordExecution,
+    RecordCompilation,
+    RecordSource,
+    RecordBinary,
+    RecordAliases,
+    RecordDepInfo,
+    RecordInputs,
+    RecordCompilerEnvironment,
+    PublishHashes,
+    PublishOutputs,
+    PublishEnvironment,
+    PublishObserver,
+    PublishLease,
+    PublishEmission,
+}
+
+/// An observation never grants authority; emission is only an attempted write.
+#[derive(Clone, Copy, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum BootstrapOutcome {
+    Ready,
+    Refused,
+    Skipped,
+    Attempted,
+}
+
+#[derive(serde::Serialize)]
+struct BootstrapRecord {
+    kind: &'static str,
+    stage: BootstrapStage,
+    outcome: BootstrapOutcome,
+    pid: u32,
+}
+
+/// Record only the stage at which an attempt ended, including early returns.
+pub(super) struct BootstrapAttempt<'a> {
+    diagnostics: Option<&'a Diagnostics>,
+    stage: BootstrapStage,
+    outcome: BootstrapOutcome,
+}
+
+impl<'a> BootstrapAttempt<'a> {
+    pub(super) fn new(diagnostics: Option<&'a Diagnostics>, stage: BootstrapStage) -> Self {
+        Self {
+            diagnostics,
+            stage,
+            outcome: BootstrapOutcome::Refused,
+        }
+    }
+
+    pub(super) fn stage(&mut self, stage: BootstrapStage) {
+        self.stage = stage;
+    }
+
+    pub(super) fn outcome(&mut self, outcome: BootstrapOutcome) {
+        self.outcome = outcome;
+    }
+}
+
+impl Drop for BootstrapAttempt<'_> {
+    fn drop(&mut self) {
+        if let Some(diagnostics) = self.diagnostics {
+            diagnostics.bootstrap(self.stage, self.outcome);
+        }
+    }
+}
+
 struct Sink {
     file: File,
     bytes: usize,
@@ -86,6 +180,11 @@ impl Diagnostics {
             &Path::new(&path)
                 .with_extension(format!("setup-{}-{serial}.jsonl", std::process::id())),
         )
+    }
+
+    #[cfg(all(test, target_os = "linux"))]
+    pub(in crate::managed) fn for_test(path: &Path) -> Self {
+        Self::create_at(path)
     }
 
     fn create_at(path: &Path) -> Self {
@@ -123,19 +222,36 @@ impl Diagnostics {
         let Some(origin) = self.origin else {
             return;
         };
+        self.emit(|| {
+            serde_json::to_vec(&Record {
+                kind: "managed-setup-phase",
+                phase,
+                pid: std::process::id(),
+                started_ms: started.duration_since(origin).as_secs_f64() * 1000.0,
+                elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
+            })
+        });
+    }
+
+    pub(super) fn bootstrap(&self, stage: BootstrapStage, outcome: BootstrapOutcome) {
+        self.emit(|| {
+            serde_json::to_vec(&BootstrapRecord {
+                kind: "managed-script-bootstrap",
+                stage,
+                outcome,
+                pid: std::process::id(),
+            })
+        });
+    }
+
+    fn emit(&self, encode: impl FnOnce() -> serde_json::Result<Vec<u8>>) {
         let Ok(mut slot) = self.sink.try_borrow_mut() else {
             return;
         };
         let Some(sink) = slot.as_mut() else {
             return;
         };
-        let Ok(mut row) = serde_json::to_vec(&Record {
-            kind: "managed-setup-phase",
-            phase,
-            pid: std::process::id(),
-            started_ms: started.duration_since(origin).as_secs_f64() * 1000.0,
-            elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
-        }) else {
+        let Ok(mut row) = encode() else {
             *slot = None;
             return;
         };
@@ -355,6 +471,69 @@ mod tests {
         assert_eq!(std::fs::read(&path)?, [] as [u8; 0]);
         drop(diagnostics.phase(Phase::Metadata));
         assert_ne!(std::fs::read(&path)?, [] as [u8; 0]);
+        drop(diagnostics);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+    #[test]
+    fn bootstrap_first_refusal_and_disabled_observation_preserve_original_outcome() -> TestResult {
+        let root = fixture()?;
+        let path = root.join("bootstrap");
+        let diagnostics = Diagnostics::create_at(&path);
+        let refuse = |diagnostics: Option<&Diagnostics>| -> Option<()> {
+            let mut observation = BootstrapAttempt::new(diagnostics, BootstrapStage::PublishLedger);
+            observation.stage(BootstrapStage::PublishJournal);
+            None::<()>?;
+            observation.stage(BootstrapStage::PublishEmission);
+            Some(())
+        };
+        assert_eq!(refuse(None), None);
+        let disabled = Diagnostics::default();
+        assert_eq!(refuse(Some(&disabled)), None);
+        let encoded = std::cell::Cell::new(false);
+        disabled.emit(|| {
+            encoded.set(true);
+            serde_json::to_vec(&true)
+        });
+        assert!(
+            !encoded.get(),
+            "disabled diagnostics must not serialize a row"
+        );
+        assert_eq!(refuse(Some(&diagnostics)), None);
+        let rows: Vec<serde_json::Value> = std::fs::read_to_string(&path)?
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<Result<_, _>>()?;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0]["kind"], "managed-script-bootstrap");
+        assert_eq!(rows[0]["stage"], "publish-journal");
+        assert_eq!(rows[0]["outcome"], "refused");
+        assert_eq!(rows[0].as_object().map(serde_json::Map::len), Some(4));
+        drop(diagnostics);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn bootstrap_rows_share_original_limits_and_busy_sink_refuses_observation() -> TestResult {
+        let root = fixture()?;
+        let path = root.join("bootstrap-limits");
+        let diagnostics = Diagnostics::create_at(&path);
+        {
+            let _borrowed = diagnostics.sink.borrow_mut();
+            diagnostics.bootstrap(BootstrapStage::OwnerComplete, BootstrapOutcome::Ready);
+        }
+        assert_eq!(std::fs::metadata(&path)?.len(), 0);
+        for _ in 0..=MAX_ROWS {
+            diagnostics.bootstrap(BootstrapStage::PublishEmission, BootstrapOutcome::Attempted);
+        }
+        let bytes = std::fs::read(&path)?;
+        assert!(bytes.len() <= MAX_BYTES);
+        assert_eq!(
+            bytes.iter().filter(|byte| **byte == b'\n').count(),
+            MAX_ROWS
+        );
+        assert!(diagnostics.sink.borrow().is_none());
         drop(diagnostics);
         std::fs::remove_dir_all(root)?;
         Ok(())

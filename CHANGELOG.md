@@ -12,6 +12,12 @@ semantic versioning once the API is published.
   passes the original repair fixture; reader evidence remains historical 730,
   and real-project performance remains unqualified.
 
+- Prepare an unselected optional bootstrap refusal-stage diagnostic using the
+  existing bounded setup sink. Fixed rows contain no paths or environment data;
+  original checks and proof authority remain unchanged. Host retention controls
+  pass, while Rust/native validation remains pending. See the
+  [candidate record](docs/validation/m7-compiler-script-bootstrap/refusal-diagnostic.json).
+
 - Prepare a conservative compiler-script recovery correction for the failed c2
   warmup: exclude only proven always-false non-workspace dependency scripts from
   unobserved coverage, and freshly compile eligible scripts during a guarded

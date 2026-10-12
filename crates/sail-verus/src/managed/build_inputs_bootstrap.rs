@@ -5,6 +5,9 @@
 
 #[cfg(target_os = "linux")]
 use super::super::{BuildInput, effective_value};
+use crate::managed::diagnostics::{
+    BootstrapAttempt, BootstrapOutcome, BootstrapStage, Diagnostics,
+};
 #[cfg(target_os = "linux")]
 use crate::managed::{lease::ReadLease, precise::Observer};
 use serde_json::Value;
@@ -93,27 +96,40 @@ impl Bootstrap {
         })
     }
 
-    /// Acquire independent native/kernel coverage before any script cleaning.
-    /// Missing-generation declaration paths are observation roots, not output authority.
-    #[cfg(target_os = "linux")]
-    #[allow(clippy::too_many_lines)] // Keep independent acquisition/configuration/final barriers in audit order.
+    #[cfg(all(test, target_os = "linux"))]
     pub(in crate::managed) fn begin(
         data: &Value,
         extras: &[PathBuf],
         runtime: &[PathBuf],
     ) -> Option<Self> {
+        Self::begin_traced(data, extras, runtime, None)
+    }
+
+    /// Acquire independent native/kernel coverage before any script cleaning.
+    /// Missing-generation declaration paths are observation roots, not output authority.
+    #[cfg(target_os = "linux")]
+    #[allow(clippy::too_many_lines)] // Keep independent acquisition/configuration/final barriers in audit order.
+    pub(in crate::managed) fn begin_traced(
+        data: &Value,
+        extras: &[PathBuf],
+        runtime: &[PathBuf],
+        diagnostics: Option<&Diagnostics>,
+    ) -> Option<Self> {
         use std::sync::{Arc, atomic::AtomicBool};
         use std::time::Instant;
+        let mut observation = BootstrapAttempt::new(diagnostics, BootstrapStage::OwnerEligibility);
         let packages = data["packages"].as_array()?;
         (packages.len() <= 128).then_some(())?;
         Self::eligible_workload(data).then_some(())?;
         // Unrepresentable effective inputs cannot be certified as absent.
+        observation.stage(BootstrapStage::OwnerEnvironment);
         let environment = environment()?;
         (!environment.keys().any(|key| {
             key.starts_with("CARGO_UNSTABLE_")
                 || key == "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS"
         }))
         .then_some(())?;
+        observation.stage(BootstrapStage::OwnerRoots);
         let workspace = Path::new(data["workspace_root"].as_str()?);
         (workspace.is_absolute()
             && workspace.as_os_str().len() <= 4096
@@ -158,10 +174,12 @@ impl Bootstrap {
             .collect();
         let stop = Arc::new(AtomicBool::new(false));
         let started = Instant::now();
+        observation.stage(BootstrapStage::OwnerObserver);
         let mut observer =
             Observer::begin_bounded_with(&roots, &excluded, Arc::clone(&stop), started)?;
         let files = observer.files();
         (files.len() <= 4096).then_some(())?;
+        observation.stage(BootstrapStage::OwnerLease);
         let mut lease = ReadLease::acquire_bounded(
             &files,
             &|| {
@@ -171,13 +189,16 @@ impl Bootstrap {
             Arc::clone(&stop),
             started,
         )?;
+        observation.stage(BootstrapStage::OwnerRetained);
         let retained = observer
             .retained_bytes()?
             .checked_add(lease.retained_bytes()?)?;
         (retained <= 32 * 1024 * 1024).then_some(())?;
+        observation.stage(BootstrapStage::OwnerHashes);
         let hashes = hashes(&files, &stop)?;
         // RUSTC_BOOTSTRAP=1 also enables Cargo's dev channel. Refuse its
         // unstable config table instead of assuming root-dir cannot be active.
+        observation.stage(BootstrapStage::OwnerConfiguration);
         for path in configurations {
             if stop.load(std::sync::atomic::Ordering::Acquire)
                 || started.elapsed() >= std::time::Duration::from_secs(120)
@@ -196,6 +217,7 @@ impl Bootstrap {
             let config: toml::Value = toml::from_str(std::str::from_utf8(&text).ok()?).ok()?;
             (config.get("unstable").is_none() && config.get("include").is_none()).then_some(())?;
         }
+        observation.stage(BootstrapStage::OwnerBarriers);
         (observer.clean() && lease.clean()).then_some(())?;
         let owner = Self {
             observer,
@@ -207,11 +229,21 @@ impl Bootstrap {
             hashes,
             stop,
         };
-        (owner.retained_bytes()? <= 40 * 1024 * 1024).then_some(owner)
+        observation.stage(BootstrapStage::OwnerLedger);
+        (owner.retained_bytes()? <= 40 * 1024 * 1024).then_some(())?;
+        observation.stage(BootstrapStage::OwnerComplete);
+        observation.outcome(BootstrapOutcome::Ready);
+        Some(owner)
     }
 
     #[cfg(not(target_os = "linux"))]
-    pub(in crate::managed) fn begin(_: &Value, _: &[PathBuf], _: &[PathBuf]) -> Option<Self> {
+    pub(in crate::managed) fn begin_traced(
+        _: &Value,
+        _: &[PathBuf],
+        _: &[PathBuf],
+        diagnostics: Option<&Diagnostics>,
+    ) -> Option<Self> {
+        let _observation = BootstrapAttempt::new(diagnostics, BootstrapStage::OwnerEligibility);
         None
     }
 
@@ -251,8 +283,7 @@ impl Bootstrap {
         Some(bytes)
     }
 
-    /// Publish ordinary contracts only; original proof results and receipts remain untouched.
-    #[cfg(target_os = "linux")]
+    #[cfg(all(test, target_os = "linux"))]
     pub(in crate::managed) fn publish(
         &mut self,
         export: &Path,
@@ -262,8 +293,26 @@ impl Bootstrap {
         data: &Value,
         artifacts: &Path,
     ) {
+        self.publish_traced(export, compiler, target, local, data, artifacts, None);
+    }
+
+    /// Publish ordinary contracts only; original proof results and receipts remain untouched.
+    #[cfg(target_os = "linux")]
+    #[allow(clippy::too_many_arguments)] // Optional observation is separate from unchanged publication inputs.
+    pub(in crate::managed) fn publish_traced(
+        &mut self,
+        export: &Path,
+        compiler: &str,
+        target: &Path,
+        local: &Path,
+        data: &Value,
+        artifacts: &Path,
+        diagnostics: Option<&Diagnostics>,
+    ) {
+        let mut observation = BootstrapAttempt::new(diagnostics, BootstrapStage::PublishLedger);
         let ready = (|| -> Option<Vec<BuildInput>> {
             let records: Vec<BuildInput> = serde_json::from_slice(&super::bytes(local)?).ok()?;
+            observation.stage(BootstrapStage::PublishJournal);
             let journal = super::bytes(artifacts)?;
             let journal = std::str::from_utf8(&journal).ok()?;
             let mut artifacts = Vec::new();
@@ -282,21 +331,26 @@ impl Bootstrap {
                     artifacts.push(artifact);
                 }
             }
+            observation.stage(BootstrapStage::PublishRecordSet);
             (records.len() <= 128 && !records.is_empty()).then_some(())?;
+            observation.stage(BootstrapStage::PublishCancellation);
             (!self.stop.load(std::sync::atomic::Ordering::Acquire)).then_some(())?;
             let mut packages = std::collections::BTreeSet::new();
             let checked = std::time::Instant::now();
             for record in &records {
+                observation.stage(BootstrapStage::PublishRecordBudget);
                 (!self.stop.load(std::sync::atomic::Ordering::Acquire)
                     && checked.elapsed() < std::time::Duration::from_secs(30))
                 .then_some(())?;
                 // Multiple host/target units and build dependencies require a separate audit.
                 packages.insert(&record.package_id).then_some(())?;
-                self.record(record, data, target, &artifacts)?;
+                self.record_traced(record, data, target, &artifacts, Some(&mut observation))?;
             }
+            observation.stage(BootstrapStage::PublishHashes);
             (self.hashes == hashes(&self.files, &self.stop)?).then_some(())?;
             // Re-read each sealed output contract before the final input barriers.
             // No input/output read occurs after those barriers and before emission.
+            observation.stage(BootstrapStage::PublishOutputs);
             let output_check = std::time::Instant::now();
             for record in &records {
                 (!self.stop.load(std::sync::atomic::Ordering::Acquire)
@@ -304,18 +358,25 @@ impl Bootstrap {
                     && super::output_matches(record, target))
                 .then_some(())?;
             }
-            (self.environment == environment()? && self.observer.clean() && self.lease.clean())
-                .then_some(())?;
+            observation.stage(BootstrapStage::PublishEnvironment);
+            (self.environment == environment()?).then_some(())?;
+            observation.stage(BootstrapStage::PublishObserver);
+            self.observer.clean().then_some(())?;
+            observation.stage(BootstrapStage::PublishLease);
+            self.lease.clean().then_some(())?;
             Some(records)
         })();
         if let Some(records) = ready {
             // Publish exactly the checked contracts without any post-barrier input read.
             super::publish_records(export, compiler, records);
+            observation.stage(BootstrapStage::PublishEmission);
+            observation.outcome(BootstrapOutcome::Attempted);
         }
     }
 
     #[cfg(not(target_os = "linux"))]
-    pub(in crate::managed) fn publish(
+    #[allow(clippy::too_many_arguments)] // Match the Linux observation-only publication API.
+    pub(in crate::managed) fn publish_traced(
         &mut self,
         _: &Path,
         _: &str,
@@ -323,7 +384,9 @@ impl Bootstrap {
         _: &Path,
         _: &Value,
         _: &Path,
+        diagnostics: Option<&Diagnostics>,
     ) {
+        let _observation = BootstrapAttempt::new(diagnostics, BootstrapStage::PublishLedger);
     }
 
     #[cfg(target_os = "linux")]
@@ -413,8 +476,7 @@ impl Bootstrap {
         false
     }
 
-    #[cfg(target_os = "linux")]
-    #[allow(clippy::too_many_lines)] // One fail-closed role/lineage check stays in audit order.
+    #[cfg(all(test, target_os = "linux"))]
     fn record(
         &self,
         record: &BuildInput,
@@ -422,11 +484,31 @@ impl Bootstrap {
         target: &Path,
         artifacts: &[Value],
     ) -> Option<()> {
+        self.record_traced(record, data, target, artifacts, None)
+    }
+
+    #[cfg(target_os = "linux")]
+    #[allow(clippy::too_many_lines)] // Preserve the original role checks and observation checkpoints in audit order.
+    fn record_traced(
+        &self,
+        record: &BuildInput,
+        data: &Value,
+        target: &Path,
+        artifacts: &[Value],
+        mut observation: Option<&mut BootstrapAttempt<'_>>,
+    ) -> Option<()> {
         use std::os::unix::fs::MetadataExt as _;
+        let mut stage = |stage| {
+            if let Some(observation) = observation.as_deref_mut() {
+                observation.stage(stage);
+            }
+        };
+        stage(BootstrapStage::RecordBinding);
         (record.covered
             && super::package_matches(record, data)
             && super::output_matches(record, target))
         .then_some(())?;
+        stage(BootstrapStage::RecordPackage);
         let package = data["packages"]
             .as_array()?
             .iter()
@@ -440,15 +522,19 @@ impl Bootstrap {
             .then_some(())?;
         // Initial bootstrap supports only explicit regular-file declarations;
         // directory-default contracts need separately bounded exact traversal.
+        stage(BootstrapStage::RecordDeclarations);
         for path in &record.paths {
             path.is_file().then_some(())?;
             self.covered(path)?;
         }
+        stage(BootstrapStage::RecordDigest);
         (self.record_digest(record)? == record.digest).then_some(())?;
+        stage(BootstrapStage::RecordEnvironment);
         for (key, value) in &record.env {
             super::allowed_environment(key).then_some(())?;
             (effective_value(key, Some(&self.environment)) == *value).then_some(())?;
         }
+        stage(BootstrapStage::RecordExecution);
         let calls: Vec<_> = artifacts
             .iter()
             .filter(|a| {
@@ -460,6 +546,7 @@ impl Bootstrap {
             .parent()?
             .join("output");
         (record.output.as_ref()?.0 == out).then_some(())?;
+        stage(BootstrapStage::RecordCompilation);
         let binaries: Vec<_> = artifacts
             .iter()
             .filter(|a| {
@@ -487,7 +574,9 @@ impl Bootstrap {
             .collect();
         (scripts.len() == 1 && scripts[0]["src_path"] == binary["target"]["src_path"])
             .then_some(())?;
+        stage(BootstrapStage::RecordSource);
         self.covered(Path::new(binary["target"]["src_path"].as_str()?))?;
+        stage(BootstrapStage::RecordBinary);
         let filenames = binary["filenames"].as_array()?;
         (filenames.len() == 1).then_some(())?;
         let filename = Path::new(filenames[0].as_str()?);
@@ -501,6 +590,7 @@ impl Bootstrap {
         (hash.len() == 16 && hash.bytes().all(|b| b.is_ascii_hexdigit())).then_some(())?;
         let stem = format!("build_script_build-{hash}");
         let linked = directory.join(&stem);
+        stage(BootstrapStage::RecordAliases);
         let original = std::fs::metadata(filename).ok()?;
         let alias = std::fs::metadata(&linked).ok()?;
         (original.is_file()
@@ -508,6 +598,7 @@ impl Bootstrap {
             && original.dev() == alias.dev()
             && original.ino() == alias.ino())
         .then_some(())?;
+        stage(BootstrapStage::RecordDepInfo);
         let dep_info = directory.join(format!("{stem}.d"));
         let bytes = super::bytes(&dep_info)?;
         let text = std::str::from_utf8(&bytes).ok()?;
@@ -522,6 +613,7 @@ impl Bootstrap {
             && workspace.as_os_str().len() <= 4096
             && workspace.canonicalize().ok()?.as_path() == workspace)
             .then_some(())?;
+        stage(BootstrapStage::RecordInputs);
         let inputs = crate::managed::source_inputs::dependencies(text)?;
         let source = Path::new(binary["target"]["src_path"].as_str()?)
             .canonicalize()
@@ -541,6 +633,7 @@ impl Bootstrap {
         source_seen.then_some(())?;
         // Compilation-time environment declarations must also have the exact
         // effective parent value; Cargo-injected keys are not silently certified.
+        stage(BootstrapStage::RecordCompilerEnvironment);
         for line in text.lines().filter_map(|l| l.strip_prefix("# env-dep:")) {
             let (key, expected) = line
                 .split_once('=')
