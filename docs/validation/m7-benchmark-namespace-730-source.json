@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "kind": "generated-source-binding-file-only-audit-and-unexecuted-component-controls",
+  "production_source_commit": "730a3210151ca51b7e011121c4795553b0cfa3e5",
+  "production_changes": false,
+  "native_target_or_archive_access": false,
+  "cargo_compilation_proof_or_benchmark": false,
+  "new_historical_cause_claim": false,
+  "component_execution": "pending",
+  "diagnostic_recorder": "design-only",
+  "benchmark_scope": "Lead-reported required warmup failure; no measured samples; retained native archive not opened in this review",
+  "reported_candidate": "One prior generated serde_core private.rs source root in each context; actual first mismatching binding not captured",
+  "source": [
+    {
+      "path": "crates/sail-verus/src/managed/runner.rs",
+      "bytes": 117037,
+      "sha256": "9fd31bf5d551107f8c0a23ffafbedaf18f2ee64412f8bd5681cab253a8388731"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/input.rs",
+      "bytes": 20937,
+      "sha256": "69858d8673a0c8d21552a63027d72e3a4f1dc24a57698bc5c3b14ad1b95d2e75"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/source_inputs.rs",
+      "bytes": 7696,
+      "sha256": "62dfc13bc015777aab3fc74dce5bd457240873579f18b50e7a62d3b166221d34"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/build_inputs.rs",
+      "bytes": 10382,
+      "sha256": "07c0b4d83e63ec66f405a31f3dd2d7dc16b21a538833d8cee7d2299ef15df662"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/build_inputs_family.rs",
+      "bytes": 26528,
+      "sha256": "a2374653ef56af5e26019c87eea1e36922c2934878f64517a8ba352cd8951186"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/coherent.rs",
+      "bytes": 7482,
+      "sha256": "e8495abedfa0ccfcbabed83412e20a1dc125d7f48f0122a97f2bc1b4f79e5c72"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/precise.rs",
+      "bytes": 34865,
+      "sha256": "facbd27a09fa5dac1e8bbaf55eb612a8052fe5857eb06c48cfc9718a7a8a0b5c"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/files.rs",
+      "bytes": 10772,
+      "sha256": "50da6958dfa7e890f690a5ffc2c739048ce6f02d943830db1784b87e831ec874"
+    },
+    {
+      "path": "scripts/m7-repair-bench.py",
+      "bytes": 31040,
+      "sha256": "3931f922af8da8317a857955915754e1d43e7c905b6171f381d0b6096352de33"
+    },
+    {
+      "path": "engine/verus/candidates/preparation-namespace/no-original-range/valid-memo-correction/ordinary/repair-benchmark/run-original.py",
+      "bytes": 10058,
+      "sha256": "477508a145aad95f7370e2f928cce034cbf8c0f4f18854fe8442a8829a154e8c"
+    }
+  ],
+  "test_only_source": {
+    "path": "crates/sail-verus/src/managed/precise.rs",
+    "bytes": 40643,
+    "sha256": "6cb01935eb4edd76a15953ff9ed1ecaa5abe8992ee5deb1ac79432fde9547051",
+    "changes": "Three original-input-root/original-Observer controls and fixture helper; production body unchanged"
+  },
+  "controls": [
+    "unchanged_generated_source_remains_guarded_inside_excluded_target",
+    "generated_source_clean_before_watch_then_recreation_refuses_root_binding",
+    "generated_source_replaced_after_watch_refuses_even_with_equal_content"
+  ],
+  "limits": {
+    "new_native_actor_count": 0,
+    "new_proof_invocations": 0,
+    "guard_or_oracle_changes": 0,
+    "full_benchmark_claim": null,
+    "reader_pass_attribution": null
+  }
+}

@@ -732,6 +732,127 @@ mod tests {
         assert!(std::fs::create_dir_all(root.join("source")).is_ok());
         root
     }
+
+    fn generated_source_fixture(name: &str) -> (PathBuf, serde_json::Value, PathBuf) {
+        let root = fixture(name);
+        let workspace = root.join("source");
+        let target = root.join("family-target");
+        let generated = target.join("debug/build/serde_core-unit/out/private.rs");
+        assert!(
+            std::fs::write(
+                workspace.join("Cargo.toml"),
+                "[package]\nname='fixture'\nversion='0.1.0'\nedition='2024'\n[lib]\npath='lib.rs'\n"
+            )
+            .is_ok()
+        );
+        assert!(
+            std::fs::write(
+                workspace.join("lib.rs"),
+                "include!(\"../family-target/debug/build/serde_core-unit/out/private.rs\");\n"
+            )
+            .is_ok()
+        );
+        assert!(std::fs::create_dir_all(generated.parent().unwrap_or(&target)).is_ok());
+        assert!(std::fs::write(&generated, "pub const GENERATED: bool = true;\n").is_ok());
+        let data = serde_json::json!({
+            "workspace_root": workspace,
+            "target_directory": target,
+            "packages": [{ "manifest_path": workspace.join("Cargo.toml") }],
+            "sail_source_inputs": [&generated],
+        });
+        (root, data, generated)
+    }
+
+    #[test]
+    fn unchanged_generated_source_remains_guarded_inside_excluded_target() {
+        let (root, data, generated) = generated_source_fixture("generated-unchanged");
+        let before = super::super::input::snapshot_metadata_home(&data, &[], None);
+        assert!(before.complete);
+        assert!(before.roots.contains(&generated));
+        assert!(
+            before
+                .excluded
+                .iter()
+                .any(|excluded| generated.starts_with(excluded))
+        );
+        let mut observer = Observer::begin(&before.roots, &before.excluded)
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(observer.files().contains(&generated));
+        assert!(observer.clean());
+        let monitored = super::super::input::snapshot_metadata_home(&data, &[], None);
+        assert!(monitored.complete);
+        assert_eq!(before.revision, monitored.revision);
+        assert!(observer.clean());
+        drop(observer);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn generated_source_clean_before_watch_then_recreation_refuses_root_binding() {
+        let (root, data, generated) = generated_source_fixture("generated-preclean");
+        let before = super::super::input::snapshot_metadata_home(&data, &[], None);
+        assert!(before.complete);
+        assert!(before.roots.contains(&generated));
+        // Model the runner's initial snapshot, stale-script clean, then original
+        // guard acquisition. This is an owned fixture mutation, not Cargo/proof.
+        assert!(std::fs::remove_file(&generated).is_ok());
+        let mut observer = Observer::begin(&before.roots, &before.excluded)
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(observer.clean());
+        let monitored = super::super::input::snapshot_metadata_home(&data, &[], None);
+        assert!(!monitored.complete);
+        assert!(monitored.roots.contains(&generated));
+        assert!(std::fs::write(&generated, "pub const GENERATED: bool = true;\n").is_ok());
+        assert!(!observer.clean());
+        assert_eq!(observer.failure_reason(), "namespace-root-binding-changed");
+        assert!(!observer.clean());
+        drop(observer);
+        // A new original acquisition can observe the new output. This does not
+        // authorize the earlier proof or bypass family-generation admission.
+        let after = super::super::input::snapshot_metadata_home(&data, &[], None);
+        assert!(after.complete);
+        assert_eq!(before.revision, after.revision);
+        let mut fresh = Observer::begin(&after.roots, &after.excluded)
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(fresh.clean());
+        drop(fresh);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn generated_source_replaced_after_watch_refuses_even_with_equal_content() {
+        use std::os::unix::fs::MetadataExt as _;
+
+        let (root, data, generated) = generated_source_fixture("generated-replaced");
+        let before = super::super::input::snapshot_metadata_home(&data, &[], None);
+        assert!(before.complete);
+        assert!(before.roots.contains(&generated));
+        let mut observer = Observer::begin(&before.roots, &before.excluded)
+            .unwrap_or_else(|| unreachable!("fixture"));
+        assert!(observer.clean());
+        let original =
+            std::fs::metadata(&generated).unwrap_or_else(|error| unreachable!("fixture: {error}"));
+        // Retain the old inode under another name so the replacement identity
+        // cannot accidentally equal it through immediate inode reuse.
+        let retired = generated.with_extension("retired");
+        assert!(std::fs::rename(&generated, &retired).is_ok());
+        assert!(std::fs::write(&generated, "pub const GENERATED: bool = true;\n").is_ok());
+        let replacement =
+            std::fs::metadata(&generated).unwrap_or_else(|error| unreachable!("fixture: {error}"));
+        assert_ne!(
+            (original.dev(), original.ino()),
+            (replacement.dev(), replacement.ino())
+        );
+        assert!(!observer.clean());
+        assert_eq!(observer.failure_reason(), "namespace-root-binding-changed");
+        drop(observer);
+        assert!(std::fs::remove_file(retired).is_ok());
+        let after = super::super::input::snapshot_metadata_home(&data, &[], None);
+        assert!(after.complete);
+        assert_eq!(before.revision, after.revision);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
     #[test]
     fn restored_content_and_mtime_are_invalidated_without_callback_waits() {
         let root = fixture("restored");
