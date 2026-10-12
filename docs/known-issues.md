@@ -14,6 +14,11 @@ are in the `archive/m7-contracts-f7103bf` tag.
   managed overhead) has not landed yet.
   [L7b report](reports/rescue/l7b-vest-and-baseline.md), [L1 profile](reports/rescue/l1-phase-profile.md),
   [Gate 7](validation/m7.md#gate-7-frozen-repair-performance).
+- **An agent's first managed verify re-verifies vstd.** The first `sail mcp`
+  verify of a project takes about 49 s even when every solver check is a
+  cache hit; `sail verify` from the CLI takes 0.5 s. A managed job builds in
+  its own Cargo target, so its first run verifies vstd again.
+  [L10 report](reports/rescue/l10-ci-diet.md).
 - **Vest results read back through the daemon are always Unknown.** The
   read-time freshness check needs leases on every file in the workspace,
   beyond its limits. A simpler check, scoped to the files Cargo used for the
