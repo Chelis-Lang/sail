@@ -100,12 +100,14 @@ class Controls(unittest.TestCase):
                   'container': {'id': 'id', 'image': 'image', 'birth': 'birth'}, 'archive_sha256': 'archive',
                   'inventory_sha256': 'inventory', 'protected_sha256': 'protected', 'patch_sha256': 'patch',
                   'controller_sha256': 'controller'}
-        grant = dict(config, status='GRANTED', scope='ordinary-script-bootstrap-sensitivity', holder_audit={'survivors': [], 'unavailable': []})
+        grant = dict(config, status='GRANTED', scope='ordinary-script-bootstrap-sensitivity', holder_audit={'survivors': [], 'unavailable': []}, ownership_scope='recorded prior gate/solver groups; root-exclusive target')
         M.prerequisite(config, grant, lambda _: 'controller')
         for key in config:
             bad = dict(grant, **{key: 'different'})
             with self.assertRaises(ValueError):
                 M.prerequisite(config, bad, lambda _: 'controller')
+        with self.assertRaises(ValueError):
+            M.prerequisite(config, dict(grant, ownership_scope='arbitrary orphan absence'), lambda _: 'controller')
         for audit in [None, {'survivors': [1], 'unavailable': []}, {'survivors': [], 'unavailable': [1]}]:
             with self.assertRaises(ValueError):
                 M.prerequisite(config, dict(grant, holder_audit=audit), lambda _: 'controller')

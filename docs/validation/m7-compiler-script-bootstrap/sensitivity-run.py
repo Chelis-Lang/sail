@@ -101,6 +101,8 @@ def prerequisite(config, grant, sha):
             raise ValueError('grant binding differs: ' + key)
     if config['controller_sha256'] != sha(Path(__file__)):
         raise ValueError('controller bytes differ')
+    if grant.get('ownership_scope') != 'recorded prior gate/solver groups; root-exclusive target':
+        raise ValueError('narrow prior-group audit and exclusive target grant required')
     if grant.get('holder_audit') != {'survivors': [], 'unavailable': []}:
         raise ValueError('complete root-owned preflight holder audit required')
     if not isinstance(config['container'], dict) or set(config['container']) != {'id', 'image', 'birth'}:
@@ -144,8 +146,11 @@ def native(root):
     record = {'status': 'RUNNING', 'revision': config['revision'], 'archive_sha256': config['archive_sha256'],
               'container': config['container'], 'pid1_birth': config['pid1_birth'], 'phases': [], 'images': [],
               'scope': 'fresh on/off/on component; no installed product, proof or performance credit',
-              'environment_sha256': hashlib.sha256(json.dumps(dict(os.environ), sort_keys=True, ensure_ascii=True).encode()).hexdigest(),
-              'cargo_incremental': '0'}
+              'inherited_environment_sha256': hashlib.sha256(json.dumps(dict(os.environ), sort_keys=True, ensure_ascii=True).encode()).hexdigest(),
+              'effective_phase_overrides': {'CARGO_INCREMENTAL': '0', 'CARGO_BUILD_JOBS': '2',
+                                           'NEXTEST_TEST_THREADS': '1', 'CARGO_TARGET_DIR': str(target),
+                                           'PYTHONDONTWRITEBYTECODE': '1'},
+              'ownership_scope': grant['ownership_scope']}
     closure = g.Closure()
     def check():
         g.verify_source(source, state['inventory'])

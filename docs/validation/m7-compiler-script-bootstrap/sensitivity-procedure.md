@@ -88,7 +88,10 @@ bind the full revision, NEW absent source path, existing target path, PID1 birth
 externally inspected container ID/image/birth, and SHA-256 of the archive,
 inventory, protected inventory, patch and this controller. The grant has
 `status: GRANTED`, `scope: ordinary-script-bootstrap-sensitivity` and the actual
-root-owned preflight `holder_audit` with empty `survivors` and `unavailable`.
+root-owned preflight `holder_audit` with empty `survivors` and `unavailable`,
+and `ownership_scope: recorded prior gate/solver groups; root-exclusive target`.
+This audit covers recorded prior groups and the root's exclusive target grant;
+it is not an arbitrary orphan-absence certificate.
 Protected files include the current engine, products and prior tested images.
 The caller verifies/extracts the entire source, creates only its external target
 symlink and checks all bindings around every compiler/test phase. Host transport
@@ -109,3 +112,10 @@ source/protected checks; `result.json` records any closure failure. The three
 retained images have a combined 512 MiB cap, and capture reads have a 32 MiB cap.
 The optional certificate's production source remains unchanged by this caller
 commit.
+
+The recorded `inherited_environment_sha256` seals the inherited controller
+environment BEFORE profile changes, with no values exported. The explicit
+`effective_phase_overrides` record lists the exact five build/test overrides:
+`CARGO_INCREMENTAL=0` plus the existing helper's two build jobs, one nextest
+thread, exact target and no-bytecode flag. The inherited hash alone does not
+represent the effective child environment.
