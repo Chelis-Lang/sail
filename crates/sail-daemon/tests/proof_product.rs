@@ -215,7 +215,7 @@ fn assert_saved_baseline(
     else {
         return Err("baseline read response".into());
     };
-    assert_eq!(&loaded, saved);
+    assert_eq!(loaded.as_ref(), saved);
     Ok(())
 }
 
