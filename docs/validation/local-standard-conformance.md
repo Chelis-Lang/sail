@@ -55,6 +55,10 @@ Run the pure controls without a native actor:
 python3 -B scripts/test-local-standard-conformance.py
 ```
 
+These ten pure controls also run in the `ci/run.sh gate` workspace check. The
+ordinary harness build and full native conformance rounds remain local-only;
+the gate does not launch them.
+
 After the root has closed other workloads and provided the exact paths, invoke
 the same caller first with `--stage build`, then with `--stage run`. Both stages
 require fresh host and native evidence roots:
