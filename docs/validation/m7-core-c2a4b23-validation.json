@@ -194,6 +194,7 @@
   "original_oracles_or_deadlines_changed": false,
   "prior_failed_gates_reclassified": false,
   "historical_730_first_failed_binding_identified": false,
-  "independent_publication_sensitivity": "pending separate remove-only-publication control",
-  "installed_product_reader_benchmark_or_corpus_credit": false
+  "independent_publication_sensitivity": "PASS in separate remove-only-publication on/off/on component; no product or performance credit",
+  "installed_product_reader_benchmark_or_corpus_credit": false,
+  "separate_sensitivity_record": "docs/validation/m7-bootstrap-c2a4b23-sensitivity.json"
 }

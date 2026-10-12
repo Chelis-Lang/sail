@@ -1,0 +1,413 @@
+{
+  "schema": 1,
+  "kind": "ordinary-release-and-byte-installation",
+  "status": "PASS for release and installation only",
+  "source_commit": "c2a4b2363b415aa2157fc38dc388192125b87109",
+  "source_archive_sha256": "590c4fd2de781a9312393d73d0bd0256bfe92b403be6640eaa6c321f11746a11",
+  "combined_gate_result_sha256": "c41265bb483e06a60632acabb83e2676414dc2bcb9211ec1168d54094eb5f85f",
+  "source_inventory_independently_rebuilt_equal": true,
+  "source_inventory_entries": 1593,
+  "product_artifacts": {
+    "sail": {
+      "bytes": 76677936,
+      "sha256": "d198d931057be4a3f1e122eb053c30738a799379c161881ff1de75b7fc3aea50"
+    },
+    "sail-z3": {
+      "bytes": 11000936,
+      "sha256": "0abda23619c4147a8f0a7f595f7ae5954c5d98d7ba37e710473bad9f4c3e65ca"
+    }
+  },
+  "runtime_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+  "runtime_files": {
+    "verus/source/target-verus/release/.cargo-build-lock": {
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/.vstd-fingerprint": {
+      "bytes": 156,
+      "mode": 420,
+      "sha256": "872d5b7b571353608bcf1f23ac9e0e79516e7bf43c37ecb8742aad5a3d53e655"
+    },
+    "verus/source/target-verus/release/cargo-verus": {
+      "bytes": 2754984,
+      "mode": 493,
+      "sha256": "c8aaf831eab7ac5877d83422d8f0cbe88a3db5c92074db8e29578b74b4be660e"
+    },
+    "verus/source/target-verus/release/libverus_builtin.rlib": {
+      "bytes": 928246,
+      "mode": 420,
+      "sha256": "202407e4630e64a5947ec549662eb73983838bafc723133bdd4f850a424f0902"
+    },
+    "verus/source/target-verus/release/libverus_builtin_macros.so": {
+      "bytes": 13801320,
+      "mode": 493,
+      "sha256": "6eadae925e28bdf3e25e6f70d100992426e83e9b126a1b4e9bc3700e91bdb8cf"
+    },
+    "verus/source/target-verus/release/libverus_state_machines_macros.so": {
+      "bytes": 8565760,
+      "mode": 493,
+      "sha256": "dfe2f89378f572f25b95f265c06827f35b76f571e1327ffbdbfc7bc7cfbf29c6"
+    },
+    "verus/source/target-verus/release/libvstd.rlib": {
+      "bytes": 10236586,
+      "mode": 420,
+      "sha256": "e584c096b7eb49991491b2c446bb02d8a002039cbb6433e9900aa8f046acdbd2"
+    },
+    "verus/source/target-verus/release/rust_verify": {
+      "bytes": 29811368,
+      "mode": 493,
+      "sha256": "afff84d7d9650e429690e291a24dc30bc489e48f8cd52448a5a8cbe74e66ef55"
+    },
+    "verus/source/target-verus/release/version.txt": {
+      "bytes": 26,
+      "mode": 420,
+      "sha256": "2dfa781701ced4c7b9267628db94328e93b2439ae7cbfebe00ee2880ce7bc620"
+    },
+    "verus/source/target-verus/release/verus": {
+      "bytes": 4705336,
+      "mode": 493,
+      "sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048"
+    },
+    "verus/source/target-verus/release/verus-root": {
+      "bytes": 0,
+      "mode": 420,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verus/source/target-verus/release/vstd.vir": {
+      "bytes": 30076214,
+      "mode": 420,
+      "sha256": "9729964f8a21afe807f7452c2716bf487ee3728545e351796b7804b570ce3b27"
+    },
+    "verus/source/target-verus/release/z3": {
+      "bytes": 34954456,
+      "mode": 493,
+      "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    }
+  },
+  "runtime_inventory_scope": "13 selected-runtime seals from original producer/execution records; no fresh native runtime reads in this host review",
+  "phases": [
+    {
+      "name": "release-build",
+      "exit_code": 0,
+      "limit_seconds": 600,
+      "elapsed_seconds": 106.16354633999981,
+      "log_sha256": "a68e1a1a27bd9a26388815b86c31697af920606778ba2bb0d34d7c9dc1488c35"
+    },
+    {
+      "name": "owned-install",
+      "exit_code": 0,
+      "limit_seconds": 60,
+      "elapsed_seconds": 2.110825043000659,
+      "log_sha256": "a85d88d92ddaa63d659581bea172cd892038191bde724778e3e87f1685ec7080"
+    }
+  ],
+  "producer_container_before": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+    "birth": "2026-10-11T23:02:56.824417131Z",
+    "created": "2026-10-11T02:56:50.201399875Z"
+  },
+  "producer_container_after": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+    "birth": "2026-10-11T23:02:56.824417131Z",
+    "created": "2026-10-11T02:56:50.201399875Z"
+  },
+  "producer_terminal": {
+    "transport_exit_code": 0,
+    "uncertainty": [],
+    "known_group_live": 0,
+    "known_group_unavailable": 0,
+    "terminated_unreaped": 0,
+    "closure": "closed-recorded-scope"
+  },
+  "acceptance_install": {
+    "elapsed_seconds": 4.512946417,
+    "commands": [
+      {
+        "name": "destination-check",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.14842200000000005
+      },
+      {
+        "name": "create-staging",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.0737113330000001
+      },
+      {
+        "name": "source-extraction",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.27969524999999995
+      },
+      {
+        "name": "source-inventory-copy",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.042541249999999975
+      },
+      {
+        "name": "source-verification",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.3061959999999999
+      },
+      {
+        "name": "receive-sail",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.386503375
+      },
+      {
+        "name": "stage-sail",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.5888596670000001
+      },
+      {
+        "name": "receive-sail-z3",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.14199554200000009
+      },
+      {
+        "name": "stage-sail-z3",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.13273175000000004
+      },
+      {
+        "name": "expected-copy",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.04371791699999994
+      },
+      {
+        "name": "owned-install",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.636696959
+      },
+      {
+        "name": "source-verification-after",
+        "status": "PASS",
+        "exit_code": 0,
+        "elapsed_seconds": 0.36144900000000035
+      }
+    ],
+    "source_verified_before_after": true,
+    "producer_files_before_after_and_acceptance_files_equal": true,
+    "producer_birth_before": {
+      "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+      "created": "2026-10-11T02:56:50.201399875Z",
+      "started_at": "2026-10-11T23:02:56.824417131Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "producer_birth_after": {
+      "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+      "created": "2026-10-11T02:56:50.201399875Z",
+      "started_at": "2026-10-11T23:02:56.824417131Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "acceptance_birth_before": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "created": "2026-10-10T10:11:57.931137676Z",
+      "started_at": "2026-10-11T23:02:56.820697964Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "acceptance_birth_after": {
+      "id": "c6f1c432fb1b035ba9ddd1ff1a5ce19ea01fa872441440062a15f3f363172c29",
+      "created": "2026-10-10T10:11:57.931137676Z",
+      "started_at": "2026-10-11T23:02:56.820697964Z",
+      "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963"
+    },
+    "installation_files": {
+      "sail": {
+        "bytes": 76677936,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "d198d931057be4a3f1e122eb053c30738a799379c161881ff1de75b7fc3aea50",
+        "uid": 0
+      },
+      "sail-z3": {
+        "bytes": 11000936,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "0abda23619c4147a8f0a7f595f7ae5954c5d98d7ba37e710473bad9f4c3e65ca",
+        "uid": 0
+      }
+    },
+    "directory_mode": "0700",
+    "fsuid": 0,
+    "cap_lease": false,
+    "source_modified": false,
+    "authority": "installation-only"
+  },
+  "host_producer_file_seals": {
+    "controller.json": {
+      "bytes": 751,
+      "sha256": "9311f1ebe56bda19e6a2184e6dde95a0c63a12f5f2afc4764e3dfa938814943b"
+    },
+    "owned-install.log": {
+      "bytes": 525,
+      "sha256": "a85d88d92ddaa63d659581bea172cd892038191bde724778e3e87f1685ec7080"
+    },
+    "product-config.json": {
+      "bytes": 5634,
+      "sha256": "e2ff792619ad3c9acc45fb9f51313e47c5252f6fe5e352f441c149cab226478b"
+    },
+    "product-grant-acceptance.json": {
+      "bytes": 6793,
+      "sha256": "bebc4484f1530594f6f3d024ec5d5cab6dc982958e3bdfad46c4ee3955b63f2d"
+    },
+    "product-grant.json": {
+      "bytes": 6916,
+      "sha256": "0164db7911a977a3389900c7be6140870dcf4f976e20797308351d58c9fd9d73"
+    },
+    "release-build.log": {
+      "bytes": 1273,
+      "sha256": "a68e1a1a27bd9a26388815b86c31697af920606778ba2bb0d34d7c9dc1488c35"
+    },
+    "result.json": {
+      "bytes": 2141,
+      "sha256": "a5a0689af7710bbcc4fab7a3048be5f1db007242478ecb052614dde7e2ef77df"
+    },
+    "source.tar": {
+      "bytes": 27125760,
+      "sha256": "590c4fd2de781a9312393d73d0bd0256bfe92b403be6640eaa6c321f11746a11"
+    },
+    "transport.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "host_acceptance_install_file_seals": {
+    "controller.json": {
+      "bytes": 11918,
+      "sha256": "679988487a69870e4d26fb47af7bb3206f1e9be561f5d3eeae91cabfd294d8ac"
+    },
+    "create-staging.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "create-staging.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "destination-check.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "destination-check.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "expected-copy.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "expected-copy.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "expected.json": {
+      "bytes": 218,
+      "sha256": "fcd5bd077b8af1a2e1cbe36de8287be1314d7c23dad366453ba20271924097ec"
+    },
+    "owned-install.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "owned-install.stdout": {
+      "bytes": 525,
+      "sha256": "d5ecb5bd573427d11fba98aa1e17305722ad7196c3715d45fa435bbc3e020812"
+    },
+    "receive-sail-z3.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "receive-sail-z3.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "receive-sail.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "receive-sail.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sail": {
+      "bytes": 76677936,
+      "sha256": "d198d931057be4a3f1e122eb053c30738a799379c161881ff1de75b7fc3aea50"
+    },
+    "sail-z3": {
+      "bytes": 11000936,
+      "sha256": "0abda23619c4147a8f0a7f595f7ae5954c5d98d7ba37e710473bad9f4c3e65ca"
+    },
+    "source-extraction.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "source-extraction.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "source-inventory-copy.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "source-inventory-copy.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "source-inventory.json": {
+      "bytes": 276487,
+      "sha256": "b6da6b18097310bd2e8360d7208f865266930c34b74ac3df47f5796ef6a0b105"
+    },
+    "source-verification-after.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "source-verification-after.stdout": {
+      "bytes": 36,
+      "sha256": "50439321dfe56e35718cb52d8908a1c77a2ab1756b36badb3cc3372dbe124cb2"
+    },
+    "source-verification.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "source-verification.stdout": {
+      "bytes": 36,
+      "sha256": "50439321dfe56e35718cb52d8908a1c77a2ab1756b36badb3cc3372dbe124cb2"
+    },
+    "stage-sail-z3.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stage-sail-z3.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stage-sail.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stage-sail.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "verification": "independent host streaming file SHA/length checks including both actual transferred ELF files; safe source tar inventory independently rebuilt equal; original producer and acceptance terminal records checked",
+  "not_claimed": [
+    "general orphan absence",
+    "proof or receipt authority",
+    "original repair scenario result (bound separately in m7-repair-c2a4b23-terminal.json)",
+    "real-project bootstrap recovery",
+    "reader or benchmark performance"
+  ]
+}

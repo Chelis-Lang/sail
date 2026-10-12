@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "scope": "source-only independent ordinary-script bootstrap candidate",
-  "status": "complete c2a4b23 Linux workspace gate and original solver PASS; separate sensitivity, installed product and benchmark validation pending",
+  "scope": "independent ordinary-script bootstrap implementation with completed local controls",
+  "status": "complete c2a4b23 Linux workspace gate, original solver, separate sensitivity, exact release/install and unchanged original repair fixture PASS; original real-project benchmark validation pending",
   "base": "247cd28",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "caef3ba1fa9335237ca2880b61939c634801cea79aea943430a592db9d78d6c8",
@@ -16,7 +16,8 @@
     "patch": "docs/validation/m7-compiler-script-bootstrap/disable-publication.patch",
     "sha256": "e69485c680115222e5db2c7ec8d68af105fb3cc12ccd0ea0b08971eb44c193c9",
     "effect": "remove only independent ordinary-generation emission",
-    "expected": "unchanged bootstrap export-exists assertion fails; actual outcome unexecuted"
+    "expected": "unchanged export assertion fails with emission disabled; positive and exact restored source pass",
+    "completed_record": "docs/validation/m7-bootstrap-c2a4b23-sensitivity.json"
   },
   "observed_terminal_runtime": {
     "files": 418,
@@ -62,7 +63,7 @@
     "whole combined gate and original solver",
     "original two-warmup real-project benchmark and unchanged original repair fixture"
   ],
-  "injected_environment_followup": "Shared family/bootstrap policy also refuses dynamic-library path injection, RUSTDOC/RUSTC_LINKER, removed RUSTFLAGS and DEP_ metadata; actual Cargo declaration control drafted.",
+  "injected_environment_followup": "Shared family/bootstrap policy also refuses dynamic-library path injection, RUSTDOC/RUSTC_LINKER, removed RUSTFLAGS and DEP_ metadata; actual Cargo declaration control passes in completed c2a4b23 gate.",
   "previous_uncompiled_freezes": [
     "f697201db80717ec4d2d94c53855d7cbb22bf59f",
     "91a2cb8"
@@ -95,13 +96,13 @@
       "bootstrap_empty_generation_and_scriptless_workload_do_not_block_recovery",
       "bootstrap_reused_binary_unguarded_depinfo_and_injected_env_are_refused"
     ],
-    "fresh_cargo_diagnostic": "Actual tiny Cargo emits relative build.rs; actual member Cargo emits member/build.rs from both workspace and member launch directories. No compiler working-directory path fix is yet qualified."
+    "fresh_cargo_diagnostic": "Actual tiny Cargo emits relative build.rs; actual member Cargo emits member/build.rs from both workspace and member launch directories. Corrected optional path handling passes the later c2a4b23 gate."
   },
   "compile_cwd_followup": {
     "effect": "relative prerequisites use canonical absolute metadata workspace root only for local path source under that root; absolute prerequisites unchanged; exact header and raw-alias refusal remain",
     "guards": "optional only: command/unstable config/environment override refusal; exact virtual workspace manifest/lock roots",
     "source_evidence": "cargo-cwd-source.json",
-    "required_new_control": "actual workspace member compilation + override/foreign-source/workspace-binding refusals; unexecuted"
+    "required_new_control": "actual workspace member compilation + override/foreign-source/workspace-binding refusals pass in c2a4b23; original assertions unchanged"
   },
   "completed_native_validation": {
     "source_commit": "c2a4b2363b415aa2157fc38dc388192125b87109",
@@ -110,7 +111,9 @@
     "bootstrap_controls_passed": 10,
     "all_remaining_gate_steps_passed": true,
     "solver_tests_passed": 41,
-    "separate_sensitivity": "running separately; no terminal result in this record",
-    "installed_product_reader_or_benchmark_credit": false
+    "separate_sensitivity": "PASS; docs/validation/m7-bootstrap-c2a4b23-sensitivity.json",
+    "installed_product_reader_or_benchmark_credit": false,
+    "installed_release_record": "docs/validation/m7-product-c2a4b23-installation.json",
+    "original_repair_record": "docs/validation/m7-repair-c2a4b23-terminal.json"
   }
 }

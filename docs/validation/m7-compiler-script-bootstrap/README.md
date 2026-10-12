@@ -1,7 +1,10 @@
 # Independent ordinary-script bootstrap candidate
 
-The corrected source candidate is integrated for validation; native qualification
-and original real-project recovery remain pending. The
+The corrected implementation passes the [complete c2a4b23 local gate and solver](../m7-core-c2a4b23-validation.md)
+and separate [emission sensitivity](../m7-bootstrap-c2a4b23-sensitivity.md).
+Exact [release and byte installation](../m7-product-c2a4b23-installation.md) also
+pass, followed by the [unchanged complete original repair fixture](../m7-repair-c2a4b23-terminal.md).
+Original real-project benchmark recovery and performance remain pending. The
 first two root integrations failed strict compilation before tests; both failures
 remain retained. The third frozen integration (`602ec67`) passed strict checks,
 but its eight bootstrap controls had five passes and three failures: the first
@@ -34,7 +37,7 @@ The optional owner now covers the exact virtual workspace manifest and lock
 in addition to its member package roots; it does not walk the whole workspace.
 The new real-member control retains the original positive oracle and requires
 wrong-root, foreign-source, relative-root and override refusal plus manifest
-mutation refusal. These corrections have no native validation yet.
+mutation refusal. All ten corrected controls pass in the later c2a4b23 gate.
 
 The candidate models the cleanup/regeneration hypothesis from the
 [730 benchmark failure](../m7-benchmark-730a321-bootstrap-failure.md): cleaning a
@@ -104,9 +107,9 @@ not construction-allocation, allocator-RSS, kernel or child-process limits.
 Bounded JSON can allocate expanded parsed graphs transiently; no whole-peak
 quota is claimed. [Source identities and limits](source.json) bind the draft.
 
-Ten Linux controls are drafted in this freeze. The older eight-control scope
-has the five passes/three failures above; neither the new non-UTF-8 control nor
-the member control has run. The complete corrected set remains unexecuted. They use actual tiny offline
+All ten Linux controls pass in the corrected c2a4b23 freeze. The older
+eight-control scope retains its five passes/three failures above. The controls
+use actual tiny offline
 Cargo compilation and original native owners: independent publication while the
 proof guard still refuses generated input; fresh-binary/dep-info/environment
 lineage refusal; restored bytes/mtime and cancellation; external aliases,
@@ -122,11 +125,12 @@ The [execution procedure](sensitivity-procedure.md) reuses the existing bounded
 owned phase runner and preserves three separate tested images. The
 [sensitivity patch](disable-publication.patch) removes only new independent
 ordinary emission. The unchanged real-Cargo positive must then fail its export
-assertion; restoring exact source must pass. Neither outcome has run. Required
-native checks include the complete affected tests, all-target strict checks,
-fresh combined gate/solver, original two-warmup real-project benchmark and the
-unchanged whole repair fixture. No third warmup, oracle change, proof retry or
-performance credit is included.
+assertion; restoring exact source must pass. All three outcomes are verified in
+the separate sensitivity record. Complete affected tests, all-target strict
+checks and the fresh combined gate/solver pass. The unchanged whole repair fixture
+also passes separately. Original two-warmup real-project benchmark remains
+outstanding. No third warmup, oracle change, proof retry or performance credit is
+included.
 
 The observed runtime size requires at least 61,733,520.4 bytes/second
 (about 58.87 MiB/second) to finish a single hash pass within its cooperative
