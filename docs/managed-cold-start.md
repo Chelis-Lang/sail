@@ -127,6 +127,31 @@ added to theirs. Snapshot and guard phases retain all their original reads,
 probes and barriers. They are timings of those existing blocks, not evidence
 that one specific hash or syscall caused a delay.
 
+`input-guards` is the inclusive parent of `guard-absent`, `guard-coherent` and
+`guard-watch`. After the Cargo-Verus `invocation`, `target-records` covers
+receipt and artifact checks (and any missing-target retry), then
+`post-observations`, `post-metadata`, `post-snapshot` and `final-barriers`
+cover the declaration updates, the second Cargo metadata, the final snapshot
+and the final coherent, sysroot and runtime checks. Independent work overlaps:
+Cargo metadata runs during `runtime-context`, the post-run metadata during
+`target-records`, and the change watcher during `guard-coherent`. `metadata`,
+`post-metadata` and `guard-watch` therefore record only the remaining wait
+after the overlapped block, often close to zero; `helper-identity` and
+`toolchain-probes` likewise record only consuming results that were produced
+during `runtime-binaries`.
+
+A managed run reads independent files with up to eight concurrent workers:
+pre-guard executables, input snapshots, receipt artifacts and dependencies, the
+final runtime check, the helper closure and the driver's AIR/SMT logs. Every
+file is still read completely by the same digest or parser, results are folded
+in the original order, and the first error in that order is the one reported.
+Daemon freshness readers keep sequential reads. A private alias that resolves
+to the installed `sail` inode is not hashed again; copies keep the byte
+comparison. The targeted `cargo clean` runs with `CARGO_CACHE_RUSTC_INFO=0`, so
+it no longer replaces the target's rustc probe cache that the following build
+uses. See the [L7c report](reports/rescue/l7c-managed-overhead.md) for the
+measured effect.
+
 The same sink now observes three publication boundaries: `result-publication`
 is the first complete result-document write; `receipt-publication` is the
 existing pending-receipt writes and guarded commit, including any original

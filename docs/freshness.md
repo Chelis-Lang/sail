@@ -88,7 +88,9 @@ Watch acquisition also indexes canonical membership while retaining the original
 watch-descriptor map as authority. A native descriptor reused for another
 hardlink spelling replaces the old index membership; aliases are not accumulated
 as permanently watched paths. Canonicalization, local-filesystem validation,
-native masks and the 8,192-watch bound retain their original order. The additional
+native masks and the 8,192-watch bound retain their original order, except that
+a canonical path already in the index skips reparsing the owner's immutable
+mount snapshot: it passed that same check when it was admitted. The additional
 index holds at most one path/count entry per current descriptor value. See
 [the acquisition controls](validation/m7.md) for the exact
 native alias regression and local setup measurements; faster lookup alone does
@@ -114,7 +116,10 @@ and [the isolated real fault control](validation/m7.md).
 The optional lease owner is an embedded Python 3 standard-library helper launched
 with isolated module loading, structured arguments and private bounded socket I/O.
 Sail resolves an absolute interpreter once per establishment and binds its
-loaded standard-library source/bytecode files and mapped ELF libraries. The
+loaded standard-library source/bytecode files and mapped ELF libraries. Within
+one managed run, the manifest probed for the context identity also serves that
+run's sysroot and coherent owners when they resolve the same interpreter; it is
+never kept across runs, and daemon freshness owners probe their own. The
 cold manifest and content hashes precede launch; the helper checks its actual
 loaded closure before and after lease acquisition, and parent hashes must still
 match afterward. Direct watches and read leases retain this closure. Changed
