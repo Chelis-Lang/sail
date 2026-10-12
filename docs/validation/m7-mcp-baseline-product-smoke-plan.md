@@ -1,6 +1,7 @@
 # Named-baseline product smoke plan
 
-Status: prepared, not executed. The baseline feature's current integration has
+Status: executable addon prepared; seven pure controls pass, native smoke not
+executed. The baseline feature's current integration has
 not yet passed its native gate or received a fresh installed-product identity.
 This plan supplies separate feature validation; it does not claim another pass
 for the unchanged repair fixture or establish benchmark performance.
@@ -12,6 +13,25 @@ extraction in `e65f948` preserves the saved-baseline equality oracle;
 strict integration preceding that correction remains a failure, not test credit.
 
 ## Fixture and lifecycle
+
+`scripts/m7-baseline-product-smoke.py` implements the derivative. Once an exact
+fresh tested product and selected engine/source are bound by the existing product
+records, execute it with the original fixture arguments:
+
+```sh
+python3 scripts/m7-baseline-product-smoke.py \
+  --sail "$SAIL_PRODUCT/sail" --engine-build "$SAIL_ENGINE_BUILD" \
+  --verus-source "$SAIL_VERUS_SOURCE" --out "$SAIL_EVIDENCE/baseline-feature" \
+  --timeout 120 --environment-label "$SAIL_ENVIRONMENT_LABEL"
+```
+
+The output directory must be new. The addon retains its verified derived source,
+pre/post fixture/helper/script/CLI/shim seals and `derivative-record.json`.
+The original engine-install summary retains the selected source commit and
+engine manifest hash; external product/runtime records still supply the complete
+selected inventory binding. `baseline-addon/summary.json` retains full tool
+requests/results and received JSON-RPC messages. This is a derivative feature
+scope, never another unchanged-original acceptance pass.
 
 Use a separately retained derivative of `ci/test-repair.py`, whose original
 SHA-256 is `9880f200f99007e048727dbe8348eb93f9e53937df601eb16f2d9fdc9ceaebd7`.
@@ -40,6 +60,13 @@ each CLI operation retains its thirty-second limit. Both are further capped by
 the original fixture's remaining 120-second clock. The hook must not reset or
 extend that clock. Close and reap its MCP process in `finally`, then let the
 original fixture perform its unchanged actor and evidence cleanup.
+The added read refuses a diagnostic frame above 16 MiB (with at most one
+64 KiB read before refusal) or more than 64 received messages per client.
+Artifact sealing uses a fixed 1 MiB read buffer with 256 MiB per bound input and
+32 MiB per baseline admission; baseline sealing also checks the original clock
+between reads. These are fixture admissions, not new product limits, parsed-heap
+or RSS guarantees. Existing pipe-write/filesystem blocking and original cleanup
+limitations are retained.
 
 ## Required tool calls and assertions
 
@@ -73,5 +100,8 @@ Retain each full request/reply, CLI streams, baseline pre/post seal and cleanup
 outcome even on failure. A pure derivation control must prove that removing the
 one hook restores the exact original fixture bytes; response controls must
 reject changed provenance, non-Historical results, incomplete text, overwrite
-success and changed stored bytes. These controls and the actual smoke remain
-unexecuted. Only the fresh product's eventual run can qualify this feature.
+success and changed stored bytes. Seven pure controls in
+`scripts/test-m7-baseline-product-smoke.py` pass, including exact hook restoration,
+changed/missing/duplicate source refusal, identity/provenance checks and complete
+text/structured equality. The actual native smoke remains unexecuted. Only the
+fresh product's eventual run can qualify this feature.
