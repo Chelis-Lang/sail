@@ -2,7 +2,7 @@
   "kind": "source-only-compiler-family-declared-source-inventory",
   "issue": "https://github.com/Chelis-Lang/sail/issues/77",
   "baseline": "9f35ecb1dd1da82723b7c5d0115df82aee2fb609",
-  "status": "Selected combined source 57a319d complete local gate and original solver PASS; ordinary release/install and new product/benchmark acceptance pending",
+  "status": "Selected combined source 57a319d complete local gate, original solver, ordinary release/private installation and original CLI/MCP repair PASS; separate baseline feature smoke, readers, conformance and benchmark acceptance pending",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "0e66c3ceb1463e56d75adea1b1f4fbf149b7dcb28f2fdc1d715b042bfc2f100d",
     "crates/sail-verus/src/managed/build_inputs_sources.rs": "1be0af19e97c88563bbc9739316dff2c36f03e75b74228a24cc99266881d6087",
@@ -467,5 +467,98 @@
     },
     "qualification": "Complete local gate and original solver only. Ordinary release/private installation still pending at record time; no installed-product repair/readers, conformance, real-project performance or overall M7 acceptance credit.",
     "historical_failures": "All five earlier scopes and failed benchmark remain unchanged; no stitched qualification"
+  },
+  "ordinary_product_installation": {
+    "status": "PASS",
+    "source_commit": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694",
+    "source_archive_sha256": "6f49612cba4b396187c32e66be7424dd311c8cb1e0cfe6814d1f66dcd0c93245",
+    "combined_gate_result_sha256": "dc964c9556cffd1626134b0c5abf997695edf7d5222372cf01acbade8715b3fe",
+    "phases": [
+      {
+        "name": "release-build",
+        "exit_code": 0,
+        "limit_seconds": 600,
+        "elapsed_seconds": 93.66073450099975,
+        "log_sha256": "dea3b46e0923796796a48640cd40c7c8e079db817c103df7208823153eff4ecc",
+        "group_closure": {
+          "survivors": [],
+          "unavailable": [],
+          "terminated_unreaped": []
+        }
+      },
+      {
+        "name": "owned-install",
+        "exit_code": 0,
+        "limit_seconds": 60,
+        "elapsed_seconds": 2.443887542000084,
+        "log_sha256": "0a967206eae42441fb8ed5ffcde91508cce3116ad7f6c93db989659fec202f24",
+        "group_closure": {
+          "survivors": [],
+          "unavailable": [],
+          "terminated_unreaped": []
+        }
+      }
+    ],
+    "jobs": 2,
+    "artifacts": {
+      "sail": {
+        "bytes": 77283160,
+        "sha256": "08038d3042a4109b7e83fa6097ba8f351ad0211db0980ea1b965733a2c252d3f"
+      },
+      "sail-z3": {
+        "bytes": 11001744,
+        "sha256": "f15b4ef2aae8928dacb262cb7d09b32effe83c208e0c9332cde38a24880a7f92"
+      }
+    },
+    "installation_only": true,
+    "source_modified": false,
+    "installed_directory_and_file_mode": "0700",
+    "selected_engine_manifest_sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d",
+    "selected_engine_artifact_count": 13,
+    "container_identity_birth_unchanged": true,
+    "transport_exit_code": 0,
+    "uncertainty": [],
+    "closure": "closed-recorded-scope",
+    "evidence_sha256": {
+      "controller.json": "8c46e1e8e456e265fa15537c7929f753c42bd40804f7efb04ec1807424b0e3b8",
+      "result.json": "f355d8c1fe95490409d4e2c489dd9751475e578cce6570fac33c0dd258ee034c",
+      "product-grant.json": "bfa621ca2c19b219ad2ee15f17546eab8c00e50e653f0138fd5c9adfaf98d671",
+      "release-build.log": "dea3b46e0923796796a48640cd40c7c8e079db817c103df7208823153eff4ecc",
+      "owned-install.log": "0a967206eae42441fb8ed5ffcde91508cce3116ad7f6c93db989659fec202f24"
+    },
+    "qualification": "Ordinary release and owned private byte installation only; original repair passes in its separate bound scope. No installation-derived proof/currentness or overall M7 acceptance credit."
+  },
+  "original_installed_repair": {
+    "status": "PASS",
+    "source_commit": "57a319d6d11c8a3ed76120f9c74ea6a79cf0b694",
+    "product_grant_sha256": "bfa621ca2c19b219ad2ee15f17546eab8c00e50e653f0138fd5c9adfaf98d671",
+    "original_limits_seconds": [
+      120,
+      30,
+      5
+    ],
+    "timing_wrapper_used": false,
+    "controller_elapsed_seconds": 105.2177885,
+    "native_phase_elapsed_seconds": 99.36770583699945,
+    "fixture_elapsed_seconds": 95.6837030020015,
+    "operations": 315,
+    "original_fixture_passed": true,
+    "cleanup_errors": [],
+    "progress_failures": [],
+    "uncertainty": [],
+    "container_identity_birth_unchanged": true,
+    "closure": "known owned groups closed",
+    "group_closure": {
+      "survivors": [],
+      "unavailable": [],
+      "terminated_unreaped": []
+    },
+    "evidence_sha256": {
+      "controller.json": "ae302465fbfacd16407f8032dea95d8c2afcd11d237ab3cfc4d41f04182a9d8d",
+      "result.json": "adb9f736868d90a114b3eeb55e0127a0168c4fbc02840dd3f0fbd7b080f2d3ec",
+      "original-repair.log": "c04243bf90f20daea45899b082177a73787ca202e169d6264908d59856c494b7",
+      "native-raw.tar.gz": "edbc85043e8066a959b505e6a04efdc2ba163c0ce26f70662003e8b982d41f0d"
+    },
+    "qualification": "Original unchanged repair fixture only. Separate installed named-baseline feature smoke is running at record freeze; readers, complete conformance, real-project performance and overall M7 acceptance remain unqualified."
   }
 }

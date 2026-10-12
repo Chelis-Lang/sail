@@ -2,9 +2,10 @@
 
 This implementation addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77).
 Selected combined source `57a319d` passes the complete local gate and original
-solver suite. Ordinary release/private installation is still pending at this
-record's freeze; installed repair/readers, conformance and the unchanged full
-benchmark remain unqualified on this source. No original Historical/Unknown refusal, deadline,
+solver suite, followed by an ordinary release build and owned private installation.
+The original installed CLI/MCP repair fixture also passes. Separate baseline
+feature smoke, readers, conformance and the unchanged full benchmark remain
+unqualified on this source at this record's freeze. No original Historical/Unknown refusal, deadline,
 warmup allowance or receipt predicate changes.
 
 The first three combined native gates remain failed: `2ba2a32` stopped at the
@@ -52,6 +53,22 @@ survivors, unavailable rows or uncertainty. Fully audited terminated unreaped
 tasks remain recorded separately; this is not an arbitrary orphan-absence claim.
 These are native gate/solver results, not installed-product or performance
 acceptance. All five earlier failed scopes remain failed and retained.
+
+The following ordinary release build passes in 93.661 seconds, followed by
+owned private installation in 2.444 seconds, under the original 600/60-second
+limits. Source archive and container birth remain bound to the complete gate;
+the qualified engine's thirteen artifacts retain manifest `54109b76`. Both
+phases exit zero with complete recorded-group closure and no uncertainty.
+The same [record](source-inventory.json) binds the installed CLI/shim byte identities
+and full product grant. This is installation-only evidence.
+
+The separate original CLI/MCP repair fixture then passes in 95.684 fixture
+seconds (315 operations), under the unchanged 120/30/5-second limits.
+Native phase and host controller durations are 99.368 and 105.218 seconds.
+Cleanup errors, progress failures and uncertainty are empty; container birth
+and final seals match, with known owned groups closed. Separate named-baseline
+feature smoke is running at this freeze; readers, complete conformance and
+real-project performance receive no transferred credit.
 
 The closed original `b89546c` benchmark failed before measured samples. Its second
 GCD repair was Current, while the next concatenate selector was Historical in the
