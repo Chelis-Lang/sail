@@ -478,3 +478,11 @@ a surrounding debug/release posthash or physical backing-space attribution.
 The fresh post-recovery 387 benchmark is running separately with no performance
 credit; the separate whole-debug postcheck is UNCERTAIN and supplies no
 surrounding-membership certification.
+
+The three completed agent worktrees (`m7-bootstrap-user-docs`,
+`m7-freshness-publication`, and `m7-physical-preparation`) have also been
+removed after checking that each had no uncommitted changes. Their branches
+and commit history remain available. The small M6 baseline worktree and both
+active Sail validation containers remain in use. Host free space at the
+follow-up check was approximately 12 GiB; concurrent work means this is an
+observation, not an attribution of physical reclamation to Sail alone.
