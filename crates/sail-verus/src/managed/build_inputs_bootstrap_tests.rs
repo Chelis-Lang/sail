@@ -146,7 +146,7 @@ impl Fixture {
             let mut manifest = std::fs::OpenOptions::new()
                 .append(true)
                 .open(package.join("Cargo.toml"))?;
-            manifest.write_all(b"[workspace]\nmembers=[\".\"]\nexclude=[\"disabled\",\"active\"]\nresolver=\"3\"\n[dependencies]\nsail_active_fixture={path=\"active\"}\n[target.\"cfg(any())\".dependencies]\nsail_disabled_fixture={path=\"disabled\"}\n")?;
+            manifest.write_all(b"[workspace]\nexclude=[\"disabled\",\"active\"]\nresolver=\"3\"\n[dependencies]\nsail_active_fixture={path=\"active\"}\n[target.\"cfg(any())\".dependencies]\nsail_disabled_fixture={path=\"disabled\"}\n")?;
             let active = package.join("active");
             std::fs::create_dir_all(active.join("src"))?;
             std::fs::write(
@@ -882,6 +882,17 @@ fn bootstrap_disabled_dependency_and_retry_keep_fresh_compilation_roles() -> Tes
         .ok_or("disabled package absent")?["id"]
         .as_str()
         .ok_or("disabled id absent")?;
+    let members = fixture.data["workspace_members"]
+        .as_array()
+        .ok_or("members absent")?;
+    for package in packages.iter().filter(|package| {
+        package["name"] == "sail_active_fixture" || package["name"] == "sail_disabled_fixture"
+    }) {
+        assert!(
+            !members.contains(&package["id"]),
+            "dependency must not be a workspace member"
+        );
+    }
     assert!(build_inputs::never_scheduled(&fixture.data, disabled));
     let mut owner = fixture.owner()?;
     fixture.compile()?;
