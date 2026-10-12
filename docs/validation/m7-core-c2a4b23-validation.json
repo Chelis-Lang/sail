@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "kind": "complete-local-gate-then-original-solver-terminal",
+  "status": "PASS for this scope; no product/performance acceptance",
+  "source_commit": "c2a4b2363b415aa2157fc38dc388192125b87109",
+  "source_archive_sha256": "590c4fd2de781a9312393d73d0bd0256bfe92b403be6640eaa6c321f11746a11",
+  "source_archive_inventory_independently_rebuilt_equal": true,
+  "source_inventory_counts": {
+    "files": 1448,
+    "symlinks": 1,
+    "directories": 144
+  },
+  "environment": "Linux amd64 Docker emulation on arm64 macOS; concurrent development work",
+  "jobs": 2,
+  "nextest_independent_tests": 1,
+  "workspace": {
+    "passed": 651,
+    "skipped_solver_cases": 41,
+    "nextest_seconds": 215.915,
+    "all_remaining_gate_steps_passed": true,
+    "bootstrap_controls_passed": 10,
+    "bootstrap_control_log_rows": [
+      "PASS [   2.645s] (444/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_actual_cargo_can_publish_ordinary_contract_without_current_proof",
+      "PASS [   2.312s] (445/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_actual_cargo_injected_environment_is_not_parent_authority",
+      "PASS [   2.211s] (446/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_alias_directory_build_dependency_and_multiple_units_refuse",
+      "PASS [   2.221s] (447/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_empty_generation_and_scriptless_workload_do_not_block_recovery",
+      "PASS [   2.317s] (448/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_helper_loss_and_ineligible_generation_keep_original_cleaning",
+      "PASS [   0.320s] (449/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_non_utf8_environment_is_not_absent_authority",
+      "PASS [   3.168s] (450/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_restored_write_and_cancel_do_not_leave_export",
+      "PASS [   2.840s] (451/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_reused_binary_unguarded_depinfo_and_injected_env_are_refused",
+      "PASS [   3.910s] (452/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_runtime_identity_and_metadata_are_jointly_guarded",
+      "PASS [   2.562s] (453/651) sail-verus managed::build_inputs::family::bootstrap::tests::bootstrap_workspace_member_depinfo_uses_workspace_root"
+    ]
+  },
+  "solver": {
+    "passed": 41,
+    "skipped_workspace_cases": 651,
+    "nextest_seconds": 83.317,
+    "original_test_deadlines_unchanged": true
+  },
+  "phases": [
+    {
+      "name": "gate",
+      "command": [
+        "bash",
+        "ci/run.sh",
+        "gate"
+      ],
+      "exit_code": 0,
+      "limit_seconds": 3600,
+      "elapsed_seconds": 532.8943347000004,
+      "log_sha256": "03432aa36635f172d25b545cf5b805bfa84495194e454e30591632a52f2202db",
+      "known_group_live_survivors": 0,
+      "known_group_unavailable": 0,
+      "terminated_unreaped": 7,
+      "recorded_all_task_dead_evidence_independently_verified": true
+    },
+    {
+      "name": "solver",
+      "command": [
+        "bash",
+        "ci/run.sh",
+        "solver"
+      ],
+      "exit_code": 0,
+      "limit_seconds": 1800,
+      "elapsed_seconds": 87.68543820599916,
+      "log_sha256": "aae6b1b93b60324a7630bb3f15942d6d9ad88ac1724e9db74fe80b31d0814670",
+      "known_group_live_survivors": 0,
+      "known_group_unavailable": 0,
+      "terminated_unreaped": 10,
+      "recorded_all_task_dead_evidence_independently_verified": true
+    }
+  ],
+  "raw_host_files_independently_hashed": [
+    {
+      "name": "config.json",
+      "bytes": 455,
+      "sha256": "c98fdfc26e0b3a9d52d2e6dc9fab6bed858555855d8745b89362893bd80bc2a6"
+    },
+    {
+      "name": "controller.json",
+      "bytes": 1115,
+      "sha256": "a327734e8e24d02afc568ab709f081365f6b8240e0bb29e07dc3ebdf8dea963f"
+    },
+    {
+      "name": "gate.log",
+      "bytes": 128988,
+      "sha256": "03432aa36635f172d25b545cf5b805bfa84495194e454e30591632a52f2202db"
+    },
+    {
+      "name": "protected.json",
+      "bytes": 6276,
+      "sha256": "c57d07b7cc908012347c1817304b4ee0f573e3219db1c6bad421ff2cffe902f5"
+    },
+    {
+      "name": "result.json",
+      "bytes": 42703,
+      "sha256": "c41265bb483e06a60632acabb83e2676414dc2bcb9211ec1168d54094eb5f85f"
+    },
+    {
+      "name": "solver.log",
+      "bytes": 4779,
+      "sha256": "aae6b1b93b60324a7630bb3f15942d6d9ad88ac1724e9db74fe80b31d0814670"
+    },
+    {
+      "name": "source-inventory.json",
+      "bytes": 289997,
+      "sha256": "d6303e8d385c957e7ba8dfa96fd01d07d61382bd1374a1a71ef4b32d72d5929c"
+    },
+    {
+      "name": "source.tar",
+      "bytes": 27125760,
+      "sha256": "590c4fd2de781a9312393d73d0bd0256bfe92b403be6640eaa6c321f11746a11"
+    },
+    {
+      "name": "transport.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "controller_source_sha256": "f5dc0e498629e1945246c4ae7919d8b81f497783705a69139021c4575f08a5bc",
+  "transport_exit_code": 0,
+  "container": {
+    "id": "4972fa738f12ac250260ddd6836af7d6d91ce52b16e2f4e3310321eaba2b13f3",
+    "image": "sha256:4050cf22332a318ec0911f1f34e774e2a29781a9426f4dd8473b0d19fe9a0963",
+    "birth": "2026-10-11T23:02:56.824417131Z",
+    "created": "2026-10-11T02:56:50.201399875Z"
+  },
+  "container_before_after_equal": true,
+  "source_protected_pid1_equal": "reported by original terminal closure; not a new native audit",
+  "closure_limit": "original source/protected bytes and PID1 equal; known phase groups closed, not an arbitrary orphan-absence proof",
+  "uncertainty": [],
+  "operator_selected_retained_images": [
+    {
+      "copy": "0-sail_daemon-09399d08fc07cfbb",
+      "bytes": 55741544,
+      "mode": 493,
+      "sha256": "f1be7a615bd11284e382a6f7e477ad6dca848b2dc9e282f35502969ce66aef29",
+      "execution_identity": "operator-selected copy; execution is not inferred from file presence"
+    },
+    {
+      "copy": "1-sail_verus-1ff5719aff2dbe51",
+      "bytes": 35983152,
+      "mode": 493,
+      "sha256": "d178022f23eb583690227dae27e904ce7ad62c3d5f8f666e9073117e764a9aaa",
+      "execution_identity": "operator-selected copy; execution is not inferred from file presence"
+    },
+    {
+      "copy": "2-sail_cache-205283184013ccd0",
+      "bytes": 10948040,
+      "mode": 493,
+      "sha256": "1b09a5e91e05aeb6fc36579eb39ed420f26c4d4aeb5de9affdbe3d1b7060419d",
+      "execution_identity": "operator-selected copy; execution is not inferred from file presence"
+    }
+  ],
+  "retention_errors": [],
+  "all_cargo_artifacts_archived": false,
+  "cargo_log_named_execution_images": [
+    {
+      "test_source": "examples/check_mcp.rs",
+      "executable_basename": "check_mcp-f8e91464115026de",
+      "execution_evidence": "original Cargo phase log says Running unittests",
+      "execution_byte_sha256": null
+    },
+    {
+      "test_source": "examples/job_read_bench.rs",
+      "executable_basename": "job_read_bench-c70a7d5eebaa34a8",
+      "execution_evidence": "original Cargo phase log says Running unittests",
+      "execution_byte_sha256": null
+    },
+    {
+      "test_source": "examples/result_client_profile.rs",
+      "executable_basename": "result_client_profile-4bb31c06ac77aff9",
+      "execution_evidence": "original Cargo phase log says Running unittests",
+      "execution_byte_sha256": null
+    },
+    {
+      "test_source": "examples/result_frame_profile.rs",
+      "executable_basename": "result_frame_profile-ccad83d8301b45e9",
+      "execution_evidence": "original Cargo phase log says Running unittests",
+      "execution_byte_sha256": null
+    },
+    {
+      "test_source": "examples/result_stream_profile.rs",
+      "executable_basename": "result_stream_profile-8e81cdd281ff162f",
+      "execution_evidence": "original Cargo phase log says Running unittests",
+      "execution_byte_sha256": null
+    }
+  ],
+  "actual_nextest_execution_byte_hashes": "not supplied by this controller; named test PASS rows prove execution without identifying copied ELF bytes",
+  "execution_inferred_from_retained_image_presence": false,
+  "this_review": "host file-only raw hashing, safe archive inventory reconstruction and recorded closure verification; no native actor",
+  "original_oracles_or_deadlines_changed": false,
+  "prior_failed_gates_reclassified": false,
+  "historical_730_first_failed_binding_identified": false,
+  "independent_publication_sensitivity": "pending separate remove-only-publication control",
+  "installed_product_reader_benchmark_or_corpus_credit": false
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "source-only independent ordinary-script bootstrap candidate",
-  "status": "corrected source-only follow-up; uncompiled/unexecuted; prior 602 workspace positive failures retained",
+  "status": "complete c2a4b23 Linux workspace gate and original solver PASS; separate sensitivity, installed product and benchmark validation pending",
   "base": "247cd28",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "caef3ba1fa9335237ca2880b61939c634801cea79aea943430a592db9d78d6c8",
@@ -89,7 +89,7 @@
   "non_utf8_followup": "Capture rejects any non-UTF-8 key/value before native acquisition; shared declared-key policy refuses VarError::NotUnicode. Isolated bounded same-test subprocesses inject non-UTF-8 LANG value and environment key via Command, with no unsafe process environment mutation.",
   "third_native_gate": {
     "root_source": "602ec67d94f9d1b7918933892ad780d4ad1246b6",
-    "status": "FAIL after strict PASS; 646/649 workspace tests pass, three bootstrap baseline tests fail; solver and later gate steps unattempted",
+    "status": "FAIL: strict PASS; 646/649 workspace tests passed with three bootstrap positive-baseline failures; solver unattempted",
     "failed_controls": [
       "bootstrap_actual_cargo_can_publish_ordinary_contract_without_current_proof",
       "bootstrap_empty_generation_and_scriptless_workload_do_not_block_recovery",
@@ -102,5 +102,15 @@
     "guards": "optional only: command/unstable config/environment override refusal; exact virtual workspace manifest/lock roots",
     "source_evidence": "cargo-cwd-source.json",
     "required_new_control": "actual workspace member compilation + override/foreign-source/workspace-binding refusals; unexecuted"
+  },
+  "completed_native_validation": {
+    "source_commit": "c2a4b2363b415aa2157fc38dc388192125b87109",
+    "record": "docs/validation/m7-core-c2a4b23-validation.json",
+    "workspace_tests_passed": 651,
+    "bootstrap_controls_passed": 10,
+    "all_remaining_gate_steps_passed": true,
+    "solver_tests_passed": 41,
+    "separate_sensitivity": "running separately; no terminal result in this record",
+    "installed_product_reader_or_benchmark_credit": false
   }
 }
