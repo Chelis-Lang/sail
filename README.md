@@ -143,7 +143,10 @@ the CLI, so an agent can inspect results while verification continues.
 Experimental repair tools add `start_repair_validation`, `verification_events`,
 `explain_failure`, `compare_verification`, `save_baseline`, `list_baselines` and
 `get_baseline`. Baseline tools expose the same immutable Historical evidence as
-the CLI, independently of job pruning. Durable read-only lookups keep
+the CLI, independently of job pruning. Their separate installed
+[feature smoke](docs/validation/m7-mcp-baseline-product-smoke-plan.md) passes on
+`57a319d`, including overwrite refusal and full CLI/MCP snapshot equality.
+Durable read-only lookups keep
 bounded persistent clients while authorizing each read with a complete fresh
 service reply; writes and verification lifecycle ownership retain their existing
 paths. Register the stdio command `sail mcp`, for example

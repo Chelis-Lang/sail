@@ -3,9 +3,10 @@
 This implementation addresses [Sail issue 77](https://github.com/Chelis-Lang/sail/issues/77).
 Selected combined source `57a319d` passes the complete local gate and original
 solver suite, followed by an ordinary release build and owned private installation.
-The original installed CLI/MCP repair fixture also passes. Separate baseline
-feature smoke, readers, conformance and the unchanged full benchmark remain
-unqualified on this source at this record's freeze. No original Historical/Unknown refusal, deadline,
+The original installed CLI/MCP repair fixture also passes. The separate
+[installed baseline feature smoke](../m7-mcp-baseline-product-smoke-plan.md) later
+passes on the same product. Readers, conformance and the unchanged full benchmark
+remain unqualified on this source. No original Historical/Unknown refusal, deadline,
 warmup allowance or receipt predicate changes.
 
 The first three combined native gates remain failed: `2ba2a32` stopped at the

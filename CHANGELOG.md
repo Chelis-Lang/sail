@@ -28,8 +28,12 @@ semantic versioning once the API is published.
   pruning. Existing completed-job and no-overwrite checks remain; reads retain
   Historical currentness and full provenance without promoting provisional or
   incomplete reports. Corrupt identities and oversized records fail explicitly.
-  Source implementation and new controls address
-  [#72](https://github.com/Chelis-Lang/sail/issues/72); native validation is pending.
+  The `57a319d` combined gate and separate installed
+  [actual CLI/MCP feature smoke](docs/validation/m7-mcp-baseline-product-smoke-plan.md)
+  pass, including literal names, full payload equality, immutable overwrite
+  refusal and client restart. This addresses
+  [#72](https://github.com/Chelis-Lang/sail/issues/72) without reader, performance
+  or additional original-fixture credit.
 
 - Prepare a managed package-selection correction: compact `-papp` and `-p=app`
   select the same expected verification targets and forced package cleanup as

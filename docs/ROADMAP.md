@@ -125,8 +125,11 @@ This includes the declared source-inventory repair and MCP baseline lifecycle.
 Its ordinary release (93.661 seconds) and owned private installation (2.444
 seconds) also pass with the same source and qualified engine identities. The
 original installed CLI/MCP repair fixture also passes in 95.684 seconds with
-315 operations under unchanged 120/30/5-second limits. Separate named-baseline
-feature smoke is running; readers, conformance and real-project performance
+315 operations under unchanged 120/30/5-second limits. The separate
+[named-baseline feature smoke](validation/m7-mcp-baseline-product-smoke-plan.md)
+also passes: actual MCP save/list/get, immutable overwrite refusal and restarted
+client reads agree with CLI on full Historical provenance. Its derivative
+supplies no additional original-fixture credit; readers, conformance and real-project performance
 receive no transferred credit.
 Remaining delivery gates are complete current standard/cache conformance and
 the two real-project speed thresholds. PR #74
