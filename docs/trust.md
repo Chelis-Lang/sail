@@ -193,7 +193,7 @@ commands. The record uses a separate key domain, with the same solver and mode
 identity; shared writers must certify complete silent sessions, never synthesize
 records merely from cached prefixes.
 
-## Optional source engine and preparation
+## Optional source engine
 
 The interactive engine is an explicitly selected pinned Verus source variant.
 Its manifest binds the source commit, Rust toolchain, patch and lockfile digests,
@@ -221,97 +221,25 @@ The engine keeps no prepared-lowering cache, so it adds no cache to this trust
 boundary. Focus and progress evidence remain provisional until a complete
 successful full result is Current.
 
-## Retained freshness and kernel lease ownership
+## Currentness of retained results
 
-On Linux, retaining expensive runtime digests requires continuously held kernel
-read leases, native event coverage, and synchronous barriers. Input bytes are
-hashed only after those leases are acquired. Their digests can be retained while
-that exact owner continuously protects every content inode and namespace binding.
-A writable mapping, conflicting writer, helper
-loss, timeout or uncertain path coverage makes current evidence unavailable;
-historical proof output remains available and is never relabelled Current.
-The exact sorted input-file inventory can be retained only within that same
-continuous lease and namespace-observer generation. Every read brackets selection
-with namespace/generation checks and performs one final complete runtime and
-lease validation, including two independent kernel inventory sweeps. New files,
-removals, replacements, symlink changes, absent configurations and changed
-declaration records invalidate the inventory and require a full recollection
-and content hashing under a new owner. Digests hashed before lease acquisition
-or belonging to a lost owner are never revived; elapsed time grants no validity.
+A Current label is a statement about inputs, not about the verdict, and no
+proof is ever reused or accepted unless its result is Current
+([ADR 0041](decisions/0041-content-and-stat-currentness.md)). A run is Current
+only when its input content revision and the file stamps of those inputs are
+unchanged across the run, no absent Cargo configuration appeared, and every
+compiled unit lies inside the recorded closure. A later read rehashes exactly
+the recorded files: equal is Current, different is Historical, unreadable is
+Unknown. Toolchain and sysroot files are identified by device, inode, size and
+modification time; configuration is identified by content.
 
-Linux requires the lease holder to own the file or hold the kernel lease
-capability. The helper also leases its resolved Python interpreter, loaded
-standard-library files and native modules. An ordinary user may be unable to
-lease a system-owned Python installation. In that case Sail cannot retain the
-runtime projection and reports unavailable current evidence; it does not infer
-immutability from permissions or substitute metadata checks. Container tests
-whose runtime files are owned by the service account establish that environment's
-coverage, not general unprivileged host coverage.
+What this trusts and does not detect is listed in [freshness](freshness.md):
+an edit made and undone during a run through an already-dirty shared writable
+mapping, a bind mount added and removed during a run (root only), and an
+in-place toolchain rewrite that restores the modification time.
 
-Encoded job-result frames are an allocation optimization, not freshness evidence.
-Every read verifies the exact retained stdout bytes against the validated seal
-and checks current input evidence before selecting a frame. Cached frames are
-bounded by 128 MiB and 16 jobs, carry no time-based validity, and are discarded
-on a seal mismatch. Restart establishes freshness again.
-
-The proof worker can reuse sysroot library hashes within its own invocation.
-It installs native namespace observation before enumerating installed targets,
-acquires kernel read leases before the first eligible content hash, and retains
-both owners through the receipt's final commit marker. Digests computed before
-that acquisition remain ineligible, and all other runtime files are hashed
-normally. Target installation, alias replacement, writable mappings, helper
-loss or a failed barrier discard this baseline: the final check reads runtime
-bytes again and cannot publish a current receipt. Enumeration errors and
-unrepresentable runtime paths also fail closed. This optimization transfers no
-owner or trust to the daemon; completed-result readers establish their own
-freshness evidence. macOS continues to use the full runtime byte check.
-
-Lease barriers read bounded kernel-owned `/proc/locks` state rather than waiting
-for a scheduled Python acknowledgement. At cold acquisition, the helper reports
-its complete descriptor inventory; Sail binds each descriptor to the requested
-device/inode and its kernel lease entry. Read barriers require the exact lease
-multiset for that PID, all `LEASE ACTIVE READ`, plus the same live, non-stopped
-process start time before and after the sweep. Sail validates ownership again
-through a final independently read complete inventory,
-under the same aggregate byte cap. SIGIO can close descriptors before the owner
-process exits, so process liveness cannot stand in for final lease ownership.
-The kernel inventory is certified at the final confirmation sweep's entry, not
-its return. Combined caller barriers establish a point within the call interval;
-this is not a promise that input evidence remains Current until response return.
-An invalid first sweep is terminal and is never retried by the second one.
-Global seq-file inventory counts
-can change across buffer refills when unrelated owners add or remove leases.
-If otherwise valid ACTIVE rows disagree with the initial inventory, Sail checks
-each initially bound descriptor through kernel `fdinfo`, whose lease rows are
-produced under the inode lease lock. The fallback shares the same aggregate
-byte cap. Each descriptor must still carry its one exact owner,
-device/inode and ACTIVE READ lease. Known breaking or malformed owner state
-does not use the fallback. Missing, breaking, unexpected, malformed, unavailable
-or oversized final state permanently invalidates that owner.
-The sweep retains a 2 MiB aggregate byte cap and at most 4,096 initially bound
-descriptors. Kernel reads do not promise an interruptible wall-clock bound.
-Elapsed scheduling time does not determine freshness: the owner cannot restore
-a broken lease during a pause. The former 50 ms elapsed-time refusal was removed
-after it rejected genuine unbroken generations under concurrent work. Public
-five-second job RPC and actual 200 ms p95 reader acceptance deadlines remain
-unchanged, and slow reads must still fail those acceptance gates.
-
-The helper acquires every lease once before readiness and never adds or renews a
-lease afterward. Each lease can therefore only cease being active. Although a
-proc seq-file read may span multiple kernel iterations, observing every expected
-lease active proves they were all active at sweep entry: a lease active later
-could not have been broken earlier and restored by this generation. Sail still
-brackets retained bytes with independent namespace, interpreter, mount and inode
-barriers. SIGIO immediately closes the helper's descriptors so writers proceed;
-owner loss never authorizes reuse. This argument follows the kernel's
-[`LEASE ACTIVE`/`BREAKING` status implementation and lease transitions](https://github.com/torvalds/linux/blob/f155f3b3ed1af23884ffaffe8a669722b87ac9d6/fs/locks.c)
-and the documented [`/proc/locks` interface](https://man7.org/linux/man-pages/man5/proc_locks.5.html).
-
-A local kernel-only churn reproduction held 400 unchanged read leases while an
-unrelated owner repeatedly acquired and released its own leases. A global
-read listed 406 rows for the unchanged owner while all 400 individually bound
-`fdinfo` entries remained ACTIVE READ. This is an availability refusal, not
-a reason to assume global seq-file snapshots are atomic. Exact descriptor
-validation uses the same monotonic-generation argument and never retries a
-generation after it has failed. Real write and mmap mutate-and-restore tests
-force this path and still invalidate reuse.
+Encoded job-result frames are an allocation optimization, not freshness
+evidence. Every read verifies the retained stdout bytes against the result's
+seal and checks currentness before selecting a frame. Cached frames are bounded
+by bytes and count, carry no time-based validity, and are discarded on a seal
+mismatch.

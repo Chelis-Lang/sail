@@ -39,17 +39,6 @@ for those unsupported managed configurations. Cargo configuration discovery
 uses the original invocation directory, including member-directory ancestors;
 relative Cargo/cache homes are resolved against that directory.
 
-On the M7 development branch, Linux managed commands also attempt automatic
-sysroot-digest reuse through the trusted local daemon. Each command first
-installs its own original file and namespace guards. It accepts an available
-snapshot only while both owners protect the same complete inventory; executable
-identities and all final proof checks remain local. A cold, unavailable, busy or
-invalid service falls back to full local hashing. Cold commands can request a
-bounded background fill after their own hash barrier; they do not wait for that
-fill. No new configuration is required. Original cold/warm integration and
-performance validation remain pending; see [the roadmap](ROADMAP.md) and
-[the handoff contract](decisions/0031-guarded-sysroot-digest-handoff.md).
-
 Linux is the reference platform for frontend proof reuse. Its ordered native
 event queue tracks transient creation and removal of missing Cargo configuration
 files before receipts are published. On macOS, present inputs retain content
@@ -81,15 +70,9 @@ its own context. Incomplete input observation never claims that historical
 proof evidence establishes a current workspace. Exit code and proof outcome
 remain distinct from whether a job's execution finished.
 
-For an Unknown Linux proof, `SAIL3114` coverage notes retain the first failed
-barrier (`input-barrier` or `post-verification`). A
-`native-observation-invalidated` note also retains the existing namespace detail,
-such as `namespace-tracked-input-event` or
-`namespace-event-drain-budget-exhausted`. These labels distinguish observed
-input events from unavailable coverage; they do not identify a particular file
-or explain an event's cause. Sysroot notes likewise distinguish the first failed
-`namespace` or `explicit-files` observer and retain its existing detail. Earlier
-coarse reports cannot be explained retrospectively by these new labels.
+When Sail cannot confirm that a result's inputs are unchanged, the result is
+Unknown and carries the note `SAIL3114: inputs could not be confirmed
+unchanged; re-run for a current result` ([freshness](freshness.md)).
 Job reads preserve the original proof notes. A
 separate current-input-validation warning appears when a previously Current
 report becomes Unknown during projection. See
