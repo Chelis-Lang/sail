@@ -14,6 +14,7 @@ pub mod diagnostics;
 pub mod engine;
 mod engine_events;
 pub mod managed;
+mod parallel;
 pub mod patch;
 pub mod report;
 mod report_scope;

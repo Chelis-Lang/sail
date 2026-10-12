@@ -731,18 +731,25 @@ fn actual_focus() -> bool {
 
 fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let mut files = std::collections::BTreeMap::new();
+    let mut present = Vec::new();
     for pair in args.windows(2).filter(|w| w[0] == "--extern") {
         if let Some((_, path)) = pair[1].to_str().and_then(|s| s.split_once('=')) {
             let path = PathBuf::from(path);
-            if path.is_file() {
-                files.insert(path.clone(), file_digest(&path)?);
-            }
             let vir = path.with_extension("vir");
+            if path.is_file() {
+                present.push(path);
+            }
             if vir.is_file() {
-                files.insert(vir.clone(), file_digest(&vir)?);
+                present.push(vir);
             }
         }
+    }
+    // Complete reads of every dependency overlap; the first failure in
+    // argument order is still the reported error.
+    let digests = crate::parallel::in_order(&present, |path| file_digest(path));
+    let mut files = std::collections::BTreeMap::new();
+    for (path, digest) in present.into_iter().zip(digests) {
+        files.insert(path, digest?);
     }
     Ok(files)
 }

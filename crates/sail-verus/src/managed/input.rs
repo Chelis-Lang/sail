@@ -1,6 +1,6 @@
 //! Cargo metadata and declared input revision tracking.
 
-use super::files::file_digest;
+use super::files::{digest_all, file_digest};
 use crate::{Error, Result};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -145,17 +145,28 @@ fn collect(
     complete
 }
 
+/// A managed run's snapshot. Its content reads overlap; daemon freshness
+/// readers use `snapshot_metadata_home`, which keeps them sequential.
 pub(super) fn snapshot_metadata(data: &Value, extras: &[PathBuf]) -> InputSnapshot {
     let home = std::env::var_os("CARGO_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
-    snapshot_metadata_home(data, extras, home.as_deref())
+    snapshot_metadata_with(data, extras, home.as_deref(), true)
 }
 
 pub(super) fn snapshot_metadata_home(
     data: &Value,
     extras: &[PathBuf],
     cargo_home: Option<&Path>,
+) -> InputSnapshot {
+    snapshot_metadata_with(data, extras, cargo_home, false)
+}
+
+fn snapshot_metadata_with(
+    data: &Value,
+    extras: &[PathBuf],
+    cargo_home: Option<&Path>,
+    parallel: bool,
 ) -> InputSnapshot {
     let workspace = PathBuf::from(data["workspace_root"].as_str().unwrap_or_default());
     let invocation = Path::new(
@@ -225,7 +236,7 @@ pub(super) fn snapshot_metadata_home(
             .filter(|p| !excluded_canonical.contains(p)),
     );
     let stamp_before = stamp_paths(&observation_paths);
-    let (revision, readable) = contents_revision(&files);
+    let (revision, readable) = contents_revision(&files, parallel);
     complete &= readable;
     complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
     roots.sort();
@@ -299,15 +310,23 @@ pub(super) fn closure_scope(
     scoped
 }
 
-// Preserve the original exact sorted path spelling and digest encoding.
-fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool) {
+// Preserve the original exact sorted path spelling and digest encoding. Every
+// file is still read completely between the caller's stamps; only the reads
+// overlap, and their digests are folded in the original sorted order.
+fn contents_revision(files: &BTreeSet<PathBuf>, parallel: bool) -> (String, bool) {
     let mut complete = true;
     let mut hasher = Sha256::new();
-    for path in files {
+    let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
+    let digests = if parallel {
+        digest_all(&paths)
+    } else {
+        paths.iter().map(|path| file_digest(path)).collect()
+    };
+    for (path, digest) in files.iter().zip(digests) {
         let bytes = path.as_os_str().as_encoded_bytes();
         hasher.update((bytes.len() as u64).to_le_bytes());
         hasher.update(bytes);
-        if let Ok(hash) = file_digest(path) {
+        if let Ok(hash) = digest {
             hasher.update(hash.as_bytes());
         } else {
             complete = false;
@@ -325,7 +344,7 @@ impl InputSnapshot {
     // it cannot discover new paths and is not standalone freshness evidence.
     #[cfg(test)]
     pub(super) fn rehash_guarded_inventory(&self) -> Self {
-        let (revision, readable) = contents_revision(&self.content_paths);
+        let (revision, readable) = contents_revision(&self.content_paths, false);
         let mut refreshed = self.clone();
         refreshed.revision = revision;
         refreshed.complete &= readable;

@@ -1464,14 +1464,26 @@ fn runtime_paths(cache: &Path, context: &str) -> Vec<PathBuf> {
 }
 
 pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
+    // Shared with daemon freshness readers: reads stay sequential there.
+    runtime_matches(cache, context, |paths| {
+        let mut hashed = super::files::FileDigests::default();
+        paths.iter().map(|path| hashed.hash(path)).collect()
+    })
+}
+
+/// Complete content digests of every path, read concurrently into one
+/// phase-local map; aliases of one file are read once, as with sequential reads.
+/// Used only by the managed run's own final check, never by daemon readers.
+fn hash_all(paths: &[&Path]) -> Vec<Result<String>> {
     let mut hashed = super::files::FileDigests::default();
-    runtime_matches(cache, context, |path| hashed.hash(path))
+    hashed.prefetch(paths.iter().copied());
+    paths.iter().map(|path| hashed.hash(path)).collect()
 }
 
 fn runtime_matches(
     cache: &Path,
     context: &str,
-    mut hash: impl FnMut(&Path) -> Result<String>,
+    hash_all: impl FnOnce(&[&Path]) -> Vec<Result<String>>,
 ) -> bool {
     let state = cache.join("runtime-identities");
     let identity_sha = read::<String>(&state.join(format!("{context}.link")));
@@ -1482,9 +1494,17 @@ fn runtime_matches(
         identity_sha
             .as_ref()
             .is_some_and(|sha| *sha == digest(&serde_json::to_vec(paths).unwrap_or_default()))
-            && paths
-                .iter()
-                .all(|(path, expected)| hash(Path::new(path)).as_ref() == Ok(expected))
+            && {
+                // Every listed file is still read completely and compared; only
+                // the reads overlap. A missing digest can never match.
+                let files: Vec<&Path> = paths.iter().map(|(path, _)| Path::new(path)).collect();
+                let digests = hash_all(&files);
+                digests.len() == paths.len()
+                    && paths
+                        .iter()
+                        .zip(digests)
+                        .all(|((_, expected), digest)| digest.as_ref() == Ok(expected))
+            }
     })
 }
 
@@ -1493,23 +1513,36 @@ fn proof_runtime_current(
     context: &str,
     sysroots: &mut super::sysroot::Baseline,
 ) -> (bool, bool) {
-    let mut hashed = super::files::FileDigests::default();
-    proof_runtime_current_with(cache, context, sysroots, |path| hashed.hash(path))
+    proof_runtime_current_with(cache, context, sysroots, hash_all)
 }
 
 fn proof_runtime_current_with(
     cache: &Path,
     context: &str,
     sysroots: &mut super::sysroot::Baseline,
-    mut hash: impl FnMut(&Path) -> Result<String>,
+    hash_all: impl FnOnce(&[&Path]) -> Vec<Result<String>>,
 ) -> (bool, bool) {
     if !sysroots.clean() {
         return (runtime_current(cache, context), sysroots.complete());
     }
-    let matches = runtime_matches(cache, context, |path| {
-        sysroots
-            .captured(path)
-            .map_or_else(|| hash(path), |hash| Ok(hash.clone()))
+    let matches = runtime_matches(cache, context, |paths| {
+        // Guarded sysroot captures are used exactly as before; every other
+        // runtime file is read again in this final check.
+        let unguarded: Vec<&Path> = paths
+            .iter()
+            .copied()
+            .filter(|path| sysroots.captured(path).is_none())
+            .collect();
+        let mut fresh = hash_all(&unguarded).into_iter();
+        paths
+            .iter()
+            .map(|path| match sysroots.captured(path) {
+                Some(hash) => Ok(hash.clone()),
+                None => fresh
+                    .next()
+                    .unwrap_or_else(|| Err(Error::new("SAIL3104", "runtime digest unavailable"))),
+            })
+            .collect()
     });
     if sysroots.complete() {
         (matches, true)
@@ -2931,9 +2964,14 @@ mod tests {
         json(&state.join("ctx.link"), &sha)?;
         let mut read_paths = Vec::new();
         assert_eq!(
-            proof_runtime_current_with(&root, "ctx", &mut owner, |path| {
-                read_paths.push(path.to_owned());
-                file_digest(path)
+            proof_runtime_current_with(&root, "ctx", &mut owner, |paths| {
+                paths
+                    .iter()
+                    .map(|path| {
+                        read_paths.push(path.to_path_buf());
+                        file_digest(path)
+                    })
+                    .collect()
             }),
             (true, true)
         );

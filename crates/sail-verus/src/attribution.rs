@@ -468,17 +468,19 @@ pub fn read_logs(dir: &Path) -> crate::Result<Vec<LogFile>> {
         })
         .collect();
     stems.sort();
-    let mut out = Vec::new();
-    for stem in stems {
+    // Each log pair is read and parsed independently; results keep stem order.
+    Ok(crate::parallel::in_order(&stems, |stem| {
         let (Ok(air), Ok(transcript)) = (
             std::fs::read_to_string(dir.join(format!("{stem}.air"))),
             std::fs::read(dir.join(format!("{stem}.smt_transcript"))),
         ) else {
-            continue;
+            return None;
         };
-        out.push(LogFile::new(&stem, &air, &transcript));
-    }
-    Ok(out)
+        Some(LogFile::new(stem, &air, &transcript))
+    })
+    .into_iter()
+    .flatten()
+    .collect())
 }
 
 /// What the shim records about one cached session, when

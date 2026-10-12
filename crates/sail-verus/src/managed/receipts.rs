@@ -1,6 +1,6 @@
 //! Persisted driver observations and successful proof receipts.
 
-use super::files::{digest, file_digest, json};
+use super::files::{digest, digest_all, json};
 use crate::{Error, Result};
 use sail_api::output::{Report, VerdictName};
 use serde::{Deserialize, Serialize};
@@ -80,17 +80,10 @@ impl Receipt {
             && self.checksum == checksum
             && self.context == context
             && self.invocation.success
-            && self
-                .invocation
-                .dependencies
-                .iter()
-                .all(|(path, hash)| file_digest(path).as_ref() == Ok(hash))
+            && digests_match(&self.invocation.dependencies)
             && complete(&self.invocation.report)
             && !self.artifact_hashes.is_empty()
-            && self
-                .artifact_hashes
-                .iter()
-                .all(|(path, hash)| file_digest(path).as_ref() == Ok(hash))
+            && digests_match(&self.artifact_hashes)
     }
 }
 
@@ -195,10 +188,23 @@ pub(crate) fn complete(report: &Report) -> bool {
 }
 
 pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, String>> {
+    // Complete reads of every artifact overlap; the first failure in path order
+    // is still the reported error.
+    let files: Vec<&Path> = paths.iter().map(PathBuf::as_path).collect();
     paths
         .iter()
-        .map(|p| Ok((p.clone(), file_digest(p)?)))
+        .zip(digest_all(&files))
+        .map(|(p, digest)| Ok((p.clone(), digest?)))
         .collect()
+}
+
+/// Every listed file still has exactly the recorded digest; reads overlap.
+fn digests_match(expected: &BTreeMap<PathBuf, String>) -> bool {
+    let files: Vec<&Path> = expected.keys().map(PathBuf::as_path).collect();
+    expected
+        .values()
+        .zip(digest_all(&files))
+        .all(|(hash, digest)| digest.as_ref() == Ok(hash))
 }
 
 pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {

@@ -47,6 +47,34 @@ impl FileDigests {
         self.0.insert(canonical, hash.clone());
         Ok(hash)
     }
+
+    /// Reads files concurrently into this phase-local map, exactly as `hash`
+    /// would read them one by one. Only overlap changes: every digest is still
+    /// the complete content read in this phase. A failed read is not recorded,
+    /// so the later `hash` call reads the file again and reports its original
+    /// error in the original order.
+    pub(super) fn prefetch<'a>(&mut self, paths: impl IntoIterator<Item = &'a Path>) {
+        let mut pending: Vec<(PathBuf, &Path)> = Vec::new();
+        for path in paths {
+            let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
+            if !self.0.contains_key(&canonical) && !pending.iter().any(|(c, _)| *c == canonical) {
+                pending.push((canonical, path));
+            }
+        }
+        for ((canonical, _), digest) in pending.iter().zip(digest_all(
+            &pending.iter().map(|(_, path)| *path).collect::<Vec<_>>(),
+        )) {
+            if let Ok(digest) = digest {
+                self.0.insert(canonical.clone(), digest);
+            }
+        }
+    }
+}
+
+/// Complete content digests of `paths`, in order, read by at most eight
+/// concurrent workers. Each result is exactly `file_digest` of that path.
+pub(super) fn digest_all(paths: &[&Path]) -> Vec<Result<String>> {
+    crate::parallel::in_order(paths, |path| file_digest(path))
 }
 
 pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
