@@ -12,8 +12,9 @@ semantic versioning once the API is published.
   submission order, and queue rather than fail.
 - Repair job results carry the full report once, as `result`; `repair.batch`
   no longer repeats it as `full`, halving the frame every reader receives
-  (4.9 MB to 2.5 MB on a HumanEval repair). Foreground `sail repair-check --output
-  json` still prints a standalone repair document with `batch.full`.
+  (4.9 MB to 2.5 MB on a HumanEval repair). Foreground `sail repair-check
+  --output json` still prints a standalone repair document with
+  `batch.full`.
 
 - `sail-bench repair` no longer records peak RSS or writes a raw sidecar;
   `--raw` is removed. Each invocation's command, stdout and stderr stay under

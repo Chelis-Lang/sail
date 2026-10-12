@@ -34,6 +34,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and
   [#77](https://github.com/Chelis-Lang/sail/issues/77).
+- **Reader gate refused on the L15 host.** `scripts/reader-gate.sh` warmed
+  accepted Current repairs, then read the job as Unknown, for `5e99481` and
+  the L15 branch alike (5 attempts, two engines). Cause unknown.
+  [L15 report](reports/rescue/l15-concurrency-and-results.md#one-full-report-per-repair-result).
 - **Intermittent shared HTTP deadline failures.** The 250 ms
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
@@ -65,6 +69,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   system-owned files. See the [native product setup](native-product-setup.md).
   macOS takes a conservative path and may need fresh verification.
 - A successful focused check still needs complete Current full validation.
+- Concurrent foreground `sail verify --incremental` runs on one workspace
+  fail with `SAIL3104` ("managed target is in use") instead of waiting. Jobs
+  submitted to the daemon queue per workspace instead.
+  [L15 report](reports/rescue/l15-concurrency-and-results.md#many-agents-on-one-daemon).
 - There is no managed compiler-target quota or generation GC. See
   [workspace hygiene](workspace-hygiene.md#managed-compiler-targets).
 
