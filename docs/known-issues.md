@@ -8,6 +8,18 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
+- **Engine diagnostics name `vstd/seq.rs` where stock names `seq.rs`.** The
+  engine conformance arm found this on `basic_failure.rs`. It is a diagnostic
+  parity defect in engine mode; stock mode is unaffected.
+  [L4 report](reports/rescue/l4-engine-correctness.md).
+- **The byte oracle trips on stock trigger nondeterminism.** On
+  `guide/traits.rs` (7 of 10 runs) and `chapter-6-1.rs`, stock Verus itself
+  chooses triggers nondeterministically
+  ([VI-0015](verus-issues/VI-0015-nondeterministic-trigger-choice.md));
+  verdicts match. The fresh-versus-fresh classification in ADR 0038 is
+  pending, and the oracle cannot start on `vest-generated`.
+- **The 512 MiB preparation budget is not an established bound.** It is a
+  configured limit only; nothing measures process memory against it.
 - **Real-project repair benchmark refuses before any sample.** At `387ba80`,
   the first measured HumanEval GCD is Current and accepted but uses three
   compiler invocations against the one-driver requirement. No samples have
@@ -17,20 +29,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and
   [#77](https://github.com/Chelis-Lang/sail/issues/77).
-- **Full Result reads miss the 200 ms p95 target.** At `387ba80`, Python Result
-  p95 is 436.008 ms, measured under emulation. Cause unknown.
-  [Gate 5](validation/m7.md#gate-5-responsive-reads), [#69](https://github.com/Chelis-Lang/sail/issues/69).
 - **Standard-tier conformance is incomplete.** Stock Verus waits on the
   Verismo tspec unit until its 3,600 s limit. Cache fill/warm on the standard
   tier has never completed.
   [VI-0013](verus-issues/VI-0013-verismo-tspec-stock-wait.md), [Gate 6](validation/m7.md#gate-6-default-and-cache-conformance).
-- **Output-owner offers are dropped while the worker holds the slot.**
-  `Queue::offer` uses a nonblocking try-lock and does not retry. This is
-  fail-safe: the frame falls back to original hashing. It made four
-  `sail-daemon` fixtures fail on native hosts until they offered before
-  spawning the worker. Production offers made during a worker's brief lock
-  still lose the owned-output fast path.
-  [Gate 3](validation/m7.md#gate-3-workspace-gate-solver-suite-and-native-ci).
 - **Intermittent shared HTTP deadline failures.** The 250 ms
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
