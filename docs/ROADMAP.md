@@ -114,7 +114,9 @@ The current selected source is `387ba80`; ordinary release/private installation
 passes in 89.720/2.282 seconds, followed by exact acceptance byte installation
 in 4.494 seconds. Its unchanged original CLI/MCP repair passes in 90.588
 seconds with 299 operations and original 120/30/5 limits. Current readers,
-complete conformance and real-project performance remain unqualified. The earlier `b89546c` product's complete local gate, 41/41 original
+complete conformance and real-project performance remain unqualified. The
+current reader scope is prepared only; no collector or retained workflow result
+is claimed. The earlier `b89546c` product's complete local gate, 41/41 original
 solver controls, ordinary release, private and acceptance installations, and
 unchanged CLI/MCP repair fixture pass. The original three-round benchmark failed
 on the first concatenate repair warmup: verification exited zero, but the full
@@ -195,10 +197,9 @@ Exact [release and private installations](validation/m7-product-c2a4b23-installa
 pass, followed by the fresh unchanged
 [original CLI/MCP repair fixture](validation/m7-repair-c2a4b23-terminal.md) in
 99.719 seconds with 325 operations, original 120/30/5 limits and no cleanup or
-progress errors. [Current PR CI at `a610357`](https://github.com/Chelis-Lang/sail/actions/runs/38209909625)
-passes all ten completed jobs including completion, bound to pushed commit
-`a610357902ba9f7d6cfd491370f8b5c818bf68b1`. Later unpushed documentation
-(`ddefa26` and `3919482`) is outside that CI scope.
+progress errors. [Current PR CI at `8539501`](https://github.com/Chelis-Lang/sail/actions/runs/38213490906)
+passes all ten completed jobs including completion at that pushed commit. Later
+documentation and controller changes are outside that exact CI scope.
 
 The earlier [complete original `730a321` reader workflow](validation/m7-reader-730a321-terminal.md)
 remains a historical pass: both four-client collectors retain 200 total samples,
@@ -220,7 +221,7 @@ acceptance follows, and PR #74 remains draft.
 | Workstream | Current evidence | Required next result |
 |---|---|---|
 | Optional source engine | The selected runtime passes all thirteen source qualification stages, exact cached-versus-fresh lowering from the same compiler input, stock verdict/diagnostic checks and fresh-vstd verification. Its private package and installation match all thirteen runtime artifacts. | Full repair workflows and frozen real-project performance. |
-| Combined implementation | Current selected source `387ba80` passes [673/673 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/source-inventory.json) with incremental compilation disabled; its ordinary release/private/acceptance installations and original repair also pass. Broader product qualification remains pending. Earlier `b89546c` passes [658/658 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/README.md), including the new real Cargo recovery and three diagnostic controls. Its ordinary release/private and acceptance byte installations plus fresh original repair fixture pass; original real-project benchmark fails at Historical warmup with zero samples and no performance claim. Earlier frozen `c2a4b23` passes [651 workspace tests, all remaining gate steps and 41/41 solver tests](validation/m7-core-c2a4b23-validation.md). All ten ordinary-build controls and [on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) pass. [Current PR CI at `a610357`](https://github.com/Chelis-Lang/sail/actions/runs/38209909625) passes all ten completed jobs including completion; later unpushed documentation is outside that exact commit's scope. | Complete standard/cache and real-project acceptance; retain the installed product identity and historical failures. Historical b895 readers pass separately. Local scopes receive no separate CI credit. |
+| Combined implementation | Current selected source `387ba80` passes [673/673 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/source-inventory.json) with incremental compilation disabled; its ordinary release/private/acceptance installations and original repair also pass. Broader product qualification remains pending. Earlier `b89546c` passes [658/658 workspace tests, all remaining steps and 41/41 solver tests](validation/m7-compiler-script-bootstrap/README.md), including the new real Cargo recovery and three diagnostic controls. Its ordinary release/private and acceptance byte installations plus fresh original repair fixture pass; original real-project benchmark fails at Historical warmup with zero samples and no performance claim. Earlier frozen `c2a4b23` passes [651 workspace tests, all remaining gate steps and 41/41 solver tests](validation/m7-core-c2a4b23-validation.md). All ten ordinary-build controls and [on/off/on emission sensitivity](validation/m7-bootstrap-c2a4b23-sensitivity.md) pass. [Current PR CI at `8539501`](https://github.com/Chelis-Lang/sail/actions/runs/38213490906) passes all ten completed jobs including completion; later unpushed documentation is outside that exact commit's scope. | Complete standard/cache and real-project acceptance; retain the installed product identity and historical failures. Historical b895 readers pass separately. Local scopes receive no separate CI credit. |
 | Repair workflow | Current `387ba80` [original CLI/MCP fixture](validation/m7-compiler-script-bootstrap/source-inventory.json) passes in 90.588 seconds with 299 operations and unchanged 120/30/5 limits after its exact product installation. Earlier `b89546c` [ordinary release, private/acceptance byte installations and original repair fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json) pass. The fresh fixture completes in 102.476 seconds with 335 operations, original 120/30/5 bounds and no cleanup/progress errors. Earlier c2 [repair pass (99.719 seconds, 325 operations)](validation/m7-repair-c2a4b23-terminal.md) remains a separate pass; poll counts are not benchmark scores. | Frozen HumanEval/Vest recovery and measured whole-loop gains; small-fixture success does not qualify real-project performance. |
 | Responsive reads | Earlier `b89546c` [original workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json) passes both unchanged collectors, each with 200 total samples across four clients (100 Result and 100 Status): Python Result/Status p95 91.227/56.989 ms; Rust 83.867/44.371 ms. Python receives the complete 4,310,817-byte Result. Genuine Current evidence, active-verifier continuity, retained CLI/MCP and immutable-input/cleanup checks pass. The 730 pass remains a separate historical scope. | Preserve original complete graphs and bounds for later production revisions; this product-specific pass does not qualify newer baseline/source-inventory changes or isolate a causal speedup. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
@@ -345,11 +346,13 @@ Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Preserve the selected b895 [release, installations and passing original repair
-   fixture](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
-   Its original full readers and retained CLI/MCP now pass. Preserve complete
+2. Preserve the selected 387 [gate, product installations and original repair
+   pass](validation/m7-compiler-script-bootstrap/source-inventory.json). Current
+   readers are prepared; neither collector nor retained CLI/MCP has run in that
+   scope. Historical b895 readers remain a separate pass. Preserve complete
    reports, independent freshness, active-verifier continuity and lifecycle
-   limits when validating later revisions. These unpaired scopes do not isolate
+   limits when executing the current reader workload. These unpaired scopes do
+   not isolate
    the contribution of metadata preservation, output-owner overlap or dependency
    reuse, and do not establish real-project whole-loop speedups.
 3. Retain source qualification and the selected runtime's exact delivery identity
@@ -357,8 +360,9 @@ Priority order for completing this milestone:
    shared ordinary Cargo artifacts; no focused success can replace full validation.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
-5. Diagnose the retained selected-b895 Historical warmup refusal, preserving its
-   failed scope and original Current admission. Qualify every frozen HumanEval
+5. Complete the running frozen 387 benchmark while preserving the historical
+   b895 Historical warmup refusal and its original Current admission. Qualify
+   every frozen HumanEval
    and Vest repair cycle: three rounds, spread and resources, with at least
    twofold median improvement on each project. Its real Cargo recovery and
    diagnostic controls pass, but are not real-project performance evidence.
