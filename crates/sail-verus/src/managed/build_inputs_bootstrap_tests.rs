@@ -614,7 +614,21 @@ fn bootstrap_actual_cargo_injected_environment_is_not_parent_authority() -> Test
         &fixture.local,
         &fixture.data,
     );
-    assert!(!fixture.export.exists());
+    // Original publication can emit an empty envelope. Its existence is not
+    // reuse authority: begin must refuse it and retain forced script cleaning.
+    let emitted: Value = serde_json::from_slice(&std::fs::read(&fixture.export)?)?;
+    assert_eq!(emitted["records"], serde_json::json!([]));
+    assert!(!super::super::begin(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &fixture.data
+    )?);
+    assert_eq!(
+        build_inputs::stale(&fixture.local, &fixture.data).0,
+        vec!["sail_bootstrap_fixture"]
+    );
     for key in [
         "RUSTDOC",
         "RUSTC_LINKER",

@@ -6,8 +6,8 @@
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "1f6914fa4dc8a05d5683cb4b4f5aa63bc78352c2343e29df459b75e02a4169ed",
     "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "651968991537c1849296d31cda92923f25f2d59ed4349d05d410a2300bd46581",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "53d1c1636987ced2ed6d301cc222c535fb7b8fd2a4d8c899858eab1c2c776540",
-    "crates/sail-verus/src/managed/runner.rs": "7e558e1116ce4ede2aca4d329171fff45adedcd8870156ddd0fd371566d80a7d",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "82adce9e5d6f5de2e3653aac4d115776cd28adc7282eada7634f4811f863e9cd",
+    "crates/sail-verus/src/managed/runner.rs": "d817c121abea4b71e4558acc96590b47f1ae95683299e91b03ee98808230a1b2",
     "crates/sail-verus/src/managed/source_inputs.rs": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
   },
   "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
@@ -61,6 +61,19 @@
     "whole combined gate and original solver",
     "original two-warmup real-project benchmark and unchanged original repair fixture"
   ],
-  "previous_uncompiled_freeze": "f697201db80717ec4d2d94c53855d7cbb22bf59f",
-  "injected_environment_followup": "Shared family/bootstrap policy also refuses dynamic-library path injection, RUSTDOC/RUSTC_LINKER, removed RUSTFLAGS and DEP_ metadata; actual Cargo declaration control drafted."
+  "injected_environment_followup": "Shared family/bootstrap policy also refuses dynamic-library path injection, RUSTDOC/RUSTC_LINKER, removed RUSTFLAGS and DEP_ metadata; actual Cargo declaration control drafted.",
+  "previous_uncompiled_freezes": [
+    "f697201db80717ec4d2d94c53855d7cbb22bf59f",
+    "91a2cb8"
+  ],
+  "initial_native_gate": {
+    "root_source": "e8345f3",
+    "status": "FAIL during strict compilation; workspace tests and solver unattempted",
+    "failures": [
+      "runner similar_names owner versus owned",
+      "E0382 hash moved into ProjectResult before bootstrap final runtime check"
+    ],
+    "correction": "Unambiguous bootstrap variable; borrow unchanged context_sha256 from the owning report. Production predicates unchanged."
+  },
+  "static_fixture_correction": "Original filtered publication deliberately emits an empty envelope; injected-environment control now requires exact empty records, begin=false and forced clean, instead of incorrect file absence."
 }
