@@ -41,3 +41,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0036: Managed compiler artifact families (implemented; product validation pending)](0036-managed-compiler-artifact-families.md)
 - [0037: Owned async shared HTTP transport (rejected after comparison)](0037-owned-async-shared-http-transport.md)
 - [0038: M7 rescue: native reference hosts, evidence policy and engine conditions](0038-m7-rescue.md)
+- [0039: The engine is built from a private Verus fork](0039-private-verus-fork.md)
