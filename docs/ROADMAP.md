@@ -83,8 +83,7 @@ keys and new SMT backends remain deferred.
 ## M7: Interactive proof engine and repair workflow (in progress)
 
 M7 is developed on the integration branch `rescue/m7` and lands on `main` in
-small PRs ([ADR 0038](decisions/0038-m7-rescue.md)). None of it is on `main`
-yet. The planned order is:
+small PRs ([ADR 0038](decisions/0038-m7-rescue.md)), in this order:
 
 1. evidence product: named baselines, `sail compare`, `sail explain` and the
    proof-event journal;

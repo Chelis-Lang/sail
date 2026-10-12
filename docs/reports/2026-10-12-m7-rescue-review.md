@@ -2,7 +2,7 @@
 
 This review covers the M7 branch `feat/m7-contracts` (draft PR #74) at `f7103bf`, at the point the owner stopped its agent and handed M7 to a rescue lead. The review was read-only, against the code, ADR 0027, the roadmap, `bench/` and `docs/validation/`. Everything from before the rescue is preserved in the tag `archive/m7-contracts-f7103bf`. The decisions that follow from this review are in [ADR 0038](../decisions/0038-m7-rescue.md).
 
-The M7 code it reviews (the interactive engine, ADR 0027 and `docs/validation/`) is not on `main`. It is on the integration branch `rescue/m7` and lands in small PRs; file paths below refer to that branch.
+The M7 code it reviews is on the integration branch `rescue/m7` and lands on `main` in small PRs. File paths below refer to that branch.
 
 ## Summary
 

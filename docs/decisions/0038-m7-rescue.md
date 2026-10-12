@@ -1,6 +1,6 @@
 # 0038: M7 rescue: native reference hosts, evidence policy and engine conditions
 
-- **Status:** accepted. Items 1, 2, 4, 5 and 6 apply now. Item 3 constrains the interactive engine and ADR 0027, which are not yet on `main`; they land in a later PR from the integration branch `rescue/m7`, which must satisfy item 3.
+- **Status:** accepted. Items 1, 2, 4, 5 and 6 apply now. Item 3 constrains the interactive engine (ADR 0027), which lands in a later PR from the integration branch `rescue/m7`; that PR must satisfy item 3.
 - **Date:** 2026-10-12
 
 ## Context
@@ -15,7 +15,7 @@ The owner also set the direction beyond M7: rank work by agent authoring-loop la
 
 ## Decision
 
-1. **Reference hosts.** Performance and Linux validation run on native x86-64 Linux EC2 hosts launched with `scripts/perf-host.sh`. Hosts are tagged `Project=sail`, terminate themselves, and are torn down after use. This is the charter's reference platform (ADR 0010), and it replaces the emulated local container for performance work. ADR 0027 (the interactive engine, landing later) permitted emulation; that note is superseded. Every result records the instance type and region.
+1. **Reference hosts.** Performance and Linux validation run on native x86-64 Linux EC2 hosts launched with `scripts/perf-host.sh`. Hosts are tagged `Project=sail`, terminate themselves, and are torn down after use. This is the charter's reference platform (ADR 0010), and it replaces the emulated local container for performance work. ADR 0027 (the interactive engine) permitted emulation; that note is superseded. Every result records the instance type and region.
 2. **Benchmarks record, then judge.** A benchmark run keeps every sample with its refusal code and continues. Gates are applied when the report is generated, and no gate is weakened: an M7 sample that violates the protocol is a failing sample, never a dropped one. "Median" in the M7 speed gate means, per catalogue, the median over at least three rounds of the whole-loop total, with arm order alternating each round. Per-cycle medians are also reported.
 3. **Interactive-engine conditions.** Repair results from the engine's full phase stay authoritative, because requiring a stock re-run would remove the speed goal. In exchange:
    - output names the engine in provenance;
