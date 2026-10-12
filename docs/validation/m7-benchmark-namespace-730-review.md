@@ -4,7 +4,7 @@ This file-only audit binds production source
 `730a3210151ca51b7e011121c4795553b0cfa3e5`. The
 [source record](m7-benchmark-namespace-730-source.json) distinguishes those
 bytes from the added, unexecuted component tests. No Docker call, target read,
-compiler, Cargo invocation, proof or benchmark ran in this scope. Production
+compiler, Cargo build, proof or benchmark ran in this scope. Production
 checks, ordering, root selection and publication remain unchanged.
 
 The lead reports that the original core-validated benchmark stopped during its
@@ -35,6 +35,25 @@ stock and interactive contexts, with exactly one generated target-owned input:
 `debug/build/serde_core-90770f6d060cf0d0/out/private.rs`, relative to each compiler
 family target. Both family exports were absent. These are reported inventory
 facts, not captured old/new device/inode evidence from this review.
+
+The subsequent [independent host metadata audit](m7-benchmark-namespace-730-terminal-audit.json)
+verifies the supplied metadata's 888,735 bytes and SHA-256
+`c8f470e4459f5966fbf873593ddaaa203a1898d4657bb119a0a5998d34e0dc40`,
+all 11 embedded raw file sizes and hashes, and the capture record's matching
+container identities. Both terminal source and input-state lists contain 551
+paths and the sole generated serde source. That file is beneath the declared
+Sail cache exclusion, not metadata's default Cargo target directory; explicit
+source-root admission still takes precedence. Terminal device/inode pairs are
+`54/2635664` and `54/2664427`. Both contexts have a covered, sealed serde script
+contract, whose one declared script-input path does not include the generated
+source; both family exports remain absent. Each of the three retained artifact
+streams reports serde custom-build and library artifacts with `fresh=false`.
+`build-script-executed` has no independent `fresh` field, so its presence alone
+does not distinguish replayed output from actual script execution.
+
+This is terminal-state evidence only. It contains no pre-clean identity or
+guard-acquisition binding and cannot retrospectively identify the first failure.
+It does not open the native archive, mutate the retained cache or launch an actor.
 
 That input is a concrete candidate for a bootstrap cycle: missing export forces
 regeneration, cleanup removes a previously declared generated semantic input,
@@ -107,12 +126,27 @@ A narrow test-only recorder can reuse the one `identity` result already needed
 by the existing binding loop. It must keep mount-first order, root order, first
 mismatch short-circuit, sticky refusal and native-drain ordering. It should
 retain one fixed-size row, no extra per-root metadata calls, no stdout protocol
-change and no blocking trace file write on the barrier. Bound path hashing in
-the diagnostic; an oversized path must remain an explicitly incomplete mapping,
-never a successful check. Export after owned closure, retaining observer failure
-and any missing/lost record. Test absent-to-present, replacement and metadata
-error representations, plus no record on unchanged roots. This plan introduces
-no production recorder or new proof invocation.
+change and no blocking trace file write on the barrier. Hash only the one
+already-retained failing path, without copying it or growing a collection.
+Retain observer failure and any absent record. Test absent-to-present,
+replacement and metadata error representations, plus no record on unchanged
+roots.
+
+The [isolated diagnostic candidate](m7-first-binding-mismatch-source.json) now
+implements that fixed first-mismatch record and completed-note projection.
+It hashes the exact bound path bytes into a fixed array using the existing
+SHA-256 dependency; hashing allocates no path buffer. It retains no error
+message and reports errno absence explicitly. Existing checked
+`size_of<Observer>()` accounting and exhaustive field matching include the new
+inline row. No thread, descriptor, watch or separate native owner is added.
+Diagnostic formatting is delayed to the existing completed-report stage.
+
+Additional drafted controls cover supplied root order with sticky first-record
+retention, real ENOTDIR observation, no-record unchanged paths, unknown errno
+without private error text, fixed inline storage, maximum display width and
+the actual coherent note projection after equal-byte replacement. They remain
+uncompiled and unexecuted. The candidate is unqualified until native controls
+and strict checks run; no new proof invocation or historical attribution exists.
 
 If the generated-file mechanism is confirmed, the solution needs an independent
 ordinary build-script generation transaction, or preparation that completes

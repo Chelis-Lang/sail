@@ -105,17 +105,33 @@ impl Guard {
         let _ = self;
         None
     }
-    // Only already-recorded static labels: no extra poll, file read or barrier.
+    // Only already-recorded labels and fixed mismatch metadata: no extra poll,
+    // file read or barrier. Formatting runs when reporting the completed job.
     pub(super) fn failure_description(&self) -> String {
         let reason = self.failure_reason();
-        match (self.failed_barrier, self.failure_detail()) {
+        let description = match (self.failed_barrier, self.failure_detail()) {
             (Some(barrier), Some(detail)) => {
                 format!("{reason}; barrier={}; detail={detail}", barrier.label())
             }
             (Some(barrier), None) => format!("{reason}; barrier={}", barrier.label()),
             (None, Some(detail)) => format!("{reason}; detail={detail}"),
             (None, None) => reason.to_owned(),
+        };
+        #[cfg(target_os = "linux")]
+        {
+            let mut description = description;
+            if self.failure == Some("native-observation-invalidated")
+                && self.failure_detail() == Some("namespace-root-binding-changed")
+                && let Some(mismatch) = self.observer.as_ref().and_then(Observer::binding_mismatch)
+            {
+                use std::fmt::Write as _;
+                // String formatting cannot fail; no native operation is repeated.
+                let _ = write!(description, "; {mismatch}");
+            }
+            description
         }
+        #[cfg(not(target_os = "linux"))]
+        description
     }
 }
 
@@ -193,6 +209,45 @@ mod tests {
         assert!(std::fs::write(&file, b"good").is_ok());
         assert!(!guard.ready_at(Barrier::PostVerification));
         let description = "native-observation-invalidated; barrier=post-verification; detail=namespace-tracked-input-event";
+        assert_eq!(guard.failure_description(), description);
+        assert!(!guard.ready_at(Barrier::Input));
+        assert_eq!(guard.failure_description(), description);
+        drop(guard);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn recorded_binding_mismatch_note_is_opaque_and_does_not_revalidate() {
+        use sha2::Digest as _;
+
+        let root = std::env::temp_dir().join(format!("sail-proof-binding-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let file = root.join("lib.rs");
+        assert!(std::fs::write(&file, b"good").is_ok());
+        let mut before = snapshot(&root);
+        before.roots.push(file.clone());
+        let mut guard = Guard::begin(&before);
+        assert!(guard.ready_at(Barrier::Input));
+        assert!(std::fs::rename(&file, root.join("retired.rs")).is_ok());
+        assert!(std::fs::write(&file, b"good").is_ok());
+        assert!(!guard.ready_at(Barrier::PostVerification));
+        assert_eq!(guard.failure_reason(), "native-observation-invalidated");
+        assert_eq!(
+            guard.failure_detail(),
+            Some("namespace-root-binding-changed")
+        );
+        let description = guard.failure_description();
+        let digest = format!(
+            "{:x}",
+            sha2::Sha256::digest(file.as_os_str().as_encoded_bytes())
+        );
+        assert!(description.contains("barrier=post-verification"));
+        assert!(description.contains(&format!("root-ordinal=2; path-sha256={digest}")));
+        assert!(!description.contains("lib.rs"));
+        assert!(!description.contains(root.to_string_lossy().as_ref()));
+        // Remove the current name without another check. Reporting must retain
+        // the earlier captured replacement state, not perform fresh path IO.
+        assert!(std::fs::remove_file(&file).is_ok());
         assert_eq!(guard.failure_description(), description);
         assert!(!guard.ready_at(Barrier::Input));
         assert_eq!(guard.failure_description(), description);

@@ -738,3 +738,20 @@ cause, cold improvement or reader credit. The later separate
 [original reader workflow](validation/m7-reader-730a321-terminal.md) passes both
 collectors and retained CLI/MCP scenarios. M7 and draft PR #74 remain unaccepted
 until complete standard/cache and three-round HumanEval/Vest gates pass.
+
+### Product-730 benchmark warmup root-binding failure remains unresolved
+
+The [complete original reader workflow](validation/m7-reader-730a321-terminal.md)
+passes on product 730. Its separate original three-round benchmark stops before
+measured samples: a required repair warmup verifies but lacks Current accepted
+full evidence. The retained note names a changed native root binding. Terminal
+metadata identifies one generated serde_core source per context and absent
+compiler-family exports; it does not identify the historical first mismatching
+device/inode or absence state.
+
+The [file-only audit](validation/m7-benchmark-namespace-730-review.md) traces a
+possible cleanup/regeneration cycle without excluding that semantic input or
+weakening any barrier. A [fixed first-mismatch diagnostic candidate](validation/m7-first-binding-mismatch-source.json)
+adds opaque identity detail to existing `SAIL3114` notes. It remains unqualified
+pending native controls; no new proof, benchmark or historical cause claim has
+been made. The original failed scope and all deadlines remain unchanged.

@@ -10,6 +10,12 @@ semantic versioning once the API is published.
   rounds or speedup are available. Earlier full reader and small repair passes
   remain separate scopes. See the [failure record](docs/validation/m7-benchmark-730a321-bootstrap-failure.md).
 
+- Prepare a Linux proof-diagnosis candidate that records the first refused root
+  binding as a path digest, ordinal, old/new device and inode, absence or errno.
+  Existing `SAIL3114` notes gain that recorded detail without another native
+  check or barrier-time I/O. All Current checks remain unchanged; native
+  qualification and historical changed-path attribution are pending.
+
 - Release retained-output locks during
   independent freshness validation, then check the same continuously guarded
   owner again. Complete fallback, payloads and quotas remain unchanged. Native

@@ -282,3 +282,35 @@ retention across edits is a [file-only design review](validation/m7-runtime-owne
 not an enabled feature. Its possible benefit depends on the exact context and
 has not been isolated from complete freshness construction. Every Current result
 still requires the original complete source, runtime and namespace barriers.
+
+## First root-binding mismatch diagnosis
+
+An isolated Linux diagnostic candidate records one fixed first-mismatch row when
+the existing precise observer refuses a root binding. The completed job's
+existing `SAIL3114` note can include `root-ordinal`, `path-sha256`, and old/new
+`present(device,inode)`, `absent` or `error(errno=...)` states. The ordinal starts
+at zero in the exact supplied root order, and SHA-256 binds the path's native
+bytes without canonicalizing a different path spelling. An unavailable errno
+is reported explicitly. The digest is an identifier, not a secrecy guarantee or
+freshness authority.
+
+The candidate reuses the same identity result that causes refusal. It records
+no path string, environment value or error message, makes no additional stat
+call, and performs no trace-file I/O at the barrier. Mount-first checking,
+first-mismatch short-circuit, event draining and sticky Unknown refusal remain
+unchanged. Formatting happens when the completed report is assembled. Other
+failure reasons keep their existing note shape.
+
+To identify a failing input, privately seal the actual ordered root inventory
+at observer acquisition and match its exact path-byte digest and ordinal. A
+terminal source list alone does not certify that historical inventory or its
+captured old identities. Keep private paths out of public reports; do not treat
+a matching digest as permission to ignore or rebind an input. Generated Rust
+files under Cargo targets remain semantic inputs when declared by the compiler.
+
+The [generated-source audit](validation/m7-benchmark-namespace-730-review.md)
+and [diagnostic source record](validation/m7-first-binding-mismatch-source.json)
+retain the source chain, original refusal controls and fixed-storage accounting.
+The candidate is unqualified until Linux controls and strict checks run. It
+does not yet identify the changed root in the failed product-730 benchmark or
+provide a performance result.

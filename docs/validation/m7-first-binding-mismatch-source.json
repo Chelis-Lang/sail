@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "kind": "first-root-binding-mismatch-product-diagnostic-candidate",
+  "base_production_commit": "730a3210151ca51b7e011121c4795553b0cfa3e5",
+  "component_control_commit": "5ea28a7",
+  "qualification": "isolated, unqualified; no compilation or native tests performed",
+  "source": [
+    {
+      "path": "crates/sail-verus/src/managed/precise.rs",
+      "bytes": 48980,
+      "sha256": "e1d9ffb4aeb41a275e2c5d4871004dcc5be77bdc134a3335f28db666e11f25ee"
+    },
+    {
+      "path": "crates/sail-verus/src/managed/coherent.rs",
+      "bytes": 10111,
+      "sha256": "79707c921a3d8a1b3d104a8ed31064b8ae1c51acd372f569a336619fd245a83f"
+    }
+  ],
+  "production_changes": [
+    "one fixed inline first-mismatch row on precise Observer",
+    "same-result capture while preserving original native-check order and refusal",
+    "append recorded detail to existing completed SAIL3114 note"
+  ],
+  "authority_changes": false,
+  "additional_stat_calls": 0,
+  "barrier_trace_io": false,
+  "new_threads_fds_watches": 0,
+  "retained_storage": {
+    "per_observer_rows": 1,
+    "dynamic_allocations_at_barrier": 0,
+    "record_fields": [
+      "path SHA-256 [u8;32]",
+      "root ordinal usize",
+      "previous absent/device+inode",
+      "current absent/device+inode/optional raw errno"
+    ],
+    "inline_record_size_control": "Option<BindingMismatch> <= 128 bytes (Linux control pending execution)",
+    "accounting": "existing checked size_of<Observer>() charge plus exhaustive retained_bytes field match includes inline record; presence cannot grow retained heap",
+    "report_storage": "bounded numeric/digest Display (<256 characters control pending), allocated only during existing completed-report formatting",
+    "scope": "no new global RSS or original-loader construction bound"
+  },
+  "controls": [
+    "unchanged_generated_source_remains_guarded_inside_excluded_target",
+    "generated_source_clean_before_watch_then_recreation_refuses_root_binding",
+    "generated_source_replaced_after_watch_refuses_even_with_equal_content",
+    "first_binding_mismatch_uses_root_order_and_survives_later_changes",
+    "binding_metadata_error_preserves_same_call_errno",
+    "mismatch_storage_is_fixed_and_unknown_errno_reveals_no_error_message",
+    "recorded_binding_mismatch_note_is_opaque_and_does_not_revalidate"
+  ],
+  "limits": [
+    "historical path attribution still absent",
+    "tests drafted and formatted only",
+    "no Docker/native/Cargo/proof actors",
+    "no old failed cache mutation",
+    "no performance or acceptance claim"
+  ]
+}
