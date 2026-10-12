@@ -160,3 +160,32 @@ and pass every joined input through the original raw-path/native coverage check.
 Joining one path at a time avoids retaining a duplicate workspace-prefixed vector.
 These code requirements do not weaken positive or refusal assertions; actual
 corrected publication viability is still pending.
+
+Final static ACK is bound to
+`ebcd6f5328664abc10ae915acffc6b3dfc6331c2`: all five source hashes, Cargo.lock,
+sensitivity patch and the three result/dep-info capture bindings independently
+match its immutable manifests. Its ten controls and sensitivity are unexecuted
+in this review. The manifest's old 602 "terminal pending" wording is stale;
+the separate terminal record preserves the actual failed gate.
+
+The exact installed Cargo source selects workspace-relative compilation only
+for local-path sources under that root, and permits an unstable `root-dir`
+override. The correction supports only that ordinary local-path role for relative
+prerequisites and declines the other relative source roles. Absolute prerequisites
+still use their original spelling. See the pinned
+[Cargo path rule](https://raw.githubusercontent.com/rust-lang/cargo/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/util/workspace.rs).
+The pinned `RUSTC_BOOTSTRAP=1` also enables Cargo's dev channel, so unstable
+configuration is relevant. See the pinned
+[channel selection](https://raw.githubusercontent.com/rust-lang/cargo/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/workspace/features.rs)
+and [config loading](https://raw.githubusercontent.com/rust-lang/cargo/5f94df4789f005f9a352888e8355ffc645b7ed0e/src/context/mod.rs).
+
+The runner declines acquisition for actual `-Z`/`--config` arguments; capture
+declines unstable/test-channel environment and parses discovered Cargo config
+under the same independent owner, refusing `unstable` or `include` tables.
+Exact virtual-workspace manifest and lock paths are guarded alongside member
+package roots. Final original namespace/lease checks still bracket publication.
+The member control requires actual relative spelling, successful original
+publication, wrong-base/foreign-source/relative-base refusal and dirty manifest
+refusal; no baseline assertion is relaxed. Conservative unsupported-role refusal
+can still limit full-workload viability. No proof roots are removed, no Unknown
+proof is promoted, and no performance result follows from this static ACK.
