@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "scope": "source-only independent ordinary-script bootstrap candidate",
-  "status": "native qualification pending after retained strict and bootstrap test failures; unselected product",
+  "status": "corrected source-only follow-up; uncompiled/unexecuted; prior 602 workspace positive failures retained",
   "base": "247cd28",
   "source_sha256": {
     "crates/sail-verus/src/managed/build_inputs_family.rs": "caef3ba1fa9335237ca2880b61939c634801cea79aea943430a592db9d78d6c8",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "f06d5be3010bc0eb1a649ed23d9f07abdb2f3d4c067f9326490f5123ee1a70cd",
-    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "b8af1249c0661787eb44c3a8385aad23570eaf6343c4aa8c2f19b12db1c610d8",
-    "crates/sail-verus/src/managed/runner.rs": "d817c121abea4b71e4558acc96590b47f1ae95683299e91b03ee98808230a1b2",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "2874cfbf2934da55b23c0b8417b72b3823407c345267ebef7491f6be5c2842b5",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "931dbf03c15eaf90e1ced1005b6bee93218393c9b41136fcf8ee8e09d7815788",
+    "crates/sail-verus/src/managed/runner.rs": "9a9be06d242c3a0ee7068700146952c05215f1cc57334c222d57118a331341e8",
     "crates/sail-verus/src/managed/source_inputs.rs": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
   },
   "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
-  "draft_linux_controls": 9,
+  "draft_linux_controls": 10,
   "sensitivity": {
     "patch": "docs/validation/m7-compiler-script-bootstrap/disable-publication.patch",
-    "sha256": "b98c55843934dee33e66bf2c76854e6f3a730ac87df07da1104855f818527031",
+    "sha256": "e69485c680115222e5db2c7ec8d68af105fb3cc12ccd0ea0b08971eb44c193c9",
     "effect": "remove only independent ordinary-generation emission",
     "expected": "unchanged bootstrap export-exists assertion fails; actual outcome unexecuted"
   },
@@ -88,7 +88,7 @@
   },
   "non_utf8_followup": "Capture rejects any non-UTF-8 key/value before native acquisition; shared declared-key policy refuses VarError::NotUnicode. Isolated bounded same-test subprocesses inject non-UTF-8 LANG value and environment key via Command, with no unsafe process environment mutation.",
   "third_native_gate": {
-    "root_source": "602ec67",
+    "root_source": "602ec67d94f9d1b7918933892ad780d4ad1246b6",
     "status": "FAIL after strict PASS; 646/649 workspace tests pass, three bootstrap baseline tests fail; solver and later gate steps unattempted",
     "failed_controls": [
       "bootstrap_actual_cargo_can_publish_ordinary_contract_without_current_proof",
@@ -96,5 +96,11 @@
       "bootstrap_reused_binary_unguarded_depinfo_and_injected_env_are_refused"
     ],
     "fresh_cargo_diagnostic": "Actual tiny Cargo emits relative build.rs; actual member Cargo emits member/build.rs from both workspace and member launch directories. No compiler working-directory path fix is yet qualified."
+  },
+  "compile_cwd_followup": {
+    "effect": "relative prerequisites use canonical absolute metadata workspace root only for local path source under that root; absolute prerequisites unchanged; exact header and raw-alias refusal remain",
+    "guards": "optional only: command/unstable config/environment override refusal; exact virtual workspace manifest/lock roots",
+    "source_evidence": "cargo-cwd-source.json",
+    "required_new_control": "actual workspace member compilation + override/foreign-source/workspace-binding refusals; unexecuted"
   }
 }
