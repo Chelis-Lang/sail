@@ -1,8 +1,7 @@
 //! Process plumbing for the repair workload: owned daemons, the arms'
-//! environments, invocations with deadlines, process-tree RSS sampling and
-//! the public proof-journal observer.
+//! environments, invocations with deadlines and the public proof-journal
+//! observer.
 
-use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -17,7 +16,7 @@ use serde_json::Value;
 use super::Phase;
 use crate::daemon::MAX_SOCKET_PATH;
 
-/// How often the RSS sampler and proof-journal observer run.
+/// How often the proof-journal observer runs.
 const POLL: Duration = Duration::from_millis(100);
 
 /// Writes `value` as pretty JSON through a synced temporary file and an
@@ -184,12 +183,6 @@ impl OwnedDaemon {
         matches!(self.child.try_wait(), Ok(None))
     }
 
-    /// Its process id.
-    #[must_use]
-    pub fn pid(&self) -> u32 {
-        self.child.id()
-    }
-
     /// Cache counters, if it answers.
     #[must_use]
     pub fn stats(&self) -> Option<sail_api::protocol::StatsSnapshot> {
@@ -206,58 +199,6 @@ impl Drop for OwnedDaemon {
         stop_group(&mut self.child, "-TERM", Duration::from_secs(10));
         let _ = std::fs::remove_file(&self.socket);
     }
-}
-
-/// Sum of resident memory of `roots` and all their descendants, from
-/// `/proc` (Linux only; `None` elsewhere). Assumes 4 KiB pages.
-#[must_use]
-pub fn tree_rss(roots: &[u32]) -> Option<u64> {
-    let entries = std::fs::read_dir("/proc").ok()?;
-    let mut children: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
-    for e in entries.flatten() {
-        let Some(id) = e.file_name().to_str().and_then(|s| s.parse::<u32>().ok()) else {
-            continue;
-        };
-        let Ok(stat) = std::fs::read_to_string(e.path().join("stat")) else {
-            continue;
-        };
-        // `pid (comm) state ppid ...`; comm may contain spaces and parentheses.
-        let parent = stat
-            .rsplit_once(')')
-            .and_then(|(_, rest)| rest.split_whitespace().nth(1))
-            .and_then(|p| p.parse::<u32>().ok());
-        if let Some(parent) = parent {
-            children.entry(parent).or_default().push(id);
-        }
-    }
-    let mut seen = BTreeSet::new();
-    let mut stack: Vec<u32> = roots.to_vec();
-    let mut total = 0u64;
-    while let Some(id) = stack.pop() {
-        if !seen.insert(id) {
-            continue;
-        }
-        if let Ok(statm) = std::fs::read_to_string(format!("/proc/{id}/statm")) {
-            let pages = statm
-                .split_whitespace()
-                .nth(1)
-                .and_then(|p| p.parse::<u64>().ok())
-                .unwrap_or(0);
-            total += pages * 4096;
-        }
-        if let Some(c) = children.get(&id) {
-            stack.extend(c);
-        }
-    }
-    Some(total)
-}
-
-/// GNU `time -v` peak RSS, in bytes.
-fn time_rss(text: &str) -> Option<u64> {
-    text.lines()
-        .find_map(|l| l.trim().strip_prefix("Maximum resident set size (kbytes):"))
-        .and_then(|v| v.trim().parse::<u64>().ok())
-        .map(|k| k * 1024)
 }
 
 /// Whether a proof observation is actionable for the repair author: a
@@ -367,8 +308,6 @@ pub struct Invoked {
     pub document: Option<Value>,
     /// First actionable proof-journal evidence, if observed.
     pub first_actionable_ms: Option<f64>,
-    /// Peak sampled RSS of the command's and the daemon's process trees.
-    pub peak_rss: Option<u64>,
 }
 
 /// One process invocation of an arm's binary.
@@ -383,8 +322,6 @@ pub struct Call<'a> {
     pub cwd: &'a Path,
     /// The arm's environment.
     pub env: &'a Env,
-    /// The arm's daemon, whose tree is included in the RSS samples.
-    pub daemon: &'a OwnedDaemon,
     /// Raw evidence directory.
     pub dir: PathBuf,
     /// Deadline.
@@ -415,9 +352,8 @@ fn document(stdout: &str) -> Option<Value> {
 }
 
 impl Call<'_> {
-    /// The command, wrapped in GNU `time` where available, with output
-    /// redirected into the evidence directory.
-    fn command(&self) -> Result<(Command, bool), String> {
+    /// The command, with output redirected into the evidence directory.
+    fn command(&self) -> Result<Command, String> {
         std::fs::create_dir_all(&self.dir).map_err(|e| e.to_string())?;
         write_json(
             &self.dir.join("command.json"),
@@ -429,18 +365,7 @@ impl Call<'_> {
         )?;
         let stdout = File::create(self.dir.join("stdout.json")).map_err(|e| e.to_string())?;
         let stderr = File::create(self.dir.join("stderr.txt")).map_err(|e| e.to_string())?;
-        let gnu_time = Path::new("/usr/bin/time");
-        let use_gnu_time = cfg!(target_os = "linux") && gnu_time.is_file();
-        let mut cmd = if use_gnu_time {
-            let mut c = Command::new(gnu_time);
-            c.arg("-v")
-                .arg("-o")
-                .arg(self.dir.join("time.txt"))
-                .arg(self.binary);
-            c
-        } else {
-            Command::new(self.binary)
-        };
+        let mut cmd = Command::new(self.binary);
         cmd.args(&self.args)
             .current_dir(self.cwd)
             .stdin(Stdio::null())
@@ -448,7 +373,7 @@ impl Call<'_> {
             .stderr(stderr);
         self.env.apply(&mut cmd);
         std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
-        Ok((cmd, use_gnu_time))
+        Ok(cmd)
     }
 
     /// Runs the call. Never fails: every problem is recorded in the phase.
@@ -462,7 +387,7 @@ impl Call<'_> {
             },
             ..Invoked::default()
         };
-        let (mut cmd, use_gnu_time) = match self.command() {
+        let mut cmd = match self.command() {
             Ok(c) => c,
             Err(e) => {
                 invoked.phase.error = Some(format!("cannot prepare {}: {e}", self.dir.display()));
@@ -479,12 +404,6 @@ impl Call<'_> {
         }
         let phase = &mut invoked.phase;
         phase.wall_ms = started.elapsed().as_secs_f64() * 1000.0;
-        if use_gnu_time {
-            phase.cli_max_rss_bytes = std::fs::read_to_string(self.dir.join("time.txt"))
-                .ok()
-                .as_deref()
-                .and_then(time_rss);
-        }
         let stdout = std::fs::read_to_string(self.dir.join("stdout.json")).unwrap_or_default();
         invoked.document = document(&stdout);
         if invoked.document.is_none() && phase.error.is_none() && !phase.timed_out {
@@ -498,7 +417,7 @@ impl Call<'_> {
         invoked
     }
 
-    /// Waits for `child`, sampling RSS and the proof journal, and stops its
+    /// Waits for `child`, polling the proof journal, and stops its
     /// process group at the deadline.
     fn supervise(&self, mut child: Child, started: Instant, invoked: &mut Invoked) {
         let mut observer = self
@@ -527,9 +446,6 @@ impl Call<'_> {
             }
             if Instant::now() >= next_poll {
                 next_poll = Instant::now() + POLL;
-                if let Some(rss) = tree_rss(&[child.id(), self.daemon.pid()]) {
-                    invoked.peak_rss = Some(invoked.peak_rss.map_or(rss, |p| p.max(rss)));
-                }
                 if let Some(o) = observer.as_mut()
                     && invoked.first_actionable_ms.is_none()
                     && o.poll()
@@ -551,18 +467,6 @@ impl Call<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn time_and_rss_parsing() {
-        assert_eq!(
-            time_rss("\tMaximum resident set size (kbytes): 2048\n"),
-            Some(2 << 20)
-        );
-        assert_eq!(time_rss("nothing"), None);
-        if cfg!(target_os = "linux") {
-            assert!(tree_rss(&[std::process::id()]).is_some_and(|b| b > 0));
-        }
-    }
 
     #[test]
     fn documents_and_tails() {
@@ -616,23 +520,12 @@ mod tests {
             socket: dir.join("s.sock"),
             rust_toolchain: "none".to_owned(),
         };
-        // A stand-in "daemon": any long-lived child we own.
-        let mut sleeper = Command::new("sleep");
-        sleeper.arg("30");
-        std::os::unix::process::CommandExt::process_group(&mut sleeper, 0);
-        let child = sleeper.spawn();
-        let Ok(child) = child else { return };
-        let daemon = OwnedDaemon {
-            child,
-            socket: env.socket.clone(),
-        };
         let call = Call {
             name: "hang",
             binary: Path::new("/bin/sleep"),
             args: vec!["30".to_owned()],
             cwd: Path::new("/"),
             env: &env,
-            daemon: &daemon,
             dir: dir.join("hang"),
             timeout: Duration::from_millis(300),
             observe: false,
@@ -642,7 +535,6 @@ mod tests {
         assert!(r.phase.timed_out);
         assert!(started.elapsed() < Duration::from_secs(10));
         assert!(r.document.is_none());
-        drop(daemon);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

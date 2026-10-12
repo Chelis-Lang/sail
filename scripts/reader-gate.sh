@@ -27,7 +27,8 @@ print(v)' "$@"; }
 toolchain="$(sail engine install --from "$engine" --output json | field rust_toolchain)"
 export RUSTUP_TOOLCHAIN="$toolchain"
 for name in baseline active; do
-  rsync -a --exclude target/ --exclude .git/ "$source/" "$out/$name/"
+  mkdir "$out/$name"
+  tar -C "$source" --exclude=./target --exclude=./.git -cf - . | tar -C "$out/$name" -xf -
 done
 sail serve --socket "$SAIL_DAEMON_SOCKET" --cache "$SAIL_CACHE_DIR" --idle-timeout 0 \
   >"$out/daemon.log" 2>&1 &

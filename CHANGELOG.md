@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail-bench repair` no longer records peak RSS or writes a raw sidecar;
+  `--raw` is removed. Each invocation's command, stdout and stderr stay under
+  `--out`. The report drops its preparation and peak-RSS columns.
+
 - `sail_api::jobs::Client` no longer caches decoded Results. Removed
   `Client::with_result_decoding_cache`, `without_result_decoding_cache`,
   `with_socket`, `call_cancellable` and `CancellableError`; use `Client::new`

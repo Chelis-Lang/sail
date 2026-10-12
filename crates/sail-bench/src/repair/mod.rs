@@ -39,9 +39,6 @@ pub const WORKLOAD: &str = "repair";
 /// SHA-256 of the frozen `corpus/repair-edits.json`.
 pub const FROZEN_SHA256: &str = "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6";
 
-/// Largest accepted retained-preparation memory or disk budget (512 MiB).
-pub const PREPARATION_BUDGET_BYTES: u64 = 512 * 1024 * 1024;
-
 /// Lowercase hex of `bytes`.
 #[must_use]
 pub fn hex(bytes: &[u8]) -> String {
@@ -182,8 +179,8 @@ pub struct ArmBinary {
     pub shim_sha256: Option<String>,
 }
 
-/// Longest free-text field kept in the compact result; the raw file keeps
-/// the full text.
+/// Longest free-text field kept in the result; each invocation's evidence
+/// directory keeps the full output.
 pub const COMPACT_TEXT: usize = 240;
 
 #[allow(
@@ -219,14 +216,14 @@ fn is_zero(n: &u64) -> bool {
 
 /// One process invocation inside a sample.
 ///
-/// Arguments and full error text are kept in memory and in the raw file;
-/// the compact result keeps only what the gate and report read.
+/// The result keeps only what the gate and report read; each invocation's
+/// evidence directory keeps its command, stdout and stderr.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Phase {
     /// `focus`, `full`, `repair`, `verify` or `engine-install`.
     pub name: String,
-    /// Arguments after the binary (raw file only).
+    /// Arguments after the binary (in memory only).
     #[serde(skip)]
     pub args: Vec<String>,
     /// Exit code (`None` if killed by a signal or never started).
@@ -241,9 +238,6 @@ pub struct Phase {
     /// or its output could not be parsed (truncated in the compact result).
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "truncated")]
     pub error: Option<String>,
-    /// GNU `time` peak RSS of the foreground command's own process tree.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cli_max_rss_bytes: Option<u64>,
     /// Durable repair job id reported by the foreground command.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub job: Option<String>,
@@ -253,26 +247,6 @@ pub struct Phase {
     /// First proof-journal read error, if any; timing is then unavailable.
     #[serde(skip_serializing_if = "Option::is_none", serialize_with = "truncated")]
     pub observation_error: Option<String>,
-}
-
-/// Source-reported preparation counters summed over the reported drivers.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Preparation {
-    /// Reported driver records.
-    pub drivers: u64,
-    /// Whether any driver had preparation reuse enabled.
-    pub enabled: bool,
-    /// In-batch memory hits.
-    pub batch_hits: u64,
-    /// Validated persistent hits.
-    pub persistent_hits: u64,
-    /// Misses, including rejected admission.
-    pub misses: u64,
-    /// Largest per-driver retained peak.
-    pub peak_retained_bytes: u64,
-    /// Every record is version 1, within [`PREPARATION_BUDGET_BYTES`] and
-    /// its peak within its memory budget.
-    pub within_budget: bool,
 }
 
 /// Facts read from a sample's final report. No judgement is applied here.
@@ -304,11 +278,9 @@ pub struct Facts {
     /// M6 the sum of `execution.verifier_invocations`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compiler_invocations: Option<u64>,
-    /// Canonical full outcome: exit code, sorted function verdicts and
-    /// tiers, summary and ordered diagnostics (raw file only).
-    #[serde(skip)]
-    pub outcome: Option<Value>,
-    /// SHA-256 of the canonical outcome's JSON; arms are compared by it.
+    /// SHA-256 of the canonical full outcome's JSON (exit code, sorted
+    /// function verdicts and tiers, summary and ordered diagnostics); arms
+    /// are compared by it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outcome_sha256: Option<String>,
     /// Why no canonical outcome could be read.
@@ -365,22 +337,16 @@ pub struct Sample {
     /// Cache daemon counters over the sample (`phase` is `sample`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache: Option<CacheRun>,
-    /// Preparation counters (M7).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub preparation: Option<Preparation>,
-    /// Peak sampled RSS of the owned daemon's and command's process trees.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub peak_rss_bytes: Option<u64>,
     /// Raw evidence directory, relative to the run's output directory.
     pub raw_dir: String,
 }
 
-/// A compact repair workload result file in `bench/results/`: what the
-/// gate and report need. Full detail is in the raw file it names.
+/// A repair workload result file in `bench/results/`: what the gate and
+/// report need. Full detail is in the run's evidence directories.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct RepairFile {
-    /// Format version (2: compact samples with a raw sidecar).
+    /// Format version (2: compact samples).
     pub schema_version: u32,
     /// Always [`WORKLOAD`].
     pub workload: String,
@@ -411,85 +377,12 @@ pub struct RepairFile {
     pub started_unix: u64,
     /// Machine description.
     pub machine: BTreeMap<String, String>,
-    /// File name of the raw sidecar (kept outside the repository).
-    pub raw_file: Option<String>,
-    /// SHA-256 of the raw sidecar as last written.
-    pub raw_sha256: Option<String>,
     /// Warm-ups: recorded, never gated.
     pub warmups: Vec<Sample>,
     /// Measured samples.
     pub samples: Vec<Sample>,
     /// Harness events (daemon restarts, resumptions).
     pub notes: Vec<String>,
-}
-
-/// `workload` value of a raw sidecar file.
-pub const RAW_WORKLOAD: &str = "repair-raw";
-
-/// What the compact result omits for one sample.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct RawRecord {
-    /// `warmup` or `sample`.
-    pub list: String,
-    /// Index in that list of the compact result.
-    pub index: usize,
-    /// Project, cycle, arm and round, for reading the file on its own.
-    pub key: String,
-    /// Each phase's arguments.
-    pub args: Vec<Vec<String>>,
-    /// Each phase's full error text.
-    pub errors: Vec<Option<String>>,
-    /// Full selection, observation and outcome errors.
-    pub notes: Vec<String>,
-    /// The canonical full outcome whose digest the compact result holds.
-    pub outcome: Option<Value>,
-}
-
-impl RawRecord {
-    /// The record for `s`, at `index` of `list`.
-    #[must_use]
-    pub fn of(list: &str, index: usize, s: &Sample) -> Self {
-        let notes = [
-            s.facts.selection_error.as_ref(),
-            s.facts.outcome_error.as_ref(),
-            s.facts.baseline_error.as_ref(),
-        ]
-        .into_iter()
-        .flatten()
-        .chain(s.phases.iter().filter_map(|p| p.observation_error.as_ref()))
-        .cloned()
-        .collect();
-        Self {
-            list: list.to_owned(),
-            index,
-            key: format!(
-                "{}/{}/{}/{}",
-                s.project,
-                s.cycle,
-                s.arm.map_or("-", Arm::name),
-                s.round
-                    .map_or_else(|| "warm-up".to_owned(), |r| r.to_string())
-            ),
-            args: s.phases.iter().map(|p| p.args.clone()).collect(),
-            errors: s.phases.iter().map(|p| p.error.clone()).collect(),
-            notes,
-            outcome: s.facts.outcome.clone(),
-        }
-    }
-}
-
-/// The raw sidecar of a repair result.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct RawFile {
-    /// Format version (1).
-    pub schema_version: u32,
-    /// Always [`RAW_WORKLOAD`].
-    pub workload: String,
-    /// The compact result's file name.
-    pub result: String,
-    /// One record per warm-up and sample, in recording order.
-    pub records: Vec<RawRecord>,
 }
 
 /// One catalogue project's cycle ids.
@@ -630,16 +523,15 @@ fn set_outcome(facts: &mut Facts, full: Option<&Value>) {
                 .and_then(Value::as_i64)
                 .map(|c| c == 0);
             facts.outcome_sha256 = serde_json::to_vec(&outcome).ok().map(|b| sha256_hex(&b));
-            facts.outcome = Some(outcome);
         }
         Some(Err(e)) => facts.outcome_error = Some(e),
         None => facts.outcome_error = Some("no full report".to_owned()),
     }
 }
 
-/// Facts and preparation counters from an M7 repair result document.
+/// Facts from an M7 repair result document.
 #[must_use]
-pub fn m7_facts(doc: Option<&Value>) -> (Facts, Option<Preparation>) {
+pub fn m7_facts(doc: Option<&Value>) -> Facts {
     let batch = doc.and_then(|d| d.get("batch"));
     let full = batch.and_then(|b| b.get("full"));
     let focus = batch.and_then(|b| b.get("focus")).filter(|f| !f.is_null());
@@ -666,38 +558,7 @@ pub fn m7_facts(doc: Option<&Value>) -> (Facts, Option<Preparation>) {
         ..Facts::default()
     };
     set_outcome(&mut facts, full);
-    let preparation = batch
-        .and_then(|b| b.get("preparation"))
-        .and_then(Value::as_array)
-        .map(|records| preparation(records));
-    (facts, preparation)
-}
-
-/// Sums source-reported preparation records.
-#[must_use]
-pub fn preparation(records: &[Value]) -> Preparation {
-    let n = |r: &Value, k: &str| r.get(k).and_then(Value::as_u64);
-    let mut p = Preparation {
-        drivers: records.len() as u64,
-        within_budget: !records.is_empty(),
-        ..Preparation::default()
-    };
-    for r in records {
-        p.enabled |= r.get("enabled").and_then(Value::as_bool) == Some(true);
-        p.batch_hits += n(r, "batch_hits").unwrap_or(0);
-        p.persistent_hits += n(r, "persistent_hits").unwrap_or(0);
-        p.misses += n(r, "misses").unwrap_or(0);
-        let peak = n(r, "peak_retained_bytes");
-        p.peak_retained_bytes = p.peak_retained_bytes.max(peak.unwrap_or(0));
-        let memory = n(r, "memory_budget_bytes");
-        let disk = n(r, "disk_budget_bytes");
-        let ok = n(r, "version") == Some(1)
-            && memory.is_some_and(|m| 0 < m && m <= PREPARATION_BUDGET_BYTES)
-            && disk.is_some_and(|d| 0 < d && d <= PREPARATION_BUDGET_BYTES)
-            && peak.zip(memory).is_some_and(|(p, m)| p <= m);
-        p.within_budget &= ok;
-    }
-    p
+    facts
 }
 
 #[cfg(test)]
@@ -782,29 +643,22 @@ mod tests {
 
         let doc = json!({"version": 1, "accepted": true, "batch": {
             "focus": full, "full": full, "manifest_sha256": "ab",
-            "compiler_invocations": 2, "batched": true,
-            "preparation": [{"version": 1, "enabled": true, "batch_hits": 3,
-                "persistent_hits": 1, "misses": 2, "peak_retained_bytes": 10,
-                "memory_budget_bytes": 100, "disk_budget_bytes": 100}]
+            "compiler_invocations": 2, "batched": true
         }});
-        let (f, p) = m7_facts(Some(&doc));
+        let f = m7_facts(Some(&doc));
         assert_eq!(f.compiler_invocations, Some(2));
         assert_eq!(f.accepted, Some(true));
         assert_eq!(f.engine_manifest, Some(true));
         assert_eq!(f.focus_present, Some(true));
-        let Some(p) = p else { unreachable!() };
-        assert_eq!((p.batch_hits, p.persistent_hits, p.misses), (3, 1, 2));
-        assert!(p.within_budget && p.enabled);
 
-        let (f, p) = m7_facts(None);
+        let f = m7_facts(None);
         assert_eq!(f.outcome_error.as_deref(), Some("no full report"));
-        assert!(p.is_none());
     }
 
     #[test]
     fn compact_samples_keep_judged_facts_and_drop_raw_detail() {
         let full = project(0, "current");
-        let (facts, _) = m7_facts(Some(&json!({"accepted": true, "batch": {
+        let facts = m7_facts(Some(&json!({"accepted": true, "batch": {
             "focus": full, "full": full, "manifest_sha256": "ab",
             "compiler_invocations": 1, "batched": true,
             "selection_error": "x".repeat(1000)
@@ -835,27 +689,10 @@ mod tests {
             unreachable!("{text}")
         };
         assert_eq!(back.facts.outcome_sha256, s.facts.outcome_sha256);
-        assert!(back.facts.outcome_sha256.is_some() && back.facts.outcome.is_none());
+        assert!(back.facts.outcome_sha256.is_some());
         let codes = |s: &Sample| -> Vec<&'static str> {
             super::judge::violations(s).iter().map(|v| v.code).collect()
         };
         assert_eq!(codes(&back), codes(&s));
-        let raw = RawRecord::of("sample", 0, &s);
-        assert_eq!(raw.args, [["repair-check"]]);
-        assert_eq!(
-            raw.errors.first().cloned().flatten().map(|e| e.len()),
-            Some(1000)
-        );
-        assert!(raw.outcome.is_some());
-        assert_eq!(raw.key, "p/c/m7/0");
-    }
-
-    #[test]
-    fn preparation_budget() {
-        let over = json!({"version": 1, "enabled": true, "batch_hits": 0, "persistent_hits": 0,
-            "misses": 0, "peak_retained_bytes": 1, "memory_budget_bytes": PREPARATION_BUDGET_BYTES + 1,
-            "disk_budget_bytes": 1});
-        assert!(!preparation(&[over]).within_budget);
-        assert!(!preparation(&[]).within_budget);
     }
 }

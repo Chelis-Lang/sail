@@ -406,7 +406,7 @@ pub fn p95(xs: &[f64]) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repair::{Facts, Phase, Preparation};
+    use crate::repair::{Facts, Phase};
 
     fn good(project: &str, round: usize, cycle: &str, arm: Arm, wall: f64) -> Sample {
         Sample {
@@ -434,12 +434,6 @@ mod tests {
                 verified: Some(true),
                 ..Facts::default()
             },
-            preparation: Some(Preparation {
-                drivers: 1,
-                enabled: true,
-                within_budget: true,
-                ..Preparation::default()
-            }),
             ..Sample::default()
         }
     }
@@ -563,7 +557,6 @@ mod tests {
     fn sample_violations() {
         let mut s = good("p", 0, "a", Arm::M7, 1.0);
         assert_eq!(violations(&s), Vec::<Violation>::new());
-        s.preparation = None;
         s.facts.batched = Some(false);
         s.phases[0].timed_out = true;
         s.facts.accepted = Some(false);

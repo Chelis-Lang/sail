@@ -1,8 +1,8 @@
 //! Preparing and running the repair workload. Unix only: the arms talk to
 //! owned `sail serve` daemons over Unix sockets.
 //!
-//! Every invocation's raw stdout, stderr, GNU `time` report and proof-journal
-//! pages are kept under the run's output directory. The result file is
+//! Every invocation's stdout, stderr and proof-journal pages are kept under
+//! the run's output directory. The result file is
 //! rewritten atomically after every sample, so an interrupted run loses at
 //! most the sample in progress, and `--resume` continues it.
 
@@ -16,8 +16,8 @@ use serde_json::Value;
 
 use super::process::{Call, Env, OwnedDaemon, write_json};
 use super::{
-    Arm, ArmBinary, Catalogue, Cycle, FROZEN_SHA256, Phase, Project, RAW_WORKLOAD, RawFile,
-    RawRecord, RepairFile, Sample, WORKLOAD, m6_facts, m7_facts, sha256_hex,
+    Arm, ArmBinary, Catalogue, Cycle, FROZEN_SHA256, Phase, Project, RepairFile, Sample, WORKLOAD,
+    m6_facts, m7_facts, sha256_hex,
 };
 use crate::daemon::CacheRun;
 
@@ -273,8 +273,6 @@ pub struct RunOptions {
     pub out: PathBuf,
     /// The compact result file (`bench/results/NAME.json`).
     pub result: PathBuf,
-    /// The raw sidecar, kept outside the repository.
-    pub raw: PathBuf,
     /// Measured rounds.
     pub rounds: usize,
     /// Per-invocation deadline.
@@ -322,7 +320,6 @@ struct Session<'a> {
     envs: [Env; 2],
     daemons: [Option<OwnedDaemon>; 2],
     file: RepairFile,
-    raw: RawFile,
 }
 
 fn idx(arm: Arm) -> usize {
@@ -470,7 +467,6 @@ impl Session<'_> {
                 args,
                 cwd: job.workspace,
                 env: &env,
-                daemon,
                 dir: if several {
                     job.raw.join(name)
                 } else {
@@ -480,7 +476,6 @@ impl Session<'_> {
                 observe: name == "repair",
             }
             .invoke();
-            sample.peak_rss_bytes = sample.peak_rss_bytes.max(r.peak_rss);
             sample.first_actionable_ms = match name {
                 // M6's first actionable evidence is its focused result.
                 "focus" => Some(r.phase.wall_ms),
@@ -494,9 +489,7 @@ impl Session<'_> {
         let last = documents.last().and_then(Option::as_ref);
         match (arm, what) {
             (Arm::M7, What::Cycle) => {
-                let (facts, preparation) = m7_facts(last);
-                sample.facts = facts;
-                sample.preparation = preparation;
+                sample.facts = m7_facts(last);
             }
             (_, What::FullVerify) => sample.facts = m6_facts(None, last),
             _ => sample.facts = m6_facts(first, last),
@@ -508,29 +501,18 @@ impl Session<'_> {
         sample
     }
 
-    /// Records a sample, then persists the raw sidecar and the compact
-    /// result naming its digest.
+    /// Records a sample, then persists the result file.
     fn record(&mut self, s: Sample) -> Result<(), String> {
         progress(&s);
-        let record = if s.round.is_some() {
+        if s.round.is_some() {
             self.file.samples.push(s);
-            self.file
-                .samples
-                .last()
-                .map(|s| RawRecord::of("sample", self.file.samples.len() - 1, s))
         } else {
             self.file.warmups.push(s);
-            self.file
-                .warmups
-                .last()
-                .map(|s| RawRecord::of("warmup", self.file.warmups.len() - 1, s))
-        };
-        self.raw.records.extend(record);
+        }
         self.persist()
     }
 
     fn persist(&mut self) -> Result<(), String> {
-        self.file.raw_sha256 = Some(write_json(&self.o.raw, &self.raw)?);
         write_json(&self.o.result, &self.file).map(|_| ())
     }
 
@@ -763,42 +745,6 @@ fn progress(s: &Sample) {
     );
 }
 
-fn file_name(path: &Path) -> String {
-    path.file_name()
-        .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
-}
-
-/// Loads the raw sidecar when resuming, noting a missing or changed one.
-fn open_raw(o: &RunOptions, f: &mut RepairFile) -> Result<RawFile, String> {
-    let fresh = RawFile {
-        schema_version: 1,
-        workload: RAW_WORKLOAD.to_owned(),
-        result: file_name(&o.result),
-        records: Vec::new(),
-    };
-    if !o.resume || !o.raw.exists() {
-        if o.resume && !f.samples.is_empty() {
-            f.notes.push(format!(
-                "raw sidecar {} was missing at resumption; it holds only later records",
-                file_name(&o.raw)
-            ));
-        }
-        return Ok(fresh);
-    }
-    let bytes = std::fs::read(&o.raw).map_err(|e| format!("{}: {e}", o.raw.display()))?;
-    if f.raw_sha256.as_deref() != Some(sha256_hex(&bytes).as_str()) {
-        f.notes.push(format!(
-            "raw sidecar {} differed from its recorded digest at resumption",
-            file_name(&o.raw)
-        ));
-    }
-    let raw: RawFile = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-    if raw.workload != RAW_WORKLOAD {
-        return Err(format!("{} is not a repair raw file", o.raw.display()));
-    }
-    Ok(raw)
-}
-
 /// Loads or creates the compact result file.
 fn open_result(
     o: &RunOptions,
@@ -830,15 +776,8 @@ fn open_result(
             .push(format!("resumed at Unix time {}", o.started_unix));
         return Ok(f);
     }
-    if o.raw.exists() && !o.resume {
-        return Err(format!(
-            "{} exists; pass --resume to continue it",
-            o.raw.display()
-        ));
-    }
     Ok(RepairFile {
         schema_version: 2,
-        raw_file: Some(file_name(&o.raw)),
         workload: WORKLOAD.to_owned(),
         environment: o.environment.clone(),
         catalogue_sha256: FROZEN_SHA256.to_owned(),
@@ -871,8 +810,7 @@ pub fn run(o: &RunOptions, catalogue: &Catalogue) -> Result<RepairFile, String> 
         .filter(|p| o.projects.is_empty() || o.projects.contains(&p.id))
         .collect();
     let names: Vec<String> = selected.iter().map(|p| p.id.clone()).collect();
-    let mut file = open_result(o, catalogue, &names)?;
-    let raw = open_raw(o, &mut file)?;
+    let file = open_result(o, catalogue, &names)?;
     std::fs::create_dir_all(&o.out).map_err(|e| e.to_string())?;
     let out = o.out.canonicalize().map_err(|e| e.to_string())?;
     let tag = sha256_hex(out.as_os_str().as_encoded_bytes());
@@ -897,7 +835,6 @@ pub fn run(o: &RunOptions, catalogue: &Catalogue) -> Result<RepairFile, String> 
         daemons: [None, None],
         out,
         file,
-        raw,
     };
     session.install_engine(&warm_dir)?;
     for project in selected {
@@ -1028,7 +965,6 @@ mod tests {
             scratch: PathBuf::new(),
             out: dir.to_path_buf(),
             result: dir.join("r.json"),
-            raw: dir.join("r.raw.json"),
             rounds: 1,
             timeout: Duration::from_secs(1),
             environment: "test".to_owned(),
@@ -1044,7 +980,7 @@ mod tests {
     }
 
     #[test]
-    fn resume_reads_the_compact_result_and_its_raw_sidecar() {
+    fn resume_reads_the_existing_result_file() {
         let dir = std::env::temp_dir().join(format!("sail-bench-resume-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/repair-edits.json");
@@ -1055,43 +991,33 @@ mod tests {
         let Ok(mut file) = open_result(&fresh, &catalogue, &[]) else {
             unreachable!()
         };
-        assert_eq!(file.raw_file.as_deref(), Some("r.raw.json"));
-        let Ok(mut raw) = open_raw(&fresh, &mut file) else {
-            unreachable!()
-        };
         let sample = Sample {
             round: Some(0),
             phases: vec![Phase {
-                args: vec!["x".to_owned()],
+                name: "repair".to_owned(),
                 ..Phase::default()
             }],
             ..Sample::default()
         };
-        file.samples.push(sample.clone());
-        raw.records.push(RawRecord::of("sample", 0, &sample));
-        file.raw_sha256 = write_json(&fresh.raw, &raw).ok();
+        file.samples.push(sample);
         assert!(write_json(&fresh.result, &file).is_ok());
-        // Without --resume, neither file is overwritten.
+        // Without --resume, the file is not overwritten.
         assert!(open_result(&fresh, &catalogue, &[]).is_err());
 
         let resumed = options(&dir, true);
-        let Ok(mut again) = open_result(&resumed, &catalogue, &[]) else {
+        let Ok(again) = open_result(&resumed, &catalogue, &[]) else {
             unreachable!()
         };
         assert_eq!(again.samples.len(), 1);
-        let Ok(back) = open_raw(&resumed, &mut again) else {
-            unreachable!()
-        };
         assert_eq!(
-            back.records.first().map(|r| r.args.clone()),
-            Some(vec![vec!["x".to_owned()]])
+            again
+                .samples
+                .first()
+                .and_then(|s| s.phases.first())
+                .map(|p| p.name.as_str()),
+            Some("repair")
         );
-        assert!(!again.notes.iter().any(|n| n.contains("differed")));
-
-        let _ = std::fs::write(&resumed.raw, b"{\"workload\": \"repair-raw\"}");
-        let mut third = again.clone();
-        assert!(open_raw(&resumed, &mut third).is_ok());
-        assert!(third.notes.iter().any(|n| n.contains("differed")));
+        assert!(again.notes.iter().any(|n| n.starts_with("resumed")));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

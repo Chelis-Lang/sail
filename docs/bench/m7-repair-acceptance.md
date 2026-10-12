@@ -57,8 +57,8 @@ sample first. The gate is applied afterwards, when the report is generated.
 
 Each sample records one arm of one cycle in one round. It holds:
 
-- its phases (arguments, exit code, wall time, timeout flag, infrastructure
-  error, GNU `time` RSS of the command, M7 job id and proof-journal pages);
+- its phases (exit code, wall time, timeout flag, infrastructure error, M7
+  job id and proof-journal pages);
 - the sample's total wall time;
 - *first actionable evidence*. For M6 this is the focused check's wall time.
   For M7 it is the time of the first focused proof-journal event that is a
@@ -72,27 +72,19 @@ Each sample records one arm of one cycle in one round. It holds:
 - the canonical full outcome: exit code, sorted function verdicts and tiers,
   summary, and ordered diagnostics;
 - cache counters from the daemon's `STATS`: replies served, and replies solved
-  and recorded;
-- M7 preparation hits and misses, from results recorded before the engine stopped preparing lowering;
-- peak RSS of the command's and the owned daemon's process trees, sampled
-  every 100 ms from `/proc`.
+  and recorded.
 
-Raw stdout, stderr, `time` output and journal pages are kept under `--out`.
-Two files are rewritten atomically after every sample:
-
-- the raw sidecar (`--raw`, default `OUT/NAME.raw.json`, outside the
-  repository), holding each phase's arguments, full error text and the
-  canonical full outcome;
-- the compact result `bench/results/NAME.json`, holding only what the gate
-  and report read. Arms are compared by the outcome's SHA-256. Free text is
-  truncated, and the raw file's name and SHA-256 are recorded.
+Each invocation's command, stdout, stderr and journal pages are kept under
+`--out`, outside the repository. The result `bench/results/NAME.json` is
+rewritten atomically after every sample and holds only what the gate and
+report read. Arms are compared by the outcome's SHA-256, and free text is
+truncated.
 
 A timeout, crash, refusal or unparseable output is recorded on the sample and
 the run continues. At the deadline (`--timeout-secs`, default 900), the
 harness interrupts the command's process group, cancels the exact M7 job,
 then kills the group. `--resume` continues an interrupted result file with the
-same binaries and filter from the compact result, appending to its raw
-sidecar: it re-runs warm-ups and skips recorded samples.
+same binaries and filter: it re-runs warm-ups and skips recorded samples.
 
 ## Gate (applied at report time)
 
@@ -130,8 +122,7 @@ samples, which are listed but excluded from M6's totals as described above.
 No failing sample is dropped from the list or counts as a pass. A subset run (`--project`, `--filter`) is incomplete by
 construction. The report also shows round spread (min–max), per-cycle medians,
 nearest-rank p95 and maximum cycle wall time, first-actionable p95, M7 driver
-counts and Current/accepted status, cache served/solved counts, preparation
-hits/misses and peak RSS.
+counts and Current/accepted status, and cache served/solved counts.
 
 ## Running
 
@@ -145,8 +136,7 @@ sail-bench repair prepare --scratch SCRATCH
 sail-bench repair run --m6 M6/sail --m6-commit 26f124f52dbf51d6c94178778873e96ac5e072ef \
   --m7 target/release/sail --m7-commit SHA --engine /opt/sail-engine \
   --scratch SCRATCH --out OUT --environment "native x86-64 Linux, EC2 c7i.4xlarge" \
-  --name repair-acceptance-LABEL [--raw ~/sail-raw-evidence/LABEL.raw.json] \
-  [--rounds 3] [--project ID]... [--filter CYCLE] [--resume]
+  --name repair-acceptance-LABEL [--rounds 3] [--project ID]... [--filter CYCLE] [--resume]
 sail-bench report --out docs/benchmarks.md bench/results/*.json
 ```
 

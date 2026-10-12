@@ -46,8 +46,7 @@ const USAGE: &str = "usage:
   sail-bench repair prepare --scratch DIR
   sail-bench repair run --m6 SAIL --m6-commit SHA --m7 SAIL --m7-commit SHA --engine DIR
                     --scratch DIR --out DIR --environment LABEL [--name NAME] [--rounds N]
-                    [--project ID]... [--filter CYCLE_SUBSTR] [--timeout-secs S]
-                    [--raw PATH (default OUT/NAME.raw.json)] [--resume]
+                    [--project ID]... [--filter CYCLE_SUBSTR] [--timeout-secs S] [--resume]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
   sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
@@ -781,7 +780,6 @@ fn parse_repair(args: &[String]) -> Result<RepairArgs, String> {
         "--rounds",
         "--filter",
         "--timeout-secs",
-        "--raw",
     ];
     let mut a = RepairArgs::default();
     let mut it = args.iter();
@@ -871,14 +869,6 @@ fn repair_cmd(args: &[String]) -> Result<(), String> {
                 scratch: PathBuf::from(a.get("--scratch")?),
                 out: PathBuf::from(a.get("--out")?),
                 result: Path::new("bench/results").join(format!("{name}.json")),
-                // Raw detail stays outside the repository (ADR 0038).
-                raw: a.values.get("--raw").map_or_else(
-                    || {
-                        PathBuf::from(a.values.get("--out").cloned().unwrap_or_default())
-                            .join(format!("{name}.raw.json"))
-                    },
-                    PathBuf::from,
-                ),
                 rounds: usize::try_from(a.number("--rounds", 3)?).unwrap_or(3),
                 timeout: std::time::Duration::from_secs(a.number("--timeout-secs", 900)?),
                 environment: a.get("--environment")?,

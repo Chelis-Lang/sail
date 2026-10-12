@@ -29,11 +29,6 @@ fn spread(xs: &[f64]) -> String {
     }
 }
 
-#[allow(clippy::cast_precision_loss)] // byte counts, for display
-fn mb(bytes: u64) -> String {
-    format!("{:.0} MB", bytes as f64 / 1_048_576.0)
-}
-
 fn ratio(a: Option<f64>, b: Option<f64>) -> String {
     match (a, b) {
         (Some(a), Some(b)) if a > 0.0 && b > 0.0 => format!("{:.2}×", a / b),
@@ -170,7 +165,7 @@ fn render_catalogue(out: &mut String, f: &RepairFile, v: &Verdict) {
     }
     let _ = writeln!(
         out,
-        "| Cycle | Kind | M6 wall | M7 wall | Speedup | M6 first actionable | M7 first actionable | M7 drivers | M7 full evidence / accepted | Cache served / solved (M6; M7) | M7 preparation hits / misses | Peak RSS (M6; M7) |\n|---|---|---:|---:|---:|---:|---:|---:|---|---|---:|---|"
+        "| Cycle | Kind | M6 wall | M7 wall | Speedup | M6 first actionable | M7 first actionable | M7 drivers | M7 full evidence / accepted | Cache served / solved (M6; M7) |\n|---|---|---:|---:|---:|---:|---:|---:|---|---|"
     );
     let cycles = f
         .catalogue
@@ -269,23 +264,9 @@ fn cycle_row(
             "n/a".to_owned()
         }
     };
-    let prep: Vec<String> = m7()
-        .map(|s| {
-            s.preparation.as_ref().map_or_else(
-                || "n/a".to_owned(),
-                |p| format!("{} / {}", p.batch_hits + p.persistent_hits, p.misses),
-            )
-        })
-        .collect();
-    let rss = |xs: Vec<&Sample>| {
-        xs.iter()
-            .filter_map(|s| s.peak_rss_bytes)
-            .max()
-            .map_or_else(|| "n/a".to_owned(), mb)
-    };
     let _ = writeln!(
         out,
-        "| `{cycle}` | {kind} | {} | {} | {} | {} | {} | {} | {} | {}; {} | {} | {}; {} |",
+        "| `{cycle}` | {kind} | {} | {} | {} | {} | {} | {} | {} | {}; {} |",
         spread(&w6),
         spread(&w7),
         ratio(median(&w6), median(&w7)),
@@ -303,13 +284,6 @@ fn cycle_row(
         },
         cache(m6().collect()),
         cache(m7().collect()),
-        if prep.is_empty() {
-            "n/a".to_owned()
-        } else {
-            prep.join(", ")
-        },
-        rss(m6().collect()),
-        rss(m7().collect()),
     );
     [(w6, a6), (w7, a7)]
 }
