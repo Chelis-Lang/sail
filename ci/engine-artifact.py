@@ -20,6 +20,8 @@ REPO = Path(__file__).resolve().parent.parent
 REQUIRED = {"cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"}
 RUNTIME = PurePosixPath("verus/source/target-verus/release")
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
+# vstd built like the stock release (sail_verus::engine::VSTD_BUILD).
+VSTD_BUILD = "vstd-build:cargo-verus-release"
 
 
 def sha(path):
@@ -40,7 +42,7 @@ def safe_path(path):
 def validate(build, pin):
     manifest = json.loads((build / "sail-build.json").read_text())
     expected = ["sail-interactive:" + pin["patch_sha256"], "host:x86_64-unknown-linux-gnu",
-                "source-lock:" + pin["source_lock_sha256"]]
+                "source-lock:" + pin["source_lock_sha256"], VSTD_BUILD]
     if (manifest["schema_version"] != 1 or manifest["commit"] != pin["commit"]
             or manifest["rust_toolchain"] != pin["rust_toolchain"]
             or manifest["features"] != expected or manifest["z3_sha256"] != pin["z3_sha256"]):

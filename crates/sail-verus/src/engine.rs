@@ -31,8 +31,16 @@ pub fn features() -> Vec<String> {
             "source-lock:{}",
             crate::managed::digest(SOURCE_LOCK.as_bytes())
         ),
+        VSTD_BUILD.to_owned(),
     ]
 }
+
+/// How the engine's vstd is built: like the stock release, with
+/// `cargo-verus build --manifest-path vstd/Cargo.toml` after the ordinary
+/// build, so vstd's recorded source paths (and therefore diagnostics that
+/// point into vstd) match the release's (`seq.rs`, not vargo's
+/// `vstd/seq.rs`).
+pub const VSTD_BUILD: &str = "vstd-build:cargo-verus-release";
 
 /// Engine-specific source directory; never a stock source build directory.
 #[must_use]

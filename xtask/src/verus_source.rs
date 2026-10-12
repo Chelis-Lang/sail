@@ -239,6 +239,42 @@ fn compile(
     }
 
     if engine {
+        // The Verus release workflow (`.github/workflows/build.yml` at the
+        // pinned commit) builds vstd separately, from `source/vstd`, with
+        // `cargo-verus build --release --manifest-path vstd/Cargo.toml`.
+        // vargo's `vstd_build` compiles `vstd/vstd.rs` from `source`, so its
+        // vstd records `vstd/seq.rs` where the release records `seq.rs`, and
+        // engine diagnostics pointing into vstd differed from stock. Do what
+        // the release does; cargo-verus hoists vstd.vir, libvstd.rlib and
+        // the builtin libraries into `target-verus/release`.
+        println!(
+            "rebuilding vstd as the Verus release does (cargo-verus build --manifest-path vstd/Cargo.toml)"
+        );
+        let release = source.join("target-verus").join("release");
+        run(clean(
+            Command::new(release.join("cargo-verus")).current_dir(&source),
+            jobs,
+        )
+        .env("PATH", &path)
+        .env("VERUS_Z3_PATH", z3)
+        .args(["build", "--release", "--manifest-path", "vstd/Cargo.toml"]))?;
+        // That Cargo build leaves its build-dir intermediates (per-package
+        // directories, dep-info and lock files) beside the runtime; the
+        // runtime needs none of them (`deps` is pruned separately).
+        for entry in std::fs::read_dir(&release)
+            .map_err(|e| format!("cannot read {}: {e}", release.display()))?
+            .flatten()
+        {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if (path.is_dir() && name != "deps")
+                || name == ".cargo-lock"
+                || name == ".cargo-artifact-lock"
+                || path.extension().is_some_and(|e| e == "d")
+            {
+                remove(&path);
+            }
+        }
         return Ok(Vec::new());
     }
 
