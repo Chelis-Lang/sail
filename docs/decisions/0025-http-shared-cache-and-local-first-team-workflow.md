@@ -71,7 +71,7 @@ measured helper dispatch at 106.857 ms, transport initialization completion at
 270.456 ms, body completion at 314.578 ms and final validation at 315.341 ms.
 The foreground had timed out at 301.815 ms. HTTP succeeded; no signature, trust,
 identity or authentication rejection was recorded. See the
-[retained failure](../validation/m7-http-session-replay-777.md).
+[retained failure](../validation/m7.md).
 
 A configured daemon now launches one optional HTTP constructor asynchronously
 at bind, overlapping construction with ordinary solver identity setup. This
@@ -94,7 +94,7 @@ Repeated complete workspace gates retain a setup-publication timeout at the
 original 250 ms limit. Their exact complete causes remain unestablished. A
 separate owner observation records material runtime CPU, and the package-only
 optimization control does not show a benefit; its profile stays unselected.
-See [the retained observation](../validation/m7-http-owner-1e8b633.md).
+See [the retained observation](../validation/m7.md).
 
 Configuration refresh previously constructed a blocking HTTP runtime before
 comparing it with the current client. Reuse now follows fresh endpoint policy,

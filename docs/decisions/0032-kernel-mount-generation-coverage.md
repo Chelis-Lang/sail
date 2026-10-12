@@ -58,10 +58,10 @@ and path observation; it neither establishes a proof nor attests a hostile
 kernel, procfs bootstrap or externally modified compiler process. Managed
 commands keep their original verdict, freshness and no-receipt rules.
 
-The [initial validation record](../validation/m7-kernel-mount-generation.json)
+The [initial validation record](../validation/m7.md)
 retains the real isolated fault control and affected checks. The subsequent
-[complete workspace gate](../../bench/validation/m7-linux-gate-091e-emulated-2026-10-11.json)
-passes all 502 tests and remaining steps; the [complete solver suite](../../bench/validation/m7-linux-solver-091e-emulated-2026-10-11.json)
+[complete workspace gate](../validation/m7.md)
+passes all 502 tests and remaining steps; the [complete solver suite](../validation/m7.md)
 passes all 39 controls, including the same real fault.
 This decision does not qualify the optional source engine or M7 performance.
 

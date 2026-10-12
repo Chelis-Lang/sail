@@ -3,9 +3,9 @@
 **Experimental (M7):** the selected source engine passes its preparation-memory
 and lowering qualification. Current `387ba80` passes the
 [complete gate, original solver, product installations and original CLI/MCP
-repair fixture](validation/m7-compiler-script-bootstrap/source-inventory.json).
+repair fixture](validation/m7.md).
 The `57a319d` named-baseline feature smoke and
-[b895 full reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+[b895 full reader/retained workflow](validation/m7.md)
 remain separate historical passes. Current readers, real-project performance
 and complete standard/cache corpus coverage remain unfinished.
 See [known issues](known-issues.md) and the
@@ -60,7 +60,7 @@ dependency build generation. Initial setup can compile dependencies again and
 uses additional cache space, but another selector cannot overwrite the artifact
 bytes tied to that selector's proof receipts. Stock and full-engine calls retain
 their existing shared compiler-family target. This source change is not yet
-native-qualified; see the [candidate and validation requirements](validation/m7-repair-artifact-isolation.md).
+native-qualified; see the [candidate and validation requirements](validation/m7.md).
 
 The version-one repair bundle retains separate `batch.focus` and `batch.full`
 project results, engine manifest identity and actual compiler-invocation count.

@@ -20,7 +20,7 @@ their frozen artifacts; the unresolved failures below remain failures.
 
 The complete `4472279` workspace gate passed 540 tests, but its solver scope
 passed 38 of 39: GC/clear reached the unchanged 180-second nextest limit.
-The [read-only audit](validation/m7-shared-solver-timeout-447-readonly.md)
+The [read-only audit](validation/m7.md)
 does not establish its cause or the stalled phase.
 
 A separate fixture defect is now controlled: a foreground panic previously
@@ -31,7 +31,7 @@ additive controlled-unwind regression requires the worker to exit; a private
 copy without the guard hangs under external supervision. This does not prove
 the original timeout experienced a panic. Fixed phase, PID and elapsed-time
 metadata writes directly to stderr before the next phase, surviving libtest's
-captured-output lifetime. The [lifecycle proposal](validation/m7-fault-owned-lifecycle-proposal.md)
+captured-output lifetime. The [lifecycle proposal](validation/m7.md)
 keeps direct-solver and pipe-owner cleanup changes separate and unimplemented.
 
 
@@ -39,7 +39,7 @@ The later `c97de63` workspace gate passed 605 tests, but its complete solver
 scope passed 40 of 41; the GC/clear final concurrent sessions reached the same
 180-second limit. One unchanged isolated diagnostic passed in 8.78 seconds.
 Neither outcome establishes the historical timeout's cause; the
-[retained diagnostic](validation/m7-gc-c97-isolated-diagnostic.md) records both.
+[retained diagnostic](validation/m7.md) records both.
 
 Test-support session cleanup now kills and reaps a timed-out child before
 observing its output buffer. The byte snapshot uses `try_lock`, explicitly
@@ -77,7 +77,7 @@ original checks intact, passed in 11.340 seconds. All five cases and both
 sessions per case passed; the platform-mismatch case recorded one rejection,
 zero shared hits and zero shared timeouts. This did not reproduce or explain
 the original integrated timeout. The
-[portable diagnostic record](../bench/validation/shared-signature-fault-diagnostic-linux-emulated-2026-10-10.json)
+[portable diagnostic record](validation/m7.md)
 retains both outcomes, the diagnostic invocation's initial solver-path setup
 failure, and the executed source, binary and log hashes. No production fix or
 deadline change is claimed.
@@ -88,8 +88,8 @@ assertions and deadlines with the phase diagnostics above. This is a complete
 suite pass for those frozen artifacts, not an identified cause or causal fix
 for the earlier timeout. The normal workspace gate on the same source failed
 HTTP-cache concurrency tests and remains a separate blocker. See the
-[complete solver record](../bench/validation/m7-linux-solver-d12-emulated-2026-10-10.json)
-and [failed gate](../bench/validation/m7-linux-gate-d12-failure-emulated-2026-10-10.json).
+[complete solver record](validation/m7.md)
+and [failed gate](validation/m7.md).
 
 ## How faults are injected
 
@@ -229,7 +229,7 @@ replies before the fault. Earlier prefix retention was a cache benefit, not a
 correctness requirement.
 
 
-The cleanup-first correction has [actual focused controls](validation/m7-fault-session-cleanup-controls.md):
+The cleanup-first correction has [actual focused controls](validation/m7.md):
 two lifecycle cases pass, the blocking-snapshot counterfactual fails as expected,
 and the original GC/clear case passes once in 13.902 seconds with its unchanged
 CI profile. Affected all-target strict Clippy passes. The earlier complete

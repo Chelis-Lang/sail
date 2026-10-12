@@ -12,7 +12,7 @@ comparison and restores zero preparations. An independent bounded observation
 finds the first unavailable imported binding at
 `vstd/function.rs:151:20: 151:65 (#0)`: constructor and pre-focus resolver states
 are both Delayed. That candidate correctly refuses it. The
-[retained evidence](../../engine/verus/candidates/decode-ownership/loaded-import-qualification-failure.json)
+[retained evidence](../validation/m7.md)
 does not establish source or product qualification.
 
 Eager stock source loading is not an admissible shortcut: its FileLoader reads
@@ -20,7 +20,7 @@ an unbounded String before validation, and SourceMap retains additional text
 and indexing allocations until compiler teardown. A successful load ordinarily
 creates a local diagnostic file, not the Foreign role required by ADR 0030.
 
-The [closed consumer audit](../../engine/verus/candidates/decode-ownership/deferred-locator-consumer-audit.md)
+The [closed consumer audit](../validation/m7.md)
 finds that prepared VIR/SST lowering propagates exact span identity without
 resolving imported coordinates or reading deferred source text. Recorded
 MessageX diagnostics are replayed through the current stock Reporter and
@@ -91,7 +91,7 @@ stages fail at zero hits in revision 0. A separate bounded trace finds a
 per-record Delayed refusal in `vstd/function.rs`; its coarse reason does not
 distinguish unsupported path from absent Foreign metadata. Both results and
 post-run seals are retained in the
-[candidate review](../../engine/verus/candidates/deferred-import-locator/dynsend-owner/original-descriptor-role-review.md).
+[candidate review](../validation/m7.md).
 
 The pinned SpanContext remaining-original loop legitimately creates Delayed
 recipes before SourceMap has loaded their Foreign metadata. Propose a distinct
@@ -127,7 +127,7 @@ equal-raw-hash Foreign file appears during ordinary frontend work. Early role
 classification followed by demotion correctly refuses that change, but precedes
 the natural compiler-thread namespace handoff. The trace does not establish the
 new Foreign owner's eligibility. See the
-[retained cause and candidate](../../engine/verus/candidates/deferred-import-locator/late-handoff/README.md).
+[retained cause and candidate](../validation/m7.md).
 
 Retain immutable bounded original-authority seeds and the exact initial actual
 resolver recipe at construction, without an eligible role. Consume those seeds
@@ -163,14 +163,14 @@ and runtime stay proposed/unselected until executable qualification.
 The subsequent late-handoff qualification exposed a separate parallel-worker
 plumbing defect: stock workers have no diagnostic SourceMap, so the new
 preparation namespace check refused storage before provenance. The proposed
-[v9 preparation-only namespace service](../../engine/verus/candidates/preparation-namespace/README.md)
+[v9 preparation-only namespace service](../validation/m7.md)
 keeps stock diagnostic routing unchanged and borrows the live map on the compiler
 thread through each preparation transaction. Its file-only controls and distinct
 ownership arithmetic do not constitute executable runtime qualification.
 
 ## Proposed extension: exact stock missing-original-range authority
 
-The later [bounded refusal diagnostic](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/revision0-result.json)
+The later [bounded refusal diagnostic](../validation/m7.md)
 finds three current core/alloc unit spans whose exporting stable crate exists,
 but whose low positions are absent from its complete original range metadata.
 The actual pinned stock control fully consumes the sealed metadata and confirms
@@ -194,7 +194,7 @@ provenance and `sail-prepared/graph-ledger/current-literal-missing-original-rang
 reject intact v9 and earlier entries. Keep the single 8 MiB family and unchanged
 512 MiB aggregate limit, with the larger inline Record admitted before allocation.
 
-The [file-only implementation and control inventory](../../engine/verus/candidates/preparation-namespace/no-original-range/README.md)
+The [file-only implementation and control inventory](../validation/m7.md)
 passed complete source controls (42 VIR/108 driver and both strict checks),
 the admitted stale-memo sensitivity control and ordinary fresh-vstd verification
 (2060/0) with a complete new runtime manifest. The ADR and runtime remain
@@ -220,4 +220,4 @@ stock diagnostic loading. Rebuilt Sail CLI/MCP integration, current-product
 conformance, live reader latency and the complete repair performance catalogues
 remain required before M7 acceptance. See
 [the qualification](../../engine/verus/qualification-linux.json) and
-[delivery](../../bench/validation/m7-linux-engine-aaa3b2e4-delivery-2026-10-11.json).
+[delivery](../validation/m7.md).

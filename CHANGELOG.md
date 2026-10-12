@@ -20,7 +20,7 @@ semantic versioning once the API is published.
   verification remain unchanged. Each selector pays cold setup and additional
   disk space. Existing caches establish fresh versioned build/source observations
   without importing legacy shared-target generated paths or deleting old evidence; native controls and the unchanged benchmark remain pending. See
-  [the candidate scope](docs/validation/m7-repair-artifact-isolation.md).
+  [the candidate scope](docs/validation/m7.md).
 
 - Forward Cargo's `-F`, `-Fvalue` and `-F=value` feature aliases to managed
   metadata, matching the unchanged verification arguments. Context keys retain
@@ -33,7 +33,7 @@ semantic versioning once the API is published.
   Proof receipts remain selector-specific. Source controls and product validation
   are pending; the original `b89546c` benchmark failure remains unchanged. See
   [issue 77](https://github.com/Chelis-Lang/sail/issues/77) and the
-  [candidate scope](docs/validation/m7-compiler-script-bootstrap/source-inventory.md).
+  [candidate scope](docs/validation/m7.md).
 
 - Keep repair walkthrough captures outside watched package roots. Redirected
   event logs and results are operator records; writing them during a proof
@@ -46,7 +46,7 @@ semantic versioning once the API is published.
   Historical currentness and full provenance without promoting provisional or
   incomplete reports. Corrupt identities and oversized records fail explicitly.
   The `57a319d` combined gate and separate installed
-  [actual CLI/MCP feature smoke](docs/validation/m7-mcp-baseline-product-smoke-plan.md)
+  [actual CLI/MCP feature smoke](docs/validation/m7.md)
   pass, including literal names, full payload equality, immutable overwrite
   refusal and client restart. This addresses
   [#72](https://github.com/Chelis-Lang/sail/issues/72) without reader, performance
@@ -73,7 +73,7 @@ semantic versioning once the API is published.
   suite, including all three new diagnostic controls. Earlier strict and
   interrupted outcomes remain retained; product validation remains pending.
   See the
-  [candidate record](docs/validation/m7-compiler-script-bootstrap/refusal-diagnostic.json).
+  [candidate record](docs/validation/m7.md).
 
 - Select a conservative compiler-script recovery correction for validation
   after the failed c2 warmup: exclude only proven always-false non-workspace
@@ -82,12 +82,12 @@ semantic versioning once the API is published.
   `b89546c` passes the real Cargo recovery control, complete gate and solver;
   product and unchanged benchmark validation remain pending. Earlier fixture,
   strict and interrupted outcomes remain retained. See the
-  [source record](docs/validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+  [source record](docs/validation/m7.md).
 
 - Record the unchanged real-project repair benchmark's `730a321` bootstrap
   failure. Unknown input freshness correctly prevents acceptance; no measured
   rounds or speedup are available. Earlier full reader and small repair passes
-  remain separate scopes. See the [failure record](docs/validation/m7-benchmark-730a321-bootstrap-failure.md).
+  remain separate scopes. See the [failure record](docs/validation/m7.md).
 
 - Prepare a Linux proof-diagnosis candidate that records the first refused root
   binding as a path digest, ordinal, old/new device and inode, absence or errno.
@@ -101,9 +101,9 @@ semantic versioning once the API is published.
   unchanged. Initial regeneration and unsupported fallback remain. Complete c2
   controls, emission sensitivity and original repair validation pass; real-project
   benchmark recovery remains unqualified. The
-  [602 failed positives and Cargo path captures](docs/validation/m7-bootstrap-602ec67-gate-failure.md)
+  [602 failed positives and Cargo path captures](docs/validation/m7.md)
   remain separate evidence. See the
-  [candidate limits](docs/validation/m7-compiler-script-bootstrap/README.md).
+  [candidate limits](docs/validation/m7.md).
 
 - Release retained-output locks during
   independent freshness validation, then check the same continuously guarded
@@ -119,7 +119,7 @@ semantic versioning once the API is published.
   pass. The complete `730a321` workspace gate and original installed repair
   fixture and full reader workflow also pass. Real-project acceptance remains
   pending; the single observed pair establishes no stable speedup. See the
-  [control record](docs/validation/m7-http-small-known-body-actual-controls.md).
+  [control record](docs/validation/m7.md).
 - Preserve exact unchanged private declaration metadata and runtime links on
   Linux, keeping an existing continuous freshness observer. All component
   controls and counterfactual checks pass; edits still invalidate observation.

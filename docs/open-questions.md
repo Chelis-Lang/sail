@@ -135,7 +135,8 @@ inline with the date and link the ADR that captures it.
     fresh-lowering engine runs matched all 114 sessions; four fixed-order
     controls reproduced both orders and missed when current compiler input
     order changed. The original failed qualification remains in
-    `engine/verus/candidates/qualifications/2459-linux.json`, with controls
+    `engine/verus/candidates/qualifications/2459-linux.json` (now in the
+    `archive/m7-contracts-f7103bf` tag), with controls
     in `2459-order-controls.json` in that directory.
 
     **Answered 2026-10-10 (owner):** compare cached lowering with fresh

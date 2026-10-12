@@ -19,7 +19,7 @@ original import offsets into relocated current bounds while preserving rendering
 They separately demonstrate that Delayed resolution with an equal-hash Foreign
 file already present still loads its descriptor's local file. Current raw unit
 binding alone therefore cannot authorize a Loaded or Delayed mapping.
-[The audit](../../engine/verus/candidates/owned-import-mapping/relocation-review.md)
+[The audit](../validation/m7.md)
 records lowering/effect consumers and the API controls. [ADR0027](0027-interactive-proof-engine-and-repair-workflow.md)
 requires fresh Rust checks, complete full authority and exact cached/fresh wire
 comparison from the same compiler input; stock verdict/diagnostics remain mandatory.
@@ -72,4 +72,4 @@ diagnostics from one compiler input and independent stock verdict/diagnostics mu
 pass. State evidence, complete HE/Vest proof/performance and live-reader gates
 remain required. Preserve the earlier strict progress failure and relocation miss;
 API controls or static review cannot qualify the source runtime. Implementation,
-budget detail and pending tests are in [the candidate guide](../../engine/verus/candidates/loaded-foreign-authority/README.md).
+budget detail and pending tests are in [the candidate guide](../validation/m7.md).

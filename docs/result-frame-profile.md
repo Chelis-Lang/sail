@@ -66,7 +66,7 @@ in the Linux container. These
 small offline samples and different platforms are not a live latency comparison,
 and mixed `recv_into` results do not establish an improvement.
 
-The [portable phase record](../bench/validation/job-result-frame-phases-linux-emulated-2026-10-10.json)
+The [portable phase record](validation/m7.md)
 retains the exact captured frame hash, field-size counts, all preliminary and
 actual-frame results, executed source/binary hashes and qualifications. The Linux
 actual-frame Rust typed decoder measured 37.14 ms median for one thread and
@@ -89,7 +89,7 @@ The current tool uses the captured frame directly and tests a different JSON
 member order, extra frames and truncation. The earlier measurements remain
 offline diagnostics with their original implementation identities.
 
-A subsequent [codec equality check](validation/m7-original-result-frame-codec-check.json)
+A subsequent [codec equality check](validation/m7.md)
 found that typed reencoding exactly equals the archived 4,314,950-byte framed
 response on the host. The production codec, manifest and dependency lock are
 unchanged from the historical profiler. This establishes byte equality for that

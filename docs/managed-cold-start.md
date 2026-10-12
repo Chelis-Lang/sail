@@ -25,10 +25,10 @@ family can share ordinary dependencies; their proof contexts and receipts stay
 separate. Native CI's retained cold
 example required two verifier invocations for vstd and the requested demo; its
 next unchanged run reused both reports with zero invocations. The
-[local timeout comparison](validation/m7-managed-cold-777-vs-f94.md) records a
+[local timeout comparison](validation/m7.md) records a
 separate unresolved 240-second failure during this cold path. Neither ordinary
 dependency preparation nor compiler startup may be described as an established
-warm proof check. The separate [timeout stage witness](validation/m7-managed-cold-stage-777.md)
+warm proof check. The separate [timeout stage witness](validation/m7.md)
 observes actual vstd verification after pre-Cargo setup and ordinary dependency
 compilation; none of those stages alone is established as the entire cause.
 
@@ -60,7 +60,7 @@ for the local cache trust boundary and effective environment binding.
 Optional independent ordinary-build recovery passes the complete local controls,
 emission sensitivity and original installed repair fixture on c2. Real-project
 benchmark recovery remains unqualified: the fresh
-[completed c2 benchmark](validation/m7-benchmark-c2a4b23-warmup-terminal.md)
+[completed c2 benchmark](validation/m7.md)
 stops at required Current admission with a declarations-established note, even
 though verification exits zero. No measured samples are admitted.
 When a compatible generation is unavailable, original script cleaning and
@@ -70,15 +70,15 @@ bytes. Only a complete successful Cargo run with matching compilation roles,
 declarations, output seals and final guard checks can establish ordinary contracts.
 Initial regeneration does not guarantee the next invocation is Current:
 proof-source coverage and independent script publication have separate
-requirements. The [first real-project publication review](validation/m7-c2-first-bootstrap-publication-review.md)
+requirements. The [first real-project publication review](validation/m7.md)
 identifies the retained evidence still missing for the c2 refusal.
 The original complete proof transaction is unchanged: Unknown proof evidence
 remains Unknown and cannot create a successful receipt or accepted repair.
 Unsupported paths, aliases, directory declarations, Cargo overrides, environment
 or unavailable guards refuse optional retention and preserve original cleaning.
-The [candidate contract and resource limits](validation/m7-compiler-script-bootstrap/README.md)
-and [independent review](validation/m7-ordinary-script-bootstrap-review.md) bind the
-supported role. The [602 failed positive controls and three exact Cargo path captures](validation/m7-bootstrap-602ec67-gate-failure.md)
+The [candidate contract and resource limits](validation/m7.md)
+and [independent review](validation/m7.md) bind the
+supported role. The [602 failed positive controls and three exact Cargo path captures](validation/m7.md)
 remain distinct from corrected native validation; there is no measured recovery
 or explanation of the historical 730 failure yet.
 
@@ -92,7 +92,7 @@ selected verification. The original c2 repair fixture validates the installed
 workflow; real-project benchmark validation remains pending. Original repair
 deadlines are unchanged.
 
-The [script-observation diagnostic](validation/m7-compiler-script-observations.md)
+The [script-observation diagnostic](validation/m7.md)
 records the avoided cleaning seam and its control scope. The compiler-family
 implementation and affected controls are separate from pending whole-product
 performance validation. No repair fixture
@@ -159,7 +159,7 @@ returns; a forcibly killed unfinished block may have no completed row. Append
 I/O adds observation overhead and kernel operations are not interruptible by
 these limits. These records diagnose stage costs; they do not extend the
 240-second check or qualify performance. The [first complete timed standalone
-check](validation/m7-managed-setup-012707a.md) passed all original assertions,
+check](validation/m7.md) passed all original assertions,
 including cold verification, receipt reuse, CLI/MCP jobs and a restored-mtime
 failing edit. Its repeated sysroot hashing remains a measured warm-call cost;
 no production hash reuse or compiler-artifact sharing change follows from that
@@ -170,7 +170,7 @@ managed acceptance harness already does this. The timer's no-follow creation
 protects its final filename; its parent directory is an explicitly chosen
 private diagnostic destination, not a trust boundary for verification.
 
-The [timer product freeze](validation/m7-setup-timer-product-build.json) records
+The [timer product freeze](validation/m7.md) records
 the exact Linux Sail/shim bytes built after the complete 498-test workspace gate
 and 38-control solver suite. It is a build scope only; cold-start measurements
 retain their original deadlines and remain separate from source/runtime and
@@ -183,8 +183,8 @@ constructor may establish continuous output coverage within the existing frame
 budget; foreground requests use that coverage only around their independent
 input/runtime freshness check. Missing, busy, refused or invalid coverage retains
 the full read/hash fallback. The integration passed
-[35 affected native source controls and strict checks](validation/m7-guarded-output-source-controls.md).
-The later [b895 installed product](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+[35 affected native source controls and strict checks](validation/m7.md).
+The later [b895 installed product](validation/m7.md)
 passes the original full reader and retained CLI/MCP workflow. That whole-product
 pass does not isolate this shortcut's latency contribution or establish repair
 speed. Newer source-inventory/baseline changes require their own product validation.

@@ -16,7 +16,7 @@ Verification can succeed while its report remains Unknown.
 Linux checks the mapped inode UID against the caller's filesystem UID, or
 requires `CAP_LEASE`, before granting a lease. See the primary
 [kernel ownership check](https://github.com/torvalds/linux/blob/v6.17/fs/locks.c#L1893-L1906).
-The [reconstructed retained-HE refusal](validation/m7-retained-he-lease-refusal-1e.md)
+The [reconstructed retained-HE refusal](validation/m7.md)
 found exactly two foreign-owned binaries in its complete 1,415-file inventory.
 The helper returned `EACCES`; no capability or UID was inferred from a proof
 verdict. The earlier proof failure did not retain the exact refused path, so this
@@ -99,7 +99,7 @@ any freshness check.
 
 For the reconstructed inventory above, fresh service-owned copies of both
 product binaries suffice for the observed UID mismatch; its other 1,413 files
-already matched the service UID. The [installation and kernel fixture controls](validation/m7-native-product-ownership.md)
+already matched the service UID. The [installation and kernel fixture controls](validation/m7.md)
 passed without changing any sealed product. No new real-project acceptance has
 been claimed for this installation correction. See [reader acceptance](reader-acceptance.md)
 and [the roadmap](ROADMAP.md) for the remaining product gates.

@@ -98,11 +98,11 @@ retained empty index root, budget/index owners, and outer Arc retirement after
 its refundable charge drops. The existing 32-client endpoint bound also bounds
 simultaneous retirement storage. Uncached output owns only the selected variant;
 it does not retain the two unused frame buffers. The
-[margin controls](../validation/m7-result-frame-admission-margin.md) document
+[margin controls](../validation/m7.md) document
 the pinned layout and actual destructor counterfactual. Temporary cold encoding
 and ordinary uncached responses are
 outside this cache-retention quota; it is not a process RSS bound. The
-[ownership controls](../validation/m7-result-frame-ownership.md) retain actual
+[ownership controls](../validation/m7.md) retain actual
 negative controls and the affected daemon suite.
 
 ## Acceptance

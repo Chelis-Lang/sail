@@ -8,7 +8,7 @@
 The original `b63af10` eight-reader fixture failed at its unchanged 250 ms
 shared lookup deadline, despite coalescing seven followers into one GET.
 The server completed its existing single header read 87.207 ms after accepting
-the connection. [The failure](../validation/m7-http-coalescing-b63-failure.md)
+the connection. [The failure](../validation/m7.md)
 does not establish the cause of that interval.
 
 One separately instrumented fixture passed, and measured a 32.722 ms increase
@@ -53,7 +53,7 @@ lookup deadline, coalescing, negative cache and backoff. There is no new retry.
 
 ## Consequences
 
-The [unselected source patch](../validation/m7-http-async-unselected.patch)
+The [unselected source patch](../validation/m7.md)
 passed 39 affected HTTP security, admission, refresh and lifecycle controls.
 Both once-only instrumented eight-reader fixtures passed every original
 assertion. However, combined helper and I/O CPU across send through body rose
@@ -61,7 +61,7 @@ from 66.264 ms to 84.160 ms, and lookup through publication rose from
 185.680 ms to 222.422 ms. Body wall time fell from 5.047 ms to 0.884 ms;
 that isolated saving did not improve the complete operation.
 
-The [comparison record](../validation/m7-http-async-comparison.json) retains
+The [comparison record](../validation/m7.md) retains
 the first strict lint failure and corrected direct library/unit/HTTP-integration
 lint passes. This is not a complete Cargo workspace gate. Metadata sampling
 is synchronous and non-atomic; one sequential pair cannot establish a timing
@@ -94,6 +94,6 @@ I/O-thread counters cannot be counted as total savings.
 
 The diagnostic archive was subsequently recovered and checked against its
 existing complete-byte seal and 148-member inventory. The
-[recovery record](../validation/m7-http-async-archive-recovery.json) preserves
+[recovery record](../validation/m7.md) preserves
 the earlier failed transfers. Recovery adds no experiment, conformance or
 performance acceptance credit; the candidate remains unselected.

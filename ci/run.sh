@@ -79,6 +79,7 @@ case "$step" in
     python3 scripts/test-managed-timeout-evidence.py
     python3 ci/test-engine-artifact.py
     python3 ci/test-repair-lifecycle.py
+    python3 scripts/check-links.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci

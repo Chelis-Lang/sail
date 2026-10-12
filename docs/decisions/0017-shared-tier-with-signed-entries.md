@@ -257,4 +257,4 @@ configured timeout. Old presence answers do not authorize new calls. Busy or
 expired trust snapshots are omitted; status is descriptive, never proof or
 signing authority. No additional dependency or internal layer edge is introduced.
 The paused-I/O controls, retained draft failures and unchanged integration scope
-are recorded in [the focused validation record](../validation/m7-shared-trust-foreground.md).
+are recorded in [the focused validation record](../validation/m7.md).

@@ -34,11 +34,11 @@ constant to encode in the implementation.
 Stock `pos_to_extern_source_file` searches the immutable imported file table.
 `unpack_span` returns `None` if the low position has no containing record;
 that branch precedes the optional source loader. The
-[read-only metadata lineage](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/vstd-metadata-lineage.json)
+[read-only metadata lineage](../validation/m7.md)
 binds the exact sealed 30,076,214-byte vstd artifact and its 22,312-byte metadata
 suffix: all 145 recorded original ranges omit the three positions. That bounded
 inspection is separate from the subsequent
-[typed stock-resolver control](../../engine/verus/candidates/preparation-retirement/absence-control/README.md).
+[typed stock-resolver control](../validation/m7.md).
 That control fully decodes the pinned metadata and executes byte-exact stock
 lookup methods in a reduced SourceMap fixture. All three uncovered ranges return
 `None` without loading; a real covered descriptor reaches the instrumented
@@ -53,13 +53,13 @@ ranges and ambiguous mappings must retain safe misses.
 
 ## Reproduction and evidence
 
-The retained [revision-zero diagnostic](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/revision0-result.json)
+The retained [revision-zero diagnostic](../validation/m7.md)
 binds the actual compiler, exact failed HumanEval input, original context and
 600-second bound. The original assertions remain: its compiler completes in
 14.619 seconds, but positive restored-hit admission fails. The diagnostic is
 unqualified and does not recover the failed qualification.
 
-The [diagnostic controller](../../engine/verus/candidates/preparation-namespace/boundary-diagnostic/run-diagnostic.py)
+The [diagnostic controller](../validation/m7.md)
 replays that frozen validation workspace with fresh preparation/oracle output,
 without copying proof evidence. The unchanged stock exporter and unpacking
 branches above are the source-level reproduction seam. The reduced executable
@@ -68,7 +68,7 @@ not reproduce historical source-file arrival or run an entire compiler proof.
 
 A distinct `pair-busy` refusal is also observed at 81,920 retained control bytes.
 It concerns compiler-service retirement and is addressed by a separate
-[acknowledgement candidate](../../engine/verus/candidates/preparation-retirement/README.md).
+[acknowledgement candidate](../validation/m7.md).
 That availability fix cannot establish authority for the uncovered ranges.
 
 Any proposed absence role must prove complete immutable constructor coverage,

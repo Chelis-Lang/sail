@@ -32,13 +32,13 @@ The harness was draining output on independent threads and polling its original
 deadline; no capture-file write wait was sampled. A full userspace stack or
 source-level wait dependency is still needed before choosing a correction.
 
-The later [transcript diagnostic](../validation/m7-tspec-transcript-interrupted.md)
+The later [transcript diagnostic](../validation/m7.md)
 was interrupted by filesystem/container failure. Its 3,880 logged batches all
 have responses; the newest bit-vector transcript is empty. Pinned source
 allows that log to exist before its lazy solver launch. The query context is
 a fresh iteration-local value, not an assignment replacing the prior context.
 This narrows the next observation seam, not the historical
-cause. The [phase diagnostic follow-up](../validation/m7-tspec-phase-diagnostic-followup.md)
+cause. The [phase diagnostic follow-up](../validation/m7.md)
 specifies the missing context, channel and pipe ownership evidence; no new
 execution is authorized by that plan.
 
@@ -64,8 +64,8 @@ partial streams, terminal outcome and owned process cleanup. If investigating
 waits, collect supplementary stacks without consuming actor streams or changing
 proof authority. Static reasoning alone cannot qualify the unit.
 
-The [complete terminal record](../validation/m7-default-standard-e0ca-terminal.md),
-[retained phase audit](../validation/m7-standard-tspec-retained-audit.md) and
-[sleeping/pipe observation](../validation/m7-standard-tspec-sleeping-observation-e0.md)
+The [complete terminal record](../validation/m7.md),
+[retained phase audit](../validation/m7.md) and
+[sleeping/pipe observation](../validation/m7.md)
 bind the original frozen harness, project/runtime identities and observations.
 No retry, deadline extension or normalization is part of those records.

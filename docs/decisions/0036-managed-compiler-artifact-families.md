@@ -48,7 +48,7 @@ selector's full verification correctly invalidated the earlier selector's
 byte-bound receipt. The first measured repair then required three drivers and
 failed the unchanged one-driver check. Dependency preflight alone could reduce
 a repeat invocation but would still need a dependency driver; it cannot satisfy
-that check. See the [isolation candidate and controls](../validation/m7-repair-artifact-isolation.md).
+that check. See the [isolation candidate and controls](../validation/m7.md).
 
 Each repair selector therefore incurs its own cold dependency compilation and
 uses additional disk space. After its own declaration/receipt establishment,
@@ -186,7 +186,7 @@ Sail mutation and export invalidation. No historical path list alone certifies
 current output, no proof observations are transferred, and first-run incomplete
 declarations remain incomplete.
 
-The [retained diagnostic](../validation/m7-compiler-script-observations.md)
+The [retained diagnostic](../validation/m7.md)
 shows a repeated dependency build in the same family after selector change. It
 does not prove the cause of the earlier whole-loop timeout. Product and unchanged
 benchmark validation remain required; no fixture or acceptance bound changes.
@@ -201,7 +201,7 @@ original publication. This is a write avoidance mechanism, not digest reuse or
 Current authority: existing continuous native owners and all final barriers
 remain mandatory. Family export consumption/publication, receipts and per-run
 configuration retain their original transaction. See the
-[uncompiled candidate and pending controls](../validation/m7-preserve-freshness-metadata-plan.md).
+[uncompiled candidate and pending controls](../validation/m7.md).
 
 
 ## Independently guarded declaration bootstrap candidate
@@ -224,7 +224,7 @@ bootstrap. No supported metadata script means no optional acquisition or runtime
 hashing. All other refusals keep original script cleaning. The implementation is
 uncompiled and unselected; requested retained admission and cooperative streaming
 bounds do not claim an enforced construction/RSS limit or measured speedup.
-See the [candidate, limits and required real-Cargo controls](../validation/m7-compiler-script-bootstrap/README.md).
+See the [candidate, limits and required real-Cargo controls](../validation/m7.md).
 
 ## Disabled metadata scripts and retry compilation evidence
 
@@ -250,4 +250,4 @@ The follow-up real Cargo controls cover disabled dependency scheduling,
 first/reused/rebuilt journals and subsequent original input-barrier readiness.
 They remain uncompiled and unexecuted at source freeze. Product and unchanged
 benchmark recovery are pending; see the
-[source record](../validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+[source record](../validation/m7.md).

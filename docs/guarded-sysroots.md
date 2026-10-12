@@ -1,7 +1,7 @@
 # Guarded sysroot digest handoff
 
 Managed verification hashes its selected Rust sysroots whenever a guarded
-snapshot is unavailable. The [012707a diagnostic](validation/m7-managed-setup-012707a.md)
+snapshot is unavailable. The [012707a diagnostic](validation/m7.md)
 found this work took about 16 seconds even
 for a warm command that started no verifier. The optional Linux daemon handoff
 in [ADR 0031](decisions/0031-guarded-sysroot-digest-handoff.md) is implemented
@@ -15,10 +15,10 @@ hashing behavior. Integration is staged for the original cold/warm acceptance;
 primitive controls alone are not a measured verification speedup or acceptance
 of the final M7 source engine.
 
-The corrected [1e8b633 scenario](validation/m7-sysroot-activation-1e8b633.md)
+The corrected [1e8b633 scenario](validation/m7.md)
 reaches the automatic fill hint but fails its original first cold 240-second
 limit. Warm verification is not reached, so background publication and actual
-import remain unestablished in that scenario. A separate [pinned context control](validation/m7-sysroot-context-1e.md)
+import remain unestablished in that scenario. A separate [pinned context control](validation/m7.md)
 subsequently observed natural background publication and imported all 327 eligible
 hashes before the second context's local hash loop. That control invoked no
 verifier and cannot replace the original failed proof or performance checks.

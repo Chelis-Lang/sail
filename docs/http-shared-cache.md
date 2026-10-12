@@ -173,7 +173,7 @@ cannot publish its completed client afterward. Completed owners are joined; an
 unfinished blocking constructor is not joined on the bounded serving or shutdown
 path. There is at most one setup owner per daemon and no overlapping constructor
 retries. Failed construction retains the existing five-second reload cadence.
-The [whole-session replay investigation](validation/m7-http-session-replay-777.md)
+The [whole-session replay investigation](validation/m7.md)
 records the cold first-fetch failure that motivated this change.
 Credential reload still invalidates old backoff and negative-cache state before
 using the new configuration. Missing entries are
@@ -234,7 +234,8 @@ every entry. This removes measured unoptimized arithmetic work from the serving
 budget; the 250 ms deadline and 75 ms delayed-server assertions remain unchanged.
 CPU and wall-time evidence, including the original failed established-transport
 test, is retained in
-`validation/m7-shared-signature-cpu-diagnosis.md`. It is a development-build
+[M7 validation](validation/m7.md) (full record in the `archive/m7-contracts-f7103bf`
+tag). It is a development-build
 improvement, not a production-release speedup or an attribution of every earlier
 wall-time delay to cryptography.
 
@@ -246,7 +247,7 @@ the assertion. HTTP lookup phase diagnostics retain the original signed-entry
 checks and 75 ms response fixture; isolated CPU and TCP controls are diagnostic
 evidence, not substitutes for the complete concurrent lookup checks.
 
-[The retained HTTP follow-up](validation/m7-http-7dc-followup.json) records a
+[The retained HTTP follow-up](validation/m7.md) records a
 negative small-response TCP control and a fixed strict-signature CPU control.
 Neither establishes the cause of the preserved full-gate failures.
 
@@ -255,7 +256,7 @@ Neither establishes the cause of the preserved full-gate failures.
 Local HTTP controls and signature regressions retain the same 250 ms lookup
 bound and every trust check. The latest `749255e` full workspace attempt failed
 two HTTP elapsed/serving cases; separate passing frozen controls do not qualify
-the complete gate. [The phase record](validation/m7-http-749-followup.json)
+the complete gate. [The phase record](validation/m7.md)
 separates those facts and retains the unresolved cause. An unavailable or slow
 shared store still falls back to local verification; no timeout, unsigned reply
 or diagnostic timing authorizes a cached proof.
@@ -271,7 +272,7 @@ comparison was slower: combined helper and I/O CPU rose from 66.264 ms to
 
 The unselected patch and exact limits are retained in
 [ADR 0037](decisions/0037-owned-async-shared-http-transport.md) and the
-[comparison record](validation/m7-http-async-comparison.json). Both measured
+[comparison record](validation/m7.md). Both measured
 fixtures passed the original 250 ms deadline and 75 ms response delay. Those
 separate passes do not erase the failed full gate or qualify live readers.
 No trust, signature, TLS, payload, timeout or fallback contract changed.
@@ -283,4 +284,4 @@ and strict checks passed, along with the read-count counterfactual/restored
 control and both original eight-reader comparison arms at the unchanged 250 ms
 deadline. Complete workspace and installed-product acceptance remain pending.
 The single observed pair supplies no stable speedup or historical failure cause;
-see the [actual controls](validation/m7-http-small-known-body-actual-controls.md).
+see the [actual controls](validation/m7.md).

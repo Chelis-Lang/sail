@@ -51,7 +51,7 @@ comparison. Four fixed-order controls captured ordered VIR before preparation:
 `arrow_1, arrow_2` and `arrow_2, arrow_1` each produced their corresponding raw
 solver stream. A changed order missed the prepared cache; an actual hit agreed
 with fresh lowering for that order. See the retained
-[ordered controls](../../engine/verus/candidates/qualifications/2459-order-controls.md).
+[ordered controls](../validation/m7.md).
 These controls did not find a stale ordered-vector restore and do not qualify
 the candidate or establish cross-edit speedup.
 

@@ -65,7 +65,7 @@ ancestors and explicit inputs beneath excluded output directories retain their
 original classification. The native queue still drains to completion with the
 same event/watch limits and 20 ms pre-batch budget; overflow, lost coverage and
 actual changes still invalidate evidence. The [local filter validation
-record](validation/m7-namespace-indexed-filter.json) retains the initial empty-path
+record](validation/m7.md) retains the initial empty-path
 counterexample and exact native controls. Its isolated queue timings do not
 qualify the complete service reader latency gate.
 
@@ -75,7 +75,7 @@ hardlink spelling replaces the old index membership; aliases are not accumulated
 as permanently watched paths. Canonicalization, local-filesystem validation,
 native masks and the 8,192-watch bound retain their original order. The additional
 index holds at most one path/count entry per current descriptor value. See
-[the acquisition controls](validation/m7-native-watch-index.json) for the exact
+[the acquisition controls](validation/m7.md) for the exact
 native alias regression and local setup measurements; faster lookup alone does
 not establish lease coverage or meet the complete product latency gates.
 
@@ -94,7 +94,7 @@ The notification is latched permanently; a later clean poll cannot renew it.
 Namespace/root identity changes and unavailable polling also refuse reuse. This
 adds one descriptor and a bounded snapshot to each namespace/lease owner, with
 no observation worker or grace period. See [ADR 0032](decisions/0032-kernel-mount-generation-coverage.md)
-and [the isolated real fault control](validation/m7-kernel-mount-generation.json).
+and [the isolated real fault control](validation/m7.md).
 
 The optional lease owner is an embedded Python 3 standard-library helper launched
 with isolated module loading, structured arguments and private bounded socket I/O.
@@ -134,7 +134,7 @@ whitespace tokenizer; Unicode and vertical-tab rows retain the original parser.
 The exact row classifier, malformed-owner rejection, foreign-owner behavior and
 both complete sweeps are unchanged. Local classifier measurements and retained
 failed reader controls are recorded in
-[the parser validation record](validation/m7-kernel-ascii-parser.json); parsing
+[the parser validation record](validation/m7.md); parsing
 speed alone does not establish a Current result or meet the reader latency gate.
 
 The helper never acquires or renews a lease after readiness. A final intact
@@ -211,9 +211,9 @@ reader-latency sample, and no copied receipt supplies the baseline proof.
 The local a6/b346 reader run is a latency and lifecycle diagnostic of that exact
 older product/runtime pair, not final M7 acceptance or source-candidate selection.
 Earlier failures and interruptions remain in `docs/validation/`, including
-[the cold setup failure](validation/m7-cb07-cold-reader-failure.json),
-[the prior reader failure](validation/m7-f111-reader-failure.json) and
-[the interrupted diagnostic](validation/m7-a6-reader-diagnostic-interruption.json).
+[the cold setup failure](validation/m7.md),
+[the prior reader failure](validation/m7.md) and
+[the interrupted diagnostic](validation/m7.md).
 Cheap Running-status polls, an accepted baseline proof, kernel unit tests and a
 static source review each establish their own narrower facts; none substitutes
 for both complete four-reader censuses under an actual selected-target verifier.
@@ -222,14 +222,14 @@ For local diagnosis only, `SAIL_FRESHNESS_TRACE=1` records static freshness
 stage/reason labels and elapsed microseconds on daemon stderr. It emits no input
 paths, environment values or report contents. Tracing can change scheduling and
 does not qualify a performance gate. See
-[the diagnostic scope and classified retained-proof profile](validation/m7-reader-freshness-diagnosis.md).
+[the diagnostic scope and classified retained-proof profile](validation/m7.md).
 That separate retained-job run refused 13 of 200 reads through bounded owner
 contention; it does not establish the cause of the earlier live census's
 sustained admission-loss tail. Both failures remain recorded.
 
 ## Detailed proof diagnosis scope
 
-The [single detailed sysroot proof diagnosis](validation/m7-sysroot-proof-diagnostic.md)
+The [single detailed sysroot proof diagnosis](validation/m7.md)
 reports a new complete Current full proof and does not reproduce the older D20
 sysroot-coverage failure. Its new executable/cache identity changes the context;
 no historical receipt supplies authority. The provisional focus remains
@@ -256,29 +256,29 @@ continue to pass. The comparison switch is test-only; ordinary unit fixtures use
 the same enabled path as production. Component controls and fixed-order timing
 comparisons are separate from the original complete four-reader census and cannot establish its 200 ms latency requirement.
 
-The [sidecar component record](validation/m7-runtime-sidecar-components.md)
+The [sidecar component record](validation/m7.md)
 retains the passing mutation controls, initial Clippy failure and small reduction in complete inspection time. The initial comparison was test-only; the enabled
 path uses the same eligibility and complete barriers.
 
-The [enabled-path checks](validation/m7-runtime-sidecar-production.md) retain
+The [enabled-path checks](validation/m7.md) retain
 the same mutation controls and strict validation after production selection.
 
 The Linux implementation preserves exact unchanged private input-declaration and
 runtime-link bytes rather than atomically replacing their inodes. It can retain
 the existing continuous native owner for the same context; every input, namespace,
 lease and helper barrier remains mandatory, and dirty or absent coverage still
-recollects synchronously. The [complete component replay](validation/m7-preserve-freshness-metadata-replay.md)
+recollects synchronously. The [complete component replay](validation/m7.md)
 passes metadata, freshness, strict and sensitivity controls. Real source edits
 still invalidate the owner. The [frozen combined gate, ordinary product and
-fresh original repair fixture](validation/m7-core-730a321-validation.md) pass with
+fresh original repair fixture](validation/m7.md) pass with
 unchanged checks. The small-fixture pass does not isolate the implementation's
 benefit or establish real-project repair performance. The same frozen product's
-[original full reader workflow](validation/m7-reader-730a321-terminal.md) passes
+[original full reader workflow](validation/m7.md) passes
 both Python and Rust collectors with complete reports during actual verification.
 
 Real source or declaration changes still invalidate the combined source/runtime
 projection, even when compiler bytes remain unchanged. Independent runtime
-retention across edits is a [file-only design review](validation/m7-runtime-owner-publication-review.md),
+retention across edits is a [file-only design review](validation/m7.md),
 not an enabled feature. Its possible benefit depends on the exact context and
 has not been isolated from complete freshness construction. Every Current result
 still requires the original complete source, runtime and namespace barriers.
@@ -308,8 +308,8 @@ captured old identities. Keep private paths out of public reports; do not treat
 a matching digest as permission to ignore or rebind an input. Generated Rust
 files under Cargo targets remain semantic inputs when declared by the compiler.
 
-The [generated-source audit](validation/m7-benchmark-namespace-730-review.md)
-and [diagnostic source record](validation/m7-first-binding-mismatch-source.json)
+The [generated-source audit](validation/m7.md)
+and [diagnostic source record](validation/m7.md)
 retain the source chain, original refusal controls and fixed-storage accounting.
 The candidate is unqualified until Linux controls and strict checks run. It
 does not yet identify the changed root in the failed product-730 benchmark or

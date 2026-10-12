@@ -12,7 +12,7 @@ again. Finally, the shared stdout mutex covered JSON encoding as well as writing
 A large response could therefore block an unrelated ping before any output bytes
 were ready. This is a concrete ownership and locking problem; the original
 Python-first reader failure did not execute MCP and cannot establish its latency
-cost. See the [client audit](../validation/m7-installed-reader-client-audit.md).
+cost. See the [client audit](../validation/m7.md).
 
 ## Decision
 
@@ -50,7 +50,7 @@ waits, exercise unwind and ID replacement cleanup, compare complete concurrent
 frames and compare old/new text and structured JSON bytes. Typed Result controls
 include missing and present repair evidence and null/large result graphs.
 
-The [scoped record](../validation/m7-mcp-output-ownership.md) retains all actual
+The [scoped record](../validation/m7.md) retains all actual
 test and lint outcomes, including any unchanged original failures. These controls
 do not qualify installed proof tools, four-reader latency or M7's whole repair
 loop. Those original gates and their bounds remain required.

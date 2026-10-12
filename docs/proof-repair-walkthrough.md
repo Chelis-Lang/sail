@@ -2,11 +2,11 @@
 
 This walkthrough covers the implemented experimental workflow. Current
 `387ba80` passes the [complete local gate, original solver suite, product
-installations and unchanged CLI/MCP repair fixture](validation/m7-compiler-script-bootstrap/source-inventory.json).
+installations and unchanged CLI/MCP repair fixture](validation/m7.md).
 The repair fixture completes in 90.588 seconds with 299 operations under the
 original 120/30/5 limits. Named-baseline feature smoke passed separately on
 `57a319d`; it supplies no transferred current-product reader or performance credit.
-The [b895 reader/retained pass](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+The [b895 reader/retained pass](validation/m7.md)
 remains historical: both unchanged collectors preserve full Current graphs and
 p95 below 200 ms. The original 387 reader workflow fails Python Result p95 at
 436.008 ms against the unchanged 200 ms bound; all 200 samples retain Current
@@ -42,8 +42,8 @@ that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
 The selected runtime is experimental. Its complete source qualification now
 passes, including ownership accounting, genuine reuse across edits and exact
-full HumanEval results. The [b895 installed repair and reader checks](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
-pass; the [730 reader workflow](validation/m7-reader-730a321-terminal.md) remains a separate historical pass.
+full HumanEval results. The [b895 installed repair and reader checks](validation/m7.md)
+pass; the [730 reader workflow](validation/m7.md) remains a separate historical pass.
 M7 real-project performance remains unqualified. See
 [engine qualification](../engine/verus/README.md).
 
@@ -62,8 +62,8 @@ sail engine install --from path/to/engine-build --output json
 Import validates the exact selected patch, pinned source/toolchains, manifest and
 artifact bytes. It retains a monitored link to that directory, so keep the build
 available. Unrecognized or conflicting builds produce `SAIL3120`; an arbitrary
-stock build is not an interactive engine. Builds under
-`engine/verus/candidates/` remain unselected unless explicitly activated in Sail.
+stock build is not an interactive engine, and only the selected patch is
+recognized.
 A successful install/status check establishes runtime identity, not the unfinished
 M7 acceptance claims. Keep the ordinary stock launcher available for fallback.
 Before the first project submission, run `sail engine status --output json` from

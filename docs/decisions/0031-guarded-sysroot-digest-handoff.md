@@ -5,7 +5,7 @@
 
 ## Context
 
-The [original managed acceptance with setup timings](../validation/m7-managed-setup-012707a.md)
+The [original managed acceptance with setup timings](../validation/m7.md)
 passed unchanged, including cold proof, CLI/MCP jobs, missing receipts and a
 restored-mtime failing edit. Its unchanged command reused both proof reports
 with no verifier invocation but still spent 15.992 seconds hashing its sysroots.
@@ -243,8 +243,8 @@ keys. The stream declines optional reuse after 256 KiB of encoded input without
 retaining a serialized buffer or copied pair vector. The original complete
 context encoding and proof/cache keys are unchanged. The first staged activation
 failed to construct this scope and retained local hashing; its separate cold
-timeout remains [recorded](../validation/m7-sysroot-activation-7da9579.md).
-The [corrected selector controls](../validation/m7-sysroot-selection-controls.json)
+timeout remains [recorded](../validation/m7.md).
+The [corrected selector controls](../validation/m7.md)
 pass actual byte-key/non-UTF8, exact encoding, changed input and overbudget cases;
 complete integrated acceptance is still required.
 
@@ -270,12 +270,12 @@ deadline. That observation does not establish its cause or demonstrate that
 readiness waiting fixes it. Validation of this transport change is separate from
 the real-project acceptance and performance measurements.
 
-The [independent affected-crate validation](../../bench/validation/m7-linux-sysroot-readiness-34d04c9-emulated-2026-10-11.json)
+The [independent affected-crate validation](../validation/m7.md)
 passes strict all-target checks and all seven original sysroot controls on the
 local Linux container. It retains the original deadline and assertions. A
 complete current workspace gate and real-project acceptance remain required.
 
-The later [complete workspace attempt](../../bench/validation/m7-linux-core-gate-b34b2be-emulated-2026-10-11.json)
+The later [complete workspace attempt](../validation/m7.md)
 passes 523/528 tests but again declines the positive complete snapshot at its
 original 100 ms deadline. Four HTTP serving controls also fail their existing
 bounds. Readiness polling therefore has a passing affected-control scope, not

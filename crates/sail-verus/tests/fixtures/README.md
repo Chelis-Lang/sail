@@ -14,6 +14,7 @@ or oversized captures fail. The generated separator, truncation and owned-row
 negative controls run separately in the ordinary workspace gate. These timing
 samples establish classifier behavior only, not live-reader product latency.
 
-See the retained experiment in `docs/validation/m7-kernel-ascii-parser.json`
+See the retained experiment `docs/validation/m7-kernel-ascii-parser.json`
 and the first complete solver attempt in
-`bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json`.
+`bench/validation/m7-linux-solver-b36-emulated-2026-10-11.json` (both in the
+`archive/m7-contracts-f7103bf` tag).

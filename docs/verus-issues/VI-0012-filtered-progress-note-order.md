@@ -7,7 +7,8 @@
   `426d8b01e7ffb910a36c15e1f870ff985bb61eef`.
 - **Found:** 2026-10-11.
 - **Reproduction:** the frozen revision-zero control in
-  `engine/verus/candidates/test-private-span-cross-edit.py`, selecting the
+  `engine/verus/qualify/test-private-span-cross-edit.py` (formerly under
+  `engine/verus/candidates/`), selecting the
   pinned HumanEval module `human_eval_013`. This existing input contains
   separately scheduled `lemma_div` and `lemma_div_converse` buckets. A smaller
   stock-only control is retained below.
@@ -81,8 +82,8 @@ They completed in 19.649 and 16.506 seconds, both with nine verified functions,
 zero errors and identical 234-byte stderr SHA-256 `63efc95648ca075bb98c1c1689c77373d82310e78a9dafc5da0469563bcbcb16`.
 This pair **did not reproduce differing note order**. The bounded controller,
 source/command/runtime hashes and all raw-output inventory identities are in
-[the negative reproduction record](../validation/m7-filtered-progress-two-stock.json).
-The controller is [m7-filtered-progress-control.py](../../scripts/m7-filtered-progress-control.py).
+[the negative reproduction record](../validation/m7.md).
+The controller is [m7-filtered-progress-control.py](../validation/m7.md).
 
 Both new runs differ from the original b46 stock note order, but their retained
 scratch source/log paths differ from the original. This is not evidence of

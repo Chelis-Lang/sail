@@ -88,7 +88,7 @@ coarse reports cannot be explained retrospectively by these new labels.
 Job reads preserve the original proof notes. A
 separate current-input-validation warning appears when a previously Current
 report becomes Unknown during projection. See
-[the diagnostic boundary](validation/m7-proof-coverage-diagnostics.md).
+[the diagnostic boundary](validation/m7.md).
 
 ## Jobs that survive the client session
 

@@ -5,7 +5,7 @@
 
 ## Context
 
-The [descriptor-bound original reader workflow](../validation/m7-descriptor-reader-terminal.md)
+The [descriptor-bound original reader workflow](../validation/m7.md)
 failed the unchanged full Result p95 bound at 343.142 ms. Every original sample
 passed admission and actual verifier continuity. Rust and retained CLI/MCP were
 unattempted. In the latest recorder tail, all 42 completed Current Result calls
@@ -95,7 +95,7 @@ retained even if the design remains unselected.
 
 ## Recorded component result
 
-The [complete-operation comparison](../validation/m7-guarded-output-components.md)
+The [complete-operation comparison](../validation/m7.md)
 passed six real output mutation controls and release all-target strict Clippy.
 On the exact complete retained stdout, four-client component p95 changed from
 25.781 ms for reading/hashing to 17.186 ms with guarded checks and immediate busy
@@ -106,7 +106,7 @@ its tail comparison did not demonstrate an improvement.
 
 ## Integration candidate
 
-The [implementation and ownership plan](../validation/m7-guarded-output-integration-plan.md)
+The [implementation and ownership plan](../validation/m7.md)
 keeps the same 128 MiB frame-family budget. Before any request allocation it
 reserves 16 MiB retained ownership plus 64 MiB constructor scratch; only one
 queued/constructing generation exists. The fixed margin covers a single 1 MiB
@@ -134,14 +134,14 @@ construction envelope. Native kernel/helper resources remain separately bounded.
 
 The corrected candidate passed 35 affected native source controls and strict
 all-target checks for both affected packages; see the
-[exact source validation](../validation/m7-guarded-output-source-controls.md).
+[exact source validation](../validation/m7.md).
 The initial strict failures and tested images remain retained. All original complete payload,
 collector, four-client/200-sample and five-second bounds remain required; prior
 component measurements are not daemon acceptance or performance qualification.
 
 ## Concurrent validation
 
-The [reviewed overlap change](../validation/m7-result-output-overlap-plan.md)
+The [reviewed overlap change](../validation/m7.md)
 releases output locks during independent input freshness. It retains the same
 continuously guarded owner across both barriers, confirms exact owner identity
 again, and keeps the original complete fallback on any refusal. An evicted but
@@ -150,13 +150,13 @@ between barriers cannot certify an earlier prospective result. The fixed
 admission margin also covers the new mutex/Arc allocation shell after reservation
 refund. No new proof authority or retention ceiling is introduced.
 
-The [native record](../validation/m7-result-output-overlap-native.md) retains
+The [native record](../validation/m7.md) retains
 30 daemon controls, eight unchanged primitive controls, strict checks and the
 first test-only Clippy naming failure. The original lock algorithm fails the
 overlap sensitivity assertion. A fixed-order comparison with four readers and
 complete 2,158,309-byte output plus real fixture-input freshness reduces p95
 from 19.366 to 12.713 ms with all 128 validations complete. Source is selected
-for integration after review. The later [b895 installed full-reader workflow](../validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+for integration after review. The later [b895 installed full-reader workflow](../validation/m7.md)
 passes both unchanged collectors and retained CLI/MCP scenarios; it does not
 isolate this component's contribution. Newer source changes need independent product validation.
 This 6.653 ms component reduction is not an explanation or remedy established

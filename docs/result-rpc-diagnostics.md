@@ -93,7 +93,7 @@ to the total. Repeated boundaries accumulate rather than replace earlier
 intervals, including a failed final owner barrier followed by full fallback.
 
 Large `write_us` values may reflect receiver progress rather than server CPU.
-The [complete-result offline control](validation/m7-result-transfer-profile.md)
+The [complete-result offline control](validation/m7.md)
 separates send wall time, own-thread CPU, receiver transfer and full parsing. Its
 socket-buffer control did not improve complete client p95 materially; no socket
 change is selected, and it is not live-reader acceptance.
@@ -127,20 +127,20 @@ equivalence for a Cancelled job's Status, null-result Result and stable errors
 without launching a worker. It does not exercise a completed full-report frame
 or a warm complete-frame cache hit.
 Pure environment controls compare selected inputs with diagnostics off/on.
-The [qualification record](validation/m7-rpc-stage-recorder.json) binds the
+The [qualification record](validation/m7.md) binds the
 implementation bytes, commands and retained development failures. These host
 controls are not a Linux gate or real live-reader performance qualification.
 
-The [original current reader attempt](validation/m7-current-reader-workflow.md)
+The [original current reader attempt](validation/m7.md)
 still failed Result p95 at 394.713 ms, with Rust and retained CLI/MCP unattempted.
-The [separate complete-graph offline profile](validation/m7-current-result-components.md)
+The [separate complete-graph offline profile](validation/m7.md)
 does not explain that live latency. This diagnostic supplies missing per-RPC
 attribution; it does not claim a remedy. The original four readers, 200 samples,
 strict p95 below 200 ms and five-second RPC bounds remain required. See
 [reader acceptance](reader-acceptance.md), [freshness](freshness.md) and
 [the roadmap](ROADMAP.md).
 
-The [one real current-product observation workflow](validation/m7-rpc-stage-workflow.md)
+The [one real current-product observation workflow](validation/m7.md)
 completed genuine Current setup but failed original Python Result p95 at
 403.341 ms; Status p95 passed at 147.290 ms. All 200 original admission and
 per-call actual verifier checks passed. Shutdown exported only the latest
@@ -150,19 +150,19 @@ intervals are material, with no demonstrated serialization remedy. Rust and
 retained integration were unattempted in that fail-fast workflow.
 
 For publication attribution on a newly sealed product, the
-[prepared current-product controller](validation/m7-current-publication-controller.md)
+[prepared current-product controller](validation/m7.md)
 uses the repository's current 23-field timing launcher and original repair
 fixture. Its pure failure controls provide no new product timing or acceptance
 credit. Transport loss remains uncertain; it cannot certify native shutdown.
 
-The [product 730 delivery review](validation/m7-result-delivery-730-review.md)
+The [product 730 delivery review](validation/m7.md)
 maps current complete-frame hits, guarded output/fallback, independent freshness
 and unchanged Python parsing. Cached socket writes hold no full-graph encoding
 or cache lock. Freshness inspection still copies full input path inventories
 for daemon consumers that only need revision/complete, and completed Status reads and
 hashes stdout. Immutable snapshot delivery and sharing the existing output-only
 owner are deferred, unselected and unmeasured designs. The
-[complete original product 730 workflow](validation/m7-reader-730a321-terminal.md)
+[complete original product 730 workflow](validation/m7.md)
 passes both unchanged full-reader collectors and retained CLI/MCP at their original
 bounds, without these designs. No single-change attribution or paired gain from
 earlier failures follows; separate M7 performance gates remain outstanding.

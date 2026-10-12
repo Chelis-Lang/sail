@@ -137,7 +137,7 @@ this storage audit.
 
 ## Validation and limits
 
-The [complete fresh-frame cost audit](validation/m7-fresh-frame-hot-cost-audit.md)
+The [complete fresh-frame cost audit](validation/m7.md)
 separates existing server encoding reuse from client parse/clone costs. Its
 offline profiles do not identify the remaining live-service bottleneck or
 qualify the 200 ms p95 target; hot encoding already uses complete preencoded
@@ -158,11 +158,11 @@ product transport option or a replacement for the frozen reader collectors.
 
 The original Python and Rust reader collectors and their four-reader,
 200-sample, 200 ms p95 and five-second RPC requirements remain unchanged. Frozen
-[`b89546c`](validation/m7-compiler-script-bootstrap/scheduling-recovery.json) passes both
+[`b89546c`](validation/m7.md) passes both
 complete collectors and retained CLI/MCP scenarios: Python Result/Status p95
 91.227/56.989 ms and Rust 83.867/44.371 ms. Each collector retains 200 full
 Current samples while the same selected verifier remains live. The separate
-[installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both:
+[installed `730a321` workflow](validation/m7.md) passes both:
 Python Result/Status p95 94.197/59.896 ms and Rust Result/Status p95 67.483/50.273 ms.
 The Current Result remains a complete graph above 4 MiB; no reduced payload or
 changed deadline supplies this result.
@@ -171,7 +171,7 @@ M7 edit-loop performance target. See [freshness](freshness.md),
 [the repair workflow](proof-repair-walkthrough.md) and
 [the roadmap](ROADMAP.md) for the separate product contracts.
 
-The [retained offline profile](validation/m7-result-client-profile.json) includes
+The [retained offline profile](validation/m7.md) includes
 both the first automatic-retention experiment and the explicit opt-in version.
 The first experiment's cold four-reader p95 was 438.93 ms versus 171.88 ms for
 ordinary parsing, motivating the new staged default instead of an eager graph
@@ -230,7 +230,7 @@ reads. Use `call_cancellable` for the joined cancellation and absolute transport
 budget described above. Installed MCP uses that path; live acceptance remains
 a separate gate.
 
-The [cancellable transport controls](validation/m7-cancellable-client.json)
+The [cancellable transport controls](validation/m7.md)
 record the original large-request readiness failures alongside the final ten-case
 macOS and Linux results. The original 8 MiB public request, two-second fixture
 readiness check and full response contract remain intact. The additional bounded
@@ -238,13 +238,13 @@ send-buffer control exercises the same production exchange path; it does not
 replace large-request serialization coverage. These controls qualify transport
 ownership and cancellation behavior, not the live-reader latency gates.
 
-The [original prepared reader attempt](validation/m7-reader-prepared-terminal.md)
+The [original prepared reader attempt](validation/m7.md)
 failed the unchanged Python gate despite genuinely established Current full
 proofs. All 200 samples are retained; Rust was not reached. Staged SDK cold,
 second-response and warm controls must be recorded separately and cannot turn
 that failed run into a pass. The frozen Python collector remains untouched.
 
-The [staged default controls](validation/m7-staged-result-client.json) retain
+The [staged default controls](validation/m7.md) retain
 all cold, second-response and warm samples for the final recovery fix. The
 complete 4.315 MB captured frame includes every dependency and both full-report
 copies. Four-reader medians in milliseconds were:
@@ -285,7 +285,7 @@ fixture's scheduling and serialized writes. They do not establish that the
 production server has the same bottleneck. Malformed complete JSON still fails
 and shuts down/joins the owned producer.
 
-The [component record](validation/m7-result-client-components.json) retains
+The [component record](validation/m7.md) retains
 the exact source/binary/frame identities and all samples. On emulated Linux,
 four-thread median allocation/copy was 0.96 ms, whole-body comparison 0.34 ms,
 independent complete graph cloning 17.75 ms and typed frame parsing 50.02 ms.
@@ -295,7 +295,7 @@ and every fresh-frame validation remain intact. The record keeps the separate
 raw-transfer replay's variation rather than assigning a live bottleneck from
 these component timings.
 
-The [installed b36 transport smoke](validation/m7-installed-mcp-b36.md) passed
+The [installed b36 transport smoke](validation/m7.md) passed
 on independently frozen production binaries using the unchanged hardened MCP
 controller. It checked direct live reads, same-ID state changes, service loss
 and restart, notification cancellation, socket cleanup and normal EOF exit.
@@ -314,14 +314,14 @@ check before serving the complete response.
 
 There is no new user flag. Construction and inspection share the existing
 128 MiB frame-retention budget; unavailable quota costs the shortcut. The
-[35 affected controls and strict checks](validation/m7-guarded-output-source-controls.md)
+[35 affected controls and strict checks](validation/m7.md)
 pass, including real restored-write fallback and complete frame equivalence.
-Frozen `b89546c` passes the [original full reader and retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json),
+Frozen `b89546c` passes the [original full reader and retained workflow](validation/m7.md),
 with full Current graphs and unchanged p95 limits. The earlier `730a321` product passes the
-[original full reader workflow](validation/m7-reader-730a321-terminal.md), including
+[original full reader workflow](validation/m7.md), including
 both collectors and retained CLI/MCP scenarios. See
 [ADR 0035](decisions/0035-guarded-retained-output-digests.md) and the
-[retained original reader failure](validation/m7-descriptor-reader-terminal.md).
+[retained original reader failure](validation/m7.md).
 
 A second, test-only candidate groups file-parent descriptor lookups within one
 lease barrier. It retains at most 64 temporary directory descriptors and borrowed
@@ -349,14 +349,14 @@ request-entry, generation and pointer checks. This removes a redundant read; it
 does not change the original Python collector or establish live latency
 acceptance. Non-Linux fallback is unchanged.
 
-The [sidecar component record](validation/m7-runtime-sidecar-components.md)
+The [sidecar component record](validation/m7.md)
 retains the passing mutation controls, initial Clippy failure and small reduction in complete inspection time. The initial comparison was test-only; the enabled
 path uses the same eligibility and complete barriers.
 
-The [enabled-path checks](validation/m7-runtime-sidecar-production.md) retain
+The [enabled-path checks](validation/m7.md) retain
 the same mutation controls and strict validation after production selection.
 
-The [retained-output overlap change](validation/m7-result-output-overlap-plan.md)
+The [retained-output overlap change](validation/m7.md)
 keeps the exact charged output owner alive while releasing its lock during
 independent input freshness. It then rechecks the same owner with the original
 complete output barrier. Refusal retains the full read/hash fallback. This adds
@@ -364,10 +364,10 @@ no flag, partial response or Currentness memo. Native affected controls and
 strict checks pass. A separate four-reader component reduced complete output
 and fixture-input validation p95 from 19.37 to 12.71 ms. That comparison excludes
 RPC transfer and Python parsing. The later
-[installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) separately
+[installed `730a321` workflow](validation/m7.md) separately
 passes complete Python and Rust reads during verification; it does not isolate
 this change's contribution. See the
-[complete component scope](validation/m7-result-output-overlap-native.md).
+[complete component scope](validation/m7.md).
 Optional diagnostic rows
 distinguish successful guarded output validation from full-hash fallback through
 `output_guarded`; `frame_hit` alone does not establish which validation ran.
