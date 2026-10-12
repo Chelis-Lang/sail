@@ -138,6 +138,7 @@ fn engine_fault_and_stock_fallback_never_accept_a_repair() -> Result<(), Box<dyn
     assert!(schema["properties"]["batch"]["properties"]["engine_fault"].is_object());
     Ok(())
 }
+#[test]
 fn preparation_stats_preserve_driver_counters_without_inventing_support()
 -> Result<(), Box<dyn std::error::Error>> {
     let raw = r#"{"version":1,"enabled":true,"batch_hits":2,"persistent_hits":1,"misses":3,"peak_retained_bytes":1024,"memory_budget_bytes":4096,"disk_budget_bytes":8192}"#;
