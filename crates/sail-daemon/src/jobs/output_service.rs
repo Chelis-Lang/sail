@@ -109,7 +109,10 @@ impl Queue {
         let Some(scratch_charge) = self.budget.reserve(CONSTRUCTION_BYTES) else {
             return;
         };
-        let Ok(mut slot) = self.task.try_lock() else {
+        // The constructor holds this slot only to park or take a task. A bare
+        // try-lock lost this one-shot offer whenever the two coincided, for
+        // example just after the constructor thread started.
+        let Some(mut slot) = lock_until(&self.task, std::time::Instant::now() + LOCK_WAIT) else {
             return;
         };
         if self.cancelled.load(Ordering::Acquire) || self.active.swap(true, Ordering::AcqRel) {
@@ -133,15 +136,18 @@ impl Queue {
     ) -> Option<R> {
         // Scratch admission precedes all observer/kernel work. Retain the exact
         // charged owner across independent input validation, without holding
-        // either output mutex while that separate operation runs. Each barrier
-        // still uses a nonblocking try-lock; contention always falls back.
+        // either output mutex while that separate operation runs. Concurrent
+        // readers serialize only on these short barriers, each waiting at most
+        // LOCK_WAIT; a longer wait or a poisoned lock falls back to the
+        // complete read and hash.
         let _scratch = self.budget.reserve(INSPECTION_BYTES)?;
+        let deadline = std::time::Instant::now() + LOCK_WAIT;
         let owner = {
-            let cell = frames.output.try_lock().ok()?;
+            let cell = lock_until(&frames.output, deadline)?;
             Arc::clone(cell.as_ref()?)
         };
         {
-            let mut checked = owner.try_lock().ok()?;
+            let mut checked = lock_until(&owner, deadline)?;
             if !trace.measure(super::rpc_diagnostics::Stage::OutputSeal, || {
                 checked.guard.namespace_barrier()
             }) {
@@ -152,14 +158,15 @@ impl Queue {
         // Refuse owner removal/substitution, even if the substitute independently
         // hashed identical bytes. Index eviction alone does not invalidate a
         // continuously guarded owner retained by this exact frame family.
-        let cell = frames.output.try_lock().ok()?;
+        let deadline = std::time::Instant::now() + LOCK_WAIT;
+        let cell = lock_until(&frames.output, deadline)?;
         if !cell
             .as_ref()
             .is_some_and(|published| Arc::ptr_eq(published, &owner))
         {
             return None;
         }
-        let mut checked = owner.try_lock().ok()?;
+        let mut checked = lock_until(&owner, deadline)?;
         trace
             .measure(super::rpc_diagnostics::Stage::OutputSeal, || {
                 checked.guard.clean()
@@ -231,6 +238,27 @@ impl Queue {
         drop(scratch_charge);
     }
 }
+/// Longest wait for one output barrier lock before the complete-hash fallback.
+/// Barrier critical sections are short native checks, never input validation.
+const LOCK_WAIT: std::time::Duration = std::time::Duration::from_millis(50);
+
+/// Acquires `mutex` before `deadline`, polling rather than blocking so the wait
+/// stays bounded. Poison and expiry both decline, selecting the fallback.
+fn lock_until<T>(
+    mutex: &Mutex<T>,
+    deadline: std::time::Instant,
+) -> Option<std::sync::MutexGuard<'_, T>> {
+    loop {
+        match mutex.try_lock() {
+            Ok(guard) => return Some(guard),
+            Err(std::sync::TryLockError::WouldBlock) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_micros(50));
+            }
+            Err(_) => return None,
+        }
+    }
+}
+
 struct Retirement<'a>(&'a Queue);
 impl Drop for Retirement<'_> {
     fn drop(&mut self) {
@@ -248,6 +276,68 @@ mod tests {
             key.to_owned(),
             Frames::new(Arc::new(vec![1]), Arc::new(vec![2]), Arc::new(vec![3])),
         )
+    }
+
+    #[test]
+    fn barrier_lock_waits_within_bound_then_declines() {
+        use std::time::{Duration, Instant};
+        let mutex = Arc::new(Mutex::new(()));
+        let held = Arc::clone(&mutex);
+        let (locked, release) = (
+            Arc::new(std::sync::Barrier::new(2)),
+            Duration::from_millis(5),
+        );
+        let signal = Arc::clone(&locked);
+        let holder = std::thread::spawn(move || {
+            let guard = held.lock();
+            signal.wait();
+            std::thread::sleep(release);
+            drop(guard);
+        });
+        locked.wait();
+        // Released well within the bound: the waiter acquires the lock.
+        let acquired = lock_until(&mutex, Instant::now() + Duration::from_secs(5)).is_some();
+        let joined = holder.join().is_ok();
+        // Held beyond the bound: the waiter declines, selecting the fallback.
+        let guard = mutex.lock();
+        let started = Instant::now();
+        let declined = lock_until(&mutex, started + Duration::from_millis(20)).is_none();
+        let waited = started.elapsed();
+        drop(guard);
+        assert!(acquired && joined && declined);
+        assert!(waited >= Duration::from_millis(20));
+    }
+
+    /// A constructor briefly holding its slot (parking or taking a task) must
+    /// not silently consume a frame family's one-shot offer.
+    #[test]
+    fn offer_waits_for_a_briefly_held_constructor_slot() {
+        let cache = ResultCache::default();
+        let queue = Queue::new(cache.budget());
+        let frames = frame(&cache, "briefly-busy");
+        let initial = queue.budget.used_for_test();
+        let locked = std::sync::Barrier::new(2);
+        let queued = std::thread::scope(|scope| {
+            let holder = scope.spawn(|| {
+                let slot = queue.task.lock();
+                locked.wait();
+                std::thread::sleep(std::time::Duration::from_millis(5));
+                drop(slot);
+            });
+            locked.wait();
+            queue.offer(
+                &frames,
+                Path::new("/tmp/sail-output-not-created"),
+                &"0".repeat(64),
+            );
+            let joined = holder.join().is_ok();
+            joined && queue.task.lock().is_ok_and(|slot| slot.is_some())
+        });
+        queue.stop();
+        assert!(frames.offered.load(Ordering::Acquire));
+        assert!(queued);
+        // Stopping retires the queued task and refunds both reservations.
+        assert_eq!(queue.budget.used_for_test(), initial);
     }
 
     #[test]
