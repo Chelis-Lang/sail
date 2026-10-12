@@ -143,3 +143,20 @@ The next strict attempt failed import placement and stack-array lints, corrected
 in a later source revision. The [separate gate record](m7-core-244d51d-validation.md)
 retains both failures beside the earlier 244 workspace/solver PASS. None qualifies
 the bootstrap candidate or identifies the historical first changed binding.
+
+The subsequent `0a353ee70c60092894f2c2574092df40b0d6b189` static review ACKs
+unrepresentable environment refusal before native acquisition. Its ninth drafted
+control uses isolated child processes for non-UTF-8 keys/values. A declared
+non-UTF-8 value also refuses ordinary-family matching rather than becoming an
+absent value. Original proof guards and fallback remain unchanged.
+
+The [602 failed gate and three Cargo format captures](m7-bootstrap-602ec67-gate-failure.md)
+separately establish the relative prerequisite spelling. Single-package output
+cannot distinguish package and workspace directories; the two actual member
+captures resolve that ambiguity, including launch from the member directory.
+The pending correction must use the exact canonical absolute metadata workspace
+root, preserve absolute inputs, first-header equality and matched source identity,
+and pass every joined input through the original raw-path/native coverage check.
+Joining one path at a time avoids retaining a duplicate workspace-prefixed vector.
+These code requirements do not weaken positive or refusal assertions; actual
+corrected publication viability is still pending.
