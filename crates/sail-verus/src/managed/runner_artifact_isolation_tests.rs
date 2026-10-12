@@ -129,6 +129,10 @@ exec "$@"
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "One layout transaction checks default sharing, selector isolation and ownership release together."
+)]
 fn repair_selector_layout_keeps_defaults_shared_and_exports_private() -> IsolationResult {
     let fixture = IsolationFixture::new()?;
     let a = compiler_request(Some("application::a"));
@@ -153,6 +157,10 @@ fn repair_selector_layout_keeps_defaults_shared_and_exports_private() -> Isolati
     )?;
     assert_eq!(plain.target, whole.target);
     assert_eq!(plain.compiler_inputs, whole.compiler_inputs);
+    assert_eq!(
+        plain.build_inputs,
+        plain.input_state.with_file_name("build-inputs.json")
+    );
     drop(owner);
     let (first, owner) = prepare(
         &fixture.config,
@@ -164,6 +172,17 @@ fn repair_selector_layout_keeps_defaults_shared_and_exports_private() -> Isolati
     )?;
     assert_ne!(first.target, plain.target);
     assert_ne!(first.compiler_inputs, plain.compiler_inputs);
+    assert_eq!(
+        first.build_inputs.parent(),
+        Some(
+            first
+                .input_state
+                .parent()
+                .ok_or("context absent")?
+                .join("repair-observations-v1")
+                .as_path()
+        )
+    );
     assert_eq!(first.proxy_alias, plain.proxy_alias);
     assert_eq!(first.cargo_alias, plain.cargo_alias);
     assert!(
@@ -214,6 +233,171 @@ fn repair_selector_layout_keeps_defaults_shared_and_exports_private() -> Isolati
         Some(&a),
     )?;
     drop(owner);
+    Ok(())
+}
+
+#[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "One migration transaction retains legacy evidence and tests its deletion against the original native owner."
+)]
+fn repair_selector_migration_does_not_watch_legacy_generated_inputs() -> IsolationResult {
+    use super::super::{coherent, source_inputs};
+    let fixture = IsolationFixture::new()?;
+    let selected = compiler_request(Some("application::a"));
+    let (paths, owner) = prepare(
+        &fixture.config,
+        &fixture.root,
+        "selected",
+        "family",
+        "migration",
+        Some(&selected),
+    )?;
+    let context = paths.input_state.parent().ok_or("context absent")?;
+    let legacy_source = context.join("source-inputs.json");
+    let legacy_build = context.join("build-inputs.json");
+    let legacy_generated = fixture.config.cache.join("old-shared-target/out/input.rs");
+    std::fs::create_dir_all(legacy_generated.parent().ok_or("legacy parent absent")?)?;
+    std::fs::write(&legacy_generated, "old generated input")?;
+    json(
+        &legacy_source,
+        &serde_json::json!({"paths":[legacy_generated],"covered":true,"by_package":{"old-input":[legacy_generated]}}),
+    )?;
+    std::fs::write(&legacy_build, "old ordinary observations")?;
+    let old_source_bytes = std::fs::read(&legacy_source)?;
+    let historical_receipt = paths.receipts.join("old-receipt.json");
+    std::fs::write(&historical_receipt, "historical receipt evidence")?;
+
+    let artifacts = fixture.cargo(&paths, "a", false)?;
+    let package_id = artifacts
+        .iter()
+        .find(|row| row["reason"] == "compiler-artifact" && row["target"]["name"] == "input")
+        .and_then(|row| row["package_id"].as_str())
+        .ok_or("dependency absent")?;
+    let journal = paths.run.join("artifacts.jsonl");
+    std::fs::write(
+        &journal,
+        artifacts
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<std::result::Result<Vec<_>, _>>()?
+            .join("\n"),
+    )?;
+    let source_state = paths.build_inputs.with_file_name("source-inputs.json");
+    let mut data = fixture.data(&paths, package_id);
+    record_observation_layout(&mut data, Some(&selected));
+    let (sources, covered) = source_inputs::update(&source_state, &journal, &data)?;
+    assert!(covered && !sources.contains(&legacy_generated));
+    assert!(
+        sources
+            .iter()
+            .any(|path| path.starts_with(&paths.target) && path.ends_with("input.rs"))
+    );
+    data["sail_source_inputs"] = serde_json::to_value(&sources)?;
+    json(&paths.input_state, &data)?;
+    assert_eq!(
+        observation_directory(context, &data)?,
+        paths.build_inputs.parent().ok_or("observations absent")?
+    );
+    let (roots, _) = observation_plan(
+        &fixture.config.cache,
+        &fixture.root,
+        "selected",
+        &BTreeMap::new(),
+    )?;
+    assert!(
+        roots.contains(&source_state)
+            && roots.contains(&paths.build_inputs)
+            && roots.contains(&paths.input_state)
+    );
+    assert!(!roots.contains(&legacy_source) && !roots.contains(&legacy_build));
+    assert!(
+        refresh_context_validated(
+            &fixture.config.cache,
+            &fixture.root,
+            "selected",
+            &BTreeMap::new(),
+            || true
+        )?
+        .complete
+    );
+    let before = snapshot_metadata(&data, &[]);
+    assert!(before.complete);
+    let mut guard = coherent::Guard::begin(&before);
+    assert!(guard.ready_at(coherent::Barrier::Input));
+    // A later shared-target cleanup must not invalidate this migrated owner.
+    std::fs::remove_file(&legacy_generated)?;
+    let after = snapshot_metadata(&data, &[]);
+    assert!(after.complete);
+    assert_eq!(before.revision, after.revision);
+    assert!(guard.ready_at(coherent::Barrier::PostVerification));
+    drop(guard);
+    let mut old_data = data.clone();
+    old_data["sail_source_inputs"] = serde_json::to_value(source_inputs::load(&legacy_source).0)?;
+    assert!(!snapshot_metadata(&old_data, &[]).complete);
+    assert_eq!(std::fs::read(&legacy_source)?, old_source_bytes);
+    assert_eq!(
+        std::fs::read_to_string(&legacy_build)?,
+        "old ordinary observations"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&historical_receipt)?,
+        "historical receipt evidence"
+    );
+    data["sail_managed_observation_layout"] = Value::from(2);
+    assert!(observation_directory(context, &data).is_err());
+    assert!(
+        observation_plan(
+            &fixture.config.cache,
+            &fixture.root,
+            "selected",
+            &BTreeMap::new()
+        )
+        .is_ok()
+    );
+    json(&paths.input_state, &data)?;
+    assert!(
+        observation_plan(
+            &fixture.config.cache,
+            &fixture.root,
+            "selected",
+            &BTreeMap::new()
+        )
+        .is_err()
+    );
+    drop(owner);
+    Ok(())
+}
+
+#[test]
+fn repair_observation_layout_preserves_default_and_rejects_unknown_schema() -> IsolationResult {
+    let context = Path::new("context");
+    for engine in [None, Some(compiler_request(None))] {
+        let mut data = serde_json::json!({});
+        record_observation_layout(&mut data, engine.as_ref());
+        assert!(data.get("sail_managed_observation_layout").is_none());
+        assert_eq!(observation_directory(context, &data)?, context);
+    }
+    // The same selector is recorded in both original metadata acquisition paths.
+    let engine = compiler_request(Some("application::a"));
+    let mut initial = serde_json::json!({});
+    let mut final_data = serde_json::json!({});
+    record_observation_layout(&mut initial, Some(&engine));
+    record_observation_layout(&mut final_data, Some(&engine));
+    assert_eq!(initial, final_data);
+    assert_eq!(
+        observation_directory(context, &final_data)?,
+        context.join("repair-observations-v1")
+    );
+    for version in [
+        serde_json::json!(null),
+        serde_json::json!("1"),
+        serde_json::json!(0),
+        serde_json::json!(2),
+    ] {
+        final_data["sail_managed_observation_layout"] = version;
+        assert!(observation_directory(context, &final_data).is_err());
+    }
     Ok(())
 }
 

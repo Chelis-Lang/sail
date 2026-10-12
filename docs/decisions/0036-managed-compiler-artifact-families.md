@@ -29,6 +29,13 @@ never proof receipts or Currentness.
 Repair requests with an explicit function now use a versioned target generation
 inside the compiler family, keyed by their unchanged complete proof context.
 Their ordinary generation export uses the same private generation directory.
+Local build/source observations use a matching versioned namespace within the
+proof context. Legacy ledgers can contain generated paths in the former shared
+target, so they are retained as historical files rather than merged into the new
+repair generation. The fixed input-state file records the observation layout at
+both initial and final metadata publication; independent freshness refresh and
+its native inventory use that same namespace. Unsupported layout versions refuse
+refresh. Proof keys, receipts, runtime sidecars and run directories remain unchanged.
 The family executable aliases and nonblocking ownership lock remain shared.
 Stock calls and source-engine full calls without a function retain the original
 shared target and export. No old shared artifact or another selector's proof

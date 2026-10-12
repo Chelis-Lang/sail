@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "source-only; corrected migration controls and strict/native/product validation unexecuted",
+  "parent_candidate": "5b2ce17",
+  "production_change": "version local ordinary observations alongside isolated repair target; fixed input-state records typed layout for both publications and fresh observation inventory",
+  "preserved": "proof context and receipt authority, locks, runtime/run paths, source declaration checks, native/kernel barriers and acceptance oracles",
+  "migration": "legacy build/source ledgers and receipts retained; fresh missing namespace follows original delegation, no old inventory adoption",
+  "draft_controls": [
+    "repair_selector_migration_does_not_watch_legacy_generated_inputs",
+    "repair_observation_layout_preserves_default_and_rejects_unknown_schema"
+  ],
+  "sensitivity": "each patch removes only target isolation or local observation isolation; existing assertions unchanged",
+  "source_files": {
+    "crates/sail-verus/src/managed/runner.rs": {
+      "sha256": "0d6934e9f759a3a40f0bf80a05eec8288da23f170231a12c65b8a3019e9d1182",
+      "bytes": 124244
+    },
+    "crates/sail-verus/src/managed/runner_artifact_isolation_tests.rs": {
+      "sha256": "97d9198fd486c32b94f7abc974cc0870276543ce2ea9bc13264d2fc6e1bc2df6",
+      "bytes": 18809
+    },
+    "Cargo.lock": {
+      "sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+      "bytes": 53548
+    },
+    "docs/validation/m7-repair-artifact-isolation/migration-shared-target-counterfactual.patch": {
+      "sha256": "26664734c49a5f25526525b177a41bd47a9b292f9f8a60738c28726a7789df96",
+      "bytes": 630
+    },
+    "docs/validation/m7-repair-artifact-isolation/legacy-observations-counterfactual.patch": {
+      "sha256": "8d5c52614728e00c96c59016ec9cb3e31513f8a2b492375cb809e4c01091cad1",
+      "bytes": 453
+    }
+  }
+}

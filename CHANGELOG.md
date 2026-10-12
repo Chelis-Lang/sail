@@ -11,7 +11,8 @@ semantic versioning once the API is published.
   causing the original `387ba80` benchmark's first measured repair to require
   three drivers. Existing proof keys, receipt checks, locks and delegated
   verification remain unchanged. Each selector pays cold setup and additional
-  disk space; native controls and the unchanged benchmark remain pending. See
+  disk space. Existing caches establish fresh versioned build/source observations
+  without importing legacy shared-target generated paths or deleting old evidence; native controls and the unchanged benchmark remain pending. See
   [the candidate scope](docs/validation/m7-repair-artifact-isolation.md).
 
 - Forward Cargo's `-F`, `-Fvalue` and `-F=value` feature aliases to managed

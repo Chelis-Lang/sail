@@ -47,6 +47,7 @@ struct Paths {
     runtime: PathBuf,
     run: PathBuf,
     build_inputs: PathBuf,
+    input_state: PathBuf,
     compiler_inputs: PathBuf,
 }
 
@@ -475,10 +476,16 @@ fn prepare(
     // A repair selector keeps its certified dependency bytes alive when another
     // selector verifies the same family. Ordinary and full-engine calls retain
     // their existing shared target; proof keys and family ownership are unchanged.
-    let generation = if engine.is_some_and(|request| request.function.is_some()) {
+    let repair = engine.is_some_and(|request| request.function.is_some());
+    let generation = if repair {
         compiler.join("repair-targets-v1").join(hash)
     } else {
         compiler.clone()
+    };
+    let observations = if repair {
+        context.join("repair-observations-v1")
+    } else {
+        context.clone()
     };
     let paths = Paths {
         target: generation.join("target"),
@@ -486,7 +493,8 @@ fn prepare(
         proxy_alias: compiler.join("sail-verus-driver"),
         receipts: context.join("receipts"),
         runtime: context.join("runtime.json"),
-        build_inputs: context.join("build-inputs.json"),
+        build_inputs: observations.join("build-inputs.json"),
+        input_state: context.join("input-state.json"),
         compiler_inputs: generation.join("build-inputs.json"),
         run: context.join("runs").join(run_id),
     };
@@ -1205,6 +1213,23 @@ pub fn refresh_context(
     })
 }
 
+fn record_observation_layout(data: &mut Value, engine: Option<&crate::engine::Request>) {
+    if engine.is_some_and(|request| request.function.is_some()) {
+        data["sail_managed_observation_layout"] = Value::from(1);
+    }
+}
+
+fn observation_directory(context: &Path, data: &Value) -> Result<PathBuf> {
+    match data.get("sail_managed_observation_layout") {
+        None => Ok(context.to_owned()),
+        Some(version) if version.as_u64() == Some(1) => Ok(context.join("repair-observations-v1")),
+        Some(_) => Err(Error::new(
+            "SAIL3108",
+            "unsupported ordinary observation layout",
+        )),
+    }
+}
+
 pub(super) fn refresh_context_validated(
     cache: &Path,
     workspace: &Path,
@@ -1218,8 +1243,9 @@ pub(super) fn refresh_context_validated(
         .join(context_sha256);
     let data: Value = read(&context.join("input-state.json"))
         .ok_or_else(|| Error::new("SAIL3108", "declared input observation is unavailable"))?;
+    let observations = observation_directory(&context, &data)?;
     let (_, mut extras, covered) = super::build_inputs::stale_environment(
-        &context.join("build-inputs.json"),
+        &observations.join("build-inputs.json"),
         &data,
         Some(environment),
     );
@@ -1246,7 +1272,7 @@ pub(super) fn refresh_context_validated(
     snapshot.roots.extend(runtime_paths(cache, context_sha256));
     snapshot.roots.sort();
     snapshot.roots.dedup();
-    let source_state = context.join("source-inputs.json");
+    let source_state = observations.join("source-inputs.json");
     let source_coverage = source_state.is_file() && super::source_inputs::load(&source_state).1;
     let runtime_complete = runtime_valid();
     snapshot.complete &= covered && source_coverage && runtime_complete;
@@ -1298,8 +1324,9 @@ pub(super) fn observation_plan(
             .filter_map(Value::as_str)
             .map(PathBuf::from),
     );
+    let observations = observation_directory(&context, &data)?;
     roots.extend(super::build_inputs::observation_paths(
-        &context.join("build-inputs.json"),
+        &observations.join("build-inputs.json"),
     ));
     roots.extend(script_roots(&data));
     roots.extend(super::input::configuration_paths(
@@ -1307,12 +1334,9 @@ pub(super) fn observation_plan(
         home.as_deref(),
     ));
     roots.extend(runtime_paths(cache, context_sha256));
-    for name in [
-        "input-state.json",
-        "source-inputs.json",
-        "build-inputs.json",
-    ] {
-        roots.push(context.join(name));
+    roots.push(context.join("input-state.json"));
+    for name in ["source-inputs.json", "build-inputs.json"] {
+        roots.push(observations.join(name));
     }
     let identities = cache.join("runtime-identities");
     let link = identities.join(format!("{context_sha256}.link"));
@@ -1542,6 +1566,7 @@ pub(crate) fn run_engine(
         engine.as_ref(),
     )?;
     drop(owned_paths);
+    record_observation_layout(&mut data, engine.as_ref());
     let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
     let generation_available = super::build_inputs::family::begin(
         &paths.compiler_inputs,
@@ -1636,15 +1661,7 @@ pub(crate) fn run_engine(
     clean(config, &paths.target, &late_scripts)?;
     let stamp_before = super::input::mutation_stamp(&before);
     super::configuration::check(&invocation, &config.args)?;
-    super::files::json_metadata(
-        &paths
-            .run
-            .parent()
-            .and_then(Path::parent)
-            .unwrap_or(&paths.run)
-            .join("input-state.json"),
-        &data,
-    )?;
+    super::files::json_metadata(&paths.input_state, &data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
         "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
@@ -1784,15 +1801,13 @@ pub(crate) fn run_engine(
         super::build_inputs::stale(&paths.build_inputs, &data);
     after_extras.extend(script_roots);
     let mut after_data = metadata(&config.workspace, &config.args, &config.cargo)?;
+    record_observation_layout(&mut after_data, engine.as_ref());
     after_data["sail_cache_directory"] = data["sail_cache_directory"].clone();
     after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
     after_data["sail_source_inputs"] = serde_json::to_value(sources).unwrap_or_default();
     after_data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
-    super::files::json_metadata(
-        &paths.build_inputs.with_file_name("input-state.json"),
-        &after_data,
-    )?;
+    super::files::json_metadata(&paths.input_state, &after_data)?;
     let mut after = snapshot_metadata(&after_data, &after_extras);
     after.roots.extend(super::input::configuration_paths(
         &invocation,

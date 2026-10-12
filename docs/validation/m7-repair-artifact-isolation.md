@@ -79,3 +79,30 @@ Pinned Cargo-Verus appends that subdirectory for focus mode. The original M6
 measured focus arm returned `SAIL3107` with zero verifier calls; its independent
 full arm was Current. This baseline limitation is preserved and is not repaired
 or reinterpreted by the M7 layout change.
+
+## Existing-cache migration follow-up
+
+The original isolation candidate left local observation filenames unchanged.
+Because source declaration updates retain earlier paths, an existing selector
+could keep observing generated includes in its old shared target. Cleaning that
+target would then invalidate the newly isolated selector even though its own
+compiler generation was intact.
+
+The follow-up scopes local build/source ledgers under `repair-observations-v1`
+for explicit repair selectors. It retains the original fixed input-state file,
+proof keys, receipt directory, runtime and run records. Initial and final metadata
+publication carry one fixed layout version; freshness reload watches the chosen
+ledgers and refuses unsupported versions. Legacy observations and receipts remain
+on disk. Missing new observations follow original declaration establishment and
+fresh delegation; no old proof or ordinary output certificate is imported.
+
+A drafted real-Cargo migration control seeds a legacy generated include and old
+ledger/receipt evidence, then establishes new generated inputs. The original
+coherent guard must remain valid after old shared-output deletion, with the same
+new revision; the legacy snapshot must become incomplete. Additional checks cover
+new sidecar inventory, independent refresh, default/full layout compatibility,
+initial/final version parity and unknown schema refusal. These controls are
+uncompiled and unexecuted. The original target-isolation source record remains
+immutable; [the follow-up record](m7-repair-artifact-isolation/migration-source.json)
+binds the new bytes and both narrow counterfactual patches. Native qualification
+and the unchanged whole benchmark/reader are pending.
