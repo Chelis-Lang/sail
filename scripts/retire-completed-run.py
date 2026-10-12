@@ -130,6 +130,12 @@ def identity(info):
             'gid': info.st_gid, 'mtime_ns': info.st_mtime_ns, 'ctime_ns': info.st_ctime_ns}
 
 
+def parent_identity(info):
+    """Bind the parent itself, not timestamps or size affected by siblings."""
+    return {key: value for key, value in identity(info).items()
+            if key in ('device', 'inode', 'mode', 'uid', 'gid')}
+
+
 def evidence_file(relative):
     """Only compact textual evidence; target trees never become giant archives."""
     return not {'target', 'target-verus', 'target-old', 'incremental', '__pycache__'}.intersection(relative.parts) and (relative.suffix in TEXT_SUFFIXES or relative.name in TEXT_NAMES)
@@ -139,7 +145,7 @@ def inventory(root, deadline=None):
     deadline = deadline if deadline is not None else time.monotonic()+PHASE_SECONDS
     info = root.lstat()
     need(stat.S_ISDIR(info.st_mode) and info.st_uid == os.getuid(), 'owned real scratch directory required')
-    value = {'root': str(root), 'root_identity': identity(info), 'parent_identity': identity(root.parent.lstat()), 'entries': {}, 'evidence_bytes': 0, 'scratch_bytes': 0}
+    value = {'root': str(root), 'root_identity': identity(info), 'parent_identity': parent_identity(root.parent.lstat()), 'entries': {}, 'evidence_bytes': 0, 'scratch_bytes': 0}
     pending = [root]
     while pending:
         path = pending.pop()
@@ -192,8 +198,7 @@ def bound_parent(root, plan, relative):
     """Every ancestor is opened without following links and checked to the plan."""
     fd = os.open(root.parent, os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
     try:
-        need(all(identity(os.fstat(fd))[key] == plan['parent_identity'][key]
-                 for key in ('device', 'inode', 'mode', 'uid', 'gid')), 'scratch parent binding changed')
+        need(parent_identity(os.fstat(fd)) == plan['parent_identity'], 'scratch parent binding changed')
         if relative != Path('.'):
             for index, component in enumerate((root.name, *relative.parts[:-1])):
                 child = os.open(component, os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW, dir_fd=fd)
@@ -211,7 +216,8 @@ def bound_parent(root, plan, relative):
 def validate_plan(root, plan):
     need(plan.get('root') == str(root) and isinstance(plan.get('entries'), dict)
          and 0 < len(plan['entries']) <= MAX_ENTRIES, 'inventory root/count differs')
-    need(isinstance(plan.get('parent_identity'), dict), 'scratch parent binding missing')
+    need(isinstance(plan.get('parent_identity'), dict)
+         and set(plan['parent_identity']) == {'device', 'inode', 'mode', 'uid', 'gid'}, 'scratch parent binding missing')
     need(plan['entries'].get('.', {}).get('kind') == 'directory'
          and row_identity(plan['entries']['.']) == plan['root_identity'], 'root binding missing')
     scratch = evidence = 0

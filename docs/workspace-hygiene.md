@@ -94,6 +94,25 @@ record includes the full removed set only after completion.
 An uncertain or interrupted cleanup stays uncertain; inspect its retained record
 and use a separate ownership audit before further action.
 
+The first native cleanup smoke for `e95b8bd` refused capture before deletion:
+only the containing directory's mtime/ctime differed, with the exact run root
+and members unchanged. That UNCERTAIN cleanup and original failed gate remain
+unchanged. Parent binding now records only device, inode, mode and ownership,
+matching the deletion check; unrelated sibling activity does not change the
+inventory. Root and member metadata still receive their original exact checks,
+and replaced parents, roots or children refuse. Native correction validation is
+pending a fresh audit; no cleanup success is inferred from the pure controls.
+
+The helper currently leaves its private `sail-run-retirement-*` support directory
+in both containers, including native compact archive backing. The host
+`controller.json.native_output` identifies these directories; they are temporary
+support, not a retained cache. After verifying all terminal/progress/support
+records and archive hashes on the host, explicitly retire them through a
+separate bounded fixed-directory audit of both births and current holders.
+That disposal must follow confirmed helper exit and preserve uncertain attempts;
+it must not recursively invoke this helper and create another support directory.
+Automatic support disposal remains unimplemented.
+
 `scripts/local-combined-gates.py` now performs this retirement after original
 source/product checks and complete phase-log retention. The native gate result
 stays unchanged; `controller.json.retirement` reports cleanup independently.

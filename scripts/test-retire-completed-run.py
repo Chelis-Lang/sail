@@ -125,6 +125,50 @@ class Controls(unittest.TestCase):
                     m.inventory(root)
             self.assertTrue((root / 'result.json').exists())
 
+    def test_sibling_creation_and_removal_do_not_change_inventory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            root = self.fixture(base)
+            before = m.inventory(root)
+            parent_before = m.identity(base.stat())
+            sibling = base / 'unrelated-sibling'
+            sibling.mkdir()
+            (sibling / 'temporary.txt').write_bytes(b'unrelated work')
+            self.assertNotEqual(m.identity(base.stat()), parent_before)
+            self.assertEqual(m.inventory(root), before)
+            (sibling / 'temporary.txt').unlink()
+            sibling.rmdir()
+            self.assertEqual(m.inventory(root), before)
+            self.assertEqual(set(before['parent_identity']), {'device', 'inode', 'mode', 'uid', 'gid'})
+            m.validate_plan(root, before)
+
+    def test_replaced_parent_refuses_before_removal(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            parent = base / 'parent'
+            parent.mkdir()
+            root = self.fixture(parent)
+            before = m.inventory(root)
+            parent.rename(base / 'original-parent')
+            shutil.copytree(base / 'original-parent', parent)
+            with self.assertRaisesRegex(ValueError, 'scratch parent binding changed'):
+                m.delete_scratch(root, before, lambda *_: None)
+            self.assertTrue((root / 'stdout').exists())
+            self.assertTrue((base / 'original-parent' / 'scratch' / 'stdout').exists())
+
+    def test_replaced_root_refuses_before_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            root = self.fixture(base)
+            before = m.inventory(root)
+            root.rename(base / 'original-root')
+            self.fixture(base)
+            with self.assertRaisesRegex(ValueError, 'ancestor binding changed'):
+                m.delete_scratch(root, before, lambda *_: None)
+            self.assertTrue((root / 'stdout').exists())
+            self.assertTrue((base / 'original-root' / 'stdout').exists())
+
     def test_symlink_and_hardlinks_do_not_delete_outside_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary).resolve()
