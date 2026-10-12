@@ -38,11 +38,9 @@ are in the `archive/m7-contracts-f7103bf` tag.
   lookup/coalescing fixtures have failed in many complete gates and passed in
   others. Cause unknown; the deadlines are unchanged.
   [Gate 3](validation/m7.md#gate-3-workspace-gate-solver-suite-and-native-ci), [#76](https://github.com/Chelis-Lang/sail/issues/76).
-- **Flaky tests on a loaded Mac.** `sail-api`'s
-  `cancellable::blocked_read_and_write_cancel…` and `sail-verus`'s
-  compiler-family and shared-target lock tests fail intermittently ("would
-  block") under heavy load on macOS; they pass on native Linux. Under
-  investigation.
+- **Flaky tests on a loaded Mac.** `sail-verus`'s compiler-family and
+  shared-target lock tests fail intermittently ("would block") under heavy
+  load on macOS; they pass on native Linux. Under investigation.
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls under
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),
