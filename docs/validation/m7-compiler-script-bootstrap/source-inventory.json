@@ -1221,6 +1221,75 @@
       },
       "audit": "Selected bounded regular text/JSON members read from the compact archive; no bulk extraction or native execution."
     },
-    "qualification": "The historical b895 and730 reader passes remain separate. No current reader/performance/M7 acceptance, no rerun, no inferred emulation or load cause."
+    "qualification": "The historical b895 and730 reader passes remain separate. No current reader/performance/M7 acceptance, no rerun, no inferred emulation or load cause.",
+    "retained_rpc_diagnostics": {
+      "member": "run/rpc-timings.json",
+      "bytes": 121777,
+      "sha256": "5dbfca4b965c9db20df7e18c74528da372e8ce4701d77a135399f4a44ae3449a",
+      "daemon_pid_matches_recorded_launch": true,
+      "capacity": 256,
+      "started": 2572,
+      "dropped": 0,
+      "overwritten": 2316,
+      "retained_rows": 256,
+      "retained_result_rows": 42,
+      "result_route": {
+        "frame_hit_true": 42,
+        "output_guarded_false": 42,
+        "current": 42,
+        "write_succeeded": 42,
+        "frame_bytes": 4313123,
+        "body_bytes": 4313119,
+        "meaning": "Cached encoded frame; original output validation used. Route labels do not establish why an output owner was unavailable."
+      },
+      "elapsed_stage_observations": {
+        "total_us": {
+          "observed_rows": 42,
+          "p95_us": 286502,
+          "max_us": 433612
+        },
+        "dispatch_delay_us": {
+          "observed_rows": 42,
+          "p95_us": 2728,
+          "max_us": 5738
+        },
+        "output_seal_us": {
+          "observed_rows": 42,
+          "p95_us": 17446,
+          "max_us": 43022
+        },
+        "freshness_us": {
+          "observed_rows": 42,
+          "p95_us": 79513,
+          "max_us": 168722
+        },
+        "encode_us": {
+          "observed_rows": 0
+        },
+        "write_us": {
+          "observed_rows": 42,
+          "p95_us": 193033,
+          "max_us": 340180
+        }
+      },
+      "largest_retained_result": {
+        "sequence": 2371,
+        "started_us": 876405752,
+        "total_us": 433612,
+        "dispatch_delay_us": 1424,
+        "output_seal_us": 8666,
+        "freshness_us": 83234,
+        "encode_us": null,
+        "write_us": 340180
+      },
+      "correlation_limits": [
+        "Original collector samples contain no request ID, start/end timestamp or decode-stage timing.",
+        "RPC rows contain daemon sequence/origin timestamps but no job or client request identity.",
+        "Four clients run concurrently; ring overwrite and completion order prevent assigning individual slow samples to these rows.",
+        "Stage observations are elapsed wall time, not CPU time; no subtraction of unmatched client/server percentiles is valid."
+      ],
+      "next_diagnostic_seam": "Preserve the original four-client/200-sample/full-body/currentness/verifier-continuity oracle and deadlines. A separately labelled bounded client observation can split complete body receipt from json.loads alongside the existing fixed server trace; keep missing/ambiguous row matches unavailable and give no acceptance credit from this diagnostic.",
+      "qualification": "Partial observational trace only; no causality, reader acceptance, per-sample matching, or speed claim."
+    }
   }
 }

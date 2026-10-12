@@ -190,3 +190,23 @@ Rust and retained CLI/MCP checks are unattempted. Input seals match and the
 recorded daemon stops successfully; this is not an arbitrary orphan-absence
 claim. Selected compact-archive member hashes are bound in the existing JSON.
 No underlying latency cause or current reader acceptance is established.
+
+The shutdown RPC trace is retained separately (121,777 bytes, SHA bound in the
+JSON). Its 256-row ring records 2,572 starts, zero drops and 2,316 overwrites,
+leaving 42 Result rows. Every retained Result hits an encoded frame, uses the
+original output-validation route, remains Current and writes successfully.
+Retained server total p95 is 286.502 ms; write-stage p95 is 193.033 ms,
+freshness 79.513 ms, output sealing 17.446 ms and dispatch delay 2.728 ms.
+Encoding is absent on these frame hits. The largest retained server row lasts
+433.612 ms, including 340.180 ms writing and 83.234 ms checking freshness.
+
+These are wall intervals, not CPU measurements. The original collector includes
+socket connection, complete body receipt and JSON decoding in its latency.
+It records no request IDs or timestamps, while server rows contain no job or
+client identity. Concurrent clients and overwritten rows prevent matching
+individual slow samples or subtracting unmatched client/server percentiles.
+The false output-owner flag does not explain why that owner was unavailable.
+A further diagnostic should distinguish body receipt from JSON decoding while
+preserving the exact original full-payload oracle, concurrency and deadlines;
+ambiguous matches must remain unavailable. The retained stages do not establish
+a transport, scheduler, emulation or client-decoding cause.
