@@ -170,7 +170,7 @@ script that fails if executed. It requires first-pass fresh compilation, refusal
 of the replaced reused journal, actual retry cleaning/recompilation, independent
 export admission and subsequent input-barrier readiness. It exercises shared
 production retry selection, not actual source-engine verification. Original
-controls remain unchanged. The combined `22d6082` source is selected for native
+controls remain unchanged. The combined `b89546c` source is selected for native
 validation; its complete gate and solver are pending. Fresh product and unchanged
 real-project warmups/benchmark remain pending. The
 [source record](scheduling-recovery.json) separately binds historical authored
@@ -186,7 +186,14 @@ because `CACHEDIR.TAG` is missing or invalid. Original ten bootstrap controls
 pass; the new fixture's later retry/export/barrier assertions and solver suite
 are not completed in that scope. A narrow target-tag fixture repair was selected
 in `d37e388`, whose gate then failed strict diagnostic row-count checks before
-tests or solver. The test-only row-count correction is selected in `22d6082`;
+tests or solver. The test-only row-count correction was selected in `22d6082`.
+The operator cancelled validation to correct an erroneous relative ELF retention path. Its
+FAIL and native interruption uncertainty remain. A separate bounded read-only
+audit found no live or unavailable known-group or other process rows, with
+61 terminated rows complete across all tasks and source/protected/PID1 identity
+unchanged. That later audit permits a fresh actor; it does not promote the
+interrupted scope or certify its earlier closure. Fresh `b89546c` validation
+uses the corrected absolute retention path and unchanged production sources;
 its gate and solver are pending. No production guard, oracle, deadline or
 performance claim changed.
 
@@ -220,7 +227,8 @@ Fourteen host Python retention controls pass. The three new Rust controls cover
 disabled serialization and first refusal, shared sink limits/contention, and
 actual Cargo publication with observation on/off plus an unchanged
 unsupported-role refusal. The selected `d37e388` gate failed strict checks before
-executing them; corrected `22d6082` native validation is pending. The
+executing them. Corrected `22d6082` validation was interrupted with sticky
+uncertainty; fresh `b89546c` native validation remains pending. The
 [source inventory](refusal-diagnostic.json) preserves authored `f91e21f` hashes
 separately from the selected combined sources, including the merged fixture.
 There is no installed-product validation or historical first-export cause claim.
