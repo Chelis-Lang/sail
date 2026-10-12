@@ -172,8 +172,10 @@ export admission and subsequent input-barrier readiness. It exercises shared
 production retry selection, not actual source-engine verification. Original
 controls remain unchanged. The combined `b89546c` source passes native
 validation: 658/658 workspace tests, all remaining gate steps and 41/41 original
-solver tests pass. Fresh product and unchanged
-real-project warmups/benchmark remain pending. The
+solver tests pass. Its ordinary release and private byte installation also pass
+(108.346 and 2.422 seconds respectively). The original fresh repair fixture is
+running with unchanged 120/30/5 limits; no terminal outcome is claimed.
+Acceptance installation and real-project warmups/benchmark remain pending. The
 [source record](scheduling-recovery.json) separately binds historical authored
 hashes, selected source hashes and private metadata digests; no latency, speedup
 or M7 acceptance is claimed.
@@ -199,7 +201,8 @@ its complete gate and original solver now pass. The real Cargo retry/export/
 original-input-barrier control passes in 4.775 seconds. Known phase groups have
 no live or unavailable rows, all retained terminated rows are task-complete, and
 source/protected/PID1 identity is unchanged. The retained ELF is an
-operator-selected copy, not an execution binding. Product and benchmark
+operator-selected copy, not an execution binding. The separate product build
+and installation are recorded in the existing source record; repair and benchmark
 validation remain pending; no historical failure is promoted or performance
 claim established.
 
