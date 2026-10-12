@@ -1,6 +1,11 @@
 # VI-0013: Stock Verismo tspec waits until the unit deadline
 
-- **Status:** open; cause unknown. Observed locally, not filed upstream.
+- **Status:** not reproduced natively. Observed only under emulation; not filed upstream.
+- **Native result (2026-10-12):** on EC2 c7i.8xlarge (native x86-64 Linux), the
+  same unit verifies in 48.8 s with stock Verus and 42.7 s with sail, in every
+  round of the standard conformance tier. The emulated stall remains
+  unexplained; [#68](https://github.com/Chelis-Lang/sail/issues/68) tracks
+  emulation stalls.
 - **Verus:** pinned `0.2026.10.04.426d8b0`, source
   `426d8b01e7ffb910a36c15e1f870ff985bb61eef`, pinned Z3 4.16.0.
 - **Environment:** Linux x86-64 container under emulation on arm64 macOS.
