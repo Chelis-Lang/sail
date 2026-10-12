@@ -217,18 +217,9 @@ document, so a legacy terminal seal without the new marker cannot authorize any
 engine result. Fallback records its actual child invocation and discards focused
 evidence from the interrupted engine. A terminal event's success flag alone
 cannot distinguish a compiler crash from an ordinary failure.
-Preparation counters use the same normal terminal and complete retained full
-result, bound to the matching invocation and run. A retained failed-engine
-marker excludes all summaries from that driver, even if its old event journal
-survives stock fallback. Missing or corrupt evidence reports unavailable counters.
-
-Prepared lowering checkpoints have the local tier's trust boundary: the owned
-engine writes a private user cache. Version, input key, body digest and exact
-current-callback span bindings detect corruption and stale preparation. They do
-not authenticate a forged checkpoint written by someone controlling that cache.
-Preparation is never imported from the shared SMT store. A hit reuses lowering;
-the full proof and late compiler checks still run. Focus and progress evidence
-remain provisional until a complete successful full result is Current.
+The engine keeps no prepared-lowering cache, so it adds no cache to this trust
+boundary. Focus and progress evidence remain provisional until a complete
+successful full result is Current.
 
 ## Retained freshness and kernel lease ownership
 

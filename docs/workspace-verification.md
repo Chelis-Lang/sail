@@ -69,7 +69,7 @@ timing and solver provenance fields describe that establishing run. The outer
 execution counters describe the current Cargo request; historical timings are
 never counted as fresh verification work.
 An explicitly selected source engine adds an optional top-level `engine` object
-(`name`, `manifest_sha256`, `persistent_preparation`), and each embedded report
+(`name`, `manifest_sha256`), and each embedded report
 records whether the engine or its stock fallback established it (see
 [engine provenance](output-schema.md#engine-provenance)). Stock results omit
 it.

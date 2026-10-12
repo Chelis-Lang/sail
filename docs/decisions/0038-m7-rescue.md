@@ -20,8 +20,8 @@ The owner also set the direction beyond M7: rank work by agent authoring-loop la
 3. **Interactive-engine conditions.** Repair results from the engine's full phase stay authoritative, because requiring a stock re-run would remove the speed goal. In exchange:
    - output names the engine in provenance;
    - an engine fault falls back to stock verification, as ADR 0027 already requires;
-   - an engine-versus-stock conformance arm, including the cached-versus-fresh lowering oracle where available, runs over the standard corpus;
-   - persistent cross-edit reuse of prepared lowering is **off by default**. Re-enabling it by default needs its own ADR with content-addressed keys over the complete lowering inputs (charter rule 6) and the conformance arm at zero differences.
+   - an engine-versus-stock conformance arm runs over the standard corpus, comparing verdicts and diagnostics;
+   - the engine prepares no lowering for reuse (see the 2026-10-12 removal note below). Reuse across edits returns only through its own ADR with content-addressed keys over the complete lowering inputs (charter rule 6) and the conformance arm at zero differences.
 4. **Evidence policy.**
    - Each acceptance gate gets one concise Markdown record. Failed and interrupted attempts stay visible as one indexed line each.
    - Cleanup, retirement, ownership and disk-hygiene records do not go into git.
@@ -46,42 +46,24 @@ The owner also set the direction beyond M7: rank work by agent authoring-loop la
 - The M7 speed gate becomes measurable. If it fails on a catalogue, that failure is recorded together with its phase profile, and the speed claim is re-scoped here rather than met by adding mechanism.
 - The repository stays reviewable. Detailed history remains reachable through the archive tag.
 
-## Amendment (2026-10-12): oracle mismatches under stock trigger nondeterminism
+## Removal (2026-10-12): prepared-lowering reuse and the same-input oracle
 
-Resolves open question 15. The lead decided this under the owner's delegation.
+This replaces the original condition that persistent prepared-lowering reuse
+be off by default, and the same-day amendment that classified oracle
+mismatches with confirming fresh lowerings. Both features were removed from
+the engine (rescue L7a):
 
-**Context.** The same-input byte oracle (ADR 0027) compares a restored
-preparation's lowering with a fresh lowering in the same compiler callback.
-Stock automatic trigger choice depends on hash iteration order (VI-0015), so
-two fresh lowerings of one bucket in one process can differ. On
-`guide/traits.rs` the oracle mismatched in most runs while every restored
-lowering was a stream that fresh lowering also produced.
+- **Reuse paid for nothing.** L1 measured no in-batch hits on HumanEval and
+  few or none persistent; every miss still paid for key encoding and
+  admission under one global lock, about 6.7 s per repair on HumanEval and
+  40 s on Vest, which cancelled the shared callback's saving.
+- **The oracle could not stay stable.** It needed confirming fresh arms and
+  an unstable class to stop flaking on stock trigger nondeterminism
+  (VI-0015).
+- **M8 replaces it.** Reuse across edits is redesigned with content-addressed
+  keys (L9).
 
-**Decision.**
-- When the oracle finds a mismatch, it lowers the bucket again from an
-  independent owner of the same compiler input, in the same callback, and
-  compares that fresh arm with the first one: ordered solver bytes,
-  diagnostics, outcomes and lowering effects.
-- If the two fresh arms differ, the unit is **unstable**: reported separately,
-  like ADR 0009's unstable functions, and not a failure. Its verdicts and
-  diagnostics must still match plain Verus, which an engine run with the same
-  focus and without the oracle establishes.
-- If the fresh arms agree and the restored arm differs, it is a **hard
-  failure**. A missing or incomplete confirming arm is also a hard failure.
-- Confirming fresh arms come only from the same callback. Fresh lowerings from
-  separate processes are not evidence: stock declaration order can vary
-  between processes while staying fixed within one (VI-0001), which would
-  excuse a real defect. A negative control showed this on
-  `guide/datatypes.rs`.
-- One confirming arm is the default. The conformance arm can ask for up to
-  eight (`--oracle-fresh-arms`); a hard failure then needs all of them to
-  reproduce the first fresh arm.
-
-**Consequences.**
-- The engine runtime's oracle records the confirming arms (`second_fresh` in
-  its summary), so this needs a rebuilt engine runtime; with an older runtime
-  every mismatch stays hard.
-- Summary lines report oracle failures as hard and unstable counts.
-- Trigger choice has many outcomes on some buckets, so a single confirming arm
-  reproduces the first by chance in a fraction of runs, and such a run is a
-  hard failure. That rate is measured and reported with the rebuild.
+The engine now lowers every bucket fresh, as stock Verus does. The engine
+conformance arm keeps its comparison with plain Verus on verdicts and
+diagnostics and its completion-seal check. The repair gate's preparation
+telemetry check (`SAIL7105`) is retired.

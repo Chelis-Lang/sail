@@ -176,3 +176,7 @@ inline with the date and link the ADR that captures it.
     diagnostics. If they agree, the mismatch is a hard failure. Fresh
     lowerings from separate processes are not evidence (VI-0001). See ADR
     0038's amendment of 2026-10-12.
+
+    **Moot 2026-10-12:** prepared-lowering reuse and the same-input oracle
+    were removed from the engine (rescue L7a; ADR 0038's removal note), so
+    there is no restored lowering to compare.

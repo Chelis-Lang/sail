@@ -210,7 +210,6 @@ ADR 0027) carry an `engine` object at the top level and in every function's
 | `name` | `interactive`. |
 | `manifest_sha256` | SHA-256 of the validated engine build manifest. |
 | `established_by` | `engine`: the engine's complete, sealed full phase produced the report. `stock-fallback`: the engine faulted and the exact stock Verus invocation produced it; such a report publishes no proof receipt and cannot accept a repair. |
-| `persistent_preparation` | Whether the explicit `SAIL_ENGINE_PERSISTENT_PREPARATION=1` opt-in enabled cross-edit prepared-lowering reuse. Reuse within one compiler invocation is always available. |
 
 `mode` stays `default`: the engine is not a verdict-changing mode, and its
 conformance arm compares it with plain Verus. Managed project results add the

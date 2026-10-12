@@ -40,15 +40,12 @@ sail engine status --output json
 The source-build command installs the selected engine in the same Sail cache
 that `engine status` inspects. Import and execution must use that cache too;
 relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
-The selected runtime is experimental. Its complete source qualification now
-passes, including ownership accounting, genuine reuse across edits and exact
-full HumanEval results. The [b895 installed repair and reader checks](validation/m7.md)
+The selected runtime is experimental. It runs stock lowering with a focused
+phase in the same compiler callback and prepares no lowering for reuse. The [b895 installed repair and reader checks](validation/m7.md)
 pass; the [730 reader workflow](validation/m7.md) remains a separate historical pass.
 M7 real-project performance remains unqualified. See
-[engine qualification](../engine/verus/README.md). Sail uses that cross-edit
-reuse only with the explicit `SAIL_ENGINE_PERSISTENT_PREPARATION=1` opt-in; by
-default, preparation reuse stays inside one compiler invocation
-([repair guide](proof-repair.md)).
+[engine qualification](../engine/verus/README.md) and the
+[repair guide](proof-repair.md).
 
 `fetch-verus` installs artifacts but does not put `cargo-verus` on `PATH`:
 configure your ordinary stock launcher on `PATH` or through `SAIL_CARGO_VERUS`.

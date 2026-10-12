@@ -37,8 +37,7 @@ latency gate, its current results and how to run it.
 [Whole-result profiling](result-frame-profile.md) records transfer and complete
 response decoding costs without changing reader acceptance.
 The [interactive source engine](../engine/verus/README.md) describes the selected
-qualified patch, the prebuilt artifact, the exact lowering oracle and the
-runtime identity. Its [qualification](../engine/verus/qualification-linux.json)
+patch, the prebuilt artifact and the runtime identity. Its [qualification](../engine/verus/qualification-linux.json)
 passes the source-level checks. Long corpus, source-build and benchmark work
 runs locally, and required CI stays short. Reference performance numbers come
 from a native x86-64 Linux host (`scripts/perf-host.sh`).

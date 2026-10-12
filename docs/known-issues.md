@@ -23,19 +23,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   read-time freshness check needs leases on every file in the workspace,
   beyond its limits. A simpler check, scoped to the files Cargo used for the
   target, is in progress. [L7b report](reports/rescue/l7b-vest-and-baseline.md).
-- **Engine fixes await a rebuilt engine runtime.** The pinned runtime still
-  has three defects, each fixed in source but not yet in the runtime: engine
-  diagnostics name `vstd/seq.rs` where stock names `seq.rs`; repeated
-  friendly names (Vest trait impls) refuse focused repairs with `SAIL3122`;
-  and the engine conformance arm fails on `guide/traits.rs`.
-  [L4b report](reports/rescue/l4b-engine-parity.md).
-- **Prepared-lowering reuse is being removed.** It produced no reuse and cost
-  7–40 s per repair run. Its known defects go with it: the 512 MiB budget is
-  accounting only, thread-local span formatting
-  ([#75](https://github.com/Chelis-Lang/sail/issues/75)), uncovered imported
-  metadata ([VI-0014](verus-issues/VI-0014-exported-foreign-span-metadata-gap.md)),
-  and the same-input oracle's failures on stock trigger nondeterminism
-  ([VI-0015](verus-issues/VI-0015-nondeterministic-trigger-choice.md)).
+- **Engine fixes await a rebuilt engine runtime.** The pinned runtime
+  predates the engine changes in source: prepared-lowering reuse and the
+  same-input oracle are removed, engine diagnostics in vstd match stock, and
+  repeated friendly names (Vest trait impls) no longer refuse focused repairs
+  with `SAIL3122`. Until the runtime is rebuilt from the Verus fork
+  (ADR 0039) and re-pinned, the CI image cannot be built from this branch.
+  [L7a report](reports/rescue/l7a-preparation.md), [L4b report](reports/rescue/l4b-engine-parity.md).
 - **Repair selectors lose compiler-declared input coverage.** A warmup can
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and

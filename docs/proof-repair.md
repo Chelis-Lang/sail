@@ -1,7 +1,7 @@
 # Proof events and repair validation
 
-**Experimental (M7):** the selected source engine passes its preparation-memory
-and lowering qualification. Current `387ba80` passes the
+**Experimental (M7):** the selected source engine runs stock lowering with a
+focused phase in the same compiler callback (it prepares no lowering for reuse). Current `387ba80` passes the
 [complete gate, original solver, product installations and original CLI/MCP
 repair fixture](validation/m7.md).
 The `57a319d` named-baseline feature smoke and
@@ -9,8 +9,8 @@ The `57a319d` named-baseline feature smoke and
 remain separate historical passes. Current readers, real-project performance
 and complete standard/cache corpus coverage remain unfinished.
 See [known issues](known-issues.md) and the
-[acceptance guide](bench/m7-repair-acceptance.md) before relying on performance
-or cross-edit preparation reuse. Stock verification remains the default.
+[acceptance guide](bench/m7-repair-acceptance.md) before relying on performance.
+Stock verification remains the default.
 
 For setup through a focus/full regression, resumable events, cancellation and
 CLI/MCP evidence, follow the [repair walkthrough](proof-repair-walkthrough.md).
@@ -28,8 +28,7 @@ status and output reports the exact stock result with
 `engine.established_by: stock-fallback`, publishes no proof receipt and cannot
 accept the repair. A fault before any target could run falls back to an
 independent stock full verification and records `batch.engine_fault`
-(`SAIL3123`); the repair is not accepted. Either fault removes persistent
-preparation entries when that opt-in is enabled. Inspect `batch.batched`,
+(`SAIL3123`); the repair is not accepted. Inspect `batch.batched`,
 focus, selection errors and `engine_fault` alongside the full report, whose
 reports and functions name their `engine` provenance
 ([output schema](output-schema.md#engine-provenance)).
@@ -94,73 +93,29 @@ The private worker exits with the full phase's status so a completed proof is
 not mistaken for an infrastructure failure; the public repair command exits
 nonzero when the repair is not accepted.
 
-Prepared-lowering reuse stays inside one compiler invocation by default: each
-engine driver gets a private preparation directory, removed when it exits, so
-the focused phase can serve the same driver's full phase but nothing is reused
-across invocations or edits. Persistent cross-edit reuse under
-`<cache>/engine-prepared` is an explicit opt-in:
-
-```sh
-SAIL_ENGINE_PERSISTENT_PREPARATION=1 sail repair-check ... --engine interactive
-```
-
-Its key binds Verus's pruned crate and a selected argument tuple, and a real
-hit is not compared with fresh lowering at runtime, so correctness would depend
-on that key's dependency coverage (charter rule 6). The opt-in is part of the
-proof context (its results and receipts never mix with default ones) and every
-result reports `engine.persistent_preparation: true`.
-
-Optional `batch.preparation` records retain source-reported counters separately
-for each observed Verus driver. `batch_hits` counts restores from the in-memory
-entry; `persistent_hits` counts restores from validated files. A file may have
-been written earlier in the same batch, so this is not an across-edit-only count.
-Across-edit reuse is established by the retained sequence of source revisions. Misses, retained
-byte peaks and configured budgets are source observations, not proof evidence or
-process RSS. Peaks and budgets from independent drivers are not summed. Target
-and phase identities appear only when independently bound. An engine without
-this telemetry reports it unavailable, rather than supplying invented zeroes.
+The engine prepares no lowering for reuse: every bucket is lowered fresh in
+both phases, exactly as stock Verus lowers it. Earlier engines cached prepared
+lowering within and across invocations; measured reuse was near zero while
+every miss paid for encoding and admission under a global lock, so it was
+removed together with its same-input oracle (rescue L7a; ADR 0038). Reuse
+across edits is redesigned for M8 with content-addressed keys.
 
 ## Engine conformance
 
 `sail-conformance engine` is the engine's corpus arm. For each unit it runs
 plain Verus and then the engine with a focused function (the first proved
-function of the plain run) and an invocation-local preparation directory, and
-compares the full phase with the same rules as the other arms, including the
-ADR 0009 unstable classification. It also requires a normal, consistent
-compiler seal, and runs the same-input cached-versus-fresh byte oracle on every
-restored preparation hit. An uncovered hit fails the unit. An oracle mismatch
-is confirmed first (ADR 0038, amendment of 2026-10-12): in the same compiler
-callback, the oracle lowers the bucket again from independent owners of the
-same input (`--oracle-fresh-arms N` confirming arms, default 1, at most 8) and
-compares each with the first fresh lowering. If one differs, stock lowering is
-nondeterministic there (VI-0015): the unit is `unstable`, provided an engine
-run without the oracle, with the same focus, matches plain Verus. If all
-agree, or the runtime records no confirming arm, the mismatch is a hard
-failure. Fresh lowerings from separate processes are never used as evidence:
-stock declaration order can vary between processes but not within one
-(VI-0001), which would excuse a real defect. The summary line reports oracle
-failures as hard and unstable counts.
+function of the plain run), and compares the full phase's verdicts and
+diagnostics with the same rules as the other arms, including the ADR 0009
+unstable classification. It also requires a normal, consistent compiler seal.
 `ci/run.sh conformance` runs it after the cache rounds on every tier, using
 `SAIL_ENGINE_BUILD`; the PR subset that CI runs passes `--no-oracle`:
 
 ```sh
 ci/local.sh conformance fast pr        # includes the engine arm, without the oracle
 sail-conformance engine --tier standard --project vest --engine-build PATH
-sail-conformance engine --tier fast --filter /guide/ --oracle-fault effects # negative control
 ```
 
-`--no-oracle` and `--no-focus` narrow a diagnostic run. `--oracle-fault`
-injects an `order`, `effects` or `body` fault into the oracle's restored arm and
-passes only if every unit with a restored hit reports the mismatch and at
-least one mismatch is confirmed hard (confirming fresh lowerings agree). Use
-`effects`: it changes every restored arm. `order` swaps the first two lowered
-functions, which leaves the solver bytes of many buckets unchanged, and `body`
-needs a constant spec-function body, so neither is a complete control. The
-oracle mismatches on `guide/traits.rs` in most runs because stock trigger
-choice varies within one process (VI-0015); those mismatches are classified
-unstable when a confirming fresh lowering differs, and hard otherwise.
-Confirming arms need a runtime whose oracle records `second_fresh`; with an
-older runtime every mismatch stays hard.
+`--no-focus` runs only the full phase.
 
 ## Resumable observations
 

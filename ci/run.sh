@@ -257,8 +257,8 @@ RS
     python3 ci/test-mcp-live-service.py "$sail" \
       --out "$evidence/mcp-live-service" \
       --execution "Linux x86-64 local container transport control"
-    # Engine provenance and the explicit persistent-preparation opt-in,
-    # including corrupted persistent entries, against the prebuilt engine.
+    # Engine provenance in project, report and function results,
+    # against the prebuilt engine.
     : "${SAIL_ENGINE_BUILD:?the engine controls need the validated prebuilt engine}"
     fetch_repair_source
     python3 ci/test-repair-engine-provenance.py --sail "$sail" \
