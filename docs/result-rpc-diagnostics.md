@@ -158,8 +158,11 @@ credit. Transport loss remains uncertain; it cannot certify native shutdown.
 The [product 730 delivery review](validation/m7-result-delivery-730-review.md)
 maps current complete-frame hits, guarded output/fallback, independent freshness
 and unchanged Python parsing. Cached socket writes hold no full-graph encoding
-or cache lock. Freshness inspection still copies full input path inventories for daemon
-consumers that only need revision/complete, and completed Status still reads and
+or cache lock. Freshness inspection still copies full input path inventories
+for daemon consumers that only need revision/complete, and completed Status reads and
 hashes stdout. Immutable snapshot delivery and sharing the existing output-only
-owner are conditional designs, not enabled optimizations or latency claims. The original full reader census remains
-required, and no additional transport change is selected by that review.
+owner are deferred, unselected and unmeasured designs. The
+[complete original product 730 workflow](validation/m7-reader-730a321-terminal.md)
+passes both unchanged full-reader collectors and retained CLI/MCP at their original
+bounds, without these designs. No single-change attribution or paired gain from
+earlier failures follows; separate M7 performance gates remain outstanding.
