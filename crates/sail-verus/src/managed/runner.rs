@@ -1921,16 +1921,10 @@ pub(crate) fn run_engine(
             .all(|target| target.complete)
     {
         // The report owns the unchanged full proof-context hash at this point.
+        let mut final_runtime = None;
         if let Some(certificate) = script_bootstrap.as_mut().filter(|candidate| {
             let matches = candidate.runtime_matches(&config.cache, &result.context_sha256);
-            diagnostics.bootstrap(
-                super::diagnostics::BootstrapStage::FinalRuntime,
-                if matches {
-                    super::diagnostics::BootstrapOutcome::Ready
-                } else {
-                    super::diagnostics::BootstrapOutcome::Refused
-                },
-            );
+            final_runtime = Some(matches);
             matches
         }) {
             certificate.publish_traced(
@@ -1941,6 +1935,18 @@ pub(crate) fn run_engine(
                 &after_data,
                 &paths.run.join("artifacts.jsonl"),
                 Some(&diagnostics),
+            );
+        }
+        // Observe only after the original runtime/input checks and publication
+        // attempt: the positive check-to-emission interval contains no sink I/O.
+        if let Some(matches) = final_runtime {
+            diagnostics.bootstrap(
+                super::diagnostics::BootstrapStage::FinalRuntime,
+                if matches {
+                    super::diagnostics::BootstrapOutcome::Ready
+                } else {
+                    super::diagnostics::BootstrapOutcome::Refused
+                },
             );
         }
     }
