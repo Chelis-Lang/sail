@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "optional managed-script-bootstrap refusal stage observations",
-  "status": "selected b89546c native gate/solver and installed original repair PASS; whole benchmark fails Historical warmup; first-refusal cause remains unestablished",
+  "status": "selected b89546c native gate/solver, installed original repair and original full readers/retained CLI/MCP PASS; whole benchmark fails Historical warmup; first-refusal cause remains unestablished",
   "base": "27778b3",
   "source_sha256": {
     "crates/sail-verus/src/managed/diagnostics.rs": "dc82aca20a8a1cadc377e76181b29d1263cf353cc5e626c7784981528a5a7235",
@@ -95,7 +95,7 @@
     "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
     "native_validation": "complete local gate PASS: 658/658 workspace tests and all remaining steps; original solver PASS: 41/41",
-    "product_and_benchmark_validation": "release/installations/original repair PASS; original benchmark FAIL at Historical warmup with zero measured samples; see scheduling-recovery.json",
+    "product_and_benchmark_validation": "release/installations/original repair and original readers/retained CLI/MCP PASS; original benchmark FAIL at Historical warmup with zero measured samples; see scheduling-recovery.json",
     "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
     "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a"
   },

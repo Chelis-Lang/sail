@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "disabled-script coverage and guarded retry fresh-compilation recovery",
-  "status": "selected b89546c gate/solver/release/installations/original repair PASS; real-project benchmark FAIL at concatenate Historical warmup with zero measured samples; fresh current reader running; terminal pending",
+  "status": "selected b89546c gate/solver/release/installations/original repair and original readers/retained CLI/MCP PASS; real-project benchmark FAIL at concatenate Historical warmup with zero measured samples",
   "historical_scope": {
     "product": "c2a4b23",
     "original_benchmark": "FAIL",
@@ -89,8 +89,7 @@
   "limits": "existing bootstrap bounds unchanged; one bounded retry package-ID vector; no new retained owner, journal merge or measured performance",
   "required_next": [
     "diagnose actual refused Historical warmup without weakening Current admission",
-    "qualify original three-round benchmark with exact oracles and speed thresholds",
-    "fresh full-reader qualification on current product"
+    "qualify original three-round benchmark with exact oracles and speed thresholds"
   ],
   "fixture_correction": {
     "scope": "test-only implicit root membership with existing dependency exclusions, plus explicit non-membership assertions",
@@ -470,7 +469,7 @@
     "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
     "meaning": "actual selected combined source; historical source_sha256 above remains authored-scope evidence",
     "native_validation": "complete local gate PASS: 658/658 workspace tests and all remaining steps; original solver PASS: 41/41",
-    "product_and_benchmark_validation": "release/private+acceptance installations and original repair PASS; original benchmark FAIL at Historical warmup, zero samples and Vest unreached; fresh current reader running; terminal pending",
+    "product_and_benchmark_validation": "release/private+acceptance installations, original repair and original full readers/retained CLI/MCP PASS; original benchmark FAIL at Historical warmup, zero measured samples and Vest unreached",
     "production_sources_identical_to": "22d6082d29326b5f11af116c43f68ed2c193a1f1",
     "source_archive_sha256": "d6a494778fad1c910a50a95245d99d93e406476045e2aa2e9860835ba245504a"
   },
@@ -1076,5 +1075,131 @@
       "sha256": "59f9d4161991673b26f3b31ac725f230de40774bb5502e40501d8a22898be7ba"
     },
     "limit": "CI scope at this exact head; later unpushed documentation is outside its scope; does not replace failed local benchmark or current reader result"
+  },
+  "current_product_reader": {
+    "status": "PASS",
+    "source_commit": "b89546cbf64788976803b832dbfa214575c9ff7b",
+    "product_files": {
+      "sail": {
+        "bytes": 76777096,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "10a7c47a4242f7fa271a54737e3341a9600216e261ed24fad1657dc813823f21",
+        "uid": 0
+      },
+      "sail-z3": {
+        "bytes": 11000968,
+        "gid": 0,
+        "mode": "0700",
+        "sha256": "da21cf60b15db73d29c4885f1993e1013f2bcc5f09886197324ee8eddc334e80",
+        "uid": 0
+      }
+    },
+    "selected_manifest": {
+      "bytes": 2106,
+      "sha256": "54109b76e8bf79d92332194431e5b4dd83038b9f285994c319b5a2e3391c3e9d"
+    },
+    "source_only_template_files": 274,
+    "collector_files": {
+      "job_read_bench": {
+        "bytes": 12235200,
+        "sha256": "f1632772daacc28e4bb5e7f7747e0e048fce7973aeff31b6ed65c5bbbd0e0b4d"
+      },
+      "python-reader-probe.py": {
+        "bytes": 11877,
+        "sha256": "3d5dfa5d47bbf7377c2d6c79c8ae9618eae6c4a080d66d31bb858fbb8e611720"
+      }
+    },
+    "environment": "Linux amd64 Docker Desktop emulation on arm64 macOS; actual concurrent development work",
+    "inclusive_elapsed_seconds": 712.3070695340002,
+    "original_limits": {
+      "setup_invocation_seconds": 600,
+      "clients": 4,
+      "samples_per_collector_total": 200,
+      "result_samples": 100,
+      "status_samples": 100,
+      "p95_strict_less_than_ms": 200,
+      "retained_whole_seconds": 120,
+      "cli_seconds": 30,
+      "rpc_seconds": 5
+    },
+    "complete_result_wire_bytes": [
+      4310817
+    ],
+    "censuses": {
+      "python-census": {
+        "passed": true,
+        "clients": 4,
+        "total_samples": 200,
+        "summary": {
+          "result": {
+            "count": 100,
+            "max_ms": 116.93279200062534,
+            "median_ms": 64.86183300012272,
+            "p95_ms": 91.22662500067236
+          },
+          "status": {
+            "count": 100,
+            "max_ms": 74.89516599980561,
+            "median_ms": 40.31202099986331,
+            "p95_ms": 56.98870899959729
+          }
+        }
+      },
+      "rust-census": {
+        "passed": true,
+        "clients": 4,
+        "total_samples": 200,
+        "summary": {
+          "result": {
+            "count": 100,
+            "max_ms": 405.260833,
+            "median_ms": 47.1283755,
+            "p95_ms": 83.867042
+          },
+          "status": {
+            "count": 100,
+            "max_ms": 48.03958299999999,
+            "median_ms": 36.071083,
+            "p95_ms": 44.371375
+          }
+        }
+      }
+    },
+    "proof_admissions": {
+      "active": true,
+      "active-unmeasured-preparation": true,
+      "baseline": true,
+      "baseline-unmeasured-preparation": true
+    },
+    "every_sample_current_and_same_birth_bound_verifier_continued": true,
+    "retained_functional_passed": true,
+    "retained_harness_sha256": "207b45ef034b6c1e947dbb0efdb87368b62d5ef8a4c42ab5768413670f775a11",
+    "original_product_source_runtime_inputs_unchanged": true,
+    "retained_normal_shutdown": {
+      "exit_code": 0,
+      "forced": false,
+      "wall_seconds": 0.11839791700003843
+    },
+    "cleanup_errors": [],
+    "archival_errors": [],
+    "outer_finalization_errors": [],
+    "raw": {
+      "summary.json": {
+        "bytes": 458661,
+        "sha256": "a1b0ce677cde0c6f8d0110b1626d94439d61cf173b9349ab4e4fafa8f626a5a5"
+      },
+      "native-raw.tar.gz": {
+        "bytes": 8914321,
+        "sha256": "3153923dfefcb5fc0d973fe6e8ebbd1645399b1f71dd80d6e5574ae0e4d837cf"
+      },
+      "retention.json": {
+        "bytes": 423,
+        "sha256": "66e6f2e57654581d8fa7ab8881d56679b1ab6927c1ff6dfff940d4eed327523d"
+      }
+    },
+    "native_retention": "original workspaces/caches and binaries remain preserved; raw archive omits cache/baseline/active/product binaries",
+    "limits": "b89546c-specific complete reader and corrected retained functional pass; no paired causal speedup, benchmark or overall M7 acceptance; newer baseline/source-inventory code receives no qualification",
+    "selected_runtime_artifact_count": 13
   }
 }
