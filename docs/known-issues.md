@@ -724,6 +724,14 @@ complete Result p95 failure remains failed. Four readers, 200 samples per
 collector, full graphs and the strict 200 ms bound remain unchanged; the live pass
 does not isolate the component's contribution.
 
+The later [frozen b895 reader/retained workflow](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+also passes both original collectors and retained CLI/MCP scenarios: Python
+Result/Status p95 91.227/56.989 ms and Rust 83.867/44.371 ms, with complete Current
+graphs and the same verifier live throughout each collector. Earlier failures
+remain failed. The newer baseline/source-inventory implementation remains under
+validation; no installed-product, conformance or repair-performance credit is
+transferred from b895.
+
 ## Frozen 730a321 product scopes
 
 The [portable record](validation/m7-core-730a321-validation.md) separates the

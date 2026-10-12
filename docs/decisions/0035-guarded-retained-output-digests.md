@@ -1,6 +1,6 @@
 # 0035: Guarded retained output digests
 
-- **Status:** proposed; daemon integration and affected source controls complete, installed reader acceptance pending
+- **Status:** proposed; daemon integration and affected controls complete; frozen b895 installed readers pass, isolated shortcut benefit unmeasured
 - **Date:** 2026-10-11
 
 ## Context
@@ -156,6 +156,8 @@ first test-only Clippy naming failure. The original lock algorithm fails the
 overlap sensitivity assertion. A fixed-order comparison with four readers and
 complete 2,158,309-byte output plus real fixture-input freshness reduces p95
 from 19.366 to 12.713 ms with all 128 validations complete. Source is selected
-for integration after review; installed full-reader acceptance remains pending.
+for integration after review. The later [b895 installed full-reader workflow](../validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+passes both unchanged collectors and retained CLI/MCP scenarios; it does not
+isolate this component's contribution. Newer source changes need independent product validation.
 This 6.653 ms component reduction is not an explanation or remedy established
 for the original 343.142 ms, 4,313,743-byte live Result failure.

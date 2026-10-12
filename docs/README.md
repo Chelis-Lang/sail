@@ -39,8 +39,9 @@ response decoding costs without changing reader acceptance.
 The [interactive source engine](../engine/verus/README.md) describes the selected
 qualified patch, coherent prebuilt artifact, exact lowering oracle and runtime
 identity. Its [qualification](../engine/verus/qualification-linux.json) passes
-the source-level checks. Current c2 passes the original installed repair fixture;
-reader evidence remains historical 730 validation, requiring current replay.
+the source-level checks. Frozen b895 passes the [original installed repair and
+reader/retained workflows](validation/m7-compiler-script-bootstrap/scheduling-recovery.json).
+Newer baseline/source-inventory code still requires its own native and installed-product validation.
 Real-project performance and complete standard/cache coverage remain open.
 The historical [source preparation audit](../engine/verus/candidates/decode-budget/README.md)
 records allocation ownership, phase bounds and outstanding combined-runtime

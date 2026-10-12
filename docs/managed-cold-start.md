@@ -184,5 +184,7 @@ budget; foreground requests use that coverage only around their independent
 input/runtime freshness check. Missing, busy, refused or invalid coverage retains
 the full read/hash fallback. The integration passed
 [35 affected native source controls and strict checks](validation/m7-guarded-output-source-controls.md).
-A newly built installed product and the original live reader gate remain pending; these
-controls establish no latency or reuse benchmark.
+The later [b895 installed product](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+passes the original full reader and retained CLI/MCP workflow. That whole-product
+pass does not isolate this shortcut's latency contribution or establish repair
+speed. Newer source-inventory/baseline changes require their own product validation.

@@ -7,7 +7,14 @@ copying prior receipts or Cargo output. Preparation verifies the full project
 ordinarily, then establishes the exact repair-function context. Preparation
 costs and failed attempts are retained separately from measured reader latency.
 
-The [frozen `730a321` product](validation/m7-reader-730a321-terminal.md) passes
+The [frozen `b89546c` product](validation/m7-compiler-script-bootstrap/scheduling-recovery.json)
+passes both unchanged collectors and retained CLI/MCP scenarios. Each collector
+retains 200 total samples, full Current graphs and the same live verifier.
+Python Result/Status p95 is 91.227/56.989 ms; Rust is 83.867/44.371 ms, below
+the original 200 ms bound. Newer baseline/source-inventory code requires its own
+native, installed-product and reader validation; this pass grants it no credit.
+
+The earlier [frozen `730a321` product](validation/m7-reader-730a321-terminal.md) passes
 this complete workflow: both unchanged four-client collectors retain 200 samples,
 full Current graphs and p95 below 200 ms during actual verification, followed by
 retained CLI/MCP scenarios. Python Result/Status p95 is 94.197/59.896 ms; Rust is
