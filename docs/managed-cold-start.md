@@ -57,8 +57,9 @@ cleaning. Proof-specific or unaudited Cargo-injected environment declarations
 refuse sharing. See the [decision](decisions/0036-managed-compiler-artifact-families.md)
 for the local cache trust boundary and effective environment binding.
 
-The optional independent ordinary-build recovery candidate is integrated for
-validation; native qualification and real-project recovery remain pending.
+Optional independent ordinary-build recovery passes the complete local controls,
+emission sensitivity and original installed repair fixture on c2. Real-project
+benchmark recovery remains unqualified.
 When a compatible generation is unavailable, original script cleaning and
 regeneration still occur. Before that mutation, the candidate acquires its own
 continuous coverage of supported script inputs, Cargo configuration and runtime
@@ -80,8 +81,9 @@ full result contains proof errors without a VIR error, and input declarations
 were already covered before the run. Compiler errors, partial or interrupted
 runs, new declarations and uncertain inputs withdraw the generation. Failed
 proofs remain failed, produce no successful receipt and do not skip the next
-selected verification. This implementation still needs whole-product validation;
-it does not change the original repair deadlines.
+selected verification. The original c2 repair fixture validates the installed
+workflow; real-project benchmark validation remains pending. Original repair
+deadlines are unchanged.
 
 The [script-observation diagnostic](validation/m7-compiler-script-observations.md)
 records the avoided cleaning seam and its control scope. The compiler-family

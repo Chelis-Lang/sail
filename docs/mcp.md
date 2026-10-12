@@ -9,8 +9,9 @@ decisions are in ADRs 0016 and 0024.
 
 The server is a stdio command: `sail mcp`, with no arguments. It needs what
 `sail verify` needs: `cargo-verus` on `PATH` (or `SAIL_CARGO_VERUS`), and
-`sail-z3` next to `sail`. Start it from the project directory, or pass
-`project_dir` to each tool.
+`sail-z3` next to `sail`. Start it from the project directory. Submission and
+project-oriented lookup tools accept `project_dir` where their schemas show it;
+durable job/evidence reads and cancellation do not.
 
 Claude Code:
 
@@ -36,6 +37,16 @@ Any client that takes a JSON server list (`.mcp.json` and similar):
 
 The `env` entry is needed only if `cargo-verus` is not on the client's
 `PATH`. Use an absolute path to `sail` if it is not on `PATH` either.
+
+For interactive repair, install the engine in the same Sail cache used by the
+MCP process and CLI. If overriding `SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET`, set
+the same absolute values in the MCP launch environment and CLI environment.
+`start_repair_validation` can change the submission project, but subsequent
+job/status/result/cancel, event, explanation and comparison calls use the server's
+working directory to resolve its service. They reject `project_dir`. A relative
+cache override can route these calls to another service after switching projects.
+The [repair walkthrough](proof-repair-walkthrough.md) shows engine setup and the
+complete submission-to-baseline sequence.
 
 ## Reading completed evidence
 
@@ -112,7 +123,8 @@ necessary. See [the client contract](result-client.md).
 
 Use `start_verification` with the same default verification arguments as
 `verify`; it returns a durable job status immediately. It does not enable
-portfolio or fragility experiments. Pass its `job_id` to:
+portfolio or fragility experiments. Pass its returned `structuredContent.id`
+as the `job_id` argument to:
 
 | Tool | Result |
 |---|---|
@@ -125,6 +137,10 @@ as `sail verify --background` and `sail watch`. Read `cached_result` and
 `counterexample` while a newer run proceeds. They inspect completed jobs first;
 older MCP records remain historical evidence and cannot establish complete
 workspace/runtime freshness.
+
+After submission returns, use `cancel_verification` with its durable ID to stop
+the job. A cancelled read request or MCP disconnect does not cancel a submitted
+background job.
 
 `current` applies to the recorded verification context and a revalidated declared
 input revision. `historical` applies to earlier inputs; `unknown` means coverage
@@ -407,9 +423,9 @@ On the completed `verification_result`, inspect
 Use the exact package/target/function identities in the report for explanations
 and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argument.
 
-The frozen `730a321` installed product passes the
-[original repair fixture](validation/m7-core-730a321-validation.md) and
-[complete reader/retained workflow](validation/m7-reader-730a321-terminal.md).
+Current c2 passes the [original repair fixture](validation/m7-repair-c2a4b23-terminal.md).
+The [complete 730 reader/retained workflow](validation/m7-reader-730a321-terminal.md)
+is historical; current c2 reader replay remains required.
 The reader p95 values come from the unchanged Python and Rust collectors, rather
 than an MCP-specific timing census; retained MCP scenarios establish functional
 behavior. Real-project repair performance and complete standard/cache coverage

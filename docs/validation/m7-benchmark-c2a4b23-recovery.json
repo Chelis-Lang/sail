@@ -223,7 +223,7 @@
   "postseals": null,
   "original_native_exit": null,
   "closure_at_interruption": null,
-  "post_restart_observation": "owner reports fresh census only PID1 sleep and census in each container; old VM was ended by restart, so this cannot reconstruct interruption-time closure",
+  "post_restart_observation": "retained operator observations report fresh census only PID1 sleep and census in each container; old VM was ended by restart, so this cannot reconstruct interruption-time closure",
   "host_verification": "every recovered raw regular member and metadata stream independently hashed; no new native probe",
   "not_claimed": [
     "complete warmups",

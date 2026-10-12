@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Clarify interactive CLI/MCP setup: use the same absolute cache/socket overrides
+  for engine installation, submission and durable job reads. Those reads do not
+  accept `project_dir`. Document returned job-ID and event-cursor fields, and
+  distinguish cancelling a durable job from cancelling a lookup. Current c2
+  passes the original repair fixture; reader evidence remains historical 730,
+  and real-project performance remains unqualified.
+
 - Record the unchanged real-project repair benchmark's `730a321` bootstrap
   failure. Unknown input freshness correctly prevents acceptance; no measured
   rounds or speedup are available. Earlier full reader and small repair passes
@@ -13,14 +20,15 @@ semantic versioning once the API is published.
 - Prepare a Linux proof-diagnosis candidate that records the first refused root
   binding as a path digest, ordinal, old/new device and inode, absence or errno.
   Existing `SAIL3114` notes gain that recorded detail without another native
-  check or barrier-time I/O. All Current checks remain unchanged; native
-  qualification and historical changed-path attribution are pending.
+  check or barrier-time I/O. All Current checks remain unchanged; native controls
+  pass in the complete c2 gate. Historical changed-path attribution is unavailable.
 
 - Implement an optional independently guarded ordinary build-script recovery
   candidate for missing compiler-family generations. Proof guards, Unknown
   results and receipts remain
-  unchanged. Initial regeneration and unsupported fallback remain. Native
-  qualification and real-project benchmark recovery are pending; the
+  unchanged. Initial regeneration and unsupported fallback remain. Complete c2
+  controls, emission sensitivity and original repair validation pass; real-project
+  benchmark recovery remains unqualified. The
   [602 failed positives and Cargo path captures](docs/validation/m7-bootstrap-602ec67-gate-failure.md)
   remain separate evidence. See the
   [candidate limits](docs/validation/m7-compiler-script-bootstrap/README.md).

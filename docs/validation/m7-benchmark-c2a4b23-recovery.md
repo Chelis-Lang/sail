@@ -19,7 +19,7 @@ samples and exactly three retained warmups:
 No fourth M7 focus completion, original terminal exit, interruption-time closure
 or final immutable seals survive. Its empty stdout cannot establish that it never
 executed. Two daemon-start records and an empty partial cleanup-error list do not
-certify final cleanup. The owner reports the post-restart census contains only
+certify final cleanup. Retained operator observations report the post-restart census contains only
 PID1 and census processes; ending the old VM cannot reconstruct original closure.
 The acceptance container's new birth is `2026-10-12T02:24:03.212003465Z`, distinct
 from its old `2026-10-11T23:02:56.820697964Z` birth.

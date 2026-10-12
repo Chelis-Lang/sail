@@ -38,12 +38,6 @@
   },
   "retained_controller_status": "running",
   "retained_phases": [],
-  "owner_reported_failure": {
-    "host_exit_code": 1,
-    "error": "ENOSPC while writing checkpoint primary.tmp",
-    "docker_health": "probes timed out",
-    "source": "lead operator report; absent from zero-byte retained stdout/stderr"
-  },
   "native_phase_outcome": null,
   "native_closure": null,
   "immutable_postseals": null,
@@ -58,5 +52,11 @@
     "native actors stopped",
     "product defect cause",
     "historical 730 repair cause"
-  ]
+  ],
+  "operator_recorded_failure": {
+    "host_exit_code": 1,
+    "error": "ENOSPC while writing checkpoint primary.tmp",
+    "docker_health": "probes timed out",
+    "source": "retained operator observation; absent from zero-byte retained stdout/stderr"
+  }
 }
