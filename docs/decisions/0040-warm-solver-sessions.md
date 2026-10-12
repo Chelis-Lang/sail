@@ -1,6 +1,6 @@
 # 0040: Warm solver sessions for edit-loop misses
 
-- **Status:** proposed
+- **Status:** accepted (do not build now)
 - **Date:** 2026-10-12
 
 ## Context
@@ -85,15 +85,15 @@ compared two designs.
 
 ## Decision
 
-Proposed for the owner. Neither design moves the agent loop on the current
-corpus.
+Accepted by the lead on 2026-10-12. Neither design moves the agent loop on
+the current corpus.
 
 1. **Build neither (A) nor (B) now.** Warm solver sessions move from item 2
    of ADR 0038's direction list to after:
    - the M8 warm frontend;
-   - deterministic SMT emission. Fix VI-0001 upstream, or propose an opt-in
-     normalization under charter rule 5, with its own ADR and whole-corpus
-     validation. On these loops this is worth 2.3–2.9 s per affected cycle,
+   - deterministic SMT emission. The Verus fork fixes VI-0001 (ADR 0039)
+     for the engine; whether default `sail verify` also runs on the fork is
+     an owner decision. On these loops this is worth 2.3–2.9 s per affected cycle,
      against at most about 0.1 s for warm sessions.
 2. **Reopen when any of these holds**, and repeat the L11 measurement with
    the archived tool (`archive/l11-warm-sessions-spike`) first:
