@@ -28,7 +28,7 @@ pub(super) fn packages(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
     read::<Inputs>(path).and_then(|v| v.by_package)
 }
 
-fn dependencies(text: &str) -> Option<Vec<String>> {
+pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
     // Rust emits make-style dep-info. Only the first rule contains inputs;
     // subsequent empty rules and env-dep comments are not file dependencies.
     let joined = text.replace("\\\n", "");

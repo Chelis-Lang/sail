@@ -1523,7 +1523,7 @@ pub(crate) fn run_engine(
     let (paths, _ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     drop(owned_paths);
     let initial_snapshot = diagnostics.phase(Phase::InitialSnapshot);
-    super::build_inputs::family::begin(
+    let generation_available = super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
         &paths.target,
@@ -1539,6 +1539,22 @@ pub(crate) fn run_engine(
         super::build_inputs::stale(&paths.build_inputs, &data);
     let script_roots = script_roots(&data);
     extras.extend(script_roots.clone());
+    let mut script_bootstrap = if generation_available
+        || !super::build_inputs::family::bootstrap::Bootstrap::eligible_workload(&data)
+    {
+        None
+    } else {
+        let mut runtime = runtime_paths(&config.cache, &hash);
+        let state = config.cache.join("runtime-identities");
+        let link = state.join(format!("{hash}.link"));
+        if let Some(identity) = read::<String>(&link) {
+            runtime.push(state.join(format!("{identity}.json")));
+            runtime.push(link);
+        }
+        let owner =
+            super::build_inputs::family::bootstrap::Bootstrap::begin(&data, &extras, &runtime);
+        owner.filter(|owner| owner.runtime_matches(&config.cache, &hash))
+    };
     let mut before = snapshot_metadata(&data, &extras);
     before.complete &= source_coverage;
     before.roots.extend(super::input::configuration_paths(
@@ -1868,6 +1884,29 @@ pub(crate) fn run_engine(
             args: &config.args,
         },
     );
+    if result.exit_code == Some(0)
+        && result.error.is_none()
+        && !focused(&config.args)
+        && result
+            .targets
+            .iter()
+            .filter(|target| target.requested)
+            .all(|target| target.complete)
+    {
+        if let Some(owner) = script_bootstrap
+            .as_mut()
+            .filter(|owner| owner.runtime_matches(&config.cache, &hash))
+        {
+            owner.publish(
+                &paths.compiler_inputs,
+                &compiler_hash,
+                &paths.target,
+                &paths.build_inputs,
+                &after_data,
+                &paths.run.join("artifacts.jsonl"),
+            );
+        }
+    }
     drop(family_publication);
     Ok(result)
 }
