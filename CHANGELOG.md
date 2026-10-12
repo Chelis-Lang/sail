@@ -16,10 +16,13 @@ semantic versioning once the API is published.
   check or barrier-time I/O. All Current checks remain unchanged; native
   qualification and historical changed-path attribution are pending.
 
-- Draft an independently guarded ordinary build-script bootstrap for missing
-  compiler-family generations. Proof guards, Unknown results and receipts remain
-  unchanged. This source candidate is uncompiled and unselected; real-project
-  benchmark recovery remains pending. See the
+- Implement an optional independently guarded ordinary build-script recovery
+  candidate for missing compiler-family generations. Proof guards, Unknown
+  results and receipts remain
+  unchanged. Initial regeneration and unsupported fallback remain. Native
+  qualification and real-project benchmark recovery are pending; the
+  [602 failed positives and Cargo path captures](docs/validation/m7-bootstrap-602ec67-gate-failure.md)
+  remain separate evidence. See the
   [candidate limits](docs/validation/m7-compiler-script-bootstrap/README.md).
 
 - Release retained-output locks during

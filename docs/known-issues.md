@@ -37,7 +37,11 @@ For current experimental repair use:
 - The original real-project `730a321` benchmark fails before measured rounds:
   the second HumanEval repair warmup loses input freshness at a namespace
   binding and correctly returns unaccepted Unknown evidence. The exact changed
-  root was not captured. Ordinary build-script bootstrap is under investigation;
+  root was not captured. Optional independent ordinary-build recovery is a
+  source candidate pending native qualification; initial regeneration and
+  unsupported fallback remain, with no proof promotion. The [602 positive-control
+  failures and three Cargo path captures](validation/m7-bootstrap-602ec67-gate-failure.md)
+  do not establish recovered publication or real-project gains;
   generated proof inputs remain guarded. There are no measured speedups and
   Vest was not reached. See the [failure record](validation/m7-benchmark-730a321-bootstrap-failure.md).
 - A successful focused check still needs complete Current full validation.
@@ -748,6 +752,14 @@ full evidence. The retained note names a changed native root binding. Terminal
 metadata identifies one generated serde_core source per context and absent
 compiler-family exports; it does not identify the historical first mismatching
 device/inode or absence state.
+
+The [corrected ordinary-build candidate](validation/m7-compiler-script-bootstrap/README.md)
+is integrated for validation. Its independent script transaction can retain
+dependency contracts without changing the original proof guard or accepting
+Unknown evidence. Corrected native controls and whole-product recovery remain
+pending; the [602 failures and Cargo format observations](validation/m7-bootstrap-602ec67-gate-failure.md)
+and [static review](validation/m7-ordinary-script-bootstrap-review.md) supply no
+historical changed-path attribution or benchmark pass.
 
 The [file-only audit](validation/m7-benchmark-namespace-730-review.md) traces a
 possible cleanup/regeneration cycle without excluding that semantic input or

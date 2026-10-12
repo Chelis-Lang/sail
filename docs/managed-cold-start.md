@@ -57,6 +57,23 @@ cleaning. Proof-specific or unaudited Cargo-injected environment declarations
 refuse sharing. See the [decision](decisions/0036-managed-compiler-artifact-families.md)
 for the local cache trust boundary and effective environment binding.
 
+The optional independent ordinary-build recovery candidate is integrated for
+validation; native qualification and real-project recovery remain pending.
+When a compatible generation is unavailable, original script cleaning and
+regeneration still occur. Before that mutation, the candidate acquires its own
+continuous coverage of supported script inputs, Cargo configuration and runtime
+bytes. Only a complete successful Cargo run with matching compilation roles,
+declarations, output seals and final guard checks can establish ordinary contracts.
+The original complete proof transaction is unchanged: Unknown proof evidence
+remains Unknown and cannot create a successful receipt or accepted repair.
+Unsupported paths, aliases, directory declarations, Cargo overrides, environment
+or unavailable guards refuse optional retention and preserve original cleaning.
+The [candidate contract and resource limits](validation/m7-compiler-script-bootstrap/README.md)
+and [independent review](validation/m7-ordinary-script-bootstrap-review.md) bind the
+supported role. The [602 failed positive controls and three exact Cargo path captures](validation/m7-bootstrap-602ec67-gate-failure.md)
+remain distinct from corrected native validation; there is no measured recovery
+or explanation of the historical 730 failure yet.
+
 A fully observed Current negative full verification can retain those ordinary
 dependency contracts when all requested targets finished normally, the complete
 full result contains proof errors without a VIR error, and input declarations

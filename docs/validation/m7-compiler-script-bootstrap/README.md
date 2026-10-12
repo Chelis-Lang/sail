@@ -1,6 +1,7 @@
 # Independent ordinary-script bootstrap candidate
 
-The latest source correction is uncompiled, unexecuted and unselected. The
+The corrected source candidate is integrated for validation; native qualification
+and original real-project recovery remain pending. The
 first two root integrations failed strict compilation before tests; both failures
 remain retained. The third frozen integration (`602ec67`) passed strict checks,
 but its eight bootstrap controls had five passes and three failures: the first
@@ -9,6 +10,8 @@ control's initial admissible baseline. Their original assertions are unchanged.
 That whole gate ended FAIL with 646/649 workspace tests passing; the solver was
 unattempted. Neither the passing negative controls nor the later format
 captures turn those positive failures into acceptance.
+The [portable 602 failure and three Cargo format captures](../m7-bootstrap-602ec67-gate-failure.md)
+preserve those outcomes separately from corrected validation.
 
 Three owned tiny offline Cargo format diagnostics establish the rejected path:
 the single-package prerequisite is `build.rs`; a workspace member emits
@@ -33,7 +36,7 @@ The new real-member control retains the original positive oracle and requires
 wrong-root, foreign-source, relative-root and override refusal plus manifest
 mutation refusal. These corrections have no native validation yet.
 
-The candidate addresses the concrete missing-generation mechanism in the
+The candidate models the cleanup/regeneration hypothesis from the
 [730 benchmark failure](../m7-benchmark-730a321-bootstrap-failure.md): cleaning a
 script regenerates a declared Rust include after the original proof snapshot.
 The proof guard must still reject that changed binding. The exact failed

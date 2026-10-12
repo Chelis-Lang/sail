@@ -45,12 +45,18 @@ qualification. The frozen `730a321` product passes the complete workspace gate
 (634 tests), original solver suite (41 tests) and original installed CLI/MCP
 repair fixture with unchanged checks.
 The [full reader workflow](docs/validation/m7-reader-730a321-terminal.md) also passes
-both four-client collectors: 400 total samples with complete Current graphs,
+both collectors: each retains 200 total samples across four concurrent clients
+(100 Result and 100 Status reads), with complete Current graphs,
 followed by retained CLI/MCP scenarios. Twofold real-project repair-loop
 improvement and complete current standard/cache coverage remain outstanding;
 M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
 See [current validation](docs/validation/m7-core-730a321-validation.md) and
 [known issues](docs/known-issues.md).
+
+An optional ordinary-build recovery candidate is under native qualification.
+It can establish dependency contracts after initial regeneration, but never
+promotes an Unknown proof or replaces full verification. Unsupported coverage
+retains original cleaning. See [build recovery](docs/managed-cold-start.md).
 
 From the Sail checkout, build/register the selected optional source variant with
 `cargo xtask build-verus-engine`, then inspect `sail engine status --output json`.
