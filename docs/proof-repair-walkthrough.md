@@ -104,6 +104,7 @@ assert value["repair"]["batch"]["full"]["currentness"] == "current"
 print("Complete Current full validation accepted this baseline")
 PY
 sail baseline save before-repair --job "$BEFORE"
+sail baseline list --output json
 ```
 
 Continue only after the checks succeed. Background submission returns a **Status**
@@ -119,7 +120,10 @@ not a promise of one driver. Unknown/Historical, incomplete coverage or a failed
 full proof cannot authorize a repair. Inspect the retained notes, including
 `SAIL3114`, before deciding what needs fixing; do not retry blindly until accepted.
 A named baseline is immutable historical reference evidence; use a new name for
-another snapshot.
+another snapshot. `baseline list` returns the saved names. To compare two explicit
+completed jobs without a named baseline, use
+`sail compare BEFORE_JOB_ID AFTER_JOB_ID --output json`; the earlier job comes
+first. Neither form establishes current proof evidence for an edited workspace.
 
 ## Resume events and cancel deliberately
 

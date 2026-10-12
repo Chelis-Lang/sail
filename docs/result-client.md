@@ -8,6 +8,36 @@ fresh responses can reuse that decoding and return independent complete graphs.
 `with_result_decoding_cache(socket)` keeps immediate first-response promotion;
 `without_result_decoding_cache(socket)` explicitly disables retention.
 
+## Connect to the jobs service
+
+`Client::new` expects the jobs socket, not the solver-cache socket. Resolve it
+with `jobs::configured_socket(&cwd)` to preserve the CLI's `SAIL_CACHE_DIR` and
+`SAIL_DAEMON_SOCKET` semantics, including relative settings belonging to that
+project directory. If an application already has the cache socket, derive its
+job endpoint with `jobs::socket_path(&cache_socket)`.
+
+Within a function returning `std::io::Result`, where `job_id` is the durable
+`String` returned by submission:
+
+```rust
+use sail_api::jobs;
+
+let cwd = std::env::current_dir()?;
+let client = jobs::Client::new(jobs::configured_socket(&cwd)?);
+let response = client.call(&jobs::Request::Result { id: job_id })?;
+```
+
+These SDK calls do not start a daemon. Start the service with the CLI, for example
+`sail jobs list` from the same project directory, before using the client.
+Handle `Response::Error` as a service failure even when transport returned `Ok`.
+For `Response::Result`, inspect the job lifecycle, currentness and complete result;
+a fetched response does not establish a successful proof. A repair also requires
+its independent full evidence and `repair.accepted`. `Request::ProofEvents`
+returns a bounded proof-journal page and cursor; `Request::Events` reads the
+separate target-lifecycle log by byte offset.
+
+## Fresh frames and decoding reuse
+
 Every call still opens its own connection, sends its request, and receives the
 complete fresh frame under the existing five-second I/O deadlines. Its framing
 limit remains 32 MiB. Only an exact match of the entire received body to an

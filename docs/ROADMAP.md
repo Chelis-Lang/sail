@@ -148,7 +148,7 @@ speedups or complete M7 acceptance; PR #74 remains draft.
 | Repair workflow | The same frozen source builds and installs ordinary private products; its [fresh original CLI/MCP fixture](validation/m7-core-730a321-validation.md) passes in 104.575 seconds with original 120/30/5 bounds and full checks. The separate instrumented scope remains UNCERTAIN despite a passing fixture. | Frozen HumanEval/Vest acceptance and measured whole-loop gains. Small-fixture success does not qualify real-project performance. |
 | Responsive reads | The [original installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both four-client, 200-sample collectors during verification: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Original retained CLI/MCP scenarios and immutable-input checks also pass. Earlier failures remain failed. | This scoped gate is complete. Preserve full graphs, independent freshness and original latency/lifecycle bounds in later products; it does not qualify real-project repair speed. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | The unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) is interrupted again during preparation by host storage exhaustion and a Docker shutdown. Four warmup records survive; no measured samples do. That earlier reader preparation was also interrupted before its census. The later `730a321` reader workflow passes separately; no current whole-loop repair speedup is claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
+| Frozen repair performance | Earlier attempts of the unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) were interrupted during preparation by host storage exhaustion and a Docker shutdown. Four warmup records survive; no measured samples do. That earlier reader preparation was also interrupted before its census. The later `730a321` reader workflow passes separately; the fresh three-round benchmark outcome remains pending, with no current whole-loop repair speedup claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -181,7 +181,8 @@ repair diagnostics also use fresh scopes. A later host disk-full/Docker shutdown
 interrupts the fresh benchmark and reader scopes before measurement. They remain
 failed or incomplete. Docker lifecycle work is now coordinated through one
 team owner, and heavy builds run serially on the shared instance; no proof is
-automatically replayed after restart. These runs remain pending acceptance.
+automatically replayed after restart. Those interrupted attempts supply no
+acceptance credit; the later `730a321` reader pass is a separate complete scope.
 
 The [recovered repair diagnostic](validation/m7-repair-a960-recovered-setup.md)
 still fails its original 120-second workflow budget, later at MCP repair. Both
@@ -224,8 +225,9 @@ saving 574 MB of logical storage. Every original byte hash remains recoverable;
 the record maps retired archive paths to their compressed copies. Active native
 builds, qualified runtimes and foreign containers remain untouched.
 
-M7 is **not accepted**. PR #74 remains draft until the required product,
-reader, conformance and performance gates pass. Emulated local Linux runs are
+M7 is **not accepted**. PR #74 remains draft: the frozen `730a321` product and
+reader scopes pass, while complete current standard/cache coverage and real-project
+performance remain outstanding. Emulated local Linux runs are
 authorized and labelled; native-host reference reruns are for later. Limits,
 full reports and exact oracles remain unchanged.
 
@@ -240,22 +242,15 @@ Priority order for completing this milestone:
 
 1. Keep the complete workspace, original solver controls and native CI green.
    Preserve failed historical scopes and original bounds.
-2. Reduce measured post-child freshness construction. Preserve continuous input
-   observation when metadata bytes are unchanged, without skipping independent
-   runtime/input validation or publishing Completed before results are ready.
-   Ordinary dependency reuse and source qualification are implemented; installed
-   product acceptance remains open.
-3. Integrate the [validated output-owner overlap change](validation/m7-result-output-overlap-native.md)
-   into the complete product gate, then run the unchanged four-client,
-   200-sample reader census and retained CLI/MCP scenarios. Its affected controls
-   and component comparison pass; component p95 falls from 19.366 to 12.713 ms.
-   That measurement includes no RPC or Python decoding and does not complete
-   the full reader gate. The [transport review](validation/m7-full-result-cost-followup-review.md)
-   finds no additional encoding or full-frame copy on cached hits. Separately
-   include the [selected bounded small HTTP body reads](validation/m7-http-small-known-body-actual-controls.md)
-   in the combined gate. All 38 affected controls, strict checks, read-count
-   sensitivity and the original eight-reader 250 ms comparison pass; that
-   single pair does not establish a stable speedup or resolve earlier failures.
+2. Preserve the [passing original installed repair fixture](validation/m7-core-730a321-validation.md)
+   and [complete reader workflow](validation/m7-reader-730a321-terminal.md) as
+   later products change. Their original checks, complete reports, independent
+   freshness and lifecycle limits remain mandatory. The pass does not isolate
+   the contribution of metadata preservation, output-owner overlap or dependency
+   reuse, and it does not establish real-project whole-loop speedups.
+3. Retain source qualification and the selected runtime's exact delivery identity
+   alongside product evidence. Keep proof contexts and receipts independent of
+   shared ordinary Cargo artifacts; no focused success can replace full validation.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
 5. Measure every frozen HumanEval and Vest repair cycle for three rounds, retaining

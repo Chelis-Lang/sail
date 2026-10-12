@@ -13,6 +13,7 @@ and [roadmap](docs/ROADMAP.md) for guides, limitations and follow-up work.
 
 ```sh
 cargo build --release -p sail-cli -p sail-shim   # builds `sail` and `sail-z3`
+export PATH="$PWD/target/release:$PATH"
 sail verify [ARGS...]    # instead of: cargo verus verify [ARGS...]
 ```
 
@@ -40,9 +41,16 @@ See [live workspace verification](docs/workspace-verification.md).
 
 The optional pinned source engine adds exact-function focus followed by independent
 full-target validation. The selected source engine passes its memory and lowering
-qualification. The CLI/MCP workflow is implemented; complete product integration,
-real-reader latency and twofold repair-loop acceptance remain incomplete. Stock
-verification stays the default. See [known issues](docs/known-issues.md).
+qualification. The frozen `730a321` product passes the complete workspace gate
+(634 tests), original solver suite (41 tests) and original installed CLI/MCP
+repair fixture with unchanged checks.
+The [full reader workflow](docs/validation/m7-reader-730a321-terminal.md) also passes
+both four-client collectors: 400 total samples with complete Current graphs,
+followed by retained CLI/MCP scenarios. Twofold real-project repair-loop
+improvement and complete current standard/cache coverage remain outstanding;
+M7 is not accepted and PR #74 remains draft. Stock verification stays the default.
+See [current validation](docs/validation/m7-core-730a321-validation.md) and
+[known issues](docs/known-issues.md).
 
 From the Sail checkout, build/register the selected optional source variant with
 `cargo xtask build-verus-engine`, then inspect `sail engine status --output json`.
