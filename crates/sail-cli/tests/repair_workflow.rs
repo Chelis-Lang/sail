@@ -85,6 +85,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
             "Synthetic backend transport test; no real engine proof or performance claim.".into(),
         ],
         error: None,
+        engine: None,
     };
     let mut focus = full.clone();
     focus.exit_code = Some(0);
@@ -105,6 +106,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         batched: true,
         selection_error: None,
         preparation: None,
+        engine_fault: None,
     });
     std::fs::write(
         fixture.root.join("result.json"),
