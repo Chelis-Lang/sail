@@ -57,6 +57,14 @@ provisional. A failing full phase, late compiler failure, edited inputs or
 incomplete input coverage cannot authorize a repair.
 A missing or ambiguous exact function records `batch.selection_error` with a
 stable code and prevents acceptance while retaining the independent full report.
+
+Optional ordinary-build recovery is a development candidate pending native
+qualification. It independently guards ordinary script inputs during initial
+regeneration and can retain only dependency contracts. The proof still needs
+its own complete Current full result; an Unknown run remains unaccepted.
+Unsupported paths, configuration, environment or coverage retain original
+cleaning. See [build recovery and limits](managed-cold-start.md).
+
 The private worker exits with the full phase's status so a completed proof is
 not mistaken for an infrastructure failure; the public repair command exits
 nonzero when the repair is not accepted.

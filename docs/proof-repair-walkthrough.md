@@ -8,6 +8,12 @@ unfinished. See [the roadmap](ROADMAP.md),
 The commands and response fields were checked against the CLI/MCP implementation;
 this documentation change does not constitute a new proof run.
 
+Initial dependency regeneration can still leave proof evidence Unknown.
+The optional [ordinary-build recovery candidate](managed-cold-start.md) is under
+native qualification and changes only dependency-contract retention. It supplies
+no proof acceptance or guaranteed first-run success; unsupported inputs retain
+original cleaning and full validation.
+
 ## Install and select the engine
 
 Start with the pinned Verus/Z3 toolchain and a project whose ordinary
