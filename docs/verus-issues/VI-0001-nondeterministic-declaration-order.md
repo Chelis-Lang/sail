@@ -6,7 +6,11 @@
 - **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
 - **Impact on sail:** caps warm cache hit rates. About 5% of fast-tier checks
   miss on an unchanged rerun, and buckets with any reordering re-solve from
-  the first difference.
+  the first difference. In edit loops (rescue L11) a reordered bucket
+  missed in 22 of 63 cycles. On human-eval-verus each costs about 2.7 s,
+  taking cycles from 4.8 s to 7.1 s. This is the largest avoidable
+  solver-side cost measured there
+  ([L11 report](../reports/rescue/l11-warm-sessions.md)).
 - **Workaround:** none needed for correctness (ADR 0008). An opt-in
   normalization mode would need charter rule 5's whole-corpus validation.
 

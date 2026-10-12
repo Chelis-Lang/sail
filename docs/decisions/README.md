@@ -42,3 +42,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0037: Owned async shared HTTP transport (rejected after comparison)](0037-owned-async-shared-http-transport.md)
 - [0038: M7 rescue: native reference hosts, evidence policy and engine conditions](0038-m7-rescue.md)
 - [0039: The engine is built from a private Verus fork](0039-private-verus-fork.md)
+- [0040: Warm solver sessions for edit-loop misses (proposed)](0040-warm-solver-sessions.md)

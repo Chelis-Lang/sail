@@ -176,13 +176,22 @@ them, on a vstd run on macOS arm64:
   sessions.
 
 Across a whole warm run, then, pools could only shorten a small
-solver-side remainder. That finding is about whole runs. In edit loops the
-rescue L6 spike found that a cache miss's latency is mostly solver start-up
-and prefix replay (59 ms of a 72 ms median), so warm exact-prefix sessions
-are back in plan for edit-loop misses (ADR 0038). The levers that matter now:
+solver-side remainder. Edit loops agree.
+
+- **Rescue L11.** It measured warm sessions per missed bucket, on the cycle's
+  critical path ([report](reports/rescue/l11-warm-sessions.md)).
+  - A cycle misses 1–2 buckets. Setup costs 21–82 ms per bucket at the
+    median.
+  - Exact-prefix sessions would save at most 9–19 ms per human-eval-verus
+    cycle (about 0.2%) and 107 ms per vest cycle (0.2%).
+  - History-tolerant sessions would save about the same.
+- **Proposal.** ADR 0040 (proposed) defers both behind the levers below.
+
+The levers that matter now:
 - **The warm Verus frontend** (the charter roadmap item), which may need
   Verus's cooperation;
-- **Upstream determinism (VI-0001),** to raise hit rates;
+- **Determinism (VI-0001),** to raise hit rates. In edit loops a reordered
+  bucket costs about 2.7 s per affected human-eval-verus cycle;
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
 
 ## Charter roadmap (designed for, built later)
