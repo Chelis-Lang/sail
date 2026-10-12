@@ -110,3 +110,36 @@ two-warmup benchmark remain necessary to establish actual bootstrap viability.
 No measured bootstrap gain, Current authority transfer, reader regression fix or
 benchmark acceptance follows from this review. The complete original reader pass
 on product 730 remains a separate scope.
+
+## Environment and compilation follow-ups
+
+Static review also ACKs environment-policy commit `91a2cb8` and its narrow
+correction `b4a8f0dd5c4c7199b7616b5010d24194016ab536`. Both immutable source
+manifests and all five source files match their recorded hashes. The original
+`f697201` review remains retained; these follow-ups draft eight native controls,
+with no native execution in this review.
+
+The shared family/bootstrap policy refuses unaudited child environment in both
+execution declarations and compilation dep-info. Cargo documents dynamic-library
+search-path modification, resolved `RUSTDOC`/`RUSTC_LINKER`, `DEP_` metadata and
+removal of `RUSTFLAGS`; parent values cannot certify those child values.
+The pinned `RUSTC_BOOTSTRAP=1` exception remains explicit.
+See the [official Cargo environment reference](https://doc.rust-lang.org/cargo/reference/environment-variables.html).
+The additional conservative refusals grant no new output or proof authority.
+
+The eighth actual-Cargo control originally required no file after both publication
+routes refused an injected `LD_LIBRARY_PATH` declaration. Existing ordinary
+publication deliberately writes a valid empty envelope after filtering all
+records. The corrected control preserves that representation and requires exact
+empty records, `begin=false`, and forced cleaning of the fixture package. The
+independent bootstrap route still requires absent export. An empty envelope
+cannot authorize reused script outputs, and the original empty-generation
+recovery control remains unchanged.
+
+The first native attempt failed strict compilation before Rust tests: the runner
+used similar `owner`/`owned` names and borrowed a moved hash. The correction only
+renames locals and borrows the unchanged owning report's `context_sha256`.
+The next strict attempt failed import placement and stack-array lints, corrected
+in a later source revision. The [separate gate record](m7-core-244d51d-validation.md)
+retains both failures beside the earlier 244 workspace/solver PASS. None qualifies
+the bootstrap candidate or identifies the historical first changed binding.

@@ -242,7 +242,7 @@
     "original_oracles_or_deadlines_changed": false
   },
   "remaining_validation": [
-    "seven affected Linux controls",
+    "eight affected Linux controls",
     "remove-only-independent-publication sensitivity and restored positive",
     "affected all-target strict checks",
     "combined gate and original solver",
@@ -254,5 +254,86 @@
     "4 GiB aggregate /256 MiB file /30s cooperative hash phases unmeasured for complete runtime",
     "Blocking filesystem calls and exceptional supervisor descendant closure are not hard bounded promises",
     "Historical first changed binding is not identified"
-  ]
+  ],
+  "environment_followup_reviews": [
+    {
+      "commit": "91a2cb8c40157edc018835a8f25b521197872406",
+      "source_manifest": {
+        "path": "docs/validation/m7-compiler-script-bootstrap/source.json",
+        "bytes": 3329,
+        "sha256": "1c8b0c19c7fd2f9e333972a412d065b465a2f545ac04b742e1454765cd475963"
+      },
+      "source": [
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_family.rs",
+          "bytes": 27292,
+          "sha256": "1f6914fa4dc8a05d5683cb4b4f5aa63bc78352c2343e29df459b75e02a4169ed"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_bootstrap.rs",
+          "bytes": 22303,
+          "sha256": "651968991537c1849296d31cda92923f25f2d59ed4349d05d410a2300bd46581"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs",
+          "bytes": 21252,
+          "sha256": "53d1c1636987ced2ed6d301cc222c535fb7b8fd2a4d8c899858eab1c2c776540"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/runner.rs",
+          "bytes": 118467,
+          "sha256": "7e558e1116ce4ede2aca4d329171fff45adedcd8870156ddd0fd371566d80a7d"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/source_inputs.rs",
+          "bytes": 7707,
+          "sha256": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+        }
+      ],
+      "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+      "authority_ack": true,
+      "native_controls_executed_in_this_review": 0,
+      "drafted_controls": 8
+    },
+    {
+      "commit": "b4a8f0dd5c4c7199b7616b5010d24194016ab536",
+      "source_manifest": {
+        "path": "docs/validation/m7-compiler-script-bootstrap/source.json",
+        "bytes": 4031,
+        "sha256": "e7aa027ab62718ea90983df2cdf041f0177b51f20b15f68b6e139d5d6dbe8af5"
+      },
+      "source": [
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_family.rs",
+          "bytes": 27292,
+          "sha256": "1f6914fa4dc8a05d5683cb4b4f5aa63bc78352c2343e29df459b75e02a4169ed"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_bootstrap.rs",
+          "bytes": 22303,
+          "sha256": "651968991537c1849296d31cda92923f25f2d59ed4349d05d410a2300bd46581"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs",
+          "bytes": 21796,
+          "sha256": "82adce9e5d6f5de2e3653aac4d115776cd28adc7282eada7634f4811f863e9cd"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/runner.rs",
+          "bytes": 118620,
+          "sha256": "d817c121abea4b71e4558acc96590b47f1ae95683299e91b03ee98808230a1b2"
+        },
+        {
+          "path": "crates/sail-verus/src/managed/source_inputs.rs",
+          "bytes": 7707,
+          "sha256": "63a7202d81d371ed874f30167494b45544abe319912cb3ba8de839d125f0a960"
+        }
+      ],
+      "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+      "authority_ack": true,
+      "native_controls_executed_in_this_review": 0,
+      "drafted_controls": 8
+    }
+  ],
+  "environment_followup_conclusion": "Shared refusal covers unaudited Cargo injected/removed child environment. Original publication may write empty records; exact empty records, begin=false and forced clean prove absence of reuse authority. The b4 correction borrows the unchanged report-owned context hash and only renames bootstrap locals."
 }
