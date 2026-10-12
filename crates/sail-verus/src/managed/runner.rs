@@ -1543,6 +1543,10 @@ pub(crate) fn run_engine(
         || !super::build_inputs::family::bootstrap::Bootstrap::supported_arguments(&config.args)
         || !super::build_inputs::family::bootstrap::Bootstrap::eligible_workload(&data)
     {
+        diagnostics.bootstrap(
+            super::diagnostics::BootstrapStage::OwnerEligibility,
+            super::diagnostics::BootstrapOutcome::Skipped,
+        );
         None
     } else {
         let mut runtime = runtime_paths(&config.cache, &hash);
@@ -1552,9 +1556,24 @@ pub(crate) fn run_engine(
             runtime.push(state.join(format!("{identity}.json")));
             runtime.push(link);
         }
-        let bootstrap_candidate =
-            super::build_inputs::family::bootstrap::Bootstrap::begin(&data, &extras, &runtime);
-        bootstrap_candidate.filter(|candidate| candidate.runtime_matches(&config.cache, &hash))
+        let bootstrap_candidate = super::build_inputs::family::bootstrap::Bootstrap::begin_traced(
+            &data,
+            &extras,
+            &runtime,
+            Some(&diagnostics),
+        );
+        bootstrap_candidate.filter(|candidate| {
+            let matches = candidate.runtime_matches(&config.cache, &hash);
+            diagnostics.bootstrap(
+                super::diagnostics::BootstrapStage::InitialRuntime,
+                if matches {
+                    super::diagnostics::BootstrapOutcome::Ready
+                } else {
+                    super::diagnostics::BootstrapOutcome::Refused
+                },
+            );
+            matches
+        })
     };
     let mut before = snapshot_metadata(&data, &extras);
     before.complete &= source_coverage;
@@ -1902,17 +1921,26 @@ pub(crate) fn run_engine(
             .all(|target| target.complete)
     {
         // The report owns the unchanged full proof-context hash at this point.
-        if let Some(certificate) = script_bootstrap
-            .as_mut()
-            .filter(|candidate| candidate.runtime_matches(&config.cache, &result.context_sha256))
-        {
-            certificate.publish(
+        if let Some(certificate) = script_bootstrap.as_mut().filter(|candidate| {
+            let matches = candidate.runtime_matches(&config.cache, &result.context_sha256);
+            diagnostics.bootstrap(
+                super::diagnostics::BootstrapStage::FinalRuntime,
+                if matches {
+                    super::diagnostics::BootstrapOutcome::Ready
+                } else {
+                    super::diagnostics::BootstrapOutcome::Refused
+                },
+            );
+            matches
+        }) {
+            certificate.publish_traced(
                 &paths.compiler_inputs,
                 &compiler_hash,
                 &paths.target,
                 &paths.build_inputs,
                 &after_data,
                 &paths.run.join("artifacts.jsonl"),
+                Some(&diagnostics),
             );
         }
     }

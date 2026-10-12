@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "scope": "optional managed-script-bootstrap refusal stage observations",
+  "status": "unselected source-only candidate; Rust/native/product/diagnostic execution pending",
+  "base": "27778b3",
+  "source_sha256": {
+    "crates/sail-verus/src/managed/diagnostics.rs": "dc82aca20a8a1cadc377e76181b29d1263cf353cc5e626c7784981528a5a7235",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap.rs": "c04271acf7029c524e7d63d20fc7417b343fd3c836b640b9c3189d3da5848fa3",
+    "crates/sail-verus/src/managed/build_inputs_bootstrap_tests.rs": "fb351e79500187cee70ed08bfb997bb82e37113ea10e46a7f9eb8938759d2cc5",
+    "crates/sail-verus/src/managed/runner.rs": "78865d12356587e157fad4e41ced3e023ade99229fe1c38dcbc3704444acda6b",
+    "scripts/m7-publication-timing-diagnostic.py": "8600d3624b9ac9b7474e913e4f4365aec66a79a3449ec8ed74330d29b7404ab8",
+    "scripts/test-m7-publication-timing-diagnostic.py": "5e3fbcb8b287db2a2c1fa875085d3ff2f7d559b3ced7b2c838ba1d5184192f3e"
+  },
+  "cargo_lock_sha256": "c70b35aee0f67efe1fa58c419546031fcf880d08cbf922f578bd307e928c8ceb",
+  "row": {
+    "kind": "managed-script-bootstrap",
+    "keys": [
+      "kind",
+      "stage",
+      "outcome",
+      "pid"
+    ],
+    "outcomes": [
+      "ready",
+      "refused",
+      "skipped",
+      "attempted"
+    ],
+    "privacy": "closed enum stage labels; no paths/package IDs/source/environment values"
+  },
+  "sink": {
+    "existing_selector": "SAIL_JOB_EVENTS",
+    "files": 64,
+    "rows_per_file": 64,
+    "bytes_per_file": 16384,
+    "sharing": "timing and bootstrap rows use the SAME original sink and aggregate caps",
+    "disabled": "no row serialization or additional file creation; original diagnostic constructor unchanged",
+    "uncertainty": "missing/truncated/cap-exhausted rows are unavailable evidence"
+  },
+  "observation_points": [
+    "acquisition completion or first grouped refusal",
+    "original initial runtime_matches boolean",
+    "original final runtime_matches boolean",
+    "final publication attempt or first grouped role/hash/output/environment/observer/lease refusal"
+  ],
+  "publication": "attempted labels original best-effort emission, NOT persisted success or authority",
+  "purity": {
+    "additional_hashes": 0,
+    "additional_stats": 0,
+    "additional_environment_reads": 0,
+    "additional_guard_checks": 0,
+    "bootstrap_retained_fields_added": 0,
+    "unchanged": [
+      "proof/report and receipt rules",
+      "owner inventory and runtime binding",
+      "all original checks/short-circuit order",
+      "cancellation and fallback",
+      "cooperative deadlines and resource limits",
+      "first-pass/final-journal authority requirements"
+    ]
+  },
+  "controls": {
+    "python_retention": {
+      "passed": 14,
+      "scope": "host fake files and schema only; no proof actors"
+    },
+    "rust_drafted_unexecuted": [
+      "bootstrap_first_refusal_and_disabled_observation_preserve_original_outcome",
+      "bootstrap_rows_share_original_limits_and_busy_sink_refuses_observation",
+      "bootstrap_observation_preserves_actual_publication_and_first_role_refusal"
+    ]
+  },
+  "limits": [
+    "refusal stage is a group of original checks, not an exact exception/cause",
+    "unwind or abrupt process loss may prevent a row",
+    "no first-export historical attribution from retained old contracts",
+    "not selected into current gate/product; parent may use only after review and actual native validation"
+  ]
+}

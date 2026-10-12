@@ -183,3 +183,31 @@ because `CACHEDIR.TAG` is missing or invalid. Original ten bootstrap controls
 pass; the new fixture's later retry/export/barrier assertions and solver suite
 are not completed in that scope. A narrow fixture repair is pending, with no
 production guard, oracle, deadline or performance claim changed.
+
+
+### Optional refusal-stage diagnostic candidate
+
+A separate unselected source-only candidate uses the existing opt-in managed
+setup sink to record which original bootstrap operation returned unavailable.
+Each attempt emits one fixed row with kind, stage, outcome and PID. Acquisition,
+initial/final runtime matching, publication role groups and final native barriers
+retain the same original checks and order. No extra hash, stat, environment read
+or guard retry is added. Fixed stages contain no paths, package identifiers,
+source bytes or environment values. The same 64-file, 64-row and 16 KiB caps
+apply to timings and bootstrap rows together; unavailable or exhausted capture
+must not be interpreted as an absence of refusal.
+
+Ready means an original operation returned its original positive outcome,
+not proof Current or completed publication. Publish-emission/attempted records
+only the existing best-effort write attempt; it does not certify that an export
+was persisted. A refusal stage identifies a group of original checks, not a
+historical causal attribution. The original proof result, receipts, quotas,
+owner fields, cancellation and fallback remain unchanged. The existing public-only
+retention validator admits only this closed extra schema with the same bounds.
+
+Fourteen host Python retention controls pass. Three new Rust controls are drafted
+but uncompiled/unexecuted: disabled serialization and first refusal, shared sink
+limits/contention, and actual Cargo publication with observation on/off plus an
+unchanged unsupported-role refusal. This candidate is not selected into the
+current production gate or product. See its
+[source inventory](refusal-diagnostic.json).

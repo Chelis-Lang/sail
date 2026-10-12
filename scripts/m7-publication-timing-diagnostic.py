@@ -24,6 +24,16 @@ PHASES = set("metadata runtime-context runtime-binaries helper-identity toolchai
              "context-configuration owned-paths initial-snapshot input-guards monitored-snapshot "
              "input-barrier target-cleanup invocation-seal result-publication receipt-publication "
              "compiler-family-publication".split())
+BOOTSTRAP_STAGES = set(
+    "owner-eligibility owner-environment owner-roots owner-observer owner-lease "
+    "owner-retained owner-hashes owner-configuration owner-barriers owner-ledger owner-complete "
+    "initial-runtime final-runtime publish-ledger publish-journal publish-record-set "
+    "publish-cancellation publish-record-budget record-binding record-package "
+    "record-declarations record-digest record-environment record-execution record-compilation "
+    "record-source record-binary record-aliases record-dep-info record-inputs "
+    "record-compiler-environment publish-hashes publish-outputs publish-environment "
+    "publish-observer publish-lease publish-emission".split())
+
 NUMERIC = set("sequence started_us dispatch_delay_us total_us read_us lookup_us output_seal_us "
               "freshness_us frame_key_us frame_lookup_us encode_us write_us child_wait_us "
               "child_exit_observed_us document_read_us freshness_establish_us status_save_us "
@@ -90,6 +100,12 @@ def validate(data, rpc):
     assert len(lines) <= 64, "setup-rows"
     for line in lines:
         row = decode(line)
+        if isinstance(row, dict) and row.get("kind") == "managed-script-bootstrap":
+            assert set(row) == {"kind", "stage", "outcome", "pid"}, "bootstrap-schema"
+            assert isinstance(row["stage"], str) and row["stage"] in BOOTSTRAP_STAGES
+            assert row["outcome"] in ("ready", "refused", "skipped", "attempted")
+            assert uint(row["pid"], 32)
+            continue
         assert isinstance(row, dict) and set(row) == {
             "kind", "phase", "pid", "started_ms", "elapsed_ms"}, "setup-schema"
         assert row["kind"] == "managed-setup-phase" and isinstance(row["phase"], str) and row["phase"] in PHASES

@@ -1021,3 +1021,61 @@ fn bootstrap_retry_clean_preserves_missing_and_refuses_unsupported_script_roles(
         vec!["missing"]
     );
 }
+
+#[test]
+fn bootstrap_observation_preserves_actual_publication_and_first_role_refusal() -> TestResult {
+    let fixture = Fixture::new()?;
+    let path = fixture.root.join("cache/bootstrap-diagnostic.jsonl");
+    let diagnostics = crate::managed::diagnostics::Diagnostics::for_test(&path);
+    let mut owner = Bootstrap::begin_traced(&fixture.data, &[], &[], Some(&diagnostics))
+        .ok_or("observed owner unavailable")?;
+    fixture.compile()?;
+    fixture.publish(&mut owner);
+    assert!(fixture.export.is_file());
+    std::fs::remove_file(&fixture.export)?;
+    owner.publish_traced(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &fixture.data,
+        &fixture.journal,
+        Some(&diagnostics),
+    );
+    assert!(
+        fixture.export.is_file(),
+        "observation cannot refuse an original healthy contract"
+    );
+    std::fs::remove_file(&fixture.export)?;
+    let mut unsupported = fixture.data.clone();
+    unsupported["packages"][0]["dependencies"] = serde_json::json!([{"kind":"build"}]);
+    owner.publish_traced(
+        &fixture.export,
+        "compiler",
+        &fixture.target,
+        &fixture.local,
+        &unsupported,
+        &fixture.journal,
+        Some(&diagnostics),
+    );
+    assert!(
+        !fixture.export.exists(),
+        "observation cannot admit an original refused role"
+    );
+    let rows: Vec<Value> = std::fs::read_to_string(&path)?
+        .lines()
+        .map(serde_json::from_str)
+        .collect::<Result<_, _>>()?;
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0]["stage"], "owner-complete");
+    assert_eq!(rows[0]["outcome"], "ready");
+    assert_eq!(rows[1]["stage"], "publish-emission");
+    assert_eq!(rows[1]["outcome"], "attempted");
+    assert_eq!(rows[2]["stage"], "record-package");
+    assert_eq!(rows[2]["outcome"], "refused");
+    for row in rows {
+        assert_eq!(row["kind"], "managed-script-bootstrap");
+        assert_eq!(row.as_object().map(serde_json::Map::len), Some(4));
+    }
+    Ok(())
+}
