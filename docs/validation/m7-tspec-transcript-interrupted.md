@@ -20,8 +20,10 @@ or open section. Stock AIR writes QUERY before enqueue and RESPONSE after the
 reader returns; logging intent does not certify accepted solver wire. The
 newest open `proof_bit64_and_rel_mod._47` transcript is empty. The main
 `math__bits_p` transcript has 35 completed pairs. Pinned Verus creates the new
-spun-off context's log before replacing the prior AIR context and before lazy
-solver launch or the first send. Setup or disposal is a possible boundary;
+spun-off context's log before lazy solver launch or the first send. The context
+is a fresh query-iteration local (`verifier.rs:1533`), so its initialization
+does not replace a prior iteration's context. The earlier replacement wording
+was incorrect. Setup or disposal in another active context remains a possible boundary;
 no actual stack demonstrates the blocked operation.
 
 The retained archive contains 545 regular files, including empty plain stdout,

@@ -148,7 +148,7 @@ speedups or complete M7 acceptance; PR #74 remains draft.
 | Repair workflow | The same frozen source builds and installs ordinary private products; its [fresh original CLI/MCP fixture](validation/m7-core-730a321-validation.md) passes in 104.575 seconds with original 120/30/5 bounds and full checks. The separate instrumented scope remains UNCERTAIN despite a passing fixture. | Frozen HumanEval/Vest acceptance and measured whole-loop gains. Small-fixture success does not qualify real-project performance. |
 | Responsive reads | The [original installed `730a321` workflow](validation/m7-reader-730a321-terminal.md) passes both four-client, 200-sample collectors during verification: Python Result/Status p95 94.197/59.896 ms; Rust 67.483/50.273 ms. Current Result is a complete 4,311,179-byte graph. Original retained CLI/MCP scenarios and immutable-input checks also pass. Earlier failures remain failed. | This scoped gate is complete. Preserve full graphs, independent freshness and original latency/lifecycle bounds in later products; it does not qualify real-project repair speed. |
 | Default/cache conformance | The last [complete standard attempt](validation/m7-default-standard-e0ca-terminal.md) gives 158 Same and one stock Verismo timeout at its original 3,600-second limit. Native PR conformance passes pass-through, fill and warm, each 33/33 Same. | Complete current-product standard coverage and cache fill/warm. A subset pass does not complete the failed standard scope. |
-| Frozen repair performance | Earlier attempts of the unchanged [benchmark workflow](validation/m7-current-benchmark-launcher.md) were interrupted during preparation by host storage exhaustion and a Docker shutdown. Four warmup records survive; no measured samples do. That earlier reader preparation was also interrupted before its census. The later `730a321` reader workflow passes separately; the fresh three-round benchmark outcome remains pending, with no current whole-loop repair speedup claimed. | Three rounds, spread and at least 2× median improvement on each of HumanEval and Vest, with full verdict/diagnostic oracles. |
+| Frozen repair performance | The fresh unchanged `730a321` [whole-loop benchmark](validation/m7-benchmark-730a321-bootstrap-failure.md) fails in the second HumanEval repair warmup: an input-binding change makes full evidence Unknown, so acceptance correctly refuses. Four setup records and zero measured samples survive; Vest was not reached. Earlier storage and Docker interruptions remain separate failures. | Correct ordinary build-script bootstrap under an independent input guard, then run three original rounds, spread and at least 2× median improvement on each project, with full verdict/diagnostic oracles. |
 
 The separate [isolated cache-maintenance diagnostic](validation/m7-gc-c97-isolated-diagnostic.md)
 passes in 8.78 seconds without reproducing the stall. It does not replace the
@@ -253,7 +253,9 @@ Priority order for completing this milestone:
    shared ordinary Cargo artifacts; no focused success can replace full validation.
 4. Resolve the stock Verismo wait sufficiently to complete current default
    standard conformance and cache fill/warm coverage.
-5. Measure every frozen HumanEval and Vest repair cycle for three rounds, retaining
+5. Resolve the real-project ordinary build-script bootstrap failure without
+   accepting Unknown proofs or weakening input coverage. Then measure every
+   frozen HumanEval and Vest repair cycle for three rounds, retaining
    spread and resources; meet at least twofold median improvement on each.
 6. Keep user guides, known issues and developer records current. Merge only after
    all required local acceptance and native CI pass.

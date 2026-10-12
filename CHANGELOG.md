@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Record the unchanged real-project repair benchmark's `730a321` bootstrap
+  failure. Unknown input freshness correctly prevents acceptance; no measured
+  rounds or speedup are available. Earlier full reader and small repair passes
+  remain separate scopes. See the [failure record](docs/validation/m7-benchmark-730a321-bootstrap-failure.md).
+
 - Release retained-output locks during
   independent freshness validation, then check the same continuously guarded
   owner again. Complete fallback, payloads and quotas remain unchanged. Native
