@@ -8,7 +8,8 @@ workaround.
 bots and automation, and is a project rule (AGENTS.md). The owner decided on
 2026-10-12 that Sail stays on its own Verus fork
 ([Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), branch `sail`)
-and fixes known Verus issues there; upstream contribution is not planned.
+and fixes known Verus issues there; upstream contribution is not planned
+([ADR 0039](../decisions/0039-private-verus-fork.md)).
 These entries are the local record. Each fork fix is one commit with its
 regression test, so the series can be rebased onto a new Verus release
 ([engine/verus/README.md](../../engine/verus/README.md)). Entries still keep
