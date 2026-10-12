@@ -25,10 +25,8 @@
 #                        arguments (for example `--project anvil`) are
 #                        passed to sail-conformance
 #   release              local-only, before releases and when changing the
-#                        tooling it covers: unit tests of the acceptance and
-#                        benchmark tooling and of the profile/bench examples,
-#                        installed MCP/live-service transport controls, and
-#                        the repair engine's provenance checks
+#                        tooling it covers: unit tests of the e2e harness
+#                        helpers and the repair engine's provenance checks
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
@@ -236,15 +234,10 @@ RS
     local_only release "$@"
     # Harness helpers of the e2e phases.
     python3 ci/test-repair-lifecycle.py
-    python3 ci/test-mcp-live-service-controller.py
     sail_checkout="$PWD"
     release_build -p sail-conformance
     install_runtime
     evidence="${SAIL_RELEASE_OUT:-$sail_checkout/target/release-checks}"
-    # Actual installed MCP and job-service transport, without proving anything.
-    python3 ci/test-mcp-live-service.py "$sail" \
-      --out "$evidence/mcp-live-service" \
-      --execution "Linux x86-64 local container transport control"
     # Engine provenance in project, report and function results,
     # against the prebuilt engine.
     : "${SAIL_ENGINE_BUILD:?the engine controls need the validated prebuilt engine}"

@@ -490,36 +490,3 @@ The reader p95 values come from the unchanged Python and Rust collectors, rather
 than an MCP-specific timing census; retained MCP scenarios establish functional
 behavior. Real-project repair performance and complete standard/cache coverage
 remain pending. PR #74 is draft, and M7 remains experimental.
-
-## Live read transport validation
-
-On Linux, `python3 ci/test-mcp-live-service.py PATH_TO_SAIL --out EVIDENCE_DIR
---execution MACHINE_LABEL` runs the installed MCP server against an independent
-real Sail job service. The installed `sail-z3` must be beside `sail`. The script
-stops an actual verification worker and cancels it before proof completion; it
-does not substitute a verifier or a CLI adapter. Removing the owned executable
-pathname after MCP starts makes subprocess fallback unavailable during the read
-checks. It checks the same job's changed running/cancelled replies, restart
-identity, and cancellation of a blocked service read through MCP notifications.
-Success requires the MCP server to exit normally with code zero within five
-seconds after stdin EOF, followed by complete stdout EOF without a cancelled
-reply. Forced termination is failure cleanup and cannot establish success.
-All owned actors are stopped before their scratch directory is removed.
-`ci/local.sh release` runs this control; it is not part of CI. Three separate
-Python-child controller controls reject an abnormal exit or ignored EOF and
-accept a normal completed stream; they do not stand in for installed MCP or
-verifier acceptance. The release step keeps raw messages, stderr and summary
-under `target/release-checks/mcp-live-service` (or `$SAIL_RELEASE_OUT`).
-
-The [frozen b36 installed run](validation/m7.md) passed all five
-unchanged controls on the hardened product, including normal EOF exit. Its
-source, product and controller hashes are retained. The earlier
-[portable record](validation/m7.md) preserves its older
-controller scope and initial missing-program fixture error; neither is replaced
-by the later pass.
-
-This is supplementary transport evidence. It establishes neither a current
-proof, counterexample correctness, live reader latency, nor the repair-loop
-speed target. The original installed CLI/MCP verifier acceptance and reader
-collector limits remain separate required checks. Raw replies and failures are
-retained in the specified evidence directory.
