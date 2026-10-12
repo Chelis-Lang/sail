@@ -235,7 +235,6 @@ RS
     # must catch quickly. Run before releases and when changing what they cover.
     local_only release "$@"
     # Harness helpers of the e2e phases.
-    python3 scripts/test-managed-timeout-evidence.py
     python3 ci/test-repair-lifecycle.py
     python3 ci/test-mcp-live-service-controller.py
     sail_checkout="$PWD"

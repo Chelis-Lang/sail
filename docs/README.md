@@ -30,10 +30,10 @@ The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
-[Managed cold-start diagnosis](managed-cold-start.md) explains preparation stages,
-bounded timeout evidence and dependency-proof requirements.
+[Managed cold-start diagnosis](managed-cold-start.md) explains preparation stages
+and dependency-proof requirements.
 The [reader acceptance guide](reader-acceptance.md) gives the native reader
-latency gate, its current results and how to run it.
+latency gate and how to run it.
 The [interactive source engine](../engine/verus/README.md) describes the selected
 patch, the prebuilt artifact and the runtime identity. Its [qualification](../engine/verus/qualification-linux.json)
 passes the source-level checks. Long corpus, source-build and benchmark work

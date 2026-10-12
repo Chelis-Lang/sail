@@ -99,22 +99,10 @@ performance validation. No repair fixture
 deadline, cold acceptance bound or benchmark requirement is lengthened. Actual
 whole-product performance and the [roadmap](ROADMAP.md) requirements remain open.
 
-`ci/test-managed.py` now writes per-invocation timing and observation-only
-progress events outside its temporary fixture. On timeout it captures only the
-owned descendant tree and run-sidecar inventory: CPU ticks, process identity,
-crate selectors, working directories and FD targets where available. It never
-reads a full process environment or archives runtime configuration contents.
-These files are private diagnostics; portable records select nonsecret facts and
-hashes. Capture bounds are 1 MiB of read/link bytes, 128 processes, 512 inventory
-entries, 128 tasks and 64 FDs per process, with a half-second scheduling budget.
-Kernel operations cannot be interrupted by an elapsed-time check; capture may be
-partial and cannot prove a cause. Capture errors still reach the original owned
-kill/reap path. The 240-second verification timeout and all acceptance assertions
-remain unchanged; evidence work is cleanup after a failed deadline, never an
-extension that can admit a late result.
-Reads use nonblocking, no-follow descriptors and refuse nonregular files, so a
-substituted FIFO cannot make diagnostics wait for a writer. The small evidence
-controls run in the workspace gate; they do not prewarm or invoke Verus.
+`ci/test-managed.py` writes per-invocation timing and observation-only
+progress events outside its temporary fixture. On a timeout it kills the owned
+process group and keeps the run's stdout and stderr. The 240-second
+verification timeout and all acceptance assertions are unchanged.
 
 With a nonempty existing `SAIL_JOB_EVENTS` opt-in, managed setup also writes adjacent
 `*.setup-PID-SERIAL.jsonl` files. They record fixed phase names, PID and relative

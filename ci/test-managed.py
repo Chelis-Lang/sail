@@ -2,7 +2,6 @@
 """Bounded real-tool acceptance for managed proof receipts; never a benchmark."""
 
 import json
-import importlib.util
 import os
 from pathlib import Path
 import shutil
@@ -14,40 +13,24 @@ import tempfile
 import time
 
 sail = str(Path(sys.argv[1]).resolve())
-evidence_spec = importlib.util.spec_from_file_location("managed_evidence", Path(__file__).with_name("managed-evidence.py"))
-timeout_evidence = importlib.util.module_from_spec(evidence_spec)
-evidence_spec.loader.exec_module(timeout_evidence)
 cargo_verus = os.environ.get("SAIL_CARGO_VERUS") or shutil.which("cargo-verus")
 if not cargo_verus:
     raise SystemExit("managed acceptance requires the pinned cargo-verus")
 
-def bounded_verification(arguments, cwd, env, timeout, diagnostic=None):
+def bounded_verification(arguments, cwd, env, timeout):
     process = subprocess.Popen(arguments, cwd=cwd, env=env,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                start_new_session=True)
     try:
         stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired as failure:
+        # Stop the complete owned verification tree before its scratch directory
+        # is removed. Killing only Sail leaves Cargo writing into that directory.
         try:
-            if diagnostic is not None:
-                cache, events, destination = diagnostic
-                try:
-                    timeout_evidence.capture_timeout(process.pid, cache, events, destination)
-                except Exception as diagnostic_error:
-                    # Evidence failure must never prevent the original owned cleanup.
-                    try:
-                        destination.write_text(json.dumps({"scope": "timeout-only diagnostic failed",
-                                                           "error": type(diagnostic_error).__name__}))
-                    except OSError:
-                        pass
-        finally:
-            # Stop the complete owned verification tree before its scratch directory
-            # is removed. Killing only Sail leaves Cargo writing into that directory.
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            failure.stdout, failure.stderr = process.communicate(timeout=10)
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        failure.stdout, failure.stderr = process.communicate(timeout=10)
         raise
     return subprocess.CompletedProcess(arguments, process.returncode, stdout, stderr)
 
@@ -133,8 +116,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             observed_env = dict(env, SAIL_JOB_EVENTS=str(events))
             try:
                 run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
-                                           project, observed_env, 240,
-                                           (root / "cache", events, evidence / (label + ".timeout.json")))
+                                           project, observed_env, 240)
             except subprocess.TimeoutExpired as failure:
                 (evidence / (label + ".stdout.json")).write_bytes(failure.stdout or b"")
                 (evidence / (label + ".stderr")).write_bytes(failure.stderr or b"")
