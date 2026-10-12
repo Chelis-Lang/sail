@@ -81,7 +81,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
     let jobs = store::load(&root)?;
     let listener = UnixListener::bind(&socket)?;
     std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
-    listener.set_nonblocking(true)?;
+    configure_accept(&listener)?;
     let result_cache = result_cache::ResultCache::default();
     let outputs = output_service::Queue::new(result_cache.budget());
     Ok(JobServer {
@@ -180,6 +180,8 @@ impl JobHandle {
             }
         }
         if let Some(thread) = self.listener.take() {
+            // Wake a blocked accept; its bounded wait remains the fallback.
+            let _ = UnixStream::connect(&self.socket);
             let _ = thread.join();
         }
         if let Some(thread) = self.worker.take() {
@@ -198,10 +200,30 @@ impl Drop for JobHandle {
     }
 }
 
+/// Bounded wait of one blocking `accept` before the endpoint rechecks `stop`.
+#[cfg(target_os = "linux")]
+const ACCEPT_WAIT: Duration = Duration::from_millis(100);
+
+/// On Linux, a blocking `accept` returns as soon as a client connects; its
+/// `SO_RCVTIMEO` bound lets the endpoint observe shutdown without polling.
+/// Other platforms keep the original nonblocking poll.
+fn configure_accept(listener: &UnixListener) -> io::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        listener.set_nonblocking(false)?;
+        socket2::SockRef::from(listener).set_read_timeout(Some(ACCEPT_WAIT))
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        listener.set_nonblocking(true)
+    }
+}
+
 fn endpoint(listener: &UnixListener, state: &Arc<State>) {
     let clients = Arc::new(AtomicUsize::new(0));
     while !state.stop.load(Ordering::SeqCst) {
         match listener.accept() {
+            Ok(_) if state.stop.load(Ordering::SeqCst) => break,
             Ok((mut stream, _)) => {
                 if clients.fetch_add(1, Ordering::SeqCst) >= MAX_CLIENTS {
                     clients.fetch_sub(1, Ordering::SeqCst);
@@ -264,6 +286,15 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                     clients.fetch_sub(1, Ordering::SeqCst);
                 });
             }
+            #[cfg(target_os = "linux")]
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::WouldBlock
+                        | io::ErrorKind::TimedOut
+                        | io::ErrorKind::Interrupted
+                ) => {}
+            #[cfg(not(target_os = "linux"))]
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
                 std::thread::sleep(Duration::from_millis(10));
             }
@@ -454,6 +485,35 @@ fn cancel(state: &State, id: &str, superseded: bool) -> io::Result<Status> {
 #[cfg(test)]
 mod rpc_diagnostic_tests {
     use super::*;
+
+    /// The endpoint serves while blocked in `accept`, and shutdown wakes it
+    /// rather than leaving the listener thread waiting for another client.
+    #[test]
+    fn blocked_accept_serves_requests_and_wakes_for_shutdown() -> io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-rpc-accept-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let outcome = (|| {
+            let socket = root.join("jobs.sock");
+            let mut handle =
+                bind(&socket, &root.join("jobs"), &std::env::current_exe()?)?.spawn()?;
+            let client = sail_api::jobs::Client::new(&socket);
+            for _ in 0..3 {
+                // Spaced beyond one bounded accept wait on Linux.
+                std::thread::sleep(Duration::from_millis(150));
+                assert!(matches!(
+                    client.call(&Request::Capabilities)?,
+                    Response::Capabilities { repair: true, .. }
+                ));
+            }
+            let started = std::time::Instant::now();
+            handle.shutdown();
+            assert!(started.elapsed() < Duration::from_secs(5));
+            assert!(!socket.exists());
+            Ok(())
+        })();
+        std::fs::remove_dir_all(root)?;
+        outcome
+    }
 
     #[test]
     fn optional_metadata_preserves_complete_socket_responses_without_worker_work() -> io::Result<()>
