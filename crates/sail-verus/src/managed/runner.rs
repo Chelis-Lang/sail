@@ -692,6 +692,10 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
 
 /// A complete negative full run can retain ordinary dependency contracts, but
 /// neither Cargo's 101 nor Currentness alone establishes that completion.
+/// Stock and source-engine runs both qualify; only the completion evidence
+/// differs (the engine's sealed terminal, or stock's normal exit and whole
+/// document). Without this, a failed proof consumed the generation and the next
+/// run cleaned every build-script package, re-verifying vstd.
 fn negative_compiler_generation(
     paths: &Paths,
     data: &Value,
@@ -701,8 +705,7 @@ fn negative_compiler_generation(
     engine: bool,
     args: &[String],
 ) -> bool {
-    if !engine
-        || !script_coverage
+    if !script_coverage
         || focused(args)
         || result.currentness != Currentness::Current
         || result.exit_code != Some(101)
@@ -748,7 +751,7 @@ fn negative_compiler_generation(
             || !calls.values().any(|call| call.report.exit_code == Some(1))
             || !calls
                 .values()
-                .all(|call| crate::engine::completed_compiler_output(&paths.run, call))
+                .all(|call| crate::engine::completed_compiler_output(&paths.run, call, engine))
         {
             return Some(false);
         }
@@ -2243,7 +2246,7 @@ mod tests {
             &f.data,
             &f.expected,
             &f.result,
-            true,
+            false,
             false,
             &[]
         ));
@@ -2337,6 +2340,66 @@ mod tests {
         assert!(!f.eligible());
         std::fs::remove_file(f.paths.run.join("invocations/pending.json"))?;
         assert!(f.eligible());
+        Ok(())
+    }
+
+    /// A stock run has no engine seal: its whole document and normal exit
+    /// stand in for it, and every other refusal still applies.
+    #[test]
+    fn stock_negative_generation_needs_a_complete_document_and_normal_exit()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut f = NegativeGeneration::new("stock")?;
+        let stock = |f: &NegativeGeneration| {
+            negative_compiler_generation(
+                &f.paths,
+                &f.data,
+                &f.expected,
+                &f.result,
+                true,
+                false,
+                &[],
+            )
+        };
+        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(stock(&f), "stock needs no engine terminal");
+        assert!(!f.eligible(), "the engine still needs its terminal");
+        // A crash exit, a truncated or doubled document, or a document that
+        // disagrees with the exit is not a completed stock outcome.
+        let original_call = f.call.clone();
+        f.call.report.exit_code = Some(101);
+        f.seal()?;
+        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(!stock(&f), "panic exit");
+        f.call = original_call;
+        f.seal()?;
+        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        let document = std::fs::read(sidecar.join("verus.stdout"))?;
+        for bytes in [
+            document[..document.len() / 2].to_vec(),
+            [document.as_slice(), document.as_slice()].concat(),
+        ] {
+            std::fs::write(sidecar.join("verus.stdout"), bytes)?;
+            assert!(!stock(&f), "partial or repeated document");
+        }
+        let mut doc: Value = serde_json::from_slice(&document)?;
+        doc["verification-results"]["success"] = Value::Bool(true);
+        std::fs::write(sidecar.join("verus.stdout"), serde_json::to_vec(&doc)?)?;
+        assert!(!stock(&f), "document contradicts the exit");
+        std::fs::write(sidecar.join("verus.stdout"), &document)?;
+        assert!(stock(&f));
+        f.result.currentness = Currentness::Historical;
+        assert!(!stock(&f), "only a Current run retains contracts");
+        f.result.currentness = Currentness::Current;
+        assert!(!negative_compiler_generation(
+            &f.paths,
+            &f.data,
+            &f.expected,
+            &f.result,
+            true,
+            false,
+            &["--".to_owned(), "--verify-function=selected".to_owned()]
+        ));
         Ok(())
     }
 

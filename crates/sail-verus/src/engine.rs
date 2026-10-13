@@ -672,12 +672,20 @@ fn completed_driver(run: &Path, sidecar: &Path) -> bool {
 
 /// Complete full verifier outcome for ordinary compiler-output retention only.
 /// Failed proofs remain failed and never gain a successful proof receipt.
-pub(crate) fn completed_compiler_output(run: &Path, call: &crate::managed::Invocation) -> bool {
+/// `engine` selects the source engine's sealed terminal; a stock driver has no
+/// seal and is judged by its normal exit and whole structured document.
+pub(crate) fn completed_compiler_output(
+    run: &Path,
+    call: &crate::managed::Invocation,
+    engine: bool,
+) -> bool {
     let sidecar = run.join("sidecars").join(call.identity.key());
-    if !completed_driver(run, &sidecar)
-        || call.report.error.is_some()
-        || !call.report.invariant_violations().is_empty()
-    {
+    let driver = if engine {
+        completed_driver(run, &sidecar)
+    } else {
+        completed_stock_driver(run, &sidecar)
+    };
+    if !driver || call.report.error.is_some() || !call.report.invariant_violations().is_empty() {
         return false;
     }
     let Some(stdout) = bounded_document(&sidecar.join("verus.stdout")) else {
@@ -703,8 +711,31 @@ pub(crate) fn completed_compiler_output(run: &Path, call: &crate::managed::Invoc
         && call.report.exit_code == Some(i32::from(!success))
         && call.success == success
         && (!success || crate::managed::receipt_complete(&call.report))
-        && crate::engine_events::terminal_success(&sidecar.join("engine.events.jsonl"))
-            == Some(success)
+        && (!engine
+            || crate::engine_events::terminal_success(&sidecar.join("engine.events.jsonl"))
+                == Some(success))
+}
+
+/// The stock counterpart of [`completed_driver`]: this run's recorded
+/// completion of the same invocation, and a whole document agreeing with its
+/// normal exit.
+fn completed_stock_driver(run: &Path, sidecar: &Path) -> bool {
+    let valid = || -> Option<bool> {
+        let key = sidecar.file_name()?.to_str()?;
+        let invocation: crate::managed::Invocation = serde_json::from_slice(&bounded_document(
+            &run.join("invocations").join(format!("{key}.json")),
+        )?)
+        .ok()?;
+        if invocation.identity.key() != key || invocation.run_id != run.file_name()?.to_str()? {
+            return Some(false);
+        }
+        let stdout = bounded_document(&sidecar.join("verus.stdout"))?;
+        Some(crate::engine_events::stock_completed(
+            &stdout,
+            invocation.report.exit_code,
+        ))
+    };
+    valid() == Some(true)
 }
 
 fn bounded_document(path: &Path) -> Option<Vec<u8>> {

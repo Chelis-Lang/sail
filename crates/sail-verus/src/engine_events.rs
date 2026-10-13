@@ -319,6 +319,22 @@ pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
     if (exit == Some(0)) != sealed_success {
         return false;
     }
+    document_completed(stdout, sealed_success)
+}
+
+/// A stock driver's complete structured result: normal exit 0 or 1 and one
+/// whole document agreeing with that exit. Stock Verus has no terminal seal, so
+/// a caught internal panic folded into the same shape is not distinguished.
+/// Callers use this only to retain ordinary dependency outputs, which are
+/// revalidated independently; it never establishes or reuses a proof.
+pub(crate) fn stock_completed(stdout: &[u8], exit: Option<i32>) -> bool {
+    matches!(exit, Some(0 | 1))
+        && stdout.len() <= MAX_RESULT
+        && document_completed(stdout, exit == Some(0))
+}
+
+/// The structured result document is whole and agrees with `success`.
+fn document_completed(stdout: &[u8], sealed_success: bool) -> bool {
     let (documents, remainder) = crate::attribution::json_documents(stdout);
     let [document] = documents.as_slice() else {
         return false;
