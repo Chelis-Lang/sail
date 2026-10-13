@@ -44,3 +44,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0039: The engine is built from a private Verus fork](0039-private-verus-fork.md)
 - [0040: Warm solver sessions for edit-loop misses (accepted: do not build now)](0040-warm-solver-sessions.md)
 - [0041: Content and stat checks replace kernel leases for currentness](0041-content-and-stat-currentness.md)
+- [0042: Diagnostics are compared as a set of complete messages](0042-diagnostics-compared-as-a-set.md)
