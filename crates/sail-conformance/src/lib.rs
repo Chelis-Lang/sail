@@ -4,7 +4,9 @@
 //! and the same diagnostics as plain Verus with the pinned Z3. [`compare`]
 //! checks, for one unit:
 //! - the exit code;
-//! - stderr, byte for byte (diagnostics);
+//! - stderr (diagnostics), under ADR 0042: complete diagnostic messages as
+//!   a multiset with exact bytes, everything else byte for byte and in order
+//!   ([`diagnostics`]);
 //! - the number of `--output-json` documents (one per verified crate) and,
 //!   document by document in stdout order, Verus's `verification-results`
 //!   and `func-details`;
@@ -27,6 +29,7 @@
 
 use std::collections::BTreeMap;
 
+pub mod diagnostics;
 pub mod engine;
 pub mod rvt;
 
@@ -96,12 +99,8 @@ pub fn compare(plain: &RunRecord, sail: &RunRecord) -> Comparison {
             plain.exit_code, sail.exit_code
         ));
     }
-    if plain.stderr != sail.stderr {
-        c.differences.push(format!(
-            "diagnostics (stderr) differ at {}",
-            first_difference(&plain.stderr, &sail.stderr)
-        ));
-    }
+    c.differences
+        .extend(diagnostics::compare_stderr(&plain.stderr, &sail.stderr));
     if plain.stdout_rest != sail.stdout_rest {
         c.differences.push(format!(
             "non-JSON stdout differs at {}",
@@ -321,6 +320,27 @@ mod tests {
         assert_eq!(c.verdict(), Verdict::Different);
         assert_eq!(c.differences.len(), 3, "{:?}", c.differences);
         assert!(c.differences[1].contains("line 2"));
+    }
+
+    #[test]
+    fn messages_from_different_modules_may_come_in_any_order() {
+        // ADR 0042, on the real debug_expand.rs variants.
+        let m4_first = include_str!("../tests/fixtures/debug-expand-order/m4-first.stderr");
+        let root_first = include_str!("../tests/fixtures/debug-expand-order/root-first.stderr");
+        let a = record(1, m4_first, &[("m::f", false, 10)]);
+        let b = record(1, root_first, &[("m::f", false, 10)]);
+        assert_eq!(compare(&a, &b).verdict(), Verdict::Same);
+        assert_eq!(
+            classify(std::slice::from_ref(&a), &b).verdict,
+            Verdict::Same
+        );
+        // A message missing from sail is still a difference.
+        let c = record(
+            1,
+            &root_first.replacen("error: assertion failed\n", "", 1),
+            &[("m::f", false, 10)],
+        );
+        assert_eq!(classify(&[a.clone(), a], &c).verdict, Verdict::Different);
     }
 
     #[test]

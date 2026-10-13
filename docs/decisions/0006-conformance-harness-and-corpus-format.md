@@ -35,7 +35,8 @@ The Verus-internals survey found:
   `SAIL_Z3_PATH=<pinned z3>`.
 - **Comparison.** A unit is `same` only if all of these are identical:
   - exit code;
-  - stderr, byte for byte;
+  - stderr, byte for byte (since ADR 0042: complete diagnostic messages as
+    a multiset, the rest byte for byte and in order);
   - the `verification-results` and `func-details` JSON;
   - the set of functions and each function's `success`.
 
@@ -218,3 +219,17 @@ from a source build of the pinned commit. A test is not a corpus unit:
   harness's own messages). Corpus units keep the stricter rule.
 - **Reports** go to `<cache>/conformance/rust-verify-test-<timestamp>/`
   (or `--out`), with a reproduction for each `different` test.
+
+## Update 2026-10-13: diagnostics as a multiset of messages (ADR 0042)
+
+Both kinds of unit now compare stderr through
+`sail_conformance::diagnostics`: each complete diagnostic message (a
+column-0 `error`, `warning`, `note`, `help` or `failure-note` header
+followed by a `-->` location, up to and including the blank line that ends
+it) must appear on both sides with identical bytes and the same number of
+times, in any order. Everything else (summary lines, notes without a
+location, panic text) is compared byte for byte and in order, with each run
+of consecutive messages standing in as one placeholder line. A difference
+names the message (header and location) that is missing, extra, printed a
+different number of times, or altered, and the first differing line. Nothing
+inside a message is normalized.

@@ -115,8 +115,9 @@ dynamic-library path (`sail_verus::rvt`).
   concurrently. Ignored tests are listed with outcome `ignored` and not
   run.
 - **What must be equal:** libtest's outcome (`ok`, `FAILED`, `ignored`),
-  the exit code, stderr byte for byte (every diagnostic Verus reported, as
-  the harness renders it, and any panic message), and stdout (libtest's
+  the exit code, stderr (every diagnostic Verus reported, as the harness
+  renders it, and any panic message; since ADR 0042 its complete messages
+  as a multiset and the rest byte for byte), and stdout (libtest's
   report). The only text blanked is the panic thread id, libtest's
   timing, and the six-character tempfile name in the two cargo-new tests'
   known missing-manifest panic (the complete message and path suffix are

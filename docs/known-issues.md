@@ -13,13 +13,6 @@ are in the `archive/m7-contracts-f7103bf` tag.
   Vest 1.80× (each Vest cycle about 29 s against 53 s).
   [Gate 7](validation/m7.md#gate-7-frozen-repair-performance),
   [L12 report](reports/rescue/l12-fork-fixes.md).
-- **A cache-warm run can print a unit's errors in another module order.** In
-  one of seven standard-tier cache-warm runs, `debug_expand.rs` printed the
-  root module's error before `M4`'s; plain Verus printed `M4`'s first in all
-  19 runs. Same errors and verdicts. Suspected cause: stock's report-order
-  printing ([VI-0007](verus-issues/VI-0007-nondeterministic-error-order.md))
-  under warm-cache timing; not established.
-  [Repro](../corpus/repros/sail-cache-warm-error-order/).
 - **A project's first managed verify verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first managed run of each project
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from
@@ -75,3 +68,14 @@ nonlinear rlimit consumption on identical input; see the
 [determinism policy](decisions/0009-solver-nondeterminism-and-unstable-results.md).
 Seed-dependent proof discovery is available only through named opt-in
 portfolios, with separate keys.
+
+## Resolved by decision
+
+- **A cache-warm run can print a unit's errors in another module order.**
+  `debug_expand.rs` sometimes printed the root module's error before `M4`'s
+  with the same messages and verdicts
+  ([VI-0007](verus-issues/VI-0007-nondeterministic-error-order.md)).
+  Conformance compares messages as a multiset since
+  [ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md), so this order
+  is no longer a difference.
+  [Repro](../corpus/repros/sail-cache-warm-error-order/) (kept).

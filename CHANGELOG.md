@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail-conformance` compares diagnostics as a multiset of complete
+  messages (ADR 0042), in corpus units and in `rust-verify-test`. Messages
+  from different modules may come in any order; each must appear with
+  identical bytes the same number of times. Summary lines and other text
+  outside messages are still compared byte for byte and in order. A
+  difference now names the message (header and location) that is missing
+  from sail, only in sail, printed a different number of times, or altered,
+  with its first differing line; text outside messages is reported as
+  `diagnostics (stderr) outside messages differ at line N`.
 - Error codes are listed, with what to do about each, in
   [docs/errors.md](docs/errors.md); `cargo xtask check-error-codes` and a
   workspace test keep that list and the code in step. Codes that named

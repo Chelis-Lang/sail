@@ -41,3 +41,29 @@ printed is not part of it.
 - A defect that drops, duplicates or alters a message is still caught.
 - The comparison is implemented once, in `sail-conformance`, with tests for
   reordered, missing, duplicated and altered messages.
+
+## Implementation (2026-10-13)
+
+`sail_conformance::diagnostics::compare_stderr` serves both the corpus arms
+and the `rust_verify_test` runner (ADR 0019).
+- **A message** is a column-0 header (`error`, `warning`, `note`, `help` or
+  `failure-note`, optionally with a code in brackets, then `: `) whose next
+  line is a `-->` location, up to and including the blank line that rustc's
+  renderer prints after each diagnostic. Spanned child notes inside a
+  diagnostic stay with it. A header without a location (`error: aborting
+  due to 16 previous errors`, a progress note) is not a message, so it stays
+  in the ordered text.
+- **The ordered text** is everything else, with one placeholder line per
+  run of consecutive messages, so a summary that moves before the messages
+  is still a difference.
+- **Same-module order is not enforced.** Module identity cannot be
+  recovered from a message: its location names a file and line, inline
+  modules share a file (`debug_expand.rs` has its root module and `M4` in
+  one file), a location can point into another file such as `vstd`, and
+  `--output-json` gives no function spans to map a location to a module. A
+  rule based on files would reject the reorderings this ADR accepts. The
+  comparison is therefore a plain multiset, and a defect that only reorders
+  messages within one module would not be reported. Every message's bytes
+  and count, and all other text, remain exact.
+- **The `rust_verify_test` runner keeps `--num-threads 1`** (ADR 0019); see
+  the update there.

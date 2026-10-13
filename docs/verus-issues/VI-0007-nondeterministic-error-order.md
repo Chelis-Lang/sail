@@ -6,8 +6,10 @@
 - **Found:** 2026-10-09
 - **Reproduction:** `corpus/repros/verus-nondeterministic-error-order/`
 - **Impact on sail:** plain Verus's stderr varies between identical runs
-  whenever errors come from more than one module. Byte-for-byte
-  conformance sees that as plain-Verus instability (ADR 0009). In the
+  whenever errors come from more than one module. Since ADR 0042,
+  conformance compares complete diagnostic messages as a multiset, so this
+  order is no longer a difference. Before that, byte-for-byte conformance
+  saw it as plain-Verus instability (ADR 0009). In the
   first `rust_verify_test` run, plain Verus disagreed with itself on 11
   tests for reasons like this, and with only 2 confirming plain runs 7 of
   them were first reported as `different` (ADR 0019).
