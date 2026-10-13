@@ -72,6 +72,124 @@ pub fn features() -> Vec<String> {
     ]
 }
 
+/// The Verus Cargo features a build's manifest records: the plain entries of
+/// its `features` list (for example `singular`), as opposed to the
+/// `prefix:value` tags that identify a source variant.
+#[must_use]
+pub fn cargo_features(features: &[String]) -> Vec<String> {
+    features
+        .iter()
+        .filter(|feature| !feature.contains(':'))
+        .cloned()
+        .collect()
+}
+
+/// The Verus Cargo features the engine runtime is built with. Engine
+/// validation requires its manifest's `features` to equal [`features`], so
+/// this is what the validated manifest records: none today, like the stock
+/// release.
+#[must_use]
+pub fn runtime_cargo_features() -> Vec<String> {
+    cargo_features(&features())
+}
+
+/// The features named by a project's `verus-feature:<name>` requirements
+/// that are not in `available`, in order and without duplicates.
+#[must_use]
+pub fn missing_features<'a>(
+    requires: impl IntoIterator<Item = &'a String>,
+    available: &[String],
+) -> Vec<String> {
+    let mut missing: Vec<String> = Vec::new();
+    for feature in requires
+        .into_iter()
+        .filter_map(|requirement| requirement.strip_prefix("verus-feature:"))
+    {
+        if !available.iter().any(|f| f == feature) && !missing.iter().any(|f| f == feature) {
+            missing.push(feature.to_owned());
+        }
+    }
+    missing
+}
+
+/// Verus's diagnostic for a construct that needs a Cargo feature its build
+/// lacks, for example ``Please cargo build with `--features singular` to use
+/// integer_ring attribute``. Verus emits it only for a function it would
+/// verify, so it is exactly the case in which the engine cannot answer.
+const FEATURE_DIAGNOSTIC: &str = "Please cargo build with `--features ";
+
+/// The first Verus Cargo feature that `output` (a verifier's stdout or
+/// stderr, rendered or JSON) reports as required but missing from
+/// `available`.
+#[must_use]
+pub fn required_feature(output: &[u8], available: &[String]) -> Option<String> {
+    let text = String::from_utf8_lossy(output);
+    let mut rest = text.as_ref();
+    while let Some(at) = rest.find(FEATURE_DIAGNOSTIC) {
+        rest = &rest[at + FEATURE_DIAGNOSTIC.len()..];
+        let name = rest.split('`').next().unwrap_or_default();
+        let valid = !name.is_empty()
+            && name.len() < rest.len()
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
+        if valid && !available.iter().any(|f| f == name) {
+            return Some(name.to_owned());
+        }
+    }
+    None
+}
+
+/// The marker a target's sidecar holds when the engine lacked a Verus
+/// feature and the target fell back to stock verification (SAIL3124). It
+/// contains the feature's name.
+pub(crate) const MISSING_FEATURE: &str = "engine.missing-feature";
+
+/// The features the engine lacked in this run, from the targets that fell
+/// back to stock verification because of them.
+fn missing_in_run(run: &Path) -> Vec<String> {
+    let mut missing = std::collections::BTreeSet::new();
+    if let Ok(entries) = std::fs::read_dir(run.join("sidecars")) {
+        for entry in entries.filter_map(std::result::Result::ok) {
+            if let Some(bytes) = bounded_document(&entry.path().join(MISSING_FEATURE)) {
+                let name = String::from_utf8_lossy(&bytes).trim().to_owned();
+                if !name.is_empty() {
+                    missing.insert(name);
+                }
+            }
+        }
+    }
+    missing.into_iter().collect()
+}
+
+/// SAIL3124: records, as a warning and a result note, that targets fell back
+/// to the configured stock Verus because the engine lacks a feature they
+/// need. Returns the fault for repair evidence.
+fn missing_feature_fallback(
+    run: &Path,
+    notes: &mut Vec<String>,
+    err: &mut dyn std::io::Write,
+) -> Option<sail_api::output::ErrorInfo> {
+    let missing = missing_in_run(run);
+    if missing.is_empty() {
+        return None;
+    }
+    let names = missing
+        .iter()
+        .map(|f| format!("`{f}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let message = format!(
+        "the interactive engine is built without Verus feature {names}, which this project needs; the affected targets were verified by the configured stock Verus and cannot accept a repair"
+    );
+    let _ = writeln!(err, "warning[SAIL3124]: {message}");
+    notes.push(format!("SAIL3124: {message}"));
+    Some(sail_api::output::ErrorInfo {
+        code: "SAIL3124".into(),
+        message,
+    })
+}
+
 /// How the engine's vstd is built: like the stock release, with
 /// `cargo-verus build --manifest-path vstd/Cargo.toml` after the ordinary
 /// build, so vstd's recorded source paths (and therefore diagnostics that
@@ -101,6 +219,8 @@ pub struct Installed {
     pub verus: PathBuf,
     /// Exact validated build manifest hash.
     pub manifest_sha256: String,
+    /// The Verus Cargo features the manifest records ([`cargo_features`]).
+    pub cargo_features: Vec<String>,
 }
 
 impl Installed {
@@ -127,6 +247,7 @@ impl Installed {
             cargo_verus: runtime.join("cargo-verus"),
             verus: runtime.join("verus"),
             manifest_sha256,
+            cargo_features: cargo_features(&manifest.features),
             build: build.to_owned(),
         })
     }
@@ -158,6 +279,9 @@ pub struct Status {
     pub source_lock_sha256: String,
     /// Complete build-manifest digest.
     pub manifest_sha256: String,
+    /// Verus Cargo features the runtime is built with (none, like the stock
+    /// release); projects that need another fall back to stock (SAIL3124).
+    pub verus_features: Vec<String>,
     /// Build location resolved to its real source variant.
     pub build: PathBuf,
     /// Selected engine launcher.
@@ -177,6 +301,7 @@ pub fn status(cache: &Path, pins: &Pins) -> Result<Status> {
         fork_commit: fork_commit(),
         source_lock_sha256: crate::managed::digest(SOURCE_LOCK.as_bytes()),
         manifest_sha256: installed.manifest_sha256,
+        verus_features: installed.cargo_features,
         build: installed
             .build
             .canonicalize()
@@ -397,7 +522,9 @@ pub fn verify(
     let (request, _) = request(config, None)?;
     match crate::managed::run_engine(config, err, Some(request)) {
         Ok(mut result) => {
-            launcher_notes(&run_directory(config, &result), &mut result);
+            let run = run_directory(config, &result);
+            launcher_notes(&run, &mut result);
+            missing_feature_fallback(&run, &mut result.notes, err);
             Ok(result)
         }
         Err(error) => stock_fallback(config, err, error).map(|(result, _)| result),
@@ -484,6 +611,7 @@ pub fn repair(
     };
     let run = run_directory(&config, &full);
     launcher_notes(&run, &mut full);
+    let engine_fault = missing_feature_fallback(&run, &mut full.notes, err);
     let mut selected = Vec::new();
     let mut selection_error = None;
     let gathered = (|| -> Result<()> {
@@ -546,7 +674,9 @@ pub fn repair(
             .push("Explicit focused evidence; independent full validation follows".into());
         Some(result)
     };
-    if focus.is_none() && selection_error.is_none() {
+    // A target that fell back for a missing feature has no focused evidence;
+    // the fault, not the selector, explains that.
+    if focus.is_none() && selection_error.is_none() && engine_fault.is_none() {
         selection_error = Some(sail_api::output::ErrorInfo {
             code: "SAIL3122".into(),
             message: "exact repair function was not established in the selected target".into(),
@@ -559,7 +689,7 @@ pub fn repair(
         compiler_invocations: full.execution.verifier_invocations,
         full: Some(full),
         manifest_sha256,
-        engine_fault: None,
+        engine_fault,
     })
 }
 
@@ -953,6 +1083,119 @@ mod tests {
             !completed_driver(&root, &sidecar),
             "valid old terminal/full bytes cannot make a crashed engine complete"
         );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn verus_feature_requirements_are_checked_against_the_engine_manifest() {
+        // The engine records no Cargo feature, like the stock release, and
+        // the committed runtime pin says the same.
+        assert_eq!(runtime_cargo_features(), Vec::<String>::new());
+        let pin: serde_json::Value =
+            serde_json::from_str(include_str!("../../../engine/verus/artifact-linux.json"))
+                .unwrap_or_default();
+        assert_eq!(
+            pin["verus_features"],
+            serde_json::json!(runtime_cargo_features())
+        );
+        assert_eq!(
+            cargo_features(&[
+                "singular".to_owned(),
+                "sail-fork:abc".to_owned(),
+                VSTD_BUILD.to_owned()
+            ]),
+            ["singular"]
+        );
+        let requires = [
+            "singular".to_owned(),
+            "verus-feature:singular".to_owned(),
+            "verus-feature:singular".to_owned(),
+            "program:z3".to_owned(),
+        ];
+        assert_eq!(missing_features(&requires, &[]), ["singular"]);
+        assert_eq!(
+            missing_features(&requires, &["singular".to_owned()]),
+            Vec::<String>::new()
+        );
+        assert_eq!(
+            missing_features(&requires[..1], &[]),
+            Vec::<String>::new(),
+            "only verus-feature requirements name Verus features"
+        );
+
+        let rendered =
+            b"error: Please cargo build with `--features singular` to use integer_ring attribute\n";
+        assert_eq!(required_feature(rendered, &[]).as_deref(), Some("singular"));
+        assert_eq!(required_feature(rendered, &["singular".to_owned()]), None);
+        let json = br#"{"$message_type":"diagnostic","message":"Please cargo build with `--features singular` to use integer_ring attribute","level":"error"}"#;
+        assert_eq!(required_feature(json, &[]).as_deref(), Some("singular"));
+        for unrelated in [
+            &b"error: assertion failed"[..],
+            b"Please cargo build with `--features ",
+            b"Please cargo build with `--features $(rm)` to use",
+            b"",
+        ] {
+            assert_eq!(required_feature(unrelated, &[]), None);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_missing_verus_feature_falls_back_to_stock_even_after_a_complete_seal()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-engine-feature-{}", std::process::id()));
+        let sidecar = driver_fixture(&root)?;
+        let seal = include_str!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
+        std::fs::write(sidecar.join("engine.events.jsonl"), seal)?;
+        let stdout = std::fs::read(sidecar.join("verus.stdout"))?;
+        let engine = |stderr: &str| -> std::io::Result<std::process::Output> {
+            let mut output = std::process::Command::new("/bin/sh")
+                .args(["-c", "exit 0"])
+                .output()?;
+            output.stdout.clone_from(&stdout);
+            output.stderr = stderr.as_bytes().to_vec();
+            Ok(output)
+        };
+        let invocations = root.join("invocations");
+        let run_id = root
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or("missing run id")?
+            .to_owned();
+        let log = crate::adapter::InvocationLog {
+            directory: &invocations,
+            run_id: &run_id,
+            target: "demo",
+        };
+        let stock = || {
+            let mut stock = std::process::Command::new("/bin/sh");
+            stock.args(["-c", "printf stock; exit 1"]);
+            stock
+        };
+        // Control: the same complete engine output is trusted.
+        let (_, trusted) = crate::adapter::engine_output(&sidecar, stock(), engine("")?, &log)?;
+        assert!(trusted);
+        assert!(!sidecar.join(MISSING_FEATURE).exists());
+        let diagnostic =
+            "error: Please cargo build with `--features singular` to use integer_ring attribute\n";
+        let (output, trusted) =
+            crate::adapter::engine_output(&sidecar, stock(), engine(diagnostic)?, &log)?;
+        assert!(!trusted, "the engine's rejection is never the answer");
+        assert_eq!(output.stdout, b"stock");
+        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(
+            std::fs::read_to_string(sidecar.join(MISSING_FEATURE))?,
+            "singular"
+        );
+        assert_eq!(missing_in_run(&root), ["singular"]);
+        let mut notes = Vec::new();
+        let mut warnings = Vec::new();
+        let fault = missing_feature_fallback(&root, &mut notes, &mut warnings)
+            .ok_or("missing fallback fault")?;
+        assert_eq!(fault.code, "SAIL3124");
+        assert!(String::from_utf8(warnings)?.starts_with("warning[SAIL3124]: "));
+        assert!(notes.iter().any(|note| note.starts_with("SAIL3124: ")));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

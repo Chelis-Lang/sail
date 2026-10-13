@@ -50,13 +50,23 @@ def safe_path(path):
     return name
 
 
+def verus_features(features):
+    """Verus Cargo features in a manifest's features: the plain names, not the
+    `prefix:value` variant tags (sail_verus::engine::cargo_features)."""
+    return [feature for feature in features if ":" not in feature]
+
+
 def validate(build, pin):
     manifest = json.loads((build / "sail-build.json").read_text())
+    # The pin records the runtime's Verus Cargo features (none today, like the
+    # stock release); projects needing another fall back to stock (SAIL3124).
     expected = ["sail-fork:" + pin["fork_commit"], "host:x86_64-unknown-linux-gnu",
                 "source-lock:" + pin["source_lock_sha256"], VSTD_BUILD]
+    tags = [feature for feature in manifest["features"] if ":" in feature]
     if (manifest["schema_version"] != 1 or manifest["commit"] != pin["commit"]
             or manifest["rust_toolchain"] != pin["rust_toolchain"]
-            or manifest["features"] != expected or manifest["z3_sha256"] != pin["z3_sha256"]):
+            or tags != expected or manifest["z3_sha256"] != pin["z3_sha256"]
+            or verus_features(manifest["features"]) != pin["verus_features"]):
         raise ValueError("SAIL0944: incompatible engine provenance")
     artifacts = manifest["artifacts"]
     if not artifacts or not {str(RUNTIME / name) for name in REQUIRED}.issubset(artifacts):
@@ -79,7 +89,8 @@ def pack(args):
     pin = {"schema_version": 2, "variant": build.name, "commit": manifest["commit"],
            "rust_toolchain": manifest["rust_toolchain"], "z3_sha256": manifest["z3_sha256"],
            "fork_commit": fork_commit(),
-           "source_lock_sha256": sha(REPO / "engine/verus/Cargo.lock")}
+           "source_lock_sha256": sha(REPO / "engine/verus/Cargo.lock"),
+           "verus_features": verus_features(manifest["features"])}
     validate(build, pin)
     args.archive.parent.mkdir(parents=True, exist_ok=True)
     # Canonical ownership, ordering and timestamps make repeated packing stable.
@@ -138,6 +149,7 @@ def install(archive, pin, cache):
 def committed_pin(path):
     pin = json.loads(path.read_text())
     if (pin["schema_version"] != 2 or pin["fork_commit"] != fork_commit()
+            or not isinstance(pin.get("verus_features"), list)
             or pin["source_lock_sha256"] != sha(REPO / "engine/verus/Cargo.lock")):
         raise ValueError("SAIL0944: committed engine artifact is stale; rebuild locally")
     return pin

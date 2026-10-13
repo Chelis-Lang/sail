@@ -1,6 +1,8 @@
 # The engine runtime rejects `by(integer_ring)` that a Singular build proves
 
-**Status:** open ([known issues](../../../docs/known-issues.md)).
+**Status:** resolved by fallback, not by a Singular engine
+([known issues](../../../docs/known-issues.md#resolved-by-decision)). The
+engine still lacks the feature; see [Resolution](#resolution).
 
 **Found:** 2026-10-13, by the deep tier's optional Singular run
 (`ci/local-singular.sh`, [ADR 0021](../../../docs/decisions/0021-optional-singular-source-validation.md))
@@ -66,8 +68,23 @@ Raw evidence (lead's machine, `~/sail-raw-evidence/l25/`): the run log
 `singular-reports.tgz` (`f23cd982…89fd`) and this reproduction's output
 `repro-integer-ring.log` (`8ed6cddf…60b1`).
 
-## Possible directions (not decided)
+## Resolution
 
-Build the engine runtime with the `singular` feature as a separate variant, or
-have the engine arm (and `sail verify --engine interactive`) refuse a project
-whose `verus-feature:*` requirements the engine manifest does not record.
+The lead decided against a Singular engine variant (rescue lane L26):
+
+- The engine's build manifest and its pin (`engine/verus/artifact-linux.json`,
+  `verus_features`) record the Verus Cargo features the runtime is built
+  with: none.
+- When the engine reports this diagnostic for a feature it lacks, the target
+  falls back to the configured stock Verus, as for an engine fault
+  (`warning[SAIL3124]`, `engine.established_by: stock-fallback`, a repair's
+  `batch.engine_fault` code `SAIL3124`, never accepted). See
+  [Verus features the engine lacks](../../../docs/proof-repair.md#verus-features-the-engine-lacks).
+- The `sail-conformance engine` arm checks each project's
+  `verus-feature:*` requirements against the engine's features and reports
+  the units of such a project as `engine-lacks-feature`, a separate count,
+  never same or different.
+
+The reproduction stays: the engine and the stock release still reject
+`integer_ring_min.rs`, and the CI repair phase (`ci/test-repair.py`) checks
+the fallback on an equivalent lemma.

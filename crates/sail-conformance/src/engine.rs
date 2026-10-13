@@ -22,6 +22,10 @@ pub struct EngineStats {
     pub focus_established: bool,
     /// `compiler-sealed` observations.
     pub seals: usize,
+    /// Verus features the project requires (`verus-feature:<name>`) that the
+    /// engine runtime lacks; the engine is not run on such a unit.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub lacks_features: Vec<String>,
 }
 
 /// Checks one engine run. `events` is the engine's JSONL observation journal
