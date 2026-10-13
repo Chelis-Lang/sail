@@ -5,7 +5,7 @@
 [fork]
 repo = "https://github.com/Chelis-Lang/verus"
 branch = "sail"
-commit = "89709da782ff04a75e21f9d705cdbd88a13e1e1e"
+commit = "d2b69aea24dc6c5e9c3da53242a6cf3c7c1410c3"
 # The upstream Verus commit the `sail` branch is rebased on. It must equal
 # corpus/toolchain.toml's [verus] commit.
 upstream = "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
