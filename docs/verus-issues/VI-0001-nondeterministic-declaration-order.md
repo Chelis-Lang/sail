@@ -1,7 +1,8 @@
 # VI-0001: Nondeterministic SMT output from `arrow_*` accessor order
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order).
+  partly fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order);
+  `human_eval_160` still varies on the fork (see below).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08
 - **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
@@ -76,6 +77,19 @@ the pinned stock source and passes on the fork. The accessors are generated in
 the order their fields first appear in the source, one of the orders stock can
 emit. The test checks the order of the `arrow_*` declarations in the AIR log;
 stock passes it by chance once in 5,040 runs.
+
+**Still varies on the fork for `human_eval_160` (rescue L18, 2026-10-13).**
+- The runtime was built from fork `3a91b1d7`, which contains `9a5b2cc8`.
+- Four focused runs on identical human-eval source logged SMT for
+  `human_eval_160`.
+- The logs differ in the order of the `arrow_1` and `arrow_2` declarations of
+  `Expr` (`impl&%4`): in the fuel declarations, in `Function-Decl` and in
+  `Function-Specs`.
+- In the L18 edit cycles, this bucket's SMT digest varied in 16 of 32 samples.
+- The regression test still passes, so the fix does not cover this path. The
+  cause is not yet located.
+- Evidence: `l18-out.tar.gz` (`det.log`), cited in the
+  [L18 report](../reports/rescue/l18-m8-stage-profile.md).
 
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Default `sail verify` runs stock Verus, so this variation (and its effect on

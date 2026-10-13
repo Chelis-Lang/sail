@@ -188,8 +188,15 @@ solver-side remainder. Edit loops agree.
 - **Proposal.** ADR 0040 (proposed) defers both behind the levers below.
 
 The levers that matter now:
-- **The warm Verus frontend** (the charter roadmap item), which may need
-  Verus's cooperation;
+- **The warm Verus frontend** (the charter roadmap item).
+  - The M8.0 gate failed on the reference host. Unchanged-bucket work is
+    9–12% of the median edit cycle (gate: 25%), so the hermetic bucket memo
+    (M8.1) does not proceed.
+  - With 7 Verus threads it is 18–27%.
+  - Cheaper items come first: rustc incremental on the EXEC pass (9.6% /
+    12.6%), Cargo bypass (≤9% / 7%), Sail overhead (11% / 7%), and two Sail
+    defects that re-verify vstd (+27 to 33 s).
+  - See the [L18 report](reports/rescue/l18-m8-stage-profile.md).
 - **Determinism (VI-0001),** to raise hit rates. In edit loops a reordered
   bucket costs about 2.7 s per affected human-eval-verus cycle;
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
