@@ -67,3 +67,11 @@ The engine now lowers every bucket fresh, as stock Verus does. The engine
 conformance arm keeps its comparison with plain Verus on verdicts and
 diagnostics and its completion-seal check. The repair gate's preparation
 telemetry check (`SAIL7105`) is retired.
+
+## Amendment (2026-10-13): M7 speed claim
+
+The owner accepted M7's speed as measured. Three native rounds of `sail-bench
+repair`: HumanEval M7 is 2.11–2.14× M6 and Vest 1.80–1.81× M6, with every
+sample valid. Vest's 1.80× is accepted as meeting M7's intent; the 2× figure
+is a guide, not a reason for further M7 mechanism. Further edit-loop speed
+belongs to later work, chosen for what it gives users.
