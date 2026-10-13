@@ -94,6 +94,9 @@ terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and are torn down
 after use; `scripts/perf-host.sh list` must be empty at the end of a session.
 The local emulated container is for quick correctness checks only; never
 measure performance under emulation.
+`run` exports the engine artifact token into the remote shell, so never print
+the environment (`env`, `printenv`, `set`, `docker inspect` of a container's
+environment) in host commands or logs.
 
 **Workspace hygiene.** Remove worktrees once their branch is merged or
 archived, after checking for uncommitted source. Discard regenerable build
