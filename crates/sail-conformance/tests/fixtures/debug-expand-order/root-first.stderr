@@ -1,0 +1,119 @@
+error: assertion failed
+  --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:17:12
+   |
+17 |     assert((x >= 0) && (x != 5));
+   |            ^^^^^^^^^^^^^^^^^^^^ assertion failed
+
+error: assertion failed
+  --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:30:12
+   |
+30 |     assert(is_good_integer(x));
+   |            ^^^^^^^^^^^^^^^^^^ assertion failed
+
+error: assertion failed
+  --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:44:12
+   |
+44 |     assert(is_good_opt(x));
+   |            ^^^^^^^^^^^^^^ assertion failed
+
+error: assertion failed
+  --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:79:12
+   |
+79 |     assert(is_good(x));
+   |            ^^^^^^^^^^ assertion failed
+
+error: assertion failed
+  --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:91:12
+   |
+91 |     assert(is_good_integer_5(5));
+   |            ^^^^^^^^^^^^^^^^^^^^ assertion failed
+
+note: function body check: not all errors may have been reported; rerun with a higher value for --multiple-errors to find other potential errors in this function
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:123:7
+    |
+123 | proof fn test_7(x: int) {
+    |       ^^^^^^^^^^^^^^^^^
+
+error: precondition not satisfied
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:125:5
+    |
+114 |         is_good_message_7(m),
+    |         -------------------- failed precondition
+...
+125 |     test_require_failure(x, true);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assertion failed
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:127:12
+    |
+127 |     assert(false);
+    |            ^^^^^ assertion failed
+
+error: postcondition not satisfied
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:148:9
+    |
+148 |         is_good_message_8(good_msg),
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition
+...
+156 |     ret
+    |     --- at the end of the function body
+
+error: assertion failed
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:182:12
+    |
+182 |     assert(is_good_message_9(good_msg));
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed
+
+error: assertion failed
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:208:16
+    |
+208 |         assert(is_good_message_10(good_msg));
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed
+
+error: assertion failed
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:225:12
+    |
+225 |     assert(is_good_integer_11(i));
+    |            ^^^^^^^^^^^^^^^^^^^^^ assertion failed
+
+error: postcondition not satisfied
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:279:9
+    |
+279 |         is_good_message_13(good_msg),
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition
+...
+285 |     good_msg
+    |     -------- at the end of the function body
+
+error: assertion failed
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:304:12
+    |
+304 |     assert(is_even(1));
+    |            ^^^^^^^^^^ assertion failed
+
+note: function body check: not all errors may have been reported; rerun with a higher value for --multiple-errors to find other potential errors in this function
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:316:7
+    |
+316 | proof fn proof_test_are_equal(x: int, y: int, z: int, w: int) {
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: integers fail to be equal
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:318:12
+    |
+318 |     assert(are_equal(x, y));
+    |            ^^^^^^^^^^^^^^^ assertion failed
+
+error: this ain't right. probably.
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:320:12
+    |
+320 |     assert(less_than(z, w));
+    |            ^^^^^^^^^^^^^^^ assertion failed
+
+error: assertion failed
+   --> /root/.cache/sail/corpus/verus-426d8b01e7ff/examples/debug_expand.rs:251:16
+    |
+251 |         assert(M3::is_good_integer(i));
+    |                ^^^^^^^^^^^^^^^^^^^^^^ assertion failed
+
+error: aborting due to 16 previous errors
+

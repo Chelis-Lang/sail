@@ -1,8 +1,8 @@
-//! Errors with stable codes (`SAIL1xxx`).
+//! SMT-LIB syntax errors. They all share the code `SAIL1001`.
 
 use std::fmt;
 
-/// What went wrong. Each variant has a stable code; see [`ErrorCode::code`].
+/// What went wrong.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ErrorCode {
@@ -25,21 +25,6 @@ pub enum ErrorCode {
 }
 
 impl ErrorCode {
-    /// The stable, user-facing code for this error.
-    #[must_use]
-    pub fn code(self) -> &'static str {
-        match self {
-            Self::UnterminatedString => "SAIL1001",
-            Self::UnterminatedQuotedSymbol => "SAIL1002",
-            Self::UnexpectedClose => "SAIL1003",
-            Self::UnclosedList => "SAIL1004",
-            Self::InvalidToken => "SAIL1005",
-            Self::Empty => "SAIL1006",
-            Self::TrailingInput => "SAIL1007",
-            Self::DepthLimit => "SAIL1008",
-        }
-    }
-
     fn describe(self) -> &'static str {
         match self {
             Self::UnterminatedString => "unterminated string literal",
@@ -73,8 +58,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "error[{}]: {} at byte {}",
-            self.code.code(),
+            "error[SAIL1001]: malformed SMT-LIB: {} at byte {}",
             self.code.describe(),
             self.offset
         )

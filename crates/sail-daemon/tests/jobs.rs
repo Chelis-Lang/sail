@@ -195,3 +195,194 @@ fn interrupted_records_are_not_resumed_or_presented_as_completed() {
     handle.shutdown();
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn sealed_status_matches_full_result_and_refuses_restored_metadata_tampering() {
+    use sail_api::jobs::Currentness;
+    for (original, expected) in [
+        ("unknown", Currentness::Unknown),
+        ("historical", Currentness::Historical),
+        ("current", Currentness::Unknown),
+    ] {
+        let script = REPORT.replace(
+            "\"currentness\":\"unknown\"",
+            &format!("\"currentness\":\"{original}\""),
+        );
+        let (root, executable, socket) = fixture(&script);
+        let jobs = root.join("jobs");
+        let mut handle = sail_daemon::jobs::bind(&socket, &jobs, &executable)
+            .and_then(sail_daemon::jobs::JobServer::spawn)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let client = Client::new(&socket);
+        let job = submit(&client, submission(&root, "seal"));
+        wait(&client, &job.id, |state| state == Lifecycle::Completed);
+        assert_eq!(status(&client, &job.id).currentness, expected);
+        let Ok(Response::Result(document)) = client.call(&Request::Result { id: job.id.clone() })
+        else {
+            unreachable!("completed result")
+        };
+        assert_eq!(document.job.currentness, expected);
+        let directory = jobs.join(&job.id);
+        let record_path = directory.join("record.json");
+        let mut record: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&record_path).unwrap_or_default())
+                .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        assert_eq!(
+            record["projection"]["stdout_sha256"].as_str().map(str::len),
+            Some(64)
+        );
+        let output = directory.join("stdout");
+        let file = std::fs::File::open(&output).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let modified = file
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+        let bytes = std::fs::read_to_string(&output).unwrap_or_default();
+        let changed = bytes.replacen("fixture", "changed", 1);
+        assert_eq!(bytes.len(), changed.len());
+        assert!(std::fs::write(&output, changed).is_ok());
+        assert!(
+            file.set_times(std::fs::FileTimes::new().set_modified(modified))
+                .is_ok()
+        );
+        for request in [
+            Request::Status { id: job.id.clone() },
+            Request::Result { id: job.id.clone() },
+        ] {
+            assert!(
+                matches!(client.call(&request), Err(error) if error.to_string().starts_with("SAIL0816:"))
+            );
+        }
+        assert!(std::fs::write(&output, bytes).is_ok());
+        // A rejected same-key mutation evicts the encoded frame. Restoration
+        // must reparse the sealed contents and preserve the full wire shape.
+        let Ok(Response::Result(restored)) = client.call(&Request::Result { id: job.id.clone() })
+        else {
+            unreachable!("restored result")
+        };
+        assert_eq!(restored.job.currentness, expected);
+        assert_eq!(restored.result, document.result);
+        let readers: Vec<_> = (0..4)
+            .map(|_| {
+                let client = Client::new(&socket);
+                let id = job.id.clone();
+                std::thread::spawn(move || client.call(&Request::Result { id }))
+            })
+            .collect();
+        for reader in readers {
+            let Ok(Response::Result(value)) = reader
+                .join()
+                .unwrap_or_else(|e| std::panic::resume_unwind(e))
+            else {
+                unreachable!("reader result")
+            };
+            assert_eq!(value.result, restored.result);
+            assert_eq!(value.job.currentness, expected);
+        }
+        handle.shutdown();
+        // A legacy record deliberately lacks the seal: full parsing and the
+        // same currentness classification remain mandatory after restart.
+        assert!(
+            record
+                .as_object_mut()
+                .is_some_and(|object| object.remove("projection").is_some())
+        );
+        assert!(std::fs::write(&record_path, record.to_string()).is_ok());
+        let mut legacy = sail_daemon::jobs::bind(&socket, &jobs, &executable)
+            .and_then(sail_daemon::jobs::JobServer::spawn)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        let client = Client::new(&socket);
+        assert_eq!(status(&client, &job.id).currentness, expected);
+        let Ok(Response::Result(document)) = client.call(&Request::Result { id: job.id }) else {
+            unreachable!("legacy completed result")
+        };
+        assert_eq!(document.job.currentness, expected);
+        legacy.shutdown();
+        let _ = std::fs::remove_dir_all(root);
+    }
+}
+
+#[test]
+fn cached_repair_frames_preserve_all_evidence_and_derive_acceptance() {
+    use sail_api::jobs::{Currentness, Mode};
+    let report_text = REPORT.split_once('{').map_or_else(
+        || unreachable!("fixture"),
+        |(_, rest)| format!("{{{}", rest.trim_end_matches('\'')),
+    );
+    let full: serde_json::Value =
+        serde_json::from_str(&report_text).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+    let envelope = serde_json::json!({"version":1,"accepted":true,"batch": {
+        "full":full, "focus":full, "manifest_sha256":"manifest", "compiler_invocations":1,
+        "batched":true, "selection_error":{"code":"SAIL0904","message":"missing selection"}
+    }});
+    let (root, executable, socket) = fixture(&format!("printf '%s\n' '{envelope}'"));
+    let mut handle = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &executable)
+        .and_then(sail_daemon::jobs::JobServer::spawn)
+        .unwrap_or_else(|e| unreachable!("fixture:{e}"));
+    let mut request = submission(&root, "repair");
+    request.mode = Mode::Repair(sail_api::repair::Selection {
+        package: "demo".to_owned(),
+        target: None,
+        kind: "lib".to_owned(),
+        function: "demo::max".to_owned(),
+    });
+    let client = Client::new(&socket);
+    let job = submit(&client, request);
+    wait(&client, &job.id, |state| state == Lifecycle::Completed);
+    for _ in 0..3 {
+        let Ok(Response::Result(document)) = client.call(&Request::Result { id: job.id.clone() })
+        else {
+            unreachable!("repair result")
+        };
+        assert_eq!(document.job.currentness, Currentness::Unknown);
+        let repair = document
+            .repair
+            .unwrap_or_else(|| unreachable!("repair envelope"));
+        assert!(
+            !repair.accepted,
+            "stored acceptance must never authorize a repair"
+        );
+        assert!(repair.batch.selection_error.is_some());
+        assert!(repair.batch.focus.is_some());
+        // The full phase is sent once, as `result`.
+        assert_eq!(repair.batch.full, None);
+        assert_eq!(
+            document.result.as_ref().map(|result| &result["run_id"]),
+            Some(&full["run_id"])
+        );
+        assert_eq!(repair.batch.manifest_sha256, "manifest");
+        assert_eq!(repair.batch.compiler_invocations, 1);
+    }
+    handle.shutdown();
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn independent_workspaces_run_concurrently_and_one_workspace_queues() {
+    let (root, executable, socket) = fixture("sleep 30");
+    assert!(std::fs::create_dir_all(root.join("other")).is_ok());
+    let mut handle = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &executable)
+        .map(|server| server.with_workers(2))
+        .and_then(sail_daemon::jobs::JobServer::spawn)
+        .unwrap_or_else(|error| unreachable!("{error}"));
+    let client = Client::new(&socket);
+    let first = submit(&client, submission(&root, "first"));
+    let same = submit(&client, submission(&root, "same"));
+    let mut other = submission(&root, "other");
+    other.project_dir = root.join("other");
+    let other = submit(&client, other);
+    wait(&client, &first.id, |state| state == Lifecycle::Running);
+    wait(&client, &other.id, |state| state == Lifecycle::Running);
+    assert_eq!(status(&client, &same.id).state, Lifecycle::Queued);
+    assert!(
+        client
+            .call(&Request::Cancel {
+                id: first.id,
+                superseded: true
+            })
+            .is_ok()
+    );
+    wait(&client, &same.id, |state| state == Lifecycle::Running);
+    handle.shutdown();
+    let _ = std::fs::remove_dir_all(root);
+}

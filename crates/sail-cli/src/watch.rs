@@ -191,11 +191,29 @@ fn refresh_roots(
         }
     }
     next.extend_from_slice(extra);
-    next.sort();
-    next.dedup();
+    path_aliases(&mut next);
+    path_aliases(&mut inputs.excluded);
     monitoring.subscribe(&next, &inputs.excluded, subscriptions, err);
     inputs.roots = next;
 }
+// Native notifications can use physical paths while Cargo preserves a supplied
+// symlink alias (for example /tmp vs /private/tmp). Preserve both spellings,
+// including absent paths resolved through their nearest existing ancestor.
+fn path_aliases(paths: &mut Vec<PathBuf>) {
+    let aliases: Vec<_> = paths
+        .iter()
+        .filter_map(|path| {
+            path.ancestors().find_map(|ancestor| {
+                let canonical = ancestor.canonicalize().ok()?;
+                Some(canonical.join(path.strip_prefix(ancestor).ok()?))
+            })
+        })
+        .collect();
+    paths.extend(aliases);
+    paths.sort();
+    paths.dedup();
+}
+
 fn desired_subscriptions(roots: &[PathBuf]) -> BTreeMap<PathBuf, bool> {
     let mut subscriptions = BTreeMap::new();
     for root in roots {
@@ -383,6 +401,39 @@ impl Drop for Live {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn physical_output_events_respect_aliases_and_exact_declared_input_overrides()
+    -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-watch-alias-{}", std::process::id()));
+        let physical = root.join("physical");
+        let alias = root.join("alias");
+        std::fs::create_dir_all(physical.join("src/target"))?;
+        std::os::unix::fs::symlink(&physical, &alias)?;
+        let declared = alias.join("target/declared.rs");
+        let mut roots = vec![alias.clone(), declared];
+        let mut excluded = vec![alias.join("target")];
+        // Resolve absent output and declared-file paths before Cargo creates them.
+        path_aliases(&mut roots);
+        path_aliases(&mut excluded);
+        let physical = physical.canonicalize()?;
+        std::fs::create_dir_all(physical.join("target"))?;
+        let (sender, receiver) = std::sync::mpsc::channel();
+        for (path, expected) in [
+            (physical.join("target/generated.rs"), false),
+            (physical.join("target/declared.rs"), true),
+            (physical.join("src/target/mod.rs"), true),
+        ] {
+            sender
+                .send(Ok(Event::new(EventKind::Create(
+                    notify::event::CreateKind::File,
+                ))
+                .add_path(path)))
+                .map_err(std::io::Error::other)?;
+            assert_eq!(changed(&receiver, &roots, &excluded), expected);
+        }
+        std::fs::remove_dir_all(root)
+    }
 
     #[test]
     fn terminal_drained_job_never_contacts_the_service_again() {

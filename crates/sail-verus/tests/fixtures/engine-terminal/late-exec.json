@@ -1,0 +1,103 @@
+{
+  "func-details": {
+    "demo::selected": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "demo::late": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    }
+  },
+  "verification-results": {
+    "encountered-error": true,
+    "encountered-vir-error": false,
+    "success": false,
+    "verified": 1,
+    "errors": 0,
+    "is-verifying-entire-crate": true
+  },
+  "times-ms": {
+    "verus-build": {
+      "profile": "release",
+      "version": "0.2026.10.04.426d8b0.dirty"
+    },
+    "num-threads": 1,
+    "total": 161,
+    "estimated-cpu-time": 161,
+    "rust": {
+      "total": 74,
+      "init-and-types": 8,
+      "trait-conflicts": 51,
+      "compile": 14
+    },
+    "verification": {
+      "total": 56,
+      "vir": {
+        "total": 1,
+        "hir": 0,
+        "import": 0,
+        "rust-to-vir": 0
+      }
+    },
+    "total-verify": 50,
+    "total-verify-module-times": [
+      {
+        "module": "",
+        "time": 50
+      }
+    ],
+    "air": {
+      "total": 23,
+      "module-times": [
+        {
+          "module": "",
+          "time": 23
+        }
+      ]
+    },
+    "smt": {
+      "total": 12,
+      "smt-init": 9,
+      "rlimit-init": 6,
+      "smt-init-module-times": [
+        {
+          "module": "",
+          "time": 9,
+          "time-micros": 9760,
+          "rlimit": 6
+        }
+      ],
+      "smt-run": 3,
+      "rlimit-run": 2,
+      "smt-run-module-times": [
+        {
+          "module": "",
+          "time": 3,
+          "time-micros": 3449,
+          "rlimit": 2,
+          "function-breakdown": [
+            {
+              "function": "demo::selected",
+              "mode:": "proof",
+              "time": 3,
+              "time-micros": 3449,
+              "rlimit": 2,
+              "success": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "verus": {
+    "profile": "release",
+    "version": "0.2026.10.04.426d8b0.dirty",
+    "platform": {
+      "os": "macos",
+      "arch": "aarch64"
+    },
+    "toolchain": "1.98.1-aarch64-apple-darwin",
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+  }
+}

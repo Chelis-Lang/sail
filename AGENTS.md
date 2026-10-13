@@ -41,6 +41,10 @@ acting. The charter's appendix records corrections made since it was written.
   Changing the crate dependency graph is a decision.
 - **Solver identity is explicit.** Never assume a single solver in the cache,
   verdict model or query representation.
+- **macOS and Linux both.** Code must build, lint and test on macOS and
+  Linux. Linux-only code is `cfg`-gated. CI runs only Linux, so run
+  `ci/run.sh host` on a Mac before pushing changes that touch
+  platform-specific code.
 
 ## Commit messages and authorship
 
@@ -84,13 +88,15 @@ their own branches. The lead reviews and merges.
 **Native Linux hosts.** Linux validation, gates and all performance work run
 on native x86-64 EC2 hosts (ADR 0038). Use `scripts/perf-host.sh up LANE`,
 `sync`, `run` and `down`, one host per lane so builds and benchmarks never
-contend. `run` passes a GitHub token on stdin (exported as
-`SAIL_ENGINE_ARTIFACT_TOKEN`) for image builds that need private artifacts, and
-`ci/local.sh` builds the CI image natively there. Hosts are tagged `Project=sail`,
+contend. `run` supplies the engine artifact token on stdin, and `ci/local.sh`
+builds the CI image natively there. Hosts are tagged `Project=sail`,
 terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and are torn down
 after use; `scripts/perf-host.sh list` must be empty at the end of a session.
 The local emulated container is for quick correctness checks only; never
 measure performance under emulation.
+`run` exports the engine artifact token into the remote shell, so never print
+the environment (`env`, `printenv`, `set`, `docker inspect` of a container's
+environment) in host commands or logs.
 
 **Workspace hygiene.** Remove worktrees once their branch is merged or
 archived, after checking for uncommitted source. Discard regenerable build
@@ -151,21 +157,33 @@ Run the same steps locally in the same image with `ci/local.sh`:
 ci/local.sh gate                  # fmt, clippy, tests, doctests, rustdoc, layering, deny, benchmarks page
 ci/local.sh solver                # every test that needs the pinned Z3 (incl. fault injection)
 ci/local.sh e2e                   # `sail verify` vs `cargo verus verify`: identical output
-ci/local.sh conformance fast pr   # the PR conformance subset, pass-through and cache-on
+ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
+ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
 On the host, the fast loop is still `cargo nextest run --workspace` plus the
 gate commands in `ci/run.sh`. `cargo xtask fetch-verus` installs the pinned
 Verus for host runs.
 
+CI serves rapid iteration: it catches regressions quickly and cheaply, and each
+job should finish in about four minutes. Acceptance-, evidence- and
+release-style checks belong in the local tiers below, never in CI.
+
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
 gate, including image creation, to have succeeded. Branches must be current
-with `main` before merging. The `End to end` check aggregates two parallel
-phases, legacy and managed, and succeeds only when both complete successfully.
-`ci/local.sh e2e` still runs both; `e2e legacy` or `e2e managed` selects a phase
-for diagnosis. Neither phase may be skipped to authorize a merge.
+with `main` before merging. The `End to end` check aggregates three parallel
+phases, legacy, managed and repair, and succeeds only when all complete successfully.
+`ci/local.sh e2e` runs all three; `e2e legacy`, `e2e managed` or `e2e repair`
+selects a phase for diagnosis. No phase may be skipped to authorize a merge.
+Evidence directories and conformance reports are uploaded only when a job
+fails.
+The optional repair engine is a locally qualified prebuilt runtime pinned in
+`engine/verus/artifact-linux.json`. The CI image validates its archive, source
+patch, source lock and every runtime file; CI never compiles Verus from source.
+Local image builds obtain private artifact access from `gh auth token` or
+`SAIL_ENGINE_ARTIFACT_TOKEN`, supplied only through a BuildKit secret.
 
 **Testing tiers** (charter §Engineering practice). CI runs only the fast
 tier, and every CI job must finish well inside 10 minutes. Anything longer
@@ -175,6 +193,8 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
   changes to the shim, cache, daemon, keys or harness, and put the summary
   lines in the PR.
+- *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
+  Run it before pushing changes that touch platform-specific code.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
   suite (4,695 cases, including 58 ignored), plain vs `sail-z3` test by test,
@@ -227,7 +247,7 @@ Documentation is part of implementation and every agent handoff:
   and limits. Never describe static review, a fixture pass or a candidate
   build as real-project acceptance.
 - **Evidence policy (ADR 0038).** One concise Markdown record per acceptance
-  gate (under `docs/validation/`), stating current status and the best evidence.
+  gate (`docs/validation/`), stating current status and the best evidence.
   Failed and interrupted attempts stay visible as one indexed line each
   (commit, date, result, cause or "unknown"). Raw logs and JSON dumps stay
   outside the repository, cited by sha256. Evidence lands in the PR it

@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::io::{BufReader, BufWriter};
+use std::os::unix::fs::PermissionsExt as _;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -597,6 +598,9 @@ pub fn bind(
         std::fs::create_dir_all(parent)?;
     }
     let listener = UnixListener::bind(socket)?;
+    // This local daemon owns trusted cache writes. Its socket is private to
+    // the user before any requests are accepted, regardless of the umask.
+    std::fs::set_permissions(socket, std::fs::Permissions::from_mode(0o600))?;
     let socket_stamp = std::fs::symlink_metadata(socket)
         .ok()
         .map(|m| FileStamp::of(&m));

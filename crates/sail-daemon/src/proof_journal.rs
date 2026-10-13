@@ -74,10 +74,11 @@ impl Journals {
                 "SAIL0902: cursor belongs to another proof stream",
             ));
         }
-        let mut journals = self
-            .0
-            .lock()
-            .map_err(|_| io::Error::other("SAIL0902: proof journal lock poisoned"))?;
+        let mut journals = self.0.lock().map_err(|_| {
+            io::Error::other(
+                "SAIL0999: internal error: proof journal lock poisoned; please report it",
+            )
+        })?;
         journals.retain(|path, _| path.exists());
         if !journals.contains_key(directory) {
             if journals.len() >= MAX_ACTIVE_JOURNALS {
@@ -95,21 +96,23 @@ impl Journals {
             }
             journals.insert(directory.to_owned(), Arc::new(Mutex::new(None)));
         }
-        let retained = Arc::clone(
-            journals
-                .get(directory)
-                .ok_or_else(|| io::Error::other("SAIL0902: missing journal"))?,
-        );
+        let retained = Arc::clone(journals.get(directory).ok_or_else(|| {
+            io::Error::other("SAIL0999: internal error: missing proof journal; please report it")
+        })?);
         drop(journals);
-        let mut retained = retained
-            .lock()
-            .map_err(|_| io::Error::other("SAIL0902: job proof journal lock poisoned"))?;
+        let mut retained = retained.lock().map_err(|_| {
+            io::Error::other(
+                "SAIL0999: internal error: job proof journal lock poisoned; please report it",
+            )
+        })?;
         if retained.is_none() {
             *retained = Some(Journal::load(directory, id)?);
         }
-        let journal = retained
-            .as_mut()
-            .ok_or_else(|| io::Error::other("SAIL0902: cannot load journal"))?;
+        let journal = retained.as_mut().ok_or_else(|| {
+            io::Error::other(
+                "SAIL0999: internal error: cannot load proof journal; please report it",
+            )
+        })?;
         journal.ingest(directory, id, terminal)?;
         let latest = journal.events.last().map_or(0, |event| event.sequence);
         if cursor.after > latest {

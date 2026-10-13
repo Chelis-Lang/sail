@@ -4,23 +4,29 @@
 # locally, so CI and local results come from one definition.
 #
 #   gate                 fmt, clippy, tests, doctests, rustdoc, layering,
-#                        cargo-deny, docs/benchmarks.md freshness, Markdown links
+#                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   e2e [legacy|managed] Run both phases by default; CI runs them in parallel.
+#   e2e [legacy|managed|repair] Run all phases by default; CI runs them in parallel.
 #                        `sail verify` vs `cargo verus verify` on a fresh
 #                        project, cold and warm: identical output and exit;
 #                        then `sail verify --output json`: unchanged stderr
 #                        and exit, a schema-v1 document agreeing with
 #                        Verus's own --output-json; then one `verify` call
 #                        through `sail mcp`, agreeing with that document;
-#                        managed receipts, durable jobs and asynchronous MCP
+#                        managed receipts, durable jobs and asynchronous MCP;
+#                        repair CLI/MCP against a validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
 #                        plain Verus vs sail-z3 pass-through, then with the
-#                        cache on (fill, then warm). `pr` limits the fast
+#                        cache on (fill, then warm), then the source-engine
+#                        arm (validated prebuilt engine vs plain Verus on
+#                        verdicts and diagnostics). `pr` limits the fast
 #                        tier to the guide examples; otherwise extra
 #                        arguments (for example `--project anvil`) are
 #                        passed to sail-conformance
+#   host                 local-only, outside the image, on the developer's
+#                        own machine (macOS or Linux): clippy and the
+#                        non-solver tests
 #   bench WORKLOAD TIER ROUNDS
 #                        a sail-bench workload (cold|warm|edit)
 #   build-verus-source [--force] [--keep-intermediates]
@@ -33,24 +39,45 @@
 #                        warm). ARGS go to `sail-conformance
 #                        rust-verify-test` (for example --filter modes::)
 #
-# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier and
-# every benchmark is local-only: run them with ci/local.sh.
+# CI runs gate, solver, e2e and `conformance fast pr`. Every other tier
+# and every benchmark is local-only: run them with ci/local.sh
+# (`host` runs directly: ci/run.sh host).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # CI runs only the fast, per-PR steps (ADR 0013). Long runs are local-only.
 local_only() {
   if [ "${CI:-}" = true ]; then
-    echo "ci/run.sh: '$*' is local-only (ADR 0013); run it with ci/local.sh" >&2
+    echo "ci/run.sh: '$*' is local-only (ADR 0013); run it locally (see AGENTS.md Gates)" >&2
     exit 2
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|bench|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|host|bench|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
   cargo build --release --locked -p sail-cli -p sail-shim "$@"
+}
+
+# Copies the release runtime under /tmp and sets $sail. A host-mounted
+# checkout can have an unsupported FUSE ancestor even when target/ is a Linux
+# volume. Execute exact copied runtime bytes under /tmp, so managed freshness
+# can observe every runtime path on the native kernel.
+install_runtime() {
+  sail_runtime="$(mktemp -d /tmp/sail-e2e-runtime.XXXXXX)"
+  trap 'rm -rf "$sail_runtime"' EXIT
+  cp "$sail_checkout/target/release/sail" "$sail_checkout/target/release/sail-z3" "$sail_runtime/"
+  chmod 700 "$sail_runtime/sail" "$sail_runtime/sail-z3"
+  sail="$sail_runtime/sail"
+}
+
+# Fetches the pinned Verus source that repair fixtures use for Cargo's
+# ordinary builtin/macro dependencies; sets $sail_repair_source. The engine
+# runtime comes from the image; this never builds Verus.
+fetch_repair_source() {
+  ./target/release/sail-conformance fetch --tier fast --project verus-examples
+  sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-426d8b01e7ff"
 }
 
 # Starts a cache daemon on a fresh cache; sets $sock, $cache and $daemon.
@@ -67,14 +94,19 @@ start_daemon() {
 case "$step" in
   gate)
     bash ci/test-completion.sh
+    # The image's engine installer: corrupt or stale runtimes never install.
+    python3 ci/test-engine-artifact.py
     python3 scripts/check-links.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
+    # check_mcp drives the e2e legacy phase; its own unit tests stay here.
+    cargo test --locked -p sail-cli --example check_mcp
     cargo test --workspace --doc --locked
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
     cargo xtask check-layering
     cargo deny --locked check
+    mkdir -p target
     cargo run -q --locked -p sail-bench -- report --out target/benchmarks.md bench/results/*.json
     diff -u docs/benchmarks.md target/benchmarks.md
     ;;
@@ -87,17 +119,18 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|repair' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed" >&2; exit 2 ;;
+      full|legacy|managed|repair) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair" >&2; exit 2 ;;
     esac
+    sail_checkout="$PWD"
     release_build
-    sail="$PWD/target/release/sail"
-    sail_managed_test="$PWD/ci/test-managed.py"
-    if [ "$phase" != managed ]; then
+    install_runtime
+    sail_managed_test="$sail_checkout/ci/test-managed.py"
+    if [ "$phase" = full ] || [ "$phase" = legacy ]; then
       cargo build --release --locked -p sail-cli --example check_output --example check_mcp
       check_output="$PWD/target/release/examples/check_output"
       check_mcp="$PWD/target/release/examples/check_mcp"
@@ -171,11 +204,33 @@ RS
       "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
       bash "$sail_portfolio_test"
     fi
-    if [ "$phase" != legacy ]; then
+    if [ "$phase" = full ] || [ "$phase" = managed ]; then
+      sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
       # Bounded complete-report receipts: reuse, missing evidence and a failing
       # proof edit with restored timestamps, compared with the pinned Verus.
-      python3 "$sail_managed_test" "$sail"
+      # Keep timeout/error output outside the fixture's TemporaryDirectory.
+      # Use the checkout path because the full legacy phase changes cwd.
+      SAIL_MANAGED_ACCEPTANCE_OUT="$sail_managed_evidence" \
+        python3 "$sail_managed_test" "$sail"
     fi
+    if [ "$phase" = full ] || [ "$phase" = repair ]; then
+      cd "$sail_checkout"
+      : "${SAIL_ENGINE_BUILD:?repair acceptance requires the validated prebuilt engine}"
+      release_build -p sail-conformance
+      fetch_repair_source
+      python3 "$PWD/ci/test-repair.py" --sail "$sail" --engine-build "$SAIL_ENGINE_BUILD" \
+        --verus-source "$sail_repair_source" \
+        --out "${SAIL_REPAIR_ACCEPTANCE_OUT:-$PWD/target/repair-acceptance}" \
+        --environment-label "Linux x86-64 prebuilt-engine CI/local container"
+    fi
+    ;;
+
+  host)
+    # Code must build, lint and test on macOS and Linux alike. CI runs only
+    # Linux, so run this on a Mac before pushing platform-specific changes.
+    local_only host "$@"
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+    cargo nextest run --workspace --locked --profile ci
     ;;
 
   conformance)
@@ -198,6 +253,17 @@ RS
     entries="$(find "$cache/v2" -type f | wc -l)"
     echo "cache entries: $entries"
     [ "$entries" -gt 0 ]
+    # Source-engine arm (ADR 0027): the validated prebuilt engine's focused
+    # and full phases, the full phase compared with plain Verus like the arms
+    # above. The CI image always provides the engine; a host run without one
+    # must opt out explicitly, and CI cannot.
+    if [ "${SAIL_CONFORMANCE_ENGINE:-1}" = 0 ] && [ "${CI:-}" != true ]; then
+      echo "conformance: engine arm explicitly skipped (SAIL_CONFORMANCE_ENGINE=0)" >&2
+    else
+      : "${SAIL_ENGINE_BUILD:?the engine arm needs the validated prebuilt engine (SAIL_ENGINE_BUILD)}"
+      ./target/release/sail-conformance engine "${select[@]}" --jobs "$jobs" \
+        --engine-build "$SAIL_ENGINE_BUILD" --out "$out/engine"
+    fi
     ;;
 
   bench)

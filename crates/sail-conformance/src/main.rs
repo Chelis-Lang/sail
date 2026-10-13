@@ -4,11 +4,16 @@
 //! sail-conformance fetch [--tier T] [--project P]...
 //! sail-conformance run   [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--trace] [--out DIR] [--shim PATH]
+//! sail-conformance engine [--tier T] [--project P]... [--filter S] [--jobs N]
+//!                        [--out DIR] [--engine-build PATH] [--no-focus]
 //! sail-conformance rust-verify-test [--filter S]... [--every N] [--jobs N] ...
 //! ```
 //!
 //! `run` exits 0 when every unit is the same under sail as under plain
 //! Verus, 1 if any unit differs, and 2 on usage or infrastructure errors.
+//! `engine` is the source-engine arm (ADR 0027): the optional interactive
+//! engine's full phase against plain Verus, with the same comparison and
+//! instability rules on verdicts and diagnostics, plus a completion-seal check.
 #![forbid(unsafe_code)]
 
 mod rust_verify_test;
@@ -19,9 +24,10 @@ use std::process::ExitCode;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use sail_conformance::engine::EngineStats;
 use sail_conformance::{Comparison, Verdict, classify};
 use sail_verus::corpus::{Corpus, Tier, Unit};
-use sail_verus::run::{RunRecord, Solver, machine_info, prepare_unit, run_unit};
+use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit, run_unit};
 use sail_verus::toolchain::{Installed, Pins};
 use serde::Serialize;
 
@@ -31,7 +37,15 @@ const USAGE: &str = "usage:
                          [--jobs N] [--trace] [--out DIR] [--shim PATH]
                          [--plain-runs N] [--confirm-runs N]
 
+  sail-conformance engine [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
+                         [--jobs N] [--out DIR] [--plain-runs N] [--confirm-runs N]
+                         [--engine-build PATH] [--no-focus]
+
   sail-conformance rust-verify-test ...   (see `rust-verify-test --help`)
+
+  --engine-build PATH  the validated interactive engine build (default
+                    $SAIL_ENGINE_BUILD)
+  --no-focus        run only the engine's full phase (no focused selector)
 
   --plain-runs N    plain Verus runs per unit up front (default 1)
   --confirm-runs N  extra plain runs when sail differs, to tell plain-Verus
@@ -49,6 +63,8 @@ struct Options {
     shim: Option<PathBuf>,
     plain_runs: usize,
     confirm_runs: usize,
+    engine_build: Option<PathBuf>,
+    focus: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -65,6 +81,10 @@ fn parse(args: &[String]) -> Result<Options, String> {
         shim: None,
         plain_runs: 1,
         confirm_runs: 2,
+        engine_build: std::env::var_os("SAIL_ENGINE_BUILD")
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from),
+        focus: true,
     };
     while let Some(arg) = it.next() {
         let mut value = || {
@@ -97,6 +117,8 @@ fn parse(args: &[String]) -> Result<Options, String> {
                     .map_err(|_| "--confirm-runs needs a number".to_owned())?;
             }
             "--out" => o.out = Some(value()?.into()),
+            "--engine-build" => o.engine_build = Some(value()?.into()),
+            "--no-focus" => o.focus = false,
             "--shim" => o.shim = Some(value()?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
@@ -141,6 +163,9 @@ struct UnitReport {
     infra_error: Option<String>,
     plain: Option<Side>,
     sail: Option<Side>,
+    /// Engine arm only: what the engine reported beyond Verus's output.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    engine: Option<EngineStats>,
 }
 
 #[derive(Serialize)]
@@ -159,6 +184,15 @@ struct Summary {
     infra_error: usize,
     functions: usize,
     units_with_rlimit_drift: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    engine: Option<EngineSummary>,
+}
+
+/// Engine-arm totals.
+#[derive(Serialize, Default)]
+struct EngineSummary {
+    manifest_sha256: String,
+    focused_units: usize,
 }
 
 #[derive(Serialize)]
@@ -268,6 +302,24 @@ struct Context<'a> {
     trace: bool,
     plain_runs: usize,
     confirm_runs: usize,
+    engine: Option<EngineArm>,
+}
+
+/// The source-engine arm's configuration.
+struct EngineArm {
+    verus: PathBuf,
+    cargo_verus: PathBuf,
+    focus: bool,
+}
+
+impl EngineArm {
+    fn run(&self, function: Option<&String>) -> Solver {
+        Solver::Engine(EngineRun {
+            verus: self.verus.clone(),
+            cargo_verus: self.cargo_verus.clone(),
+            function: function.cloned(),
+        })
+    }
 }
 
 fn infra_error(unit: &Unit, message: String) -> UnitReport {
@@ -281,6 +333,7 @@ fn infra_error(unit: &Unit, message: String) -> UnitReport {
         infra_error: Some(message),
         plain: None,
         sail: None,
+        engine: None,
     }
 }
 
@@ -314,6 +367,9 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
             Ok(p) => plains.push(p),
             Err(e) => return infra_error(unit, e.to_string()),
         }
+    }
+    if let Some(engine) = &cx.engine {
+        return compare_engine(cx, engine, unit, base, plains);
     }
     let solver = Solver::Shim {
         shim: cx.shim.to_path_buf(),
@@ -351,6 +407,69 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
         infra_error: None,
         plain: plains.first().map(Side::from),
         sail: Some(Side::from(&sail)),
+        engine: None,
+    }
+}
+
+/// The engine arm for one unit: the engine's full phase against plain Verus
+/// with ADR 0009 confirmation, plus the engine-only seal check.
+fn compare_engine(
+    cx: &Context,
+    engine: &EngineArm,
+    unit: &Unit,
+    base: &Path,
+    mut plains: Vec<RunRecord>,
+) -> UnitReport {
+    let function = if engine.focus {
+        plains
+            .first()
+            .and_then(sail_conformance::engine::focus_function)
+    } else {
+        None
+    };
+    let single_crate = unit.build == sail_verus::corpus::Build::Verus;
+    let work = base.join("engine");
+    let run = match run_unit(cx.installed, unit, &engine.run(function.as_ref()), &work) {
+        Ok(run) => run,
+        Err(e) => return infra_error(unit, e.to_string()),
+    };
+    let events = std::fs::read_to_string(work.join(sail_verus::run::engine_files::EVENTS))
+        .unwrap_or_default();
+    let (issues, mut stats) = sail_conformance::engine::check(&run, &events, single_crate);
+    stats.focus_function.clone_from(&function);
+    let compared = &run;
+    let mut c = classify(&plains, compared);
+    for _ in 0..cx.confirm_runs {
+        if c.verdict != Verdict::Different {
+            break;
+        }
+        match run_unit(
+            cx.installed,
+            unit,
+            &Solver::Plain,
+            &base.join(format!("plain-{}", plains.len() + 1)),
+        ) {
+            Ok(p) => plains.push(p),
+            Err(e) => return infra_error(unit, e.to_string()),
+        }
+        c = classify(&plains, compared);
+    }
+    if !issues.is_empty() {
+        // Engine completion failures are never instability.
+        c.verdict = Verdict::Different;
+        c.comparison.differences.extend(issues);
+    }
+    UnitReport {
+        id: unit.id.clone(),
+        expected: unit.expected.clone(),
+        verdict: c.verdict,
+        comparison: c.comparison,
+        plain_runs: c.plain_runs,
+        unstable: c.unstable,
+        infra_error: None,
+        plain: plains.first().map(Side::from),
+        sail: Some(Side::from(compared)),
+        engine: Some(stats),
     }
 }
 
@@ -402,8 +521,16 @@ fn summary_line(report: &Report) -> String {
             .collect();
         format!(" ({})", list.join("; "))
     };
+    let engine = s.engine.as_ref().map_or_else(String::new, |e| {
+        format!(
+            "; engine {}: {} focused units",
+            e.manifest_sha256.get(..12).unwrap_or_default(),
+            e.focused_units,
+        )
+    });
     format!(
-        "conformance ({} tier): {} units, {} same, {} unstable, {} different, {} infra errors; {} functions compared; {} units with rlimit drift; {} projects skipped{skipped}",
+        "{}conformance ({} tier): {} units, {} same, {} unstable, {} different, {} infra errors; {} functions compared; {} units with rlimit drift; {} projects skipped{skipped}{engine}",
+        if s.engine.is_some() { "engine " } else { "" },
         report.tier,
         s.units,
         s.same,
@@ -416,15 +543,40 @@ fn summary_line(report: &Report) -> String {
     )
 }
 
+/// Locates and validates the engine build for the `engine` command.
+fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<(EngineArm, String)>, String> {
+    if o.command != "engine" {
+        return Ok(None);
+    }
+    let build = o.engine_build.as_ref().ok_or_else(|| {
+        format!("error[SAIL3120]: engine needs --engine-build or SAIL_ENGINE_BUILD\n{USAGE}")
+    })?;
+    let engine = sail_verus::engine::Installed::at(build, &installed.pins)
+        .map_err(|e| format!("error[{}]: {e}", e.code))?;
+    Ok(Some((
+        EngineArm {
+            verus: engine.verus,
+            cargo_verus: engine.cargo_verus,
+            focus: o.focus,
+        },
+        engine.manifest_sha256,
+    )))
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "one linear run: select, execute, summarize and report"
+)]
 fn run(o: &Options) -> Result<ExitCode, String> {
     let (corpus, installed, cache) = load()?;
+    let engine = engine_arm(o, &installed)?;
     let shim = match &o.shim {
         Some(p) => p.clone(),
         None => std::env::current_exe()
             .map_err(|e| e.to_string())?
             .with_file_name("sail-z3"),
     };
-    if !shim.is_file() {
+    if engine.is_none() && !shim.is_file() {
         return Err(format!(
             "error[SAIL3030]: shim not found at {} (build it with `cargo build --release -p sail-shim`, or pass --shim)",
             shim.display()
@@ -456,6 +608,11 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         trace: o.trace,
         plain_runs: o.plain_runs,
         confirm_runs: o.confirm_runs,
+        engine: engine.as_ref().map(|(arm, _)| EngineArm {
+            verus: arm.verus.clone(),
+            cargo_verus: arm.cargo_verus.clone(),
+            focus: arm.focus,
+        }),
     };
     let mut units = run_all(units, o.jobs, &cx);
     units.sort_by(|a, b| a.id.cmp(&b.id));
@@ -473,6 +630,16 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         }
         summary.functions += u.comparison.functions;
         summary.units_with_rlimit_drift += usize::from(!u.comparison.rlimit_drift.is_empty());
+    }
+    if let Some((_, manifest_sha256)) = &engine {
+        let mut totals = EngineSummary {
+            manifest_sha256: manifest_sha256.clone(),
+            ..EngineSummary::default()
+        };
+        for stats in units.iter().filter_map(|u| u.engine.as_ref()) {
+            totals.focused_units += usize::from(stats.focus_established);
+        }
+        summary.engine = Some(totals);
     }
     let report = Report {
         schema_version: 1,
@@ -520,7 +687,7 @@ fn main() -> ExitCode {
         });
     }
     let result = parse(&args).and_then(|o| match o.command.as_str() {
-        "run" => run(&o),
+        "run" | "engine" => run(&o),
         "fetch" => {
             let (corpus, installed, cache) = load()?;
             let n = select(&o, &corpus, &cache, &installed.pins.verus)?

@@ -82,22 +82,45 @@ keys and new SMT backends remain deferred.
 
 ## M7: Interactive proof engine and repair workflow (in progress)
 
-M7 is developed on the integration branch `rescue/m7` and lands on `main` in
-small PRs ([ADR 0038](decisions/0038-m7-rescue.md)), in this order:
+The approved contract is [ADR 0027](decisions/0027-interactive-proof-engine-and-repair-workflow.md).
 
-1. evidence product: named baselines, `sail compare`, `sail explain` and the
-   proof-event journal;
-2. shared HTTP cache changes, in parallel with 1;
-3. managed freshness, guarded sysroots and compiler artifact families;
-4. the responsive job read path;
-5. the optional interactive engine and repair workflow, with its contract
-   (ADR 0027) and the engine conditions of ADR 0038.
+- Optional pinned source engine: retain one compiler callback for a focused
+  check followed by independent full validation; reuse conservative prepared
+  lowering without retaining compiler state across source revisions.
+- CLI/MCP repair checks, failure evidence, saved named baselines and comparison.
+- A separate live proof-event journal with revision-aware projection and
+  cancellation/reconnect handling.
+- Shared complete input observation and responsive job reads, addressing #69.
 
-Exit gates, measured on a native x86-64 Linux host: exact stock conformance,
-established job reads below 200 ms p95 during active verification, and at
-least a 2x median improvement on each frozen repair catalogue
-(human-eval-verus and Vest), over at least three rounds with every sample
-recorded. M7 is not accepted until these gates pass.
+Exit: the engine's full results and diagnostics match plain Verus on the local corpus
+and affected source tests; established reads below 200 ms p95 during active
+verification; and at least **2× median improvement on each** of frozen
+human-eval-verus and Vest repair catalogues, measured on a native x86-64
+Linux host ([ADR 0038](decisions/0038-m7-rescue.md)). Three rounds and spread
+are required; every sample is recorded and judged afterwards. No successful focus is accepted before
+complete current full validation. M7 remains incomplete until these gates pass.
+
+### Current state
+
+| Gate | Status | Best evidence |
+|---|---|---|
+| Engine build and qualification | Pass (source checks) | Fork `13a1176c` (ADR 0039, no prepared lowering; adds the VI-0001 verifier fix; VI-0005 and VI-0007 fixes dropped): stock fixtures, cancel/restart, library tests and `rust_verify_test` ([L22 report](reports/rescue/l22-final-pin.md)) |
+| Engine runtime delivery | Pass | `engine-runtime-13a1176c-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
+| Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
+| Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
+| Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
+| Default and cache conformance | Pass (native) | `d187e49` on EC2 with runtime `13a1176c`: PR subset 33/33, fast 147/147 and standard 159/159 Same in pass-through, fill, warm and the engine arm, 0 Unstable ([L22 report](reports/rescue/l22-final-pin.md)). The intermittent cache-warm module order on `debug_expand.rs` is no longer a difference ([ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md); [repro](../corpus/repros/sail-cache-warm-error-order/)) |
+| Frozen repair performance (≥2× each) | Accepted at the measured speedup (ADR 0038 amendment 2026-10-13) | Three native rounds on runtime `13a1176c` (`d187e49`), every sample valid: HumanEval 2.14× (64.7 s / 30.3 s), Vest 1.82× (246.6 s / 135.1 s) ([benchmarks](benchmarks.md), [L22 report](reports/rescue/l22-final-pin.md)); L23 measured 2.11× and 1.80× ([L23 report](reports/rescue/l23-repair-target-and-vest.md)) |
+
+The source engine, repair CLI/MCP, resumable proof journals, explanations,
+immutable baselines and comparisons are implemented; stock verification stays
+the default. Start with [the repair walkthrough](proof-repair-walkthrough.md),
+[the MCP guide](mcp.md) or [the SDK contract](result-client.md). Every gate
+above has native x86-64 evidence; the speed gate is accepted at the measured
+speedup rather than met at 2× on Vest (ADR 0038 amendment). M7's acceptance as
+a milestone awaits the lead's review of this evidence. [M7 validation](validation/m7.md)
+gives each gate's evidence and its indexed failed attempts, and
+[known issues](known-issues.md) lists the open defects behind them.
 
 ## Later waves (from the charter's initial scope)
 
@@ -107,8 +130,9 @@ recorded. M7 is not accepted until these gates pass.
      (ADR 0009); effort recording; fault injection; a shared tier of
      signed entries in a directory store (ADR 0017); optional authenticated
      HTTP(S) reading and publication with a self-hosted server (ADR 0025).
-   - **Deferred:** warm solver pools (measured; see below) and the opt-in
-     stack-key mode (ADR 0008 update).
+   - **Planned:** warm, exact-prefix solver sessions for edit-loop cache
+     misses (ADR 0038, direction item 2).
+   - **Deferred:** the opt-in stack-key mode (ADR 0008 update).
 2. **CLI.**
    - **Done:** `sail verify`, `sail watch`, `sail serve`, `sail status`,
      `sail cache`, and the MCP server `sail mcp` (ADR 0016).
@@ -150,18 +174,50 @@ them, on a vstd run on macOS arm64:
 - **The Linux fast-tier warm run** started a solver for only 26 of 1,526
   sessions.
 
-Warm pools could only shorten that small solver-side remainder, so they are
-**deprioritised**. The levers that matter now:
-- **The warm Verus frontend** (the charter roadmap item), which may need
-  Verus's cooperation;
-- **Upstream determinism (VI-0001),** to raise hit rates;
+Across a whole warm run, then, pools could only shorten a small
+solver-side remainder. Edit loops agree.
+
+- **Rescue L11.** It measured warm sessions per missed bucket, on the cycle's
+  critical path ([report](reports/rescue/l11-warm-sessions.md)).
+  - A cycle misses 1–2 buckets. Setup costs 21–82 ms per bucket at the
+    median.
+  - Exact-prefix sessions would save at most 9–19 ms per human-eval-verus
+    cycle (about 0.2%) and 107 ms per vest cycle (0.2%).
+  - History-tolerant sessions would save about the same.
+- **Proposal.** ADR 0040 (proposed) defers both behind the levers below.
+
+The levers that matter now:
+- **The warm Verus frontend** (the charter roadmap item).
+  - The M8.0 gate failed on the reference host. Unchanged-bucket work is
+    9–12% of the median edit cycle (gate: 25%), so the hermetic bucket memo
+    (M8.1) does not proceed.
+  - With 7 Verus threads it is 18–27%.
+  - Cheaper items come first: rustc incremental on the EXEC pass (9.6% /
+    12.6%), Cargo bypass (≤9% / 7%) and Sail overhead (11% / 7%).
+    Rustc incremental is already on, for plain `cargo verus` and Sail alike;
+    a separate cache for Verus's verify pass measured no gain, so that item
+    is closed ([L23 report](reports/rescue/l23-repair-target-and-vest.md)).
+  - Repair functions share one Cargo target, so a new function's first
+    repair no longer verifies vstd (HumanEval 40 s → 6.5–8.9 s, Vest 61 s
+    → 30 s; L23).
+  - See the [L18 report](reports/rescue/l18-m8-stage-profile.md).
+  - The two vstd re-verification defects it found are resolved. The passing
+    run after a failure no longer verifies vstd again (32 s → 5.4 s on
+    HumanEval, 50 s → 24.4 s on Vest). The engine defect came from the
+    dropped VI-0005 fork fix and does not occur at the current pin
+    ([L19 report](reports/rescue/l19-vstd-reverify.md)).
+- **Determinism (VI-0001),** to raise hit rates. In edit loops a reordered
+  bucket costs about 2.7 s per affected human-eval-verus cycle. The fork's
+  remaining variation under `cargo verus` is fixed on fork branch
+  `l21/determinism` (`1612b951`), which is not yet pinned
+  ([L21 report](reports/rescue/l21-determinism.md));
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
 
 ## Charter roadmap (designed for, built later)
 
 - Multiple SMT backends.
 - Alethe and Carcara certificates.
-- A Rust pre-solver.
+- A Rust pre-solver (measured no-go for edit-loop latency; ADR 0038).
 - Unsat-core pruning.
 - Instantiation replay.
 - A warm Verus frontend.

@@ -8,6 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "portfolio": {"$ref": "#/$defs/portfolio"},
+    "engine": {"$ref": "#/$defs/engine"},
     "schema_version": { "const": 1 },
     "sail_version": { "type": "string" },
     "mode": { "type": "string" },
@@ -76,6 +77,16 @@
     }
   },
   "$defs": {
+    "engine": {
+      "type": "object",
+      "required": ["name", "manifest_sha256", "established_by"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "manifest_sha256": { "type": "string" },
+        "established_by": { "enum": ["engine", "stock-fallback"] }
+      }
+    },
     "solver_configuration": {
         "type": "object",
         "required": [
@@ -404,6 +415,7 @@
             "mode": { "type": "string" },
             "source": { "enum": ["fresh", "cache", "mixed", "unrecorded"] },
             "configuration": {"$ref": "#/$defs/solver_configuration"},
+            "engine": {"$ref": "#/$defs/engine"},
         "checks_solved": { "type": "integer", "minimum": 0 },
             "checks_served": { "type": "integer", "minimum": 0 },
             "checks_unrecorded": { "type": "integer", "minimum": 0 }

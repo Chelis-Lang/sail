@@ -113,3 +113,74 @@ inline with the date and link the ADR that captures it.
     signing trust independent of access credentials, and long validation local.
     Persistent Verus internals, pools, stack-only keys and new backends remain
     deferred. See ADRs 0023–0026 and milestone M6 in `docs/ROADMAP.md`.
+
+13. **Interactive proof engine and repair workflow.**
+
+    **Answered 2026-10-10 (approved M7 plan):** build an optional pinned
+    source engine, CLI/MCP repair validation, deterministic explanations,
+    immutable named baselines, separate proof events and shared safe
+    freshness tracking. Retain a compiler callback only within one revision;
+    focused evidence requires independent full validation. The completion
+    gate is at least 2× median improvement on each of two frozen Linux
+    real-project catalogues. The owner subsequently directed local-container
+    execution now, with native-host reference measurements rerun later;
+    native-host availability must not block implementation. Editor integration
+    and automated proof edits are deferred. See ADR 0027.
+
+14. **Source-engine byte oracle when stock emits unstable declaration order.**
+
+    The graph candidate's real human-eval qualification failed the exact
+    independent-stock SMT-byte check on unchanged source. Stock chose a
+    different `arrow_1`/`arrow_2` declaration order (VI-0001). Cached and
+    fresh-lowering engine runs matched all 114 sessions; four fixed-order
+    controls reproduced both orders and missed when current compiler input
+    order changed. The original failed qualification remains in
+    `engine/verus/candidates/qualifications/2459-linux.json` (now in the
+    `archive/m7-contracts-f7103bf` tag), with controls
+    in `2459-order-controls.json` in that directory.
+
+    **Answered 2026-10-10 (owner):** compare cached lowering with fresh
+    lowering from the same compiler input; keep independent stock verdict
+    and diagnostic checks and report stock transcript instability. The
+    same-callback oracle compares actual ordered solver bytes with independent
+    mutable owners and records diagnostic/effect/outcome comparisons. Its
+    implementation must pass before it can qualify a new variant; the old
+    failed qualification is not relabelled. See ADR 0027's amendment.
+
+    **Moot 2026-10-12:** the same-input oracle and prepared-lowering reuse
+    were removed (ADR 0038). Engine conformance compares the engine's full
+    results and diagnostics with plain Verus.
+
+15. **Same-input oracle when stock lowering varies within one process.**
+
+    The source-engine conformance arm (`sail-conformance engine`) runs the
+    owner-amended same-input oracle on every restored preparation hit. On
+    `verus-examples/examples/guide/traits.rs` it fails in most runs (seven of
+    ten repetitions on Linux x86-64): the restored focused-phase lowering and
+    a fresh lowering in the same callback chose different automatic triggers
+    for one quantifier (VI-0015). Stock Verus makes both choices across runs,
+    each engine transcript without the oracle equalled a stock transcript byte for byte, and
+    verdicts and diagnostics match plain Verus. The oracle cannot distinguish
+    this from a preparation defect, so the arm, as wired into
+    `ci/run.sh conformance`, fails on this unit. The complete fast tier
+    found the same kind of mismatch on `summer_school/chapter-6-1.rs`
+    (stock also varies there); its other 109 restored hits passed. On the
+    standard tier, the oracle could not fork `vest-generated`'s initial
+    lowering state at all, so that unit also fails with the oracle on. Options include keeping the
+    engine unqualified until trigger choice is deterministic, disabling
+    preparation reuse for buckets whose lowering is order-sensitive, or
+    classifying such mismatches as unstable under explicit evidence. No
+    normalization or classification change has been made.
+
+    **Answered 2026-10-12 (lead, under the owner's delegation):** on a
+    mismatch, the oracle lowers the bucket again from an independent owner of
+    the same compiler input in the same callback. If the two fresh lowerings
+    differ, the unit is unstable (reported separately, like ADR 0009) and an
+    engine run without the oracle must still match plain Verus's verdicts and
+    diagnostics. If they agree, the mismatch is a hard failure. Fresh
+    lowerings from separate processes are not evidence (VI-0001). See ADR
+    0038's amendment of 2026-10-12.
+
+    **Moot 2026-10-12:** prepared-lowering reuse and the same-input oracle
+    were removed from the engine (rescue L7a; ADR 0038's removal note), so
+    there is no restored lowering to compare.

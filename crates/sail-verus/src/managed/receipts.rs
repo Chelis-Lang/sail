@@ -1,6 +1,6 @@
 //! Persisted driver observations and successful proof receipts.
 
-use super::files::{digest, file_digest, json};
+use super::files::{digest, digest_all, json};
 use crate::{Error, Result};
 use sail_api::output::{Report, VerdictName};
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,11 @@ pub(crate) struct Runtime {
     pub invocations: PathBuf,
     pub original_wrapper: PathBuf,
     pub receipts: PathBuf,
+    pub context_sha256: String,
+    pub input_revision: String,
+    pub packages: BTreeMap<PathBuf, String>,
+    pub target_kinds: BTreeMap<PathBuf, BTreeMap<String, Vec<String>>>,
+    pub engine: Option<crate::engine::Request>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,7 +61,15 @@ pub(crate) struct Receipt {
     pub artifact_hashes: BTreeMap<PathBuf, String>,
     #[serde(default)]
     pub committed: PathBuf,
+    /// The value, or absence, of every variable a unit of the establishing
+    /// run declared (dep-info `# env-dep:`, build-script
+    /// `rerun-if-env-changed`); reuse requires each to be unchanged.
+    #[serde(default)]
+    pub declared_environment: BTreeMap<String, Option<Vec<u8>>>,
 }
+
+/// Receipts before version 3 did not bind declared environment variables.
+pub(crate) const RECEIPT_VERSION: u32 = 3;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
@@ -66,7 +79,8 @@ impl Receipt {
     }
     pub(crate) fn valid(&self, context: &str) -> bool {
         let checksum = self.clone().seal().checksum;
-        self.version == 2
+        self.version == RECEIPT_VERSION
+            && super::environment::unchanged(&self.declared_environment)
             && read::<Commit>(&self.committed).is_some_and(|commit| {
                 commit.context == self.context
                     && commit.run_id == self.invocation.run_id
@@ -75,17 +89,10 @@ impl Receipt {
             && self.checksum == checksum
             && self.context == context
             && self.invocation.success
-            && self
-                .invocation
-                .dependencies
-                .iter()
-                .all(|(path, hash)| file_digest(path).as_ref() == Ok(hash))
+            && digests_match(&self.invocation.dependencies)
             && complete(&self.invocation.report)
             && !self.artifact_hashes.is_empty()
-            && self
-                .artifact_hashes
-                .iter()
-                .all(|(path, hash)| file_digest(path).as_ref() == Ok(hash))
+            && digests_match(&self.artifact_hashes)
     }
 }
 
@@ -97,6 +104,8 @@ struct Commit {
     receipt_checksums: BTreeSet<String>,
 }
 
+/// Copies a run's staged receipts, then writes the one commit marker that
+/// binds their checksums; until the marker exists no copied receipt is valid.
 pub(super) fn publish(run: &Path, destination: &Path, context: &str) -> Result<()> {
     let mut commit = Commit {
         context: context.to_owned(),
@@ -171,10 +180,23 @@ pub(crate) fn complete(report: &Report) -> bool {
 }
 
 pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, String>> {
+    // Complete reads of every artifact overlap; the first failure in path order
+    // is still the reported error.
+    let files: Vec<&Path> = paths.iter().map(PathBuf::as_path).collect();
     paths
         .iter()
-        .map(|p| Ok((p.clone(), file_digest(p)?)))
+        .zip(digest_all(&files))
+        .map(|(p, digest)| Ok((p.clone(), digest?)))
         .collect()
+}
+
+/// Every listed file still has exactly the recorded digest; reads overlap.
+fn digests_match(expected: &BTreeMap<PathBuf, String>) -> bool {
+    let files: Vec<&Path> = expected.keys().map(PathBuf::as_path).collect();
+    expected
+        .values()
+        .zip(digest_all(&files))
+        .all(|(hash, digest)| digest.as_ref() == Ok(hash))
 }
 
 pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
@@ -201,7 +223,7 @@ mod tests {
             functions: Vec::new(),
         });
         Receipt {
-            version: 2,
+            version: RECEIPT_VERSION,
             committed,
             checksum: String::new(),
             package_id: "input".to_owned(),
@@ -222,6 +244,7 @@ mod tests {
                 dependencies: BTreeMap::new(),
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
+            declared_environment: BTreeMap::new(),
         }
         .seal()
     }
@@ -244,6 +267,30 @@ mod tests {
         );
         assert!(receipt.valid("ctx"));
         assert!(!receipt.valid("different"));
+        // A declared variable whose value differs from the recorded one: the
+        // establishing run compiled under another value, so nothing is reused.
+        let mut declared = receipt.clone();
+        declared.declared_environment.insert(
+            "SAIL_TEST_DECLARED_UNSET_L16".to_owned(),
+            Some(b"recorded".to_vec()),
+        );
+        let declared = declared.seal();
+        assert!(
+            json(
+                &declared.committed,
+                &Commit {
+                    context: "ctx".to_owned(),
+                    run_id: "run".to_owned(),
+                    receipt_checksums: BTreeSet::from([
+                        receipt.checksum.clone(),
+                        declared.checksum.clone()
+                    ]),
+                }
+            )
+            .is_ok()
+        );
+        assert!(receipt.valid("ctx"));
+        assert!(!declared.valid("ctx"));
         let mut corrupt = receipt.clone();
         corrupt.invocation.report.mode = "other".to_owned();
         assert!(!corrupt.valid("ctx"));

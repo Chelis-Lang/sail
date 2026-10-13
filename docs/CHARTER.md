@@ -189,3 +189,14 @@ Each entry names the charter text it qualifies and the ADR that records it.
    - rlimit consumption is recorded with results and never enters a key.
 
    See ADR 0009.
+
+3. *Working method and source-engine conformance* (owner decision,
+   2026-10-10). VI-0001 makes independent stock compiler invocations emit
+   different SMT declaration orders for identical source. The optional M7
+   source engine compares cached and fresh lowering bytes from the same
+   compiler input, with independent mutable state and actual ordered solver
+   sessions. Independent stock verdict and diagnostic checks remain required;
+   stock transcript instability is reported. No normalization or default-mode
+   replay change is authorized. Old failed qualifications remain recorded,
+   and a new variant must pass the amended oracle before selection. See
+   ADR 0027 and question 14 in `docs/open-questions.md`.

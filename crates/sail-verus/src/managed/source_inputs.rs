@@ -1,6 +1,5 @@
 //! Compiler-declared inputs, including explicit files beneath excluded directories.
 
-use super::files::json;
 use super::receipts::read;
 use crate::Result;
 use serde::{Deserialize, Serialize};
@@ -9,11 +8,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 #[derive(Default, Serialize, Deserialize)]
-struct Inputs {
-    paths: Vec<PathBuf>,
-    covered: bool,
+pub(super) struct Inputs {
+    pub(super) paths: Vec<PathBuf>,
+    pub(super) covered: bool,
     #[serde(default)]
-    by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
+    pub(super) by_package: Option<BTreeMap<String, Vec<PathBuf>>>,
 }
 
 pub(super) fn load(path: &Path) -> (Vec<PathBuf>, bool) {
@@ -29,7 +28,7 @@ pub(super) fn packages(path: &Path) -> Option<BTreeMap<String, Vec<PathBuf>>> {
     read::<Inputs>(path).and_then(|v| v.by_package)
 }
 
-fn dependencies(text: &str) -> Option<Vec<String>> {
+pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
     // Rust emits make-style dep-info. Only the first rule contains inputs;
     // subsequent empty rules and env-dep comments are not file dependencies.
     let joined = text.replace("\\\n", "");
@@ -116,7 +115,7 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
         }
     }
     let paths: Vec<PathBuf> = paths.into_iter().collect();
-    json(
+    super::files::json(
         path,
         &Inputs {
             paths: paths.clone(),

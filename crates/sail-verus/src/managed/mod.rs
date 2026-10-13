@@ -3,16 +3,21 @@
 mod absent;
 mod build_inputs;
 mod configuration;
+mod diagnostics;
+mod environment;
 mod files;
+mod freshness;
 mod input;
-mod observe;
+mod read_check;
 mod receipts;
 mod runner;
 mod source_inputs;
 
 pub(crate) use files::{digest, event, file_digest, json};
+pub use freshness::FreshnessIndex;
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
+pub(crate) use runner::run_engine;
 pub use runner::{Config, refresh_context, refresh_result, run};
 
 pub(crate) use receipts::complete as receipt_complete;

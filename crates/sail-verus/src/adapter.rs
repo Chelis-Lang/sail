@@ -14,7 +14,29 @@ use std::process::{Command, ExitCode, Stdio};
 fn required(name: &str) -> Result<OsString> {
     std::env::var_os(name)
         .filter(|v| !v.is_empty())
-        .ok_or_else(|| Error::new("SAIL3110", format!("private adapter missing {name}")))
+        .ok_or_else(|| Error::new("SAIL3111", format!("private adapter missing {name}")))
+}
+
+pub(crate) struct InvocationLog<'a> {
+    pub(crate) directory: &'a Path,
+    pub(crate) run_id: &'a str,
+    pub(crate) target: &'a str,
+}
+
+impl InvocationLog<'_> {
+    fn record(&self, child: &mut std::process::Child) -> Result<()> {
+        let recorded = json(
+            &self.directory.join(format!("{}.started", child.id())),
+            &serde_json::json!({"target":self.target,"run_id":self.run_id}),
+        );
+        if recorded.is_err() {
+            // A child without a durable invocation record cannot contribute
+            // evidence or remain running after adapter setup fails.
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        recorded
+    }
 }
 
 fn status(status: std::process::ExitStatus) -> ExitCode {
@@ -54,7 +76,7 @@ fn cargo() -> Result<ExitCode> {
         return cmd
             .status()
             .map(status)
-            .map_err(|e| Error::new("SAIL3110", e.to_string()));
+            .map_err(|e| Error::new("SAIL3111", e.to_string()));
     }
     cmd.env("SAIL_MANAGED_WRAPPER", required("RUSTC_WRAPPER")?)
         .env("RUSTC_WRAPPER", required("SAIL_MANAGED_PROXY")?);
@@ -65,13 +87,13 @@ fn cargo() -> Result<ExitCode> {
         .create(true)
         .append(true)
         .open(path)
-        .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let mut child = cmd
         .spawn()
-        .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     if let Some(stdout) = child.stdout.take() {
         for line in std::io::BufReader::new(stdout).split(b'\n') {
-            let line = line.map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+            let line = line.map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&line)
                 && matches!(
                     value["reason"].as_str(),
@@ -81,18 +103,18 @@ fn cargo() -> Result<ExitCode> {
                 records
                     .write_all(&line)
                     .and_then(|()| records.write_all(b"\n"))
-                    .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
             }
             std::io::stdout()
                 .write_all(&line)
                 .and_then(|()| std::io::stdout().write_all(b"\n"))
-                .map_err(|e| Error::new("SAIL3110", e.to_string()))?;
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         }
     }
     child
         .wait()
         .map(status)
-        .map_err(|e| Error::new("SAIL3110", e.to_string()))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))
 }
 
 fn argument(args: &[OsString], flag: &str) -> Option<String> {
@@ -107,9 +129,15 @@ fn verifying(args: &[OsString]) -> bool {
     {
         return false;
     }
+    cargo_package_id().is_some_and(|id| {
+        std::env::var(format!("__VERUS_DRIVER_VERIFY_{id}")).as_deref() == Ok("1")
+    })
+}
+
+fn cargo_package_id() -> Option<String> {
     let package = ["CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR"].map(std::env::var);
     let [Ok(name), Ok(version), Ok(manifest)] = package else {
-        return false;
+        return None;
     };
     let hash = digest(
         Path::new(&manifest)
@@ -117,8 +145,155 @@ fn verifying(args: &[OsString]) -> bool {
             .to_string_lossy()
             .as_bytes(),
     );
-    let id = format!("{name}-{version}-{}", hash.get(..12).unwrap_or_default());
-    std::env::var(format!("__VERUS_DRIVER_VERIFY_{id}")).as_deref() == Ok("1")
+    Some(format!(
+        "{name}-{version}-{}",
+        hash.get(..12).unwrap_or_default()
+    ))
+}
+
+fn cargo_driver_options(id: &str) -> Result<DriverOptions> {
+    cargo_driver_options_with(id, |key| match std::env::var(key) {
+        Ok(value) => Ok(Some(value)),
+        Err(std::env::VarError::NotPresent) => Ok(None),
+        Err(error) => Err(Error::new(
+            "SAIL3123",
+            format!("invalid effective Cargo driver arguments: {error}"),
+        )),
+    })
+}
+
+struct DriverOptions {
+    arguments: Vec<String>,
+    environment: std::collections::BTreeMap<String, String>,
+}
+
+fn cargo_driver_options_with(
+    id: &str,
+    mut lookup: impl FnMut(&str) -> Result<Option<String>>,
+) -> Result<DriverOptions> {
+    let mut arguments = Vec::new();
+    let mut environment = std::collections::BTreeMap::new();
+    for key in [
+        " __VERUS_DRIVER_ARGS__".to_owned(),
+        format!(" __VERUS_DRIVER_ARGS_FOR_{id}"),
+    ] {
+        if let Some(value) = lookup(&key)? {
+            // Match the pinned rust_verify decoder exactly: only delimited
+            // tokens after the leading separator are effective driver options.
+            arguments.extend(
+                value
+                    .split("__VERUS_DRIVER_ARGS_SEP__")
+                    .skip(1)
+                    .map(str::to_owned),
+            );
+            environment.insert(key, value);
+        }
+    }
+    let effective: Vec<_> = arguments
+        .iter()
+        .take_while(|argument| *argument != "--")
+        .collect();
+    if effective.iter().any(|argument| *argument == "--no-vstd")
+        && effective.iter().any(|argument| {
+            matches!(
+                argument.as_str(),
+                "--is-vstd" | "--is-core" | "--is-stdlib-outside-of-core"
+            )
+        })
+    {
+        return Err(Error::new(
+            "SAIL3123",
+            "contradictory effective Cargo launcher modes",
+        ));
+    }
+    if effective
+        .iter()
+        .filter(|argument| argument.as_str() == "--no-vstd")
+        .count()
+        > 1
+    {
+        return Err(Error::new(
+            "SAIL3123",
+            "duplicate effective Cargo no-vstd mode",
+        ));
+    }
+    Ok(DriverOptions {
+        arguments,
+        environment,
+    })
+}
+
+fn relocate_no_vstd(
+    options: &DriverOptions,
+    arguments: &[OsString],
+) -> Result<std::collections::BTreeMap<String, String>> {
+    if !options
+        .arguments
+        .iter()
+        .take_while(|argument| *argument != "--")
+        .any(|argument| argument == "--no-vstd")
+    {
+        return Ok(std::collections::BTreeMap::new());
+    }
+    if arguments
+        .iter()
+        .take_while(|argument| *argument != "--")
+        .any(|argument| argument == "--no-vstd")
+    {
+        return Err(Error::new(
+            "SAIL3123",
+            "duplicate literal and effective Cargo no-vstd mode",
+        ));
+    }
+    let separator = "__VERUS_DRIVER_ARGS_SEP__";
+    let mut relocated = options.environment.clone();
+    let mut removed = false;
+    // Decoder order matters when a later `--` hides positional tokens. Remove
+    // only the one effective token; preserve even identical positional bytes.
+    let keys = std::iter::once(" __VERUS_DRIVER_ARGS__").chain(
+        options
+            .environment
+            .keys()
+            .map(String::as_str)
+            .filter(|key| *key != " __VERUS_DRIVER_ARGS__"),
+    );
+    for key in keys {
+        let Some(value) = options.environment.get(key) else {
+            continue;
+        };
+        let mut parts = value.split(separator);
+        let mut replacement = parts.next().unwrap_or_default().to_owned();
+        for part in parts {
+            if !removed && part == "--no-vstd" {
+                removed = true;
+            } else {
+                replacement.push_str(separator);
+                replacement.push_str(part);
+            }
+        }
+        relocated.insert(key.to_owned(), replacement);
+    }
+    Ok(relocated)
+}
+
+fn launcher_arguments(args: &[OsString], engine: bool, effective: &[String]) -> Vec<OsString> {
+    let mut arguments = args.to_vec();
+    let boundary = args
+        .iter()
+        .position(|argument| argument == "--")
+        .unwrap_or(args.len());
+    if engine
+        && effective
+            .iter()
+            .take_while(|argument| *argument != "--")
+            .any(|argument| argument == "--no-vstd")
+        && !args[..boundary]
+            .iter()
+            .any(|argument| argument == "--no-vstd")
+    {
+        arguments.insert(boundary, OsString::from("--no-vstd"));
+    }
+    arguments
 }
 
 fn custom_compiler_context(args: &[OsString]) -> bool {
@@ -140,6 +315,10 @@ fn custom_compiler_context(args: &[OsString]) -> bool {
     })
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "Engine fallback is kept alongside the owned subprocess drain and seal check."
+)]
 fn driver() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let wrapper = PathBuf::from(required("SAIL_MANAGED_WRAPPER")?);
@@ -177,8 +356,47 @@ fn driver() -> Result<ExitCode> {
     std::fs::create_dir_all(dir.join("provenance"))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let logs = dir.join("logs");
-    let mut cmd = Command::new(wrapper);
-    cmd.args(&args)
+    // VI-0011: the pinned launcher chooses macro mode before decoding Cargo's
+    // effective per-package options. Relocate only an already requested mode,
+    // and only for the explicitly selected optional engine. Stock is unchanged.
+    let options = if runtime.engine.is_some() {
+        let id = cargo_package_id().ok_or_else(|| {
+            Error::new(
+                "SAIL3123",
+                "engine invocation lacks its Cargo package identity",
+            )
+        })?;
+        cargo_driver_options(&id)?
+    } else {
+        DriverOptions {
+            arguments: Vec::new(),
+            environment: std::collections::BTreeMap::new(),
+        }
+    };
+    let launcher_environment = relocate_no_vstd(&options, &args)?;
+    let launcher_args = launcher_arguments(&args, runtime.engine.is_some(), &options.arguments);
+    if launcher_args != args {
+        json(
+            &dir.join("launcher-options.json"),
+            &serde_json::json!({
+                "version":1,"run_id":runtime.run_id,"context_sha256":runtime.context_sha256,
+                "package_id":cargo_package_id(),"project_package_id":runtime.packages.get(&identity.manifest),
+                "target":identity.name,"kind":identity.crate_type,
+                "forwarded":["--no-vstd"],"source":"effective-cargo-driver-options","engine_only":true,
+                "original_arguments":args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
+                "launcher_arguments":launcher_args.iter().map(|arg|arg.as_encoded_bytes()).collect::<Vec<_>>(),
+                "effective_arguments":options.arguments,
+                "deferred_environment":launcher_environment,
+                "adaptation":"relocate-exact-effective-token",
+                "cargo_identity": (["CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_MANIFEST_DIR", "CARGO_CRATE_NAME", "CARGO_PRIMARY_PACKAGE"]
+                    .into_iter().filter_map(|key|std::env::var(key).ok().map(|value|(key,value)))
+                    .collect::<std::collections::BTreeMap<_,_>>())
+            }),
+        )?;
+    }
+    let mut cmd = Command::new(&wrapper);
+    cmd.args(&launcher_args)
+        .envs(&launcher_environment)
         .args([
             "--output-json",
             "--time",
@@ -192,13 +410,29 @@ fn driver() -> Result<ExitCode> {
         .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    let source_events = dir.join("engine.events.jsonl");
+    if let Some(engine) = &runtime.engine {
+        cmd.env("SAIL_ENGINE", "interactive")
+            .env("SAIL_ENGINE_EVENTS", &source_events)
+            .env("SAIL_ENGINE_CONTEXT", &runtime.context_sha256)
+            .env("SAIL_ENGINE_FOCUS_REPORT", dir.join("focus.source.json"));
+        if let Some(function) = &engine.function {
+            cmd.env("SAIL_ENGINE_FUNCTION", function);
+        }
+    }
+    let relay = runtime
+        .engine
+        .as_ref()
+        .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    json(
-        &runtime.invocations.join(format!("{}.started", child.id())),
-        &serde_json::json!({"target":identity.name,"run_id":runtime.run_id}),
-    )?;
+    let invocation_log = InvocationLog {
+        directory: &runtime.invocations,
+        run_id: &runtime.run_id,
+        target: &identity.name,
+    };
+    invocation_log.record(&mut child)?;
     event(
         &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.name}),
     );
@@ -219,9 +453,11 @@ fn driver() -> Result<ExitCode> {
                 break;
             }
             stderr.extend_from_slice(&buf[..n]);
-            std::io::stderr()
-                .write_all(&buf[..n])
-                .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+            if runtime.engine.is_none() {
+                std::io::stderr()
+                    .write_all(&buf[..n])
+                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+            }
         }
     }
     let exit = child
@@ -232,18 +468,155 @@ fn driver() -> Result<ExitCode> {
         .join()
         .map_err(|_| Error::new("SAIL3111", "solver output reader failed"))?
         .map_err(|e| Error::new("SAIL3111", format!("cannot capture solver output: {e}")))?;
-    finish(&runtime, identity, &dir, &stdout, &stderr, exit.code())?;
+    if let Some(relay) = relay {
+        relay.finish();
+    }
+    let mut established = None;
+    let (stdout, stderr, exit) = if let Some(engine) = &runtime.engine {
+        let mut stock = Command::new(&engine.stock_wrapper);
+        stock
+            .args(&launcher_args)
+            .envs(&launcher_environment)
+            .args([
+                "--output-json",
+                "--time",
+                "--log",
+                "air",
+                "--log",
+                "smt-transcript",
+                "--log-dir",
+            ])
+            .arg(&logs);
+        let captured = std::process::Output {
+            stdout,
+            stderr,
+            status: exit,
+        };
+        let (output, trusted) = engine_output(&dir, stock, captured, &invocation_log)?;
+        if trusted {
+            save_focus(&runtime, &identity, &dir)?;
+        }
+        established = Some(engine.provenance(if trusted {
+            sail_api::output::EngineEstablishment::Engine
+        } else {
+            sail_api::output::EngineEstablishment::StockFallback
+        }));
+        (output.stdout, output.stderr, output.status)
+    } else {
+        (stdout, stderr, exit)
+    };
+    if runtime.engine.is_some() {
+        std::io::stderr()
+            .write_all(&stderr)
+            .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    }
+    finish(
+        &runtime,
+        identity,
+        &dir,
+        &Captured {
+            stdout: &stdout,
+            stderr: &stderr,
+            exit: exit.code(),
+        },
+        established.as_ref(),
+    )?;
     Ok(status(exit))
+}
+
+/// Retains interrupted engine evidence and restarts the exact stock compiler
+/// invocation. Engine observations and focused evidence cannot seal a report
+/// without the independent complete full document and normal process exit.
+pub(crate) fn engine_output(
+    dir: &Path,
+    mut stock: Command,
+    captured: std::process::Output,
+    invocation_log: &InvocationLog<'_>,
+) -> Result<(std::process::Output, bool)> {
+    if crate::engine_events::completed(
+        &dir.join("engine.events.jsonl"),
+        &captured.stdout,
+        captured.status.code(),
+    ) {
+        return Ok((captured, true));
+    }
+    std::fs::write(dir.join("engine.failed.stdout"), &captured.stdout)
+        .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &captured.stderr))
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    let _ = std::fs::remove_file(dir.join("focus.source.json"));
+    for directory in [dir.join("logs"), dir.join("provenance")] {
+        if directory.exists() {
+            std::fs::remove_dir_all(&directory)
+                .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+        }
+    }
+    std::fs::create_dir_all(dir.join("provenance"))
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    for key in [
+        "SAIL_ENGINE",
+        "SAIL_ENGINE_FUNCTION",
+        "SAIL_ENGINE_EVENTS",
+        "SAIL_ENGINE_FOCUS_REPORT",
+        "SAIL_ENGINE_CONTEXT",
+    ] {
+        stock.env_remove(key);
+    }
+    let mut child = stock
+        .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    invocation_log.record(&mut child)?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    Ok((output, false))
+}
+
+struct Captured<'a> {
+    stdout: &'a [u8],
+    stderr: &'a [u8],
+    exit: Option<i32>,
+}
+
+/// Records engine provenance on a report and each of its functions.
+pub(crate) fn mark_engine(
+    report: &mut sail_api::output::Report,
+    engine: &sail_api::output::EngineProvenance,
+) {
+    for function in report
+        .crates
+        .iter_mut()
+        .flat_map(|krate| &mut krate.functions)
+    {
+        function.provenance.engine = Some(engine.clone());
+    }
+    report.engine = Some(engine.clone());
+}
+
+/// Whether a completed report may publish a whole-target proof receipt. A
+/// stock fallback after an engine fault reports the stock verdicts but never
+/// manufactures a successful engine receipt (ADR 0027).
+fn receipt_success(report: &sail_api::output::Report, report_args: &[String]) -> bool {
+    let fallback = report.engine.as_ref().is_some_and(|engine| {
+        engine.established_by == sail_api::output::EngineEstablishment::StockFallback
+    });
+    crate::managed::receipt_complete(report) && !crate::managed::focused(report_args) && !fallback
 }
 
 fn finish(
     runtime: &Runtime,
     identity: TargetIdentity,
     dir: &Path,
-    stdout: &[u8],
-    stderr: &[u8],
-    exit: Option<i32>,
+    captured: &Captured<'_>,
+    engine: Option<&sail_api::output::EngineProvenance>,
 ) -> Result<()> {
+    let Captured {
+        stdout,
+        stderr,
+        exit,
+    } = *captured;
     std::fs::write(dir.join("verus.stdout"), stdout)
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -251,7 +624,8 @@ fn finish(
     std::io::stderr()
         .write_all(&rest)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let logs = crate::attribution::read_logs(&dir.join("logs")).unwrap_or_default();
+    let logs =
+        crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine)).unwrap_or_default();
     let provenance = if runtime.daemon {
         crate::attribution::Provenance::Records(crate::attribution::read_session_records(
             &dir.join("provenance"),
@@ -271,7 +645,7 @@ fn finish(
                 .unwrap_or(report_args.len()),
         );
     }
-    let report = crate::report::build(&crate::report::Inputs {
+    let mut report = crate::report::build(&crate::report::Inputs {
         args: &report_args,
         exit_code: exit,
         solver_path: Some(runtime.z3.to_string_lossy().into_owned()),
@@ -280,8 +654,10 @@ fn finish(
         attribution: &attr,
         diagnostics: &crate::diagnostics::parse(&rendered_diagnostics(stderr)),
     });
-    let success =
-        crate::managed::receipt_complete(&report) && !crate::managed::focused(&report_args);
+    if let Some(engine) = engine {
+        mark_engine(&mut report, engine);
+    }
+    let success = receipt_success(&report, &report_args);
     let dependencies = driver_dependencies()?;
     let invocation = Invocation {
         identity,
@@ -356,25 +732,567 @@ fn actual_focus() -> bool {
 
 fn driver_dependencies() -> Result<std::collections::BTreeMap<PathBuf, String>> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let mut files = std::collections::BTreeMap::new();
+    let mut present = Vec::new();
     for pair in args.windows(2).filter(|w| w[0] == "--extern") {
         if let Some((_, path)) = pair[1].to_str().and_then(|s| s.split_once('=')) {
             let path = PathBuf::from(path);
-            if path.is_file() {
-                files.insert(path.clone(), file_digest(&path)?);
-            }
             let vir = path.with_extension("vir");
+            if path.is_file() {
+                present.push(path);
+            }
             if vir.is_file() {
-                files.insert(vir.clone(), file_digest(&vir)?);
+                present.push(vir);
             }
         }
     }
+    // Complete reads of every dependency overlap; the first failure in
+    // argument order is still the reported error.
+    let digests = crate::parallel::in_order(&present, |path| file_digest(path));
+    let mut files = std::collections::BTreeMap::new();
+    for (path, digest) in present.into_iter().zip(digests) {
+        files.insert(path, digest?);
+    }
     Ok(files)
+}
+
+/// Where the full phase's Verus logs are.
+///
+/// Stock Verus, and therefore the stock fallback, writes them to the given
+/// `--log-dir`. The engine's Verus fork (VI-0004, ADR 0039) runs via Cargo
+/// here and gives each crate its own subdirectory: `<crate name>` for a
+/// library and `<crate name>-bin` for a binary, from Cargo's
+/// `CARGO_CRATE_NAME` and `CARGO_BIN_NAME`, which this driver shares with the
+/// Verus it runs. The focused phase keeps its explicit `focus` directory.
+fn full_log_dir(logs: &Path, engine: Option<&sail_api::output::EngineProvenance>) -> PathBuf {
+    let by_engine =
+        engine.is_some_and(|e| e.established_by == sail_api::output::EngineEstablishment::Engine);
+    match std::env::var("CARGO_CRATE_NAME") {
+        Ok(name) if by_engine && !name.is_empty() => {
+            if std::env::var_os("CARGO_BIN_NAME").is_some() {
+                logs.join(format!("{name}-bin"))
+            } else {
+                logs.join(name)
+            }
+        }
+        _ => logs.to_owned(),
+    }
+}
+
+fn save_focus(runtime: &Runtime, identity: &TargetIdentity, dir: &Path) -> Result<()> {
+    let path = dir.join("focus.source.json");
+    if !path.is_file() {
+        return Ok(());
+    }
+    let source: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(path).map_err(|e| Error::new("SAIL3123", e.to_string()))?,
+    )
+    .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    let function = source["function"]
+        .as_str()
+        .ok_or_else(|| Error::new("SAIL3123", "focused source evidence has no function"))?;
+    let logs = crate::attribution::read_logs(&dir.join("logs/focus")).unwrap_or_default();
+    let docs = vec![source["verus"].clone()];
+    let attr = crate::attribution::attribute(
+        &docs,
+        Some(&logs),
+        &crate::attribution::Provenance::NoCache,
+        None,
+    );
+    let mut report = crate::report::build(&crate::report::Inputs {
+        args: &runtime.args,
+        exit_code: Some(i32::from(
+            source["verus"]["verification-results"]["errors"]
+                .as_u64()
+                .unwrap_or(1)
+                > 0
+                || source["verus"]["verification-results"]["encountered-error"] == true
+                || source["verus"]["verification-results"]["encountered-vir-error"] == true,
+        )),
+        solver_path: Some(runtime.z3.to_string_lossy().into_owned()),
+        solver_sha256: Some(runtime.z3_sha256.clone()),
+        daemon: false,
+        attribution: &attr,
+        diagnostics: &[],
+    });
+    report.diagnostics = source["diagnostics"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(crate::engine_events::diagnostic)
+        .collect();
+    report.command.extend([
+        "--".into(),
+        "--sail-repair-function".into(),
+        function.into(),
+    ]);
+    for krate in &mut report.crates {
+        krate.functions.retain(|item| item.function == function);
+        for item in &mut krate.functions {
+            item.tier = sail_api::output::TierName::Provisional;
+            item.verdict = sail_api::output::VerdictName::Provisional;
+        }
+    }
+    report.summary = sail_api::output::Summary::of(&report.crates);
+    json(
+        &dir.join("focus.report.json"),
+        &crate::engine::FocusTarget {
+            function: function.to_owned(),
+            package_id: runtime
+                .packages
+                .get(&identity.manifest)
+                .cloned()
+                .unwrap_or_default(),
+            target: identity.name.clone(),
+            kind: if identity.crate_type == "rlib" {
+                "lib".into()
+            } else {
+                identity.crate_type.clone()
+            },
+            report,
+        },
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    fn capture_engine(
+        log: &InvocationLog<'_>,
+        document: &[u8],
+        exit: &str,
+    ) -> std::result::Result<std::process::Output, Box<dyn std::error::Error>> {
+        std::fs::create_dir_all(log.directory)?;
+        let input = log.directory.join("engine.output");
+        std::fs::write(&input, document)?;
+        let mut child = Command::new("/bin/sh")
+            .args([
+                "-c",
+                "cat \"$1\"; printf 'original engine diagnostic\\n' >&2; exit \"$2\"",
+                "engine",
+            ])
+            .arg(input)
+            .arg(exit)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        log.record(&mut child)?;
+        Ok(child.wait_with_output()?)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn interrupted_engine_restarts_exact_stock_args_and_preserves_failure()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-engine-fallback-{}", std::process::id()));
+        let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
+        let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
+        let documents = [
+            b"".as_slice(),
+            b"{broken",
+            &proof[..proof.len() - 2],
+            proof,
+            proof,
+            late,
+        ];
+        for (index, document) in documents.into_iter().enumerate() {
+            let dir = root.join(index.to_string());
+            std::fs::create_dir_all(dir.join("logs"))?;
+            std::fs::create_dir_all(dir.join("provenance"))?;
+            std::fs::write(dir.join("logs/unsealed"), b"old log")?;
+            std::fs::write(dir.join("focus.source.json"), b"focused evidence")?;
+            std::fs::write(
+                dir.join("engine.events.jsonl"),
+                "{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false}}\n",
+            )?;
+            if index == 3 {
+                std::fs::write(
+                    dir.join("engine.events.jsonl"),
+                    include_bytes!("../tests/fixtures/engine-terminal/terminal-failure.jsonl"),
+                )?;
+            }
+            let starts = dir.join("starts");
+            let log = InvocationLog {
+                directory: &starts,
+                run_id: "run",
+                target: "demo",
+            };
+            let captured = capture_engine(&log, document, if index == 3 { "101" } else { "1" })?;
+            let stock_document = if index >= 4 {
+                document
+            } else {
+                b"stock-reply\n"
+            };
+            let reply = dir.join("stock.output");
+            std::fs::write(&reply, stock_document)?;
+            let mut stock = Command::new("/bin/sh");
+            stock.current_dir(&dir).env("SAIL_ENGINE", "interactive").args([
+                "-c",
+                "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
+                "stock",
+            ]).arg(reply).args(["crate path.rs", "--", "literal;$(untouched)"]);
+            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            assert!(!trusted);
+            assert_eq!(output.stdout, stock_document);
+            assert_eq!(output.stderr, b"original engine diagnostic\n");
+            assert_eq!(output.status.code(), Some(1));
+            assert_eq!(
+                std::fs::read(dir.join("stock.argv"))?,
+                b"crate path.rs\0--\0literal;$(untouched)\0"
+            );
+            assert_eq!(std::fs::read(dir.join("stock.engine"))?, b"unset");
+            assert_eq!(std::fs::read(dir.join("engine.failed.stdout"))?, document);
+            assert_eq!(
+                std::fs::read(dir.join("engine.failed.stderr"))?,
+                b"original engine diagnostic\n"
+            );
+            assert!(!dir.join("focus.source.json").exists());
+            assert!(!dir.join("logs/unsealed").exists());
+            assert!(dir.join("engine.events.jsonl").is_file());
+            let markers = std::fs::read_dir(&starts)?.collect::<std::io::Result<Vec<_>>>()?;
+            assert_eq!(
+                markers
+                    .iter()
+                    .filter(|entry| entry
+                        .path()
+                        .extension()
+                        .is_some_and(|extension| extension == "started"))
+                    .count(),
+                2
+            );
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn completed_engine_is_trusted_and_a_crash_falls_back_to_stock()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-engine-crash-{}", std::process::id()));
+        let dir = root.join("sidecar");
+        std::fs::create_dir_all(&dir)?;
+        let starts = dir.join("starts");
+        let log = InvocationLog {
+            directory: &starts,
+            run_id: "run",
+            target: "demo",
+        };
+        let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
+        // Control: a completed engine run is trusted as is.
+        std::fs::write(
+            dir.join("engine.events.jsonl"),
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
+        )?;
+        let captured = capture_engine(&log, success, "0")?;
+        let mut stock = Command::new("/bin/sh");
+        stock.args(["-c", "exit 2"]);
+        let (_, trusted) = engine_output(&dir, stock, captured, &log)?;
+        assert!(trusted);
+        // An injected engine crash (exit 101, no seal) falls back to stock.
+        std::fs::remove_file(dir.join("engine.events.jsonl"))?;
+        let captured = capture_engine(&log, success, "101")?;
+        let reply = dir.join("stock.output");
+        std::fs::write(&reply, success)?;
+        let mut stock = Command::new("/bin/sh");
+        stock.args(["-c", "cat \"$1\"", "stock"]).arg(&reply);
+        let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+        assert!(!trusted);
+        assert_eq!(output.stdout, success);
+        assert!(dir.join("engine.failed.stdout").is_file());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn stock_fallback_reports_engine_provenance_without_a_receipt() {
+        let (documents, _) = crate::attribution::json_documents(include_bytes!(
+            "../tests/fixtures/engine-terminal/success.json"
+        ));
+        let attribution = crate::attribution::attribute(
+            &documents,
+            None,
+            &crate::attribution::Provenance::NoCache,
+            None,
+        );
+        let build = || {
+            crate::report::build(&crate::report::Inputs {
+                args: &[],
+                exit_code: Some(0),
+                solver_path: None,
+                solver_sha256: None,
+                daemon: false,
+                attribution: &attribution,
+                diagnostics: &[],
+            })
+        };
+        let stock = build();
+        assert!(stock.engine.is_none());
+        assert!(receipt_success(&stock, &[]), "stock control publishes");
+        let request = crate::engine::Request {
+            function: None,
+            cargo_verus: PathBuf::new(),
+            manifest: PathBuf::new(),
+            manifest_sha256: "ab".repeat(32),
+            stock_wrapper: PathBuf::new(),
+            artifacts: Vec::new(),
+        };
+        let mut engine = build();
+        mark_engine(
+            &mut engine,
+            &request.provenance(sail_api::output::EngineEstablishment::Engine),
+        );
+        assert!(receipt_success(&engine, &[]));
+        let mut fallback = build();
+        mark_engine(
+            &mut fallback,
+            &request.provenance(sail_api::output::EngineEstablishment::StockFallback),
+        );
+        assert!(!receipt_success(&fallback, &[]));
+        // Verdicts are the stock verdicts; only provenance differs.
+        assert_eq!(fallback.crates.len(), stock.crates.len());
+        for (marked, original) in fallback
+            .crates
+            .iter()
+            .flat_map(|krate| &krate.functions)
+            .zip(stock.crates.iter().flat_map(|krate| &krate.functions))
+        {
+            assert_eq!(marked.verdict, original.verdict);
+            let engine = marked.provenance.engine.as_ref();
+            assert_eq!(
+                engine.map(|engine| engine.established_by),
+                Some(sail_api::output::EngineEstablishment::StockFallback)
+            );
+        }
+        // Stock serialization is unchanged: no engine fields appear.
+        let text = serde_json::to_string(&stock).unwrap_or_default();
+        assert!(!text.contains("\"engine\""), "{text}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn normal_completed_success_and_exact_failures_do_not_restart_stock()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let dir =
+            std::env::temp_dir().join(format!("sail-engine-normal-failure-{}", std::process::id()));
+        std::fs::create_dir_all(&dir)?;
+        std::fs::write(
+            dir.join("engine.events.jsonl"),
+            "{\"version\":1,\"event\":\"compiler-sealed\",\"phase\":\"full\",\"payload\":{\"success\":false}}\n",
+        )?;
+        let proof = include_bytes!("../tests/fixtures/engine-terminal/failed-proof.json");
+        let late = include_bytes!("../tests/fixtures/engine-terminal/late-exec.json");
+        let starts = dir.join("starts");
+        let log = InvocationLog {
+            directory: &starts,
+            run_id: "run",
+            target: "demo",
+        };
+        let success = include_bytes!("../tests/fixtures/engine-terminal/success.json");
+        for (index, (document, code)) in [
+            (proof.as_slice(), "1"),
+            (late.as_slice(), "1"),
+            (success.as_slice(), "0"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            std::fs::write(
+                dir.join("engine.events.jsonl"),
+                if code == "0" {
+                    include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl")
+                        .as_slice()
+                } else {
+                    include_bytes!("../tests/fixtures/engine-terminal/terminal-failure.jsonl")
+                        .as_slice()
+                },
+            )?;
+            let captured = capture_engine(&log, document, code)?;
+            let mut stock = Command::new("/bin/sh");
+            stock
+                .current_dir(&dir)
+                .args(["-c", "touch stock.started; exit 2"]);
+            let (output, trusted) = engine_output(&dir, stock, captured, &log)?;
+            assert!(trusted);
+            assert_eq!(output.stdout, document);
+            assert_eq!(output.stderr, b"original engine diagnostic\n");
+            assert_eq!(
+                output.status.code().map(|code| code.to_string()).as_deref(),
+                Some(code)
+            );
+            assert!(!dir.join("stock.started").exists());
+            assert!(!dir.join("engine.failed.stdout").exists());
+            let markers = std::fs::read_dir(&starts)?.collect::<std::io::Result<Vec<_>>>()?;
+            assert_eq!(
+                markers
+                    .iter()
+                    .filter(|entry| entry
+                        .path()
+                        .extension()
+                        .is_some_and(|extension| extension == "started"))
+                    .count(),
+                index + 1
+            );
+        }
+        std::fs::remove_dir_all(dir)?;
+        Ok(())
+    }
+    #[test]
+    fn engine_reflects_only_exact_effective_no_vstd_once_before_separator() {
+        let args = vec![OsString::from("crate.rs"), "--".into(), "trailing".into()];
+        let effective = vec!["--no-vstd".into()];
+        assert_eq!(
+            launcher_arguments(&args, true, &effective),
+            vec![
+                OsString::from("crate.rs"),
+                "--no-vstd".into(),
+                "--".into(),
+                "trailing".into()
+            ]
+        );
+        assert_eq!(launcher_arguments(&args, false, &effective), args);
+        assert_eq!(
+            launcher_arguments(
+                &args,
+                true,
+                &["prefix--no-vstd".into(), "--no-vstd=something".into()]
+            ),
+            args
+        );
+        let literal = vec![OsString::from("crate.rs"), "--no-vstd".into()];
+        assert_eq!(launcher_arguments(&literal, true, &effective), literal);
+    }
+
+    #[test]
+    fn effective_driver_options_use_only_common_and_exact_current_package() {
+        let values = std::collections::BTreeMap::from([
+            (" __VERUS_DRIVER_ARGS__", "__VERUS_DRIVER_ARGS_SEP__--time"),
+            (
+                " __VERUS_DRIVER_ARGS_FOR_this",
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd",
+            ),
+            (
+                " __VERUS_DRIVER_ARGS_FOR_other",
+                "__VERUS_DRIVER_ARGS_SEP__--is-vstd",
+            ),
+        ]);
+        let mut looked_up = Vec::new();
+        let arguments = cargo_driver_options_with("this", |key| {
+            looked_up.push(key.to_owned());
+            Ok(values.get(key).map(|value| (*value).to_owned()))
+        });
+        assert_eq!(
+            arguments.ok().map(|options| options.arguments),
+            Some(vec!["--time".into(), "--no-vstd".into()])
+        );
+        assert_eq!(
+            looked_up,
+            [" __VERUS_DRIVER_ARGS__", " __VERUS_DRIVER_ARGS_FOR_this"]
+        );
+        assert_eq!(
+            cargo_driver_options_with("other", |_| Ok(Some("--no-vstd".into())))
+                .ok()
+                .map(|options| options.arguments),
+            Some(Vec::new())
+        );
+        let args = vec![OsString::from("crate.rs")];
+        assert_eq!(
+            launcher_arguments(&args, true, &["--".into(), "--no-vstd".into()]),
+            args
+        );
+        assert!(
+            cargo_driver_options_with("this", |_| Err(Error::new(
+                "SAIL3123",
+                "invalid argument encoding"
+            )))
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn contradictory_effective_macro_modes_fail_closed() {
+        for conflicting in ["--is-vstd", "--is-core", "--is-stdlib-outside-of-core"] {
+            let result = cargo_driver_options_with("this", |key| {
+                Ok(Some(if key.ends_with("this") {
+                    "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+                } else {
+                    format!("__VERUS_DRIVER_ARGS_SEP__{conflicting}")
+                }))
+            });
+            assert_eq!(result.err().map(|error| error.code), Some("SAIL3123"));
+        }
+    }
+
+    #[test]
+    fn relocation_preserves_other_packed_bytes_and_rejects_duplicate_modes() {
+        let common = "prefix__VERUS_DRIVER_ARGS_SEP__--time__VERUS_DRIVER_ARGS_SEP____VERUS_DRIVER_ARGS_SEP__other-token";
+        let options = cargo_driver_options_with("this", |key| {
+            Ok(Some(if key.ends_with("this") {
+                "prefix__VERUS_DRIVER_ARGS_SEP__--no-vstd__VERUS_DRIVER_ARGS_SEP__--other-option"
+                    .into()
+            } else {
+                common.into()
+            }))
+        })
+        .ok();
+        assert!(options.is_some());
+        let Some(options) = options else { return };
+        let relocated = relocate_no_vstd(&options, &["crate.rs".into()]).ok();
+        assert_eq!(
+            relocated,
+            Some(std::collections::BTreeMap::from([
+                (" __VERUS_DRIVER_ARGS__".into(), common.into()),
+                (
+                    " __VERUS_DRIVER_ARGS_FOR_this".into(),
+                    "prefix__VERUS_DRIVER_ARGS_SEP__--other-option".into()
+                ),
+            ]))
+        );
+        assert_eq!(
+            relocate_no_vstd(&options, &["--no-vstd".into()])
+                .err()
+                .map(|error| error.code),
+            Some("SAIL3123")
+        );
+        assert_eq!(
+            cargo_driver_options_with("this", |_| Ok(Some(
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+            )))
+            .err()
+            .map(|error| error.code),
+            Some("SAIL3123")
+        );
+    }
+
+    #[test]
+    fn relocation_keeps_identical_positional_tokens_after_option_boundary() {
+        let options = cargo_driver_options_with("this", |key| {
+            Ok(Some(if key.ends_with("this") {
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+            } else {
+                "__VERUS_DRIVER_ARGS_SEP__--no-vstd__VERUS_DRIVER_ARGS_SEP__--".into()
+            }))
+        })
+        .ok();
+        assert!(options.is_some());
+        let Some(options) = options else { return };
+        let relocated = relocate_no_vstd(&options, &["crate.rs".into()]).ok();
+        assert_eq!(
+            relocated,
+            Some(std::collections::BTreeMap::from([
+                (
+                    " __VERUS_DRIVER_ARGS__".into(),
+                    "__VERUS_DRIVER_ARGS_SEP__--".into()
+                ),
+                (
+                    " __VERUS_DRIVER_ARGS_FOR_this".into(),
+                    "__VERUS_DRIVER_ARGS_SEP__--no-vstd".into()
+                ),
+            ]))
+        );
+    }
+
     #[test]
     fn explicit_custom_toolchain_inputs_fail_closed() {
         for args in [

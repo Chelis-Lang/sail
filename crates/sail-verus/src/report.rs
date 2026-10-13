@@ -96,6 +96,7 @@ pub fn build(inputs: &Inputs<'_>) -> Report {
         crates,
         diagnostics: inputs.diagnostics.iter().map(diagnostic).collect(),
         error: None,
+        engine: None,
     };
     crate::report_scope::restrict(&mut report);
     incomplete_failures(&mut report);
@@ -155,5 +156,6 @@ pub fn setup_failure(args: &[String], code: &str, message: &str) -> Report {
             code: code.to_owned(),
             message: message.to_owned(),
         }),
+        engine: None,
     }
 }

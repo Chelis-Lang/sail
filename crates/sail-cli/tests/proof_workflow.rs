@@ -89,6 +89,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
             "Synthetic backend transport test; no real engine proof or performance claim.".into(),
         ],
         error: None,
+        engine: None,
     };
     let mut focus = full.clone();
     for f in focus.targets[0]
