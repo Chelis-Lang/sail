@@ -168,6 +168,8 @@ pub fn compare_stderr(plain: &str, sail: &str) -> Vec<String> {
         missing.extend(std::iter::repeat_n(*m, np.saturating_sub(ns)));
         extra.extend(std::iter::repeat_n(*m, ns.saturating_sub(np)));
     }
+    // A count difference is reported once per message.
+    let mut reported = std::collections::BTreeSet::new();
     for m in missing {
         let (np, ns) = counts.get(m).copied().unwrap_or_default();
         if ns == 0
@@ -186,14 +188,13 @@ pub fn compare_stderr(plain: &str, sail: &str) -> Vec<String> {
                 "diagnostic message {} missing from sail",
                 describe(m)
             ));
-        } else {
+        } else if reported.insert(m) {
             d.push(format!(
                 "diagnostic message {} printed {np} times by plain, {ns} by sail",
                 describe(m)
             ));
         }
     }
-    let mut reported = std::collections::BTreeSet::new();
     for e in extra {
         let (np, ns) = counts.get(e).copied().unwrap_or_default();
         if np == 0 {
@@ -291,6 +292,12 @@ mod tests {
             d[0].contains("printed 2 times by plain, 1 by sail"),
             "{d:?}"
         );
+        // A count difference is one line, whatever its size.
+        let d = compare_stderr(&cat(&[A, A, A, SUMMARY]), &cat(&[A, SUMMARY]));
+        assert_eq!(d.len(), 1, "{d:?}");
+        assert!(d[0].contains("printed 3 times by plain, 1 by sail"));
+        let d = compare_stderr(&cat(&[A, SUMMARY]), &cat(&[A, A, A, SUMMARY]));
+        assert_eq!(d.len(), 1, "{d:?}");
     }
 
     #[test]
