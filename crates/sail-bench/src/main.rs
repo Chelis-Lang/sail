@@ -6,16 +6,14 @@
 //! sail-bench edit   [--edits corpus/edits.toml] [--filter S] [--rounds N] [--name NAME] [--shim PATH] [--sail PATH]
 //! sail-bench fragility [--tier T] [--project P]... [--filter S] [--seeds N] [--shuffles K]
 //!                      [--jobs J] [--verus-arg A]... [--name NAME] [--shim PATH]
+//! sail-bench repair prepare|run ...   (M7 repair acceptance; see sail_bench::repair)
 //! sail-bench report [--out docs/benchmarks.md] FILE...
 //! sail-bench profile <trace-dir>... [--json out.json]
-//! sail-bench seeds   <trace-dir>... --z3 <path> [--seeds N] [--jobs J] [--json out.json]
-//! sail-bench history <trace-dir>... --z3 <path> [--jobs J] [--json out.json]
 //! ```
 //!
 //! `warm` and `edit` start `sail serve` (found next to this binary, like
 //! `sail-z3`) with a fresh cache per unit or edit round; see ADR 0012.
-//! `profile`, `seeds` and `history` analyse shim traces; see
-//! [`sail_bench::cli`].
+//! `profile` analyses shim traces; see [`sail_bench::cli`].
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
@@ -42,9 +40,13 @@ const USAGE: &str = "usage:
   sail-bench fragility [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                     [--seeds N] [--shuffles K] [--jobs J] [--near-limit F] [--top K]
                     [--verus-arg ARG]... [--name NAME] [--shim PATH]
+  sail-bench repair prepare --scratch DIR
+  sail-bench repair run --m6 SAIL --m6-commit SHA --m7 SAIL --m7-commit SHA --engine DIR
+                    --scratch DIR --out DIR --environment LABEL [--name NAME] [--rounds N]
+                    [--project ID]... [--filter CYCLE_SUBSTR] [--timeout-secs S] [--resume]
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
-  sail-bench profile|seeds|history ...   (trace analyses; run one for its usage)";
+  sail-bench profile <trace-dir>... [--json PATH]";
 
 /// Which corpus units to run.
 struct Selection<'a> {
@@ -712,6 +714,7 @@ fn report_cmd(args: &[String]) -> Result<(), String> {
     inputs.sort();
     let mut files = Vec::new();
     let mut censuses = Vec::new();
+    let mut repairs = Vec::new();
     for path in &inputs {
         let text = std::fs::read_to_string(path)
             .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
@@ -727,20 +730,182 @@ fn report_cmd(args: &[String]) -> Result<(), String> {
             censuses.push((name, census));
             continue;
         }
+        if workload.as_deref() == Some(sail_bench::repair::WORKLOAD) {
+            let repair = serde_json::from_str::<sail_bench::repair::RepairFile>(&text)
+                .map_err(|e| format!("{}: {e}", path.display()))?;
+            repairs.push((name, repair));
+            continue;
+        }
         let Ok(file) = serde_json::from_str::<BenchFile>(&text) else {
             // Other result kinds (profiles, seed runs) are reported elsewhere.
             continue;
         };
         files.push((name, file));
     }
-    std::fs::write(&out, sail_bench::report::render(&files, &censuses))
-        .map_err(|e| format!("cannot write {}: {e}", out.display()))?;
+    std::fs::write(
+        &out,
+        sail_bench::report::render(&files, &censuses, &repairs),
+    )
+    .map_err(|e| format!("cannot write {}: {e}", out.display()))?;
     println!(
         "wrote {} from {} result file(s)",
         out.display(),
-        files.len() + censuses.len()
+        files.len() + censuses.len() + repairs.len()
     );
     Ok(())
+}
+
+/// Options of `sail-bench repair`.
+#[derive(Default)]
+struct RepairArgs {
+    values: std::collections::BTreeMap<String, String>,
+    projects: Vec<String>,
+    resume: bool,
+}
+
+fn parse_repair(args: &[String]) -> Result<RepairArgs, String> {
+    const VALUED: &[&str] = &[
+        "--scratch",
+        "--m6",
+        "--m6-commit",
+        "--m7",
+        "--m7-commit",
+        "--engine",
+        "--out",
+        "--environment",
+        "--name",
+        "--rounds",
+        "--filter",
+        "--timeout-secs",
+    ];
+    let mut a = RepairArgs::default();
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--resume" => a.resume = true,
+            "--project" => a
+                .projects
+                .push(it.next().cloned().ok_or("--project needs a value")?),
+            flag if VALUED.contains(&flag) => {
+                let value = it.next().cloned().ok_or(format!("{flag} needs a value"))?;
+                a.values.insert(flag.to_owned(), value);
+            }
+            _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
+        }
+    }
+    Ok(a)
+}
+
+impl RepairArgs {
+    fn get(&self, flag: &str) -> Result<String, String> {
+        self.values
+            .get(flag)
+            .cloned()
+            .ok_or(format!("sail-bench repair needs {flag}\n{USAGE}"))
+    }
+
+    fn number(&self, flag: &str, default: u64) -> Result<u64, String> {
+        self.values.get(flag).map_or(Ok(default), |v| {
+            v.parse().map_err(|_| format!("{flag} needs a number"))
+        })
+    }
+}
+
+#[cfg(unix)]
+fn repair_cmd(args: &[String]) -> Result<(), String> {
+    use sail_bench::repair::{Catalogue, run};
+    let (sub, rest) = args.split_first().ok_or(USAGE.to_owned())?;
+    let a = parse_repair(rest)?;
+    let catalogue = Catalogue::load(Path::new("corpus/repair-edits.json"))?;
+    let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
+    match sub.as_str() {
+        "prepare" => {
+            let corpus =
+                Corpus::load(Path::new("corpus/corpus.toml")).map_err(|e| e.to_string())?;
+            let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
+            let verus = corpus
+                .fetch_verus_source(&cache, &catalogue.verus_commit)
+                .map_err(|e| e.to_string())?;
+            let fetch = |p: &sail_bench::repair::Project| -> Result<PathBuf, String> {
+                corpus
+                    .projects
+                    .iter()
+                    .find(|c| c.name == p.id)
+                    .ok_or(format!("{} is not a corpus project", p.id))?
+                    .fetch(&cache)
+                    .map_err(|e| e.to_string())
+            };
+            let scratch = PathBuf::from(a.get("--scratch")?);
+            let prepared = run::prepare(&run::PrepareOptions {
+                catalogue: &catalogue,
+                corpus_dir: &fetch,
+                verus_source: &verus,
+                scratch: &scratch,
+                rust_toolchain: &pins.verus.rust_toolchain,
+            })?;
+            for p in prepared {
+                println!("prepared {}", p.display());
+            }
+            Ok(())
+        }
+        "run" => {
+            if std::env::var("CI").is_ok_and(|v| v == "true") {
+                return Err("the repair workload is local-only (ADR 0013)".to_owned());
+            }
+            let started_unix = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_or(0, |d| d.as_secs());
+            let name = a.values.get("--name").cloned().unwrap_or_else(|| {
+                format!("repair-{}-{started_unix}", sail_verus::toolchain::host())
+            });
+            let options = run::RunOptions {
+                m6: PathBuf::from(a.get("--m6")?),
+                m7: PathBuf::from(a.get("--m7")?),
+                commits: [a.get("--m6-commit")?, a.get("--m7-commit")?],
+                engine: PathBuf::from(a.get("--engine")?),
+                scratch: PathBuf::from(a.get("--scratch")?),
+                out: PathBuf::from(a.get("--out")?),
+                result: Path::new("bench/results").join(format!("{name}.json")),
+                rounds: usize::try_from(a.number("--rounds", 3)?).unwrap_or(3),
+                timeout: std::time::Duration::from_secs(a.number("--timeout-secs", 900)?),
+                environment: a.get("--environment")?,
+                projects: a.projects.clone(),
+                filter: a.values.get("--filter").cloned(),
+                resume: a.resume,
+                rust_toolchain: pins.verus.rust_toolchain.clone(),
+                verus_release: pins.verus.release.clone(),
+                z3_version: pins.z3.version.clone(),
+                started_unix,
+                machine: machine_info(),
+            };
+            if options.rounds == 0 {
+                return Err("--rounds must be at least 1".to_owned());
+            }
+            let file = run::run(&options, &catalogue)?;
+            for v in sail_bench::repair::judge::judge(&file) {
+                println!(
+                    "{}: {} (speedup {}, {} complete rounds, {} failing samples)",
+                    v.project,
+                    if v.passed { "pass" } else { "fail" },
+                    v.speedup
+                        .map_or_else(|| "n/a".to_owned(), |x| format!("{x:.2}x")),
+                    v.complete_rounds,
+                    v.failing.len()
+                );
+                for r in &v.reasons {
+                    println!("  {r}");
+                }
+            }
+            println!("wrote {}", options.result.display());
+            Ok(())
+        }
+        _ => Err(USAGE.to_owned()),
+    }
+}
+
+#[cfg(not(unix))]
+fn repair_cmd(_args: &[String]) -> Result<(), String> {
+    Err("the repair workload needs Unix sockets".to_owned())
 }
 
 fn hits_cmd(args: &[String]) -> Result<(), String> {
@@ -779,10 +944,7 @@ fn main() -> ExitCode {
         println!("{USAGE}");
         return ExitCode::SUCCESS;
     }
-    if matches!(
-        args.first().map(String::as_str),
-        Some("profile" | "seeds" | "history")
-    ) {
+    if matches!(args.first().map(String::as_str), Some("profile")) {
         return sail_bench::cli::run(args);
     }
     let result = match args.first().map(String::as_str) {
@@ -793,6 +955,7 @@ fn main() -> ExitCode {
         Some("history-replay") => history_replay_cmd(args.get(1..).unwrap_or_default()),
         Some("fragility") => fragility_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
+        Some("repair") => repair_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
     };

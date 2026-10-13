@@ -19,6 +19,12 @@
 //! `--keep-intermediates`, every build intermediate that the test binaries
 //! do not need at run time is deleted, and `sail-build.json` records the
 //! build. A complete build is left alone unless `--force` is given.
+//!
+//! `--interactive-engine` (`cargo xtask build-verus-engine`) builds the
+//! optional engine instead: the exact commit of Sail's private Verus fork
+//! pinned in `engine/verus/fork.toml`, fetched with a GitHub token, whose
+//! upstream base must be the pinned commit. Local only; CI installs the
+//! prebuilt runtime.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -32,11 +38,16 @@ use crate::Result;
 use crate::verus::{check_z3, file_sha256, host};
 
 #[derive(Default)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "Independent source-build command switches mirror explicit CLI options."
+)]
 struct Options {
     force: bool,
     keep_intermediates: bool,
     features: Vec<String>,
     print_path: bool,
+    engine: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options> {
@@ -44,6 +55,7 @@ fn parse(args: &[String]) -> Result<Options> {
     for arg in args {
         match arg.as_str() {
             "--force" => o.force = true,
+            "--interactive-engine" => o.engine = true,
             "--features=singular" => o.features = vec!["singular".to_owned()],
             "--print-path" => o.print_path = true,
             "--keep-intermediates" => o.keep_intermediates = true,
@@ -94,6 +106,89 @@ fn run(cmd: &mut Command) -> Result<()> {
     } else {
         Err(format!("{cmd:?} exited with {status}"))
     }
+}
+
+/// A GitHub token for the private Verus fork: `SAIL_ENGINE_ARTIFACT_TOKEN`
+/// (as for the engine artifact) or else `gh auth token`.
+fn github_token() -> Result<String> {
+    if let Ok(token) = std::env::var("SAIL_ENGINE_ARTIFACT_TOKEN")
+        && !token.trim().is_empty()
+    {
+        return Ok(token.trim().to_owned());
+    }
+    let output = Command::new("gh")
+        .args(["auth", "token"])
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| format!("the Verus fork is private and `gh auth token` failed: {e}"))?;
+    let token = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+    if !output.status.success() || token.is_empty() {
+        return Err(
+            "the Verus fork is private: set SAIL_ENGINE_ARTIFACT_TOKEN or run `gh auth login`"
+                .to_owned(),
+        );
+    }
+    Ok(token)
+}
+
+/// Runs `git ARGS` in `dir`, authenticating to GitHub with `token` through a
+/// one-shot credential helper. The token reaches git only through the
+/// environment of this one process and is never printed or stored.
+fn git_with_token(dir: &Path, token: &str, args: &[&str]) -> Result<String> {
+    let output = Command::new("git")
+        .current_dir(dir)
+        .env("SAIL_FORK_TOKEN", token)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .args(["-c", "credential.helper="])
+        .args([
+            "-c",
+            "credential.helper=!f() { echo username=x-access-token; echo \"password=$SAIL_FORK_TOKEN\"; }; f",
+        ])
+        .args(args)
+        .stderr(Stdio::inherit())
+        .output()
+        .map_err(|e| format!("failed to run git {}: {e}", args.join(" ")))?;
+    if !output.status.success() {
+        return Err(format!(
+            "git {} exited with {}",
+            args.join(" "),
+            output.status
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+}
+
+/// Fetches exactly the pinned commit of Sail's Verus fork into the build's
+/// checkout (`engine/verus/fork.toml`). The engine variant is built from it
+/// instead of the upstream commit plus a patch. Local only: CI installs the
+/// prebuilt runtime and never builds Verus.
+fn fetch_fork(build: &Path, fork: &sail_verus::engine::Fork) -> Result<PathBuf> {
+    let dir = source_build::checkout_dir(build);
+    let marker = dir.join(".sail-fetched");
+    if std::fs::read_to_string(&marker).is_ok_and(|c| c.trim() == fork.commit) {
+        return Ok(dir);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+    let token = github_token()?;
+    git_with_token(&dir, &token, &["init", "-q"])?;
+    git_with_token(&dir, &token, &["remote", "add", "origin", &fork.repo])?;
+    git_with_token(
+        &dir,
+        &token,
+        &["fetch", "-q", "--depth", "1", "origin", &fork.commit],
+    )?;
+    git_with_token(&dir, &token, &["checkout", "-q", "--detach", "FETCH_HEAD"])?;
+    let head = git_with_token(&dir, &token, &["rev-parse", "HEAD"])?;
+    if head != fork.commit {
+        return Err(format!(
+            "fetched {head}, expected the pinned fork commit {}",
+            fork.commit
+        ));
+    }
+    std::fs::write(&marker, &fork.commit)
+        .map_err(|e| format!("cannot write {}: {e}", marker.display()))?;
+    Ok(dir)
 }
 
 /// The channel in a `rust-toolchain.toml`.
@@ -193,6 +288,7 @@ fn compile(
     asset: &AssetPin,
     jobs: &str,
     singular: bool,
+    engine: bool,
 ) -> Result<Vec<(String, PathBuf)>> {
     // The toolchain and components Verus's rust-toolchain.toml lists
     // (rustc-dev, llvm-tools, rustfmt).
@@ -229,6 +325,46 @@ fn compile(
     let copied = source.join("target-verus").join("release").join("z3");
     if copied.is_file() {
         check_z3(&copied, asset)?;
+    }
+
+    if engine {
+        // The Verus release workflow (`.github/workflows/build.yml` at the
+        // pinned commit) builds vstd separately, from `source/vstd`, with
+        // `cargo-verus build --release --manifest-path vstd/Cargo.toml`.
+        // vargo's `vstd_build` compiles `vstd/vstd.rs` from `source`, so its
+        // vstd records `vstd/seq.rs` where the release records `seq.rs`, and
+        // engine diagnostics pointing into vstd differed from stock. Do what
+        // the release does; cargo-verus hoists vstd.vir, libvstd.rlib and
+        // the builtin libraries into `target-verus/release`.
+        println!(
+            "rebuilding vstd as the Verus release does (cargo-verus build --manifest-path vstd/Cargo.toml)"
+        );
+        let release = source.join("target-verus").join("release");
+        run(clean(
+            Command::new(release.join("cargo-verus")).current_dir(&source),
+            jobs,
+        )
+        .env("PATH", &path)
+        .env("VERUS_Z3_PATH", z3)
+        .args(["build", "--release", "--manifest-path", "vstd/Cargo.toml"]))?;
+        // That Cargo build leaves its build-dir intermediates (per-package
+        // directories, dep-info and lock files) beside the runtime; the
+        // runtime needs none of them (`deps` is pruned separately).
+        for entry in std::fs::read_dir(&release)
+            .map_err(|e| format!("cannot read {}: {e}", release.display()))?
+            .flatten()
+        {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if (path.is_dir() && name != "deps")
+                || name == ".cargo-lock"
+                || name == ".cargo-artifact-lock"
+                || path.extension().is_some_and(|e| e == "d")
+            {
+                remove(&path);
+            }
+        }
+        return Ok(Vec::new());
     }
 
     println!("building the rust_verify_test binaries");
@@ -282,6 +418,10 @@ fn active_pins() -> Result<(Pins, AssetPin)> {
 }
 
 /// Builds the pinned Verus commit from source; see the module docs.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Source build identity, patch application, and final manifest publication stay one lifecycle."
+)]
 pub fn build(args: &[String]) -> Result<()> {
     let o = parse(args)?;
     let (pins, asset) = active_pins()?;
@@ -292,7 +432,11 @@ pub fn build(args: &[String]) -> Result<()> {
     let commit = &pins.verus.commit;
     let toolchain = &pins.verus.rust_toolchain;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let features = o.features.clone();
+    let features = if o.engine {
+        sail_verus::engine::features()
+    } else {
+        o.features.clone()
+    };
     let build = source_build::variant_dir(&cache, commit, toolchain, &features);
     if o.print_path {
         println!("{}", build.display());
@@ -306,7 +450,11 @@ pub fn build(args: &[String]) -> Result<()> {
         && m.rust_toolchain == *toolchain
         && m.features == features
         && m.z3_sha256 == z3_sha256
-        && m.is_complete(&build)
+        && (if o.engine {
+            sail_verus::engine::Installed::locate(&cache, &pins).is_ok()
+        } else {
+            m.is_complete(&build)
+        })
     {
         println!(
             "Verus {commit} source build is complete in {} ({} test binaries); --force rebuilds it",
@@ -321,8 +469,32 @@ pub fn build(args: &[String]) -> Result<()> {
     }
     std::fs::create_dir_all(&build)
         .map_err(|e| format!("cannot create {}: {e}", build.display()))?;
-    println!("fetching verus @ {commit} into {}", build.display());
-    let checkout = source_build::fetch_source(&build, commit).map_err(|e| e.to_string())?;
+    let checkout = if o.engine {
+        let fork = sail_verus::engine::fork().map_err(|e| e.to_string())?;
+        if fork.upstream != *commit {
+            return Err(format!(
+                "engine/verus/fork.toml is based on {}, but corpus/toolchain.toml pins {commit}",
+                fork.upstream
+            ));
+        }
+        println!(
+            "fetching the Verus fork {} @ {} into {}",
+            fork.repo,
+            fork.commit,
+            build.display()
+        );
+        fetch_fork(&build, &fork)?
+    } else {
+        println!("fetching verus @ {commit} into {}", build.display());
+        source_build::fetch_source(&build, commit).map_err(|e| e.to_string())?
+    };
+    if o.engine {
+        std::fs::write(
+            checkout.join("source/Cargo.lock"),
+            sail_verus::engine::SOURCE_LOCK,
+        )
+        .map_err(|e| e.to_string())?;
+    }
     let channel = toolchain_channel(&checkout.join("rust-toolchain.toml"))?;
     if channel != *toolchain {
         return Err(format!(
@@ -338,7 +510,8 @@ pub fn build(args: &[String]) -> Result<()> {
         &installed.z3,
         &asset,
         &jobs,
-        !features.is_empty(),
+        features.iter().any(|feature| feature == "singular"),
+        o.engine,
     )?;
     let test_binaries = relative_binaries(&build, &executables)?;
 
