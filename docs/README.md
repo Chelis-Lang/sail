@@ -42,7 +42,9 @@ runs locally, and required CI stays short. Reference performance numbers come
 from a native x86-64 Linux host (`scripts/perf-host.sh`).
 
 [M7 validation](validation/m7.md) gives each M7 acceptance gate's status, best
-evidence and indexed failed or interrupted attempts. Raw logs stay outside the
+evidence and indexed failed or interrupted attempts, and the
+[deep-tier record](validation/deep-tier.md) gives the release-time deep
+conformance, `rust_verify_test` and Singular runs. Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
 Each record applies to its stated source, runtime and environment. A later pass
