@@ -13,12 +13,13 @@
   first `rust_verify_test` run, plain Verus disagreed with itself on 11
   tests for reasons like this, and with only 2 confirming plain runs 7 of
   them were first reported as `different` (ADR 0019).
-- **Workaround:** the `rust_verify_test` runner passes `--num-threads 1` to
-  every test on both sides by default (ADR 0019); the order is then
-  stable. With one thread Verus reports fewer errors on some inputs (one
-  error instead of two from different modules), which makes three upstream
-  tests fail on both sides. The corpus harness keeps Verus's default
-  thread count.
+- **Workaround:** none needed since ADR 0042. Until then the
+  `rust_verify_test` runner passed `--num-threads 1` to every test on both
+  sides (ADR 0019), which made the order stable; it now uses Verus's
+  default threads (`--verus-threads 1` still selects one). With one thread
+  Verus reports fewer errors on some inputs (one error instead of two from
+  different modules), which makes three upstream tests fail on both sides.
+  The corpus harness keeps Verus's default thread count.
 
 The description below is written so it could be filed upstream unchanged.
 
@@ -57,5 +58,5 @@ module `M4`'s error before the root module's in 3/3 confirming runs, the fork
 printed it last. ADR 0039 allows an ordering fix only when it picks an order
 stock produces, and no deterministic order is provably within stock's set
 (stock prints in the order buckets finish), so the commit was dropped from
-the fork (2026-10-13, rescue L12). The `rust_verify_test` runner keeps
-passing `--num-threads 1` to both sides (ADR 0019).
+the fork (2026-10-13, rescue L12). ADR 0042 makes the order irrelevant to
+conformance instead.

@@ -95,7 +95,8 @@ in the `rust_verify_test` package directory, with the environment `vargo
 test` gives the suite (`VERUS_IN_VARGO`, `RUSTC_BOOTSTRAP`,
 `RUST_MIN_STACK`), Verus's toolchain, and its library directory on the
 dynamic-library path (`sail_verus::rvt`).
-- **One verification thread by default.** Both sides get
+- **One verification thread by default** (until 2026-10-13; see the last
+  section: Verus's default threads since ADR 0042). Both sides get
   `VERUS_EXTRA_ARGS="--num-threads 1"` (the harness appends it to Verus's
   arguments), so errors come out in a stable order (VI-0007). Like `-Z
   write-long-types-to-disk=no` for corpus units (ADR 0006), this removes
@@ -282,3 +283,40 @@ including the three module-error tests. All 13 plain cases passed. This
 supplies the coverage unavailable under the full suite's one-thread setting.
 Concurrent development load makes these wall times correctness evidence,
 not reference performance measurements. Long suites remain local-only.
+
+## Verus's default threads again (ADR 0042, 2026-10-13)
+
+With diagnostics compared as a multiset of complete messages (ADR 0042),
+the error order that one thread was chosen to fix (VI-0007) is no longer a
+difference, so the runner now passes no `--num-threads` by default
+(`--verus-threads 0`). `--verus-threads 1` still selects one thread.
+
+The change was made only because the full suite showed it loses nothing.
+Pass-through, `a1f3874`, macOS arm64 host under load from other lanes, 4
+tests at a time, 10 confirming runs:
+
+| Threads | Cases | Same | Unstable | Different | Plain FAILED |
+|---|---:|---:|---:|---:|---:|
+| Verus's default | 4,695 (58 ignored) | 4,691 | 3 | 1 | 2 |
+| One (acceptance above) | 4,695 (58 ignored) | 4,691 | 4 | 0 | 5 |
+
+- **No module-order variation is left.** The first default-thread run
+  (above) had 11 tests whose plain runs disagreed with each other, mostly on
+  error order; this run has no `unstable` or `different` test outside
+  `output_json`.
+- **The three multi-module tests pass** on both sides and are `same`, so
+  their second module's error is compared too. Plain failures are only the
+  two source-build `cargo_new_*` cases.
+- **All four non-`same` results are `output_json` tests (VI-0008),** whose
+  `func-details` hash order does not depend on threads. The one `different`
+  had a plain order the 10 confirming runs did not produce. With 30
+  confirming runs, three rounds at each thread count of the nine
+  `output_json` tests gave 4 to 5 `unstable` with one thread and 3 to 4 with
+  Verus's default, and no `different`.
+- The 68 module-related tests (`modules::`, `traits_modules::` and the three
+  above) were `same` in three rounds at each thread count.
+
+Raw logs: `~/sail-raw-evidence/l20/rvt-full-t0.log` (sha256 `d9048101…`)
+on the lead's machine. The cache fill and warm modes have not been rerun
+with Verus's default threads.
+

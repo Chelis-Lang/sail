@@ -65,5 +65,6 @@ and the `rust_verify_test` runner (ADR 0019).
   comparison is therefore a plain multiset, and a defect that only reorders
   messages within one module would not be reported. Every message's bytes
   and count, and all other text, remain exact.
-- **The `rust_verify_test` runner keeps `--num-threads 1`** (ADR 0019); see
-  the update there.
+- **The `rust_verify_test` runner no longer forces `--num-threads 1`**: with
+  the multiset comparison, Verus's default threads lost nothing on the full
+  suite and cover three more tests fully (ADR 0019, update of 2026-10-13).

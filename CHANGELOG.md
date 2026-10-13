@@ -14,6 +14,10 @@ semantic versioning once the API is published.
   from sail, only in sail, printed a different number of times, or altered,
   with its first differing line; text outside messages is reported as
   `diagnostics (stderr) outside messages differ at line N`.
+- `sail-conformance rust-verify-test` runs Verus with its default thread
+  count unless `--verus-threads N` is given (previously one thread). The
+  three multi-module tests that failed on both sides with one thread now
+  pass (ADR 0019).
 - Error codes are listed, with what to do about each, in
   [docs/errors.md](docs/errors.md); `cargo xtask check-error-codes` and a
   workspace test keep that list and the code in step. Codes that named
