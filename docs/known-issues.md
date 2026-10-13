@@ -48,15 +48,6 @@ are in the `archive/m7-contracts-f7103bf` tag.
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),
   [reproduction](../corpus/repros/linux-emulation-verus-stall/).
-- **The engine cannot verify `by(integer_ring)`.** The engine runtime, like
-  the stock release, is built without Verus's `singular` feature, so it
-  rejects integer-ring lemmas that a Singular source build proves. The
-  optional Singular deep run's engine arm checks the project's
-  `verus-feature:singular` requirement only against the plain source build,
-  and reported all three Singular units Different (engine exit 1, never a
-  false verified). Default mode was Same.
-  [Deep-tier record](validation/deep-tier.md),
-  [reproduction](../corpus/repros/engine-without-singular/).
 - **Managed metadata ignores Cargo `-F` feature aliases.**
   [#78](https://github.com/Chelis-Lang/sail/issues/78).
 
@@ -69,6 +60,10 @@ are in the `archive/m7-contracts-f7103bf` tag.
 - A successful focused check still needs complete Current full validation.
 - There is no managed compiler-target quota or generation GC. See
   [disk use and cleanup](workspace-hygiene.md#managed-compiler-targets).
+- The engine is built without Verus's `singular` feature, so targets that
+  verify `by(integer_ring)` fall back to the configured stock Verus
+  (`SAIL3124`) and cannot accept a repair. See
+  [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks).
 
 ## Verus and Z3
 
@@ -91,3 +86,13 @@ portfolios, with separate keys.
   [ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md), so this order
   is no longer a difference.
   [Repro](../corpus/repros/sail-cache-warm-error-order/) (kept).
+- **The engine rejected `by(integer_ring)` that a Singular build proves.**
+  The engine runtime, like the stock release, has no `singular` feature, and
+  the Singular deep run's engine arm reported all three Singular units
+  Different (engine exit 1, never a false verified). The lead decided against
+  a Singular engine variant: the engine manifest records its Verus features,
+  a target that needs a missing one falls back to stock verification
+  (`SAIL3124`), and the engine arm counts such units as
+  `engine-lacks-feature`, never same or different.
+  [Reproduction](../corpus/repros/engine-without-singular/) (kept),
+  [deep-tier record](validation/deep-tier.md).

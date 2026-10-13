@@ -527,18 +527,32 @@ fn driver() -> Result<ExitCode> {
 /// Retains interrupted engine evidence and restarts the exact stock compiler
 /// invocation. Engine observations and focused evidence cannot seal a report
 /// without the independent complete full document and normal process exit.
+/// A target that needs a Verus feature the engine lacks also restarts with
+/// stock, and its sidecar records the feature.
 pub(crate) fn engine_output(
     dir: &Path,
     mut stock: Command,
     captured: std::process::Output,
     invocation_log: &InvocationLog<'_>,
 ) -> Result<(std::process::Output, bool)> {
-    if crate::engine_events::completed(
-        &dir.join("engine.events.jsonl"),
-        &captured.stdout,
-        captured.status.code(),
-    ) {
+    // A target that needs a Verus feature the engine lacks gets the same
+    // stock fallback as an engine fault (SAIL3124): the engine's rejection is
+    // not an answer from the configured Verus.
+    let available = crate::engine::runtime_cargo_features();
+    let missing = crate::engine::required_feature(&captured.stderr, &available)
+        .or_else(|| crate::engine::required_feature(&captured.stdout, &available));
+    if missing.is_none()
+        && crate::engine_events::completed(
+            &dir.join("engine.events.jsonl"),
+            &captured.stdout,
+            captured.status.code(),
+        )
+    {
         return Ok((captured, true));
+    }
+    if let Some(feature) = &missing {
+        std::fs::write(dir.join(crate::engine::MISSING_FEATURE), feature)
+            .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
     std::fs::write(dir.join("engine.failed.stdout"), &captured.stdout)
         .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), &captured.stderr))

@@ -18,7 +18,8 @@
 
 mod rust_verify_test;
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Mutex;
@@ -182,6 +183,8 @@ struct Summary {
     unstable: usize,
     different: usize,
     infra_error: usize,
+    #[serde(skip_serializing_if = "is_zero")]
+    engine_lacks_feature: usize,
     functions: usize,
     units_with_rlimit_drift: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -192,7 +195,13 @@ struct Summary {
 #[derive(Serialize, Default)]
 struct EngineSummary {
     manifest_sha256: String,
+    /// The Verus Cargo features the engine manifest records.
+    verus_features: Vec<String>,
     focused_units: usize,
+    /// Units whose project needs a Verus feature the engine lacks, by
+    /// feature (verdict `engine-lacks-feature`).
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    lacks_feature: BTreeMap<String, usize>,
 }
 
 #[derive(Serialize)]
@@ -233,6 +242,17 @@ struct Selection {
     units: Vec<Unit>,
     skipped: Vec<Skipped>,
     verus_source: Option<PathBuf>,
+    /// Engine arm: projects with the Verus features they need and the engine
+    /// lacks.
+    engine_lacks: BTreeMap<String, Vec<String>>,
+}
+
+#[allow(
+    clippy::trivially_copy_pass_by_ref,
+    reason = "serde's skip_serializing_if passes a reference"
+)]
+fn is_zero(n: &usize) -> bool {
+    *n == 0
 }
 
 fn load() -> Result<(Corpus, Installed, PathBuf), String> {
@@ -244,15 +264,19 @@ fn load() -> Result<(Corpus, Installed, PathBuf), String> {
     Ok((corpus, installed, cache))
 }
 
+/// `engine_features` is the engine arm's recorded Verus Cargo features, and
+/// `None` for the other arms.
 fn select(
     o: &Options,
     corpus: &Corpus,
     cache: &Path,
     verus: &sail_verus::toolchain::VerusPin,
+    engine_features: Option<&[String]>,
 ) -> Result<Selection, String> {
     let toolchain = verus.rust_toolchain.as_str();
     let mut all = Vec::new();
     let mut skipped = Vec::new();
+    let mut engine_lacks = BTreeMap::new();
     for project in corpus.projects_in(o.tier, &o.projects) {
         let missing = project.missing_requirements(toolchain);
         if !missing.is_empty() {
@@ -266,6 +290,17 @@ fn select(
                 missing,
             });
             continue;
+        }
+        if let Some(available) = engine_features {
+            let lacks = sail_verus::engine::missing_features(&project.requires, available);
+            if !lacks.is_empty() {
+                eprintln!(
+                    "{}: the engine lacks Verus feature {}; its units are counted, not run on the engine",
+                    project.name,
+                    lacks.join(", ")
+                );
+                engine_lacks.insert(project.name.clone(), lacks);
+            }
         }
         eprintln!("fetching {} @ {}", project.name, project.commit);
         let dir = project.fetch(cache).map_err(|e| e.to_string())?;
@@ -288,6 +323,7 @@ fn select(
         units: all,
         skipped,
         verus_source,
+        engine_lacks,
     })
 }
 
@@ -303,6 +339,8 @@ struct Context<'a> {
     plain_runs: usize,
     confirm_runs: usize,
     engine: Option<EngineArm>,
+    /// [`Selection::engine_lacks`].
+    engine_lacks: &'a BTreeMap<String, Vec<String>>,
 }
 
 /// The source-engine arm's configuration.
@@ -337,7 +375,33 @@ fn infra_error(unit: &Unit, message: String) -> UnitReport {
     }
 }
 
+/// A unit the engine arm does not run because its project needs a Verus
+/// feature the engine lacks: the product falls back to stock for it
+/// (SAIL3124), so there is no engine verdict to compare.
+fn lacks_feature(unit: &Unit, features: &[String]) -> UnitReport {
+    UnitReport {
+        id: unit.id.clone(),
+        expected: unit.expected.clone(),
+        verdict: Verdict::EngineLacksFeature,
+        comparison: Comparison::default(),
+        plain_runs: 0,
+        unstable: Vec::new(),
+        infra_error: None,
+        plain: None,
+        sail: None,
+        engine: Some(EngineStats {
+            lacks_features: features.to_vec(),
+            ..EngineStats::default()
+        }),
+    }
+}
+
 fn run_one(cx: &Context, unit: &Unit) -> UnitReport {
+    if cx.engine.is_some()
+        && let Some(features) = cx.engine_lacks.get(&unit.project)
+    {
+        return lacks_feature(unit, features);
+    }
     let (installed, dir) = (cx.installed, cx.dir);
     let base = dir.join("units").join(slug(&unit.id));
     let scratch = cx.work.join(slug(&unit.id));
@@ -487,6 +551,13 @@ fn run_all(units: Vec<Unit>, jobs: usize, cx: &Context) -> Vec<UnitReport> {
                         report.plain.as_ref().map_or(0.0, |x| x.wall_ms),
                         report.sail.as_ref().map_or(0.0, |x| x.wall_ms),
                     );
+                    let lacks = report
+                        .engine
+                        .as_ref()
+                        .filter(|e| !e.lacks_features.is_empty())
+                        .map(|e| {
+                            format!("engine lacks Verus feature {}", e.lacks_features.join(", "))
+                        });
                     eprintln!(
                         "{:<11} {}  (plain {p:.0} ms, sail {s:.0} ms){}",
                         format!("{:?}", report.verdict).to_lowercase(),
@@ -496,6 +567,7 @@ fn run_all(units: Vec<Unit>, jobs: usize, cx: &Context) -> Vec<UnitReport> {
                             .differences
                             .first()
                             .or(report.infra_error.as_ref())
+                            .or(lacks.as_ref())
                             .map(|d| format!("\n            {d}"))
                             .unwrap_or_default()
                     );
@@ -522,8 +594,15 @@ fn summary_line(report: &Report) -> String {
         format!(" ({})", list.join("; "))
     };
     let engine = s.engine.as_ref().map_or_else(String::new, |e| {
+        let lacks = e
+            .lacks_feature
+            .iter()
+            .fold(String::new(), |mut text, (feature, units)| {
+                let _ = write!(text, ", {units} units engine lacks feature {feature}");
+                text
+            });
         format!(
-            "; engine {}: {} focused units",
+            "; engine {}: {} focused units{lacks}",
             e.manifest_sha256.get(..12).unwrap_or_default(),
             e.focused_units,
         )
@@ -543,8 +622,12 @@ fn summary_line(report: &Report) -> String {
     )
 }
 
+/// The engine arm, the engine manifest's digest and the Verus Cargo features
+/// the manifest records.
+type EngineBuild = (EngineArm, String, Vec<String>);
+
 /// Locates and validates the engine build for the `engine` command.
-fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<(EngineArm, String)>, String> {
+fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<EngineBuild>, String> {
     if o.command != "engine" {
         return Ok(None);
     }
@@ -560,6 +643,7 @@ fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<(EngineArm, S
             focus: o.focus,
         },
         engine.manifest_sha256,
+        engine.cargo_features,
     )))
 }
 
@@ -586,7 +670,14 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         units,
         skipped,
         verus_source,
-    } = select(o, &corpus, &cache, &installed.pins.verus)?;
+        engine_lacks,
+    } = select(
+        o,
+        &corpus,
+        &cache,
+        &installed.pins.verus,
+        engine.as_ref().map(|(_, _, features)| features.as_slice()),
+    )?;
     let started = now_unix();
     let dir = o
         .out
@@ -608,11 +699,12 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         trace: o.trace,
         plain_runs: o.plain_runs,
         confirm_runs: o.confirm_runs,
-        engine: engine.as_ref().map(|(arm, _)| EngineArm {
+        engine: engine.as_ref().map(|(arm, _, _)| EngineArm {
             verus: arm.verus.clone(),
             cargo_verus: arm.cargo_verus.clone(),
             focus: arm.focus,
         }),
+        engine_lacks: &engine_lacks,
     };
     let mut units = run_all(units, o.jobs, &cx);
     units.sort_by(|a, b| a.id.cmp(&b.id));
@@ -627,17 +719,22 @@ fn run(o: &Options) -> Result<ExitCode, String> {
             Verdict::Unstable => summary.unstable += 1,
             Verdict::Different => summary.different += 1,
             Verdict::InfraError => summary.infra_error += 1,
+            Verdict::EngineLacksFeature => summary.engine_lacks_feature += 1,
         }
         summary.functions += u.comparison.functions;
         summary.units_with_rlimit_drift += usize::from(!u.comparison.rlimit_drift.is_empty());
     }
-    if let Some((_, manifest_sha256)) = &engine {
+    if let Some((_, manifest_sha256, features)) = &engine {
         let mut totals = EngineSummary {
             manifest_sha256: manifest_sha256.clone(),
+            verus_features: features.clone(),
             ..EngineSummary::default()
         };
         for stats in units.iter().filter_map(|u| u.engine.as_ref()) {
             totals.focused_units += usize::from(stats.focus_established);
+            for feature in &stats.lacks_features {
+                *totals.lacks_feature.entry(feature.clone()).or_default() += 1;
+            }
         }
         summary.engine = Some(totals);
     }
@@ -690,7 +787,7 @@ fn main() -> ExitCode {
         "run" | "engine" => run(&o),
         "fetch" => {
             let (corpus, installed, cache) = load()?;
-            let n = select(&o, &corpus, &cache, &installed.pins.verus)?
+            let n = select(&o, &corpus, &cache, &installed.pins.verus, None)?
                 .units
                 .len();
             println!("{n} units ready");
@@ -704,5 +801,66 @@ fn main() -> ExitCode {
             eprintln!("{message}");
             ExitCode::from(2)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn units_the_engine_cannot_run_are_a_visible_count_not_same_or_different() {
+        let unit = Unit {
+            id: "verus-integer-ring/integer_ring.rs".to_owned(),
+            project: "verus-integer-ring".to_owned(),
+            source_dir: PathBuf::new(),
+            root: "integer_ring.rs".to_owned(),
+            build: sail_verus::corpus::Build::Verus,
+            args: Vec::new(),
+            cargo_args: Vec::new(),
+            patch_verus_deps: false,
+            target_dir: None,
+            env: BTreeMap::new(),
+            expected: None,
+        };
+        let unit_report = lacks_feature(&unit, &["singular".to_owned()]);
+        assert_eq!(unit_report.verdict, Verdict::EngineLacksFeature);
+        let mut report = Report {
+            schema_version: 1,
+            tier: "deep".to_owned(),
+            verus_release: String::new(),
+            z3_version: String::new(),
+            machine: BTreeMap::new(),
+            started_unix: 0,
+            flags: Vec::new(),
+            summary: Summary {
+                units: 1,
+                engine_lacks_feature: 1,
+                engine: Some(EngineSummary {
+                    manifest_sha256: "0123456789abcdef".to_owned(),
+                    lacks_feature: BTreeMap::from([("singular".to_owned(), 1)]),
+                    ..EngineSummary::default()
+                }),
+                ..Summary::default()
+            },
+            skipped: Vec::new(),
+            units: vec![unit_report],
+        };
+        let line = summary_line(&report);
+        assert!(
+            line.contains("0 same") && line.contains("0 different"),
+            "{line}"
+        );
+        assert!(
+            line.ends_with("1 units engine lacks feature singular"),
+            "{line}"
+        );
+        let json = serde_json::to_value(&report).unwrap_or_default();
+        assert_eq!(json["units"][0]["verdict"], "engine-lacks-feature");
+        assert_eq!(json["units"][0]["engine"]["lacks_features"][0], "singular");
+        assert_eq!(json["summary"]["engine_lacks_feature"], 1);
+        report.summary.engine_lacks_feature = 0;
+        let json = serde_json::to_value(&report).unwrap_or_default();
+        assert!(json["summary"].get("engine_lacks_feature").is_none());
     }
 }

@@ -186,7 +186,10 @@ pub fn run(
                         Verdict::Same => r.same += 1,
                         // `compare` is pairwise and never yields `Unstable`;
                         // any non-same round is counted as a difference.
-                        Verdict::Unstable | Verdict::Different | Verdict::InfraError => {
+                        Verdict::Unstable
+                        | Verdict::Different
+                        | Verdict::InfraError
+                        | Verdict::EngineLacksFeature => {
                             r.different += 1;
                         }
                     }
