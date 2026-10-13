@@ -169,7 +169,7 @@ and listed in [known issues](../../known-issues.md).
 `sail-bench repair` ran three rounds with arm order alternating. M6 was
 `26f124f`, M7 was `6214d67` with the pinned runtime. Every sample is valid:
 one driver, Current, 0 failing samples. Results are in
-`bench/results/repair-acceptance-l12-fork.json` and in
+`repair-acceptance-l12-fork.json` (sha256 `551d1d13…defb4`, kept outside the repository) and in
 [benchmarks](../../benchmarks.md); the raw log is `bench/run.log` `5d57286b`.
 
 | Catalogue | M6 whole loop, median (min–max) | M7 whole loop, median (min–max) | Speedup | Gate |

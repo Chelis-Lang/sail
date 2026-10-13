@@ -209,7 +209,7 @@ cycle. A Vest M7 cycle is about 27 s, close to a stock full verify of Vest
 (24–25 s). The time goes to the Verus frontend and VIR (L18: rustc 6.4 s,
 VIR 7.1 s, bucket phase 5.1 s), so the levers are L18's cheaper items and M8.
 
-Result file: `bench/results/repair-acceptance-l19.json`, sha256
+Result file: `repair-acceptance-l19.json` (kept outside the repository), sha256
 `58fdb091…8b89`. The [benchmarks page](../../benchmarks.md) is regenerated.
 
 ## Gates
@@ -264,7 +264,7 @@ Raw files are in `~/sail-raw-evidence/l19/` on the lead's machine.
 |---|---|---|
 | `l19-sequences.tar.gz` | Every Sail and plain run of the failing→passing, engine and `repair-check` sequences: JSON, stderr, plain Cargo messages | `161ea65d621ee13c7431d3f40f9bf9e9bf903b42342ed5798af1f2efc5c0b719` |
 | `l19-bench-out.tar.gz` | `sail-bench repair` raw output: commands, stdout, stderr and journal pages | `a8d3d5e818b3b4b08d52c396f4ad584fa96cd27a14f133d4b2dfc50fcafedd26` |
-| `repair-acceptance-l19.json` | Benchmark result, also committed under `bench/results/` | `58fdb091a273c8711313232dd9d55283ad43ad1d66696a8c429afe6ebcb08b89` |
+| `repair-acceptance-l19.json` | Benchmark result | `58fdb091a273c8711313232dd9d55283ad43ad1d66696a8c429afe6ebcb08b89` |
 | `l19-scripts.tar.gz` | Drivers: state writer, sequences, benchmark and median scripts | `36120d865abe96b828c7cc5938c561bf2e3336a919f52cec181b84c90b723046` |
 
 An earlier benchmark start at the same commit gave no M7 samples. It was
