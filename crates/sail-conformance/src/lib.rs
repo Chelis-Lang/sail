@@ -49,6 +49,11 @@ pub enum Verdict {
     Different,
     /// The harness could not run one side (not a conformance result).
     InfraError,
+    /// Engine arm only: the project requires a Verus feature the engine
+    /// runtime is built without, so the product falls back to stock for it
+    /// (SAIL3124) and the engine is not run. Counted on its own, never as
+    /// same or different.
+    EngineLacksFeature,
 }
 
 /// What differed between the two runs.

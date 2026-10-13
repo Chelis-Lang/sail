@@ -354,7 +354,8 @@ fn summarize(tests: &[TestReport], wall_s: f64) -> Summary {
             Verdict::Same => s.same += 1,
             Verdict::Unstable => s.unstable += 1,
             Verdict::Different => s.different += 1,
-            Verdict::InfraError => s.infra_error += 1,
+            // `rust_verify_test` has no engine arm, so no test lacks a feature.
+            Verdict::InfraError | Verdict::EngineLacksFeature => s.infra_error += 1,
         }
         match t.plain {
             Some(Outcome::Ignored) => s.ignored += 1,
