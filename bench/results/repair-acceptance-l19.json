@@ -1,0 +1,3115 @@
+{
+  "schema_version": 2,
+  "workload": "repair",
+  "environment": "native x86-64 Linux, EC2 c7i.8xlarge us-east-1",
+  "catalogue_sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6",
+  "minimum_rounds": 3,
+  "minimum_median_speedup": 2.0,
+  "rounds": 3,
+  "catalogue": [
+    {
+      "project": "human-eval-verus",
+      "cycles": [
+        "gcd-body",
+        "concatenate-spec",
+        "strlen-refactor",
+        "strlen-failing-attempt",
+        "strlen-repaired-attempt"
+      ]
+    },
+    {
+      "project": "vest",
+      "cycles": [
+        "base128-body",
+        "pow128-spec",
+        "base128-refactor",
+        "pow128-failing-attempt",
+        "pow128-repaired-attempt"
+      ]
+    }
+  ],
+  "projects": [
+    "human-eval-verus",
+    "vest"
+  ],
+  "cycle_filter": null,
+  "arms": {
+    "m6": {
+      "commit": "26f124f52dbf51d6c94178778873e96ac5e072ef",
+      "sail_sha256": "587822794389695bbe4d0c78806c6ab01596372f7f5eaf2fcc8c6e389d00b500",
+      "shim_sha256": "ffe4694e3b06d104544e57695fed9f2402ea20cfe458fb6215d69f9ca9cbbe76"
+    },
+    "m7": {
+      "commit": "0aa19a5",
+      "sail_sha256": "6bc5353ff9d4ab5dbee384f174dccc06535cf321d0f126ecc972636b0929c1d7",
+      "shim_sha256": "3b79c16692826faec6f84b78f86597a6ef15492870a8f9270ff5f48dd1c8ecb7"
+    }
+  },
+  "verus_release": "0.2026.10.04.426d8b0",
+  "z3_version": "4.16.0",
+  "started_unix": 1791888414,
+  "machine": {
+    "cpus": "32",
+    "host": "x86_64-unknown-linux-gnu",
+    "uname": "Linux 7.0.0-1014-aws x86_64"
+  },
+  "warmups": [
+    {
+      "project": "",
+      "cycle": "engine",
+      "kind": "warm-up: engine install",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "engine-install",
+          "exit_code": 0,
+          "wall_ms": 184.247547
+        }
+      ],
+      "wall_ms": 184.247547,
+      "facts": {},
+      "raw_dir": "session-0/engine-install"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "project",
+      "kind": "warm-up: dependencies and solver cache",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "verify",
+          "exit_code": 0,
+          "wall_ms": 50101.441044
+        }
+      ],
+      "wall_ms": 50101.441044,
+      "facts": {
+        "full_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 478,
+        "gets": 1204,
+        "hits": 770,
+        "puts": 24718,
+        "memory_hits": 770
+      },
+      "raw_dir": "session-0/human-eval-verus/dependencies-m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "project",
+      "kind": "warm-up: dependencies and solver cache",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "verify",
+          "exit_code": 0,
+          "wall_ms": 48474.368507
+        }
+      ],
+      "wall_ms": 48474.368507,
+      "facts": {
+        "full_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 478,
+        "gets": 1196,
+        "hits": 761,
+        "puts": 24727,
+        "memory_hits": 761
+      },
+      "raw_dir": "session-0/human-eval-verus/dependencies-m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "human_eval_verus::human_eval_013::compute_gcd",
+      "kind": "warm-up: focused context",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 29239.986652
+        }
+      ],
+      "wall_ms": 29239.986652,
+      "first_actionable_ms": 29239.986652,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 4,
+        "outcome_sha256": "fdbd0f78ad4ff30a8226e8f6c40a66f9917b31d6b53d08503987ebf0a0044a23",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 1,
+        "gets": 1,
+        "hits": 0,
+        "puts": 21
+      },
+      "raw_dir": "session-0/human-eval-verus/focus-0"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "human_eval_verus::human_eval_013::compute_gcd",
+      "kind": "warm-up: repair context",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 34595.226662,
+          "job": "1791888542511-232771-0",
+          "proof_pages": 194,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
+        }
+      ],
+      "wall_ms": 34595.226662,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 479,
+        "gets": 23469,
+        "hits": 23465,
+        "puts": 2044,
+        "memory_hits": 23465
+      },
+      "raw_dir": "session-0/human-eval-verus/repair-0-0"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "human_eval_verus::human_eval_028::concatenate_impl",
+      "kind": "warm-up: focused context",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 29241.308259
+        }
+      ],
+      "wall_ms": 29241.308259,
+      "first_actionable_ms": 29241.308259,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 4,
+        "outcome_sha256": "5093e0a81331e629d9e7dcdd10ac6d04211b0231be2da0266d0b7fd567f95e48",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 1,
+        "gets": 1,
+        "hits": 0,
+        "puts": 21
+      },
+      "raw_dir": "session-0/human-eval-verus/focus-1"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "human_eval_verus::human_eval_028::concatenate_impl",
+      "kind": "warm-up: repair context",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 37018.553617000005,
+          "job": "1791888606410-232771-1",
+          "proof_pages": 196,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
+        }
+      ],
+      "wall_ms": 37018.553617000005,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 479,
+        "gets": 25079,
+        "hits": 25076,
+        "puts": 433,
+        "memory_hits": 25076
+      },
+      "raw_dir": "session-0/human-eval-verus/repair-1-0"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "human_eval_verus::human_eval_023::strlen",
+      "kind": "warm-up: focused context",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 29241.605452999996
+        }
+      ],
+      "wall_ms": 29241.605452999996,
+      "first_actionable_ms": 29241.605452999996,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 4,
+        "outcome_sha256": "5978fe465227ea738fc38400a5f30ac6072239408a8244cbdd5e2787ad27dec8",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 1,
+        "gets": 11,
+        "hits": 11,
+        "puts": 0,
+        "memory_hits": 11
+      },
+      "raw_dir": "session-0/human-eval-verus/focus-2"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "human_eval_verus::human_eval_023::strlen",
+      "kind": "warm-up: repair context",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 34616.039523,
+          "job": "1791888672722-232771-2",
+          "proof_pages": 197,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
+        }
+      ],
+      "wall_ms": 34616.039523,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 479,
+        "gets": 25499,
+        "hits": 25499,
+        "puts": 0,
+        "memory_hits": 25499
+      },
+      "raw_dir": "session-0/human-eval-verus/repair-2-0"
+    },
+    {
+      "project": "vest",
+      "cycle": "project",
+      "kind": "warm-up: dependencies and solver cache",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "verify",
+          "exit_code": 0,
+          "wall_ms": 67672.779093
+        }
+      ],
+      "wall_ms": 67672.779093,
+      "facts": {
+        "full_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 631,
+        "gets": 20689,
+        "hits": 20440,
+        "puts": 33161,
+        "memory_hits": 20440
+      },
+      "raw_dir": "session-0/vest/dependencies-m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "project",
+      "kind": "warm-up: dependencies and solver cache",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "verify",
+          "exit_code": 0,
+          "wall_ms": 64376.345499999996
+        }
+      ],
+      "wall_ms": 64376.345499999996,
+      "facts": {
+        "full_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 631,
+        "gets": 21569,
+        "hits": 21322,
+        "puts": 32279,
+        "memory_hits": 21322
+      },
+      "raw_dir": "session-0/vest/dependencies-m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "kind": "warm-up: focused context",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 44846.688706
+        }
+      ],
+      "wall_ms": 44846.688706,
+      "first_actionable_ms": 44846.688706,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 4,
+        "outcome_sha256": "b4d44e7ae559fe6c839ddccc950d9bed955a591bbe244f024af2d4c662f86810",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 1,
+        "gets": 1,
+        "hits": 0,
+        "puts": 11
+      },
+      "raw_dir": "session-0/vest/focus-0"
+    },
+    {
+      "project": "vest",
+      "cycle": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "kind": "warm-up: repair context",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 54638.599468,
+          "job": "1791889156939-232771-18",
+          "proof_pages": 199,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
+        }
+      ],
+      "wall_ms": 54638.599468,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 632,
+        "gets": 53552,
+        "hits": 53550,
+        "puts": 62,
+        "memory_hits": 53550
+      },
+      "raw_dir": "session-0/vest/repair-0-0"
+    },
+    {
+      "project": "vest",
+      "cycle": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "kind": "warm-up: focused context",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 44829.678261
+        }
+      ],
+      "wall_ms": 44829.678261,
+      "first_actionable_ms": 44829.678261,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 4,
+        "outcome_sha256": "bf42732e99b01b361ef1500a8c654851c7cb8ded4cfe1e4ce5f0fe8213986bbd",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 1,
+        "gets": 1,
+        "hits": 0,
+        "puts": 11
+      },
+      "raw_dir": "session-0/vest/focus-1"
+    },
+    {
+      "project": "vest",
+      "cycle": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "kind": "warm-up: repair context",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 55070.22086,
+          "job": "1791889256509-232771-19",
+          "proof_pages": 200,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
+        }
+      ],
+      "wall_ms": 55070.22086,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 632,
+        "gets": 53552,
+        "hits": 53550,
+        "puts": 62,
+        "memory_hits": 53550
+      },
+      "raw_dir": "session-0/vest/repair-1-0"
+    },
+    {
+      "project": "vest",
+      "cycle": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "kind": "warm-up: focused context",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "arm": "m6",
+      "position": 0,
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 44600.378438
+        }
+      ],
+      "wall_ms": 44600.378438,
+      "first_actionable_ms": 44600.378438,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 4,
+        "outcome_sha256": "d7b0b59c3c2a4da1363deeb28f1388412052bd8522bc2f9f378ef8d28ae84e96",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 1,
+        "gets": 1,
+        "hits": 0,
+        "puts": 11
+      },
+      "raw_dir": "session-0/vest/focus-2"
+    },
+    {
+      "project": "vest",
+      "cycle": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "kind": "warm-up: repair context",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "arm": "m7",
+      "position": 0,
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 55053.135738000004,
+          "job": "1791889356273-232771-20",
+          "proof_pages": 201,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
+        }
+      ],
+      "wall_ms": 55053.135738000004,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 632,
+        "gets": 53552,
+        "hits": 53550,
+        "puts": 62,
+        "memory_hits": 53550
+      },
+      "raw_dir": "session-0/vest/repair-2-0"
+    }
+  ],
+  "samples": [
+    {
+      "project": "human-eval-verus",
+      "cycle": "gcd-body",
+      "kind": "body",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "f09d52906f42c15298739a1e21fb298c095c4942a9ffe843ed07984204569ef8",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5748.543548
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6891.031292
+        }
+      ],
+      "wall_ms": 12639.57484,
+      "first_actionable_ms": 5748.543548,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4478,
+        "hits": 4476,
+        "puts": 68,
+        "memory_hits": 4476
+      },
+      "raw_dir": "human-eval-verus/0/gcd-body/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "gcd-body",
+      "kind": "body",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "f09d52906f42c15298739a1e21fb298c095c4942a9ffe843ed07984204569ef8",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5977.515291,
+          "job": "1791888720071-232771-3",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5977.515291,
+      "first_actionable_ms": 3360.496433,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4478,
+        "hits": 4476,
+        "puts": 68,
+        "memory_hits": 4476
+      },
+      "raw_dir": "human-eval-verus/0/gcd-body/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "concatenate-spec",
+      "kind": "spec",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "e54822f20461d2af8da8b935ea55689dff4ae4edaecd9c219e21dc344f7fa50a",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5780.7679370000005
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 9232.619298
+        }
+      ],
+      "wall_ms": 15013.387235,
+      "first_actionable_ms": 5780.7679370000005,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4254,
+        "hits": 4251,
+        "puts": 293,
+        "memory_hits": 4251
+      },
+      "raw_dir": "human-eval-verus/0/concatenate-spec/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "concatenate-spec",
+      "kind": "spec",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "e54822f20461d2af8da8b935ea55689dff4ae4edaecd9c219e21dc344f7fa50a",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 6068.198945,
+          "job": "1791888741143-232771-4",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 6068.198945,
+      "first_actionable_ms": 3359.416978,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4504,
+        "hits": 4502,
+        "puts": 42,
+        "memory_hits": 4502
+      },
+      "raw_dir": "human-eval-verus/0/concatenate-spec/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-refactor",
+      "kind": "refactor",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "4d405b2fdfd44734e91685de1d542648ebdfb0cb78ad25e6190465ab7e7636ff",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5750.209133
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6931.603026999999
+        }
+      ],
+      "wall_ms": 12681.81216,
+      "first_actionable_ms": 5750.209133,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4526,
+        "hits": 4525,
+        "puts": 9,
+        "memory_hits": 4525
+      },
+      "raw_dir": "human-eval-verus/0/strlen-refactor/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-refactor",
+      "kind": "refactor",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "4d405b2fdfd44734e91685de1d542648ebdfb0cb78ad25e6190465ab7e7636ff",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5863.3905620000005,
+          "job": "1791888759973-232771-5",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5863.3905620000005,
+      "first_actionable_ms": 3367.1698380000003,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4526,
+        "hits": 4525,
+        "puts": 9,
+        "memory_hits": 4525
+      },
+      "raw_dir": "human-eval-verus/0/strlen-refactor/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-failing-attempt",
+      "kind": "failure",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "errors",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "447b27189075670010365d31c69017d28c10e3cdc2ee4e9fd84505418f87dbc4",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 101,
+          "wall_ms": 4761.334629
+        },
+        {
+          "name": "full",
+          "exit_code": 101,
+          "wall_ms": 5865.27052
+        }
+      ],
+      "wall_ms": 10626.605148999999,
+      "first_actionable_ms": 4761.334629,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "466cba7ed7e188ebd63fb456370ba44d3f83afeecf5c3bc2535e3686d3e7a59d",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4542,
+        "hits": 4541,
+        "puts": 29,
+        "memory_hits": 4541
+      },
+      "raw_dir": "human-eval-verus/0/strlen-failing-attempt/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-failing-attempt",
+      "kind": "failure",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "errors",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "447b27189075670010365d31c69017d28c10e3cdc2ee4e9fd84505418f87dbc4",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 1,
+          "wall_ms": 5062.766903,
+          "job": "1791888776545-232771-6",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5062.766903,
+      "first_actionable_ms": 3364.947456,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": false,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "466cba7ed7e188ebd63fb456370ba44d3f83afeecf5c3bc2535e3686d3e7a59d",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4542,
+        "hits": 4541,
+        "puts": 29,
+        "memory_hits": 4541
+      },
+      "raw_dir": "human-eval-verus/0/strlen-failing-attempt/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-repaired-attempt",
+      "kind": "repair",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5678.268282
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6834.119264
+        }
+      ],
+      "wall_ms": 12512.387546,
+      "first_actionable_ms": 5678.268282,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/0/strlen-repaired-attempt/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-repaired-attempt",
+      "kind": "repair",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5847.912626,
+          "job": "1791888794203-232771-7",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5847.912626,
+      "first_actionable_ms": 3363.083842,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/0/strlen-repaired-attempt/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "gcd-body",
+      "kind": "body",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "f09d52906f42c15298739a1e21fb298c095c4942a9ffe843ed07984204569ef8",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5859.494406,
+          "job": "1791888800087-232771-8",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5859.494406,
+      "first_actionable_ms": 3366.9005190000003,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/1/gcd-body/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "gcd-body",
+      "kind": "body",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "f09d52906f42c15298739a1e21fb298c095c4942a9ffe843ed07984204569ef8",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5722.687668
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6883.784917
+        }
+      ],
+      "wall_ms": 12606.472585,
+      "first_actionable_ms": 5722.687668,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/1/gcd-body/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "concatenate-spec",
+      "kind": "spec",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "e54822f20461d2af8da8b935ea55689dff4ae4edaecd9c219e21dc344f7fa50a",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5955.302833,
+          "job": "1791888818624-232771-9",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5955.302833,
+      "first_actionable_ms": 3361.6139829999997,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/1/concatenate-spec/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "concatenate-spec",
+      "kind": "spec",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "e54822f20461d2af8da8b935ea55689dff4ae4edaecd9c219e21dc344f7fa50a",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5760.898917
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6869.688641
+        }
+      ],
+      "wall_ms": 12630.587558,
+      "first_actionable_ms": 5760.898917,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/1/concatenate-spec/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-refactor",
+      "kind": "refactor",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "4d405b2fdfd44734e91685de1d542648ebdfb0cb78ad25e6190465ab7e7636ff",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5868.4799219999995,
+          "job": "1791888837293-232771-10",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5868.4799219999995,
+      "first_actionable_ms": 3361.6778059999997,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/1/strlen-refactor/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-refactor",
+      "kind": "refactor",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "4d405b2fdfd44734e91685de1d542648ebdfb0cb78ad25e6190465ab7e7636ff",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5680.186513
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6867.0023169999995
+        }
+      ],
+      "wall_ms": 12547.18883,
+      "first_actionable_ms": 5680.186513,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/1/strlen-refactor/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-failing-attempt",
+      "kind": "failure",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "errors",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "447b27189075670010365d31c69017d28c10e3cdc2ee4e9fd84505418f87dbc4",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 1,
+          "wall_ms": 4954.066448,
+          "job": "1791888855789-232771-11",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 4954.066448,
+      "first_actionable_ms": 3367.851046,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": false,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "466cba7ed7e188ebd63fb456370ba44d3f83afeecf5c3bc2535e3686d3e7a59d",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4570,
+        "hits": 4570,
+        "puts": 0,
+        "memory_hits": 4570
+      },
+      "raw_dir": "human-eval-verus/1/strlen-failing-attempt/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-failing-attempt",
+      "kind": "failure",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "errors",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "447b27189075670010365d31c69017d28c10e3cdc2ee4e9fd84505418f87dbc4",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 101,
+          "wall_ms": 4751.770987999999
+        },
+        {
+          "name": "full",
+          "exit_code": 101,
+          "wall_ms": 5880.0012480000005
+        }
+      ],
+      "wall_ms": 10631.772236,
+      "first_actionable_ms": 4751.770987999999,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "466cba7ed7e188ebd63fb456370ba44d3f83afeecf5c3bc2535e3686d3e7a59d",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4570,
+        "hits": 4570,
+        "puts": 0,
+        "memory_hits": 4570
+      },
+      "raw_dir": "human-eval-verus/1/strlen-failing-attempt/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-repaired-attempt",
+      "kind": "repair",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5862.8770269999995,
+          "job": "1791888871459-232771-12",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5862.8770269999995,
+      "first_actionable_ms": 3369.8383339999996,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/1/strlen-repaired-attempt/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-repaired-attempt",
+      "kind": "repair",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5698.927307
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6849.638626
+        }
+      ],
+      "wall_ms": 12548.565933,
+      "first_actionable_ms": 5698.927307,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/1/strlen-repaired-attempt/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "gcd-body",
+      "kind": "body",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "f09d52906f42c15298739a1e21fb298c095c4942a9ffe843ed07984204569ef8",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5710.27912
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6881.469913
+        }
+      ],
+      "wall_ms": 12591.749033,
+      "first_actionable_ms": 5710.27912,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/2/gcd-body/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "gcd-body",
+      "kind": "body",
+      "function": "human_eval_verus::human_eval_013::compute_gcd",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "f09d52906f42c15298739a1e21fb298c095c4942a9ffe843ed07984204569ef8",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5859.360353,
+          "job": "1791888902584-232771-13",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5859.360353,
+      "first_actionable_ms": 3365.269912,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/2/gcd-body/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "concatenate-spec",
+      "kind": "spec",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "e54822f20461d2af8da8b935ea55689dff4ae4edaecd9c219e21dc344f7fa50a",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5721.85003
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6881.797679
+        }
+      ],
+      "wall_ms": 12603.647709,
+      "first_actionable_ms": 5721.85003,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/2/concatenate-spec/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "concatenate-spec",
+      "kind": "spec",
+      "function": "human_eval_verus::human_eval_028::concatenate_impl",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "e54822f20461d2af8da8b935ea55689dff4ae4edaecd9c219e21dc344f7fa50a",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5854.380599,
+          "job": "1791888921128-232771-14",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5854.380599,
+      "first_actionable_ms": 3359.77614,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4544,
+        "hits": 4544,
+        "puts": 0,
+        "memory_hits": 4544
+      },
+      "raw_dir": "human-eval-verus/2/concatenate-spec/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-refactor",
+      "kind": "refactor",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "4d405b2fdfd44734e91685de1d542648ebdfb0cb78ad25e6190465ab7e7636ff",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5708.828553
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6941.860468
+        }
+      ],
+      "wall_ms": 12650.689021,
+      "first_actionable_ms": 5708.828553,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/2/strlen-refactor/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-refactor",
+      "kind": "refactor",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "4d405b2fdfd44734e91685de1d542648ebdfb0cb78ad25e6190465ab7e7636ff",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5960.071787000001,
+          "job": "1791888939716-232771-15",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5960.071787000001,
+      "first_actionable_ms": 3360.901498,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/2/strlen-refactor/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-failing-attempt",
+      "kind": "failure",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "errors",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "447b27189075670010365d31c69017d28c10e3cdc2ee4e9fd84505418f87dbc4",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 101,
+          "wall_ms": 4751.707975
+        },
+        {
+          "name": "full",
+          "exit_code": 101,
+          "wall_ms": 5893.369231999999
+        }
+      ],
+      "wall_ms": 10645.077206999998,
+      "first_actionable_ms": 4751.707975,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "466cba7ed7e188ebd63fb456370ba44d3f83afeecf5c3bc2535e3686d3e7a59d",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4570,
+        "hits": 4570,
+        "puts": 0,
+        "memory_hits": 4570
+      },
+      "raw_dir": "human-eval-verus/2/strlen-failing-attempt/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-failing-attempt",
+      "kind": "failure",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "errors",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "447b27189075670010365d31c69017d28c10e3cdc2ee4e9fd84505418f87dbc4",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 1,
+          "wall_ms": 4959.591414,
+          "job": "1791888956404-232771-16",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 4959.591414,
+      "first_actionable_ms": 3361.2647669999997,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": false,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "466cba7ed7e188ebd63fb456370ba44d3f83afeecf5c3bc2535e3686d3e7a59d",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4570,
+        "hits": 4570,
+        "puts": 0,
+        "memory_hits": 4570
+      },
+      "raw_dir": "human-eval-verus/2/strlen-failing-attempt/m7"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-repaired-attempt",
+      "kind": "repair",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 5669.672115
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 6870.950941
+        }
+      ],
+      "wall_ms": 12540.623056,
+      "first_actionable_ms": 5669.672115,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/2/strlen-repaired-attempt/m6"
+    },
+    {
+      "project": "human-eval-verus",
+      "cycle": "strlen-repaired-attempt",
+      "kind": "repair",
+      "function": "human_eval_verus::human_eval_023::strlen",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "64db1f350df81f9c7cf5538972ece90b03d18d4899f61a41a31ed744adc131ea",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 5852.873409,
+          "job": "1791888973981-232771-17",
+          "proof_pages": 33
+        }
+      ],
+      "wall_ms": 5852.873409,
+      "first_actionable_ms": 3360.2969529999996,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 114,
+        "gets": 4534,
+        "hits": 4534,
+        "puts": 0,
+        "memory_hits": 4534
+      },
+      "raw_dir": "human-eval-verus/2/strlen-repaired-attempt/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-body",
+      "kind": "body",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "8f5167c502050c01d19f05f052bcb281cad512599735a2bbf446410e053ea476",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21176.538133000002
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27423.784729000003
+        }
+      ],
+      "wall_ms": 48600.322862,
+      "first_actionable_ms": 21176.538133000002,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32311,
+        "hits": 32308,
+        "puts": 339,
+        "memory_hits": 32308
+      },
+      "raw_dir": "vest/0/base128-body/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-body",
+      "kind": "body",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "8f5167c502050c01d19f05f052bcb281cad512599735a2bbf446410e053ea476",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 26930.234644,
+          "job": "1791889460116-232771-21",
+          "proof_pages": 126
+        }
+      ],
+      "wall_ms": 26930.234644,
+      "first_actionable_ms": 12788.990583,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32361,
+        "hits": 32359,
+        "puts": 288,
+        "memory_hits": 32359
+      },
+      "raw_dir": "vest/0/base128-body/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-spec",
+      "kind": "spec",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "4356e632da5ce5c07d01a4eacfc5bb4b46d155d3e63333eabc725f6bee31f8f1",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21155.489031999998
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27713.22131
+        }
+      ],
+      "wall_ms": 48868.710342,
+      "first_actionable_ms": 21155.489031999998,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 31829,
+        "hits": 31822,
+        "puts": 825,
+        "memory_hits": 31822
+      },
+      "raw_dir": "vest/0/pow128-spec/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-spec",
+      "kind": "spec",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "4356e632da5ce5c07d01a4eacfc5bb4b46d155d3e63333eabc725f6bee31f8f1",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 27311.448162,
+          "job": "1791889536091-232771-22",
+          "proof_pages": 128
+        }
+      ],
+      "wall_ms": 27311.448162,
+      "first_actionable_ms": 12986.004142,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32317,
+        "hits": 32314,
+        "puts": 333,
+        "memory_hits": 32314
+      },
+      "raw_dir": "vest/0/pow128-spec/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-refactor",
+      "kind": "refactor",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "0f3e456a5957effe950cd1d3b23304ca7c6051d12d3ecd7d346a3399b3d3ebb1",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21400.746006999998
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27511.377099
+        }
+      ],
+      "wall_ms": 48912.123106,
+      "first_actionable_ms": 21400.746006999998,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32521,
+        "hits": 32519,
+        "puts": 128,
+        "memory_hits": 32519
+      },
+      "raw_dir": "vest/0/base128-refactor/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-refactor",
+      "kind": "refactor",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "0f3e456a5957effe950cd1d3b23304ca7c6051d12d3ecd7d346a3399b3d3ebb1",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 27006.805843,
+          "job": "1791889612470-232771-23",
+          "proof_pages": 127
+        }
+      ],
+      "wall_ms": 27006.805843,
+      "first_actionable_ms": 12884.732797,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32083,
+        "hits": 32078,
+        "puts": 569,
+        "memory_hits": 32078
+      },
+      "raw_dir": "vest/0/base128-refactor/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-failing-attempt",
+      "kind": "failure",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "errors",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "48276da10b34ce63bb24f26c74912c88862f42a18e13ab7b84a2d8c2b1ea3926",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 101,
+          "wall_ms": 16505.749206
+        },
+        {
+          "name": "full",
+          "exit_code": 101,
+          "wall_ms": 23471.069345
+        }
+      ],
+      "wall_ms": 39976.818551000004,
+      "first_actionable_ms": 16505.749206,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "94b62652ac1777989a6e705931e08fb7a706713499848e60b5692dd7548feffe",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32317,
+        "hits": 32314,
+        "puts": 387,
+        "memory_hits": 32314
+      },
+      "raw_dir": "vest/0/pow128-failing-attempt/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-failing-attempt",
+      "kind": "failure",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "errors",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "48276da10b34ce63bb24f26c74912c88862f42a18e13ab7b84a2d8c2b1ea3926",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 1,
+          "wall_ms": 23110.470176,
+          "job": "1791889679635-232771-24",
+          "proof_pages": 127
+        }
+      ],
+      "wall_ms": 23110.470176,
+      "first_actionable_ms": 12878.717744,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": false,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "94b62652ac1777989a6e705931e08fb7a706713499848e60b5692dd7548feffe",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32317,
+        "hits": 32314,
+        "puts": 387,
+        "memory_hits": 32314
+      },
+      "raw_dir": "vest/0/pow128-failing-attempt/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-repaired-attempt",
+      "kind": "repair",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 0,
+      "position": 0,
+      "source_sha256": "093a5a5432d11493d9a360087ac9a9050d004602738bb972e3505697b16ec786",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21106.395885
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27903.32713
+        }
+      ],
+      "wall_ms": 49009.723015,
+      "first_actionable_ms": 21106.395885,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/0/pow128-repaired-attempt/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-repaired-attempt",
+      "kind": "repair",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 0,
+      "position": 1,
+      "source_sha256": "093a5a5432d11493d9a360087ac9a9050d004602738bb972e3505697b16ec786",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 26639.119238,
+          "job": "1791889751940-232771-25",
+          "proof_pages": 128
+        }
+      ],
+      "wall_ms": 26639.119238,
+      "first_actionable_ms": 13003.905504,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/0/pow128-repaired-attempt/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-body",
+      "kind": "body",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "8f5167c502050c01d19f05f052bcb281cad512599735a2bbf446410e053ea476",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 26734.77437,
+          "job": "1791889778650-232771-26",
+          "proof_pages": 129
+        }
+      ],
+      "wall_ms": 26734.77437,
+      "first_actionable_ms": 13085.737066,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/1/base128-body/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-body",
+      "kind": "body",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "8f5167c502050c01d19f05f052bcb281cad512599735a2bbf446410e053ea476",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21290.48717
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27338.656809
+        }
+      ],
+      "wall_ms": 48629.143979,
+      "first_actionable_ms": 21290.48717,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/1/base128-body/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-spec",
+      "kind": "spec",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "4356e632da5ce5c07d01a4eacfc5bb4b46d155d3e63333eabc725f6bee31f8f1",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 27211.30398,
+          "job": "1791889854188-232771-27",
+          "proof_pages": 130
+        }
+      ],
+      "wall_ms": 27211.30398,
+      "first_actionable_ms": 13192.72972,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/1/pow128-spec/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-spec",
+      "kind": "spec",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "4356e632da5ce5c07d01a4eacfc5bb4b46d155d3e63333eabc725f6bee31f8f1",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21294.612354
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27538.793431
+        }
+      ],
+      "wall_ms": 48833.405784999995,
+      "first_actionable_ms": 21294.612354,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/1/pow128-spec/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-refactor",
+      "kind": "refactor",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "0f3e456a5957effe950cd1d3b23304ca7c6051d12d3ecd7d346a3399b3d3ebb1",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 26604.535887000002,
+          "job": "1791889930402-232771-28",
+          "proof_pages": 127
+        }
+      ],
+      "wall_ms": 26604.535887000002,
+      "first_actionable_ms": 12904.561918000001,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/1/base128-refactor/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-refactor",
+      "kind": "refactor",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "0f3e456a5957effe950cd1d3b23304ca7c6051d12d3ecd7d346a3399b3d3ebb1",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21400.318363
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27243.274353
+        }
+      ],
+      "wall_ms": 48643.592716,
+      "first_actionable_ms": 21400.318363,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/1/base128-refactor/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-failing-attempt",
+      "kind": "failure",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "errors",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "48276da10b34ce63bb24f26c74912c88862f42a18e13ab7b84a2d8c2b1ea3926",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 1,
+          "wall_ms": 21996.445895,
+          "job": "1791890005822-232771-29",
+          "proof_pages": 128
+        }
+      ],
+      "wall_ms": 21996.445895,
+      "first_actionable_ms": 13000.238789,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": false,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "94b62652ac1777989a6e705931e08fb7a706713499848e60b5692dd7548feffe",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32701,
+        "hits": 32701,
+        "puts": 0,
+        "memory_hits": 32701
+      },
+      "raw_dir": "vest/1/pow128-failing-attempt/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-failing-attempt",
+      "kind": "failure",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "errors",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "48276da10b34ce63bb24f26c74912c88862f42a18e13ab7b84a2d8c2b1ea3926",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 101,
+          "wall_ms": 16528.080348
+        },
+        {
+          "name": "full",
+          "exit_code": 101,
+          "wall_ms": 22552.75806
+        }
+      ],
+      "wall_ms": 39080.838407999996,
+      "first_actionable_ms": 16528.080348,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "94b62652ac1777989a6e705931e08fb7a706713499848e60b5692dd7548feffe",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32701,
+        "hits": 32701,
+        "puts": 0,
+        "memory_hits": 32701
+      },
+      "raw_dir": "vest/1/pow128-failing-attempt/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-repaired-attempt",
+      "kind": "repair",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 1,
+      "position": 0,
+      "source_sha256": "093a5a5432d11493d9a360087ac9a9050d004602738bb972e3505697b16ec786",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 26527.032478999998,
+          "job": "1791890067088-232771-30",
+          "proof_pages": 127
+        }
+      ],
+      "wall_ms": 26527.032478999998,
+      "first_actionable_ms": 12892.703599,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/1/pow128-repaired-attempt/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-repaired-attempt",
+      "kind": "repair",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 1,
+      "position": 1,
+      "source_sha256": "093a5a5432d11493d9a360087ac9a9050d004602738bb972e3505697b16ec786",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21333.245519
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27418.706430000002
+        }
+      ],
+      "wall_ms": 48751.951949,
+      "first_actionable_ms": 21333.245519,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32597,
+        "hits": 32596,
+        "puts": 51,
+        "memory_hits": 32596
+      },
+      "raw_dir": "vest/1/pow128-repaired-attempt/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-body",
+      "kind": "body",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "8f5167c502050c01d19f05f052bcb281cad512599735a2bbf446410e053ea476",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21313.42034
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27260.698836
+        }
+      ],
+      "wall_ms": 48574.119176,
+      "first_actionable_ms": 21313.42034,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/base128-body/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-body",
+      "kind": "body",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "8f5167c502050c01d19f05f052bcb281cad512599735a2bbf446410e053ea476",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 27026.210733,
+          "job": "1791890191204-232771-31",
+          "proof_pages": 129
+        }
+      ],
+      "wall_ms": 27026.210733,
+      "first_actionable_ms": 13106.62752,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/base128-body/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-spec",
+      "kind": "spec",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "4356e632da5ce5c07d01a4eacfc5bb4b46d155d3e63333eabc725f6bee31f8f1",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21282.529853
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27481.587299000003
+        }
+      ],
+      "wall_ms": 48764.117152000006,
+      "first_actionable_ms": 21282.529853,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/pow128-spec/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-spec",
+      "kind": "spec",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "4356e632da5ce5c07d01a4eacfc5bb4b46d155d3e63333eabc725f6bee31f8f1",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 26797.875700999997,
+          "job": "1791890267166-232771-32",
+          "proof_pages": 129
+        }
+      ],
+      "wall_ms": 26797.875700999997,
+      "first_actionable_ms": 13084.903908,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/pow128-spec/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-refactor",
+      "kind": "refactor",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "0f3e456a5957effe950cd1d3b23304ca7c6051d12d3ecd7d346a3399b3d3ebb1",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21292.500682
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 27466.642183
+        }
+      ],
+      "wall_ms": 48759.142865,
+      "first_actionable_ms": 21292.500682,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/base128-refactor/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "base128-refactor",
+      "kind": "refactor",
+      "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "0f3e456a5957effe950cd1d3b23304ca7c6051d12d3ecd7d346a3399b3d3ebb1",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 27113.094997,
+          "job": "1791890342897-232771-33",
+          "proof_pages": 130
+        }
+      ],
+      "wall_ms": 27113.094997,
+      "first_actionable_ms": 13200.599543999999,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/base128-refactor/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-failing-attempt",
+      "kind": "failure",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "errors",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "48276da10b34ce63bb24f26c74912c88862f42a18e13ab7b84a2d8c2b1ea3926",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 101,
+          "wall_ms": 16586.259302
+        },
+        {
+          "name": "full",
+          "exit_code": 101,
+          "wall_ms": 22657.53136
+        }
+      ],
+      "wall_ms": 39243.790662,
+      "first_actionable_ms": 16586.259302,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "94b62652ac1777989a6e705931e08fb7a706713499848e60b5692dd7548feffe",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32701,
+        "hits": 32701,
+        "puts": 0,
+        "memory_hits": 32701
+      },
+      "raw_dir": "vest/2/pow128-failing-attempt/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-failing-attempt",
+      "kind": "failure",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "errors",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "48276da10b34ce63bb24f26c74912c88862f42a18e13ab7b84a2d8c2b1ea3926",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 1,
+          "wall_ms": 22202.409164999997,
+          "job": "1791890409432-232771-34",
+          "proof_pages": 128
+        }
+      ],
+      "wall_ms": 22202.409164999997,
+      "first_actionable_ms": 12999.24841,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": false,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "94b62652ac1777989a6e705931e08fb7a706713499848e60b5692dd7548feffe",
+        "verified": false
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32701,
+        "hits": 32701,
+        "puts": 0,
+        "memory_hits": 32701
+      },
+      "raw_dir": "vest/2/pow128-failing-attempt/m7"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-repaired-attempt",
+      "kind": "repair",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m6",
+      "round": 2,
+      "position": 0,
+      "source_sha256": "093a5a5432d11493d9a360087ac9a9050d004602738bb972e3505697b16ec786",
+      "phases": [
+        {
+          "name": "focus",
+          "exit_code": 0,
+          "wall_ms": 21869.285265
+        },
+        {
+          "name": "full",
+          "exit_code": 0,
+          "wall_ms": 28168.451589
+        }
+      ],
+      "wall_ms": 50037.736854,
+      "first_actionable_ms": 21869.285265,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "compiler_invocations": 2,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/pow128-repaired-attempt/m6"
+    },
+    {
+      "project": "vest",
+      "cycle": "pow128-repaired-attempt",
+      "kind": "repair",
+      "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+      "expected": "verified",
+      "arm": "m7",
+      "round": 2,
+      "position": 1,
+      "source_sha256": "093a5a5432d11493d9a360087ac9a9050d004602738bb972e3505697b16ec786",
+      "phases": [
+        {
+          "name": "repair",
+          "exit_code": 0,
+          "wall_ms": 26959.309236999998,
+          "job": "1791890481853-232771-35",
+          "proof_pages": 130
+        }
+      ],
+      "wall_ms": 26959.309236999998,
+      "first_actionable_ms": 13221.639354,
+      "facts": {
+        "full_currentness": "current",
+        "focus_currentness": "current",
+        "accepted": true,
+        "batched": true,
+        "engine_manifest": true,
+        "focus_present": true,
+        "compiler_invocations": 1,
+        "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
+        "verified": true
+      },
+      "cache": {
+        "phase": "sample",
+        "sessions": 267,
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
+      },
+      "raw_dir": "vest/2/pow128-repaired-attempt/m7"
+    }
+  ],
+  "notes": []
+}

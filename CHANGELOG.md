@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- A managed `sail verify` that ends in ordinary proof errors now keeps vstd
+  and the other compiled dependencies, as plain `cargo verus verify` does.
+  Previously the next run rebuilt every package with a build script and
+  verified vstd again: the passing run after a fix took about 32 s instead of
+  5 s on HumanEval and 50 s instead of 24 s on Vest. Runs that end in a
+  compiler error, crash, partial scope or uncertain inputs still rebuild those
+  packages. Verdicts, diagnostics and proof receipts are unchanged.
 - `sail-conformance` compares diagnostics as a multiset of complete
   messages (ADR 0042), in corpus units and in `rust-verify-test`. Messages
   from different modules may come in any order; each must appear with

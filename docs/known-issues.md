@@ -18,20 +18,19 @@ are in the `archive/m7-contracts-f7103bf` tag.
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from
   the CLI, MCP or any agent session reuse it. A shared per-toolchain vstd is a
   deferred follow-up. [L16 report](reports/rescue/l16-first-contact-vstd.md).
-- **Engine verification re-verifies vstd on every run.**
-  - `sail verify --engine interactive` and `repair-check` report two verifier
-    invocations and no reused target on every run.
-  - Each run gets a new `input_revision`, although no file changed and the
-    context digest is stable.
-  - On HumanEval a run takes about 33 s, against 5.7 s for stock managed.
-  - Seen on `e20d849` with an engine built from fork `3a91b1d7`. Cause not
-    established. [L18 report](reports/rescue/l18-m8-stage-profile.md).
-- **The first passing stock run after a failing run re-verifies vstd.**
-  - It cost +27.5 s on HumanEval and on Vest in 12 of 12 such native
-    samples.
-  - It affects the agent's fix-after-failure cycle.
-  - Cause not established.
-    [L18 report](reports/rescue/l18-m8-stage-profile.md).
+- **Each proof context verifies vstd once in its own target.** That is about
+  30 s on HumanEval for each of these:
+  - stock `sail verify`;
+  - `sail verify --engine interactive`;
+  - the first `repair-check` of *each* function. A repair keeps a separate
+    Cargo target for each selected function (ADR 0036). On HumanEval, the
+    first repair of `compute_gcd` took 35.1 s; its second took 6.1 s; the
+    first repair of `concatenate_impl` after both took 35.1 s again.
+
+  The repair benchmark's warm-ups hide this cost. Sharing vstd between
+  repair functions needs its own decision, because proof receipts are never
+  shared between contexts.
+  [L19 report](reports/rescue/l19-vstd-reverify.md).
 - **Repair selectors lose compiler-declared input coverage.** A warmup can
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and

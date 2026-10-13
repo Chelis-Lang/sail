@@ -23,6 +23,15 @@ proof receipts are never shared between contexts. Cargo reporting a target as
 `fresh` is never enough: only an intact receipt for the exact context and
 inputs skips verification.
 
+A run that ends in ordinary proof errors keeps vstd and the other compiled
+dependencies, as plain `cargo verus verify` does, so the passing run after a
+fix verifies only the edited crate. This needs a Current, unfocused run in
+which every selected target's verifier finished normally with a complete
+result. A compiler error, a crash, a partial (`--verify-function`) run or
+uncertain inputs still withdraw the dependencies' build-script records, and
+the next run rebuilds those packages. A failed proof never produces a receipt,
+so the failing crate itself is always verified again.
+
 ## Concurrent runs
 
 Two managed runs of the same workspace and context share a Cargo target. The

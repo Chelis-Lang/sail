@@ -194,9 +194,13 @@ The levers that matter now:
     (M8.1) does not proceed.
   - With 7 Verus threads it is 18–27%.
   - Cheaper items come first: rustc incremental on the EXEC pass (9.6% /
-    12.6%), Cargo bypass (≤9% / 7%), Sail overhead (11% / 7%), and two Sail
-    defects that re-verify vstd (+27 to 33 s).
+    12.6%), Cargo bypass (≤9% / 7%) and Sail overhead (11% / 7%).
   - See the [L18 report](reports/rescue/l18-m8-stage-profile.md).
+  - The two vstd re-verification defects it found are resolved. The passing
+    run after a failure no longer verifies vstd again (32 s → 5.4 s on
+    HumanEval, 50 s → 24.4 s on Vest). The engine defect came from the
+    dropped VI-0005 fork fix and does not occur at the current pin
+    ([L19 report](reports/rescue/l19-vstd-reverify.md)).
 - **Determinism (VI-0001),** to raise hit rates. In edit loops a reordered
   bucket costs about 2.7 s per affected human-eval-verus cycle. The fork's
   remaining variation under `cargo verus` is fixed on fork branch

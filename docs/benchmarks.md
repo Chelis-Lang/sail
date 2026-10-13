@@ -470,3 +470,48 @@ Per-cycle tails over all rounds: M6 wall p95 53.3 s / max 53.3 s, first actionab
 
 Warm-ups (recorded, not gated): 17 invocation group(s), 797.7 s total, 0 with an infrastructure failure.
 
+## `repair-acceptance-l19`: M7 repair acceptance (M6 focused and full checks vs one M7 repair batch)
+
+- Environment: native x86-64 Linux, EC2 c7i.8xlarge us-east-1; M6 `26f124f52dbf51d6c94178778873e96ac5e072ef` (sail sha256 `587822794389`); M7 `0aa19a5` (sail sha256 `6bc5353ff9d4`); Verus 0.2026.10.04.426d8b0, Z3 4.16.0
+- 3 round(s) requested over every cycle of human-eval-verus, vest; gate: at least 3 complete rounds and 2× median whole-loop speedup per catalogue
+- Machine: cpus: 32; host: x86_64-unknown-linux-gnu; uname: Linux 7.0.0-1014-aws x86_64
+
+Every sample is recorded, then judged (`docs/bench/m7-repair-acceptance.md`). A whole loop is one arm's sum of cycle wall times in one round; arm order alternates by round. Failing samples stay in the totals and fail the gate.
+
+| Catalogue | Complete rounds | M6 whole loop: median (min–max) | M7 whole loop: median (min–max) | Speedup | Failing samples | Gate |
+|---|---:|---:|---:|---:|---:|---|
+| `human-eval-verus` | 3 | 61.0 s (61.0 s–63.5 s) | 28.5 s (28.5 s–28.8 s) | 2.14× | 0 | **pass** |
+| `vest` | 3 | 235.4 s (233.9 s–235.4 s) | 130.1 s (129.1 s–131.0 s) | 1.81× | 0 | **fail** |
+
+### `human-eval-verus`
+
+Gate passed.
+
+| Cycle | Kind | M6 wall | M7 wall | Speedup | M6 first actionable | M7 first actionable | M7 drivers | M7 full evidence / accepted | Cache served / solved (M6; M7) |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| `gcd-body` | body | 12.6 s (12.6 s–12.6 s) | 5859 ms (5859 ms–5978 ms) | 2.15× | 5723 ms (5710 ms–5749 ms) | 3365 ms (3360 ms–3367 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13564 / 68; 13564 / 68 |
+| `concatenate-spec` | spec | 12.6 s (12.6 s–15.0 s) | 5955 ms (5854 ms–6068 ms) | 2.12× | 5761 ms (5722 ms–5781 ms) | 3360 ms (3359 ms–3362 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13339 / 293; 13590 / 42 |
+| `strlen-refactor` | refactor | 12.7 s (12.5 s–12.7 s) | 5868 ms (5863 ms–5960 ms) | 2.16× | 5709 ms (5680 ms–5750 ms) | 3362 ms (3361 ms–3367 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13593 / 9; 13593 / 9 |
+| `strlen-failing-attempt` | failure | 10.6 s (10.6 s–10.6 s) | 4960 ms (4954 ms–5063 ms) | 2.14× | 4752 ms (4752 ms–4761 ms) | 3365 ms (3361 ms–3368 ms) | 1, 1, 1 | current/no, current/no, current/no | 13681 / 29; 13681 / 29 |
+| `strlen-repaired-attempt` | repair | 12.5 s (12.5 s–12.5 s) | 5853 ms (5848 ms–5863 ms) | 2.14× | 5678 ms (5670 ms–5699 ms) | 3363 ms (3360 ms–3370 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13602 / 0; 13602 / 0 |
+
+Per-cycle tails over all rounds: M6 wall p95 15.0 s / max 15.0 s, first actionable p95 5781 ms; M7 wall p95 6068 ms / max 6068 ms, first actionable p95 3370 ms.
+
+### `vest`
+
+Gate failed:
+
+- SAIL7109: median whole-loop speedup 1.81× is below 2×
+
+| Cycle | Kind | M6 wall | M7 wall | Speedup | M6 first actionable | M7 first actionable | M7 drivers | M7 full evidence / accepted | Cache served / solved (M6; M7) |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| `base128-body` | body | 48.6 s (48.6 s–48.6 s) | 26.9 s (26.7 s–27.0 s) | 1.80× | 21.3 s (21.2 s–21.3 s) | 13.1 s (12.8 s–13.1 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97602 / 339; 97653 / 288 |
+| `pow128-spec` | spec | 48.8 s (48.8 s–48.9 s) | 27.2 s (26.8 s–27.3 s) | 1.79× | 21.3 s (21.2 s–21.3 s) | 13.1 s (13.0 s–13.2 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97116 / 825; 97608 / 333 |
+| `base128-refactor` | refactor | 48.8 s (48.6 s–48.9 s) | 27.0 s (26.6 s–27.1 s) | 1.81× | 21.4 s (21.3 s–21.4 s) | 12.9 s (12.9 s–13.2 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97813 / 128; 97372 / 569 |
+| `pow128-failing-attempt` | failure | 39.2 s (39.1 s–40.0 s) | 22.2 s (22.0 s–23.1 s) | 1.77× | 16.5 s (16.5 s–16.6 s) | 13.0 s (12.9 s–13.0 s) | 1, 1, 1 | current/no, current/no, current/no | 97716 / 387; 97716 / 387 |
+| `pow128-repaired-attempt` | repair | 49.0 s (48.8 s–50.0 s) | 26.6 s (26.5 s–27.0 s) | 1.84× | 21.3 s (21.1 s–21.9 s) | 13.0 s (12.9 s–13.2 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97890 / 51; 97941 / 0 |
+
+Per-cycle tails over all rounds: M6 wall p95 50.0 s / max 50.0 s, first actionable p95 21.9 s; M7 wall p95 27.3 s / max 27.3 s, first actionable p95 13.2 s.
+
+Warm-ups (recorded, not gated): 17 invocation group(s), 723.8 s total, 0 with an infrastructure failure.
+

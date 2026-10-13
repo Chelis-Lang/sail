@@ -133,13 +133,15 @@ from `git archive 26f124f`. Then run:
 ```sh
 sail-bench repair prepare --scratch SCRATCH
 sail-bench repair run --m6 M6/sail --m6-commit 26f124f52dbf51d6c94178778873e96ac5e072ef \
-  --m7 target/release/sail --m7-commit SHA --engine /opt/sail-engine \
+  --m7 "$PWD/target/release/sail" --m7-commit SHA --engine /opt/sail-engine \
   --scratch SCRATCH --out OUT --environment "native x86-64 Linux, EC2 c7i.4xlarge" \
   --name repair-acceptance-LABEL [--rounds 3] [--project ID]... [--filter CYCLE] [--resume]
 sail-bench report --out docs/benchmarks.md bench/results/*.json
 ```
 
-The run is local-only and refuses `CI=true`. `docs/benchmarks.md` is generated,
+`--m6` and `--m7` must be absolute paths. Each arm runs from the project
+directory, so a relative binary fails to start and every sample of that arm
+records `SAIL7101`. The run is local-only and refuses `CI=true`. `docs/benchmarks.md` is generated,
 and the workspace gate checks that it is up to date.
 
 ## Other M7 gates

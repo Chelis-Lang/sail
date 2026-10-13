@@ -158,6 +158,18 @@ The exported records independently revalidate each ordinary script contract and
 every output unit at publication and before the next mutation. A repair still
 reverifies its selected crate and cannot borrow a negative proof receipt.
 
+Amendment (2026-10-13, rescue L19): stock runs take the same negative branch.
+Without it, a stock run with proof errors consumed the generation, and the next
+run cleaned every build-script package, which re-verified vstd: about 27 s on
+HumanEval and 26 s on Vest, where plain `cargo verus verify` keeps vstd fresh.
+A stock driver has no sealed terminal. Its completion evidence is this run's
+recorded completion of the same invocation, a normal driver exit 0 or 1, and
+one whole `--output-json` document that agrees with that exit. Every other
+condition above still applies. Stock Verus can fold a caught internal panic into
+the same exit-1 shape. That does not matter here: the branch retains only
+ordinary dependency script contracts, which are revalidated independently, and
+it grants no proof. [L19 report](../reports/rescue/l19-vstd-reverify.md).
+
 A second full contract check runs after the original native owners and monitored
 snapshot are live, before Cargo can reuse output. Any newly invalid package is
 cleaned. This closes a restored-mtime change between preliminary checks and
