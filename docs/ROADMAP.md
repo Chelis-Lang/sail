@@ -110,7 +110,7 @@ complete current full validation. M7 remains incomplete until these gates pass.
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
 | Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
 | Default and cache conformance | Pass (native) | `6214d67` on EC2: fast 147/147 and standard 159/159 in all three phases; engine arm fast 147/147 and standard 159/159 ([L12 report](reports/rescue/l12-fork-fixes.md)). The intermittent cache-warm module order on `debug_expand.rs` is no longer a difference ([ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md); [repro](../corpus/repros/sail-cache-warm-error-order/)) |
-| Frozen repair performance (≥2× each) | Fail (native): HumanEval pass, Vest 1.80× | Three rounds on the pinned fork runtime, every sample valid: HumanEval 2.13× (66.0 s / 31.0 s), Vest 1.80× (253.4 s / 140.4 s) ([benchmarks](benchmarks.md), [L12 report](reports/rescue/l12-fork-fixes.md)) |
+| Frozen repair performance (≥2× each) | Fail (native): HumanEval pass, Vest 1.80× | Three rounds on the pinned fork runtime, every sample valid: HumanEval 2.13× (66.0 s / 31.0 s), Vest 1.80× (253.4 s / 140.4 s) ([benchmarks](benchmarks.md), [L12 report](reports/rescue/l12-fork-fixes.md)). Latest, L23: 2.11× and 1.80×; the cheap items cannot close Vest's gap ([L23 report](reports/rescue/l23-repair-target-and-vest.md)) |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented; stock verification stays
@@ -195,6 +195,12 @@ The levers that matter now:
   - With 7 Verus threads it is 18–27%.
   - Cheaper items come first: rustc incremental on the EXEC pass (9.6% /
     12.6%), Cargo bypass (≤9% / 7%) and Sail overhead (11% / 7%).
+    Rustc incremental is already on, for plain `cargo verus` and Sail alike;
+    a separate cache for Verus's verify pass measured no gain, so that item
+    is closed ([L23 report](reports/rescue/l23-repair-target-and-vest.md)).
+  - Repair functions share one Cargo target, so a new function's first
+    repair no longer verifies vstd (HumanEval 40 s → 6.5–8.9 s, Vest 61 s
+    → 30 s; L23).
   - See the [L18 report](reports/rescue/l18-m8-stage-profile.md).
   - The two vstd re-verification defects it found are resolved. The passing
     run after a failure no longer verifies vstd again (32 s → 5.4 s on
