@@ -6,6 +6,8 @@
 #   scripts/perf-host.sh run LANE CMD...           run CMD in ~/sail (engine token on stdin)
 #   scripts/perf-host.sh ssh LANE [CMD...]         plain ssh
 #   scripts/perf-host.sh extend LANE MINUTES       reset the self-termination watchdog
+#   scripts/perf-host.sh allow [LANE]              allow SSH from this machine's current IP
+#                                                  (every lane by default; after a network change)
 #   scripts/perf-host.sh down LANE                 terminate; delete key and security group
 #   scripts/perf-host.sh list                      every running Project=sail instance
 #
@@ -19,7 +21,7 @@ state_dir="${HOME}/.sail-perf"
 ttl="${SAIL_PERF_TTL_MIN:-480}"
 aws_ec2() { aws ec2 --region "$region" "$@"; }
 
-usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 require_lane() {
   [ -n "${1:-}" ] || usage
@@ -124,6 +126,19 @@ cmd_extend() {
   ssh $(ssh_opts "$1") "ubuntu@$addr" "sudo shutdown -c; sudo shutdown -h +${2:?minutes}"
 }
 
+cmd_allow() {
+  local ip lanes lane
+  ip=$(curl -fsS https://checkip.amazonaws.com)
+  if [ -n "${1:-}" ]; then require_lane "$1"; lanes=$1
+  else lanes=$(cd "$state_dir" 2>/dev/null && ls -- *.env 2>/dev/null | sed 's/\.env$//'); fi
+  for lane in $lanes; do
+    ( host_of "$lane"
+      aws_ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port 22 \
+        --cidr "$ip/32" >/dev/null 2>&1 || true
+      echo "$lane allows $ip" )
+  done
+}
+
 cmd_down() {
   require_lane "${1:-}"; local lane="$1"; host_of "$lane"
   aws_ec2 terminate-instances --instance-ids "$id" >/dev/null || true
@@ -144,5 +159,6 @@ cmd_list() {
 sub="${1:-}"; shift || true
 case "$sub" in
   up) cmd_up "$@" ;; sync) cmd_sync "$@" ;; run) cmd_run "$@" ;; ssh) cmd_ssh "$@" ;;
-  extend) cmd_extend "$@" ;; down) cmd_down "$@" ;; list) cmd_list ;; *) usage ;;
+  extend) cmd_extend "$@" ;; allow) cmd_allow "$@" ;; down) cmd_down "$@" ;; list) cmd_list ;;
+  *) usage ;;
 esac

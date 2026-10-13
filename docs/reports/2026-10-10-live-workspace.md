@@ -69,8 +69,10 @@ authentication, unprivileged UID, private file modes and credentials retained
 after container replacement. TLS termination in an operator's proxy is outside
 that loopback probe.
 
-Portable evidence and regeneration instructions live in `bench/validation/`
-and `bench/acceptance/`.
+Portable evidence lives in `bench/acceptance/`. The former `bench/validation/`
+summaries and generators are archived outside the repository (sha256
+`dcf30c1827434a157d17d15825305cdb8eac1265e99642489f8f37b97887322c`) and remain in git history before
+rescue lane L14.
 
 ## Frontend measurements
 
