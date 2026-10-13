@@ -104,13 +104,13 @@ complete current full validation. M7 remains incomplete until these gates pass.
 
 | Gate | Status | Best evidence |
 |---|---|---|
-| Engine build and qualification | Pass (source checks) | Fork `4881cd0f` (ADR 0039, no prepared lowering): stock fixtures, cancel/restart, library tests and `rust_verify_test`; engine arm 1 Different (VI-0007, being dropped) ([L12 report](reports/rescue/l12-fork-fixes.md)) |
-| Engine runtime delivery | Pass | `engine-runtime-4881cd0f-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
+| Engine build and qualification | Pass (source checks) | Fork `d2b69aea` (ADR 0039, no prepared lowering; VI-0005 and VI-0007 fixes dropped): stock fixtures, cancel/restart, library tests and `rust_verify_test` ([L12 report](reports/rescue/l12-fork-fixes.md)) |
+| Engine runtime delivery | Pass | `engine-runtime-d2b69aea-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
 | Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
-| Default and cache conformance | Pass on `main` (native); engine arm open | Standard tier 159/159 in all three rounds on native EC2 for #80 and #81; the engine arm still fails `guide/traits.rs` until the rebuilt runtime is pinned ([L4b report](reports/rescue/l4b-engine-parity.md)) |
-| Frozen repair performance (≥2× each) | Pending (native) | One round after the rescue speed work: HumanEval 3.46×, Vest 1.90×, all samples valid; three rounds pending on the rebuilt engine ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
+| Default and cache conformance | Pass (native), one intermittent warm difference | `6214d67` on EC2: fast 147/147 and standard 159/159 in all three phases; engine arm fast 147/147 and standard 159/159. One earlier standard cache-warm run differed on `debug_expand.rs` (diagnostic order; [repro](../corpus/repros/sail-cache-warm-error-order/)) ([L12 report](reports/rescue/l12-fork-fixes.md)) |
+| Frozen repair performance (≥2× each) | Fail (native): HumanEval pass, Vest 1.80× | Three rounds on the pinned fork runtime, every sample valid: HumanEval 2.13× (66.0 s / 31.0 s), Vest 1.80× (253.4 s / 140.4 s) ([benchmarks](benchmarks.md), [L12 report](reports/rescue/l12-fork-fixes.md)) |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented; stock verification stays

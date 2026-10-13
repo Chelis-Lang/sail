@@ -8,18 +8,18 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
-- **Engine arm: one unit differs in diagnostic order.** On the pinned fork
-  runtime (`4881cd0f`), `verus-examples/examples/debug_expand.rs` reports the
-  same 14 errors as stock in a different order: the fork's VI-0007 fix prints
-  module `M4`'s error after the root module's, while stock printed it first
-  in 3/3 confirming runs. That order is not shown to be one stock produces, so
-  the VI-0007 commit is being dropped from the engine (second re-pin, rescue
-  L12). [VI-0007](verus-issues/VI-0007-nondeterministic-error-order.md).
-- **M7 speed is measured in one round only.** One native round per catalogue
-  after the rescue work: HumanEval M7 3.46× M6, Vest 1.90×, with every sample
-  valid. The gate needs three rounds at ≥2× on each catalogue.
-  [L7c report](reports/rescue/l7c-managed-overhead.md),
-  [Gate 7](validation/m7.md#gate-7-frozen-repair-performance).
+- **Vest repair is 1.80× M6, below the 2× gate.** Three native rounds on the
+  pinned fork runtime, every sample valid and Current: HumanEval 2.13× (pass),
+  Vest 1.80× (each Vest cycle about 29 s against 53 s).
+  [Gate 7](validation/m7.md#gate-7-frozen-repair-performance),
+  [L12 report](reports/rescue/l12-fork-fixes.md).
+- **A cache-warm run can print a unit's errors in another module order.** In
+  one of seven standard-tier cache-warm runs, `debug_expand.rs` printed the
+  root module's error before `M4`'s; plain Verus printed `M4`'s first in all
+  19 runs. Same errors and verdicts. Suspected cause: stock's report-order
+  printing ([VI-0007](verus-issues/VI-0007-nondeterministic-error-order.md))
+  under warm-cache timing; not established.
+  [Repro](../corpus/repros/sail-cache-warm-error-order/).
 - **A project's first managed verify verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first managed run of each project
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from
