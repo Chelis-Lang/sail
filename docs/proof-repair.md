@@ -33,6 +33,33 @@ focus, selection errors and `engine_fault` alongside the full report, whose
 reports and functions name their `engine` provenance
 ([output schema](output-schema.md#engine-provenance)).
 
+### Verus features the engine lacks
+
+The engine runtime is built with the Verus Cargo features its manifest
+records: none, like the stock release. `sail engine status --output json`
+lists them as `verus_features`, and the pinned Linux runtime records the same
+list in `engine/verus/artifact-linux.json`. In particular the engine has no
+`singular` feature, so it cannot check `by(integer_ring)` lemmas.
+
+When the engine rejects a target with Verus's ``Please cargo build with
+`--features NAME` `` diagnostic for a feature it lacks, Sail does not report
+that rejection. It reruns the target's exact invocation with the configured
+stock Verus, as for an engine fault, and reports that result:
+
+- the target's report and functions carry `engine.established_by:
+  stock-fallback`, and no proof receipt is published;
+- stderr shows `warning[SAIL3124]` naming the feature, and the result's
+  `notes` repeat it;
+- `sail repair-check` records `batch.engine_fault` with code `SAIL3124`, has
+  no focused evidence and is never accepted.
+
+The answer is the configured Verus's own: a stock release reports the same
+feature error as plain `cargo verus verify`, and a Singular source build
+proves the lemma. Verus emits the diagnostic only for functions it would
+verify, so a project that merely contains an unverified integer-ring lemma is
+unaffected. Use stock `sail verify` for such projects when you need repair
+acceptance.
+
 Inspect or register an already built validated engine:
 
 ```sh
@@ -127,6 +154,15 @@ sail-conformance engine --tier standard --project vest --engine-build PATH
 ```
 
 `--no-focus` runs only the full phase.
+
+A project whose corpus requirements include `verus-feature:NAME` for a
+feature the engine manifest does not record (the Singular projects need
+`singular`) is not run on the engine: each of its units gets the verdict
+`engine-lacks-feature`, counted separately from same and different
+(`summary.engine_lacks_feature`, and `engine.lacks_feature` by feature). The
+summary line ends with, for example, `3 units engine lacks feature singular`.
+The product falls back to stock for these units (SAIL3124), so there is no
+engine verdict to compare. They do not fail the run.
 
 ## Resumable observations
 

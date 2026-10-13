@@ -75,6 +75,21 @@ class ArtifactTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 artifact.committed_pin(pin_path)
 
+    def test_pin_records_the_runtime_verus_features(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, archive, pin, pin_path = self.fixture(root)
+            self.assertEqual(pin["verus_features"], [])
+            claimed = dict(pin, verus_features=["singular"])
+            with self.assertRaises(ValueError):
+                artifact.install(archive, claimed, root / "cache")
+            del pin["verus_features"]
+            pin_path.write_text(json.dumps(pin))
+            with self.assertRaises(ValueError):
+                artifact.committed_pin(pin_path)
+        committed = json.loads((artifact.REPO / "engine/verus/artifact-linux.json").read_text())
+        self.assertEqual(committed["verus_features"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

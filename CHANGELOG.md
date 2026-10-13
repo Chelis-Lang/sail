@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail verify --engine interactive` and `sail repair-check` no longer
+  return the engine's ``Please cargo build with `--features singular` ``
+  error for `by(integer_ring)` lemmas. The engine is built without that
+  Verus feature; such a target now falls back to the configured stock Verus,
+  like an engine fault, with `engine.established_by: stock-fallback`, a
+  `warning[SAIL3124]` and, for a repair, `batch.engine_fault` code
+  `SAIL3124` (never accepted). `sail engine status` and the pinned runtime
+  (`engine/verus/artifact-linux.json`) record the engine's Verus features as
+  `verus_features` (none). The `sail-conformance engine` arm reports units of
+  projects that need a feature the engine lacks as `engine-lacks-feature`,
+  a separate count, instead of different.
+
 - The optional interactive engine runtime is rebuilt from fork commit
   `13a1176c` (release `engine-runtime-13a1176c-linux`). It adds the VI-0001
   verifier fix: enum `arrow_*` accessors are declared in source order even

@@ -16,6 +16,9 @@ import time
 GOOD = "proof fn selected(x: bool) ensures x || !x { }\nproof fn other(x: bool) ensures x == x { }"
 REGRESSION = "proof fn selected(x: bool) ensures x == x { }\nproof fn other(x: bool) ensures x { }"
 LATE = "proof fn selected() { }\n#[verifier::external_body] fn late() { let mut x = 0u64; let a = &mut x; let b = &mut x; *a = *b; }"
+# The engine, like the stock release, lacks Verus's `singular` feature
+# (corpus/repros/engine-without-singular): this target falls back to stock (SAIL3124).
+RING = "proof fn selected(x: int, y: int) by (integer_ring) ensures (x + y) * (x + y) == x * x + 2 * x * y + y * y { }"
 
 
 def execute(command, cwd, environment, timeout):
@@ -306,6 +309,16 @@ def run(args):
             assert not late_document["accepted"] and late_full["exit_code"] != 0 and not late_target["complete"], late
             assert late_document["batch"]["focus"] is not None, late
             assert any("E0499" in json.dumps(t["report"]["diagnostics"]) for t in late_full["targets"]), late
+            write(RING)
+            ring_job, ring = submit("missing-feature")
+            ring_document, ring_full, ring_target = full(ring)
+            assert not ring_document["accepted"] and ring_document["batch"]["engine_fault"]["code"] == "SAIL3124", ring
+            assert "singular" in ring_document["batch"]["engine_fault"]["message"], ring
+            assert ring_document["batch"].get("selection_error") is None, ring
+            assert ring_target["report"]["engine"]["established_by"] == "stock-fallback", ring_target
+            assert any(note.startswith("SAIL3124: ") for note in ring_full["notes"]), ring_full
+            # The answer is the configured stock Verus's own: it lacks the feature too.
+            assert ring_full["exit_code"] != 0 and "--features singular" in json.dumps(ring_target["report"]["diagnostics"]), ring
             assert not progress_failures, progress_failures
             summary["passed"] = True
         finally:
@@ -322,7 +335,7 @@ def run(args):
             summary.update(elapsed_s=time.monotonic()-started, operations=operations,
                            progress_failures=progress_failures)
             (evidence / "summary.json").write_text(json.dumps(summary,indent=2)+"\n")
-        print("Real repair CLI/MCP acceptance: success with engine provenance, missing selector, full regression, late EXEC, exact evidence/cursors passed", flush=True)
+        print("Real repair CLI/MCP acceptance: success with engine provenance, missing selector, full regression, late EXEC, missing Verus feature fallback, exact evidence/cursors passed", flush=True)
 
 
 
