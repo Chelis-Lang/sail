@@ -44,6 +44,7 @@ pub struct Context {
     pub store: Store,
     /// One lock per project: runs in one project are serialised.
     locks: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
+    pub(super) jobs: Option<crate::job_clients::ReadClients>,
 }
 
 impl Context {
@@ -54,7 +55,14 @@ impl Context {
             store: Store::new(config.store_dir.clone()),
             config,
             locks: Mutex::new(HashMap::new()),
+            jobs: None,
         }
+    }
+
+    pub(super) fn with_job_clients(config: Config) -> Self {
+        let mut context = Self::new(config);
+        context.jobs = Some(crate::job_clients::ReadClients::default());
+        context
     }
 
     fn lock(&self, project: &Path) -> Arc<Mutex<()>> {
@@ -102,18 +110,28 @@ impl ToolResult {
 
     /// The MCP `CallToolResult`: the summary and the structured result as
     /// text (for clients that ignore `structuredContent`), plus
-    /// `structuredContent`.
+    /// `structuredContent`. Consumes this result, so the payload is moved.
     #[must_use]
-    pub fn to_json(&self) -> Value {
-        json!({
-            "resultType": "complete",
-            "content": [
-                {"type": "text", "text": self.text},
-                {"type": "text", "text": serde_json::to_string(&self.structured).unwrap_or_default()},
-            ],
-            "structuredContent": self.structured,
-            "isError": self.is_error,
-        })
+    pub fn into_json(self) -> Value {
+        let encoded = serde_json::to_string(&self.structured).unwrap_or_default();
+        let text_content = |text: String| {
+            Value::Object(Map::from_iter([
+                ("type".to_owned(), Value::String("text".to_owned())),
+                ("text".to_owned(), Value::String(text)),
+            ]))
+        };
+        Value::Object(Map::from_iter([
+            (
+                "resultType".to_owned(),
+                Value::String("complete".to_owned()),
+            ),
+            (
+                "content".to_owned(),
+                Value::Array(vec![text_content(self.text), text_content(encoded)]),
+            ),
+            ("structuredContent".to_owned(), self.structured),
+            ("isError".to_owned(), Value::Bool(self.is_error)),
+        ]))
     }
 }
 
@@ -131,6 +149,7 @@ fn run_schema() -> Value {
         "additionalProperties": false,
         "properties": {
             "project_dir": string_schema("The Cargo project to verify (absolute, or relative to the server's working directory). Default: the server's working directory."),
+            "engine": {"type":"string","enum":["stock","interactive"],"description":"Optional pinned source engine, unavailable until installed explicitly."},
             "package": string_schema("Verify only this workspace package (`-p`)."),
             "module": string_schema("Verify only this module and its descendants, relative to the crate root (Verus `--verify-module`, e.g. `arith` or `foo::bar`)."),
             "function": string_schema("Verify only this function (Verus `--verify-function`: a unique substring of the name, or a pattern with `*` at either end). It is looked up in `module`, or in the crate root if no module is given."),
@@ -161,7 +180,7 @@ pub fn definitions() -> Value {
         {
             "name": "verify",
             "title": "Verify with sail",
-            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a short summary and the schema-v1 report (docs/output-schema.md): per-function verdicts (verified, failed, unknown, provisional) with tier and provenance, obligation ids, counterexample models, Verus diagnostics as data, timings and cache sources. `provisional` is never `verified`. Default verification uses a persistent forced-fresh workspace job, while retaining dependency build artifacts. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
+            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a short summary and the schema-v1 report (docs/output-schema.md): per-function verdicts (verified, failed, unknown, provisional) with tier and provenance, obligation ids, counterexample models, Verus diagnostics as data, timings and cache sources. `provisional` is never `verified`. Default verification uses a persistent workspace job: like `sail verify --incremental`, it reuses a Current report for unchanged inputs and says which run established it. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false}
         },
@@ -212,10 +231,11 @@ pub fn call(
         | "compare_verification"
         | "save_baseline"
         | "list_baselines"
-        | "get_baseline" => crate::proof_tools::call(ctx, name, args, cancel),
+        | "get_baseline"
+        | "start_repair_validation" => crate::proof_tools::call(ctx, name, args, cancel),
         "verify" => verify(ctx, args, cancel),
-        "counterexample" => counterexample(ctx, args),
-        "cached_result" => cached_result(ctx, args),
+        "counterexample" => counterexample(ctx, args, cancel),
+        "cached_result" => cached_result(ctx, args, cancel),
         "fragility" => fragility(ctx, args, cancel),
         _ => return None,
     })
@@ -291,12 +311,16 @@ fn verify(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResu
                     return ToolResult::ok("Cargo completed before any verification target produced a report; see the job diagnostics.".to_owned(), json!({"job":job,"project_result":result}));
                 };
                 let raw = serde_json::to_value(&report).unwrap_or(Value::Null);
-                let text = format!(
+                let mut text = format!(
                     "sail verify: {}\nJob {}; currentness {:?}.",
                     summary::report(&report),
                     job.id,
                     job.currentness
                 );
+                for line in crate::job_tools::reuse_lines(&result) {
+                    text.push('\n');
+                    text.push_str(&line);
+                }
                 let changed = match result.currentness {
                     // Dynamic currentness includes edits after completion, so
                     // historical evidence cannot identify when the edit happened.
@@ -500,7 +524,7 @@ fn find_obligation<'a>(
     })
 }
 
-fn cached_result(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
+fn cached_result(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResult {
     let a = match LookupArgs::parse(args, false) {
         Ok(a) => a,
         Err(e) => return ToolResult::invalid(&e),
@@ -509,8 +533,11 @@ fn cached_result(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
         Ok(p) => p,
         Err(e) => return e,
     };
-    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, false) {
+    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, false, cancel) {
         return result;
+    }
+    if cancel.is_cancelled() {
+        return ToolResult::error("Lookup cancelled.".to_owned(), json!({"cancelled":true}));
     }
     // Return the most recently completed result while a newer run is in flight.
     let now = store::snapshot(&project);
@@ -546,6 +573,10 @@ fn one_result(
         "configuration": f.provenance.configuration,
         "freshness": fresh,
     });
+    // Engine provenance is additive: stock lookups keep their exact shape.
+    if let Some(engine) = &f.provenance.engine {
+        s["engine"] = json!(engine);
+    }
     if let Some(id) = &a.obligation {
         let id = format!(
             "{}#{}",
@@ -581,7 +612,7 @@ fn all_results(p: &ProjectRecord, project: &Path, now: &store::Snapshot) -> Tool
     let functions: Vec<Value> = found
         .iter()
         .map(|f| {
-            json!({
+            let mut row = json!({
                 "function": f.function.function,
                 "verdict": summary::verdict_name(summary::effective_verdict(f.function)),
                 "tier": f.function.tier,
@@ -591,7 +622,11 @@ fn all_results(p: &ProjectRecord, project: &Path, now: &store::Snapshot) -> Tool
                 "configuration": f.function.provenance.configuration,
                 "run": f.run.run,
                 "status": runs.get(&f.run.run).map_or(Value::Null, |r| r["status"].clone()),
-            })
+            });
+            if let Some(engine) = &f.function.provenance.engine {
+                row["engine"] = json!(engine);
+            }
+            row
         })
         .collect();
     let mut text = found
@@ -655,7 +690,7 @@ fn diagnostics_for(report: &Report, f: &FunctionReport) -> Vec<Value> {
         .collect()
 }
 
-fn counterexample(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
+fn counterexample(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResult {
     let a = match LookupArgs::parse(args, true) {
         Ok(a) => a,
         Err(e) => return ToolResult::invalid(&e),
@@ -664,8 +699,11 @@ fn counterexample(ctx: &Context, args: &Map<String, Value>) -> ToolResult {
         Ok(p) => p,
         Err(e) => return e,
     };
-    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, true) {
+    if let Some(result) = crate::job_tools::lookup(ctx, &project, &a, true, cancel) {
         return result;
+    }
+    if cancel.is_cancelled() {
+        return ToolResult::error("Lookup cancelled.".to_owned(), json!({"cancelled":true}));
     }
     // Return the most recently completed result while a newer run is in flight.
     let now = store::snapshot(&project);
@@ -869,7 +907,7 @@ mod tests {
         let (sender, receiver) = std::sync::mpsc::channel();
         let worker_context = Arc::clone(&context);
         let worker = std::thread::spawn(move || {
-            let result = cached_result(&worker_context, &Map::new());
+            let result = cached_result(&worker_context, &Map::new(), &Cancel::default());
             let _ = sender.send(result);
         });
         let result = receiver.recv_timeout(std::time::Duration::from_secs(1));

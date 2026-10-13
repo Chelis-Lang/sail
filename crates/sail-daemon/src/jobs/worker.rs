@@ -1,4 +1,5 @@
-//! Single FIFO worker, without holding the status lock during verification.
+//! Verification workers: each runs one job at a time, without holding the
+//! status lock during verification.
 
 use std::io;
 use std::os::unix::process::CommandExt as _;
@@ -6,7 +7,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use sail_api::jobs::{Currentness, Lifecycle};
+use sail_api::jobs::{Currentness, Lifecycle, Mode};
 use sail_api::project::ProjectResult;
 
 use super::{State, get, lock_error, store};
@@ -39,19 +40,22 @@ impl Drop for Process {
 }
 
 pub(super) fn run(state: &State) {
-    loop {
-        let id = next(state);
-        let Some(id) = id else { break };
+    while let Some((id, key)) = next(state) {
+        let _running = Running { state, key };
         let Ok(job) = get(state, &id) else { continue };
         if !job.status.state.terminal() {
             let result = execute(state, &id);
+            if result.is_ok() {
+                store::establish_freshness(state, &job);
+            }
             if let Ok(mut jobs) = state.jobs.lock()
                 && let Some(job) = jobs.get_mut(&id)
                 && !job.status.state.terminal()
             {
                 job.status.finished_at_ms = Some(store::now());
                 match result {
-                    Ok((code, document)) => {
+                    Ok((code, document, projection)) => {
+                        job.projection = Some(projection);
                         job.status.exit_code = code;
                         job.status.state = Lifecycle::Completed;
                         job.status.input_revision = Some(document.input_revision);
@@ -68,7 +72,7 @@ pub(super) fn run(state: &State) {
                 }
                 if let Err(error) = store::save(&state.root, job) {
                     job.status.state = Lifecycle::InfrastructureError;
-                    job.status.error = Some(format!("SAIL0809: cannot persist result: {error}"));
+                    job.status.error = Some(format!("SAIL0808: cannot persist result: {error}"));
                 }
             }
         }
@@ -76,19 +80,33 @@ pub(super) fn run(state: &State) {
         store::prune(state, &job.status.project_dir);
     }
 }
-fn next(state: &State) -> Option<String> {
+/// Releases a job's workspace when its worker finishes with it, and wakes
+/// the workers so a job queued behind it can start.
+struct Running<'a> {
+    state: &'a State,
+    key: std::path::PathBuf,
+}
+impl Drop for Running<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut queue) = self.state.queue.lock() {
+            queue.finish(&self.key);
+        }
+        self.state.ready.notify_all();
+    }
+}
+fn next(state: &State) -> Option<(String, std::path::PathBuf)> {
     let mut queue = state.queue.lock().ok()?;
     loop {
         if state.stop.load(Ordering::SeqCst) {
             return None;
         }
-        if let Some(id) = queue.pop_front() {
-            return Some(id);
+        if let Some(job) = queue.take() {
+            return Some(job);
         }
         queue = state.ready.wait(queue).ok()?;
     }
 }
-fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> {
+fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, store::Projection)> {
     let job = get(state, id)?;
     if job.cancel.load(Ordering::SeqCst) {
         return Err(io::Error::other("cancelled"));
@@ -97,14 +115,26 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
     let stdout = store::output(&directory.join("stdout"))?;
     let stderr = store::output(&directory.join("stderr"))?;
     store::output(&directory.join("events.jsonl"))?;
-    // Proof-event source for the journal. Stock verification writes no
-    // proof events, so the journal serves empty pages for stock jobs.
     store::output(&directory.join("proof-source.jsonl"))?;
     let mut command = Command::new(&state.executable);
+    match &job.submission.mode {
+        Mode::Repair(selection) => {
+            command
+                .arg("_repair-worker")
+                .arg("--selection-json")
+                .arg(serde_json::to_string(selection).map_err(io::Error::other)?);
+        }
+        Mode::Stock | Mode::Interactive => {
+            command
+                .arg("verify")
+                .arg("--incremental")
+                .args(["--output", "json"]);
+            if job.submission.mode == Mode::Interactive {
+                command.args(["--engine", "interactive"]);
+            }
+        }
+    }
     command
-        .arg("verify")
-        .arg("--incremental")
-        .args(["--output", "json"])
         .args(&job.submission.args)
         .current_dir(&job.status.project_dir)
         .env_clear()
@@ -151,8 +181,7 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
         }
         std::thread::sleep(Duration::from_millis(20));
     };
-    let bytes = std::fs::read(directory.join("stdout"))?;
-    let document: ProjectResult = serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+    let (document, projection) = read_document(&directory, &job.submission.mode)?;
     if document.exit_code != status.code() {
         return Err(io::Error::other(
             "managed report and process exit status disagree",
@@ -168,5 +197,24 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult)> 
     {
         return Err(io::Error::other("unsupported or incomplete project result"));
     }
-    Ok((status.code(), document))
+    Ok((status.code(), document, projection))
+}
+
+fn read_document(
+    directory: &std::path::Path,
+    mode: &Mode,
+) -> io::Result<(ProjectResult, store::Projection)> {
+    let bytes = store::read_bytes(&directory.join("stdout"))?;
+    let document: ProjectResult = if matches!(mode, Mode::Repair(_)) {
+        let mut repair: sail_api::repair::ResultDocument =
+            serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+        if repair.version != sail_api::repair::VERSION {
+            return Err(io::Error::other("unsupported repair result version"));
+        }
+        store::full_phase(&mut repair)?
+    } else {
+        serde_json::from_slice(&bytes).map_err(io::Error::other)?
+    };
+    let projection = store::Projection::validated(&bytes, &document);
+    Ok((document, projection))
 }

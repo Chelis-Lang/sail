@@ -138,7 +138,7 @@ fn setup() -> Result<Setup, SetupError> {
         Some(s) => PathBuf::from(s),
         None => sail_verus::cache_dir()
             .map(|c| crate::default_socket(&c))
-            .map_err(|e| SetupError("SAIL0104", e.to_string()))?,
+            .map_err(|e| SetupError(e.code, e.message))?,
     };
     Ok(Setup {
         mode: sail_api::protocol::VerificationMode::Default,

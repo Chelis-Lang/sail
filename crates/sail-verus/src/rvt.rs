@@ -300,6 +300,15 @@ impl Suite {
             Solver::Plain => {
                 cmd.env("VERUS_Z3_PATH", &self.z3);
             }
+            Solver::Engine(_) => {
+                return Err(Error::new(
+                    "SAIL3020",
+                    format!(
+                        "{}: the source-engine arm does not run rust_verify_test",
+                        test.id()
+                    ),
+                ));
+            }
             Solver::Shim {
                 shim,
                 trace_dir,

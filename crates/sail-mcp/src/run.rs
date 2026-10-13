@@ -21,6 +21,8 @@ pub struct Cancel {
     cancelled: AtomicBool,
     /// The running child's process group, while it runs.
     group: Mutex<Option<u32>>,
+    /// A direct job-service read's connection, while it runs.
+    stream: Mutex<Option<std::os::unix::net::UnixStream>>,
 }
 
 impl Cancel {
@@ -32,6 +34,29 @@ impl Cancel {
             && let Some(pgid) = *group
         {
             kill_group(pgid);
+        }
+        if let Ok(stream) = self.stream.lock()
+            && let Some(stream) = stream.as_ref()
+        {
+            let _ = stream.shutdown(std::net::Shutdown::Both);
+        }
+    }
+
+    /// Makes `stream` part of this call: cancelling shuts it down, which ends
+    /// a blocked read at once. A call already cancelled shuts it down now.
+    pub(crate) fn attach(&self, stream: std::os::unix::net::UnixStream) {
+        if let Ok(mut slot) = self.stream.lock() {
+            if self.is_cancelled() {
+                let _ = stream.shutdown(std::net::Shutdown::Both);
+            }
+            *slot = Some(stream);
+        }
+    }
+
+    /// Releases the stream attached by [`Cancel::attach`].
+    pub(crate) fn detach(&self) {
+        if let Ok(mut slot) = self.stream.lock() {
+            *slot = None;
         }
     }
 

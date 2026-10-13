@@ -9,8 +9,9 @@ decisions are in ADRs 0016 and 0024.
 
 The server is a stdio command: `sail mcp`, with no arguments. It needs what
 `sail verify` needs: `cargo-verus` on `PATH` (or `SAIL_CARGO_VERUS`), and
-`sail-z3` next to `sail`. Start it from the project directory, or pass
-`project_dir` to each tool.
+`sail-z3` next to `sail`. Start it from the project directory. Submission and
+project-oriented lookup tools accept `project_dir` where their schemas show it;
+durable job/evidence reads and cancellation do not.
 
 Claude Code:
 
@@ -37,6 +38,47 @@ Any client that takes a JSON server list (`.mcp.json` and similar):
 The `env` entry is needed only if `cargo-verus` is not on the client's
 `PATH`. Use an absolute path to `sail` if it is not on `PATH` either.
 
+For interactive repair, install the engine in the same Sail cache used by the
+MCP process and CLI. If overriding `SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET`, set
+the same absolute values in the MCP launch environment and CLI environment.
+`start_repair_validation` can change the submission project, but subsequent
+job/status/result/cancel, event, explanation and comparison calls use the server's
+working directory to resolve its service. They reject `project_dir`. A relative
+cache override can route these calls to another service after switching projects.
+The [repair walkthrough](proof-repair-walkthrough.md) shows engine setup and the
+complete submission-to-baseline sequence.
+Keep MCP client transcripts and redirected tool output outside watched package
+roots and declared inputs during verification. Creating or updating those files
+inside the project can correctly invalidate the proof's input freshness.
+
+## Reading completed evidence
+
+Tool replies retain the full structured result and its complete JSON text for
+clients that read text only. The server moves owned result graphs through the
+response envelope and encodes each complete JSON-RPC frame before taking the
+stdout write lock. Concurrent frames remain atomic. Cancellation remains
+registered through encoding and is checked again before publication; a
+cancelled response is suppressed before its write begins. Slow stdout consumers
+can still block writes. This does not establish a live-reader latency gain or a
+bound on temporary response memory. See [ADR 0034](decisions/0034-mcp-response-encoding-ownership.md)
+and the [scoped controls](validation/m7.md).
+
+Job status, completed results, counterexamples and cached-result lookups read
+the jobs service socket directly inside `sail mcp`, without spawning a CLI
+child. Each read opens a connection and reads the complete fresh service reply;
+the service determines source currentness, and Historical evidence remains
+labelled historical. Relative `SAIL_CACHE_DIR` and `SAIL_DAEMON_SOCKET`
+settings resolve from each operation's project directory, as they do for the
+CLI. A missing or refused connection uses the CLI read path instead, including
+service startup and legacy support. Once a direct read starts it is never
+retried through the CLI: a failure returns `SAIL0813` with structured
+`{"error":"read_failed"}`, and an invalid version, response variant or job ID
+returns `{"error":"invalid_response"}`. Cancellation shuts down the read
+connection at once (`{"error":"cancelled"}`), and a late reply is discarded.
+Verification submission, repair submission and cancellation keep the CLI
+process ownership. Proof events and explanation/comparison tools keep their
+CLI paths. See [the client contract](result-client.md).
+
 ## Protocol
 
 - **Transport.** Newline-delimited JSON-RPC 2.0 on stdio. stdout carries
@@ -59,8 +101,11 @@ The `env` entry is needed only if `cargo-verus` is not on the client's
   short summary, then the same structured result as JSON text (for clients
   that ignore `structuredContent`).
 - **Concurrency and cancellation.** Tool calls run on their own threads, so
-  `ping` and cancellation are served while a verification runs. Runs in one
-  project are serialised through the local job service in default mode. Lookups
+  `ping` and cancellation are served while a verification runs. The local job
+  service runs jobs from different Cargo workspaces concurrently, up to
+  `SAIL_JOB_WORKERS` at once (default: a quarter of the cores, from 1 to 4), and
+  queues jobs in the same workspace behind each other (see
+  [concurrent jobs](workspace-verification.md#concurrent-jobs)). Lookups
   inspect completed evidence without waiting for a newer verifier to finish.
   `notifications/cancelled` kills the run's whole process group (`cargo
   verus`, Verus, shims, solvers), as `sail watch` does, and the call gets no
@@ -73,7 +118,8 @@ The `env` entry is needed only if `cargo-verus` is not on the client's
 
 Use `start_verification` with the same default verification arguments as
 `verify`; it returns a durable job status immediately. It does not enable
-portfolio or fragility experiments. Pass its `job_id` to:
+portfolio or fragility experiments. Pass its returned `structuredContent.id`
+as the `job_id` argument to:
 
 | Tool | Result |
 |---|---|
@@ -86,6 +132,10 @@ as `sail verify --background` and `sail watch`. Read `cached_result` and
 `counterexample` while a newer run proceeds. They inspect completed jobs first;
 older MCP records remain historical evidence and cannot establish complete
 workspace/runtime freshness.
+
+After submission returns, use `cancel_verification` with its durable ID to stop
+the job. A cancelled read request or MCP disconnect does not cancel a submitted
+background job.
 
 `current` applies to the recorded verification context and a revalidated declared
 input revision. `historical` applies to earlier inputs; `unknown` means coverage
@@ -127,9 +177,10 @@ failure. It does not by itself establish that Z3 exhausted a resource limit.
 
 ### `verify`
 
-Default verification submits a forced-fresh managed workspace job and waits
-for its result. It retains dependency artifacts and returns its schema-v1
-report (`docs/output-schema.md`). The report has per-function verdicts with
+Default verification submits a managed workspace job and waits for its
+result. Like `sail verify --incremental`, it reuses a Current report for
+unchanged inputs instead of verifying again, and the summary names the run that
+established each reused report. It returns its schema-v1 report (`docs/output-schema.md`). The report has per-function verdicts with
 tier and provenance, obligation ids, counterexample models, diagnostics,
 timings and cache sources. The run is recorded for the lookups. Explicit module/function selectors use
 `cargo verus focus`, which is the pinned verifier’s supported partial entry
@@ -179,9 +230,13 @@ Explicit portfolio/fragility paths and older Sail installations retain their
 existing report response; their legacy source snapshots cannot establish complete
 workspace/runtime freshness.
 
-**Complete reports.** Default blocking verification forces the requested
-verification targets fresh, so Cargo's unchanged-target shortcut cannot produce
-an empty successful report. Workspace dependencies remain warm. Partial
+**Complete reports.** A requested target that Cargo finds unchanged is
+reported from its receipt: the complete report of the run that established it,
+for byte-identical inputs and the same proof inputs (see
+[freshness](freshness.md#which-environment-variables-are-proof-inputs)). A
+failed or incomplete run publishes no receipt, so it is verified again on every
+call. The server's own environment, such as an agent's session variables, is
+not a proof input, so MCP and the CLI share results. Partial
 requests preserve their explicit scope. Explicit portfolio/fragility requests
 use their established paths. Builds that fail before verification report their
 diagnostics without inventing per-function verdicts.
@@ -286,7 +341,9 @@ demo::max: verified
 Established by run 2 (sail verify --output json) at 2026-10-08T22:41:21.259Z; The sources changed since this run: its results apply to the earlier sources only. Re-run verify to confirm.
 ```
 
-```json
+The structured response below is schematic: ellipses omit nested report fields.
+
+```text
 {
   "project_dir": "/work/demo",
   "function": "demo::max",
@@ -354,3 +411,90 @@ a snapshot of the project's sources taken just before the run.
   dependencies elsewhere, the toolchain) are not tracked.
 - **Never the source of a verdict.** The store only reports what a recorded
   `sail verify` run said, with its provenance.
+
+## Proof repair tools
+
+The optional interactive engine is selected explicitly and must be installed as a
+validated Sail-managed pinned build. `start_verification` accepts `engine: stock`
+or `engine: interactive`; stock is the default.
+Use `sail engine status --output json` to inspect the selected installation;
+see the [repair walkthrough](proof-repair-walkthrough.md) for setup and a complete
+focus/full regression example.
+
+- `start_repair_validation` requires `package`, `kind` (`lib` or `bin`), exact
+  crate-qualified `function`, and `engine: interactive`. A binary also requires
+  `target`; a library omits it. Optional `project_dir`, `cargo_args` and
+  `verus_args` preserve verification configuration. It returns a durable job ID
+  immediately. Read the independent focused/full bundle with
+  `verification_result`; a focus success never authorizes the repair.
+- `verification_events` takes `job_id`, optional `stream_id` and unsigned
+  `after`. It returns one bounded page and a reconnect cursor. Observe `gap` and
+  `terminal`; provisional observations are not confirmed proofs.
+- `explain_failure` takes exact `job_id`, `package_id`, `target`, `kind` and
+  `function`, optionally `obligation`. It preserves verifier reports, raw models,
+  diagnostics and provenance without generating proof edits.
+- `compare_verification` takes `after_job` and exactly one `before_job` or
+  immutable `baseline`. Context/scope mismatches and unobserved functions stay
+  explicit; they are not labelled proof regressions.
+- `save_baseline` takes `job_id` and `name`. The job must have completed under
+  the existing service checks. An existing name cannot be overwritten. Failed,
+  unknown, provisional or incomplete target evidence is retained as reported;
+  saving does not accept a repair or create a proof receipt.
+- `list_baselines` takes no arguments and returns sorted saved names.
+- `get_baseline` takes `name` and returns the complete immutable snapshot,
+  including the recorded job, input revision, context, targets and reports.
+  Its currentness is always `historical`; it never revalidates today's workspace.
+
+Baseline operations resolve the same local job service as job reads. They do not accept
+`project_dir`; use the server's working directory and the same absolute cache
+and socket overrides as submission. Names use 1–80 ASCII letters, digits, dots,
+underscores or hyphens, excluding `.` and `..`. The CLI equivalents are
+`sail baseline save NAME --job JOB`, `sail baseline list` and
+`sail baseline get NAME --output json`. For a literal name that looks like an
+option, place output options first: `sail baseline get --output json -- --json`.
+
+Save/get return the existing job response envelope:
+`structuredContent.response` is `baseline`, with a version-one snapshot in
+`structuredContent.value`. List returns `response: baselines` and a string array
+in `value`. No baseline operation reports a new Current proof. MCP rejects a
+response with the wrong requested name or, for save, the wrong original job.
+The existing local RPC payload limit remains; oversized evidence fails rather
+than returning a truncated graph. A cancelled save call may already have
+published its immutable record; inspect the name before retrying.
+
+`get_baseline` adds a read-only job operation without changing the protocol
+version or existing save/list operations. An older running service rejects the
+unknown request with `SAIL0802`; it does not return an empty baseline. Update and
+restart that service before using get. Saving and listing remain compatible with
+the existing service operations.
+
+See
+[`proof-repair.md`](proof-repair.md) for currentness, compiler-seal and journal
+retention contracts.
+
+Submission returns `structuredContent.id`; it only acknowledges a durable job.
+On the completed `verification_result`, inspect
+`structuredContent.value.repair.accepted` and the independent full report.
+`isError: false` means the tool operation succeeded, not that a proof succeeded.
+Use the exact package/target/function identities in the report for explanations
+and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argument.
+
+Current `387ba80` passes the [complete gate, solver, product installations and
+original CLI/MCP repair fixture](validation/m7.md).
+Named-baseline feature smoke passed separately on `57a319d`. Historical
+`b89546c` passes the [original repair fixture and complete reader/retained workflow](validation/m7.md).
+Both unchanged collectors preserve full Current graphs and p95 below 200 ms,
+followed by passing retained CLI/MCP scenarios. The separate
+[installed baseline feature smoke](validation/m7.md)
+on `57a319d` exercises actual save/list/get and restarted-client reads:
+CLI and MCP retain the same complete Historical snapshot, and duplicate save
+refuses overwrite. The separate original 387 reader workflow fails Python
+Result p95 at 436.008 ms against the unchanged 200 ms bound, with full Current
+evidence and the same continuing verifier in all 200 samples. Rust and retained
+CLI/MCP checks are unattempted. Current-product readers and real-project
+performance receive no transferred credit from the earlier passing scopes.
+The [730 reader/retained pass](validation/m7.md) is a separate historical scope.
+The reader p95 values come from the unchanged Python and Rust collectors, rather
+than an MCP-specific timing census; retained MCP scenarios establish functional
+behavior. Real-project repair performance and complete standard/cache coverage
+remain pending. PR #74 is draft, and M7 remains experimental.

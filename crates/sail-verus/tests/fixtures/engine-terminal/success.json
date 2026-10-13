@@ -1,0 +1,111 @@
+{
+  "func-details": {
+    "demo::selected": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    },
+    "demo::other": {
+      "obligation_proof_notes": [],
+      "failed_proof_notes": []
+    }
+  },
+  "verification-results": {
+    "encountered-error": false,
+    "encountered-vir-error": false,
+    "success": true,
+    "verified": 2,
+    "errors": 0,
+    "is-verifying-entire-crate": true
+  },
+  "times-ms": {
+    "verus-build": {
+      "profile": "release",
+      "version": "0.2026.10.04.426d8b0.dirty"
+    },
+    "num-threads": 1,
+    "total": 215,
+    "estimated-cpu-time": 215,
+    "rust": {
+      "total": 106,
+      "init-and-types": 10,
+      "trait-conflicts": 88,
+      "compile": 7
+    },
+    "verification": {
+      "total": 43,
+      "vir": {
+        "total": 6,
+        "hir": 1,
+        "import": 0,
+        "rust-to-vir": 4
+      }
+    },
+    "total-verify": 36,
+    "total-verify-module-times": [
+      {
+        "module": "",
+        "time": 36
+      }
+    ],
+    "air": {
+      "total": 24,
+      "module-times": [
+        {
+          "module": "",
+          "time": 24
+        }
+      ]
+    },
+    "smt": {
+      "total": 4,
+      "smt-init": 3,
+      "rlimit-init": 26,
+      "smt-init-module-times": [
+        {
+          "module": "",
+          "time": 3,
+          "time-micros": 3664,
+          "rlimit": 26
+        }
+      ],
+      "smt-run": 1,
+      "rlimit-run": 146,
+      "smt-run-module-times": [
+        {
+          "module": "",
+          "time": 1,
+          "time-micros": 1885,
+          "rlimit": 146,
+          "function-breakdown": [
+            {
+              "function": "demo::other",
+              "mode:": "proof",
+              "time": 0,
+              "time-micros": 293,
+              "rlimit": 2,
+              "success": true
+            },
+            {
+              "function": "demo::selected",
+              "mode:": "proof",
+              "time": 1,
+              "time-micros": 1592,
+              "rlimit": 144,
+              "success": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "verus": {
+    "profile": "release",
+    "version": "0.2026.10.04.426d8b0.dirty",
+    "platform": {
+      "os": "macos",
+      "arch": "aarch64"
+    },
+    "toolchain": "1.98.1-aarch64-apple-darwin",
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+  }
+}

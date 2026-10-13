@@ -5,6 +5,168 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The optional interactive engine runtime is rebuilt from fork commit
+  `13a1176c` (release `engine-runtime-13a1176c-linux`). It adds the VI-0001
+  verifier fix: enum `arrow_*` accessors are declared in source order even
+  when Cargo builds the Verus macros from the project's own dependency source,
+  so engine runs of identical input send identical SMT. Default
+  `sail verify` still runs the stock release.
+
+- `sail repair-check` no longer verifies vstd again for each new function.
+  Every repair function now shares one Cargo target with the other engine
+  runs of the same workspace and arguments, as plain `cargo verus` shares one
+  target directory (ADR 0036 amendment). On a native c7i.8xlarge a function's
+  first repair dropped from about 40 s to 6.5–8.9 s on HumanEval and from
+  about 61 s to 30 s on Vest. A dependency can now be reused on a receipt from
+  another repair function's run when its bytes and inputs are unchanged; the
+  result names that run. Selected targets still need their own receipt.
+  Old per-function targets under `repair-targets-v1/` are no longer used and
+  can be deleted.
+
+- A managed `sail verify` that ends in ordinary proof errors now keeps vstd
+  and the other compiled dependencies, as plain `cargo verus verify` does.
+  Previously the next run rebuilt every package with a build script and
+  verified vstd again: the passing run after a fix took about 32 s instead of
+  5 s on HumanEval and 50 s instead of 24 s on Vest. Runs that end in a
+  compiler error, crash, partial scope or uncertain inputs still rebuild those
+  packages. Verdicts, diagnostics and proof receipts are unchanged.
+- `sail-conformance` compares diagnostics as a multiset of complete
+  messages (ADR 0042), in corpus units and in `rust-verify-test`. Messages
+  from different modules may come in any order; each must appear with
+  identical bytes the same number of times. Summary lines and other text
+  outside messages are still compared byte for byte and in order. A
+  difference now names the message (header and location) that is missing
+  from sail, only in sail, printed a different number of times, or altered,
+  with its first differing line; text outside messages is reported as
+  `diagnostics (stderr) outside messages differ at line N`.
+- `sail-conformance rust-verify-test` runs Verus with its default thread
+  count unless `--verus-threads N` is given (previously one thread). The
+  three multi-module tests that failed on both sides with one thread now
+  pass (ADR 0019).
+- Error codes are listed, with what to do about each, in
+  [docs/errors.md](docs/errors.md); `cargo xtask check-error-codes` and a
+  workspace test keep that list and the code in step. Codes that named
+  internal states were folded into user-meaningful ones. Scripts matching the
+  old codes should match the new ones:
+
+  | Old | New | Meaning now |
+  |---|---|---|
+  | `SAIL0801` | `SAIL0802` | job RPC protocol error (malformed, oversized or incompatible frame) |
+  | `SAIL0804` | `SAIL0899` | internal job-service error (new code) |
+  | `SAIL0809` | `SAIL0808` | the job failed or its result could not be saved |
+  | `SAIL0814` (missing RPC response only) | `SAIL0899` | internal job-service error |
+  | `SAIL0901` | `SAIL0902` | proof event rejected; the stream has a gap |
+  | `SAIL0902` (journal lock and load failures only) | `SAIL0999` | internal proof-stream error (new meaning) |
+  | `SAIL0104` (no cache directory, `sail verify`) | `SAIL3001` | no cache directory |
+  | `SAIL1002`–`SAIL1008` | `SAIL1001` | malformed SMT-LIB input |
+  | `SAIL2005`, `SAIL2006` | `SAIL2004` | cannot start or keep track of the solver |
+  | `SAIL3110` | `SAIL3111` | the managed adapter failed |
+  | `SAIL3121` | `SAIL3123` | interactive engine fault; stock result reported |
+
+  `SAIL7105` (a retired repair-gate check) is no longer used.
+- Removed `sail-bench seeds` and `sail-bench history`. Their survey results
+  stay in `bench/results/`; `sail-bench profile` is the remaining trace
+  analysis and no longer takes `--quiet`.
+- The optional interactive engine is built from Sail's Verus fork
+  (`Chelis-Lang/verus`, pinned in `engine/verus/fork.toml`) instead of the
+  upstream commit plus `engine/verus/interactive.patch`. `sail engine status`
+  reports `fork_commit` in place of `patch_sha256` (status version 2), and the
+  runtime pin records the fork commit. The fork fixes eight known Verus issues
+  (VI-0001, 0003, 0004, 0008, 0009, 0010, 0012, 0015): stable declaration,
+  trigger and progress-note order, correct `--output-json` success and
+  selection, a `function-path` timing field, and per-crate log directories
+  under `cargo verus`. Default `sail verify` still runs the stock release.
+- Managed runs are 1–3 s faster per edit cycle and warm unchanged runs take
+  0.4–1.6 s. Sail now checks a result's currentness by rehashing exactly the
+  files the verified target depended on, and identifies toolchain files by
+  their file stats. Large workspaces such as Vest now read back Current
+  instead of Unknown. A result is never shown as Current when any input it
+  depended on may have changed; in doubt it reads back Unknown with the note
+  "inputs could not be confirmed unchanged; re-run". See
+  [freshness](docs/freshness.md) for the rare cases this does not detect.
+- Concurrent managed runs on one workspace now wait for a busy target
+  (`SAIL_MANAGED_LOCK_WAIT_SECS`) instead of failing with `SAIL3104`.
+- Removed the Python kernel-lease helper, the daemon sysroot handoff endpoint
+  (`.sysroots-v1` socket) and the kernel-lease notes on `SAIL3114`.
+
+- Managed verification binds only the environment that `cargo verus` treats
+  as input: the variables Cargo, rustc, Verus and Z3 read, plus every variable
+  the project declares through `env!`/`option_env!` or
+  `rerun-if-env-changed`, recorded per receipt. `PATH` and `HOME` count only
+  through the tools and homes they resolve to. Agent sessions, terminals and
+  the CLI therefore share one proof context per project: an agent's first
+  `sail mcp` verify after a CLI run, or in a new session, no longer verifies
+  vstd again. Receipts are version 3; older receipts are not reused.
+- MCP `verify` no longer forces the requested targets fresh. It reuses a
+  Current report for unchanged inputs, as `sail verify --incremental` does,
+  and names the run that established it.
+- The project job service runs jobs from different Cargo workspaces
+  concurrently, so several agents sharing one daemon no longer wait for each
+  other. `SAIL_JOB_WORKERS` sets the bound (default: a quarter of the available
+  cores, from 1 to 4). Jobs in the same workspace still run one at a time, in
+  submission order, and queue rather than fail.
+- Repair job results carry the full report once, as `result`; `repair.batch`
+  no longer repeats it as `full`, halving the frame every reader receives
+  (4.9 MB to 2.5 MB on a HumanEval repair). Foreground `sail repair-check
+  --output json` still prints a standalone repair document with
+  `batch.full`.
+
+- `sail-bench repair` no longer records peak RSS or writes a raw sidecar;
+  `--raw` is removed. Each invocation's command, stdout and stderr stay under
+  `--out`. The report drops its preparation and peak-RSS columns.
+
+- `sail_api::jobs::Client` no longer caches decoded Results. Removed
+  `Client::with_result_decoding_cache`, `without_result_decoding_cache`,
+  `with_socket`, `call_cancellable` and `CancellableError`; use `Client::new`
+  and `call`, or `call_with` to abandon a call by shutting down its stream.
+- `sail mcp` direct job reads report plain errors: `SAIL0813: job read failed:
+  …` (`{"error":"read_failed"}`) and `SAIL0813: job read cancelled`
+  (`{"error":"cancelled"}`), instead of reproducing the CLI's error text and
+  exit code.
+
+- Remove the `SAIL_JOB_RPC_TIMINGS` diagnostic and the daemon's
+  `rpc-timings.json` export. Job reads are unchanged: every Status and Result
+  read still re-reads and hashes the job's output and checks input freshness.
+
+- Interactive engine: remove prepared-lowering reuse and the same-input
+  oracle. Repairs no longer pay for preparation, and progress events no longer
+  rebuild every function name per obligation. A one-round native candidate
+  measured 1.70× M6 on HumanEval and 1.54× on Vest. Removed
+  `batch.preparation`, `engine.persistent_preparation`,
+  `SAIL_ENGINE_PERSISTENT_PREPARATION` and `sail-conformance engine`'s
+  `--oracle*` options; `sail-bench repair` no longer reports `SAIL7105`.
+
+- Fix managed focused checks (`sail verify --incremental -- --verify-function
+  …`) failing with `SAIL3107` when the source matched the last focused build.
+  Sail now cleans `<target>/verus-partial`, where `cargo verus focus` builds.
+- Fix managed runs that were always Unknown (`SAIL3114
+  native-observer-setup-unavailable`) on workspaces, such as Vest, whose
+  members resolve dependencies the selected package never builds. Proof-time
+  coverage now spans the selected targets' dependency closure; a Cargo unit
+  outside it reports `native-observer-scope-exceeded`.
+- `sail-bench repair` reports `SAIL7110` for an M6 check that ended in a Sail
+  error; such a sample never counts as M6 time.
+
+- Add `sail-bench repair prepare|run`, the M7 repair acceptance workload. It
+  replaces `scripts/m7-repair-bench.py`, which stopped at the first refusal.
+  The new workload records every M6 (focused then full) and M7 (one repair
+  batch) sample, keeping its refusal, flags and timings, and continues the run.
+  `sail-bench report` applies the gate per catalogue in `docs/benchmarks.md`
+  and lists every failing sample:
+  - `SAIL7101`: an invocation timed out, failed to start or printed no JSON;
+  - `SAIL7102`: the full evidence is not Current;
+  - `SAIL7103`: M7 used other than one compiler driver;
+  - `SAIL7104`: M7 is not a real engine batch;
+  - `SAIL7106`: the outcome differs from the catalogue;
+  - `SAIL7107`: the M6 and M7 outcomes differ;
+  - `SAIL7108`: fewer than three complete rounds;
+  - `SAIL7109`: the median whole-loop speedup is below 2×.
+
+  Committed results are compact. A raw sidecar (`--raw`, by default under
+  `--out`) holds arguments, full errors and canonical outcomes, and its sha256
+  is recorded in the result. Use `--resume` to continue an interrupted run.
+  See [M7 repair acceptance](docs/bench/m7-repair-acceptance.md).
+
 - Add evidence commands for completed jobs: `sail explain`, immutable named
   baselines (`sail baseline save|list|get`) and `sail compare` against an
   earlier job or baseline, plus the MCP tools `explain_failure`,

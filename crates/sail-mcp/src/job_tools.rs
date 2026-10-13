@@ -80,6 +80,21 @@ fn execute(
     if arguments.first().is_some_and(|argument| argument == "jobs") {
         arguments.extend(["--output".to_owned(), "json".to_owned()]);
     }
+    if let Some(result) =
+        read_request(&arguments).and_then(|request| direct_read(ctx, project, &request, cancel))
+    {
+        return match result {
+            Ok(response) => match response_value(response) {
+                Ok(document) => ToolResult::ok(
+                    "Verification job response; proof outcomes are in the completed result."
+                        .to_owned(),
+                    document,
+                ),
+                Err(error) => invalid_response(&error.to_string()),
+            },
+            Err(error) => read_error(error),
+        };
+    }
     match run::run(&ctx.config.sail, &arguments, project, cancel) {
         Ok(outcome) if outcome.exit_code == Some(0) => {
             match serde_json::from_slice::<Value>(&outcome.stdout) {
@@ -109,6 +124,76 @@ fn execute(
     }
 }
 
+// Move the already-decoded arbitrary JSON graph rather than serialize it into
+// a second owned Value. Exhaustive destructuring keeps schema growth visible.
+fn response_value(response: sail_api::jobs::Response) -> serde_json::Result<Value> {
+    let sail_api::jobs::Response::Result(document) = response else {
+        return serde_json::to_value(response);
+    };
+    let sail_api::jobs::ResultDocument {
+        repair,
+        job,
+        result,
+    } = document;
+    let mut body = Map::new();
+    if let Some(repair) = repair {
+        body.insert("repair".to_owned(), serde_json::to_value(repair)?);
+    }
+    body.insert("job".to_owned(), serde_json::to_value(job)?);
+    body.insert("result".to_owned(), result.unwrap_or(Value::Null));
+    Ok(Value::Object(Map::from_iter([
+        ("response".to_owned(), Value::String("result".to_owned())),
+        ("value".to_owned(), Value::Object(body)),
+    ])))
+}
+
+pub(super) fn direct_read(
+    ctx: &Context,
+    project: &std::path::Path,
+    request: &sail_api::jobs::Request,
+    cancel: &Cancel,
+) -> Option<Result<sail_api::jobs::Response, crate::job_clients::ReadError>> {
+    ctx.jobs.as_ref()?.call(project, request, cancel)
+}
+fn invalid_response(message: &str) -> ToolResult {
+    ToolResult::error(
+        format!("SAIL0813: invalid job response: {message}"),
+        json!({"error":"invalid_response"}),
+    )
+}
+fn unsupported_response() -> ToolResult {
+    ToolResult::error(
+        "SAIL0813: expected a supported durable job response".to_owned(),
+        json!({"error":"invalid_response"}),
+    )
+}
+fn read_error(error: crate::job_clients::ReadError) -> ToolResult {
+    match error {
+        crate::job_clients::ReadError::InvalidResponse => unsupported_response(),
+        crate::job_clients::ReadError::Cancelled => ToolResult::error(
+            "SAIL0813: job read cancelled".to_owned(),
+            json!({"error":"cancelled"}),
+        ),
+        crate::job_clients::ReadError::Operation(error) => ToolResult::error(
+            format!("SAIL0813: job read failed: {error}"),
+            json!({"error":"read_failed"}),
+        ),
+    }
+}
+
+fn read_request(args: &[String]) -> Option<sail_api::jobs::Request> {
+    use sail_api::jobs::Request;
+    if args.first()?.as_str() != "jobs" {
+        return None;
+    }
+    let id = args.get(2)?.clone();
+    match args.get(1)?.as_str() {
+        "status" => Some(Request::Status { id }),
+        "result" => Some(Request::Result { id }),
+        _ => None,
+    }
+}
+
 fn valid_response(arguments: &[String], document: &Value) -> bool {
     use sail_api::jobs::{Response, VERSION};
     if arguments
@@ -124,18 +209,23 @@ fn valid_response(arguments: &[String], document: &Value) -> bool {
                 .get(1)
                 .is_some_and(|argument| argument == "result")
                 && result.job.version == VERSION
+                && arguments.get(2).is_some_and(|id| *id == result.job.id)
         }
         Ok(Response::Status(status)) => {
             arguments
                 .get(1)
                 .is_some_and(|argument| argument == "status" || argument == "cancel")
                 && status.version == VERSION
+                && arguments.get(2).is_some_and(|id| *id == status.id)
         }
         _ => false,
     }
 }
 
 /// A blocking compatibility call still uses the same durable worker as watch.
+///
+/// It is not forced fresh: like the CLI, a Current receipt for unchanged
+/// inputs is reused, and its establishing report is returned.
 pub(super) fn blocking(
     ctx: &Context,
     request: &RunArgs,
@@ -143,14 +233,7 @@ pub(super) fn blocking(
     cancel: &Cancel,
 ) -> Result<Option<(sail_api::jobs::Status, sail_api::project::ProjectResult)>, ToolResult> {
     let args = request.sail_args(&["verify", "--background", "--output", "json"]);
-    let started = run::run_with_environment(
-        &ctx.config.sail,
-        &args,
-        project,
-        cancel,
-        &[("SAIL_MANAGED_FORCE", "1")],
-    )
-    .map_err(|error| {
+    let started = run::run(&ctx.config.sail, &args, project, cancel).map_err(|error| {
         ToolResult::error(
             format!("SAIL0813: {error}"),
             json!({"error":"service_unavailable"}),
@@ -196,6 +279,16 @@ pub(super) fn blocking(
                     json!({"job_id":status.id}),
                 )
             })?;
+        if !crate::job_clients::response_matches(
+            &sail_api::jobs::Request::Result {
+                id: status.id.clone(),
+            },
+            &response,
+        ) {
+            return Err(invalid_response(
+                "unexpected job identity, version or response",
+            ));
+        }
         if let sail_api::jobs::Response::Result(document) = response {
             if let Some(result) = document.result {
                 let project = serde_json::from_value(result).map_err(|error| {
@@ -221,13 +314,12 @@ pub(super) fn blocking(
     }
 }
 
+/// Requested targets' reports, fresh or reused. A reused target carries the
+/// complete report of the run that established it.
 pub(super) fn merged_report(
     result: &sail_api::project::ProjectResult,
 ) -> Option<sail_api::output::Report> {
-    let mut targets = result
-        .targets
-        .iter()
-        .filter(|target| target.requested && !target.reused);
+    let mut targets = result.targets.iter().filter(|target| target.requested);
     let mut report = targets.next()?.report.clone();
     for target in targets {
         let next = &target.report;
@@ -272,22 +364,22 @@ pub(super) fn lookup(
     project: &std::path::Path,
     args: &crate::args::LookupArgs,
     models: bool,
+    cancel: &Cancel,
 ) -> Option<ToolResult> {
-    let cancel = Cancel::default();
-    let listing = run::run(
-        &ctx.config.sail,
+    let listing = read_or_cli(
+        ctx,
+        project,
+        &sail_api::jobs::Request::List { project_dir: None },
         &[
             "jobs".to_owned(),
             "list".to_owned(),
             "--output".to_owned(),
             "json".to_owned(),
         ],
-        project,
-        &cancel,
+        cancel,
     )
     .ok()?;
-    let sail_api::jobs::Response::List(mut jobs) = serde_json::from_slice(&listing.stdout).ok()?
-    else {
+    let sail_api::jobs::Response::List(mut jobs) = listing else {
         return None;
     };
     jobs.retain(|job| {
@@ -300,8 +392,11 @@ pub(super) fn lookup(
             .and_then(|obligation| obligation.split_once('#').map(|pair| pair.0))
     });
     for job in jobs {
-        let result = run::run(
-            &ctx.config.sail,
+        let request = sail_api::jobs::Request::Result { id: job.id.clone() };
+        let result = read_or_cli(
+            ctx,
+            project,
+            &request,
             &[
                 "jobs".to_owned(),
                 "result".to_owned(),
@@ -309,13 +404,10 @@ pub(super) fn lookup(
                 "--output".to_owned(),
                 "json".to_owned(),
             ],
-            project,
-            &cancel,
+            cancel,
         )
         .ok()?;
-        let sail_api::jobs::Response::Result(document) =
-            serde_json::from_slice(&result.stdout).ok()?
-        else {
+        let sail_api::jobs::Response::Result(document) = result else {
             continue;
         };
         let Some(value) = document.result else {
@@ -368,6 +460,32 @@ pub(super) fn lookup(
     None
 }
 
+fn read_or_cli(
+    ctx: &Context,
+    project: &std::path::Path,
+    request: &sail_api::jobs::Request,
+    args: &[String],
+    cancel: &Cancel,
+) -> std::io::Result<sail_api::jobs::Response> {
+    if let Some(result) = direct_read(ctx, project, request, cancel) {
+        return result.map_err(|error| match error {
+            crate::job_clients::ReadError::Operation(error) => error,
+            crate::job_clients::ReadError::InvalidResponse => {
+                std::io::Error::other("SAIL0813: invalid job response")
+            }
+            crate::job_clients::ReadError::Cancelled => {
+                std::io::Error::new(std::io::ErrorKind::Interrupted, "cancelled")
+            }
+        });
+    }
+    let result = run::run(&ctx.config.sail, args, project, cancel)?;
+    let response = serde_json::from_slice(&result.stdout).map_err(std::io::Error::other)?;
+    if result.exit_code != Some(0) || !crate::job_clients::response_matches(request, &response) {
+        return Err(std::io::Error::other("SAIL0813: invalid job response"));
+    }
+    Ok(response)
+}
+
 fn missing_obligation(
     functions: &[(
         &sail_api::project::TargetResult,
@@ -393,4 +511,20 @@ fn missing_obligation(
             json!({"error":"not_found","obligation":id,"job":job}),
         ))
     }
+}
+
+/// One line per requested target whose report was reused, naming the run that
+/// established it (charter rule 7: confirmed results record their provenance).
+pub(super) fn reuse_lines(result: &sail_api::project::ProjectResult) -> Vec<String> {
+    result
+        .targets
+        .iter()
+        .filter(|target| target.requested && target.reused)
+        .map(|target| {
+            format!(
+                "{}: reused the complete report established by run {} for unchanged inputs.",
+                target.target, target.establishing_run
+            )
+        })
+        .collect()
 }

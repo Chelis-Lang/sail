@@ -1,0 +1,50 @@
+# 0041: Content and stat checks replace kernel leases for currentness
+
+- **Status:** accepted
+- **Date:** 2026-10-12
+- **Supersedes:** the lease, observer and mount parts of ADRs 0029, 0031 and 0032, and the guarded bootstrap in ADR 0036
+
+## Context
+
+- **Readback could not cover Vest.** ADRs 0029, 0031 and 0032 kept
+  Current results trustworthy with Python-held kernel read leases, precise
+  inotify observers, mount-generation polling and a daemon sysroot
+  handoff. The read-time projection needed leases and watches on every
+  workspace file, which exceeds the 4,096-lease and 8,192-watch bounds on
+  Vest. Every Vest result therefore read back Unknown.
+- **Every run paid for it.** Managed runs also paid 0.3–0.9 s per run to
+  hash and guard the toolchain.
+- **Owner's definition of Current:** no source, manifest or lockfile that
+  Cargo compiled or read for the target has changed.
+
+## Decision
+
+- **Read time.** A Current run records the content digests of the selected
+  closure's input files and the presence or absence of every Cargo
+  configuration path. Readers rehash exactly those files: equal is
+  Current, different is Historical, unreadable is Unknown.
+- **Run time.** A run is Current only if its input content revision and
+  dev/ino/size/mode/mtime/ctime stamps are unchanged across the run, no
+  absent configuration appeared, and every compiled unit is inside the
+  closure.
+- **Toolchain.** Toolchain and sysroot files are identified by
+  dev/ino/size/mtime; configuration is identified by content.
+- **Removals.** Kernel leases, the precise observer, mount-generation
+  polling and the sysroot handoff are removed. This supersedes the
+  lease parts of ADRs 0029, 0031 and 0032 and the guarded bootstrap in
+  ADR 0036.
+
+## Consequences
+
+- **Results.** Vest results read back Current. Warm runs are 0.4–1.6 s,
+  and about 15,000 lines are deleted.
+- **Undetected cases.** An edit made and undone during a run through an
+  already-dirty shared writable mapping, or a bind mount added and
+  removed (root only), is no longer detected. The same holds for an
+  in-place toolchain rewrite that restores mtime. These are documented
+  limitations.
+- **Unchanged.** Default-mode verdicts and SMT cache keys are unchanged
+  (charter rules 1 and 2). Only the Currentness label depends on these
+  checks, and any doubt still yields Historical or Unknown.
+
+Measurements and validation: [L7c report](../reports/rescue/l7c-managed-overhead.md).

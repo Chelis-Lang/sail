@@ -16,8 +16,7 @@ pub const MAX_FRAME: usize = 32 * 1024 * 1024;
 /// A verification request. The environment belongs to its submitting client.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Submission {
-    /// Verification mode. Older clients omit it and mean stock verification;
-    /// an unknown mode is refused rather than silently run as stock.
+    /// Explicit backend/repair mode; old endpoints are never used for these requests.
     #[serde(default)]
     pub mode: Mode,
     /// Absolute Cargo project directory.
@@ -32,17 +31,17 @@ pub struct Submission {
     pub input_revision: Option<String>,
 }
 
-/// Verification execution mode.
-///
-/// Only stock pinned-Verus verification exists today. The tagged encoding
-/// leaves room for explicitly negotiated modes; a service that does not know a
-/// mode fails to decode the submission instead of ignoring it.
+/// Verification execution mode, negotiated through the version-two job endpoint.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "selection", rename_all = "snake_case")]
 pub enum Mode {
     /// Existing stock pinned Verus verification.
     #[default]
     Stock,
+    /// Optional explicitly selected Sail-managed interactive engine.
+    Interactive,
+    /// One engine batch containing focus and independent full validation.
+    Repair(crate::repair::Selection),
 }
 
 /// Durable lifecycle, independent of the proof outcome.
@@ -114,6 +113,9 @@ pub struct Status {
 /// A job result preserving the managed runner's versioned document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResultDocument {
+    /// Independent focus/full repair evidence, when this was an engine batch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repair: Option<Box<crate::repair::ResultDocument>>,
     /// Job status and provenance.
     pub job: Status,
     /// Managed project result, only after a complete worker output.
@@ -135,7 +137,7 @@ pub struct Chunk {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 pub enum Request {
-    /// Report the product contracts this endpoint supports.
+    /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
     /// Read bounded version-one proof observations using a resumable cursor.
     ProofEvents {
@@ -225,10 +227,14 @@ pub enum Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "response", content = "value", rename_all = "snake_case")]
 pub enum Response {
-    /// Supported product contracts.
+    /// Supported product contracts; does not claim an optional engine is installed.
     Capabilities {
         /// Independent proof stream version.
         proof_version: u32,
+        /// Non-stock submission modes are understood and never ignored.
+        /// Absent from services without the engine, which decode as false.
+        #[serde(default)]
+        repair: bool,
     },
     /// Ordered, resumable proof observations.
     ProofEvents(crate::proof::Page),
@@ -269,7 +275,7 @@ pub fn write_frame<T: Serialize>(writer: &mut impl Write, body: &T) -> io::Resul
     })
     .map_err(io::Error::other)?;
     if bytes.len() > MAX_FRAME {
-        return Err(io::Error::other("SAIL0801: job frame exceeds limit"));
+        return Err(io::Error::other("SAIL0802: job frame exceeds limit"));
     }
     let size = u32::try_from(bytes.len()).map_err(io::Error::other)?;
     writer.write_all(&size.to_be_bytes())?;
@@ -286,7 +292,7 @@ pub fn read_frame<T: serde::de::DeserializeOwned>(reader: &mut impl Read) -> io:
     reader.read_exact(&mut length)?;
     let size = usize::try_from(u32::from_be_bytes(length)).map_err(io::Error::other)?;
     if size > MAX_FRAME {
-        return Err(io::Error::other("SAIL0801: job frame exceeds limit"));
+        return Err(io::Error::other("SAIL0802: job frame exceeds limit"));
     }
     let mut bytes = vec![0; size];
     reader.read_exact(&mut bytes)?;
@@ -295,6 +301,59 @@ pub fn read_frame<T: serde::de::DeserializeOwned>(reader: &mut impl Read) -> io:
         return Err(io::Error::other("SAIL0802: incompatible job protocol"));
     }
     Ok(envelope.body)
+}
+
+/// Resolve the configured cache root without accessing the filesystem.
+///
+/// # Errors
+/// Returns `SAIL3001` when no cache or home environment setting is available.
+pub fn cache_directory() -> io::Result<PathBuf> {
+    let var = |name: &str| std::env::var_os(name).filter(|value| !value.is_empty());
+    var("SAIL_CACHE_DIR")
+        .map(PathBuf::from)
+        .or_else(|| var("XDG_CACHE_HOME").map(|root| PathBuf::from(root).join("sail")))
+        .or_else(|| var("HOME").map(|root| PathBuf::from(root).join(".cache/sail")))
+        .ok_or_else(|| {
+            io::Error::other(
+                "error[SAIL3001]: none of SAIL_CACHE_DIR, XDG_CACHE_HOME or HOME is set",
+            )
+        })
+}
+
+/// Default cache-service endpoint for the current protocol.
+#[must_use]
+pub fn default_cache_socket(cache: &Path) -> PathBuf {
+    cache.join(format!(
+        "daemon-v{}-workspace-v2-proof-v1.sock",
+        crate::protocol::PROTOCOL_VERSION
+    ))
+}
+
+/// Resolve a cache endpoint using the caller's working directory.
+/// Relative cache roots and explicit overrides belong to that caller.
+#[must_use]
+pub fn cache_socket(cache: &Path, explicit: Option<&Path>, cwd: &Path) -> PathBuf {
+    let socket = explicit.map_or_else(|| default_cache_socket(cache), Path::to_path_buf);
+    if socket.is_absolute() {
+        socket
+    } else {
+        cwd.join(socket)
+    }
+}
+
+/// Resolve the job endpoint with the same environment semantics as the CLI.
+///
+/// # Errors
+/// Returns the cache configuration error without starting a service.
+pub fn configured_socket(cwd: &Path) -> io::Result<PathBuf> {
+    let explicit = std::env::var_os("SAIL_DAEMON_SOCKET")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from);
+    Ok(socket_path(&cache_socket(
+        &cache_directory()?,
+        explicit.as_deref(),
+        cwd,
+    )))
 }
 
 /// The job endpoint alongside a cache endpoint, without changing cache protocol.
@@ -332,7 +391,7 @@ fn endpoint_path(path: &Path) -> PathBuf {
     absolute
 }
 
-/// A short-lived, timeout-bounded local client. Every call has its own connection.
+/// A timeout-bounded local client. Every call receives a complete fresh frame.
 #[cfg(unix)]
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -352,14 +411,40 @@ impl Client {
     /// # Errors
     /// Returns connection, framing, timeout, or server errors.
     pub fn call(&self, request: &Request) -> io::Result<Response> {
+        self.call_with(request, |_| {})
+    }
+    /// Like [`Client::call`], first handing `connected` a clone of the
+    /// connected stream. Another thread can shut that clone down to abandon
+    /// the call; `connected` is not called when the connection fails.
+    ///
+    /// # Errors
+    /// Returns connection, framing, timeout, or server errors.
+    pub fn call_with(
+        &self,
+        request: &Request,
+        connected: impl FnOnce(std::os::unix::net::UnixStream),
+    ) -> io::Result<Response> {
         use std::os::unix::net::UnixStream;
+        if matches!(request, Request::Submit { submission } if submission.mode != Mode::Stock)
+            && !matches!(
+                self.call(&Request::Capabilities)?,
+                Response::Capabilities {
+                    proof_version: crate::proof::VERSION,
+                    repair: true
+                }
+            )
+        {
+            return Err(io::Error::other(
+                "SAIL0903: endpoint does not support proof/repair contracts",
+            ));
+        }
         let mut stream = UnixStream::connect(&self.socket)?;
+        connected(stream.try_clone()?);
         let timeout = Some(std::time::Duration::from_secs(5));
         stream.set_read_timeout(timeout)?;
         stream.set_write_timeout(timeout)?;
         write_frame(&mut stream, request)?;
-        let response = read_frame(&mut stream)?;
-        match response {
+        match read_frame(&mut stream)? {
             Response::Error(message) => Err(io::Error::other(message)),
             response => Ok(response),
         }
@@ -391,18 +476,39 @@ mod tests {
     }
 
     #[test]
-    fn stock_mode_is_the_default_and_unknown_modes_are_refused() {
-        let submission = serde_json::json!({
-            "project_dir": "/p", "args": [], "force": false,
-            "environment": {}, "input_revision": null
-        });
-        let decoded: Submission = serde_json::from_value(submission.clone())
-            .unwrap_or_else(|error| unreachable!("{error}"));
-        assert_eq!(decoded.mode, Mode::Stock);
-        let mut repair = submission;
-        repair["mode"] = serde_json::json!({"kind": "repair", "selection": {}});
-        assert!(serde_json::from_value::<Submission>(repair).is_err());
+    fn endpoint_resolution_anchors_only_relative_settings_to_each_caller() {
+        let a = Path::new("/workspace/a");
+        let b = Path::new("/workspace/b");
+        assert_ne!(
+            cache_socket(Path::new("cache"), None, a),
+            cache_socket(Path::new("cache"), None, b)
+        );
+        assert_eq!(
+            cache_socket(Path::new("/shared/cache"), None, a),
+            cache_socket(Path::new("/shared/cache"), None, b)
+        );
+        assert_eq!(
+            cache_socket(
+                Path::new("ignored"),
+                Some(Path::new("sockets/service.sock")),
+                a
+            ),
+            a.join("sockets/service.sock")
+        );
+        assert_eq!(
+            cache_socket(
+                Path::new("ignored"),
+                Some(Path::new("/explicit/service.sock")),
+                b
+            ),
+            Path::new("/explicit/service.sock")
+        );
+        assert_eq!(
+            cache_socket(Path::new("cache"), None, a),
+            a.join(default_cache_socket(Path::new("cache")))
+        );
     }
+
     #[cfg(unix)]
     #[test]
     fn endpoint_aliases_share_the_same_namespace_before_and_after_startup() {

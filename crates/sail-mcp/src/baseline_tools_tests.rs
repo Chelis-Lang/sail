@@ -36,6 +36,7 @@ fn baseline(name: &str) -> Baseline {
             execution: Execution::default(),
             notes: vec!["Recorded evidence only.".into()],
             error: None,
+            engine: None,
         },
     }
 }

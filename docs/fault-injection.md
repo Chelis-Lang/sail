@@ -12,7 +12,84 @@ without it:
 SAIL_TEST_Z3=<pinned z3> cargo nextest run -p sail-shim --run-ignored all
 ```
 
-It takes about 9 seconds on an M-series Mac.
+Earlier host measurements completed this suite in about nine seconds. Current
+runtime depends on the platform and workload. Complete solver results apply to
+their frozen artifacts; the unresolved failures below remain failures.
+
+## GC/clear maintenance cleanup
+
+The complete `4472279` workspace gate passed 540 tests, but its solver scope
+passed 38 of 39: GC/clear reached the unchanged 180-second nextest limit.
+The [read-only audit](validation/m7.md)
+does not establish its cause or the stalled phase.
+
+A separate fixture defect is now controlled: a foreground panic previously
+skipped the maintenance stop flag, leaving `thread::scope` waiting forever.
+The scope now owns a stop-on-drop guard. It preserves normal maintenance,
+all original sessions and cache/reply assertions, and their deadlines. An
+additive controlled-unwind regression requires the worker to exit; a private
+copy without the guard hangs under external supervision. This does not prove
+the original timeout experienced a panic. Fixed phase, PID and elapsed-time
+metadata writes directly to stderr before the next phase, surviving libtest's
+captured-output lifetime. The [lifecycle proposal](validation/m7.md)
+keeps direct-solver and pipe-owner cleanup changes separate and unimplemented.
+
+
+The later `c97de63` workspace gate passed 605 tests, but its complete solver
+scope passed 40 of 41; the GC/clear final concurrent sessions reached the same
+180-second limit. One unchanged isolated diagnostic passed in 8.78 seconds.
+Neither outcome establishes the historical timeout's cause; the
+[retained diagnostic](validation/m7.md) records both.
+
+Test-support session cleanup now kills and reaps a timed-out child before
+observing its output buffer. The byte snapshot uses `try_lock`, explicitly
+reporting unavailable bytes. Normal clean exits retain the original session
+budget to reach reader EOF and preserve the complete stream. After a deadline,
+reader retirement has one second of cleanup grace. An unfinished reader is
+reported incomplete, its handle is detached, and the session cannot pass. Rust
+cannot cancel that blocked thread; the test process still owns its remaining
+lifetime, and this helper does not claim descendant termination. The Linux
+paused-buffer control releases its pause and verifies physical reader retirement
+before asserting; a separate normal-exit control requires exact complete bytes.
+All original 60-second sessions, 180-second nextest limits, concurrent fixtures
+and cache/reply assertions remain unchanged.
+
+## Retained unresolved timeout
+
+The integrated Linux run at source `62ad095` passed 36 of 37 solver checks, but
+`unverifiable_shared_entries_never_change_an_answer` exceeded the unchanged
+180-second CI limit and was terminated after 190.016 seconds. Its cause is not
+yet established; the earlier successful scenario outcomes below do not make
+that frozen run a pass.
+
+Read-only inspection of the preserved scratch state showed completed forged,
+untrusted-signer and other-solver stores with local entries. The platform store
+had been rewritten, but its local cache held only the trust key; the truncation
+case had not started. This narrows the unfinished phase without identifying a
+production cause. No bound was raised and no check was removed. At that source,
+the targeted diagnostic recorded case/round boundaries and could inspect the
+owned child tree, thread wait states and output size at the existing 60-second
+session bound. It did not read credentials or process environments. The current
+cleanup-first helper uses fixed metadata after reaping, as described below.
+
+A subsequent isolated run of this exact case, with diagnostic logging and all
+original checks intact, passed in 11.340 seconds. All five cases and both
+sessions per case passed; the platform-mismatch case recorded one rejection,
+zero shared hits and zero shared timeouts. This did not reproduce or explain
+the original integrated timeout. The
+[portable diagnostic record](validation/m7.md)
+retains both outcomes, the diagnostic invocation's initial solver-path setup
+failure, and the executed source, binary and log hashes. No production fix or
+deadline change is claimed.
+
+The later complete `d12d4af` Linux solver suite passed all 37 cases in 114.446
+seconds, including this shared-entry case in 9.652 seconds. It uses the original
+assertions and deadlines with the phase diagnostics above. This is a complete
+suite pass for those frozen artifacts, not an identified cause or causal fix
+for the earlier timeout. The normal workspace gate on the same source failed
+HTTP-cache concurrency tests and remains a separate blocker. See the
+[complete solver record](validation/m7.md)
+and [failed gate](validation/m7.md).
 
 ## How faults are injected
 
@@ -70,6 +147,13 @@ Disabling the signature check makes the forged-answer case fail with a
 wrong `check-sat` reply, so the test does exercise the signature.
 
 Daemon-side cases that need no solver run in the fast gate:
+- **`crates/sail-daemon/src/shared.rs` HTTP regressions:** serving tests
+  establish the actual transport and trust separately, record that setup cost,
+  then retain their 250 ms lookup and 75 ms server-delay assertions. The cold
+  constructor test independently pauses construction and requires bounded
+  followers/status with zero network requests. See the
+  [HTTP guide](http-shared-cache.md#developer-serving-tests) for the retained
+  integrated cold-lookup failures and precise fixture scope.
 - **`crates/sail-daemon/tests/tiers.rs`:**
   - memory hits against outside changes to the disk;
   - write-behind: acknowledgement before the write, a full queue dropping
@@ -143,3 +227,12 @@ match and publish no entries. Quiet-session tests still require genuine hits.
 Abnormal solver termination discards every staged reply, including complete
 replies before the fault. Earlier prefix retention was a cache benefit, not a
 correctness requirement.
+
+
+The cleanup-first correction has [actual focused controls](validation/m7.md):
+two lifecycle cases pass, the blocking-snapshot counterfactual fails as expected,
+and the original GC/clear case passes once in 13.902 seconds with its unchanged
+CI profile. Affected all-target strict Clippy passes. The earlier complete
+40/41 failure, first strict failure and stale-restored-artifact setup failure
+remain separate. Current post-reap diagnostics emit fixed cleanup metadata only;
+live proc attribution requires a separately birth-anchored observer.

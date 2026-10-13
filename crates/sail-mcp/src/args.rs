@@ -69,6 +69,8 @@ pub struct RunArgs {
     pub project_dir: Option<String>,
     /// `-p <package>`.
     pub package: Option<String>,
+    /// Explicit optional source engine; stock remains the default.
+    pub engine: Option<String>,
     /// Verus `--verify-module <module>`.
     pub module: Option<String>,
     /// Verus `--verify-function <function>` (with `--verify-root` when no
@@ -89,6 +91,7 @@ impl RunArgs {
     pub const KEYS: &[&str] = &[
         "project_dir",
         "package",
+        "engine",
         "module",
         "function",
         "cargo_args",
@@ -107,6 +110,7 @@ impl RunArgs {
         let parsed = Self {
             project_dir: opt_str(args, "project_dir")?,
             package: opt_value(args, "package")?,
+            engine: opt_value(args, "engine")?,
             module: opt_value(args, "module")?,
             function: opt_value(args, "function")?,
             measure_fragility: args
@@ -121,6 +125,18 @@ impl RunArgs {
             cargo_args: str_list(args, "cargo_args")?,
             verus_args: str_list(args, "verus_args")?,
         };
+        if parsed
+            .engine
+            .as_deref()
+            .is_some_and(|engine| engine != "stock" && engine != "interactive")
+        {
+            return Err("`engine` must be stock or interactive".into());
+        }
+        if parsed.engine.as_deref() == Some("interactive")
+            && (parsed.measure_fragility || parsed.portfolio.is_some())
+        {
+            return Err("interactive engine cannot combine solver experiments".into());
+        }
         if parsed
             .portfolio
             .as_deref()
@@ -157,6 +173,9 @@ impl RunArgs {
         }
         if let Some(mode) = &self.portfolio {
             out.extend(["--portfolio".to_owned(), mode.clone()]);
+        }
+        if let Some(engine) = &self.engine {
+            out.extend(["--engine".into(), engine.clone()]);
         }
         out.extend(self.cargo_args.iter().cloned());
         if let Some(p) = &self.package {

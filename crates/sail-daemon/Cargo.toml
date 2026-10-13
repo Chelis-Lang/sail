@@ -22,6 +22,9 @@ sail-verus.workspace = true
 sail-cache.workspace = true
 sail-key.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+socket2.workspace = true
+
 [dev-dependencies]
 sha2.workspace = true
 sail-cache.workspace = true

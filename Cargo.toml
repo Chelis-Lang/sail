@@ -12,7 +12,11 @@ repository = "https://github.com/Chelis-Lang/sail"
 # License is deliberately unset until the owner decides (docs/open-questions.md).
 
 [workspace.dependencies]
+# Safe bounded Unix RPC connection setup, including listener backlog pressure.
+socket2 = "=0.6.5"
 inotify = { version = "=0.11.5", default-features = false }
+# Safe kernel mount-event and bounded optional Unix socket readiness polling.
+rustix = { version = "=1.1.5", default-features = false, features = ["std", "event", "fs"] }
 sail-smtlib = { path = "crates/sail-smtlib" }
 sail-session = { path = "crates/sail-session" }
 sail-key = { path = "crates/sail-key" }

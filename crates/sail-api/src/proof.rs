@@ -106,23 +106,23 @@ impl InputEvent {
             || self.target.name.is_empty()
             || self.target.kind.is_empty()
         {
-            return Err("SAIL0901: incomplete proof event identity".into());
+            return Err("SAIL0902: incomplete proof event identity".into());
         }
         if self.obligation.is_some() && self.function.is_none() {
-            return Err("SAIL0901: obligation event has no function identity".into());
+            return Err("SAIL0902: obligation event has no function identity".into());
         }
         if matches!(self.observation, Observation::CompilerSealed) && self.phase != Phase::Full {
-            return Err("SAIL0901: compiler seal cannot finalize a focused phase".into());
+            return Err("SAIL0902: compiler seal cannot finalize a focused phase".into());
         }
         match &self.observation {
             Observation::FunctionStarted | Observation::FunctionObserved(_) => {
                 if self.function.is_none() {
-                    return Err("SAIL0901: function event has no function identity".into());
+                    return Err("SAIL0902: function event has no function identity".into());
                 }
             }
             Observation::ObligationProgress(progress) => {
                 if progress.description.is_empty() || progress.description.len() > 4096 {
-                    return Err("SAIL0901: invalid bounded obligation progress description".into());
+                    return Err("SAIL0902: invalid bounded obligation progress description".into());
                 }
                 let id = self
                     .obligation
@@ -133,25 +133,25 @@ impl InputEvent {
                         && sail_ledger::ObligationKind::is_query_kind(&id.kind.0)
                 }) {
                     return Err(
-                        "SAIL0901: query progress requires an exact obligation identity".into(),
+                        "SAIL0902: query progress requires an exact obligation identity".into(),
                     );
                 }
             }
             Observation::ObligationObserved(report)
                 if self.obligation.as_deref() != Some(&report.id) =>
             {
-                return Err("SAIL0901: obligation identity disagrees with evidence".into());
+                return Err("SAIL0902: obligation identity disagrees with evidence".into());
             }
             _ => {}
         }
         if let Observation::FunctionObserved(report) = &self.observation {
             if self.function.as_deref() != Some(&report.function) {
-                return Err("SAIL0901: function identity disagrees with evidence".into());
+                return Err("SAIL0902: function identity disagrees with evidence".into());
             }
             if report.tier != crate::output::TierName::Provisional
                 || report.verdict != crate::output::VerdictName::Provisional
             {
-                return Err("SAIL0901: live function evidence must remain provisional".into());
+                return Err("SAIL0902: live function evidence must remain provisional".into());
             }
         }
         Ok(())

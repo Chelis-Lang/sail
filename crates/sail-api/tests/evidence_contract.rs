@@ -29,6 +29,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
         execution: Execution::default(),
         notes: vec![],
         error: None,
+        engine: None,
     })
 }
 fn success(mut project: ProjectResult) -> ProjectResult {

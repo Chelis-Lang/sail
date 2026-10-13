@@ -50,3 +50,16 @@ RUN python3 /tmp/fetch-verus.py /tmp/pins/toolchain.toml /opt/verus
 ENV SAIL_VERUS_HOME=/opt/verus \
     SAIL_TEST_Z3=/opt/verus/verus-x86-linux/z3 \
     PATH=/opt/verus/verus-x86-linux:/opt/cargo/bin:$PATH
+
+# Optional interactive engine: built and validated locally, never from source
+# in CI. Both the archive and its complete runtime/fork-commit/lock provenance bind
+# to committed inputs. The private asset credential exists only in this mount.
+COPY ci/engine-artifact.py /tmp/ci/
+COPY engine/verus/fork.toml engine/verus/Cargo.lock /tmp/engine/verus/
+COPY engine/verus/artifact-linux.json /tmp/pins/
+RUN --mount=type=secret,id=sail_engine_token,required=true \
+    SAIL_ENGINE_ARTIFACT_TOKEN="$(cat /run/secrets/sail_engine_token)" \
+      python3 /tmp/ci/engine-artifact.py fetch \
+        --pin /tmp/pins/artifact-linux.json --cache /opt/sail-engine-cache \
+ && python3 -c 'import json,pathlib; p=json.loads(pathlib.Path("/tmp/pins/artifact-linux.json").read_text()); pathlib.Path("/opt/sail-engine").symlink_to(pathlib.Path("/opt/sail-engine-cache/verus-src-build") / p["variant"])'
+ENV SAIL_ENGINE_BUILD=/opt/sail-engine

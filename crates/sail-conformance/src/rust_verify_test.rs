@@ -34,8 +34,9 @@ pub const USAGE: &str = "usage:
   --jobs N          tests run in parallel (default 4)
   --confirm-runs N  extra plain runs when sail differs (default 10; ADR 0009)
   --verus-threads N Verus's --num-threads for every test, both sides
-                    (default 1: deterministic diagnostic order, VI-0007;
-                    0 keeps Verus's default of all cores)
+                    (default 0: Verus's own default; messages from different
+                    modules may come in any order, ADR 0042. 1 gives a fixed
+                    order but fewer errors on three multi-module tests)
   --list            print the selected test ids and exit";
 
 struct Options {
@@ -55,7 +56,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         every: 1,
         jobs: 4,
         confirm_runs: 10,
-        verus_threads: 1,
+        verus_threads: 0,
         out: None,
         shim: None,
         list: false,
@@ -203,7 +204,7 @@ fn reproduce(cx: &Context, test: &TestCase, dir: &Path) -> Result<(), String> {
         .collect();
     let sail_z3 = match &cx.sail {
         Solver::Shim { shim, .. } => shim.display().to_string(),
-        Solver::Plain => String::new(),
+        Solver::Plain | Solver::Engine(_) => String::new(),
     };
     let note = format!(
         "test: {id}\n\

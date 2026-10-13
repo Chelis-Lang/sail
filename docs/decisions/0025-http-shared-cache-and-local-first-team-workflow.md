@@ -50,9 +50,6 @@ documented in `docs/http-shared-cache.md`. New external dependencies retain the
 workspace MSRV and license checks; narrowly scoped license exceptions are recorded
 separately in ADR 0026.
 
-The M7 amendments below cite validation records preserved in the
-`archive/m7-contracts-f7103bf` tag.
-
 Development and test profiles optimize only `curve25519-dalek` arithmetic at
 level 3, matching the existing production release optimization. They retain
 debug assertions and overflow checks. Every entry still runs the same
@@ -62,7 +59,7 @@ arithmetic CPU cost within the unchanged serving deadline. Cargo's
 [package profile overrides](https://doc.rust-lang.org/cargo/reference/profiles.html#overrides)
 change compiler optimization, without changing the dependency or algorithm.
 The original failed HTTP deadline and fixed authentic/forged CPU control are
-retained in that tag at `docs/validation/m7-shared-signature-cpu-diagnosis.md`; they do not
+retained in `docs/validation/m7-shared-signature-cpu-diagnosis.md`; they do not
 establish why the entire original wall-time gap occurred.
 
 ### Configured transport preparation at daemon bind
@@ -74,7 +71,7 @@ measured helper dispatch at 106.857 ms, transport initialization completion at
 270.456 ms, body completion at 314.578 ms and final validation at 315.341 ms.
 The foreground had timed out at 301.815 ms. HTTP succeeded; no signature, trust,
 identity or authentication rejection was recorded. See the
-retained failure.
+[retained failure](../validation/m7.md).
 
 A configured daemon now launches one optional HTTP constructor asynchronously
 at bind, overlapping construction with ordinary solver identity setup. This
@@ -97,7 +94,7 @@ Repeated complete workspace gates retain a setup-publication timeout at the
 original 250 ms limit. Their exact complete causes remain unestablished. A
 separate owner observation records material runtime CPU, and the package-only
 optimization control does not show a benefit; its profile stays unselected.
-See the retained observation.
+See [the retained observation](../validation/m7.md).
 
 Configuration refresh previously constructed a blocking HTTP runtime before
 comparing it with the current client. Reuse now follows fresh endpoint policy,

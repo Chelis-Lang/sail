@@ -1,6 +1,7 @@
 # VI-0008: `--output-json` lists `func-details` in hash order
 
-- **Status:** open (tracked here; not filed upstream; see the README)
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `bf59e1f0` (fix: list output-json func-details sorted by name).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-09
 - **Reproduction:** `rust_verify_test`'s
@@ -40,3 +41,17 @@ expected-output tests) see spurious differences.
 
 **Suggested fix:** collect `func_details` into a `BTreeMap`, or sort the
 entries by name before inserting them.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`bf59e1f0` (fix: list output-json func-details sorted by name), one commit
+with its regression test
+`source/rust_verify_test/tests/sail_vi0008_func_details_order.rs`, which fails
+on the pinned stock source and passes on the fork. `func-details` entries are
+inserted sorted by friendly name, then by function identity. The test checks
+eight functions; stock passes by chance once in 40,320 runs.
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+None was needed; stock runs are unchanged (the corpus harness compares parsed
+JSON).

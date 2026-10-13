@@ -55,6 +55,18 @@ pub fn function_line(f: &FunctionReport) -> String {
             let _ = write!(line, ", seed {}", configuration.seed);
         }
     }
+    if let Some(engine) = &f.provenance.engine {
+        let _ = write!(
+            line,
+            "; {} engine{}",
+            engine.name,
+            match engine.established_by {
+                sail_api::output::EngineEstablishment::Engine => "",
+                sail_api::output::EngineEstablishment::StockFallback =>
+                    " faulted, stock Verus result",
+            }
+        );
+    }
     line
 }
 
@@ -227,6 +239,27 @@ mod tests {
         assert!(text.contains("Provisional, NOT verified"), "{text}");
         assert!(text.contains("Failed: demo::b."), "{text}");
         assert!(function_line(&r.crates[0].functions[2]).contains("NOT verified"));
+    }
+
+    #[test]
+    fn engine_provenance_is_labelled_and_stock_lines_are_unchanged() {
+        let stock = function("demo::a", VerdictName::Verified);
+        let plain = function_line(&stock);
+        assert!(!plain.contains("engine"), "{plain}");
+        let mut engine = stock.clone();
+        let mut provenance = sail_api::output::EngineProvenance {
+            name: "interactive".into(),
+            manifest_sha256: "ab".repeat(32),
+            established_by: sail_api::output::EngineEstablishment::Engine,
+        };
+        engine.provenance.engine = Some(provenance.clone());
+        assert_eq!(
+            function_line(&engine),
+            format!("{plain}; interactive engine")
+        );
+        provenance.established_by = sail_api::output::EngineEstablishment::StockFallback;
+        engine.provenance.engine = Some(provenance);
+        assert!(function_line(&engine).ends_with("interactive engine faulted, stock Verus result"));
     }
 
     #[test]

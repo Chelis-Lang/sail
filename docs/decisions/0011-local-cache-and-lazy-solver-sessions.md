@@ -109,6 +109,14 @@ Fixes:
   group, with a time limit (`SAIL_UNIT_TIMEOUT`, 3,600 s by default). A hang
   becomes an `infra-error` and does not block the run.
 
+The runner now also streams raw output into the unit's `stdout.txt` and
+`stderr.txt` while draining its pipes. A timeout previously returned before
+saving the pipe buffers, losing diagnostics needed to investigate a stock
+verifier wait. Partial files remain diagnostic evidence only: the timeout
+still returns `SAIL3022`, and no partial JSON is accepted as a verification
+result. Capture is best effort; an unavailable or full evidence disk does not
+stop pipe draining. Completed runs retain their exact output and exit status.
+
 Evidence:
 - **Before the fix:** a concurrent Verus fill of human-eval-verus, followed by
   replaying all 113 sessions against the cache, gave 14 sessions with wrong

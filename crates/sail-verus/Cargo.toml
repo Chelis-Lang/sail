@@ -8,7 +8,6 @@ publish.workspace = true
 repository.workspace = true
 
 [dependencies]
-notify.workspace = true
 sail-api.workspace = true
 sail-ledger.workspace = true
 sail-smtlib.workspace = true
@@ -20,6 +19,7 @@ toml_edit.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 inotify.workspace = true
+rustix.workspace = true
 
 [lints]
 workspace = true

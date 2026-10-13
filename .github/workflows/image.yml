@@ -39,6 +39,6 @@ jobs:
           if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
             echo "$IMAGE exists"
           else
-            docker build -f ci/Dockerfile -t "$IMAGE" .
+            docker build --secret id=sail_engine_token,env=TOKEN -f ci/Dockerfile -t "$IMAGE" .
             docker push "$IMAGE"
           fi

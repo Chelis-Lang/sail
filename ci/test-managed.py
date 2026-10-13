@@ -109,15 +109,26 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         def managed(*args):
             label = f"managed-{len(managed_calls) + 1:02d}"
             managed_calls.append(label)
+            started = time.monotonic()
+            events = evidence / (label + ".events.jsonl")
+            # This existing observation-only variable is excluded from managed
+            # input identity; invocation arguments and compiler flags are unchanged.
+            observed_env = dict(env, SAIL_JOB_EVENTS=str(events))
             try:
                 run = bounded_verification([sail, "verify", "--incremental", "--output", "json", *args],
-                                           project, env, 240)
+                                           project, observed_env, 240)
             except subprocess.TimeoutExpired as failure:
                 (evidence / (label + ".stdout.json")).write_bytes(failure.stdout or b"")
                 (evidence / (label + ".stderr")).write_bytes(failure.stderr or b"")
+                (evidence / (label + ".operation.json")).write_text(json.dumps({
+                    "operation": label, "duration_s": time.monotonic() - started,
+                    "verification_timeout_s": 240, "returncode": None, "timed_out": True}))
                 raise
             (evidence / (label + ".stdout.json")).write_bytes(run.stdout)
             (evidence / (label + ".stderr")).write_bytes(run.stderr)
+            (evidence / (label + ".operation.json")).write_text(json.dumps({
+                "operation": label, "duration_s": time.monotonic() - started,
+                "verification_timeout_s": 240, "returncode": run.returncode, "timed_out": False}))
             result = json.loads(run.stdout)
             assert result["kind"] == "sail-project-result", result
             assert result["error"] is None, result
@@ -165,7 +176,11 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert complete["currentness"] == "current", complete
         assert next(t for t in complete["targets"] if t["requested"])["report"] == target["report"]
 
-        mcp = subprocess.Popen([sail, "mcp"], cwd=project, env=env,
+        # An agent's session and terminal variables are not proof inputs: the
+        # MCP server below runs with different ones and must reuse the CLI's proof.
+        agent_env = dict(env, CLAUDE_CODE_SESSION_ID="managed-acceptance-agent",
+                         TERM_SESSION_ID="another-terminal", TERM="dumb")
+        mcp = subprocess.Popen([sail, "mcp"], cwd=project, env=agent_env,
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, text=True)
         def exchange(message):
@@ -202,6 +217,15 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
                 assert time.monotonic() < deadline, "MCP job did not finish"
                 request_id += 1
                 time.sleep(.1)
+            # Blocking verify reuses the same Current receipt, as the CLI does,
+            # and names the run that established the reused report.
+            verified = exchange({"jsonrpc":"2.0", "id":request_id + 1, "method":"tools/call", "params":{
+                "name":"verify", "arguments":{"project_dir":str(project)}}})
+            assert not verified["isError"], verified
+            blocking = verified["structuredContent"]["project_result"]
+            assert blocking["execution"]["verifier_invocations"] == 0, blocking["execution"]
+            assert next(t for t in blocking["targets"] if t["requested"])["report"] == target["report"]
+            assert target["establishing_run"] in verified["content"][0]["text"], verified["content"][0]["text"]
         finally:
             mcp.stdin.close()
             try:
@@ -239,6 +263,18 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert b"postcondition not satisfied" in plain.stderr, plain.stderr.decode()
         assert b"postcondition not satisfied" in failed_run.stderr, failed_run.stderr.decode()
 
-        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, and restored-mtime failing edit passed")
+        # Repeat a focused check over byte-identical source. cargo verus focus
+        # builds in <target>/verus-partial with checksum freshness, so the
+        # forced cleanup must clean that directory; cleaning the outer target
+        # left the crate fresh, ran no verifier and failed with SAIL3107.
+        source.write_text(good)
+        for attempt in range(3):
+            focus_run, focused, focus_target = managed("--", "--verify-root", "--verify-function", "max")
+            assert focus_run.returncode == 0 and focused["exit_code"] == 0, (attempt, diagnostic(focused))
+            assert focused["execution"]["verifier_invocations"] >= 1, (attempt, focused["execution"])
+            assert not focus_target["reused"], (attempt, focus_target)
+            source.write_text(good)
+
+        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit and repeated focus passed")
     finally:
         stop_daemon()

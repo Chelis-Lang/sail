@@ -441,6 +441,7 @@ pub(crate) mod tests {
                 checks_solved: 0,
                 checks_served: 0,
                 checks_unrecorded: 0,
+                engine: None,
             },
             timing: Timing {
                 smt_micros: None,
@@ -480,6 +481,7 @@ pub(crate) mod tests {
             crates,
             diagnostics: Vec::new(),
             error: None,
+            engine: None,
         }
     }
 

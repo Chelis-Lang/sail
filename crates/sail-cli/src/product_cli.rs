@@ -1,4 +1,4 @@
-//! CLI proof events and evidence operations (explain, baselines, compare).
+//! CLI proof events, explicit focused repair validation and evidence operations.
 
 mod arguments;
 mod evidence;
@@ -7,7 +7,7 @@ use std::io::Write;
 use std::process::ExitCode;
 use std::time::Duration;
 
-use sail_api::jobs::{Client, Request, Response};
+use sail_api::jobs::{Client, Mode, Request, Response};
 use sail_api::proof::Page;
 
 pub(crate) use evidence::run as evidence;
@@ -23,6 +23,168 @@ pub(super) fn call(client: &Client, request: &Request) -> Result<Response, Strin
         Err(error)
     } else {
         Ok(response)
+    }
+}
+
+pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    let run = || -> Result<(Client, sail_api::jobs::Status, bool, bool), String> {
+        let (selection, args, background, json) = arguments::repair(args)?;
+        let client = crate::jobs::connect_or_start()?;
+        let status = crate::jobs::submit_mode(&client, args, Mode::Repair(selection))?;
+        Ok((client, status, background, json))
+    };
+    let (client, status, background, json) = match run() {
+        Ok(result) => result,
+        Err(message) => return error(&message, err),
+    };
+    if background {
+        let text = if json {
+            serde_json::to_string(&status).unwrap_or_default()
+        } else {
+            format!("{} queued repair validation", status.id)
+        };
+        let _ = writeln!(out, "{text}");
+        return ExitCode::SUCCESS;
+    }
+    let stopped = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let signal = std::sync::Arc::clone(&stopped);
+    if let Err(message) =
+        ctrlc::set_handler(move || signal.store(true, std::sync::atomic::Ordering::SeqCst))
+    {
+        cancel_owned(&client, &status.id);
+        return error(
+            &format!("cannot supervise repair cancellation: {message}"),
+            err,
+        );
+    }
+    let _ = writeln!(err, "Repair validation job {}", status.id);
+    loop {
+        if stopped.load(std::sync::atomic::Ordering::SeqCst) {
+            cancel_owned(&client, &status.id);
+            return ExitCode::from(130);
+        }
+        match call(
+            &client,
+            &Request::Result {
+                id: status.id.clone(),
+            },
+        ) {
+            Ok(Response::Result(document)) if document.job.state.terminal() => {
+                let Some(mut repair) = document.repair else {
+                    return error(
+                        document
+                            .job
+                            .error
+                            .as_deref()
+                            .unwrap_or("repair evidence unavailable"),
+                        err,
+                    );
+                };
+                // A job result carries the full phase once, as `result`; the
+                // standalone repair document carries it as `batch.full`.
+                repair.batch.full = document
+                    .result
+                    .and_then(|result| serde_json::from_value(result).ok());
+                if json {
+                    let _ = writeln!(
+                        out,
+                        "{}",
+                        serde_json::to_string(&repair).unwrap_or_default()
+                    );
+                } else {
+                    let _ = writeln!(
+                        out,
+                        "{}: repair {}; full evidence {}; {} compiler invocations; batched={}",
+                        status.id,
+                        if repair.accepted {
+                            "accepted"
+                        } else {
+                            "not accepted"
+                        },
+                        repair.batch.full.as_ref().map_or_else(
+                            || "unavailable".to_owned(),
+                            |full| format!("{:?}", full.currentness)
+                        ),
+                        repair.batch.compiler_invocations,
+                        repair.batch.batched
+                    );
+                }
+                if let Some(error) = &repair.batch.selection_error {
+                    let _ = writeln!(err, "error[{}]: {}", error.code, error.message);
+                }
+                if let Some(fault) = &repair.batch.engine_fault {
+                    // ADR 0027: the full report is an independent stock run.
+                    let _ = writeln!(err, "error[{}]: {}", fault.code, fault.message);
+                }
+                return ExitCode::from(u8::from(!repair.accepted));
+            }
+            Ok(Response::Result(_)) => std::thread::sleep(Duration::from_millis(100)),
+            Ok(_) => {
+                cancel_owned(&client, &status.id);
+                return error("unexpected repair response", err);
+            }
+            Err(message) => {
+                cancel_owned(&client, &status.id);
+                return error(&message, err);
+            }
+        }
+    }
+}
+
+// This foreground command owns precisely this submitted/coalesced request.
+// Best-effort cancellation uses the same bounded RPC; an unavailable endpoint
+// must not replace the original polling error with its cleanup error.
+fn cancel_owned(client: &Client, id: &str) {
+    let _ = call(
+        client,
+        &Request::Cancel {
+            id: id.to_owned(),
+            superseded: false,
+        },
+    );
+}
+
+pub(crate) fn worker(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    if args.first().map(String::as_str) != Some("--selection-json") {
+        return error("private repair worker requires a selection", err);
+    }
+    let Some(selection) = args
+        .get(1)
+        .and_then(|value| serde_json::from_str::<sail_api::repair::Selection>(value).ok())
+    else {
+        return error("invalid repair selection", err);
+    };
+    if let Err(message) = arguments::validate(&selection) {
+        return error(&message, err);
+    }
+    if std::env::var_os("SAIL_JOB_GUARD_PARENT").is_some_and(|v| v == "1") {
+        crate::portfolio::guard_parent();
+    }
+    let arguments = match arguments::worker_args(&selection, args.get(2..).unwrap_or_default()) {
+        Ok(arguments) => arguments,
+        Err(message) => return error(&message, err),
+    };
+    let config = match crate::managed_cli::config(arguments) {
+        Ok(config) => config,
+        Err(message) => return error(&message, err),
+    };
+    match sail_verus::engine::repair(&config, &selection.function, err) {
+        Ok(batch) => {
+            let code = batch
+                .full
+                .as_ref()
+                .and_then(|full| full.exit_code)
+                .and_then(|code| u8::try_from(code).ok())
+                .unwrap_or(2);
+            let document = sail_api::repair::ResultDocument::from(batch);
+            let _ = writeln!(
+                out,
+                "{}",
+                serde_json::to_string(&document).unwrap_or_default()
+            );
+            ExitCode::from(code)
+        }
+        Err(message) => error(&message.to_string(), err),
     }
 }
 

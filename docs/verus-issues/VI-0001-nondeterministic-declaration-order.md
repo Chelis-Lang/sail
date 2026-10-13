@@ -1,12 +1,20 @@
 # VI-0001: Nondeterministic SMT output from `arrow_*` accessor order
 
-- **Status:** open (tracked here; not filed upstream; see the README)
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order)
+  for direct `verus` runs, and by `af212563` (fix: declare enum arrow accessors in source order
+  in the verifier; first written as `1612b951` on `l21/determinism`) for `cargo verus` runs.
+  Both are in the pinned engine runtime, fork commit `13a1176c` (rescue L22).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08
 - **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
 - **Impact on sail:** caps warm cache hit rates. About 5% of fast-tier checks
   miss on an unchanged rerun, and buckets with any reordering re-solve from
-  the first difference.
+  the first difference. In edit loops (rescue L11) a reordered bucket
+  missed in 22 of 63 cycles. On human-eval-verus each costs about 2.7 s,
+  taking cycles from 4.8 s to 7.1 s. This is the largest avoidable
+  solver-side cost measured there
+  ([L11 report](../reports/rescue/l11-warm-sessions.md)).
 - **Workaround:** none needed for correctness (ADR 0008). An opt-in
   normalization mode would need charter rule 5's whole-corpus validation.
 
@@ -42,3 +50,76 @@ methods.
 **Reproduction:** run `verus --crate-type=lib examples/syntax.rs` several
 times with `VERUS_Z3_PATH` pointing at a wrapper that tees stdin, and compare
 the captured streams.
+
+## M7 source-engine controls (2026-10-10)
+
+The same ordering variation appears in `human_eval_160` for identical pinned
+human-eval source. Candidate `2459` retained its failed independent-stock raw
+comparison. Four fixed-order controls captured ordered VIR before preparation:
+`arrow_1, arrow_2` and `arrow_2, arrow_1` each produced their corresponding raw
+solver stream. A changed order missed the prepared cache; an actual hit agreed
+with fresh lowering for that order. See the retained
+[ordered controls](../validation/m7.md).
+These controls did not find a stale ordered-vector restore and do not qualify
+the candidate or establish cross-edit speedup.
+
+The owner's [ADR 0027 amendment](../decisions/0027-interactive-proof-engine-and-repair-workflow.md)
+requires the preparation byte oracle to compare cached and fresh lowering from
+the same compiler input. Independent stock verdict/diagnostic checks remain,
+and stock transcript instability must be reported. Default solver keys still
+bind actual bytes; Sail does not reorder declarations to hide this issue.
+
+## Sail fork
+
+Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
+`9a5b2cc8` (fix: generate enum arrow accessors in source order), one commit
+with its regression test
+`source/rust_verify_test/tests/sail_vi0001_accessor_order.rs`, which fails on
+the pinned stock source and passes on the fork. The accessors are generated in
+the order their fields first appear in the source, one of the orders stock can
+emit. The test checks the order of the `arrow_*` declarations in the AIR log;
+stock passes it by chance once in 5,040 runs.
+
+**Why `9a5b2cc8` was not enough (rescue L21, 2026-10-13).** Under
+`cargo verus`, Cargo builds `verus_builtin_macros` from the project's own
+dependency source: crates.io for user projects, and the pinned upstream
+checkout for Sail's corpus and repair workspaces. The fork's macro fix
+therefore reached only direct `verus FILE` runs, which use the fork's bundled
+macros. L18's `human_eval_160` variation, and Vest's `cbor::value` and
+`asn1::integer`, are this case. All three differ only in `arrow_*` order and
+in what follows from it (fuel lists, declarations, label numbering).
+
+On the fork's `sail` build (`d2b69aea`), 10 runs of each (8 for Vest on the
+fork's source):
+
+| How vstd and its macros resolve | `human_eval_160` | Vest buckets that vary |
+|---|---|---|
+| pinned upstream source (as Sail patches them) | 2 distinct streams | `cbor::value` (4 streams), `asn1::integer` (2) |
+| the fork's own source | 1 | none |
+
+`1612b951` (landed in the fork as `af212563`) fixes it in the verifier, so the macro's origin no longer matters.
+`translate_impl` recognises the impl that `enum_synthesize` generates by its
+shape (`arrow_<field>` items, then exactly the enum's `arrow_<Variant>_<field>`
+items in declaration order) and visits the `arrow_<field>` items in the order
+their fields first appear. That is the order the fork's macro emits. Other
+impls keep their written order. Its regression test,
+`source/rust_verify_test/tests/sail_vi0001_impl_accessor_order.rs`, writes the
+generated impl by hand in one of stock's orders. It fails on `d2b69aea` and
+passes with the fix.
+
+With the fix, 10 runs of each unit against the upstream source give one SMT
+stream. Every log file is byte-identical to the fork-source build's, and to a
+log that a run with stock's macros also produced. Direct runs of the fast tier are
+byte-identical with and without the fix. See the
+[L21 report](../reports/rescue/l21-determinism.md).
+
+**On the pinned runtime (rescue L22, 2026-10-13).** L18's changed-bucket
+count, repeated on a timers build of `13a1176c`, found no bucket whose SMT
+digest varied for identical input: 0 of 28 measured HumanEval samples and 0
+of 14 Vest samples, against 16 of 32 HumanEval samples and two varying Vest
+buckets on `89709da7` ([L22 report](../reports/rescue/l22-final-pin.md)).
+
+The fork builds only the optional interactive engine. Stock-mode workaround:
+Default `sail verify` runs stock Verus, so this variation (and its effect on
+warm cache hit rates) remains there; as before, no workaround is needed for
+correctness and Sail does not reorder declarations.

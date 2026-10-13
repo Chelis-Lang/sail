@@ -11,7 +11,10 @@ pub mod adapter;
 pub mod attribution;
 pub mod corpus;
 pub mod diagnostics;
+pub mod engine;
+mod engine_events;
 pub mod managed;
+mod parallel;
 pub mod patch;
 pub mod report;
 mod report_scope;
@@ -56,17 +59,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 ///
 /// `SAIL3001` if none of those variables is set.
 pub fn cache_dir() -> Result<std::path::PathBuf> {
-    let var = |name: &str| std::env::var_os(name).filter(|v| !v.is_empty());
-    if let Some(dir) = var("SAIL_CACHE_DIR") {
-        return Ok(dir.into());
-    }
-    var("XDG_CACHE_HOME")
-        .map(|d| std::path::PathBuf::from(d).join("sail"))
-        .or_else(|| var("HOME").map(|h| std::path::PathBuf::from(h).join(".cache").join("sail")))
-        .ok_or_else(|| {
-            Error::new(
-                "SAIL3001",
-                "none of SAIL_CACHE_DIR, XDG_CACHE_HOME or HOME is set",
-            )
-        })
+    sail_api::jobs::cache_directory().map_err(|_| {
+        Error::new(
+            "SAIL3001",
+            "none of SAIL_CACHE_DIR, XDG_CACHE_HOME or HOME is set",
+        )
+    })
 }
