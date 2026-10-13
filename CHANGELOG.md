@@ -5,6 +5,17 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail repair-check` no longer verifies vstd again for each new function.
+  Every repair function now shares one Cargo target with the other engine
+  runs of the same workspace and arguments, as plain `cargo verus` shares one
+  target directory (ADR 0036 amendment). On a native c7i.8xlarge a function's
+  first repair dropped from about 40 s to 6.5–8.9 s on HumanEval and from
+  about 61 s to 30 s on Vest. A dependency can now be reused on a receipt from
+  another repair function's run when its bytes and inputs are unchanged; the
+  result names that run. Selected targets still need their own receipt.
+  Old per-function targets under `repair-targets-v1/` are no longer used and
+  can be deleted.
+
 - A managed `sail verify` that ends in ordinary proof errors now keeps vstd
   and the other compiled dependencies, as plain `cargo verus verify` does.
   Previously the next run rebuilt every package with a build script and

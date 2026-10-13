@@ -18,19 +18,19 @@ are in the `archive/m7-contracts-f7103bf` tag.
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from
   the CLI, MCP or any agent session reuse it. A shared per-toolchain vstd is a
   deferred follow-up. [L16 report](reports/rescue/l16-first-contact-vstd.md).
-- **Each proof context verifies vstd once in its own target.** That is about
-  30 s on HumanEval for each of these:
-  - stock `sail verify`;
-  - `sail verify --engine interactive`;
-  - the first `repair-check` of *each* function. A repair keeps a separate
-    Cargo target for each selected function (ADR 0036). On HumanEval, the
-    first repair of `compute_gcd` took 35.1 s; its second took 6.1 s; the
-    first repair of `concatenate_impl` after both took 35.1 s again.
-
-  The repair benchmark's warm-ups hide this cost. Sharing vstd between
-  repair functions needs its own decision, because proof receipts are never
-  shared between contexts.
-  [L19 report](reports/rescue/l19-vstd-reverify.md).
+- **Stock and engine runs each verify vstd once in their own target.** That
+  is about 30 s on HumanEval for the first stock `sail verify` and again for
+  the first engine run (`sail verify --engine interactive` or
+  `repair-check`), because their compilers differ. Repair functions share
+  one target, so a new function no longer verifies vstd again.
+  [L19 report](reports/rescue/l19-vstd-reverify.md),
+  [L23 report](reports/rescue/l23-repair-target-and-vest.md).
+- **An engine verify after a repair re-verifies the selected crate.** A repair
+  rebuilds the selected crate in the shared target, so a later
+  `sail verify --engine interactive` with the same arguments and unchanged
+  source verifies that crate again (HumanEval 6.2 s instead of 0.6 s, Vest
+  27.5 s instead of 1.8 s). Why the rebuilt bytes differ was not
+  investigated. [L23 report](reports/rescue/l23-repair-target-and-vest.md).
 - **Repair selectors lose compiler-declared input coverage.** A warmup can
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and

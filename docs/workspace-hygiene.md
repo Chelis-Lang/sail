@@ -6,11 +6,11 @@ Managed runs (`sail verify --incremental`, jobs, MCP and repairs) build in
 their own Cargo targets under the Sail cache:
 
 - `projects/<workspace-key>/compiler-artifacts/<family-key>/target/` holds the
-  compiled dependencies and targets, shared by ordinary and full-engine runs
-  of one configuration;
-- `compiler-artifacts/<family-key>/repair-targets-v1/<proof-context>/` holds a
-  separate target for each repaired function, so each selected function pays
-  its own first build and can duplicate dependency artifacts;
+  compiled dependencies and targets, shared by every run of one configuration,
+  including every repaired function;
+- `compiler-artifacts/<family-key>/repair-targets-v1/` is no longer used.
+  Caches from before 2026-10-13 may still hold one target per repaired
+  function there; deleting it is safe;
 - `projects/<workspace-key>/<proof-context>/` holds proof receipts and run
   records.
 

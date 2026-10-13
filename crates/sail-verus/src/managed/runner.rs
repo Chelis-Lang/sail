@@ -56,6 +56,10 @@ struct Paths {
     build_inputs: PathBuf,
     input_state: PathBuf,
     compiler_inputs: PathBuf,
+    /// One empty file per proof context of this compiler family.
+    family_contexts: PathBuf,
+    /// The workspace's directory of proof contexts.
+    projects: PathBuf,
 }
 
 fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
@@ -427,9 +431,11 @@ fn same_file(original: &Path, path: &Path) -> bool {
     }
 }
 
+/// Exclusive use of one compiler family: its shared Cargo target and every
+/// proof context in it. A proof context determines its family, so this one
+/// owner also serialises each context's receipts and run records.
 struct Ownership {
-    _context: File,
-    _compiler: File,
+    _family: File,
 }
 
 fn ownership_lock(directory: &Path) -> Result<File> {
@@ -474,7 +480,6 @@ fn prepare(
     hash: &str,
     compiler_hash: &str,
     run_id: &str,
-    engine: Option<&crate::engine::Request>,
 ) -> Result<(Paths, Ownership)> {
     let root = config
         .cache
@@ -482,48 +487,42 @@ fn prepare(
         .join(digest(workspace.as_os_str().as_encoded_bytes()));
     let context = root.join(hash);
     let compiler = root.join("compiler-artifacts").join(compiler_hash);
-    // Both owners survive clean, invocation and receipt publication. Different
-    // focus contexts cannot concurrently clean or modify the shared target.
-    // Acquisition is nonblocking, always context then compiler, with no reverse
-    // edge or change to the caller's deadline.
+    // One Cargo target per workspace and compiler identity, as plain `cargo
+    // verus` shares one target directory: repair functions and full runs of
+    // the same compiler invocation share build products, and Cargo's own
+    // fingerprints decide rebuilds. Proof receipts stay per proof context. The
+    // owner survives clean, invocation and receipt publication.
     let ownership = Ownership {
-        _context: ownership_lock(&context)?,
-        _compiler: ownership_lock(&compiler)?,
-    };
-    // A repair selector keeps its certified dependency bytes alive when another
-    // selector verifies the same family. Ordinary and full-engine calls retain
-    // their existing shared target; proof keys and family ownership are unchanged.
-    let repair = engine.is_some_and(|request| request.function.is_some());
-    let generation = if repair {
-        compiler.join("repair-targets-v1").join(hash)
-    } else {
-        compiler.clone()
-    };
-    let observations = if repair {
-        context.join("repair-observations-v1")
-    } else {
-        context.clone()
+        _family: ownership_lock(&compiler)?,
     };
     let paths = Paths {
-        target: generation.join("target"),
+        target: compiler.join("target"),
         cargo_alias: compiler.join("sail-cargo"),
         proxy_alias: compiler.join("sail-verus-driver"),
         receipts: context.join("receipts"),
         runtime: context.join("runtime.json"),
-        build_inputs: observations.join("build-inputs.json"),
+        build_inputs: context.join("build-inputs.json"),
         input_state: context.join("input-state.json"),
-        compiler_inputs: generation.join("build-inputs.json"),
+        compiler_inputs: compiler.join("build-inputs.json"),
         run: context.join("runs").join(run_id),
+        family_contexts: compiler.join("contexts"),
+        projects: root,
     };
     for dir in [
-        &observations,
         &paths.receipts,
         &paths.run,
         &paths.run.join("invocations"),
         &paths.run.join("sidecars"),
         &paths.run.join("pending-receipts"),
+        &paths.family_contexts,
     ] {
         std::fs::create_dir_all(dir).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    }
+    // Registers this proof context in its family, so that a sibling context
+    // can find its dependency receipts (`sibling_receipt`).
+    let member = paths.family_contexts.join(hash);
+    if !member.is_file() {
+        std::fs::write(&member, []).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     }
     alias(&config.sail, &paths.cargo_alias)?;
     alias(&config.sail, &paths.proxy_alias)?;
@@ -830,6 +829,24 @@ fn receipt_path(paths: &Paths, package: &str, name: &str, kind: &[String]) -> Pa
     ))
 }
 
+/// The receipt directories of the other proof contexts in this compiler
+/// family, in a stable order. Each receipt still binds its own context.
+fn sibling_receipts(paths: &Paths, context: &str) -> Vec<(String, PathBuf)> {
+    let mut siblings: Vec<(String, PathBuf)> = std::fs::read_dir(&paths.family_contexts)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| name != context && !name.starts_with('.'))
+        .map(|name| {
+            let receipts = paths.projects.join(&name).join("receipts");
+            (name, receipts)
+        })
+        .collect();
+    siblings.sort();
+    siblings
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "Receipt matching is kept alongside the observed Cargo target that authorizes reuse."
@@ -844,6 +861,7 @@ fn target_records(
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
     let calls = invocations(paths);
+    let siblings = sibling_receipts(paths, context);
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
     let declared = super::environment::values(&super::environment::declared_names(&paths.target));
@@ -944,8 +962,8 @@ fn target_records(
                 complete: call.success && complete(&call.report),
                 report: call.report.clone(),
             });
-        } else if let Some(receipt) = read::<Receipt>(&path).filter(|r| {
-            let mut observed: Vec<PathBuf> = artifact["filenames"]
+        } else if let Some(receipt) = {
+            let mut observed: BTreeSet<PathBuf> = artifact["filenames"]
                 .as_array()
                 .into_iter()
                 .flatten()
@@ -959,24 +977,41 @@ fn target_records(
                     .map(|p| p.with_extension("vir"))
                     .filter(|p| p.is_file()),
             );
-            artifact["fresh"] == true
-                && !force
-                && !input_revision.is_empty()
-                && r.input_revision == input_revision
-                && r.package_id == package_id
-                && r.invocation.identity.manifest
-                    == Path::new(package["manifest_path"].as_str().unwrap_or_default())
-                && r.invocation.identity.name == name.replace('-', "_")
-                && kind.iter().any(|k| {
-                    k == &r.invocation.identity.crate_type
-                        || (k == "lib" && r.invocation.identity.crate_type == "rlib")
+            let matches = |r: &Receipt, context: &str| {
+                artifact["fresh"] == true
+                    && !force
+                    && !input_revision.is_empty()
+                    && r.input_revision == input_revision
+                    && r.package_id == package_id
+                    && r.invocation.identity.manifest
+                        == Path::new(package["manifest_path"].as_str().unwrap_or_default())
+                    && r.invocation.identity.name == name.replace('-', "_")
+                    && kind.iter().any(|k| {
+                        k == &r.invocation.identity.crate_type
+                            || (k == "lib" && r.invocation.identity.crate_type == "rlib")
+                    })
+                    && r.name == name
+                    && r.kind == kind
+                    && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>() == observed
+                    && r.valid(context)
+            };
+            read::<Receipt>(&path)
+                .filter(|r| matches(r, context))
+                .or_else(|| {
+                    // A dependency's full verification does not depend on
+                    // which function a repair selects, so a sibling context
+                    // of this compiler family may have established exactly
+                    // these artifact bytes. The selected targets always need
+                    // a receipt of their own proof context.
+                    if requested {
+                        return None;
+                    }
+                    let file = path.file_name()?;
+                    siblings.iter().find_map(|(sibling, receipts)| {
+                        read::<Receipt>(&receipts.join(file)).filter(|r| matches(r, sibling))
+                    })
                 })
-                && r.name == name
-                && r.kind == kind
-                && r.artifact_hashes.keys().cloned().collect::<BTreeSet<_>>()
-                    == observed.into_iter().collect()
-                && r.valid(context)
-        }) {
+        } {
             event(
                 &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.run_id}),
             );
@@ -1445,14 +1480,7 @@ pub(crate) fn run_engine(
             .map_or(0, |d| d.as_nanos())
     );
     let inputs = diagnostics.phase(Phase::Inputs);
-    let (paths, _ownership) = prepare(
-        config,
-        &workspace_root,
-        &hash,
-        &compiler_hash,
-        &run_id,
-        engine.as_ref(),
-    )?;
+    let (paths, _ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
@@ -1946,7 +1974,7 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("sail-compiler-family-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
-        let (selected, ownership) = prepare(&config, &root, "selected", "compiler", "first", None)?;
+        let (selected, ownership) = prepare(&config, &root, "selected", "compiler", "first")?;
         std::fs::create_dir_all(&selected.target)?;
         let dependency = selected.target.join("ordinary-dependency.rlib");
         std::fs::write(&dependency, "ordinary dependency")?;
@@ -1955,7 +1983,7 @@ mod tests {
             let config = config.clone();
             let root = root.clone();
             move || {
-                prepare(&config, &root, "waiting", "compiler", "second", None)
+                prepare(&config, &root, "waiting", "compiler", "second")
                     .map(|(_, ownership)| drop(ownership))
                     .map_err(|e| e.code)
             }
@@ -1965,7 +1993,7 @@ mod tests {
         drop(ownership);
         assert_eq!(waiting.join().map_err(|_| "waiter panicked")?, Ok(()));
         // Failed family acquisition must also release the new proof-context lock.
-        let (missing, ownership) = prepare(&config, &root, "missing", "compiler", "second", None)?;
+        let (missing, ownership) = prepare(&config, &root, "missing", "compiler", "second")?;
         assert_eq!(selected.target, missing.target);
         assert_eq!(selected.cargo_alias, missing.cargo_alias);
         assert_eq!(selected.proxy_alias, missing.proxy_alias);
@@ -1975,7 +2003,7 @@ mod tests {
         assert_ne!(selected.run, missing.run);
         assert_ne!(selected.build_inputs, missing.build_inputs);
         let (isolated, isolated_owner) =
-            prepare(&config, &root, "different", "different", "third", None)?;
+            prepare(&config, &root, "different", "different", "third")?;
         assert_ne!(missing.target, isolated.target);
         drop(isolated_owner);
         drop(ownership);
@@ -2037,20 +2065,20 @@ mod tests {
             assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
             Ok(())
         };
-        let (_, ownership) = prepare(&config, &root, "context", "compiler", "run", None)?;
+        let (_, ownership) = prepare(&config, &root, "context", "compiler", "run")?;
         probe(true)?;
         drop(ownership);
         probe(false)?;
         let mut broken = config.clone();
         broken.sail = root.join("missing-executable");
-        assert!(prepare(&broken, &root, "context", "compiler", "error", None).is_err());
+        assert!(prepare(&broken, &root, "context", "compiler", "error").is_err());
         let outcome = std::panic::catch_unwind(|| {
-            let owner = prepare(&config, &root, "context", "compiler", "unwind", None);
+            let owner = prepare(&config, &root, "context", "compiler", "unwind");
             assert!(owner.is_ok());
             std::panic::resume_unwind(Box::new("controlled ownership unwind"));
         });
         assert!(outcome.is_err());
-        let (_, ownership) = prepare(&config, &root, "context", "compiler", "after", None)?;
+        let (_, ownership) = prepare(&config, &root, "context", "compiler", "after")?;
         drop(ownership);
         probe(false)?;
         std::fs::remove_dir_all(root)?;
@@ -2119,7 +2147,7 @@ mod tests {
                 std::process::id()
             ));
             let config = compiler_fixture(&root)?;
-            let (paths, ownership) = prepare(&config, &root, "negative", "compiler", "run", None)?;
+            let (paths, ownership) = prepare(&config, &root, "negative", "compiler", "run")?;
             let data = serde_json::json!({"packages":[{
                 "id":"input", "name":"input", "manifest_path":root.join("Cargo.toml")
             }]});
@@ -2599,7 +2627,7 @@ mod tests {
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-compiler-proof-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
-        let (paths, ownership) = prepare(&config, &root, "missing", "compiler", "run", None)?;
+        let (paths, ownership) = prepare(&config, &root, "missing", "compiler", "run")?;
         std::fs::write(
             root.join("Cargo.toml"),
             "[package]\nname='input'\nversion='0.1.0'\n",
@@ -2993,7 +3021,7 @@ mod tests {
         assert_eq!(selected_closure(&data, &BTreeSet::new()), None);
         let root = std::env::temp_dir().join(format!("sail-scope-units-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
-        let (paths, ownership) = prepare(&config, &root, "scope", "compiler", "run", None)?;
+        let (paths, ownership) = prepare(&config, &root, "scope", "compiler", "run")?;
         let unit = |reason: &str, id: &str| {
             serde_json::json!({"reason": reason, "package_id": id}).to_string() + "\n"
         };

@@ -64,12 +64,13 @@ then independently checks the full requested target in the engine's compiler
 batch. It does not change what existing `verify --function` means. Additional
 scope filters are rejected because they would defeat full validation.
 
-The repair-artifact isolation candidate gives each exact selector its own
-dependency build generation. Initial setup can compile dependencies again and
-uses additional cache space, but another selector cannot overwrite the artifact
-bytes tied to that selector's proof receipts. Stock and full-engine calls retain
-their existing shared compiler-family target. This source change is not yet
-native-qualified; see the [candidate and validation requirements](validation/m7.md).
+Every repair function shares one Cargo target with the other engine runs of
+the same workspace and arguments, as plain `cargo verus` shares one target
+directory. Repairing a new function therefore does not compile or verify vstd
+again: on a native c7i.8xlarge a function's first repair takes about as long as
+its second (HumanEval about 6.5 s, Vest about 30 s). The selected crate is
+always verified fresh. See the
+[ADR 0036 amendment](decisions/0036-managed-compiler-artifact-families.md#amendment-2026-10-13-rescue-l23-one-cargo-target-per-compiler-family).
 
 The version-one repair bundle retains separate `batch.focus` and `batch.full`
 project results, engine manifest identity and actual compiler-invocation count.

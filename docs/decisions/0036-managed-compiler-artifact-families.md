@@ -1,6 +1,6 @@
 # 0036: Managed compiler artifact families
 
-- **Status:** implemented; its guarded build-script bootstrap is superseded by 0041
+- **Status:** implemented; its guarded build-script bootstrap is superseded by 0041, and its per-repair-function targets by the L23 amendment below
 - **Date:** 2026-10-11
 
 ## Context
@@ -263,3 +263,66 @@ first/reused/rebuilt journals and subsequent original input-barrier readiness.
 They remain uncompiled and unexecuted at source freeze. Product and unchanged
 benchmark recovery are pending; see the
 [source record](../validation/m7.md).
+
+## Amendment (2026-10-13, rescue L23): one Cargo target per compiler family
+
+This supersedes the per-repair-function target generations, the separate
+`repair-observations-v1` namespace and the two-lock ownership above.
+
+**Why.** With a target per repair function, the first `repair-check` of each
+new function verified vstd again. On a native c7i.8xlarge, a function's first
+repair took 40.7 s and 38.2 s on HumanEval (6.4 s and 6.5 s for its second),
+and 61.4 s and 61.9 s on Vest (29.4 s and 29.8 s). An agent repairing *n*
+functions paid about *n* × 32 s. The separation was introduced because the
+VI-0005 fork fix bound forwarded Verus arguments, including the repair
+function, into each crate's dep-info, so one function's run rewrote another's
+vstd. That fork fix was dropped (ADR 0039, VI-0005); on the current pin vstd's
+dep-info declares only `VERUSDOC`, and the function no longer reaches any
+Cargo fingerprint. L23 checked this: the second function's repair found vstd
+fresh in the shared target.
+
+**Decision.**
+
+- **One target per workspace and compiler identity.** Every proof context of
+  a compiler family builds in `compiler-artifacts/<family>/target`, as plain
+  `cargo verus` shares one target directory. That covers every repair
+  function, and full engine runs whose arguments are otherwise identical.
+  Cargo's own fingerprints decide what is rebuilt, as in plain Cargo (rule 1).
+  Arguments that change results, such as `--rlimit`, are in the family digest
+  and therefore get their own target.
+- **One owner.** The family lock serialises every use of the target. A proof
+  context determines its family, so the same lock also serialises each
+  context's receipts and runs; the separate context lock is removed.
+- **Receipts stay per proof context**, with one addition. A dependency (a
+  target the run did not select) that Cargo reports fresh may be accepted on
+  a receipt from another proof context of the same family. That receipt must
+  pass every existing check, including its own context's commit marker, the
+  input revision, the declared environment and the current bytes of every
+  artifact. A dependency's full verification does not depend on which
+  function a repair selects. The family records its contexts as empty files
+  under `compiler-artifacts/<family>/contexts/`; only those are consulted.
+  The reused target keeps the establishing run's id as provenance (rule 7).
+- **Selected targets** still need a receipt of their own proof context.
+  Repairs force them fresh, as before.
+- Build-script observations and the family export keep their existing rules;
+  the observations live directly in the proof context again.
+
+**Consequences.**
+
+- A function's first repair takes about as long as its second: HumanEval
+  8.9 s and 6.5 s (after one engine verify of the same family), Vest 29.6 s
+  and 29.8 s. Each first repair used one driver and was Current.
+- One target per family uses less disk than one per function.
+- A repair rebuilds the selected crate in the shared target. A later
+  unfunctioned engine verify of the same family, with unchanged source,
+  therefore verifies that crate again instead of reusing its receipt
+  (HumanEval 6.2 s against 0.6 s, Vest 27.5 s against 1.8 s). After an edit
+  it would verify the crate in either layout.
+- If a repair function ever reaches a dependency's build again, Cargo rebuilds
+  the dependency, its new bytes invalidate every older receipt, and the cost
+  is a re-verification, never a wrong reuse.
+- Existing `repair-targets-v1` and `repair-observations-v1` directories are
+  no longer read; deleting `projects/` reclaims them
+  ([workspace hygiene](../workspace-hygiene.md)).
+
+[L23 report](../reports/rescue/l23-repair-target-and-vest.md).

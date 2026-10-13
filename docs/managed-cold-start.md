@@ -17,11 +17,13 @@ toolchain (Verus, Cargo, rustc, Z3, Sail, the sysroot libraries) changes;
 installed files are identified by device, inode, size and modification time,
 so reinstalling or rebuilding any of them makes the next run fresh.
 
-Ordinary Cargo dependencies are shared by contexts that differ only in the
-repair function selected ([ADR 0036](decisions/0036-managed-compiler-artifact-families.md));
-proof receipts are never shared between contexts. Cargo reporting a target as
-`fresh` is never enough: only an intact receipt for the exact context and
-inputs skips verification.
+Contexts that differ only in the repair function selected share one Cargo
+target ([ADR 0036](decisions/0036-managed-compiler-artifact-families.md)), so
+a new repair function does not verify vstd again. Cargo reporting a target as
+`fresh` is never enough on its own: a selected target is skipped only on an
+intact receipt for the exact context and inputs. A dependency may also be
+skipped on an intact receipt from another context of the same target that
+covers its current bytes and inputs; the result names that receipt's run.
 
 A run that ends in ordinary proof errors keeps vstd and the other compiled
 dependencies, as plain `cargo verus verify` does, so the passing run after a
@@ -34,7 +36,8 @@ so the failing crate itself is always verified again.
 
 ## Concurrent runs
 
-Two managed runs of the same workspace and context share a Cargo target. The
+Two managed runs that share a Cargo target (the same workspace and
+arguments, whatever the repair function) are serialised. The
 second waits for the first to finish (polling every 50 ms), for up to
 `SAIL_MANAGED_LOCK_WAIT_SECS` seconds (default 1,800), and then fails with
 `SAIL3104`. The daemon also queues jobs of one workspace behind each other.
