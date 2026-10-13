@@ -64,8 +64,12 @@ Cargo metadata or hash verifier binaries every poll. Newly reported external
 build inputs and inherited configuration are added to monitoring after a run.
 
 MCP gains asynchronous start/status/result/cancel tools. Default blocking verify
-uses a forced-fresh job and preserves its report-v1 response, selecting only
-requested fresh targets. Explicit solver experiments retain their existing
+uses an ordinary managed job and preserves its report-v1 response from the
+requested targets. (Amended 2026-10-12, rescue L16: the job was originally
+forced fresh so that Cargo's unchanged-target shortcut could not yield an empty
+report. Reused targets now carry their establishing run's complete report, so
+the force only re-verified unchanged code, about 7 s per call on
+human-eval-verus. The summary names the establishing run of each reused report.) Explicit solver experiments retain their existing
 paths. Cached-result and counterexample tools inspect completed jobs while a
 newer job runs; older local-only snapshots are historical evidence with unknown
 complete-context freshness.

@@ -209,7 +209,7 @@ pub fn run() -> ExitCode {
     };
     let (Some(child_in), Some(child_out)) = (child.stdin.take(), child.stdout.take()) else {
         let _ = child.kill();
-        return setup_error("SAIL2005", "solver started without piped stdio");
+        return setup_error("SAIL2004", "solver started without piped stdio");
     };
 
     let overflowed = Arc::new(AtomicBool::new(false));
@@ -279,7 +279,7 @@ pub fn run() -> ExitCode {
     let (code, exit) = match status {
         Ok(status) => status_code(status),
         Err(e) => {
-            eprintln!("error[SAIL2006]: sail-z3: lost track of the solver process: {e}");
+            eprintln!("error[SAIL2004]: sail-z3: lost track of the solver process: {e}");
             (None, 1)
         }
     };

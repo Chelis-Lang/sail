@@ -4,6 +4,7 @@
 //! fragility measurement and local benchmark commands.
 #![forbid(unsafe_code)]
 
+mod engine_cli;
 mod fragility;
 mod fragility_join;
 mod jobs;
@@ -29,6 +30,14 @@ const COMMANDS: &[(&str, &str)] = &[
     (
         "verify",
         "verify a crate; accepts the same arguments as `cargo verus verify`",
+    ),
+    (
+        "repair-check",
+        "focus a repair, then independently validate its full target",
+    ),
+    (
+        "engine",
+        "install or inspect the optional interactive engine",
     ),
     ("explain", "show exact failure evidence from a retained job"),
     (
@@ -63,7 +72,7 @@ fn usage() -> String {
     for (name, help) in COMMANDS {
         let _ = writeln!(text, "    {name:<10} {help}");
     }
-    text.push_str("\nVERIFY OPTIONS (before --):\n    --output json\n    --incremental\n    --background\n    --measure-fragility [--fragility-seeds N]\n    --portfolio accept-first-proof [--portfolio-seeds 1,2,...]\n    --portfolio-timeout-secs N\n");
+    text.push_str("\nVERIFY OPTIONS (before --):\n    --output json\n    --incremental\n    --background\n    --engine stock|interactive\n    --measure-fragility [--fragility-seeds N]\n    --portfolio accept-first-proof [--portfolio-seeds 1,2,...]\n    --portfolio-timeout-secs N\n");
     text
 }
 
@@ -87,6 +96,9 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
         Some("_portfolio-attempt") => {
             verify::portfolio_attempt(args.get(1..).unwrap_or_default(), out, err)
         }
+        Some("engine") => engine_cli::run(&args[1..], out, err),
+        Some("repair-check") => product_cli::repair(&args[1..], out, err),
+        Some("_repair-worker") => product_cli::worker(&args[1..], out, err),
         Some("explain" | "baseline" | "compare") => product_cli::evidence(args, out, err),
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), out, err),
         Some("jobs") => jobs::run(args.get(1..).unwrap_or_default(), out, err),
@@ -151,7 +163,7 @@ fn mcp(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         cwd,
     };
     let stdin = std::io::stdin();
-    match sail_mcp::serve(config, stdin.lock(), std::io::stdout()) {
+    match sail_mcp::serve_with_job_clients(config, stdin.lock(), std::io::stdout()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             let _ = writeln!(err, "error[SAIL0302]: sail mcp: cannot read stdin: {e}");
@@ -160,13 +172,10 @@ fn mcp(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
     }
 }
 
-/// The default daemon socket: `<cache>/daemon-v<protocol>-workspace-v1.sock`, so clients
+/// The default daemon socket: `<cache>/daemon-v<protocol>-workspace-v2-proof-v1.sock`, so clients
 /// of one protocol version never reach a daemon of another.
 pub(crate) fn default_socket(cache: &std::path::Path) -> std::path::PathBuf {
-    cache.join(format!(
-        "daemon-v{}-workspace-v1.sock",
-        sail_api::protocol::PROTOCOL_VERSION
-    ))
+    sail_api::jobs::default_cache_socket(cache)
 }
 
 /// Reads a whole number from the environment variable `name`.
@@ -185,7 +194,7 @@ fn env_number(name: &str) -> Result<Option<u64>, String> {
 /// `sail serve [--socket PATH] [--cache DIR] [--memory-bytes N]
 /// [--idle-timeout SECS] [--shared DIR] [--shared-timeout-ms MS]`, which runs the
 /// daemon in the foreground (ADR 0011, ADR 0015). Defaults:
-/// `<cache>/daemon-v<N>-workspace-v1.sock` and `<cache>/results`, where `<cache>` is
+/// `<cache>/daemon-v<N>-workspace-v2-proof-v1.sock` and `<cache>/results`, where `<cache>` is
 /// `$SAIL_CACHE_DIR` or `~/.cache/sail`; a 256 MiB memory tier
 /// (`$SAIL_DAEMON_MEMORY_BYTES`); a 30-minute idle timeout
 /// (`$SAIL_DAEMON_IDLE_TIMEOUT`, seconds, 0 for never); no shared tier

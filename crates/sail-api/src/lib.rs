@@ -15,6 +15,7 @@ pub mod policy;
 pub mod project;
 pub mod proof;
 pub mod protocol;
+pub mod repair;
 pub mod schema;
 
 #[cfg(unix)]

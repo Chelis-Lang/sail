@@ -7,7 +7,8 @@
 //! It starts `<sail> mcp`, sends `initialize`, `notifications/initialized`,
 //! `tools/list` and `tools/call verify {"project_dir": <project-dir>}`, then
 //! closes stdin. It checks that:
-//! - the handshake succeeds and all compatibility, job and proof-evidence tools are listed;
+//! - the handshake succeeds and `tools/list` is exactly this build's fifteen
+//!   compatibility, job and proof tools, with their key input contracts;
 //! - the call succeeds and returns a schema-v1 report;
 //! - every function's verdict and tier equal those in `<sail.json>` (the
 //!   stdout of `sail verify --output json` on the same project), with the
@@ -64,6 +65,66 @@ fn exchange(sail: &str, project: &str) -> Result<Vec<Value>, String> {
     Ok(out)
 }
 
+const TOOL_NAMES: [&str; 15] = [
+    "verify",
+    "counterexample",
+    "cached_result",
+    "fragility",
+    "start_verification",
+    "verification_status",
+    "verification_result",
+    "cancel_verification",
+    "verification_events",
+    "explain_failure",
+    "compare_verification",
+    "save_baseline",
+    "list_baselines",
+    "get_baseline",
+    "start_repair_validation",
+];
+
+/// The installed `sail mcp` must list exactly the tools this build defines,
+/// and those keep the contract properties agents rely on.
+fn check_tools(value: &Value) -> Result<(), String> {
+    let tools = value
+        .as_array()
+        .ok_or("tools/list did not return an array")?;
+    let names = tools
+        .iter()
+        .map(|tool| tool["name"].as_str().ok_or("tool has no string name"))
+        .collect::<Result<Vec<_>, _>>()?;
+    if names != TOOL_NAMES {
+        return Err(format!("unexpected tools: {names:?}"));
+    }
+    if *value != sail_mcp::tools::definitions() {
+        return Err("tools/list differs from this build's tool definitions".to_owned());
+    }
+    let schema = |index: usize| &tools[index]["inputSchema"];
+    let required = [
+        (
+            9,
+            json!(["job_id", "package_id", "target", "kind", "function"]),
+        ),
+        (11, json!(["job_id", "name"])),
+        (14, json!(["package", "kind", "function", "engine"])),
+    ];
+    for (index, fields) in required {
+        if schema(index)["required"] != fields {
+            return Err(format!("{} must require {fields}", TOOL_NAMES[index]));
+        }
+    }
+    if schema(8)["properties"]["after"]["minimum"] != json!(0) {
+        return Err("verification_events cursors must be non-negative".to_owned());
+    }
+    if schema(4)["properties"]["engine"]["enum"] != json!(["stock", "interactive"]) {
+        return Err(
+            "start_verification must declare stock and explicit interactive engine modes"
+                .to_owned(),
+        );
+    }
+    Ok(())
+}
+
 fn check(args: &[String]) -> Result<String, String> {
     let [sail, project, expected, out] = args else {
         return Err("usage: check_mcp <sail> <project-dir> <sail.json> <out.json>".to_owned());
@@ -79,33 +140,7 @@ fn check(args: &[String]) -> Result<String, String> {
     if response(1)?["result"]["serverInfo"]["name"] != "sail" {
         return Err(format!("bad initialize response: {}", response(1)?));
     }
-    let tools = response(2)?;
-    let names: Vec<&str> = tools["result"]["tools"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|t| t["name"].as_str())
-        .collect();
-    if names
-        != [
-            "verify",
-            "counterexample",
-            "cached_result",
-            "fragility",
-            "start_verification",
-            "verification_status",
-            "verification_result",
-            "cancel_verification",
-            "verification_events",
-            "explain_failure",
-            "compare_verification",
-            "save_baseline",
-            "list_baselines",
-            "get_baseline",
-        ]
-    {
-        return Err(format!("unexpected tools: {names:?}"));
-    }
+    check_tools(&response(2)?["result"]["tools"])?;
     let call = response(3)?;
     let result = &call["result"];
     if result["isError"] != false {
@@ -146,5 +181,36 @@ fn main() -> ExitCode {
             eprintln!("check_mcp: {e}");
             ExitCode::FAILURE
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shipped_tools_match_the_public_contract() {
+        assert!(check_tools(&sail_mcp::tools::definitions()).is_ok());
+    }
+
+    #[test]
+    fn extra_missing_nameless_or_changed_tools_are_rejected() {
+        let original = sail_mcp::tools::definitions();
+        let mut extra = original.clone();
+        if let Some(tools) = extra.as_array_mut() {
+            tools.push(json!({"name":"unexpected_tool"}));
+        }
+        assert!(check_tools(&extra).is_err());
+        let mut missing = original.clone();
+        if let Some(tools) = missing.as_array_mut() {
+            tools.pop();
+        }
+        assert!(check_tools(&missing).is_err());
+        let mut nameless = original.clone();
+        nameless[8]["name"] = Value::Null;
+        assert!(check_tools(&nameless).is_err());
+        let mut changed = original;
+        changed[12]["inputSchema"]["properties"]["project_dir"] = json!({"type":"string"});
+        assert!(check_tools(&changed).is_err());
     }
 }

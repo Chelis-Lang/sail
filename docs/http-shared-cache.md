@@ -173,7 +173,8 @@ cannot publish its completed client afterward. Completed owners are joined; an
 unfinished blocking constructor is not joined on the bounded serving or shutdown
 path. There is at most one setup owner per daemon and no overlapping constructor
 retries. Failed construction retains the existing five-second reload cadence.
-A cold first-fetch miss in the whole-session replay test motivated this change.
+The [whole-session replay investigation](validation/m7.md)
+records the cold first-fetch failure that motivated this change.
 Credential reload still invalidates old backoff and negative-cache state before
 using the new configuration. Missing entries are
 negative-cached for 60 seconds. Authentication errors, throttling, server errors,
@@ -232,7 +233,9 @@ same strict signature verification and all negative trust/binding checks run on
 every entry. This removes measured unoptimized arithmetic work from the serving
 budget; the 250 ms deadline and 75 ms delayed-server assertions remain unchanged.
 CPU and wall-time evidence, including the original failed established-transport
-test, is retained in the `archive/m7-contracts-f7103bf` tag. It is a development-build
+test, is retained in
+[M7 validation](validation/m7.md) (full record in the `archive/m7-contracts-f7103bf`
+tag). It is a development-build
 improvement, not a production-release speedup or an attribution of every earlier
 wall-time delay to cryptography.
 
@@ -244,26 +247,19 @@ the assertion. HTTP lookup phase diagnostics retain the original signed-entry
 checks and 75 ms response fixture; isolated CPU and TCP controls are diagnostic
 evidence, not substitutes for the complete concurrent lookup checks.
 
-The retained HTTP follow-up in that tag records a
+[The retained HTTP follow-up](validation/m7.md) records a
 negative small-response TCP control and a fixed strict-signature CPU control.
 Neither establishes the cause of the preserved full-gate failures.
 
-## Validation
+## Current integration evidence
 
-Every HTTP control keeps the 250 ms lookup bound and every trust check. During
-M7 development, complete workspace gates run under x86 emulation on an arm64
-Mac intermittently failed HTTP elapsed and serving checks at that bound. Their
-cause was never established. Those records are preserved in the
-`archive/m7-contracts-f7103bf` tag.
-
-On a native x86-64 Linux host (EC2 c7i.4xlarge, us-east-1, 2026-10-12), the
-change that introduced this section passed the complete workspace gate
-(359/359 tests), the pinned-solver suite (36/36), all end-to-end phases and the
-PR conformance subset (33/33 Same in pass-through, cache fill and cache warm).
-Those runs establish no performance or remote-deployment qualification.
-
-An unavailable or slow shared store still falls back to local verification.
-No timeout, unsigned reply or diagnostic timing authorizes a cached proof.
+Local HTTP controls and signature regressions retain the same 250 ms lookup
+bound and every trust check. The latest `749255e` full workspace attempt failed
+two HTTP elapsed/serving cases; separate passing frozen controls do not qualify
+the complete gate. [The phase record](validation/m7.md)
+separates those facts and retains the unresolved cause. An unavailable or slow
+shared store still falls back to local verification; no timeout, unsigned reply
+or diagnostic timing authorizes a cached proof.
 
 ### Rejected transport adapter experiment
 
@@ -272,10 +268,20 @@ candidate passed 39 affected security and lifecycle controls, including the
 unchanged eight-reader, one-GET fixture. Its once-only complete-operation
 comparison was slower: combined helper and I/O CPU rose from 66.264 ms to
 84.160 ms, and lookup-to-publication wall time rose from 185.680 ms to
-222.422 ms. The smaller body-adapter cost did not justify selection. See
-[ADR 0037](decisions/0037-owned-async-shared-http-transport.md).
+222.422 ms. The smaller body-adapter cost did not justify selection.
 
-The selected implementation reads an exact small HTTP body within the existing
-8 KiB application buffer, avoiding the extra read used only to observe EOF.
-Larger and unknown bodies keep capped streaming. One observed pair supplies no
-stable speedup.
+The unselected patch and exact limits are retained in
+[ADR 0037](decisions/0037-owned-async-shared-http-transport.md) and the
+[comparison record](validation/m7.md). Both measured
+fixtures passed the original 250 ms deadline and 75 ms response delay. Those
+separate passes do not erase the failed full gate or qualify live readers.
+No trust, signature, TLS, payload, timeout or fallback contract changed.
+
+The selected source implementation reads an exact small HTTP body within the
+existing 8 KiB application buffer, avoiding the extra read used only to observe
+EOF. Larger and unknown bodies keep capped streaming. All 38 affected controls
+and strict checks passed, along with the read-count counterfactual/restored
+control and both original eight-reader comparison arms at the unchanged 250 ms
+deadline. Complete workspace and installed-product acceptance remain pending.
+The single observed pair supplies no stable speedup or historical failure cause;
+see the [actual controls](validation/m7.md).

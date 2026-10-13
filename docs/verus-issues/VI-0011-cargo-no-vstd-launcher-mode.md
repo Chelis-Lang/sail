@@ -1,0 +1,69 @@
+# VI-0011: Cargo no-vstd metadata does not reach launcher macro mode
+
+- Status: open, tracked locally; no upstream report filed
+- Found: 2026-10-10
+- Verus source: `426d8b01e7ffb910a36c15e1f870ff985bb61eef`
+- Reproduction: `corpus/repros/verus-cargo-no-vstd/`
+
+A Cargo package can declare `no-vstd = true` with `verify = true` in
+`[package.metadata.verus]`. Cargo-Verus reads that supported field and forwards
+`--no-vstd` through its per-package driver-arguments environment variable.
+The Verus launcher chooses the macro mode before rust_verify decodes that
+variable. Its `get_vstd_kind` reads literal process arguments only and then
+sets the child `VSTD_KIND` to `Imported` when it finds no literal `--no-vstd`.
+The builtin macros consequently expand assertions and Boolean postconditions
+using vstd facilities, although the later verifier configuration says no-vstd.
+
+Relevant pinned source locations are `source/cargo-verus/src/metadata.rs`
+(`VerusMetadata::no_vstd`), `source/cargo-verus/src/subcommands.rs`
+(`make_cargo_plan` forwarding per-package `--no-vstd`),
+`source/verus/src/main.rs` (`get_vstd_kind` and the child environment assignment),
+and `source/rust_verify/src/cargo_verus.rs`
+(`extend_args_and_check_is_direct_rustc_call`, which decodes driver arguments).
+
+An ordinary Cargo-Verus invocation on the minimal Boolean fixture returned
+101 with E0433 and an entire-crate result showing zero verified functions.
+The recorded run used a validated Sail source variant with interactive mode
+disabled; the implicated launcher implementation is unchanged pinned source.
+The evidence includes exact binary, patch, source and output hashes and records
+Linux x86-64 emulation. A body-only `assert(true)` probe reproduced the same
+macro failure. Setting `VSTD_KIND=NoVstd` outside the launcher does not solve
+this ordering problem because the launcher replaces that environment value.
+
+The explicitly selected optional engine relocates an already effective exact
+`--no-vstd` Cargo driver token into the launcher arguments before `--`. It reads
+only the common options and the current package's options using the pinned
+separator decoding; it does not scan another package's flags or match a
+substring. It removes only that delimited token from the child's two selected
+packed environment values, preserving every other token and byte, and inserts
+the literal option once. Simply duplicating the option was experimentally
+rejected by rust_verify with `Option 'no-vstd' given more than once`. Duplicate
+effective requests and contradictory macro modes fail closed as an engine fault (`SAIL3123`, formerly `SAIL3121`).
+Its stock fallback preserves the same relocated arguments and environment. The ordinary stock/default adapter is unchanged.
+Each adaptation records `launcher-options.json` alongside the target's report,
+with the run, context, exact Cargo package, target, kind and forwarded option.
+The source patch and full focused/independent verification criteria are unchanged.
+Project results also name the adaptation in a run-bound provenance note.
+A one-off forwarding check compared actual Cargo verification with the
+direct same-option baseline: two complete functions, identical diagnostics
+and 24,013 identical full-target SMT bytes, under Linux x86-64 emulation.
+Its script (`check-engine-forwarding.py`, sha256 `f9dfe00c…8c3`) and record
+(`forwarding-oracle.json`, sha256 `436edaef…a20b`) were removed from the
+repository by rescue L17 and are archived outside it.
+
+A potential upstream fix would determine macro mode from the same effective
+Cargo driver arguments as rust_verify, while preserving contradictory-mode
+rejection. No upstream issue has been filed.
+
+## Sail fork
+
+Not fixed in the fork (2026-10-12): the fix is not trivial. The launcher
+(`source/verus/src/main.rs`) would have to decode the same per-package
+driver-arguments variable that rust_verify reads, which is keyed by
+Cargo-Verus's package id: a hash of the package name, version and manifest
+path computed in `rust_verify/src/cargo_verus.rs`. Doing that in the launcher
+means duplicating that derivation, with its `sha2` dependency, or moving it
+into a crate both binaries share, and checking that only the current package's
+verify-enabled options are read. The optional engine already relocates an
+effective `--no-vstd` (see above), so the issue stays open with that
+workaround.

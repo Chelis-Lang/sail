@@ -98,6 +98,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
         execution: Execution::default(),
         notes: vec![],
         error: None,
+        engine: None,
     })
 }
 #[test]
@@ -133,7 +134,7 @@ fn stock_jobs_have_an_explicitly_empty_terminal_proof_journal()
     );
     assert!(matches!(
         client.call(&Request::Capabilities)?,
-        Response::Capabilities { proof_version } if proof_version == sail_api::proof::VERSION
+        Response::Capabilities { proof_version, repair: true } if proof_version == sail_api::proof::VERSION
     ));
     server.shutdown();
     Ok(())
@@ -356,5 +357,77 @@ fn baseline_save_still_refuses_unfinished_jobs() -> Result<(), Box<dyn std::erro
     server.shutdown();
     assert!(matches!(saved, Err(error) if error.to_string().contains("SAIL0904")));
     assert!(!store.join("baselines/unfinished.json").exists());
+    Ok(())
+}
+
+#[test]
+fn repair_job_preserves_focus_success_full_failure_and_never_promotes_preliminary_evidence()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fixture = Fixture::new()?;
+    let socket = fixture.root.join("jobs.sock");
+    let store = fixture.root.join("jobs");
+    let mut full = project()?;
+    full.exit_code = Some(1);
+    full.targets[0].report.exit_code = Some(1);
+    full.targets[0].report.summary.failed = 1;
+    full.targets[0].report.crates[0].verus.success = Some(false);
+    let mut focus = full.clone();
+    focus.exit_code = Some(0);
+    focus.targets[0].report.exit_code = Some(0);
+    focus.targets[0].report.summary.failed = 0;
+    focus.targets[0].report.summary.unknown = 0;
+    focus.targets[0].report.crates[0].verus.success = None;
+    for function in focus.targets[0]
+        .report
+        .crates
+        .iter_mut()
+        .flat_map(|report| &mut report.functions)
+    {
+        function.verdict = VerdictName::Provisional;
+        function.tier = TierName::Provisional;
+    }
+    let batch = sail_api::repair::BatchResult {
+        focus: Some(focus.clone()),
+        full: Some(full.clone()),
+        manifest_sha256: "mock-engine-manifest".into(),
+        compiler_invocations: 1,
+        batched: true,
+        selection_error: None,
+        engine_fault: None,
+    };
+    let mut stored = sail_api::repair::ResultDocument::from(batch);
+    stored.accepted = true; // Never trust a serialized accepted field.
+    std::fs::write(
+        fixture.root.join("result.json"),
+        serde_json::to_vec(&stored)?,
+    )?;
+    let mut server = sail_daemon::jobs::bind(&socket, &store, &fixture.worker)?.spawn()?;
+    let client = Client::new(&socket);
+    let mut submission = fixture.request("repair-revision");
+    submission.mode = Mode::Repair(sail_api::repair::Selection {
+        package: "demo".into(),
+        target: None,
+        kind: "lib".into(),
+        function: "demo::proof".into(),
+    });
+    submission.environment.insert("CODE".into(), "1".into());
+    let job = submit(&client, submission)?;
+    completed(&client, &job.id)?;
+    let Response::Result(document) = client.call(&Request::Result { id: job.id })? else {
+        return Err("repair result response".into());
+    };
+    assert_eq!(document.job.state, Lifecycle::Completed);
+    assert_eq!(document.job.exit_code, Some(1));
+    let repair = document.repair.ok_or("repair bundle missing")?;
+    assert!(!repair.accepted);
+    assert_eq!(repair.batch.focus, Some(focus));
+    // The full phase is sent once, as the job's `result`.
+    assert_eq!(repair.batch.full, None);
+    let result: sail_api::project::ProjectResult =
+        serde_json::from_value(document.result.ok_or("full result missing")?)?;
+    assert_eq!(result.targets, full.targets);
+    assert_eq!(repair.batch.compiler_invocations, 1);
+    assert!(repair.batch.batched);
+    server.shutdown();
     Ok(())
 }

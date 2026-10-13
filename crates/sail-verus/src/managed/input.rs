@@ -1,10 +1,10 @@
 //! Cargo metadata and declared input revision tracking.
 
-use super::files::file_digest;
+use super::files::digest_all;
 use crate::{Error, Result};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -22,21 +22,24 @@ pub struct InputSnapshot {
     /// False if declared inputs could not be read completely.
     pub complete: bool,
     pub(crate) observation_paths: BTreeSet<PathBuf>,
+    /// The content digest of every readable input file in `revision`.
+    pub(super) digests: BTreeMap<PathBuf, String>,
 }
 
-pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
+fn metadata_command(workspace: &Path, args: &[String], cargo: &Path) -> Command {
     let mut cmd = Command::new(cargo);
     cmd.current_dir(workspace)
         .args(["metadata", "--format-version", "1"]);
     let mut it = args.iter().take_while(|a| a.as_str() != "--");
     while let Some(a) = it.next() {
-        if ["--manifest-path", "--features"].contains(&a.as_str()) {
+        if ["--manifest-path", "--features", "-F"].contains(&a.as_str()) {
             cmd.arg(a);
             if let Some(v) = it.next() {
                 cmd.arg(v);
             }
         } else if a.starts_with("--manifest-path=")
             || a.starts_with("--features=")
+            || a.starts_with("-F")
             || [
                 "--all-features",
                 "--no-default-features",
@@ -49,7 +52,11 @@ pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Resul
             cmd.arg(a);
         }
     }
-    let output = cmd
+    cmd
+}
+
+pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Result<Value> {
+    let output = metadata_command(workspace, args, cargo)
         .output()
         .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
     if !output.status.success() {
@@ -58,7 +65,46 @@ pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Resul
             String::from_utf8_lossy(&output.stderr),
         ));
     }
-    serde_json::from_slice(&output.stdout).map_err(|e| Error::new("SAIL3103", e.to_string()))
+    let mut data: Value = serde_json::from_slice(&output.stdout)
+        .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
+    // Preserve explicit package roles for disabled-script scheduling checks.
+    // Unknown or ambiguous package specs retain original unobserved cleaning.
+    data["sail_selected_package_ids"] =
+        serde_json::to_value(selected_packages(&data, args)).unwrap_or(Value::Null);
+    Ok(data)
+}
+
+fn selected_packages(data: &Value, args: &[String]) -> Option<Vec<String>> {
+    let packages = data["packages"].as_array()?;
+    let mut selected = Vec::new();
+    let mut arguments = args.iter().take_while(|arg| arg.as_str() != "--");
+    while let Some(argument) = arguments.next() {
+        let spec = if argument == "-p" || argument == "--package" {
+            Some(arguments.next()?.as_str())
+        } else if let Some(spec) = argument.strip_prefix("--package=") {
+            Some(spec)
+        } else if let Some(spec) = argument.strip_prefix("-p") {
+            Some(spec.strip_prefix('=').unwrap_or(spec))
+        } else {
+            if argument.starts_with("--package") {
+                return None;
+            }
+            None
+        };
+        let Some(spec) = spec else { continue };
+        let mut matches = packages.iter().filter(|package| {
+            package["id"].as_str() == Some(spec)
+                || package["name"].as_str() == Some(spec)
+                || spec.split_once('@').is_some_and(|(name, version)| {
+                    package["name"].as_str() == Some(name)
+                        && package["version"].as_str() == Some(version)
+                })
+        });
+        let package = matches.next()?;
+        matches.next().is_none().then_some(())?;
+        selected.push(package["id"].as_str()?.to_owned());
+    }
+    Some(selected)
 }
 
 fn collect(
@@ -179,29 +225,142 @@ pub(super) fn snapshot_metadata_home(
             .filter(|p| !excluded_canonical.contains(p)),
     );
     let stamp_before = stamp_paths(&observation_paths);
-    let mut hasher = Sha256::new();
-    for path in files {
-        let bytes = path.as_os_str().as_encoded_bytes();
-        hasher.update((bytes.len() as u64).to_le_bytes());
-        hasher.update(bytes);
-        if let Ok(hash) = file_digest(&path) {
-            hasher.update(hash.as_bytes());
-        } else {
-            complete = false;
-            hasher.update(b"unreadable");
-        }
-    }
+    let (revision, readable, digests) = contents_revision(&files);
+    complete &= readable;
     complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
     roots.sort();
     roots.dedup();
     InputSnapshot {
         workspace,
-        revision: format!("{:x}", hasher.finalize()),
+        revision,
         roots,
         excluded,
         complete,
         observation_paths,
+        digests,
     }
+}
+
+/// `snapshot` narrowed for proof-time kernel coverage of one selection.
+///
+/// A root inside the directory of a resolved package outside `closure` is
+/// dropped, unless it is also inside the directory of a package in `closure`
+/// (nested packages stay covered). The workspace manifest, lockfile and every
+/// member manifest are added, since Cargo reads them to load the workspace.
+/// The caller must refuse coverage if Cargo compiles a unit outside
+/// `closure`. Without a closure the snapshot is returned unchanged.
+#[cfg(test)]
+pub(super) fn closure_scope(
+    snapshot: &InputSnapshot,
+    data: &Value,
+    closure: Option<&BTreeSet<String>>,
+) -> InputSnapshot {
+    let mut scoped = snapshot.clone();
+    let Some(closure) = closure else {
+        return scoped;
+    };
+    let scope = Scope::new(data, closure);
+    scoped.roots.retain(|root| scope.contains(root));
+    scoped.roots.extend(scope.manifests);
+    scoped.roots.sort();
+    scoped.roots.dedup();
+    scoped
+}
+
+/// The input digests of `snapshot` that one selection depends on, narrowed by
+/// the same rule as `closure_scope`: files of packages outside `closure` are
+/// dropped, and the workspace manifest, lockfile and member manifests stay.
+/// Without a closure every digest is kept.
+pub(super) fn closure_digests(
+    snapshot: &InputSnapshot,
+    data: &Value,
+    closure: Option<&BTreeSet<String>>,
+) -> BTreeMap<PathBuf, String> {
+    let Some(closure) = closure else {
+        return snapshot.digests.clone();
+    };
+    let scope = Scope::new(data, closure);
+    snapshot
+        .digests
+        .iter()
+        .filter(|(path, _)| scope.contains(path) || scope.manifests.contains(*path))
+        .map(|(path, hash)| (path.clone(), hash.clone()))
+        .collect()
+}
+
+/// Package directories inside and outside one selection's closure, and the
+/// manifests Cargo reads to load the workspace.
+struct Scope {
+    inside: Vec<PathBuf>,
+    outside: Vec<PathBuf>,
+    manifests: Vec<PathBuf>,
+}
+impl Scope {
+    fn new(data: &Value, closure: &BTreeSet<String>) -> Self {
+        let mut scope = Self {
+            inside: Vec::new(),
+            outside: Vec::new(),
+            manifests: Vec::new(),
+        };
+        for package in data["packages"].as_array().into_iter().flatten() {
+            let Some(manifest) = package["manifest_path"].as_str().map(Path::new) else {
+                continue;
+            };
+            let Some(directory) = manifest.parent() else {
+                continue;
+            };
+            // An unidentified package is never excluded from coverage.
+            if package["id"].as_str().is_none_or(|id| closure.contains(id)) {
+                scope.inside.push(directory.to_owned());
+            } else {
+                scope.outside.push(directory.to_owned());
+            }
+            if data["workspace_members"]
+                .as_array()
+                .is_some_and(|members| members.contains(&package["id"]))
+            {
+                scope.manifests.push(manifest.to_owned());
+            }
+        }
+        if let Some(workspace) = data["workspace_root"].as_str().map(Path::new) {
+            scope.manifests.extend(
+                ["Cargo.toml", "Cargo.lock"]
+                    .iter()
+                    .map(|name| workspace.join(name))
+                    .filter(|path| path.is_file()),
+            );
+        }
+        scope
+    }
+    /// Inside a closure package directory (nested packages stay covered), or
+    /// outside every package directory that is not in the closure.
+    fn contains(&self, path: &Path) -> bool {
+        self.inside.iter().any(|d| path.starts_with(d))
+            || !self.outside.iter().any(|d| path.starts_with(d))
+    }
+}
+
+// Preserve the original exact sorted path spelling and digest encoding. Every
+// file is still read completely between the caller's stamps; only the reads
+// overlap, and their digests are folded in the original sorted order.
+fn contents_revision(files: &BTreeSet<PathBuf>) -> (String, bool, BTreeMap<PathBuf, String>) {
+    let mut complete = true;
+    let mut recorded = BTreeMap::new();
+    let mut hasher = Sha256::new();
+    let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
+    for (path, digest) in files.iter().zip(digest_all(&paths)) {
+        let bytes = path.as_os_str().as_encoded_bytes();
+        hasher.update((bytes.len() as u64).to_le_bytes());
+        hasher.update(bytes);
+        if let Ok(hash) = digest {
+            hasher.update(hash.as_bytes());
+            recorded.insert(path.clone(), hash);
+        } else {
+            complete = false;
+            hasher.update(b"unreadable");
+        }
+    }
+    (format!("{:x}", hasher.finalize()), complete, recorded)
 }
 
 // A run-local mutation stamp is separate from logical proof keys: reverting an
@@ -328,7 +487,173 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn metadata_command_forwards_each_exact_cargo_feature_alias() {
+        use std::ffi::OsStr;
+        use std::path::Path;
+        for arguments in [
+            vec!["--features", "enabled"],
+            vec!["--features=enabled"],
+            vec!["-F", "enabled"],
+            vec!["-Fenabled"],
+            vec!["-F=enabled"],
+        ] {
+            let args = arguments
+                .iter()
+                .map(|v| (*v).to_owned())
+                .collect::<Vec<_>>();
+            // Inspect the actual constructor used by metadata(), not a second
+            // imitation parser. The pinned Cargo parser owns alias semantics.
+            let command =
+                super::metadata_command(Path::new("workspace"), &args, Path::new("cargo"));
+            let expected = ["metadata", "--format-version", "1"]
+                .into_iter()
+                .chain(arguments)
+                .map(OsStr::new)
+                .collect::<Vec<_>>();
+            assert_eq!(command.get_args().collect::<Vec<_>>(), expected);
+            assert_eq!(command.get_program(), OsStr::new("cargo"));
+            assert_eq!(command.get_current_dir(), Some(Path::new("workspace")));
+            // The original request remains byte-for-byte unchanged for its
+            // independent proof/compiler context serialization.
+            assert_eq!(
+                args.iter().map(String::as_str).collect::<Vec<_>>(),
+                expected
+                    .iter()
+                    .skip(3)
+                    .map(|v| v.to_str().unwrap_or_default())
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn metadata_command_retains_repeated_features_and_first_verifier_separator() {
+        use std::ffi::OsStr;
+        use std::path::Path;
+        let args = [
+            "--manifest-path",
+            "member/Cargo.toml",
+            "-F",
+            "a",
+            "--features=b",
+            "-Fc,d",
+            "-F=e",
+            "--locked",
+            "-pother",
+            "--",
+            "-Fignored",
+            "--features",
+            "ignored",
+        ]
+        .map(str::to_owned);
+        let command = super::metadata_command(Path::new("workspace"), &args, Path::new("cargo"));
+        let expected = [
+            "metadata",
+            "--format-version",
+            "1",
+            "--manifest-path",
+            "member/Cargo.toml",
+            "-F",
+            "a",
+            "--features=b",
+            "-Fc,d",
+            "-F=e",
+            "--locked",
+        ]
+        .map(OsStr::new);
+        assert_eq!(command.get_args().collect::<Vec<_>>(), expected);
+        let missing_value = ["-F".to_owned(), "--".to_owned(), "enabled".to_owned()];
+        let command =
+            super::metadata_command(Path::new("workspace"), &missing_value, Path::new("cargo"));
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            ["metadata", "--format-version", "1", "-F"].map(OsStr::new)
+        );
+    }
+
+    #[test]
+    fn disabled_script_explicit_selection_requires_unique_cargo_package_identity() {
+        let data = serde_json::json!({"packages":[
+            {"id":"root-id","name":"root","version":"1"},
+            {"id":"disabled-id","name":"disabled","version":"2"}]});
+        for args in [
+            vec!["--package", "root"],
+            vec!["-proot"],
+            vec!["-p=root"],
+            vec!["--package=root@1"],
+            vec!["-p", "root-id"],
+        ] {
+            let args = args.into_iter().map(str::to_owned).collect::<Vec<_>>();
+            assert_eq!(
+                super::selected_packages(&data, &args),
+                Some(vec!["root-id".into()])
+            );
+        }
+        assert_eq!(
+            super::selected_packages(&data, &["--package=disabled".into()]),
+            Some(vec!["disabled-id".into()])
+        );
+        for args in [
+            vec!["--package"],
+            vec!["--package="],
+            vec!["-punknown"],
+            vec!["--package=root@2"],
+            vec!["--package-malformed"],
+        ] {
+            let args = args.into_iter().map(str::to_owned).collect::<Vec<_>>();
+            assert_eq!(super::selected_packages(&data, &args), None);
+        }
+        let mut ambiguous = data.clone();
+        ambiguous["packages"][1]["name"] = "root".into();
+        assert_eq!(
+            super::selected_packages(&ambiguous, &["-p".into(), "root".into()]),
+            None
+        );
+        assert_eq!(
+            super::selected_packages(&data, &["--".into(), "-p".into(), "disabled".into()]),
+            Some(Vec::<String>::new())
+        );
+    }
+
     use super::*;
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn retained_inventory_preserves_exact_non_utf8_sorted_encoding_and_rehashes_bytes() {
+        use std::os::unix::{ffi::OsStringExt as _, fs::symlink};
+        let root = std::env::temp_dir().join(format!("sail-inventory-{}", std::process::id()));
+        let package = root.join("package");
+        assert!(std::fs::create_dir_all(&package).is_ok());
+        let outside = root.join("external.rs");
+        assert!(std::fs::write(&outside, b"outside").is_ok());
+        let odd = package.join(std::ffi::OsString::from_vec(b"source-\xff.rs".to_vec()));
+        assert!(std::fs::write(&odd, b"initial").is_ok());
+        assert!(std::fs::write(package.join("Cargo.toml"), b"manifest").is_ok());
+        assert!(symlink(&outside, package.join("alias.rs")).is_ok());
+        let data = serde_json::json!({"workspace_root":package,
+            "packages":[{"manifest_path":package.join("Cargo.toml")}]});
+        let snapshot = snapshot_metadata_home(&data, &[], None);
+        assert!(snapshot.complete);
+        let mut oracle = Sha256::new();
+        let mut files = vec![outside.clone(), odd.clone(), package.join("Cargo.toml")];
+        files.sort();
+        for path in &files {
+            let bytes = path.as_os_str().as_encoded_bytes();
+            oracle.update((bytes.len() as u64).to_le_bytes());
+            oracle.update(bytes);
+            let contents = std::fs::read(path).unwrap_or_else(|e| unreachable!("fixture:{e}"));
+            oracle.update(format!("{:x}", Sha256::digest(contents)).as_bytes());
+        }
+        assert_eq!(snapshot.revision, format!("{:x}", oracle.finalize()));
+        // Every hashed file's digest is retained under its exact path.
+        assert_eq!(snapshot.digests.keys().cloned().collect::<Vec<_>>(), files);
+        assert!(std::fs::write(&odd, b"changed").is_ok());
+        let refreshed = snapshot_metadata_home(&data, &[], None);
+        assert!(refreshed.complete);
+        assert_ne!(snapshot.revision, refreshed.revision);
+        assert_ne!(snapshot.digests.get(&odd), refreshed.digests.get(&odd));
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
     #[test]
     fn relative_cargo_home_resolves_against_recorded_invocation() {
         let root =
@@ -446,6 +771,78 @@ mod tests {
         assert!(before.complete && after.complete);
         assert_ne!(before.revision, after.revision);
         assert_eq!(after.roots, vec![dependency]);
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[test]
+    fn closure_scope_drops_only_unselected_package_directories() {
+        use std::collections::BTreeSet;
+        use std::path::PathBuf;
+        let root = std::env::temp_dir().join(format!("sail-scope-test-{}", std::process::id()));
+        let ws = root.join("ws");
+        for dir in [
+            "ws/lib/src",
+            "ws/bench/src",
+            "registry/criterion",
+            "registry/syn",
+        ] {
+            assert!(std::fs::create_dir_all(root.join(dir)).is_ok());
+        }
+        assert!(std::fs::write(ws.join("Cargo.toml"), "[workspace]").is_ok());
+        assert!(std::fs::write(ws.join("Cargo.lock"), "").is_ok());
+        let package = |id: &str, dir: &PathBuf| serde_json::json!({"id": id, "manifest_path": dir.join("Cargo.toml")});
+        let data = serde_json::json!({
+        "workspace_root": ws, "workspace_members": ["lib", "bench"],
+        "packages": [
+            package("lib", &ws.join("lib")), package("bench", &ws.join("bench")),
+            package("syn", &root.join("registry/syn")),
+            package("criterion", &root.join("registry/criterion")),
+            {"manifest_path": root.join("registry/unknown/Cargo.toml")}
+        ]});
+        let snapshot = super::InputSnapshot {
+            workspace: ws.clone(),
+            revision: String::new(),
+            roots: vec![
+                ws.join("lib"),
+                ws.join("bench"),
+                root.join("registry/syn"),
+                root.join("registry/criterion"),
+                root.join("registry/unknown"),
+                PathBuf::from("/opt/toolchain/lib/librustc.so"),
+            ],
+            excluded: vec![ws.join("target")],
+            complete: true,
+            observation_paths: BTreeSet::new(),
+            digests: std::collections::BTreeMap::new(),
+        };
+        let unchanged = super::closure_scope(&snapshot, &data, None);
+        assert_eq!(unchanged.roots, snapshot.roots);
+        let closure = BTreeSet::from(["lib".to_owned(), "syn".to_owned()]);
+        let scoped = super::closure_scope(&snapshot, &data, Some(&closure));
+        let mut expected = vec![
+            ws.join("lib"),
+            root.join("registry/syn"),
+            root.join("registry/unknown"),
+            PathBuf::from("/opt/toolchain/lib/librustc.so"),
+            ws.join("lib/Cargo.toml"),
+            ws.join("bench/Cargo.toml"),
+            ws.join("Cargo.toml"),
+            ws.join("Cargo.lock"),
+        ];
+        expected.sort();
+        assert_eq!(scoped.roots, expected);
+        assert_eq!(scoped.excluded, snapshot.excluded);
+        // A selected package nested inside an unselected one stays covered.
+        let nested = serde_json::json!({"workspace_root": ws, "packages": [
+            package("outer", &ws), package("lib", &ws.join("lib"))]});
+        let snapshot = super::InputSnapshot {
+            roots: vec![ws.clone(), ws.join("lib")],
+            ..snapshot
+        };
+        let only_lib = BTreeSet::from(["lib".to_owned()]);
+        let scoped = super::closure_scope(&snapshot, &nested, Some(&only_lib));
+        assert!(scoped.roots.contains(&ws.join("lib")));
+        assert!(!scoped.roots.contains(&ws));
         assert!(std::fs::remove_dir_all(root).is_ok());
     }
 }

@@ -30,4 +30,18 @@ Use [the template](0000-template.md) for a new decision.
 - [0025: HTTP shared cache and local-first team workflow](0025-http-shared-cache-and-local-first-team-workflow.md)
 - [0026: Live workspace dependencies](0026-live-workspace-dependencies.md)
 - [0027: Interactive proof engine and repair workflow](0027-interactive-proof-engine-and-repair-workflow.md)
+- [0028: Exact prepared graph-read dependencies (proposed candidate)](0028-exact-prepared-graph-read-dependencies.md)
+- [0029: Kernel lease work bounds and freshness](0029-kernel-lease-work-bounds-and-freshness.md) — superseded by 0041
+- [0030: Loaded imported span authority (proposed candidate)](0030-imported-span-authority.md)
+- [0031: Guarded sysroot digest handoff (proposed)](0031-guarded-sysroot-digest-handoff.md) — superseded by 0041
+- [0032: Sticky kernel mount-generation coverage](0032-kernel-mount-generation-coverage.md) — superseded by 0041
+- [0033: Exact deferred imported diagnostic locators (proposed candidate)](0033-deferred-import-diagnostic-locators.md)
+- [0034: MCP response encoding ownership](0034-mcp-response-encoding-ownership.md)
+- [0035: Guarded retained output digests (rejected: removed, saved at most 1.6 ms per read)](0035-guarded-retained-output-digests.md)
+- [0036: Managed compiler artifact families (implemented; product validation pending)](0036-managed-compiler-artifact-families.md)
+- [0037: Owned async shared HTTP transport (rejected after comparison)](0037-owned-async-shared-http-transport.md)
 - [0038: M7 rescue: native reference hosts, evidence policy and engine conditions](0038-m7-rescue.md)
+- [0039: The engine is built from a private Verus fork](0039-private-verus-fork.md)
+- [0040: Warm solver sessions for edit-loop misses (accepted: do not build now)](0040-warm-solver-sessions.md)
+- [0041: Content and stat checks replace kernel leases for currentness](0041-content-and-stat-currentness.md)
+- [0042: Diagnostics are compared as a set of complete messages](0042-diagnostics-compared-as-a-set.md)

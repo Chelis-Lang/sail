@@ -78,6 +78,23 @@ the v2 key binds the whole process prefix and the solver identity
 
 They cannot make a reader serve a wrong answer.
 
+Concurrent lookups of the same shared entry receive the helper's verified
+result directly. The initiating caller does not need to resume before other
+readers can receive it. Publication follows the same signature, key, reply
+shape and solver checks; it does not extend lookup deadlines, and a late helper
+cannot overwrite a timeout already published to that lookup.
+
+Optional HTTP client initialization runs inside a bounded lookup helper.
+Constructing or retiring a transport cannot hold the foreground snapshot mutex,
+and status reads never construct a runtime. A stalled initializer costs a bounded
+miss; concurrent lookups can safely skip initialization already in progress.
+Configuration changes still clear old backoff and negative-cache state before
+consulting the new transport. Invalid credentials and disconnected stores cannot
+serve through the retired transport. A constructor that completes after the
+lookup has published its fallback skips that obsolete network request. Status
+reads borrow cached metrics while the cache retains transport ownership, so
+retirement cannot make a status reader join the last transport runtime.
+
 **What a trusted key can do.** Anything: a trusted signer is trusted
 completely. Whoever holds the secret key can publish wrong answers that
 every trusting reader serves. Hence:
@@ -175,3 +192,54 @@ complete session input. Cached replies alone cannot cover new trailing
 commands. The record uses a separate key domain, with the same solver and mode
 identity; shared writers must certify complete silent sessions, never synthesize
 records merely from cached prefixes.
+
+## Optional source engine
+
+The interactive engine is an explicitly selected pinned Verus source variant.
+Its manifest binds the source commit, Rust toolchain, patch and lockfile digests,
+solver and every runtime artifact. Installation and use reject incompatible or
+changed runtime bytes. A prebuilt CI archive additionally binds its archive
+digest to a committed pin; access credentials authorize download, not proof.
+Source builds and artifact validation happen locally before publishing that pin.
+
+A source terminal event is insufficient to finish a verification. The adapter
+requires exactly one complete bounded structured Verus document, normal process
+exit 0 or 1, and an explicit typed `payload.normal_termination: true` marker.
+The optional source distinguishes expected compiler-error termination from an
+internal unwind before emitting that marker. Complete failed-proof and late EXEC
+documents retain their original engine output and focused provisional evidence.
+
+A panic, signal, missing or malformed document, or absent/false/malformed normal
+termination marker retains the engine's failed output and falls back to the
+stock verifier with the same compiler arguments and effective options. Older
+producers could catch internal panics into an ordinary-shaped compiler-error
+document, so a legacy terminal seal without the new marker cannot authorize any
+engine result. Fallback records its actual child invocation and discards focused
+evidence from the interrupted engine. A terminal event's success flag alone
+cannot distinguish a compiler crash from an ordinary failure.
+The engine keeps no prepared-lowering cache, so it adds no cache to this trust
+boundary. Focus and progress evidence remain provisional until a complete
+successful full result is Current.
+
+## Currentness of retained results
+
+A Current label is a statement about inputs, not about the verdict, and no
+proof is ever reused or accepted unless its result is Current
+([ADR 0041](decisions/0041-content-and-stat-currentness.md)). A run is Current
+only when its input content revision and the file stamps of those inputs are
+unchanged across the run, no absent Cargo configuration appeared, and every
+compiled unit lies inside the recorded closure. A later read rehashes exactly
+the recorded files: equal is Current, different is Historical, unreadable is
+Unknown. Toolchain and sysroot files are identified by device, inode, size and
+modification time; configuration is identified by content.
+
+What this trusts and does not detect is listed in [freshness](freshness.md):
+an edit made and undone during a run through an already-dirty shared writable
+mapping, a bind mount added and removed during a run (root only), and an
+in-place toolchain rewrite that restores the modification time.
+
+Encoded job-result frames are an allocation optimization, not freshness
+evidence. Every read verifies the retained stdout bytes against the result's
+seal and checks currentness before selecting a frame. Cached frames are bounded
+by bytes and count, carry no time-based validity, and are discarded on a seal
+mismatch.

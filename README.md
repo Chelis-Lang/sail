@@ -6,12 +6,14 @@ Status: **live workspace verification and team caching implemented.**
 Complete proof receipts, durable jobs/watch/MCP and authenticated HTTP caching
 pass the retained acceptance in [the M6 report](docs/reports/2026-10-10-live-workspace.md).
 The report records performance costs, platform limits and emulation failures.
-See `docs/ROADMAP.md` for follow-up work.
+See the [documentation index](docs/README.md), [known issues](docs/known-issues.md),
+[error codes](docs/errors.md) and [roadmap](docs/ROADMAP.md) for guides, limitations and follow-up work.
 
 ## Using it
 
 ```sh
 cargo build --release -p sail-cli -p sail-shim   # builds `sail` and `sail-z3`
+export PATH="$PWD/target/release:$PATH"
 sail verify [ARGS...]    # instead of: cargo verus verify [ARGS...]
 ```
 
@@ -35,6 +37,63 @@ needs no server configuration or credentials. Frontend receipt reuse targets
 Linux; macOS uses conservative currentness checks that can require fresh proofs.
 See [live workspace verification](docs/workspace-verification.md).
 
+## Experimental proof repair
+
+The optional pinned source engine adds exact-function focus followed by
+independent full-target validation. Stock verification stays the default. The
+selected engine passes its source qualification, and the current product
+passes the workspace gate, the solver suite and the original installed CLI/MCP
+repair fixture. M7 is **not accepted**. Reader latency currently fails its
+200 ms p95 bound, the frozen real-project repair benchmark has no measured
+samples, and complete standard/cache conformance is outstanding. All local
+measurements so far were taken under x86 emulation and are not reference
+numbers. See [M7 validation](docs/validation/m7.md) and
+[known issues](docs/known-issues.md).
+
+Optional ordinary-build recovery can establish dependency contracts after the
+initial regeneration. It never promotes an Unknown proof or replaces full
+verification, and unsupported coverage keeps the original cleaning. See
+[build recovery](docs/managed-cold-start.md).
+
+From the Sail checkout, build/register the selected optional source variant with
+`cargo xtask build-verus-engine`, then inspect `sail engine status --output json`.
+Alternatively, `sail engine install --from ENGINE_BUILD_DIR --output json`
+imports a recognized build after validating its provenance and artifact bytes.
+A candidate directory or successful install is not M7 acceptance evidence.
+If you override `SAIL_CACHE_DIR`, use one absolute value for engine installation,
+project CLI commands and the MCP server; changing directories must not select
+another cache. The walkthrough explains MCP job-read routing.
+
+From a project, submit a library repair and retain the returned job ID:
+
+```sh
+sail repair-check --package demo --lib --function demo::arith::lemma \
+  --engine interactive --background --output json
+sail jobs events JOB_ID --follow --output jsonl
+sail jobs result JOB_ID --output json
+# Save only after the completed result has value.repair.accepted = true.
+sail baseline save before-repair --job JOB_ID
+sail baseline list
+sail baseline get before-repair --output json
+sail compare LATER_JOB_ID --baseline before-repair --output json
+```
+
+Submission success and provisional focus observations do not establish a proof.
+Inspect `value.repair.accepted` in the completed result; acceptance requires
+independent complete Current full-target success after compiler completion.
+Keep redirected event logs and result files outside watched package roots while
+verification runs; the walkthrough shows a separate capture directory. Saved
+baselines retain establishing evidence and never prove today's inputs.
+`baseline get` retrieves the complete Historical snapshot even after its job is
+pruned; provisional reports remain provisional. See the [baseline guide](docs/mcp.md).
+[The complete walkthrough](docs/proof-repair-walkthrough.md) includes a runnable
+project, focus-pass/full-failure example, exact failure identities, event cursors,
+cancellation and MCP calls. [The repair contract](docs/proof-repair.md) and
+[frozen acceptance guide](docs/bench/m7-repair-acceptance.md) distinguish usable
+workflow from unfinished qualification and performance claims.
+
+## Reports and team caching
+
 `sail verify --output json [ARGS...]` also prints one JSON document on stdout.
 It holds per-function verdicts, with tier and provenance, and per-obligation
 results with stable identities, effort and counterexample models. Diagnostics
@@ -44,7 +103,10 @@ The daemon keeps replies in memory in front of the disk cache, stops after
 30 minutes without connections or active jobs, and logs to `daemon.log` in the
 cache root.
 `sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
-inspects, checks, shrinks or empties the cache (ADR 0015).
+inspects, checks, shrinks or empties SMT reply entries (ADR 0015). These commands
+do not limit or remove managed compiler targets. See
+[disk use and cleanup](docs/workspace-hygiene.md) for where those live and how
+to reclaim them.
 
 Teams and CI can share results through a shared store: a directory such as
 an NFS mount or a synced folder. Entries in it are signed, and a machine
@@ -70,8 +132,15 @@ saying whether sources changed since) and `fragility` (local solver replay measu
 The asynchronous tools `start_verification`, `verification_status`,
 `verification_result` and `cancel_verification` use the same durable jobs as
 the CLI, so an agent can inspect results while verification continues.
-Register it as the stdio command `sail mcp`, for example
-`claude mcp add --transport stdio sail -- sail mcp`. See `docs/mcp.md`.
+Experimental repair tools add `start_repair_validation`, `verification_events`,
+`explain_failure`, `compare_verification`, `save_baseline`, `list_baselines` and
+`get_baseline`. Baseline tools expose the same immutable Historical evidence as
+the CLI, independently of job pruning.
+Durable read-only lookups read the jobs service directly, each with a complete
+fresh service reply; writes and verification lifecycle ownership retain their
+existing paths. Register the stdio command `sail mcp`, for example
+`claude mcp add --transport stdio sail -- sail mcp`. See [MCP setup and
+schemas](docs/mcp.md), or [the Rust SDK](docs/result-client.md).
 
 - `docs/CHARTER.md`: mission, scope and the correctness contract.
 - `AGENTS.md`: how to work in this repo (humans and agents).
@@ -87,6 +156,11 @@ cargo nextest run --workspace
 ```
 
 The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automatically.
+
+Reference builds, gates and benchmarks run on a native x86-64 Linux host
+created by `scripts/perf-host.sh`. The
+[disk use guide](docs/workspace-hygiene.md) covers local worktrees, targets
+and containers.
 
 ## Portfolio and fragility
 

@@ -1,0 +1,60 @@
+{
+  "func-details": {},
+  "verification-results": {
+    "encountered-error": true,
+    "encountered-vir-error": false,
+    "success": false,
+    "verified": 0,
+    "errors": 0,
+    "is-verifying-entire-crate": true
+  },
+  "times-ms": {
+    "verus-build": {
+      "profile": "release",
+      "version": "0.2026.10.04.426d8b0.dirty"
+    },
+    "num-threads": 1,
+    "total": 363,
+    "estimated-cpu-time": 363,
+    "rust": {
+      "total": 338,
+      "init-and-types": 338,
+      "trait-conflicts": 0,
+      "compile": 0
+    },
+    "verification": {
+      "total": 0,
+      "vir": {
+        "total": 0,
+        "hir": 0,
+        "import": 0,
+        "rust-to-vir": 0
+      }
+    },
+    "total-verify": 0,
+    "total-verify-module-times": [],
+    "air": {
+      "total": 0,
+      "module-times": []
+    },
+    "smt": {
+      "total": 0,
+      "smt-init": 0,
+      "rlimit-init": 0,
+      "smt-init-module-times": [],
+      "smt-run": 0,
+      "rlimit-run": 0,
+      "smt-run-module-times": []
+    }
+  },
+  "verus": {
+    "profile": "release",
+    "version": "0.2026.10.04.426d8b0.dirty",
+    "platform": {
+      "os": "linux",
+      "arch": "x86_64"
+    },
+    "toolchain": "1.98.1-x86_64-unknown-linux-gnu",
+    "commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef"
+  }
+}

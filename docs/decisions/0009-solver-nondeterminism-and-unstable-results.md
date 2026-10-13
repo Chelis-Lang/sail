@@ -2,6 +2,7 @@
 
 - **Status:** accepted (owner decision, 2026-10-08)
 - **Date:** 2026-10-08
+- **Amended by:** [ADR 0042](0042-diagnostics-compared-as-a-set.md): diagnostics are compared as a multiset of complete messages, so the order of messages from different modules is not a difference.
 
 ## Context
 

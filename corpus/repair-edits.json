@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca",
+  "verus_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "minimum_rounds": 3,
+  "minimum_median_speedup": 2,
+  "maximum_read_p95_ms": 200,
+  "projects": [
+    {
+      "id": "human-eval-verus",
+      "commit": "bbe93f73b0a5802c438501f9a2106f9126bd2eea",
+      "package": "human_eval_verus",
+      "target": "human_eval_verus",
+      "target_kind": "lib",
+      "root": "tasks/lib.rs",
+      "cargo_wrapper": true,
+      "cycles": [
+        {
+          "id": "gcd-body",
+          "kind": "body",
+          "function": "human_eval_verus::human_eval_013::compute_gcd",
+          "file": "tasks/human_eval_013.rs",
+          "expected": "verified",
+          "from": "original",
+          "find": "            b1 = b1 % a1;\n",
+          "replace": "            let m = b1 % a1;\n            b1 = m;\n"
+        },
+        {
+          "id": "concatenate-spec",
+          "kind": "spec",
+          "function": "human_eval_verus::human_eval_028::concatenate_impl",
+          "file": "tasks/human_eval_028.rs",
+          "expected": "verified",
+          "from": "original",
+          "find": "        joined@ == concatenate(strings.deep_view()),\n",
+          "replace": "        joined@ == concatenate(strings.deep_view()),\n        joined@.len() == concatenate(strings.deep_view()).len(),\n"
+        },
+        {
+          "id": "strlen-refactor",
+          "kind": "refactor",
+          "function": "human_eval_verus::human_eval_023::strlen",
+          "file": "tasks/human_eval_023.rs",
+          "expected": "verified",
+          "from": "original",
+          "find": "    string.len()\n",
+          "replace": "    let length = string.len();\n    length\n"
+        },
+        {
+          "id": "strlen-failing-attempt",
+          "kind": "failure",
+          "function": "human_eval_verus::human_eval_023::strlen",
+          "file": "tasks/human_eval_023.rs",
+          "expected": "errors",
+          "from": "original",
+          "find": "            == string.len(),  // The length returned is equal to the length of the string\n",
+          "replace": "            == string.len() + 1,  // The length returned is equal to the length of the string\n"
+        },
+        {
+          "id": "strlen-repaired-attempt",
+          "kind": "repair",
+          "function": "human_eval_verus::human_eval_023::strlen",
+          "file": "tasks/human_eval_023.rs",
+          "expected": "verified",
+          "from": "strlen-failing-attempt",
+          "find": "            == string.len() + 1,  // The length returned is equal to the length of the string\n",
+          "replace": "            == string.len(),  // The length returned is equal to the length of the string\n"
+        }
+      ]
+    },
+    {
+      "id": "vest",
+      "commit": "11af01ddaef76cceded03517cd48764adb9d35b1",
+      "package": "vest_lib",
+      "target": "vest_lib",
+      "target_kind": "lib",
+      "root": "vest_lib",
+      "cargo_wrapper": false,
+      "cycles": [
+        {
+          "id": "base128-body",
+          "kind": "body",
+          "function": "vest_lib::primitives::base128::lemma_from_base128_push",
+          "file": "vest_lib/src/primitives/base128.rs",
+          "expected": "verified",
+          "from": "original",
+          "find": "    assert(bytes.push(b).drop_last() == bytes);\n",
+          "replace": "    assert(bytes.push(b).len() == bytes.len() + 1);\n    assert(bytes.push(b).drop_last() == bytes);\n"
+        },
+        {
+          "id": "pow128-spec",
+          "kind": "spec",
+          "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+          "file": "vest_lib/src/primitives/base128.rs",
+          "expected": "verified",
+          "from": "original",
+          "find": "        pow(128, exp + 1) == pow(128, exp) * 128,\n",
+          "replace": "        pow(128, exp + 1) == pow(128, exp) * 128,\n        pow(128, exp + 1) == 128 * pow(128, exp),\n"
+        },
+        {
+          "id": "base128-refactor",
+          "kind": "refactor",
+          "function": "vest_lib::primitives::base128::lemma_from_base128_upper_bound",
+          "file": "vest_lib/src/primitives/base128.rs",
+          "expected": "verified",
+          "from": "original",
+          "find": "        let prefix = bytes.drop_last();\n        lemma_from_base128_upper_bound(prefix);\n        lemma_pow128_succ(prefix.len());\n",
+          "replace": "        let prefix_len = bytes.drop_last().len();\n        lemma_from_base128_upper_bound(bytes.drop_last());\n        lemma_pow128_succ(prefix_len);\n"
+        },
+        {
+          "id": "pow128-failing-attempt",
+          "kind": "failure",
+          "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+          "file": "vest_lib/src/primitives/base128.rs",
+          "expected": "errors",
+          "from": "original",
+          "find": "        pow(128, exp + 1) == pow(128, exp) * 128,\n",
+          "replace": "        pow(128, exp + 1) == pow(128, exp) * 128 + 1,\n"
+        },
+        {
+          "id": "pow128-repaired-attempt",
+          "kind": "repair",
+          "function": "vest_lib::primitives::base128::lemma_pow128_succ",
+          "file": "vest_lib/src/primitives/base128.rs",
+          "expected": "verified",
+          "from": "pow128-failing-attempt",
+          "find": "        pow(128, exp + 1) == pow(128, exp) * 128 + 1,\n",
+          "replace": "        pow(128, exp + 1) == pow(128, exp) * 128,\n"
+        }
+      ]
+    }
+  ]
+}

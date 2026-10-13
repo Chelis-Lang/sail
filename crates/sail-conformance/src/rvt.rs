@@ -4,8 +4,9 @@
 //! of a test must agree on:
 //! - libtest's outcome (`ok`, `FAILED`, `ignored`);
 //! - the exit code;
-//! - stderr, byte for byte: every diagnostic Verus reported, as the test
-//!   harness rendered it, plus any panic message;
+//! - stderr: every diagnostic Verus reported, as the test harness rendered
+//!   it, plus any panic message, compared like corpus units' stderr
+//!   (ADR 0042: complete messages as a multiset, the rest byte for byte);
 //! - stdout: libtest's own report.
 //!
 //! `sail_verus::rvt` blanks only the two pieces of that text that are not
@@ -18,7 +19,7 @@
 use sail_verus::rvt::TestRecord;
 use serde::Serialize;
 
-use crate::{Verdict, first_difference};
+use crate::{Verdict, diagnostics, first_difference};
 
 /// Every difference between a plain run and a sail run of one test.
 #[must_use]
@@ -36,12 +37,7 @@ pub fn compare_tests(plain: &TestRecord, sail: &TestRecord) -> Vec<String> {
             plain.exit_code, sail.exit_code
         ));
     }
-    if plain.stderr != sail.stderr {
-        d.push(format!(
-            "diagnostics (stderr) differ at {}",
-            first_difference(&plain.stderr, &sail.stderr)
-        ));
-    }
+    d.extend(diagnostics::compare_stderr(&plain.stderr, &sail.stderr));
     if plain.stdout != sail.stdout {
         d.push(format!(
             "libtest report (stdout) differs at {}",
@@ -135,6 +131,17 @@ mod tests {
         let mut c = a.clone();
         c.stdout = "other\n".to_owned();
         assert_eq!(compare_tests(&a, &c).len(), 1);
+    }
+
+    #[test]
+    fn rendered_messages_may_come_in_any_order() {
+        let e1 = "error: e1\n --> /tmp/t/test.rs:3:5\n  |\n\n";
+        let e2 = "error: e2\n --> /tmp/t/test.rs:9:5\n  |\n\n";
+        let a = rec(Outcome::Failed, &format!("{e1}{e2}panicked\n"));
+        let b = rec(Outcome::Failed, &format!("{e2}{e1}panicked\n"));
+        assert_eq!(compare_tests(&a, &b), Vec::<String>::new());
+        let missing = rec(Outcome::Failed, &format!("{e2}panicked\n"));
+        assert_eq!(compare_tests(&a, &missing).len(), 1);
     }
 
     #[test]

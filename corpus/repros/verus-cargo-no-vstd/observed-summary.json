@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "direct-cargo-verus-supported-no-vstd-metadata-probe",
+  "elapsed_s": 69.71844578300079,
+  "exit_code": 101,
+  "timed_out": false,
+  "bound_s": 120,
+  "engine_sha256": "5e705a16b56ddf92236bdd3eea46a68e678f6aa865e74d8dcb4fd6254d33a048",
+  "metadata_no_vstd": true,
+  "vstd_kind_environment": false,
+  "machine": "linux-amd64-emulated-on-macos-arm64",
+  "stdout_sha256": "f599d2124979f000655c4f106a2b2a14e4c3454a04aae60a932dc1cbb9a0b751",
+  "stderr_sha256": "b072b1f8b0bbdb97dbd37a83b90e5b838bb9d2e3bf76915a6bd88ef40fac078c",
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "engine_manifest_sha256": "3790f2dcfe7fbfaefb2447de7189c2667e0ffbf7c4d4f03f793db83d0ef861ad",
+  "engine_patch_sha256": "e6daf8c42bbf6f6c35bfa52e6d989b2781ad1350ac2afd8252ad9151b2b91c62",
+  "interactive_engine_enabled": false,
+  "diagnostics_path_replacements": [
+    "<VERUS_SOURCE>",
+    "<REPRO_ROOT>"
+  ],
+  "note": "stdout and stderr hashes bind the original captured bytes; observed.stderr substitutes machine-local path roots. A patched source variant was used; the launcher code described here is unchanged pinned code."
+}

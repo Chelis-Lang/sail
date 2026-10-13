@@ -1,4 +1,4 @@
-//! Exact proof journals and evidence tools; never generate proof edits.
+//! Exact proof journals and repair evidence tools; never generate proof edits.
 use crate::run::{self, Cancel};
 use crate::tools::{Context, ToolResult, project_dir};
 use serde_json::{Map, Value, json};
@@ -13,6 +13,7 @@ pub(super) fn definitions() -> Vec<Value> {
         json!({"name":"save_baseline","title":"Save immutable baseline evidence","description":"Save a completed job under a new immutable name, independently of job retention. Negative, incomplete or provisional evidence remains as reported; saving never proves current inputs or accepts a repair. Existing names cannot be overwritten.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id","name"],"properties":{"job_id":string(),"name":baseline_schema()}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
         json!({"name":"list_baselines","title":"List immutable baselines","description":"List saved baseline names for this server's local job service. Names are sorted; listing establishes no proof or currentness.","inputSchema":{"type":"object","additionalProperties":false,"properties":{}},"annotations":{"readOnlyHint":true,"destructiveHint":false,"openWorldHint":false}}),
         json!({"name":"get_baseline","title":"Read immutable baseline evidence","description":"Read version-one baseline evidence for its recorded job, revision, context and exact targets. Currentness is historical, independently of today's workspace and job pruning. Provisional verdicts remain provisional.","inputSchema":{"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":baseline_schema()}},"annotations":{"readOnlyHint":true,"destructiveHint":false,"openWorldHint":false}}),
+        json!({"name":"start_repair_validation","title":"Start focused and full repair validation","description":"Submit an explicit optional interactive-engine batch: exact selected-function phase followed by independent full-target validation. Returns a durable job immediately. Focus success is provisional; accepted requires complete successful Current full evidence and late compiler seal. The engine must be installed and validated; no automated editing.","inputSchema":{"type":"object","additionalProperties":false,"required":["package","kind","function","engine"],"properties":{"project_dir":string(),"package":string(),"kind":{"type":"string","enum":["lib","bin"]},"target":string(),"function":string(),"engine":{"type":"string","enum":["interactive"]},"cargo_args":{"type":"array","items":{"type":"string"}},"verus_args":{"type":"array","items":{"type":"string"}}}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
     ]
 }
 
@@ -115,6 +116,16 @@ fn arguments(
         "save_baseline" => &["job_id", "name"],
         "list_baselines" => &[],
         "get_baseline" => &["name"],
+        "start_repair_validation" => &[
+            "project_dir",
+            "package",
+            "kind",
+            "target",
+            "function",
+            "engine",
+            "cargo_args",
+            "verus_args",
+        ],
         _ => return Err("unknown proof tool".into()),
     };
     if let Some(key) = args.keys().find(|key| !allowed.contains(&key.as_str())) {
@@ -185,7 +196,7 @@ fn arguments(
                 _ => return Err("provide exactly one before_job or baseline".into()),
             }
         }
-        _ => return Err("unknown proof tool".into()),
+        _ => return repair(args),
     };
     Ok((json_arguments(name, args, out), None))
 }
@@ -201,10 +212,67 @@ fn json_arguments(name: &str, args: &Map<String, Value>, mut out: Vec<String>) -
     }
     out
 }
+fn repair(args: &Map<String, Value>) -> Result<(Vec<String>, Option<String>), String> {
+    if value(args, "engine")? != "interactive" {
+        return Err("repair engine must be interactive".into());
+    }
+    let kind = value(args, "kind")?;
+    let mut out = vec![
+        "repair-check".into(),
+        "--engine".into(),
+        "interactive".into(),
+        "--background".into(),
+        "--output".into(),
+        "json".into(),
+        "--package".into(),
+        value(args, "package")?,
+        "--function".into(),
+        value(args, "function")?,
+    ];
+    match kind.as_str() {
+        "lib" if !args.contains_key("target") => out.push("--lib".into()),
+        "bin" => out.extend(["--bin".into(), value(args, "target")?]),
+        _ => return Err("select lib without target, or bin with target".into()),
+    }
+    for key in ["cargo_args", "verus_args"] {
+        if let Some(values) = args.get(key) {
+            let list = values
+                .as_array()
+                .ok_or_else(|| format!("{key} must be an array"))?;
+            if key == "verus_args" && !list.is_empty() {
+                out.push("--".into());
+            }
+            for value in list {
+                let text = value
+                    .as_str()
+                    .filter(|value| !value.contains('\0'))
+                    .ok_or_else(|| format!("{key} requires strings"))?;
+                if key == "cargo_args"
+                    && (text == "--" || text == "--output" || text.starts_with("--output="))
+                {
+                    return Err("cargo_args cannot override output or Verus separator".into());
+                }
+                out.push(text.into());
+            }
+        }
+    }
+    Ok((
+        out,
+        if args.contains_key("project_dir") {
+            Some(value(args, "project_dir")?)
+        } else {
+            None
+        },
+    ))
+}
 fn valid(name: &str, document: &Value) -> bool {
     match name {
         "verification_events" => serde_json::from_value::<sail_api::proof::Page>(document.clone())
             .is_ok_and(|page| page.version == 1),
+        "start_repair_validation" => {
+            serde_json::from_value::<sail_api::jobs::Status>(document.clone())
+                .is_ok_and(|status| status.version == 1)
+        }
         "explain_failure" => {
             matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),Ok(sail_api::jobs::Response::Explanation(explanation)) if explanation.version==1)
         }
@@ -240,6 +308,26 @@ mod tests {
     use super::*;
     fn parse(name: &str, value: &Value) -> Result<(Vec<String>, Option<String>), String> {
         arguments(name, value.as_object().ok_or("expected object")?)
+    }
+    #[test]
+    fn repair_tool_requires_explicit_exact_target_and_unavailable_engine_is_not_hidden() {
+        let parsed=parse("start_repair_validation", &json!({"package":"demo","kind":"bin","target":"demo","function":"demo::proof","engine":"interactive"})).unwrap_or_else(|error|unreachable!("{error}"));
+        assert!(parsed.0.windows(2).any(|pair| pair == ["--bin", "demo"]));
+        assert!(
+            parsed
+                .0
+                .windows(2)
+                .any(|pair| pair == ["--function", "demo::proof"])
+        );
+        assert!(parsed.0.contains(&"--background".to_owned()));
+        assert!(parse("start_repair_validation", &json!({"package":"demo","kind":"lib","target":"demo","function":"demo::proof","engine":"interactive"})).is_err());
+        assert!(
+            parse(
+                "start_repair_validation",
+                &json!({"package":"demo","kind":"lib","function":"demo::proof","engine":"stock"})
+            )
+            .is_err()
+        );
     }
     #[test]
     fn cursors_explanations_and_baselines_do_not_accept_ambiguous_inputs() {

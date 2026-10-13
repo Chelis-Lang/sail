@@ -14,6 +14,7 @@
 //! `--output-json` document, so a run can produce several.
 
 use std::collections::BTreeMap;
+use std::io::Read as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -40,6 +41,31 @@ pub enum Solver {
         /// sessions (ADR 0011). `None` runs pure pass-through.
         daemon_socket: Option<PathBuf>,
     },
+    /// The optional interactive source engine (ADR 0027) with the pinned Z3.
+    Engine(EngineRun),
+}
+
+/// How the engine conformance arm runs the interactive source engine.
+///
+/// Every run gets its own event journal and focus report under its work
+/// directory.
+#[derive(Debug, Clone)]
+pub struct EngineRun {
+    /// The engine's `verus` launcher.
+    pub verus: PathBuf,
+    /// The engine's `cargo-verus` frontend.
+    pub cargo_verus: PathBuf,
+    /// Exact crate-qualified function for the focused phase, if any. The
+    /// independent full phase always runs and is what is compared.
+    pub function: Option<String>,
+}
+
+/// Files the engine writes under a unit's work directory.
+pub mod engine_files {
+    /// Source observation journal (JSONL).
+    pub const EVENTS: &str = "engine.events.jsonl";
+    /// Focused-phase report.
+    pub const FOCUS: &str = "engine.focus.json";
 }
 
 /// Flags added to every run.
@@ -480,10 +506,11 @@ pub fn run_unit(
     } else {
         None
     };
-    let program = if cargo {
-        &installed.cargo_verus
-    } else {
-        &installed.verus
+    let program = match (solver, cargo) {
+        (Solver::Engine(engine), true) => &engine.cargo_verus,
+        (Solver::Engine(engine), false) => &engine.verus,
+        (_, true) => &installed.cargo_verus,
+        (_, false) => &installed.verus,
     };
     if !program.is_file() {
         return Err(Error::new(
@@ -507,8 +534,11 @@ pub fn run_unit(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     solver_env(&mut cmd, installed, unit, solver);
+    if let Solver::Engine(engine) = solver {
+        engine_env(&mut cmd, installed, engine, work);
+    }
     let started = Instant::now();
-    let output = run_with_timeout(&mut cmd, unit_timeout())
+    let output = run_with_timeout_retaining(&mut cmd, unit_timeout(), Some(work))
         .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
     if let Some(dir) = target_dir {
@@ -562,6 +592,17 @@ pub(crate) fn run_with_timeout(
     cmd: &mut Command,
     limit: Duration,
 ) -> std::result::Result<std::process::Output, (&'static str, String)> {
+    run_with_timeout_retaining(cmd, limit, None)
+}
+
+// Retain the raw streams while draining the pipes, including before a timeout.
+// Capture is best effort, like the completed-run files below run_unit. It never
+// changes a command, stream, deadline or infrastructure-error classification.
+fn run_with_timeout_retaining(
+    cmd: &mut Command,
+    limit: Duration,
+    work: Option<&Path>,
+) -> std::result::Result<std::process::Output, (&'static str, String)> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt as _;
@@ -572,11 +613,16 @@ pub(crate) fn run_with_timeout(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| ("SAIL3020", format!("cannot run: {e}")))?;
-    let read_all = |r: Option<Box<dyn std::io::Read + Send>>| {
+    let read_all = |r: Option<Box<dyn std::io::Read + Send>>, name: &str| {
+        let capture = work.and_then(|dir| std::fs::File::create(dir.join(name)).ok());
         std::thread::spawn(move || {
             let mut buf = Vec::new();
             if let Some(mut r) = r {
-                let _ = r.read_to_end(&mut buf);
+                let _ = RetainedReader {
+                    reader: &mut r,
+                    capture,
+                }
+                .read_to_end(&mut buf);
             }
             buf
         })
@@ -586,12 +632,14 @@ pub(crate) fn run_with_timeout(
             .stdout
             .take()
             .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+        "stdout.txt",
     );
     let err = read_all(
         child
             .stderr
             .take()
             .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+        "stderr.txt",
     );
     let deadline = Instant::now() + limit;
     let status = loop {
@@ -623,8 +671,37 @@ pub(crate) fn run_with_timeout(
     })
 }
 
+struct RetainedReader<R> {
+    reader: R,
+    capture: Option<std::fs::File>,
+}
+
+impl<R: std::io::Read> std::io::Read for RetainedReader<R> {
+    fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+        use std::io::Write as _;
+        let size = self.reader.read(bytes)?;
+        if let Some(capture) = &mut self.capture
+            && capture.write_all(&bytes[..size]).is_err()
+        {
+            // A full/unavailable evidence disk must not stop draining a pipe
+            // and hang or alter the verifier. Completed output is still kept
+            // in memory; timeout evidence may be incomplete on an I/O failure.
+            self.capture = None;
+        }
+        Ok(size)
+    }
+}
+
 /// Sets the solver environment for one side of a comparison.
 fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &Solver) {
+    for key in [
+        "SAIL_ENGINE",
+        "SAIL_ENGINE_EVENTS",
+        "SAIL_ENGINE_FOCUS_REPORT",
+        "SAIL_ENGINE_CONTEXT",
+    ] {
+        cmd.env_remove(key);
+    }
     cmd.env_remove("VERUS_Z3_PATH")
         .env_remove("SAIL_Z3_PATH")
         .env_remove("SAIL_TRACE_DIR")
@@ -651,6 +728,20 @@ fn solver_env(cmd: &mut Command, installed: &Installed, unit: &Unit, solver: &So
         if let Some(socket) = daemon_socket {
             cmd.env("SAIL_DAEMON_SOCKET", socket);
         }
+    }
+}
+
+/// The interactive engine's private controls, all scoped to `work`.
+fn engine_env(cmd: &mut Command, installed: &Installed, engine: &EngineRun, work: &Path) {
+    cmd.env_remove("SAIL_ENGINE_FUNCTION");
+    // The same pinned solver bytes as the plain side.
+    cmd.env("VERUS_Z3_PATH", &installed.z3)
+        .env("SAIL_ENGINE", "interactive")
+        .env("SAIL_ENGINE_EVENTS", work.join(engine_files::EVENTS))
+        .env("SAIL_ENGINE_FOCUS_REPORT", work.join(engine_files::FOCUS))
+        .env("SAIL_ENGINE_CONTEXT", "sail-conformance-engine-v1");
+    if let Some(function) = &engine.function {
+        cmd.env("SAIL_ENGINE_FUNCTION", function);
     }
 }
 
@@ -684,6 +775,87 @@ pub fn machine_info() -> BTreeMap<String, String> {
 mod tests {
     use super::{RunRecord, parse_outputs, parse_time};
     use serde_json::json;
+
+    #[cfg(unix)]
+    #[test]
+    fn timeout_retains_raw_partial_streams_without_a_verifier_result() {
+        let root =
+            std::env::temp_dir().join(format!("sail-timeout-capture-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        let pid_file = root.join("child.pid");
+        let mut command = std::process::Command::new("sh");
+        command
+            .args([
+                "-c",
+                "printf '%s' \"$$\" > \"$1\"; printf 'partial\\000\\377'; printf 'failure\\000\\376' >&2; exec sleep 20",
+                "sail-timeout-fixture",
+            ])
+            .arg(&pid_file);
+        let result = super::run_with_timeout_retaining(
+            &mut command,
+            std::time::Duration::from_secs(2),
+            Some(&root),
+        );
+        assert!(matches!(result, Err(("SAIL3022", _))), "{result:?}");
+        assert_eq!(
+            std::fs::read(root.join("stdout.txt")).ok(),
+            Some(b"partial\0\xff".to_vec())
+        );
+        assert_eq!(
+            std::fs::read(root.join("stderr.txt")).ok(),
+            Some(b"failure\0\xfe".to_vec())
+        );
+        let pid = std::fs::read_to_string(pid_file).unwrap_or_default();
+        assert_ne!(pid, "");
+        assert!(
+            std::process::Command::new("kill")
+                .args(["-0", "--", &pid])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|status| !status.success())
+        );
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn completed_capture_preserves_binary_streams_exit_and_failed_capture_fallback() {
+        let root =
+            std::env::temp_dir().join(format!("sail-completed-capture-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(&root).is_ok());
+        // A directory at stderr.txt refuses the capture file without changing
+        // draining, raw output or the command's verification-failure exit code.
+        assert!(std::fs::create_dir_all(root.join("stderr.txt")).is_ok());
+        let script = "printf 'answer\\000\\377'; printf 'diagnostic\\000\\376' >&2; exit 9";
+        let mut command = std::process::Command::new("sh");
+        command.args(["-c", script]);
+        let result = super::run_with_timeout_retaining(
+            &mut command,
+            std::time::Duration::from_secs(5),
+            Some(&root),
+        );
+        let Ok(output) = result else {
+            unreachable!("fixture failed to run: {result:?}")
+        };
+        assert_eq!(output.status.code(), Some(9));
+        assert_eq!(output.stdout, b"answer\0\xff");
+        assert_eq!(output.stderr, b"diagnostic\0\xfe");
+        let mut ordinary = std::process::Command::new("sh");
+        ordinary.args(["-c", script]);
+        let Ok(plain) = super::run_with_timeout(&mut ordinary, std::time::Duration::from_secs(5))
+        else {
+            unreachable!("ordinary fixture failed to run")
+        };
+        assert_eq!(output.status, plain.status);
+        assert_eq!(output.stdout, plain.stdout);
+        assert_eq!(output.stderr, plain.stderr);
+        assert_eq!(
+            std::fs::read(root.join("stdout.txt")).ok(),
+            Some(output.stdout)
+        );
+        assert!(std::fs::remove_dir_all(root).is_ok());
+    }
 
     #[test]
     fn conformance_forces_default_mode_on_both_sides() {

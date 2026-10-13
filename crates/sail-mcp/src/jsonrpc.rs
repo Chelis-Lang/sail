@@ -50,6 +50,16 @@ pub fn ok(id: &Value, result: &Value) -> Value {
     json!({"jsonrpc": "2.0", "id": id, "result": result})
 }
 
+/// A successful owned response without another structured-result clone.
+#[must_use]
+pub(super) fn ok_owned(id: Value, result: Value) -> Value {
+    Value::Object(Map::from_iter([
+        ("jsonrpc".to_owned(), Value::String("2.0".to_owned())),
+        ("id".to_owned(), id),
+        ("result".to_owned(), result),
+    ]))
+}
+
 /// An error response. `data` is omitted when `None`.
 #[must_use]
 pub fn error(id: &Value, code: i64, message: &str, data: Option<Value>) -> Value {

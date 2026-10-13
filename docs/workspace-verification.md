@@ -57,6 +57,11 @@ distinguishes the selected Cargo scope from dependency reports. Embedded diagnos
 timing and solver provenance fields describe that establishing run. The outer
 execution counters describe the current Cargo request; historical timings are
 never counted as fresh verification work.
+An explicitly selected source engine adds an optional top-level `engine` object
+(`name`, `manifest_sha256`), and each embedded report
+records whether the engine or its stock fallback established it (see
+[engine provenance](output-schema.md#engine-provenance)). Stock results omit
+it.
 
 `currentness` is `current`, `historical` or `unknown`. A changed revision makes
 results historical. Currentness is evaluated under the job's original submitted
@@ -64,6 +69,14 @@ configuration; changing features or environment requires another request with
 its own context. Incomplete input observation never claims that historical
 proof evidence establishes a current workspace. Exit code and proof outcome
 remain distinct from whether a job's execution finished.
+
+When Sail cannot confirm that a result's inputs are unchanged, the result is
+Unknown and carries the note `SAIL3114: inputs could not be confirmed
+unchanged; re-run for a current result` ([freshness](freshness.md)).
+Job reads preserve the original proof notes. A
+separate current-input-validation warning appears when a previously Current
+report becomes Unknown during projection. See
+[the diagnostic boundary](validation/m7.md).
 
 ## Jobs that survive the client session
 
@@ -77,14 +90,31 @@ sail jobs result JOB --output json
 sail jobs cancel JOB
 ```
 
-Background verification returns immediately with a durable job identity. One
-worker runs by default. Identical in-flight requests coalesce once complete
+Background verification returns immediately with a durable job identity.
+Identical in-flight requests coalesce once complete
 remembered input coverage establishes the same revision. Cold requests without
 that evidence remain distinct, so an unseen edit cannot be swallowed. Status,
 logs and previous results remain available while another verification runs.
 Cancellation terminates the worker's process group, including Cargo-Verus and
 its solvers. If the daemon restarts during verification, the unfinished job
 becomes an infrastructure error rather than silently continuing.
+
+### Concurrent jobs
+
+Several agents can share one daemon. Jobs from different Cargo workspaces run
+concurrently, up to `SAIL_JOB_WORKERS` at a time. The default is a quarter of
+the available cores, between 1 and 4, because each job already runs Verus and
+Z3 in parallel; values from 1 to 64 are accepted, and anything else uses the
+default. The daemon reads the variable when it starts.
+
+Jobs in the same workspace run one at a time, in submission order: a later job
+waits in `queued` until the earlier one finishes, rather than failing on the
+workspace's managed target. The daemon identifies a workspace by the outermost
+directory above the project (or its `--manifest-path`) that holds a
+`Cargo.toml`, so nested packages of one workspace share a queue. Separate
+`sail verify --incremental` processes outside the daemon wait on the managed
+runner's own lock for up to `SAIL_MANAGED_LOCK_WAIT_SECS` seconds (default
+1,800) and then fail with `SAIL3104`.
 
 The local job endpoint has its own protocol version and owner-only socket.
 Job records and diagnostics are private files; the last twenty terminal jobs

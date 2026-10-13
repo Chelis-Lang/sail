@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "source_commit": "426d8b01e7ffb910a36c15e1f870ff985bb61eef",
+  "rustc_commit": "48a229ceaefd4985c50990b14116b6d856af0985",
+  "affected_patch_sha256": "5eed78f066cd3c6a9761cf216bef24b46946f6d58b8da6f1f837311102dcaa74",
+  "minimal_worker_reproduction": "scoped thread local access without set",
+  "source_unit_reproductions": 1,
+  "real_project": "human-eval-verus",
+  "real_exit_code": 101,
+  "confirmed": false
+}

@@ -11,16 +11,7 @@ use sail_api::jobs::{Client, Mode, Request, Response, Status, Submission};
 
 pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
     std::env::vars_os()
-        .filter(|(key, _)| {
-            ![
-                "SAIL_JOB_EVENTS",
-                "SAIL_MANAGED_FORCE",
-                "SAIL_JOB_GUARD_PARENT",
-                "SAIL_PROOF_EVENTS",
-            ]
-            .iter()
-            .any(|value| key == value)
-        })
+        .filter(|(key, _)| input_environment_key(key))
         .map(|(key, value)| {
             let key = key
                 .into_string()
@@ -33,15 +24,30 @@ pub(crate) fn environment() -> Result<BTreeMap<String, String>, String> {
         .collect()
 }
 
+fn input_environment_key(key: &std::ffi::OsStr) -> bool {
+    ![
+        "SAIL_JOB_EVENTS",
+        "SAIL_MANAGED_FORCE",
+        "SAIL_JOB_GUARD_PARENT",
+        "SAIL_PROOF_EVENTS",
+        "SAIL_ENGINE",
+        "SAIL_ENGINE_FUNCTION",
+    ]
+    .iter()
+    .any(|value| key == *value)
+}
+
 /// Connect to the local job endpoint, automatically starting the daemon.
 ///
 /// # Errors
 /// Returns setup or bounded startup errors, without changing verification inputs.
 pub(crate) fn connect_or_start() -> Result<Client, String> {
     let cache = sail_verus::cache_dir().map_err(|error| error.to_string())?;
-    let socket = std::env::var_os("SAIL_DAEMON_SOCKET")
+    let explicit = std::env::var_os("SAIL_DAEMON_SOCKET")
         .filter(|value| !value.is_empty())
-        .map_or_else(|| crate::default_socket(&cache), PathBuf::from);
+        .map(PathBuf::from);
+    let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
+    let socket = sail_api::jobs::cache_socket(&cache, explicit.as_deref(), &cwd);
     let jobs_socket = sail_api::jobs::socket_path(&socket);
     let client = Client::new(&jobs_socket);
     if client.call(&Request::List { project_dir: None }).is_ok() {
@@ -77,14 +83,23 @@ pub(crate) fn connect_or_start() -> Result<Client, String> {
 }
 
 pub(crate) fn submit(client: &Client, args: &[String]) -> Result<Status, String> {
-    let project_dir = std::env::current_dir().map_err(|error| error.to_string())?;
     let args = strip_output(args)?;
+    let (mode, args) = engine_options(&args)?;
+    submit_mode(client, args, mode)
+}
+
+pub(crate) fn submit_mode(
+    client: &Client,
+    args: Vec<String>,
+    mode: Mode,
+) -> Result<Status, String> {
+    let project_dir = std::env::current_dir().map_err(|error| error.to_string())?;
     // Submission must return a durable ID without Cargo metadata, dependency
     // downloads or verifier setup. The worker establishes the complete revision.
     // Unknown revisions cannot safely coalesce across intervening input edits.
     let input_revision = None;
     let submission = Submission {
-        mode: Mode::Stock,
+        mode,
         project_dir,
         args,
         force: std::env::var("SAIL_MANAGED_FORCE").is_ok_and(|value| value == "1"),
@@ -108,7 +123,7 @@ pub(crate) fn revision(
     sail_verus::managed::snapshot(project, args, &cargo).ok()
 }
 
-fn strip_output(args: &[String]) -> Result<Vec<String>, String> {
+pub(crate) fn strip_output(args: &[String]) -> Result<Vec<String>, String> {
     let mut result = Vec::new();
     let mut iterator = args.iter();
     while let Some(arg) = iterator.next() {
@@ -293,5 +308,52 @@ fn logs(client: &Client, id: &str, follow: bool, out: &mut dyn Write) -> Result<
             }
             _ => return Err("SAIL0802: unexpected log response".to_owned()),
         }
+    }
+}
+
+/// Parse only Sail engine options before the Cargo/Verus separator.
+pub(crate) fn engine_options(args: &[String]) -> Result<(Mode, Vec<String>), String> {
+    let mut mode = Mode::Stock;
+    let mut rest = Vec::new();
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        if arg == "--" {
+            rest.push(arg.clone());
+            rest.extend(iter.cloned());
+            break;
+        }
+        if arg == "--engine" {
+            let value = iter
+                .next()
+                .ok_or("SAIL0906: --engine requires stock or interactive")?;
+            mode = match value.as_str() {
+                "stock" => Mode::Stock,
+                "interactive" => Mode::Interactive,
+                _ => return Err("SAIL0906: --engine requires stock or interactive".into()),
+            };
+        } else {
+            rest.push(arg.clone());
+        }
+    }
+    Ok((mode, rest))
+}
+
+#[cfg(test)]
+mod environment_tests {
+    use super::*;
+
+    #[test]
+    fn job_plumbing_does_not_change_submitted_environment() {
+        let original = BTreeMap::from([("RUSTFLAGS", "-C opt-level=0"), ("PATH", "/toolchain")]);
+        let mut observed = original.clone();
+        observed.insert("SAIL_JOB_EVENTS", "/tmp/events.jsonl");
+        let select = |environment: BTreeMap<&str, &str>| {
+            environment
+                .into_iter()
+                .filter(|(key, _)| input_environment_key(std::ffi::OsStr::new(key)))
+                .map(|(key, value)| (key.to_owned(), value.to_owned()))
+                .collect::<BTreeMap<_, _>>()
+        };
+        assert_eq!(select(original), select(observed));
     }
 }
