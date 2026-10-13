@@ -111,9 +111,11 @@ pass-through and fill runs include its corrected invocation. Original reports
 are retained rather than rewritten.
 
 Portable summaries, explicit solver hashes, report hashes, complete unstable
-case identities and retained plain failures are in
-`bench/validation/initial-product-acceptance-2026-10-09.json`. The companion
-manifest and generator reproduce the artifact from the raw reports.
+case identities and retained plain failures were in
+`bench/validation/initial-product-acceptance-2026-10-09.json`, with the
+companion manifest and generator. They are archived outside the repository
+(sha256 `dcf30c1827434a157d17d15825305cdb8eac1265e99642489f8f37b97887322c`) and remain in git
+history before rescue lane L14.
 
 ## Cost and limits
 
@@ -127,7 +129,7 @@ The cache diagnostic correction was measured on three paired guide fill/warm
 rounds. All 396 unit comparisons matched. Median fill changed from 39.6 s to
 39.1 s (-1.1%); median warm changed from 29.9 s to 34.9 s (+16.7%). Ranges
 overlap under development load, so neither is a stable performance claim.
-Data, report hashes and the generator are in `bench/validation/`.
+Data, report hashes and the generator are in the same archive.
 
 Fragility values measure captured-query replay. They do not establish a
 complete independent program proof; only the complete-run portfolio does that.
