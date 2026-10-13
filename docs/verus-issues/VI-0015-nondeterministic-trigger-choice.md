@@ -69,6 +69,13 @@ are unchanged, so the chosen trigger is one stock can choose. The test checks
 that eight identical quantifiers in one file get identical triggers; stock
 gave different triggers within one process.
 
+The fix is in `vir`, which is part of the verifier binary, so it also holds
+under `cargo verus`, where Cargo builds vstd and the macro crates from the
+project's own source (compare VI-0001). In rescue L21 (2026-10-13), 10 direct
+runs of each fast-tier unit on the fork, `traits.rs` and `chapter-6-1.rs`
+included, each gave one SMT stream
+([L21 report](../reports/rescue/l21-determinism.md)).
+
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Default `sail verify` (stock Verus) keeps this nondeterminism; no workaround
 is needed for correctness.

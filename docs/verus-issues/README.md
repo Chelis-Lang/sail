@@ -21,7 +21,7 @@ place for stock runs; each entry says which.
 
 | Id | Title | Status | Fork (`Chelis-Lang/verus`) | Reproduction |
 |---|---|---|---|---|
-| [VI-0001](VI-0001-nondeterministic-declaration-order.md) | Nondeterministic SMT output from `arrow_*` accessor order | open in stock Verus; partly fixed in the fork (`human_eval_160` still varies, L18) | partly fixed: `9a5b2cc8` fix: generate enum arrow accessors in source order | `corpus/repros/verus-nondeterministic-declaration-order/` |
+| [VI-0001](VI-0001-nondeterministic-declaration-order.md) | Nondeterministic SMT output from `arrow_*` accessor order | open in stock Verus; fixed in the fork (cargo builds need `1612b951`, not yet pinned) | fixed: `9a5b2cc8` fix: generate enum arrow accessors in source order (direct runs); `1612b951` fix: declare enum arrow accessors in source order in the verifier (cargo runs; branch `l21/determinism`) | `corpus/repros/verus-nondeterministic-declaration-order/` |
 | [VI-0002](VI-0002-page-table-rlimit-on-pinned-release.md) | page-table fails one check on the pinned release | open | — | corpus entry `page-table` |
 | [VI-0003](VI-0003-bit-vector-failure-reported-as-success.md) | `--output-json` reports `success: true` for a failed bit-vector query | open in stock Verus; fixed in the fork | fixed: `8a5d3655` fix: record bit-vector failures in the function failure set | `crates/sail-cli/tests/fixtures/attr/input.rs` (`arith::bv_bad`) |
 | [VI-0004](VI-0004-shared-log-directory.md) | Every crate in a `cargo verus` run shares one log directory, and each clears it | open in stock Verus; fixed in the fork | fixed: `324c487c` fix: give each crate its own log directory under cargo verus | described (source references) |

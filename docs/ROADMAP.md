@@ -198,7 +198,10 @@ The levers that matter now:
     defects that re-verify vstd (+27 to 33 s).
   - See the [L18 report](reports/rescue/l18-m8-stage-profile.md).
 - **Determinism (VI-0001),** to raise hit rates. In edit loops a reordered
-  bucket costs about 2.7 s per affected human-eval-verus cycle;
+  bucket costs about 2.7 s per affected human-eval-verus cycle. The fork's
+  remaining variation under `cargo verus` is fixed on fork branch
+  `l21/determinism` (`1612b951`), which is not yet pinned
+  ([L21 report](reports/rescue/l21-determinism.md));
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
 
 ## Charter roadmap (designed for, built later)

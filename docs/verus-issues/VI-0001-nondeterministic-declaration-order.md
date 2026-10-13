@@ -1,8 +1,9 @@
 # VI-0001: Nondeterministic SMT output from `arrow_*` accessor order
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  partly fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order);
-  `human_eval_160` still varies on the fork (see below).
+  fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order)
+  for direct `verus` runs, and by `1612b951` (fix: declare enum arrow accessors in source order
+  in the verifier, branch `l21/determinism`, awaiting review and a re-pin) for `cargo verus` runs.
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08
 - **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
@@ -78,18 +79,38 @@ the order their fields first appear in the source, one of the orders stock can
 emit. The test checks the order of the `arrow_*` declarations in the AIR log;
 stock passes it by chance once in 5,040 runs.
 
-**Still varies on the fork for `human_eval_160` (rescue L18, 2026-10-13).**
-- The runtime was built from fork `3a91b1d7`, which contains `9a5b2cc8`.
-- Four focused runs on identical human-eval source logged SMT for
-  `human_eval_160`.
-- The logs differ in the order of the `arrow_1` and `arrow_2` declarations of
-  `Expr` (`impl&%4`): in the fuel declarations, in `Function-Decl` and in
-  `Function-Specs`.
-- In the L18 edit cycles, this bucket's SMT digest varied in 16 of 32 samples.
-- The regression test still passes, so the fix does not cover this path. The
-  cause is not yet located.
-- Evidence: `l18-out.tar.gz` (`det.log`), cited in the
-  [L18 report](../reports/rescue/l18-m8-stage-profile.md).
+**Why `9a5b2cc8` was not enough (rescue L21, 2026-10-13).** Under
+`cargo verus`, Cargo builds `verus_builtin_macros` from the project's own
+dependency source: crates.io for user projects, and the pinned upstream
+checkout for Sail's corpus and repair workspaces. The fork's macro fix
+therefore reached only direct `verus FILE` runs, which use the fork's bundled
+macros. L18's `human_eval_160` variation, and Vest's `cbor::value` and
+`asn1::integer`, are this case. All three differ only in `arrow_*` order and
+in what follows from it (fuel lists, declarations, label numbering).
+
+On the fork's `sail` build (`d2b69aea`), 10 runs of each (8 for Vest on the
+fork's source):
+
+| How vstd and its macros resolve | `human_eval_160` | Vest buckets that vary |
+|---|---|---|
+| pinned upstream source (as Sail patches them) | 2 distinct streams | `cbor::value` (4 streams), `asn1::integer` (2) |
+| the fork's own source | 1 | none |
+
+`1612b951` fixes it in the verifier, so the macro's origin no longer matters.
+`translate_impl` recognises the impl that `enum_synthesize` generates by its
+shape (`arrow_<field>` items, then exactly the enum's `arrow_<Variant>_<field>`
+items in declaration order) and visits the `arrow_<field>` items in the order
+their fields first appear. That is the order the fork's macro emits. Other
+impls keep their written order. Its regression test,
+`source/rust_verify_test/tests/sail_vi0001_impl_accessor_order.rs`, writes the
+generated impl by hand in one of stock's orders. It fails on `d2b69aea` and
+passes with the fix.
+
+With the fix, 10 runs of each unit against the upstream source give one SMT
+stream. Every log file is byte-identical to the fork-source build's, and to a
+log that a run with stock's macros also produced. Direct runs of the fast tier are
+byte-identical with and without the fix. See the
+[L21 report](../reports/rescue/l21-determinism.md).
 
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Default `sail verify` runs stock Verus, so this variation (and its effect on
