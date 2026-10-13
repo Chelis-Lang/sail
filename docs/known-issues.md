@@ -48,6 +48,15 @@ are in the `archive/m7-contracts-f7103bf` tag.
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),
   [reproduction](../corpus/repros/linux-emulation-verus-stall/).
+- **The engine cannot verify `by(integer_ring)`.** The engine runtime, like
+  the stock release, is built without Verus's `singular` feature, so it
+  rejects integer-ring lemmas that a Singular source build proves. The
+  optional Singular deep run's engine arm checks the project's
+  `verus-feature:singular` requirement only against the plain source build,
+  and reported all three Singular units Different (engine exit 1, never a
+  false verified). Default mode was Same.
+  [Deep-tier record](validation/deep-tier.md),
+  [reproduction](../corpus/repros/engine-without-singular/).
 - **Managed metadata ignores Cargo `-F` feature aliases.**
   [#78](https://github.com/Chelis-Lang/sail/issues/78).
 
