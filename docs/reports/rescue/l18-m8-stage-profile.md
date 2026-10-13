@@ -10,13 +10,13 @@
 - **Host.** AWS EC2 `c7i.8xlarge` (32 vCPU), us-east-1, Ubuntu 24.04.5, kernel 7.0.0-1014-aws. Native x86-64, launched with `scripts/perf-host.sh up l18 c7i.8xlarge` and torn down after use.
 - **Container.** CI image `sail-ci:3f31e6fc827f00bf`, built natively. Workspaces, caches and targets were on Docker volumes.
 - **Toolchain.** Verus 0.2026.10.04.426d8b0, Z3 4.16.0, Rust 1.98.1. Verus used 31 worker threads, its default here.
-- **Engine.** Fork `Chelis-Lang/verus` branch `m8/timers`:
+- **Engine.** Fork `Chelis-Lang/verus` tag `archive/m8-timers-l18` (formerly branch `m8/timers`):
   - `3a91b1d7` adds the timers on top of `sail` (`89709da7`). It is the runtime that was measured.
   - `2ab719dd` fixes only the regression test.
   - The engine was built with `cargo xtask build-verus-source --interactive-engine`, with `engine/verus/fork.toml` pointed at `3a91b1d7` in the host copy only. The committed pin is unchanged.
 - **Sail.** `rescue/m7` at `e20d849`, release build.
 
-## The timers (fork `m8/timers`)
+## The timers (fork tag `archive/m8-timers-l18`)
 
 **Where they appear.** The timers are added under the existing `--time-expanded` flag. With `--output-json`, the timing output gains `times-ms.sail-stages`; in text mode, a stage-totals section is printed. Without `--time-expanded`, the output is unchanged; a regression test checks this.
 

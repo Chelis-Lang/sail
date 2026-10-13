@@ -128,7 +128,7 @@ had been taken.
 
 **Method.** L18's driver and analysis (`measure.py`, `analyze.py`), with
 only their paths changed, ran in the same CI image on a separate host
-checkout. The engine was a host-only build of `l22/timers` (`9cbe2c7f`): the
+checkout. The engine was a host-only build of fork tag `archive/m8-timers-l22` (`9cbe2c7f`): the
 two `m8/timers` commits, which add per-bucket SMT digests under
 `--time-expanded`, cherry-picked onto `13a1176c`. That build is not pinned.
 The count covers every HumanEval repair cycle and agent-loop step, and every
