@@ -1,7 +1,7 @@
 # VI-0009: Partial timing success includes skipped functions
 
 - Status: open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `67b8f9ce` (fix: omit unselected functions from function timing).
+  fixed in Sail's Verus fork by `3566421a` (fix: omit unselected functions from function timing).
 - Found: 2026-10-09
 - Verus: `0.2026.10.04.426d8b0`
 - Reproduction: `corpus/repros/verus-partial-success/`
@@ -22,7 +22,7 @@ from reports and cannot become confirmed MCP lookup results.
 ## Sail fork
 
 Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`67b8f9ce` (fix: omit unselected functions from function timing), one commit
+`3566421a` (fix: omit unselected functions from function timing), one commit
 with its regression test
 `source/rust_verify_test/tests/sail_vi0009_selected_timing.rs`, which fails on
 the pinned stock source and passes on the fork. Timing entries are recorded

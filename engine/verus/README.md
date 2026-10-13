@@ -49,11 +49,13 @@ The fork's branches:
 
 Each fix is small and self-contained so it can be rebased, dropped (when a
 Verus release fixes the issue) or reviewed alone. Fix commits change only
-orders, the `--output-json` fields named in their issue, or Cargo freshness
-and log layout. An ordering fix must choose an order stock Verus is shown to
-produce (ADR 0039); the engine conformance arm, with its stock confirmation
-runs, checks this. The VI-0007 bucket-order fix failed that check on
-`debug_expand.rs` and was dropped.
+orders, the `--output-json` fields named in their issue, or Cargo log layout.
+An ordering fix must choose an order stock Verus is shown to produce (ADR
+0039); the engine conformance arm, with its stock confirmation runs, checks
+this. Two fixes were dropped: VI-0007's bucket-order diagnostics failed that
+check on `debug_expand.rs`, and VI-0005's dep-info carry-over made every
+Sail repair rebuild (the selected function is a forwarded argument). Run the
+repair benchmark on a candidate before pinning it.
 
 `cargo xtask build-verus-engine` fetches exactly the pinned commit (with
 `SAIL_ENGINE_ARTIFACT_TOKEN` or `gh auth token`; the repository is private),

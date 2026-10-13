@@ -1,7 +1,7 @@
 # Rescue lane L12: Verus issue fixes in Sail's fork
 
 - Branch: `l12-fork-fixes` (Sail), on `rescue/m7` (`fc5416e`); fork branches `l12/fixes`
-  (fixes, fast-forwarded into `sail` as `7b3bcba6`) and `l12/engine` (`4881cd0f`) on [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), cut from
+  (fixes, fast-forwarded into `sail` as `324c487c`) and `l12/engine` (`4881cd0f`) on [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), cut from
   `sail` (= upstream `426d8b0`).
 - Host: EC2 `c7i.8xlarge` (32 vCPU, us-east-1), lane `l12`, native x86-64
   Linux (Ubuntu 24.04), Rust 1.98.1, pinned Z3 4.16.0 from the
@@ -35,14 +35,14 @@ the fork (VI-0012's stock failure is probabilistic; see below).
 | VI-0001 | `9a5b2cc8` fix: generate enum arrow accessors in source order | +16 (`enum_synthesize.rs`) | `sail_vi0001_accessor_order`: seven accessors declared in source order in the AIR log (stock passes once in 5,040) |
 | VI-0015 | `404a1e30` fix: choose automatic triggers in a deterministic search order | +22 −3 (`triggers_auto.rs`) | `sail_vi0015_trigger_order`: eight identical quantifiers in one file get identical triggers (stock differed within one process) |
 | VI-0007 | `f98b87c5` fix: print bucket diagnostics in bucket order | +29 −43 (`verifier.rs`) | `sail_vi0007_error_order`: five modules' errors in module order, three runs; the first module is the slowest |
-| VI-0012 | `984c8e64` fix: report bucket start notes in queue order | +37 −7 (`verifier.rs`) | `sail_vi0012_progress_order`: 64 modules, 16 threads, 20 runs; notes in queue order |
-| VI-0008 | `3b388cf9` fix: list output-json func-details sorted by name | +15 −2 (`main.rs`) | `sail_vi0008_func_details_order`: eight functions sorted (stock passes once in 40,320) |
-| VI-0003 | `662daac3` fix: record bit-vector failures in the function failure set | +6 (`verifier.rs`) | `sail_vi0003_bitvector_success`: failed `by (bit_vector)` function has `success: false` |
-| VI-0009 | `67b8f9ce` fix: omit unselected functions from function timing | +15 −1 (`verifier.rs`) | `sail_vi0009_selected_timing`: `--verify-function good` lists only `good` |
-| VI-0010 | `b3f78b4c` feat: add function-path to the timing function breakdown | +17 (`main.rs`) | `sail_vi0010_function_path`: two `S::check` impls get distinct `function-path` values |
+| VI-0012 | `c9de60c6` fix: report bucket start notes in queue order | +37 −7 (`verifier.rs`) | `sail_vi0012_progress_order`: 64 modules, 16 threads, 20 runs; notes in queue order |
+| VI-0008 | `bf59e1f0` fix: list output-json func-details sorted by name | +15 −2 (`main.rs`) | `sail_vi0008_func_details_order`: eight functions sorted (stock passes once in 40,320) |
+| VI-0003 | `8a5d3655` fix: record bit-vector failures in the function failure set | +6 (`verifier.rs`) | `sail_vi0003_bitvector_success`: failed `by (bit_vector)` function has `success: false` |
+| VI-0009 | `3566421a` fix: omit unselected functions from function timing | +15 −1 (`verifier.rs`) | `sail_vi0009_selected_timing`: `--verify-function good` lists only `good` |
+| VI-0010 | `fbde5ea3` feat: add function-path to the timing function breakdown | +17 (`main.rs`) | `sail_vi0010_function_path`: two `S::check` impls get distinct `function-path` values |
 | VI-0005 | `5ee362fa` fix: keep verification dep-info in the compile pass | +41 (`cargo_verus_dep_tracker.rs`, `driver.rs`, `verifier.rs`) | `sail_vi0005_cargo_rerun`: same arguments stay fresh, changed `--rlimit` re-verifies |
 | VI-0005 (follow-up) | `b757e73e` fix: carry dep-info into the compile pass only for selected packages (on `l12/engine`) | +9 −2 (`verifier.rs`) | `sail_vi0005_cargo_rerun` also requires that the vstd path dependency is not rebuilt |
-| VI-0004 | `7b3bcba6` fix: give each crate its own log directory under cargo verus | +29 (`verifier.rs`) | `sail_vi0004_cargo_log_dirs`: library and binary logs both kept, in their own subdirectories |
+| VI-0004 | `324c487c` fix: give each crate its own log directory under cargo verus | +29 (`verifier.rs`) | `sail_vi0004_cargo_log_dirs`: library and binary logs both kept, in their own subdirectories |
 
 Notes:
 

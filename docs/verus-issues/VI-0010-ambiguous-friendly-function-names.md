@@ -1,7 +1,7 @@
 # VI-0010: Distinct trait implementations share a friendly function name
 
 - Status: open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `b3f78b4c` (feat: add function-path to the timing function breakdown).
+  fixed in Sail's Verus fork by `fbde5ea3` (feat: add function-path to the timing function breakdown).
 - Found: 2026-10-10
 - Verus: `0.2026.10.04.426d8b0`
 - Reproduction: `corpus/repros/verus-ambiguous-friendly-name/`
@@ -34,7 +34,7 @@ identity consistently in AIR, timing JSON and diagnostics.
 ## Sail fork
 
 Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`b3f78b4c` (feat: add function-path to the timing function breakdown), one
+`fbde5ea3` (feat: add function-path to the timing function breakdown), one
 commit with its regression test
 `source/rust_verify_test/tests/sail_vi0010_function_path.rs`, which fails on
 the pinned stock source and passes on the fork. Each `function-breakdown`

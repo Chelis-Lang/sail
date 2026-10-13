@@ -1,7 +1,7 @@
 # VI-0005: changing forwarded Verus arguments does not re-verify a fresh crate
 
-- **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `5ee362fa` (fix: keep verification dep-info in the compile pass).
+- **Status:** open (tracked here; not filed upstream). A fork fix was tried and
+  dropped (see below).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08, building `sail verify --output json` (ADR 0014)
 - **Impact on sail:** when Cargo considers a package up to date, `sail verify
@@ -28,28 +28,16 @@ request.
 
 ## Sail fork
 
-Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`5ee362fa` (fix: keep verification dep-info in the compile pass), one commit
-with its regression test
-`source/rust_verify_test/tests/sail_vi0005_cargo_rerun.rs`, which fails on the
-pinned stock source and passes on the fork. Cause found: rust_verify does
-record the forwarded arguments (`__VERUS_DRIVER_ARGS__...`) as dep-info
-environment dependencies, but via Cargo it runs rustc twice and the second
-(erase-macro compile) pass rewrote the same `.d` file without them. The fork
-carries the verification pass's environment and file dependencies into the
-compile pass, so Cargo re-verifies when they change.
+Not fixed. The cause is known: rust_verify records the forwarded arguments
+(`__VERUS_DRIVER_ARGS__...`) as dep-info environment dependencies, but via
+Cargo it runs rustc twice, and the second (erase-macro compile) pass rewrites
+the same `.d` file without them. The fork briefly carried those dependencies
+into the compile pass (`441d6cd9`, then `b35e9226` for Cargo-selected
+packages only) and was dropped (2026-10-13, rescue L12, ADR 0039): Sail's
+repair passes the selected function as a forwarded Verus argument
+(`--sail-repair-function`), so binding the forwarded arguments in dep-info
+invalidated the build on every repair. Each HumanEval repair rebuilt vstd and
+ended Historical, about 34 s against 6 s without the change. A future fix
+would bind only result-affecting arguments; not now.
 
-The first version also did this for unselected dependencies. `cargo verus
-verify` forwards its arguments to every package, including vstd, so Cargo
-rebuilt vstd whenever the arguments changed; Sail's repair loop changes them
-for every function (`--sail-repair-function`), and each repair rebuilt vstd
-and lost Current evidence (`SAIL3114`). Follow-up `b757e73e` (fix: carry
-dep-info into the compile pass only for selected packages) limits it to
-packages selected on Cargo's command line (`CARGO_PRIMARY_PACKAGE`);
-dependencies keep stock freshness, and the test also requires that vstd is
-not rebuilt.
-
-The fork builds only the optional interactive engine. Stock-mode workaround:
-Still needed for default `sail verify` (stock Verus): an unchanged verified
-package gives no results, and Sail reports that rather than forcing
-re-verification.
+Sail's stock-mode workaround is unchanged.

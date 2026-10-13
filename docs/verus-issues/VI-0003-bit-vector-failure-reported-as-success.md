@@ -1,7 +1,7 @@
 # VI-0003: `--output-json` reports `success: true` for a failed bit-vector query
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
-  fixed in Sail's Verus fork by `662daac3` (fix: record bit-vector failures in the function failure set).
+  fixed in Sail's Verus fork by `8a5d3655` (fix: record bit-vector failures in the function failure set).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08, building function attribution (ADR 0014); first
   noted from the source in `docs/survey/verus-z3.md` §6
@@ -45,7 +45,7 @@ false-verification gap without guessing which function failed.
 ## Sail fork
 
 Fixed in [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus) by
-`662daac3` (fix: record bit-vector failures in the function failure set), one
+`8a5d3655` (fix: record bit-vector failures in the function failure set), one
 commit with its regression test
 `source/rust_verify_test/tests/sail_vi0003_bitvector_success.rs`, which fails
 on the pinned stock source and passes on the fork. The `Invalid(None)` path
