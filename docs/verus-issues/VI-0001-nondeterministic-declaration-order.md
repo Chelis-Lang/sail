@@ -2,8 +2,9 @@
 
 - **Status:** open in stock Verus (tracked here; not filed upstream);
   fixed in Sail's Verus fork by `9a5b2cc8` (fix: generate enum arrow accessors in source order)
-  for direct `verus` runs, and by `1612b951` (fix: declare enum arrow accessors in source order
-  in the verifier, branch `l21/determinism`, awaiting review and a re-pin) for `cargo verus` runs.
+  for direct `verus` runs, and by `af212563` (fix: declare enum arrow accessors in source order
+  in the verifier; first written as `1612b951` on `l21/determinism`) for `cargo verus` runs.
+  Both are in the pinned engine runtime, fork commit `13a1176c` (rescue L22).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-08
 - **Reproduction:** `corpus/repros/verus-nondeterministic-declaration-order/`
@@ -96,7 +97,7 @@ fork's source):
 | pinned upstream source (as Sail patches them) | 2 distinct streams | `cbor::value` (4 streams), `asn1::integer` (2) |
 | the fork's own source | 1 | none |
 
-`1612b951` fixes it in the verifier, so the macro's origin no longer matters.
+`1612b951` (landed in the fork as `af212563`) fixes it in the verifier, so the macro's origin no longer matters.
 `translate_impl` recognises the impl that `enum_synthesize` generates by its
 shape (`arrow_<field>` items, then exactly the enum's `arrow_<Variant>_<field>`
 items in declaration order) and visits the `arrow_<field>` items in the order
@@ -111,6 +112,12 @@ stream. Every log file is byte-identical to the fork-source build's, and to a
 log that a run with stock's macros also produced. Direct runs of the fast tier are
 byte-identical with and without the fix. See the
 [L21 report](../reports/rescue/l21-determinism.md).
+
+**On the pinned runtime (rescue L22, 2026-10-13).** L18's changed-bucket
+count, repeated on a timers build of `13a1176c`, found no bucket whose SMT
+digest varied for identical input: 0 of 28 measured HumanEval samples and 0
+of 14 Vest samples, against 16 of 32 HumanEval samples and two varying Vest
+buckets on `89709da7` ([L22 report](../reports/rescue/l22-final-pin.md)).
 
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Default `sail verify` runs stock Verus, so this variation (and its effect on

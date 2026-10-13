@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "workload": "repair",
-  "environment": "native x86-64 Linux, EC2 c7i.8xlarge us-east-1",
+  "environment": "native x86-64 Linux, EC2 c7i.8xlarge, us-east-1",
   "catalogue_sha256": "6ffc129735220bf53511ac6bba818c5c3c7b61bca92d59c17292a807979b18d6",
   "minimum_rounds": 3,
   "minimum_median_speedup": 2.0,
@@ -40,14 +40,14 @@
       "shim_sha256": "98b38f77b22ed8f409f9259600536be6b345095d3c567aa12e83cf5292c272e7"
     },
     "m7": {
-      "commit": "25fc7b0",
-      "sail_sha256": "b03db48a03327a086bb0bfc63b47257ba7a8c92d197c60d799ad6b008204aa22",
+      "commit": "d187e49034d3b1d262d120ff19a7d0868ce9e76d",
+      "sail_sha256": "7a9b20ad04ac634c601415783a1c1e2d12979226f425c947037d80eba1e138e8",
       "shim_sha256": "3b79c16692826faec6f84b78f86597a6ef15492870a8f9270ff5f48dd1c8ecb7"
     }
   },
   "verus_release": "0.2026.10.04.426d8b0",
   "z3_version": "4.16.0",
-  "started_unix": 1791894863,
+  "started_unix": 1791896983,
   "machine": {
     "cpus": "32",
     "host": "x86_64-unknown-linux-gnu",
@@ -64,10 +64,10 @@
         {
           "name": "engine-install",
           "exit_code": 0,
-          "wall_ms": 188.337662
+          "wall_ms": 198.620594
         }
       ],
-      "wall_ms": 188.337662,
+      "wall_ms": 198.620594,
       "facts": {},
       "raw_dir": "session-0/engine-install"
     },
@@ -81,10 +81,10 @@
         {
           "name": "verify",
           "exit_code": 0,
-          "wall_ms": 57996.637091
+          "wall_ms": 53593.297272
         }
       ],
-      "wall_ms": 57996.637091,
+      "wall_ms": 53593.297272,
       "facts": {
         "full_currentness": "current",
         "compiler_invocations": 2,
@@ -111,10 +111,10 @@
         {
           "name": "verify",
           "exit_code": 0,
-          "wall_ms": 56980.005489
+          "wall_ms": 51421.577118
         }
       ],
-      "wall_ms": 56980.005489,
+      "wall_ms": 51421.577118,
       "facts": {
         "full_currentness": "current",
         "compiler_invocations": 2,
@@ -124,10 +124,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 478,
-        "gets": 1204,
-        "hits": 770,
-        "puts": 24718,
-        "memory_hits": 770
+        "gets": 1196,
+        "hits": 761,
+        "puts": 24727,
+        "memory_hits": 761
       },
       "raw_dir": "session-0/human-eval-verus/dependencies-m7"
     },
@@ -142,16 +142,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 32968.636705000004
+          "wall_ms": 31146.624737
         }
       ],
-      "wall_ms": 32968.636705000004,
-      "first_actionable_ms": 32968.636705000004,
+      "wall_ms": 31146.624737,
+      "first_actionable_ms": 31146.624737,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
         "compiler_invocations": 4,
-        "outcome_sha256": "790025d29d4836b996347041865f4521e45afb52fa601d6c0c5f8d98aacbc3f4",
+        "outcome_sha256": "26afe06d187854f6965f5b726a02c6b87f63e6564f58e2eb1c1dae4963a13e94",
         "verified": true
       },
       "cache": {
@@ -174,13 +174,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 42458.723294,
-          "job": "1791895011541-9441-0",
-          "proof_pages": 222,
+          "wall_ms": 38852.935718,
+          "job": "1791897120453-6436-0",
+          "proof_pages": 204,
           "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
         }
       ],
-      "wall_ms": 42458.723294,
+      "wall_ms": 38852.935718,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -195,10 +195,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 479,
-        "gets": 24589,
-        "hits": 24586,
-        "puts": 923,
-        "memory_hits": 24586
+        "gets": 24359,
+        "hits": 24355,
+        "puts": 1154,
+        "memory_hits": 24355
       },
       "raw_dir": "session-0/human-eval-verus/repair-0-0"
     },
@@ -213,16 +213,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 33343.100936
+          "wall_ms": 31242.083798
         }
       ],
-      "wall_ms": 33343.100936,
-      "first_actionable_ms": 33343.100936,
+      "wall_ms": 31242.083798,
+      "first_actionable_ms": 31242.083798,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
         "compiler_invocations": 4,
-        "outcome_sha256": "5bc8703790435d08aef03b3a80d57ad6167ef9570d2d93aec568268fc1ed910c",
+        "outcome_sha256": "f0698ea531c7d29b70be0f1f550cbb8c24313b55a10e7ea6e9a208799eccd585",
         "verified": true
       },
       "cache": {
@@ -245,13 +245,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6693.971796,
-          "job": "1791895087404-9441-1",
-          "proof_pages": 36
+          "wall_ms": 36444.539622000004,
+          "job": "1791897190607-6436-1",
+          "proof_pages": 205,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
         }
       ],
-      "wall_ms": 6693.971796,
-      "first_actionable_ms": 3675.961407,
+      "wall_ms": 36444.539622000004,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -259,17 +259,17 @@
         "batched": true,
         "engine_manifest": true,
         "focus_present": true,
-        "compiler_invocations": 1,
+        "compiler_invocations": 2,
         "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
         "verified": true
       },
       "cache": {
         "phase": "sample",
-        "sessions": 114,
-        "gets": 4524,
-        "hits": 4523,
+        "sessions": 479,
+        "gets": 25489,
+        "hits": 25488,
         "puts": 21,
-        "memory_hits": 4523
+        "memory_hits": 25488
       },
       "raw_dir": "session-0/human-eval-verus/repair-1-0"
     },
@@ -284,16 +284,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 33348.948084
+          "wall_ms": 30907.385184
         }
       ],
-      "wall_ms": 33348.948084,
-      "first_actionable_ms": 33348.948084,
+      "wall_ms": 30907.385184,
+      "first_actionable_ms": 30907.385184,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
         "compiler_invocations": 4,
-        "outcome_sha256": "bc9abc9636eab16c79ad09f0b0d7798b3bf9b8c72ce9efa251022c59231c7c6c",
+        "outcome_sha256": "16ea9fd039bb87903e8b090459717200b84af785b93a617fec346c3b97318bbd",
         "verified": true
       },
       "cache": {
@@ -317,13 +317,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6497.293378,
-          "job": "1791895127505-9441-2",
-          "proof_pages": 36
+          "wall_ms": 36450.802009,
+          "job": "1791897258017-6436-2",
+          "proof_pages": 206,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
         }
       ],
-      "wall_ms": 6497.293378,
-      "first_actionable_ms": 3677.559281,
+      "wall_ms": 36450.802009,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -331,17 +331,17 @@
         "batched": true,
         "engine_manifest": true,
         "focus_present": true,
-        "compiler_invocations": 1,
+        "compiler_invocations": 2,
         "outcome_sha256": "68577960e00ed8aae866718f35f72743297c35400f4a35ace97a5b46b260433b",
         "verified": true
       },
       "cache": {
         "phase": "sample",
-        "sessions": 114,
-        "gets": 4534,
-        "hits": 4534,
+        "sessions": 479,
+        "gets": 25499,
+        "hits": 25499,
         "puts": 0,
-        "memory_hits": 4534
+        "memory_hits": 25499
       },
       "raw_dir": "session-0/human-eval-verus/repair-2-0"
     },
@@ -355,10 +355,10 @@
         {
           "name": "verify",
           "exit_code": 0,
-          "wall_ms": 78671.418471
+          "wall_ms": 73063.72381699999
         }
       ],
-      "wall_ms": 78671.418471,
+      "wall_ms": 73063.72381699999,
       "facts": {
         "full_currentness": "current",
         "compiler_invocations": 2,
@@ -368,10 +368,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 631,
-        "gets": 19389,
-        "hits": 19138,
-        "puts": 34463,
-        "memory_hits": 19138
+        "gets": 21569,
+        "hits": 21322,
+        "puts": 32279,
+        "memory_hits": 21322
       },
       "raw_dir": "session-0/vest/dependencies-m6"
     },
@@ -385,10 +385,10 @@
         {
           "name": "verify",
           "exit_code": 0,
-          "wall_ms": 74257.516841
+          "wall_ms": 68787.204464
         }
       ],
-      "wall_ms": 74257.516841,
+      "wall_ms": 68787.204464,
       "facts": {
         "full_currentness": "current",
         "compiler_invocations": 2,
@@ -398,10 +398,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 631,
-        "gets": 20919,
-        "hits": 20671,
-        "puts": 32930,
-        "memory_hits": 20671
+        "gets": 21569,
+        "hits": 21322,
+        "puts": 32279,
+        "memory_hits": 21322
       },
       "raw_dir": "session-0/vest/dependencies-m7"
     },
@@ -416,16 +416,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 51334.235519
+          "wall_ms": 47420.419283
         }
       ],
-      "wall_ms": 51334.235519,
-      "first_actionable_ms": 51334.235519,
+      "wall_ms": 47420.419283,
+      "first_actionable_ms": 47420.419283,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
         "compiler_invocations": 4,
-        "outcome_sha256": "6a2c00810c7f970f641f3c7c9828f5cbcfb61916c501e27b30369c3d1aaf7325",
+        "outcome_sha256": "dab48f22e72a55fa849182c486db11fc5fbaca6bf3f73761128732779081894b",
         "verified": true
       },
       "cache": {
@@ -448,13 +448,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 63412.928815,
-          "job": "1791895644140-9441-18",
-          "proof_pages": 226,
+          "wall_ms": 57711.696672000005,
+          "job": "1791897772778-6436-18",
+          "proof_pages": 209,
           "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
         }
       ],
-      "wall_ms": 63412.928815,
+      "wall_ms": 57711.696672000005,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -469,10 +469,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 632,
-        "gets": 53442,
-        "hits": 53440,
-        "puts": 172,
-        "memory_hits": 53440
+        "gets": 53552,
+        "hits": 53550,
+        "puts": 62,
+        "memory_hits": 53550
       },
       "raw_dir": "session-0/vest/repair-0-0"
     },
@@ -487,16 +487,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 51088.040966
+          "wall_ms": 47612.885225
         }
       ],
-      "wall_ms": 51088.040966,
-      "first_actionable_ms": 51088.040966,
+      "wall_ms": 47612.885225,
+      "first_actionable_ms": 47612.885225,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
         "compiler_invocations": 4,
-        "outcome_sha256": "e02173632ed59dcfd367cd966abf84cc630d5f755ee20001e4ec57a416653ac8",
+        "outcome_sha256": "6f107255c24dbf61279bf039e1d4e5a4f2bc555311ec3d7b65cd22999b5ff247",
         "verified": true
       },
       "cache": {
@@ -519,13 +519,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30851.027291000002,
-          "job": "1791895758759-9441-19",
-          "proof_pages": 144
+          "wall_ms": 57897.471405,
+          "job": "1791897878208-6436-19",
+          "proof_pages": 210,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
         }
       ],
-      "wall_ms": 30851.027291000002,
-      "first_actionable_ms": 14670.664966,
+      "wall_ms": 57897.471405,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -533,17 +533,17 @@
         "batched": true,
         "engine_manifest": true,
         "focus_present": true,
-        "compiler_invocations": 1,
+        "compiler_invocations": 2,
         "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
         "verified": true
       },
       "cache": {
         "phase": "sample",
-        "sessions": 267,
-        "gets": 32587,
-        "hits": 32585,
-        "puts": 62,
-        "memory_hits": 32585
+        "sessions": 632,
+        "gets": 53602,
+        "hits": 53601,
+        "puts": 11,
+        "memory_hits": 53601
       },
       "raw_dir": "session-0/vest/repair-1-0"
     },
@@ -558,16 +558,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 51473.188191
+          "wall_ms": 47526.242991
         }
       ],
-      "wall_ms": 51473.188191,
-      "first_actionable_ms": 51473.188191,
+      "wall_ms": 47526.242991,
+      "first_actionable_ms": 47526.242991,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
         "compiler_invocations": 4,
-        "outcome_sha256": "5b7cc0d4ac3f48f1fbd1be4d0954c8f9bb4efac2b79aceba189f7434900d123e",
+        "outcome_sha256": "d12b68a887d6bd8d9656536dd953c63d2020d092ebccf7bac29897faf5dd300a",
         "verified": true
       },
       "cache": {
@@ -590,13 +590,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30755.681352,
-          "job": "1791895841202-9441-20",
-          "proof_pages": 145
+          "wall_ms": 58123.522516000005,
+          "job": "1791897983731-6436-20",
+          "proof_pages": 211,
+          "observation_error": "SAIL0902: proof event does not bind the job context/run/revision/target inventory"
         }
       ],
-      "wall_ms": 30755.681352,
-      "first_actionable_ms": 14770.552101,
+      "wall_ms": 58123.522516000005,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -604,17 +604,17 @@
         "batched": true,
         "engine_manifest": true,
         "focus_present": true,
-        "compiler_invocations": 1,
+        "compiler_invocations": 2,
         "outcome_sha256": "167a3c999308cff64621d6bf2d124dbd099c12ed7f32e371ab8d143fe051303b",
         "verified": true
       },
       "cache": {
         "phase": "sample",
-        "sessions": 267,
-        "gets": 32587,
-        "hits": 32585,
-        "puts": 62,
-        "memory_hits": 32585
+        "sessions": 632,
+        "gets": 53602,
+        "hits": 53601,
+        "puts": 11,
+        "memory_hits": 53601
       },
       "raw_dir": "session-0/vest/repair-2-0"
     }
@@ -634,16 +634,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6363.683302
+          "wall_ms": 6046.755986
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7708.766613
+          "wall_ms": 9825.260386
         }
       ],
-      "wall_ms": 14072.449915000001,
-      "first_actionable_ms": 6363.683302,
+      "wall_ms": 15872.016372,
+      "first_actionable_ms": 6046.755986,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -654,10 +654,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 114,
-        "gets": 4478,
-        "hits": 4476,
-        "puts": 68,
-        "memory_hits": 4476
+        "gets": 4228,
+        "hits": 4225,
+        "puts": 319,
+        "memory_hits": 4225
       },
       "raw_dir": "human-eval-verus/0/gcd-body/m6"
     },
@@ -675,13 +675,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6712.008698,
-          "job": "1791895148177-9441-3",
-          "proof_pages": 38
+          "wall_ms": 6278.068716,
+          "job": "1791897310434-6436-3",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 6712.008698,
-      "first_actionable_ms": 3884.176267,
+      "wall_ms": 6278.068716,
+      "first_actionable_ms": 3567.18663,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -717,16 +717,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6458.921633
+          "wall_ms": 6099.266551000001
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 10256.991340999999
+          "wall_ms": 7298.814423
         }
       ],
-      "wall_ms": 16715.912974,
-      "first_actionable_ms": 6458.921633,
+      "wall_ms": 13398.080974,
+      "first_actionable_ms": 6099.266551000001,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -737,10 +737,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 114,
-        "gets": 4254,
-        "hits": 4251,
-        "puts": 293,
-        "memory_hits": 4251
+        "gets": 4504,
+        "hits": 4502,
+        "puts": 42,
+        "memory_hits": 4502
       },
       "raw_dir": "human-eval-verus/0/concatenate-spec/m6"
     },
@@ -758,13 +758,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6801.337876,
-          "job": "1791895171693-9441-4",
-          "proof_pages": 37
+          "wall_ms": 6472.858248,
+          "job": "1791897330196-6436-4",
+          "proof_pages": 36
         }
       ],
-      "wall_ms": 6801.337876,
-      "first_actionable_ms": 3789.582715,
+      "wall_ms": 6472.858248,
+      "first_actionable_ms": 3674.217596,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -800,16 +800,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6375.5571660000005
+          "wall_ms": 6047.3452959999995
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7669.882033000001
+          "wall_ms": 7343.973400000001
         }
       ],
-      "wall_ms": 14045.439199,
-      "first_actionable_ms": 6375.5571660000005,
+      "wall_ms": 13391.318696,
+      "first_actionable_ms": 6047.3452959999995,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -841,13 +841,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6805.380572,
-          "job": "1791895192629-9441-5",
-          "proof_pages": 37
+          "wall_ms": 6267.527284,
+          "job": "1791897350142-6436-5",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 6805.380572,
-      "first_actionable_ms": 3776.39079,
+      "wall_ms": 6267.527284,
+      "first_actionable_ms": 3560.287785,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -883,16 +883,16 @@
         {
           "name": "focus",
           "exit_code": 101,
-          "wall_ms": 5359.395328
+          "wall_ms": 5031.248893
         },
         {
           "name": "full",
           "exit_code": 101,
-          "wall_ms": 6600.574757
+          "wall_ms": 6308.174503
         }
       ],
-      "wall_ms": 11959.970085,
-      "first_actionable_ms": 5359.395328,
+      "wall_ms": 11339.423396,
+      "first_actionable_ms": 5031.248893,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -924,13 +924,13 @@
         {
           "name": "repair",
           "exit_code": 1,
-          "wall_ms": 5685.300652999999,
-          "job": "1791895211487-9441-6",
-          "proof_pages": 37
+          "wall_ms": 5269.839968,
+          "job": "1791897367833-6436-6",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 5685.300652999999,
-      "first_actionable_ms": 3782.881625,
+      "wall_ms": 5269.839968,
+      "first_actionable_ms": 3570.1986850000003,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -966,16 +966,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6444.645858999999
+          "wall_ms": 6039.530367
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7679.657139
+          "wall_ms": 7241.57258
         }
       ],
-      "wall_ms": 14124.302998,
-      "first_actionable_ms": 6444.645858999999,
+      "wall_ms": 13281.102947,
+      "first_actionable_ms": 6039.530367,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1007,13 +1007,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6692.868701,
-          "job": "1791895231384-9441-7",
-          "proof_pages": 37
+          "wall_ms": 6270.73031,
+          "job": "1791897386464-6436-7",
+          "proof_pages": 34
         }
       ],
-      "wall_ms": 6692.868701,
-      "first_actionable_ms": 3782.606278,
+      "wall_ms": 6270.73031,
+      "first_actionable_ms": 3462.1408819999997,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1049,13 +1049,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6710.863507,
-          "job": "1791895238121-9441-8",
-          "proof_pages": 37
+          "wall_ms": 6280.157248,
+          "job": "1791897392770-6436-8",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 6710.863507,
-      "first_actionable_ms": 3786.823217,
+      "wall_ms": 6280.157248,
+      "first_actionable_ms": 3563.936597,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1091,16 +1091,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6415.247657
+          "wall_ms": 6009.188094
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7712.755509
+          "wall_ms": 7361.23118
         }
       ],
-      "wall_ms": 14128.003165999999,
-      "first_actionable_ms": 6415.247657,
+      "wall_ms": 13370.419274,
+      "first_actionable_ms": 6009.188094,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1132,13 +1132,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6686.014824,
-          "job": "1791895259046-9441-9",
-          "proof_pages": 37
+          "wall_ms": 6278.340138,
+          "job": "1791897412501-6436-9",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 6686.014824,
-      "first_actionable_ms": 3786.699326,
+      "wall_ms": 6278.340138,
+      "first_actionable_ms": 3562.281997,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1174,16 +1174,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6393.122466999999
+          "wall_ms": 6048.866415
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7750.691374
+          "wall_ms": 7293.659112
         }
       ],
-      "wall_ms": 14143.813841,
-      "first_actionable_ms": 6393.122466999999,
+      "wall_ms": 13342.525527000002,
+      "first_actionable_ms": 6048.866415,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1215,13 +1215,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6713.2985850000005,
-          "job": "1791895279969-9441-10",
-          "proof_pages": 37
+          "wall_ms": 6264.484697,
+          "job": "1791897432204-6436-10",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 6713.2985850000005,
-      "first_actionable_ms": 3786.943816,
+      "wall_ms": 6264.484697,
+      "first_actionable_ms": 3575.177964,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1257,16 +1257,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6355.40322
+          "wall_ms": 6016.488503
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7656.049146
+          "wall_ms": 7338.8537320000005
         }
       ],
-      "wall_ms": 14011.452366000001,
-      "first_actionable_ms": 6355.40322,
+      "wall_ms": 13355.342235,
+      "first_actionable_ms": 6016.488503,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1298,13 +1298,13 @@
         {
           "name": "repair",
           "exit_code": 1,
-          "wall_ms": 5587.330562,
-          "job": "1791895300786-9441-11",
-          "proof_pages": 37
+          "wall_ms": 5261.303894,
+          "job": "1791897451907-6436-11",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 5587.330562,
-      "first_actionable_ms": 3778.286332,
+      "wall_ms": 5261.303894,
+      "first_actionable_ms": 3575.0231590000003,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1340,16 +1340,16 @@
         {
           "name": "focus",
           "exit_code": 101,
-          "wall_ms": 5279.697095
+          "wall_ms": 5026.972224
         },
         {
           "name": "full",
           "exit_code": 101,
-          "wall_ms": 6548.687199999999
+          "wall_ms": 6248.763551999999
         }
       ],
-      "wall_ms": 11828.384295,
-      "first_actionable_ms": 5279.697095,
+      "wall_ms": 11275.735776,
+      "first_actionable_ms": 5026.972224,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1381,13 +1381,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6588.663064,
-          "job": "1791895318290-9441-12",
-          "proof_pages": 36
+          "wall_ms": 6170.873616,
+          "job": "1791897468525-6436-12",
+          "proof_pages": 34
         }
       ],
-      "wall_ms": 6588.663064,
-      "first_actionable_ms": 3679.3969669999997,
+      "wall_ms": 6170.873616,
+      "first_actionable_ms": 3469.866885,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1423,16 +1423,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6343.197947000001
+          "wall_ms": 6029.372682
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7606.295128
+          "wall_ms": 7348.69298
         }
       ],
-      "wall_ms": 13949.493075,
-      "first_actionable_ms": 6343.197947000001,
+      "wall_ms": 13378.065662,
+      "first_actionable_ms": 6029.372682,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1464,16 +1464,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6373.779194
+          "wall_ms": 6036.528544000001
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7676.376525000001
+          "wall_ms": 7278.648021
         }
       ],
-      "wall_ms": 14050.155719,
-      "first_actionable_ms": 6373.779194,
+      "wall_ms": 13315.176565000002,
+      "first_actionable_ms": 6036.528544000001,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1505,13 +1505,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6689.568167,
-          "job": "1791895353010-9441-13",
-          "proof_pages": 37
+          "wall_ms": 6167.286682,
+          "job": "1791897501515-6436-13",
+          "proof_pages": 34
         }
       ],
-      "wall_ms": 6689.568167,
-      "first_actionable_ms": 3785.01591,
+      "wall_ms": 6167.286682,
+      "first_actionable_ms": 3471.612017,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1547,16 +1547,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6381.036660000001
+          "wall_ms": 6010.946785
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7750.057356
+          "wall_ms": 7340.918656999999
         }
       ],
-      "wall_ms": 14131.094016000001,
-      "first_actionable_ms": 6381.036660000001,
+      "wall_ms": 13351.865441999998,
+      "first_actionable_ms": 6010.946785,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1588,13 +1588,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6702.835991,
-          "job": "1791895373917-9441-14",
-          "proof_pages": 37
+          "wall_ms": 6266.732886,
+          "job": "1791897521115-6436-14",
+          "proof_pages": 34
         }
       ],
-      "wall_ms": 6702.835991,
-      "first_actionable_ms": 3791.779872,
+      "wall_ms": 6266.732886,
+      "first_actionable_ms": 3457.536215,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1630,16 +1630,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6370.538267999999
+          "wall_ms": 6000.714876
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7643.203527
+          "wall_ms": 7321.222922999999
         }
       ],
-      "wall_ms": 14013.741794999998,
-      "first_actionable_ms": 6370.538267999999,
+      "wall_ms": 13321.937799,
+      "first_actionable_ms": 6000.714876,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1671,13 +1671,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6687.77468,
-          "job": "1791895394720-9441-15",
-          "proof_pages": 37
+          "wall_ms": 6266.38188,
+          "job": "1791897540789-6436-15",
+          "proof_pages": 36
         }
       ],
-      "wall_ms": 6687.77468,
-      "first_actionable_ms": 3790.516131,
+      "wall_ms": 6266.38188,
+      "first_actionable_ms": 3668.986899,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1713,16 +1713,16 @@
         {
           "name": "focus",
           "exit_code": 101,
-          "wall_ms": 5300.032974
+          "wall_ms": 5050.720164
         },
         {
           "name": "full",
           "exit_code": 101,
-          "wall_ms": 6564.501032
+          "wall_ms": 6224.121647999999
         }
       ],
-      "wall_ms": 11864.534006,
-      "first_actionable_ms": 5300.032974,
+      "wall_ms": 11274.841811999999,
+      "first_actionable_ms": 5050.720164,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1754,13 +1754,13 @@
         {
           "name": "repair",
           "exit_code": 1,
-          "wall_ms": 5601.403764,
-          "job": "1791895413353-9441-16",
-          "proof_pages": 37
+          "wall_ms": 5251.568802999999,
+          "job": "1791897558413-6436-16",
+          "proof_pages": 35
         }
       ],
-      "wall_ms": 5601.403764,
-      "first_actionable_ms": 3798.4491789999997,
+      "wall_ms": 5251.568802999999,
+      "first_actionable_ms": 3565.527028,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1796,16 +1796,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 6341.957091
+          "wall_ms": 6041.846808
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 7649.818703
+          "wall_ms": 7330.850268
         }
       ],
-      "wall_ms": 13991.775794000001,
-      "first_actionable_ms": 6341.957091,
+      "wall_ms": 13372.697076,
+      "first_actionable_ms": 6041.846808,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1837,13 +1837,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 6598.636205,
-          "job": "1791895433034-9441-17",
-          "proof_pages": 37
+          "wall_ms": 6170.591423,
+          "job": "1791897577118-6436-17",
+          "proof_pages": 34
         }
       ],
-      "wall_ms": 6598.636205,
-      "first_actionable_ms": 3761.3527200000003,
+      "wall_ms": 6170.591423,
+      "first_actionable_ms": 3463.4359520000003,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1879,16 +1879,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24244.128237999998
+          "wall_ms": 22378.985406000003
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 31288.373377
+          "wall_ms": 29254.841307
         }
       ],
-      "wall_ms": 55532.501615,
-      "first_actionable_ms": 24244.128237999998,
+      "wall_ms": 51633.826713,
+      "first_actionable_ms": 22378.985406000003,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1899,10 +1899,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 267,
-        "gets": 32361,
-        "hits": 32359,
-        "puts": 288,
-        "memory_hits": 32359
+        "gets": 31873,
+        "hits": 31867,
+        "puts": 780,
+        "memory_hits": 31867
       },
       "raw_dir": "vest/0/base128-body/m6"
     },
@@ -1920,13 +1920,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 31347.330286999997,
-          "job": "1791895927710-9441-21",
-          "proof_pages": 145
+          "wall_ms": 28752.32002,
+          "job": "1791898093710-6436-21",
+          "proof_pages": 134
         }
       ],
-      "wall_ms": 31347.330286999997,
-      "first_actionable_ms": 14798.596469,
+      "wall_ms": 28752.32002,
+      "first_actionable_ms": 13614.510061,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -1941,10 +1941,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 267,
-        "gets": 31873,
-        "hits": 31867,
-        "puts": 780,
-        "memory_hits": 31867
+        "gets": 32361,
+        "hits": 32359,
+        "puts": 288,
+        "memory_hits": 32359
       },
       "raw_dir": "vest/0/base128-body/m7"
     },
@@ -1962,16 +1962,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24417.690304
+          "wall_ms": 22533.593503
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 31694.421764000002
+          "wall_ms": 29354.281136
         }
       ],
-      "wall_ms": 56112.112068,
-      "first_actionable_ms": 24417.690304,
+      "wall_ms": 51887.874639,
+      "first_actionable_ms": 22533.593503,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2003,13 +2003,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 31362.75788,
-          "job": "1791896015358-9441-22",
-          "proof_pages": 144
+          "wall_ms": 28770.418639,
+          "job": "1791898174527-6436-22",
+          "proof_pages": 132
         }
       ],
-      "wall_ms": 31362.75788,
-      "first_actionable_ms": 14705.550362,
+      "wall_ms": 28770.418639,
+      "first_actionable_ms": 13410.216896,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2045,16 +2045,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24387.094577
+          "wall_ms": 22739.439098
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 31159.540633
+          "wall_ms": 29370.246499
         }
       ],
-      "wall_ms": 55546.63521,
-      "first_actionable_ms": 24387.094577,
+      "wall_ms": 52109.685597,
+      "first_actionable_ms": 22739.439098,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2065,10 +2065,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 267,
-        "gets": 32083,
-        "hits": 32078,
-        "puts": 569,
-        "memory_hits": 32078
+        "gets": 32471,
+        "hits": 32468,
+        "puts": 179,
+        "memory_hits": 32468
       },
       "raw_dir": "vest/0/base128-refactor/m6"
     },
@@ -2086,13 +2086,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 31254.052346999997,
-          "job": "1791896102461-9441-23",
-          "proof_pages": 145
+          "wall_ms": 28540.686572,
+          "job": "1791898255586-6436-23",
+          "proof_pages": 133
         }
       ],
-      "wall_ms": 31254.052346999997,
-      "first_actionable_ms": 14798.332518000001,
+      "wall_ms": 28540.686572,
+      "first_actionable_ms": 13516.901557000001,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2128,16 +2128,16 @@
         {
           "name": "focus",
           "exit_code": 101,
-          "wall_ms": 18776.942169
+          "wall_ms": 17440.239859999998
         },
         {
           "name": "full",
           "exit_code": 101,
-          "wall_ms": 26506.888284999997
+          "wall_ms": 25035.918875
         }
       ],
-      "wall_ms": 45283.830453999995,
-      "first_actionable_ms": 18776.942169,
+      "wall_ms": 42476.158735,
+      "first_actionable_ms": 17440.239859999998,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2169,13 +2169,13 @@
         {
           "name": "repair",
           "exit_code": 1,
-          "wall_ms": 26635.503625999998,
-          "job": "1791896179209-9441-24",
-          "proof_pages": 145
+          "wall_ms": 24534.034832,
+          "job": "1791898326782-6436-24",
+          "proof_pages": 134
         }
       ],
-      "wall_ms": 26635.503625999998,
-      "first_actionable_ms": 14791.945041,
+      "wall_ms": 24534.034832,
+      "first_actionable_ms": 13620.655895,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2211,16 +2211,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24179.523012
+          "wall_ms": 22322.392623
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 30817.707610999998
+          "wall_ms": 29215.860814
         }
       ],
-      "wall_ms": 54997.230622999996,
-      "first_actionable_ms": 24179.523012,
+      "wall_ms": 51538.253437,
+      "first_actionable_ms": 22322.392623,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2231,10 +2231,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 267,
-        "gets": 32597,
-        "hits": 32596,
-        "puts": 51,
-        "memory_hits": 32596
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
       },
       "raw_dir": "vest/0/pow128-repaired-attempt/m6"
     },
@@ -2252,13 +2252,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30477.262547,
-          "job": "1791896261051-9441-25",
-          "proof_pages": 143
+          "wall_ms": 28165.531876999998,
+          "job": "1791898403039-6436-25",
+          "proof_pages": 133
         }
       ],
-      "wall_ms": 30477.262547,
-      "first_actionable_ms": 14596.480409,
+      "wall_ms": 28165.531876999998,
+      "first_actionable_ms": 13519.703182000001,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2294,13 +2294,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30356.327501,
-          "job": "1791896291625-9441-26",
-          "proof_pages": 144
+          "wall_ms": 27953.923566,
+          "job": "1791898431290-6436-26",
+          "proof_pages": 132
         }
       ],
-      "wall_ms": 30356.327501,
-      "first_actionable_ms": 14699.294509,
+      "wall_ms": 27953.923566,
+      "first_actionable_ms": 13412.92944,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2336,16 +2336,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24148.603687000003
+          "wall_ms": 22416.503451
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 30960.42239
+          "wall_ms": 28865.887657000003
         }
       ],
-      "wall_ms": 55109.026077,
-      "first_actionable_ms": 24148.603687000003,
+      "wall_ms": 51282.391108,
+      "first_actionable_ms": 22416.503451,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2377,13 +2377,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 31093.181567,
-          "job": "1791896377282-9441-27",
-          "proof_pages": 144
+          "wall_ms": 28069.66677,
+          "job": "1791898510705-6436-27",
+          "proof_pages": 135
         }
       ],
-      "wall_ms": 31093.181567,
-      "first_actionable_ms": 14708.471477,
+      "wall_ms": 28069.66677,
+      "first_actionable_ms": 13721.697689999999,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2419,16 +2419,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24807.904755
+          "wall_ms": 22459.632735
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 31439.729711999997
+          "wall_ms": 29048.21633
         }
       ],
-      "wall_ms": 56247.634466999996,
-      "first_actionable_ms": 24807.904755,
+      "wall_ms": 51507.849065,
+      "first_actionable_ms": 22459.632735,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2460,13 +2460,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30638.567103,
-          "job": "1791896464822-9441-28",
-          "proof_pages": 144
+          "wall_ms": 28148.189389,
+          "job": "1791898590449-6436-28",
+          "proof_pages": 133
         }
       ],
-      "wall_ms": 30638.567103,
-      "first_actionable_ms": 14697.917421,
+      "wall_ms": 28148.189389,
+      "first_actionable_ms": 13495.298627,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2502,16 +2502,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24511.392128
+          "wall_ms": 22494.998849000003
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 31335.322787999998
+          "wall_ms": 28734.96258
         }
       ],
-      "wall_ms": 55846.714916,
-      "first_actionable_ms": 24511.392128,
+      "wall_ms": 51229.961429,
+      "first_actionable_ms": 22494.998849000003,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2522,10 +2522,10 @@
       "cache": {
         "phase": "sample",
         "sessions": 267,
-        "gets": 32597,
-        "hits": 32596,
-        "puts": 51,
-        "memory_hits": 32596
+        "gets": 32647,
+        "hits": 32647,
+        "puts": 0,
+        "memory_hits": 32647
       },
       "raw_dir": "vest/1/base128-refactor/m6"
     },
@@ -2543,13 +2543,13 @@
         {
           "name": "repair",
           "exit_code": 1,
-          "wall_ms": 24824.621614000003,
-          "job": "1791896551506-9441-29",
-          "proof_pages": 144
+          "wall_ms": 22907.291836,
+          "job": "1791898669998-6436-29",
+          "proof_pages": 133
         }
       ],
-      "wall_ms": 24824.621614000003,
-      "first_actionable_ms": 14703.89154,
+      "wall_ms": 22907.291836,
+      "first_actionable_ms": 13511.711713,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2585,16 +2585,16 @@
         {
           "name": "focus",
           "exit_code": 101,
-          "wall_ms": 18593.253013
+          "wall_ms": 17491.095619
         },
         {
           "name": "full",
           "exit_code": 101,
-          "wall_ms": 25107.95819
+          "wall_ms": 23592.363322
         }
       ],
-      "wall_ms": 43701.211203,
-      "first_actionable_ms": 18593.253013,
+      "wall_ms": 41083.458941000004,
+      "first_actionable_ms": 17491.095619,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2626,13 +2626,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30351.81481,
-          "job": "1791896620240-9441-30",
-          "proof_pages": 143
+          "wall_ms": 27874.569172,
+          "job": "1791898734173-6436-30",
+          "proof_pages": 132
         }
       ],
-      "wall_ms": 30351.81481,
-      "first_actionable_ms": 14595.464536,
+      "wall_ms": 27874.569172,
+      "first_actionable_ms": 13414.367376,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2668,16 +2668,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24078.749577
+          "wall_ms": 22571.343198000002
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 30558.130349
+          "wall_ms": 28920.449244
         }
       ],
-      "wall_ms": 54636.879925999994,
-      "first_actionable_ms": 24078.749577,
+      "wall_ms": 51491.792442000005,
+      "first_actionable_ms": 22571.343198000002,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2709,16 +2709,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24154.158038999998
+          "wall_ms": 22476.647362
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 30789.722346000002
+          "wall_ms": 28742.980279
         }
       ],
-      "wall_ms": 54943.880385,
-      "first_actionable_ms": 24154.158038999998,
+      "wall_ms": 51219.627641,
+      "first_actionable_ms": 22476.647362,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2750,13 +2750,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30431.638668000003,
-          "job": "1791896760469-9441-31",
-          "proof_pages": 143
+          "wall_ms": 28173.729714,
+          "job": "1791898865023-6436-31",
+          "proof_pages": 133
         }
       ],
-      "wall_ms": 30431.638668000003,
-      "first_actionable_ms": 14599.683665,
+      "wall_ms": 28173.729714,
+      "first_actionable_ms": 13515.208974,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2792,16 +2792,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 23910.156085000002
+          "wall_ms": 22447.457242
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 30571.712279
+          "wall_ms": 28880.554764
         }
       ],
-      "wall_ms": 54481.868364,
-      "first_actionable_ms": 23910.156085000002,
+      "wall_ms": 51328.012006000004,
+      "first_actionable_ms": 22447.457242,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2833,13 +2833,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30446.292541,
-          "job": "1791896845580-9441-32",
-          "proof_pages": 144
+          "wall_ms": 28034.097762999998,
+          "job": "1791898944705-6436-32",
+          "proof_pages": 135
         }
       ],
-      "wall_ms": 30446.292541,
-      "first_actionable_ms": 14672.392556,
+      "wall_ms": 28034.097762999998,
+      "first_actionable_ms": 13714.669542,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2875,16 +2875,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 24032.100306
+          "wall_ms": 22394.435846
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 30455.936676
+          "wall_ms": 29057.47612
         }
       ],
-      "wall_ms": 54488.036982000005,
-      "first_actionable_ms": 24032.100306,
+      "wall_ms": 51451.911966,
+      "first_actionable_ms": 22394.435846,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2916,13 +2916,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30460.829895,
-          "job": "1791896930707-9441-33",
-          "proof_pages": 143
+          "wall_ms": 28047.650952,
+          "job": "1791899024367-6436-33",
+          "proof_pages": 132
         }
       ],
-      "wall_ms": 30460.829895,
-      "first_actionable_ms": 14588.615373,
+      "wall_ms": 28047.650952,
+      "first_actionable_ms": 13410.000125,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2958,16 +2958,16 @@
         {
           "name": "focus",
           "exit_code": 101,
-          "wall_ms": 18500.918017
+          "wall_ms": 17339.056188000002
         },
         {
           "name": "full",
           "exit_code": 101,
-          "wall_ms": 25241.614082
+          "wall_ms": 23782.133614
         }
       ],
-      "wall_ms": 43742.532099000004,
-      "first_actionable_ms": 18500.918017,
+      "wall_ms": 41121.189802,
+      "first_actionable_ms": 17339.056188000002,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -2999,13 +2999,13 @@
         {
           "name": "repair",
           "exit_code": 1,
-          "wall_ms": 25112.223226000002,
-          "job": "1791897005109-9441-34",
-          "proof_pages": 146
+          "wall_ms": 23007.478273,
+          "job": "1791899093718-6436-34",
+          "proof_pages": 134
         }
       ],
-      "wall_ms": 25112.223226000002,
-      "first_actionable_ms": 14895.738362,
+      "wall_ms": 23007.478273,
+      "first_actionable_ms": 13623.652814,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -3041,16 +3041,16 @@
         {
           "name": "focus",
           "exit_code": 0,
-          "wall_ms": 23941.900547
+          "wall_ms": 22531.723221
         },
         {
           "name": "full",
           "exit_code": 0,
-          "wall_ms": 30828.320116
+          "wall_ms": 28785.106406
         }
       ],
-      "wall_ms": 54770.220663,
-      "first_actionable_ms": 23941.900547,
+      "wall_ms": 51316.829627,
+      "first_actionable_ms": 22531.723221,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",
@@ -3082,13 +3082,13 @@
         {
           "name": "repair",
           "exit_code": 0,
-          "wall_ms": 30337.419873000003,
-          "job": "1791897085181-9441-35",
-          "proof_pages": 142
+          "wall_ms": 27861.964362,
+          "job": "1791899168217-6436-35",
+          "proof_pages": 132
         }
       ],
-      "wall_ms": 30337.419873000003,
-      "first_actionable_ms": 14496.881594999999,
+      "wall_ms": 27861.964362,
+      "first_actionable_ms": 13396.649292999999,
       "facts": {
         "full_currentness": "current",
         "focus_currentness": "current",

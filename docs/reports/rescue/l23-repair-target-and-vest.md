@@ -187,7 +187,7 @@ Per-cycle medians, M6 / M7 in seconds:
 - The benchmark warms every function, so the target change does not move
   its measured samples.
 
-Result file: `bench/results/repair-acceptance-l23.json`, sha256
+Result file: `repair-acceptance-l23.json` (kept outside the repository; superseded by L22), sha256
 `2f97b35e…5ea4e`. The [benchmarks page](../../benchmarks.md) is regenerated.
 
 ## Gates

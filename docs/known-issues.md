@@ -8,12 +8,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
 
 ## Open M7 defects and failing gates
 
-- **Vest repair is 1.80× M6, below the 2× gate.** Three native rounds on the
-  pinned fork runtime, every sample valid and Current: HumanEval 2.11× (pass),
-  Vest 1.80× (each Vest cycle about 30 s against 55 s). L18's cheap items
-  cannot close the gap without new mechanism: rustc incremental is already
-  on, and Sail's whole overhead is smaller than the gap.
+- **Vest repair is about 1.8× M6, below the 2× figure.** The owner accepted
+  M7's speed as measured (ADR 0038 amendment 2026-10-13). On the `13a1176c`
+  runtime, three native rounds, every sample valid and Current: HumanEval
+  2.14×, Vest 1.82× (each Vest cycle about 28 s against 51 s). L18's cheap
+  items cannot close the gap without new mechanism: rustc incremental is
+  already on, and Sail's whole overhead is smaller than the gap.
   [Gate 7](validation/m7.md#gate-7-frozen-repair-performance),
+  [L22 report](reports/rescue/l22-final-pin.md),
   [L23 report](reports/rescue/l23-repair-target-and-vest.md).
 - **A project's first managed verify verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first managed run of each project

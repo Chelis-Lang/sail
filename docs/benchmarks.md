@@ -425,9 +425,9 @@ Most fragile checks (top 10 by score):
 |---|---|---|---|---:|---:|---:|---|
 | `page-table/page-table/src/lib.rs/81716-1791501681902362000` #0 | lib::impl_u::wrapped_token::WrappedMapToken::allocate | unstable | unknown | 1/8 | 448058976–3000000000 (CV 0.315) | 100.000% | unknown ×7, unsat ×1 |
 
-## `repair-acceptance-l23`: M7 repair acceptance (M6 focused and full checks vs one M7 repair batch)
+## `repair-acceptance-l22-final`: M7 repair acceptance (M6 focused and full checks vs one M7 repair batch)
 
-- Environment: native x86-64 Linux, EC2 c7i.8xlarge us-east-1; M6 `26f124f52dbf51d6c94178778873e96ac5e072ef` (sail sha256 `5b798fe17164`); M7 `25fc7b0` (sail sha256 `b03db48a0332`); Verus 0.2026.10.04.426d8b0, Z3 4.16.0
+- Environment: native x86-64 Linux, EC2 c7i.8xlarge, us-east-1; M6 `26f124f52dbf51d6c94178778873e96ac5e072ef` (sail sha256 `5b798fe17164`); M7 `d187e49034d3b1d262d120ff19a7d0868ce9e76d` (sail sha256 `7a9b20ad04ac`); Verus 0.2026.10.04.426d8b0, Z3 4.16.0
 - 3 round(s) requested over every cycle of human-eval-verus, vest; gate: at least 3 complete rounds and 2× median whole-loop speedup per catalogue
 - Machine: cpus: 32; host: x86_64-unknown-linux-gnu; uname: Linux 7.0.0-1014-aws x86_64
 
@@ -435,8 +435,8 @@ Every sample is recorded, then judged (`docs/bench/m7-repair-acceptance.md`). A 
 
 | Catalogue | Complete rounds | M6 whole loop: median (min–max) | M7 whole loop: median (min–max) | Speedup | Failing samples | Gate |
 |---|---:|---:|---:|---:|---:|---|
-| `human-eval-verus` | 3 | 68.1 s (68.1 s–70.9 s) | 32.3 s (32.3 s–32.7 s) | 2.11× | 0 | **pass** |
-| `vest` | 3 | 265.5 s (262.4 s–267.5 s) | 147.3 s (146.8 s–151.1 s) | 1.80× | 0 | **fail** |
+| `human-eval-verus` | 3 | 64.7 s (64.6 s–67.3 s) | 30.3 s (30.1 s–30.6 s) | 2.14× | 0 | **pass** |
+| `vest` | 3 | 246.6 s (246.4 s–249.6 s) | 135.1 s (135.0 s–138.8 s) | 1.82× | 0 | **fail** |
 
 ### `human-eval-verus`
 
@@ -444,29 +444,29 @@ Gate passed.
 
 | Cycle | Kind | M6 wall | M7 wall | Speedup | M6 first actionable | M7 first actionable | M7 drivers | M7 full evidence / accepted | Cache served / solved (M6; M7) |
 |---|---|---:|---:|---:|---:|---:|---:|---|---|
-| `gcd-body` | body | 14.1 s (14.1 s–14.1 s) | 6711 ms (6690 ms–6712 ms) | 2.10× | 6374 ms (6364 ms–6415 ms) | 3787 ms (3785 ms–3884 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13564 / 68; 13564 / 68 |
-| `concatenate-spec` | spec | 14.1 s (14.1 s–16.7 s) | 6703 ms (6686 ms–6801 ms) | 2.11× | 6393 ms (6381 ms–6459 ms) | 3790 ms (3787 ms–3792 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13339 / 293; 13590 / 42 |
-| `strlen-refactor` | refactor | 14.0 s (14.0 s–14.0 s) | 6713 ms (6688 ms–6805 ms) | 2.09× | 6371 ms (6355 ms–6376 ms) | 3787 ms (3776 ms–3791 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13593 / 9; 13593 / 9 |
-| `strlen-failing-attempt` | failure | 11.9 s (11.8 s–12.0 s) | 5601 ms (5587 ms–5685 ms) | 2.12× | 5300 ms (5280 ms–5359 ms) | 3783 ms (3778 ms–3798 ms) | 1, 1, 1 | current/no, current/no, current/no | 13681 / 29; 13681 / 29 |
-| `strlen-repaired-attempt` | repair | 14.0 s (13.9 s–14.1 s) | 6599 ms (6589 ms–6693 ms) | 2.12× | 6343 ms (6342 ms–6445 ms) | 3761 ms (3679 ms–3783 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13602 / 0; 13602 / 0 |
+| `gcd-body` | body | 13.4 s (13.3 s–15.9 s) | 6278 ms (6167 ms–6280 ms) | 2.13× | 6037 ms (6009 ms–6047 ms) | 3564 ms (3472 ms–3567 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13313 / 319; 13564 / 68 |
+| `concatenate-spec` | spec | 13.4 s (13.3 s–13.4 s) | 6278 ms (6267 ms–6473 ms) | 2.13× | 6049 ms (6011 ms–6099 ms) | 3562 ms (3458 ms–3674 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13590 / 42; 13590 / 42 |
+| `strlen-refactor` | refactor | 13.4 s (13.3 s–13.4 s) | 6266 ms (6264 ms–6268 ms) | 2.13× | 6016 ms (6001 ms–6047 ms) | 3575 ms (3560 ms–3669 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13593 / 9; 13593 / 9 |
+| `strlen-failing-attempt` | failure | 11.3 s (11.3 s–11.3 s) | 5261 ms (5252 ms–5270 ms) | 2.14× | 5031 ms (5027 ms–5051 ms) | 3570 ms (3566 ms–3575 ms) | 1, 1, 1 | current/no, current/no, current/no | 13681 / 29; 13681 / 29 |
+| `strlen-repaired-attempt` | repair | 13.4 s (13.3 s–13.4 s) | 6171 ms (6171 ms–6271 ms) | 2.17× | 6040 ms (6029 ms–6042 ms) | 3463 ms (3462 ms–3470 ms) | 1, 1, 1 | current/yes, current/yes, current/yes | 13602 / 0; 13602 / 0 |
 
-Per-cycle tails over all rounds: M6 wall p95 16.7 s / max 16.7 s, first actionable p95 6459 ms; M7 wall p95 6805 ms / max 6805 ms, first actionable p95 3884 ms.
+Per-cycle tails over all rounds: M6 wall p95 15.9 s / max 15.9 s, first actionable p95 6099 ms; M7 wall p95 6473 ms / max 6473 ms, first actionable p95 3674 ms.
 
 ### `vest`
 
 Gate failed:
 
-- SAIL7109: median whole-loop speedup 1.80× is below 2×
+- SAIL7109: median whole-loop speedup 1.82× is below 2×
 
 | Cycle | Kind | M6 wall | M7 wall | Speedup | M6 first actionable | M7 first actionable | M7 drivers | M7 full evidence / accepted | Cache served / solved (M6; M7) |
 |---|---|---:|---:|---:|---:|---:|---:|---|---|
-| `base128-body` | body | 55.1 s (54.9 s–55.5 s) | 30.4 s (30.4 s–31.3 s) | 1.81× | 24.2 s (24.1 s–24.2 s) | 14.7 s (14.6 s–14.8 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97653 / 288; 97161 / 780 |
-| `pow128-spec` | spec | 56.1 s (54.5 s–56.2 s) | 31.1 s (30.4 s–31.4 s) | 1.80× | 24.4 s (23.9 s–24.8 s) | 14.7 s (14.7 s–14.7 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97557 / 384; 97608 / 333 |
-| `base128-refactor` | refactor | 55.5 s (54.5 s–55.8 s) | 30.6 s (30.5 s–31.3 s) | 1.81× | 24.4 s (24.0 s–24.5 s) | 14.7 s (14.6 s–14.8 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97321 / 620; 97813 / 128 |
-| `pow128-failing-attempt` | failure | 43.7 s (43.7 s–45.3 s) | 25.1 s (24.8 s–26.6 s) | 1.74× | 18.6 s (18.5 s–18.8 s) | 14.8 s (14.7 s–14.9 s) | 1, 1, 1 | current/no, current/no, current/no | 97716 / 387; 97716 / 387 |
-| `pow128-repaired-attempt` | repair | 54.8 s (54.6 s–55.0 s) | 30.4 s (30.3 s–30.5 s) | 1.80× | 24.1 s (23.9 s–24.2 s) | 14.6 s (14.5 s–14.6 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97890 / 51; 97941 / 0 |
+| `base128-body` | body | 51.3 s (51.2 s–51.6 s) | 28.2 s (28.0 s–28.8 s) | 1.82× | 22.4 s (22.4 s–22.5 s) | 13.5 s (13.4 s–13.6 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97161 / 780; 97653 / 288 |
+| `pow128-spec` | spec | 51.5 s (51.3 s–51.9 s) | 28.1 s (28.0 s–28.8 s) | 1.84× | 22.5 s (22.4 s–22.5 s) | 13.7 s (13.4 s–13.7 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97557 / 384; 97608 / 333 |
+| `base128-refactor` | refactor | 51.5 s (51.2 s–52.1 s) | 28.1 s (28.0 s–28.5 s) | 1.83× | 22.5 s (22.4 s–22.7 s) | 13.5 s (13.4 s–13.5 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97762 / 179; 97813 / 128 |
+| `pow128-failing-attempt` | failure | 41.1 s (41.1 s–42.5 s) | 23.0 s (22.9 s–24.5 s) | 1.79× | 17.4 s (17.3 s–17.5 s) | 13.6 s (13.5 s–13.6 s) | 1, 1, 1 | current/no, current/no, current/no | 97716 / 387; 97716 / 387 |
+| `pow128-repaired-attempt` | repair | 51.5 s (51.3 s–51.5 s) | 27.9 s (27.9 s–28.2 s) | 1.85× | 22.5 s (22.3 s–22.6 s) | 13.4 s (13.4 s–13.5 s) | 1, 1, 1 | current/yes, current/yes, current/yes | 97941 / 0; 97941 / 0 |
 
-Per-cycle tails over all rounds: M6 wall p95 56.2 s / max 56.2 s, first actionable p95 24.8 s; M7 wall p95 31.4 s / max 31.4 s, first actionable p95 14.9 s.
+Per-cycle tails over all rounds: M6 wall p95 52.1 s / max 52.1 s, first actionable p95 22.7 s; M7 wall p95 28.8 s / max 28.8 s, first actionable p95 13.7 s.
 
-Warm-ups (recorded, not gated): 17 invocation group(s), 702.3 s total, 0 with an infrastructure failure.
+Warm-ups (recorded, not gated): 17 invocation group(s), 768.4 s total, 0 with an infrastructure failure.
 

@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The optional interactive engine runtime is rebuilt from fork commit
+  `13a1176c` (release `engine-runtime-13a1176c-linux`). It adds the VI-0001
+  verifier fix: enum `arrow_*` accessors are declared in source order even
+  when Cargo builds the Verus macros from the project's own dependency source,
+  so engine runs of identical input send identical SMT. Default
+  `sail verify` still runs the stock release.
+
 - `sail repair-check` no longer verifies vstd again for each new function.
   Every repair function now shares one Cargo target with the other engine
   runs of the same workspace and arguments, as plain `cargo verus` shares one

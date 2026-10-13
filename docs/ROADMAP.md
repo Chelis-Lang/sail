@@ -104,22 +104,21 @@ complete current full validation. M7 remains incomplete until these gates pass.
 
 | Gate | Status | Best evidence |
 |---|---|---|
-| Engine build and qualification | Pass (source checks) | Fork `d2b69aea` (ADR 0039, no prepared lowering; VI-0005 and VI-0007 fixes dropped): stock fixtures, cancel/restart, library tests and `rust_verify_test` ([L12 report](reports/rescue/l12-fork-fixes.md)) |
-| Engine runtime delivery | Pass | `engine-runtime-d2b69aea-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
+| Engine build and qualification | Pass (source checks) | Fork `13a1176c` (ADR 0039, no prepared lowering; adds the VI-0001 verifier fix; VI-0005 and VI-0007 fixes dropped): stock fixtures, cancel/restart, library tests and `rust_verify_test` ([L22 report](reports/rescue/l22-final-pin.md)) |
+| Engine runtime delivery | Pass | `engine-runtime-13a1176c-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
 | Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
-| Default and cache conformance | Pass (native) | `6214d67` on EC2: fast 147/147 and standard 159/159 in all three phases; engine arm fast 147/147 and standard 159/159 ([L12 report](reports/rescue/l12-fork-fixes.md)). The intermittent cache-warm module order on `debug_expand.rs` is no longer a difference ([ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md); [repro](../corpus/repros/sail-cache-warm-error-order/)) |
-| Frozen repair performance (≥2× each) | Fail (native): HumanEval pass, Vest 1.80× | Three rounds on the pinned fork runtime, every sample valid: HumanEval 2.13× (66.0 s / 31.0 s), Vest 1.80× (253.4 s / 140.4 s) ([benchmarks](benchmarks.md), [L12 report](reports/rescue/l12-fork-fixes.md)). Latest, L23: 2.11× and 1.80×; the cheap items cannot close Vest's gap ([L23 report](reports/rescue/l23-repair-target-and-vest.md)) |
+| Default and cache conformance | Pass (native) | `d187e49` on EC2 with runtime `13a1176c`: PR subset 33/33, fast 147/147 and standard 159/159 Same in pass-through, fill, warm and the engine arm, 0 Unstable ([L22 report](reports/rescue/l22-final-pin.md)). The intermittent cache-warm module order on `debug_expand.rs` is no longer a difference ([ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md); [repro](../corpus/repros/sail-cache-warm-error-order/)) |
+| Frozen repair performance (≥2× each) | Accepted at the measured speedup (ADR 0038 amendment 2026-10-13) | Three native rounds on runtime `13a1176c` (`d187e49`), every sample valid: HumanEval 2.14× (64.7 s / 30.3 s), Vest 1.82× (246.6 s / 135.1 s) ([benchmarks](benchmarks.md), [L22 report](reports/rescue/l22-final-pin.md)); L23 measured 2.11× and 1.80× ([L23 report](reports/rescue/l23-repair-target-and-vest.md)) |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented; stock verification stays
 the default. Start with [the repair walkthrough](proof-repair-walkthrough.md),
-[the MCP guide](mcp.md) or [the SDK contract](result-client.md). All local
-results so far ran in the emulated Linux container and are non-reference for
-performance; the remaining gates must be rerun on a native x86-64 host. M7 is
-not accepted: reader latency, complete standard/cache conformance and the two
-real-project speed thresholds remain open. [M7 validation](validation/m7.md)
+[the MCP guide](mcp.md) or [the SDK contract](result-client.md). Every gate
+above has native x86-64 evidence; the speed gate is accepted at the measured
+speedup rather than met at 2× on Vest (ADR 0038 amendment). M7's acceptance as
+a milestone awaits the lead's review of this evidence. [M7 validation](validation/m7.md)
 gives each gate's evidence and its indexed failed attempts, and
 [known issues](known-issues.md) lists the open defects behind them.
 
