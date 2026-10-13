@@ -583,7 +583,8 @@ errors and expand-errors.
 
 ### Transcript logs
 
-`--log smt-transcript` records exactly what crosses the pipe, per process
+`--log smt-transcript` records submitted batch bytes and delivered response
+lines, per process
 (`verus@426d8b0:source/air/src/smt_process.rs:169-174`, `:201-209`). Each
 batch is written as
 
@@ -596,8 +597,13 @@ batch is written as
 ```
 
 The batch omits the trailing newline and the `(echo "<<DONE>>")` that the
-writer thread appends, and the reply omits the `<<DONE>>` line. Transcripts
-carry no `;;` attribution comments. Their file name, though, identifies the
+writer thread appends, and the reply omits the `<<DONE>>` line. Query logging
+is flushed before sending the batch to the writer channel; response logging
+follows delivery from the reader channel. An unmatched QUERY therefore shows
+caller intent, not that the solver received those bytes. A timeout investigation
+needs separate writer/reader observations; transcript output alone cannot
+establish which transport stage is waiting. Transcripts carry no `;;`
+attribution comments. Their file name, though, identifies the
 bucket and spinoff, as above. Because `--log smt-transcript` alone does not
 attach an smt log, it does not change the pipe indentation. Confirmed
 empirically (ADR 0014): `--log smt-transcript`, `--log air`, `--output-json`
