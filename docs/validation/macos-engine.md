@@ -24,6 +24,31 @@ same engine checks as the Linux runtime
 | `test-cancel.py` | no seal after a kill at a blocked solver check; the restart matches stock | `test-cancel.log` `0f6ac145…5988` |
 | Conformance, fast PR subset | pass-through, cache fill and cache warm (3,635 entries): 33 units, 33 same, 0 different, 311 functions. Engine arm: 33 units, 33 same, 0 unstable, 0 different, 0 infra errors, 32 focused units, engine `c95d5f9a686d` | `conformance.log` `e4aeb570…9fe3` |
 
+## Re-qualification on clean hardware
+
+The same checks on a dedicated, otherwise idle Mac, with the pinned runtime
+fetched anonymously from the fork release (`ci/engine-artifact.py fetch`,
+archive digest and every runtime file checked):
+
+| Field | Value |
+|---|---|
+| Status | **Pass** |
+| Source | Sail `main` `4c1392a`, 2026-10-14 (lane L39); runtime as pinned above (manifest `c95d5f9a686d…`) |
+| Environment | EC2 mac-m4.metal, Apple M4 (4 performance and 6 efficiency cores, 24 GiB), macOS 27.0 (26A428), us-east-1b, a fresh instance with only rustup, the stock Verus release and this checkout added; load average 4–7 during the checks (the checks' own work; about 1.5 from macOS services when idle) |
+| Scope | Engine source build with vstd verification; `test-engine.py`; `test-cancel.py`; `ci/run.sh conformance fast pr` with `SAIL_ENGINE_BUILD` set to the fetched pinned runtime. One run of each, correctness only |
+
+| Check | Result |
+|---|---|
+| Pinned runtime | fetched and validated; `sail engine status` selects it (manifest `c95d5f9a686d…`) |
+| Build, vstd verification | `cargo xtask build-verus-engine`: 2,060 verified, 0 errors, 165 s. Same variant name and provenance as the pin, but not bit-identical: 5 of 14 runtime files match, and the manifest digest is `5ad93bc0…1175`. The pinned runtime, not this build, was used below |
+| `test-engine.py` | 11 of 11 fixtures match stock |
+| `test-cancel.py` | no seal after a kill at a blocked solver check; the restart matches stock |
+| Conformance, fast PR subset | pass-through, cache fill and cache warm (3,504 entries): 33 units, 33 same, 0 different, 311 functions each. Engine arm: 33 same, 0 unstable, 0 different, 0 infra errors, 32 focused units, engine `c95d5f9a686d` |
+
+Logs: `l39-mac-engine.tgz` `78845938…8b3d`, holding `engine-build.log`
+`c26b6296…bc14`, `test-engine.log` `0819d89b…098c`, `test-cancel.log`
+`0f6ac145…5988` and `conformance.log` `e4c1cfe8…81ee`.
+
 ## Release smoke test
 
 `scripts/release-smoke.sh` on the draft `v0.0.0-preview.3` archives, built by
