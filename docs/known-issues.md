@@ -50,6 +50,12 @@ are in the `archive/m7-contracts-f7103bf` tag.
   [reproduction](../corpus/repros/linux-emulation-verus-stall/).
 - **Managed metadata ignores Cargo `-F` feature aliases.**
   [#78](https://github.com/Chelis-Lang/sail/issues/78).
+- **Release-candidate wording gaps (low).** A failing managed summary leads
+  with `0 verified` before `… passed by Verus's totals`; after a Rust compile
+  error the managed count line reads `0 verified, 0 failed, 0 unknown`; and
+  the README's Install assumes `curl` and apt package lists, which a minimal
+  container lacks. Findings 5, 8 and 9 of the
+  [release-candidate record](validation/release-candidate.md#rc1-findings).
 
 ## Product limitations
 

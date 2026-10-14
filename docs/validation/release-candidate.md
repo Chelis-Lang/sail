@@ -4,16 +4,149 @@ This record covers the release candidate for Sail's first open-source release
 ([roadmap](../ROADMAP.md#open-source-release-planned)): the required gates,
 the standard and deep tiers, the release build and its smoke tests, and a
 repeat of the [new-user walkthrough](../reports/2026-10-13-new-user-walkthrough.md)
-on a clean Linux host, including the real Claude Code CLI. Clean-macOS
-validation is a separate lane (L39) and has its own section below.
+on a clean Linux host, including the real Claude Code CLI, for `v0.1.0-rc.1`;
+then a short revalidation of `v0.1.0-rc.2` after the fixes for rc.1's
+findings. Clean-macOS validation has its own record ([clean macOS](clean-macos.md)).
 
 | Field | Value |
 |---|---|
-| Status | **Code: pass.** 0 Different in every suite and arm, Unstable only with plain-Verus evidence, and the Singular engine arm reports `engine-lacks-feature`. **Release build and Linux smoke: pass.** **Linux walkthrough: works end to end.** Three findings are to be fixed before publishing, in lanes L40–L42 (below); a short revalidation of `v0.1.0-rc.2` follows them. **Clean macOS:** L39, pending |
-| Source | `main` at `7782b136564ad810adf33c72749c6d75ee9483f8` (2026-10-14) for every suite. Release candidate **`v0.1.0-rc.1`** (draft), built from `main` at `958dee95321165f30cca25b5ebe95ac1251eb62e` |
+| Status | **`v0.1.0-rc.2`: pass** ([below](#v010-rc2)). Release build, both smoke tests, the gate, solver, e2e, fast PR and standard conformance (0 Different in every arm), and the walkthrough recheck pass; findings 1–4, 6 and 7 are fixed. It is the candidate for the owner's review. **`v0.1.0-rc.1`:** code pass, 0 Different in every suite and arm of the standard and deep tiers; three findings blocked it (below); its draft is deleted. **Clean macOS:** pass on rc.1 ([clean macOS](clean-macos.md)) |
+| Source | **`v0.1.0-rc.2`** (draft), built from `main` at `8f427e810dd613b9b476d09bb3eb3aea492f4ce4`, which every rc.2 check ran. rc.1: `main` at `7782b136564ad810adf33c72749c6d75ee9483f8` (2026-10-14) for every suite; draft `v0.1.0-rc.1` built from `958dee95321165f30cca25b5ebe95ac1251eb62e` |
 | Runtime | CI image `sail-ci:14df87b176833bea`, built on each host from the committed inputs; stock Verus `0.2026.10.04.426d8b0`, Z3 4.16.0; Linux engine runtime `engine-runtime-13a1176c-linux` (manifest `5b866414…7603`); `rust_verify_test` from the source build of `426d8b0` |
 | Environment | Native EC2 c7i.8xlarge hosts (32 vCPU), us-east-1, Ubuntu 24.04, one suite or shard per host (layout below); `ci/run.sh host` on the developer Mac (Apple M3, macOS 26.5, shared with other lanes) |
-| Limits | Correctness only; wall times are indicative, not benchmarks. Walkthrough times are one sample each. The Linux walkthrough host is the `scripts/perf-host.sh` image, which already has `build-essential`, `pkg-config`, `libssl-dev`, `python3` and `curl` |
+| Limits | Correctness only; wall times are indicative, not benchmarks. Walkthrough times are one sample each. rc.1's Linux walkthrough host is the `scripts/perf-host.sh` image, which already has `build-essential`, `pkg-config`, `libssl-dev`, `python3` and `curl`; rc.2's walkthrough ran in a fresh `ubuntu:24.04` container |
+
+## v0.1.0-rc.2
+
+A short revalidation after the fixes for rc.1's findings: #108 (findings 1,
+4, 6 and 7), #109 (finding 2) and #110 (finding 3). Everything below ran on
+`8f427e81`, 2026-10-14, lane L43.
+
+| Check | Environment | Result |
+|---|---|---|
+| `scripts/release.sh 0.1.0-rc.2` | Linux half on a native host (lane `l43-rel`, c7i.4xlarge, torn down by the script); macOS half on the developer Mac | pass: draft `v0.1.0-rc.2` targeting `8f427e81`; both self-checks passed; `sail --version` prints `sail 0.1.0-rc.2` from each archive |
+| `ci/local.sh gate` | c7i.8xlarge `l43`, image `sail-ci:14df87b176833bea` | pass: 565 passed, 35 skipped; fmt, clippy, doctests, rustdoc, layering, deny, benchmarks page |
+| `ci/local.sh solver` | `l43` | pass: 35 passed |
+| `ci/local.sh e2e` (legacy, managed, repair) | `l43` | pass, including `claude-code: listed 15 sail tools on protocol 2026-07-28` and the real repair CLI/MCP acceptance |
+| `ci/local.sh conformance fast pr` | `l43` | 33 / 33 / 0 / 0 / 0 in pass-through, fill, warm and engine (32 focused); 311 functions |
+| standard tier, fill and warm | `l43`, its own daemon on a fresh cache | 159 / 159 / 0 / 0 / 0 in both; 12,726 functions; 150,363 entries |
+| standard tier, pass-through and engine | c7i.8xlarge `l43-eng`, its own cache | 159 / 159 / 0 / 0 / 0 in both; engine `5b866414…7603`, 158 focused |
+| `ci/run.sh host` | developer Mac (Apple M3, macOS 26.5, shared) | pass: clippy clean; 554 passed, 35 skipped |
+| `scripts/release-smoke.sh`, Linux archive | fresh c7i.8xlarge `l43-walk`; README Install step 2 only (rustup, Rust 1.98.1, the Verus release zip, no Sail checkout) | pass: bundled engine selected; `sail verify` passed (2,060 vstd and 2 demo verified); `repair-check demo::max` accepted |
+| `scripts/release-smoke.sh`, macOS archive | developer Mac, fresh directory, empty `SAIL_CACHE_DIR`, stock Verus `426d8b0` (functional check only, not clean-macOS evidence) | pass, same checks |
+
+The standard tier ran as two shards with the commands of `ci/run.sh
+conformance standard` (`--jobs 3`), split by arm, each arm over the full unit
+list. Its default arms show the same rlimit drift as rc.1 and no
+difference: VNR `log_entry_alive_value_wrap_around`, 51,948 against 51,945.
+Clean macOS was not rerun: the [rc.1 record](clean-macos.md) stands, since
+the changes since rc.1 are not macOS-specific.
+
+| Asset | Size | sha256 |
+|---|---:|---|
+| `sail-0.1.0-rc.2-x86_64-unknown-linux-gnu.tar.gz` | 42.0 MB (41,999,108 B) | `0b343f6f063eb47e92d1c01b360dd39d09b9f893dfa64cfb75082c37fdaa933e` |
+| `sail-0.1.0-rc.2-aarch64-apple-darwin.tar.gz` | 35.0 MB (34,989,456 B) | `b6ccb41981c7969ad43d6cb5dd69c870d78fe9a81e1263547a3f0cd5ec4b7ff8` |
+
+The Linux archive is 15.5 MB smaller than rc.1's, because the release
+binaries no longer carry line tables (#108).
+
+### Walkthrough recheck
+
+A fresh `ubuntu:24.04` container (24.04.5) on `l43-walk`, with a new
+non-root user and only `sudo` added. The image has no `curl`, `git`,
+`python3`, C compiler or `shasum`. The commands are the README's, except
+that the draft's assets, which cannot be downloaded anonymously, were
+copied in instead of fetched with `curl`.
+
+- **(a) Install from the archive: works end to end, no Sail checkout.**
+  `shasum` is absent, so `sha256sum -c` per the README note: `OK`. Unpack,
+  `bin/` on `PATH`, `sail --version` prints `sail 0.1.0-rc.2`. Step 2: apt
+  prerequisites, rustup and Rust 1.98.1 (40 s), the Verus release zip, whose
+  sha256 matches the README (11 s), `cargo verus --help`. `sail engine
+  status` selected the bundled engine. A new `cargo verus new --lib` project
+  then verified with `sail verify` in 29.9 s (vstd included). Two small gaps
+  in a minimal image (finding 8).
+- **(b) Compile error in vest: fixed.** vest `11af01dd`, `-p vest_lib`,
+  with its vstd pin set to the published `0.0.0-2026-10-04-0306` for the
+  installed Verus. Seconds, one sample each; the compile error is a type
+  error in an appended function, and the fix replaces it with a verified
+  function:
+
+  | vest | cold | warm | edit | compile error | again | fix | warm |
+  |---|---:|---:|---:|---:|---:|---:|---:|
+  | `cargo verus verify` | 64.9 | 0.20 | 34.5 | 5.6 | 5.6 | 34.6 | 0.20 |
+  | `sail verify --incremental` | 65.4 | 1.64 | 36.3 | 7.1 | 7.0 | 24.9 | 1.61 |
+  | rc.1, `--incremental` | | | | 37.9 | 37.9 | 58.3 | 1.5 |
+
+  Each compile-error run reports `1 verifier runs, 1 target reports reused`
+  (vstd is reused, not verified again), and so does the fixed run.
+- **(c) MCP `compare_verification`: fixed.** A scripted stdio client
+  (`2025-06-18`) in the vest workspace: `verify` unchanged (2.1 s, reused),
+  a failing edit to the appended function (20.6 s, `0 verified, 3128 passed
+  by Verus's totals`), `save_baseline`, the fix (25.8 s), then
+  `compare_verification` against the baseline: `Compatible comparison: 1
+  recovered, 3016 unchanged.` in a 2,233-byte reply (rc.1: `95
+  incomparable, 2921 recovered`, 1.26 MB). Its notes name the 3,128
+  functions counted by Verus's totals and the 95 repeated names compared as
+  groups. `detail: "full"`, which lists every function, is 1.36 MB
+  ([comparisons](../mcp.md#comparisons)).
+- **(d) `sail --version` and `sail bench`: as documented.** `sail
+  --version` prints `sail 0.1.0-rc.2`. `sail --help` no longer lists
+  `bench`. `sail bench`, `sail bench --help` and `sail bench cold` exit 2
+  with `SAIL0003`, saying it is a developer tool not in the release
+  archives and how to build it ([errors](../errors.md)). `--help` exits 0
+  for `verify`, `watch`, `jobs`, `mcp`, `cache`, `engine` and
+  `repair-check`.
+
+### rc.1 findings
+
+| # | Finding | Status in rc.2 |
+|---|---|---|
+| 1 | No archive install path in the README | **Fixed** (#108): (a) installs Sail and Verus from the README with no checkout |
+| 2 | A compile error makes each managed run verify vstd again | **Fixed** (#109): 7.1 s against plain's 5.6 s (was 37.9 s); the fixed run 24.9 s (was 58.3 s) |
+| 3 | `compare_verification` misleading after incomplete attribution | **Fixed** (#110): `1 recovered, 3016 unchanged`, 2.2 KB (was 1.26 MB) |
+| 4 | Stale release table in the roadmap | **Fixed** (#108) |
+| 5 | `0 verified, … passed by Verus's totals` reads as zero first | Open, low; unchanged |
+| 6 | `sail bench` listed but not shipped | **Fixed** (#108): unlisted; a clear `SAIL0003` |
+| 7 | `sail --version` cannot identify an RC; debug info shipped | **Fixed** (#108): `sail 0.1.0-rc.2`; line tables stripped |
+
+New, low:
+
+8. **README Install on a minimal image.** Step 1 downloads with `curl`,
+   which only step 2 installs. Docker's `ubuntu:24.04` also ships without
+   package lists, so step 2's `apt-get install` needs `apt-get update`
+   first, which the README does not say. Desktop and cloud Ubuntu installs
+   have both curl and package lists.
+9. **Managed summary of a compile error.** `sail verify --incremental`
+   prints `Current evidence: 0 verified, 0 failed, 0 unknown` after Cargo's
+   `could not compile`. The exit code and the Cargo error match plain Verus;
+   the count line says nothing about the crate that did not compile.
+
+### rc.2 evidence
+
+Raw logs outside the repository, in `~/sail-raw-evidence/l43/` on the
+lead's machine (sha256):
+
+| File | Contents | sha256 |
+|---|---|---|
+| `release-rc2.log` | `scripts/release.sh 0.1.0-rc.2` | `219b4748f70b7ee59c076c9b5dc4ff8329286efa4cee9a63e0626cd8113ce6db` |
+| `l43-main.tgz` | gate, solver, e2e, fast PR, standard fill and warm: logs and reports | `c1773c5c7fb0639a7f6740feaf9d66d6dfd2d4ef96da8e547f2065f54516b605` |
+| `l43-eng.tgz` | standard pass-through and engine: log and reports | `4b8fb27c8c0523a4040de986dd8ad69cf2647fd76b543ae3926e7e5806ab3a49` |
+| `mac-host.log` | `ci/run.sh host` | `48803c52dd716d5d5b9df9b31e73767c82ad676ecc7fe8f31d663856c5cfb075` |
+| `linux-smoke-rc2.log` | Linux smoke | `a3fe57084caf03bf6592cf8bb4cca20de55456b211e2bb7300b2493db2d72249` |
+| `mac-smoke-rc2.log` | macOS smoke on the developer Mac | `b25f0ce78e175b0bd0c5b5c292c54541f7cc8491ead51a5ffba463424da79188` |
+| `walk-0-setup.log`, `walk-a-install.log` | container setup; (a) | `13b02cdad3461331439b515959ccf7fc453bd80770a129cd34f5508346d61702`, `e951032755538874418750c4be767355a5dc05f6a54793b94f449af362201554` |
+| `walk-b-vest.log` | (b) | `061f503020a9aef9e1a9c9317313ef78ceb754aa574652dc6e0f6a5f83c17473` |
+| `walk-c-mcp.log` | (c) | `c101208f5f168957e0046737b09986d4efe3970396b4eafade301af47cd9b73f` |
+| `walk-d-version-bench.log` | (d) | `e21c92a59cba944de911381f182e26c22e184d88770c5a05393247fca9113c55` |
+| `walk-outputs.tgz` | per-step stdout and stderr for (b); MCP frames for (c) | `e71edef82f57bada9036e2fc9e7bbbe9e64c9f2ea81622657bdec6e55860cae9` |
+| `l43-harness.tgz` | the scripts that ran the shards and the walkthrough | `f7c7c6c32a37d4e33d8cbeeaca6ffee9e574003b90e0e40a223072af5840b37a` |
+
+No rc.2 attempt failed or was interrupted.
+
+## v0.1.0-rc.1
+
+The rest of this record is rc.1's validation.
 
 ## Suites
 
@@ -247,11 +380,9 @@ With the binaries copied away from `engine/`, `engine status` and
 
 ## New findings, by user impact
 
-Findings 1–3 must be fixed before publishing and are open. They are assigned
-to lanes L40 (findings 1, 4, 6 and 7), L41 (finding 2) and L42 (finding 3). A
-`v0.1.0-rc.2` cut after those lanes land gets a short revalidation: the gate,
-fast PR conformance, the release smoke tests and the affected walkthrough
-steps.
+As found on rc.1. Lanes L40 (findings 1, 4, 6 and 7), L41 (finding 2) and
+L42 (finding 3) fixed them; their current status is in
+[rc.1 findings](#rc1-findings) under rc.2.
 
 1. **The release tarball has no install path in the README.** *Open, L40.*
    - README Install still says release binaries "will be published" and
@@ -300,9 +431,9 @@ steps.
 
 ## Clean macOS
 
-Owned by lane L39 on a clean EC2 Mac (M4): the macOS tarball's smoke test,
-the clean-macOS walkthrough and the Mac performance numbers. To be filled by
-L39.
+Lane L39 checked rc.1's macOS archive on a clean EC2 Mac (M4): the smoke
+test, the walkthrough and the Mac performance numbers. All passed; see
+[clean macOS](clean-macos.md).
 
 Before the scope change, `scripts/release-smoke.sh` on the deleted `v0.0.0-rc.1`
 macOS tarball passed on the shared developer Mac, in a fresh directory with an
