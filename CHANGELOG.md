@@ -3,7 +3,7 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
-## Unreleased
+## 0.1.0 (unreleased)
 
 - A performance page ([performance](docs/performance.md)) states where Sail
   is faster than plain `cargo verus verify` and where it is not, each claim
