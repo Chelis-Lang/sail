@@ -39,14 +39,13 @@ for those unsupported managed configurations. Cargo configuration discovery
 uses the original invocation directory, including member-directory ancestors;
 relative Cargo/cache homes are resolved against that directory.
 
-Linux is the reference platform for frontend proof reuse. Its ordered native
-event queue tracks transient creation and removal of missing Cargo configuration
-files before receipts are published. On macOS, present inputs retain content
-and mutation checks, and missing configuration paths retain conservative parent
-directory checks. Unrelated directory activity can make a completed result
-historical and require another proof run. Sail does not relax those checks to
-claim current evidence. Ordinary verification and the SMT cache remain available
-on both platforms.
+Proof reuse works on Linux and macOS. On Linux, an ordered native event queue
+also tracks transient creation and removal of missing Cargo configuration
+files during a run. macOS has no equivalent, so there missing configuration
+files are checked only at the start and end of a run; a configuration file
+created and deleted again within one run is not noticed (see
+[freshness](freshness.md#what-these-checks-do-not-catch)). Present inputs keep
+the same content and mutation checks on both platforms.
 
 The ordinary `sail verify` path keeps its existing drop-in output and behavior.
 The explicit managed JSON format is a `sail-project-result` envelope, version 1,

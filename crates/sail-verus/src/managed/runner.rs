@@ -1879,7 +1879,7 @@ fn completed_receipts(run: &Path, data: &Value) -> Result<Vec<(PathBuf, Receipt)
 mod tests {
     use super::*;
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     include!("runner_artifact_isolation_tests.rs");
     fn compiler_request(function: Option<&str>) -> crate::engine::Request {
         crate::engine::Request {
@@ -2142,7 +2142,9 @@ mod tests {
 
     impl NegativeGeneration {
         fn new(label: &str) -> std::result::Result<Self, Box<dyn std::error::Error>> {
-            let root = std::env::temp_dir().join(format!(
+            // Cargo reports canonical manifest paths; macOS's temporary
+            // directory is reached through the `/var` symlink.
+            let root = std::env::temp_dir().canonicalize()?.join(format!(
                 "sail-negative-generation-{label}-{}",
                 std::process::id()
             ));
@@ -2431,7 +2433,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     #[test]
     #[allow(
         clippy::too_many_lines,
