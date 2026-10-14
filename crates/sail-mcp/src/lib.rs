@@ -30,6 +30,7 @@
 #![forbid(unsafe_code)]
 
 mod args;
+mod compact;
 mod job_clients;
 mod job_tools;
 pub mod jsonrpc;

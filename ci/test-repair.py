@@ -294,7 +294,8 @@ def run(args):
                             "stream_id":cursor["stream_id"], "after":cursor["after"]})
             assert mcp_page["next"]["after"] >= cursor["after"] and mcp_page["gap"] is None, mcp_page
             explained = tool("explain_failure", {"job_id":failed_job,"package_id":package_id,
-                             "target":"repair_demo","kind":"lib","function":"repair_demo::other"})
+                             "target":"repair_demo","kind":"lib","function":"repair_demo::other",
+                             "detail":"full"})
             assert explained["value"]["function"] == function, explained
             comparison = tool("compare_verification", {"after_job":failed_job,"baseline":"before-repair"})
             assert any(d["change"] == "regressed" for d in comparison["value"]["differences"]), comparison

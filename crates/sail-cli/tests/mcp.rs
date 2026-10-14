@@ -100,11 +100,15 @@ impl Client {
         let r = self.request("tools/call", &json!({"name": name, "arguments": arguments}));
         let result = r["result"].clone();
         assert_eq!(result["resultType"], "complete", "{r}");
-        // The text content carries the structured result too.
-        let text: Value =
-            serde_json::from_str(result["content"][1]["text"].as_str().unwrap_or_default())
-                .unwrap_or_default();
-        assert_eq!(text, result["structuredContent"]);
+        // The JSON is sent once, as structuredContent, which starts with the
+        // summary; the one text block is the summary.
+        assert_eq!(result["content"].as_array().map(Vec::len), Some(1), "{r}");
+        if result["structuredContent"].is_object() {
+            assert_eq!(
+                result["structuredContent"]["summary"], result["content"][0]["text"],
+                "{r}"
+            );
+        }
         result
     }
 }
@@ -257,13 +261,28 @@ exit 1
     assert_eq!(ce["function"], "input::bad");
     assert_eq!(ce["verdict"], "failed");
     let obligations = ce["obligations"].as_array().cloned().unwrap_or_default();
+    // By default a model is its source-level variables (`x!` is parameter `x`).
     assert!(
         obligations
             .iter()
+            .any(|o| o["counterexample"]["variables"]["x"].is_string()
+                && o["counterexample"].get("model").is_none()),
+        "{ce}"
+    );
+    // The raw model is available on request.
+    let raw = c.tool(
+        "counterexample",
+        &json!({"function": "bad", "detail": "full"}),
+    );
+    assert!(
+        raw["structuredContent"]["obligations"]
+            .as_array()
+            .into_iter()
+            .flatten()
             .any(|o| o["counterexample"]["assignments"]
                 .as_array()
                 .is_some_and(|a| a.iter().any(|x| x["name"] == "x!"))),
-        "{ce}"
+        "{raw}"
     );
     assert!(
         ce["diagnostics"].as_array().is_some_and(|d| d
