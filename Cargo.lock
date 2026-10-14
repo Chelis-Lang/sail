@@ -1106,7 +1106,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "sail-api"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "sail-key",
  "sail-ledger",
@@ -1117,7 +1117,7 @@ dependencies = [
 
 [[package]]
 name = "sail-bench"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "sail-api",
  "sail-conformance",
@@ -1134,7 +1134,7 @@ dependencies = [
 
 [[package]]
 name = "sail-cache"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "ed25519-dalek",
  "sail-key",
@@ -1144,7 +1144,7 @@ dependencies = [
 
 [[package]]
 name = "sail-cli"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "ctrlc",
  "notify",
@@ -1163,7 +1163,7 @@ dependencies = [
 
 [[package]]
 name = "sail-conformance"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "sail-verus",
  "serde",
@@ -1172,7 +1172,7 @@ dependencies = [
 
 [[package]]
 name = "sail-daemon"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "bytes",
  "http-body-util",
@@ -1193,7 +1193,7 @@ dependencies = [
 
 [[package]]
 name = "sail-key"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "proptest",
  "sail-session",
@@ -1203,11 +1203,11 @@ dependencies = [
 
 [[package]]
 name = "sail-ledger"
-version = "0.0.0"
+version = "0.1.0"
 
 [[package]]
 name = "sail-mcp"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "sail-api",
  "serde",
@@ -1217,7 +1217,7 @@ dependencies = [
 
 [[package]]
 name = "sail-portfolio"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "sail-smtlib",
  "sail-solver",
@@ -1226,7 +1226,7 @@ dependencies = [
 
 [[package]]
 name = "sail-session"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "proptest",
  "sail-smtlib",
@@ -1234,7 +1234,7 @@ dependencies = [
 
 [[package]]
 name = "sail-shim"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "proptest",
  "sail-api",
@@ -1249,14 +1249,14 @@ dependencies = [
 
 [[package]]
 name = "sail-smtlib"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "proptest",
 ]
 
 [[package]]
 name = "sail-solver"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "serde",
  "sha2",
@@ -1264,7 +1264,7 @@ dependencies = [
 
 [[package]]
 name = "sail-verus"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "inotify",
  "rustix",
@@ -2066,7 +2066,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 
 [[package]]
 name = "xtask"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "sail-verus",
  "serde",

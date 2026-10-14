@@ -62,10 +62,8 @@ The server moves owned result graphs through the
 response envelope and encodes each complete JSON-RPC frame before taking the
 stdout write lock. Concurrent frames remain atomic. Cancellation remains
 registered through encoding and is checked again before publication; a
-cancelled response is suppressed before its write begins. Slow stdout consumers
-can still block writes. This does not establish a live-reader latency gain or a
-bound on temporary response memory. See [ADR 0034](decisions/0034-mcp-response-encoding-ownership.md)
-and the [scoped controls](validation/m7.md).
+cancelled response is suppressed before its write begins. A slow stdout
+consumer can still block writes ([ADR 0034](decisions/0034-mcp-response-encoding-ownership.md)).
 
 Job status, completed results, counterexamples and cached-result lookups read
 the jobs service socket directly inside `sail mcp`, without spawning a CLI
@@ -575,22 +573,5 @@ On the completed `verification_result`, inspect
 Use the exact package/target/function identities in the report for explanations
 and comparisons. MCP events are paged reads; CLI `--follow` is not an MCP argument.
 
-Current `387ba80` passes the [complete gate, solver, product installations and
-original CLI/MCP repair fixture](validation/m7.md).
-Named-baseline feature smoke passed separately on `57a319d`. Historical
-`b89546c` passes the [original repair fixture and complete reader/retained workflow](validation/m7.md).
-Both unchanged collectors preserve full Current graphs and p95 below 200 ms,
-followed by passing retained CLI/MCP scenarios. The separate
-[installed baseline feature smoke](validation/m7.md)
-on `57a319d` exercises actual save/list/get and restarted-client reads:
-CLI and MCP retain the same complete Historical snapshot, and duplicate save
-refuses overwrite. The separate original 387 reader workflow fails Python
-Result p95 at 436.008 ms against the unchanged 200 ms bound, with full Current
-evidence and the same continuing verifier in all 200 samples. Rust and retained
-CLI/MCP checks are unattempted. Current-product readers and real-project
-performance receive no transferred credit from the earlier passing scopes.
-The [730 reader/retained pass](validation/m7.md) is a separate historical scope.
-The reader p95 values come from the unchanged Python and Rust collectors, rather
-than an MCP-specific timing census; retained MCP scenarios establish functional
-behavior. Real-project repair performance and complete standard/cache coverage
-remain pending. PR #74 is draft, and M7 remains experimental.
+Proof repair is experimental. Its validation status is in
+[M7 validation](validation/m7.md).

@@ -327,11 +327,7 @@ pub fn fragility(
         (dir, None, false)
     } else {
         let Some(cargo_verus) = cargo_verus else {
-            return fail(
-                err,
-                "SAIL0101",
-                "`cargo-verus` is not on PATH (or set SAIL_CARGO_VERUS)",
-            );
+            return fail(err, "SAIL0101", &crate::verify::missing_cargo_verus());
         };
         if !shim.is_file() {
             return fail(

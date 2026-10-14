@@ -3,7 +3,28 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
-## Unreleased
+## 0.1.0 (unreleased)
+
+- The README installs Sail from the release archive (checksum check,
+  unpacked `bin/` on `PATH`) and installs the pinned stock Verus and its Rust
+  toolchain without a Sail checkout; the source build is a short contributor
+  alternative. The repair section says the engine is bundled in both
+  archives. `SAIL0101` names the Verus release to install, and `SAIL3120`
+  says that from a release install it means a damaged or incomplete unpacked
+  directory (or a stale engine in the cache), with the checkout options
+  after it.
+- `sail --version` reports the exact release version, suffix included
+  (`scripts/release.sh` builds with `SAIL_VERSION`, for example
+  `0.1.0-rc.1`). `sail --help` no longer lists `sail bench`, a contributor
+  tool that is not in the release archives; run without `sail-bench`, it
+  says to build it from a source checkout.
+- Release archives ship `sail` and `sail-z3` stripped of debug line tables
+  (`scripts/release.sh` runs `strip -S`): measured on v0.1.0-rc.1, the Linux
+  archive shrinks from 57.5 MB to 42.0 MB (`sail` 76.3 MB to 17.6 MB); the
+  macOS archive from 35.3 MB to 35.0 MB, where the engine runtime is most of
+  the size.
+- `docs/mcp.md` keeps user instructions only; repair validation status is in
+  `docs/validation/m7.md`.
 
 - A compile error no longer costs a vstd re-verification. After a Rust compile
   error in the selected crate, managed runs (`sail verify --incremental`, MCP

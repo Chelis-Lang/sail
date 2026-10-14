@@ -55,7 +55,7 @@ fn options(args: &[String]) -> Result<Option<Options>, String> {
 
 pub(crate) fn config(args: Vec<String>) -> Result<sail_verus::managed::Config, String> {
     let cargo_verus = crate::verify::cargo_verus()
-        .ok_or("error[SAIL0101]: cargo-verus not found; set SAIL_CARGO_VERUS")?;
+        .ok_or_else(|| format!("error[SAIL0101]: {}", crate::verify::missing_cargo_verus()))?;
     let sail = std::env::current_exe().map_err(|e| e.to_string())?;
     let shim = sail.with_file_name("sail-z3");
     if !shim.is_file() {
