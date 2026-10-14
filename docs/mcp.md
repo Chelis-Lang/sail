@@ -208,7 +208,7 @@ that a proof did.
 |---|---|---|
 | `verification_events` | `job_id`, optional `stream_id` and unsigned `after` | One bounded page of the proof-event journal, with a reconnect cursor, `gap` and `terminal`. Stock jobs write no proof events today: a finished stock job returns an empty terminal page with a `SAIL0903` gap. |
 | `explain_failure` | `job_id`, `package_id`, `target`, `kind` (`lib` or `bin`), `function`, optional `obligation`, `detail` | The exact function report, run diagnostics and establishing provenance. Models are source-level variables unless `detail` is `full`. |
-| `compare_verification` | `after_job` and exactly one of `before_job` or `baseline`, optional `detail` | A scoped comparison. Context or scope mismatches are `incomparable`, never regressions. By default `differences` lists only changed functions and `unchanged_total` counts the rest; `detail: "full"` lists every function. |
+| `compare_verification` | `after_job` and exactly one of `before_job` or `baseline`, optional `detail` | A scoped comparison. Context or scope mismatches are `incomparable`, never regressions. By default `differences` lists only changed functions and `unchanged_total` counts the rest; `detail: "full"` lists every function. See [comparisons](#comparisons) for how functions that passed by Verus's totals and repeated names are classified. |
 | `save_baseline` | `job_id`, `name` | Saves a completed job under a new immutable name. An existing name is refused. |
 | `list_baselines` | none | Sorted saved names. |
 | `get_baseline` | `name`, optional `detail` | The immutable snapshot, always `historical`. By default its `result` is the agent view; `detail: "full"` returns the complete snapshot. |
@@ -218,6 +218,45 @@ in `structuredContent.value` (its `result` shaped by `detail`); list returns `re
 a reply whose name, or for save whose job, differs from the request. A
 cancelled save may already have published its record, so inspect the name
 before retrying.
+
+### Comparisons
+
+`compare_verification` and `sail compare` share one classification:
+
+- **Passed by Verus's totals counts as passing.** A function reported
+  `unknown` only because Sail could not attribute it one by one, in a crate
+  whose Verus totals hold no error beyond its failed functions
+  (`counts.unknown_passed_by_verus_totals`), is classified as verified, on
+  either side. Any other `unknown` stays `unknown`. The difference keeps the
+  reported `before`/`after` verdict and sets `before_passed_by_verus_totals`
+  or `after_passed_by_verus_totals`; no per-function verdict is invented.
+- **Repeated friendly names (VI-0010).** Entries are keyed by friendly
+  function name, and stock Verus gives several implementations the same one.
+  Such a name is compared as one group when both sides hold the same number of
+  functions under it and every one of them has the same result on each side:
+  each implementation then makes the same transition, whichever is which.
+  Otherwise the name is `incomparable`. Obligations are not compared for a
+  repeated name.
+- The summary gives counts by change, the changed functions and one line per
+  note: how many functions passed by Verus's totals, how many repeated names
+  were grouped (and how many functions share them), and how many stayed
+  incomparable.
+
+On vest (`11af01dd`, `-p vest_lib`, one failing assertion added to
+`lemma_usize_shr8_is_div256`), a baseline of the failing run compared with the
+run after the fix now reads:
+
+```text
+Compatible comparison: 1 recovered, 3014 unchanged.
+recovered: vest_lib::primitives::base256::lemma_usize_shr8_is_div256
+3126 function(s) reported `unknown` passed by Verus's totals (not attributed one by one); the comparison counts them as passing, as Verus did. Their verdicts stay `unknown`.
+Entries are friendly function names: 95 repeated name(s), shared by 207 functions (VI-0010), were each compared as a group, since every function sharing the name has the same result on each side.
+```
+
+The default reply is 2.4 KB; before this classification it read
+`95 incomparable, 2920 recovered` in 1.26 MB, listing every function as
+changed. `detail: "full"` (every function) is 1.4 MB. Measured on EC2
+c7i.4xlarge, us-east-1.
 
 ## Tools
 

@@ -676,24 +676,32 @@ impl CrateReport {
     /// rule 7). Returns 0 whenever the totals cannot clear them.
     #[must_use]
     pub fn unknown_passed_by_verus_totals(&self) -> u64 {
-        let count = |verdict: VerdictName| {
-            let n = self
-                .functions
-                .iter()
-                .filter(|f| f.verdict == verdict)
-                .count();
-            u64::try_from(n).unwrap_or(u64::MAX)
-        };
-        let failed = count(VerdictName::Failed);
-        let cleared = failed > 0
-            && self.verus.errors == Some(failed)
-            && self.verus.verified.is_some()
-            && self.verus.encountered_vir_error != Some(true);
-        if cleared {
-            count(VerdictName::Unknown)
+        if self.verus_totals_clear_unknown() {
+            self.count(VerdictName::Unknown)
         } else {
             0
         }
+    }
+
+    /// Whether this crate's `unknown` functions passed by Verus's totals:
+    /// see [`Self::unknown_passed_by_verus_totals`]. The verdicts stay
+    /// `unknown`; this only says Verus's aggregate left no error for them.
+    #[must_use]
+    pub fn verus_totals_clear_unknown(&self) -> bool {
+        let failed = self.count(VerdictName::Failed);
+        failed > 0
+            && self.verus.errors == Some(failed)
+            && self.verus.verified.is_some()
+            && self.verus.encountered_vir_error != Some(true)
+    }
+
+    fn count(&self, verdict: VerdictName) -> u64 {
+        let n = self
+            .functions
+            .iter()
+            .filter(|f| f.verdict == verdict)
+            .count();
+        u64::try_from(n).unwrap_or(u64::MAX)
     }
 }
 

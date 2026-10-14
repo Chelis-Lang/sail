@@ -45,4 +45,7 @@ field is unchanged. `func-details` stays keyed by friendly name.
 
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Still needed: Sail declines attribution for repeated friendly names in stock
-runs, and does not yet read `function-path` from engine runs.
+runs, and does not yet read `function-path` from engine runs. Comparisons
+compare a repeated name as one group only when every function under it has
+the same result on each side and the counts match; otherwise the name is
+`incomparable` (vest has 95 such names, shared by 207 functions).

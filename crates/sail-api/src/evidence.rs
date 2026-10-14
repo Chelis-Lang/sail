@@ -49,6 +49,9 @@ pub struct Baseline {
 }
 
 /// Classification of one comparison entry.
+///
+/// Function classifications count a function that passed by Verus's totals
+/// (reported `unknown`, not attributed one by one) as verified.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Change {
@@ -58,7 +61,8 @@ pub enum Change {
     Regressed,
     /// A previously verified function no longer has a confirmed proof.
     BecameUnknown,
-    /// A previously unproved function is now confirmed verified.
+    /// A previously unproved function now verifies (confirmed, or passed by
+    /// Verus's totals).
     Recovered,
     /// Newly observed function.
     Added,
@@ -79,12 +83,22 @@ pub struct Difference {
     pub target: Target,
     /// Exact function identity.
     pub function: String,
-    /// Earlier verdict, absent when not observed.
+    /// Earlier reported verdict, absent when not observed or when the
+    /// functions sharing a repeated friendly name report different verdicts.
     pub before: Option<VerdictName>,
-    /// Later verdict, absent when not observed.
+    /// Later reported verdict, absent when not observed or when the
+    /// functions sharing a repeated friendly name report different verdicts.
     pub after: Option<VerdictName>,
     /// Conservative comparison classification.
     pub change: Change,
+    /// The earlier `unknown` verdict was classified as verified because the
+    /// function passed by Verus's totals (not attributed one by one).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub before_passed_by_verus_totals: bool,
+    /// The later `unknown` verdict was classified as verified because the
+    /// function passed by Verus's totals (not attributed one by one).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub after_passed_by_verus_totals: bool,
     /// Exact attributed obligation IDs; ordinals are not semantically matched.
     pub obligations: Vec<ObligationDifference>,
 }
@@ -182,30 +196,121 @@ pub fn explain(
     })
 }
 
-fn functions(
-    result: &ProjectResult,
-) -> std::collections::BTreeMap<(Target, String), Vec<&FunctionReport>> {
-    let mut records: std::collections::BTreeMap<_, Vec<_>> = std::collections::BTreeMap::new();
+/// One recorded function as a comparison sees it.
+#[derive(Debug, Clone, Copy)]
+struct Entry<'a> {
+    report: &'a FunctionReport,
+    /// Reported `unknown` in a crate whose Verus totals clear its unknown
+    /// functions ([`crate::output::CrateReport::verus_totals_clear_unknown`]).
+    by_totals: bool,
+}
+
+impl Entry<'_> {
+    /// The reported verdict (`provisional` for a provisional tier).
+    fn verdict(self) -> VerdictName {
+        effective(self.report)
+    }
+
+    /// The class a comparison classifies by. A function that passed by
+    /// Verus's totals counts as verified here, as Verus counted it; its
+    /// reported verdict stays `unknown`.
+    fn class(self) -> VerdictName {
+        if self.by_totals {
+            VerdictName::Verified
+        } else {
+            self.verdict()
+        }
+    }
+}
+
+type Records<'a> = std::collections::BTreeMap<(Target, String), Vec<Entry<'a>>>;
+
+fn functions(result: &ProjectResult) -> Records<'_> {
+    let mut records = Records::new();
     for target in result.targets.iter().filter(|target| target.requested) {
         let id = Target {
             package_id: target.package_id.clone(),
             name: target.target.clone(),
             kind: target.kind.clone(),
         };
-        for function in target.report.crates.iter().flat_map(|c| &c.functions) {
-            records
-                .entry((id.clone(), function.function.clone()))
-                .or_default()
-                .push(function);
+        for krate in &target.report.crates {
+            let cleared = krate.verus_totals_clear_unknown();
+            for function in &krate.functions {
+                records
+                    .entry((id.clone(), function.function.clone()))
+                    .or_default()
+                    .push(Entry {
+                        report: function,
+                        by_totals: cleared && effective(function) == VerdictName::Unknown,
+                    });
+            }
         }
     }
     records
 }
 
-fn unique<'a>(records: Option<&Vec<&'a FunctionReport>>) -> Option<&'a FunctionReport> {
-    match records?.as_slice() {
-        [only] => Some(*only),
+fn unique<'a>(entries: &[Entry<'a>]) -> Option<&'a FunctionReport> {
+    match entries {
+        [only] => Some(only.report),
         _ => None,
+    }
+}
+
+/// One side of a function identity, as classified.
+#[derive(Debug, Default, Clone, Copy)]
+struct Side {
+    /// The reported verdict, when every entry reports the same one.
+    verdict: Option<VerdictName>,
+    /// The comparison class; `None` when not observed.
+    class: Option<VerdictName>,
+    /// Whether the class relies on Verus's totals.
+    by_totals: bool,
+}
+
+/// The entries' common class, or `None` when they disagree.
+fn side(entries: &[Entry<'_>]) -> Option<Side> {
+    let Some(first) = entries.first() else {
+        return Some(Side::default());
+    };
+    entries
+        .iter()
+        .all(|e| e.class() == first.class())
+        .then(|| Side {
+            verdict: entries
+                .iter()
+                .all(|e| e.verdict() == first.verdict())
+                .then(|| first.verdict()),
+            class: Some(first.class()),
+            by_totals: entries.iter().any(|e| e.by_totals),
+        })
+}
+
+/// Resolves one identity on both sides. One entry per side compares
+/// directly. A repeated friendly name (VI-0010) compares only when both sides
+/// hold the same number of entries and every entry on each side has the same
+/// class: every implementation then makes the same transition, whichever is
+/// which. Otherwise `None` (incomparable).
+fn resolve(left: &[Entry<'_>], right: &[Entry<'_>]) -> Option<(Side, Side)> {
+    let repeated = left.len() > 1 || right.len() > 1;
+    if repeated && left.len() != right.len() {
+        return None;
+    }
+    Some((side(left)?, side(right)?))
+}
+
+/// Classifies one transition between comparison classes.
+fn classify(before: Option<VerdictName>, after: Option<VerdictName>, removed: bool) -> Change {
+    match (before, after) {
+        (Some(a), Some(b)) if a == b => Change::Unchanged,
+        (Some(VerdictName::Verified), Some(VerdictName::Failed)) => Change::Regressed,
+        (Some(VerdictName::Verified), Some(VerdictName::Unknown | VerdictName::Provisional)) => {
+            Change::BecameUnknown
+        }
+        (Some(_), Some(VerdictName::Verified)) => Change::Recovered,
+        (None, Some(_)) => Change::Added,
+        (Some(_), None) if removed => Change::Removed,
+        (Some(_), None) => Change::NotObserved,
+        _ => Change::Changed,
     }
 }
 
@@ -230,8 +335,27 @@ fn scopes(result: &ProjectResult) -> Vec<(Target, String, Vec<String>)> {
     scopes
 }
 
+/// What a comparison's notes report.
+#[derive(Debug, Default)]
+struct Tally {
+    /// Classified functions whose class relies on Verus's totals.
+    by_totals: usize,
+    /// Repeated friendly names compared as uniform groups.
+    repeated_compared: usize,
+    /// Functions holding those names (the larger side).
+    repeated_functions: usize,
+    /// Repeated friendly names left incomparable.
+    repeated_incomparable: usize,
+}
+
 /// Compares recorded evidence only when exact requested contexts/scopes agree.
 /// Absent functions remain unobserved; a partial run never proves their removal.
+///
+/// A function reported `unknown` that passed by Verus's totals
+/// ([`crate::output::CrateReport::verus_totals_clear_unknown`]) is classified
+/// as verified on either side, as Verus counted it. Its reported verdict stays
+/// `unknown` in [`Difference::before`] or [`Difference::after`], and the
+/// difference says the class relied on the totals.
 #[must_use]
 pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
     let compatible =
@@ -240,48 +364,45 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
     let left = functions(before);
     let right = functions(after);
     let ids: std::collections::BTreeSet<_> = left.keys().chain(right.keys()).cloned().collect();
-    let ambiguous = left
-        .values()
-        .chain(right.values())
-        .any(|entries| entries.len() > 1);
+    let mut tally = Tally::default();
     let differences = ids
         .into_iter()
         .map(|(target, function)| {
             let key = (target.clone(), function.clone());
-            let obligations =
-                obligations(unique(left.get(&key)), unique(right.get(&key)), compatible);
-            let repeated = left.get(&key).is_some_and(|entries| entries.len() > 1)
-                || right.get(&key).is_some_and(|entries| entries.len() > 1);
-            let before = (!repeated)
-                .then(|| unique(left.get(&key)).map(effective))
-                .flatten();
-            let after = (!repeated)
-                .then(|| unique(right.get(&key)).map(effective))
-                .flatten();
-            let change = if compatible && !repeated {
-                match (before, after) {
-                    (Some(a), Some(b)) if a == b => Change::Unchanged,
-                    (Some(VerdictName::Verified), Some(VerdictName::Failed)) => Change::Regressed,
-                    (
-                        Some(VerdictName::Verified),
-                        Some(VerdictName::Unknown | VerdictName::Provisional),
-                    ) => Change::BecameUnknown,
-                    (Some(_), Some(VerdictName::Verified)) => Change::Recovered,
-                    (None, Some(_)) => Change::Added,
-                    (Some(_), None) if inventory(after_project, &target) => Change::Removed,
-                    (Some(_), None) => Change::NotObserved,
-                    _ => Change::Changed,
-                }
+            let l = left.get(&key).map_or(&[][..], Vec::as_slice);
+            let r = right.get(&key).map_or(&[][..], Vec::as_slice);
+            let repeated = l.len() > 1 || r.len() > 1;
+            let resolved = resolve(l, r);
+            if repeated && resolved.is_some() {
+                tally.repeated_compared += 1;
+                tally.repeated_functions += l.len().max(r.len());
+            } else if repeated {
+                tally.repeated_incomparable += 1;
+            }
+            let (old, new) = resolved.unwrap_or_default();
+            let change = if compatible && resolved.is_some() {
+                classify(old.class, new.class, inventory(after_project, &target))
             } else {
                 Change::Incomparable
             };
+            let classified = change != Change::Incomparable;
+            if classified {
+                let count = |entries: &[Entry<'_>]| entries.iter().filter(|e| e.by_totals).count();
+                tally.by_totals += count(l).max(count(r));
+            }
             Difference {
                 target,
                 function,
-                before,
-                after,
+                before: old.verdict,
+                after: new.verdict,
                 change,
-                obligations: if repeated { Vec::new() } else { obligations },
+                before_passed_by_verus_totals: classified && old.by_totals,
+                after_passed_by_verus_totals: classified && new.by_totals,
+                obligations: if repeated {
+                    Vec::new()
+                } else {
+                    obligations(unique(l), unique(r), compatible)
+                },
             }
         })
         .collect();
@@ -292,17 +413,32 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
         after_revision: after.input_revision.clone(),
         after_currentness: after.currentness,
         differences,
-        notes: comparison_notes(compatible, ambiguous),
+        notes: comparison_notes(compatible, &tally),
     }
 }
 
-fn comparison_notes(compatible: bool, ambiguous: bool) -> Vec<String> {
+fn comparison_notes(compatible: bool, tally: &Tally) -> Vec<String> {
     let mut notes = Vec::new();
     if !compatible {
         notes.push("Requested scope, mode or runtime context differs; transitions are descriptive, not proof regressions.".into());
     }
-    if ambiguous {
-        notes.push("Repeated friendly function names cannot identify one implementation; their transitions are incomparable (VI-0010).".into());
+    if tally.by_totals > 0 {
+        notes.push(format!(
+            "{} function(s) reported `unknown` passed by Verus's totals (not attributed one by one); the comparison counts them as passing, as Verus did. Their verdicts stay `unknown`.",
+            tally.by_totals
+        ));
+    }
+    if tally.repeated_compared > 0 {
+        notes.push(format!(
+            "Entries are friendly function names: {} repeated name(s), shared by {} functions (VI-0010), were each compared as a group, since every function sharing the name has the same result on each side.",
+            tally.repeated_compared, tally.repeated_functions
+        ));
+    }
+    if tally.repeated_incomparable > 0 {
+        notes.push(format!(
+            "Repeated friendly function names cannot identify one implementation; {} such name(s) whose functions differ in result or number are incomparable (VI-0010).",
+            tally.repeated_incomparable
+        ));
     }
     notes
 }
