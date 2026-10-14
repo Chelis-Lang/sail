@@ -1,7 +1,8 @@
 //! `--help` for every command: `sail COMMAND --help`, `sail COMMAND -h` and
 //! `sail help COMMAND` print the command's usage and exit 0, without running
 //! it. Only arguments before a `--` count, so `-- --help` still reaches
-//! Verus. `sail bench` keeps delegating to `sail-bench`, which has its own.
+//! Verus. `sail bench` (a contributor tool, not in `sail --help`) keeps
+//! delegating to `sail-bench`, which has its own.
 
 use std::io::Write;
 use std::process::{Command, ExitCode};
@@ -47,7 +48,9 @@ USAGE:
     sail engine status [--output json]
     sail engine install --from PATH [--output json]
 
-Build the engine from a Sail checkout with `cargo xtask build-verus-engine`.
+The release archives bundle the engine beside `sail`; `sail engine status`
+selects it with no setup. In a Sail source checkout, build it with
+`cargo xtask build-verus-engine`.
 ",
     ),
     (

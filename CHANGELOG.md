@@ -5,6 +5,20 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- The README installs Sail from the release archive (checksum check,
+  unpacked `bin/` on `PATH`) and installs the pinned stock Verus and its Rust
+  toolchain without a Sail checkout; the source build is a short contributor
+  alternative. The repair section says the engine is bundled in both
+  archives. `SAIL0101` names the Verus release to install, and `SAIL3120`
+  says that from a release install it means a damaged or incomplete unpacked
+  directory (or a stale engine in the cache), with the checkout options
+  after it.
+- `sail --version` reports the exact release version, suffix included
+  (`scripts/release.sh` builds with `SAIL_VERSION`, for example
+  `0.1.0-rc.1`). `sail --help` no longer lists `sail bench`, a contributor
+  tool that is not in the release archives; run without `sail-bench`, it
+  says to build it from a source checkout.
+
 - A performance page ([performance](docs/performance.md)) states where Sail
   is faster than plain `cargo verus verify` and where it is not, each claim
   measured on Linux and macOS. `scripts/perf-loops.sh` (edit loops, unchanged

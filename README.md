@@ -19,58 +19,92 @@ projects (see [Limits](#limits)).
 
 ## Install
 
-Release binaries for Linux and macOS will be published on GitHub releases.
-Until then, build Sail from source.
+Sail is a prebuilt archive per platform on
+[GitHub releases](https://github.com/Chelis-Lang/sail/releases). It holds
+`sail`, the solver shim `sail-z3` and the proof-repair engine. Verus itself is
+installed separately (step 2), because Sail runs your own `cargo verus`.
 
-**1. Prerequisites.** A C toolchain, `curl`, `git` and `unzip`. On
-Debian or Ubuntu:
+**1. Sail.** Pick the archive for your platform:
+
+| Platform | Archive |
+|---|---|
+| Linux x86-64, glibc 2.39 or later (for example Ubuntu 24.04 or newer) | `sail-VERSION-x86_64-unknown-linux-gnu.tar.gz` |
+| macOS on Apple silicon | `sail-VERSION-aarch64-apple-darwin.tar.gz` |
+
+Download it with its `.sha256` file, check it, unpack it and put its `bin/`
+on `PATH`:
 
 ```sh
-sudo apt-get install -y build-essential curl git unzip
+VERSION=0.1.0                      # the release you are installing
+TARGET=x86_64-unknown-linux-gnu    # or aarch64-apple-darwin
+base="https://github.com/Chelis-Lang/sail/releases/download/v$VERSION"
+curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz"
+curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz.sha256"
+shasum -a 256 -c "sail-$VERSION-$TARGET.tar.gz.sha256"   # or: sha256sum -c ...
+mkdir -p ~/.local/opt
+tar -C ~/.local/opt -xzf "sail-$VERSION-$TARGET.tar.gz"
+export PATH="$HOME/.local/opt/sail-$VERSION-$TARGET/bin:$PATH"   # add to your shell profile
+sail --version
+```
+
+`shasum -a 256 -c` must print `OK`. Keep the unpacked directory as it is:
+`sail` finds `sail-z3` beside it in `bin/` and the engine in `engine/`, so
+put that `bin/` on `PATH` rather than copying `sail` elsewhere. On macOS, an
+archive downloaded with a browser instead of `curl` is quarantined; clear
+that with `xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
+
+**2. Verus.** If you already use Verus, keep it: Sail runs whatever
+`cargo-verus` is on `PATH` (or `SAIL_CARGO_VERUS`). Otherwise install the
+release Sail is tested with, Verus `0.2026.10.04.426d8b0`, and the Rust
+toolchain it pins, `1.98.1`.
+
+Verus needs a C toolchain, `curl` and `unzip`. On Debian or Ubuntu:
+
+```sh
+sudo apt-get install -y build-essential curl unzip
 ```
 
 On macOS, install the Xcode command line tools (`xcode-select --install`).
-
-**2. Rust.** Install [rustup](https://rustup.rs) with its defaults, then open
-a new shell (or run `. "$HOME/.cargo/env"`):
+Then install [rustup](https://rustup.rs) and the Rust toolchain Verus pins:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+. "$HOME/.cargo/env"
+rustup toolchain install 1.98.1 --profile minimal
 ```
 
-**3. Sail.** Build `sail` and `sail-z3` and put them on `PATH`. They must stay
-side by side.
+Download and unpack Verus, and put it on `PATH`:
+
+```sh
+VERUS=0.2026.10.04.426d8b0
+PLATFORM=x86-linux                 # or arm64-macos
+mkdir -p ~/.local/opt/verus-$VERUS
+cd ~/.local/opt/verus-$VERUS
+curl -fLO "https://github.com/verus-lang/verus/releases/download/release/$VERUS/verus-$VERUS-$PLATFORM.zip"
+unzip -q "verus-$VERUS-$PLATFORM.zip"            # creates verus-$PLATFORM/
+export PATH="$HOME/.local/opt/verus-$VERUS/verus-$PLATFORM:$PATH"   # add to your shell profile
+cd -
+cargo verus --help
+```
+
+The archive's SHA-256 is
+`624018662868563a7bec0dd07be5e4dd0c3d61124b4b55105765884bf2d4d1a0` for
+`x86-linux` and
+`83cafc50284caea07fa8762df04b00cc0af441f25cdf1631d6c30987c65af446` for
+`arm64-macos` (`shasum -a 256 verus-$VERUS-$PLATFORM.zip`).
+
+**From source (contributors).** With rustup, a C toolchain and `git`:
 
 ```sh
 git clone https://github.com/Chelis-Lang/sail
 cd sail
-cargo build --release -p sail-cli -p sail-shim
-mkdir -p ~/.local/bin
-install -m 755 target/release/sail target/release/sail-z3 ~/.local/bin/
-export PATH="$HOME/.local/bin:$PATH"       # add to your shell profile
+cargo build --release -p sail-cli -p sail-shim   # installs the Rust toolchain Sail pins
+export PATH="$PWD/target/release:$PATH"
+cargo xtask fetch-verus                          # the pinned Verus; prints its PATH line
 ```
 
-Building Sail installs the Rust toolchain it pins (`rust-toolchain.toml`)
-automatically.
-
-**4. Verus.** If you already use Verus, keep it: Sail uses whatever
-`cargo-verus` is on `PATH` (or `SAIL_CARGO_VERUS`). Otherwise install the Verus
-release Sail is tested with, from the Sail checkout:
-
-```sh
-cargo xtask fetch-verus
-```
-
-It downloads and checks the pinned release, installs the Rust toolchain that
-release needs (with rustup), and prints the line that puts Verus on `PATH`, for
-example:
-
-```sh
-export PATH="$HOME/.cache/sail/verus/0.2026.10.04.426d8b0/verus-x86-linux:$PATH"
-```
-
-Run that line and add it to your shell profile. `cargo verus --help` should
-now work.
+A source build has no bundled engine; [proof repair](#experimental-proof-repair)
+says how to get one.
 
 ## First verification
 
@@ -187,20 +221,20 @@ verifies the full target, using an optional interactive engine built from
 Sail's public [Verus fork](https://github.com/Chelis-Lang/verus). A repair is
 accepted only when the complete target verifies.
 
-Prebuilt engine runtimes are published on the
-[fork's releases](https://github.com/Chelis-Lang/verus/releases) and download
-without credentials. On x86-64 Linux, from the Sail checkout:
+The Linux and macOS release archives include the engine, and `sail` finds it
+in the unpacked directory with no setup. Check it with:
 
 ```sh
-python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
-  --cache ~/.cache/sail             # or your SAIL_CACHE_DIR
 sail engine status                  # checks every runtime file against its pin
 ```
 
-A macOS runtime (`engine-runtime-13a1176c-macos`) is published too, but Sail
-does not pin it yet. Elsewhere, build the engine with
-`cargo xtask build-verus-engine`; that build has been validated on Linux only.
-Follow the
+The engine also uses the stock Verus from step 2 of [Install](#install). In a
+source checkout, download the prebuilt runtime from the
+[fork's releases](https://github.com/Chelis-Lang/verus/releases) (no
+credentials needed) with
+`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json --cache ~/.cache/sail`
+(`artifact-macos.json` on macOS), or build it with
+`cargo xtask build-verus-engine`. Follow the
 [repair walkthrough](docs/proof-repair-walkthrough.md); the
 [repair guide](docs/proof-repair.md) has the details.
 

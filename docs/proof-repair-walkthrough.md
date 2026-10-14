@@ -16,8 +16,15 @@ happens and what the optional ordinary-build recovery changes.
 
 Start with Sail installed, the pinned Verus on `PATH` (see the
 [README](../README.md#install)) and a project whose ordinary
-`cargo verus verify` works. Then, from the Sail source checkout, on x86-64
-Linux download the prebuilt runtime from the public fork's releases:
+`cargo verus verify` works. A release archive (Linux or macOS) bundles the
+engine beside `sail`, and nothing else is needed:
+
+```sh
+sail engine status --output json   # "build" is under the unpacked engine/ directory
+```
+
+From a Sail source checkout, download the prebuilt runtime from the public
+fork's releases (`artifact-macos.json` on macOS):
 
 ```sh
 python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
@@ -26,7 +33,7 @@ sail engine status --output json
 ```
 
 `fetch` downloads without credentials and checks the archive digest and every
-runtime file against the committed pin. Elsewhere, or to build it yourself:
+runtime file against the committed pin. Or build it yourself:
 
 ```sh
 cargo xtask build-verus-engine
@@ -41,7 +48,9 @@ engine is missing, `sail engine status` and `sail repair-check` stop with
 `SAIL3120`, name the file they expected, and say how to obtain the engine; no
 job is submitted.
 
-Both install the engine in the Sail cache that `engine status` inspects.
+`fetch` and `build-verus-engine` install the engine in the Sail cache, which
+`engine status` inspects first; a bundled engine is used only when the cache
+has none.
 Repairs must use that cache too; relative `SAIL_CACHE_DIR` settings
 follow the invoking project directory. The engine runs stock lowering with a
 focused phase in the same compiler callback, and prepares no lowering for

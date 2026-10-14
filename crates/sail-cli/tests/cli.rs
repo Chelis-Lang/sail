@@ -9,16 +9,33 @@ fn sail(args: &[&str]) -> Output {
     }
 }
 
+/// The user help lists the shipped commands. `sail bench` needs `sail-bench`,
+/// which only a source build has, so the help leaves it out.
 #[test]
-fn help_lists_every_charter_command() {
+fn help_lists_every_user_command() {
     let output = sail(&["--help"]);
     assert_eq!(output.status.code(), Some(0));
     let text = String::from_utf8_lossy(&output.stdout);
-    for cmd in [
-        "verify", "watch", "mcp", "serve", "status", "cache", "bench",
-    ] {
+    for cmd in ["verify", "watch", "mcp", "serve", "status", "cache"] {
         assert!(text.contains(cmd), "help is missing `{cmd}`:\n{text}");
     }
+    assert!(!text.contains("bench"), "help lists `bench`:\n{text}");
+}
+
+/// `--version` reports the build's `SAIL_VERSION` when set (release builds),
+/// else the crate version.
+#[test]
+fn version_reports_the_build_version() {
+    let output = sail(&["--version"]);
+    assert_eq!(output.status.code(), Some(0));
+    let expected = match option_env!("SAIL_VERSION") {
+        Some(version) if !version.is_empty() => version,
+        _ => env!("CARGO_PKG_VERSION"),
+    };
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        format!("sail {expected}\n")
+    );
 }
 
 #[test]
