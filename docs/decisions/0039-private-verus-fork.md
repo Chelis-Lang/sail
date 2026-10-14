@@ -37,3 +37,8 @@ The owner decided on 2026-10-12 that Sail fixes these itself and stays forked. U
 ## Note (2026-10-14): runtimes are published on the public fork
 
 `Chelis-Lang/verus` is now public. Prebuilt engine runtimes are GitHub release assets on it, one prerelease per pinned fork commit (`engine-runtime-<short sha>-linux`), instead of private assets on the Sail repository. `engine/verus/artifact-linux.json` names the release (`repo`, `release_tag`, `asset`) and keeps every digest check. Fetching the runtime needs no token, so the CI image build has no BuildKit secret and `ci/local.sh` and `scripts/perf-host.sh run` pass none. Publishing a release needs write access to the fork. See `engine/verus/README.md`.
+
+Building the engine from source no longer needs access either:
+`cargo xtask build-verus-engine` clones the pinned fork commit anonymously.
+The owner also decided on 2026-10-14 that the repair engine ships with Sail:
+release binaries are to include prebuilt engine runtimes.

@@ -6,7 +6,7 @@ workaround.
 
 **We do not file issues in the Verus repository.** This applies to agents,
 bots and automation, and is a project rule (AGENTS.md). The owner decided on
-2026-10-12 that Sail stays on its own Verus fork
+2026-10-12 that Sail stays on its own public Verus fork
 ([Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), branch `sail`)
 and fixes known Verus issues there; upstream contribution is not planned
 ([ADR 0039](../decisions/0039-private-verus-fork.md)).
