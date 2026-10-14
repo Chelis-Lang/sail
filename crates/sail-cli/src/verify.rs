@@ -43,6 +43,19 @@ pub(crate) fn cargo_verus() -> Option<PathBuf> {
         .or_else(|| on_path("cargo-verus"))
 }
 
+/// The `SAIL0101` message: what is missing and how to install the Verus
+/// release Sail is tested with, for release-archive and checkout users alike.
+pub(crate) fn missing_cargo_verus() -> String {
+    let release = sail_verus::toolchain::Pins::embedded().map_or_else(
+        |_| "the pinned Verus release".to_owned(),
+        |pins| format!("Verus {}", pins.verus.release),
+    );
+    format!(
+        "`cargo-verus` is not on PATH (or set SAIL_CARGO_VERUS). Install {release}, the \
+         release Sail is tested with, and put its directory on PATH (README, Install)"
+    )
+}
+
 /// The Z3 the user's Verus would use, following the Verus launcher's own
 /// rules: `$VERUS_Z3_PATH` if set (and not already `sail-z3`), else `z3`
 /// next to the Verus binaries, else `z3` on `PATH`.
@@ -150,12 +163,7 @@ struct Setup {
 }
 
 fn setup() -> Result<Setup, SetupError> {
-    let cargo_verus = cargo_verus().ok_or_else(|| {
-        SetupError(
-            "SAIL0101",
-            "`cargo-verus` is not on PATH (or set SAIL_CARGO_VERUS)".to_owned(),
-        )
-    })?;
+    let cargo_verus = cargo_verus().ok_or_else(|| SetupError("SAIL0101", missing_cargo_verus()))?;
     let shim = std::env::current_exe()
         .map(|me| me.with_file_name("sail-z3"))
         .map_err(|e| SetupError("SAIL0102", format!("cannot locate sail: {e}")))?;

@@ -288,22 +288,26 @@ fn runtime_dir(build: &Path) -> PathBuf {
 
 /// How to obtain an engine, appended to every "missing" or "mismatched"
 /// engine error so the user is never left without a next step.
-pub const OBTAIN: &str = "On x86-64 Linux, download the prebuilt runtime from \
-the public fork's releases with, in a Sail source checkout, \
-`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
---cache ~/.cache/sail` (or your SAIL_CACHE_DIR). Or build it with \
-`cargo xtask build-verus-engine` (it clones \
+pub const OBTAIN: &str = "Release archives bundle the engine under `engine/` \
+beside `bin/sail`, so from a release install this means the install is damaged \
+or incomplete: unpack the archive again into a new directory and use its \
+`bin/sail` without moving files out of that directory. An engine installed in \
+the Sail cache (`verus-src-build/` under ~/.cache/sail or SAIL_CACHE_DIR) is \
+used before the bundled one; remove it to use the bundle. In a Sail source \
+checkout, build the engine with `cargo xtask build-verus-engine` (it clones \
 https://github.com/Chelis-Lang/verus and needs the pinned Verus from \
-`cargo xtask fetch-verus`), or import a build with \
+`cargo xtask fetch-verus`), or download the prebuilt runtime with \
+`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
+--cache ~/.cache/sail` (artifact-macos.json on macOS). Or import a build with \
 `sail engine install --from PATH`. Ordinary `sail verify` does not need the engine.";
 
 fn invalid() -> Error {
     Error::new(
         "SAIL3120",
         format!(
-            "the installed interactive engine does not match this Sail's pins (fork commit {}, \
-             Verus toolchain or z3) or its files changed since it was built; rebuild it with \
-             `cargo xtask build-verus-engine --force`. {OBTAIN}",
+            "the interactive engine does not match this Sail's pins (fork commit {}, \
+             Verus toolchain or z3) or its files changed since it was built (a source-checkout \
+             build is rebuilt with `cargo xtask build-verus-engine --force`). {OBTAIN}",
             fork_commit()
         ),
     )

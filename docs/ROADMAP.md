@@ -131,18 +131,18 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 
 | In the release | Status |
 |---|---|
-| A1: MCP works in Claude Code | Not started |
-| A2: agent-sized MCP replies | Not started |
-| A3: honest counts | Not started |
-| A4: macOS managed reuse | Not started |
-| A5: install and first run, targeting release binaries | Not started |
-| A6: papercuts | Not started |
-| macOS and Linux release builds of Sail with the engine runtime | Not started |
-| Engine runtimes from the public `Chelis-Lang/verus` fork releases | Not started |
-| Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Not started |
-| Disk cleanup for managed targets (review B3) | Not started |
+| A1: MCP works in Claude Code | Done (#89) |
+| A2: agent-sized MCP replies | Done (#96) |
+| A3: honest counts | Done (#98) |
+| A4: macOS managed reuse | Done (#99) |
+| A5: install and first run, targeting release binaries | Done (#95; the README installs from the release archive) |
+| A6: papercuts | Done (#90, #91) |
+| macOS and Linux release builds of Sail with the engine runtime | Done (#100; `scripts/release.sh` makes draft releases) |
+| Engine runtimes from the public `Chelis-Lang/verus` fork releases | Done (#94, #100) |
+| Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Done (#105, [performance](performance.md)) |
+| Disk cleanup for managed targets (review B3) | Done (#97) |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
-| Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Not started |
+| Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | In progress |
 
 Out of the release: B1 (shared vstd across projects), B2 (single-file
 `verus file.rs` projects; the release documents that Sail needs a Cargo
