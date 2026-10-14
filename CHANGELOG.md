@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The commit hook and the `No AI authorship markers` check also reject git's
+  hostname-fallback identities (for example `user@machine.local`), which a
+  clone without a configured `user.email` produces.
+
 - Honest counts after a failure. When a failing crate's attribution is
   incomplete (for example, vest's duplicate friendly names, VI-0010), the
   functions Sail cannot confirm one by one stay `unknown`. If Verus's own

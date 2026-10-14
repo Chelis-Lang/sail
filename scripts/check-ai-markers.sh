@@ -24,6 +24,10 @@ MSG_PATTERNS=(
   "noreply@(anthropic|openai)\\.com"
 )
 IDENTITY_PATTERN="(${TOKENS})"
+# Git falls back to user@hostname when no identity is configured (a fresh
+# clone on a machine without a global user.email). Such commits publish the
+# machine's hostname, so they are rejected like AI identities.
+FALLBACK_EMAIL_PATTERN='<[^>]*@([^>]*\.(local|localdomain|lan|home)|localhost)>$|<\(none\)>$|<>$'
 
 # check_text <label> <text>: prints offending patterns, returns 1 on a match.
 check_message() {
@@ -45,8 +49,17 @@ check_commit() {
       echo "FAIL: ${sha}: author/committer identity matches: ${who}" >&2
       found=1
     fi
+    check_identity "$sha" "$who" || found=1
   done
   return "$found"
+}
+
+# check_identity <label> <name <email>>: rejects git's hostname fallback.
+check_identity() {
+  if printf '%s\n' "$2" | grep -qiE -- "$FALLBACK_EMAIL_PATTERN"; then
+    echo "FAIL: ${1}: machine-fallback identity: ${2} (set git config user.email)" >&2
+    return 1
+  fi
 }
 
 check_revs() {
@@ -57,7 +70,7 @@ check_revs() {
     check_commit "$sha" || found=1
   done < <(git rev-list "$@")
   if [ "$found" -ne 0 ]; then
-    echo "Remove AI authorship markers from the flagged commits." >&2
+    echo "Fix the flagged commits: remove AI markers, or set a real git user.email." >&2
     return 1
   fi
   echo "All ${count} commit(s) clean."
@@ -71,6 +84,11 @@ case "${1:-}" in
       echo "Remove AI tool attribution lines from the commit message." >&2
       exit 1
     fi
+    # The commit being made: reject git's hostname fallback identity.
+    for var in GIT_AUTHOR_IDENT GIT_COMMITTER_IDENT; do
+      ident="$(git var "$var" 2>/dev/null | sed -E 's/ [0-9]+ [-+][0-9]{4}$//')" || continue
+      check_identity "$var" "$ident" || exit 1
+    done
     ;;
   range)
     [ $# -eq 3 ] || { echo "usage: $0 range <base> <head>" >&2; exit 2; }
