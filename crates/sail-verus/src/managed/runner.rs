@@ -696,6 +696,9 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
 /// differs (the engine's sealed terminal, or stock's normal exit and whole
 /// document). Without this, a failed proof consumed the generation and the next
 /// run cleaned every build-script package, re-verifying vstd.
+///
+/// A run whose only failure is a compile error in a selected crate qualifies
+/// too ([`confined_compile_failure`]).
 fn negative_compiler_generation(
     paths: &Paths,
     data: &Value,
@@ -746,37 +749,112 @@ fn negative_compiler_generation(
             .collect();
         names.sort();
         starts.sort();
-        if names.is_empty()
-            || names != starts
-            || !calls.values().any(|call| call.report.exit_code == Some(1))
-            || !calls
-                .values()
-                .all(|call| crate::engine::completed_compiler_output(&paths.run, call, engine))
+        if names.is_empty() || names != starts {
+            return Some(false);
+        }
+        let completed =
+            |call: &Invocation| crate::engine::completed_compiler_output(&paths.run, call, engine);
+        let proof_failure = calls.values().any(|call| call.report.exit_code == Some(1))
+            && calls.values().all(completed);
+        if !proof_failure
+            && !confined_compile_failure(paths, data, expected, calls.values(), completed)
         {
             return Some(false);
         }
         Some(expected.iter().all(|(id, name, kind)| {
-            data["packages"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .any(|package| {
-                    package["id"] == *id
-                        && calls
-                            .values()
-                            .filter(|call| {
-                                package["manifest_path"].as_str().is_some_and(|manifest| {
-                                    Path::new(manifest) == call.identity.manifest
-                                }) && name.replace('-', "_") == call.identity.name
-                                    && (kind == &call.identity.crate_type
-                                        || (kind == "lib" && call.identity.crate_type == "rlib"))
-                            })
-                            .count()
-                            == 1
-                })
+            calls
+                .values()
+                .filter(|call| selected_call(data, (id, name, kind), call))
+                .count()
+                == 1
         }))
     };
     check() == Some(true)
+}
+
+/// Whether `call` is the compilation of the selected target `(id, name, kind)`.
+fn selected_call(data: &Value, (id, name, kind): (&str, &str, &str), call: &Invocation) -> bool {
+    data["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|package| {
+            package["id"] == *id
+                && package["manifest_path"]
+                    .as_str()
+                    .is_some_and(|manifest| Path::new(manifest) == call.identity.manifest)
+                && name.replace('-', "_") == call.identity.name
+                && (kind == call.identity.crate_type
+                    || (kind == "lib" && call.identity.crate_type == "rlib"))
+        })
+}
+
+/// A run that failed only because a selected crate did not compile, as
+/// Cargo's own records show:
+///
+/// - every recorded verifier start has its completion (checked by the caller),
+///   and every expected target has exactly one, so Cargo started each selected
+///   crate. Cargo starts a unit only after every unit it depends on has
+///   completed, so each build script and dependency of the selection finished;
+/// - every dependency verified in this run completed successfully, and every
+///   selected crate either completed its verification or stopped with a
+///   normal compiler error exit (1) and no Sail error;
+/// - Cargo finished its build (one `build-finished` record, unsuccessful), so
+///   no unit was interrupted; and
+/// - every build-script contract kept for this context was executed by Cargo
+///   in this run (`build-script-executed`, fresh or not).
+///
+/// The failing crate gets no receipt: its compilation did not succeed. Only
+/// the dependencies' ordinary build-script contracts are retained, and the
+/// next run revalidates each of them independently before any use.
+fn confined_compile_failure<'a>(
+    paths: &Paths,
+    data: &Value,
+    expected: &BTreeSet<(String, String, String)>,
+    calls: impl Iterator<Item = &'a Invocation> + Clone,
+    completed: impl Fn(&Invocation) -> bool,
+) -> bool {
+    let selected = |call: &Invocation| {
+        expected
+            .iter()
+            .any(|(id, name, kind)| selected_call(data, (id, name, kind), call))
+    };
+    let compile_error = |call: &Invocation| {
+        call.report.exit_code == Some(1)
+            && !call.success
+            && call.report.error.is_none()
+            && call.report.invariant_violations().is_empty()
+    };
+    let mut failed = false;
+    for call in calls {
+        if selected(call) {
+            if !completed(call) {
+                if !compile_error(call) {
+                    return false;
+                }
+                failed = true;
+            }
+        } else if !(call.success && completed(call)) {
+            return false;
+        }
+    }
+    failed
+        && cargo_build_failed(&paths.run.join("cargo.stdout"))
+        && super::build_inputs::executed(&paths.build_inputs, &paths.run.join("artifacts.jsonl"))
+}
+
+/// Cargo's JSON output ends one build, which failed: exactly one
+/// `build-finished` record, with `success: false`.
+fn cargo_build_failed(stdout: &Path) -> bool {
+    let Ok(bytes) = std::fs::read(stdout) else {
+        return false;
+    };
+    let finished: Vec<Value> = bytes
+        .split(|b| *b == b'\n')
+        .filter_map(|line| serde_json::from_slice::<Value>(line).ok())
+        .filter(|value| value["reason"] == "build-finished")
+        .collect();
+    matches!(finished.as_slice(), [only] if only["success"] == false)
 }
 
 struct CompilerGeneration<'a> {
@@ -2632,6 +2710,236 @@ mod tests {
             super::super::build_inputs::stale(&f.paths.build_inputs, &f.data).0,
             vec!["ordinary-dep"]
         );
+        Ok(())
+    }
+
+    /// A compile error in the selected crate, after Cargo completed every
+    /// dependency, keeps the dependencies' build-script contracts, as plain
+    /// Cargo keeps them fresh. The failing crate gets no receipt, and any
+    /// doubt about what Cargo completed still withdraws the contracts.
+    #[cfg(unix)]
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "One real Cargo compile failure brackets the retained contracts and every refusal."
+    )]
+    fn confined_compile_failure_keeps_dependency_contracts_without_a_receipt()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut f = NegativeGeneration::new("compile-error")?;
+        std::fs::create_dir_all(f.root.join("dependency/src"))?;
+        std::fs::create_dir_all(f.root.join("src"))?;
+        std::fs::write(
+            f.root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\nedition='2024'\n[package.metadata.verus]\nverify=true\n[dependencies]\nordinary-dep={path='dependency'}\n[workspace]\n",
+        )?;
+        std::fs::write(
+            f.root.join("src/lib.rs"),
+            "pub fn input() -> u32 { ordinary_dep::ordinary(); true }\n",
+        )?;
+        std::fs::write(
+            f.root.join("dependency/Cargo.toml"),
+            "[package]\nname='ordinary-dep'\nversion='0.1.0'\nedition='2024'\n",
+        )?;
+        std::fs::write(
+            f.root.join("dependency/src/lib.rs"),
+            "pub fn ordinary() {}\n",
+        )?;
+        std::fs::write(f.root.join("external.txt"), "good")?;
+        std::fs::write(
+            f.root.join("dependency/build.rs"),
+            "fn main() { println!(\"cargo:rerun-if-changed=../external.txt\"); std::fs::write(std::env::var(\"OUT_DIR\").unwrap()+\"/generated\",std::fs::read(\"../external.txt\").unwrap()).unwrap(); }\n",
+        )?;
+        let built = Command::new("cargo")
+            .current_dir(&f.root)
+            .args(["build", "--offline", "--message-format=json"])
+            .arg("--target-dir")
+            .arg(&f.paths.target)
+            .env_remove("RUSTC_WRAPPER")
+            .env_remove("RUSTC_WORKSPACE_WRAPPER")
+            .output()?;
+        assert_eq!(
+            built.status.code(),
+            Some(101),
+            "the selected crate must not compile"
+        );
+        let metadata = Command::new("cargo")
+            .current_dir(&f.root)
+            .args(["metadata", "--offline", "--format-version=1"])
+            .output()?;
+        assert!(metadata.status.success());
+        f.data = serde_json::from_slice(&metadata.stdout)?;
+        f.expected = expected_targets(
+            &f.data,
+            &[
+                "--package".to_owned(),
+                "input".to_owned(),
+                "--lib".to_owned(),
+            ],
+        );
+        let artifacts = f.paths.run.join("artifacts.jsonl");
+        std::fs::write(&artifacts, &built.stdout)?;
+        std::fs::write(f.paths.run.join("cargo.stdout"), &built.stdout)?;
+        super::super::build_inputs::update(&f.paths.build_inputs, &artifacts, &f.data)?;
+        // The selected crate's driver stopped at a compile error: exit 1 and a
+        // document with no proof errors that is not a completed verification.
+        f.call.report.crates[0].verus.verified = Some(0);
+        f.call.report.crates[0].verus.errors = Some(0);
+        f.seal()?;
+        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        std::fs::write(
+            sidecar.join("verus.stdout"),
+            serde_json::to_vec(
+                &serde_json::json!({"func-details":{},"verification-results":{
+                "encountered-error":true,"encountered-vir-error":false,"success":false,
+                "verified":0,"errors":0,"is-verifying-entire-crate":true}}),
+            )?,
+        )?;
+        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(!crate::engine::completed_compiler_output(
+            &f.paths.run,
+            &f.call,
+            false
+        ));
+        let stock = |f: &NegativeGeneration, args: &[String]| {
+            negative_compiler_generation(
+                &f.paths,
+                &f.data,
+                &f.expected,
+                &f.result,
+                true,
+                false,
+                args,
+            )
+        };
+        assert!(stock(&f, &[]));
+        assert!(f.eligible(), "the engine arm takes the same branch");
+        let (targets, _) = target_records(&f.paths, &f.data, "negative", true, &f.expected)?;
+        assert_eq!(targets.len(), 1);
+        assert!(!targets[0].complete && !targets[0].reused);
+        assert_eq!(std::fs::read_dir(&f.paths.receipts)?.count(), 0);
+        let generation = CompilerGeneration {
+            compiler: "compiler",
+            script_coverage: true,
+            source_engine: false,
+            args: &[],
+        };
+        publish_compiler_generation(&f.paths, &f.data, &f.expected, &f.result, &generation);
+        assert!(f.paths.compiler_inputs.is_file());
+        let next_context = f.root.join("next-context-build-inputs.json");
+        super::super::build_inputs::family::begin(
+            &f.paths.compiler_inputs,
+            "compiler",
+            &f.paths.target,
+            &next_context,
+            &f.data,
+        )?;
+        assert_eq!(
+            super::super::build_inputs::stale(&next_context, &f.data).0,
+            Vec::<String>::new(),
+            "the next run keeps the dependency's script output"
+        );
+
+        // Every doubt about what Cargo completed refuses.
+        let output = String::from_utf8(built.stdout.clone())?;
+        let without = |reason: &str| -> String {
+            output
+                .lines()
+                .filter(|line| !line.contains(reason))
+                .flat_map(|line| [line, "\n"])
+                .collect()
+        };
+        std::fs::write(f.paths.run.join("cargo.stdout"), without("build-finished"))?;
+        assert!(!stock(&f, &[]), "an interrupted build");
+        std::fs::write(
+            f.paths.run.join("cargo.stdout"),
+            format!("{output}{{\"reason\":\"build-finished\",\"success\":false}}\n"),
+        )?;
+        assert!(!stock(&f, &[]), "two builds");
+        std::fs::write(
+            f.paths.run.join("cargo.stdout"),
+            output.replace(
+                "\"build-finished\",\"success\":false",
+                "\"build-finished\",\"success\":true",
+            ),
+        )?;
+        assert!(!stock(&f, &[]), "a successful build contradicts the exit");
+        std::fs::write(f.paths.run.join("cargo.stdout"), &output)?;
+        std::fs::write(&artifacts, without("build-script-executed"))?;
+        assert!(!stock(&f, &[]), "a recorded script that Cargo did not run");
+        std::fs::write(&artifacts, &output)?;
+        assert!(stock(&f, &[]));
+        let invocation = |f: &NegativeGeneration, call: &Invocation| {
+            std::fs::write(
+                f.paths
+                    .run
+                    .join("invocations")
+                    .join(format!("{}.json", call.identity.key())),
+                serde_json::to_vec(call).unwrap_or_default(),
+            )
+        };
+        let original_call = f.call.clone();
+        for field in ["crash", "error", "success"] {
+            let mut call = original_call.clone();
+            match field {
+                "crash" => call.report.exit_code = Some(101),
+                "error" => {
+                    call.report.error =
+                        crate::report::setup_failure(&[], "SAIL3100", "fixture").error;
+                }
+                _ => call.success = true,
+            }
+            invocation(&f, &call)?;
+            assert!(!stock(&f, &[]), "selected driver {field}");
+        }
+        invocation(&f, &original_call)?;
+        assert!(stock(&f, &[]));
+        // A dependency verified in this run must have succeeded.
+        let mut dependency = original_call.clone();
+        dependency.identity.name = "ordinary_dep".to_owned();
+        invocation(&f, &dependency)?;
+        std::fs::write(
+            f.paths.run.join("invocations/2.started"),
+            b"{\"run_id\":\"run\",\"target\":\"ordinary_dep\"}",
+        )?;
+        assert!(!stock(&f, &[]), "a failed dependency");
+        std::fs::remove_file(
+            f.paths
+                .run
+                .join("invocations")
+                .join(format!("{}.json", dependency.identity.key())),
+        )?;
+        std::fs::remove_file(f.paths.run.join("invocations/2.started"))?;
+        assert!(stock(&f, &[]));
+        // A selected target that Cargo never started may have dependencies
+        // that did not complete.
+        let package = f
+            .expected
+            .first()
+            .map(|(id, _, _)| id.clone())
+            .unwrap_or_default();
+        f.expected
+            .insert((package, "unstarted".to_owned(), "bin".to_owned()));
+        assert!(!stock(&f, &[]), "an unstarted selected target");
+        f.expected.retain(|(_, name, _)| name != "unstarted");
+        assert!(stock(&f, &[]));
+        assert!(!stock(
+            &f,
+            &["--".to_owned(), "--verify-function=selected".to_owned()]
+        ));
+        for currentness in [Currentness::Historical, Currentness::Unknown] {
+            f.result.currentness = currentness;
+            assert!(!stock(&f, &[]), "only a Current run retains contracts");
+        }
+        f.result.currentness = Currentness::Current;
+        assert!(!negative_compiler_generation(
+            &f.paths,
+            &f.data,
+            &f.expected,
+            &f.result,
+            false,
+            false,
+            &[]
+        ));
         Ok(())
     }
 
