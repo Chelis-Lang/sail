@@ -11,7 +11,7 @@ use crate::{Error, Result};
 use sail_api::project::{Currentness, Execution, ProjectResult, SCHEMA_VERSION, TargetResult};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -433,20 +433,27 @@ fn same_file(original: &Path, path: &Path) -> bool {
 
 /// Exclusive use of one compiler family: its shared Cargo target and every
 /// proof context in it. A proof context determines its family, so this one
-/// owner also serialises each context's receipts and run records.
+/// owner also serialises each context's receipts and run records. The shared
+/// workspace lock keeps `sail cache projects prune` from removing the
+/// workspace while the run, or its caller reading the run's records, uses it.
 struct Ownership {
     _family: File,
+    workspace: File,
+}
+
+impl Ownership {
+    /// Releases the compiler family and keeps the workspace held.
+    fn into_workspace(self) -> File {
+        self.workspace
+    }
 }
 
 fn ownership_lock(directory: &Path) -> Result<File> {
-    std::fs::create_dir_all(directory).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
-    let lock = OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .read(true)
-        .write(true)
-        .open(directory.join("ownership.lock"))
-        .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    managed_lock(&directory.join("ownership.lock"), false)
+}
+
+/// Takes a managed lock: shared for the workspace, exclusive for a family.
+fn managed_lock(path: &Path, shared: bool) -> Result<File> {
     // Another managed run of the same workspace holds the target: wait for it,
     // up to `SAIL_MANAGED_LOCK_WAIT_SECS` (default 30 minutes). A cancelled
     // job's process is killed, which releases or abandons the wait.
@@ -454,21 +461,13 @@ fn ownership_lock(directory: &Path) -> Result<File> {
         .ok()
         .and_then(|value| value.parse().ok())
         .map_or(LOCK_WAIT, std::time::Duration::from_secs);
-    let deadline = Instant::now() + wait;
-    loop {
-        match lock.try_lock() {
-            Ok(()) => return Ok(lock),
-            Err(std::fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
-                std::thread::sleep(std::time::Duration::from_millis(50));
-            }
-            Err(e) => {
-                return Err(Error::new(
-                    "SAIL3104",
-                    format!("managed target is in use: {e}"),
-                ));
-            }
+    super::projects::lock(path, shared, Instant::now() + wait).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::WouldBlock {
+            Error::new("SAIL3104", format!("managed target is in use: {e}"))
+        } else {
+            Error::new("SAIL3104", e.to_string())
         }
-    }
+    })
 }
 
 /// How long a managed run waits for another run of the same workspace.
@@ -492,8 +491,10 @@ fn prepare(
     // the same compiler invocation share build products, and Cargo's own
     // fingerprints decide rebuilds. Proof receipts stay per proof context. The
     // owner survives clean, invocation and receipt publication.
+    let workspace_lock = managed_lock(&root.join(super::projects::WORKSPACE_LOCK), true)?;
     let ownership = Ownership {
         _family: ownership_lock(&compiler)?,
+        workspace: workspace_lock,
     };
     let paths = Paths {
         target: compiler.join("target"),
@@ -1387,15 +1388,25 @@ pub fn run(config: &Config, err: &mut dyn Write) -> Result<ProjectResult> {
     run_engine(config, err, None)
 }
 
-#[allow(
-    clippy::too_many_lines,
-    reason = "The complete proof lifecycle and final input sealing remain together."
-)]
 pub(crate) fn run_engine(
     config: &Config,
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<ProjectResult> {
+    run_engine_held(config, err, engine).map(|(result, _)| result)
+}
+
+/// [`run_engine`], also returning the shared workspace lock, so the caller can
+/// read the run's records before `sail cache projects prune` may remove them.
+#[allow(
+    clippy::too_many_lines,
+    reason = "The complete proof lifecycle and final input sealing remain together."
+)]
+pub(crate) fn run_engine_held(
+    config: &Config,
+    err: &mut dyn Write,
+    engine: Option<crate::engine::Request>,
+) -> Result<(ProjectResult, File)> {
     let mut owned = config.clone();
     owned.workspace =
         std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -1480,7 +1491,7 @@ pub(crate) fn run_engine(
             .map_or(0, |d| d.as_nanos())
     );
     let inputs = diagnostics.phase(Phase::Inputs);
-    let (paths, _ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
+    let (paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
@@ -1832,7 +1843,7 @@ pub(crate) fn run_engine(
         },
     );
     drop(publication);
-    Ok(result)
+    Ok((result, ownership.into_workspace()))
 }
 
 /// Targets established in this run by the stock fallback after an engine fault.

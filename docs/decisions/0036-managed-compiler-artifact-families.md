@@ -326,3 +326,21 @@ fresh in the shared target.
   ([workspace hygiene](../workspace-hygiene.md)).
 
 Measured by L23 (rescue lane report, tag `archive/rescue-m7-98f6292`).
+
+## Amendment (2026-10-14, L35): pruning a workspace
+
+**Decision.** `sail cache projects prune` removes a whole
+`projects/<workspace-key>/` directory: every family's target together with
+every proof context's receipts and run records, so no receipt outlives the
+target it describes. Each managed run holds `projects/<workspace-key>/workspace.lock`
+shared from preparation until its records are read back (the engine holds it
+across its reads of the run directory). Prune takes it exclusively without
+waiting, and also each family's `ownership.lock` and each legacy context's
+lock, for runs of earlier versions; any held lock skips the workspace. It
+renames the directory atomically to a hidden name before deleting it. A run
+that waited on a lock file of the removed directory sees that the file at
+the path is no longer the one it holds, and takes the new one.
+
+**Consequences.** Pruning costs a cold run; a Current job result whose
+record was removed reads back Unknown. Older Sail versions that never take
+the workspace lock are protected only by their family lock.

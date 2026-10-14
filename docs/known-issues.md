@@ -60,7 +60,8 @@ are in the `archive/m7-contracts-f7103bf` tag.
 - On macOS, a Cargo configuration file created and deleted again within one
   managed run is not detected (owner decision, ADR 0041 note of 2026-10-14).
 - A successful focused check still needs complete Current full validation.
-- There is no managed compiler-target quota or generation GC. See
+- Managed compiler targets are removed only by `sail cache projects prune`;
+  there is no quota or automatic collection. See
   [disk use and cleanup](workspace-hygiene.md#managed-compiler-targets).
 - The engine is built without Verus's `singular` feature, so targets that
   verify `by(integer_ring)` fall back to the configured stock Verus

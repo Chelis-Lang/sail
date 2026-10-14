@@ -163,10 +163,23 @@ cargo-verus is on PATH (or SAIL_CARGO_VERUS is set).
 "
         )),
         "cache" => Some(crate::ops::CACHE_USAGE.to_owned()),
+        "cache projects" => Some(crate::projects_cli::USAGE.to_owned()),
         _ => HELP
             .iter()
             .find(|(name, _)| *name == command)
             .map(|(_, text)| (*text).to_owned()),
+    }
+}
+
+/// The help topic for a command line (`args[0]` is the command): the command,
+/// or `cache projects`, which has help of its own.
+pub(crate) fn topic(args: &[String]) -> String {
+    match args {
+        [cache, projects, ..] if cache == "cache" && projects == "projects" => {
+            "cache projects".to_owned()
+        }
+        [command, ..] => command.clone(),
+        [] => String::new(),
     }
 }
 
