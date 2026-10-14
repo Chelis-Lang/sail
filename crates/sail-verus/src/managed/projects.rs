@@ -358,7 +358,7 @@ fn modified(path: &Path) -> u64 {
 /// Bytes under `path`, without following symbolic links and counting each
 /// hard-linked file once.
 fn size(path: &Path) -> u64 {
-    let mut seen = std::collections::HashSet::new();
+    let mut seen = std::collections::HashSet::<(u64, u64)>::new();
     let mut total = 0u64;
     let mut pending = vec![path.to_path_buf()];
     while let Some(next) = pending.pop() {
