@@ -1,220 +1,227 @@
-# sail
+# Sail
 
-**S.A.I.L.** (Satisfiability Analysis & Inference Layer) is a Rust service and toolchain that sits between the [Verus](https://github.com/verus-lang/verus) verifier and its pinned Z3. It caches solver replies and complete target proofs, with durable verification jobs for developers and agents. Default-mode correctness follows the pinned verifier and the charter’s policy for unstable queries; verdict-changing portfolios are explicitly opt-in.
+Sail (S.A.I.L., the Satisfiability Analysis & Inference Layer) makes
+[Verus](https://github.com/verus-lang/verus) verification loops faster for
+developers and coding agents, without changing what Verus tells you.
 
-Status: **live workspace verification and team caching implemented.**
-Complete proof receipts, durable jobs/watch/MCP and authenticated HTTP caching
-pass the retained acceptance in [the M6 report](docs/reports/2026-10-10-live-workspace.md).
-The report records performance costs, platform limits and emulation failures.
-See the [documentation index](docs/README.md), [known issues](docs/known-issues.md),
-[error codes](docs/errors.md) and [roadmap](docs/ROADMAP.md) for guides, limitations and follow-up work.
+`sail verify` runs your own `cargo verus verify` with the same arguments and
+puts a cache in front of the Z3 solver that Verus uses. You get the same
+verdicts, the same errors and the same exit code as plain Verus with its
+pinned Z3; Sail's conformance suite checks exactly that. On top of that, Sail
+adds complete per-target reports, durable background jobs, a file watcher, an
+MCP server for agents and signed team caches. When anything in Sail fails,
+verification falls back to the pinned Z3 and stays correct.
 
-## Using it
+Sail supports Linux on x86-64 and macOS on Apple silicon. It works on Cargo
+projects (see [Limits](#limits)).
 
-```sh
-cargo build --release -p sail-cli -p sail-shim   # builds `sail` and `sail-z3`
-export PATH="$PWD/target/release:$PATH"
-sail verify [ARGS...]    # instead of: cargo verus verify [ARGS...]
-```
+## Install
 
-`sail verify` runs your own `cargo verus verify` with the same arguments.
-Its only change is putting `sail-z3` in front of the Z3 your Verus already
-uses. It starts the cache daemon (`sail serve`) on demand. To switch back,
-run `cargo verus verify` again.
+Release binaries for Linux and macOS will be published on GitHub releases.
+Until then, build Sail from source.
 
-The managed workflow adds complete incremental reports and durable local jobs:
-
-```sh
-sail verify --incremental --output json  # complete reports, including reused targets
-sail verify --background                # submit and keep working
-sail jobs list                         # status, result, logs and cancel also available
-sail watch                            # follow workspace and path-dependency edits
-```
-
-One verifier worker runs by default. Completed target reports record which run
-established them; current execution counters stay separate. Ordinary local use
-needs no server configuration or credentials. Frontend receipt reuse targets
-Linux; macOS uses conservative currentness checks that can require fresh proofs.
-See [live workspace verification](docs/workspace-verification.md).
-
-## Experimental proof repair
-
-The optional pinned source engine adds exact-function focus followed by
-independent full-target validation. Stock verification stays the default. The
-selected engine passes its source qualification, and the current product
-passes the workspace gate, the solver suite and the original installed CLI/MCP
-repair fixture. M7 is **not accepted**. Reader latency currently fails its
-200 ms p95 bound, the frozen real-project repair benchmark has no measured
-samples, and complete standard/cache conformance is outstanding. All local
-measurements so far were taken under x86 emulation and are not reference
-numbers. See [M7 validation](docs/validation/m7.md) and
-[known issues](docs/known-issues.md).
-
-Optional ordinary-build recovery can establish dependency contracts after the
-initial regeneration. It never promotes an Unknown proof or replaces full
-verification, and unsupported coverage keeps the original cleaning. See
-[build recovery](docs/managed-cold-start.md).
-
-From the Sail checkout, build/register the selected optional source variant with
-`cargo xtask build-verus-engine`, then inspect `sail engine status --output json`.
-Alternatively, `sail engine install --from ENGINE_BUILD_DIR --output json`
-imports a recognized build after validating its provenance and artifact bytes.
-A candidate directory or successful install is not M7 acceptance evidence.
-If you override `SAIL_CACHE_DIR`, use one absolute value for engine installation,
-project CLI commands and the MCP server; changing directories must not select
-another cache. The walkthrough explains MCP job-read routing.
-
-From a project, submit a library repair and retain the returned job ID:
+**1. Prerequisites.** A C toolchain, `curl`, `git` and `unzip`. On
+Debian or Ubuntu:
 
 ```sh
-sail repair-check --package demo --lib --function demo::arith::lemma \
-  --engine interactive --background --output json
-sail jobs events JOB_ID --follow --output jsonl
-sail jobs result JOB_ID --output json
-# Save only after the completed result has value.repair.accepted = true.
-sail baseline save before-repair --job JOB_ID
-sail baseline list
-sail baseline get before-repair --output json
-sail compare LATER_JOB_ID --baseline before-repair --output json
+sudo apt-get install -y build-essential curl git unzip
 ```
 
-Submission success and provisional focus observations do not establish a proof.
-Inspect `value.repair.accepted` in the completed result; acceptance requires
-independent complete Current full-target success after compiler completion.
-Keep redirected event logs and result files outside watched package roots while
-verification runs; the walkthrough shows a separate capture directory. Saved
-baselines retain establishing evidence and never prove today's inputs.
-`baseline get` retrieves the complete Historical snapshot even after its job is
-pruned; provisional reports remain provisional. See the [baseline guide](docs/mcp.md).
-[The complete walkthrough](docs/proof-repair-walkthrough.md) includes a runnable
-project, focus-pass/full-failure example, exact failure identities, event cursors,
-cancellation and MCP calls. [The repair contract](docs/proof-repair.md) and
-[frozen acceptance guide](docs/bench/m7-repair-acceptance.md) distinguish usable
-workflow from unfinished qualification and performance claims.
+On macOS, install the Xcode command line tools (`xcode-select --install`).
 
-## Reports and team caching
-
-`sail verify --output json [ARGS...]` also prints one JSON document on stdout.
-It holds per-function verdicts, with tier and provenance, and per-obligation
-results with stable identities, effort and counterexample models. Diagnostics
-still go to stderr unchanged. See `docs/output-schema.md`.
-
-The daemon keeps replies in memory in front of the disk cache, stops after
-30 minutes without connections or active jobs, and logs to `daemon.log` in the
-cache root.
-`sail status` shows its state and counters. `sail cache stats|verify|gc|clear`
-inspects, checks, shrinks or empties SMT reply entries (ADR 0015). These commands
-do not limit or remove managed compiler targets. See
-[disk use and cleanup](docs/workspace-hygiene.md) for where those live and how
-to reclaim them.
-
-Teams and CI can share results through a shared store: a directory such as
-an NFS mount or a synced folder. Entries in it are signed, and a machine
-serves one only if a key it trusts signed it for the same solver binary and
-platform (`docs/trust.md`, ADR 0017):
+**2. Rust.** Install [rustup](https://rustup.rs) with its defaults, then open
+a new shell (or run `. "$HOME/.cargo/env"`):
 
 ```sh
-sail cache keygen --out ci.key                          # once, where releases are made
-sail cache publish --to /shared/sail --key ci.key       # after a CI run fills the cache
-sail cache trust add ci.key.pub                         # on each reader
-SAIL_SHARED_STORE=/shared/sail sail verify [ARGS...]    # or: sail serve --shared DIR
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ```
 
-An optional HTTP server shares the same signed entries over HTTPS:
-`sail cache serve`, `sail cache connect`, and `sail cache publish --to URL`.
-Readers configure signing trust separately from access credentials. See
-[HTTP team caching](docs/http-shared-cache.md) for a local trial and deployment.
-
-`sail mcp` is an MCP server on stdio for agents that verify after every
-edit. Its tools are `verify` (a crate, module or function, returning the
-JSON document above), `counterexample`, `cached_result` (latest verdicts,
-saying whether sources changed since) and `fragility` (local solver replay measurement).
-The asynchronous tools `start_verification`, `verification_status`,
-`verification_result` and `cancel_verification` use the same durable jobs as
-the CLI, so an agent can inspect results while verification continues.
-Experimental repair tools add `start_repair_validation`, `verification_events`,
-`explain_failure`, `compare_verification`, `save_baseline`, `list_baselines` and
-`get_baseline`. Baseline tools expose the same immutable Historical evidence as
-the CLI, independently of job pruning.
-Durable read-only lookups read the jobs service directly, each with a complete
-fresh service reply; writes and verification lifecycle ownership retain their
-existing paths. Register the stdio command `sail mcp`, for example
-`claude mcp add --transport stdio sail -- sail mcp`. See [MCP setup and
-schemas](docs/mcp.md), or [the Rust SDK](docs/result-client.md).
-
-- `docs/CHARTER.md`: mission, scope and the correctness contract.
-- `AGENTS.md`: how to work in this repo (humans and agents).
-- `docs/decisions/`: architecture decision records.
-- `docs/survey/`: research on Verus internals, prior art, the corpus and solver behaviour.
-
-## Getting started
+**3. Sail.** Build `sail` and `sail-z3` and put them on `PATH`. They must stay
+side by side.
 
 ```sh
-cargo xtask install-hooks   # once per clone: the commit-msg authorship guard
-cargo build --workspace
-cargo nextest run --workspace
+git clone https://github.com/Chelis-Lang/sail
+cd sail
+cargo build --release -p sail-cli -p sail-shim
+mkdir -p ~/.local/bin
+install -m 755 target/release/sail target/release/sail-z3 ~/.local/bin/
+export PATH="$HOME/.local/bin:$PATH"       # add to your shell profile
 ```
 
-The toolchain is pinned in `rust-toolchain.toml`, and rustup installs it automatically.
+Building Sail installs the Rust toolchain it pins (`rust-toolchain.toml`)
+automatically.
 
-Reference builds, gates and benchmarks run on a native x86-64 Linux host
-created by `scripts/perf-host.sh`. The
-[disk use guide](docs/workspace-hygiene.md) covers local worktrees, targets
-and containers.
-
-## Portfolio and fragility
-
-An explicit seed portfolio can try independent complete verification runs:
+**4. Verus.** If you already use Verus, keep it: Sail uses whatever
+`cargo-verus` is on `PATH` (or `SAIL_CARGO_VERUS`). Otherwise install the Verus
+release Sail is tested with, from the Sail checkout:
 
 ```sh
-sail verify --portfolio accept-first-proof --portfolio-seeds 4 --output json
+cargo xtask fetch-verus
 ```
 
-The baseline runs first. The first complete proof wins; function results from
-separate attempts are never combined. Attempts and their diagnostics are retained
-under the cache's `portfolio/` directory. This can take substantially longer and
-is local-only. Every requested verifying Cargo library or binary must report
-its result. Use exact package selectors; ambiguous crate names and test,
-example or benchmark target scopes require an explicit supported selection.
-See `docs/divergences.md` and ADR 0020.
-
-Projects invoked directly through Verus can use the same portfolio with
-`--verus-source path/to/lib.rs -- <Verus flags>`. The pinned Verus launcher
-runs the complete requested scope independently on each attempt; Cargo target
-cleanup applies only to Cargo projects.
-
-For function scores in a verification report, request measurement explicitly:
+It downloads and checks the pinned release, installs the Rust toolchain that
+release needs (with rustup), and prints the line that puts Verus on `PATH`, for
+example:
 
 ```sh
-sail verify --measure-fragility --fragility-seeds 8 --output json
+export PATH="$HOME/.cache/sail/verus/0.2026.10.04.426d8b0/verus-x86-linux:$PATH"
 ```
 
-This runs baseline verification without cached replies, then replays its exact
-solver sessions. It can be expensive and is local-only; ordinary verification
-runs no census. Incomplete or ambiguous attribution is reported as unavailable.
+Run that line and add it to your shell profile. `cargo verus --help` should
+now work.
 
-Explicit fragility measurements reverify in a Sail-owned Cargo target, reusing
-dependency compilation between requests. They never clean the caller’s target.
-Do not combine measurement with an external `--target-dir` or a portfolio.
+## First verification
 
-`sail bench` forwards workload arguments to `sail-bench` installed beside it;
-build both with `cargo build --release -p sail-cli -p sail-bench -p sail-shim`.
-Benchmarks remain local-only and never form part of the CI gate.
+In any Cargo project that Verus verifies:
 
-## Optional Singular validation
+```sh
+cargo verus new --lib demo     # or use your own project
+cd demo
+sail verify                    # instead of: cargo verus verify
+```
 
-Run `ci/local-singular.sh` locally to build the pinned Verus source with
-Singular support and compare the tagged integer-ring examples and memory
-allocator in pass-through, cache-fill and cache-warm modes. The separate image
-pins the Singular package; its source build and cache use separate volumes.
-This long validation is excluded from CI. To select an already built source
-variant explicitly, set `SAIL_VERUS_SOURCE_BUILD` to its build directory; the
-runner checks its commit, feature set, toolchain and runtime hashes (ADR 0021).
-Singular obligations are tagged in the corpus and execute through Verus; the
-Z3 cache only answers Z3 queries.
+`sail verify` takes the same arguments as `cargo verus verify` and prints the
+same output. It starts the Sail cache daemon on demand; you never need to
+start it yourself. Run it again after an edit: solver queries Verus has seen
+before are answered from the cache. To stop using Sail, run
+`cargo verus verify` again. Nothing else changes.
 
-Project decisions are indexed in [docs/decisions/README.md](docs/decisions/README.md);
-the completion evidence is in [the initial-product report](docs/reports/2026-10-09-initial-product.md).
+`sail verify --output json` also prints one JSON document on stdout with
+per-function verdicts and per-obligation results
+([output schema](docs/output-schema.md)). `sail COMMAND --help` lists each
+command's options.
+
+## Reports, jobs and watch
+
+`--incremental` switches to managed verification: complete reports for every
+target, including targets whose proofs were reused because their inputs are
+unchanged, and durable jobs you can inspect later.
+
+```sh
+sail verify --incremental --output json  # complete report, reused targets included
+sail verify --background                 # submit a job and keep working
+sail jobs list                           # then: jobs status|result|logs|cancel ID
+sail watch                               # re-verify 300 ms after files stop changing
+```
+
+Each result says whether it is still **Current** (its inputs are unchanged),
+**Historical** or **Unknown**. See
+[workspace verification](docs/workspace-verification.md) and
+[freshness](docs/freshness.md).
+
+## Agents (MCP)
+
+`sail mcp` is an MCP server on stdio. Register it from the project directory:
+
+```sh
+claude mcp add --transport stdio sail -- sail mcp
+```
+
+Agents get `verify`, `counterexample`, `cached_result`, background jobs
+(`start_verification`, `verification_status`, `verification_result`,
+`cancel_verification`) and evidence tools. See [MCP setup and tools](docs/mcp.md).
+
+## Team cache
+
+Teams and CI can share solver results. Entries are signed, and a machine uses
+one only if a key it trusts signed it for the same solver binary and platform:
+
+```sh
+sail cache keygen --out ci.key                        # once, where CI runs
+sail cache publish --to /shared/sail --key ci.key     # after a CI run
+sail cache trust add ci.key.pub                       # on each developer machine
+SAIL_SHARED_STORE=/shared/sail sail verify            # read from the shared store
+```
+
+The store can be a shared directory or an HTTPS server (`sail cache serve`,
+`sail cache connect`). See [HTTP team caching](docs/http-shared-cache.md) and
+[trust](docs/trust.md).
+
+## Maintenance
+
+- The cache lives in `~/.cache/sail` (or `$SAIL_CACHE_DIR`). The daemon's
+  replies are under `results/`, and its log is `results/daemon.log`.
+- `sail status` shows the daemon's state and counters. The daemon stops after
+  30 minutes without work.
+- `sail cache stats|verify|gc --max-bytes N|clear --yes` inspect, check,
+  shrink or empty the solver-reply cache.
+- Managed verification keeps compiled targets per project, which can reach
+  several GB; the cache commands do not cover them. See
+  [disk use and cleanup](docs/workspace-hygiene.md).
+- If the cache daemon cannot start, `sail verify` prints one
+  `warning[SAIL0003]` line and verifies without the cache, with the same
+  results.
+
+## Limits
+
+- **Cargo projects only.** `sail verify`, `--incremental`, `watch` and MCP run
+  `cargo verus`. Projects verified with `verus file.rs` directly are not
+  supported (the opt-in portfolio is the exception, with `--verus-source`).
+- **Speed is bounded by the solver's share of the work.** Sail caches solver
+  answers; Rust compilation and Verus's own frontend still run every time. In
+  a new-user walkthrough on a 16-vCPU Linux host
+  ([report](docs/reports/2026-10-13-new-user-walkthrough.md)):
+  - edits on a solver-heavy project (vest, 3,237 functions) were 1.6–1.8×
+    faster (for example 42.2 s to 25.6 s); the Rust and Verus frontend still
+    took about 24–30 s per edit;
+  - small projects and cold first runs took the same time as plain Verus;
+  - unchanged re-verification with `--incremental` took 0.3–1.4 s, where plain
+    Cargo already does nothing in 0.2 s; its value is the complete report.
+- **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
+  configuration file created and deleted again during a single run is not
+  detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
+- **Each new project or worktree verifies vstd once** in managed mode, about
+  30 s, before reuse starts.
+- **Proof repair is experimental** (below).
+
+See [known issues](docs/known-issues.md) for the full list.
+
+## Experimental: proof repair
+
+`sail repair-check` focuses verification on one function, then independently
+verifies the full target, using an optional interactive engine built from
+Sail's public [Verus fork](https://github.com/Chelis-Lang/verus). A repair is
+accepted only when the complete target verifies.
+
+Prebuilt engine runtimes are published on the
+[fork's releases](https://github.com/Chelis-Lang/verus/releases) and download
+without credentials. On x86-64 Linux, from the Sail checkout:
+
+```sh
+python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
+  --cache ~/.cache/sail             # or your SAIL_CACHE_DIR
+sail engine status                  # checks every runtime file against its pin
+```
+
+A macOS runtime (`engine-runtime-13a1176c-macos`) is published too, but Sail
+does not pin it yet. Elsewhere, build the engine with
+`cargo xtask build-verus-engine`; that build has been validated on Linux only.
+Follow the
+[repair walkthrough](docs/proof-repair-walkthrough.md); the
+[repair guide](docs/proof-repair.md) has the details.
+
+## Opt-in tools
+
+These can change what is reported, or cost much more than a verification, so
+they run only when asked:
+
+- `sail verify --portfolio accept-first-proof --portfolio-seeds 4` tries
+  independent seeded runs and accepts the first complete proof. This can change
+  a verdict; see [divergences](docs/divergences.md).
+- `sail verify --measure-fragility` and `sail fragility` measure how fragile
+  proofs are across solver seeds. They change no verdict.
+
+## Documentation
+
+- [Documentation index](docs/README.md): every user guide.
+- [Error codes](docs/errors.md), [known issues](docs/known-issues.md),
+  [compatibility](docs/compatibility.md).
+- Validation status of each milestone gate is in
+  [docs/validation/](docs/validation/), and the plan in the
+  [roadmap](docs/ROADMAP.md).
+- Working on Sail itself: [AGENTS.md](AGENTS.md) (workflow, gates, Rust
+  conventions), the [charter](docs/CHARTER.md) (scope and correctness
+  contract) and the [decision records](docs/decisions/README.md).
 
 ## License
 

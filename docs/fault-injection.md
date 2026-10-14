@@ -152,7 +152,7 @@ Daemon-side cases that need no solver run in the fast gate:
   then retain their 250 ms lookup and 75 ms server-delay assertions. The cold
   constructor test independently pauses construction and requires bounded
   followers/status with zero network requests. See the
-  [HTTP guide](http-shared-cache.md#developer-serving-tests) for the retained
+  [HTTP validation record](validation/http-shared-cache.md#developer-serving-tests) for the retained
   integrated cold-lookup failures and precise fixture scope.
 - **`crates/sail-daemon/tests/tiers.rs`:**
   - memory hits against outside changes to the disk;

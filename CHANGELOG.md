@@ -35,6 +35,17 @@ semantic versioning once the API is published.
   names the release by `repo`, `release_tag` and `asset` instead of a private
   asset id, and every digest check is unchanged.
 
+- `cargo xtask fetch-verus` installs the Rust toolchain the pinned Verus
+  release needs (with rustup; without rustup it prints the exact command),
+  stops early with the package to install when `curl` or `unzip` is missing,
+  and prints the `export PATH=...` line that puts `verus` and `cargo-verus` on
+  `PATH`.
+- The README is now a user guide: what Sail is, install (source build until
+  release binaries exist), installing Verus, first verification, jobs and
+  watch, MCP, team cache, maintenance and honest limits with measured numbers.
+  Validation status and commit-level evidence moved out of the user guides into
+  `docs/validation/` (new: `docs/validation/http-shared-cache.md`).
+
 - Sail's Verus fork (`Chelis-Lang/verus`) is public. `cargo xtask
   build-verus-engine` clones it without a GitHub token. `sail engine status`
   and `sail repair-check` now say that the engine is not installed, name the
