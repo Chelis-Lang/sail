@@ -123,6 +123,31 @@ a milestone awaits the lead's review of this evidence. [M7 validation](validatio
 gives each gate's evidence and its indexed failed attempts, and
 [known issues](known-issues.md) lists the open defects behind them.
 
+## Open-source release (planned)
+
+Sail stays private until the owner's review; then it is released as open
+source under the MIT License, with macOS and Linux binaries on GitHub releases.
+Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md).
+
+| In the release | Status |
+|---|---|
+| A1: MCP works in Claude Code | Not started |
+| A2: agent-sized MCP replies | Not started |
+| A3: honest counts | Not started |
+| A4: macOS managed reuse | Not started |
+| A5: install and first run, targeting release binaries | Not started |
+| A6: papercuts | Not started |
+| macOS and Linux release builds of Sail with the engine runtime | Not started |
+| Engine runtimes from the public `Chelis-Lang/verus` fork releases | Not started |
+| Performance-claims page backed by reproducible `sail-bench` runs on Linux and macOS | Not started |
+| Disk cleanup for managed targets (review B3) | Not started |
+| `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
+| Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Not started |
+
+Out of the release: B1 (shared vstd across projects), B2 (single-file
+`verus file.rs` projects; the release documents that Sail needs a Cargo
+project), B4 (receipts beyond the latest revision) and every section D item.
+
 ## Later waves (from the charter's initial scope)
 
 1. **Caching.**

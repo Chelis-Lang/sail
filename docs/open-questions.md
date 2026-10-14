@@ -11,6 +11,8 @@ inline with the date and link the ADR that captures it.
 
    **Answered 2026-10-08 (owner):** Dual MIT OR Apache-2.0 at the first public release; keep `publish = false` until then (ADR 0010).
 
+   **Updated 2026-10-14 (owner):** MIT, matching the public Chelis-Lang repositories. `LICENSE` and the workspace `license` field are set now; `publish = false` stays (ADR 0010 update).
+
 2. **Reference platform.** Baselines are first measured on the lead's machine
    (macOS arm64). Is macOS arm64 the reference platform for published
    benchmarks, or should Linux x86-64 be? This affects which Verus and Z3

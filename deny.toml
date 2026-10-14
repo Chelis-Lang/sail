@@ -8,8 +8,7 @@ ignore = []
 
 [licenses]
 version = 2
-# sail itself is unlicensed and unpublished until the owner decides
-# (docs/open-questions.md).
+# sail is MIT-licensed but unpublished (`publish = false`, ADR 0010 update).
 private = { ignore = true }
 allow = [
   "Apache-2.0",
