@@ -307,25 +307,7 @@ fn dispatch(state: &State, request: Request) -> Response {
             product::compare(state, &before, &after).map(Response::Comparison)
         }
         Request::Submit { submission } => submit(state, submission).map(Response::Status),
-        Request::List { project_dir } => state.jobs.lock().map_err(lock_error).map(|jobs| {
-            let mut statuses: Vec<_> = jobs
-                .values()
-                .filter(|job| {
-                    project_dir
-                        .as_ref()
-                        .is_none_or(|dir| *dir == job.status.project_dir)
-                })
-                .map(|job| {
-                    let mut status = job.status.clone();
-                    if status.state == Lifecycle::Completed {
-                        status.currentness = Currentness::Unknown;
-                    }
-                    status
-                })
-                .collect();
-            statuses.sort_by_key(|status| status.submitted_at_ms);
-            Response::List(statuses)
-        }),
+        Request::List { project_dir } => list(state, project_dir.as_deref()).map(Response::List),
         Request::Status { id } => get(state, &id)
             .and_then(|job| store::status(state, &job))
             .map(Response::Status),
@@ -344,6 +326,36 @@ fn dispatch(state: &State, request: Request) -> Response {
 }
 fn lock_error<T>(_: std::sync::PoisonError<T>) -> io::Error {
     io::Error::other("SAIL0899: internal error: job state lock poisoned; please report it")
+}
+/// Every retained job (or one project's), oldest first. Each completed job
+/// carries the same currentness projection as `Status`, computed outside the
+/// job lock; a record without a validated projection, or one that fails
+/// validation, stays Unknown.
+fn list(state: &State, project_dir: Option<&std::path::Path>) -> io::Result<Vec<Status>> {
+    let selected: Vec<Stored> = state
+        .jobs
+        .lock()
+        .map_err(lock_error)?
+        .values()
+        .filter(|job| project_dir.is_none_or(|dir| dir == job.status.project_dir))
+        .cloned()
+        .collect();
+    let mut statuses: Vec<_> = selected
+        .iter()
+        .map(|job| {
+            let mut status = job.status.clone();
+            if status.state == Lifecycle::Completed {
+                status.currentness = job
+                    .projection
+                    .as_ref()
+                    .and_then(|_| store::status(state, job).ok())
+                    .map_or(Currentness::Unknown, |current| current.currentness);
+            }
+            status
+        })
+        .collect();
+    statuses.sort_by_key(|status| status.submitted_at_ms);
+    Ok(statuses)
 }
 fn get(state: &State, id: &str) -> io::Result<Stored> {
     state

@@ -96,3 +96,45 @@ fn missing_engine_is_reported_up_front() {
     assert!(!cache.join("results/projects/jobs").exists());
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// `--help` prints help and exits 0 for every command, without running it
+/// (`sail watch --help` used to start a watcher; `sail cache gc --help` was
+/// rejected).
+#[test]
+fn every_command_has_help() {
+    for command in [
+        "verify",
+        "repair-check",
+        "engine",
+        "explain",
+        "baseline",
+        "compare",
+        "watch",
+        "jobs",
+        "mcp",
+        "serve",
+        "status",
+        "cache",
+        "fragility",
+    ] {
+        for args in [
+            vec![command, "--help"],
+            vec![command, "-h"],
+            vec!["help", command],
+        ] {
+            let output = Command::new(env!("CARGO_BIN_EXE_sail"))
+                .args(&args)
+                .env("SAIL_CARGO_VERUS", "/nonexistent/cargo-verus")
+                .output()
+                .unwrap_or_else(|e| unreachable!("cannot run sail: {e}"));
+            assert_eq!(output.status.code(), Some(0), "{args:?}");
+            assert!(!output.stdout.is_empty(), "{args:?}");
+        }
+    }
+    let gc = sail(&["cache", "gc", "--help"]);
+    assert_eq!(gc.status.code(), Some(0));
+    assert!(String::from_utf8_lossy(&gc.stdout).contains("gc --max-bytes N"));
+    let verify = sail(&["verify", "--help"]);
+    assert!(String::from_utf8_lossy(&verify.stdout).contains("--incremental"));
+    assert_eq!(sail(&["help", "frobnicate"]).status.code(), Some(2));
+}
