@@ -51,7 +51,9 @@ conformance, `rust_verify_test` and Singular runs, the
 [HTTP shared-cache record](validation/http-shared-cache.md) gives that
 feature's tests and integration evidence, and the
 [macOS engine record](validation/macos-engine.md) qualifies the engine runtime
-bundled in the macOS release archive. Raw logs stay outside the
+bundled in the macOS release archive, and the
+[clean macOS record](validation/clean-macos.md) checks the release candidate
+on a fresh Mac. Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
 Each record applies to its stated source, runtime and environment. A later pass
