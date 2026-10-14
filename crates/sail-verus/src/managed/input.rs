@@ -378,18 +378,6 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
         {
             paths.insert(alias.to_owned());
         }
-        // Linux drains an exact native queue for absent configuration paths.
-        // Other platforms retain conservative parent stamps because native
-        // callbacks and cookies cannot establish a synchronous absence barrier.
-        #[cfg(not(target_os = "linux"))]
-        if !path.exists()
-            && let Some(parent) = path.ancestors().skip(1).find(|p| p.exists())
-        {
-            paths.insert(parent.to_owned());
-            if let Ok(canonical) = parent.canonicalize() {
-                paths.insert(canonical);
-            }
-        }
     }
     stamp_paths(&paths)
 }

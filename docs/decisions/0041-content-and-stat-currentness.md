@@ -50,3 +50,20 @@
 Measurements and validation: natively, managed overhead on a HumanEval
 edit fell from 3.03 s to 0.94 s and on Vest from 7.27 s to 3.40 s, and Vest
 results read back Current instead of Unknown (`SAIL7102`), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
+
+## Note (2026-10-14): macOS absent-configuration rule
+
+- **Problem.** On macOS, a run also stamped the nearest existing parent
+  directory of every absent Cargo configuration path, standing in for Linux's
+  inotify watch. Cargo updates its cache database in the Cargo home on every
+  build, and `/tmp` and the home directory change constantly, so every macOS
+  run read Historical. That withdrew the dependencies' build-script records,
+  and every run rebuilt the macro dependencies and verified vstd again.
+- **Decision (owner, 2026-10-14).** macOS checks absent configuration paths
+  only at the start and end of a run, and on every read, as before. Parent
+  directory stamps are dropped. No FSEvents observer is added.
+- **Accepted limitation.** On macOS, a Cargo configuration file created and
+  deleted again within one run is not detected. This joins the undetected
+  cases above and is documented in
+  [freshness](../freshness.md#what-these-checks-do-not-catch). Linux is
+  unchanged.

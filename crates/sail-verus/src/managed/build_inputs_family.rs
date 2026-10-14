@@ -10,7 +10,7 @@ use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeSet;
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 use std::io::Read as _;
 use std::io::Write;
 use std::path::Path;
@@ -58,7 +58,7 @@ fn checksum(export: &Export) -> Option<String> {
     .map(|v| digest(&v))
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 fn bytes(path: &Path) -> Option<Vec<u8>> {
     let fd = rustix::fs::open(
         path,
@@ -79,9 +79,9 @@ fn bytes(path: &Path) -> Option<Vec<u8>> {
     }
     Some(bytes)
 }
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(unix))]
 fn bytes(_path: &Path) -> Option<Vec<u8>> {
-    // Only the Linux nonblocking regular-file loader is audited. An unavailable
+    // Only the Unix nonblocking regular-file loader is audited. An unavailable
     // export always takes original script cleaning, including an older context.
     None
 }
@@ -347,7 +347,7 @@ fn publish_inventory(
     }
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
@@ -661,13 +661,11 @@ mod tests {
             super::super::stale(&f.local, &f.data).0,
             vec!["registry-script"]
         );
-        rustix::fs::mknodat(
-            rustix::fs::CWD,
-            &f.export,
-            rustix::fs::FileType::Fifo,
-            rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
-            0,
-        )?;
+        let fifo = std::process::Command::new("mkfifo")
+            .args(["-m", "600"])
+            .arg(&f.export)
+            .status()?;
+        assert!(fifo.success());
         f.begin(&f.local, "compiler")?;
         assert_eq!(
             super::super::stale(&f.local, &f.data).0,

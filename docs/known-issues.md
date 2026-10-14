@@ -57,6 +57,13 @@ are in the `archive/m7-contracts-f7103bf` tag.
   from the verdict. In doubt a result reads back Unknown ("inputs could not be
   confirmed unchanged; re-run"), never Current. A few rare changes during a
   run are not detected; see [freshness](freshness.md) and [trust](trust.md).
+- On macOS, a Cargo configuration file created and deleted again within one
+  managed run is not detected (owner decision, ADR 0041 note of 2026-10-14).
+- A cache directory whose daemon socket path exceeds the Unix socket limit
+  (104 bytes on macOS) makes `sail serve` fail with `SAIL0003` ("path must be
+  shorter than SUN_LEN"). `sail verify --incremental` then waits 5 s for the
+  daemon on every run before continuing without it. Keep `SAIL_CACHE_DIR`
+  short, or set a short `SAIL_DAEMON_SOCKET`.
 - A successful focused check still needs complete Current full validation.
 - There is no managed compiler-target quota or generation GC. See
   [disk use and cleanup](workspace-hygiene.md#managed-compiler-targets).
