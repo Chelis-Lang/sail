@@ -33,3 +33,7 @@ The owner decided on 2026-10-12 that Sail fixes these itself and stays forked. U
 - Determinism in the engine makes cached-versus-fresh comparisons exact, which the M8 bucket memo relies on.
 - Each Verus upgrade costs a rebase. Small, isolated commits keep that cost low.
 - Building the engine needs access to the private repository, through `gh auth token` or `SAIL_ENGINE_ARTIFACT_TOKEN`. CI uses only the prebuilt artifact and never builds Verus.
+
+## Note (2026-10-14): runtimes are published on the public fork
+
+`Chelis-Lang/verus` is now public. Prebuilt engine runtimes are GitHub release assets on it, one prerelease per pinned fork commit (`engine-runtime-<short sha>-linux`), instead of private assets on the Sail repository. `engine/verus/artifact-linux.json` names the release (`repo`, `release_tag`, `asset`) and keeps every digest check. Fetching the runtime needs no token, so the CI image build has no BuildKit secret and `ci/local.sh` and `scripts/perf-host.sh run` pass none. Publishing a release needs write access to the fork. See `engine/verus/README.md`.

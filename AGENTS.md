@@ -88,15 +88,11 @@ their own branches. The lead reviews and merges.
 **Native Linux hosts.** Linux validation, gates and all performance work run
 on native x86-64 EC2 hosts (ADR 0038). Use `scripts/perf-host.sh up LANE`,
 `sync`, `run` and `down`, one host per lane so builds and benchmarks never
-contend. `run` supplies the engine artifact token on stdin, and `ci/local.sh`
-builds the CI image natively there. Hosts are tagged `Project=sail`,
-terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and are torn down
-after use; `scripts/perf-host.sh list` must be empty at the end of a session.
+contend. `ci/local.sh` builds the CI image natively there. Hosts are tagged
+`Project=sail`, terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and
+are torn down after use; `scripts/perf-host.sh list` must be empty at the end of a session.
 The local emulated container is for quick correctness checks only; never
 measure performance under emulation.
-`run` exports the engine artifact token into the remote shell, so never print
-the environment (`env`, `printenv`, `set`, `docker inspect` of a container's
-environment) in host commands or logs.
 
 **Workspace hygiene.** Remove worktrees once their branch is merged or
 archived, after checking for uncommitted source. Discard regenerable build
@@ -182,8 +178,8 @@ fails.
 The optional repair engine is a locally qualified prebuilt runtime pinned in
 `engine/verus/artifact-linux.json`. The CI image validates its archive, source
 patch, source lock and every runtime file; CI never compiles Verus from source.
-Local image builds obtain private artifact access from `gh auth token` or
-`SAIL_ENGINE_ARTIFACT_TOKEN`, supplied only through a BuildKit secret.
+The runtime is a public release asset of the Verus fork (`Chelis-Lang/verus`),
+so CI, `ci/local.sh` and native hosts build the image with no token or secret.
 
 **Testing tiers** (charter §Engineering practice). CI runs only the fast
 tier, and every CI job must finish well inside 10 minutes. Anything longer

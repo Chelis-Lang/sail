@@ -9,6 +9,15 @@ semantic versioning once the API is published.
   states the contribution policy: issues are welcome; pull requests are
   limited to collaborators for now.
 
+- The optional interactive engine runtime is now downloaded from a public
+  release on Sail's Verus fork
+  (`https://github.com/Chelis-Lang/verus/releases/download/engine-runtime-13a1176c-linux/engine-runtime.tar.gz`,
+  the same bytes as before). Building the CI image, `ci/local.sh` and
+  `scripts/perf-host.sh run` no longer need `SAIL_ENGINE_ARTIFACT_TOKEN` or
+  `gh auth token`; the image build has no BuildKit secret. The runtime pin
+  names the release by `repo`, `release_tag` and `asset` instead of a private
+  asset id, and every digest check is unchanged.
+
 - `sail verify --engine interactive` and `sail repair-check` no longer
   return the engine's ``Please cargo build with `--features singular` ``
   error for `by(integer_ring)` lemmas. The engine is built without that

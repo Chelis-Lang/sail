@@ -75,8 +75,9 @@ CI never builds Verus; it installs the prebuilt runtime.
    the rebased branch, and record the results.
 4. After review, move `sail` to the branch, update `corpus/toolchain.toml` and
    [fork.toml](fork.toml) together, then do one rebuild, the qualification
-   steps below, and pack, upload and re-pin `artifact-linux.json`. Tag the
-   pinned commit `pinned/<sha>`.
+   steps below, and publish and re-pin the runtime
+   ([Publishing a runtime](#publishing-a-runtime)). Tag the pinned commit
+   `pinned/<sha>`.
 
 ## What the engine commit contains
 
@@ -159,20 +160,54 @@ rather than `vstd/seq.rs:980:12` (L4b).
 
 ## Pinned Linux runtime for CI
 
-`artifact-linux.json` (schema 2) binds the private release asset, archive
-digest, upstream commit, fork commit (`fork_commit`), lockfile, Rust toolchain
-and solver. `ci/engine-artifact.py`
+`artifact-linux.json` (schema 2) binds the release asset (`repo`,
+`release_tag`, `asset`), archive digest, upstream commit, fork commit
+(`fork_commit`), lockfile, Rust toolchain and solver. `ci/engine-artifact.py`
 checks those pins and every runtime file before installation. The Docker image
-uses a BuildKit secret for the private download; it does not retain that
-credential or build Verus from source. The optional runtime is exercised by
-the real repair CLI/MCP end-to-end phase alongside the stock checks. CI
-downloads these exact prebuilt bytes; it never compiles the engine.
+does not build Verus from source; the optional runtime is exercised by the
+real repair CLI/MCP end-to-end phase alongside the stock checks. CI downloads
+these exact prebuilt bytes; it never compiles the engine.
 
-A new fork commit needs a new runtime: build it with
-`cargo xtask build-verus-engine`, pack it with
-`ci/engine-artifact.py pack`, publish the archive as a private prerelease
-asset and commit the new pin. Until then the committed pin is stale and the CI
-image build refuses it.
+### Where runtimes are published
 
-This selection is on the in-progress M7 branch. The private prerelease
-artifact is a runtime prerequisite, not M7 product acceptance.
+Runtimes are GitHub release assets on the public fork,
+[Chelis-Lang/verus](https://github.com/Chelis-Lang/verus/releases): one
+prerelease per pinned fork commit, tagged `engine-runtime-<short sha>-linux`
+and targeting that commit. The asset is the packed archive,
+`engine-runtime.tar.gz`. The pinned runtime is
+`https://github.com/Chelis-Lang/verus/releases/download/engine-runtime-13a1176c-linux/engine-runtime.tar.gz`
+(SHA-256 `a28e212e07dd4fbf25dfa6f94b84faa0ec258502706327e071841778bd59d7c2`).
+
+Fetching needs no token: the CI image build, `ci/local.sh`, native hosts and
+`ci/engine-artifact.py fetch` download anonymously. `fetch` builds the URL
+from the committed `fork.toml` repository, never from the pin alone, requires
+the release tag to name the pinned fork commit, sends no credential and
+accepts only HTTPS redirects. Trust comes from the committed archive digest
+and the runtime manifest, never from where the bytes were served.
+
+### Publishing a runtime
+
+A new fork commit needs a new runtime. Until it is published and pinned the
+committed pin is stale and the CI image build refuses it.
+
+1. On a native Linux x86-64 host, build it with
+   `cargo xtask build-verus-engine` and run the qualification steps
+   ([Validation](#validation)).
+2. Pack it:
+   `python3 ci/engine-artifact.py pack --build BUILD --archive OUT/engine-runtime.tar.gz --pin engine/verus/artifact-linux.json`.
+   The pin records the archive digest and the release it belongs to
+   (`repo`, `release_tag` and `asset`).
+3. Publish the archive on the fork, with publish rights to
+   `Chelis-Lang/verus` (a maintainer step; fetching needs none):
+   `gh release create engine-runtime-<short sha>-linux -R Chelis-Lang/verus --target <fork commit> --prerelease --latest=false --title "Engine runtime <short sha> (Linux x86-64)" OUT/engine-runtime.tar.gz`.
+   State the fork and upstream commits, source lock, toolchain, Z3 and
+   archive digests and the build host in the notes.
+4. Check the published bytes anonymously:
+   `curl -fsSL https://github.com/Chelis-Lang/verus/releases/download/<tag>/engine-runtime.tar.gz | sha256sum`
+   must print the pin's `archive_sha256`.
+5. Commit the pin with the `fork.toml` change and tag the commit
+   `pinned/<sha>`. Never replace or delete the asset of a release a pin has
+   named: older Sail commits still fetch it.
+
+This selection is on the in-progress M7 branch. The prerelease artifact is a
+runtime prerequisite, not M7 product acceptance.
