@@ -2,7 +2,9 @@
 
 Sail (S.A.I.L., the Satisfiability Analysis & Inference Layer) makes
 [Verus](https://github.com/verus-lang/verus) verification loops faster for
-developers and coding agents, without changing what Verus tells you.
+developers and coding agents, without changing what Verus tells you. The gain
+is largest on solver-heavy projects; small projects and first runs take about
+as long as plain Verus ([performance](docs/performance.md)).
 
 `sail verify` runs your own `cargo verus verify` with the same arguments and
 puts a cache in front of the Z3 solver that Verus uses. You get the same
@@ -159,15 +161,16 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
   `cargo verus`. Projects verified with `verus file.rs` directly are not
   supported (the opt-in portfolio is the exception, with `--verus-source`).
 - **Speed is bounded by the solver's share of the work.** Sail caches solver
-  answers; Rust compilation and Verus's own frontend still run every time. In
-  a new-user walkthrough on a 16-vCPU Linux host
-  ([report](docs/reports/2026-10-13-new-user-walkthrough.md)):
-  - edits on a solver-heavy project (vest, 3,237 functions) were 1.6–1.8×
-    faster (for example 42.2 s to 25.6 s); the Rust and Verus frontend still
-    took about 24–30 s per edit;
-  - small projects and cold first runs took the same time as plain Verus;
-  - unchanged re-verification with `--incremental` took 0.3–1.4 s, where plain
-    Cargo already does nothing in 0.2 s; its value is the complete report.
+  answers; Rust compilation and Verus's own frontend still run every time.
+  See [performance](docs/performance.md) for each claim and how to reproduce
+  it. In short, on a 16-vCPU Linux host:
+  - edits on a solver-heavy project (vest, 3,237 functions) are 1.3–1.5×
+    faster (about 24 s against 34–38 s); the Rust and Verus frontend sets
+    that 24 s floor;
+  - small projects and cold first runs take the same time as plain Verus;
+  - unchanged re-verification with `--incremental` or MCP `verify` takes
+    0.3–1.8 s, where plain Cargo does nothing in 0.1–0.2 s; its value is the
+    complete report for agents, not speed.
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not
   detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
@@ -215,6 +218,8 @@ they run only when asked:
 ## Documentation
 
 - [Documentation index](docs/README.md): every user guide.
+- [Performance](docs/performance.md): where Sail is faster, where it is not,
+  and how to reproduce each number.
 - [Error codes](docs/errors.md), [known issues](docs/known-issues.md),
   [compatibility](docs/compatibility.md).
 - Validation status of each milestone gate is in
