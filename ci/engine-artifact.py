@@ -74,11 +74,24 @@ def verus_features(features):
     return [feature for feature in features if ":" not in feature]
 
 
+# Runtime platforms, named by the release tag's suffix
+# (engine-runtime-<fork commit>-<platform>), and the host each is built for.
+PLATFORMS = {"linux": "x86_64-unknown-linux-gnu", "macos": "aarch64-apple-darwin"}
+
+
+def pin_host(pin):
+    """The host a pin's runtime is built for, from its release tag's platform."""
+    platform = pin.get("release_tag", "-linux").rsplit("-", 1)[-1]
+    if platform not in PLATFORMS:
+        raise ValueError("SAIL0944: unknown engine runtime platform: " + platform)
+    return PLATFORMS[platform]
+
+
 def validate(build, pin):
     manifest = json.loads((build / "sail-build.json").read_text())
     # The pin records the runtime's Verus Cargo features (none today, like the
     # stock release); projects needing another fall back to stock (SAIL3124).
-    expected = ["sail-fork:" + pin["fork_commit"], "host:x86_64-unknown-linux-gnu",
+    expected = ["sail-fork:" + pin["fork_commit"], "host:" + pin_host(pin),
                 "source-lock:" + pin["source_lock_sha256"], VSTD_BUILD]
     tags = [feature for feature in manifest["features"] if ":" in feature]
     if (manifest["schema_version"] != 1 or manifest["commit"] != pin["commit"]
@@ -108,7 +121,8 @@ def pack(args):
            "rust_toolchain": manifest["rust_toolchain"], "z3_sha256": manifest["z3_sha256"],
            "fork_commit": fork_commit(),
            "source_lock_sha256": sha(REPO / "engine/verus/Cargo.lock"),
-           "verus_features": verus_features(manifest["features"])}
+           "verus_features": verus_features(manifest["features"]),
+           "release_tag": "engine-runtime-" + fork_commit()[:8] + "-" + getattr(args, "platform", "linux")}
     validate(build, pin)
     args.archive.parent.mkdir(parents=True, exist_ok=True)
     # Canonical ownership, ordering and timestamps make repeated packing stable.
@@ -127,8 +141,8 @@ def pack(args):
     pin["archive_sha256"] = sha(args.archive)
     # Published as this asset of the fork's release for the commit
     # (engine/verus/README.md, "Publishing a runtime").
-    pin.update(repo=fork_repo(), release_tag="engine-runtime-" + pin["fork_commit"][:8] + "-linux",
-               asset=args.archive.name)
+    # The release tag (set above) names the commit and platform.
+    pin.update(repo=fork_repo(), release_tag=pin.pop("release_tag"), asset=args.archive.name)
     args.pin.write_text(json.dumps(pin, indent=2) + "\n")
     print(json.dumps(pin, indent=2))
 
@@ -221,6 +235,7 @@ def main():
     package.add_argument("--build", type=Path, required=True)
     package.add_argument("--archive", type=Path, required=True)
     package.add_argument("--pin", type=Path, required=True)
+    package.add_argument("--platform", choices=sorted(PLATFORMS), default="linux")
     download = commands.add_parser("fetch")
     download.add_argument("--pin", type=Path, required=True)
     download.add_argument("--cache", type=Path, required=True)

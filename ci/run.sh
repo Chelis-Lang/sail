@@ -29,6 +29,9 @@
 #                        non-solver tests
 #   bench WORKLOAD TIER ROUNDS
 #                        a sail-bench workload (cold|warm|edit)
+#   release              local-only: stage the Linux release tree (binaries
+#                        and the prebuilt engine) in $SAIL_RELEASE_OUT for
+#                        scripts/release.sh
 #   build-verus-source [--force] [--keep-intermediates]
 #                        a source build of the pinned Verus commit with its
 #                        rust_verify_test binaries, under the cache
@@ -53,7 +56,7 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|host|bench|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
@@ -280,6 +283,14 @@ RS
       edit) ./target/release/sail-bench edit --rounds "$rounds" --name "$name" ;;
       *) echo "unknown workload $workload" >&2; exit 2 ;;
     esac
+    ;;
+
+  release)
+    # The Linux release tree (scripts/release.sh): release binaries and the
+    # image's validated prebuilt engine, staged in $SAIL_RELEASE_OUT.
+    local_only release "$@"
+    release_build
+    bash scripts/release.sh stage "${SAIL_RELEASE_OUT:?release needs SAIL_RELEASE_OUT}" "${SAIL_ENGINE_BUILD:?release needs the validated prebuilt engine}"
     ;;
 
   build-verus-source)

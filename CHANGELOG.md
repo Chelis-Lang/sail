@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Release archives (`sail-VERSION-TARGET.tar.gz`, for
+  `x86_64-unknown-linux-gnu` and `aarch64-apple-darwin`) bundle the repair
+  engine runtime under `engine/<variant>`, and `sail` now finds it beside its
+  own `bin/` directory when no engine is installed in the cache, with the same
+  identity and artifact validation. `scripts/release.sh VERSION` builds both
+  archives and a draft GitHub release ([releasing](docs/releasing.md)). The
+  macOS engine runtime is pinned in `engine/verus/artifact-macos.json` and
+  published on the fork as `engine-runtime-13a1176c-macos`
+  ([qualification](docs/validation/macos-engine.md)).
+
 - MCP replies are agent-sized. `verify`, `verification_result`,
   `save_baseline` and `get_baseline` now return, by default, a failures-first
   summary and the requested targets' failures, errors and counts; dependency

@@ -13,3 +13,5 @@ __pycache__/
 
 # Raw benchmark sidecars stay outside git (ADR 0038).
 bench/results/*.raw.json
+/dist
+/release-out

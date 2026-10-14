@@ -211,3 +211,18 @@ committed pin is stale and the CI image build refuses it.
 
 This selection is on the in-progress M7 branch. The prerelease artifact is a
 runtime prerequisite, not M7 product acceptance.
+
+## Release archives
+
+Sail's release archives bundle the engine runtime under
+`engine/<variant>/` beside `bin/sail`, and `sail` uses it when no engine is
+installed in the cache, after the same validation
+([releasing](../../docs/releasing.md)). The Linux archive carries the pinned
+artifact above. The macOS archive carries the runtime pinned in
+[artifact-macos.json](artifact-macos.json) (same schema; host
+`aarch64-apple-darwin`, from the release tag's `-macos` suffix), built on
+Apple silicon from the same fork commit, published as the fork's prerelease
+`engine-runtime-<short sha>-macos` (pack with `--platform macos`; otherwise
+the steps above apply), and qualified separately in the
+[macOS engine record](../../docs/validation/macos-engine.md). CI never builds,
+installs or runs the macOS runtime.
