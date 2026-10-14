@@ -1066,7 +1066,7 @@ mod tests {
         assert!(
             shaped
                 .text
-                .contains("95 repeated friendly function name(s) were compared as groups")
+                .contains("95 repeated name(s), shared by 190 functions")
         );
         assert_eq!(shaped.structured["value"]["unchanged_total"], 3031);
         let size = serde_json::to_string(&shaped.structured).map_or(usize::MAX, |s| s.len())

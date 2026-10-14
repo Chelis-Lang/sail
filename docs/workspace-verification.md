@@ -165,8 +165,14 @@ generates proof edits.
   `unchanged`, `regressed`, `became_unknown`, `recovered`, `added`, `removed`,
   `not_observed`, `incomparable` or `changed`. Transitions are labelled as
   regressions only when the verification context and the requested scopes
-  agree. A partial scope reports `not_observed`, never `removed`. Repeated
-  friendly function names are `incomparable` (VI-0010).
+  agree. A partial scope reports `not_observed`, never `removed`. A function
+  that passed by Verus's totals (reported `unknown`, not attributed one by
+  one) is classified as verified, with its reported verdict kept and flagged.
+  A repeated friendly function name (VI-0010) is compared as one group only
+  when every function under it has the same result on each side and the
+  counts match; otherwise it is `incomparable`. See
+  [MCP comparisons](mcp.md#comparisons). Without `--output json`, the
+  command prints counts by change, the changed functions and the notes.
 
 The job endpoint name includes its proof-contract version
 (`jobs-v1-proof-v1-*.sock`), so a client never reaches an older job service

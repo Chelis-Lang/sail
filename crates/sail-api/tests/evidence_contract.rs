@@ -242,12 +242,9 @@ fn repeated_friendly_names_compare_as_groups_only_when_every_instance_agrees()
     assert_eq!(group.before, Some(VerdictName::Unknown));
     assert_eq!(group.after, Some(VerdictName::Verified));
     assert_eq!(group.obligations, []);
-    assert!(
-        compared
-            .notes
-            .iter()
-            .any(|n| n.contains("1 repeated friendly function name(s) were compared as groups"))
-    );
+    assert!(compared.notes.iter().any(|n| n.contains(
+        "1 repeated name(s), shared by 2 functions (VI-0010), were each compared as a group"
+    )));
     assert!(
         !compared
             .notes

@@ -37,6 +37,21 @@ semantic versioning once the API is published.
   receipt, and any doubt still rebuilds
   ([ADR 0036](docs/decisions/0036-managed-compiler-artifact-families.md#amendment-2026-10-14-l41-compile-errors-confined-to-the-selected-crate)).
 
+- Comparisons after a fix report the fix. `sail compare` and MCP
+  `compare_verification` classify a function that passed by Verus's totals
+  (reported `unknown`, not attributed one by one) as verified, on either
+  side. A repeated friendly name (VI-0010) is compared as one group when both
+  sides hold the same number of functions under it and every one has the same
+  result on each side; otherwise it stays `incomparable`. On vest, fixing the
+  one failing function against a baseline now reads `1 recovered, 3014
+  unchanged` in a 2.2 KB MCP reply, where it read `95 incomparable, 2920
+  recovered` in 1.26 MB. Verdicts are unchanged: each difference keeps the
+  reported `before`/`after` verdicts and flags the totals with
+  `before_passed_by_verus_totals`/`after_passed_by_verus_totals`; notes say
+  how many functions and names this covers. `sail compare` without
+  `--output json` now prints counts by change, the changed functions and the
+  notes, instead of one line per function.
+
 - A performance page ([performance](docs/performance.md)) states where Sail
   is faster than plain `cargo verus verify` and where it is not, each claim
   measured on Linux and macOS. `scripts/perf-loops.sh` (edit loops, unchanged

@@ -342,6 +342,8 @@ struct Tally {
     by_totals: usize,
     /// Repeated friendly names compared as uniform groups.
     repeated_compared: usize,
+    /// Functions holding those names (the larger side).
+    repeated_functions: usize,
     /// Repeated friendly names left incomparable.
     repeated_incomparable: usize,
 }
@@ -373,6 +375,7 @@ pub fn compare(before: &ProjectResult, after: &ProjectResult) -> Comparison {
             let resolved = resolve(l, r);
             if repeated && resolved.is_some() {
                 tally.repeated_compared += 1;
+                tally.repeated_functions += l.len().max(r.len());
             } else if repeated {
                 tally.repeated_incomparable += 1;
             }
@@ -427,8 +430,8 @@ fn comparison_notes(compatible: bool, tally: &Tally) -> Vec<String> {
     }
     if tally.repeated_compared > 0 {
         notes.push(format!(
-            "{} repeated friendly function name(s) were compared as groups: every function sharing the name has the same result on each side (VI-0010).",
-            tally.repeated_compared
+            "Entries are friendly function names: {} repeated name(s), shared by {} functions (VI-0010), were each compared as a group, since every function sharing the name has the same result on each side.",
+            tally.repeated_compared, tally.repeated_functions
         ));
     }
     if tally.repeated_incomparable > 0 {
