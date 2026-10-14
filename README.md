@@ -215,3 +215,12 @@ Z3 cache only answers Z3 queries.
 
 Project decisions are indexed in [docs/decisions/README.md](docs/decisions/README.md);
 the completion evidence is in [the initial-product report](docs/reports/2026-10-09-initial-product.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Contributing
+
+Sail does not accept outside pull requests at this time; issues are welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md).

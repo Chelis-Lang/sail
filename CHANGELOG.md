@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Sail is licensed under the MIT License (`LICENSE`). `CONTRIBUTING.md`
+  states the contribution policy: issues are welcome; pull requests are
+  limited to collaborators for now.
+
 - `sail verify --engine interactive` and `sail repair-check` no longer
   return the engine's ``Please cargo build with `--features singular` ``
   error for `by(integer_ring)` lemmas. The engine is built without that
