@@ -29,10 +29,23 @@ A run that ends in ordinary proof errors keeps vstd and the other compiled
 dependencies, as plain `cargo verus verify` does, so the passing run after a
 fix verifies only the edited crate. This needs a Current, unfocused run in
 which every selected target's verifier finished normally with a complete
-result. A compiler error, a crash, a partial (`--verify-function`) run or
-uncertain inputs still withdraw the dependencies' build-script records, and
-the next run rebuilds those packages. A failed proof never produces a receipt,
-so the failing crate itself is always verified again.
+result.
+
+A run that ends in a compile error in a selected crate keeps them too, again
+as plain Cargo does, when the run is Current and Cargo's own records show
+that the failure is confined to that crate: Cargo started every selected
+crate (so each of its dependencies had completed), every dependency verified
+in that run succeeded, the failing crate's compiler stopped with an ordinary
+error exit, Cargo finished the build, and Cargo ran (or found fresh) every
+build script whose record is kept. On vest, a compile error then costs about
+7 s instead of 34 s, and the fixed run 25 s instead of 52 s (plain
+`cargo verus verify`: 6 s and 36 s; Sail's solver cache makes the fix faster).
+
+A compile error in a dependency, a crash, an interrupted build, a partial
+(`--verify-function`) run or uncertain inputs still withdraw the dependencies'
+build-script records, and the next run rebuilds those packages. A failed proof
+or compile error never produces a receipt, so the failing crate itself is
+always verified again.
 
 ## Concurrent runs
 

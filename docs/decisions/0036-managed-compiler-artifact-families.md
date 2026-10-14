@@ -344,3 +344,51 @@ the path is no longer the one it holds, and takes the new one.
 **Consequences.** Pruning costs a cold run; a Current job result whose
 record was removed reads back Unknown. Older Sail versions that never take
 the workspace lock are protected only by their family lock.
+
+## Amendment (2026-10-14, L41): compile errors confined to the selected crate
+
+**Why.** A run that ended in a Rust compile error did not qualify for the
+negative branch (2026-10-13 amendment): the driver's document reports
+`encountered-error` with zero proof errors, which is not a completed
+verification. The run consumed the generation, and every following managed
+run (`sail verify --incremental`, MCP `verify`, `sail watch`) cleaned every
+build-script package and verified vstd again, until a run succeeded. Plain
+`cargo verus verify` keeps vstd fresh. On a native c7i.8xlarge, stock, one
+round each:
+
+| Run | vest before | vest after | vest plain | demo before | demo after | demo plain |
+|---|---:|---:|---:|---:|---:|---:|
+| first compile error | 6.9 s | 6.9 s | 5.7 s | 0.8 s | 0.8 s | 0.6 s |
+| second compile error | 33.9 s | 6.7 s | 5.7 s | 28.6 s | 0.8 s | 0.6 s |
+| fixed | 51.9 s | 25.0 s | 36.3 s | 28.7 s | 0.9 s | 0.7 s |
+
+**Decision.** A Current, unfocused run with complete script coverage and
+Cargo exit 101 also retains ordinary dependency contracts when Cargo's own
+records confine the failure to selected crates:
+
+- every recorded driver start has its completion, and every selected target
+  has exactly one; Cargo starts a unit only after the units it depends on
+  have completed, so every dependency and build script of the selection
+  finished;
+- every dependency driver of this run completed successfully;
+- each selected driver either completed its verification or exited 1 with no
+  Sail error and no report invariant violation, and at least one did not
+  complete;
+- Cargo's output holds exactly one `build-finished` record, unsuccessful, so
+  no unit was interrupted; and
+- every build-script output contract recorded for the context has a
+  `build-script-executed` record (fresh or not) for the same package and
+  output file in this run.
+
+Any other shape keeps the original cleaning. The failing crate gets no
+receipt, the result's Currentness keeps its ADR 0041 meaning, and the next run
+still revalidates every retained contract before use. Stock and source-engine
+runs take the same branch. A compile error in a dependency, a crash exit, an
+unstarted selected target, partial scope and uncertain inputs refuse it.
+
+**Consequences.** After a compile error in the edited crate, managed runs keep
+vstd and the other dependencies, as plain Cargo does. On an Apple M3 under
+load 21–40, the demo shows the same pattern: compile errors 0.6–0.7 s, the
+fixed run 0.7 s, vstd verified only by the first run. Every run above read
+Current; compile-error runs started one driver and kept no receipt for the
+failing crate. Measured by L41.
