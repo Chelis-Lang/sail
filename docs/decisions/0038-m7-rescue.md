@@ -5,7 +5,7 @@
 
 ## Context
 
-The owner stopped the previous M7 agent and handed M7 to a rescue lead with a broad mandate. The lead may resolve the remaining open questions; this ADR records those resolutions. [The rescue review](../reports/2026-10-12-m7-rescue-review.md) found three problems:
+The owner stopped the previous M7 agent and handed M7 to a rescue lead with a broad mandate. The lead may resolve the remaining open questions; this ADR records those resolutions. The rescue review (tag `archive/rescue-m7-98f6292`) found three problems:
 
 - default-mode correctness intact, but no accepted M7 speed sample, and every paired sample slower than M6;
 - velocity consumed by evidence bookkeeping, by x86 emulation on an Apple M3, and by benchmarks that aborted with zero samples;
@@ -38,7 +38,7 @@ The owner also set the direction beyond M7: rank work by agent authoring-loop la
    6. more backends and certificates;
    7. other verifiers.
 
-   Warm solver sessions were measured at about 0.1 s per edit cycle and are deferred until after M8 (ADR 0040). A Rust pre-solver for the easy fragment is not on this list either. The L6 spike ([report](../reports/rescue/l6-presolver-coverage.md)) found that it covers 8.2% of edit-loop cache misses by count and 0.1% by solve time, and that no edit cycle was fully covered, so it would not shorten an agent's time to a verdict. About 59 ms of a 72 ms median miss is Z3 start-up and prefix replay, which the shim pays once per missed bucket, mostly off the critical path. The pre-solver is reconsidered only if arithmetic-heavy projects measure differently.
+   Warm solver sessions were measured at about 0.1 s per edit cycle and are deferred until after M8 (ADR 0040). A Rust pre-solver for the easy fragment is not on this list either. The L6 spike (rescue lane report, tag `archive/rescue-m7-98f6292`) found that it covers 8.2% of edit-loop cache misses by count and 0.1% by solve time, and that no edit cycle was fully covered, so it would not shorten an agent's time to a verdict. About 59 ms of a 72 ms median miss is Z3 start-up and prefix replay, which the shim pays once per missed bucket, mostly off the critical path. The pre-solver is reconsidered only if arithmetic-heavy projects measure differently.
 
 ## Consequences
 

@@ -22,7 +22,7 @@ frame cache's memory budget.
 
 ## Outcome
 
-On a native host (rescue [L5](../reports/rescue/l5-readers.md)) the complete
+On a native host (L5 rescue lane report, tag `archive/rescue-m7-98f6292`) the complete
 read and hash costs about 1.6 ms of a 25-45 ms read, and 86 of 88 sampled
 guarded checks fell back to it anyway, because owners rarely fit the shared
 budget. The reader gate passes natively without the owner. Rescue L14 removed

@@ -45,4 +45,4 @@ A run takes a few minutes on a `c7i.4xlarge`; most of it is setup.
 On the native host a Status or Result spends about 18-24 ms p50 in freshness
 validation, mostly the kernel read-lease barrier. The output seal costs about
 1.6 ms and socket output of a 4 MB frame about 1.7 ms
-([L5 report](reports/rescue/l5-readers.md)).
+(L5 rescue lane report, tag `archive/rescue-m7-98f6292`).

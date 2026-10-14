@@ -23,7 +23,7 @@
   engine runs of `traits.rs` on Linux x86-64, the fresh and confirming
   lowerings produced eight or nine distinct solver streams, and most restored
   lowerings were byte-identical to a fresh lowering from the same ten runs
-  (`docs/reports/rescue/l4b-engine-parity.md`).
+  (L4b rescue lane report, tag `archive/rescue-m7-98f6292`).
 
 The description below is written so it could be filed upstream unchanged.
 
@@ -74,7 +74,7 @@ under `cargo verus`, where Cargo builds vstd and the macro crates from the
 project's own source (compare VI-0001). In rescue L21 (2026-10-13), 10 direct
 runs of each fast-tier unit on the fork, `traits.rs` and `chapter-6-1.rs`
 included, each gave one SMT stream
-([L21 report](../reports/rescue/l21-determinism.md)).
+(L21 rescue lane report, tag `archive/rescue-m7-98f6292`).
 
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Default `sail verify` (stock Verus) keeps this nondeterminism; no workaround
