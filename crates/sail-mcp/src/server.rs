@@ -32,6 +32,12 @@ pub const LEGACY_VERSIONS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26",
 
 const VERSION_KEY: &str = "io.modelcontextprotocol/protocolVersion";
 
+/// Caching hints (revision 2026-07-28, "Caching") for `server/discover` and
+/// `tools/list`. Both are fixed for the life of the server process and the
+/// same for every caller, so they are `public`; legacy clients ignore them.
+const CACHE_TTL_MS: u64 = 300_000;
+const CACHE_SCOPE: &str = "public";
+
 const INSTRUCTIONS: &str = "sail verifies Verus crates with the same verdicts as `cargo verus verify`, serving unchanged solver work from a cache. After each edit, call `start_verification` and inspect `verification_status`/`verification_result`, or call blocking `verify` (optionally with `module` or `function`) for per-function verdicts; `provisional` and `unknown` are never `verified`. Use `counterexample` for the models behind a failure and `cached_result` to recall verdicts without re-running (it says whether sources changed since).";
 
 /// Every revision the server speaks.
@@ -145,9 +151,16 @@ impl Server {
                 "capabilities": capabilities(),
                 "_meta": {"io.modelcontextprotocol/serverInfo": server_info()},
                 "instructions": INSTRUCTIONS,
+                "ttlMs": CACHE_TTL_MS,
+                "cacheScope": CACHE_SCOPE,
             }),
             "ping" => json!({"resultType": "complete"}),
-            "tools/list" => json!({"resultType": "complete", "tools": tools::definitions()}),
+            "tools/list" => json!({
+                "resultType": "complete",
+                "tools": tools::definitions(),
+                "ttlMs": CACHE_TTL_MS,
+                "cacheScope": CACHE_SCOPE,
+            }),
             "tools/call" => return self.call(id, params),
             _ => {
                 send(
@@ -483,6 +496,34 @@ mod tests {
         let e = by_id(&r, 2);
         assert_eq!(e["error"]["code"], jsonrpc::UNSUPPORTED_PROTOCOL_VERSION);
         assert_eq!(e["error"]["data"]["requested"], "1900-01-01");
+    }
+
+    /// Claude Code 2.1.299's opening requests, captured verbatim: it probes
+    /// with `server/discover` on 2026-07-28, then lists tools, and rejects
+    /// list results without the revision's caching hints.
+    #[test]
+    fn claude_code_listing_transcript() {
+        let r = exchange(include_str!("../fixtures/claude-code-2.1.299-list.jsonl"));
+        assert_eq!(r.len(), 2, "{r:?}");
+        let discover = r
+            .iter()
+            .find(|m| m["id"] == "server-discover-probe-1")
+            .cloned()
+            .unwrap_or_default();
+        let list = by_id(&r, 0);
+        for result in [&discover["result"], &list["result"]] {
+            assert_eq!(result["resultType"], "complete", "{result}");
+            assert!(result["ttlMs"].as_u64().is_some(), "{result}");
+            assert!(
+                result["cacheScope"] == "public" || result["cacheScope"] == "private",
+                "{result}"
+            );
+        }
+        assert!(
+            list["result"]["tools"]
+                .as_array()
+                .is_some_and(|t| !t.is_empty())
+        );
     }
 
     #[test]
