@@ -196,6 +196,16 @@ fn interrupted_records_are_not_resumed_or_presented_as_completed() {
     let _ = std::fs::remove_dir_all(root);
 }
 
+fn listed_currentness(client: &Client, id: &str) -> Option<sail_api::jobs::Currentness> {
+    let Ok(Response::List(listed)) = client.call(&Request::List { project_dir: None }) else {
+        unreachable!("job list")
+    };
+    listed
+        .iter()
+        .find(|listed| listed.id == id)
+        .map(|listed| listed.currentness)
+}
+
 #[test]
 fn sealed_status_matches_full_result_and_refuses_restored_metadata_tampering() {
     use sail_api::jobs::Currentness;
@@ -217,6 +227,8 @@ fn sealed_status_matches_full_result_and_refuses_restored_metadata_tampering() {
         let job = submit(&client, submission(&root, "seal"));
         wait(&client, &job.id, |state| state == Lifecycle::Completed);
         assert_eq!(status(&client, &job.id).currentness, expected);
+        // `jobs list` shows the same currentness projection as `jobs status`.
+        assert_eq!(listed_currentness(&client, &job.id), Some(expected));
         let Ok(Response::Result(document)) = client.call(&Request::Result { id: job.id.clone() })
         else {
             unreachable!("completed result")

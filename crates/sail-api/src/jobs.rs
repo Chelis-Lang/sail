@@ -320,20 +320,80 @@ pub fn cache_directory() -> io::Result<PathBuf> {
         })
 }
 
-/// Default cache-service endpoint for the current protocol.
+/// The longest Unix socket path, in bytes, this platform accepts
+/// (`sun_path` less its terminating NUL: 108 bytes on Linux, 104 on macOS
+/// and the BSDs).
+pub const MAX_SOCKET_PATH: usize = if cfg!(target_os = "linux") { 107 } else { 103 };
+
+/// Default cache-service endpoint for the current protocol:
+/// `<cache>/daemon-v<N>-workspace-v2-proof-v1.sock`.
+///
+/// When that path, or the job endpoint beside it, would exceed
+/// [`MAX_SOCKET_PATH`] (a deep `HOME` or a long `SAIL_CACHE_DIR`), the
+/// endpoint moves to a private per-cache directory `/tmp/sail-<hash>/`,
+/// where `<hash>` names the cache. That directory is created mode 0700 and
+/// used only when it is a real directory that no other user can access and
+/// this user can write; otherwise the long path is returned unchanged, and
+/// starting the daemon reports that it is too long.
 #[must_use]
 pub fn default_cache_socket(cache: &Path) -> PathBuf {
-    cache.join(format!(
+    let socket = cache.join(format!(
         "daemon-v{}-workspace-v2-proof-v1.sock",
         crate::protocol::PROTOCOL_VERSION
-    ))
+    ));
+    if socket_fits(&socket) {
+        return socket;
+    }
+    short_socket(&socket).unwrap_or(socket)
+}
+
+/// Whether both the cache endpoint and its job endpoint fit in `sun_path`.
+#[must_use]
+pub fn socket_fits(cache_socket: &Path) -> bool {
+    let absolute = std::path::absolute(cache_socket).unwrap_or_else(|_| cache_socket.to_owned());
+    absolute.as_os_str().len() <= MAX_SOCKET_PATH
+        && socket_path(cache_socket).as_os_str().len() <= MAX_SOCKET_PATH
+}
+
+#[cfg(unix)]
+fn short_socket(socket: &Path) -> Option<PathBuf> {
+    use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _};
+    let name = socket.file_name()?;
+    let digest = sail_key::sha256(endpoint_path(socket).as_os_str().as_encoded_bytes());
+    let hash = digest
+        .iter()
+        .take(8)
+        .fold(String::new(), |mut value, byte| {
+            let _ = write!(value, "{byte:02x}");
+            value
+        });
+    let directory = Path::new("/tmp").join(format!("sail-{hash}"));
+    // An existing directory is accepted only when it is private.
+    let _ = std::fs::DirBuilder::new().mode(0o700).create(&directory);
+    let metadata = std::fs::symlink_metadata(&directory).ok()?;
+    if !metadata.is_dir() || metadata.mode() & 0o077 != 0 {
+        return None;
+    }
+    // Only its owner can create a file in a 0700 directory, so this proves
+    // the directory is this user's and no other user's daemon can be there.
+    let probe = directory.join(format!(".probe-{}", std::process::id()));
+    std::fs::File::create(&probe).ok()?;
+    std::fs::remove_file(&probe).ok()?;
+    let short = directory.join(name);
+    socket_fits(&short).then_some(short)
+}
+
+#[cfg(not(unix))]
+fn short_socket(_socket: &Path) -> Option<PathBuf> {
+    None
 }
 
 /// Resolve a cache endpoint using the caller's working directory.
 /// Relative cache roots and explicit overrides belong to that caller.
 #[must_use]
 pub fn cache_socket(cache: &Path, explicit: Option<&Path>, cwd: &Path) -> PathBuf {
-    let socket = explicit.map_or_else(|| default_cache_socket(cache), Path::to_path_buf);
+    // Anchor a relative cache first, so the length check sees the caller's path.
+    let socket = explicit.map_or_else(|| default_cache_socket(&cwd.join(cache)), Path::to_path_buf);
     if socket.is_absolute() {
         socket
     } else {
@@ -505,7 +565,7 @@ mod tests {
         );
         assert_eq!(
             cache_socket(Path::new("cache"), None, a),
-            a.join(default_cache_socket(Path::new("cache")))
+            default_cache_socket(&a.join("cache"))
         );
     }
 
@@ -548,6 +608,45 @@ mod tests {
         drop(listener);
         let _ = std::fs::remove_dir_all(root);
     }
+    /// A deep cache directory (as under a long `HOME` or `SAIL_CACHE_DIR`)
+    /// gets a short, private, per-cache endpoint; a short one is unchanged.
+    #[cfg(unix)]
+    #[test]
+    fn long_cache_paths_get_a_short_private_socket() {
+        use std::os::unix::fs::MetadataExt as _;
+        let short = Path::new("/tmp/c");
+        assert_eq!(
+            default_cache_socket(short),
+            short.join(format!(
+                "daemon-v{}-workspace-v2-proof-v1.sock",
+                crate::protocol::PROTOCOL_VERSION
+            ))
+        );
+        let deep = Path::new("/nonexistent").join("d".repeat(120));
+        let socket = default_cache_socket(&deep);
+        assert!(socket.starts_with("/tmp"), "{}", socket.display());
+        assert!(socket_fits(&socket));
+        assert_eq!(socket, default_cache_socket(&deep), "deterministic");
+        let directory = socket.parent().unwrap_or(Path::new("/"));
+        let mode = std::fs::metadata(directory).map(|m| m.mode() & 0o777);
+        assert!(matches!(mode, Ok(0o700)), "{mode:?}");
+        assert_ne!(
+            socket,
+            default_cache_socket(&Path::new("/nonexistent").join("e".repeat(120))),
+            "one directory per cache"
+        );
+        // Another user's (here: a non-private) directory is never used.
+        assert!(
+            std::fs::set_permissions(
+                directory,
+                std::os::unix::fs::PermissionsExt::from_mode(0o755)
+            )
+            .is_ok()
+        );
+        assert!(!default_cache_socket(&deep).starts_with("/tmp"));
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
     #[test]
     fn versions_and_size_are_checked() {
         let mut bytes = Vec::new();
