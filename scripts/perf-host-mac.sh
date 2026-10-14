@@ -167,15 +167,28 @@ cmd_down() {
   require_lane "${1:-}"; local lane="$1"; host_of "$lane"
   if [ -n "${id:-}" ]; then
     aws_ec2 terminate-instances --instance-ids "$id" >/dev/null || true
-    aws_ec2 wait instance-terminated --instance-ids "$id" || true
-    echo "$lane: instance $id terminated at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "$lane: termination of $id requested at $(date -u +%Y-%m-%dT%H:%M:%SZ); a Mac can take 30 minutes or more" >&2
+    local i state=
+    for i in $(seq 1 120); do # up to an hour
+      state=$(aws_ec2 describe-instances --instance-ids "$id" \
+        --query 'Reservations[0].Instances[0].State.Name' --output text 2>/dev/null || true)
+      [ "$state" = terminated ] && break
+      sleep 30
+    done
+    if [ "$state" = terminated ]; then
+      echo "$lane: instance $id terminated by $(date -u +%Y-%m-%dT%H:%M:%SZ)"; id=
+    else
+      echo "$lane: instance $id is still $state; run: $0 down $lane again" >&2
+    fi
   fi
-  [ -z "${sg:-}" ] || aws_ec2 delete-security-group --group-id "$sg" >/dev/null || true
-  [ -z "${key:-}" ] || aws_ec2 delete-key-pair --key-name "$key" >/dev/null || true
-  rm -f "$state_dir/$lane".{pem,known_hosts}
-  # Keep the host record: the host stays allocated until the scheduled release.
-  printf 'host=%s\naz=%s\nallocated=%s\nrole=%s\nschedule_group=%s\nschedule=%s\nrelease_at=%s\n' \
-    "$host" "$az" "$allocated" "$role" "$schedule_group" "$schedule" "$release_at" >"$state_dir/$lane.env"
+  [ -z "${key:-}" ] || { aws_ec2 delete-key-pair --key-name "$key" >/dev/null && key=; } || true
+  [ -z "${sg:-}" ] || [ -n "${id:-}" ] || { aws_ec2 delete-security-group --group-id "$sg" >/dev/null && sg=; } || true
+  [ -n "${id:-}" ] || rm -f "$state_dir/$lane".{pem,known_hosts}
+  # Keep the host record (and anything not yet deleted): the host stays
+  # allocated until the scheduled release.
+  printf 'host=%s\naz=%s\nallocated=%s\nrole=%s\nschedule_group=%s\nschedule=%s\nrelease_at=%s\nid=%s\nsg=%s\nkey=%s\naddr=%s\n' \
+    "$host" "$az" "$allocated" "$role" "$schedule_group" "$schedule" "$release_at" \
+    "${id:-}" "${sg:-}" "${key:-}" "${addr:-}" >"$state_dir/$lane.env"
   cat <<EOF
 $lane: host $host stays allocated until its scheduled release at $release_at.
 After that, check and clean up:
