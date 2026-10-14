@@ -142,6 +142,11 @@ mod platform {
     }
 }
 
+// Without a synchronous per-name queue, absent configuration paths are checked
+// only by the run's start and end stamps (and every read). A file created and
+// removed within one run is not detected: an accepted limitation (ADR 0041 note
+// of 2026-10-14). Parent directory stamps are not used: Cargo's own journal in
+// its home directory changed them on every run.
 #[cfg(not(target_os = "linux"))]
 mod platform {
     use super::{InputSnapshot, Outcome, Path};

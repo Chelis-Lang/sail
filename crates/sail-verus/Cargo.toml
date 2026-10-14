@@ -18,9 +18,11 @@ sha2.workspace = true
 toml.workspace = true
 toml_edit.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+rustix.workspace = true
+
 [target.'cfg(target_os = "linux")'.dependencies]
 inotify.workspace = true
-rustix.workspace = true
 
 [lints]
 workspace = true

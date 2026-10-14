@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Managed runs on macOS (`sail verify --incremental`, MCP `verify`,
+  `sail watch`) now reuse proofs. Before, every run read Historical and
+  rebuilt the macro dependencies and verified vstd again, even with nothing
+  changed. On macOS, absent Cargo configuration files are now checked at the
+  start and end of a run, instead of through their parent directories, which
+  Cargo and other programs change all the time. The shared dependency
+  build-script records are now read on macOS too. A Cargo configuration file
+  created and deleted again within one macOS run is not detected; see
+  [freshness](docs/freshness.md#what-these-checks-do-not-catch).
+
 - Sail is licensed under the MIT License (`LICENSE`). `CONTRIBUTING.md`
   states the contribution policy: issues are welcome; pull requests are
   limited to collaborators for now.

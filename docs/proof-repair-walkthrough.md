@@ -55,8 +55,7 @@ M7 real-project performance remains unqualified. See
 `fetch-verus` installs artifacts but does not put `cargo-verus` on `PATH`:
 configure your ordinary stock launcher on `PATH` or through `SAIL_CARGO_VERUS`.
 Keep `sail` and `sail-z3` side by side. Linux freshness validation also needs Python 3; see the
-[freshness contract](freshness.md) for kernel observation, read leases and
-unsupported filesystem coverage. macOS uses a conservative fallback.
+[freshness contract](freshness.md) for what is checked on each platform.
 
 To import an existing build instead of compiling it:
 

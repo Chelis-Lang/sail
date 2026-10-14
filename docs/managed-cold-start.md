@@ -58,6 +58,20 @@ compiler again. Natively, these cut managed overhead around Verus on a
 HumanEval single-function edit from 3.03 s to 0.94 s (plain `cargo verus`:
 0.54 s), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
 
+Reuse works the same way on macOS. On an Apple M3 under other load:
+
+| Project | Unchanged | Edit | Failing edit | Fix |
+|---|---|---|---|---|
+| one-function demo (load 14–16) | 0.35–0.47 s | 0.76 s | 0.67 s | 0.69 s |
+| plain `cargo verus verify` | 0.17 s | 0.50 s | 0.43 s | 0.47 s |
+| Vest `-p vest_lib` (load 7–9) | 1.6 s | 30.8 s | 18.0 s | 20.3 s |
+| plain `cargo verus verify` (load 9–18) | 0.2–0.5 s | 28.0 s | 26.6 s | 31.6 s |
+
+Before this release every macOS run rebuilt the macro dependencies and
+verified vstd again (demo 22–72 s, Vest 38–44 s), whatever changed. See
+[freshness](freshness.md#what-these-checks-do-not-catch) for the macOS rule
+that changed.
+
 ## Optional setup timings
 
 With `SAIL_JOB_EVENTS` set to a file path, each managed run also writes an

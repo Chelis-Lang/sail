@@ -65,9 +65,11 @@ A run is Current only when all of the following hold:
   with its modification time put back, is still caught;
 - every installed toolchain file still has the device, inode, size and
   modification time it had when the run started;
-- on Linux, no absent Cargo configuration file was created during the run, even
-  briefly (an inotify watch on those paths tells such a file apart from Cargo's
-  own journal writes in its home directory);
+- every absent Cargo configuration file is still absent at the end. On Linux,
+  none was created during the run either, even briefly: an inotify watch on
+  those paths tells such a file apart from Cargo's own journal writes in its
+  home directory. macOS has no equivalent synchronous, per-name notification,
+  so there only the start and end of the run are checked (see below);
 - every unit Cargo compiled belongs to the selected targets' dependency closure,
   so the read-time record covers everything that was compiled;
 - the build-script and compiler declarations were complete.
@@ -84,17 +86,29 @@ scope.
 
 ### What these checks do not catch
 
-Two rare cases can change the bytes a run verified without changing any
-content digest or stamp, if the change is undone before the run ends:
+These cases can change what a run verified without changing any content
+digest or stamp, if the change is undone before the run ends:
 
 - a process writing through a writable shared memory mapping of a source file
   while that page is already dirty, which does not update the file's
   timestamps;
-- a bind mount placed over an input and removed again, which needs root.
+- a bind mount placed over an input and removed again, which needs root;
+- on macOS only, a Cargo configuration file (`.cargo/config.toml`,
+  `.cargo/config`, `rust-toolchain`, `rust-toolchain.toml` in the project's
+  directory or its parents, or `config.toml` in the Cargo home) that did not
+  exist when the run started, was created during the run and was deleted
+  again before it ended. Sail checks that such files are absent at the start
+  and end of the run and on every later read, but cannot see one that came and
+  went in between. If you create a Cargo configuration file temporarily while a
+  managed run is in progress, re-run after removing it.
 
 Earlier versions held kernel read leases and watched the mount generation to
-catch these, at a cost of about a quarter of a second on every run and a large
-amount of code. Ordinary editors, formatters and agents write files, which
+catch the first two, at a cost of about a quarter of a second on every run and
+a large amount of code. Earlier macOS versions caught the third by checking the
+nearest existing parent directory of each absent file, but Cargo writes its
+cache database in its home directory on every build, and `/tmp` and the home
+directory change constantly, so every macOS run read Historical and reused
+nothing. Ordinary editors, formatters and agents write files, which
 these checks do catch. If you run a tool that edits sources through shared
 mappings during verification, re-run after it finishes.
 
