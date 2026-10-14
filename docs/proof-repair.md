@@ -19,7 +19,15 @@ unfinished M7 acceptance.
 
 The optional `interactive` engine is a Sail-managed build of the pinned Verus
 source. It is selected explicitly. Stock verification retains its existing
-behavior. An unavailable or invalid engine returns a setup error (`SAIL3120`).
+behavior. An unavailable or invalid engine returns a setup error (`SAIL3120`)
+that says what is missing or mismatched and how to obtain the engine: on
+x86-64 Linux, download the prebuilt runtime from the public fork's releases
+(`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json
+--cache ~/.cache/sail` in a Sail checkout), build it with
+`cargo xtask build-verus-engine` (no credentials needed), or import a build
+with `sail engine install --from PATH`. `sail repair-check` checks this before it submits a job, so a missing
+engine leaves no failed job behind. A job whose worker stops on such an error
+records that error in its `SAIL0808` job error.
 An internal runtime failure retains its failed evidence and falls back to stock
 full verification; missing focused evidence cannot be fabricated or labelled a
 successful batch. A target whose engine driver crashed, produced malformed
@@ -112,7 +120,7 @@ stable code and prevents acceptance while retaining the independent full report.
 The full report appears once per document. A standalone repair document (the
 foreground `sail repair-check --output json`, and the repair worker's own
 output) carries it as `batch.full`. A job result (`sail jobs result`, MCP
-`get_verification_result`) carries it as the job's `result`, as for every other
+`verification_result`) carries it as the job's `result`, as for every other
 job, and its `repair.batch` omits `full`; `repair.accepted` is still recomputed
 from that `result`. Until the 2026-10-12 change, a job result repeated the full
 report in both places, doubling every reader's frame (4.9 MB instead of 2.5 MB

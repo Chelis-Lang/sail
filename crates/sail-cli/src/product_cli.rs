@@ -26,16 +26,43 @@ pub(super) fn call(client: &Client, request: &Request) -> Result<Response, Strin
     }
 }
 
+/// Checks that the engine is installed and valid before a job is submitted,
+/// so a missing engine reports `SAIL3120` instead of leaving an
+/// infrastructure-error job behind. The worker validates it again. With an
+/// explicitly selected service (`SAIL_DAEMON_SOCKET`), that service owns the
+/// worker, so the check is left to it; the job's error then carries the
+/// worker's `SAIL3120`.
+fn engine_available() -> Result<(), sail_verus::Error> {
+    if std::env::var_os("SAIL_DAEMON_SOCKET").is_some_and(|socket| !socket.is_empty()) {
+        return Ok(());
+    }
+    let cache = sail_verus::cache_dir()?;
+    let pins = sail_verus::toolchain::Pins::embedded()?;
+    sail_verus::engine::status(&cache, &pins).map(|_| ())
+}
+
+/// Parses, checks the engine and submits one repair job; on failure the
+/// error is already written and the exit code is returned.
+fn submit(
+    args: &[String],
+    err: &mut dyn Write,
+) -> Result<(Client, sail_api::jobs::Status, bool, bool), ExitCode> {
+    let (selection, args, background, json) =
+        arguments::repair(args).map_err(|message| error(&message, err))?;
+    if let Err(engine) = engine_available() {
+        let _ = writeln!(err, "{engine}");
+        return Err(ExitCode::from(2));
+    }
+    let client = crate::jobs::connect_or_start().map_err(|message| error(&message, err))?;
+    let status = crate::jobs::submit_mode(&client, args, Mode::Repair(selection))
+        .map_err(|message| error(&message, err))?;
+    Ok((client, status, background, json))
+}
+
 pub(crate) fn repair(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
-    let run = || -> Result<(Client, sail_api::jobs::Status, bool, bool), String> {
-        let (selection, args, background, json) = arguments::repair(args)?;
-        let client = crate::jobs::connect_or_start()?;
-        let status = crate::jobs::submit_mode(&client, args, Mode::Repair(selection))?;
-        Ok((client, status, background, json))
-    };
-    let (client, status, background, json) = match run() {
+    let (client, status, background, json) = match submit(args, err) {
         Ok(result) => result,
-        Err(message) => return error(&message, err),
+        Err(code) => return code,
     };
     if background {
         let text = if json {
@@ -184,7 +211,11 @@ pub(crate) fn worker(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
             );
             ExitCode::from(code)
         }
-        Err(message) => error(&message.to_string(), err),
+        // Engine errors carry their own stable code (for example SAIL3120).
+        Err(engine) => {
+            let _ = writeln!(err, "{engine}");
+            ExitCode::from(2)
+        }
     }
 }
 
