@@ -105,6 +105,7 @@ fn large_encoding_does_not_hold_output_and_old_lock_order_does() {
                 out: Arc::clone(&out),
                 inflight: Arc::default(),
                 workers: vec![],
+                legacy_structured: true,
             };
             server.request(&json!(2), "ping", &Map::new());
             assert_eq!(messages(&bytes)[0]["id"], 2);
@@ -152,6 +153,7 @@ fn cancellation_during_encoding_remains_registered_and_suppresses_output() {
         out: Arc::clone(&out),
         inflight: Arc::clone(&inflight),
         workers: vec![],
+        legacy_structured: true,
     };
     server.notification(
         "notifications/cancelled",
@@ -242,7 +244,7 @@ fn concurrent_responses_are_complete_independent_newline_frames() {
 }
 
 #[test]
-fn tool_results_carry_the_summary_and_the_complete_structured_payload() {
+fn tool_results_send_the_structured_payload_once_with_the_summary_first() {
     for structured in [Value::Null, json!({}), large(1)] {
         for is_error in [false, true] {
             let result = tools::ToolResult {
@@ -250,16 +252,29 @@ fn tool_results_carry_the_summary_and_the_complete_structured_payload() {
                 structured: structured.clone(),
                 is_error,
             };
+            let mut payload = structured.clone();
+            if let Some(map) = payload.as_object_mut() {
+                map.insert("summary".to_owned(), json!("summary λ\n"));
+            }
+            // 2025-06-18 and later: structuredContent, and only the summary as text.
             let expected = json!({
                 "resultType": "complete",
-                "content": [
-                    {"type": "text", "text": "summary λ\n"},
-                    {"type": "text", "text": serde_json::to_string(&structured).unwrap_or_default()},
-                ],
-                "structuredContent": structured,
+                "content": [{"type": "text", "text": "summary λ\n"}],
+                "structuredContent": payload,
                 "isError": is_error,
             });
-            assert_eq!(result.into_json(), expected);
+            assert_eq!(result.clone().into_json(true), expected);
+            // Earlier revisions: no structuredContent; the JSON is text, summary first.
+            let legacy = result.into_json(false);
+            assert!(legacy.get("structuredContent").is_none());
+            let text = legacy["content"][1]["text"].as_str().unwrap_or_default();
+            assert_eq!(
+                serde_json::from_str::<Value>(text).ok(),
+                Some(payload.clone())
+            );
+            if payload.is_object() {
+                assert!(text.starts_with(r#"{"summary":"summary λ\n""#), "{text}");
+            }
         }
     }
 }

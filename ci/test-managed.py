@@ -206,7 +206,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             request_id = 4
             while True:
                 result = exchange({"jsonrpc":"2.0", "id":request_id, "method":"tools/call", "params":{
-                    "name":"verification_result", "arguments":{"job_id":mcp_job}}})
+                    "name":"verification_result", "arguments":{"job_id":mcp_job, "detail":"targets"}}})
                 assert not result["isError"], result
                 value = result["structuredContent"]["value"]
                 if value["result"] is not None:
@@ -220,12 +220,20 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             # Blocking verify reuses the same Current receipt, as the CLI does,
             # and names the run that established the reused report.
             verified = exchange({"jsonrpc":"2.0", "id":request_id + 1, "method":"tools/call", "params":{
-                "name":"verify", "arguments":{"project_dir":str(project)}}})
+                "name":"verify", "arguments":{"project_dir":str(project), "detail":"targets"}}})
             assert not verified["isError"], verified
             blocking = verified["structuredContent"]["project_result"]
             assert blocking["execution"]["verifier_invocations"] == 0, blocking["execution"]
             assert next(t for t in blocking["targets"] if t["requested"])["report"] == target["report"]
             assert target["establishing_run"] in verified["content"][0]["text"], verified["content"][0]["text"]
+            # The default reply is agent-sized: requested targets only, JSON once.
+            compact = exchange({"jsonrpc":"2.0", "id":request_id + 2, "method":"tools/call", "params":{
+                "name":"verify", "arguments":{"project_dir":str(project)}}})
+            assert not compact["isError"], compact
+            assert len(compact["content"]) == 1, compact["content"]
+            summary = compact["structuredContent"]["summary"]
+            assert summary.startswith("VERIFIED: all "), summary
+            assert len(json.dumps(compact)) < 64_000, len(json.dumps(compact))
         finally:
             mcp.stdin.close()
             try:

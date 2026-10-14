@@ -94,6 +94,20 @@ struct Server {
     out: Out,
     inflight: Arc<Mutex<HashMap<String, Arc<Cancel>>>>,
     workers: Vec<std::thread::JoinHandle<()>>,
+    /// Whether the legacy revision this process negotiated has
+    /// `structuredContent` (2025-06-18 and later). Modern requests always do.
+    legacy_structured: bool,
+}
+
+/// The first legacy revision with `structuredContent` in tool results.
+const FIRST_STRUCTURED: &str = "2025-06-18";
+
+/// A `tools/call` response frame.
+#[derive(serde::Serialize)]
+struct CallFrame {
+    jsonrpc: &'static str,
+    id: Value,
+    result: tools::CallToolResult,
 }
 
 fn capabilities() -> Value {
@@ -138,6 +152,8 @@ impl Server {
                 let version = asked
                     .filter(|v| LEGACY_VERSIONS.contains(v))
                     .unwrap_or(LEGACY_VERSIONS[0]);
+                // ISO dates order as strings.
+                self.legacy_structured = version >= FIRST_STRUCTURED;
                 json!({
                     "protocolVersion": version,
                     "capabilities": capabilities(),
@@ -161,7 +177,10 @@ impl Server {
                 "ttlMs": CACHE_TTL_MS,
                 "cacheScope": CACHE_SCOPE,
             }),
-            "tools/call" => return self.call(id, params),
+            "tools/call" => {
+                let structured = self.legacy_structured || params.contains_key("_meta");
+                return self.call(id, params, structured);
+            }
             _ => {
                 send(
                     &self.out,
@@ -178,7 +197,7 @@ impl Server {
         send(&self.out, &jsonrpc::ok(id, &result));
     }
 
-    fn call(&mut self, id: &Value, params: &Map<String, Value>) {
+    fn call(&mut self, id: &Value, params: &Map<String, Value>, structured: bool) {
         let invalid = |message: &str| jsonrpc::error(id, jsonrpc::INVALID_PARAMS, message, None);
         let Some(name) = params.get("name").and_then(Value::as_str) else {
             send(&self.out, &invalid("tools/call needs a string `name`"));
@@ -221,16 +240,22 @@ impl Server {
             if cancel.is_cancelled() {
                 return;
             }
-            let message = match result {
-                Some(r) => jsonrpc::ok_owned(id.clone(), r.into_json()),
-                None => jsonrpc::error(
+            if let Some(r) = result {
+                let frame = CallFrame {
+                    jsonrpc: "2.0",
+                    id,
+                    result: r.into_result(structured),
+                };
+                send_checked(&out, &frame, || cancel.is_cancelled());
+            } else {
+                let message = jsonrpc::error(
                     &id,
                     jsonrpc::INVALID_PARAMS,
                     &format!("Unknown tool: {name}"),
                     None,
-                ),
-            };
-            send_checked(&out, &message, || cancel.is_cancelled());
+                );
+                send_checked(&out, &message, || cancel.is_cancelled());
+            }
         }));
         self.workers.retain(|w| !w.is_finished());
     }
@@ -273,6 +298,7 @@ fn serve_context(
         out: Arc::new(Mutex::new(Box::new(output))),
         inflight: Arc::new(Mutex::new(HashMap::new())),
         workers: Vec::new(),
+        legacy_structured: true,
     };
     let mut line = Vec::new();
     loop {
@@ -584,6 +610,28 @@ mod tests {
             by_id(&r, 4)["result"]["structuredContent"]["available"],
             false
         );
+    }
+
+    #[test]
+    fn json_is_sent_once_in_the_form_the_revision_supports() {
+        let call = r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"verify","arguments":{"modul":"x"}}}"#;
+        for (version, structured) in [("2025-06-18", true), ("2025-03-26", false)] {
+            let r = exchange(&format!(
+                "{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{{\"protocolVersion\":\"{version}\"}}}}\n{call}\n"
+            ));
+            let result = &by_id(&r, 2)["result"];
+            let content = result["content"].as_array().cloned().unwrap_or_default();
+            if structured {
+                assert_eq!(content.len(), 1, "{result}");
+                assert_eq!(result["structuredContent"]["summary"], content[0]["text"]);
+            } else {
+                assert!(result.get("structuredContent").is_none(), "{result}");
+                let json: Value =
+                    serde_json::from_str(content[1]["text"].as_str().unwrap_or_default())
+                        .unwrap_or_default();
+                assert_eq!(json["summary"], content[0]["text"]);
+            }
+        }
     }
 
     #[test]

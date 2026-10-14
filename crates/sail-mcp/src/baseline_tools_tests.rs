@@ -278,14 +278,23 @@ fn actual_baseline_tool_dispatch_retains_full_graph_and_refuses_bad_cli_reply()
         } else {
             json!({"name":"--json"})
         };
-        let args = args.as_object().ok_or("arguments")?;
+        let mut full = args.as_object().ok_or("arguments")?.clone();
+        full.insert("detail".to_owned(), json!("full"));
         let reply =
-            crate::tools::call(&context, tool, args, &Cancel::default()).ok_or("unknown tool")?;
+            crate::tools::call(&context, tool, &full, &Cancel::default()).ok_or("unknown tool")?;
         assert!(!reply.is_error);
         assert_eq!(reply.structured, expected);
+        let args = args.as_object().ok_or("arguments")?;
         let actual = std::fs::read_to_string(root.join("arguments"))?;
         let wanted = arguments(tool, args)?.0.join("\n") + "\n";
         assert_eq!(actual, wanted);
+        // By default the result is the agent view; the identity is unchanged.
+        let reply =
+            crate::tools::call(&context, tool, args, &Cancel::default()).ok_or("unknown tool")?;
+        assert!(!reply.is_error);
+        assert_eq!(reply.structured["value"]["name"], "--json");
+        assert_eq!(reply.structured["value"]["result"]["detail"], "summary");
+        assert!(reply.text.contains("baseline `--json`"), "{}", reply.text);
     }
     let list = json!({"response":"baselines","value":["--json","release"]});
     std::fs::write(root.join("response.json"), serde_json::to_vec(&list)?)?;
