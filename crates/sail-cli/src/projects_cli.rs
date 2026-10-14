@@ -8,7 +8,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const EXIT_USAGE: u8 = 2;
 
-const USAGE: &str = "USAGE:
+pub(crate) const USAGE: &str = "\
+List and remove managed workspaces' compiled targets, receipts and run records.
+
+USAGE:
     sail cache projects list [--json]
     sail cache projects prune (--all | [--older-than DAYS] [--missing]) [--dry-run] [--json]
 

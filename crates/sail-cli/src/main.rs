@@ -87,18 +87,19 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             ExitCode::from(EXIT_USAGE)
         }
         Some("-h" | "--help" | "help") => match args.get(1) {
-            Some(command) if command != "bench" => help::print(command, out).unwrap_or_else(|| {
-                let _ = writeln!(err, "error[SAIL0002]: unknown command `{command}`\n");
-                let _ = write!(err, "{}", usage());
-                ExitCode::from(EXIT_USAGE)
-            }),
+            Some(command) if command != "bench" => help::print(&help::topic(&args[1..]), out)
+                .unwrap_or_else(|| {
+                    let _ = writeln!(err, "error[SAIL0002]: unknown command `{command}`\n");
+                    let _ = write!(err, "{}", usage());
+                    ExitCode::from(EXIT_USAGE)
+                }),
             _ => {
                 let _ = write!(out, "{}", usage());
                 ExitCode::SUCCESS
             }
         },
         Some(command) if command != "bench" && help::requested(&args[1..]) => {
-            help::print(command, out).unwrap_or_else(|| {
+            help::print(&help::topic(args), out).unwrap_or_else(|| {
                 let _ = writeln!(err, "error[SAIL0002]: unknown command `{command}`\n");
                 let _ = write!(err, "{}", usage());
                 ExitCode::from(EXIT_USAGE)

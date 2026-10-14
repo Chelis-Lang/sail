@@ -71,6 +71,7 @@ fn lists_and_prunes_managed_workspaces_skipping_busy_ones() -> Result<(), Box<dy
         &["cache", "projects", "--help"][..],
         &["cache", "projects", "list", "--help"],
         &["cache", "projects", "prune", "-h"],
+        &["help", "cache", "projects"],
     ] {
         let help = sail(&cache, args);
         assert_eq!(help.status.code(), Some(0), "{args:?}");
