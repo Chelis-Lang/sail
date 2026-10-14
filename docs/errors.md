@@ -19,7 +19,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0001` | `sail serve` needs Unix sockets | Run the daemon on Linux or macOS |
 | `SAIL0002` | Usage error: unknown command, option or missing value | Fix the command line; `sail help` lists commands |
 | `SAIL0003` | Cannot start `sail-bench`, serve on the socket, or run the daemon. As a warning from `sail verify`: the cache daemon is unavailable, so verification runs without the cache (same results) | Check that `sail-bench` is installed next to `sail`, and that the socket path is free, writable and short enough (107 bytes on Linux, 103 on macOS; set `SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET` to a shorter path). Run `sail serve` to see the daemon's own error |
-| `SAIL0101` | `cargo-verus` not found | Put it on `PATH` or set `SAIL_CARGO_VERUS` |
+| `SAIL0101` | `cargo-verus` not found | Put it on `PATH` or set `SAIL_CARGO_VERUS`. To install the Verus release Sail is tested with, run `cargo xtask fetch-verus` in the Sail checkout and add the `PATH` line it prints (README, Install) |
 | `SAIL0102` | `sail-z3` not found next to `sail` | Reinstall so `sail` and `sail-z3` share a directory |
 | `SAIL0103` | Cannot find the Z3 that Verus uses | Set `VERUS_Z3_PATH` |
 | `SAIL0104` | Cannot create the fragility trace directory | Check free space and permissions in the temporary directory, or pass `--keep-traces DIR` |

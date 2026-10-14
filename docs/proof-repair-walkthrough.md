@@ -1,63 +1,56 @@
 # Repair workflow walkthrough
 
-This walkthrough covers the implemented experimental workflow. Current
-`387ba80` passes the [complete local gate, original solver suite, product
-installations and unchanged CLI/MCP repair fixture](validation/m7.md).
-The repair fixture completes in 90.588 seconds with 299 operations under the
-original 120/30/5 limits. Named-baseline feature smoke passed separately on
-`57a319d`; it supplies no transferred current-product reader or performance credit.
-The [b895 reader/retained pass](validation/m7.md)
-remains historical: both unchanged collectors preserve full Current graphs and
-p95 below 200 ms. The original 387 reader workflow fails Python Result p95 at
-436.008 ms against the unchanged 200 ms bound; all 200 samples retain Current
-evidence and the same continuing verifier. Rust and retained CLI/MCP checks
-are unattempted, so current reader acceptance remains unfinished. Real-project M7 speed and complete standard/cache
-coverage remain unfinished.
-See [the roadmap](ROADMAP.md),
-[known issues](known-issues.md) and [acceptance requirements](bench/m7-repair-acceptance.md).
-The commands and response fields were checked against the CLI/MCP implementation;
-this documentation change does not constitute a new proof run.
+This walkthrough takes one library through the experimental repair workflow:
+install the engine, check a repair, follow its events, detect a regression the
+focused phase cannot see, and do the same through MCP. Proof repair is
+experimental and stock verification stays the default. Its qualification
+status (gates, measured runs, open items) is in
+[M7 validation](validation/m7.md); limitations are in
+[known issues](known-issues.md).
 
-Initial dependency regeneration can still leave proof evidence Unknown.
-Optional [ordinary-build recovery](managed-cold-start.md) passes its local
-controls and changes only dependency-contract retention. It supplies
-no proof acceptance or guaranteed first-run success; unsupported inputs retain
-original cleaning and full validation.
+A first managed run can still leave proof evidence Unknown while dependencies
+are regenerated. [Managed runs](managed-cold-start.md) explains when that
+happens and what the optional ordinary-build recovery changes.
 
 ## Install and select the engine
 
-Start with the pinned Verus/Z3 toolchain and a project whose ordinary
-`cargo verus verify` command works. From the Sail checkout:
+Start with Sail installed, the pinned Verus on `PATH` (see the
+[README](../README.md#install)) and a project whose ordinary
+`cargo verus verify` works. Then, from the Sail source checkout, on x86-64
+Linux download the prebuilt runtime from the public fork's releases:
 
 ```sh
-cargo xtask fetch-verus
+python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
+  --cache ~/.cache/sail      # or your SAIL_CACHE_DIR
+sail engine status --output json
+```
+
+`fetch` downloads without credentials and checks the archive digest and every
+runtime file against the committed pin. Elsewhere, or to build it yourself:
+
+```sh
 cargo xtask build-verus-engine
-cargo build --release -p sail-cli -p sail-shim
-export PATH="$PWD/target/release:$PATH"
 sail engine status --output json
 ```
 
 `build-verus-engine` builds the commit of Sail's public Verus fork
 ([Chelis-Lang/verus](https://github.com/Chelis-Lang/verus)) pinned in
-`engine/verus/fork.toml`; it needs no GitHub credentials. If the engine is
-missing, `sail engine status` and `sail repair-check` stop with `SAIL3120`,
-name the file they expected, and say how to obtain the engine; no job is
-submitted.
-`engine status` reports that commit as `fork_commit`.
+`engine/verus/fork.toml`; it needs no GitHub credentials. It has been run on
+x86-64 Linux. `engine status` reports that commit as `fork_commit`. If the
+engine is missing, `sail engine status` and `sail repair-check` stop with
+`SAIL3120`, name the file they expected, and say how to obtain the engine; no
+job is submitted.
 
-The source-build command installs the selected engine in the same Sail cache
-that `engine status` inspects. Import and execution must use that cache too;
-relative `SAIL_CACHE_DIR` settings follow the invoking project directory.
-The selected runtime is experimental. It runs stock lowering with a focused
-phase in the same compiler callback and prepares no lowering for reuse. The [b895 installed repair and reader checks](validation/m7.md)
-pass; the [730 reader workflow](validation/m7.md) remains a separate historical pass.
-M7 real-project performance remains unqualified. See
-[engine qualification](../engine/verus/README.md) and the
+Both install the engine in the Sail cache that `engine status` inspects.
+Repairs must use that cache too; relative `SAIL_CACHE_DIR` settings
+follow the invoking project directory. The engine runs stock lowering with a
+focused phase in the same compiler callback, and prepares no lowering for
+reuse. See the [engine description](../engine/verus/README.md) and the
 [repair guide](proof-repair.md).
 
-`fetch-verus` installs artifacts but does not put `cargo-verus` on `PATH`:
-configure your ordinary stock launcher on `PATH` or through `SAIL_CARGO_VERUS`.
-Keep `sail` and `sail-z3` side by side. Linux freshness validation also needs Python 3; see the
+Keep `sail` and `sail-z3` side by side, and keep your ordinary
+`cargo-verus` on `PATH` (or name it with `SAIL_CARGO_VERUS`): repairs fall back
+to it. Linux freshness checks also need Python 3; see the
 [freshness contract](freshness.md) for what is checked on each platform.
 
 To import an existing build instead of compiling it:
@@ -66,13 +59,10 @@ To import an existing build instead of compiling it:
 sail engine install --from path/to/engine-build --output json
 ```
 
-Import validates the exact selected patch, pinned source/toolchains, manifest and
-artifact bytes. It retains a monitored link to that directory, so keep the build
-available. Unrecognized or conflicting builds produce `SAIL3120`; an arbitrary
-stock build is not an interactive engine, and only the selected patch is
-recognized.
-A successful install/status check establishes runtime identity, not the unfinished
-M7 acceptance claims. Keep the ordinary stock launcher available for fallback.
+Import validates the pinned fork commit, source and toolchains, the manifest
+and every artifact's bytes. It keeps a monitored link to that directory, so
+keep the build available. Unrecognized or conflicting builds produce
+`SAIL3120`; a stock Verus build is not an interactive engine.
 Before the first project submission, run `sail engine status --output json` from
 that project's directory with the same cache environment as the MCP launcher.
 This catches a different cache selection before a repair request.
