@@ -13,7 +13,7 @@ read. Status and results are in
 On a native x86-64 Linux host (ADR 0038), inside the CI image:
 
 1. `scripts/perf-host.sh up LANE`, `sync LANE`; build the image on the host
-   (`ci/local.sh` builds it on first use, and `run` supplies the engine token).
+   (`ci/local.sh` builds it on first use; no token is needed).
 2. In a container from the image, build the product and the probe:
    `cargo build --release --locked -p sail-cli -p sail-shim --bins --example job_read_bench`.
 3. Prepare the source-only HumanEval workspace: `human-eval-verus` at the

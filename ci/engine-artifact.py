@@ -22,6 +22,7 @@ REPO = Path(__file__).resolve().parent.parent
 REQUIRED = {"cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"}
 RUNTIME = PurePosixPath("verus/source/target-verus/release")
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024 * 1024
+RELEASE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 # vstd built like the stock release (sail_verus::engine::VSTD_BUILD).
 VSTD_BUILD = "vstd-build:cargo-verus-release"
 
@@ -32,6 +33,23 @@ def sha(path):
         for chunk in iter(lambda: source.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def fork_value(key):
+    text = (REPO / "engine/verus/fork.toml").read_text()
+    values = re.findall(r'^' + key + r'\s*=\s*"([^"]*)"\s*$', text, re.M)
+    if len(values) != 1:
+        raise ValueError("SAIL0944: engine/verus/fork.toml must pin one " + key)
+    return values[0]
+
+
+def fork_repo():
+    """The fork repository as `owner/name` (engine/verus/fork.toml); its public
+    GitHub releases carry the prebuilt engine runtimes."""
+    match = re.fullmatch(r"https://github\.com/([A-Za-z0-9-]+/[A-Za-z0-9._-]+)", fork_value("repo"))
+    if match is None:
+        raise ValueError("SAIL0944: engine/verus/fork.toml repo must be a GitHub repository URL")
+    return match.group(1)
 
 
 def fork_commit():
@@ -107,6 +125,10 @@ def pack(args):
                 with (build / name).open("rb") as source:
                     archive.addfile(info, source)
     pin["archive_sha256"] = sha(args.archive)
+    # Published as this asset of the fork's release for the commit
+    # (engine/verus/README.md, "Publishing a runtime").
+    pin.update(repo=fork_repo(), release_tag="engine-runtime-" + pin["fork_commit"][:8] + "-linux",
+               asset=args.archive.name)
     args.pin.write_text(json.dumps(pin, indent=2) + "\n")
     print(json.dumps(pin, indent=2))
 
@@ -155,24 +177,28 @@ def committed_pin(path):
     return pin
 
 
+def asset_url(pin):
+    """The public release asset on the fork repository (engine/verus/fork.toml).
+
+    The URL is built from the committed fork repository, never taken from the
+    pin, and the release tag must name the pinned fork commit. No credential is
+    needed or sent; the archive digest and runtime manifest are the trust root.
+    """
+    tag, asset = pin["release_tag"], pin["asset"]
+    if (pin["repo"] != fork_repo() or not RELEASE_NAME.fullmatch(tag) or not RELEASE_NAME.fullmatch(asset)
+            or not tag.startswith("engine-runtime-" + pin["fork_commit"][:8] + "-")):
+        raise ValueError("SAIL0944: engine release must be a fork release named for the pinned commit")
+    return "https://github.com/" + pin["repo"] + "/releases/download/" + tag + "/" + asset
+
+
 def fetch(args):
     pin = committed_pin(args.pin)
-    headers = {"Accept": "application/octet-stream", "User-Agent": "sail-engine-installer"}
-    token = os.environ.get("SAIL_ENGINE_ARTIFACT_TOKEN")
-    if token:
-        headers["Authorization"] = "Bearer " + token
-    # The credential is sent only to the fixed repository API, never to an
-    # arbitrary pin URL. urllib strips it on the signed asset redirect below.
-    url = "https://api.github.com/repos/Chelis-Lang/sail/releases/assets/" + str(int(pin["asset_id"]))
-    request = urllib.request.Request(url, headers=headers)
+    request = urllib.request.Request(asset_url(pin), headers={"User-Agent": "sail-engine-installer"})
     class Redirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, req, fp, code, msg, response_headers, newurl):
-            redirected = super().redirect_request(req, fp, code, msg, response_headers, newurl)
-            if redirected is not None:
-                if not newurl.startswith("https://"):
-                    raise ValueError("SAIL0944: insecure engine asset redirect")
-                redirected.remove_header("Authorization")
-            return redirected
+            if not newurl.startswith("https://"):
+                raise ValueError("SAIL0944: insecure engine asset redirect")
+            return super().redirect_request(req, fp, code, msg, response_headers, newurl)
     with tempfile.TemporaryDirectory(prefix="sail-engine-download-") as temporary:
         archive = Path(temporary) / "engine.tar.gz"
         with urllib.request.build_opener(Redirect).open(request, timeout=60) as source, archive.open("xb") as out:

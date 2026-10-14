@@ -90,6 +90,27 @@ class ArtifactTests(unittest.TestCase):
         committed = json.loads((artifact.REPO / "engine/verus/artifact-linux.json").read_text())
         self.assertEqual(committed["verus_features"], [])
 
+    def test_runtime_is_fetched_from_the_public_fork_release(self):
+        committed = artifact.committed_pin(artifact.REPO / "engine/verus/artifact-linux.json")
+        self.assertTrue(artifact.asset_url(committed).startswith(
+            "https://github.com/" + artifact.fork_repo() + "/releases/download/engine-runtime-"
+            + committed["fork_commit"][:8] + "-"))
+        for field, value in [("repo", "Chelis-Lang/sail"), ("repo", "attacker/verus"),
+                             ("release_tag", "engine-runtime-00000000-linux"),
+                             ("release_tag", "engine-runtime-" + committed["fork_commit"][:8] + "-linux/../x"),
+                             ("asset", "../engine.tar.gz"), ("asset", "a?b=c")]:
+            with self.assertRaises(ValueError, msg=field + "=" + value):
+                artifact.asset_url(dict(committed, **{field: value}))
+
+    def test_pack_names_the_fork_release_for_the_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, archive, pin, _ = self.fixture(Path(directory))
+            self.assertEqual(pin["repo"], artifact.fork_repo())
+            self.assertEqual(pin["asset"], archive.name)
+            self.assertEqual(artifact.asset_url(pin), "https://github.com/" + artifact.fork_repo()
+                             + "/releases/download/engine-runtime-" + artifact.fork_commit()[:8]
+                             + "-linux/" + archive.name)
+
 
 if __name__ == "__main__":
     unittest.main()
