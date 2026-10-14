@@ -158,7 +158,9 @@ mod tests {
 
     #[test]
     fn golden_report() {
-        let r = report(&Provenance::NoCache);
+        let mut r = report(&Provenance::NoCache);
+        // The golden must not change with every release version bump.
+        r.sail_version = "0.0.0".to_owned();
         let text = serde_json::to_string_pretty(&r).unwrap_or_default() + "\n";
         let golden = fixture("report.golden.json");
         if std::env::var_os("SAIL_BLESS").is_some() {
