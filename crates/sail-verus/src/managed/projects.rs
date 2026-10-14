@@ -3,7 +3,7 @@
 //! Each workspace directory holds that workspace's compiled Cargo targets
 //! (`compiler-artifacts/<family>/target/`), its proof contexts (receipts and
 //! run records) and the locks that serialise its runs. Every managed run holds
-//! [`WORKSPACE_LOCK`] shared from preparation until its records are read back,
+//! `workspace.lock` shared from preparation until its records are read back,
 //! so pruning, which takes it exclusively without waiting, never removes a
 //! directory that a run is using. A run that was waiting on the lock of a
 //! directory that has since been pruned notices the lock file is gone and takes
