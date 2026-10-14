@@ -83,3 +83,13 @@ Item 4's `rust_verify_test` is in place (ADR 0019):
 - **Singular** uses a separate optional source build and pinned local image
   (ADR 0021). Tagged integer-ring and allocator corpus entries are compared
   in pass-through, fill and warm modes; results are in `docs/compatibility.md`.
+
+## Update 2026-10-14: MIT licence
+
+The owner replaced item 1's dual licence with the MIT License, matching the
+public Chelis-Lang repositories, in preparation for the open-source release.
+`LICENSE` holds the MIT text ("Copyright (c) 2026 2nd Set AI Corp."), the
+workspace sets `license = "MIT"`, and `publish = false` stays until the owner
+decides to publish crates. `CONTRIBUTING.md` records the contribution policy:
+no outside pull requests for now, issues welcome, and private vulnerability
+reports through GitHub.
