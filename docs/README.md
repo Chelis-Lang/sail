@@ -31,6 +31,8 @@ The [roadmap](ROADMAP.md) tracks implementation and acceptance separately.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
+[Releasing](releasing.md) gives the release procedure, the archive names and
+layout, and how `sail` finds the bundled engine.
 [Managed runs](managed-cold-start.md) explains what the first managed run costs
 and when receipts are reused.
 The [reader acceptance guide](reader-acceptance.md) gives the native reader
@@ -44,9 +46,11 @@ from a native x86-64 Linux host (`scripts/perf-host.sh`).
 [M7 validation](validation/m7.md) gives each M7 acceptance gate's status, best
 evidence and indexed failed or interrupted attempts, and the
 [deep-tier record](validation/deep-tier.md) gives the release-time deep
-conformance, `rust_verify_test` and Singular runs, and the
+conformance, `rust_verify_test` and Singular runs, the
 [HTTP shared-cache record](validation/http-shared-cache.md) gives that
-feature's tests and integration evidence. Raw logs stay outside the
+feature's tests and integration evidence, and the
+[macOS engine record](validation/macos-engine.md) qualifies the engine runtime
+bundled in the macOS release archive. Raw logs stay outside the
 repository and are cited by SHA-256. Earlier per-run records and unselected
 engine candidates are preserved in the `archive/m7-contracts-f7103bf` tag.
 Each record applies to its stated source, runtime and environment. A later pass

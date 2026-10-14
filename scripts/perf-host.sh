@@ -102,6 +102,7 @@ cmd_sync() {
   # shellcheck disable=SC2046
   rsync -az --delete -e "ssh $(ssh_opts "$1")" \
     --exclude target/ --exclude .claude/ --exclude '__pycache__/' --exclude conformance-out/ \
+    --exclude /dist/ --exclude /release-out/ \
     "$(git rev-parse --show-toplevel)/" "ubuntu@$addr:sail/"
 }
 
