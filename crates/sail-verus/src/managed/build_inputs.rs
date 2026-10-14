@@ -190,6 +190,38 @@ pub(super) fn stale_environment(
     (clean.into_iter().collect(), extras, covered)
 }
 
+/// Whether Cargo executed, in this run, the build script of every output
+/// contract recorded at `path`: each has a `build-script-executed` record
+/// (fresh or not) in `artifacts` for the same package and output file.
+/// Unreadable records refuse.
+pub(super) fn executed(path: &Path, artifacts: &Path) -> bool {
+    let Some(records) = read::<Vec<BuildInput>>(path) else {
+        return false;
+    };
+    let Ok(text) = std::fs::read_to_string(artifacts) else {
+        return false;
+    };
+    let ran: BTreeSet<(String, PathBuf)> = text
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter(|value| value["reason"] == "build-script-executed")
+        .filter_map(|value| {
+            Some((
+                value["package_id"].as_str()?.to_owned(),
+                Path::new(value["out_dir"].as_str()?)
+                    .parent()?
+                    .join("output"),
+            ))
+        })
+        .collect();
+    records.iter().all(|record| {
+        record
+            .output
+            .as_ref()
+            .is_none_or(|(output, _)| ran.contains(&(record.package_id.clone(), output.clone())))
+    })
+}
+
 pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> {
     let mut previous = read::<Vec<BuildInput>>(path).unwrap_or_default();
     for value in std::fs::read_to_string(artifacts)
