@@ -46,7 +46,7 @@ feature (Singular), Sail falls back to stock Verus.
 - MCP replies run to 4–16 MB;
 - macOS never reuses work on the managed path;
 - installing Verus takes about seven undocumented steps;
-- the repository and the repair engine are private.
+- the repository is private, and the repair engine needed private access (the fork is now public).
 
 ## Opportunities, ranked by user value
 
@@ -74,13 +74,19 @@ These block the core use case or mislead the user. None of them needs research.
 | B3 | Disk cleanup for managed targets (1.7–2.7 GB after a few projects): `sail cache projects list\|prune`. | Sail doesn't quietly eat disks | S |
 | B4 | Keep receipts for more than the latest revision, so reverting reuses work. | Common undo/redo agent pattern is instant | S |
 
-### C. Decide, don't build
+### C. Decisions (owner, 2026-10-14)
 
-| # | Decision | Recommendation |
-|---|---|---|
-| C1 | How is Sail distributed? The repository is private, so nobody outside can install it. | Decide public source or prebuilt binaries before any adoption push. Everything in A and B assumes users can install it. |
-| C2 | The repair engine's future. It gives the M7 repair speedup, but it needs a private fork and a Linux-only private artifact. | If Sail ships, publish prebuilt engine runtimes; MIT permits that with the private fork kept private. If not, label it as an internal feature, move it out of the README's headline, and stop extending it. |
-| C3 | Run default `sail verify` on the fork for deterministic output (pending since 2026-10-12). | Not now. Fork determinism mainly helps cache hit rates, and B1 and A4 are bigger wins. Revisit once C1 and C2 are settled. |
+- **Distribution.** Sail stays private for now. The owner will review the work
+  internally and then prepare an open-source release. Users will eventually
+  download macOS and Linux binaries from GitHub releases. A5's install docs
+  should therefore target release binaries, with source builds as the
+  contributor path.
+- **Repair engine.** It ships with Sail. Release binaries include prebuilt
+  engine runtimes for Linux and macOS.
+- **Verus fork.** `Chelis-Lang/verus` is now public, so building the engine no
+  longer needs organisation access.
+- **Running default `sail verify` on the fork** (pending since 2026-10-12): not
+  now. B1 and A4 are bigger wins. Revisit with the release.
 
 ### D. Defer until there are users asking
 
@@ -99,8 +105,8 @@ These block the core use case or mislead the user. None of them needs research.
 
 ## Proposed sequence
 
-1. Settle C1 and C2, since they change how A5 is written.
-2. Ship A1–A6 as small PRs, with A1, A3 and A6 first because they are cheap. Then
+1. Ship A1–A6 as small PRs, with A1, A3 and A6 first because they are cheap. Then
    repeat the walkthrough on Claude Code and a clean Mac.
+2. Add a release workflow that builds macOS and Linux binaries of Sail and the engine runtime as GitHub release assets (kept private until the open-source release).
 3. Then B1–B4, judged against the repeated walkthrough.
 4. Revisit section D only with feedback from real users.
