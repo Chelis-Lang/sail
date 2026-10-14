@@ -108,30 +108,81 @@ impl ToolResult {
         )
     }
 
-    /// The MCP `CallToolResult`: the summary and the structured result as
-    /// text (for clients that ignore `structuredContent`), plus
-    /// `structuredContent`. Consumes this result, so the payload is moved.
+    /// The MCP `CallToolResult`, sending the structured result once.
+    ///
+    /// With `structured` (revision 2025-06-18 and later), it is
+    /// `structuredContent`, and the one text block is the summary. Clients of
+    /// earlier revisions have no `structuredContent`, so the JSON follows the
+    /// summary as a second text block instead. The JSON object always carries
+    /// the summary as its first key, `summary`: some clients (Claude Code)
+    /// show the model only `structuredContent`.
     #[must_use]
-    pub fn into_json(self) -> Value {
-        let encoded = serde_json::to_string(&self.structured).unwrap_or_default();
-        let text_content = |text: String| {
-            Value::Object(Map::from_iter([
-                ("type".to_owned(), Value::String("text".to_owned())),
-                ("text".to_owned(), Value::String(text)),
-            ]))
+    pub fn into_result(self, structured: bool) -> CallToolResult {
+        let mut value = self.structured;
+        if let Value::Object(map) = &mut value {
+            map.insert("summary".to_owned(), Value::String(self.text.clone()));
+        }
+        let text = |text: String| TextContent { kind: "text", text };
+        let (content, structured_content) = if structured {
+            (vec![text(self.text)], Some(SummaryFirst(value)))
+        } else {
+            let encoded = serde_json::to_string(&SummaryFirst(value)).unwrap_or_default();
+            (vec![text(self.text), text(encoded)], None)
         };
-        Value::Object(Map::from_iter([
-            (
-                "resultType".to_owned(),
-                Value::String("complete".to_owned()),
-            ),
-            (
-                "content".to_owned(),
-                Value::Array(vec![text_content(self.text), text_content(encoded)]),
-            ),
-            ("structuredContent".to_owned(), self.structured),
-            ("isError".to_owned(), Value::Bool(self.is_error)),
-        ]))
+        CallToolResult {
+            result_type: "complete",
+            content,
+            structured_content,
+            is_error: self.is_error,
+        }
+    }
+
+    /// [`Self::into_result`] as a JSON value (object keys sorted).
+    #[must_use]
+    pub fn into_json(self, structured: bool) -> Value {
+        serde_json::to_value(self.into_result(structured)).unwrap_or(Value::Null)
+    }
+}
+
+/// An MCP `CallToolResult`, ready to serialize.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CallToolResult {
+    result_type: &'static str,
+    content: Vec<TextContent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    structured_content: Option<SummaryFirst>,
+    is_error: bool,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct TextContent {
+    #[serde(rename = "type")]
+    kind: &'static str,
+    text: String,
+}
+
+/// A JSON value serialized with an object's `summary` key first, so a reader
+/// (or a model) meets the summary before the details.
+#[derive(Debug)]
+struct SummaryFirst(Value);
+
+impl serde::Serialize for SummaryFirst {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap as _;
+        let Value::Object(map) = &self.0 else {
+            return self.0.serialize(serializer);
+        };
+        let mut out = serializer.serialize_map(Some(map.len()))?;
+        if let Some(summary) = map.get("summary") {
+            out.serialize_entry("summary", summary)?;
+        }
+        for (key, value) in map {
+            if key != "summary" {
+                out.serialize_entry(key, value)?;
+            }
+        }
+        out.end()
     }
 }
 
@@ -180,14 +231,14 @@ pub fn definitions() -> Value {
         {
             "name": "verify",
             "title": "Verify with sail",
-            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a short summary and the schema-v1 report (docs/output-schema.md): per-function verdicts (verified, failed, unknown, provisional) with tier and provenance, obligation ids, counterexample models, Verus diagnostics as data, timings and cache sources. `provisional` is never `verified`. Default verification uses a persistent workspace job: like `sail verify --incremental`, it reuses a Current report for unchanged inputs and says which run established it. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
+            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a failures-first summary and, for the requested targets, counts, each failed function's failing obligations with locations and source-level counterexample variables, and error diagnostics; dependency targets such as vstd are only counted. `detail: \"targets\"` adds the requested targets' complete schema-v1 reports (docs/output-schema.md); `detail: \"full\"` returns everything, including dependencies and raw models. `provisional` and `unknown` are never `verified`. Default verification uses a persistent workspace job: like `sail verify --incremental`, it reuses a Current report for unchanged inputs and says which run established it. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false}
         },
         {
             "name": "counterexample",
             "title": "Counterexample models",
-            "description": "From the latest recorded `verify` result for a function or obligation, return the counterexample models Z3 gave for its failed obligations (assignments as data, plus the raw `get-model` reply) and the Verus diagnostics located in the function, without re-running anything. Says whether the sources changed since. Verus names parameter `x` as `x!` and versions of local `i` as `i@0`, `i@1`.",
+            "description": "From the latest recorded `verify` result for a function or obligation, return the counterexample models Z3 gave for its failed obligations (source-level variables; `detail: \"full\"` adds every assignment and the raw `get-model` reply) and the Verus diagnostics located in the function, without re-running anything. Says whether the sources changed since. Verus names parameter `x` as `x!` and versions of local `i` as `i@0`, `i@1`.",
             "inputSchema": lookup_schema("Give this or `obligation`."),
             "annotations": {"readOnlyHint": true, "openWorldHint": false}
         },
@@ -209,6 +260,7 @@ pub fn definitions() -> Value {
     if let Some(list) = definitions.as_array_mut() {
         list.extend(crate::job_tools::definitions(&run_schema()));
         list.extend(crate::proof_tools::definitions());
+        crate::compact::add_schema(list);
     }
     definitions
 }
@@ -216,6 +268,22 @@ pub fn definitions() -> Value {
 /// Runs tool `name`. `None` means there is no such tool.
 #[must_use]
 pub fn call(
+    ctx: &Context,
+    name: &str,
+    args: &Map<String, Value>,
+    cancel: &Cancel,
+) -> Option<ToolResult> {
+    let mut args = args.clone();
+    let detail = match crate::compact::take_detail(name, &mut args) {
+        Ok(detail) => detail,
+        Err(message) => return Some(ToolResult::invalid(&message)),
+    };
+    let args = &args;
+    let result = dispatch(ctx, name, args, cancel)?;
+    Some(crate::compact::shape(name, detail, result))
+}
+
+fn dispatch(
     ctx: &Context,
     name: &str,
     args: &Map<String, Value>,

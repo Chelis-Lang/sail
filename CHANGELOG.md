@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- MCP replies are agent-sized. `verify`, `verification_result`,
+  `save_baseline` and `get_baseline` now return, by default, a failures-first
+  summary and the requested targets' failures, errors and counts; dependency
+  targets such as vstd are only counted. Counterexamples show source-level
+  variables (`a = 1, b = 0`) without `fuel%…` and other solver internals. The
+  JSON is sent once (as `structuredContent`, starting with `summary`), not
+  also as text. Every tool's summary states its result. A new `detail`
+  argument returns the requested targets' complete reports (`targets`) or
+  everything, including raw models (`full`). On a failing demo edit the
+  `verify` reply shrank from 4.4 MB to 3.6 KB; on a failing vest edit, from
+  18.3 MB to 14.7 KB. The CLI's `--output json` is unchanged.
+
 - `sail mcp` now works in Claude Code. Claude Code (2.1.296 and later) speaks
   MCP revision 2026-07-28, which requires `ttlMs` and `cacheScope` caching
   hints on `server/discover` and `tools/list` results; without them it listed

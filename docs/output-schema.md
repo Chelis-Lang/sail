@@ -12,6 +12,11 @@ these per-target reports in the independently versioned project envelope; see
 - An example document: `crates/sail-cli/tests/fixtures/attr/report.golden.json`
   (from `crates/sail-cli/tests/fixtures/attr/input.rs`).
 
+MCP tools return a smaller agent view of these reports by default (requested
+targets only, source-level counterexample variables). They return this
+document unchanged with `detail: "targets"` or `"full"`; see
+[MCP reply size](mcp.md#reply-size-and-detail). The CLI document is unchanged.
+
 ## Invocation and streams
 
 `--output json` (or `--output=json`) belongs to sail. It may appear anywhere

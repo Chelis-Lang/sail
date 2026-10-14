@@ -57,8 +57,8 @@ inside the project can correctly invalidate the proof's input freshness.
 
 ## Reading completed evidence
 
-Tool replies retain the full structured result and its complete JSON text for
-clients that read text only. The server moves owned result graphs through the
+Tool replies are agent-sized by default; see [reply size](#reply-size-and-detail).
+The server moves owned result graphs through the
 response envelope and encodes each complete JSON-RPC frame before taking the
 stdout write lock. Concurrent frames remain atomic. Cancellation remains
 registered through encoding and is checked again before publication; a
@@ -105,9 +105,13 @@ CLI paths. See [the client contract](result-client.md).
   `-32600`), unknown methods `-32601`, and an unknown tool `-32602`. Invalid
   tool arguments and failed runs are tool results with `isError: true` and a
   message the model can act on.
-- **Results.** Every tool returns `structuredContent` and two text blocks: a
-  short summary, then the same structured result as JSON text (for clients
-  that ignore `structuredContent`).
+- **Results.** The JSON result is sent once. Clients on revision `2025-06-18`
+  or later (including every `2026-07-28` client) get it as
+  `structuredContent`, and one text block holding the summary. Clients that
+  negotiated `2025-03-26` or `2024-11-05`, which predate `structuredContent`,
+  get the summary and then the JSON as a second text block. The JSON object's
+  first key is always `summary`: Claude Code shows the model only
+  `structuredContent`, so the summary must be inside it.
 - **Concurrency and cancellation.** Tool calls run on their own threads, so
   `ping` and cancellation are served while a verification runs. The local job
   service runs jobs from different Cargo workspaces concurrently, up to
@@ -121,6 +125,47 @@ CLI paths. See [the client contract](result-client.md).
   replies.
 - **Shutdown.** When stdin closes, the server finishes the calls in flight
   and exits.
+
+## Reply size and `detail`
+
+By default a reply carries what an agent acts on, failures first:
+- `summary`: a few lines. The first line is the outcome (`FAILED`,
+  `NOT VERIFIED`, `VERIFIED`, `ERROR` or `NO RESULT`) with counts. Then one
+  line per failing obligation, with its location and the counterexample's
+  source-level variables, and one line per error with its location.
+- Only the requested targets. A dependency target such as vstd is listed in
+  `dependencies` with its function counts, not its report.
+- Counterexamples as source-level `variables`: Verus's parameter `x!` becomes
+  `x`, a local's versions stay `i@0`, `i@1`. Solver internals (`fuel%…`, sort
+  constants, `$…`) are dropped and counted in `internal_assignments_omitted`.
+
+`verify`, `verification_result`, `save_baseline` and `get_baseline` take an
+optional `detail`:
+- `summary` (default): the agent view described under [`verify`](#verify).
+- `targets`: the established document, with the requested targets' complete
+  reports and `dependencies` in place of the dependency targets.
+- `full`: the complete document, dependencies and raw solver models included.
+
+`counterexample`, `cached_result`, `explain_failure` and
+`compare_verification` take `detail` `summary` (default) or `full`. For the
+first three, `full` keeps each counterexample's raw `get-model` reply and every
+assignment; for a comparison, it lists unchanged functions too. Shaping only selects and abbreviates
+recorded evidence. It never changes a verdict, and an `unknown` or
+`provisional` function is never counted as verified.
+
+Every tool's summary states its result: a lookup gives each function's
+verdict and models, an explanation its failing obligations, a comparison its
+counts by change and the changed functions, a baseline its outcome line, and a
+job tool the job's state and currentness.
+
+On a five-function demo with one failing function, measured on macOS (Apple
+M3), the `verify` reply went from 4.4 MB to 3.6 KB. `verification_result` went
+from 4.3 MB to 4.2 KB, each baseline reply from 4.3 MB to 3.0 KB, and
+`counterexample` from 279 KB to 2.5 KB. On vest (`-p vest_lib`, an edit that
+fails five functions), `verify` went from 18.3 MB to 14.7 KB,
+`verification_result` from 11.2 MB to 17.6 KB, each baseline reply from
+11.2 MB to 12.4 KB, `compare_verification` from 3.1 MB to 33 KB and
+`counterexample` from 746 KB to 2.9 KB.
 
 ## Persistent verification jobs
 
@@ -164,14 +209,14 @@ that a proof did.
 | Tool | Arguments | Result |
 |---|---|---|
 | `verification_events` | `job_id`, optional `stream_id` and unsigned `after` | One bounded page of the proof-event journal, with a reconnect cursor, `gap` and `terminal`. Stock jobs write no proof events today: a finished stock job returns an empty terminal page with a `SAIL0903` gap. |
-| `explain_failure` | `job_id`, `package_id`, `target`, `kind` (`lib` or `bin`), `function`, optional `obligation` | The exact function report, raw models, run diagnostics and establishing provenance. |
-| `compare_verification` | `after_job` and exactly one of `before_job` or `baseline` | A scoped comparison. Context or scope mismatches are `incomparable`, never regressions. |
+| `explain_failure` | `job_id`, `package_id`, `target`, `kind` (`lib` or `bin`), `function`, optional `obligation`, `detail` | The exact function report, run diagnostics and establishing provenance. Models are source-level variables unless `detail` is `full`. |
+| `compare_verification` | `after_job` and exactly one of `before_job` or `baseline`, optional `detail` | A scoped comparison. Context or scope mismatches are `incomparable`, never regressions. By default `differences` lists only changed functions and `unchanged_total` counts the rest; `detail: "full"` lists every function. |
 | `save_baseline` | `job_id`, `name` | Saves a completed job under a new immutable name. An existing name is refused. |
 | `list_baselines` | none | Sorted saved names. |
-| `get_baseline` | `name` | The complete immutable snapshot, always `historical`. |
+| `get_baseline` | `name`, optional `detail` | The immutable snapshot, always `historical`. By default its `result` is the agent view; `detail: "full"` returns the complete snapshot. |
 
 Save and get return `structuredContent.response: "baseline"` with the snapshot
-in `structuredContent.value`; list returns `response: "baselines"`. MCP rejects
+in `structuredContent.value` (its `result` shaped by `detail`); list returns `response: "baselines"`. MCP rejects
 a reply whose name, or for save whose job, differs from the request. A
 cancelled save may already have published its record, so inspect the name
 before retrying.
@@ -188,7 +233,9 @@ failure. It does not by itself establish that Z3 exhausted a resource limit.
 Default verification submits a managed workspace job and waits for its
 result. Like `sail verify --incremental`, it reuses a Current report for
 unchanged inputs instead of verifying again, and the summary names the run that
-established each reused report. It returns its schema-v1 report (`docs/output-schema.md`). The report has per-function verdicts with
+established each reused report. By default it returns the agent view below;
+`detail: "targets"` or `"full"` returns the schema-v1 report
+(`docs/output-schema.md`) and the project envelope, with per-function verdicts,
 tier and provenance, obligation ids, counterexample models, diagnostics,
 timings and cache sources. The run is recorded for the lookups. Explicit module/function selectors use
 `cargo verus focus`, which is the pinned verifier’s supported partial entry
@@ -204,6 +251,7 @@ point; whole-project requests use `cargo verus verify`.
 | `measure_fragility` | Optional boolean: capture and replay solver sessions locally, attaching exact per-function scores; incomplete or ambiguous attribution stays null with a note. Cannot be combined with a portfolio. |
 | `cargo_args` | Further `cargo verus verify` arguments, before `--`. They may not contain `--` or `--output`. |
 | `verus_args` | Further Verus arguments, after `--`. |
+| `detail` | `summary` (default), `targets` or `full`; see [reply size](#reply-size-and-detail). |
 
 Request:
 
@@ -212,26 +260,42 @@ Request:
  "params": {"name": "verify", "arguments": {"project_dir": "/work/demo"}}}
 ```
 
-Summary text (first content block):
+Summary (the text block, and `structuredContent.summary`):
 
 ```text
-sail verify: 3 functions: 2 verified, 1 failed, 0 unknown, 0 provisional (exit 1); checks: 0 solved fresh, 6 from cache.
-Failed: demo::bad.
-Counterexamples (use the counterexample tool): demo::bad#Function-Def/0.
-First of 1 error(s): postcondition not satisfied at src/lib.rs:10:13.
+FAILED: 1 of 5 function(s) in demo failed: demo::max. 4 verified, 0 unknown, 0 provisional (exit 101).
+- demo::max#Function-Def/0 at src/lib.rs:21:1: counterexample a = 1, b = 0, r = 0
+- error: postcondition not satisfied at src/lib.rs:22:13
+Dependencies not shown: vstd (1871 function(s): 1871 verified, 0 failed, 0 other). Pass detail "targets" for the requested targets' complete reports, or "full" for everything.
+Job 1791978243700-43390-1; currentness historical.
 ```
 
-Default `structuredContent` contains `project_dir`, `sail_args`, `exit_code`,
-`duration_ms`, `stored`, `summary` and the schema-v1 `report`, together with:
+The default `structuredContent` (the agent view) holds:
+- `summary`, then `detail: "summary"`;
+- `counts`: the requested targets' functions by verdict, and `verus_totals`,
+  Verus's own `verified` and `errors` totals for them;
+- `failures`: each failed function (at most 20; `failures_total` counts all)
+  with its failing obligations: `id`, `kind`, `outcome`, `at`
+  (`file:line:column`) and `counterexample` (`variables`);
+- `unresolved`: unknown and provisional functions (at most 20;
+  `unresolved_total`);
+- `errors`: error diagnostics with `message`, `at` and Verus's `rendered`
+  text (at most 20; `errors_total`);
+- `targets`: each requested target's identity, reuse, establishing run,
+  attribution status, counts and Verus totals;
+- `dependencies`: the dependency target names and their counts;
+- `job`, `exit_code`, `currentness`, `input_revision`, `notes`, `error`,
+  `project_dir`, `sail_args`, `duration_ms` and `sources` (`input_revision`,
+  `currentness` and `changed_during_run`; the last is `false` for current
+  evidence and `null` when historical or unknown currentness cannot establish
+  when an input changed).
 
-- `job`: the durable job status, including its id, lifecycle and currentness;
-- `project_result`: the complete version-1 project envelope, including requested
-  targets, execution counters and their establishing reports;
-- `sources`: `input_revision`, `currentness` and `changed_during_run`. The last
-  value is `false` for current evidence and `null` when historical or unknown
-  currentness cannot establish when an input changed.
-
-The summary also identifies the job and its currentness. If Cargo fails before
+With `detail: "targets"` or `"full"`, `structuredContent` contains
+`project_dir`, `sail_args`, `exit_code`, `duration_ms`, `stored`, `summary`
+and the schema-v1 `report` of the requested targets, together with `job`,
+`sources` and `project_result`, the version-1 project envelope. With
+`targets`, the envelope keeps only the requested targets and `dependencies`
+counts the rest. If Cargo fails before
 any verification target produces a report, the response contains `job` and
 `project_result` with its diagnostics rather than inventing a function report.
 Explicit portfolio/fragility paths and older Sail installations retain their
@@ -264,8 +328,18 @@ The full establishing report, including diagnostics, is available through
 | `project_dir` | As for `verify`. |
 | `function` | A full path (`demo::arith::mul_pos`), or a unique `::` suffix (`mul_pos`). |
 | `obligation` | An obligation id (`demo::bad#Function-Def/0`). The function part may be a suffix too. |
+| `detail` | `summary` (default) or `full` (raw models). |
 
 At least one of `function` and `obligation` is required.
+
+The summary states each function's verdict and, for each failing obligation,
+its location and source-level variables:
+
+```text
+demo::max: failed
+- demo::max#Function-Def/0 at src/lib.rs:21:1: a = 1, b = 0, r = 0
+Job 1791978243700-43390-1; currentness historical.
+```
 
 Both `counterexample` and `cached_result` return this shape for job-backed
 lookups, including when only one function is selected:
@@ -288,7 +362,9 @@ The example abbreviates the job and report fields. Read `job.currentness` to
 assess whether the evidence applies to current inputs. `establishing_run` names
 the original proof run even when a later job reused its target. Counterexample
 lookups populate `obligations` and `counterexamples`; compact verdict lookups
-set those two fields to `null` and retain the full `function_report`. Obligation
+set those two fields to `null` and retain the full `function_report`. By default
+a counterexample lookup omits `function_report`, which repeats `obligations`,
+and every model is its source-level `variables`; `detail: "full"` keeps both. Obligation
 selectors restrict counterexample evidence to that obligation. A missing
 obligation or ambiguous function is an error, rather than an empty model.
 
@@ -312,8 +388,9 @@ Established by run 2 (sail verify --output json) at 2026-10-08T22:41:21.259Z; Tr
 - `function`, `verdict` and `tier`;
 - `obligations`: the function's unproved obligations, or those with a model
   (only the named one, given `obligation`). Each is the schema's obligation,
-  with `counterexample.assignments` as data and `counterexample.model`
-  verbatim. The text summary lists only source variables (`x!`, `i@0`).
+  with the counterexample as source-level `variables`; with `detail: "full"`,
+  `counterexample.assignments` as data and `counterexample.model` verbatim.
+  The text summary lists only source variables (`x!`, `i@0`).
 - `diagnostics`: the run's diagnostics located in the function. These are
   diagnostics with a span in the function's file, from its first line up to
   the next function's first line. Verus's spans say where a function starts
@@ -439,8 +516,9 @@ focus/full regression example.
   `after`. It returns one bounded page and a reconnect cursor. Observe `gap` and
   `terminal`; provisional observations are not confirmed proofs.
 - `explain_failure` takes exact `job_id`, `package_id`, `target`, `kind` and
-  `function`, optionally `obligation`. It preserves verifier reports, raw models,
-  diagnostics and provenance without generating proof edits.
+  `function`, optionally `obligation` and `detail`. It preserves verifier
+  reports, diagnostics and provenance without generating proof edits; raw
+  models need `detail: "full"`.
 - `compare_verification` takes `after_job` and exactly one `before_job` or
   immutable `baseline`. Context/scope mismatches and unobserved functions stay
   explicit; they are not labelled proof regressions.
@@ -449,8 +527,9 @@ focus/full regression example.
   unknown, provisional or incomplete target evidence is retained as reported;
   saving does not accept a repair or create a proof receipt.
 - `list_baselines` takes no arguments and returns sorted saved names.
-- `get_baseline` takes `name` and returns the complete immutable snapshot,
-  including the recorded job, input revision, context, targets and reports.
+- `get_baseline` takes `name` and optional `detail`, and returns the immutable
+  snapshot: the recorded job and name, with its result as the agent view, or
+  with `detail: "full"` the complete input revision, context, targets and reports.
   Its currentness is always `historical`; it never revalidates today's workspace.
 
 Baseline operations resolve the same local job service as job reads. They do not accept
