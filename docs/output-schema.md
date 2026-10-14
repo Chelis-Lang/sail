@@ -80,6 +80,12 @@ A crate has a `name` (from its functions' paths), `verus` (Verus's own
 `verified`, `errors`, `success` and `encountered_vir_error`), and `functions`,
 sorted by name.
 
+**Counting units.** `summary` and `functions` count functions. Verus's
+`verified` and `errors` count verification units: for example, each loop is
+verified and counted separately from its function's body. So a crate of five
+functions, two with a loop, can report `6 verified, 1 errors` for one failed
+function. The two counts are expected to differ.
+
 ### Functions
 
 | Field | Meaning |
@@ -246,6 +252,19 @@ crates leave apparently successful timing entries `unknown` with a note.
 Verus can overwrite a spinoff's log when two ops of one function both spin
 off (survey §6). `unmatched_sessions` counts cached solver sessions that
 matched no log.
+
+**Functions that pass by Verus's totals.** Failing crates with incomplete attribution leave
+successful timing entries `unknown`, but Verus's `errors` total does count
+every failure, bit-vector ones included (VI-0003). So when a crate's
+`verus.errors` equals the number of its functions reported `failed`, no other
+function had an error, and its `unknown` functions passed by Verus's totals.
+Their verdicts stay `unknown` in this document, since no per-function evidence
+confirms them. The human summaries (the `--incremental` evidence line,
+`sail jobs result` and MCP) report them separately as "passed by Verus's
+totals", and MCP counts them in `counts.unknown_passed_by_verus_totals`.
+A Vest edit with one failing lemma, for example, reads
+`0 verified, 1 failed, 3126 passed by Verus's totals (not attributed one by
+one), 0 unknown` rather than `3126 unknown`.
 
 ## Related documents
 

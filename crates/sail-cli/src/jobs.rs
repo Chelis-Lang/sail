@@ -258,11 +258,9 @@ fn response_text(response: &Response) -> String {
                 for target in result.targets.iter().filter(|target| target.requested) {
                     let _ = write!(
                         text,
-                        "\n  {}: {} verified, {} failed, {} unknown; {} established by {}",
+                        "\n  {}: {}; {} established by {}",
                         target.target,
-                        target.report.summary.verified,
-                        target.report.summary.failed,
-                        target.report.summary.unknown,
+                        crate::report::Counts::of(&target.report),
                         if target.reused {
                             "reused"
                         } else {

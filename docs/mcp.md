@@ -264,6 +264,7 @@ Summary (the text block, and `structuredContent.summary`):
 
 ```text
 FAILED: 1 of 5 function(s) in demo failed: demo::max. 4 verified, 0 unknown, 0 provisional (exit 101).
+Counts are functions. Verus's totals (6 verified, 1 error(s)) count verification units instead: for example, each loop is verified and counted separately from its function's body.
 - demo::max#Function-Def/0 at src/lib.rs:21:1: counterexample a = 1, b = 0, r = 0
 - error: postcondition not satisfied at src/lib.rs:22:13
 Dependencies not shown: vstd (1871 function(s): 1871 verified, 0 failed, 0 other). Pass detail "targets" for the requested targets' complete reports, or "full" for everything.
@@ -273,7 +274,15 @@ Job 1791978243700-43390-1; currentness historical.
 The default `structuredContent` (the agent view) holds:
 - `summary`, then `detail: "summary"`;
 - `counts`: the requested targets' functions by verdict, and `verus_totals`,
-  Verus's own `verified` and `errors` totals for them;
+  Verus's own `verified` and `errors` totals for them. Verus counts
+  verification units, not functions (each loop is counted separately), and the
+  summary says so when the two differ. `counts.unknown_passed_by_verus_totals`
+  is the part of `unknown` that Verus's totals clear: in a failing crate with
+  incomplete attribution, when Verus reports exactly as many errors as there
+  are failed functions, no other function had an error. Those functions stay
+  `unknown`, but the summary reports them as "passed by Verus's totals" and
+  `unresolved` does not list them (see
+  [attribution coverage](output-schema.md#attribution-coverage));
 - `failures`: each failed function (at most 20; `failures_total` counts all)
   with its failing obligations: `id`, `kind`, `outcome`, `at`
   (`file:line:column`) and `counterexample` (`variables`);
