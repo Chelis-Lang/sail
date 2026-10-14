@@ -92,6 +92,17 @@ semantic versioning once the API is published.
   `Historical` or `Unknown`) as `sail jobs status` does, instead of
   `Unknown` for every job.
 
+- `sail cache projects list` shows each managed workspace's compiled targets
+  and receipts: size, when a run last started, its path and whether that path
+  still exists. `sail cache projects prune --all | [--older-than DAYS]
+  [--missing]` removes them (`--dry-run`, `--json`); the next run of a pruned
+  workspace is a cold run. Prune never waits for or removes a workspace that a
+  managed run, job or repair is using; it reports it as skipped. `sail cache
+  stats` now ends with the managed total (`managed_projects` in `--json`).
+  New error codes `SAIL0504` (cannot read `projects/`) and `SAIL0505` (cannot
+  remove a workspace). Managed runs now also hold a shared
+  `projects/<workspace-key>/workspace.lock`.
+
 - `sail verify --engine interactive` and `sail repair-check` no longer
   return the engine's ``Please cargo build with `--features singular` ``
   error for `by(integer_ring)` lemmas. The engine is built without that

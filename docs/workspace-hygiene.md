@@ -14,13 +14,41 @@ their own Cargo targets under the Sail cache:
 - `projects/<workspace-key>/<proof-context>/` holds proof receipts and run
   records.
 
-`sail cache stats|verify|gc|clear` manage only SMT reply entries. They do not
-limit or remove these directories, and there is no quota or garbage collection
-for them yet. To reclaim space, stop every `sail` process that uses the cache
-(`sail serve` included) and delete `projects/<workspace-key>/`, or all of
-`projects/`. The next managed run of that workspace is a cold run: it compiles
-its dependencies again and re-establishes its proof receipts. Deleting a
-target never makes an old result Current; it only removes reuse.
+These directories grow with every workspace, copy and configuration you
+verify: one copy of a mid-sized project can take 2 GB. Nothing removes them
+automatically. `sail cache stats` shows their total on its last line, and
+`sail cache projects` lists and removes them per workspace:
+
+```sh
+sail cache projects list                        # size, last run, path, (missing) when deleted
+sail cache projects prune --missing             # workspaces whose directory is gone
+sail cache projects prune --older-than 14       # not run for 14 days or more
+sail cache projects prune --older-than 14 --missing   # both conditions
+sail cache projects prune --all                 # everything
+```
+
+`prune` removes a workspace's targets, proof receipts and run records
+together. `--dry-run` shows what it would remove, and `--json` prints a
+machine-readable result for either command. The cache is `$SAIL_CACHE_DIR`,
+else `~/.cache/sail`. A workspace's path is known once one of its runs has
+finished; until then it is listed by key, and `--missing` never selects it.
+
+Pruning costs only time. The next managed run of a pruned workspace is a cold
+run: it compiles its dependencies, verifies them and the workspace again, and
+records new receipts. A pruned receipt is never reused, and a job or MCP result
+that was Current before the prune can no longer be confirmed unchanged, so it
+reads back Unknown ("inputs could not be confirmed unchanged; re-run") until
+you verify again.
+
+Pruning never waits and never removes a workspace that a managed run, job or
+repair is using: it reports `skipped: in use` for it, and you can prune again
+when it finishes. A run that starts while a prune is removing its workspace
+waits for the prune and then starts cold. Runs of Sail versions without
+`sail cache projects` are detected by their target lock only; stop older
+`sail serve` daemons before pruning.
+
+`sail cache stats|verify|gc|clear` manage only SMT reply entries and never
+touch these directories.
 
 ## Development checkouts
 

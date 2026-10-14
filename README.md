@@ -146,8 +146,9 @@ The store can be a shared directory or an HTTPS server (`sail cache serve`,
 - `sail cache stats|verify|gc --max-bytes N|clear --yes` inspect, check,
   shrink or empty the solver-reply cache.
 - Managed verification keeps compiled targets per project, which can reach
-  several GB; the cache commands do not cover them. See
-  [disk use and cleanup](docs/workspace-hygiene.md).
+  several GB. `sail cache projects list` shows them, and `sail cache projects
+  prune --missing|--older-than DAYS|--all` removes them (the next run is a
+  cold run). See [disk use and cleanup](docs/workspace-hygiene.md).
 - If the cache daemon cannot start, `sail verify` prints one
   `warning[SAIL0003]` line and verifies without the cache, with the same
   results.
