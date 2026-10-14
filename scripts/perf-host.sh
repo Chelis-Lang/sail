@@ -3,7 +3,7 @@
 #
 #   scripts/perf-host.sh up LANE [INSTANCE_TYPE]   launch (default c7i.4xlarge)
 #   scripts/perf-host.sh sync LANE                 rsync this checkout to ~/sail
-#   scripts/perf-host.sh run LANE CMD...           run CMD in ~/sail (engine token on stdin)
+#   scripts/perf-host.sh run LANE CMD...           run CMD in ~/sail
 #   scripts/perf-host.sh ssh LANE [CMD...]         plain ssh
 #   scripts/perf-host.sh extend LANE MINUTES       reset the self-termination watchdog
 #   scripts/perf-host.sh allow [LANE]              allow SSH from this machine's current IP
@@ -107,11 +107,10 @@ cmd_sync() {
 
 cmd_run() {
   require_lane "${1:-}"; local lane="$1"; shift; host_of "$lane"
-  local token="${SAIL_ENGINE_ARTIFACT_TOKEN:-$(gh auth token)}"
   local remote
-  remote="read -r SAIL_ENGINE_ARTIFACT_TOKEN; export SAIL_ENGINE_ARTIFACT_TOKEN; cd ~/sail && $(printf '%q ' "$@")"
+  remote="cd ~/sail && $(printf '%q ' "$@")"
   # shellcheck disable=SC2046
-  printf '%s\n' "$token" | ssh $(ssh_opts "$lane") "ubuntu@$addr" "bash -lc $(printf '%q' "$remote")"
+  ssh $(ssh_opts "$lane") "ubuntu@$addr" "bash -lc $(printf '%q' "$remote")" </dev/null
 }
 
 cmd_ssh() {
