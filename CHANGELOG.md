@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- A performance page ([performance](docs/performance.md)) states where Sail
+  is faster than plain `cargo verus verify` and where it is not, each claim
+  measured on Linux and macOS. `scripts/perf-loops.sh` (edit loops, unchanged
+  re-verification and MCP re-queries) and `scripts/perf-agents.sh` (several
+  agents on one daemon) reproduce the numbers.
+
 - The commit hook and the `No AI authorship markers` check also reject git's
   hostname-fallback identities (for example `user@machine.local`), which a
   clone without a configured `user.email` produces.
