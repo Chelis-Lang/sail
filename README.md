@@ -24,6 +24,16 @@ Sail is a prebuilt archive per platform on
 `sail`, the solver shim `sail-z3` and the proof-repair engine. Verus itself is
 installed separately (step 2), because Sail runs your own `cargo verus`.
 
+**Prerequisites.** A C toolchain, `curl`, `unzip` and `git` (Verus needs
+them, and `cargo verus new` runs `git init`). On Debian or Ubuntu:
+
+```sh
+sudo apt-get update
+sudo apt-get install -y build-essential curl git unzip
+```
+
+On macOS, install the Xcode command line tools (`xcode-select --install`).
+
 **1. Sail.** Pick the archive for your platform:
 
 | Platform | Archive |
@@ -59,15 +69,8 @@ that with `xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
 release Sail is tested with, Verus `0.2026.10.04.426d8b0`, and the Rust
 toolchain it pins, `1.98.1`.
 
-Verus needs a C toolchain, `curl`, `unzip` and `git` (`cargo verus new`
-runs `git init`). On Debian or Ubuntu:
-
-```sh
-sudo apt-get install -y build-essential curl git unzip
-```
-
-On macOS, install the Xcode command line tools (`xcode-select --install`).
-Then install [rustup](https://rustup.rs) and the Rust toolchain Verus pins:
+With the prerequisites above in place, install [rustup](https://rustup.rs)
+and the Rust toolchain Verus pins:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
