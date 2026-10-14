@@ -1,7 +1,7 @@
 //! The `sail` binary.
 //!
 //! Verification, persistent jobs, workspace watch, MCP, cache management,
-//! fragility measurement and local benchmark commands.
+//! fragility measurement, and `sail bench` for contributors.
 #![forbid(unsafe_code)]
 
 mod engine_cli;
@@ -26,6 +26,14 @@ mod watch;
 
 use std::fmt::Write as _;
 use std::process::ExitCode;
+
+/// The version `sail --version` reports: `SAIL_VERSION` when the build sets
+/// it (`scripts/release.sh` passes the release version, for example
+/// `0.1.0-rc.1`), else the crate version.
+const VERSION: &str = match option_env!("SAIL_VERSION") {
+    Some(version) if !version.is_empty() => version,
+    _ => env!("CARGO_PKG_VERSION"),
+};
 
 /// Commands named by the charter, in the order `--help` lists them.
 const COMMANDS: &[(&str, &str)] = &[
@@ -56,7 +64,6 @@ const COMMANDS: &[(&str, &str)] = &[
     ("serve", "run the S.A.I.L. daemon in the foreground"),
     ("status", "show daemon and cache state"),
     ("cache", "inspect and manage the result cache"),
-    ("bench", "run benchmark workloads"),
     (
         "fragility",
         "measure proof fragility across solver seeds (opt-in; changes no verdict)",
@@ -68,8 +75,7 @@ const EXIT_USAGE: u8 = 2;
 
 fn usage() -> String {
     let mut text = format!(
-        "sail {}\nSatisfiability Analysis & Inference Layer\n\nUSAGE:\n    sail <COMMAND> [ARGS]\n\nCOMMANDS:\n",
-        env!("CARGO_PKG_VERSION")
+        "sail {VERSION}\nSatisfiability Analysis & Inference Layer\n\nUSAGE:\n    sail <COMMAND> [ARGS]\n\nCOMMANDS:\n"
     );
     for (name, help) in COMMANDS {
         let _ = writeln!(text, "    {name:<13} {help}");
@@ -106,7 +112,7 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             })
         }
         Some("-V" | "--version") => {
-            let _ = writeln!(out, "sail {}", env!("CARGO_PKG_VERSION"));
+            let _ = writeln!(out, "sail {VERSION}");
             ExitCode::SUCCESS
         }
         Some("serve") => serve(args.get(1..).unwrap_or_default(), err),
@@ -134,7 +140,9 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
     }
 }
 
-/// Runs the installed benchmark tool with identical arguments and stdio.
+/// Runs `sail-bench`, the developer benchmark tool, with identical arguments
+/// and stdio. It is built from a Sail source checkout and is not in the
+/// release archives, so `sail --help` does not list it.
 fn bench(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
     let result = std::env::current_exe().and_then(|exe| {
         std::process::Command::new(exe.with_file_name("sail-bench"))
@@ -151,7 +159,9 @@ fn bench(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
         Err(e) => {
             let _ = writeln!(
                 err,
-                "error[SAIL0003]: cannot run sail-bench: {e}; build/install sail-bench next to sail"
+                "error[SAIL0003]: cannot run sail-bench: {e}. `sail bench` is a developer tool that \
+                 is not in the release archives; build it from a Sail source checkout with \
+                 `cargo build --release -p sail-bench` and run it from there (or install it next to sail)"
             );
             ExitCode::from(2)
         }

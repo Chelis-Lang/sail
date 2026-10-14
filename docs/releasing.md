@@ -44,7 +44,9 @@ What users still install themselves: the stock pinned Verus release, with
 `cargo-verus` on `PATH` (default `sail verify` runs it, and the engine falls
 back to it), and `rustup` with the Rust toolchain Verus pins
 (`corpus/toolchain.toml`), which both stock Verus and the engine use. The
-user-facing install guide covers these.
+README's [Install](../README.md#install) covers these, along with the archive
+download and checksum check. When the Verus pin changes, update the release,
+toolchain and archive digests quoted there.
 
 ## How sail finds the bundled engine
 
@@ -88,7 +90,9 @@ access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
    ```
 
    `VERSION` must start with the workspace version (for example `0.1.0` or
-   `0.1.0-rc.1`). The script:
+   `0.1.0-rc.1`). Both platforms build with `SAIL_VERSION=VERSION`, so
+   `sail --version` reports the exact release version, suffix included (a
+   build without `SAIL_VERSION` reports the workspace version). The script:
    - refuses a dirty checkout, a commit that is not on `origin`, or an
      existing release `vVERSION`;
    - **Linux:** brings up a native host (lane `$SAIL_RELEASE_LANE`, default
@@ -101,7 +105,8 @@ access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
      pinned runtime (`engine/verus/artifact-macos.json`) from the public
      fork's release with `ci/engine-artifact.py fetch` (no token; archive
      digest and every runtime file checked) and stages the tree with it;
-   - self-checks each staged tree: `sail --version`, and `sail engine status`
+   - self-checks each staged tree: `sail --version` must print
+     `sail VERSION`, and `sail engine status`
      with an empty `SAIL_CACHE_DIR` must select and validate the bundled
      engine;
    - packages each tree as `dist/sail-VERSION-TARGET.tar.gz` (entries owned by
@@ -126,7 +131,8 @@ access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
 5. The owner reviews the draft and decides when to publish.
 
 `scripts/release.sh stage OUT [ENGINE_BUILD]` is the staging step alone: it
-copies `target/release/sail` and `sail-z3`, and the engine build's manifest
+copies `target/release/sail` and `sail-z3` (stripped of the release
+profile's line tables with `strip -S`; function symbols stay), and the engine build's manifest
 and runtime files, into `OUT`, then runs the self-check.
 
 ## Qualifying the macOS engine

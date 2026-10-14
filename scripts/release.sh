@@ -9,7 +9,8 @@
 #                                    runtime into OUT, then self-check it
 #
 # VERSION must start with the workspace version in Cargo.toml (for example
-# 0.1.0 or 0.1.0-rc.1). Run on an Apple-silicon Mac with a clean checkout
+# 0.1.0 or 0.1.0-rc.1); the binaries are built with SAIL_VERSION=VERSION so
+# `sail --version` reports it exactly. Run on an Apple-silicon Mac with a clean checkout
 # of a commit already on origin. The Linux build runs on a native x86-64 host
 # (scripts/perf-host.sh, lane $SAIL_RELEASE_LANE, default `release`), inside
 # the CI image, whose engine runtime is the pinned artifact
@@ -31,7 +32,11 @@ die() { echo "release: $*" >&2; exit 1; }
 # discovery with an empty cache so nothing else can satisfy it.
 self_check() {
   local out="$1" engine="$2" scratch status
-  "$out/bin/sail" --version >/dev/null
+  local reported
+  reported="$("$out/bin/sail" --version)"
+  if [ -n "${SAIL_VERSION:-}" ] && [ "$reported" != "sail $SAIL_VERSION" ]; then
+    die "sail reports \"$reported\", not \"sail $SAIL_VERSION\""
+  fi
   [ -x "$out/bin/sail-z3" ] || die "sail-z3 missing from $out"
   [ "$engine" = 1 ] || return 0
   scratch="$(mktemp -d)"
@@ -56,6 +61,10 @@ stage() {
   mkdir -p "$out/bin"
   cp target/release/sail target/release/sail-z3 "$out/bin/"
   chmod 755 "$out/bin/sail" "$out/bin/sail-z3"
+  # Drop the release profile's line tables from the shipped binaries (symbols
+  # stay, so backtraces still name functions). Only Sail's own binaries: the
+  # engine runtime files are bound to their manifest digests.
+  strip -S "$out/bin/sail" "$out/bin/sail-z3"
   if [ -z "$build" ]; then
     self_check "$out" 0
     return 0
@@ -92,6 +101,9 @@ release() {
     die "release v$version already exists"
   fi
   rm -rf dist && mkdir -p dist
+  # The binaries report the exact release version (`sail --version`), and
+  # self_check requires it.
+  export SAIL_VERSION="$version"
 
   # Linux: build and stage inside the CI image on a native host.
   lane="${SAIL_RELEASE_LANE:-release}"
@@ -104,7 +116,7 @@ release() {
     scripts/perf-host.sh up "$lane"
   fi
   scripts/perf-host.sh sync "$lane"
-  scripts/perf-host.sh run "$lane" env SAIL_RELEASE_OUT=release-out ci/local.sh release
+  scripts/perf-host.sh run "$lane" env SAIL_RELEASE_OUT=release-out SAIL_VERSION="$version" ci/local.sh release
   mkdir -p dist/stage/linux
   scripts/perf-host.sh ssh "$lane" tar -C sail/release-out -cf - . | tar -C dist/stage/linux -xf -
   package dist/stage/linux "sail-$version-x86_64-unknown-linux-gnu"
