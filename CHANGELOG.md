@@ -18,6 +18,14 @@ semantic versioning once the API is published.
   names the release by `repo`, `release_tag` and `asset` instead of a private
   asset id, and every digest check is unchanged.
 
+- Sail's Verus fork (`Chelis-Lang/verus`) is public. `cargo xtask
+  build-verus-engine` clones it without a GitHub token. `sail engine status`
+  and `sail repair-check` now say that the engine is not installed, name the
+  file they expected, and say how to build or install it. `sail repair-check`
+  checks this before it submits a job, so a missing engine returns `SAIL3120`
+  and leaves no infrastructure-error job. A job whose worker exits without a
+  result reports the worker's error instead of a JSON parse error.
+
 - `sail verify --engine interactive` and `sail repair-check` no longer
   return the engine's ``Please cargo build with `--features singular` ``
   error for `by(integer_ring)` lemmas. The engine is built without that

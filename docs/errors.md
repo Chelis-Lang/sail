@@ -141,7 +141,7 @@ listed here but no longer used. Renamed and removed codes are listed in
 
 | Code | Meaning | What to do |
 |---|---|---|
-| `SAIL3120` | The engine is not installed, does not match its pin, or the request is invalid | Run `sail engine install --from PATH`; repairs need one exact crate-qualified function |
+| `SAIL3120` | The engine is not installed, does not match its pin, or the request is invalid | The message says what is missing or mismatched. On x86-64 Linux, download the prebuilt runtime with `python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json --cache ~/.cache/sail` in a Sail checkout; or build it with `cargo xtask build-verus-engine` (no credentials needed), or run `sail engine install --from PATH`; repairs need one exact crate-qualified function |
 | `SAIL3122` | The selected function was not found, or not exactly once | Name the exact function |
 | `SAIL3123` | The engine faulted; the result is from stock Verus and accepts no repair | Use the stock result; report the fault if it repeats |
 | `SAIL3124` | A target needs a Verus feature the engine is built without (for example `singular` for `by(integer_ring)`); it was verified by the configured stock Verus and accepts no repair | Use the stock result, or stock `sail verify`; see [Verus features the engine lacks](proof-repair.md#verus-features-the-engine-lacks) |
