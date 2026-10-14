@@ -26,6 +26,17 @@ semantic versioning once the API is published.
 - `docs/mcp.md` keeps user instructions only; repair validation status is in
   `docs/validation/m7.md`.
 
+- A compile error no longer costs a vstd re-verification. After a Rust compile
+  error in the selected crate, managed runs (`sail verify --incremental`, MCP
+  `verify`, `sail watch`) verified vstd again on every following run until one
+  succeeded; plain `cargo verus verify` keeps it fresh. They now keep the
+  dependencies' build-script records when Cargo's own records show that every
+  dependency completed and only the selected crate failed. On vest a repeated
+  compile error takes 6.7 s instead of 34 s, and the fixed run 25 s
+  instead of 52 s (plain: 6 s and 36 s). The failing crate still gets no
+  receipt, and any doubt still rebuilds
+  ([ADR 0036](docs/decisions/0036-managed-compiler-artifact-families.md#amendment-2026-10-14-l41-compile-errors-confined-to-the-selected-crate)).
+
 - A performance page ([performance](docs/performance.md)) states where Sail
   is faster than plain `cargo verus verify` and where it is not, each claim
   measured on Linux and macOS. `scripts/perf-loops.sh` (edit loops, unchanged
