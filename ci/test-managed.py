@@ -283,6 +283,29 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert not focus_target["reused"], (attempt, focus_target)
             source.write_text(good)
 
-        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit and repeated focus passed")
+        # Pruning the workspace's managed directory costs only a rebuild: the
+        # next run reuses nothing, verifies again with the same report, and the
+        # run after it reuses the new receipt.
+        listed = json.loads(recorded_cli("projects-list", [sail, "cache", "projects", "list", "--json"]).stdout)
+        mine = [p for p in listed["projects"] if p["workspace"] and Path(p["workspace"]).resolve() == project.resolve()]
+        assert len(mine) == 1 and mine[0]["exists"] and mine[0]["bytes"] > 0, listed
+        pruned = json.loads(recorded_cli("projects-prune", [sail, "cache", "projects", "prune", "--all", "--json"]).stdout)
+        assert [p["key"] for p in pruned["removed"]] == [mine[0]["key"]] and not pruned["busy"], pruned
+        assert not list((root / "cache/projects").glob("*/" + warm["context_sha256"])), "pruned context survived"
+        rebuilt_run, rebuilt, rebuilt_target = managed()
+        assert rebuilt_run.returncode == 0 and rebuilt["exit_code"] == 0, diagnostic(rebuilt)
+        assert not rebuilt_target["reused"] and rebuilt_target["complete"], diagnostic(rebuilt)
+        assert rebuilt["execution"]["verifier_invocations"] >= 1, rebuilt["execution"]
+        assert rebuilt_target["report"]["summary"] == target["report"]["summary"], diagnostic(rebuilt)
+        if rebuilt["currentness"] == "historical":
+            rebuilt_run, rebuilt, rebuilt_target = managed()
+            assert rebuilt_run.returncode == 0 and rebuilt["currentness"] == "current", diagnostic(rebuilt)
+        reread_run, reread, reread_target = managed()
+        assert reread_run.returncode == 0 and reread_target["reused"] and reread_target["complete"], diagnostic(reread)
+        assert reread["execution"]["verifier_invocations"] == 0, reread["execution"]
+        assert reread_target["establishing_run"] == rebuilt_target["establishing_run"], reread_target
+        assert reread_target["report"] == rebuilt_target["report"], "reuse must preserve the rebuilt report"
+
+        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus and prune passed")
     finally:
         stop_daemon()

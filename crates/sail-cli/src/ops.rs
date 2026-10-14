@@ -330,6 +330,8 @@ COMMANDS:
     trust remove ID        stop trusting a key
     publish --to STORE --key FILE [--filter command=NAME]... [--filter solver=SHA256]
             [--dry-run]    sign this cache's pinned-solver entries into a shared store
+    projects list|prune    managed runs' compiled targets and receipts, per workspace
+                           (`sail cache projects --help`)
 
 The cache is the running daemon's (asked over its socket), or DIR.
 ";
@@ -354,6 +356,47 @@ fn cache_root(a: &CacheArgs, err: &mut dyn std::io::Write) -> Result<PathBuf, St
         root.display()
     );
     Ok(root)
+}
+
+/// Managed runs' per-workspace directories, which the reply entries do not
+/// include.
+#[derive(serde::Serialize)]
+struct ManagedTotal {
+    root: PathBuf,
+    bytes: u64,
+    workspaces: usize,
+}
+
+fn managed_total() -> Option<ManagedTotal> {
+    let cache = sail_verus::cache_dir().ok()?;
+    Some(ManagedTotal {
+        workspaces: sail_verus::managed::projects::list(&cache).ok()?.len(),
+        bytes: sail_verus::managed::projects::total_bytes(&cache),
+        root: sail_verus::managed::projects::root(&cache),
+    })
+}
+
+fn stats(disk: &DiskCache, root_text: &str, json: bool, out: &mut dyn std::io::Write) -> ExitCode {
+    let s = disk.summarize();
+    let managed = managed_total();
+    if json {
+        print_json(
+            out,
+            &serde_json::json!({ "root": root_text, "stats": s, "managed_projects": managed }),
+        );
+        return ExitCode::SUCCESS;
+    }
+    let _ = write!(out, "{}", stats_text(root_text, &s));
+    if let Some(m) = managed {
+        let _ = writeln!(
+            out,
+            "managed targets {}: {} in {} workspaces (see `sail cache projects list`)",
+            m.root.display(),
+            human(m.bytes),
+            m.workspaces
+        );
+    }
+    ExitCode::SUCCESS
 }
 
 fn usage_line(u: Usage) -> String {
@@ -446,6 +489,9 @@ pub fn cache(
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
 ) -> ExitCode {
+    if args.first().is_some_and(|a| a == "projects") {
+        return crate::projects_cli::run(&args[1..], out, err);
+    }
     if let Some(code) = crate::remote_cache::cache(args, out, err) {
         return code;
     }
@@ -492,15 +538,7 @@ pub fn cache(
     match sub.as_str() {
         "trust" => crate::shared_ops::trust(&root, &a, out, err),
         "publish" => crate::shared_ops::publish(&disk, &a, out, err),
-        "stats" => {
-            let s = disk.summarize();
-            if a.json {
-                print_json(out, &serde_json::json!({ "root": root_text, "stats": s }));
-                return ExitCode::SUCCESS;
-            }
-            let _ = write!(out, "{}", stats_text(&root_text, &s));
-            ExitCode::SUCCESS
-        }
+        "stats" => stats(&disk, &root_text, a.json, out),
         "verify" => verify(&disk, &root_text, &a, out, err),
         "gc" => {
             let r = disk.gc(a.max_bytes.unwrap_or(u64::MAX));

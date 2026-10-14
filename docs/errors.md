@@ -39,6 +39,8 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0501` | `sail cache verify` found bad cache files | Run `sail cache verify --remove`; a bad entry is only ever a miss |
 | `SAIL0502` | `sail cache clear` needs confirmation | Pass `--yes` |
 | `SAIL0503` | Cannot clear the cache directory | Check permissions |
+| `SAIL0504` | `sail cache projects` cannot read the managed `projects/` directory | Check permissions on `<cache>/projects` |
+| `SAIL0505` | `sail cache projects prune` cannot remove a workspace's directory | Check permissions; a later prune removes anything left over, and no run uses it |
 
 ## Shared cache tier
 

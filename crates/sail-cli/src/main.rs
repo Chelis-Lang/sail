@@ -15,6 +15,7 @@ mod ops;
 mod portfolio;
 mod portfolio_scope;
 mod product_cli;
+mod projects_cli;
 mod remote_cache;
 mod report;
 #[cfg(test)]
