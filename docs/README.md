@@ -16,7 +16,8 @@ experimental features and validation limits are identified explicitly.
 | Share signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
 | Interpret Current, Historical and Unknown evidence | [Freshness](freshness.md) |
 | Understand trust boundaries and opt-in verdict differences | [Trust](trust.md), [divergences](divergences.md) |
-| Check supported verifier versions and measured performance | [Compatibility](compatibility.md), [generated benchmarks](benchmarks.md) |
+| See what Sail speeds up and what it does not, with reproducible runs | [Performance](performance.md) |
+| Check supported verifier versions and workload benchmarks | [Compatibility](compatibility.md), [generated benchmarks](benchmarks.md) |
 | Find limitations and unresolved failures | [Known issues](known-issues.md) |
 | Look up an error code | [Error codes](errors.md) |
 
