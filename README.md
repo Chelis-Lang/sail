@@ -40,14 +40,15 @@ TARGET=x86_64-unknown-linux-gnu    # or aarch64-apple-darwin
 base="https://github.com/Chelis-Lang/sail/releases/download/v$VERSION"
 curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz"
 curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz.sha256"
-shasum -a 256 -c "sail-$VERSION-$TARGET.tar.gz.sha256"   # or: sha256sum -c ...
+shasum -a 256 -c "sail-$VERSION-$TARGET.tar.gz.sha256"   # Linux without perl: sha256sum -c
 mkdir -p ~/.local/opt
 tar -C ~/.local/opt -xzf "sail-$VERSION-$TARGET.tar.gz"
 export PATH="$HOME/.local/opt/sail-$VERSION-$TARGET/bin:$PATH"   # add to your shell profile
 sail --version
 ```
 
-`shasum -a 256 -c` must print `OK`. Keep the unpacked directory as it is:
+The check must print `OK`. Minimal Linux images have no `shasum` (it comes
+with perl); `sha256sum -c` with the same file is equivalent. Keep the unpacked directory as it is:
 `sail` finds `sail-z3` beside it in `bin/` and the engine in `engine/`, so
 put that `bin/` on `PATH` rather than copying `sail` elsewhere. On macOS, an
 archive downloaded with a browser instead of `curl` is quarantined; clear
@@ -58,10 +59,11 @@ that with `xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
 release Sail is tested with, Verus `0.2026.10.04.426d8b0`, and the Rust
 toolchain it pins, `1.98.1`.
 
-Verus needs a C toolchain, `curl` and `unzip`. On Debian or Ubuntu:
+Verus needs a C toolchain, `curl`, `unzip` and `git` (`cargo verus new`
+runs `git init`). On Debian or Ubuntu:
 
 ```sh
-sudo apt-get install -y build-essential curl unzip
+sudo apt-get install -y build-essential curl git unzip
 ```
 
 On macOS, install the Xcode command line tools (`xcode-select --install`).
