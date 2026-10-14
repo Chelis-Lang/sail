@@ -208,6 +208,35 @@ pub fn build_dir(cache: &Path, pins: &Pins) -> PathBuf {
     )
 }
 
+/// The engine runtime bundled with a release: `engine/<variant>` beside the
+/// directory holding the running executable, so `<release>/bin/sail` finds
+/// `<release>/engine/<variant>` (docs/releasing.md). The variant name is the
+/// cache variant's, which binds the host and fork commit, so a bundle built
+/// for another host or commit is never found. Symlinks to the executable are
+/// resolved first.
+#[must_use]
+pub fn bundled_dir(pins: &Pins) -> Option<PathBuf> {
+    let variant = build_dir(Path::new(""), pins).file_name()?.to_owned();
+    let exe = std::env::current_exe().ok()?.canonicalize().ok()?;
+    Some(exe.parent()?.parent()?.join("engine").join(variant))
+}
+
+/// The engine build to use: the cache variant when anything is installed
+/// there (`cargo xtask build-verus-engine` or `sail engine install`), else a
+/// bundled release runtime ([`bundled_dir`]) when present, else the cache
+/// variant, whose absence reports `SAIL3120`. Either candidate passes the
+/// same identity and artifact validation before use.
+#[must_use]
+pub fn resolve_build(cache: &Path, pins: &Pins) -> PathBuf {
+    let cached = build_dir(cache, pins);
+    if cached.symlink_metadata().is_ok() {
+        return cached;
+    }
+    bundled_dir(pins)
+        .filter(|bundled| bundled.join(source_build::MANIFEST).is_file())
+        .unwrap_or(cached)
+}
+
 /// An engine install whose runtime bytes and base pins were checked.
 #[derive(Debug, Clone)]
 pub struct Installed {
@@ -230,7 +259,7 @@ impl Installed {
     /// `SAIL3120` if missing, misidentified, or corrupted. Run
     /// `cargo xtask build-verus-engine` to install the explicit variant.
     pub fn locate(cache: &Path, pins: &Pins) -> Result<Self> {
-        Self::at(&build_dir(cache, pins), pins)
+        Self::at(&resolve_build(cache, pins), pins)
     }
 
     /// Validates an explicitly supplied build without installing or modifying it.
@@ -436,7 +465,7 @@ impl Request {
 
 fn request(config: &crate::managed::Config, function: Option<String>) -> Result<(Request, String)> {
     let pins = Pins::embedded()?;
-    let build = build_dir(&config.workspace.join(&config.cache), &pins);
+    let build = resolve_build(&config.workspace.join(&config.cache), &pins);
     // This private request has not authorized execution. The context phase
     // validates every artifact's bytes before probing an engine executable.
     let (manifest, manifest_sha256) = preflight(&build, &pins)?;
@@ -914,6 +943,33 @@ mod tests {
         assert_eq!(fork.upstream, pins.verus.commit);
         assert_eq!(fork.repo, "https://github.com/Chelis-Lang/verus");
         assert_eq!(features()[0], format!("sail-fork:{}", fork.commit));
+        Ok(())
+    }
+
+    #[test]
+    fn a_bundled_runtime_is_found_beside_the_executable_only_when_the_cache_has_none()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let pins: Pins = toml::from_str(include_str!("../../../corpus/toolchain.toml"))?;
+        let exe = std::env::current_exe()?.canonicalize()?;
+        let bundled = bundled_dir(&pins).ok_or("no bundled location")?;
+        let release = exe
+            .parent()
+            .and_then(Path::parent)
+            .ok_or("no release root")?;
+        assert_eq!(bundled.parent(), Some(release.join("engine").as_path()));
+        assert_eq!(
+            bundled.file_name(),
+            build_dir(Path::new("/c"), &pins).file_name()
+        );
+        // No bundle beside the test binary: the (missing) cache variant
+        // stays selected, so its absence reports SAIL3120 as before.
+        let cache = std::env::temp_dir().join(format!("sail-engine-bundle-{}", std::process::id()));
+        assert_eq!(resolve_build(&cache, &pins), build_dir(&cache, &pins));
+        // An installed cache variant, even a dangling alias, always wins.
+        let cached = build_dir(&cache, &pins);
+        std::fs::create_dir_all(&cached)?;
+        assert_eq!(resolve_build(&cache, &pins), cached);
+        std::fs::remove_dir_all(&cache)?;
         Ok(())
     }
 

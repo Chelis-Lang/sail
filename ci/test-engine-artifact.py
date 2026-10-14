@@ -111,6 +111,18 @@ class ArtifactTests(unittest.TestCase):
                              + "/releases/download/engine-runtime-" + artifact.fork_commit()[:8]
                              + "-linux/" + archive.name)
 
+    def test_a_runtime_is_bound_to_its_platform_host(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, archive, pin, _ = self.fixture(root)
+            self.assertEqual(pin["release_tag"], "engine-runtime-" + artifact.fork_commit()[:8] + "-linux")
+            # The Linux runtime cannot be installed under a macOS pin.
+            with self.assertRaises(ValueError):
+                artifact.install(archive, dict(pin, release_tag=pin["release_tag"][:-5] + "macos"), root / "cache")
+        for name, host in (("linux", "x86_64-unknown-linux-gnu"), ("macos", "aarch64-apple-darwin")):
+            committed = json.loads((artifact.REPO / ("engine/verus/artifact-" + name + ".json")).read_text())
+            self.assertEqual(artifact.pin_host(committed), host)
+
 
 if __name__ == "__main__":
     unittest.main()
