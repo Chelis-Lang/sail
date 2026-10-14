@@ -54,8 +54,9 @@ and large files (input snapshots, receipt artifacts, the driver's AIR and SMT
 logs) are read by up to eight workers. A private alias that is a hard link to
 the installed `sail` is not hashed again, and the targeted `cargo clean` leaves
 the target's rustc probe cache alone, so the next build need not probe the
-compiler again. See the [L7c report](reports/rescue/l7c-managed-overhead.md)
-for measurements.
+compiler again. Natively, these cut managed overhead around Verus on a
+HumanEval single-function edit from 3.03 s to 0.94 s (plain `cargo verus`:
+0.54 s), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
 
 ## Optional setup timings
 

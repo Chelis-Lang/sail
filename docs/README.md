@@ -52,9 +52,12 @@ does not erase an earlier failure, and a candidate build or static review does
 not qualify a runtime. Reports summarize completed milestones:
 [bootstrap](reports/2026-10-08-bootstrap.md),
 [initial product](reports/2026-10-09-initial-product.md), and
-[live workspace](reports/2026-10-10-live-workspace.md). The
-[M7 rescue review](reports/2026-10-12-m7-rescue-review.md) records the state
-of M7 at handover and the decisions in ADR 0038.
+[live workspace](reports/2026-10-10-live-workspace.md). ADR 0038 records the
+M7 rescue's decisions; the rescue review and lane reports are kept in the tag
+`archive/rescue-m7-98f6292`. The
+[new-user walkthrough](reports/2026-10-13-new-user-walkthrough.md) and
+[roadmap review](reports/2026-10-13-roadmap-review.md) are the current inputs
+to planning.
 
 [Verus issues](verus-issues/README.md) contain local reproductions and workarounds.
 [Survey documents](survey/README.md) retain Verus/Z3 protocol, solver behavior,

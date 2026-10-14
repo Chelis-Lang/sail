@@ -47,4 +47,6 @@
   (charter rules 1 and 2). Only the Currentness label depends on these
   checks, and any doubt still yields Historical or Unknown.
 
-Measurements and validation: [L7c report](../reports/rescue/l7c-managed-overhead.md).
+Measurements and validation: natively, managed overhead on a HumanEval
+edit fell from 3.03 s to 0.94 s and on Vest from 7.27 s to 3.40 s, and Vest
+results read back Current instead of Unknown (`SAIL7102`), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
