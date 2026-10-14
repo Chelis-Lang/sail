@@ -17,7 +17,7 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
   docker buildx build --platform linux/amd64 -f ci/Dockerfile -t "$image" --load .
 fi
 sail_runtime_env=()
-for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_RELEASE_OUT SAIL_BUILD_JOBS SAIL_BENCH_LABEL; do
+for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_RELEASE_OUT SAIL_VERSION SAIL_BUILD_JOBS SAIL_BENCH_LABEL; do
   if sail_env_value="$(printenv "$sail_env_name")"; then
     sail_runtime_env+=(-e "$sail_env_name=$sail_env_value")
   fi

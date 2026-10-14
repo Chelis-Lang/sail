@@ -13,10 +13,13 @@ It distinguishes submission from an accepted proof.
 The optional `interactive` engine is a Sail-managed build of the pinned Verus
 source. It is selected explicitly. Stock verification retains its existing
 behavior. An unavailable or invalid engine returns a setup error (`SAIL3120`)
-that says what is missing or mismatched and how to obtain the engine: on
-x86-64 Linux, download the prebuilt runtime from the public fork's releases
+that says what is missing or mismatched and how to obtain the engine. The
+release archives bundle it, so from a release install `SAIL3120` means the
+unpacked directory is damaged or incomplete (unpack it again), or that a
+stale engine in the Sail cache takes precedence. In a Sail checkout, download
+the prebuilt runtime from the public fork's releases
 (`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json
---cache ~/.cache/sail` in a Sail checkout), build it with
+--cache ~/.cache/sail`, or `artifact-macos.json` on macOS), build it with
 `cargo xtask build-verus-engine` (no credentials needed), or import a build
 with `sail engine install --from PATH`. `sail repair-check` checks this before it submits a job, so a missing
 engine leaves no failed job behind. A job whose worker stops on such an error
