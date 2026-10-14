@@ -92,7 +92,10 @@ contend. `ci/local.sh` builds the CI image natively there. Hosts are tagged
 `Project=sail`, terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and
 are torn down after use; `scripts/perf-host.sh list` must be empty at the end of a session.
 The local emulated container is for quick correctness checks only; never
-measure performance under emulation.
+measure performance under emulation. Clean macOS numbers come from an EC2 Mac
+host (`scripts/perf-host-mac.sh`), which needs the owner's approval: Apple's
+licence bills a Mac dedicated host for at least 24 hours, so `up` schedules
+its release on the AWS side and `down` terminates the instance at once.
 
 **Workspace hygiene.** Remove worktrees once their branch is merged or
 archived, after checking for uncommitted source. Discard regenerable build
