@@ -3,7 +3,7 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
-## Unreleased
+## 0.1.0 (unreleased)
 
 - The commit hook and the `No AI authorship markers` check also reject git's
   hostname-fallback identities (for example `user@machine.local`), which a
