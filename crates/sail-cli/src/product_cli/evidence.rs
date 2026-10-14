@@ -1,5 +1,5 @@
 //! Evidence commands make exact identities explicit.
-use sail_api::evidence::Reference;
+use sail_api::evidence::{Change, Comparison, Reference};
 use sail_api::jobs::{Request, Response};
 use sail_api::proof::Target;
 use std::io::Write;
@@ -143,31 +143,107 @@ fn human(response: &Response) -> String {
                 names.join("\n")
             }
         }
-        Response::Comparison(comparison) => {
-            let mut text = format!(
-                "Comparison: compatible={}, later evidence {:?}",
-                comparison.compatible, comparison.after_currentness
-            );
-            for difference in &comparison.differences {
-                use std::fmt::Write as _;
-                let _ = write!(
-                    text,
-                    "\n{} {:?} {}: {:?}",
-                    difference.target.name,
-                    difference.target.kind,
-                    difference.function,
-                    difference.change
-                );
-            }
-            text
-        }
+        Response::Comparison(comparison) => comparison_text(comparison),
         _ => "Unexpected evidence response.".into(),
     }
+}
+
+/// The `--output json` name of a change.
+fn change_name(change: Change) -> &'static str {
+    match change {
+        Change::Unchanged => "unchanged",
+        Change::Regressed => "regressed",
+        Change::BecameUnknown => "became_unknown",
+        Change::Recovered => "recovered",
+        Change::Added => "added",
+        Change::NotObserved => "not_observed",
+        Change::Removed => "removed",
+        Change::Incomparable => "incomparable",
+        Change::Changed => "changed",
+    }
+}
+
+/// Counts by change, then each changed function, then the notes. Unchanged
+/// functions are counted only; `--output json` lists every function.
+fn comparison_text(comparison: &Comparison) -> String {
+    use std::fmt::Write as _;
+    let mut counts = std::collections::BTreeMap::<&str, usize>::new();
+    for difference in &comparison.differences {
+        *counts.entry(change_name(difference.change)).or_default() += 1;
+    }
+    let mut text = format!(
+        "Comparison: compatible={}, later evidence {:?}: {}.",
+        comparison.compatible,
+        comparison.after_currentness,
+        if counts.is_empty() {
+            "no functions compared".to_owned()
+        } else {
+            counts
+                .iter()
+                .map(|(change, n)| format!("{n} {change}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        }
+    );
+    for difference in &comparison.differences {
+        if difference.change == Change::Unchanged {
+            continue;
+        }
+        let _ = write!(
+            text,
+            "\n{} {:?} {}: {}",
+            difference.target.name,
+            difference.target.kind,
+            difference.function,
+            change_name(difference.change)
+        );
+    }
+    for note in &comparison.notes {
+        let _ = write!(text, "\n{note}");
+    }
+    text
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn comparisons_count_unchanged_functions_and_list_the_changed_ones() {
+        let difference = |function: &str, change| sail_api::evidence::Difference {
+            target: Target {
+                package_id: "vest_lib".into(),
+                name: "vest_lib".into(),
+                kind: vec!["lib".into()],
+            },
+            function: function.into(),
+            before: None,
+            after: None,
+            change,
+            before_passed_by_verus_totals: false,
+            after_passed_by_verus_totals: false,
+            obligations: Vec::new(),
+        };
+        let comparison = Comparison {
+            version: 1,
+            compatible: true,
+            before_revision: "a".into(),
+            after_revision: "b".into(),
+            after_currentness: sail_api::project::Currentness::Current,
+            differences: vec![
+                difference("vest_lib::a", Change::Unchanged),
+                difference("vest_lib::b", Change::Recovered),
+                difference("vest_lib::c", Change::Unchanged),
+            ],
+            notes: vec!["2 function(s) reported `unknown` passed by Verus's totals.".into()],
+        };
+        assert_eq!(
+            comparison_text(&comparison),
+            "Comparison: compatible=true, later evidence Current: 1 recovered, 2 unchanged.\n\
+             vest_lib [\"lib\"] vest_lib::b: recovered\n\
+             2 function(s) reported `unknown` passed by Verus's totals."
+        );
+    }
 
     #[test]
     fn literal_baseline_names_cannot_become_output_options() {

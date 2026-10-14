@@ -135,3 +135,136 @@ fn repeated_friendly_names_do_not_invent_order_dependent_regressions()
     );
     Ok(())
 }
+
+/// A failing run whose successes Sail could not attribute one by one: every
+/// non-failed function is `unknown`, and Verus's totals hold one error per
+/// failed function.
+fn failing_unattributed(mut project: ProjectResult) -> ProjectResult {
+    let report = &mut project.targets[0].report;
+    for c in &mut report.crates {
+        c.verus.success = Some(false);
+        c.verus.errors = Some(1);
+        c.verus.verified = Some(100);
+        c.verus.encountered_vir_error = Some(false);
+    }
+    for (i, f) in report
+        .crates
+        .iter_mut()
+        .flat_map(|c| &mut c.functions)
+        .enumerate()
+    {
+        f.tier = TierName::Confirmed;
+        f.verdict = if i == 0 {
+            VerdictName::Failed
+        } else {
+            VerdictName::Unknown
+        };
+    }
+    project
+}
+
+#[test]
+fn functions_passing_by_verus_totals_compare_as_verified_without_changing_verdicts()
+-> Result<(), Box<dyn std::error::Error>> {
+    let before = failing_unattributed(success(project()?));
+    let after = success(project()?);
+    let fixed = before.targets[0].report.crates[0].functions[0]
+        .function
+        .clone();
+    let compared = sail_api::evidence::compare(&before, &after);
+    assert!(compared.compatible);
+    for d in &compared.differences {
+        if d.function == fixed {
+            assert_eq!(d.change, Change::Recovered);
+            assert_eq!(d.before, Some(VerdictName::Failed));
+            assert!(!d.before_passed_by_verus_totals);
+        } else {
+            // Unknown by attribution, passed by Verus's totals: unchanged,
+            // and the recorded verdict is still `unknown`.
+            assert_eq!(d.change, Change::Unchanged, "{}", d.function);
+            assert_eq!(d.before, Some(VerdictName::Unknown));
+            assert_eq!(d.after, Some(VerdictName::Verified));
+            assert!(d.before_passed_by_verus_totals);
+            assert!(!d.after_passed_by_verus_totals);
+        }
+    }
+    assert!(compared.notes.iter().any(|n| n.contains("Verus's totals")));
+    let json = serde_json::to_value(&compared)?;
+    assert!(
+        json["differences"][0]
+            .get("after_passed_by_verus_totals")
+            .is_none()
+    );
+
+    // The same on the later side: a newly failing function with the rest
+    // unattributed regresses alone; the others did not become unknown.
+    let reversed = sail_api::evidence::compare(&after, &before);
+    for d in &reversed.differences {
+        let expected = if d.function == fixed {
+            Change::Regressed
+        } else {
+            Change::Unchanged
+        };
+        assert_eq!(d.change, expected, "{}", d.function);
+        assert_eq!(d.after_passed_by_verus_totals, d.function != fixed);
+    }
+
+    // An error Verus's totals do not account for: unknown stays unknown.
+    let mut extra = before.clone();
+    extra.targets[0].report.crates[0].verus.errors = Some(2);
+    for d in &sail_api::evidence::compare(&extra, &after).differences {
+        if d.function != fixed {
+            assert_eq!(d.change, Change::Recovered, "{}", d.function);
+            assert!(!d.before_passed_by_verus_totals);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn repeated_friendly_names_compare_as_groups_only_when_every_instance_agrees()
+-> Result<(), Box<dyn std::error::Error>> {
+    // Two implementations share a friendly name (VI-0010).
+    let mut base = project()?;
+    let duplicate = base.targets[0].report.crates[0].functions[1].clone();
+    let name = duplicate.function.clone();
+    base.targets[0].report.crates[0].functions.push(duplicate);
+    let before = failing_unattributed(success(base.clone()));
+    let after = success(base);
+    let compared = sail_api::evidence::compare(&before, &after);
+    let group = compared
+        .differences
+        .iter()
+        .find(|d| d.function == name)
+        .ok_or("repeated name missing")?;
+    // Both passed by Verus's totals before and verified after.
+    assert_eq!(group.change, Change::Unchanged);
+    assert_eq!(group.before, Some(VerdictName::Unknown));
+    assert_eq!(group.after, Some(VerdictName::Verified));
+    assert_eq!(group.obligations, []);
+    assert!(compared.notes.iter().any(|n| n.contains(
+        "1 repeated name(s), shared by 2 functions (VI-0010), were each compared as a group"
+    )));
+    assert!(
+        !compared
+            .notes
+            .iter()
+            .any(|n| n.contains("are incomparable"))
+    );
+
+    // A different number of instances stays incomparable.
+    let mut more = after.clone();
+    let extra = more.targets[0].report.crates[0].functions[1].clone();
+    more.targets[0].report.crates[0].functions.push(extra);
+    let compared = sail_api::evidence::compare(&before, &more);
+    let group = compared
+        .differences
+        .iter()
+        .find(|d| d.function == name)
+        .ok_or("repeated name missing")?;
+    assert_eq!(group.change, Change::Incomparable);
+    assert_eq!(group.before, None);
+    assert!(!group.before_passed_by_verus_totals);
+    assert!(compared.notes.iter().any(|n| n.contains("1 such name(s)")));
+    Ok(())
+}
