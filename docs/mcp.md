@@ -20,6 +20,10 @@ claude mcp add --transport stdio sail -- sail mcp                  # for you
 claude mcp add --transport stdio --scope project sail -- sail mcp  # shared, in .mcp.json
 ```
 
+`claude mcp list` then shows `sail: sail mcp - ✔ Connected`. The e2e managed
+phase (`ci/test-claude-code.sh`) runs this registration and listing with a
+pinned Claude Code CLI.
+
 Any client that takes a JSON server list (`.mcp.json` and similar):
 
 ```json
@@ -90,6 +94,10 @@ CLI paths. See [the client contract](result-client.md).
   - Clients on revision `2026-07-28` send the version in each request's
     `_meta` and may call `server/discover`. An unknown version gets
     `UnsupportedProtocolVersionError` (`-32022`) listing the supported ones.
+    Claude Code uses this revision. The `server/discover` and `tools/list`
+    results carry the revision's caching hints: `ttlMs: 300000` and
+    `cacheScope: "public"`, since the tool list is the same for every caller
+    and fixed for the life of the process.
 - **Methods.** `initialize`, `notifications/initialized`, `server/discover`,
   `ping`, `tools/list`, `tools/call` and `notifications/cancelled`. There
   are no resources or prompts.
