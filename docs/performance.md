@@ -11,7 +11,7 @@ time as plain Verus.
 
 ## Claims
 
-| # | Claim | Linux (c7i.4xlarge) | macOS (Apple M3) |
+| # | Claim | Linux (EC2 c7i.4xlarge, idle) | macOS (Apple M3 developer laptop, loaded: load average 4–19) |
 |---|---|---|---|
 | 1 | Verdicts, errors and exit codes are identical to plain Verus | 0 differences in the conformance tiers and in Verus's own 4,695-test suite | 0 differences in the fast PR subset |
 | 2 | Edit loops on a solver-heavy project are faster | vest: 1.3–1.5× (`sail verify`, about 24 s against 34–38 s) | vest: 1.8–2.3× (about 23–27 s against 43–54 s, loaded machine) |
@@ -45,7 +45,7 @@ time divided by concurrent jobs), from medians of three rounds.
 
 | | Linux | macOS |
 |---|---|---|
-| Machine | EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, Ubuntu 24.04, `scripts/perf-host.sh up l36`, no other work on the host | Apple M3, 8 cores, 24 GiB, macOS 26, a development machine shared with other work: load average 4–8 during the demo runs, 7–19 during the vest runs and 13–18 during the agents run |
+| Machine | EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, Ubuntu 24.04, `scripts/perf-host.sh up l36`, no other work on the host | Apple M3, 8 cores, 24 GiB, macOS 26, a loaded developer laptop shared with other work: load average 4–8 during the demo runs, 7–19 during the vest runs and 13–18 during the agents run |
 | Sail | `main` at `401b600`, release build of `sail-cli` and `sail-shim` | same |
 | Verus | 0.2026.10.04.426d8b0 (`cargo xtask fetch-verus`), Z3 4.16.0 | same |
 | Date | 2026-10-14 | 2026-10-14 |
@@ -96,9 +96,9 @@ Wall seconds, median (min–max) of three rounds:
 | Linux | `cargo verus verify` | 66.6 (66.5–67.1) | 37.3 (36.9–37.4) | 33.8 (33.2–33.8) | 37.8 (37.1–39.6) |
 | Linux | `sail verify` | 67.5 (67.1–70.7) | 24.2 (24.0–24.9) | 25.1 (24.2–25.2) | 24.7 (23.4–24.9) |
 | Linux | `sail verify --incremental` | 71.1 (69.7–73.3) | 26.9 (26.9–27.7) | 26.4 (26.1–26.8) | 26.8 (26.5–26.8) |
-| macOS | `cargo verus verify` | 72.6 (63.6–76.0) | 48.1 (41.1–106.8) | 43.2 (40.9–62.4) | 54.4 (44.5–59.3) |
-| macOS | `sail verify` | 82.9 (81.7–133.8) | 27.4 (26.2–28.9) | 22.8 (22.4–25.5) | 23.6 (20.7–24.7) |
-| macOS | `sail verify --incremental` | 79.5 (77.8–128.7) | 29.3 (27.0–65.2) | 27.1 (27.0–34.1) | 30.3 (30.1–33.7) |
+| macOS laptop (loaded) | `cargo verus verify` | 72.6 (63.6–76.0) | 48.1 (41.1–106.8) | 43.2 (40.9–62.4) | 54.4 (44.5–59.3) |
+| macOS laptop (loaded) | `sail verify` | 82.9 (81.7–133.8) | 27.4 (26.2–28.9) | 22.8 (22.4–25.5) | 23.6 (20.7–24.7) |
+| macOS laptop (loaded) | `sail verify --incremental` | 79.5 (77.8–128.7) | 29.3 (27.0–65.2) | 27.1 (27.0–34.1) | 30.3 (30.1–33.7) |
 
 On Linux, `sail verify` saves 9–13 s per edit (1.3–1.5×) and `--incremental`
 7–11 s (1.3–1.4×). The macOS ratios are larger (1.8–2.3×) but come from a
@@ -117,7 +117,7 @@ After the edits above, each mode verifies the unchanged code again (`warm2`),
 and one `sail mcp` session calls `verify` twice on it (`mcp1`, `mcp2`; the
 second call is shown). Wall seconds, median of three rounds:
 
-| | Linux demo | Linux vest | macOS demo | macOS vest |
+| | Linux demo | Linux vest | macOS laptop demo (loaded) | macOS laptop vest (loaded) |
 |---|---:|---:|---:|---:|
 | `cargo verus verify` | 0.10 | 0.20 | 0.18 | 0.60 |
 | `sail verify` | 0.10 | 0.21 | 0.19 | 0.53 |
@@ -146,9 +146,9 @@ with a rewritten body. Wall seconds, median (min–max) of three rounds:
 | Linux | `cargo verus verify` | 30.4 (30.1–30.7) | 0.76 (0.76–0.76) | 0.55 (0.55–0.56) | 0.77 (0.77–0.78) |
 | Linux | `sail verify` | 30.6 (30.4–31.1) | 0.75 (0.74–0.78) | 0.57 (0.56–0.58) | 0.76 (0.75–0.78) |
 | Linux | `sail verify --incremental` | 31.4 (31.3–31.5) | 1.01 (1.00–1.02) | 0.79 (0.78–0.80) | 0.99 (0.98–0.99) |
-| macOS | `cargo verus verify` | 24.0 (21.6–24.2) | 0.52 (0.50–0.53) | 0.47 (0.45–0.48) | 0.53 (0.50–0.54) |
-| macOS | `sail verify` | 26.7 (24.0–26.8) | 0.51 (0.51–0.56) | 0.47 (0.47–0.49) | 0.52 (0.51–0.54) |
-| macOS | `sail verify --incremental` | 26.4 (25.2–26.6) | 0.82 (0.81–0.90) | 0.72 (0.71–0.74) | 0.73 (0.73–0.73) |
+| macOS laptop (loaded) | `cargo verus verify` | 24.0 (21.6–24.2) | 0.52 (0.50–0.53) | 0.47 (0.45–0.48) | 0.53 (0.50–0.54) |
+| macOS laptop (loaded) | `sail verify` | 26.7 (24.0–26.8) | 0.51 (0.51–0.56) | 0.47 (0.47–0.49) | 0.52 (0.51–0.54) |
+| macOS laptop (loaded) | `sail verify --incremental` | 26.4 (25.2–26.6) | 0.82 (0.81–0.90) | 0.72 (0.71–0.74) | 0.73 (0.73–0.73) |
 
 `sail verify` equals plain Verus. `--incremental` costs about 0.25 s more per
 run. Reproduce with `scripts/perf-loops.sh demo 3` (about 5 minutes).
@@ -202,7 +202,7 @@ Median (min–max) of three rounds:
 | | Agents | One job at a time | Default workers | Speedup |
 |---|---|---:|---:|---:|
 | Linux (4 workers) | 4 × vest `-p vest_lib` | 104.5 s (104.4–104.7) | 47.1 s (46.5–47.2) | 2.2× |
-| macOS (2 workers) | 4 × demo | 6.7 s (6.4–6.8) | 5.2 s (4.0–5.8) | 1.3× |
+| macOS laptop, loaded (2 workers) | 4 × demo | 6.7 s (6.4–6.8) | 5.2 s (4.0–5.8) | 1.3× |
 
 The edit is a comment appended to a source file, so each job re-runs Cargo
 and Verus on its crate; one such vest job alone takes about 26 s.
@@ -230,10 +230,30 @@ count and load average at the start and end. vest is cloned from GitHub
 unless `SAIL_PERF_VEST_SRC` names an existing clone.
 
 Reference numbers come from a native Linux host with no other load
-([AGENTS.md](../AGENTS.md)). On Linux, a `scripts/perf-host.sh` host with
-Rust from rustup, `cargo build --release -p sail-cli -p sail-shim` and
-`cargo xtask fetch-verus` is enough. Run the scripts directly on the host, not
-in an emulated container.
+([AGENTS.md](../AGENTS.md)). Run the scripts directly on the machine, not in
+an emulated container. The exact commands, from a Sail checkout at the commit
+under test, after installing Rust with rustup (and, on Linux, `unzip`):
+
+```sh
+cargo build --release -p sail-cli -p sail-shim
+cargo xtask fetch-verus      # prints the PATH line for the Verus release
+export PATH="$PWD/target/release:$HOME/.cache/sail/verus/0.2026.10.04.426d8b0/verus-x86-linux:$PATH"
+#   on macOS: .../verus-arm64-macos instead of .../verus-x86-linux
+export SAIL_PERF_MACHINE="EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, idle"
+#   describe the actual machine and whether anything else is running
+SAIL_PERF_OUT=$HOME/sp/demo  scripts/perf-loops.sh demo 3     # claims 3, 4, 5
+SAIL_PERF_OUT=$HOME/sp/vest  scripts/perf-loops.sh vest 3     # claims 2, 3, 5
+SAIL_PERF_OUT=$HOME/sp/agents scripts/perf-agents.sh vest 4 3  # claim 7
+```
+
+The macOS rows above came from the same commands with
+`scripts/perf-agents.sh demo 4 3` for claim 7 (vest was too slow on the
+loaded laptop), `SAIL_PERF_VEST_SRC` pointing at an existing vest clone, and
+`SAIL_PERF_MACHINE="Apple M3 (8 cores, 24 GiB), macOS 26, development machine
+under other load"`. Keep `SAIL_PERF_OUT` short: the daemon's socket lives
+under it, and Unix socket paths are limited to about 100 bytes. Each script
+prints its table on stdout and keeps it as `table.md` in the output directory;
+`scripts/perf-agents.sh report OUT_DIR 4` prints an earlier run's table again.
 
 The older workload numbers in [benchmarks](benchmarks.md) (generated by
 `sail-bench`) measure the solver shim on corpus units in isolation. This page
