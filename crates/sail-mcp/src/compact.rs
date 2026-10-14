@@ -765,6 +765,13 @@ fn comparison_summary(document: &Value) -> String {
             let _ = write!(text, " and {} more", names.len() - MAX_LISTED);
         }
     }
+    // Why functions that passed by Verus's totals count as passing, and why
+    // repeated friendly names are grouped or incomparable (VI-0010).
+    for note in value["notes"].as_array().into_iter().flatten() {
+        if let Some(note) = note.as_str() {
+            let _ = write!(text, "\n{note}");
+        }
+    }
     text
 }
 
@@ -987,6 +994,84 @@ mod tests {
         );
         assert!(shaped.text.contains("1 regressed"), "{}", shaped.text);
         assert!(shaped.text.contains("regressed: b"), "{}", shaped.text);
+    }
+
+    /// The release-candidate walkthrough on vest: a baseline with one failing
+    /// function, whose other functions Sail could not attribute one by one
+    /// (`unknown`, passed by Verus's totals), compared with the fixed run.
+    #[test]
+    fn a_fix_against_an_unattributed_baseline_reports_one_recovered_function() {
+        let Ok(mut after) = serde_json::from_value::<ProjectResult>(project()) else {
+            unreachable!("fixture")
+        };
+        after.targets.truncate(1);
+        after.exit_code = Some(0);
+        let krate = &mut after.targets[0].report.crates[0];
+        let template = krate.functions[0].clone();
+        let function = |name: String| {
+            let mut f = template.clone();
+            f.function = name;
+            f.verdict = VerdictName::Verified;
+            f
+        };
+        // 3,127 functions, 95 friendly names held by two implementations each (VI-0010).
+        krate.functions = (0..2937)
+            .map(|i| function(format!("vest_lib::f{i}")))
+            .chain((0..190).map(|i| function(format!("vest_lib::Impl::dup{}", i / 2))))
+            .collect();
+        krate.verus.success = Some(true);
+        krate.verus.errors = Some(0);
+        krate.verus.verified = Some(3236);
+        let mut before = after.clone();
+        before.exit_code = Some(1);
+        let krate = &mut before.targets[0].report.crates[0];
+        for f in &mut krate.functions {
+            f.verdict = VerdictName::Unknown;
+        }
+        krate.functions[0].verdict = VerdictName::Failed;
+        krate.verus.success = Some(false);
+        krate.verus.errors = Some(1);
+        assert_eq!(krate.unknown_passed_by_verus_totals(), 3126);
+
+        let comparison = sail_api::evidence::compare(&before, &after);
+        let document = json!({"response": "comparison", "value": comparison});
+        let full = shape(
+            "compare_verification",
+            Detail::Full,
+            ToolResult::ok(String::new(), document.clone()),
+        );
+        assert_eq!(
+            full.structured["value"]["differences"]
+                .as_array()
+                .map(Vec::len),
+            Some(3032)
+        );
+        let shaped = shape(
+            "compare_verification",
+            Detail::Summary,
+            ToolResult::ok(String::new(), document),
+        );
+        assert!(
+            shaped.text.starts_with(
+                "Compatible comparison: 1 recovered, 3031 unchanged.\nrecovered: vest_lib::f0\n"
+            ),
+            "{}",
+            shaped.text
+        );
+        assert!(
+            shaped
+                .text
+                .contains("3126 function(s) reported `unknown` passed by Verus's totals")
+        );
+        assert!(
+            shaped
+                .text
+                .contains("95 repeated friendly function name(s) were compared as groups")
+        );
+        assert_eq!(shaped.structured["value"]["unchanged_total"], 3031);
+        let size = serde_json::to_string(&shaped.structured).map_or(usize::MAX, |s| s.len())
+            + shaped.text.len();
+        assert!(size < 4 * 1024, "{size} bytes");
     }
 
     #[test]
