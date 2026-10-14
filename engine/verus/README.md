@@ -23,7 +23,7 @@ signal, or malformed full output requires the stock fallback.
 
 ## Source: Sail's Verus fork
 
-The engine is built from one commit of Sail's private Verus fork,
+The engine is built from one commit of Sail's public Verus fork,
 [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), pinned in
 [fork.toml](fork.toml) (repository, branch, full commit and upstream base).
 The owner decided on 2026-10-12 that Sail stays forked and fixes known Verus
@@ -57,10 +57,10 @@ check on `debug_expand.rs`, and VI-0005's dep-info carry-over made every
 Sail repair rebuild (the selected function is a forwarded argument). Run the
 repair benchmark on a candidate before pinning it.
 
-`cargo xtask build-verus-engine` fetches exactly the pinned commit (with
-`SAIL_ENGINE_ARTIFACT_TOKEN` or `gh auth token`; the repository is private),
-checks that its upstream base equals `corpus/toolchain.toml`'s commit, writes
-the committed [Cargo.lock](Cargo.lock) and builds. The variant's identity
+`cargo xtask build-verus-engine` fetches exactly the pinned commit (the
+fork is public, so no credentials are needed), checks that its upstream base
+equals `corpus/toolchain.toml`'s commit, writes the committed
+[Cargo.lock](Cargo.lock) and builds. The variant's identity
 (`sail-fork:<commit>` feature) and the runtime pin
 ([artifact-linux.json](artifact-linux.json), `fork_commit`) bind the commit.
 CI never builds Verus; it installs the prebuilt runtime.

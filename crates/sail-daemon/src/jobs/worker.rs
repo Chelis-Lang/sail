@@ -181,6 +181,9 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
         }
         std::thread::sleep(Duration::from_millis(20));
     };
+    if std::fs::metadata(directory.join("stdout")).is_ok_and(|meta| meta.len() == 0) {
+        return Err(io::Error::other(no_result(&directory, status)));
+    }
     let (document, projection) = read_document(&directory, &job.submission.mode)?;
     if document.exit_code != status.code() {
         return Err(io::Error::other(
@@ -198,6 +201,24 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
         return Err(io::Error::other("unsupported or incomplete project result"));
     }
     Ok((status.code(), document, projection))
+}
+
+/// Describes a worker that exited without writing a result, quoting its last
+/// `error[...]` line (for example a missing engine's `SAIL3120`) so the job
+/// error says what went wrong instead of reporting an unparsable result.
+fn no_result(directory: &std::path::Path, status: std::process::ExitStatus) -> String {
+    let stderr = store::read_bytes(&directory.join("stderr")).unwrap_or_default();
+    let stderr = String::from_utf8_lossy(&stderr);
+    let cause = stderr
+        .lines()
+        .rev()
+        .find(|line| line.starts_with("error["))
+        .map(str::trim)
+        .map(|line| line.chars().take(2048).collect::<String>());
+    match cause {
+        Some(line) => format!("worker exited ({status}) without a result: {line}"),
+        None => format!("worker exited ({status}) without a result; see the job's retained stderr"),
+    }
 }
 
 fn read_document(

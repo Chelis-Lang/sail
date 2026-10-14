@@ -19,7 +19,7 @@ pub const SOURCE_LOCK: &str = include_str!("../../../engine/verus/Cargo.lock");
 /// The `[fork]` table of `engine/verus/fork.toml`.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct Fork {
-    /// Repository URL (private; fetched with a GitHub token).
+    /// Repository URL (public; fetched without credentials).
     pub repo: String,
     /// Branch the commit is on.
     pub branch: String,
@@ -257,10 +257,26 @@ fn runtime_dir(build: &Path) -> PathBuf {
     source_build::checkout_dir(build).join("source/target-verus/release")
 }
 
+/// How to obtain an engine, appended to every "missing" or "mismatched"
+/// engine error so the user is never left without a next step.
+pub const OBTAIN: &str = "On x86-64 Linux, download the prebuilt runtime from \
+the public fork's releases with, in a Sail source checkout, \
+`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
+--cache ~/.cache/sail` (or your SAIL_CACHE_DIR). Or build it with \
+`cargo xtask build-verus-engine` (it clones \
+https://github.com/Chelis-Lang/verus and needs the pinned Verus from \
+`cargo xtask fetch-verus`), or import a build with \
+`sail engine install --from PATH`. Ordinary `sail verify` does not need the engine.";
+
 fn invalid() -> Error {
     Error::new(
         "SAIL3120",
-        "interactive engine identity or runtime artifact validation failed",
+        format!(
+            "the installed interactive engine does not match this Sail's pins (fork commit {}, \
+             Verus toolchain or z3) or its files changed since it was built; rebuild it with \
+             `cargo xtask build-verus-engine --force`. {OBTAIN}",
+            fork_commit()
+        ),
     )
 }
 
@@ -446,10 +462,16 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
 }
 
 fn preflight(build: &Path, pins: &Pins) -> Result<(Manifest, String)> {
-    let bytes = std::fs::read(build.join(source_build::MANIFEST)).map_err(|e| {
+    let manifest_path = build.join(source_build::MANIFEST);
+    let bytes = std::fs::read(&manifest_path).map_err(|e| {
+        let what = if e.kind() == std::io::ErrorKind::NotFound {
+            "the optional interactive engine is not installed".to_owned()
+        } else {
+            format!("cannot read the interactive engine's build manifest ({e})")
+        };
         Error::new(
             "SAIL3120",
-            format!("{e}; run cargo xtask build-verus-engine"),
+            format!("{what}: expected {}. {OBTAIN}", manifest_path.display()),
         )
     })?;
     let manifest: Manifest = serde_json::from_slice(&bytes)

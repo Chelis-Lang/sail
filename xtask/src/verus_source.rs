@@ -21,8 +21,8 @@
 //! build. A complete build is left alone unless `--force` is given.
 //!
 //! `--interactive-engine` (`cargo xtask build-verus-engine`) builds the
-//! optional engine instead: the exact commit of Sail's private Verus fork
-//! pinned in `engine/verus/fork.toml`, fetched with a GitHub token, whose
+//! optional engine instead: the exact commit of Sail's public Verus fork
+//! pinned in `engine/verus/fork.toml`, fetched without credentials, whose
 //! upstream base must be the pinned commit. Local only; CI installs the
 //! prebuilt runtime.
 
@@ -108,42 +108,12 @@ fn run(cmd: &mut Command) -> Result<()> {
     }
 }
 
-/// A GitHub token for the private Verus fork: `SAIL_ENGINE_ARTIFACT_TOKEN`
-/// (as for the engine artifact) or else `gh auth token`.
-fn github_token() -> Result<String> {
-    if let Ok(token) = std::env::var("SAIL_ENGINE_ARTIFACT_TOKEN")
-        && !token.trim().is_empty()
-    {
-        return Ok(token.trim().to_owned());
-    }
-    let output = Command::new("gh")
-        .args(["auth", "token"])
-        .stderr(Stdio::inherit())
-        .output()
-        .map_err(|e| format!("the Verus fork is private and `gh auth token` failed: {e}"))?;
-    let token = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-    if !output.status.success() || token.is_empty() {
-        return Err(
-            "the Verus fork is private: set SAIL_ENGINE_ARTIFACT_TOKEN or run `gh auth login`"
-                .to_owned(),
-        );
-    }
-    Ok(token)
-}
-
-/// Runs `git ARGS` in `dir`, authenticating to GitHub with `token` through a
-/// one-shot credential helper. The token reaches git only through the
-/// environment of this one process and is never printed or stored.
-fn git_with_token(dir: &Path, token: &str, args: &[&str]) -> Result<String> {
+/// Runs `git ARGS` in `dir`. The fork is public, so no credential is
+/// needed, and git is told never to prompt for one.
+fn git(dir: &Path, args: &[&str]) -> Result<String> {
     let output = Command::new("git")
         .current_dir(dir)
-        .env("SAIL_FORK_TOKEN", token)
         .env("GIT_TERMINAL_PROMPT", "0")
-        .args(["-c", "credential.helper="])
-        .args([
-            "-c",
-            "credential.helper=!f() { echo username=x-access-token; echo \"password=$SAIL_FORK_TOKEN\"; }; f",
-        ])
         .args(args)
         .stderr(Stdio::inherit())
         .output()
@@ -170,16 +140,15 @@ fn fetch_fork(build: &Path, fork: &sail_verus::engine::Fork) -> Result<PathBuf> 
     }
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
-    let token = github_token()?;
-    git_with_token(&dir, &token, &["init", "-q"])?;
-    git_with_token(&dir, &token, &["remote", "add", "origin", &fork.repo])?;
-    git_with_token(
+    git(&dir, &["init", "-q"])?;
+    git(&dir, &["remote", "add", "origin", &fork.repo])?;
+    git(
         &dir,
-        &token,
         &["fetch", "-q", "--depth", "1", "origin", &fork.commit],
-    )?;
-    git_with_token(&dir, &token, &["checkout", "-q", "--detach", "FETCH_HEAD"])?;
-    let head = git_with_token(&dir, &token, &["rev-parse", "HEAD"])?;
+    )
+    .map_err(|e| format!("{e}: cannot fetch the pinned commit from {}", fork.repo))?;
+    git(&dir, &["checkout", "-q", "--detach", "FETCH_HEAD"])?;
+    let head = git(&dir, &["rev-parse", "HEAD"])?;
     if head != fork.commit {
         return Err(format!(
             "fetched {head}, expected the pinned fork commit {}",
