@@ -198,6 +198,16 @@ worker. Results carry currentness, scope and establishing provenance so agents
 can distinguish finished work from current proof evidence.
 
 Existing solver-cache entries remain compatible. The automatic daemon socket
-now includes the workspace-service capability (`daemon-v4-workspace-v1.sock`).
+is `<cache>/daemon-v4-workspace-v2-proof-v1.sock`, and the job socket beside it
+is `jobs-v1-proof-v1-<hash>.sock`.
+
+Unix socket paths are limited to 107 bytes on Linux and 103 on macOS
+(`SUN_LEN`). When a deep `HOME` or a long `SAIL_CACHE_DIR` would exceed that,
+Sail puts both sockets in a private per-cache directory instead,
+`/tmp/sail-<hash>/` (mode 0700; used only when no other user can access it).
+If the daemon still cannot start, `sail verify` prints one
+`warning[SAIL0003]` line saying why and verifies without the cache, with the
+same results. An explicit `SAIL_DAEMON_SOCKET` is used as given, so keep it
+short.
 An explicitly selected older cache daemon can keep running: Sail starts a
 private jobs-only sidecar alongside it instead of terminating it.

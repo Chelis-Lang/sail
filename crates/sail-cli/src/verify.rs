@@ -7,14 +7,15 @@
 //! - `SAIL_DAEMON_SOCKET` names the cache daemon, which is started on demand.
 //!
 //! If the daemon cannot be reached, `sail-z3` passes everything through to
-//! that Z3 unchanged. Switching back means running `cargo verus verify`
-//! again.
+//! that Z3 unchanged, and one `warning[SAIL0003]` line on stderr says why.
+//! Switching back means running `cargo verus verify` again.
 //!
 //! `sail verify --output json [args…]` (ADR 0014) also asks Verus for
 //! machine-readable results and logs that leave Z3's input unchanged, and
 //! prints one schema-v1 document (`docs/output-schema.md`) on stdout.
 //! Verus's diagnostics still go to stderr, verbatim. Without `--output
-//! json`, nothing is added and the output is exactly `cargo verus verify`'s.
+//! json`, nothing is added and, while the daemon is available, the output is
+//! exactly `cargo verus verify`'s.
 
 use std::ffi::OsString;
 use std::io::Read as _;
@@ -61,18 +62,43 @@ pub(crate) fn real_z3(cargo_verus: &Path, shim: &Path) -> Option<PathBuf> {
 }
 
 /// Connects to the daemon at `socket`, starting `sail serve` if nothing is
-/// listening. Returns whether a daemon is available.
+/// listening. Returns whether a daemon is available. When it is not, one
+/// `warning[SAIL0003]` per process says why on stderr; verification then
+/// runs against the pinned Z3 without the cache, with the same results.
 #[cfg(unix)]
 pub(crate) fn ensure_daemon(socket: &Path) -> bool {
+    static WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    match start_daemon(socket) {
+        Ok(()) => true,
+        Err(why) => {
+            if !WARNED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                eprintln!(
+                    "warning[SAIL0003]: the Sail cache daemon is unavailable: {why}; \
+                     verifying without the cache (same results, no reuse)"
+                );
+            }
+            false
+        }
+    }
+}
+
+#[cfg(unix)]
+fn start_daemon(socket: &Path) -> Result<(), String> {
     use std::os::unix::net::UnixStream;
     use std::os::unix::process::CommandExt as _;
     if UnixStream::connect(socket).is_ok() {
-        return true;
+        return Ok(());
     }
-    let Ok(me) = std::env::current_exe() else {
-        return false;
-    };
-    let started = Command::new(me)
+    if !sail_api::jobs::socket_fits(socket) {
+        return Err(format!(
+            "its socket path {} (or the job socket beside it) is longer than the {} bytes \
+             Unix sockets allow; set SAIL_CACHE_DIR or SAIL_DAEMON_SOCKET to a shorter path",
+            socket.display(),
+            sail_api::jobs::MAX_SOCKET_PATH
+        ));
+    }
+    let me = std::env::current_exe().map_err(|e| format!("cannot locate sail: {e}"))?;
+    let mut child = Command::new(me)
         .arg("serve")
         .arg("--socket")
         .arg(socket)
@@ -80,18 +106,29 @@ pub(crate) fn ensure_daemon(socket: &Path) -> bool {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .process_group(0)
-        .spawn();
-    if started.is_err() {
-        return false;
-    }
+        .spawn()
+        .map_err(|e| format!("cannot run `sail serve`: {e}"))?;
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {
         if UnixStream::connect(socket).is_ok() {
-            return true;
+            return Ok(());
+        }
+        if let Ok(Some(status)) = child.try_wait() {
+            // Another client's daemon may have won the race to bind.
+            if UnixStream::connect(socket).is_ok() {
+                return Ok(());
+            }
+            return Err(format!(
+                "`sail serve --socket {}` exited ({status}); run it to see why",
+                socket.display()
+            ));
         }
         std::thread::sleep(Duration::from_millis(25));
     }
-    false
+    Err(format!(
+        "no daemon answered on {} within 5 s; run `sail serve` to see why",
+        socket.display()
+    ))
 }
 
 #[cfg(not(unix))]
@@ -683,6 +720,23 @@ fn verify_json(
 #[cfg(test)]
 mod tests {
     use super::{has_verus_flag, split_args};
+
+    /// A socket path the kernel cannot bind is reported at once, with the
+    /// limit and the fix, instead of a silent 5 s wait.
+    #[cfg(unix)]
+    #[test]
+    fn an_overlong_socket_is_reported_without_waiting() {
+        let socket = std::path::Path::new("/tmp")
+            .join("s".repeat(200))
+            .join("d.sock");
+        let started = std::time::Instant::now();
+        let why = super::start_daemon(&socket).err().unwrap_or_default();
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+        assert!(
+            why.contains("longer than") && why.contains("SAIL_CACHE_DIR"),
+            "{why}"
+        );
+    }
 
     fn strings(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| (*s).to_owned()).collect()

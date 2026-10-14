@@ -36,6 +36,22 @@ semantic versioning once the API is published.
   and leaves no infrastructure-error job. A job whose worker exits without a
   result reports the worker's error instead of a JSON parse error.
 
+- A deep `HOME` or a long `SAIL_CACHE_DIR` no longer silently disables the
+  cache daemon. When the default socket path would exceed the Unix limit
+  (107 bytes on Linux, 103 on macOS), Sail puts the daemon and job sockets in
+  a private per-cache directory, `/tmp/sail-<hash>/`. If the daemon still
+  cannot start, `sail verify` prints one `warning[SAIL0003]` line saying why
+  (for a path that is too long, at once instead of after a 5 s wait) and
+  verifies without the cache, with the same results.
+- `--help` works for every command: `sail COMMAND --help`, `sail COMMAND -h`
+  and `sail help COMMAND` print the command's usage and exit 0 without
+  running it. `sail watch --help` no longer starts a watcher, `sail cache gc
+  --help` is no longer rejected, and `sail verify --help` lists Sail's own
+  options before `cargo verus verify`'s help.
+- `sail jobs list` shows each completed job's currentness (`Current`,
+  `Historical` or `Unknown`) as `sail jobs status` does, instead of
+  `Unknown` for every job.
+
 - `sail verify --engine interactive` and `sail repair-check` no longer
   return the engine's ``Please cargo build with `--features singular` ``
   error for `by(integer_ring)` lemmas. The engine is built without that
