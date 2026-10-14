@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail mcp` now works in Claude Code. Claude Code (2.1.296 and later) speaks
+  MCP revision 2026-07-28, which requires `ttlMs` and `cacheScope` caching
+  hints on `server/discover` and `tools/list` results; without them it listed
+  no Sail tools ("tools fetch failed"). Both results now carry
+  `ttlMs: 300000` and `cacheScope: "public"`. The e2e managed phase registers
+  `sail mcp` with a pinned Claude Code CLI and checks that it lists the tools.
+
 - Managed runs on macOS (`sail verify --incremental`, MCP `verify`,
   `sail watch`) now reuse proofs. Before, every run read Historical and
   rebuilt the macro dependencies and verified vstd again, even with nothing

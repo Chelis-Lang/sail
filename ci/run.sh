@@ -212,6 +212,8 @@ RS
       # Use the checkout path because the full legacy phase changes cwd.
       SAIL_MANAGED_ACCEPTANCE_OUT="$sail_managed_evidence" \
         python3 "$sail_managed_test" "$sail"
+      # A real MCP client (pinned Claude Code) must list sail's tools.
+      bash "$sail_checkout/ci/test-claude-code.sh" "$sail"
     fi
     if [ "$phase" = full ] || [ "$phase" = repair ]; then
       cd "$sail_checkout"

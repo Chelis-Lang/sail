@@ -44,6 +44,14 @@ RUN set -eu; cd /tmp \
  && rm -rf nextest.tgz deny.tgz cargo-deny-0.20.2-x86_64-unknown-linux-musl \
  && cargo nextest --version && cargo deny --version
 
+# Claude Code, pinned and digest-checked, for the e2e managed phase's real
+# MCP client smoke test (ci/test-claude-code.sh). That test registers
+# `sail mcp` and lists its tools; it needs no credentials and makes no model
+# calls.
+RUN curl -sSfLo /usr/local/bin/claude https://downloads.claude.ai/claude-code-releases/2.1.299/linux-x64/claude \
+ && echo "2d894a4b1bfaaa9aab72aeff7803e3c73bc2510f279a171f6b8f59f72d17d077  /usr/local/bin/claude" | sha256sum -c - \
+ && chmod 0755 /usr/local/bin/claude
+
 # The pinned Verus release, checked by SHA-256 (archive and bundled z3).
 COPY ci/fetch-verus.py /tmp/
 RUN python3 /tmp/fetch-verus.py /tmp/pins/toolchain.toml /opt/verus
