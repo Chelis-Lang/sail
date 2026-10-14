@@ -9,7 +9,7 @@ ADR 0038 ranks warm, exact-prefix solver sessions second among the
 latency work that follows M7. That ranking rested on L6's figure: about
 59 ms of a 72 ms median miss is spent starting Z3 and replaying the prefix.
 Rescue lane L11
-([report](../reports/rescue/l11-warm-sessions.md)) measured what warm
+(rescue lane report, tag `archive/rescue-m7-98f6292`) measured what warm
 sessions would remove from an agent's edit cycle. It ran on native x86-64,
 with three rounds over the agent-loop, edit and repair catalogues, and
 compared two designs.

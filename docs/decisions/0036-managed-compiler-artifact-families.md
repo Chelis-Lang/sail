@@ -168,7 +168,7 @@ one whole `--output-json` document that agrees with that exit. Every other
 condition above still applies. Stock Verus can fold a caught internal panic into
 the same exit-1 shape. That does not matter here: the branch retains only
 ordinary dependency script contracts, which are revalidated independently, and
-it grants no proof. [L19 report](../reports/rescue/l19-vstd-reverify.md).
+it grants no proof. Measured by L19 (rescue lane report, tag `archive/rescue-m7-98f6292`).
 
 A second full contract check runs after the original native owners and monitored
 snapshot are live, before Cargo can reuse output. Any newly invalid package is
@@ -325,4 +325,4 @@ fresh in the shared target.
   no longer read; deleting `projects/` reclaims them
   ([workspace hygiene](../workspace-hygiene.md)).
 
-[L23 report](../reports/rescue/l23-repair-target-and-vest.md).
+Measured by L23 (rescue lane report, tag `archive/rescue-m7-98f6292`).

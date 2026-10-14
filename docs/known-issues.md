@@ -14,27 +14,27 @@ are in the `archive/m7-contracts-f7103bf` tag.
   2.14×, Vest 1.82× (each Vest cycle about 28 s against 51 s). L18's cheap
   items cannot close the gap without new mechanism: rustc incremental is
   already on, and Sail's whole overhead is smaller than the gap.
-  [Gate 7](validation/m7.md#gate-7-frozen-repair-performance),
-  [L22 report](reports/rescue/l22-final-pin.md),
-  [L23 report](reports/rescue/l23-repair-target-and-vest.md).
+  [Gate 7](validation/m7.md#gate-7-frozen-repair-performance); L22 and L23
+  (rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **A project's first managed verify verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first managed run of each project
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from
   the CLI, MCP or any agent session reuse it. A shared per-toolchain vstd is a
-  deferred follow-up. [L16 report](reports/rescue/l16-first-contact-vstd.md).
+  deferred follow-up. The 31 s first-contact cost was measured by L16
+  (rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **Stock and engine runs each verify vstd once in their own target.** That
   is about 30 s on HumanEval for the first stock `sail verify` and again for
   the first engine run (`sail verify --engine interactive` or
   `repair-check`), because their compilers differ. Repair functions share
   one target, so a new function no longer verifies vstd again.
-  [L19 report](reports/rescue/l19-vstd-reverify.md),
-  [L23 report](reports/rescue/l23-repair-target-and-vest.md).
+  L19 measured the separate stock and engine targets and L23 the shared
+  repair target (rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **An engine verify after a repair re-verifies the selected crate.** A repair
   rebuilds the selected crate in the shared target, so a later
   `sail verify --engine interactive` with the same arguments and unchanged
   source verifies that crate again (HumanEval 6.2 s instead of 0.6 s, Vest
   27.5 s instead of 1.8 s). Why the rebuilt bytes differ was not
-  investigated. [L23 report](reports/rescue/l23-repair-target-and-vest.md).
+  investigated. L23 (rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **Repair selectors lose compiler-declared input coverage.** A warmup can
   return Historical full evidence after exit-zero verification. See `b89546c`
   in [Gate 7](validation/m7.md#gate-7-frozen-repair-performance) and

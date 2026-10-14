@@ -14,7 +14,7 @@
   missed in 22 of 63 cycles. On human-eval-verus each costs about 2.7 s,
   taking cycles from 4.8 s to 7.1 s. This is the largest avoidable
   solver-side cost measured there
-  ([L11 report](../reports/rescue/l11-warm-sessions.md)).
+  (L11 rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **Workaround:** none needed for correctness (ADR 0008). An opt-in
   normalization mode would need charter rule 5's whole-corpus validation.
 
@@ -110,14 +110,13 @@ passes with the fix.
 With the fix, 10 runs of each unit against the upstream source give one SMT
 stream. Every log file is byte-identical to the fork-source build's, and to a
 log that a run with stock's macros also produced. Direct runs of the fast tier are
-byte-identical with and without the fix. See the
-[L21 report](../reports/rescue/l21-determinism.md).
+byte-identical with and without the fix (L21 rescue lane report, tag `archive/rescue-m7-98f6292`).
 
 **On the pinned runtime (rescue L22, 2026-10-13).** L18's changed-bucket
 count, repeated on a timers build of `13a1176c`, found no bucket whose SMT
 digest varied for identical input: 0 of 28 measured HumanEval samples and 0
 of 14 Vest samples, against 16 of 32 HumanEval samples and two varying Vest
-buckets on `89709da7` ([L22 report](../reports/rescue/l22-final-pin.md)).
+buckets on `89709da7` (L22 rescue lane report, tag `archive/rescue-m7-98f6292`).
 
 The fork builds only the optional interactive engine. Stock-mode workaround:
 Default `sail verify` runs stock Verus, so this variation (and its effect on

@@ -104,14 +104,14 @@ complete current full validation. M7 remains incomplete until these gates pass.
 
 | Gate | Status | Best evidence |
 |---|---|---|
-| Engine build and qualification | Pass (source checks) | Fork `13a1176c` (ADR 0039, no prepared lowering; adds the VI-0001 verifier fix; VI-0005 and VI-0007 fixes dropped): stock fixtures, cancel/restart, library tests and `rust_verify_test` ([L22 report](reports/rescue/l22-final-pin.md)) |
+| Engine build and qualification | Pass (source checks) | Fork `13a1176c` (ADR 0039, no prepared lowering; adds the VI-0001 verifier fix; VI-0005 and VI-0007 fixes dropped): stock fixtures, cancel/restart, library tests and `rust_verify_test`; L22 (rescue lane report, tag `archive/rescue-m7-98f6292`) |
 | Engine runtime delivery | Pass | `engine-runtime-13a1176c-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
-| Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate in the [L2 report](reports/rescue/l2-shrink-and-split.md#native-gate) |
+| Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate 677/677 at `68a22c7` after the `Queue::offer` fixture fix, L2 (rescue lane report, tag `archive/rescue-m7-98f6292`) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
-| Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification ([L7c report](reports/rescue/l7c-managed-overhead.md)) |
-| Default and cache conformance | Pass (native) | `d187e49` on EC2 with runtime `13a1176c`: PR subset 33/33, fast 147/147 and standard 159/159 Same in pass-through, fill, warm and the engine arm, 0 Unstable ([L22 report](reports/rescue/l22-final-pin.md)). The intermittent cache-warm module order on `debug_expand.rs` is no longer a difference ([ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md); [repro](../corpus/repros/sail-cache-warm-error-order/)) |
+| Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification, L7c (rescue lane report, tag `archive/rescue-m7-98f6292`) |
+| Default and cache conformance | Pass (native) | `d187e49` on EC2 with runtime `13a1176c`: PR subset 33/33, fast 147/147 and standard 159/159 Same in pass-through, fill, warm and the engine arm, 0 Unstable, L22 (rescue lane report, tag `archive/rescue-m7-98f6292`). The intermittent cache-warm module order on `debug_expand.rs` is no longer a difference ([ADR 0042](decisions/0042-diagnostics-compared-as-a-set.md); [repro](../corpus/repros/sail-cache-warm-error-order/)) |
 | Deep tier (release check) | Pass | `98f6292` on EC2: corpus deep tier 159/159 Same in pass-through, fill, warm and engine; `rust_verify_test` 4,695 tests, 0 Different in each mode (3–5 `output_json` Unstable, VI-0008); Singular projects Same in default mode; their engine arm counts 3 units `engine-lacks-feature` (stock fallback, `SAIL3124`; L26 `8b40111`, tested as `56415d5` with identical code before rebasing onto #85) ([deep-tier record](validation/deep-tier.md)) |
-| Frozen repair performance (≥2× each) | Accepted at the measured speedup (ADR 0038 amendment 2026-10-13) | Three native rounds on runtime `13a1176c` (`d187e49`), every sample valid: HumanEval 2.14× (64.7 s / 30.3 s), Vest 1.82× (246.6 s / 135.1 s) ([benchmarks](benchmarks.md), [L22 report](reports/rescue/l22-final-pin.md)); L23 measured 2.11× and 1.80× ([L23 report](reports/rescue/l23-repair-target-and-vest.md)) |
+| Frozen repair performance (≥2× each) | Accepted at the measured speedup (ADR 0038 amendment 2026-10-13) | Three native rounds on runtime `13a1176c` (`d187e49`), every sample valid: HumanEval 2.14× (64.7 s / 30.3 s), Vest 1.82× (246.6 s / 135.1 s) ([benchmarks](benchmarks.md); L22 rescue lane report, tag `archive/rescue-m7-98f6292`); L23 measured 2.11× and 1.80× on the same protocol |
 
 The source engine, repair CLI/MCP, resumable proof journals, explanations,
 immutable baselines and comparisons are implemented; stock verification stays
@@ -204,7 +204,7 @@ Across a whole warm run, then, pools could only shorten a small
 solver-side remainder. Edit loops agree.
 
 - **Rescue L11.** It measured warm sessions per missed bucket, on the cycle's
-  critical path ([report](reports/rescue/l11-warm-sessions.md)).
+  critical path, L11 (rescue lane report, tag `archive/rescue-m7-98f6292`).
   - A cycle misses 1–2 buckets. Setup costs 21–82 ms per bucket at the
     median.
   - Exact-prefix sessions would save at most 9–19 ms per human-eval-verus
@@ -222,21 +222,21 @@ The levers that matter now:
     12.6%), Cargo bypass (≤9% / 7%) and Sail overhead (11% / 7%).
     Rustc incremental is already on, for plain `cargo verus` and Sail alike;
     a separate cache for Verus's verify pass measured no gain, so that item
-    is closed ([L23 report](reports/rescue/l23-repair-target-and-vest.md)).
+    is closed (L23 rescue lane report, tag `archive/rescue-m7-98f6292`).
   - Repair functions share one Cargo target, so a new function's first
     repair no longer verifies vstd (HumanEval 40 s → 6.5–8.9 s, Vest 61 s
     → 30 s; L23).
-  - See the [L18 report](reports/rescue/l18-m8-stage-profile.md).
+  - These figures come from the M8.0 stage profile, L18 (rescue lane report, tag `archive/rescue-m7-98f6292`).
   - The two vstd re-verification defects it found are resolved. The passing
     run after a failure no longer verifies vstd again (32 s → 5.4 s on
     HumanEval, 50 s → 24.4 s on Vest). The engine defect came from the
     dropped VI-0005 fork fix and does not occur at the current pin
-    ([L19 report](reports/rescue/l19-vstd-reverify.md)).
+    (L19 rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **Determinism (VI-0001),** to raise hit rates. In edit loops a reordered
   bucket costs about 2.7 s per affected human-eval-verus cycle. The fork's
   remaining variation under `cargo verus` is fixed on fork branch
   `l21/determinism` (`1612b951`), which is not yet pinned
-  ([L21 report](reports/rescue/l21-determinism.md));
+  (L21 rescue lane report, tag `archive/rescue-m7-98f6292`);
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
 
 ## Charter roadmap (designed for, built later)

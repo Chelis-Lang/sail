@@ -3,7 +3,7 @@
 This review covers what to do after the M7 rescue, judged by what a user would
 notice. It draws on the
 [new-user walkthrough](2026-10-13-new-user-walkthrough.md), the rescue lane
-reports under [rescue/](rescue/), and the
+reports (tag `archive/rescue-m7-98f6292`), and the
 [deep-tier validation](../validation/deep-tier.md).
 
 ## Why someone would use Sail
