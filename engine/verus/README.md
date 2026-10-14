@@ -67,13 +67,19 @@ CI never builds Verus; it installs the prebuilt runtime.
 
 ### Upgrading Verus
 
-1. Push the new upstream commit to the fork as `upstream/<short sha>`.
-2. Rebase `sail` onto it (`git rebase --onto upstream/<new> upstream/<old> sail`
+1. In every fresh clone of the fork, set the human identity first
+   (`git config user.name` and `user.email`, as in this repository). Rebasing
+   and cherry-picking rewrite the committer, and without a configured email
+   git falls back to `user@hostname`. Check new commits with
+   `scripts/check-ai-markers.sh range <base> <head>`, which rejects AI markers
+   and hostname-fallback identities.
+2. Push the new upstream commit to the fork as `upstream/<short sha>`.
+3. Rebase `sail` onto it (`git rebase --onto upstream/<new> upstream/<old> sail`
    on a review branch). Drop fixes the release already contains; resolve
    conflicts per commit.
-3. Run every `sail_vi*` regression test and the `rust_verify_test` suite on
+4. Run every `sail_vi*` regression test and the `rust_verify_test` suite on
    the rebased branch, and record the results.
-4. After review, move `sail` to the branch, update `corpus/toolchain.toml` and
+5. After review, move `sail` to the branch, update `corpus/toolchain.toml` and
    [fork.toml](fork.toml) together, then do one rebuild, the qualification
    steps below, and publish and re-pin the runtime
    ([Publishing a runtime](#publishing-a-runtime)). Tag the pinned commit
