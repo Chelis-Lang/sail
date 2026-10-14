@@ -1,21 +1,14 @@
 # Proof events and repair validation
 
-**Experimental (M7):** the selected source engine runs stock lowering with a
-focused phase in the same compiler callback (it prepares no lowering for reuse). Current `387ba80` passes the
-[complete gate, original solver, product installations and original CLI/MCP
-repair fixture](validation/m7.md).
-The `57a319d` named-baseline feature smoke and
-[b895 full reader/retained workflow](validation/m7.md)
-remain separate historical passes. Current readers, real-project performance
-and complete standard/cache corpus coverage remain unfinished.
-See [known issues](known-issues.md) and the
-[acceptance guide](bench/m7-repair-acceptance.md) before relying on performance.
-Stock verification remains the default.
+**Experimental.** The optional interactive engine runs stock lowering with a
+focused phase in the same compiler callback (it prepares no lowering for
+reuse). Stock verification remains the default. Qualification status and its
+open items are in [M7 validation](validation/m7.md); read
+[known issues](known-issues.md) before relying on performance.
 
 For setup through a focus/full regression, resumable events, cancellation and
 CLI/MCP evidence, follow the [repair walkthrough](proof-repair-walkthrough.md).
-It distinguishes submission from accepted proof and engine identity checks from
-unfinished M7 acceptance.
+It distinguishes submission from an accepted proof.
 
 The optional `interactive` engine is a Sail-managed build of the pinned Verus
 source. It is selected explicitly. Stock verification retains its existing

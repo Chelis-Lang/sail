@@ -3,7 +3,9 @@
 //! Reads `corpus/toolchain.toml`, downloads the release archive for the host
 //! platform with `curl`, checks its SHA-256 before unpacking it with `unzip`,
 //! then checks the bundled z3's SHA-256. Installs are idempotent: a verified
-//! install is left alone.
+//! install is left alone. It then installs the Rust toolchain the release
+//! names (with rustup, if it is missing) and prints the `PATH` line that puts
+//! `verus` and `cargo-verus` on `PATH`.
 
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -113,6 +115,7 @@ pub fn fetch() -> Result<()> {
         && (!bundled || (local_z3.is_file() && check_z3(&local_z3, asset).is_ok()));
 
     if !installed {
+        require_tools()?;
         let downloads = root.join("downloads");
         std::fs::create_dir_all(&downloads)
             .map_err(|e| format!("cannot create {}: {e}", downloads.display()))?;
@@ -155,12 +158,74 @@ pub fn fetch() -> Result<()> {
         .z3;
     check_z3(&z3, asset)?;
 
+    let toolchain = &pins.verus.rust_toolchain;
+    let toolchain_note = install_toolchain(toolchain);
+
     println!(
         "Verus {} (z3 {}) installed:",
         pins.verus.release, pins.z3.version
     );
     println!("  verus:          {}", install.join("verus").display());
     println!("  z3:             {}", z3.display());
-    println!("  rust toolchain: {}", pins.verus.rust_toolchain);
+    println!("  rust toolchain: {toolchain} ({toolchain_note})");
+    println!();
+    println!("Put Verus on PATH (add this line to your shell profile to keep it):");
+    println!("  export PATH=\"{}:$PATH\"", install.display());
+    Ok(())
+}
+
+/// Whether `program` can be run (it is on `PATH`).
+fn available(program: &str, probe: &str) -> bool {
+    Command::new(program)
+        .arg(probe)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok()
+}
+
+/// Installs the Rust toolchain Verus needs with rustup, unless it is already
+/// installed. Returns a short note for the summary. Never fails the fetch:
+/// without rustup it names the exact command to run.
+fn install_toolchain(toolchain: &str) -> String {
+    let installed = Command::new("rustup")
+        .args(["run", toolchain, "rustc", "--version"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+    match installed {
+        Ok(status) if status.success() => "installed".to_owned(),
+        Ok(_) => {
+            println!("installing Rust {toolchain}, which Verus needs (rustup toolchain install)");
+            match run(Command::new("rustup").args([
+                "toolchain",
+                "install",
+                toolchain,
+                "--profile",
+                "minimal",
+            ])) {
+                Ok(()) => "installed now".to_owned(),
+                Err(e) => format!(
+                    "NOT installed: {e}; run `rustup toolchain install {toolchain} --profile minimal`"
+                ),
+            }
+        }
+        Err(_) => format!(
+            "NOT installed: rustup is not on PATH; install rustup (https://rustup.rs), then run \
+             `rustup toolchain install {toolchain} --profile minimal`"
+        ),
+    }
+}
+
+/// Fails early, with the package to install, when a download tool is missing.
+fn require_tools() -> Result<()> {
+    for (program, probe) in [("curl", "--version"), ("unzip", "-v")] {
+        if !available(program, probe) {
+            return Err(format!(
+                "`cargo xtask fetch-verus` needs `{program}` on PATH; install it first \
+                 (Debian/Ubuntu: `sudo apt-get install {program}`)"
+            ));
+        }
+    }
     Ok(())
 }
