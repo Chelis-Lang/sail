@@ -316,7 +316,7 @@ fn parse_cache_args(args: &[String]) -> Result<CacheArgs, String> {
     Ok(a)
 }
 
-const CACHE_USAGE: &str = "USAGE:
+pub(crate) const CACHE_USAGE: &str = "USAGE:
     sail cache [--cache DIR | --socket PATH] [--json] <COMMAND>
 
 COMMANDS:

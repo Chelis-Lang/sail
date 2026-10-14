@@ -7,6 +7,7 @@
 mod engine_cli;
 mod fragility;
 mod fragility_join;
+mod help;
 mod jobs;
 mod managed_cli;
 mod measurement;
@@ -70,9 +71,11 @@ fn usage() -> String {
         env!("CARGO_PKG_VERSION")
     );
     for (name, help) in COMMANDS {
-        let _ = writeln!(text, "    {name:<10} {help}");
+        let _ = writeln!(text, "    {name:<13} {help}");
     }
-    text.push_str("\nVERIFY OPTIONS (before --):\n    --output json\n    --incremental\n    --background\n    --engine stock|interactive\n    --measure-fragility [--fragility-seeds N]\n    --portfolio accept-first-proof [--portfolio-seeds 1,2,...]\n    --portfolio-timeout-secs N\n");
+    text.push_str(
+        "\nRun `sail COMMAND --help` (or `sail help COMMAND`) for a command's options.\n",
+    );
     text
 }
 
@@ -82,9 +85,23 @@ fn run(args: &[String], out: &mut dyn std::io::Write, err: &mut dyn std::io::Wri
             let _ = write!(err, "{}", usage());
             ExitCode::from(EXIT_USAGE)
         }
-        Some("-h" | "--help" | "help") => {
-            let _ = write!(out, "{}", usage());
-            ExitCode::SUCCESS
+        Some("-h" | "--help" | "help") => match args.get(1) {
+            Some(command) if command != "bench" => help::print(command, out).unwrap_or_else(|| {
+                let _ = writeln!(err, "error[SAIL0002]: unknown command `{command}`\n");
+                let _ = write!(err, "{}", usage());
+                ExitCode::from(EXIT_USAGE)
+            }),
+            _ => {
+                let _ = write!(out, "{}", usage());
+                ExitCode::SUCCESS
+            }
+        },
+        Some(command) if command != "bench" && help::requested(&args[1..]) => {
+            help::print(command, out).unwrap_or_else(|| {
+                let _ = writeln!(err, "error[SAIL0002]: unknown command `{command}`\n");
+                let _ = write!(err, "{}", usage());
+                ExitCode::from(EXIT_USAGE)
+            })
         }
         Some("-V" | "--version") => {
             let _ = writeln!(out, "sail {}", env!("CARGO_PKG_VERSION"));

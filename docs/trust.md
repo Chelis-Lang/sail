@@ -176,7 +176,7 @@ file, which is never read as an entry (`crates/sail-cli/tests/daemon_ops.rs`).
 The daemon reports its protocol version in `HELLO`, and clients treat a
 mismatch as "daemon unavailable": the shim passes everything through to the
 pinned solver. The default socket name includes the version
-(`daemon-v<N>-workspace-v1.sock`), so an upgraded `sail verify` starts its own daemon
+(`daemon-v<N>-workspace-v2-proof-v1.sock`), so an upgraded `sail verify` starts its own daemon
 instead of reusing a stale one.
 
 ## Solver diagnostics and publication
