@@ -18,6 +18,13 @@ semantic versioning once the API is published.
   `0.1.0-rc.1`). `sail --help` no longer lists `sail bench`, a contributor
   tool that is not in the release archives; run without `sail-bench`, it
   says to build it from a source checkout.
+- Release archives ship `sail` and `sail-z3` stripped of debug line tables
+  (`scripts/release.sh` runs `strip -S`): measured on v0.1.0-rc.1, the Linux
+  archive shrinks from 57.5 MB to 42.0 MB (`sail` 76.3 MB to 17.6 MB); the
+  macOS archive from 35.3 MB to 35.0 MB, where the engine runtime is most of
+  the size.
+- `docs/mcp.md` keeps user instructions only; repair validation status is in
+  `docs/validation/m7.md`.
 
 - A performance page ([performance](docs/performance.md)) states where Sail
   is faster than plain `cargo verus verify` and where it is not, each claim

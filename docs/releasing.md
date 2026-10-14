@@ -131,7 +131,8 @@ access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
 5. The owner reviews the draft and decides when to publish.
 
 `scripts/release.sh stage OUT [ENGINE_BUILD]` is the staging step alone: it
-copies `target/release/sail` and `sail-z3`, and the engine build's manifest
+copies `target/release/sail` and `sail-z3` (stripped of the release
+profile's line tables with `strip -S`; function symbols stay), and the engine build's manifest
 and runtime files, into `OUT`, then runs the self-check.
 
 ## Qualifying the macOS engine

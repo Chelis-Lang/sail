@@ -61,6 +61,10 @@ stage() {
   mkdir -p "$out/bin"
   cp target/release/sail target/release/sail-z3 "$out/bin/"
   chmod 755 "$out/bin/sail" "$out/bin/sail-z3"
+  # Drop the release profile's line tables from the shipped binaries (symbols
+  # stay, so backtraces still name functions). Only Sail's own binaries: the
+  # engine runtime files are bound to their manifest digests.
+  strip -S "$out/bin/sail" "$out/bin/sail-z3"
   if [ -z "$build" ]; then
     self_check "$out" 0
     return 0
