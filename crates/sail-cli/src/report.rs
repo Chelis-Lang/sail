@@ -2,6 +2,87 @@
 
 pub(crate) use sail_verus::report::{Inputs, build, setup_failure};
 
+/// Function counts for a human summary line, with Verus's own totals.
+///
+/// `unknown` functions that Verus's totals clear (see
+/// [`sail_api::output::CrateReport::unknown_passed_by_verus_totals`]) are
+/// shown as their own category; their verdicts stay `unknown`.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Counts {
+    functions: u64,
+    verified: u64,
+    failed: u64,
+    unknown: u64,
+    passed_by_verus_totals: u64,
+    verus_verified: u64,
+    verus_errors: u64,
+    verus_totals: bool,
+}
+
+impl Counts {
+    pub(crate) fn of(report: &sail_api::output::Report) -> Self {
+        let mut counts = Self::default();
+        counts.add(report);
+        counts
+    }
+
+    pub(crate) fn of_requested(result: &sail_api::project::ProjectResult) -> Self {
+        let mut counts = Self::default();
+        for target in result.targets.iter().filter(|target| target.requested) {
+            counts.add(&target.report);
+        }
+        counts
+    }
+
+    fn add(&mut self, report: &sail_api::output::Report) {
+        let s = &report.summary;
+        self.functions = self.functions.saturating_add(s.functions);
+        self.verified = self.verified.saturating_add(s.verified);
+        self.failed = self.failed.saturating_add(s.failed);
+        self.unknown = self.unknown.saturating_add(s.unknown);
+        for c in &report.crates {
+            self.passed_by_verus_totals = self
+                .passed_by_verus_totals
+                .saturating_add(c.unknown_passed_by_verus_totals());
+            self.verus_totals |= c.verus.verified.is_some();
+            self.verus_verified = self
+                .verus_verified
+                .saturating_add(c.verus.verified.unwrap_or(0));
+            self.verus_errors = self
+                .verus_errors
+                .saturating_add(c.verus.errors.unwrap_or(0));
+        }
+    }
+}
+
+impl std::fmt::Display for Counts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} verified, {} failed, ", self.verified, self.failed)?;
+        if self.passed_by_verus_totals > 0 {
+            write!(
+                f,
+                "{} passed by Verus's totals (not attributed one by one), ",
+                self.passed_by_verus_totals
+            )?;
+        }
+        write!(
+            f,
+            "{} unknown",
+            self.unknown.saturating_sub(self.passed_by_verus_totals)
+        )?;
+        if self.verus_totals
+            && self.verus_verified.saturating_add(self.verus_errors) != self.functions
+        {
+            write!(
+                f,
+                " (functions; Verus counts verification units: {} verified, {} errors)",
+                self.verus_verified, self.verus_errors
+            )?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     //! Golden test: the fixture under `tests/fixtures/attr` is a real Verus
@@ -22,6 +103,27 @@ mod tests {
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/attr")
             .join(name)
+    }
+
+    #[test]
+    fn summary_counts_name_what_verus_totals_clear_and_the_counting_unit() {
+        let mut r: Report =
+            serde_json::from_str(include_str!("../tests/fixtures/attr/report.golden.json"))
+                .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert_eq!(
+            super::Counts::of(&r).to_string(),
+            "6 verified, 2 failed, 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors)"
+        );
+        for f in r.crates.iter_mut().flat_map(|c| &mut c.functions) {
+            if f.verdict == sail_api::output::VerdictName::Verified {
+                f.verdict = sail_api::output::VerdictName::Unknown;
+            }
+        }
+        r.summary = sail_api::output::Summary::of(&r.crates);
+        assert_eq!(
+            super::Counts::of(&r).to_string(),
+            "0 verified, 2 failed, 6 passed by Verus's totals (not attributed one by one), 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors)"
+        );
     }
 
     fn logs() -> Vec<LogFile> {

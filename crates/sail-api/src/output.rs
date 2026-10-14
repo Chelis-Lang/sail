@@ -662,6 +662,41 @@ impl Summary {
     }
 }
 
+impl CrateReport {
+    /// How many of this crate's `unknown` functions Verus's own totals clear.
+    ///
+    /// When attribution is incomplete in a failing crate, functions Sail
+    /// cannot confirm one by one are `unknown` (VI-0003, VI-0010). Verus
+    /// counts every failing verification unit in `verus.errors`, bit-vector
+    /// failures included (VI-0003), and each function reported `failed`
+    /// accounts for at least one. So when `errors` equals the number of failed
+    /// functions, no other function had an error, and the `unknown` functions
+    /// passed by Verus's totals. Their verdicts stay `unknown`: this is a
+    /// count from Verus's aggregate, never a per-function proof (charter
+    /// rule 7). Returns 0 whenever the totals cannot clear them.
+    #[must_use]
+    pub fn unknown_passed_by_verus_totals(&self) -> u64 {
+        let count = |verdict: VerdictName| {
+            let n = self
+                .functions
+                .iter()
+                .filter(|f| f.verdict == verdict)
+                .count();
+            u64::try_from(n).unwrap_or(u64::MAX)
+        };
+        let failed = count(VerdictName::Failed);
+        let cleared = failed > 0
+            && self.verus.errors == Some(failed)
+            && self.verus.verified.is_some()
+            && self.verus.encountered_vir_error != Some(true);
+        if cleared {
+            count(VerdictName::Unknown)
+        } else {
+            0
+        }
+    }
+}
+
 impl Report {
     /// Rules the JSON Schema cannot express. Returns every violation.
     #[must_use]
@@ -782,6 +817,40 @@ mod tests {
             crate::schema::validate(&project["properties"]["engine"], &extra),
             Vec::<String>::new()
         );
+    }
+    #[test]
+    fn verus_totals_clear_unknown_functions_only_when_every_error_is_accounted_for() {
+        let golden: Report = serde_json::from_str(include_str!(
+            "../../sail-cli/tests/fixtures/attr/report.golden.json"
+        ))
+        .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        // The fixture: 8 functions, 2 failed, and Verus reports 2 errors.
+        let mut krate = golden.crates[0].clone();
+        assert_eq!(krate.verus.errors, Some(2));
+        assert_eq!(krate.unknown_passed_by_verus_totals(), 0);
+        // Incomplete attribution leaves the 6 successes unknown (VI-0003).
+        for f in &mut krate.functions {
+            if f.verdict == VerdictName::Verified {
+                f.verdict = VerdictName::Unknown;
+            }
+        }
+        assert_eq!(krate.unknown_passed_by_verus_totals(), 6);
+        // A further Verus error may belong to any unknown function.
+        krate.verus.errors = Some(3);
+        assert_eq!(krate.unknown_passed_by_verus_totals(), 0);
+        krate.verus.errors = Some(2);
+        krate.verus.encountered_vir_error = Some(true);
+        assert_eq!(krate.unknown_passed_by_verus_totals(), 0);
+        krate.verus.encountered_vir_error = Some(false);
+        krate.verus.verified = None;
+        assert_eq!(krate.unknown_passed_by_verus_totals(), 0);
+        // Without a failed function there is nothing to account errors to.
+        krate.verus.verified = Some(9);
+        for f in &mut krate.functions {
+            f.verdict = VerdictName::Unknown;
+        }
+        krate.verus.errors = Some(0);
+        assert_eq!(krate.unknown_passed_by_verus_totals(), 0);
     }
     #[test]
     fn portfolio_evidence_matches_the_schema() {

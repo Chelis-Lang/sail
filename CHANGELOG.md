@@ -5,6 +5,20 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Honest counts after a failure. When a failing crate's attribution is
+  incomplete (for example, vest's duplicate friendly names, VI-0010), the
+  functions Sail cannot confirm one by one stay `unknown`. If Verus's own
+  totals report no error beyond the failed functions, summaries now report
+  those functions as "passed by Verus's totals" instead of `unknown`: a
+  failing vest edit reads `0 verified, 1 failed, 3126 passed by Verus's totals
+  (not attributed one by one), 0 unknown`. This applies to the
+  `--incremental` evidence line, `sail jobs result` and MCP replies
+  (`counts.unknown_passed_by_verus_totals`). Summaries also say that Verus's
+  totals count verification units (each loop separately), not functions,
+  which is why a five-function demo reads `5 functions` against Verus's
+  `6 verified, 1 errors`. Report verdicts and the `--output json` schema are
+  unchanged.
+
 - Release archives (`sail-VERSION-TARGET.tar.gz`, for
   `x86_64-unknown-linux-gnu` and `aarch64-apple-darwin`) bundle the repair
   engine runtime under `engine/<variant>`, and `sail` now finds it beside its

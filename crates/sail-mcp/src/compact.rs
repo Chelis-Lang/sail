@@ -240,6 +240,9 @@ struct Counts {
     verified: u64,
     failed: u64,
     unknown: u64,
+    /// The `unknown` functions that Verus's own totals clear
+    /// ([`sail_api::output::CrateReport::unknown_passed_by_verus_totals`]).
+    passed_by_verus_totals: u64,
     provisional: u64,
 }
 impl Counts {
@@ -258,6 +261,7 @@ impl Counts {
             "verified": self.verified,
             "failed": self.failed,
             "unknown": self.unknown,
+            "unknown_passed_by_verus_totals": self.passed_by_verus_totals,
             "provisional": self.provisional,
         })
     }
@@ -379,14 +383,22 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
     let mut targets = Vec::new();
     for target in &requested {
         let mut target_counts = Counts::default();
-        for f in functions(target) {
-            counts.add(f);
-            target_counts.add(f);
-            match effective_verdict(f) {
-                VerdictName::Verified => {}
-                VerdictName::Failed => failures.push(failure(target, f)),
-                v @ (VerdictName::Unknown | VerdictName::Provisional) => {
-                    unresolved.push(json!({"function": f.function, "verdict": verdict_name(v)}));
+        for c in &target.report.crates {
+            let cleared = c.unknown_passed_by_verus_totals();
+            counts.passed_by_verus_totals += cleared;
+            target_counts.passed_by_verus_totals += cleared;
+            for f in &c.functions {
+                counts.add(f);
+                target_counts.add(f);
+                match effective_verdict(f) {
+                    VerdictName::Verified => {}
+                    VerdictName::Failed => failures.push(failure(target, f)),
+                    // Cleared by Verus's totals: not an open question.
+                    VerdictName::Unknown if cleared > 0 => {}
+                    v @ (VerdictName::Unknown | VerdictName::Provisional) => {
+                        unresolved
+                            .push(json!({"function": f.function, "verdict": verdict_name(v)}));
+                    }
                 }
             }
         }
@@ -445,15 +457,30 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
     let exit = project
         .exit_code
         .map_or_else(|| "no exit code".to_owned(), |c| format!("exit {c}"));
+    let passed = counts.passed_by_verus_totals;
     let mut text = if counts.failed > 0 {
-        format!(
-            "FAILED: {} of {scope} failed: {}. {} verified, {} unknown, {} provisional ({exit}).",
+        let mut line = format!(
+            "FAILED: {} of {scope} failed: {}. {} verified, ",
             counts.failed,
             names(&failures),
             counts.verified,
-            counts.unknown,
+        );
+        if passed > 0 {
+            let _ = write!(line, "{passed} passed by Verus's totals, ");
+        }
+        let _ = write!(
+            line,
+            "{} unknown, {} provisional ({exit}).",
+            counts.unknown - passed,
             counts.provisional
-        )
+        );
+        if passed > 0 {
+            let _ = write!(
+                line,
+                "\nVerus reports no error beyond the failed function(s), so the other {passed} function(s) passed by its totals. Sail could not attribute results to them one by one (attribution incomplete), so their reports say `unknown`."
+            );
+        }
+        line
     } else if counts.unknown + counts.provisional > 0 {
         format!(
             "NOT VERIFIED: {} of {scope} unresolved (unknown or provisional, never verified): {}. {} verified ({exit}).",
@@ -471,6 +498,13 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
             errors.len()
         )
     };
+    if !requested.is_empty() && verus.0 + verus.1 != counts.functions {
+        let _ = write!(
+            text,
+            "\nCounts are functions. Verus's totals ({} verified, {} error(s)) count verification units instead: for example, each loop is verified and counted separately from its function's body.",
+            verus.0, verus.1
+        );
+    }
     for f in failures.iter().take(MAX_LISTED) {
         for o in f["obligations"].as_array().into_iter().flatten() {
             let _ = write!(
@@ -889,6 +923,49 @@ mod tests {
         assert_eq!(kept[0]["report"]["summary"]["failed"], 2);
         let unchanged = shape("verification_result", Detail::Full, full.clone());
         assert_eq!(unchanged.structured, full.structured);
+    }
+
+    #[test]
+    fn verus_totals_clear_unattributed_functions_without_verifying_them() {
+        let mut project = project();
+        // Incomplete attribution in the failing crate: successes are unknown.
+        for f in project["targets"][0]["report"]["crates"][0]["functions"]
+            .as_array_mut()
+            .into_iter()
+            .flatten()
+        {
+            if f["verdict"] == "verified" {
+                f["verdict"] = json!("unknown");
+            }
+        }
+        let document = json!({"response": "result",
+            "value": {"job": {"id": "job-1"}, "result": project}});
+        let shaped = shape(
+            "verification_result",
+            Detail::Summary,
+            ToolResult::ok(String::new(), document),
+        );
+        let view = &shaped.structured["value"]["result"];
+        assert!(
+            shaped.text.contains(
+                "0 verified, 6 passed by Verus's totals, 0 unknown, 0 provisional (exit 1)."
+            ),
+            "{}",
+            shaped.text
+        );
+        // The verdicts stay unknown; only the count says Verus's totals clear them.
+        assert_eq!(view["counts"]["verified"], 0);
+        assert_eq!(view["counts"]["unknown"], 6);
+        assert_eq!(view["counts"]["unknown_passed_by_verus_totals"], 6);
+        assert_eq!(view["unresolved_total"], 0);
+        // Verus counted 11 units for 8 functions; the summary says why.
+        assert!(
+            shaped
+                .text
+                .contains("Counts are functions. Verus's totals (9 verified, 2 error(s))"),
+            "{}",
+            shaped.text
+        );
     }
 
     #[test]
