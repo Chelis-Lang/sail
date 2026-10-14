@@ -44,7 +44,7 @@ semantic versioning once the API is published.
   sides hold the same number of functions under it and every one has the same
   result on each side; otherwise it stays `incomparable`. On vest, fixing the
   one failing function against a baseline now reads `1 recovered, 3014
-  unchanged` in a 2.2 KB MCP reply, where it read `95 incomparable, 2920
+  unchanged` in a 2.4 KB MCP reply, where it read `95 incomparable, 2920
   recovered` in 1.26 MB. Verdicts are unchanged: each difference keeps the
   reported `before`/`after` verdicts and flags the totals with
   `before_passed_by_verus_totals`/`after_passed_by_verus_totals`; notes say

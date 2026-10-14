@@ -253,7 +253,7 @@ recovered: vest_lib::primitives::base256::lemma_usize_shr8_is_div256
 Entries are friendly function names: 95 repeated name(s), shared by 207 functions (VI-0010), were each compared as a group, since every function sharing the name has the same result on each side.
 ```
 
-The default reply is 2.2 KB; before this classification it read
+The default reply is 2.4 KB; before this classification it read
 `95 incomparable, 2920 recovered` in 1.26 MB, listing every function as
 changed. `detail: "full"` (every function) is 1.4 MB. Measured on EC2
 c7i.4xlarge, us-east-1.
