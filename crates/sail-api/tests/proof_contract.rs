@@ -1,6 +1,6 @@
 //! Live observations cannot bypass complete target finalization.
 
-use sail_api::output::{FunctionReport, Report, TierName, VerdictName};
+use sail_api::output::{EstablishmentName, EvidenceTierName, FunctionReport, Report, VerdictName};
 use sail_api::proof::{InputEvent, Observation, Phase, Target};
 
 fn function() -> Result<FunctionReport, Box<dyn std::error::Error>> {
@@ -39,11 +39,15 @@ fn a_confirmed_report_cannot_be_published_as_a_live_function_claim()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut report = function()?;
     report.verdict = VerdictName::Verified;
-    report.tier = TierName::Confirmed;
+    report.establishment = EstablishmentName::Confirmed;
     assert!(event(report.clone()).validate().is_err());
     report.verdict = VerdictName::Provisional;
-    report.tier = TierName::Provisional;
+    report.establishment = EstablishmentName::Provisional;
+    report.evidence_tier = None;
     assert!(event(report.clone()).validate().is_ok());
+    let mut tiered = report.clone();
+    tiered.evidence_tier = Some(EvidenceTierName::SmtVerified);
+    assert!(event(tiered).validate().is_err());
     let mut wrong_identity = event(report);
     wrong_identity.function = Some("different::function".into());
     assert!(wrong_identity.validate().is_err());
@@ -55,7 +59,8 @@ fn same_name_targets_remain_different_and_identity_is_mandatory()
 -> Result<(), Box<dyn std::error::Error>> {
     let mut report = function()?;
     report.verdict = VerdictName::Provisional;
-    report.tier = TierName::Provisional;
+    report.establishment = EstablishmentName::Provisional;
+    report.evidence_tier = None;
     let library = event(report);
     let mut binary = library.clone();
     binary.target.kind = vec!["bin".into()];

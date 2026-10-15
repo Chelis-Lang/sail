@@ -2,10 +2,10 @@
 
 use sail_api::output::{
     AnswerName, Assignment, AttributionInfo, AttributionStatus, CacheInfo, CheckReport,
-    Counterexample, CrateReport, Diagnostic, DiagnosticSpan, ErrorInfo, Fragility, FunctionReport,
-    JSON_SCHEMA, ObligationReport, OutcomeName, ProvenanceReport, Report, SCHEMA_VERSION,
-    SolverInfo, SourceName, SourceSpan, SourceSummaryName, SpinoffInfo, Summary, TierName, Timing,
-    VerdictName, VerusResults,
+    Counterexample, CrateReport, Diagnostic, DiagnosticSpan, ErrorInfo, EstablishmentName,
+    EvidenceTierName, Fragility, FunctionReport, ItfValue, JSON_SCHEMA, ObligationReport,
+    OutcomeName, ProvenanceReport, Report, SCHEMA_VERSION, SolverInfo, SourceName, SourceSpan,
+    SourceSummaryName, SpinoffInfo, Summary, Timing, VerdictName, VerusResults,
 };
 use serde_json::Value;
 
@@ -40,12 +40,22 @@ fn full() -> Report {
         }],
         counterexample: Some(Counterexample {
             check: 0,
-            model: "(\n  (define-fun x! () Int 0)\n)".to_owned(),
-            assignments: vec![Assignment {
-                name: "x!".to_owned(),
-                sort: "Int".to_owned(),
-                value: "0".to_owned(),
-            }],
+            model: "(\n  (define-fun x! () Int (- 3))\n  (define-fun b! () Bool true)\n  \
+                    (define-fun t () Type TYPE%vstd!seq.Seq.)\n)"
+                .to_owned(),
+            assignments: [
+                ("x!", "Int", "(- 3)"),
+                ("b!", "Bool", "true"),
+                ("t", "Type", "TYPE%vstd!seq.Seq."),
+            ]
+            .into_iter()
+            .map(|(name, sort, value)| Assignment {
+                name: name.to_owned(),
+                sort: sort.to_owned(),
+                value: value.to_owned(),
+                itf: ItfValue::render(sort, value),
+            })
+            .collect(),
         }),
     };
     let function = FunctionReport {
@@ -53,7 +63,8 @@ fn full() -> Report {
         module: String::new(),
         fn_mode: Some("exec".to_owned()),
         verdict: VerdictName::Failed,
-        tier: TierName::Confirmed,
+        establishment: EstablishmentName::Confirmed,
+        evidence_tier: Some(EvidenceTierName::SmtVerified),
         unstable: false,
         verus_success: Some(true),
         provenance: ProvenanceReport {
@@ -247,10 +258,10 @@ fn schema_rejects_wrong_values() {
     let mut value = serde_json::to_value(full()).unwrap_or_default();
     if let Some(f) = value.pointer_mut("/crates/0/functions/0") {
         f["verdict"] = Value::String("passed".to_owned());
-        f["tier"] = Value::Null;
+        f["establishment"] = Value::Null;
     }
     if let Some(v) = value.get_mut("schema_version") {
-        *v = Value::from(2);
+        *v = Value::from(1);
     }
     assert_eq!(sail_api::schema::validate(&schema(), &value).len(), 3);
 }
@@ -264,7 +275,7 @@ fn invariants_catch_provisional_verified_and_bad_counts() {
         .and_then(|c| c.functions.first_mut())
     {
         f.verdict = VerdictName::Verified;
-        f.tier = TierName::Provisional;
+        f.establishment = EstablishmentName::Provisional;
         f.provenance.source = SourceSummaryName::Fresh;
     }
     let v = report.invariant_violations();
@@ -274,4 +285,136 @@ fn invariants_catch_provisional_verified_and_bad_counts() {
     );
     assert!(v.iter().any(|m| m.contains("provenance counts")), "{v:?}");
     assert!(v.iter().any(|m| m.contains("summary")), "{v:?}");
+}
+
+#[test]
+fn invariants_tie_the_evidence_tier_to_settled_verdicts() {
+    let mut report = full();
+    assert_eq!(report.invariant_violations(), Vec::<String>::new());
+    let set = |report: &mut Report, verdict, tier| {
+        if let Some(f) = report
+            .crates
+            .first_mut()
+            .and_then(|c| c.functions.first_mut())
+        {
+            f.verdict = verdict;
+            f.evidence_tier = tier;
+        }
+        report.summary = Summary::of(&report.crates);
+    };
+    // An unsettled verdict has no evidence tier.
+    set(
+        &mut report,
+        VerdictName::Unknown,
+        Some(EvidenceTierName::SmtVerified),
+    );
+    let v = report.invariant_violations();
+    assert!(v.iter().any(|m| m.contains("evidence tier")), "{v:?}");
+    set(&mut report, VerdictName::Unknown, None);
+    assert_eq!(report.invariant_violations(), Vec::<String>::new());
+    // A settled verdict always has one.
+    set(&mut report, VerdictName::Failed, None);
+    let v = report.invariant_violations();
+    assert!(v.iter().any(|m| m.contains("evidence tier")), "{v:?}");
+}
+
+#[test]
+fn evidence_tier_is_smt_verified_only_for_settled_confirmed_verdicts() {
+    use EstablishmentName::{Confirmed, Provisional};
+    let smt = Some(EvidenceTierName::SmtVerified);
+    assert_eq!(
+        EvidenceTierName::for_smt(VerdictName::Verified, Confirmed),
+        smt
+    );
+    assert_eq!(
+        EvidenceTierName::for_smt(VerdictName::Failed, Confirmed),
+        smt
+    );
+    assert_eq!(
+        EvidenceTierName::for_smt(VerdictName::Unknown, Confirmed),
+        None
+    );
+    assert_eq!(
+        EvidenceTierName::for_smt(VerdictName::Verified, Provisional),
+        None
+    );
+    assert_eq!(
+        EvidenceTierName::for_smt(VerdictName::Provisional, Provisional),
+        None
+    );
+    // The ordered set, weakest first, with its schema names.
+    let all = [
+        EvidenceTierName::Sampled,
+        EvidenceTierName::Bounded,
+        EvidenceTierName::SmtVerified,
+        EvidenceTierName::CertificateChecked,
+        EvidenceTierName::KernelChecked,
+    ];
+    assert!(all.windows(2).all(|w| w[0] < w[1]));
+    let names: Vec<Value> = all.iter().map(|t| serde_json::json!(t)).collect();
+    assert_eq!(
+        names,
+        [
+            "sampled",
+            "bounded",
+            "smt_verified",
+            "certificate_checked",
+            "kernel_checked"
+        ]
+        .map(Value::from)
+    );
+}
+
+#[test]
+fn itf_renders_model_values_and_keeps_the_rest_verbatim() {
+    let r = |sort: &str, value: &str| {
+        serde_json::to_value(ItfValue::render(sort, value)).unwrap_or_default()
+    };
+    assert_eq!(r("Int", "42"), serde_json::json!({"#bigint": "42"}));
+    assert_eq!(r("Int", "(- 42)"), serde_json::json!({"#bigint": "-42"}));
+    assert_eq!(r("Int", "(- 0)"), serde_json::json!({"#bigint": "0"}));
+    assert_eq!(
+        r("Int", "123456789012345678901234567890"),
+        serde_json::json!({"#bigint": "123456789012345678901234567890"})
+    );
+    assert_eq!(r("Bool", "true"), serde_json::json!(true));
+    assert_eq!(r("Bool", "false"), serde_json::json!(false));
+    assert_eq!(
+        r("(_ BitVec 8)", "#xff"),
+        serde_json::json!({"#bigint": "255"})
+    );
+    assert_eq!(
+        r("(_ BitVec 3)", "#b101"),
+        serde_json::json!({"#bigint": "5"})
+    );
+    for (sort, value) in [
+        ("Int", "(+ 1 2)"),
+        ("Int", "-1"),
+        ("Bool", "(not true)"),
+        ("Real", "1.0"),
+        ("FuelId", "FuelId!val!55"),
+        ("Poly", "(I 3)"),
+        ("(_ BitVec 8)", "#xzz"),
+        ("(_ BitVec 256)", &format!("#x{}", "f".repeat(64))),
+    ] {
+        assert_eq!(
+            r(sort, value),
+            serde_json::json!({"#unserializable": value}),
+            "{sort} {value}"
+        );
+    }
+    // Round trip.
+    for v in [
+        ItfValue::Bool(true),
+        ItfValue::BigInt {
+            bigint: "-1".to_owned(),
+        },
+        ItfValue::Unserializable {
+            unserializable: "x".to_owned(),
+        },
+    ] {
+        let back: ItfValue = serde_json::from_value(serde_json::to_value(&v).unwrap_or_default())
+            .unwrap_or(ItfValue::Bool(false));
+        assert_eq!(back, v);
+    }
 }

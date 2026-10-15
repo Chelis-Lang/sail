@@ -5,6 +5,19 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Breaking before release: output schema version 2** (#149, ADR 0044).
+  `sail verify --output json` writes `schema_version` 2 and the managed
+  `sail-project-result` envelope is version 2. Each function's `tier` is
+  renamed `establishment` (`confirmed` or `provisional`, unchanged meaning),
+  and a new `evidence_tier` says how strong a settled verdict's evidence is:
+  `smt_verified` for every `verified` or `failed` verdict today, `null` for
+  `unknown` and `provisional`. Counterexample assignments gain `itf`, the
+  value in ITF's value encoding, alongside the verbatim `value` and the
+  verbatim `get-model` reply. MCP lookups and the agent view carry the same
+  two fields. Version 1 was never released, so there is no compatibility
+  mode; project results and baselines stored by earlier builds are not read
+  and are re-established by the next run. Verdicts, diagnostics and solver
+  input are unchanged.
 - **`sail new` creates a ready-to-verify project** (#148). `sail new
   [--bin | --lib] [--name NAME] PATH` writes what `cargo verus new` writes,
   made by Sail's own Verus, so the `vstd` dependency always matches the

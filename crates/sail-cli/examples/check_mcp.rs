@@ -10,7 +10,7 @@
 //! - the handshake succeeds and `tools/list` is exactly this build's fifteen
 //!   compatibility, job and proof tools, with their key input contracts;
 //! - the call succeeds and returns a schema-v1 report;
-//! - every function's verdict and tier equal those in `<sail.json>` (the
+//! - every function's verdict and establishment equal those in `<sail.json>` (the
 //!   stdout of `sail verify --output json` on the same project), with the
 //!   same set of functions.
 //!
@@ -28,7 +28,12 @@ fn verdicts(r: &Report) -> BTreeMap<String, String> {
     r.crates
         .iter()
         .flat_map(|c| &c.functions)
-        .map(|f| (f.function.clone(), format!("{:?}/{:?}", f.verdict, f.tier)))
+        .map(|f| {
+            (
+                f.function.clone(),
+                format!("{:?}/{:?}", f.verdict, f.establishment),
+            )
+        })
         .collect()
 }
 

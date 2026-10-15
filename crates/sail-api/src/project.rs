@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::output::Report;
 
 /// Current version of the managed project-result envelope.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// A complete invocation of managed Cargo verification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

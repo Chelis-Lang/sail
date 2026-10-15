@@ -259,9 +259,9 @@ c7i.4xlarge, us-east-1.
 
 ## Tools
 
-Charter rule 7 holds in every tool. A function whose tier is `provisional`
-is reported as `provisional`, never `verified`, in summaries and in looked-up
-verdicts. `unknown` means verification was not confirmed and is never a settled
+Charter rule 7 holds in every tool. A function whose `establishment` is
+`provisional` is reported as `provisional`, never `verified`, in summaries
+and in looked-up verdicts, with a `null` `evidence_tier`. `unknown` means verification was not confirmed and is never a settled
 failure. It does not by itself establish that Z3 exhausted a resource limit.
 
 ### `verify`
@@ -270,9 +270,9 @@ Default verification submits a managed workspace job and waits for its
 result. Like `sail verify --incremental`, it reuses a Current report for
 unchanged inputs instead of verifying again, and the summary names the run that
 established each reused report. By default it returns the agent view below;
-`detail: "targets"` or `"full"` returns the schema-v1 report
+`detail: "targets"` or `"full"` returns the schema-v2 report
 (`docs/output-schema.md`) and the project envelope, with per-function verdicts,
-tier and provenance, obligation ids, counterexample models, diagnostics,
+establishment, evidence tier and provenance, obligation ids, counterexample models, diagnostics,
 timings and cache sources. The run is recorded for the lookups. Explicit module/function selectors use
 `cargo verus focus`, which is the pinned verifier’s supported partial entry
 point; whole-project requests use `cargo verus verify`.
@@ -320,7 +320,7 @@ The default `structuredContent` (the agent view) holds:
   `unresolved` does not list them (see
   [attribution coverage](output-schema.md#attribution-coverage));
 - `failures`: each failed function (at most 20; `failures_total` counts all)
-  with its failing obligations: `id`, `kind`, `outcome`, `at`
+  with its `verdict`, `establishment`, `evidence_tier` and failing obligations: `id`, `kind`, `outcome`, `at`
   (`file:line:column`) and `counterexample` (`variables`);
 - `unresolved`: unknown and provisional functions (at most 20;
   `unresolved_total`);
@@ -337,8 +337,8 @@ The default `structuredContent` (the agent view) holds:
 
 With `detail: "targets"` or `"full"`, `structuredContent` contains
 `project_dir`, `sail_args`, `exit_code`, `duration_ms`, `stored`, `summary`
-and the schema-v1 `report` of the requested targets, together with `job`,
-`sources` and `project_result`, the version-1 project envelope. With
+and the schema-v2 `report` of the requested targets, together with `job`,
+`sources` and `project_result`, the version-2 project envelope. With
 `targets`, the envelope keeps only the requested targets and `dependencies`
 counts the rest. If Cargo fails before
 any verification target produces a report, the response contains `job` and
@@ -395,9 +395,10 @@ lookups, including when only one function is selected:
   "job": {"version": 1, "id": "JOB", "state": "completed", "currentness": "historical", "…": "remaining status fields"},
   "functions": [{
     "package_id": "…", "target": "demo", "establishing_run": "RUN", "reused": false,
-    "function": "demo::bad", "verdict": "failed", "tier": "confirmed",
+    "function": "demo::bad", "verdict": "failed", "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
     "mode": "default", "configuration": null,
-    "function_report": {"…": "complete schema-v1 function report"},
+    "function_report": {"…": "complete schema-v2 function report"},
     "obligations": [], "counterexamples": []
   }]
 }
@@ -430,11 +431,13 @@ Established by run 2 (sail verify --output json) at 2026-10-08T22:41:21.259Z; Tr
 ```
 
 `structuredContent` holds:
-- `function`, `verdict` and `tier`;
+- `function`, `verdict`, `establishment` and `evidence_tier` (`null` unless
+  the presented verdict is settled);
 - `obligations`: the function's unproved obligations, or those with a model
   (only the named one, given `obligation`). Each is the schema's obligation,
   with the counterexample as source-level `variables`; with `detail: "full"`,
-  `counterexample.assignments` as data and `counterexample.model` verbatim.
+  `counterexample.assignments` as data (each with its ITF rendering, `itf`)
+  and `counterexample.model` verbatim.
   The text summary lists only source variables (`x!`, `i@0`).
 - `diagnostics`: the run's diagnostics located in the function. These are
   diagnostics with a span in the function's file, from its first line up to
@@ -478,7 +481,8 @@ The structured response below is schematic: ellipses omit nested report fields.
   "project_dir": "/work/demo",
   "function": "demo::max",
   "verdict": "verified",
-  "tier": "confirmed",
+  "establishment": "confirmed",
+  "evidence_tier": "smt_verified",
   "result": { "function": "demo::max", "verdict": "verified", "obligations": [ … ], … },
   "freshness": {
     "status": "stale",
@@ -498,7 +502,7 @@ The structured response below is schematic: ellipses omit nested report fields.
 
 With `obligation`, `result` is replaced by `obligation` (the schema's
 obligation). With neither argument, `functions` lists each recorded
-function's verdict, tier, `unstable` flag, provenance source, run and
+function's verdict, `establishment`, `evidence_tier`, `unstable` flag, provenance source, run and
 status, and `runs` holds each run's freshness.
 
 ### `fragility`

@@ -1,5 +1,5 @@
 //! Focus success never authorizes full-target regression, historical or partial evidence.
-use sail_api::output::{Report, TierName, VerdictName};
+use sail_api::output::{EstablishmentName, Report, VerdictName};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 use sail_api::repair::BatchResult;
 
@@ -9,7 +9,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
     ))?;
     Ok(ProjectResult {
         kind: "sail-project-result".into(),
-        schema_version: 1,
+        schema_version: sail_api::project::SCHEMA_VERSION,
         run_id: "run".into(),
         workspace: "workspace".into(),
         context_sha256: "context".into(),
@@ -44,7 +44,7 @@ fn success(mut project: ProjectResult) -> ProjectResult {
         c.verus.errors = Some(0);
     }
     for f in report.crates.iter_mut().flat_map(|c| &mut c.functions) {
-        f.tier = TierName::Confirmed;
+        f.establishment = EstablishmentName::Confirmed;
         f.verdict = VerdictName::Verified;
     }
     project

@@ -1,6 +1,6 @@
 //! Comparisons preserve exact scope, removal limits and ambiguous identities.
 use sail_api::evidence::Change;
-use sail_api::output::{OutcomeName, Report, TierName, VerdictName};
+use sail_api::output::{EstablishmentName, OutcomeName, Report, VerdictName};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 
 fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
@@ -9,7 +9,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
     ))?;
     Ok(ProjectResult {
         kind: "sail-project-result".into(),
-        schema_version: 1,
+        schema_version: sail_api::project::SCHEMA_VERSION,
         run_id: "run".into(),
         workspace: "workspace".into(),
         context_sha256: "context".into(),
@@ -44,7 +44,7 @@ fn success(mut project: ProjectResult) -> ProjectResult {
         c.verus.errors = Some(0);
     }
     for f in report.crates.iter_mut().flat_map(|c| &mut c.functions) {
-        f.tier = TierName::Confirmed;
+        f.establishment = EstablishmentName::Confirmed;
         f.verdict = VerdictName::Verified;
     }
     project
@@ -153,7 +153,7 @@ fn failing_unattributed(mut project: ProjectResult) -> ProjectResult {
         .flat_map(|c| &mut c.functions)
         .enumerate()
     {
-        f.tier = TierName::Confirmed;
+        f.establishment = EstablishmentName::Confirmed;
         f.verdict = if i == 0 {
             VerdictName::Failed
         } else {

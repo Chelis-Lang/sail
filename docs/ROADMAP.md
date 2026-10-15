@@ -149,7 +149,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | Disk cleanup for managed targets (review B3) | Done (#97) |
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
 | `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Implemented ([#148](https://github.com/Chelis-Lang/sail/issues/148)): `sail new` runs Sail's Verus's `cargo verus new`; e2e checks it matches stock and verifies. Clean-install acceptance follows the managed-by-default and pre-verified vstd work |
-| Output schema v2: establishment and evidence-tier axes (question 22) | Planned ([#149](https://github.com/Chelis-Lang/sail/issues/149)), after the managed-by-default and pre-verified vstd work lands |
+| Output schema v2: establishment and evidence-tier axes (question 22) | Implemented ([#149](https://github.com/Chelis-Lang/sail/issues/149), ADR 0044): `establishment`, `evidence_tier` and ITF counterexample values in `--output json`, the project envelope and MCP; gate, solver, e2e and PR conformance pass on native Linux; macOS host checks pass |
 | Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.4` (Sail's Verus, fork `73dea021`) passed its revalidation of the fix since rc.3; rc.3 passed every check except a clean `deep-rvt`, whose Different verdicts are stock Verus output-order variants (VI-0008) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
 
 Out of the release: B1 (shared vstd across projects), B2 (single-file
@@ -172,8 +172,8 @@ project), B4 (receipts beyond the latest revision) and every section D item.
      `sail cache`, and the MCP server `sail mcp` (ADR 0016).
    - **Done:** `sail bench` delegates to the benchmark binary.
 3. **Agent ergonomics.**
-   - **Done:** function attribution, the ledger and `--output json` schema v1
-     (ADR 0014).
+   - **Done:** function attribution, the ledger and `--output json` schema
+     (ADR 0014; version 2, ADR 0044).
    - **Done:** fragility measurement: `sail fragility`, `sail-bench
      fragility` and the fragility census (ADR 0018).
    - **Done:** exact function scores in JSON/MCP and sequential,

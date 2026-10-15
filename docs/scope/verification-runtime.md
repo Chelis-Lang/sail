@@ -29,8 +29,10 @@ None of this scope is implemented. What exists and is reused:
   explicit in keys, the cache and the verdict model;
 - content-addressed keys over the exact process prefix (ADR 0008), memory,
   disk and signed shared tiers;
-- the ledger and `--output json` schema v1: per-function verdicts,
-  `confirmed`/`provisional` tiers, provenance (ADR 0014);
+- the ledger and `--output json` schema v2: per-function verdicts, the
+  establishment (`confirmed`/`provisional`) and evidence tier
+  (`smt_verified`) axes, provenance and ITF counterexample values (ADRs 0014,
+  0044);
 - obligation identities for Verus functions;
 - sequential, complete-run seed portfolios and fragility measurement
   (ADRs 0018, 0020); racing is deferred;

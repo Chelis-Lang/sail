@@ -216,7 +216,8 @@ fn convert(
                 .to_owned(),
             fn_mode: raw["payload"]["mode"].as_str().map(str::to_owned),
             verdict: sail_api::output::VerdictName::Provisional,
-            tier: sail_api::output::TierName::Provisional,
+            establishment: sail_api::output::EstablishmentName::Provisional,
+            evidence_tier: None,
             unstable: false,
             verus_success: raw["payload"]["success"].as_bool(),
             provenance: sail_api::output::ProvenanceReport {

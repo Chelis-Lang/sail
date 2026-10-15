@@ -148,8 +148,9 @@ impl InputEvent {
             if self.function.as_deref() != Some(&report.function) {
                 return Err("SAIL0902: function identity disagrees with evidence".into());
             }
-            if report.tier != crate::output::TierName::Provisional
+            if report.establishment != crate::output::EstablishmentName::Provisional
                 || report.verdict != crate::output::VerdictName::Provisional
+                || report.evidence_tier.is_some()
             {
                 return Err("SAIL0902: live function evidence must remain provisional".into());
             }

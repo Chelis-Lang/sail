@@ -92,7 +92,7 @@ mod tests {
             "name":"input", "verus":{"verified":1,"errors":0,"success":null,"encountered_vir_error":false},
             "functions": (["good", "good_helper", "bad"].map(|name| serde_json::json!({
                 "function":format!("input::m::{name}"),"module":"m","fn_mode":"proof","verus_success":true,
-                "verdict":"verified","tier":"confirmed","unstable":false,"fragility":null,
+                "verdict":"verified","establishment":"confirmed","evidence_tier":"smt_verified","unstable":false,"fragility":null,
                 "timing":{"smt_micros":0,"rlimit":0}, "obligations":null,
                 "provenance":{"mode":"default","source":"unrecorded","checks_solved":0,"checks_served":0,"checks_unrecorded":0}
             })))

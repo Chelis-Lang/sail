@@ -417,21 +417,24 @@ pub fn rfc3339(ms: u64) -> String {
 pub(crate) mod tests {
     use super::*;
     use sail_api::output::{
-        AttributionInfo, AttributionStatus, CacheInfo, CrateReport, ProvenanceReport,
-        SourceSummaryName, Summary, TierName, Timing, VerdictName, VerusResults,
+        AttributionInfo, AttributionStatus, CacheInfo, CrateReport, EstablishmentName,
+        EvidenceTierName, ProvenanceReport, SourceSummaryName, Summary, Timing, VerdictName,
+        VerusResults,
     };
 
     pub(crate) fn function(name: &str, verdict: VerdictName) -> FunctionReport {
+        let establishment = if verdict == VerdictName::Provisional {
+            EstablishmentName::Provisional
+        } else {
+            EstablishmentName::Confirmed
+        };
         FunctionReport {
             function: name.to_owned(),
             module: String::new(),
             fn_mode: Some("exec".to_owned()),
             verdict,
-            tier: if verdict == VerdictName::Provisional {
-                TierName::Provisional
-            } else {
-                TierName::Confirmed
-            },
+            establishment,
+            evidence_tier: EvidenceTierName::for_smt(verdict, establishment),
             unstable: false,
             verus_success: Some(verdict == VerdictName::Verified),
             provenance: ProvenanceReport {
@@ -465,7 +468,7 @@ pub(crate) mod tests {
         }];
         Report {
             portfolio: None,
-            schema_version: 1,
+            schema_version: sail_api::output::SCHEMA_VERSION,
             sail_version: "0.0.0".to_owned(),
             mode: "default".to_owned(),
             command: Vec::new(),

@@ -30,12 +30,12 @@
               "type": "null"
             },
             {
-              "$ref": "project-result-v1.json"
+              "$ref": "project-result-v2.json"
             }
           ]
         },
         "full": {
-          "$ref": "project-result-v1.json",
+          "$ref": "project-result-v2.json",
           "$comment": "Present in a standalone repair document (the repair worker's output and `sail repair-check --output json`). Omitted when the document is the `repair` member of a job result, whose `result` member is this full phase, so readers receive the graph once."
         },
         "manifest_sha256": {

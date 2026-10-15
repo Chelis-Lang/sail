@@ -188,7 +188,7 @@ fn project(root: &Path) -> ProjectResult {
     }]);
     ProjectResult {
         kind: "sail-project-result".to_owned(),
-        schema_version: 1,
+        schema_version: sail_api::project::SCHEMA_VERSION,
         run_id: "establishing-run".to_owned(),
         workspace: root.display().to_string(),
         context_sha256: "context".to_owned(),
