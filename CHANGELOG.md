@@ -108,6 +108,17 @@ semantic versioning once the API is published.
   The "Build-script input declarations were established during this run"
   note now appears only when a script Cargo ran had no current record.
   Verdicts and diagnostics are unchanged.
+- **Fixed: the dependency store no longer skips vstd when a query is slow.**
+  With one verifier thread (Verus's default on a two-CPU machine), Verus
+  prints a `… has been running for N seconds` / `… finished in N seconds`
+  note for any query that takes over two seconds. The store treated these
+  timing notes as vstd output that seeding would hide and refused to store
+  vstd, and, because later runs reuse that same verification, no run stored
+  it until vstd was verified again; new projects then verified vstd too.
+  The notes are now ignored when deciding whether to store (plain Cargo-Verus
+  prints them only when a query happens to be slow); any other output still
+  prevents storing. A skipped publication is now recorded as a
+  `dependency-store-skipped` event with its reason in `SAIL_JOB_EVENTS`.
 - **Fixed: a failing first managed run no longer costs vstd on every later
   run** (#123). When a project's first `sail verify --incremental`, MCP
   `verify` or background job failed a proof or hit a compile error in the

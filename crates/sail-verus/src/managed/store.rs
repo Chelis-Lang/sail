@@ -765,10 +765,14 @@ pub(super) fn publish(candidate: &Candidate, publication: &Publication<'_>) {
         std::fs::rename(&staging, store.join(&candidate.key))
             .map_err(|e| Error::new("SAIL3102", e.to_string()))
     });
-    if published.is_err() {
+    if let Err(error) = published {
         // Another run may have published the same key first; either way the
-        // staging copy is discarded.
+        // staging copy is discarded. The reason is observable for diagnosis.
         let _ = std::fs::remove_dir_all(&staging);
+        super::files::event(&serde_json::json!({
+            "event": "dependency-store-skipped", "package_id": candidate.root,
+            "key": candidate.key, "reason": error.message,
+        }));
         return;
     }
     super::files::event(&serde_json::json!({
@@ -799,9 +803,10 @@ fn script_packages(data: &Value, closure: &BTreeSet<String>) -> BTreeSet<String>
 
 /// Whether the root's verifier printed nothing a user would see: its stdout
 /// holds only its JSON documents, and its stderr only Cargo artifact
-/// notices. Plain Cargo-Verus shows a registry dependency's diagnostics, if
-/// it has any, when it verifies it; such a dependency is never stored, so a
-/// seeded run never hides output that plain would print (ADR 0045).
+/// notices and Verus's timing-dependent long-running notes. Plain
+/// Cargo-Verus shows a registry dependency's diagnostics, if it has any, when
+/// it verifies it; such a dependency is never stored, so a seeded run never
+/// hides output that plain would print (ADR 0045).
 fn quiet(sidecar: &Path) -> bool {
     let (Ok(stdout), Ok(stderr)) = (
         std::fs::read(sidecar.join("verus.stdout")),
@@ -817,8 +822,42 @@ fn quiet(sidecar: &Path) -> bool {
             .filter(|line| !line.iter().all(u8::is_ascii_whitespace))
             .all(|line| {
                 serde_json::from_slice::<Value>(line)
-                    .is_ok_and(|v| v["$message_type"] == "artifact")
+                    .is_ok_and(|v| v["$message_type"] == "artifact" || long_running_note(&v))
             })
+}
+
+/// Whether `message` is one of Verus's long-running progress notes:
+/// `<check> has been running for <N> seconds` (with its second line) or
+/// `<check> finished in <N> seconds`, a note with no code and no children.
+/// With one verifier thread (the default on a two-CPU host), Verus prints
+/// them for any query that takes more than two seconds of wall time, so
+/// plain Cargo-Verus prints them for the same dependency on one run and not
+/// on the next. Omitting them reproduces a plain run in which every query
+/// finished in time. They carry no verdict, and a diagnostic that Verus
+/// flushes early when it prints one is still refused (ADR 0045, decision 8).
+fn long_running_note(message: &Value) -> bool {
+    const DISCOVERED: &str =
+        "\nreporting errors as they are discovered (they may not be in source order)";
+    // `<check><infix><N> seconds`: a one-line check name and a whole number.
+    let timed = |text: &str, infix: &str| {
+        text.strip_suffix(" seconds")
+            .and_then(|rest| rest.rsplit_once(infix))
+            .is_some_and(|(check, n)| {
+                !check.is_empty()
+                    && !check.contains('\n')
+                    && !n.is_empty()
+                    && n.bytes().all(|b| b.is_ascii_digit())
+            })
+    };
+    let text = message["message"].as_str().unwrap_or_default();
+    message["$message_type"] == "diagnostic"
+        && message["level"] == "note"
+        && message["code"].is_null()
+        && message["children"].as_array().is_some_and(Vec::is_empty)
+        && (text
+            .strip_suffix(DISCOVERED)
+            .is_some_and(|first| timed(first, " has been running for "))
+            || timed(text, " finished in "))
 }
 
 fn stage(candidate: &Candidate, publication: &Publication<'_>, staging: &Path) -> Result<()> {
@@ -1146,11 +1185,20 @@ mod tests {
         }
 
         /// Builds Cargo target `name` and offers its `vstd` to the store.
+        fn build(&self, name: &str) -> (PathBuf, Candidate, Receipt) {
+            self.build_with(
+                name,
+                b"{\"$message_type\":\"artifact\",\"artifact\":\"x.rmeta\",\"emit\":\"metadata\"}\n",
+            )
+        }
+
+        /// As [`Fixture::build`], with `stderr` as the verifier's captured
+        /// standard error for `vstd`.
         #[allow(
             clippy::too_many_lines,
             reason = "One literal fixture of a Cargo target and its receipt."
         )]
-        fn build(&self, name: &str) -> (PathBuf, Candidate, Receipt) {
+        fn build_with(&self, name: &str, stderr: &[u8]) -> (PathBuf, Candidate, Receipt) {
             let target = self.root.join(name);
             let debug = target.join("debug");
             for unit in [
@@ -1245,10 +1293,7 @@ mod tests {
                 .unwrap_or_else(|| unreachable!());
             let sidecar = self.root.join(format!("{name}-sidecar"));
             write(&sidecar.join("verus.stdout"), b"{\"recorded\":true}\n");
-            write(
-                &sidecar.join("verus.stderr"),
-                b"{\"$message_type\":\"artifact\",\"artifact\":\"x.rmeta\",\"emit\":\"metadata\"}\n",
-            );
+            write(&sidecar.join("verus.stderr"), stderr);
             publish(
                 &candidate,
                 &Publication {
@@ -1428,6 +1473,99 @@ mod tests {
         );
         assert!(!quiet(&sidecar));
         assert!(!quiet(&fixture.root.join("missing")));
+    }
+
+    /// Verus's long-running notes as a one-thread verifier prints them for a
+    /// vstd query slower than two seconds (CI run 38804596929, attempt 1).
+    fn timing_notes(first: &str, last: &str) -> Vec<u8> {
+        let note = |message: &str| {
+            serde_json::json!({
+                "$message_type": "diagnostic", "message": message, "code": null,
+                "level": "note", "children": [],
+                "spans": [{"file_name": "/cargo/registry/src/vstd/arithmetic/div_mod.rs",
+                           "line_start": 665, "is_primary": true}],
+                "rendered": format!("note: {message}\n"),
+            })
+            .to_string()
+        };
+        format!(
+            "{}\n{}\n{}\n",
+            note(first),
+            note(last),
+            serde_json::json!({"$message_type": "artifact", "artifact": "x.rmeta", "emit": "metadata"})
+        )
+        .into_bytes()
+    }
+
+    const RUNNING: &str = "function body check has been running for 2 seconds\nreporting errors as they are discovered (they may not be in source order)";
+
+    #[test]
+    fn a_dependency_whose_verifier_was_slow_is_still_stored_and_seeded() {
+        // The intermittent CI condition, made deterministic: the run that
+        // verified vstd captured timing notes. Publication must not depend
+        // on how long a query took, or a later new project verifies vstd.
+        let fixture = Fixture::new("slow");
+        let (_, candidate, _) = fixture.build_with(
+            "old",
+            &timing_notes(RUNNING, "function body check finished in 2 seconds"),
+        );
+        assert!(
+            root(&fixture.cache())
+                .join(&candidate.key)
+                .join("manifest.json")
+                .is_file()
+        );
+        let (new, seeded, warnings) = seed_into(&fixture, &candidate, "new");
+        assert!(warnings.is_empty(), "{warnings}");
+        assert_eq!(seeded.len(), 1);
+        assert!(
+            new.join("debug/deps/libvstd-0123456789abcdef.rmeta")
+                .is_file()
+        );
+    }
+
+    #[test]
+    fn only_verus_timing_notes_are_ignored() {
+        let fixture = Fixture::new("notes");
+        let sidecar = fixture.root.join("notes-sidecar");
+        write(&sidecar.join("verus.stdout"), b"{}\n");
+        let quiet_with = |stderr: &[u8]| {
+            write(&sidecar.join("verus.stderr"), stderr);
+            quiet(&sidecar)
+        };
+        let finished = "function termination check finished in 13 seconds";
+        assert!(quiet_with(&timing_notes(RUNNING, finished)));
+        for (first, last) in [
+            // Another note, or a timing note's text without its shape.
+            (
+                RUNNING,
+                "function body check finished in 2 seconds; see above",
+            ),
+            (RUNNING, "function body check finished in two seconds"),
+            (RUNNING, " finished in 2 seconds"),
+            (RUNNING, "function body check finished in  seconds"),
+            (
+                "function body check has been running for 2 seconds",
+                finished,
+            ),
+            ("postcondition not satisfied", finished),
+        ] {
+            assert!(!quiet_with(&timing_notes(first, last)), "{first} / {last}");
+        }
+        let note = |change: &dyn Fn(&mut Value)| {
+            let mut value = serde_json::json!({"$message_type": "diagnostic",
+                "message": finished, "code": null, "level": "note", "children": []});
+            change(&mut value);
+            format!("{value}\n").into_bytes()
+        };
+        assert!(quiet_with(&note(&|_| ())));
+        assert!(!quiet_with(&note(&|v| v["level"] = "warning".into())));
+        assert!(!quiet_with(&note(
+            &|v| v["code"] = serde_json::json!({"code": "x"})
+        )));
+        assert!(!quiet_with(&note(
+            &|v| v["children"] = serde_json::json!([{"message": "help"}])
+        )));
     }
 
     #[test]
