@@ -40,7 +40,7 @@
   manifest for its own version before building `cargo-verus`
   (`create-manifest`, `.github/workflows/build.yml`); Sail's source build did
   not, so the runtime's `cargo verus new` fails with "no known toolchain
-  manifest for Verus version 0.2026.10.13.13a1176" (VI-0017).
+  manifest for Verus version 0.2026.10.13.13a1176" (VI-0018).
 
 ## Decision
 
@@ -116,7 +116,7 @@
    decision.
 9. **Build.** `cargo xtask build-verus-engine` writes Verus's toolchain
    manifest for the build's own version before building, as the release
-   workflow does, so `cargo verus new` works with the runtime (VI-0017). This
+   workflow does, so `cargo verus new` works with the runtime (VI-0018). This
    changes no verifier byte, so the variant identity is unchanged; runtimes
    built before this change lack the manifest until the next re-pin.
 

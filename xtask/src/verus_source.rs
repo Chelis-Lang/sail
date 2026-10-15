@@ -295,7 +295,7 @@ fn compile(
         // The release workflow writes a toolchain manifest for the build's
         // own version before building, so `cargo verus new` can name the
         // matching vstd. Without it the runtime's `cargo verus new` fails
-        // ("no known toolchain manifest", VI-0017). The file is untracked,
+        // ("no known toolchain manifest", VI-0018). The file is untracked,
         // so the version is not marked dirty, and no verifier byte changes.
         println!("writing the toolchain manifest (create-manifest, as the release does)");
         run(

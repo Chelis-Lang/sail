@@ -17,7 +17,7 @@ semantic versioning once the API is published.
   Verus). `SAIL_CARGO_VERUS` remains a development override and prints
   `warning[SAIL0108]`. `sail engine status` checks the runtime. The README
   creates new projects with `cargo new` plus two `Cargo.toml` entries
-  (VI-0017). Conformance compares Sail on its Verus with plain stock Verus
+  (VI-0018). Conformance compares Sail on its Verus with plain stock Verus
   (`sail-conformance run --sail-verus stock` keeps the old arm). `--output
   json` reads the per-crate log directory the fork writes (VI-0004 fix).
   `cargo xtask build-verus-engine` writes Verus's toolchain manifest so the

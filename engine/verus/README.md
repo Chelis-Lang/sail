@@ -68,7 +68,7 @@ fork is public, so no credentials are needed), checks that its upstream base
 equals `corpus/toolchain.toml`'s commit, writes the committed
 [Cargo.lock](Cargo.lock), writes Verus's toolchain manifest for the build's
 version as the release workflow does (so `cargo verus new` works,
-VI-0017), and builds. The variant's identity
+VI-0018), and builds. The variant's identity
 (`sail-fork:<commit>` feature) and the runtime pin
 ([artifact-linux.json](artifact-linux.json), `fork_commit`) bind the commit.
 CI never builds Verus; it installs the prebuilt runtime.

@@ -83,7 +83,7 @@ are in the `archive/m7-contracts-f7103bf` tag.
   (`warning[SAIL0108]`).
 - Until the next runtime re-pin, the bundled Verus cannot run
   `cargo verus new`
-  ([VI-0017](verus-issues/VI-0017-source-build-cargo-verus-new.md)); the
+  ([VI-0018](verus-issues/VI-0018-source-build-cargo-verus-new.md)); the
   README creates new projects with `cargo new` instead.
 
 ## Verus and Z3

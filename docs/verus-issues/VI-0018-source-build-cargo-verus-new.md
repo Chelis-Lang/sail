@@ -1,4 +1,4 @@
-# VI-0017: A source-built `cargo verus new` knows no vstd for its own version
+# VI-0018: A source-built `cargo verus new` knows no vstd for its own version
 
 - **Status:** worked around in Sail's build (`cargo xtask build-verus-engine`);
   not a fork source change
