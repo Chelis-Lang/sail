@@ -224,6 +224,8 @@ fn prune(checkout: &Path, keep: &BTreeSet<String>) -> Result<()> {
     remove(&checkout.join("tools").join("vargo").join("target"));
     let source = checkout.join("source");
     remove(&source.join("target"));
+    // `create-manifest` (engine builds) runs from Verus's debug profile.
+    remove(&source.join("target-verus").join("debug"));
     let release = source.join("target-verus").join("release");
     for dir in ["build", "incremental", ".fingerprint", "examples"] {
         remove(&release.join(dir));
@@ -288,6 +290,28 @@ fn compile(
         }
         cmd
     };
+
+    if engine {
+        // The release workflow writes a toolchain manifest for the build's
+        // own version before building, so `cargo verus new` can name the
+        // matching vstd. Without it the runtime's `cargo verus new` fails
+        // ("no known toolchain manifest", VI-0018). The file is untracked,
+        // so the version is not marked dirty, and no verifier byte changes.
+        println!("writing the toolchain manifest (create-manifest, as the release does)");
+        run(
+            clean(Command::new("cargo").current_dir(&source), jobs).args([
+                "run",
+                "--locked",
+                "-p",
+                "cargo-verus-toolchains",
+                "--bin",
+                "create-manifest",
+                "--",
+                "--write-to-dir",
+                "cargo-verus/toolchain-manifests",
+            ]),
+        )?;
+    }
 
     println!("building Verus (vargo build --release; verifies vstd)");
     run(&mut vargo(&["build", "--release"]))?;
@@ -420,7 +444,7 @@ pub fn build(args: &[String]) -> Result<()> {
         && m.features == features
         && m.z3_sha256 == z3_sha256
         && (if o.engine {
-            sail_verus::engine::Installed::locate(&cache, &pins).is_ok()
+            sail_verus::engine::Installed::at(&build, &pins).is_ok()
         } else {
             m.is_complete(&build)
         })

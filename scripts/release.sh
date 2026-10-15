@@ -3,10 +3,11 @@
 # (docs/releasing.md). Local only: CI never builds or publishes releases.
 #
 #   scripts/release.sh VERSION       build both platforms, package, draft release
-#   scripts/release.sh stage OUT [ENGINE_BUILD]
+#   scripts/release.sh stage OUT ENGINE_BUILD
 #                                    copy this checkout's release binaries
-#                                    (target/release) and a validated engine
-#                                    runtime into OUT, then self-check it
+#                                    (target/release) and Sail's Verus (the
+#                                    validated fork runtime, which is also the
+#                                    repair engine) into OUT, then self-check it
 #
 # VERSION must start with the workspace version in Cargo.toml (for example
 # 0.1.0 or 0.1.0-rc.1); the binaries are built with SAIL_VERSION=VERSION so
@@ -17,8 +18,8 @@
 # (engine/verus/artifact-linux.json). The macOS engine is the pinned runtime
 # in engine/verus/artifact-macos.json (built locally from the pinned fork
 # commit, qualified per docs/validation/macos-engine.md, and published on the
-# public fork's releases); SAIL_RELEASE_MACOS_ENGINE=0 ships macOS without it
-# (stock fallback).
+# public fork's releases). Every archive ships the runtime: Sail runs no other
+# Verus (ADR 0043).
 #
 # Never publishes: the release stays a draft until the owner publishes it.
 set -euo pipefail
@@ -27,21 +28,21 @@ cd "$(dirname "$0")/.."
 repo="Chelis-Lang/sail"
 die() { echo "release: $*" >&2; exit 1; }
 
-# The engine variant directory a sail binary looks for beside itself
+# The runtime variant directory a sail binary looks for beside itself
 # (sail_verus::engine::bundled_dir), checked through the binary's own
-# discovery with an empty cache so nothing else can satisfy it.
+# discovery with an empty cache and no SAIL_VERUS_BUILD, so nothing else can
+# satisfy it.
 self_check() {
-  local out="$1" engine="$2" scratch status
+  local out="$1" scratch status
   local reported
   reported="$("$out/bin/sail" --version)"
   if [ -n "${SAIL_VERSION:-}" ] && [ "$reported" != "sail $SAIL_VERSION" ]; then
     die "sail reports \"$reported\", not \"sail $SAIL_VERSION\""
   fi
   [ -x "$out/bin/sail-z3" ] || die "sail-z3 missing from $out"
-  [ "$engine" = 1 ] || return 0
   scratch="$(mktemp -d)"
-  status="$(SAIL_CACHE_DIR="$scratch" "$out/bin/sail" engine status --output json)" \
-    || { rm -rf "$scratch"; die "the bundled engine in $out failed validation"; }
+  status="$(env -u SAIL_VERUS_BUILD SAIL_CACHE_DIR="$scratch" "$out/bin/sail" engine status --output json)" \
+    || { rm -rf "$scratch"; die "the bundled Verus runtime in $out failed validation"; }
   rm -rf "$scratch"
   case "$status" in
     *"\"build\":\"$(cd "$out/engine" && pwd -P)/"*) ;;
@@ -50,12 +51,13 @@ self_check() {
   echo "$status"
 }
 
-# stage OUT [ENGINE_BUILD]: bin/{sail,sail-z3} and engine/<variant>/ holding
-# exactly the runtime files the engine manifest binds (sail-build.json and
+# stage OUT ENGINE_BUILD: bin/{sail,sail-z3} and engine/<variant>/ holding
+# exactly the runtime files the manifest binds (sail-build.json and
 # verus/source/target-verus/release/*). The variant name is the build's own
 # (resolved) directory name, which sail requires to match its host and pins.
 stage() {
-  local out="${1:?usage: scripts/release.sh stage OUT [ENGINE_BUILD]}" build="${2:-}"
+  local out="${1:?usage: scripts/release.sh stage OUT ENGINE_BUILD}"
+  local build="${2:?stage needs ENGINE_BUILD: every archive ships the Sail Verus runtime, ADR 0043}"
   local runtime=verus/source/target-verus/release variant
   rm -rf "$out"
   mkdir -p "$out/bin"
@@ -65,16 +67,12 @@ stage() {
   # stay, so backtraces still name functions). Only Sail's own binaries: the
   # engine runtime files are bound to their manifest digests.
   strip -S "$out/bin/sail" "$out/bin/sail-z3"
-  if [ -z "$build" ]; then
-    self_check "$out" 0
-    return 0
-  fi
   build="$(cd "$build" && pwd -P)"
   variant="$(basename "$build")"
   mkdir -p "$out/engine/$variant/$runtime"
   cp "$build/sail-build.json" "$out/engine/$variant/"
   find "$build/$runtime/" -maxdepth 1 \( -type f -o -type l \) -exec cp -L {} "$out/engine/$variant/$runtime/" \;
-  self_check "$out" 1
+  self_check "$out"
 }
 
 # package DIR NAME: NAME.tar.gz (top directory NAME, root-owned entries) and
@@ -89,7 +87,7 @@ package() {
 }
 
 release() {
-  local version="$1" workspace commit lane macos_engine="${SAIL_RELEASE_MACOS_ENGINE:-1}"
+  local version="$1" workspace commit lane
   workspace="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
   case "$version" in "$workspace"|"$workspace"-*) ;; *) die "VERSION must start with the workspace version $workspace" ;; esac
   [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] || die "run on an Apple-silicon Mac (it builds aarch64-apple-darwin locally)"
@@ -123,27 +121,20 @@ release() {
 
   # macOS: build and stage here.
   cargo build --release --locked -p sail-cli -p sail-shim
-  if [ "$macos_engine" = 1 ]; then
-    # The pinned, qualified runtime (engine/verus/artifact-macos.json) from
-    # the fork's public release; install checks its digest and every file.
-    local build
-    build="$(python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-macos.json --cache dist/engine)"
-    stage dist/stage/macos "$build"
-    rm -rf dist/engine
-  else
-    echo "release: macOS ships without the engine (SAIL_RELEASE_MACOS_ENGINE=0; stock fallback)" >&2
-    stage dist/stage/macos
-  fi
+  # The pinned, qualified runtime (engine/verus/artifact-macos.json) from the
+  # fork's public release; install checks its digest and every file.
+  local build
+  build="$(python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-macos.json --cache dist/engine)"
+  stage dist/stage/macos "$build"
+  rm -rf dist/engine
   package dist/stage/macos "sail-$version-aarch64-apple-darwin"
   rm -rf dist/stage
 
-  local engine_note="included"
-  [ "$macos_engine" = 1 ] || engine_note="not included (stock fallback; see docs/validation/macos-engine.md)"
   gh release create "v$version" --repo "$repo" --draft --target "$commit" \
     --title "Sail $version" \
     --notes "Draft release built by scripts/release.sh from $commit.
 
-Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/sail-z3 and the repair engine runtime under engine/ (macOS engine: $engine_note). Stock Verus is installed separately. See docs/releasing.md." \
+Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/sail-z3 and Sail's Verus (built from Sail's Verus fork; also the repair engine) under engine/. Users need only a Rust toolchain besides. See docs/releasing.md." \
     dist/*.tar.gz dist/*.tar.gz.sha256
   gh release view "v$version" --repo "$repo" --json url,isDraft,assets \
     --jq '"\(.url) draft=\(.isDraft)", (.assets[] | "  \(.name) \(.size)")'
@@ -151,6 +142,6 @@ Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/s
 
 case "${1:-}" in
   stage) shift; stage "$@" ;;
-  ""|-h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  ""|-h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
   *) release "$1" ;;
 esac

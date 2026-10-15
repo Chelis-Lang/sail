@@ -59,9 +59,13 @@ out="$(cd "$out" && pwd)"
 results="$out/results.tsv"
 : >"$results"
 
+# Sail's Verus (ADR 0043): an explicit build, else the CI image's runtime,
+# else the one in the Sail cache.
+sail_perf_verus="${SAIL_VERUS_BUILD:-${SAIL_ENGINE_BUILD:-}}"
 for v in $(env | sed -n 's/^\(SAIL_[A-Z0-9_]*\)=.*/\1/p'); do
   case "$v" in SAIL_PERF_*) ;; *) unset "$v" ;; esac
 done
+[ -z "$sail_perf_verus" ] || export SAIL_VERUS_BUILD="$sail_perf_verus"
 for tool in sail sail-z3 cargo-verus git perl awk; do
   command -v "$tool" >/dev/null || { echo "$tool is not on PATH" >&2; exit 1; }
 done

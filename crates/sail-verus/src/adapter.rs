@@ -781,11 +781,19 @@ fn full_log_dir(logs: &Path, engine: Option<&sail_api::output::EngineProvenance>
     let by_engine =
         engine.is_some_and(|e| e.established_by == sail_api::output::EngineEstablishment::Engine);
     match std::env::var("CARGO_CRATE_NAME") {
-        Ok(name) if by_engine && !name.is_empty() => {
-            if std::env::var_os("CARGO_BIN_NAME").is_some() {
+        Ok(name) if !name.is_empty() => {
+            let crate_dir = if std::env::var_os("CARGO_BIN_NAME").is_some() {
                 logs.join(format!("{name}-bin"))
             } else {
                 logs.join(name)
+            };
+            // Sail's Verus (ADR 0043) logs each Cargo crate to its own
+            // subdirectory (VI-0004 fix); a development override with stock
+            // Verus logs to the given directory.
+            if by_engine || crate_dir.is_dir() {
+                crate_dir
+            } else {
+                logs.to_owned()
             }
         }
         _ => logs.to_owned(),

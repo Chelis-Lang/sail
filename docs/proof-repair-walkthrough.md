@@ -3,7 +3,8 @@
 This walkthrough takes one library through the experimental repair workflow:
 install the engine, check a repair, follow its events, detect a regression the
 focused phase cannot see, and do the same through MCP. Proof repair is
-experimental and stock verification stays the default. Its qualification
+experimental, and ordinary verification (Sail's Verus without the focused
+phase) stays the default. Its qualification
 status (gates, measured runs, open items) is in
 [M7 validation](validation/m7.md); limitations are in
 [known issues](known-issues.md).
@@ -14,10 +15,10 @@ happens and what the optional ordinary-build recovery changes.
 
 ## Install and select the engine
 
-Start with Sail installed, the pinned Verus on `PATH` (see the
-[README](../README.md#install)) and a project whose ordinary
-`cargo verus verify` works. A release archive (Linux or macOS) bundles the
-engine beside `sail`, and nothing else is needed:
+Start with Sail installed (see the [README](../README.md#install)) and a
+project whose ordinary `sail verify` works. The engine is part of Sail's
+Verus, which a release archive (Linux or macOS) bundles beside `sail`, so
+nothing else is needed:
 
 ```sh
 sail engine status --output json   # "build" is under the unpacked engine/ directory
@@ -57,9 +58,8 @@ focused phase in the same compiler callback, and prepares no lowering for
 reuse. See the [engine description](../engine/verus/README.md) and the
 [repair guide](proof-repair.md).
 
-Keep `sail` and `sail-z3` side by side, and keep your ordinary
-`cargo-verus` on `PATH` (or name it with `SAIL_CARGO_VERUS`): repairs fall back
-to it. Linux freshness checks also need Python 3; see the
+Keep `sail` and `sail-z3` side by side. Repairs fall back to ordinary
+verification with the same runtime. Linux freshness checks also need Python 3; see the
 [freshness contract](freshness.md) for what is checked on each platform.
 
 To import an existing build instead of compiling it:
@@ -288,8 +288,9 @@ sail verify --incremental --package repair_demo --lib --output json
 cargo verus verify --package repair_demo --lib
 ```
 
-The first command selects stock managed verification because it has no engine
-flag; the second invokes the configured ordinary stock launcher directly.
+The first command selects ordinary managed verification with Sail's Verus
+because it has no engine flag; the second runs your own stock `cargo verus`,
+if you have one, without Sail.
 Neither promises an interactive focus/full bundle. Default solver service/cache
 failure falls back to the pinned Z3. See [workspace verification](workspace-verification.md)
 and [ADR 0027](decisions/0027-interactive-proof-engine-and-repair-workflow.md) for the contracts.

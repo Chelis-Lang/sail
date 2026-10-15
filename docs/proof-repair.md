@@ -2,7 +2,7 @@
 
 **Experimental.** The optional interactive engine runs stock lowering with a
 focused phase in the same compiler callback (it prepares no lowering for
-reuse). Stock verification remains the default. Qualification status and its
+reuse). Ordinary verification, without the focused phase, remains the default. Qualification status and its
 open items are in [M7 validation](validation/m7.md); read
 [known issues](known-issues.md) before relying on performance.
 
@@ -10,9 +10,13 @@ For setup through a focus/full regression, resumable events, cancellation and
 CLI/MCP evidence, follow the [repair walkthrough](proof-repair-walkthrough.md).
 It distinguishes submission from an accepted proof.
 
-The optional `interactive` engine is a Sail-managed build of the pinned Verus
-source. It is selected explicitly. Stock verification retains its existing
-behavior. An unavailable or invalid engine returns a setup error (`SAIL3120`)
+The optional `interactive` engine is part of Sail's Verus: the runtime built
+from Sail's Verus fork that every Sail verification runs
+([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). It is selected
+explicitly; ordinary verification runs the same runtime without the focused
+phase. In this guide, a *stock fallback* is that ordinary verification by the
+configured Verus (Sail's Verus, or a `SAIL_CARGO_VERUS` development
+override); the `stock-fallback` label keeps its name in the output schema. An unavailable or invalid engine returns a setup error (`SAIL3120`)
 that says what is missing or mismatched and how to obtain the engine. The
 release archives bundle it, so from a release install `SAIL3120` means the
 unpacked directory is damaged or incomplete (unpack it again), or that a
@@ -47,8 +51,9 @@ list in `engine/verus/artifact-linux.json`. In particular the engine has no
 
 When the engine rejects a target with Verus's ``Please cargo build with
 `--features NAME` `` diagnostic for a feature it lacks, Sail does not report
-that rejection. It reruns the target's exact invocation with the configured
-stock Verus, as for an engine fault, and reports that result:
+that rejection. It reruns the target's exact invocation with ordinary
+verification by the configured Verus, as for an engine fault, and reports
+that result:
 
 - the target's report and functions carry `engine.established_by:
   stock-fallback`, and no proof receipt is published;
@@ -57,12 +62,12 @@ stock Verus, as for an engine fault, and reports that result:
 - `sail repair-check` records `batch.engine_fault` with code `SAIL3124`, has
   no focused evidence and is never accepted.
 
-The answer is the configured Verus's own: a stock release reports the same
-feature error as plain `cargo verus verify`, and a Singular source build
-proves the lemma. Verus emits the diagnostic only for functions it would
+The answer is ordinary verification's own: Sail's Verus, like the stock
+release, reports the same feature error as plain `cargo verus verify` (a
+Singular source build named by the `SAIL_CARGO_VERUS` development override
+proves the lemma). Verus emits the diagnostic only for functions it would
 verify, so a project that merely contains an unverified integer-ring lemma is
-unaffected. Use stock `sail verify` for such projects when you need repair
-acceptance.
+unaffected.
 
 Inspect or register an already built validated engine:
 
@@ -73,7 +78,9 @@ sail engine install --from PATH --output json
 
 `PATH` is an engine-specific Sail source variant with a valid build manifest;
 installing a stock or modified unrecognized build is rejected. The install
-records provenance and leaves stock pins and installs unchanged.
+records provenance and leaves stock pins and installs unchanged. An installed
+build is also what ordinary `sail verify` runs. `SAIL_VERUS_BUILD=PATH` selects
+a build without installing it, after the same validation.
 
 For a library target:
 

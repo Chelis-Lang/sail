@@ -1,9 +1,11 @@
 //! `sail verify`: `cargo verus verify` with sail in front of the solver.
 //!
-//! The user's own `cargo verus` and Verus run unchanged, with the same
-//! arguments. sail only sets three environment variables:
+//! Sail runs its own Verus, built from Sail's Verus fork and validated
+//! against its pins (ADR 0043), with the user's arguments unchanged. Stock
+//! Verus is never run in its place. sail only sets three environment
+//! variables:
 //! - `VERUS_Z3_PATH` names `sail-z3`;
-//! - `SAIL_Z3_PATH` names the Z3 the user's Verus would have used;
+//! - `SAIL_Z3_PATH` names the Z3 that Verus would have used;
 //! - `SAIL_DAEMON_SOCKET` names the cache daemon, which is started on demand.
 //!
 //! If the daemon cannot be reached, `sail-z3` passes everything through to
@@ -35,25 +37,43 @@ pub(crate) fn on_path(name: &str) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
-/// The `cargo-verus` to run: `$SAIL_CARGO_VERUS`, else the one on `PATH`.
-pub(crate) fn cargo_verus() -> Option<PathBuf> {
-    std::env::var_os("SAIL_CARGO_VERUS")
+/// The development override for Sail's Verus (ADR 0043).
+const OVERRIDE: &str = "SAIL_CARGO_VERUS";
+
+/// The `cargo-verus` Sail runs: Sail's own Verus, built from its fork and
+/// validated against its pins (ADR 0043). `PATH` is never searched, and no
+/// other Verus is used in its place. `SAIL_CARGO_VERUS` replaces it only as
+/// an explicit development override, announced by `warning[SAIL0108]`.
+///
+/// The error is the `SAIL0101` message: what is wrong and how to obtain
+/// Sail's Verus.
+pub(crate) fn cargo_verus() -> Result<PathBuf, String> {
+    if let Some(path) = std::env::var_os(OVERRIDE)
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
-        .or_else(|| on_path("cargo-verus"))
+    {
+        warn_override(&path);
+        return Ok(path);
+    }
+    let unavailable = |e: sail_verus::Error| format!("Sail's Verus is unavailable: {}", e.message);
+    let cache = sail_verus::cache_dir().map_err(unavailable)?;
+    let pins = sail_verus::toolchain::Pins::embedded().map_err(unavailable)?;
+    sail_verus::engine::Installed::locate_verified(&cache, &pins)
+        .map(|installed| installed.cargo_verus)
+        .map_err(|e| e.message)
 }
 
-/// The `SAIL0101` message: what is missing and how to install the Verus
-/// release Sail is tested with, for release-archive and checkout users alike.
-pub(crate) fn missing_cargo_verus() -> String {
-    let release = sail_verus::toolchain::Pins::embedded().map_or_else(
-        |_| "the pinned Verus release".to_owned(),
-        |pins| format!("Verus {}", pins.verus.release),
-    );
-    format!(
-        "`cargo-verus` is not on PATH (or set SAIL_CARGO_VERUS). Install {release}, the \
-         release Sail is tested with, and put its directory on PATH (README, Install)"
-    )
+/// One `warning[SAIL0108]` per process while the development override is set.
+fn warn_override(path: &Path) {
+    static WARNED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if !WARNED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        eprintln!(
+            "warning[SAIL0108]: {OVERRIDE} replaces Sail's Verus with {}; this is a \
+             development override, not Sail's default mode, and its results are not \
+             checked against stock Verus (unset {OVERRIDE} to use Sail's Verus)",
+            path.display()
+        );
+    }
 }
 
 /// The Z3 the user's Verus would use, following the Verus launcher's own
@@ -163,7 +183,7 @@ struct Setup {
 }
 
 fn setup() -> Result<Setup, SetupError> {
-    let cargo_verus = cargo_verus().ok_or_else(|| SetupError("SAIL0101", missing_cargo_verus()))?;
+    let cargo_verus = cargo_verus().map_err(|message| SetupError("SAIL0101", message))?;
     let shim = std::env::current_exe()
         .map(|me| me.with_file_name("sail-z3"))
         .map_err(|e| SetupError("SAIL0102", format!("cannot locate sail: {e}")))?;

@@ -450,10 +450,17 @@ impl LogFile {
 /// Reads every `<stem>.smt_transcript` in `dir` and its `<stem>.air`, in
 /// stem order. Transcripts without an AIR log are skipped.
 ///
+/// Under `cargo verus`, Sail's Verus writes each crate's logs to
+/// `<log-dir>/<crate name>` (VI-0004 fix). When `dir` holds no transcript
+/// itself and exactly one subdirectory does, that subdirectory's logs are
+/// read; Sail asks for logs only when one crate writes them.
+///
 /// # Errors
 ///
 /// `SAIL3030` if the directory cannot be read.
 pub fn read_logs(dir: &Path) -> crate::Result<Vec<LogFile>> {
+    let dir = crate_log_dir(dir);
+    let dir = dir.as_path();
     let entries = std::fs::read_dir(dir).map_err(|e| {
         crate::Error::new(
             "SAIL3030",
@@ -481,6 +488,37 @@ pub fn read_logs(dir: &Path) -> crate::Result<Vec<LogFile>> {
     .into_iter()
     .flatten()
     .collect())
+}
+
+fn has_transcripts(dir: &Path) -> bool {
+    std::fs::read_dir(dir).is_ok_and(|entries| {
+        entries.flatten().any(|e| {
+            e.file_name()
+                .to_str()
+                .is_some_and(|n| n.ends_with(".smt_transcript"))
+        })
+    })
+}
+
+/// `dir`, or its one subdirectory holding transcripts when `dir` holds none
+/// (see [`read_logs`]).
+fn crate_log_dir(dir: &Path) -> std::path::PathBuf {
+    if has_transcripts(dir) {
+        return dir.to_owned();
+    }
+    let crates: Vec<_> = std::fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_dir() && has_transcripts(p))
+                .collect()
+        })
+        .unwrap_or_default();
+    match crates.as_slice() {
+        [only] => only.clone(),
+        _ => dir.to_owned(),
+    }
 }
 
 /// What the shim records about one cached session, when
