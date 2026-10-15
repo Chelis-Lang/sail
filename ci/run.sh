@@ -313,9 +313,37 @@ RS
     ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/pass-through"
     # With the cache on: fill, then warm. A difference in either is a failure.
     start_daemon
-    for round in fill warm; do
-      SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/cache-$round"
+    rounds=(fill warm)
+    snap_env=()
+    if [ "${SAIL_CONFORMANCE_SNAPSHOTS:-0}" != 0 ]; then
+      # Prototype (ADR 0048 draft): the cache rounds run with exact solver
+      # snapshots, and a `holes` round after fill removes every Nth cache
+      # entry, so sessions hit, then miss and resume a parked snapshot.
+      snap_lib="$(native/sail-snap/build.sh)"
+      snap_dir="/tmp/sail-conf-snap-$$"
+      rm -rf "$snap_dir" && mkdir -p "$snap_dir"
+      snap_env=(SAIL_SNAPSHOT_LIB="$snap_lib" SAIL_SNAPSHOT_DIR="$snap_dir"
+        SAIL_SNAPSHOT_GAP_MS="${SAIL_CONFORMANCE_SNAPSHOT_GAP_MS:-0}" SAIL_SNAPSHOT_TTL_S=14400
+        SAIL_SNAPSHOT_MAX_PARKED="${SAIL_CONFORMANCE_SNAPSHOT_MAX_PARKED:-100000}")
+      rounds=(fill holes warm)
+    fi
+    for round in "${rounds[@]}"; do
+      if [ "$round" = holes ]; then
+        python3 - "$cache" "${SAIL_CONFORMANCE_HOLE_EVERY:-7}" <<'PY'
+import os, sys
+cache, every = sys.argv[1], int(sys.argv[2])
+files = sorted(os.path.join(d, f) for d, _, fs in os.walk(os.path.join(cache, "v2")) for f in fs)
+for f in files[::every]:
+    os.remove(f)
+print(f"holes: removed {len(files[::every])} of {len(files)} cache entries")
+PY
+      fi
+      env ${snap_env[@]+"${snap_env[@]}"} SAIL_DAEMON_SOCKET="$sock" ./target/release/sail-conformance run "${select[@]}" --jobs "$jobs" --out "$out/cache-$round"
     done
+    if [ ${#snap_env[@]} -gt 0 ]; then
+      echo "snapshots parked at the end: $(find "$snap_dir" -name 's*.pid' | wc -l)"
+      rm -rf "$snap_dir"
+    fi
     entries="$(find "$cache/v2" -type f | wc -l)"
     echo "cache entries: $entries"
     [ "$entries" -gt 0 ]

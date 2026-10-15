@@ -67,6 +67,18 @@ impl Config {
         }
         let dir = PathBuf::from(dir);
         std::fs::create_dir_all(&dir).ok()?;
+        // Only this user may reach the sockets: a parked snapshot answers for
+        // the pinned solver, so its directory is as trusted as the cache.
+        {
+            use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
+            std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).ok()?;
+            // Only the owner (or root) can change the mode, so success also
+            // means the directory is ours.
+            let meta = std::fs::symlink_metadata(&dir).ok()?;
+            if !meta.is_dir() || meta.mode() & 0o077 != 0 {
+                return None;
+            }
+        }
         let var = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
         Some(Self {
             dir,
@@ -161,6 +173,9 @@ pub fn marker(name: &str) -> Vec<u8> {
     m
 }
 
+/// How long a parked snapshot may take to acknowledge a resume.
+const ACK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+
 /// A resumed solver: its input/output, stderr and exit-status connections.
 #[derive(Debug)]
 pub struct Resumed {
@@ -190,11 +205,13 @@ fn nonce() -> String {
     })
 }
 
-/// Resumes snapshot `name` in `dir`, if it is parked there.
+/// Resumes snapshot `name` in `dir`, if it is parked there, and waits for
+/// it to acknowledge (up to two seconds) that a resumed solver exists.
 ///
 /// # Errors
 ///
-/// Any connection error: the snapshot does not exist, or is gone.
+/// Any connection error (the snapshot does not exist, or is gone), or no
+/// acknowledgement in time. Nothing has been sent to a solver then.
 pub fn resume(dir: &Path, name: &str) -> std::io::Result<Resumed> {
     let path = dir.join(name);
     let n = nonce();
@@ -205,7 +222,18 @@ pub fn resume(dir: &Path, name: &str) -> std::io::Result<Resumed> {
     };
     let io = open('i')?;
     let err = open('e')?;
-    let status = open('s')?;
+    let mut status = open('s')?;
+    status.set_read_timeout(Some(ACK_TIMEOUT))?;
+    let mut ack = Vec::new();
+    let mut byte = [0u8; 1];
+    while byte[0] != b'\n' && ack.len() < 32 {
+        status.read_exact(&mut byte)?;
+        ack.push(byte[0]);
+    }
+    if !ack.starts_with(b"ok ") {
+        return Err(std::io::Error::other("snapshot did not acknowledge"));
+    }
+    status.set_read_timeout(None)?;
     Ok(Resumed { io, err, status })
 }
 

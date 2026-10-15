@@ -21,9 +21,9 @@
  * process forks again: the new child takes the connections as fds 0, 1 and 2,
  * drops the stdio read-ahead it inherited, and returns from `getc` with the
  * first byte of the new input, as if Z3 had just received it. The parked
- * process stays parked, so one snapshot serves any number of resumes. When a
- * resumed solver exits, the parked process writes `exit <code>\n` on that
- * resume's status connection.
+ * process stays parked, so one snapshot serves any number of resumes. On the
+ * status connection the parked process writes `ok <pid>\n` once the resumed
+ * solver exists, and `exit <code>\n` when it exits.
  *
  * Fail-safe. Anything that goes wrong in the library drops a snapshot; it
  * never changes what Z3 reads. Parked snapshots exit after SAIL_SNAP_TTL_S
@@ -324,6 +324,11 @@ static void park(const char *name) {
             return; /* back into getc, now reading the new input */
         }
         if (child > 0) {
+            /* Acknowledge: the client falls back to a fresh solver if this
+               never arrives. */
+            char ack[32];
+            int an = snprintf(ack, sizeof ack, "ok %ld\n", (long)child);
+            write_all(g->fd[2], ack, (size_t)an);
             run[nrun].pid = child;
             run[nrun].status_fd = g->fd[2];
             nrun++;

@@ -6,6 +6,9 @@
 #   scripts/perf-real.sh det PROJECT [RUNS]       SMT logs: unchanged reruns and each
 #                                                 edit compared with the first run
 #   scripts/perf-real.sh report OUT_DIR           print a run's tables again
+#   scripts/perf-real.sh trace PROJECT            exact solver transcripts (sail-z3
+#                                                 SAIL_TRACE_DIR) of an unchanged run
+#                                                 and of each edit, under OUT/trace/
 #
 # Projects (corpus/corpus.toml pins; sources from `sail-conformance fetch`):
 #   vest        vest_lib                     (secure-foundations/vest)
@@ -29,6 +32,11 @@
 #   sail         sail verify
 #   incremental  sail verify --incremental
 #   fork-plain, fork-sail  the same with the Verus in SAIL_PERF_FORK first on PATH
+#   snap         sail verify with exact solver snapshots (prototype, ADR 0048
+#                draft): SAIL_PERF_SNAPSHOT_LIB names the sail-snap library;
+#                SAIL_PERF_SNAPSHOT_GAP_MS (default 1000) the solver time
+#                between snapshots. Parked snapshots and their memory (Linux
+#                PSS) are recorded per run in snapshots.tsv.
 # Every run passes `--time-expanded` to Verus. Sail runs record the daemon's
 # counters (`sail status --json`) before and after, and the shim's per-session
 # provenance (SAIL_PROVENANCE_DIR: replies served, solver started).
@@ -53,7 +61,7 @@
 set -euo pipefail
 
 cmd="${1:-}"
-case "$cmd" in run | det | report) ;; *) sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
+case "$cmd" in run | det | trace | report) ;; *) sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;; esac
 shift
 here="$(cd "$(dirname "$0")" && pwd)"
 sail_root="$(cd "$here/.." && pwd)"
@@ -346,7 +354,7 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   [ "$partial" = 1 ] && sub=focus
   case "$mode" in
     plain | fork-plain) cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
-    sail | fork-sail) sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    sail | fork-sail | snap) sail verify ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     incremental) sail verify --incremental ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
   esac
 }
@@ -395,6 +403,16 @@ run_one() { # ROUND MODE DIR PHASE
   (cd "$dir/$pkg" && PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$prov" verus_cmd "$mode" --time-expanded) >"$log" 2>&1 || code=$?
   t1=$(now)
   s1=$(stats)
+  if [ -n "${SAIL_SNAPSHOT_DIR:-}" ]; then
+    # Parked snapshots after the run, and their memory (Linux PSS, kB).
+    local parked pss pid
+    parked=$(find "$SAIL_SNAPSHOT_DIR" -name 's*.pid' 2>/dev/null | wc -l | tr -d ' ')
+    pss=0
+    for pid in $(cat "$SAIL_SNAPSHOT_DIR"/s*.pid 2>/dev/null); do
+      pss=$((pss + $(awk '/^Pss:/ {print $2}' "/proc/$pid/smaps_rollup" 2>/dev/null || echo 0)))
+    done
+    printf '%s\t%s\t%s\t%s\t%s\n' "$round" "$mode" "$phase" "$parked" "$pss" >>"$out/snapshots.tsv"
+  fi
   local sessions started served
   sessions=$(find "$prov" -name '*.json' | wc -l | tr -d ' ')
   # One JSON object per file, without a trailing newline.
@@ -414,6 +432,13 @@ run_mode() { # ROUND MODE
   rm -rf "$cache"; mkdir -p "$cache"
   fresh_copy "$dir"
   export SAIL_CACHE_DIR="$cache"
+  if [ "$mode" = snap ]; then
+    : "${SAIL_PERF_SNAPSHOT_LIB:?snap mode needs SAIL_PERF_SNAPSHOT_LIB}"
+    export SAIL_SNAPSHOT_LIB="$SAIL_PERF_SNAPSHOT_LIB" SAIL_SNAPSHOT_DIR="$out/r$round/sn"
+    export SAIL_SNAPSHOT_GAP_MS="${SAIL_PERF_SNAPSHOT_GAP_MS:-1000}" SAIL_SNAPSHOT_TTL_S=7200
+    export SAIL_SNAPSHOT_MAX_PARKED="${SAIL_PERF_SNAPSHOT_MAX_PARKED:-100000}"
+    rm -rf "$SAIL_SNAPSHOT_DIR"; mkdir -p "$SAIL_SNAPSHOT_DIR"
+  fi
   run_one "$round" "$mode" "$dir" cold
   for ((i = 1; i <= ${SAIL_PERF_NOOPS:-3}; i++)); do
     apply_op "$dir" noop "$noop_file" "$i"
@@ -428,6 +453,11 @@ run_mode() { # ROUND MODE
   apply_op "$dir" noop "$noop_file" end
   run_one "$round" "$mode" "$dir" noopend
   pkill -f -- "--socket $cache/" 2>/dev/null || true
+  if [ -n "${SAIL_SNAPSHOT_DIR:-}" ]; then
+    # Removing the sockets evicts every parked snapshot.
+    rm -rf "$SAIL_SNAPSHOT_DIR"
+    unset SAIL_SNAPSHOT_LIB SAIL_SNAPSHOT_DIR SAIL_SNAPSHOT_GAP_MS SAIL_SNAPSHOT_TTL_S SAIL_SNAPSHOT_MAX_PARKED
+  fi
   sleep 1
   unset SAIL_CACHE_DIR
   rm -rf "$dir"
@@ -444,6 +474,40 @@ header() {
 }
 
 prepare_pristine
+
+if [ "$cmd" = trace ]; then
+  # Plain runs whose solver input and output go through sail-z3 pass-through
+  # with SAIL_TRACE_DIR: one directory per run (base, then each edit). With
+  # SAIL_PERF_FORK set, the fork's Verus runs them.
+  d="$out/trace"
+  mkdir -p "$d"
+  [ -n "$fork" ] && export PATH="$fork:$PATH"
+  verus_dir="$(dirname "$(command -v verus)")"
+  real_z3="$verus_dir/z3"
+  [ -x "$real_z3" ] || { echo "no z3 next to $(command -v verus)" >&2; exit 1; }
+  { header; echo "trace: base, then each edit; verus: $(command -v cargo-verus); z3: $real_z3"; } | tee "$d/header.txt"
+  dir="$d/proj"
+  fresh_copy "$dir"
+  (cd "$dir/$pkg" && verus_cmd plain) >"$d/cold.log" 2>&1 || true
+  tracerun() { # NAME
+    rm -rf "$d/$1"
+    mkdir -p "$d/$1"
+    local code=0
+    (cd "$dir/$pkg" && VERUS_Z3_PATH="$(command -v sail-z3)" SAIL_Z3_PATH="$real_z3" SAIL_TRACE_DIR="$d/$1" \
+      verus_cmd plain) >"$d/$1.log" 2>&1 || code=$?
+    echo "  trace $1: exit $code, $(find "$d/$1" -name '*.in.smt2' | wc -l | tr -d ' ') transcripts"
+  }
+  apply_op "$dir" noop "$noop_file" 1
+  tracerun base
+  while read -r name op file line _; do
+    reset_files "$dir"
+    apply_op "$dir" noop "$noop_file" "e$name"
+    apply_op "$dir" "$op" "$file" "$line"
+    tracerun "$name"
+  done < <(selected_edits)
+  rm -rf "$dir"
+  exit 0
+fi
 
 if [ "$cmd" = det ]; then
   # Plain runs with SMT logs, compared file by file with the first. With
