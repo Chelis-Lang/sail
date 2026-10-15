@@ -22,6 +22,14 @@ semantic versioning once the API is published.
   0.80 s).
   `scripts/perf-loops.sh` measures other Sail builds in the same rotation
   (`SAIL_PERF_BASELINES`).
+- **`sail verify` in a workspace member's directory reuses its work** (#157).
+  Run there without `-p`, every managed run used to end with unconfirmed
+  inputs (`SAIL3114`), rebuild the Verus macro crates and verify vstd again,
+  even with nothing changed: on vest, 61 s for each unchanged run. Sail now
+  takes the packages Cargo builds by default from that directory (the member
+  alone) as the run's selection, as `-p` does, so build scripts that only
+  other members use are no longer required. Unchanged runs reuse every
+  receipt and compile nothing, as from the workspace root with `-p`.
 - **`sail verify` runs managed verification by default** (ADR 0046). What
   `--incremental` used to switch on is now every `sail verify`: Sail's own
   Cargo target under the Sail cache, proof receipts that skip unchanged
