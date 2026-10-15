@@ -150,7 +150,7 @@ Item numbers refer to [the roadmap review](reports/2026-10-13-roadmap-review.md)
 | `LICENSE` (MIT) and `CONTRIBUTING.md` | Done |
 | `sail new`: a ready-to-verify project, bundled `cargo-verus` kept off `PATH` (question 28) | Planned ([#148](https://github.com/Chelis-Lang/sail/issues/148)), after the managed-by-default and pre-verified vstd work lands |
 | Output schema v2: establishment and evidence-tier axes (question 22) | Planned ([#149](https://github.com/Chelis-Lang/sail/issues/149)), after the managed-by-default and pre-verified vstd work lands |
-| Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.3` (Sail's Verus, fork `73dea021`) passed every check except a clean `deep-rvt`, whose Different verdicts are stock Verus output-order variants (VI-0008) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
+| Release-candidate validation: required gates, standard and deep tiers, and a repeat walkthrough on clean Linux and macOS, including Claude Code | Done: draft `v0.1.0-rc.4` (Sail's Verus, fork `73dea021`) passed its revalidation of the fix since rc.3; rc.3 passed every check except a clean `deep-rvt`, whose Different verdicts are stock Verus output-order variants (VI-0008) ([release candidate](validation/release-candidate.md), [clean macOS](validation/clean-macos.md)); the owner reviews it and decides when to publish |
 
 Out of the release: B1 (shared vstd across projects), B2 (single-file
 `verus file.rs` projects; the release documents that Sail needs a Cargo
