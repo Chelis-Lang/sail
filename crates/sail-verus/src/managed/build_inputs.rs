@@ -145,6 +145,66 @@ pub(super) fn stale_environment(
     data: &Value,
     environment: Option<&BTreeMap<String, String>>,
 ) -> (Vec<String>, Vec<PathBuf>, bool) {
+    stale_scheduled(path, data, environment, &BTreeSet::new())
+}
+
+/// `stale` after a run: a script package in `unscheduled` (see
+/// [`unscheduled`]) needs no contract, since Cargo did not run its script.
+pub(super) fn stale_after(
+    path: &Path,
+    data: &Value,
+    unscheduled: &BTreeSet<String>,
+) -> (Vec<String>, Vec<PathBuf>, bool) {
+    stale_scheduled(path, data, None, unscheduled)
+}
+
+/// The packages Cargo provably did not schedule in a finished run: Cargo's
+/// JSON output (`stdout`) ends exactly one build, and its unit records
+/// (`artifacts`) report no compilation and no script execution of them,
+/// fresh or not. Cargo's resolve graph is wider than the build: it keeps
+/// dev-dependencies, other platforms' dependencies and features that only
+/// another workspace member enables (#121). A script Cargo never ran
+/// produced nothing this run compiled. `None` when either record is
+/// unreadable or a unit record is malformed.
+pub(super) fn unscheduled(
+    stdout: &Path,
+    artifacts: &Path,
+    data: &Value,
+) -> Option<BTreeSet<String>> {
+    let output = std::fs::read(stdout).ok()?;
+    let finished = output
+        .split(|b| *b == b'\n')
+        .filter_map(|line| serde_json::from_slice::<Value>(line).ok())
+        .filter(|value| value["reason"] == "build-finished")
+        .count();
+    if finished != 1 {
+        return None;
+    }
+    let mut reported = BTreeSet::new();
+    for line in std::fs::read_to_string(artifacts).ok()?.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let value = serde_json::from_str::<Value>(line).ok()?;
+        reported.insert(value["package_id"].as_str()?.to_owned());
+    }
+    Some(
+        data["packages"]
+            .as_array()?
+            .iter()
+            .filter_map(|package| package["id"].as_str())
+            .filter(|id| !reported.contains(*id))
+            .map(str::to_owned)
+            .collect(),
+    )
+}
+
+fn stale_scheduled(
+    path: &Path,
+    data: &Value,
+    environment: Option<&BTreeMap<String, String>>,
+    unscheduled: &BTreeSet<String>,
+) -> (Vec<String>, Vec<PathBuf>, bool) {
     let previous = read::<Vec<BuildInput>>(path).unwrap_or_default();
     let mut clean = BTreeSet::new();
     let mut extras = Vec::new();
@@ -182,6 +242,9 @@ pub(super) fn stale_environment(
             .iter()
             .any(|r| r.package_id == package["id"].as_str().unwrap_or_default())
             && !never_scheduled(data, package["id"].as_str().unwrap_or_default())
+            && !package["id"]
+                .as_str()
+                .is_some_and(|id| unscheduled.contains(id))
         {
             clean.insert(package["name"].as_str().unwrap_or_default().to_owned());
             covered = false;
@@ -385,6 +448,97 @@ mod tests {
                 vec!["bench", "lib", "syn", "wasm"]
             );
         }
+    }
+
+    /// Issue #121: the workspace-wide resolve graph gives `foo` an edge to
+    /// serde because another member enables `foo/serde`, so serde's script is
+    /// in the selection's closure, but `-p a` never builds it. After a
+    /// finished build that reported no unit of serde, coverage does not wait
+    /// for a contract Cargo can never produce. Dev-dependencies and other
+    /// platforms' dependencies take the same path.
+    #[test]
+    fn scripts_cargo_did_not_schedule_need_no_contract_after_a_finished_build()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let script = |id: &str| serde_json::json!({"id": id, "name": id, "targets": [{"kind": ["custom-build"]}]});
+        let data = serde_json::json!({"workspace_members": ["a", "b", "foo"],
+            "sail_selected_package_ids": ["a"],
+            "packages": [script("a"), {"id": "foo", "name": "foo", "targets": [{"kind": ["lib"]}]},
+                script("serde")],
+            "resolve": {"root": null, "nodes": [
+                {"id": "a", "dependencies": ["foo"]},
+                {"id": "b", "dependencies": ["foo"]},
+                {"id": "foo", "dependencies": ["serde"]},
+                {"id": "serde", "dependencies": []}]}});
+        let root = std::env::temp_dir().join(format!("sail-unscheduled-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let state = root.join("build-inputs.json");
+        let stdout = root.join("cargo.stdout");
+        let artifacts = root.join("artifacts.jsonl");
+        // `a`'s own script ran and has its contract.
+        let mut record = BuildInput {
+            package_id: "a".to_owned(),
+            package_name: "a".to_owned(),
+            manifest: root.join("Cargo.toml"),
+            paths: vec![root.join("build.rs")],
+            env: BTreeMap::new(),
+            digest: String::new(),
+            covered: true,
+            output: None,
+        };
+        std::fs::write(root.join("build.rs"), "fn main() {}")?;
+        record.digest = current(&record, None).0;
+        json(&state, &vec![record])?;
+        let unit = |reason: &str, id: &str| {
+            serde_json::json!({"reason": reason, "package_id": id}).to_string()
+        };
+        let finished = r#"{"reason":"build-finished","success":true}"#;
+        std::fs::write(&stdout, format!("not json\n{finished}\n"))?;
+        std::fs::write(
+            &artifacts,
+            [
+                unit("build-script-executed", "a"),
+                unit("compiler-artifact", "a"),
+                unit("compiler-artifact", "foo"),
+            ]
+            .join("\n"),
+        )?;
+        // Before the run serde has no contract: it is cleaned and uncovered.
+        let (clean, _, covered) = stale(&state, &data);
+        assert_eq!(clean, vec!["serde"]);
+        assert!(!covered);
+        let skipped = unscheduled(&stdout, &artifacts, &data).ok_or("unscheduled refused")?;
+        assert_eq!(skipped, BTreeSet::from(["serde".to_owned()]));
+        let (clean, _, covered) = stale_after(&state, &data, &skipped);
+        assert_eq!(clean, Vec::<String>::new());
+        assert!(covered);
+        // A script Cargo ran (fresh or not) still needs its contract.
+        std::fs::write(
+            &artifacts,
+            [
+                unit("compiler-artifact", "a"),
+                unit("build-script-executed", "serde"),
+            ]
+            .join("\n"),
+        )?;
+        let skipped = unscheduled(&stdout, &artifacts, &data).ok_or("unscheduled refused")?;
+        assert!(!skipped.contains("serde"));
+        assert!(!stale_after(&state, &data, &skipped).2);
+        // Without a single finished build, or with unreadable unit records,
+        // nothing is known to be unscheduled.
+        std::fs::write(&artifacts, unit("compiler-artifact", "a"))?;
+        for output in [String::new(), format!("{finished}\n{finished}\n")] {
+            std::fs::write(&stdout, output)?;
+            assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
+        }
+        std::fs::write(&stdout, finished)?;
+        std::fs::write(&artifacts, "{not json\n")?;
+        assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
+        std::fs::write(&artifacts, r#"{"reason":"compiler-artifact"}"#)?;
+        assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
+        std::fs::remove_file(&artifacts)?;
+        assert_eq!(unscheduled(&stdout, &artifacts, &data), None);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]
