@@ -203,6 +203,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert reused["establishing_run"] == target["establishing_run"], reused
         assert reused["report"] == target["report"], "reuse must preserve establishing report"
 
+        stored_vstd = vstd(warm)
+
         # The installed CLI and MCP must use that same complete evidence through
         # durable jobs, rather than substitute a Cargo 'fresh' message for proof.
         submitted = recorded_cli("cli-submit", [sail, "verify", "--background", "--output", "json"])
@@ -340,6 +342,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         rebuilt_run, rebuilt, rebuilt_target = managed()
         assert rebuilt_run.returncode == 0 and rebuilt["exit_code"] == 0, diagnostic(rebuilt)
         assert not rebuilt_target["reused"] and rebuilt_target["complete"], diagnostic(rebuilt)
+        assert vstd(rebuilt)["dependency_store"], diagnostic(rebuilt)  # ADR 0045
         assert rebuilt["execution"]["verifier_invocations"] >= 1, rebuilt["execution"]
         assert rebuilt_target["report"]["summary"] == target["report"]["summary"], diagnostic(rebuilt)
         if rebuilt["currentness"] == "historical":
@@ -351,6 +354,44 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert reread_target["establishing_run"] == rebuilt_target["establishing_run"], reread_target
         assert reread_target["report"] == rebuilt_target["report"], "reuse must preserve the rebuilt report"
 
-        print("managed acceptance: failing first runs keep vstd, cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus and prune passed")
+        # ADR 0045: new projects (or worktrees) with the same vstd start from
+        # the machine's dependency store, two at once. Neither verifies vstd;
+        # each reports the vstd verified above, marked as placed from the store.
+        store = root / "cache/dependency-store/v1"
+        entries = [p for p in store.iterdir() if not p.name.startswith(".")]
+        assert len(entries) == 1, entries
+        copies = []
+        for name in ("worktree-1", "worktree-2"):
+            shutil.copytree(project, root / name)
+            copies.append(root / name)
+        seeding = [subprocess.Popen([sail, "verify", "--incremental", "--output", "json"],
+                                    cwd=copy, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                   for copy in copies]
+        for copy, process in zip(copies, seeding):
+            out, err = process.communicate(timeout=240)
+            (evidence / (copy.name + ".stdout.json")).write_bytes(out)
+            (evidence / (copy.name + ".stderr")).write_bytes(err)
+            seeded = json.loads(out)
+            assert process.returncode == 0 and seeded["exit_code"] == 0, err.decode()
+            assert b"SAIL3131" not in err, err.decode()
+            seeded_vstd = vstd(seeded)
+            assert seeded_vstd["reused"] and seeded_vstd["dependency_store"] == entries[0].name, diagnostic(seeded)
+            assert seeded_vstd["establishing_run"] == stored_vstd["establishing_run"], diagnostic(seeded)
+            assert seeded_vstd["report"] == stored_vstd["report"], "the store must preserve vstd's report"
+            assert seeded["execution"]["verifier_invocations"] == 1, diagnostic(seeded)
+            assert any(note.startswith("SAIL3130:") for note in seeded["notes"]), seeded["notes"]
+            own = [t for t in seeded["targets"] if t["requested"]]
+            assert len(own) == 1 and not own[0]["reused"] and own[0]["complete"], diagnostic(seeded)
+            assert verdicts(own[0]) == verdicts(target), (verdicts(own[0]), verdicts(target))
+        # The next run of a seeded project reuses its own receipts, which a
+        # Current seeded run adopts: nothing is verified or placed again.
+        again = bounded_verification([sail, "verify", "--incremental", "--output", "json"],
+                                     copies[0], env, 240)
+        repeated = json.loads(again.stdout)
+        assert again.returncode == 0 and repeated["execution"]["verifier_invocations"] == 0, diagnostic(repeated)
+        assert all(t["reused"] and "dependency_store" not in t for t in repeated["targets"]), diagnostic(repeated)
+        assert vstd(repeated)["establishing_run"] == stored_vstd["establishing_run"], diagnostic(repeated)
+
+        print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus and prune passed")
     finally:
         stop_daemon()

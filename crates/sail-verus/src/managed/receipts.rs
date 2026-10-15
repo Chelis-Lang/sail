@@ -146,6 +146,34 @@ pub(super) fn publish(run: &Path, destination: &Path, context: &str) -> Result<(
     json(&run.join("committed.json"), &commit)
 }
 
+/// Adopts a receipt from the dependency store (ADR 0045) into this proof
+/// context after a Current run reused it, so later runs of this workspace
+/// reuse the dependency through their own receipts. The receipt keeps the
+/// establishing run (its provenance) and is bound to this context and input
+/// revision by its own commit marker, written last as in [`publish`].
+pub(super) fn adopt(
+    run: &Path,
+    destination: &Path,
+    file_name: &std::ffi::OsStr,
+    context: &str,
+    input_revision: String,
+    mut receipt: Receipt,
+) -> Result<()> {
+    let adopted = run.join("adopted");
+    std::fs::create_dir_all(&adopted).map_err(|e| Error::new("SAIL3107", e.to_string()))?;
+    context.clone_into(&mut receipt.context);
+    receipt.input_revision = input_revision;
+    receipt.committed = adopted.join(file_name);
+    let receipt = receipt.seal();
+    let commit = Commit {
+        context: context.to_owned(),
+        run_id: receipt.invocation.run_id.clone(),
+        receipt_checksums: BTreeSet::from([receipt.checksum.clone()]),
+    };
+    json(&destination.join(file_name), &receipt)?;
+    json(&receipt.committed, &commit)
+}
+
 /// A fresh verifier must retire the prior proof before rewriting its artifact.
 pub(crate) fn retire(runtime: &Runtime, identity: &TargetIdentity) -> Result<()> {
     for entry in
@@ -191,7 +219,7 @@ pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, Str
 }
 
 /// Every listed file still has exactly the recorded digest; reads overlap.
-fn digests_match(expected: &BTreeMap<PathBuf, String>) -> bool {
+pub(super) fn digests_match(expected: &BTreeMap<PathBuf, String>) -> bool {
     let files: Vec<&Path> = expected.keys().map(PathBuf::as_path).collect();
     expected
         .values()

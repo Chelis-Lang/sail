@@ -48,6 +48,14 @@ README's [Install](../README.md#install) covers that, along with the archive
 download and checksum check. When the Verus pin changes, update the toolchain
 and the `vstd` version quoted there.
 
+The archive carries no prebuilt `vstd` for Cargo projects. A `vstd` compiled
+on the release host names its source by the release host's Cargo home in
+every diagnostic that points into it, and Cargo rebuilds a registry unit
+compiled under another Cargo home anyway. Instead, the first managed run on
+each machine stores the `vstd` it verified, and later new projects start from
+that copy ([ADR 0045](decisions/0045-dependency-store.md)). The runtime's own
+`libvstd.rlib` and `vstd.vir` serve direct `verus FILE` runs only.
+
 ## How sail finds the bundled engine
 
 No setup is needed. `sail` looks for its Verus (the runtime, which is also

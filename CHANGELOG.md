@@ -28,6 +28,23 @@ semantic versioning once the API is published.
   nested Git repository inside an existing one, and works without `git`
   (VI-0016). The README's *First verification* now uses it instead of
   hand-editing `Cargo.toml` and `src/lib.rs`.
+- **New projects, worktrees and sandboxes no longer verify vstd again**
+  (ADR 0045, roadmap B1). The first managed run on a machine (`sail verify
+  --incremental`, MCP `verify`, jobs, `watch`, repairs) stores the verified
+  vstd it built, with its compiled dependencies and receipt, in
+  `<cache>/dependency-store/`. The first managed run of any later project
+  whose vstd resolves identically (same version, features, dependency
+  versions, profile, toolchain, Sail and arguments) starts from that copy and
+  verifies only its own crates: on a native Linux host, a new one-function
+  project's first run fell from 27.5 s to 1.3 s (MCP `verify`: 1.5 s), and a
+  new vest worktree's from 52.3 s to 25.7 s. Cargo's own fingerprints and every receipt check
+  still decide reuse; anything else is verified as before. The reused target
+  names the run that verified it, carries the new optional `dependency_store`
+  field, and the result notes `SAIL3130`. A damaged entry prints
+  `warning[SAIL3131]` and vstd is verified normally. The store keeps four
+  entries of about 120 MB; `SAIL_DEPENDENCY_STORE_ENTRIES` changes that and
+  `0` turns it off. Release archives are unchanged: a vstd built elsewhere
+  would print another source path in diagnostics.
 - **Fixed: a failing first managed run no longer costs vstd on every later
   run** (#123). When a project's first `sail verify --incremental`, MCP
   `verify` or background job failed a proof or hit a compile error in the

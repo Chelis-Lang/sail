@@ -20,6 +20,7 @@ time as plain Verus.
 | 5 | Cold first run: about the same as plain Verus | demo 30.6 s against 30.4 s; vest 67.5 s against 66.6 s | 7–8% slower: demo 17.5 s against 16.3 s; vest 39.7 s against 36.8 s |
 | 6 | Repair loops with the engine are faster than verifying the function, then the crate | HumanEval 2.14×, Vest 1.82× (c7i.8xlarge) | not measured |
 | 7 | Several agents on one daemon do not wait for each other | 4 vest agents finish 2.2× sooner (47 s against 105 s) | 4 vest agents (2 workers) finish 1.3× sooner (51 s against 67 s) |
+| 8 | A new project or worktree's first managed run skips vstd once the machine has verified it | demo 1.3 s against 27.5 s before (MCP `verify` 1.5 s against 27.7 s); vest worktree 25.7 s against 52.3 s; plain 29.5 s and 66.1 s | demo 3.2 s against plain 67 s (Apple M3 under load 15–23; not measured idle) |
 
 Ratios are plain Verus time divided by Sail time (for claim 7, one job at a
 time divided by concurrent jobs), from medians of three rounds.
@@ -29,8 +30,11 @@ time divided by concurrent jobs), from medians of three rounds.
 - **Small projects.** When verification takes under a second, there is little
   solver work to save. `sail verify` matches plain Verus; `--incremental` adds
   about 0.25 s per run for its report and receipts.
-- **Cold runs.** The first verification of a new project or worktree compiles
-  dependencies and verifies vstd, all of it new to the cache. Sail matches
+- **Cold runs.** The first verification on a machine compiles dependencies
+  and verifies vstd, all of it new to the cache. With `--incremental`, MCP
+  and jobs, later new projects and worktrees that resolve the same vstd skip
+  it (claim 8); ordinary `sail verify` and plain Verus pay it in every new
+  target. Sail matches
   plain Verus within the spread on Linux; on the idle Mac it was 7–8%
   slower (1–3 s), in every round. A warm [team cache](http-shared-cache.md) does not change this
   either: the compile and frontend dominate.
@@ -166,9 +170,35 @@ dependency compiled and vstd verified. Sail is within the spread of plain
 Verus on Linux (demo 30.6 s against 30.4 s, vest 67.5 s against 66.6 s), with
 `--incremental` 1–5 s slower. On the idle Mac, `sail verify`'s cold runs were
 7–8% slower in every round (1.2 s on demo, 2.9 s on vest), and
-`--incremental`'s 15–18% slower. Every new project or worktree pays this once. The
-managed path then reuses its compiled dependencies and receipts
+`--incremental`'s 15–18% slower. With ordinary `sail verify` every new
+project or worktree pays this once. The managed path pays it once per machine
+(claim 8) and then reuses its compiled dependencies and receipts
 ([managed runs](managed-cold-start.md)).
+
+### New projects after the first (claim 8)
+
+[ADR 0045](decisions/0045-dependency-store.md)'s dependency store, measured
+on `feat/prebuilt-vstd` (code at `93a55a0d`) against `main` at `d4ac51af`,
+both on Sail's Verus `73dea021`, on a native c7i.4xlarge in the CI image,
+three rounds, one timed command at a time, load average 2–5. Each round
+starts with an empty Sail cache, verifies a first project (the donor), then
+a new project or worktree with the donor's `Cargo.lock` (seconds):
+
+| Run | Before | After | Plain `cargo verus verify` |
+|---|---:|---:|---:|
+| demo, first on the machine | 27.6 | 28.2 | 29.5 |
+| demo, new project, `--incremental` | 27.5 | 1.30 | 29.5 |
+| demo, new project, MCP `verify` | 27.7 | 1.51 | 29.5 |
+| vest, first on the machine | 68.9 | 67.9 | 66.1 |
+| vest, new worktree | 52.3 | 25.7 | 66.1 |
+
+To reproduce on a project (vest from its repository at `11af01dd`, with
+`-p vest_lib`): run `sail verify --incremental` in it with an empty
+`SAIL_CACHE_DIR`, copy the project directory, and time the same command in
+the copy. `scripts/dependency-store-check.py` does this for the demo and also
+compares each run with plain stock Verus
+([dependency store record](validation/dependency-store.md), which cites the
+raw logs).
 
 ## 6. Repair loops with the engine
 

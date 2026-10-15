@@ -35,7 +35,8 @@ finished; until then it is listed by key, and `--missing` never selects it.
 
 Pruning costs only time. The next managed run of a pruned workspace is a cold
 run: it compiles its dependencies, verifies them and the workspace again, and
-records new receipts. A pruned receipt is never reused, and a job or MCP result
+records new receipts. A verified registry dependency such as vstd comes back
+from the dependency store (below) instead of being verified again. A pruned receipt is never reused, and a job or MCP result
 that was Current before the prune can no longer be confirmed unchanged, so it
 reads back Unknown ("inputs could not be confirmed unchanged; re-run") until
 you verify again.
@@ -49,6 +50,18 @@ waits for the prune and then starts cold. Runs of Sail versions without
 
 `sail cache stats|verify|gc|clear` manage only SMT reply entries and never
 touch these directories.
+
+## Dependency store
+
+`dependency-store/v1/<key>/` holds verified registry dependencies, such as
+vstd with its compiled dependencies, for new projects and worktrees to start
+from ([ADR 0045](decisions/0045-dependency-store.md)). An entry for vstd takes
+about 120 MB. Sail keeps the four most recently used entries and deletes older
+ones itself; set `SAIL_DEPENDENCY_STORE_ENTRIES` to keep another number, or to
+`0` to turn the store off. Deleting `dependency-store/` is safe at any time:
+the next new project verifies vstd again and stores it. A run that was copying
+from a deleted entry verifies vstd itself. Directories left by a run killed
+while storing or deleting an entry are removed once they are an hour old.
 
 ## Development checkouts
 

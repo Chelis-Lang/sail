@@ -123,7 +123,7 @@ Cargo's own. Two parts of the environment bind a result:
   `RUSTC*`, `RUSTDOC*`, `RUSTUP_*`, `RUST_MIN_STACK`, `RUST_BACKTRACE`,
   `RUST_LOG`); `VERUS_*`, `__VERUS_*`, `VARGO_*` and `VSTD_KIND` (the Verus
   launcher, driver and macros); `Z3_*`; `SAIL_*`, except the observation-only
-  job and trace variables; `LD_*` and `DYLD_*` (dynamic loading); and colour,
+  job and trace variables and `SAIL_DEPENDENCY_STORE_ENTRIES`; `LD_*` and `DYLD_*` (dynamic loading); and colour,
   layout and locale (`NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLUMNS`,
   `LANG`, `LANGUAGE`, `LC_*`).
 - **What the project declares.** After each run Sail collects every variable
