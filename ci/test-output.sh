@@ -52,9 +52,6 @@ run() { # $1 = label; rest = command
 # variable reaches only setups it verifies as plain Cargo-Verus does.
 plain_run() { CARGO_TARGET_DIR="$work/target-plain" run "$@"; }
 sail_run() { CARGO_TARGET_DIR="$work/target-sail" run "$@"; }
-# Warm-ups: each side builds and verifies vstd once, where the part needs it.
-case "$part" in loop | loader | extra) plain_run warmup-plain cargo verus verify ;; esac
-case "$part" in loop | extra) sail_run warmup-sail "$sail" verify ;; esac
 # The same comparison for the rest of the edit loop (ADR 0046). Each
 # case runs plain, then Sail, on the same source; `norm` blanks Cargo's
 # `Finished ... in Ns` timing, which differs between any two runs.
@@ -79,6 +76,20 @@ quiet_run() { # like run, without touching the source
   set -e
 }
 edit_run() { printf '// %s\n' "$1" >> src/lib.rs; quiet_run "$@"; }
+# Cold warm-ups of both sides at once. Each builds and verifies vstd in its
+# own target (and Sail in its own cache), and their output is never
+# compared, so they need not run one after the other: on a two-CPU runner
+# a cold build leaves the other CPU partly idle. One resolve first, so the
+# two never write the lockfile together.
+cargo generate-lockfile --quiet
+touch src/lib.rs
+warm_plain() { CARGO_TARGET_DIR="$work/target-plain" quiet_run "$@"; }
+warm_sail() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$@"; }
+# Warm-ups: each side builds and verifies vstd once, where the part needs it.
+# The loader part's Sail run builds its own context meanwhile (below).
+case "$part" in loop | loader | extra) warm_plain warmup-plain cargo verus verify & ;; esac
+case "$part" in loop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
+[ "$part" = loader ] || wait
 
 if [ "$part" = loop ]; then
 # Combined output (2>&1), as agents read it, on the failing proof.
@@ -117,7 +128,7 @@ fi
 if [ "$part" = flags ]; then
 # Setups managed verification cannot bind to a proof receipt (ADR 0046)
 # are verified as plain Cargo-Verus verifies them: one note line, then
-# Cargo-Verus's own output and exit code. Each side runs once to warm
+# Cargo-Verus's own output and exit code. Each side runs once (both at once) to warm
 # its target; the second runs are compared, with Cargo's `Finished ... in
 # Ns` timing blanked.
 unbound_normalize() { sed -E '/^note\[SAIL3112\]/d; s/(Finished.* in )[0-9.]+s$/\1Ns/' "$1"; }
@@ -138,9 +149,11 @@ unbound_compare() { # label
 }
 unbound_case() { # label; rest = the arguments for both sides
   local label="$1"; shift
-  plain_run "$label-plainwarm" cargo verus verify "$@"
+  touch src/lib.rs
+  warm_plain "$label-plainwarm" cargo verus verify "$@" &
+  warm_sail "$label-sailwarm" "$sail" verify "$@" &
+  wait
   plain_run "$label-plain" cargo verus verify "$@"
-  sail_run "$label-sailwarm" "$sail" verify "$@"
   sail_run "$label-sail" "$sail" verify "$@"
   unbound_compare "$label"
 }
@@ -173,6 +186,7 @@ assert not any(t["reused"] for t in doc["targets"]), "no reuse"
 contexts = list(pathlib.Path(sys.argv[2], "projects").glob("*/" + doc["context_sha256"]))
 assert len(contexts) == 1 and not list((contexts[0] / "receipts").glob("*.json")), contexts
 PY
+wait # the plain warm-up
 plain_run loader-plain cargo verus verify
 LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
   run loader-sail "$sail" verify

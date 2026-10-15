@@ -192,21 +192,11 @@ case "$step" in
       for kind in lib bin; do
         mkdir "$work/sail-new-$kind"
         (cd "$work/sail-new-$kind" && "$sail" new "--$kind" demo)
-        if [ "$kind" = lib ]; then
-          if ! diff -r -x .git "$work/demo" "$work/sail-new-lib/demo"; then
-            echo "e2e: sail new --lib differs from stock cargo verus new --lib" >&2
-            exit 1
-          fi
-        fi
-        (cd "$work/sail-new-$kind/demo" && CARGO_TARGET_DIR="$work/target-sail" "$sail" verify) \
-          > "$work/new-$kind.out" 2> "$work/new-$kind.err" || {
-          echo "e2e: the project sail new --$kind created does not verify" >&2
-          cat "$work/new-$kind.out" "$work/new-$kind.err" >&2
-          exit 1
-        }
-        grep -q "verification results:: 1 verified, 0 errors" "$work/new-$kind.out" "$work/new-$kind.err"
       done
-      echo "e2e: sail new: lib identical to cargo verus new; lib and bin verify"
+      if ! diff -r -x .git "$work/demo" "$work/sail-new-lib/demo"; then
+        echo "e2e: sail new --lib differs from stock cargo verus new --lib" >&2
+        exit 1
+      fi
       cd demo
       cat > src/lib.rs <<'RS'
 use vstd::prelude::*;
@@ -240,7 +230,23 @@ RS
       sail_run() { CARGO_TARGET_DIR="$work/target-sail" run "$@"; }
       # Warm-up: the first build of a fresh project also builds its vstd
       # dependency; afterwards every run below re-verifies only the crate.
-      plain_run warmup cargo verus verify
+      # Stock's cold build runs while the `sail new` projects verify (their
+      # first run verifies vstd for Sail); neither's output is compared.
+      plain_run warmup cargo verus verify &
+      plain_warmup=$!
+      cd "$work"
+      for kind in lib bin; do
+        (cd "$work/sail-new-$kind/demo" && CARGO_TARGET_DIR="$work/target-sail" "$sail" verify) \
+          > "$work/new-$kind.out" 2> "$work/new-$kind.err" || {
+          echo "e2e: the project sail new --$kind created does not verify" >&2
+          cat "$work/new-$kind.out" "$work/new-$kind.err" >&2
+          exit 1
+        }
+        grep -q "verification results:: 1 verified, 0 errors" "$work/new-$kind.out" "$work/new-$kind.err"
+      done
+      echo "e2e: sail new: lib identical to cargo verus new; lib and bin verify"
+      wait "$plain_warmup"
+      cd demo
       plain_run plain cargo verus verify
       sail_run sailwarmup "$sail" verify
       sail_run cold "$sail" verify

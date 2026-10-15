@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 sail = str(Path(sys.argv[1]).resolve())
@@ -90,6 +91,21 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # A project's first managed runs usually fail. Start with a failing
         # proof: vstd must still be kept for reuse (issue #123).
         source.write_text(bad)
+        # The pinned Verus's verdict on the failing proof, from a copy with its
+        # own target, verified while the managed runs below proceed: a cold
+        # build of vstd under stock Verus that need not hold up the job.
+        oracle_project = root / "oracle"
+        shutil.copytree(project, oracle_project)
+        oracle = {}
+        def run_oracle():
+            try:
+                oracle["run"] = bounded_verification(
+                    [cargo_verus, "verus", "verify", "--target-dir", str(root / "oracle-target")],
+                    oracle_project, env, 300)
+            except Exception as failure:  # reported where the verdict is compared
+                oracle["error"] = failure
+        oracle_thread = threading.Thread(target=run_oracle)
+        oracle_thread.start()
 
         def recorded_cli(label, arguments):
             # Retain only this fixture's public CLI output and operation timing.
@@ -353,8 +369,9 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert failed_run.returncode != 0 and not failure["reused"] and not failure["complete"], failed
         assert failure["report"]["summary"]["failed"] == 1, failure
         assert failed["execution"]["verifier_invocations"] >= 1, failed["execution"]
-        plain = bounded_verification([cargo_verus, "verus", "verify", "--target-dir",
-                                      str(contexts[0] / "target")], project, env, 120)
+        oracle_thread.join()
+        assert "error" not in oracle, oracle.get("error")
+        plain = oracle["run"]
         assert plain.returncode == failed_run.returncode, (plain.returncode, failed_run.returncode)
         assert b"postcondition not satisfied" in plain.stderr, plain.stderr.decode()
         assert b"postcondition not satisfied" in failed_run.stderr, failed_run.stderr.decode()
