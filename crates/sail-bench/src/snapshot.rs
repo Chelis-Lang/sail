@@ -13,10 +13,11 @@
 //!    the rest of the input and compares every reply with fresh's replies to
 //!    the same commands.
 //!
-//! Replies are compared exactly, and again with the wall-clock and memory
-//! figures of statistics replies (`:time`, `:memory`, `:max-memory`) masked,
-//! since those differ between any two runs. `:rlimit-count` and every other
-//! byte are compared exactly.
+//! Replies are compared exactly, and again with the statistics that differ
+//! between any two plain runs masked: `:time`, `:memory`, `:max-memory` and
+//! `:num-allocs` (the trace comparison measures how often). `:rlimit-count`
+//! and every other byte are compared exactly. Differing statistics keys are
+//! counted per key, `:num-allocs` included.
 
 use std::fmt::Write as _;
 use std::io::{Read, Write};
@@ -55,12 +56,18 @@ pub struct Cmp {
     pub compared: usize,
     /// Byte-identical.
     pub identical: usize,
-    /// Identical once `:time`, `:memory` and `:max-memory` are masked.
+    /// Identical once `:time`, `:memory`, `:max-memory` and `:num-allocs`
+    /// are masked.
     pub masked_identical: usize,
     /// Different even when masked.
     pub differ: usize,
     /// Whether the sequences had the same number of replies.
     pub same_count: bool,
+    /// Different replies that are not statistics (answers, models, echoes,
+    /// reasons): any of these is a verdict-level difference.
+    pub non_stats_differ: usize,
+    /// For differing statistics replies: how often each key's value differed.
+    pub stat_keys: std::collections::BTreeMap<String, usize>,
     /// The first masked difference, for the record.
     pub first_diff: Option<String>,
 }
@@ -121,7 +128,13 @@ pub struct FileReport {
     pub error: Option<String>,
 }
 
-const MASKED: [&str; 3] = [":time", ":memory", ":max-memory"];
+/// Statistics that differ between any two runs of the same input: wall
+/// clock, memory, and the allocation count (which differs between two plain
+/// runs too). Verus reads only `:rlimit-count` (ADR 0008, ADR 0011).
+const MASKED: [&str; 4] = [":time", ":memory", ":max-memory", ":num-allocs"];
+
+/// Wall-clock and memory figures, never reported as differences.
+const WALL: [&str; 3] = [":time", ":memory", ":max-memory"];
 
 /// A reply with the wall-clock and memory figures of statistics masked.
 fn mask(reply: &[u8]) -> Vec<u8> {
@@ -147,6 +160,23 @@ fn mask(reply: &[u8]) -> Vec<u8> {
         }
     }
     out.into_bytes()
+}
+
+/// A statistics reply as key/value pairs; `None` for any other reply.
+fn stats(reply: &[u8]) -> Option<std::collections::BTreeMap<String, String>> {
+    let text = String::from_utf8_lossy(reply);
+    let body = text.trim().strip_prefix("(:")?.strip_suffix(')')?;
+    let mut out = std::collections::BTreeMap::new();
+    for entry in format!(":{body}")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .chunks(2)
+    {
+        if let [k, v] = entry {
+            out.insert((*k).to_owned(), (*v).to_owned());
+        }
+    }
+    Some(out)
 }
 
 /// Splits a solver's output into replies, as the shim does.
@@ -180,18 +210,32 @@ fn compare(want: &[Vec<u8>], got: &[Vec<u8>]) -> Cmp {
         c.compared += 1;
         if w == g {
             c.identical += 1;
-        } else if mask(w) == mask(g) {
-            c.masked_identical += 1;
-        } else {
-            c.differ += 1;
-            if c.first_diff.is_none() {
-                let cut = |b: &[u8]| String::from_utf8_lossy(&b[..b.len().min(400)]).into_owned();
-                c.first_diff = Some(format!(
-                    "reply {k}: want {:?} got {:?}",
-                    cut(&mask(w)),
-                    cut(&mask(g))
-                ));
+            continue;
+        }
+        let (a, b) = (stats(w), stats(g));
+        if let (Some(a), Some(b)) = (&a, &b) {
+            let keys: std::collections::BTreeSet<&String> = a.keys().chain(b.keys()).collect();
+            for key in keys {
+                if !WALL.contains(&key.as_str()) && a.get(key) != b.get(key) {
+                    *c.stat_keys.entry(key.clone()).or_default() += 1;
+                }
             }
+        }
+        if mask(w) == mask(g) {
+            c.masked_identical += 1;
+            continue;
+        }
+        c.differ += 1;
+        if a.is_none() || b.is_none() {
+            c.non_stats_differ += 1;
+        }
+        if c.first_diff.is_none() {
+            let cut = |b: &[u8]| String::from_utf8_lossy(&b[..b.len().min(400)]).into_owned();
+            c.first_diff = Some(format!(
+                "reply {k}: want {:?} got {:?}",
+                cut(&mask(w)),
+                cut(&mask(g))
+            ));
         }
     }
     if !c.same_count && c.first_diff.is_none() {
@@ -539,6 +583,14 @@ pub fn summary(reports: &[FileReport]) -> String {
     let (mut tr, mut mk, mut rs) = ((0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0));
     let mut errors = 0;
     let mut bad_status = 0;
+    let mut keys: [std::collections::BTreeMap<String, usize>; 3] = Default::default();
+    let mut non_stats = [0usize; 3];
+    let mut tally = |i: usize, c: &Cmp| {
+        non_stats[i] += c.non_stats_differ;
+        for (k, n) in &c.stat_keys {
+            *keys[i].entry(k.clone()).or_default() += n;
+        }
+    };
     let (mut fresh, mut marked) = (0.0, 0.0);
     let (mut parked, mut pss, mut private) = (0, 0, 0);
     for r in reports {
@@ -552,12 +604,15 @@ pub fn summary(reports: &[FileReport]) -> String {
         }
         if let Some(c) = &r.trace {
             add(&mut tr, c);
+            tally(0, c);
         }
         if let Some(c) = &r.marked {
             add(&mut mk, c);
+            tally(1, c);
         }
         for x in &r.resumes {
             add(&mut rs, &x.cmp);
+            tally(2, &x.cmp);
             bad_status += usize::from(x.status != Some(0));
         }
     }
@@ -571,6 +626,13 @@ pub fn summary(reports: &[FileReport]) -> String {
     s.push_str(&line("trace vs fresh (stock baseline)", tr));
     s.push_str(&line("marked vs fresh", mk));
     s.push_str(&line("resumed vs fresh", rs));
+    for (i, label) in ["trace", "marked", "resumed"].iter().enumerate() {
+        let _ = writeln!(
+            s,
+            "{label}: non-statistics replies different {}; statistics keys different: {:?}",
+            non_stats[i], keys[i]
+        );
+    }
     let _ = writeln!(
         s,
         "resumed exit status not 0: {bad_status}\nfresh {fresh:.1} s, marked {marked:.1} s\nparked snapshots: {parked}; memory (Linux) pss {pss} kB, private {private} kB"
