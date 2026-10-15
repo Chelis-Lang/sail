@@ -47,7 +47,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     (
         "engine",
-        "install or inspect the optional interactive engine",
+        "install or inspect Sail's Verus (fork runtime and repair engine)",
     ),
     ("explain", "show exact failure evidence from a retained job"),
     (

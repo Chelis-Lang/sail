@@ -118,7 +118,6 @@ digest varied for identical input: 0 of 28 measured HumanEval samples and 0
 of 14 Vest samples, against 16 of 32 HumanEval samples and two varying Vest
 buckets on `89709da7` (L22 rescue lane report, tag `archive/rescue-m7-98f6292`).
 
-The fork builds only the optional interactive engine. Stock-mode workaround:
-Default `sail verify` runs stock Verus, so this variation (and its effect on
-warm cache hit rates) remains there; as before, no workaround is needed for
-correctness and Sail does not reorder declarations.
+Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. Default mode therefore gets the fix
+and its warm cache hit rates. Stock runs keep the variation; no workaround is
+needed for correctness, and Sail does not reorder declarations.

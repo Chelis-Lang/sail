@@ -42,14 +42,19 @@ service error (SAIL3120 when the engine is not installed).
     (
         "engine",
         "\
-Inspect or install the optional interactive engine used by repair-check.
+Inspect or install Sail's Verus: the runtime built from Sail's Verus fork
+that every verification runs, which also contains the interactive engine
+used by repair-check.
 
 USAGE:
     sail engine status [--output json]
     sail engine install --from PATH [--output json]
 
-The release archives bundle the engine beside `sail`; `sail engine status`
-selects it with no setup. In a Sail source checkout, build it with
+`status` checks every runtime file against its pin. The release archives
+bundle Sail's Verus beside `sail`, so it needs no setup. SAIL_VERUS_BUILD
+names a build to use instead. In a Sail source checkout, download it with
+`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json
+--cache ~/.cache/sail` (artifact-macos.json on macOS), or build it with
 `cargo xtask build-verus-engine`.
 ",
     ),
@@ -161,8 +166,9 @@ USAGE:
     sail verify [SAIL OPTIONS] [CARGO VERUS VERIFY ARGS] [-- VERUS ARGS]
 
 {VERIFY_OPTIONS}
-All other arguments go to `cargo verus verify`; its help follows when
-cargo-verus is on PATH (or SAIL_CARGO_VERUS is set).
+All other arguments go to `cargo verus verify`, run with Sail's own Verus
+(built from Sail's Verus fork and shipped with Sail); its help follows when
+that Verus is installed (`sail engine status` checks it).
 "
         )),
         "cache" => Some(crate::ops::CACHE_USAGE.to_owned()),
@@ -198,7 +204,7 @@ pub(crate) fn print(command: &str, out: &mut dyn Write) -> Option<ExitCode> {
     let body = text(command)?;
     let _ = write!(out, "{body}");
     if command == "verify"
-        && let Some(cargo_verus) = crate::verify::cargo_verus()
+        && let Ok(cargo_verus) = crate::verify::cargo_verus()
     {
         let _ = writeln!(out, "\n`cargo verus verify --help`:\n");
         let _ = out.flush();

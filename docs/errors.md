@@ -19,13 +19,14 @@ listed here but no longer used. Renamed and removed codes are listed in
 | `SAIL0001` | `sail serve` needs Unix sockets | Run the daemon on Linux or macOS |
 | `SAIL0002` | Usage error: unknown command, option or missing value | Fix the command line; `sail help` lists commands |
 | `SAIL0003` | Cannot start `sail-bench`, serve on the socket, or run the daemon. As a warning from `sail verify`: the cache daemon is unavailable, so verification runs without the cache (same results) | `sail bench` is a contributor tool that is not in the release archives: build `sail-bench` from a Sail source checkout. Otherwise check that the socket path is free, writable and short enough (107 bytes on Linux, 103 on macOS; set `SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET` to a shorter path). Run `sail serve` to see the daemon's own error |
-| `SAIL0101` | `cargo-verus` not found | Put it on `PATH` or set `SAIL_CARGO_VERUS`. To install the Verus release Sail is tested with (the message names it) and its Rust toolchain, follow step 2 of the README's [Install](../README.md#install); in a Sail source checkout, `cargo xtask fetch-verus` does the same and prints the `PATH` line |
+| `SAIL0101` | Sail's Verus (the runtime built from Sail's Verus fork, which Sail runs for every verification) is missing, does not match its pins, or its files changed. Sail never falls back to another Verus | Release archives bundle it under `engine/`: unpack the archive again and run its `bin/sail` without moving files out of the directory. In a source checkout, run `python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json --cache ~/.cache/sail` (`artifact-macos.json` on macOS) or `cargo xtask build-verus-engine`. `sail engine status` shows what is wrong |
 | `SAIL0102` | `sail-z3` not found next to `sail` | Reinstall so `sail` and `sail-z3` share a directory |
-| `SAIL0103` | Cannot find the Z3 that Verus uses | Set `VERUS_Z3_PATH` |
+| `SAIL0103` | Cannot find the Z3 that Verus uses (Sail's Verus bundles the pinned Z3) | Reinstall Sail, or set `VERUS_Z3_PATH` |
 | `SAIL0104` | Cannot create the fragility trace directory | Check free space and permissions in the temporary directory, or pass `--keep-traces DIR` |
 | `SAIL0105` | Cannot run `cargo-verus` | Check the `cargo-verus` installation |
 | `SAIL0106` | Unknown `--output` format | Use `--output json` |
 | `SAIL0107` | Cannot create a scratch directory for JSON output | Check free space and permissions in the temporary directory |
+| `SAIL0108` | Warning: `SAIL_CARGO_VERUS` replaces Sail's Verus. This development override is not Sail's default mode, and its results are not checked against stock Verus | Unset `SAIL_CARGO_VERUS` |
 | `SAIL0110` | Invalid portfolio or fragility options | Fix the options; a portfolio and a fragility measurement cannot be combined |
 | `SAIL0111` | A portfolio attempt could not run or was cancelled | Re-run; the message names the failing step |
 | `SAIL0112` | Cannot retain portfolio or fragility evidence | Check free space and permissions under the cache directory |

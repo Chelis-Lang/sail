@@ -15,9 +15,11 @@ regression test, so the series can be rebased onto a new Verus release
 ([engine/verus/README.md](../../engine/verus/README.md)). Entries still keep
 a description written so a person could file it upstream as is.
 
-The fork builds only the optional interactive engine. Default `sail verify`
-runs the stock Verus release, so its workarounds for these issues remain in
-place for stock runs; each entry says which.
+Sail runs the fork's Verus for every verification, default mode included
+([ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)); stock Verus
+is only the conformance oracle. Fork fixes therefore apply to every Sail run.
+Workarounds an entry describes for stock runs apply only to the stock oracle
+and to the `SAIL_CARGO_VERUS` development override.
 
 | Id | Title | Status | Fork (`Chelis-Lang/verus`) | Reproduction |
 |---|---|---|---|---|
@@ -37,6 +39,7 @@ place for stock runs; each entry says which.
 | [VI-0014](VI-0014-exported-foreign-span-metadata-gap.md) | Exported spans can lack original source-range metadata | moot: only affected the removed prepared-lowering reuse | — | retained HumanEval diagnostic and reduced typed stock-resolver control; historical export cause unknown |
 | [VI-0015](VI-0015-nondeterministic-trigger-choice.md) | Automatic trigger choice depends on hash iteration order | open in stock Verus; fixed in the fork | fixed: `404a1e30` fix: choose automatic triggers in a deterministic search order | `corpus/repros/verus-nondeterministic-trigger-choice/` |
 | [VI-0016](VI-0016-cargo-verus-new-needs-git.md) | `cargo verus new` fails with a bare "No such file or directory" without git | open | — | described (steps) |
+| [VI-0018](VI-0018-source-build-cargo-verus-new.md) | A source-built `cargo verus new` knows no vstd for its own version | worked around in Sail's build | not a source change: `cargo xtask build-verus-engine` writes the toolchain manifest, as the release workflow does | described (steps) |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`).

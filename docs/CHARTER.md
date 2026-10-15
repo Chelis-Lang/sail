@@ -200,3 +200,13 @@ Each entry names the charter text it qualifies and the ADR that records it.
    replay change is authorized. Old failed qualifications remain recorded,
    and a new variant must pass the amended oracle before selection. See
    ADR 0027 and question 14 in `docs/open-questions.md`.
+4. *Success criterion 3 ("no changes to their … Verus installation") and
+   correctness rule 1* (owner direction, 2026-10-15). Stock Verus emits SMT in run-dependent orders (VI-0001,
+   VI-0015), and randomness is the enemy of caching. Sail therefore runs its
+   own Verus, built from its fork (`Chelis-Lang/verus`) and shipped with
+   Sail, for every verification. Users install Sail and a Rust toolchain;
+   their own Verus installation, if any, is neither needed nor touched, and
+   switching back is still running `cargo verus verify`. Rule 1 is read
+   against plain *stock* Verus with the pinned Z3: Sail on the fork must
+   produce the same per-function verdicts and diagnostics, and the
+   conformance harness compares exactly that. See ADR 0043.

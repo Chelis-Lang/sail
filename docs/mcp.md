@@ -8,8 +8,9 @@ decisions are in ADRs 0016 and 0024.
 ## Registering it
 
 The server is a stdio command: `sail mcp`, with no arguments. It needs what
-`sail verify` needs: `cargo-verus` on `PATH` (or `SAIL_CARGO_VERUS`), and
-`sail-z3` next to `sail`. Start it from the project directory. Submission and
+`sail verify` needs: Sail's Verus (bundled in the release archive; `sail
+engine status` checks it), `sail-z3` next to `sail`, and the Rust toolchain
+Verus pins. Start it from the project directory. Submission and
 project-oriented lookup tools accept `project_dir` where their schemas show it;
 durable job/evidence reads and cancellation do not.
 
@@ -32,15 +33,13 @@ Any client that takes a JSON server list (`.mcp.json` and similar):
     "sail": {
       "type": "stdio",
       "command": "sail",
-      "args": ["mcp"],
-      "env": { "SAIL_CARGO_VERUS": "/path/to/cargo-verus" }
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-The `env` entry is needed only if `cargo-verus` is not on the client's
-`PATH`. Use an absolute path to `sail` if it is not on `PATH` either.
+Use an absolute path to `sail` if it is not on the client's `PATH`.
 
 For interactive repair, install the engine in the same Sail cache used by the
 MCP process and CLI. If overriding `SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET`, set
@@ -545,9 +544,11 @@ a snapshot of the project's sources taken just before the run.
 
 ## Proof repair tools
 
-The optional interactive engine is selected explicitly and must be installed as a
-validated Sail-managed pinned build. `start_verification` accepts `engine: stock`
-or `engine: interactive`; stock is the default.
+The optional interactive engine is selected explicitly; it is part of Sail's
+Verus, the validated pinned runtime every verification uses.
+`start_verification` accepts `engine: stock` (ordinary verification with
+Sail's Verus; the name is kept for compatibility) or `engine: interactive`;
+`stock` is the default.
 Use `sail engine status --output json` to inspect the selected installation;
 see the [repair walkthrough](proof-repair-walkthrough.md) for setup and a complete
 focus/full regression example.

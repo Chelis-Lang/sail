@@ -1,8 +1,11 @@
-//! Optional source-integrated focus/full proof engine (ADR 0027).
+//! Sail's Verus: the runtime built from one pinned commit of Sail's Verus
+//! fork (`engine/verus/fork.toml`), and the source-integrated focus/full
+//! proof engine it contains (ADR 0027).
 //!
-//! The engine is a separately hashed Verus build from one pinned commit of
-//! Sail's Verus fork (`engine/verus/fork.toml`). Stock releases and stock
-//! source builds are never substituted silently.
+//! Every verification Sail runs uses this runtime (ADR 0043): ordinary
+//! verification through [`Installed::locate_verified`], and the repair
+//! engine through [`Installed::locate`]. Stock releases and stock source
+//! builds are never substituted silently.
 use std::path::{Path, PathBuf};
 
 use crate::source_build::{self, Manifest};
@@ -221,13 +224,21 @@ pub fn bundled_dir(pins: &Pins) -> Option<PathBuf> {
     Some(exe.parent()?.parent()?.join("engine").join(variant))
 }
 
-/// The engine build to use: the cache variant when anything is installed
-/// there (`cargo xtask build-verus-engine` or `sail engine install`), else a
-/// bundled release runtime ([`bundled_dir`]) when present, else the cache
-/// variant, whose absence reports `SAIL3120`. Either candidate passes the
-/// same identity and artifact validation before use.
+/// Names a fork build directory to use instead of the cache and the bundle
+/// (CI images and development; ADR 0043). It passes the same validation.
+pub const BUILD_ENV: &str = "SAIL_VERUS_BUILD";
+
+/// The fork build to use: `$SAIL_VERUS_BUILD` when set, else the cache
+/// variant when anything is installed there (`cargo xtask
+/// build-verus-engine` or `sail engine install`), else a bundled release
+/// runtime ([`bundled_dir`]) when present, else the cache variant, whose
+/// absence reports `SAIL3120`. Every candidate passes the same identity and
+/// artifact validation before use.
 #[must_use]
 pub fn resolve_build(cache: &Path, pins: &Pins) -> PathBuf {
+    if let Some(build) = std::env::var_os(BUILD_ENV).filter(|v| !v.is_empty()) {
+        return PathBuf::from(build);
+    }
     let cached = build_dir(cache, pins);
     if cached.symlink_metadata().is_ok() {
         return cached;
@@ -262,6 +273,59 @@ impl Installed {
         Self::at(&resolve_build(cache, pins), pins)
     }
 
+    /// [`Installed::locate`] for every ordinary verification (ADR 0043):
+    /// the same identity checks, with the full artifact digests read once per
+    /// install. A successful full check records each artifact's device,
+    /// inode, size and modification time under
+    /// `<cache>/runtime-identities/`; while the runtime directory holds
+    /// exactly the manifest's files with those identities, later calls skip
+    /// rereading them (as ADR 0041 identifies toolchain files). Any
+    /// difference, or an unreadable record, repeats the full check.
+    ///
+    /// # Errors
+    /// `SAIL3120` if missing, misidentified, or corrupted.
+    pub fn locate_verified(cache: &Path, pins: &Pins) -> Result<Self> {
+        let build = resolve_build(cache, pins);
+        let (manifest, manifest_sha256) = preflight(&build, pins)?;
+        let record = cache
+            .join("runtime-identities")
+            .join(format!("verus-{manifest_sha256}.json"));
+        let stats = runtime_stats(&build);
+        let recorded = std::fs::read(&record)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<RuntimeRecord>(&bytes).ok());
+        let current = match (&stats, recorded) {
+            (Some(stats), Some(recorded)) => {
+                recorded.build == build.canonicalize().ok()
+                    && recorded.stats == *stats
+                    && stats.keys().eq(manifest.artifacts.keys())
+            }
+            _ => false,
+        };
+        if !current {
+            let installed = Self::at(&build, pins)?;
+            if let (Some(stats), Some(parent)) = (stats, record.parent()) {
+                let entry = RuntimeRecord {
+                    build: build.canonicalize().ok(),
+                    stats,
+                };
+                // Best effort: without the record the next run checks again.
+                if std::fs::create_dir_all(parent).is_ok() {
+                    let _ = crate::managed::json(&record, &entry);
+                }
+            }
+            return Ok(installed);
+        }
+        let runtime = runtime_dir(&build);
+        Ok(Self {
+            cargo_verus: runtime.join("cargo-verus"),
+            verus: runtime.join("verus"),
+            manifest_sha256,
+            cargo_features: cargo_features(&manifest.features),
+            build,
+        })
+    }
+
     /// Validates an explicitly supplied build without installing or modifying it.
     ///
     /// # Errors
@@ -282,32 +346,56 @@ impl Installed {
     }
 }
 
+/// A validated runtime's file identities ([`Installed::locate_verified`]).
+#[derive(serde::Serialize, serde::Deserialize)]
+struct RuntimeRecord {
+    build: Option<PathBuf>,
+    stats: std::collections::BTreeMap<PathBuf, String>,
+}
+
+/// The stat identity of every file directly in the runtime directory, keyed
+/// as the manifest keys its artifacts; `None` if any cannot be read.
+fn runtime_stats(build: &Path) -> Option<std::collections::BTreeMap<PathBuf, String>> {
+    let mut stats = std::collections::BTreeMap::new();
+    for entry in std::fs::read_dir(runtime_dir(build)).ok()? {
+        let path = entry.ok()?.path();
+        if path.is_file() {
+            let relative = path.strip_prefix(build).ok()?.to_path_buf();
+            stats.insert(relative, crate::managed::stat_identity(&path).ok()?);
+        }
+    }
+    Some(stats)
+}
+
 fn runtime_dir(build: &Path) -> PathBuf {
     source_build::checkout_dir(build).join("source/target-verus/release")
 }
 
-/// How to obtain an engine, appended to every "missing" or "mismatched"
-/// engine error so the user is never left without a next step.
-pub const OBTAIN: &str = "Release archives bundle the engine under `engine/` \
+/// How to obtain Sail's Verus (the fork runtime, which is also the repair
+/// engine), appended to every "missing" or "mismatched" error so the user is
+/// never left without a next step.
+pub const OBTAIN: &str = "Release archives bundle Sail's Verus under `engine/` \
 beside `bin/sail`, so from a release install this means the install is damaged \
 or incomplete: unpack the archive again into a new directory and use its \
-`bin/sail` without moving files out of that directory. An engine installed in \
-the Sail cache (`verus-src-build/` under ~/.cache/sail or SAIL_CACHE_DIR) is \
-used before the bundled one; remove it to use the bundle. In a Sail source \
-checkout, build the engine with `cargo xtask build-verus-engine` (it clones \
+`bin/sail` without moving files out of that directory. A build named by \
+SAIL_VERUS_BUILD is used first, then one installed in the Sail cache \
+(`verus-src-build/` under ~/.cache/sail or SAIL_CACHE_DIR), then the bundled \
+one; remove a stale one to use the bundle. In a Sail source checkout, download \
+the prebuilt runtime with `python3 ci/engine-artifact.py fetch --pin \
+engine/verus/artifact-linux.json --cache ~/.cache/sail` (artifact-macos.json on \
+macOS), or build it with `cargo xtask build-verus-engine` (it clones \
 https://github.com/Chelis-Lang/verus and needs the pinned Verus from \
-`cargo xtask fetch-verus`), or download the prebuilt runtime with \
-`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
---cache ~/.cache/sail` (artifact-macos.json on macOS). Or import a build with \
-`sail engine install --from PATH`. Ordinary `sail verify` does not need the engine.";
+`cargo xtask fetch-verus`). Or import a build with `sail engine install --from \
+PATH`. Sail never falls back to another Verus.";
 
 fn invalid() -> Error {
     Error::new(
         "SAIL3120",
         format!(
-            "the interactive engine does not match this Sail's pins (fork commit {}, \
-             Verus toolchain or z3) or its files changed since it was built (a source-checkout \
-             build is rebuilt with `cargo xtask build-verus-engine --force`). {OBTAIN}",
+            "Sail's Verus (the fork runtime and interactive engine) does not match this \
+             Sail's pins (fork commit {}, Verus toolchain or z3) or its files changed since it \
+             was built (a source-checkout build is rebuilt with `cargo xtask build-verus-engine \
+             --force`). {OBTAIN}",
             fork_commit()
         ),
     )
@@ -498,9 +586,9 @@ fn preflight(build: &Path, pins: &Pins) -> Result<(Manifest, String)> {
     let manifest_path = build.join(source_build::MANIFEST);
     let bytes = std::fs::read(&manifest_path).map_err(|e| {
         let what = if e.kind() == std::io::ErrorKind::NotFound {
-            "the optional interactive engine is not installed".to_owned()
+            "Sail's Verus (the fork runtime and interactive engine) is not installed".to_owned()
         } else {
-            format!("cannot read the interactive engine's build manifest ({e})")
+            format!("cannot read the build manifest of Sail's Verus ({e})")
         };
         Error::new(
             "SAIL3120",
@@ -977,6 +1065,64 @@ mod tests {
         std::fs::create_dir_all(&cached)?;
         assert_eq!(resolve_build(&cache, &pins), cached);
         std::fs::remove_dir_all(&cache)?;
+        Ok(())
+    }
+
+    /// ADR 0043: ordinary verification reads every artifact in full once,
+    /// then trusts unchanged stat identities; any change repeats the full
+    /// check, and a corrupt runtime is refused.
+    #[test]
+    fn verified_runtime_is_rehashed_only_when_its_files_change()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-verus-stamp-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let cache = root.join("cache");
+        let pins = Pins::embedded()?;
+        let build = build_dir(&cache, &pins);
+        let runtime = runtime_dir(&build);
+        std::fs::create_dir_all(&runtime)?;
+        for name in ["cargo-verus", "verus", "rust_verify", "z3", "vstd.vir"] {
+            std::fs::write(runtime.join(name), name)?;
+        }
+        Manifest {
+            schema_version: source_build::SCHEMA_VERSION,
+            commit: pins.verus.commit.clone(),
+            rust_toolchain: pins.verus.rust_toolchain.clone(),
+            z3_sha256: pins
+                .assets
+                .get(crate::toolchain::host())
+                .ok_or("host pin")?
+                .z3_sha256
+                .clone(),
+            features: features(),
+            artifacts: source_build::artifact_hashes(&build)?,
+            build_seconds: 0,
+            test_binaries: Vec::new(),
+        }
+        .save(&build)?;
+        let first = Installed::locate_verified(&cache, &pins)?;
+        assert_eq!(first.cargo_verus, runtime.join("cargo-verus"));
+        let records: Vec<_> = std::fs::read_dir(cache.join("runtime-identities"))?.collect();
+        assert_eq!(records.len(), 1);
+        // Unchanged: served from the record.
+        let second = Installed::locate_verified(&cache, &pins)?;
+        assert_eq!(second.manifest_sha256, first.manifest_sha256);
+        // Same size, new bytes and a new modification time: refused.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::fs::write(runtime.join("z3"), "Z3")?;
+        assert_eq!(
+            Installed::locate_verified(&cache, &pins)
+                .map_err(|e| e.code)
+                .err(),
+            Some("SAIL3120")
+        );
+        // A file the manifest does not list: refused.
+        std::fs::write(runtime.join("z3"), "z3")?;
+        std::fs::write(runtime.join("extra"), "extra")?;
+        assert!(Installed::locate_verified(&cache, &pins).is_err());
+        std::fs::remove_file(runtime.join("extra"))?;
+        assert!(Installed::locate_verified(&cache, &pins).is_ok());
+        std::fs::remove_dir_all(&root)?;
         Ok(())
     }
 

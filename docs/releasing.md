@@ -40,41 +40,44 @@ followed by a hash of the toolchain, fork commit, host, source lock and vstd
 build (for example `426d8b01e7ffb910a36c15e1f870ff985bb61eef-9a788f8bd626312c`
 on Linux). Users should not rename or move anything inside the directory.
 
-What users still install themselves: the stock pinned Verus release, with
-`cargo-verus` on `PATH` (default `sail verify` runs it, and the engine falls
-back to it), and `rustup` with the Rust toolchain Verus pins
-(`corpus/toolchain.toml`), which both stock Verus and the engine use. The
-README's [Install](../README.md#install) covers these, along with the archive
-download and checksum check. When the Verus pin changes, update the release,
-toolchain and archive digests quoted there.
+The bundled runtime is Sail's Verus: every verification Sail runs uses it,
+default mode included ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)),
+so every archive must carry it. What users still install themselves is
+`rustup` with the Rust toolchain Verus pins (`corpus/toolchain.toml`). The
+README's [Install](../README.md#install) covers that, along with the archive
+download and checksum check. When the Verus pin changes, update the toolchain
+and the `vstd` version quoted there.
 
 ## How sail finds the bundled engine
 
-No setup is needed. `sail` looks for an engine in this order:
+No setup is needed. `sail` looks for its Verus (the runtime, which is also
+the engine) in this order:
 
-1. the cache variant, `<cache>/verus-src-build/<variant>`, installed by
+1. `SAIL_VERUS_BUILD`, a build directory named explicitly (CI images and
+   development);
+2. the cache variant, `<cache>/verus-src-build/<variant>`, installed by
    `cargo xtask build-verus-engine` or `sail engine install --from PATH`;
-2. the bundled runtime, `<release>/engine/<variant>`, where `<release>` is
+3. the bundled runtime, `<release>/engine/<variant>`, where `<release>` is
    the parent of the directory holding the running `sail` (symlinks to
    `sail`, for example from `~/.local/bin`, are resolved first).
 
 The first candidate that exists is validated exactly as before: the manifest
 must name the pinned Verus commit, Rust toolchain, fork commit, host, source
 lock and solver digest, and every runtime file must match its recorded
-SHA-256. A bundle that fails validation reports `SAIL3120`, like a corrupt
-cache install. Because the variant name binds the host and fork commit, a
-bundle from another platform or Sail version is never selected.
-`sail engine status` shows the selected build.
-
-A macOS archive built without the engine (see below) has no `engine/`
-directory; `sail engine status` then reports `SAIL3120`, and repairs report
-it too, while `sail verify` runs stock Verus as usual.
+SHA-256. A bundle that fails validation reports `SAIL3120` from
+`sail engine status` and repairs, and `SAIL0101` from verification, like a
+corrupt cache install; Sail never falls back to another Verus. Because the
+variant name binds the host and fork commit, a bundle from another platform
+or Sail version is never selected. `sail engine status` shows the selected
+build. Ordinary verification reads every runtime file in full once per
+install and then compares file stats (ADR 0043).
 
 ## Procedure
 
 Prerequisites: an Apple-silicon Mac with this repository, `gh` signed in with
 access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
-`rustup`, and the pinned Verus (`cargo xtask fetch-verus`).
+`rustup`, and the pinned stock Verus (`cargo xtask fetch-verus`, for
+qualifying the macOS runtime against it).
 
 1. Land a PR that sets `[workspace.package] version` in `Cargo.toml` and
    moves `CHANGELOG.md`'s Unreleased entries under that version.
@@ -114,23 +117,24 @@ access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
      targeting the commit, uploads the four assets and prints the release URL
      and asset list.
 
-   `SAIL_RELEASE_MACOS_ENGINE=0` ships the macOS archive without the engine,
-   for when the macOS engine is not qualified; the release notes say so.
+   Every archive carries the runtime; there is no engine-less archive, since
+   Sail runs no other Verus.
 4. Smoke-test each archive on a machine with only the user prerequisites
-   (Linux: a fresh `scripts/perf-host.sh` host; macOS: a fresh directory):
+   (Linux: a fresh `scripts/perf-host.sh` host; macOS: a fresh directory),
+   with no `cargo-verus` on `PATH`:
 
    ```sh
-   scripts/release-smoke.sh sail-VERSION-TARGET.tar.gz [--no-engine]
+   scripts/release-smoke.sh sail-VERSION-TARGET.tar.gz
    ```
 
    It checks the checksum, unpacks into a new directory and, with an empty
    `SAIL_CACHE_DIR`, requires `sail engine status` to select the bundled
-   engine, `sail verify` to pass on a new `cargo verus new` project, and one
-   `sail repair-check` through the engine to be accepted, with no engine
-   fault. `--no-engine` is for an archive built without the engine.
+   runtime, `sail verify` to pass on a new project made as the README's First
+   verification says, and one `sail repair-check` through the engine to be
+   accepted, with no engine fault.
 5. The owner reviews the draft and decides when to publish.
 
-`scripts/release.sh stage OUT [ENGINE_BUILD]` is the staging step alone: it
+`scripts/release.sh stage OUT ENGINE_BUILD` is the staging step alone: it
 copies `target/release/sail` and `sail-z3` (stripped of the release
 profile's line tables with `strip -S`; function symbols stay), and the engine build's manifest
 and runtime files, into `OUT`, then runs the self-check.
@@ -163,5 +167,5 @@ gh release create engine-runtime-<short sha>-macos -R Chelis-Lang/verus --prerel
   --latest=false --target <fork commit> OUT/engine-runtime.tar.gz
 ```
 
-If it fails, ship macOS without the engine (`SAIL_RELEASE_MACOS_ENGINE=0`),
-record why, and keep the failure in [known issues](known-issues.md).
+If it fails, do not release macOS: Sail on macOS needs the runtime. Record
+why and keep the failure in [known issues](known-issues.md).

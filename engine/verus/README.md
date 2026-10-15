@@ -1,8 +1,14 @@
-# Optional interactive Verus engine
+# Sail's Verus and its interactive engine
 
-The engine is a separate Sail-managed source variant built from Sail's Verus
-fork ([ADR 0039](../../docs/decisions/0039-private-verus-fork.md)). Stock
-releases and ordinary `sail verify` are unchanged.
+Sail's Verus is a Sail-managed source variant built from Sail's Verus fork
+([ADR 0039](../../docs/decisions/0039-private-verus-fork.md)). It is the only
+Verus Sail runs: ordinary `sail verify` and every other verification use it
+([ADR 0043](../../docs/decisions/0043-default-mode-runs-the-fork.md)), and
+it contains the optional interactive repair engine described below. Stock
+releases are the conformance oracle. One pinned runtime per platform
+(`artifact-linux.json`, `artifact-macos.json`) serves both uses: it holds
+`verus`, `cargo-verus`, `rust_verify`, the builtin and macro libraries, vstd
+and the pinned Z3, everything `cargo verus` needs.
 
 A repair runs fresh Rust frontend, type, mode, trait and ghost lifetime checks,
 then focused verification and an independent full verification in one active
@@ -60,7 +66,9 @@ repair benchmark on a candidate before pinning it.
 `cargo xtask build-verus-engine` fetches exactly the pinned commit (the
 fork is public, so no credentials are needed), checks that its upstream base
 equals `corpus/toolchain.toml`'s commit, writes the committed
-[Cargo.lock](Cargo.lock) and builds. The variant's identity
+[Cargo.lock](Cargo.lock), writes Verus's toolchain manifest for the build's
+version as the release workflow does (so `cargo verus new` works,
+VI-0018), and builds. The variant's identity
 (`sail-fork:<commit>` feature) and the runtime pin
 ([artifact-linux.json](artifact-linux.json), `fork_commit`) bind the commit.
 CI never builds Verus; it installs the prebuilt runtime.
@@ -194,7 +202,10 @@ and the runtime manifest, never from where the bytes were served.
 ### Publishing a runtime
 
 A new fork commit needs a new runtime. Until it is published and pinned the
-committed pin is stale and the CI image build refuses it.
+committed pin is stale and the CI image build refuses it. Because default
+mode runs the runtime too, a re-pin also needs the conformance tiers to pass
+with Sail on the new runtime against plain stock Verus
+(`ci/local.sh conformance fast`, then `standard`; ADR 0043).
 
 1. On a native Linux x86-64 host, build it with
    `cargo xtask build-verus-engine` and run the qualification steps
@@ -220,10 +231,10 @@ runtime prerequisite, not M7 product acceptance.
 
 ## Release archives
 
-Sail's release archives bundle the engine runtime under
-`engine/<variant>/` beside `bin/sail`, and `sail` uses it when no engine is
-installed in the cache, after the same validation
-([releasing](../../docs/releasing.md)). The Linux archive carries the pinned
+Sail's release archives bundle the runtime under `engine/<variant>/` beside
+`bin/sail`, and `sail` uses it when neither `SAIL_VERUS_BUILD` nor the cache
+names one, after the same validation
+([releasing](../../docs/releasing.md)). Every archive must carry it. The Linux archive carries the pinned
 artifact above. The macOS archive carries the runtime pinned in
 [artifact-macos.json](artifact-macos.json) (same schema; host
 `aarch64-apple-darwin`, from the release tag's `-macos` suffix), built on
