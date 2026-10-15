@@ -77,8 +77,10 @@ pub(super) fn metadata(workspace: &Path, args: &[String], cargo: &Path) -> Resul
 fn selected_packages(data: &Value, args: &[String]) -> Option<Vec<String>> {
     let packages = data["packages"].as_array()?;
     let mut selected = Vec::new();
+    let mut whole_workspace = false;
     let mut arguments = args.iter().take_while(|arg| arg.as_str() != "--");
     while let Some(argument) = arguments.next() {
+        whole_workspace |= argument == "--workspace" || argument == "--all";
         let spec = if argument == "-p" || argument == "--package" {
             Some(arguments.next()?.as_str())
         } else if let Some(spec) = argument.strip_prefix("--package=") {
@@ -103,6 +105,25 @@ fn selected_packages(data: &Value, args: &[String]) -> Option<Vec<String>> {
         let package = matches.next()?;
         matches.next().is_none().then_some(())?;
         selected.push(package["id"].as_str()?.to_owned());
+    }
+    if selected.is_empty() && !whole_workspace {
+        // Without a package selection Cargo builds the workspace's default
+        // members, which Cargo resolves from the invoking directory: inside a
+        // member's directory that is the member alone. Selecting them here
+        // keeps scripts that only other members reach out of required
+        // coverage, as `-p` does (issue #157). Cargo metadata from the same
+        // directory reports the same set; a unit outside it refuses Current.
+        // Without either field the selection stays empty: every package is
+        // then a candidate, as before.
+        let defaults = data["workspace_default_members"].as_array().map_or_else(
+            || data["resolve"]["root"].as_str().map(|root| vec![root]),
+            |members| members.iter().map(Value::as_str).collect(),
+        );
+        selected = defaults
+            .unwrap_or_default()
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
     }
     Some(selected)
 }
@@ -675,6 +696,61 @@ mod tests {
         );
         assert_eq!(
             super::selected_packages(&data, &["--".into(), "-p".into(), "disabled".into()]),
+            Some(Vec::<String>::new())
+        );
+    }
+
+    /// Without `-p`, Cargo builds the default members it resolved from the
+    /// invoking directory; the selection is the same set (issue #157).
+    #[test]
+    fn selection_without_package_is_cargos_default_members() {
+        let data = serde_json::json!({
+            "packages":[{"id":"a-id","name":"a","version":"1"},
+                        {"id":"b-id","name":"b","version":"1"}],
+            "workspace_members":["a-id","b-id"],
+            "workspace_default_members":["a-id"],
+            "resolve":{"root":"a-id","nodes":[]}});
+        assert_eq!(
+            super::selected_packages(&data, &[]),
+            Some(vec!["a-id".to_owned()])
+        );
+        // Arguments after `--` belong to Verus.
+        assert_eq!(
+            super::selected_packages(&data, &["--".into(), "-p".into(), "b".into()]),
+            Some(vec!["a-id".to_owned()])
+        );
+        // An explicit selection replaces the default.
+        assert_eq!(
+            super::selected_packages(&data, &["-p".into(), "b".into()]),
+            Some(vec!["b-id".to_owned()])
+        );
+        // --workspace selects every member: no narrower closure.
+        for flag in ["--workspace", "--all"] {
+            assert_eq!(
+                super::selected_packages(&data, &[flag.to_owned()]),
+                Some(Vec::<String>::new())
+            );
+        }
+        // A virtual workspace root: every default member, no resolve root.
+        let mut root = data.clone();
+        root["workspace_default_members"] = serde_json::json!(["a-id", "b-id"]);
+        root["resolve"]["root"] = Value::Null;
+        assert_eq!(
+            super::selected_packages(&root, &[]),
+            Some(vec!["a-id".to_owned(), "b-id".to_owned()])
+        );
+        // Older Cargo without default members: the resolve root.
+        let mut older = data.clone();
+        older
+            .as_object_mut()
+            .map(|o| o.remove("workspace_default_members"));
+        assert_eq!(
+            super::selected_packages(&older, &[]),
+            Some(vec!["a-id".to_owned()])
+        );
+        older["resolve"]["root"] = Value::Null;
+        assert_eq!(
+            super::selected_packages(&older, &[]),
             Some(Vec::<String>::new())
         );
     }

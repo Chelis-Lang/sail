@@ -61,6 +61,11 @@ toolchain (Verus, Cargo, rustc, Z3, Sail, the sysroot libraries) changes;
 installed files are identified by device, inode, size and modification time,
 so reinstalling or rebuilding any of them makes the next run fresh.
 
+A run in a workspace member's directory without `-p` verifies what Cargo
+builds from there by default, the member alone, and reuses its receipts like
+the same run from the workspace root with `-p`. Their arguments differ, so
+they are separate contexts and each pays its own first run.
+
 Contexts that differ only in the repair function selected share one Cargo
 target ([ADR 0036](decisions/0036-managed-compiler-artifact-families.md)), so
 a new repair function does not verify vstd again. Cargo reporting a target as
