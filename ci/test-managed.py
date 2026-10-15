@@ -166,6 +166,13 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert first_run.returncode != 0 and first["currentness"] == "current", diagnostic(first)
         established_vstd = vstd(first)
         assert established_vstd["complete"], diagnostic(first)
+        # ADR 0045: the Current run that verified vstd stores it, whatever the
+        # verifier's timing notes (a one-thread verifier prints them for any
+        # query slower than two seconds).
+        store = root / "cache/dependency-store/v1"
+        stored = [p.name for p in store.iterdir() if not p.name.startswith(".")] if store.is_dir() else []
+        events = evidence / (managed_calls[-1] + ".events.jsonl")
+        assert len(stored) == 1, (stored, events.read_text() if events.exists() else None)
 
         # The failing proof again: only the selected crate is verified, with the
         # same verdicts and errors; vstd is reused from the failing run.
@@ -393,9 +400,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # ADR 0045: new projects (or worktrees) with the same vstd start from
         # the machine's dependency store, two at once. Neither verifies vstd;
         # each reports the vstd verified above, marked as placed from the store.
-        store = root / "cache/dependency-store/v1"
         entries = [p for p in store.iterdir() if not p.name.startswith(".")]
-        assert len(entries) == 1, entries
+        assert len(entries) == 1 and entries[0].name == stored[0], (entries, stored)
         copies = []
         for name in ("worktree-1", "worktree-2"):
             shutil.copytree(project, root / name)

@@ -51,6 +51,9 @@ report. A different resolution, a path dependency on vstd, an edited registry
 source or a dynamic-loader variable (`LD_*`, `DYLD_*`) in the environment
 verify vstd as before, silently; a damaged entry does too, with
 `warning[SAIL3131]`. A run killed while copying leaves no target behind.
+vstd is stored only if its verification printed no diagnostics, since a
+seeded run prints none; Verus's `has been running for N seconds` timing
+notes, which a one-thread verifier prints for slow queries, do not count.
 The store keeps the four most recently used entries, about 120 MB each
 ([disk use](workspace-hygiene.md#dependency-store)). A context changes when the arguments, the engine
 selection, the relevant environment, the Cargo configuration or the installed
