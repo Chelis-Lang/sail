@@ -102,7 +102,26 @@ after each run, plus the shim's per-session provenance
 (`SAIL_PROVENANCE_DIR`). Exit codes agreed across modes in every round and
 phase of every project. In verismo, `assert(1 + 1 == 3)` verified, in
 `proof_open_wf` and in `osmem_find`, with both stock and fork, so verismo has
-no `fail` edit. This was not investigated.
+no `fail` result below.
+
+The cause is in verismo, not in Verus or Sail (issue #160). verismo_tspec's
+trusted `#[verifier(external_body)]` broadcast axiom
+`axiom_size_from_cast_bytes` states
+`size_of::<T>() == T::spec_size_def()`, and `impl SpecSize for char` gives
+1, while vstd's `layout_of_primitives` states `size_of::<char>() == 4`.
+Wherever a function's context keeps both, `false` is provable: in
+`security::mem`, `assert(false)` in a `proof fn` with no precondition
+verifies. A 30-line file with only that axiom and impl reproduces it with
+stock Verus 0.2026.10.04. With `[char, 4]` instead, `assert(false)` fails
+again in `security::mem`, one `verismo_tspec` proof
+(`proof_field_set_constant`) fails, and with that proof admitted, verismo
+reports 1,118 verified and 165 errors instead of 1,283 and 0. Of 17
+`assert(1 + 1 == 3)` insertions, one per file that has a top-level
+`proof fn`, 13 verified. So verismo's measurements stay valid as timings,
+but most of its queries are discharged from a contradiction.
+`scripts/perf-real.sh` now puts verismo's `fail` and `fix` in
+`lemma_seq_to_multiset_swap` (`tspec_e/array/sort.rs`), where the failing
+assert fails; the `fix` figures below were measured in `osmem_find`.
 
 ## Results
 

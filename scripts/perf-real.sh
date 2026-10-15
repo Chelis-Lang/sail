@@ -113,13 +113,18 @@ EOF
   verismo)
     entry=verismo-main src=verismo-6bc6dd326d8b pkg=source/verismo
     noop_file=source/verismo/src/security/mem.rs
+    # fail and fix sit in tspec_e/array/sort.rs, not security/mem.rs: verismo's
+    # trusted axiom_size_from_cast_bytes with SpecSize for char (1) contradicts
+    # vstd's size_of::<char>() == 4, so `assert(false)` verifies in any
+    # function whose context keeps both facts, including all of mem.rs (#160).
     edits() { cat <<'EOF'
 body-early body source/verismo/src/security/mem.rs 191 0
 body-late body source/verismo/src/security/mem.rs 1264 0
 comment-top comment source/verismo/src/security/mem.rs 1 0
 lemma-mid lemma source/verismo/src/security/mem.rs 627 0
 spec-wide rename source/verismo/src/arch/rmp/db_u.rs 53 0
-fix fix source/verismo/src/security/mem.rs 575 0
+fail fail source/verismo/src/tspec_e/array/sort.rs 9 1
+fix fix source/verismo/src/tspec_e/array/sort.rs 9 0
 upstream-body body source/verismo_tspec/src/security/sectype.rs 221 0
 upstream-spec rename source/verismo_tspec/src/range_set.rs 66 0
 EOF
