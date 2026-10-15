@@ -7,7 +7,11 @@
 #                        cargo-deny, docs/benchmarks.md freshness
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   e2e [legacy|managed|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
+#   e2e-build DIR        CI only: build the e2e binaries once (release sail,
+#                        sail-z3, sail-conformance, check_output, check_mcp)
+#                        into DIR/e2e-bin.tar, which every e2e phase job
+#                        unpacks (SAIL_E2E_PREBUILT) instead of building
+#   e2e [legacy|managed|scripts|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
 #                        `sail verify` (managed verification, the default,
@@ -19,7 +23,9 @@
 #                        report agrees with Verus's own --output-json; then
 #                        one `verify` call through `sail mcp`, agreeing with
 #                        that document; managed receipts, durable jobs and
-#                        asynchronous MCP; repair CLI/MCP against a
+#                        asynchronous MCP (`managed`), and reuse across build
+#                        scripts (`scripts`; one project with `managed` when
+#                        all phases run); repair CLI/MCP against a
 #                        validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
 #                        plain stock Verus vs Sail's Verus (the fork) run as
@@ -63,11 +69,27 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|e2e-build|e2e|conformance|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
   cargo build --release --locked -p sail-cli -p sail-shim "$@"
+}
+
+# The binaries every e2e phase uses, relative to target/release.
+e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp)
+
+e2e_build() {
+  release_build -p sail-conformance --bins --example check_output --example check_mcp
+}
+
+# Unpacks the binaries `e2e-build` packed in this CI run, checking every
+# file against the digests packed with them; a missing or altered file
+# fails the phase.
+unpack_e2e_binaries() {
+  mkdir -p target/release
+  tar -xf "$1" -C target/release
+  (cd target/release && sha256sum --quiet -c e2e-bin.sha256)
 }
 
 # Copies the release runtime under /tmp and sets $sail. A host-mounted
@@ -126,26 +148,38 @@ case "$step" in
     cargo nextest run --workspace --locked --profile ci --run-ignored only
     ;;
 
+  e2e-build)
+    mkdir -p "${1:?usage: ci/run.sh e2e-build DIR}"
+    out="$(cd "$1" && pwd)"
+    e2e_build
+    (cd target/release && sha256sum "${e2e_binaries[@]}" > e2e-bin.sha256 \
+      && tar -cf "$out/e2e-bin.tar" "${e2e_binaries[@]}" e2e-bin.sha256)
+    ;;
+
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|repair|output|loader|flags|extra' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|scripts|repair|output|loader|flags|extra' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|repair|output|loader|flags|extra) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|repair|output|loader|flags|extra" >&2; exit 2 ;;
+      full|legacy|managed|scripts|repair|output|loader|flags|extra) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     # Sail runs its own Verus, the validated fork runtime the image installs
     # (ADR 0043); stock `cargo verus` on PATH is only the oracle.
     : "${SAIL_ENGINE_BUILD:?e2e needs the validated prebuilt fork runtime, the Verus Sail runs}"
     export SAIL_VERUS_BUILD="$SAIL_ENGINE_BUILD"
-    release_build
+    # CI builds once for every phase (`e2e-build`); locally, build here.
+    if [ -n "${SAIL_E2E_PREBUILT:-}" ]; then
+      unpack_e2e_binaries "$SAIL_E2E_PREBUILT"
+    else
+      e2e_build
+    fi
     install_runtime
     sail_managed_test="$sail_checkout/ci/test-managed.py"
     if [ "$phase" = full ] || [ "$phase" = legacy ]; then
-      cargo build --release --locked -p sail-cli --example check_output --example check_mcp
       check_output="$PWD/target/release/examples/check_output"
       check_mcp="$PWD/target/release/examples/check_mcp"
       sail_portfolio_test="$PWD/ci/test-portfolio.sh"
@@ -159,21 +193,11 @@ case "$step" in
       for kind in lib bin; do
         mkdir "$work/sail-new-$kind"
         (cd "$work/sail-new-$kind" && "$sail" new "--$kind" demo)
-        if [ "$kind" = lib ]; then
-          if ! diff -r -x .git "$work/demo" "$work/sail-new-lib/demo"; then
-            echo "e2e: sail new --lib differs from stock cargo verus new --lib" >&2
-            exit 1
-          fi
-        fi
-        (cd "$work/sail-new-$kind/demo" && CARGO_TARGET_DIR="$work/target-sail" "$sail" verify) \
-          > "$work/new-$kind.out" 2> "$work/new-$kind.err" || {
-          echo "e2e: the project sail new --$kind created does not verify" >&2
-          cat "$work/new-$kind.out" "$work/new-$kind.err" >&2
-          exit 1
-        }
-        grep -q "verification results:: 1 verified, 0 errors" "$work/new-$kind.out" "$work/new-$kind.err"
       done
-      echo "e2e: sail new: lib identical to cargo verus new; lib and bin verify"
+      if ! diff -r -x .git "$work/demo" "$work/sail-new-lib/demo"; then
+        echo "e2e: sail new --lib differs from stock cargo verus new --lib" >&2
+        exit 1
+      fi
       cd demo
       cat > src/lib.rs <<'RS'
 use vstd::prelude::*;
@@ -206,7 +230,23 @@ RS
       sail_run() { CARGO_TARGET_DIR="$work/target-sail" run "$@"; }
       # Warm-up: the first build of a fresh project also builds its vstd
       # dependency; afterwards every run below re-verifies only the crate.
-      plain_run warmup cargo verus verify
+      # Stock's cold build runs while the `sail new` projects verify (their
+      # first run verifies vstd for Sail); neither's output is compared.
+      plain_run warmup cargo verus verify &
+      plain_warmup=$!
+      cd "$work"
+      for kind in lib bin; do
+        (cd "$work/sail-new-$kind/demo" && CARGO_TARGET_DIR="$work/target-sail" "$sail" verify) \
+          > "$work/new-$kind.out" 2> "$work/new-$kind.err" || {
+          echo "e2e: the project sail new --$kind created does not verify" >&2
+          cat "$work/new-$kind.out" "$work/new-$kind.err" >&2
+          exit 1
+        }
+        grep -q "verification results:: 1 verified, 0 errors" "$work/new-$kind.out" "$work/new-$kind.err"
+      done
+      echo "e2e: sail new: lib identical to cargo verus new; lib and bin verify"
+      wait "$plain_warmup"
+      cd demo
       plain_run plain cargo verus verify
       sail_run sailwarmup "$sail" verify
       sail_run cold "$sail" verify
@@ -266,21 +306,25 @@ RS
       local_only e2e extra
       (cd "$sail_checkout" && bash ci/test-output.sh "$sail" extra)
     fi
-    if [ "$phase" = full ] || [ "$phase" = managed ]; then
+    if [ "$phase" = full ] || [ "$phase" = managed ] || [ "$phase" = scripts ]; then
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
       # Bounded complete-report receipts: reuse, missing evidence and a failing
       # proof edit with restored timestamps, compared with the pinned Verus.
+      # The build-script cases (`scripts`) run as a phase of their own in CI;
+      # the full run checks every case on one project.
       # Keep timeout/error output outside the fixture's TemporaryDirectory.
       # Use the checkout path because the full legacy phase changes cwd.
+      case "$phase" in full) managed_part=all ;; managed) managed_part=core ;; *) managed_part=scripts ;; esac
       SAIL_MANAGED_ACCEPTANCE_OUT="$sail_managed_evidence" \
-        python3 "$sail_managed_test" "$sail"
-      # A real MCP client (pinned Claude Code) must list sail's tools.
-      bash "$sail_checkout/ci/test-claude-code.sh" "$sail"
+        python3 "$sail_managed_test" "$sail" "$managed_part"
+      if [ "$phase" != scripts ]; then
+        # A real MCP client (pinned Claude Code) must list sail's tools.
+        bash "$sail_checkout/ci/test-claude-code.sh" "$sail"
+      fi
     fi
     if [ "$phase" = full ] || [ "$phase" = repair ]; then
       cd "$sail_checkout"
       : "${SAIL_ENGINE_BUILD:?repair acceptance requires the validated prebuilt engine}"
-      release_build -p sail-conformance
       fetch_repair_source
       python3 "$PWD/ci/test-repair.py" --sail "$sail" --engine-build "$SAIL_ENGINE_BUILD" \
         --verus-source "$sail_repair_source" \
