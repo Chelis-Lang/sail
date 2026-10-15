@@ -3,14 +3,19 @@
 //! ```text
 //! sail-conformance fetch [--tier T] [--project P]...
 //! sail-conformance run   [--tier T] [--project P]... [--filter S] [--jobs N]
-//!                        [--trace] [--out DIR] [--shim PATH]
+//!                        [--trace] [--out DIR] [--shim PATH] [--sail-verus fork|stock]
 //! sail-conformance engine [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--out DIR] [--engine-build PATH] [--no-focus]
 //! sail-conformance rust-verify-test [--filter S]... [--every N] [--jobs N] ...
 //! ```
 //!
-//! `run` exits 0 when every unit is the same under sail as under plain
-//! Verus, 1 if any unit differs, and 2 on usage or infrastructure errors.
+//! `run` compares Sail as users run it, Sail's Verus (built from the fork,
+//! ADR 0043) with `sail-z3` in front of the pinned Z3, against plain stock
+//! Verus with the same Z3 (charter rule 1). `--sail-verus stock` runs the
+//! Sail side on stock Verus instead, to tell a shim difference from a fork
+//! difference. It exits 0 when every unit is the same under sail as under
+//! plain Verus, 1 if any unit differs, and 2 on usage or infrastructure
+//! errors.
 //! `engine` is the source-engine arm (ADR 0027): the optional interactive
 //! engine's full phase against plain Verus, with the same comparison and
 //! instability rules on verdicts and diagnostics, plus a completion-seal check.
@@ -36,7 +41,7 @@ const USAGE: &str = "usage:
   sail-conformance fetch [--tier fast|standard|deep] [--project NAME]...
   sail-conformance run   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                          [--jobs N] [--trace] [--out DIR] [--shim PATH]
-                         [--plain-runs N] [--confirm-runs N]
+                         [--plain-runs N] [--confirm-runs N] [--sail-verus fork|stock]
 
   sail-conformance engine [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                          [--jobs N] [--out DIR] [--plain-runs N] [--confirm-runs N]
@@ -44,8 +49,12 @@ const USAGE: &str = "usage:
 
   sail-conformance rust-verify-test ...   (see `rust-verify-test --help`)
 
-  --engine-build PATH  the validated interactive engine build (default
-                    $SAIL_ENGINE_BUILD)
+  --engine-build PATH  the validated build of Sail's Verus: the fork runtime,
+                    which contains the interactive engine (default
+                    $SAIL_ENGINE_BUILD, else the one `sail` would use)
+  --sail-verus V    the Verus on the Sail side of `run`: `fork` (default;
+                    Sail's Verus, as users run it) or `stock` (the pinned
+                    release, to isolate the shim)
   --no-focus        run only the engine's full phase (no focused selector)
 
   --plain-runs N    plain Verus runs per unit up front (default 1)
@@ -66,6 +75,9 @@ struct Options {
     confirm_runs: usize,
     engine_build: Option<PathBuf>,
     focus: bool,
+    /// `run`: whether the Sail side runs Sail's Verus (the fork) rather
+    /// than stock.
+    sail_on_fork: bool,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -86,6 +98,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
             .filter(|v| !v.is_empty())
             .map(PathBuf::from),
         focus: true,
+        sail_on_fork: true,
     };
     while let Some(arg) = it.next() {
         let mut value = || {
@@ -121,6 +134,15 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--engine-build" => o.engine_build = Some(value()?.into()),
             "--no-focus" => o.focus = false,
             "--shim" => o.shim = Some(value()?.into()),
+            "--sail-verus" => {
+                o.sail_on_fork = match value()?.as_str() {
+                    "fork" => true,
+                    "stock" => false,
+                    other => {
+                        return Err(format!("--sail-verus needs fork or stock, not `{other}`"));
+                    }
+                };
+            }
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
     }
@@ -209,6 +231,10 @@ struct Report {
     schema_version: u32,
     tier: String,
     verus_release: String,
+    /// `run`: the Verus on the Sail side: `fork:<manifest sha256>` (Sail's
+    /// Verus) or `stock`. The plain side is always stock `verus_release`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sail_verus: Option<String>,
     z3_version: String,
     machine: std::collections::BTreeMap<String, String>,
     started_unix: u64,
@@ -329,6 +355,9 @@ fn select(
 
 struct Context<'a> {
     installed: &'a Installed,
+    /// The Verus the Sail side of `run` uses: Sail's Verus (the fork) by
+    /// default, or `installed` with `--sail-verus stock`.
+    sail_verus: &'a Installed,
     verus_source: Option<&'a Path>,
     shim: &'a Path,
     dir: &'a Path,
@@ -444,7 +473,7 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
             .filter(|v| !v.is_empty())
             .map(PathBuf::from),
     };
-    let sail = match run_unit(installed, unit, &solver, &base.join("sail")) {
+    let sail = match run_unit(cx.sail_verus, unit, &solver, &base.join("sail")) {
         Ok(s) => s,
         Err(e) => return infra_error(unit, e.to_string()),
     };
@@ -626,6 +655,36 @@ fn summary_line(report: &Report) -> String {
 /// the manifest records.
 type EngineBuild = (EngineArm, String, Vec<String>);
 
+/// The Sail side's Verus for `run` (ADR 0043): Sail's Verus, the fork
+/// runtime, validated like `sail` validates it, with the plain side's pinned
+/// Z3 bytes (the runtime's own Z3 has the same pinned digest). `None` when
+/// `--sail-verus stock` asks for the stock release.
+fn sail_verus(o: &Options, installed: &Installed) -> Result<Option<(Installed, String)>, String> {
+    if o.command != "run" || !o.sail_on_fork {
+        return Ok(None);
+    }
+    let fork = match &o.engine_build {
+        Some(build) => sail_verus::engine::Installed::at(build, &installed.pins),
+        None => sail_verus::cache_dir()
+            .and_then(|cache| sail_verus::engine::Installed::locate(&cache, &installed.pins)),
+    }
+    .map_err(|e| {
+        format!(
+            "error[{}]: the Sail side runs Sail's Verus (ADR 0043): {e}\n\
+             (pass --sail-verus stock to run the Sail side on stock Verus)",
+            e.code
+        )
+    })?;
+    Ok(Some((
+        Installed {
+            verus: fork.verus,
+            cargo_verus: fork.cargo_verus,
+            ..installed.clone()
+        },
+        fork.manifest_sha256,
+    )))
+}
+
 /// Locates and validates the engine build for the `engine` command.
 fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<EngineBuild>, String> {
     if o.command != "engine" {
@@ -654,6 +713,7 @@ fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<EngineBuild>,
 fn run(o: &Options) -> Result<ExitCode, String> {
     let (corpus, installed, cache) = load()?;
     let engine = engine_arm(o, &installed)?;
+    let fork = sail_verus(o, &installed)?;
     let shim = match &o.shim {
         Some(p) => p.clone(),
         None => std::env::current_exe()
@@ -692,6 +752,7 @@ fn run(o: &Options) -> Result<ExitCode, String> {
 
     let cx = Context {
         installed: &installed,
+        sail_verus: fork.as_ref().map_or(&installed, |(fork, _)| fork),
         verus_source: verus_source.as_deref(),
         shim: &shim,
         dir: &dir,
@@ -742,6 +803,10 @@ fn run(o: &Options) -> Result<ExitCode, String> {
         schema_version: 1,
         tier: format!("{:?}", o.tier).to_lowercase(),
         verus_release: installed.pins.verus.release.clone(),
+        sail_verus: (o.command == "run").then(|| {
+            fork.as_ref()
+                .map_or_else(|| "stock".to_owned(), |(_, sha)| format!("fork:{sha}"))
+        }),
         z3_version: installed.pins.z3.version.clone(),
         machine: machine_info(),
         started_unix: started,
@@ -829,6 +894,7 @@ mod tests {
             schema_version: 1,
             tier: "deep".to_owned(),
             verus_release: String::new(),
+            sail_verus: None,
             z3_version: String::new(),
             machine: BTreeMap::new(),
             started_unix: 0,
