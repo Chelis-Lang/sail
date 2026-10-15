@@ -172,6 +172,7 @@ that Verus is installed (`sail engine status` checks it).
 "
         )),
         "cache" => Some(crate::ops::CACHE_USAGE.to_owned()),
+        "new" => Some(crate::new::USAGE.to_owned()),
         "cache projects" => Some(crate::projects_cli::USAGE.to_owned()),
         _ => HELP
             .iter()

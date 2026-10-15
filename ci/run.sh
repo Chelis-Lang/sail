@@ -8,6 +8,8 @@
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
 #   e2e [legacy|managed|repair] Run all phases by default; CI runs them in parallel.
+#                        `sail new` writes what stock `cargo verus new`
+#                        writes, and its lib and bin projects verify;
 #                        `sail verify` (Sail's Verus, the fork runtime;
 #                        ADR 0043) vs stock `cargo verus verify` on a fresh
 #                        project, cold and warm: identical output and exit;
@@ -148,6 +150,27 @@ case "$step" in
       export SAIL_CACHE_DIR="$work/cache"
       cd "$work"
       cargo verus new --lib demo >/dev/null
+      # `sail new` (#148): the project stock `cargo verus new` at the pinned
+      # release writes, so its vstd is the pinned one, and it verifies as
+      # created. The first run also builds vstd into the Sail target dir.
+      for kind in lib bin; do
+        mkdir "$work/sail-new-$kind"
+        (cd "$work/sail-new-$kind" && "$sail" new "--$kind" demo)
+        if [ "$kind" = lib ]; then
+          if ! diff -r -x .git "$work/demo" "$work/sail-new-lib/demo"; then
+            echo "e2e: sail new --lib differs from stock cargo verus new --lib" >&2
+            exit 1
+          fi
+        fi
+        (cd "$work/sail-new-$kind/demo" && CARGO_TARGET_DIR="$work/target-sail" "$sail" verify) \
+          > "$work/new-$kind.out" 2> "$work/new-$kind.err" || {
+          echo "e2e: the project sail new --$kind created does not verify" >&2
+          cat "$work/new-$kind.out" "$work/new-$kind.err" >&2
+          exit 1
+        }
+        grep -q "verification results:: 1 verified, 0 errors" "$work/new-$kind.out" "$work/new-$kind.err"
+      done
+      echo "e2e: sail new: lib identical to cargo verus new; lib and bin verify"
       cd demo
       cat > src/lib.rs <<'RS'
 use vstd::prelude::*;

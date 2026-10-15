@@ -98,37 +98,24 @@ compares against: `cargo xtask fetch-verus`.
 
 ## First verification
 
-In any Cargo project that Verus verifies, run `sail verify` instead of
-`cargo verus verify`. To start a new one, create a Cargo library, add the
-two entries `cargo verus new` would add (the `vstd` dependency for the Verus
-release Sail pins and Verus's `verify` flag), and replace `src/lib.rs` with
-Verus code. Verus needs `use vstd::prelude::*;` in the crate root; the file
-`cargo new` writes has none, so verifying it as is fails to compile:
+Start a new project with `sail new`, then verify it:
 
 ```sh
-cargo new --lib demo
+sail new --lib demo
 cd demo
-cat >>Cargo.toml <<'TOML'
-vstd = "=0.0.0-2026-10-04-0306"
-
-[package.metadata.verus]
-verify = true
-TOML
-cat >src/lib.rs <<'RS'
-use vstd::prelude::*;
-
-verus! {
-
-pub fn max(a: u32, b: u32) -> (r: u32)
-    ensures r >= a, r >= b, r == a || r == b,
-{
-    if a > b { a } else { b }
-}
-
-} // verus!
-RS
 sail verify
 ```
+
+`sail new PATH` creates a Verus binary (`--lib` for a library, `--name` for
+a package name other than the directory's), with the files `cargo verus new`
+writes: a `vstd` dependency at the version that matches Sail's Verus,
+Verus's `verify` flag, and a `src/lib.rs` (or `src/main.rs`) with one
+verified function. It refuses a path that exists and is not an empty
+directory. Sail makes the project with its own Verus and never puts that
+Verus's `cargo-verus` on `PATH`, so your own `cargo verus` is unaffected.
+
+In a Cargo project that Verus already verifies, run `sail verify` instead of
+`cargo verus verify`; nothing needs to change in the project.
 
 `sail verify` takes the same arguments as `cargo verus verify` and prints the
 same output. The first run also builds and checks `vstd`, which takes about

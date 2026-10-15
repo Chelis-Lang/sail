@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **`sail new` creates a ready-to-verify project** (#148). `sail new
+  [--bin | --lib] [--name NAME] PATH` writes what `cargo verus new` writes,
+  made by Sail's own Verus, so the `vstd` dependency always matches the
+  Verus Sail runs; `cd PATH && sail verify` then verifies it. The bundled
+  `cargo-verus` stays off `PATH`. It refuses an existing non-empty path
+  (`SAIL0130`) or an invalid package name (`SAIL0131`), reports a failed
+  creation as `SAIL0132` and a missing runtime as `SAIL0101`, creates no
+  nested Git repository inside an existing one, and works without `git`
+  (VI-0016). The README's *First verification* now uses it instead of
+  hand-editing `Cargo.toml` and `src/lib.rs`.
 - **Fixed: a failing first managed run no longer costs vstd on every later
   run** (#123). When a project's first `sail verify --incremental`, MCP
   `verify` or background job failed a proof or hit a compile error in the

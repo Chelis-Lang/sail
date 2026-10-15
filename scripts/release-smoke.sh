@@ -39,14 +39,12 @@ esac
 
 # The README's new-project steps (First verification).
 cd "$work"
-cargo new --lib --vcs none demo >/dev/null
+"$sail" new --lib demo
 cd demo
-cat >>Cargo.toml <<'TOML'
-vstd = "=0.0.0-2026-10-04-0306"
+"$sail" verify
+echo "verify: ok"
 
-[package.metadata.verus]
-verify = true
-TOML
+# A function to repair: the project's own lib.rs, with real specifications.
 cat >src/lib.rs <<'RS'
 use vstd::prelude::*;
 
@@ -61,7 +59,7 @@ pub proof fn lemma(x: int) ensures x + 0 == x { }
 } // verus!
 RS
 "$sail" verify
-echo "verify: ok"
+echo "verify (edited): ok"
 
 # Exit 0 is acceptance and 1 rejection; the document says why.
 "$sail" repair-check --package demo --lib --function demo::max \
