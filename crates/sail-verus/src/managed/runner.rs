@@ -1908,13 +1908,27 @@ pub(crate) fn run_engine_held(
             .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
             .as_deref(),
     ));
+    // Generated build-script files are compared by content after the run,
+    // not across it: this run's own cleaning and scripts rewrite them (#120).
+    // A new target does not exist yet: canonicalize its owned parent.
+    let generated = paths.target.canonicalize().ok().or_else(|| {
+        Some(
+            paths
+                .target
+                .parent()?
+                .canonicalize()
+                .ok()?
+                .join(paths.target.file_name()?),
+        )
+    });
+    let before_run = without_generated(&before, generated.as_deref());
     // Sail's targeted cleans exist to observe what a receipt binds. A run
     // without reuse records no receipt, so Cargo's own freshness decides, as
     // for plain Cargo-Verus.
     if paths.reuse && !stale_scripts.is_empty() {
         clean(config, &paths.target, &stale_scripts)?;
     }
-    let absent = super::absent::Observer::begin(&before, &paths.run.join("observer"));
+    let absent = super::absent::Observer::begin(&before_run, &paths.run.join("observer"));
     // Cargo must compile nothing outside the selected targets' dependency
     // closure; the read-time record covers exactly that closure. Build-script
     // coverage likewise treats scripts outside an explicit selection's closure
@@ -1938,7 +1952,7 @@ pub(crate) fn run_engine_held(
     if paths.reuse {
         clean(config, &paths.target, &late_scripts)?;
     }
-    let stamp_before = super::input::mutation_stamp(&before);
+    let stamp_before = super::input::mutation_stamp(&before_run);
     if super::configuration::check(&invocation, &config.args)? != loader {
         return Err(Error::new(
             "SAIL3112",
@@ -2122,8 +2136,15 @@ pub(crate) fn run_engine_held(
     )?;
     let (sources, source_coverage) =
         super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
+    // Coverage after the run needs a contract for every script Cargo ran.
+    let unscheduled = super::build_inputs::unscheduled(
+        &paths.run.join("cargo.stdout"),
+        &paths.run.join("artifacts.jsonl"),
+        &data,
+    )
+    .unwrap_or_default();
     let (_, mut after_extras, after_coverage) =
-        super::build_inputs::stale(&paths.build_inputs, &data);
+        super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
     after_extras.extend(script_roots);
     let mut after_data = match after_metadata {
         Some(after) => {
@@ -2150,7 +2171,8 @@ pub(crate) fn run_engine_held(
     // observed package, so global currentness alone does not imply that the
     // pre-invocation target revision contained that particular include.
     let pending = completed_receipts(&paths.run, &after_data)?;
-    let stamp_after = super::input::mutation_stamp(&after);
+    let after_run = without_generated(&after, generated.as_deref());
+    let stamp_after = super::input::mutation_stamp(&after_run);
     let absent = absent.finish();
     let currentness = if !paths.reuse
         || !before.complete
@@ -2164,7 +2186,10 @@ pub(crate) fn run_engine_held(
         || stamp_after.is_none()
     {
         Currentness::Unknown
-    } else if before.revision == after.revision && stamp_before == stamp_after && !absent.changed {
+    } else if before_run.digests == after_run.digests
+        && stamp_before == stamp_after
+        && !absent.changed
+    {
         Currentness::Current
     } else {
         Currentness::Historical
@@ -2206,7 +2231,15 @@ pub(crate) fn run_engine_held(
     if currentness == Currentness::Unknown {
         notes.push(INPUTS_UNCONFIRMED.to_owned());
     }
-    if !script_coverage {
+    // A script package Cargo did not schedule (#121) establishes nothing.
+    if !script_coverage
+        && stale_scripts.iter().any(|name| {
+            data["packages"].as_array().into_iter().flatten().any(|p| {
+                p["name"].as_str() == Some(name.as_str())
+                    && p["id"].as_str().is_none_or(|id| !unscheduled.contains(id))
+            })
+        })
+    {
         notes.push("Build-script input declarations were established during this run".to_owned());
     }
     if focused(&config.args) {
@@ -2367,6 +2400,31 @@ fn store_dependencies(
             },
         );
     }
+}
+
+/// The part of `snapshot` that must stay unchanged across a run: everything
+/// but the files inside the managed Cargo target (`generated`, canonical).
+///
+/// Compiler-declared inputs there are build-script products such as serde's
+/// `OUT_DIR/private.rs`. The target is exclusively owned by this run, which
+/// cleans and reruns scripts, so their stamps change while their scripts'
+/// own inputs (observed outside the target) do not. Rustc reads them only
+/// after their script has finished, so their content after the run is the
+/// content compiled. That content stays bound: the receipts' target revisions
+/// and the read-time record are taken from the complete after snapshot.
+/// Without a canonical target nothing is left out.
+fn without_generated(
+    snapshot: &super::input::InputSnapshot,
+    generated: Option<&Path>,
+) -> super::input::InputSnapshot {
+    let mut view = snapshot.clone();
+    if let Some(target) = generated {
+        view.observation_paths
+            .retain(|path| !path.starts_with(target));
+        view.roots.retain(|path| !path.starts_with(target));
+        view.digests.retain(|path, _| !path.starts_with(target));
+    }
+    view
 }
 
 /// Targets established in this run by the stock fallback after an engine fault.
@@ -3714,6 +3772,112 @@ mod tests {
         assert!(completed_receipts(&run, &data).is_err());
         assert!(!run.join("committed.json").exists());
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    /// Issue #120: serde's build script writes `OUT_DIR/private.rs`, which
+    /// serde compiles with `include!`. A run that cleans and reruns the script
+    /// rewrites the file (new inode and stamps, same bytes), and a cold run
+    /// discovers it. Neither is an input change: the comparison across the
+    /// run leaves out the managed target, while the complete snapshot (for
+    /// receipts and read checks) still binds the generated content.
+    #[cfg(unix)]
+    #[test]
+    fn generated_target_files_are_left_out_of_the_comparison_across_a_run()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-generated-{}", std::process::id()));
+        let package = root.join("serde");
+        let target = root.join("cache/target");
+        let out = target.join("debug/build/serde-1/out");
+        std::fs::create_dir_all(&package)?;
+        std::fs::create_dir_all(&out)?;
+        let root = root.canonicalize()?;
+        let (package, target, out) = (
+            root.join("serde"),
+            root.join("cache/target"),
+            root.join("cache/target/debug/build/serde-1/out"),
+        );
+        std::fs::write(package.join("Cargo.toml"), "manifest")?;
+        let source = package.join("lib.rs");
+        std::fs::write(
+            &source,
+            "include!(concat!(env!(\"OUT_DIR\"), \"/private.rs\"));",
+        )?;
+        let generated = out.join("private.rs");
+        std::fs::write(&generated, "pub mod private {}")?;
+        let mut data = serde_json::json!({
+            "workspace_root":package, "sail_cache_directory":root.join("cache"),
+            "packages":[{"id":"serde","manifest_path":package.join("Cargo.toml")}],
+        });
+        // A cold run: the include is discovered only after the run.
+        let cold = snapshot_metadata(&data, &[]);
+        data["sail_source_inputs"] = serde_json::json!([source, generated]);
+        let discovered = snapshot_metadata(&data, &[]);
+        assert_ne!(cold.revision, discovered.revision);
+        let cold_view = without_generated(&cold, Some(&target));
+        let discovered_view = without_generated(&discovered, Some(&target));
+        assert_eq!(cold_view.digests, discovered_view.digests);
+        assert!(
+            discovered.digests.contains_key(&generated),
+            "content stays bound"
+        );
+        // A rerun script replaces the file with the same bytes.
+        let before = snapshot_metadata(&data, &[]);
+        let before_view = without_generated(&before, Some(&target));
+        let stamp = super::super::input::mutation_stamp(&before_view);
+        let complete_stamp = super::super::input::mutation_stamp(&before);
+        let replacement = out.join("private.rs.new");
+        std::fs::write(&replacement, "pub mod private {}")?;
+        std::fs::rename(&replacement, &generated)?;
+        let after = snapshot_metadata(&data, &[]);
+        let after_view = without_generated(&after, Some(&target));
+        assert_eq!(before_view.digests, after_view.digests);
+        assert_eq!(stamp, super::super::input::mutation_stamp(&after_view));
+        assert_ne!(
+            complete_stamp,
+            super::super::input::mutation_stamp(&after),
+            "the complete snapshot sees the rewrite"
+        );
+        // Changed generated bytes stay visible to receipts and read checks:
+        // the package's receipt revision binds its generated include.
+        data["sail_source_inputs_by_package"] =
+            serde_json::json!({"serde": [source.clone(), generated.clone()]});
+        let bound = target_revision(&data, "serde");
+        assert_ne!(bound, String::new());
+        std::fs::write(&generated, "pub mod private { pub fn changed() {} }")?;
+        let changed = snapshot_metadata(&data, &[]);
+        assert_ne!(
+            changed.digests.get(&generated),
+            after.digests.get(&generated)
+        );
+        assert_ne!(
+            target_revision(&data, "serde"),
+            bound,
+            "a receipt goes dirty"
+        );
+        std::fs::write(&generated, "pub mod private {}")?;
+        assert_eq!(
+            target_revision(&data, "serde"),
+            bound,
+            "same bytes, same binding"
+        );
+        data["sail_source_inputs_by_package"] = serde_json::json!({"serde": [source.clone()]});
+        assert_ne!(
+            target_revision(&data, "serde"),
+            bound,
+            "the include is part of the binding"
+        );
+        // Every input outside the target is still compared, by content and stamp.
+        std::fs::write(
+            &source,
+            "include!(concat!(env!(\"OUT_DIR\"), \"/other.rs\"));",
+        )?;
+        let edited = without_generated(&snapshot_metadata(&data, &[]), Some(&target));
+        assert_ne!(edited.digests, after_view.digests);
+        assert_ne!(stamp, super::super::input::mutation_stamp(&edited));
+        // Without a canonical target nothing is left out.
+        assert_eq!(without_generated(&after, None).digests, after.digests);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]
