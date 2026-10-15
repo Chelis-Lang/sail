@@ -227,3 +227,15 @@ Each entry names the charter text it qualifies and the ADR that records it.
    are listed in `docs/scope/verification-runtime.md` and raised as
    questions 16–27 in `docs/open-questions.md`, which the owner answered on
    2026-10-15. New crates and dependency edges need ADRs.
+6. *Success criterion 3 ("switches to S.A.I.L. by changing one command")
+   and correctness rule 1* (owner decision, 2026-10-15). Every
+   `sail verify` is managed verification: Sail's own Cargo target, proof
+   receipts and complete reports. The thin pass-through is removed. Rule 1
+   is met on its output: without `--output json`, `sail verify` prints what
+   plain `cargo verus verify` prints for the same verification work, with
+   the same exit code. Switching is still one command for Cargo library and
+   binary targets, and nothing plain Cargo-Verus accepts is refused: setups
+   managed verification cannot bind (tests, benches, examples,
+   `--target-dir`, Verus log options, Cargo `--config`, loader variables)
+   are verified as plain Cargo-Verus verifies them, with one note and no
+   proof reuse. See ADR 0046.

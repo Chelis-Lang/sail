@@ -10,11 +10,12 @@ use std::process::{Command, ExitCode};
 /// `sail verify`'s own options. Everything else goes to `cargo verus verify`.
 pub(crate) const VERIFY_OPTIONS: &str = "\
 SAIL OPTIONS (before --):
-    --output json                 print one structured result document on stdout
-    --incremental                 managed verification: complete per-target reports
-                                  and proof receipts reused while inputs are unchanged
-    --background                  submit a managed job and print its id (implies --incremental)
-    --engine stock|interactive    managed engine (interactive needs `sail engine status`)
+    --output json                 print one sail-project-result document on stdout
+                                  (complete per-target reports, reused targets included)
+    --background                  submit a job and print its id (`sail jobs`)
+    --engine stock|interactive    engine (interactive needs `sail engine status`)
+    --incremental                 deprecated, does nothing: managed verification is
+                                  the default
     --measure-fragility [--fragility-seeds N]
                                   also measure proof fragility (changes no verdict)
     --portfolio accept-first-proof [--portfolio-seeds 1,2,...]
@@ -92,8 +93,8 @@ USAGE:
     (
         "watch",
         "\
-Re-verify the workspace (managed, like `sail verify --incremental`) 300 ms
-after files stop changing. Each edit cancels the previous run. Ctrl-C stops.
+Re-verify the workspace (managed, like `sail verify`) 300 ms after files
+stop changing. Each edit cancels the previous run. Ctrl-C stops.
 
 USAGE:
     sail watch [--output jsonl] [CARGO VERUS VERIFY ARGS] [-- VERUS ARGS]
@@ -159,8 +160,10 @@ USAGE:
 fn text(command: &str) -> Option<String> {
     match command {
         "verify" => Some(format!(
-            "Verify a Cargo crate exactly as `cargo verus verify` does, with Sail's solver
-cache in front of Z3. Verdicts and diagnostics are Verus's own.
+            "Verify a Cargo crate with Sail's managed verification: the output, verdicts,
+diagnostics and exit code of `cargo verus verify`, with Sail's solver cache in
+front of Z3 and proof receipts that skip unchanged targets. Sail builds in its
+own Cargo target under the Sail cache; your `target/` is never touched.
 
 USAGE:
     sail verify [SAIL OPTIONS] [CARGO VERUS VERIFY ARGS] [-- VERUS ARGS]

@@ -2,7 +2,7 @@
 
 ## What you get
 
-Every managed result (`sail verify --incremental`, `sail repair-check`, and the
+Every managed result (`sail verify --output json`, `sail repair-check`, and the
 same jobs through MCP) carries a Currentness label:
 
 - **Current**: the result matches your code as it is now. No source file,

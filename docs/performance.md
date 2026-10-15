@@ -14,10 +14,10 @@ time as plain Verus.
 | # | Claim | Linux (EC2 c7i.4xlarge, idle) | macOS (EC2 mac-m4.metal (Apple M4), idle) |
 |---|---|---|---|
 | 1 | Verdicts, errors and exit codes are identical to plain Verus | 0 differences in the conformance tiers and in Verus's own 4,695-test suite | 0 differences in the fast PR subset |
-| 2 | Edit loops on a solver-heavy project are faster | vest: 1.3–1.5× (`sail verify`, about 24 s against 34–38 s) | vest: 1.5–1.6× (`sail verify`, about 13 s against 19–21 s) |
-| 3 | Unchanged re-verification gives agents a complete report in about a second; it does not beat Cargo's no-op | `--incremental` 0.29 s (demo), 1.3 s (vest); MCP `verify` 0.52 s, 1.75 s; plain 0.10 s, 0.20 s | `--incremental` 0.36 s, 1.37 s; MCP 0.57 s, 1.75 s; plain 0.18 s, 0.24 s |
-| 4 | Small projects: about the same as plain Verus, not faster | demo edits 0.75 s against 0.76 s | 0.45 s against 0.44 s |
-| 5 | Cold first run: about the same as plain Verus | demo 30.6 s against 30.4 s; vest 67.5 s against 66.6 s | 7–8% slower: demo 17.5 s against 16.3 s; vest 39.7 s against 36.8 s |
+| 2 | Edit loops on a solver-heavy project are faster | vest: 1.3–1.4× (`sail verify`, about 28 s against 35–40 s) | vest: 1.2–1.3× (about 16–17 s against 19–21 s) |
+| 3 | Unchanged re-verification gives agents a complete report in about a second; it does not beat Cargo's no-op | `sail verify` 0.30 s (demo), 1.1 s (vest); MCP `verify` 0.52 s, 1.67 s; plain 0.11 s, 0.22 s | `sail verify` 0.36 s, 1.37 s; MCP 0.57 s, 1.75 s; plain 0.18 s, 0.24 s |
+| 4 | Small projects: about 0.3 s slower than plain Verus per run | demo edits 1.07 s against 0.79 s | 0.75 s against 0.44 s |
+| 5 | Cold first run: a few seconds slower than plain Verus | demo 33.2 s against 32.1 s; vest 74.4 s against 71.0 s | 15–18% slower: demo 18.7 s against 16.3 s; vest 43.5 s against 36.8 s |
 | 6 | Repair loops with the engine are faster than verifying the function, then the crate | HumanEval 2.14×, Vest 1.82× (c7i.8xlarge) | not measured |
 | 7 | Several agents on one daemon do not wait for each other | 4 vest agents finish 2.2× sooner (47 s against 105 s) | 4 vest agents (2 workers) finish 1.3× sooner (51 s against 67 s) |
 | 8 | A new project or worktree's first managed run skips vstd once the machine has verified it | demo 1.3 s against 27.5 s before (MCP `verify` 1.5 s against 27.7 s); vest worktree 25.7 s against 52.3 s; plain 29.5 s and 66.1 s | demo 3.2 s against plain 67 s (Apple M3 under load 15–23; not measured idle) |
@@ -28,29 +28,36 @@ time divided by concurrent jobs), from medians of three rounds.
 ## Where Sail does not help
 
 - **Small projects.** When verification takes under a second, there is little
-  solver work to save. `sail verify` matches plain Verus; `--incremental` adds
-  about 0.25 s per run for its report and receipts.
+  solver work to save, and `sail verify` costs about 0.3 s more per run than
+  plain Verus for its receipts and complete report: hashing the reused vstd
+  artifacts, a targeted clean of the edited package, and the input checks
+  before and after the run ([ADR 0046](decisions/0046-managed-verification-by-default.md#measurements)).
 - **Cold runs.** The first verification on a machine compiles dependencies
-  and verifies vstd, all of it new to the cache. With `--incremental`, MCP
-  and jobs, later new projects and worktrees that resolve the same vstd skip
-  it (claim 8); ordinary `sail verify` and plain Verus pay it in every new
-  target. Sail matches
-  plain Verus within the spread on Linux; on the idle Mac it was 7–8%
-  slower (1–3 s), in every round. A warm [team cache](http-shared-cache.md) does not change this
-  either: the compile and frontend dominate.
+  and verifies vstd in Sail's own target, all of it new to the cache: 1–3 s
+  slower than plain Verus on Linux, 15–18% on the Mac. Later new projects
+  and worktrees that resolve the same vstd skip it (claim 8); a new set of
+  Verus arguments is a new context. A warm [team cache](http-shared-cache.md)
+  does not change this: the compile and frontend dominate.
 - **The Rust and Verus frontend.** On vest, an edit with every unchanged solver
-  answer cached still takes about 24 s on Linux and 13 s on the Mac. That is
-  Cargo, rustc and Verus's frontend, which Sail does not change. It is the
-  floor for every mode.
+  answer cached still takes about 28 s on Linux. About 24 s of it is Cargo,
+  rustc and Verus's frontend, which Sail does not change; the rest is the
+  AIR and SMT logs Sail asks Verus for, for per-function attribution, and the
+  receipt checks.
 - **Unchanged code from the CLI.** Plain Cargo sees nothing changed and exits
-  in 0.1–0.25 s. `--incremental` takes 0.3–1.4 s, because it checks its inputs
+  in 0.1–0.25 s. `sail verify` takes 0.3–1.4 s, because it checks its inputs
   and builds a complete report. Its value is the report, not the time.
 
 ## Setup
 
-These measurements predate [ADR 0043](decisions/0043-default-mode-runs-the-fork.md):
-Sail then ran the stock Verus release below. Sail now runs its own Verus,
-built from its fork, and these claims have not yet been re-measured on it.
+Every `sail verify` is managed verification
+([ADR 0046](decisions/0046-managed-verification-by-default.md)); before
+that change it was a thin pass-through, and managed verification was
+`sail verify --incremental`. The Linux rows of claims 2–5 were re-measured
+on 2026-10-15 with Sail's Verus, built from its fork (ADR 0043): EC2
+c7i.4xlarge, us-east-1, idle, `scripts/perf-host.sh up l48p`, Sail at the
+ADR 0046 change, Verus runtime `73dea021`. The macOS rows, the Linux row of
+claim 7 and the column headings below come from the earlier run with the
+stock Verus release, where the managed figures are `--incremental`'s.
 
 | | Linux | macOS |
 |---|---|---|
@@ -102,18 +109,14 @@ Wall seconds, median (min–max) of three rounds:
 
 | vest | Mode | cold | edit | fail | fix |
 |---|---|---:|---:|---:|---:|
-| Linux | `cargo verus verify` | 66.6 (66.5–67.1) | 37.3 (36.9–37.4) | 33.8 (33.2–33.8) | 37.8 (37.1–39.6) |
-| Linux | `sail verify` | 67.5 (67.1–70.7) | 24.2 (24.0–24.9) | 25.1 (24.2–25.2) | 24.7 (23.4–24.9) |
-| Linux | `sail verify --incremental` | 71.1 (69.7–73.3) | 26.9 (26.9–27.7) | 26.4 (26.1–26.8) | 26.8 (26.5–26.8) |
+| Linux | `cargo verus verify` | 71.0 (70.8–71.2) | 39.6 (39.6–39.8) | 35.4 (35.1–35.8) | 39.6 (39.5–39.7) |
+| Linux | `sail verify` | 74.4 (74.3–75.1) | 28.5 (28.3–28.6) | 27.9 (27.6–27.9) | 28.4 (28.3–28.5) |
 | macOS M4 | `cargo verus verify` | 36.8 (36.8–37.8) | 20.7 (20.7–20.7) | 19.2 (19.2–19.3) | 20.8 (20.7–20.8) |
-| macOS M4 | `sail verify` | 39.7 (39.5–39.7) | 13.1 (13.0–13.1) | 12.9 (12.8–13.0) | 13.0 (12.9–13.1) |
-| macOS M4 | `sail verify --incremental` | 43.5 (43.4–43.8) | 16.8 (16.7–16.9) | 16.0 (16.0–16.1) | 16.4 (16.4–16.4) |
+| macOS M4 | `sail verify` (then `--incremental`) | 43.5 (43.4–43.8) | 16.8 (16.7–16.9) | 16.0 (16.0–16.1) | 16.4 (16.4–16.4) |
 
-On Linux, `sail verify` saves 9–13 s per edit (1.3–1.5×) and `--incremental`
-7–11 s (1.3–1.4×). On the Mac, `sail verify` saves 6–8 s per edit
-(1.5–1.6×) and `--incremental` 3–4 s (1.2–1.3×). About 24–30 s per edit
-remains on Linux and 13–17 s on the Mac: that is the frontend floor described
-above.
+On Linux, `sail verify` saves 7–11 s per edit (1.3–1.4×); on the Mac it
+saved 3–4 s (1.2–1.3×). About 28 s per edit remains on Linux and 16 s on the
+Mac: the frontend floor described above, plus Sail's logs and checks.
 
 Reproduce (each takes about 30 minutes on Linux):
 
@@ -129,13 +132,12 @@ second call is shown). Wall seconds, median of three rounds:
 
 | | Linux demo | Linux vest | macOS M4 demo | macOS M4 vest |
 |---|---:|---:|---:|---:|
-| `cargo verus verify` | 0.10 | 0.20 | 0.18 | 0.24 |
-| `sail verify` | 0.10 | 0.21 | 0.18 | 0.24 |
-| `sail verify --incremental` | 0.29 | 1.27 | 0.36 | 1.37 |
-| MCP `verify` | 0.52 | 1.75 | 0.57 | 1.75 |
+| `cargo verus verify` | 0.11 | 0.21 | 0.18 | 0.24 |
+| `sail verify` | 0.31 | 1.12 | 0.36 | 1.37 |
+| MCP `verify` | 0.52 | 1.67 | 0.57 | 1.75 |
 
 Plain Cargo is fastest here: it sees nothing changed and prints nothing new.
-`--incremental` and MCP `verify` check that the inputs are unchanged and
+`sail verify` and MCP `verify` check that the inputs are unchanged and
 return the complete report again (every function's verdict, marked Current,
 naming the run that established it). That is what an agent needs after a
 restart or a context reset, and it costs one to two seconds rather than a
@@ -153,26 +155,24 @@ with a rewritten body. Wall seconds, median (min–max) of three rounds:
 
 | demo | Mode | cold | edit | fail | fix |
 |---|---|---:|---:|---:|---:|
-| Linux | `cargo verus verify` | 30.4 (30.1–30.7) | 0.76 (0.76–0.76) | 0.55 (0.55–0.56) | 0.77 (0.77–0.78) |
-| Linux | `sail verify` | 30.6 (30.4–31.1) | 0.75 (0.74–0.78) | 0.57 (0.56–0.58) | 0.76 (0.75–0.78) |
-| Linux | `sail verify --incremental` | 31.4 (31.3–31.5) | 1.01 (1.00–1.02) | 0.79 (0.78–0.80) | 0.99 (0.98–0.99) |
+| Linux | `cargo verus verify` | 32.1 (32.1–32.1) | 0.79 (0.78–0.79) | 0.56 (0.56–0.57) | 0.78 (0.78–0.79) |
+| Linux | `sail verify` | 33.2 (33.2–33.4) | 1.07 (1.06–1.07) | 0.83 (0.82–0.83) | 1.03 (1.02–1.03) |
 | macOS M4 | `cargo verus verify` | 16.3 (16.3–16.6) | 0.44 (0.43–0.45) | 0.40 (0.40–0.41) | 0.44 (0.43–0.44) |
-| macOS M4 | `sail verify` | 17.5 (17.4–17.8) | 0.45 (0.45–0.46) | 0.41 (0.41–0.42) | 0.46 (0.46–0.46) |
-| macOS M4 | `sail verify --incremental` | 18.7 (18.7–18.8) | 0.75 (0.74–0.75) | 0.66 (0.66–0.66) | 0.66 (0.65–0.66) |
+| macOS M4 | `sail verify` (then `--incremental`) | 18.7 (18.7–18.8) | 0.75 (0.74–0.75) | 0.66 (0.66–0.66) | 0.66 (0.65–0.66) |
 
-`sail verify` equals plain Verus. `--incremental` costs about 0.25 s more per
-run. Reproduce with `scripts/perf-loops.sh demo 3` (about 5 minutes).
+`sail verify` costs about 0.3 s more per run than plain Verus here; the
+[ADR](decisions/0046-managed-verification-by-default.md#measurements) lists
+where it goes. Reproduce with `scripts/perf-loops.sh demo 3` (about 5
+minutes).
 
 ## 5. Cold first run
 
 The `cold` columns above: a new copy, an empty Sail cache, and every
-dependency compiled and vstd verified. Sail is within the spread of plain
-Verus on Linux (demo 30.6 s against 30.4 s, vest 67.5 s against 66.6 s), with
-`--incremental` 1–5 s slower. On the idle Mac, `sail verify`'s cold runs were
-7–8% slower in every round (1.2 s on demo, 2.9 s on vest), and
-`--incremental`'s 15–18% slower. With ordinary `sail verify` every new
-project or worktree pays this once. The managed path pays it once per machine
-(claim 8) and then reuses its compiled dependencies and receipts
+dependency compiled and vstd verified. On Linux `sail verify` is 1–3 s slower
+than plain Verus (demo 33.2 s against 32.1 s, vest 74.4 s against 71.0 s);
+on the idle Mac it was 15–18% slower. Sail pays this once per machine
+(claim 8), even when a project's own `target/` is built, and then reuses its compiled
+dependencies and receipts
 ([managed runs](managed-cold-start.md)).
 
 ### New projects after the first (claim 8)
@@ -193,7 +193,7 @@ a new project or worktree with the donor's `Cargo.lock` (seconds):
 | vest, new worktree | 52.3 | 25.7 | 66.1 |
 
 To reproduce on a project (vest from its repository at `11af01dd`, with
-`-p vest_lib`): run `sail verify --incremental` in it with an empty
+`-p vest_lib`): run `sail verify` in it with an empty
 `SAIL_CACHE_DIR`, copy the project directory, and time the same command in
 the copy. `scripts/dependency-store-check.py` does this for the demo and also
 compares each run with plain stock Verus
@@ -205,9 +205,9 @@ raw logs).
 `sail repair-check` checks a candidate repair of one function and then the
 whole crate in a single run of the optional engine. The comparison, called
 M6 in the [acceptance guide](bench/m7-repair-acceptance.md), is what an agent
-does without the engine: `sail verify --incremental` restricted to the
-function, then `sail verify --incremental` on the whole crate, two stock
-Verus runs.
+does without the engine: managed `sail verify` restricted to the
+function, then on the whole crate, two stock Verus runs (measured with the
+`--incremental` flag of the time).
 
 Over the frozen catalogue of five cycles per project (a body edit, a
 specification change, a refactor, a failing attempt and its repair), the

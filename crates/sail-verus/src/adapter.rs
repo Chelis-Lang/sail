@@ -332,7 +332,7 @@ fn driver() -> Result<ExitCode> {
     if custom_compiler_context(&args) {
         return Err(Error::new(
             "SAIL3111",
-            "incremental verification does not support a custom sysroot or JSON target specification",
+            "managed verification does not support a custom sysroot or JSON target specification",
         ));
     }
     let runtime_path = PathBuf::from(required("SAIL_MANAGED_RUNTIME")?);
@@ -394,19 +394,20 @@ fn driver() -> Result<ExitCode> {
             }),
         )?;
     }
+    // The Verus flags this crate actually receives: Cargo-Verus forwards
+    // common and per-crate arguments (`--fwd-verus-args-to`), so the user's
+    // command line alone can name flags a crate does not get, or miss ones it
+    // does.
+    let flags = cargo_package_id()
+        .and_then(|id| cargo_driver_options(&id).ok())
+        .map_or_else(
+            || crate::verus_stdout::UserFlags::of(&runtime.args),
+            |effective| crate::verus_stdout::UserFlags::of_verus(effective.arguments.iter()),
+        );
     let mut cmd = Command::new(&wrapper);
     cmd.args(&launcher_args)
         .envs(&launcher_environment)
-        .args([
-            "--output-json",
-            "--time",
-            "--log",
-            "air",
-            "--log",
-            "smt-transcript",
-            "--log-dir",
-        ])
-        .arg(&logs)
+        .args(observation_args(flags, &logs))
         .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -477,16 +478,7 @@ fn driver() -> Result<ExitCode> {
         stock
             .args(&launcher_args)
             .envs(&launcher_environment)
-            .args([
-                "--output-json",
-                "--time",
-                "--log",
-                "air",
-                "--log",
-                "smt-transcript",
-                "--log-dir",
-            ])
-            .arg(&logs);
+            .args(observation_args(flags, &logs));
         let captured = std::process::Output {
             stdout,
             stderr,
@@ -521,7 +513,28 @@ fn driver() -> Result<ExitCode> {
         },
         established.as_ref(),
     )?;
+    // Plain Verus's stdout, rebuilt from the document Sail asked for; Cargo
+    // forwards it, and the managed runner shows it to the user.
+    std::io::stdout()
+        .write_all(&crate::verus_stdout::rebuild(&stdout, flags))
+        .and_then(|()| std::io::stdout().flush())
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     Ok(status(exit))
+}
+
+/// The logging flags the managed driver adds to every verified target,
+/// followed by the target's own log directory. They leave solver input
+/// unchanged; the conformance harness's managed arm adds the same flags.
+pub const OBSERVATION_LOG_FLAGS: &[&str] =
+    &["--log", "air", "--log", "smt-transcript", "--log-dir"];
+
+/// The flags the driver adds to every verified target: the structured
+/// output the user did not already request, and isolated logs.
+fn observation_args(flags: crate::verus_stdout::UserFlags, logs: &Path) -> Vec<OsString> {
+    let mut args: Vec<OsString> = flags.sail_flags().into_iter().map(OsString::from).collect();
+    args.extend(OBSERVATION_LOG_FLAGS.iter().map(OsString::from));
+    args.push(logs.as_os_str().to_owned());
+    args
 }
 
 /// Retains interrupted engine evidence and restarts the exact stock compiler
@@ -634,10 +647,7 @@ fn finish(
     std::fs::write(dir.join("verus.stdout"), stdout)
         .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let (docs, rest) = crate::attribution::json_documents(stdout);
-    std::io::stderr()
-        .write_all(&rest)
-        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let (docs, _) = crate::attribution::json_documents(stdout);
     let logs =
         crate::attribution::read_logs(&full_log_dir(&dir.join("logs"), engine)).unwrap_or_default();
     let provenance = if runtime.daemon {

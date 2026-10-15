@@ -364,3 +364,18 @@ planned for releases after 0.1.0. The owner answered all twelve on
     validation passes. Cut 0.1.0 from rc.5. Managed-by-default mode and
     pre-verified vstd are the headline speed story, and a user's first
     public impression should be of that build.
+30. **Process-loader variables now that managed verification is the only
+    `sail verify`** (ADR 0046). Managed verification cannot bind what
+    `LD_LIBRARY_PATH`, `LD_PRELOAD` or a macOS `DYLD_*` loader variable changes
+    in the compiler and verifier to a proof receipt, and the first version of
+    ADR 0046 refused such runs (`SAIL3112`). `LD_LIBRARY_PATH` is common on
+    Linux (CUDA, conda, module systems), so that locked those users out.
+
+    **Decided 2026-10-15 (lead):** fail safe, never refuse. A run with a loader
+    variable set is verified as plain Cargo-Verus verifies it, prints one
+    `note[SAIL3112]` line, reuses no proof receipts and records none (nor
+    dependency records); the solver cache stays on, since its keys bind query
+    bytes and solver identity. No check is weakened. The same applies to
+    Cargo `--config`, `--target-dir`, Verus log options, `--no-verify`,
+    tests, benches and examples: nothing plain Cargo-Verus accepts is
+    refused (ADR 0046, decision 4).

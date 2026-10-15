@@ -16,6 +16,20 @@ are in the `archive/m7-contracts-f7103bf` tag.
   already on, and Sail's whole overhead is smaller than the gap.
   [Gate 7](validation/m7.md#gate-7-frozen-repair-performance); L22 and L23
   (rescue lane report, tag `archive/rescue-m7-98f6292`).
+- **`sail verify` costs a little on small projects and unchanged runs.**
+  Managed verification is the only `sail verify` (ADR 0046). On a native
+  c7i.4xlarge, a small project's edit takes 1.07 s against plain Verus's
+  0.79 s, an unchanged re-run 0.30 s against 0.11 s (vest: 1.11 s against
+  0.22 s), and a cold run 1–3 s more. Solver-heavy edits are faster than
+  plain Verus (vest 28.5 s against 39.6 s) but about 3 s slower than the
+  removed pass-through was. Where the time goes is in
+  [ADR 0046](decisions/0046-managed-verification-by-default.md#measurements).
+- **Some setups get no proof reuse.** Tests, benches, examples,
+  `--target-dir`, Verus `--log` options, `--no-verify`, Cargo `--config`
+  overrides and loader variables such as `LD_LIBRARY_PATH` are verified as
+  plain `cargo verus verify` verifies them, with one `note[SAIL3112]` line,
+  but nothing is reused or recorded. Jobs, `watch` and MCP report all but
+  the loader variables as `SAIL3112` errors ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
 - **A project's first managed verify verifies vstd.** As with plain `cargo
   verus verify` on a fresh target, the first managed run of each project
   verifies vstd in its own Cargo target (about 31 s natively). Later runs from

@@ -10,9 +10,10 @@
 //! - the handshake succeeds and `tools/list` is exactly this build's fifteen
 //!   compatibility, job and proof tools, with their key input contracts;
 //! - the call succeeds and returns a schema-v1 report;
-//! - every function's verdict and establishment equal those in `<sail.json>` (the
-//!   stdout of `sail verify --output json` on the same project), with the
-//!   same set of functions.
+//! - every function's verdict and establishment equal those of the requested targets
+//!   in `<sail.json>` (the `sail-project-result` that
+//!   `sail verify --output json` printed on the same project), with the same
+//!   set of functions.
 //!
 //! The returned report is written to `<out.json>`, for `check_output`.
 #![forbid(unsafe_code)]
@@ -154,10 +155,16 @@ fn check(args: &[String]) -> Result<String, String> {
     let doc = result["structuredContent"]["report"].clone();
     let report: Report =
         serde_json::from_value(doc.clone()).map_err(|e| format!("not a v1 report: {e}"))?;
-    let want: Report =
+    let want: sail_api::project::ProjectResult =
         serde_json::from_slice(&std::fs::read(expected).map_err(|e| format!("{expected}: {e}"))?)
             .map_err(|e| format!("{expected}: {e}"))?;
-    let (got, want) = (verdicts(&report), verdicts(&want));
+    let want = want
+        .targets
+        .iter()
+        .filter(|t| t.requested)
+        .flat_map(|t| verdicts(&t.report))
+        .collect::<BTreeMap<_, _>>();
+    let got = verdicts(&report);
     if got.is_empty() || got != want {
         return Err(format!(
             "verdicts differ from sail verify --output json:\n  mcp:  {got:?}\n  sail: {want:?}"

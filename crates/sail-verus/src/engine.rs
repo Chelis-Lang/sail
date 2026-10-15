@@ -662,10 +662,32 @@ pub fn verify(
     config: &crate::managed::Config,
     err: &mut dyn std::io::Write,
 ) -> Result<sail_api::project::ProjectResult> {
+    verify_with(config, None, err)
+}
+
+/// [`verify`], also showing Verus's own stdout on `out` as plain
+/// `cargo verus verify` would print it.
+///
+/// # Errors
+///
+/// As [`verify`].
+pub fn verify_showing_output(
+    config: &crate::managed::Config,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> Result<sail_api::project::ProjectResult> {
+    verify_with(config, Some(out), err)
+}
+
+fn verify_with(
+    config: &crate::managed::Config,
+    out: Option<&mut dyn std::io::Write>,
+    err: &mut dyn std::io::Write,
+) -> Result<sail_api::project::ProjectResult> {
     let (request, _) = request(config, None)?;
     // The held workspace keeps `sail cache projects prune` away until the
     // run's records have been read.
-    match crate::managed::run_engine_held(config, err, Some(request)) {
+    match crate::managed::run_engine_held(config, out, err, Some(request)) {
         Ok((mut result, _workspace)) => {
             let run = run_directory(config, &result);
             launcher_notes(&run, &mut result);
@@ -747,14 +769,14 @@ pub fn repair(
     let (request, manifest_sha256) = request(config, Some(function.to_owned()))?;
     let mut config = config.clone();
     config.force = true;
-    let (mut full, _workspace) = match crate::managed::run_engine_held(&config, err, Some(request))
-    {
-        Ok(held) => held,
-        Err(error) => {
-            let (full, fault) = stock_fallback(&config, err, error)?;
-            return Ok(fallback_batch(full, fault, manifest_sha256));
-        }
-    };
+    let (mut full, _workspace) =
+        match crate::managed::run_engine_held(&config, None, err, Some(request)) {
+            Ok(held) => held,
+            Err(error) => {
+                let (full, fault) = stock_fallback(&config, err, error)?;
+                return Ok(fallback_batch(full, fault, manifest_sha256));
+            }
+        };
     let run = run_directory(&config, &full);
     launcher_notes(&run, &mut full);
     let engine_fault = missing_feature_fallback(&run, &mut full.notes, err);
