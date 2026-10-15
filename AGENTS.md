@@ -28,6 +28,13 @@ acting. The charter's appendix records corrections made since it was written.
   whole-corpus validation with the solver as oracle (charter rule 5).
 - **Provisional is not verified.** Nothing provisional is ever reported as
   verified. Confirmed results record their provenance.
+- **Randomness is the enemy of caching.** Default-mode keys bind the exact
+  solver input bytes (ADR 0008), so any run-to-run variation in what Sail or
+  Verus emits becomes a cache miss. Treat nondeterminism in Sail or in the
+  Verus fork's output (hash-order iteration, run-dependent numbering or
+  ordering) as a defect and drive it out: fix Verus's in the fork under ADR
+  0039's rules, never by normalizing queries in Sail. Sail runs the fork's
+  Verus, never stock Verus; stock is only the conformance oracle.
 - **Verdict-changing modes** (for example "accept a proof from any seed") are
   opt-in, named, recorded in `docs/divergences.md`, and cached under keys that
   cannot collide with default-mode keys.
