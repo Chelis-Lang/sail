@@ -247,7 +247,7 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
     )?;
     let data = fixture.data(&second, &package_id);
     let records = |expected: &BTreeSet<(String, String, String)>| {
-        target_records(&second, &data, "other", true, expected)
+        target_records(&second, &data, "other", true, expected, &[])
     };
     let (targets, missing) = records(&BTreeSet::new())?;
     assert!(missing.is_empty());
@@ -257,7 +257,7 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
     // A selected target needs a receipt of its own proof context.
     let selected = BTreeSet::from([(package_id.clone(), "input".to_owned(), "lib".to_owned())]);
     for force in [false, true] {
-        let (targets, missing) = target_records(&second, &data, "other", force, &selected)?;
+        let (targets, missing) = target_records(&second, &data, "other", force, &selected, &[])?;
         assert_eq!(targets, Vec::<TargetResult>::new());
         assert_eq!(missing, BTreeSet::from(["input".to_owned()]));
     }
@@ -304,6 +304,7 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
         "third",
         true,
         &BTreeSet::new(),
+        &[],
     )?;
     assert_eq!(targets, Vec::<TargetResult>::new());
     assert_eq!(missing, BTreeSet::from(["input".to_owned()]));

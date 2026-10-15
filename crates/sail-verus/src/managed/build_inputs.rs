@@ -190,6 +190,43 @@ pub(super) fn stale_environment(
     (clean.into_iter().collect(), extras, covered)
 }
 
+/// The recorded build-script contracts of `packages` (by package id), for the
+/// dependency store. `None` when the record is unreadable or a contract is not
+/// covered, or when a package in `scripts` has no contract at all.
+pub(super) fn contracts_for(
+    path: &Path,
+    packages: &BTreeSet<String>,
+    scripts: &BTreeSet<String>,
+) -> Option<Vec<Value>> {
+    let records = read::<Vec<BuildInput>>(path)?;
+    let selected: Vec<&BuildInput> = records
+        .iter()
+        .filter(|r| packages.contains(&r.package_id))
+        .collect();
+    if selected.iter().any(|r| !r.covered)
+        || scripts
+            .iter()
+            .any(|id| !selected.iter().any(|r| &r.package_id == id))
+    {
+        return None;
+    }
+    selected
+        .into_iter()
+        .map(|r| serde_json::to_value(r).ok())
+        .collect()
+}
+
+/// Whether every stored contract still describes the current inputs: each
+/// declared path and variable has the recorded content (never timestamps).
+pub(super) fn contracts_current(records: &[Value]) -> bool {
+    records.iter().all(|value| {
+        serde_json::from_value::<BuildInput>(value.clone()).is_ok_and(|record| {
+            let (hash, complete) = current(&record, None);
+            record.covered && complete && hash == record.digest
+        })
+    })
+}
+
 /// Whether Cargo executed, in this run, the build script of every output
 /// contract recorded at `path`: each has a `build-script-executed` record
 /// (fresh or not) in `artifacts` for the same package and output file.

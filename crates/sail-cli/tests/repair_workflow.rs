@@ -43,6 +43,10 @@ impl Fixture {
         Ok(serde_json::from_slice(&output.stdout)?)
     }
 }
+#[allow(
+    clippy::too_many_lines,
+    reason = "One literal fixture of a submitted job and its complete project result."
+)]
 fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn std::error::Error>>
 {
     let root = PathBuf::from(format!("/tmp/sail-repair-cli-{}", std::process::id()));
@@ -71,6 +75,7 @@ fn fixture() -> Result<(Fixture, sail_daemon::jobs::JobHandle, String), Box<dyn 
         currentness: Currentness::Unknown,
         exit_code: Some(1),
         targets: vec![TargetResult {
+            dependency_store: None,
             package_id: target.package_id.clone(),
             target: target.name.clone(),
             kind: target.kind.clone(),

@@ -154,6 +154,10 @@
         "complete": {
           "type": "boolean"
         },
+        "dependency_store": {
+          "description": "Key of the dependency store entry this run placed in a new Cargo target (ADR 0045); absent otherwise",
+          "type": "string"
+        },
         "report": {
           "$ref": "verify-output-v2.json"
         }
