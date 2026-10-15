@@ -58,10 +58,13 @@ Verus release fixes the issue) or reviewed alone. Fix commits change only
 orders, the `--output-json` fields named in their issue, or Cargo log layout.
 An ordering fix must choose an order stock Verus is shown to produce (ADR
 0039); the engine conformance arm, with its stock confirmation runs, checks
-this. Two fixes were dropped: VI-0007's bucket-order diagnostics failed that
-check on `debug_expand.rs`, and VI-0005's dep-info carry-over made every
-Sail repair rebuild (the selected function is a forwarded argument). Run the
-repair benchmark on a candidate before pinning it.
+this. VI-0005's dep-info carry-over was dropped: it made every Sail repair
+rebuild (the selected function is a forwarded argument). VI-0007's
+bucket-order diagnostics were dropped once, when the check found
+`debug_expand.rs` different and no stock run had shown the fork's order, and
+reinstated (`bc9cda09`, pinned from `73dea021`) after stock was shown to
+print it ([VI-0007](../../docs/verus-issues/VI-0007-nondeterministic-error-order.md)).
+Run the repair benchmark on a candidate before pinning it.
 
 `cargo xtask build-verus-engine` fetches exactly the pinned commit (the
 fork is public, so no credentials are needed), checks that its upstream base
@@ -155,9 +158,12 @@ and the fork's regression tests (`vargo test --release -p rust_verify_test
 --test sail_vi...`).
 Final performance acceptance uses the frozen repair catalogue and the complete
 focused-plus-full loop ([product acceptance](../../docs/bench/m7-repair-acceptance.md)).
-The checks of the runtime currently pinned are recorded in
-[the M7 validation record](../../docs/validation/m7.md) (Gate 1, engine build
-and qualification); a new fork commit needs its own run.
+The checks of the runtime currently pinned (`73dea021`) are recorded in
+[the fork-default record](../../docs/validation/fork-default.md#runtime-qualification);
+those of earlier pins in [the M7 validation record](../../docs/validation/m7.md)
+(Gate 1, engine build and qualification). A new fork commit needs its own
+run, including the determinism check
+([determinism record](../../docs/validation/determinism.md)).
 
 ## Corpus conformance arm
 
@@ -189,8 +195,8 @@ Runtimes are GitHub release assets on the public fork,
 prerelease per pinned fork commit, tagged `engine-runtime-<short sha>-linux`
 and targeting that commit. The asset is the packed archive,
 `engine-runtime.tar.gz`. The pinned runtime is
-`https://github.com/Chelis-Lang/verus/releases/download/engine-runtime-13a1176c-linux/engine-runtime.tar.gz`
-(SHA-256 `a28e212e07dd4fbf25dfa6f94b84faa0ec258502706327e071841778bd59d7c2`).
+`https://github.com/Chelis-Lang/verus/releases/download/engine-runtime-73dea021-linux/engine-runtime.tar.gz`
+(SHA-256 `713375636be7551acb298aaa4675331ecae16d6c0410c021b04f9e90605daf41`).
 
 Fetching needs no token: the CI image build, `ci/local.sh`, native hosts and
 `ci/engine-artifact.py fetch` download anonymously. `fetch` builds the URL

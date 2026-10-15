@@ -1,7 +1,10 @@
 # VI-0007: Errors from different modules are reported in a run-dependent order
 
-- **Status:** open (tracked here; not filed upstream). A fork fix was tried and
-  dropped (see below).
+- **Status:** open in stock Verus (tracked here; not filed upstream);
+  fixed in Sail's Verus fork by `bc9cda09` (fix: print bucket diagnostics in
+  bucket order), in Sail's pin since fork `73dea021`.
+  The same change was dropped once (`f98b87c5`); stock has since been shown
+  to produce its order (see below).
 - **Verus:** `0.2026.10.04.426d8b0` (pinned)
 - **Found:** 2026-10-09
 - **Reproduction:** `corpus/repros/verus-nondeterministic-error-order/`
@@ -51,12 +54,41 @@ distinct stderr outputs over 12 runs.
 
 ## Sail fork
 
-Not fixed. The fork briefly printed diagnostics in bucket order (`f98b87c5`,
-fix: print bucket diagnostics in bucket order). The engine conformance arm
-then found `verus-examples/examples/debug_expand.rs` different: stock printed
-module `M4`'s error before the root module's in 3/3 confirming runs, the fork
-printed it last. ADR 0039 allows an ordering fix only when it picks an order
-stock produces, and no deterministic order is provably within stock's set
-(stock prints in the order buckets finish), so the commit was dropped from
-the fork (2026-10-13, rescue L12). ADR 0042 makes the order irrelevant to
-conformance instead.
+Fixed by `bc9cda09` (fix: print bucket diagnostics in bucket order), one
+commit with its regression test
+`source/rust_verify_test/tests/sail_vi0007_error_order.rs`. With several
+threads, stock makes the first bucket to send a message the active one and
+prints the others' buffered messages after it, so the order follows which
+bucket reports first. The fork makes the lowest-numbered unfinished bucket the
+active one, so diagnostics appear in bucket (queue) order, and a bucket's VIR
+error is reported in that order too. Stock prints this same sequence whenever
+its buckets happen to report in queue order.
+
+**History.** The same change (`f98b87c5`) was dropped on 2026-10-13 (rescue
+L12): the engine conformance arm found `verus-examples/examples/debug_expand.rs`
+different, because stock printed module `M4`'s error before the root module's
+in 3/3 confirming runs, and no stock run had been seen to print the fork's
+order. ADR 0039 allows an ordering fix only when stock is shown to produce the
+chosen order.
+
+**Stock produces the fork's order (rescue L42, 2026-10-15).** On a c7i.8xlarge
+(Linux x86-64), with the conformance flags (`--crate-type=lib --output-json
+--time --no-report-long-running -Z write-long-types-to-disk=no`):
+
+| Input | Stock release runs | Stock outputs | Fork output |
+|---|---|---|---|
+| `examples/debug_expand.rs` | 40 | 39 × `M4` first (`3472446f`), 1 × root first (`36df931b`) | `36df931b`, byte-identical to stock's second variant |
+| same, earlier batch | 5 stock, 5 pinned runtime (`13a1176c`) | stock 1 × `36df931b`; pinned runtime 2 × `36df931b` | — |
+| `corpus/repros/verus-nondeterministic-error-order/test.rs`, `--num-threads 8` | 20 | 12 × `b82ba810`, 8 × `d24e598b` | `d24e598b` |
+
+Digests are SHA-256 prefixes of complete stderr; the raw outputs are in the
+[determinism record](../validation/determinism.md)'s tarball. ADR 0042 already
+makes the order irrelevant to conformance; the fix makes it stable for caching
+and agents.
+
+L42 measured this change as `4285ae11` on its lane branch; it reached the
+fork's `sail` branch unchanged as `bc9cda09`, and Sail pins it from fork
+`73dea021`. Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)
+default mode runs the fork, so Sail's own diagnostics come out in bucket
+order. Stock runs (the conformance oracle) keep the race; no workaround is
+needed since ADR 0042.

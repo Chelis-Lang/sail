@@ -104,8 +104,8 @@ complete current full validation. M7 remains incomplete until these gates pass.
 
 | Gate | Status | Best evidence |
 |---|---|---|
-| Engine build and qualification | Pass (source checks) | Fork `13a1176c` (ADR 0039, no prepared lowering; adds the VI-0001 verifier fix; VI-0005 and VI-0007 fixes dropped): stock fixtures, cancel/restart, library tests and `rust_verify_test`; L22 (rescue lane report, tag `archive/rescue-m7-98f6292`) |
-| Engine runtime delivery | Pass | `engine-runtime-13a1176c-linux` pinned (schema 2, fork commit); a fresh CI image installs and validates it |
+| Engine build and qualification | Pass (source checks) | Fork `73dea021` (ADR 0039, no prepared lowering; adds the VI-0017 and VI-0007 fixes to `13a1176c`; VI-0005 fix dropped): stock fixtures and cancel/restart on Linux and macOS, fork CI library and `sail_vi*` tests, L43 ([fork-default record](validation/fork-default.md#runtime-qualification)); `13a1176c`: L22 (rescue lane report, tag `archive/rescue-m7-98f6292`) |
+| Engine runtime delivery | Pass | `engine-runtime-73dea021-linux` and `-macos` pinned (schema 2, fork commit); a fresh CI image installs and validates the Linux one |
 | Workspace gate, solver, native CI | Pass | `1fbaa57` 677/677 + 41/41 (emulated); native CI `213852a` all jobs; native-host gate 677/677 at `68a22c7` after the `Queue::offer` fixture fix, L2 (rescue lane report, tag `archive/rescue-m7-98f6292`) |
 | Repair CLI/MCP workflow | Pass | `387ba80` original fixture, 90.588 s, unchanged 120/30/5 s limits |
 | Responsive reads (p95 < 200 ms) | Pass (native) | `scripts/reader-gate.sh`: Status p95 9.8 ms, Result p95 25.7 ms with active verification, L7c (rescue lane report, tag `archive/rescue-m7-98f6292`) |
@@ -236,11 +236,11 @@ The levers that matter now:
     (L19 rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **Determinism (VI-0001, VI-0015),** to raise hit rates. In edit loops a
   reordered bucket costs about 2.7 s per affected human-eval-verus cycle.
-  The fork's fixes (pinned in `13a1176c`, including `af212563` for
-  `cargo verus`) now reach default mode too
-  ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md),
-  [record](validation/fork-default.md)); further fork determinism fixes
-  follow with the next re-pin;
+  The fork's fixes (pinned since `13a1176c`, including `af212563` for
+  `cargo verus`; `73dea021` adds VI-0017 and VI-0007) now reach default mode
+  too ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md),
+  [record](validation/fork-default.md),
+  [determinism record](validation/determinism.md));
 - **Fill cost on slow filesystems:** write-behind stores in the daemon.
 
 ## Charter roadmap (designed for, built later)
