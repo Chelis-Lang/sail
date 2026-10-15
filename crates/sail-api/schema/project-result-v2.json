@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sail.invalid/schema/project-result-v1.json",
+  "$id": "https://sail.invalid/schema/project-result-v2.json",
   "title": "Sail managed project result v1",
   "type": "object",
   "required": [
@@ -22,7 +22,7 @@
       "const": "sail-project-result"
     },
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "run_id": {
       "type": "string"
@@ -155,7 +155,7 @@
           "type": "boolean"
         },
         "report": {
-          "$ref": "verify-output-v1.json"
+          "$ref": "verify-output-v2.json"
         }
       }
     }

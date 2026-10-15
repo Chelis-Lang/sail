@@ -233,7 +233,7 @@ exit 1
     let v = c.tool("verify", &json!({}));
     assert_eq!(v["isError"], false, "{v}");
     let s = &v["structuredContent"];
-    assert_eq!(s["report"]["schema_version"], 1);
+    assert_eq!(s["report"]["schema_version"], 2);
     assert_eq!(s["stored"], true);
     assert_eq!(s["run"], 1);
     assert_eq!(s["exit_code"], 1);

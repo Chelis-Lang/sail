@@ -1,13 +1,13 @@
-# `sail verify --output json`: schema version 1
+# `sail verify --output json`: schema version 2
 
 `sail verify --output json [cargo verus verify arguments…]` verifies exactly
 as `sail verify` does and then prints one JSON document describing every
 verified function. This page is the reference for that document. The decisions
-behind it are in ADR 0014. Managed `--incremental` verification instead wraps
+behind it are in ADR 0014, amended for version 2 by ADR 0044. Managed `--incremental` verification instead wraps
 these per-target reports in the independently versioned project envelope; see
 [workspace verification](workspace-verification.md).
 
-- JSON Schema: `crates/sail-api/schema/verify-output-v1.json` (draft 2020-12).
+- JSON Schema: `crates/sail-api/schema/verify-output-v2.json` (draft 2020-12).
 - Rust types: `sail_api::output` (`Report` and the types it contains).
 - An example document: `crates/sail-cli/tests/fixtures/attr/report.golden.json`
   (from `crates/sail-cli/tests/fixtures/attr/input.rs`).
@@ -62,7 +62,7 @@ omitted when no portfolio was requested.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `schema_version` | `1` | This schema. |
+| `schema_version` | `2` | This schema. |
 | `sail_version` | string | The `sail` that wrote it. |
 | `mode` | string | `default`, or explicitly selected `accept-first-proof` (charter rule 8). |
 | `command` | string[] | The arguments passed to `cargo verus verify`, without sail's own flags. |
@@ -93,8 +93,9 @@ function. The two counts are expected to differ.
 | `function` | The function's crate-qualified path as Verus names it: `demo::max`, `demo::arith::mul_pos`, `demo::Counter::incr`. |
 | `module` | Its module as Verus reports it (`""` for the crate root). |
 | `fn_mode` | `exec`, `proof` or `spec`. |
-| `verdict` | `verified`, `failed`, `unknown` or `provisional`. See [Verdicts](#verdicts-and-tiers). |
-| `tier` | `confirmed` or `provisional`. |
+| `verdict` | `verified`, `failed`, `unknown` or `provisional`. See [Verdicts](#verdicts-establishment-and-evidence-tier). |
+| `establishment` | How the result was established: `confirmed` or `provisional`. |
+| `evidence_tier` | How strong the evidence for a settled verdict is: `smt_verified` for every `verified` or `failed` verdict today, `null` for `unknown` and `provisional`. See [Evidence tier](#evidence-tier). |
 | `unstable` | Whether any of its answers could plausibly differ between plain Verus runs: a proof that used more than half its rlimit, or a give-up from resource exhaustion or near the limit (ADR 0009); also true when explicit replay measurement observes both proofs and failures. |
 | `verus_success` | Verus's own `success` for it, verbatim. Incomplete for bit-vector queries (`docs/verus-issues/VI-0003`). |
 | `provenance` | `mode`; optional portfolio `configuration.seed`; `source` (`fresh`, `cache`, `mixed` or `unrecorded`); `checks_solved`, `checks_served` and `checks_unrecorded`; optional `engine` for source-engine results ([Engine provenance](#engine-provenance)). |
@@ -119,12 +120,29 @@ process for a spinoff.
 | `outcome` | `proved` (the first check answered `unsat`), `failed`, or `unknown`. |
 | `unstable` | As for functions, for this obligation's checks. |
 | `checks` | Every `check-sat` in the op, in order: `answer`, `rlimit_limit`, `rlimit_used`, `reason_unknown`, and `source` (`solved`, `cache`, or `null` if not recorded). The first check decides validity. Later checks are Verus locating further failing assertions. |
-| `counterexample` | The first model Z3 gave for the op, if any: `check` (an index into `checks`), `model` (the `get-model` reply verbatim), and `assignments` (each zero-arity `define-fun` as `{name, sort, value}`). |
+| `counterexample` | The first model Z3 gave for the op, if any: `check` (an index into `checks`), `model` (the `get-model` reply verbatim), and `assignments` (each zero-arity `define-fun` as `{name, sort, value, itf}`; see [ITF values](#itf-values)). |
 
 Verus encodes names in models. Parameter `x` is `x!`. Successive versions of
 local `i` are `i@0`, `i@1`, and so on. Assertion labels are
 `%%location_label%%N`, where `false` marks an assertion that failed in this
 model.
+
+### ITF values
+
+Each assignment's `itf` is its `value` in the value encoding of ITF
+(Apalache's Informal Trace Format), so clients can read model values in
+one format:
+
+| Sort | Verbatim `value` | `itf` |
+|---|---|---|
+| `Bool` | `true` | `true` |
+| `Int` | `42`, `(- 42)` | `{"#bigint": "42"}`, `{"#bigint": "-42"}` |
+| `(_ BitVec n)`, n ≤ 128 | `#xff`, `#b101` | `{"#bigint": "255"}`, `{"#bigint": "5"}` (unsigned) |
+| anything else | `FuelId!val!55`, `(I 3)`, `1.0` | `{"#unserializable": "FuelId!val!55"}` |
+
+`itf` is a rendering, never a replacement (charter rule 3). `model` keeps the
+solver's `get-model` reply byte for byte and `value` keeps each value
+verbatim. The cache stores and replays the solver's exact bytes.
 
 ## Obligation identity
 
@@ -165,7 +183,7 @@ unchanged, although every span moved.
 rename or move themselves. Matching by function path and kind, with the span
 as a tie-breaker, recovers most refactors.
 
-## Verdicts and tiers
+## Verdicts, establishment and evidence tier
 
 - `verified`: confirmed, and proved. Verus said `success`, and no attributed
   verdict-bearing obligation failed.
@@ -181,8 +199,31 @@ as a tie-breaker, recovers most refactors.
   **A provisional result is never `verified`, whatever its evidence says**
   (charter rule 7). `sail verify` itself never produces provisional results.
   Every answer it reports came from the pinned Z3, fresh or from the cache,
-  so its tier is `confirmed`. Speculative results (`sail watch`, MCP) will
-  use this tier.
+  so its `establishment` is `confirmed`. Live proof observations
+  (`sail jobs events`, MCP `verification_events`) are `provisional`.
+
+`establishment` and `evidence_tier` are two separate axes (ADR 0044).
+`establishment` says how a result was established; `evidence_tier` says how
+strong the evidence for a settled verdict is.
+
+### Evidence tier
+
+The evidence tiers are ordered, weakest first:
+
+| Value | Meaning |
+|---|---|
+| `sampled` | Runtime-checked contracts under property tests. |
+| `bounded` | Checked within declared bounds. |
+| `smt_verified` | Settled by an SMT solver. |
+| `certificate_checked` | Solver proof certificates checked independently. |
+| `kernel_checked` | Checked by a proof assistant's kernel. |
+
+`evidence_tier` is set exactly when the verdict is settled (`verified` or
+`failed`) and is `null` otherwise. Every verdict Sail settles today comes
+from the pinned Z3 through Verus, so it is `smt_verified`. The other values
+are reserved for the verification runtime
+([scope](scope/verification-runtime.md)), which adds to version 2 rather
+than changing it. A verdict is never upgraded across tiers.
 
 **Agreement with Verus.** Complete attribution combines Verus's reported
 success with every primary obligation outcome. Partial function requests
@@ -268,24 +309,24 @@ one), 0 unknown` rather than `3126 unknown`.
 
 ## Related documents
 
-Durable jobs wrap this report in a project result
-(`crates/sail-api/schema/project-result-v1.json`). The proof-event journal
+Durable jobs wrap this report in a project result, envelope version 2
+(`crates/sail-api/schema/project-result-v2.json`). The proof-event journal
 read by `sail jobs events` and MCP `verification_events` has its own
-version-one schemas: `crates/sail-api/schema/proof-event-v1.json` for one
+version-one schemas, which use this document's function, obligation and
+diagnostic definitions: `crates/sail-api/schema/proof-event-v1.json` for one
 event and `crates/sail-api/schema/proof-page-v1.json` for a page. Events never
 replace the completed report; a provisional observation is never a verified
 claim.
 
 ## Compatibility
 
-Within schema version 1, fields are only ever added. A field is never
-removed, renamed, or given a different meaning; any such change is version 2.
+Within schema version 2, fields are only ever added. A field is never
+removed, renamed, or given a different meaning; any such change is version 3.
 Consumers must ignore fields they do not know. The published JSON Schema is
 strict (`additionalProperties: false`), so that sail's own tests catch drift.
 Validate against the schema of the version you were built for.
 
-The optional `engine` fields above were added within version 1. They are
-omitted for stock verification, whose documents are byte-for-byte unchanged.
+The optional `engine` fields above are omitted for stock verification.
 
 With `--portfolio accept-first-proof`, optional `portfolio` evidence records the
 ordered seeds, each independent attempt (report, exit, timing, infrastructure
@@ -315,3 +356,15 @@ so it cannot establish a confirmed function proof in this case.
 MCP persisted lookups include the establishing run's solver identity, mode and
 winning seed in `freshness`. Source freshness does not assert that today's
 toolchain matches that recorded identity.
+
+## Changes from version 1
+
+Version 2 replaces version 1 before 0.1.0, the first release (ADR 0044).
+There is no compatibility mode.
+- `schema_version` is `2`.
+- Each function's `tier` is renamed `establishment`, with the same values and
+  meaning.
+- Each function has a new `evidence_tier`.
+- Each counterexample assignment has a new `itf`.
+- The managed project-result envelope is version 2, since it embeds these
+  reports.

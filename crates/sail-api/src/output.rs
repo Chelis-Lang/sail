@@ -1,12 +1,12 @@
-//! The `sail verify --output json` document, schema version 1.
+//! The `sail verify --output json` document, schema version 2.
 //!
 //! The schema is documented in `docs/output-schema.md`; the JSON Schema is
-//! [`JSON_SCHEMA`] (`crates/sail-api/schema/verify-output-v1.json`). The
+//! [`JSON_SCHEMA`] (`crates/sail-api/schema/verify-output-v2.json`). The
 //! types ignore unknown fields when read back, as consumers must; the JSON
 //! Schema is strict, and tests check that it requires every field the types
 //! write and allows no other.
 //!
-//! Compatibility: within schema version 1, fields are only ever added
+//! Compatibility: within schema version 2, fields are only ever added
 //! (consumers must ignore fields they do not know); a field is never
 //! removed, renamed or given a different meaning. Any such change bumps
 //! [`SCHEMA_VERSION`].
@@ -14,14 +14,15 @@
 use serde::{Deserialize, Serialize};
 
 use sail_ledger::{
-    CheckRecord, FunctionRecord, ObligationRecord, Outcome, Source, SourceSummary, Tier, Verdict,
+    CheckRecord, Establishment, FunctionRecord, ObligationRecord, Outcome, Source, SourceSummary,
+    Verdict,
 };
 
 /// The schema version this module writes.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
-/// The JSON Schema (draft 2020-12) for schema version 1.
-pub const JSON_SCHEMA: &str = include_str!("../schema/verify-output-v1.json");
+/// The JSON Schema (draft 2020-12) for schema version 2.
+pub const JSON_SCHEMA: &str = include_str!("../schema/verify-output-v2.json");
 
 /// The whole document.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -212,21 +213,59 @@ impl From<Verdict> for VerdictName {
     }
 }
 
-/// The tier.
+/// How a result was established (charter rule 7): the establishment axis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum TierName {
+#[serde(rename_all = "snake_case")]
+pub enum EstablishmentName {
     /// Not yet established by the pinned solver.
     Provisional,
     /// Established by the pinned solver: fresh, or a cached pinned result.
     Confirmed,
 }
 
-impl From<Tier> for TierName {
-    fn from(t: Tier) -> Self {
+impl From<Establishment> for EstablishmentName {
+    fn from(t: Establishment) -> Self {
         match t {
-            Tier::Provisional => Self::Provisional,
-            Tier::Confirmed => Self::Confirmed,
+            Establishment::Provisional => Self::Provisional,
+            Establishment::Confirmed => Self::Confirmed,
+        }
+    }
+}
+
+/// How strong a settled verdict's evidence is: the evidence-tier axis,
+/// ordered from weakest to strongest (`docs/scope/verification-runtime.md`).
+///
+/// Every verdict `sail verify` settles today comes from the pinned SMT
+/// solver through Verus, so it is [`EvidenceTierName::SmtVerified`]. The
+/// other tiers are reserved for the verification runtime, which extends
+/// schema version 2 rather than breaking it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EvidenceTierName {
+    /// Runtime-checked contracts under property tests.
+    Sampled,
+    /// Checked within declared bounds.
+    Bounded,
+    /// Settled by an SMT solver.
+    SmtVerified,
+    /// Solver proof certificates checked independently.
+    CertificateChecked,
+    /// Checked by a proof assistant's kernel.
+    KernelChecked,
+}
+
+impl EvidenceTierName {
+    /// The evidence tier of an SMT-backed result reported with `verdict`
+    /// and `establishment`: [`EvidenceTierName::SmtVerified`] for a
+    /// confirmed `verified` or `failed` verdict, and `None` for anything
+    /// not settled (`unknown`, or provisional).
+    #[must_use]
+    pub fn for_smt(verdict: VerdictName, establishment: EstablishmentName) -> Option<Self> {
+        match (verdict, establishment) {
+            (VerdictName::Verified | VerdictName::Failed, EstablishmentName::Confirmed) => {
+                Some(Self::SmtVerified)
+            }
+            _ => None,
         }
     }
 }
@@ -240,10 +279,13 @@ pub struct FunctionReport {
     pub module: String,
     /// Verus's mode for it (`exec`, `proof`, `spec`).
     pub fn_mode: Option<String>,
-    /// The verdict. Never `verified` unless `tier` is `confirmed`.
+    /// The verdict. Never `verified` unless `establishment` is `confirmed`.
     pub verdict: VerdictName,
-    /// The tier.
-    pub tier: TierName,
+    /// How it was established: `confirmed` or `provisional`.
+    pub establishment: EstablishmentName,
+    /// How strong the evidence for a settled verdict is; `null` when the
+    /// verdict is not settled (`unknown` or `provisional`).
+    pub evidence_tier: Option<EvidenceTierName>,
     /// Whether any answer finished near its limit or gave up from resource
     /// exhaustion (ADR 0009).
     pub unstable: bool,
@@ -508,6 +550,94 @@ pub struct Assignment {
     pub sort: String,
     /// The value, verbatim.
     pub value: String,
+    /// The value in ITF's value encoding: a rendering of `value`, never a
+    /// replacement for it.
+    pub itf: ItfValue,
+}
+
+/// A model value in the ITF value encoding (Apalache's Informal Trace
+/// Format): a boolean, an integer as `{"#bigint": "[-][0-9]+"}`, or
+/// `{"#unserializable": "<verbatim value>"}` for any value without an ITF
+/// form (uninterpreted sorts, Verus's boxed values, reals and so on).
+///
+/// It is a rendering on top of the solver's exact reply (charter rule 3):
+/// the verbatim `get-model` reply and each verbatim `value` stay alongside
+/// it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ItfValue {
+    /// An SMT `Bool`.
+    Bool(bool),
+    /// An SMT `Int`, or a bit vector read as an unsigned integer.
+    BigInt {
+        /// Decimal digits with an optional leading `-`.
+        #[serde(rename = "#bigint")]
+        bigint: String,
+    },
+    /// Anything else, verbatim.
+    Unserializable {
+        /// The value, verbatim.
+        #[serde(rename = "#unserializable")]
+        unserializable: String,
+    },
+}
+
+impl ItfValue {
+    /// Renders one zero-arity model constant of `sort` with the verbatim
+    /// `value`. Total: a value it cannot read becomes
+    /// [`ItfValue::Unserializable`].
+    #[must_use]
+    pub fn render(sort: &str, value: &str) -> Self {
+        let v = value.trim();
+        let sort = sort.trim();
+        let read = match sort {
+            "Bool" => match v {
+                "true" => Some(Self::Bool(true)),
+                "false" => Some(Self::Bool(false)),
+                _ => None,
+            },
+            "Int" => smt_int(v).map(|bigint| Self::BigInt { bigint }),
+            _ if sort.starts_with("(_ BitVec ") => smt_bit_vector(v).map(|n| Self::BigInt {
+                bigint: n.to_string(),
+            }),
+            _ => None,
+        };
+        read.unwrap_or_else(|| Self::Unserializable {
+            unserializable: value.to_owned(),
+        })
+    }
+}
+
+/// An SMT-LIB integer value: a numeral, or `(- <numeral>)`.
+fn smt_int(v: &str) -> Option<String> {
+    let numeral = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    if numeral(v) {
+        return Some(v.to_owned());
+    }
+    let inner = v.strip_prefix('(')?.strip_suffix(')')?.trim();
+    let digits = inner.strip_prefix('-')?.trim();
+    if !numeral(digits) {
+        return None;
+    }
+    Some(if digits.bytes().all(|b| b == b'0') {
+        "0".to_owned()
+    } else {
+        format!("-{digits}")
+    })
+}
+
+/// An SMT-LIB bit-vector literal (`#x…` or `#b…`) of at most 128 bits, as
+/// an unsigned integer.
+fn smt_bit_vector(v: &str) -> Option<u128> {
+    let (digits, radix) = if let Some(d) = v.strip_prefix("#x") {
+        (d, 16)
+    } else {
+        (v.strip_prefix("#b")?, 2)
+    };
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    u128::from_str_radix(digits, radix).ok()
 }
 
 /// A source location in a diagnostic.
@@ -588,6 +718,7 @@ impl From<&ObligationRecord> for ObligationReport {
                         name: a.name.clone(),
                         sort: a.sort.clone(),
                         value: a.value.clone(),
+                        itf: ItfValue::render(&a.sort, &a.value),
                     })
                     .collect(),
             })
@@ -613,12 +744,15 @@ impl From<&ObligationRecord> for ObligationReport {
 impl From<&FunctionRecord> for FunctionReport {
     fn from(f: &FunctionRecord) -> Self {
         let sources = f.sources();
+        let verdict = VerdictName::from(f.verdict());
+        let establishment = EstablishmentName::from(f.establishment);
         Self {
             function: f.function.clone(),
             module: f.module.clone(),
             fn_mode: f.fn_mode.clone(),
-            verdict: f.verdict().into(),
-            tier: f.tier.into(),
+            verdict,
+            establishment,
+            evidence_tier: EvidenceTierName::for_smt(verdict, establishment),
             unstable: f.unstable(),
             verus_success: f.verus_success,
             provenance: ProvenanceReport {
@@ -715,11 +849,24 @@ impl Report {
         }
         let mut ids = std::collections::BTreeSet::new();
         for f in self.crates.iter().flat_map(|c| &c.functions) {
-            if f.verdict == VerdictName::Verified && f.tier != TierName::Confirmed {
+            if f.verdict == VerdictName::Verified && f.establishment != EstablishmentName::Confirmed
+            {
                 out.push(format!("{}: verified but not confirmed", f.function));
             }
-            if (f.tier == TierName::Provisional) != (f.verdict == VerdictName::Provisional) {
-                out.push(format!("{}: tier and verdict disagree", f.function));
+            if (f.establishment == EstablishmentName::Provisional)
+                != (f.verdict == VerdictName::Provisional)
+            {
+                out.push(format!(
+                    "{}: establishment and verdict disagree",
+                    f.function
+                ));
+            }
+            let settled = matches!(f.verdict, VerdictName::Verified | VerdictName::Failed);
+            if settled != f.evidence_tier.is_some() {
+                out.push(format!(
+                    "{}: evidence tier and verdict disagree",
+                    f.function
+                ));
             }
             let p = &f.provenance;
             let counted = (p.checks_solved, p.checks_served, p.checks_unrecorded);
@@ -768,6 +915,40 @@ mod tests {
         assert_eq!(s.text, "garbage");
     }
     #[test]
+    fn the_example_document_is_valid_v2_with_rendered_itf_values() {
+        let text = include_str!("../../sail-cli/tests/fixtures/attr/report.golden.json");
+        let golden: Report =
+            serde_json::from_str(text).unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let schema: serde_json::Value = serde_json::from_str(JSON_SCHEMA).unwrap_or_default();
+        let value: serde_json::Value = serde_json::from_str(text).unwrap_or_default();
+        assert_eq!(
+            crate::schema::validate(&schema, &value),
+            Vec::<String>::new()
+        );
+        assert_eq!(golden.invariant_violations(), Vec::<String>::new());
+        let mut rendered = 0;
+        for o in golden
+            .crates
+            .iter()
+            .flat_map(|c| &c.functions)
+            .flat_map(|f| f.obligations.iter().flatten())
+        {
+            for a in o.counterexample.iter().flat_map(|c| &c.assignments) {
+                assert_eq!(a.itf, ItfValue::render(&a.sort, &a.value), "{}", a.name);
+                // Every verbatim value is in the verbatim model.
+                assert!(
+                    o.counterexample
+                        .as_ref()
+                        .is_some_and(|c| c.model.contains(&a.value)),
+                    "{}",
+                    a.name
+                );
+                rendered += usize::from(!matches!(a.itf, ItfValue::Unserializable { .. }));
+            }
+        }
+        assert!(rendered > 0);
+    }
+    #[test]
     fn engine_provenance_is_additive_and_matches_the_schemas() {
         let stock: Report = serde_json::from_str(include_str!(
             "../../sail-cli/tests/fixtures/attr/report.golden.json"
@@ -808,7 +989,7 @@ mod tests {
             Vec::<String>::new()
         );
         let project: serde_json::Value =
-            serde_json::from_str(include_str!("../schema/project-result-v1.json"))
+            serde_json::from_str(include_str!("../schema/project-result-v2.json"))
                 .unwrap_or_default();
         let identity = crate::project::EngineIdentity {
             name: "interactive".to_owned(),

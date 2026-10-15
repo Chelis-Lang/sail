@@ -1,15 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Chelis-Lang/sail/crates/sail-api/schema/verify-output-v1.json",
-  "title": "sail verify --output json, schema version 1",
-  "description": "See docs/output-schema.md. Within version 1, fields are only ever added; consumers must ignore unknown fields. This schema is strict (additionalProperties false) so that sail's own tests catch drift.",
+  "$id": "https://github.com/Chelis-Lang/sail/crates/sail-api/schema/verify-output-v2.json",
+  "title": "sail verify --output json, schema version 2",
+  "description": "See docs/output-schema.md. Within version 2, fields are only ever added; consumers must ignore unknown fields. This schema is strict (additionalProperties false) so that sail's own tests catch drift.",
   "type": "object",
   "required": ["schema_version", "sail_version", "mode", "command", "exit_code", "solver", "cache", "attribution", "crates", "diagnostics", "summary", "error"],
   "additionalProperties": false,
   "properties": {
     "portfolio": {"$ref": "#/$defs/portfolio"},
     "engine": {"$ref": "#/$defs/engine"},
-    "schema_version": { "const": 1 },
+    "schema_version": { "const": 2 },
     "sail_version": { "type": "string" },
     "mode": { "type": "string" },
     "command": { "type": "array", "items": { "type": "string" } },
@@ -199,7 +199,7 @@
         "additionalProperties": false,
         "properties": {
           "schema_version": {
-            "const": 1
+            "const": 2
           },
           "sail_version": {
             "type": "string"
@@ -397,14 +397,15 @@
     },
     "function": {
       "type": "object",
-      "required": ["function", "module", "fn_mode", "verdict", "tier", "unstable", "verus_success", "provenance", "timing", "fragility", "obligations"],
+      "required": ["function", "module", "fn_mode", "verdict", "establishment", "evidence_tier", "unstable", "verus_success", "provenance", "timing", "fragility", "obligations"],
       "additionalProperties": false,
       "properties": {
         "function": { "type": "string" },
         "module": { "type": "string" },
         "fn_mode": { "type": ["string", "null"] },
         "verdict": { "enum": ["verified", "failed", "unknown", "provisional"] },
-        "tier": { "enum": ["confirmed", "provisional"] },
+        "establishment": { "enum": ["confirmed", "provisional"] },
+        "evidence_tier": { "enum": ["sampled", "bounded", "smt_verified", "certificate_checked", "kernel_checked", null] },
         "unstable": { "type": "boolean" },
         "verus_success": { "type": ["boolean", "null"] },
         "provenance": {
@@ -526,12 +527,13 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["name", "sort", "value"],
+                    "required": ["name", "sort", "value", "itf"],
                     "additionalProperties": false,
                     "properties": {
                       "name": { "type": "string" },
                       "sort": { "type": "string" },
-                      "value": { "type": "string" }
+                      "value": { "type": "string" },
+                      "itf": { "$ref": "#/$defs/itf_value" }
                     }
                   }
                 }
@@ -540,6 +542,24 @@
           ]
         }
       }
+    },
+    "itf_value": {
+      "description": "An ITF (Informal Trace Format) value: a rendering of the verbatim value, never a replacement for it.",
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "required": ["#bigint"],
+          "additionalProperties": false,
+          "properties": { "#bigint": { "type": "string" } }
+        },
+        {
+          "type": "object",
+          "required": ["#unserializable"],
+          "additionalProperties": false,
+          "properties": { "#unserializable": { "type": "string" } }
+        }
+      ]
     },
     "diagnostic": {
       "type": "object",

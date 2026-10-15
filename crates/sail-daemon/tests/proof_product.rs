@@ -2,7 +2,7 @@
 #![cfg(unix)]
 use sail_api::evidence::{Change, Reference};
 use sail_api::jobs::{Client, Lifecycle, Mode, Request, Response, Status, Submission};
-use sail_api::output::{Report, TierName, VerdictName};
+use sail_api::output::{EstablishmentName, Report, VerdictName};
 use sail_api::project::{Currentness, Execution, ProjectResult, TargetResult};
 use sail_api::proof::Target;
 use std::collections::BTreeMap;
@@ -78,7 +78,7 @@ fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
     ))?;
     Ok(ProjectResult {
         kind: "sail-project-result".into(),
-        schema_version: 1,
+        schema_version: sail_api::project::SCHEMA_VERSION,
         run_id: "establishing".into(),
         workspace: "fixture".into(),
         context_sha256: "configuration".into(),
@@ -170,7 +170,7 @@ fn immutable_baseline_survives_pruning_and_restart_without_overwriting_provenanc
     let mut after = before.clone();
     after.input_revision = "after".into();
     after.targets[0].report.crates[0].functions[0].verdict = VerdictName::Failed;
-    after.targets[0].report.crates[0].functions[0].tier = TierName::Confirmed;
+    after.targets[0].report.crates[0].functions[0].establishment = EstablishmentName::Confirmed;
     let mut last = String::new();
     for number in 0..21 {
         std::fs::write(
@@ -267,7 +267,8 @@ fn baseline_get_preserves_provisional_evidence_and_refuses_corrupt_or_oversized_
     let store = fixture.root.join("jobs");
     let mut project = project()?;
     project.targets[0].report.crates[0].functions[0].verdict = VerdictName::Provisional;
-    project.targets[0].report.crates[0].functions[0].tier = TierName::Provisional;
+    project.targets[0].report.crates[0].functions[0].establishment = EstablishmentName::Provisional;
+    project.targets[0].report.crates[0].functions[0].evidence_tier = None;
     std::fs::write(
         fixture.root.join("result.json"),
         serde_json::to_vec(&project)?,
@@ -311,7 +312,7 @@ fn baseline_get_preserves_provisional_evidence_and_refuses_corrupt_or_oversized_
         serde_json::json!({"job_id":""}),
         serde_json::json!({"result":{"currentness":"current"}}),
         serde_json::json!({"result":{"kind":"wrong"}}),
-        serde_json::json!({"result":{"schema_version":2}}),
+        serde_json::json!({"result":{"schema_version":1}}),
     ] {
         let mut value = serde_json::to_value(&saved)?;
         let object = corrupt.as_object().ok_or("corruption fixture")?;
@@ -384,7 +385,8 @@ fn repair_job_preserves_focus_success_full_failure_and_never_promotes_preliminar
         .flat_map(|report| &mut report.functions)
     {
         function.verdict = VerdictName::Provisional;
-        function.tier = TierName::Provisional;
+        function.establishment = EstablishmentName::Provisional;
+        function.evidence_tier = None;
     }
     let batch = sail_api::repair::BatchResult {
         focus: Some(focus.clone()),

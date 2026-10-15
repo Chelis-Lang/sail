@@ -62,7 +62,7 @@ for label in ('cold', 'warm'):
     functions = [f for c in report['crates'] for f in c['functions']]
     assert len(functions) == 1 and functions[0]['function'] == 'input::square', functions
     function = functions[0]
-    assert function['verdict'] == 'verified' and function['tier'] == 'confirmed', function
+    assert function['verdict'] == 'verified' and function['establishment'] == 'confirmed' and function['evidence_tier'] == 'smt_verified', function
     provenance = function['provenance']
     assert provenance['mode'] == 'accept-first-proof' and provenance['configuration']['seed'] == 4, provenance
     if label == 'warm':

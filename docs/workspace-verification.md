@@ -48,9 +48,9 @@ created and deleted again within one run is not noticed (see
 the same content and mutation checks on both platforms.
 
 The ordinary `sail verify` path keeps its existing drop-in output and behavior.
-The explicit managed JSON format is a `sail-project-result` envelope, version 1,
-containing per-target schema-v1 reports. Its JSON Schema is
-`crates/sail-api/schema/project-result-v1.json`. Each target identifies its package,
+The explicit managed JSON format is a `sail-project-result` envelope, version 2,
+containing per-target schema-v2 reports. Its JSON Schema is
+`crates/sail-api/schema/project-result-v2.json`. Each target identifies its package,
 target kind, establishing run, completeness and reuse. The `requested` field
 distinguishes the selected Cargo scope from dependency reports. Embedded diagnostic,
 timing and solver provenance fields describe that establishing run. The outer

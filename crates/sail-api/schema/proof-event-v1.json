@@ -164,7 +164,7 @@
                   "const": "obligation_observed"
                 },
                 "value": {
-                  "$ref": "verify-output-v1.json#/$defs/obligation"
+                  "$ref": "verify-output-v2.json#/$defs/obligation"
                 }
               }
             },
@@ -182,12 +182,15 @@
                 "value": {
                   "allOf": [
                     {
-                      "$ref": "verify-output-v1.json#/$defs/function"
+                      "$ref": "verify-output-v2.json#/$defs/function"
                     },
                     {
                       "properties": {
-                        "tier": {
+                        "establishment": {
                           "const": "provisional"
+                        },
+                        "evidence_tier": {
+                          "const": null
                         },
                         "verdict": {
                           "const": "provisional"
@@ -210,7 +213,7 @@
                   "const": "diagnostic"
                 },
                 "value": {
-                  "$ref": "verify-output-v1.json#/$defs/diagnostic"
+                  "$ref": "verify-output-v2.json#/$defs/diagnostic"
                 }
               }
             },

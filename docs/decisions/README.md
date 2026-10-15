@@ -46,3 +46,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0041: Content and stat checks replace kernel leases for currentness](0041-content-and-stat-currentness.md)
 - [0042: Diagnostics are compared as a set of complete messages](0042-diagnostics-compared-as-a-set.md)
 - [0043: Default mode runs Sail's Verus, built from the fork](0043-default-mode-runs-the-fork.md)
+- [0044: Output schema v2: establishment and evidence tier](0044-output-schema-v2.md)
