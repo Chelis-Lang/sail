@@ -41,9 +41,21 @@ acting. The charter's appendix records corrections made since it was written.
 - **Surprising Verus or Z3 behaviour:** capture a minimal reproduction in the
   corpus and document it before working around it. Verus problems are
   tracked in `docs/verus-issues/`.
-- **Never file issues, PRs or comments in other projects' repositories**
-  (Verus, Z3, corpus projects). Record upstream problems locally
-  (`docs/verus-issues/`). Whether to report upstream is a human decision.
+- **Where agents may file.** Agents may open issues, PRs and comments only in
+  this line of work's repositories: `Chelis-Lang/sail`, the Verus fork
+  `Chelis-Lang/verus`, `Chelis-Lang/dive` (D.I.V.E.) and Oyster's repository
+  under `Chelis-Lang` once it exists. Never in upstream Verus, Z3, corpus
+  projects or any other repository.
+  Record upstream problems locally (`docs/verus-issues/`). Whether to report
+  upstream is a human decision.
+- **Nothing is published until the owner's rollout.** This work is intended
+  for open source but stays staged: nothing is open-sourced or published to
+  crates.io until the owner orchestrates the rollout. The Verus fork is the
+  only public repository in this line of work. The workspace keeps
+  `publish = false` (ADR 0010).
+- **Fork a backend only for a proven gain.** Forking a backend or tool (as
+  ADR 0039 forks Verus) needs a rigorously measured gain, proven before any
+  Sail use of the fork ships.
 - **Decisions** go in numbered ADRs in `docs/decisions/` (copy `0000-template.md`).
   Changing the crate dependency graph is a decision.
 - **Solver identity is explicit.** Never assume a single solver in the cache,

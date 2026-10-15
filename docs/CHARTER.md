@@ -225,5 +225,5 @@ Each entry names the charter text it qualifies and the ADR that records it.
    and these rules conflict, these rules win; the conflicts found (rules 1,
    3, 4, 5, 7 and 8, crate publishing, and filing outside this repository)
    are listed in `docs/scope/verification-runtime.md` and raised as
-   questions 16–27 in `docs/open-questions.md`. New crates and dependency
-   edges need ADRs.
+   questions 16–27 in `docs/open-questions.md`, which the owner answered on
+   2026-10-15. New crates and dependency edges need ADRs.
