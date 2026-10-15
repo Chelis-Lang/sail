@@ -26,11 +26,14 @@ fn relevant(path: &Path, tracked: &[PathBuf]) -> bool {
 
 #[cfg(target_os = "linux")]
 fn missing(snapshot: &InputSnapshot) -> Vec<PathBuf> {
+    // One `stat` per root (thousands on vest); they overlap, order is kept.
+    let exists = crate::parallel::in_order(&snapshot.roots, |p| p.exists());
     snapshot
         .roots
         .iter()
-        .filter(|p| !p.exists())
-        .cloned()
+        .zip(exists)
+        .filter(|(_, exists)| !exists)
+        .map(|(p, _)| p.clone())
         .collect()
 }
 

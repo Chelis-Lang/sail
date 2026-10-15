@@ -18,12 +18,14 @@ are in the `archive/m7-contracts-f7103bf` tag.
   (rescue lane report, tag `archive/rescue-m7-98f6292`).
 - **`sail verify` costs a little on small projects and unchanged runs.**
   Managed verification is the only `sail verify` (ADR 0046). On a native
-  c7i.4xlarge, a small project's edit takes 1.07 s against plain Verus's
-  0.79 s, an unchanged re-run 0.30 s against 0.11 s (vest: 1.11 s against
-  0.22 s), and a cold run 1–3 s more. Solver-heavy edits are faster than
-  plain Verus (vest 28.5 s against 39.6 s) but about 3 s slower than the
-  removed pass-through was. Where the time goes is in
-  [ADR 0046](decisions/0046-managed-verification-by-default.md#measurements).
+  c7i.4xlarge, a small project's edit takes 1.11 s against plain Verus's
+  0.80 s, an unchanged re-run 0.34 s against 0.12 s (vest: 0.99 s against
+  0.23 s), and a cold run 1–3 s more. Solver-heavy edits are faster than
+  plain Verus (vest 27.8 s against 41.8 s) but 1.4 s slower than the removed
+  pass-through (26.4 s in the same rotation): about 0.8 s of receipt and
+  input checks and 0.3 s of Verus's `--output-json --time`. Where the time
+  goes is in
+  [ADR 0047](decisions/0047-attribution-logs-on-request.md#measurements).
 - **Some setups get no proof reuse.** Tests, benches, examples,
   `--target-dir`, Verus `--log` options, `--no-verify`, Cargo `--config`
   overrides and loader variables such as `LD_LIBRARY_PATH` are verified as

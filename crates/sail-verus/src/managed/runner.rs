@@ -44,6 +44,13 @@ pub struct Config {
     pub args: Vec<String>,
     /// Force a fresh proof even when a receipt exists.
     pub force: bool,
+    /// Ask Verus for the AIR and SMT transcript logs that attribute each
+    /// solver query to an obligation: per-obligation records, per-check
+    /// cache provenance and counterexample models. Callers that read the
+    /// report set it (`--output json`, jobs, MCP); plain `sail verify`,
+    /// which prints only Verus's own output, does not (ADR 0047).
+    /// Interactive-engine runs always log.
+    pub attribution_logs: bool,
 }
 
 struct Paths {
@@ -556,15 +563,83 @@ const CACHEDIR_TAG: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n\
 # This file is a cache directory tag created by cargo.\n\
 # For information about cache directory tags see https://bford.info/cachedir/\n";
 
+/// Forces Cargo to compile `packages` again in Sail's target.
+///
+/// `cargo clean -p` also deletes the packages' rustc incremental state. That
+/// state is only a cache: rustc checks it against the source contents and the
+/// compiler options before using any of it, and plain Cargo keeps it across
+/// edits. Deleting it made every edit of a large crate about 1 s slower than
+/// plain Cargo-Verus (vest), so the clean leaves it in place (ADR 0047).
 fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     if packages.is_empty() {
         return Ok(());
     }
-    let cleaned = cargo_build_target(target, &config.args);
-    let tag = cleaned.join("CACHEDIR.TAG");
-    if cleaned.is_dir() && !tag.exists() {
+    let build_target = cargo_build_target(target, &config.args);
+    let tag = build_target.join("CACHEDIR.TAG");
+    if build_target.is_dir() && !tag.exists() {
         std::fs::write(&tag, CACHEDIR_TAG).map_err(|e| Error::new("SAIL3105", e.to_string()))?;
     }
+    let kept = keep_incremental(&build_target);
+    let cleaned = cargo_clean(config, &build_target, packages);
+    restore_incremental(kept);
+    cleaned
+}
+
+/// Moves each rustc incremental directory in `build_target`
+/// (`<profile>/incremental` and `<target triple>/<profile>/incremental`)
+/// aside, so that `cargo clean` cannot delete it.
+fn keep_incremental(build_target: &Path) -> Vec<(PathBuf, PathBuf)> {
+    let mut kept = Vec::new();
+    let children = |directory: &Path| -> Vec<PathBuf> {
+        std::fs::read_dir(directory)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter(|entry| entry.file_type().is_ok_and(|t| t.is_dir()))
+            .map(|entry| entry.path())
+            .collect()
+    };
+    for profile in children(build_target).into_iter().flat_map(|child| {
+        let mut found = children(&child);
+        found.push(child);
+        found
+    }) {
+        // A run killed during its clean leaves its copy behind; the target
+        // is owned exclusively, so no other run is using one.
+        for stale in std::fs::read_dir(&profile).into_iter().flatten().flatten() {
+            if stale
+                .file_name()
+                .to_string_lossy()
+                .starts_with("incremental.sail-kept-")
+            {
+                let _ = std::fs::remove_dir_all(stale.path());
+            }
+        }
+        let incremental = profile.join("incremental");
+        if !std::fs::symlink_metadata(&incremental).is_ok_and(|m| m.is_dir()) {
+            continue;
+        }
+        let aside = profile.join(format!("incremental.sail-kept-{}", std::process::id()));
+        if std::fs::rename(&incremental, &aside).is_ok() {
+            kept.push((aside, incremental));
+        }
+    }
+    kept
+}
+
+/// Puts the directories [`keep_incremental`] moved back. A directory that
+/// cannot be restored is deleted: the cache is lost, nothing else.
+fn restore_incremental(kept: Vec<(PathBuf, PathBuf)>) {
+    for (aside, incremental) in kept {
+        if std::fs::symlink_metadata(&incremental).is_ok()
+            || std::fs::rename(&aside, &incremental).is_err()
+        {
+            let _ = std::fs::remove_dir_all(&aside);
+        }
+    }
+}
+
+fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Result<()> {
     let mut cmd = Command::new(&config.cargo);
     // Cargo-Verus builds with a different rustc fingerprint, so a clean that
     // rewrote the target's rustc-info cache would force the following build to
@@ -573,7 +648,7 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     cmd.current_dir(&config.workspace)
         .env("CARGO_CACHE_RUSTC_INFO", "0")
         .args(["clean", "--target-dir"])
-        .arg(cargo_build_target(target, &config.args));
+        .arg(build_target);
     for p in packages {
         cmd.arg("-p").arg(p);
     }
@@ -1971,6 +2046,7 @@ pub(crate) fn run_engine_held(
                 ))
             })
             .collect(),
+        attribution_logs: config.attribution_logs || engine.is_some(),
         engine,
     };
     json(&paths.runtime, &runtime)?;
@@ -2349,6 +2425,32 @@ mod tests {
         assert!(!colour_wanted(true, false, &args(&["--color=never"])));
     }
 
+    #[test]
+    fn cleans_keep_rustc_incremental_state() -> std::result::Result<(), Box<dyn std::error::Error>>
+    {
+        let root = std::env::temp_dir().join(format!("sail-keep-inc-{}", std::process::id()));
+        let host = root.join("debug/incremental/demo-1");
+        let cross = root.join("x86_64-unknown-linux-gnu/release/incremental/demo-2");
+        let stale = root.join("debug/incremental.sail-kept-1");
+        for directory in [&host, &cross, &stale] {
+            std::fs::create_dir_all(directory)?;
+        }
+        std::fs::write(host.join("s"), b"session")?;
+        let kept = keep_incremental(&root);
+        assert_eq!(kept.len(), 2);
+        assert!(!host.exists() && !cross.exists() && !stale.exists());
+        restore_incremental(kept);
+        assert_eq!(std::fs::read(host.join("s"))?, b"session");
+        assert!(cross.is_dir());
+        let leftovers = std::fs::read_dir(root.join("debug"))?
+            .flatten()
+            .filter(|e| e.file_name().to_string_lossy().contains("sail-kept"))
+            .count();
+        assert_eq!(leftovers, 0);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[cfg(unix)]
     include!("runner_artifact_isolation_tests.rs");
     fn compiler_request(function: Option<&str>) -> crate::engine::Request {
@@ -2435,6 +2537,7 @@ mod tests {
             socket: None,
             args: Vec::new(),
             force: true,
+            attribution_logs: true,
         })
     }
 
@@ -3529,6 +3632,7 @@ mod tests {
             socket: None,
             args: Vec::new(),
             force: true,
+            attribution_logs: true,
         };
         std::fs::write(runtime.join("z3"), b"tampered")?;
         let error = context(&config, Some(&request))
@@ -3813,6 +3917,7 @@ mod tests {
             socket: None,
             args: args.iter().map(|&a| a.to_owned()).collect(),
             force: true,
+            attribution_logs: true,
         };
         let focus = config(&["-p", "input", "--", "--verify-function", "input"]);
         let full = config(&["-p", "input"]);

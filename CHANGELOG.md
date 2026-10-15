@@ -5,6 +5,23 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Plain `sail verify` asks Verus for no attribution logs** (ADR 0047).
+  Per-obligation detail (op kinds, spans, per-check answers and cache
+  provenance, counterexample models) needs Verus's AIR and SMT transcript
+  logs, hundreds of megabytes on a large crate. Only runs whose report is
+  read now ask for them: `sail verify --output json`, and so jobs,
+  `--background`, `watch` and MCP, and repairs. Output, verdicts and exit
+  codes are unchanged. A passing target reused from a plain run's proof
+  receipt reports Verus's verdicts, rlimit and time with
+  `attribution.status` `unavailable` and a note instead of obligations.
+  Sail's targeted cleans now keep rustc's incremental state, as plain Cargo
+  does, and the input checks walk and stamp inputs faster. On a native
+  c7i.4xlarge a vest edit takes 27.8 s (managed before: 29.9 s; the removed
+  pass-through: 26.4 s; plain Verus: 41.8 s) and an unchanged re-run 0.99 s
+  (before: 1.31 s); a small project's edit 1.11 s (before: 1.17 s; plain:
+  0.80 s).
+  `scripts/perf-loops.sh` measures other Sail builds in the same rotation
+  (`SAIL_PERF_BASELINES`).
 - **`sail verify` runs managed verification by default** (ADR 0046). What
   `--incremental` used to switch on is now every `sail verify`: Sail's own
   Cargo target under the Sail cache, proof receipts that skip unchanged

@@ -44,9 +44,13 @@ byte-identical to `cargo verus verify`.
 
 sail appends these Verus arguments, after a `--`:
 - `--output-json --time`, unless already present. Verus then prints its own
-  per-function results (stdout, captured by sail).
-- `--log smt-transcript --log air --log-dir <scratch>`, when attribution is
-  possible (see [Attribution coverage](#attribution-coverage)).
+  per-function results (stdout, captured by sail). Plain `sail verify` adds
+  them too, and prints Verus's own output rebuilt from them.
+- `--log smt-transcript --log air --log-dir <scratch>`, for the obligation
+  detail (see [Attribution coverage](#attribution-coverage)). Only runs whose
+  report is read add them: `--output json`, and so jobs and MCP, and
+  repairs. Plain `sail verify` does not
+  ([ADR 0047](decisions/0047-attribution-logs-on-request.md)).
 
 None of these flags changes a byte of what Z3 receives. This is tested
 against the pinned Verus (`crates/sail-verus/tests/attribution_verus.rs`).
@@ -281,7 +285,20 @@ Nothing is reworded. Diagnostics are not yet linked to obligations.
 
 ## Attribution coverage
 
-Attribution needs Verus's logs. Verus deletes every file in its log directory
+Attribution needs Verus's logs.
+
+**Reports established without logs.** Plain `sail verify` asks Verus for no
+logs ([ADR 0047](decisions/0047-attribution-logs-on-request.md)). When a
+later `--output json`, job or MCP run reuses a passing target whose proof
+such a run established, that target's report has `attribution.status`
+`unavailable`, a first note saying the obligation detail was not recorded by
+the run that established it, `obligations` `null`, provenance `source`
+`unrecorded` and `unstable` `false` (it needs per-check effort). Its verdicts,
+rlimit and time are Verus's own, as with logs: a target is reused only when
+Verus reported no error, so every function is `verified`. The next run that
+verifies the target again records the detail.
+
+**Older managed and single-file rules.** Verus deletes every file in its log directory
 when it first writes there, and `cargo verus` gives every package and target
 in a run the same log directory (`docs/verus-issues/VI-0004`). sail therefore
 asks for logs only when one Verus process will write them: a single workspace

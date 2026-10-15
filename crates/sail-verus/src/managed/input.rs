@@ -127,7 +127,20 @@ fn collect(
         files.insert(canonical);
         return true;
     }
-    let Ok(entries) = std::fs::read_dir(&canonical) else {
+    collect_directory(&canonical, files, visited, roots)
+}
+
+/// The entries of the canonical directory `directory`, as [`collect`] finds
+/// them. An entry that is not a symbolic link is already its own canonical
+/// path, so only links are resolved: one `realpath` per link instead of one
+/// per file (about 100 ms per snapshot on vest's 11,600 input files).
+fn collect_directory(
+    directory: &Path,
+    files: &mut BTreeSet<PathBuf>,
+    visited: &mut BTreeSet<PathBuf>,
+    roots: &mut Vec<PathBuf>,
+) -> bool {
+    let Ok(entries) = std::fs::read_dir(directory) else {
         return false;
     };
     let mut complete = true;
@@ -140,7 +153,20 @@ fn collect(
         if [".git", ".claude", ".codex"].iter().any(|s| name == *s) {
             continue;
         }
-        complete &= collect(&entry.path(), files, visited, roots);
+        let path = entry.path();
+        match entry.file_type() {
+            Ok(kind) if kind.is_file() => {
+                if visited.insert(path.clone()) {
+                    files.insert(path);
+                }
+            }
+            Ok(kind) if kind.is_dir() => {
+                if visited.insert(path.clone()) {
+                    complete &= collect_directory(&path, files, visited, roots);
+                }
+            }
+            _ => complete &= collect(&path, files, visited, roots),
+        }
     }
     complete
 }
@@ -389,15 +415,19 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
     stamp_paths(&paths)
 }
 
+// The `lstat` calls overlap (about 13,000 paths per vest snapshot); the stamp
+// folds their results in the original sorted order, exactly as one by one.
 #[cfg(unix)]
 fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
     use std::os::unix::fs::MetadataExt as _;
     let mut stamp = Sha256::new();
-    for path in paths {
+    let paths: Vec<&PathBuf> = paths.iter().collect();
+    let stats = crate::parallel::in_order(&paths, |path| std::fs::symlink_metadata(path));
+    for (path, metadata) in paths.into_iter().zip(stats) {
         let name = path.as_os_str().as_encoded_bytes();
         stamp.update((name.len() as u64).to_le_bytes());
         stamp.update(name);
-        let metadata = match std::fs::symlink_metadata(path) {
+        let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 stamp.update(b"missing");
@@ -805,6 +835,84 @@ mod tests {
         assert_ne!(before.revision, after.revision);
         assert_eq!(after.roots, vec![dependency]);
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    /// [`collect`] as it was before it resolved only symbolic links: every
+    /// entry canonicalized.
+    fn collect_resolving_every_entry(
+        path: &Path,
+        files: &mut BTreeSet<PathBuf>,
+        visited: &mut BTreeSet<PathBuf>,
+        roots: &mut Vec<PathBuf>,
+    ) -> bool {
+        let Ok(canonical) = path.canonicalize() else {
+            return false;
+        };
+        if !visited.insert(canonical.clone()) {
+            return true;
+        }
+        if std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
+            roots.push(canonical.clone());
+            roots.push(path.to_owned());
+        }
+        if canonical.is_file() {
+            files.insert(canonical);
+            return true;
+        }
+        let Ok(entries) = std::fs::read_dir(&canonical) else {
+            return false;
+        };
+        let mut complete = true;
+        for entry in entries {
+            let Ok(entry) = entry else {
+                complete = false;
+                continue;
+            };
+            let name = entry.file_name();
+            if [".git", ".claude", ".codex"].iter().any(|s| name == *s) {
+                continue;
+            }
+            complete &= collect_resolving_every_entry(&entry.path(), files, visited, roots);
+        }
+        complete
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn collect_finds_what_resolving_every_entry_finds() -> std::io::Result<()> {
+        use std::os::unix::fs::symlink;
+        let root = std::env::temp_dir().join(format!("sail-collect-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let package = root.join("package");
+        let outside = root.join("outside");
+        std::fs::create_dir_all(package.join("src/nested/deeper"))?;
+        std::fs::create_dir_all(package.join(".git"))?;
+        std::fs::create_dir_all(outside.join("shared"))?;
+        std::fs::write(package.join("Cargo.toml"), "[package]")?;
+        std::fs::write(package.join("src/lib.rs"), "lib")?;
+        std::fs::write(package.join("src/nested/deeper/a.rs"), "a")?;
+        std::fs::write(package.join(".git/HEAD"), "ignored")?;
+        std::fs::write(outside.join("shared/b.rs"), "b")?;
+        std::fs::write(outside.join("c.rs"), "c")?;
+        symlink(outside.join("shared"), package.join("src/linked-dir"))?;
+        symlink(outside.join("c.rs"), package.join("src/linked-file.rs"))?;
+        symlink(package.join("src"), package.join("src/nested/cycle"))?;
+        symlink(root.join("missing"), package.join("src/dangling"))?;
+        let mut found = (BTreeSet::new(), BTreeSet::new(), Vec::new());
+        let mut expected = (BTreeSet::new(), BTreeSet::new(), Vec::new());
+        let complete = collect(&package, &mut found.0, &mut found.1, &mut found.2);
+        let reference = collect_resolving_every_entry(
+            &package,
+            &mut expected.0,
+            &mut expected.1,
+            &mut expected.2,
+        );
+        found.2.sort();
+        expected.2.sort();
+        assert_eq!((complete, &found), (reference, &expected));
+        assert!(!complete, "a dangling link leaves the walk incomplete");
+        assert_eq!(found.0.len(), 5, "{:?}", found.0);
+        std::fs::remove_dir_all(root)
     }
 
     #[test]

@@ -23,6 +23,10 @@ pub(crate) struct Runtime {
     pub packages: BTreeMap<PathBuf, String>,
     pub target_kinds: BTreeMap<PathBuf, BTreeMap<String, Vec<String>>>,
     pub engine: Option<crate::engine::Request>,
+    /// Whether the driver asks Verus for attribution logs ([`super::Config`]'s
+    /// `attribution_logs`; always for an interactive-engine run).
+    #[serde(default)]
+    pub attribution_logs: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
