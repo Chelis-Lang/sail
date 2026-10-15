@@ -663,6 +663,15 @@ fn sail_verus(o: &Options, installed: &Installed) -> Result<Option<(Installed, S
     if o.command != "run" || !o.sail_on_fork {
         return Ok(None);
     }
+    if installed.pins.is_secondary {
+        // Sail's Verus is built on the primary pin only; a secondary pin
+        // checks the shim on that stock release (docs/compatibility.md).
+        eprintln!(
+            "conformance: secondary Verus {}: the Sail side runs that stock release (Sail's Verus is built on the primary pin)",
+            installed.pins.verus.release
+        );
+        return Ok(None);
+    }
     let fork = match &o.engine_build {
         Some(build) => sail_verus::engine::Installed::at(build, &installed.pins),
         None => sail_verus::cache_dir()
