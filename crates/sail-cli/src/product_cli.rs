@@ -191,7 +191,7 @@ pub(crate) fn worker(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
         Ok(arguments) => arguments,
         Err(message) => return error(&message, err),
     };
-    let config = match crate::managed_cli::config(arguments) {
+    let config = match crate::managed_cli::config(arguments, true) {
         Ok(config) => config,
         Err(message) => return error(&message, err),
     };
