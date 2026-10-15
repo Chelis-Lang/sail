@@ -245,45 +245,6 @@ RS
       touch src/lib.rs
       CARGO_TARGET_DIR="$work/target-sail" "$check_mcp" "$sail" "$PWD" "$work/json.out" "$work/mcp.json"
       "$check_output" "$work/mcp.json" "$work/verusjson.out" --attribution complete --source cache
-      # Setups managed verification cannot bind to a proof receipt (ADR 0046)
-      # are verified as plain Cargo-Verus verifies them: one note line, then
-      # Cargo-Verus's own output and exit code. Each side runs once to warm
-      # its target; the second runs are compared, with Cargo's `Finished ... in
-      # Ns` timing blanked.
-      unbound_normalize() { sed -E '/^note\[SAIL3112\]/d; s/^( +Finished .* in )[0-9.]+s$/\1Ns/' "$1"; }
-      unbound_compare() { # label
-        local label="$1" part
-        if [ "$(grep -c '^note\[SAIL3112\]' "$work/$label-sail.err")" != 1 ]; then
-          echo "e2e: $label: expected one note[SAIL3112] line" >&2
-          cat "$work/$label-sail.err" >&2
-          exit 1
-        fi
-        for part in rc out err; do
-          if ! cmp -s <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part"); then
-            echo "e2e: $label $part differs from plain cargo verus verify" >&2
-            diff -u <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part") >&2 || true
-            exit 1
-          fi
-        done
-      }
-      unbound_case() { # label; rest = the arguments for both sides
-        local label="$1"; shift
-        plain_run "$label-plainwarm" cargo verus verify "$@"
-        plain_run "$label-plain" cargo verus verify "$@"
-        sail_run "$label-sailwarm" "$sail" verify "$@"
-        sail_run "$label-sail" "$sail" verify "$@"
-        unbound_compare "$label"
-      }
-      unbound_case no-verify -- --no-verify
-      unbound_case config --config build.jobs=2
-      unbound_case tests --tests
-      # An explicit target directory: each side its own, both warmed.
-      run target-dir-plainwarm cargo verus verify --target-dir "$work/td-plain"
-      run target-dir-plain cargo verus verify --target-dir "$work/td-plain"
-      run target-dir-sailwarm "$sail" verify --target-dir "$work/td-sail"
-      run target-dir-sail "$sail" verify --target-dir "$work/td-sail"
-      unbound_compare target-dir
-      echo "e2e: --no-verify, --config, --tests and --target-dir verified as plain cargo verus verify"
       # The same comparison for the rest of the edit loop (ADR 0046). Each
       # case runs plain, then Sail, on the same source; `norm` blanks Cargo's
       # `Finished ... in Ns` timing, which differs between any two runs.
@@ -310,7 +271,7 @@ RS
       touch src/lib.rs
       CARGO_TARGET_DIR="$work/target-plain" cargo verus verify > "$work/combined-plain.out" 2>&1
       touch src/lib.rs
-      "$sail" verify > "$work/combined-sail.out" 2>&1
+      CARGO_TARGET_DIR="$work/target-sail" "$sail" verify > "$work/combined-sail.out" 2>&1
       set -e
       same combined-plain combined-sail out
       # Passing proofs, then an unchanged re-run (Cargo's no-op; Sail reuses
@@ -321,7 +282,7 @@ RS
       same pass-plain pass-sail
       grep -q "verified, 0 errors" "$work/pass-plain.out"
       CARGO_TARGET_DIR="$work/target-plain" quiet_run noop-plain cargo verus verify
-      quiet_run noop-sail "$sail" verify
+      CARGO_TARGET_DIR="$work/target-sail" quiet_run noop-sail "$sail" verify
       same noop-plain noop-sail
       printf 'pub fn broken() -> u32 { y }\n' >> src/lib.rs
       plain_run compile-plain cargo verus verify
@@ -335,11 +296,11 @@ RS
       # built from the fork, ADR 0043) are blanked.
       edit_run() { printf '// %s\n' "$1" >> src/lib.rs; quiet_run "$@"; }
       CARGO_TARGET_DIR="$work/target-plain" edit_run time-plainwarm cargo verus verify -- --time
-      edit_run time-sailwarm "$sail" verify -- --time
+      CARGO_TARGET_DIR="$work/target-sail" edit_run time-sailwarm "$sail" verify -- --time
       CARGO_TARGET_DIR="$work/target-plain" edit_run outjson-plainwarm cargo verus verify -- --output-json
-      edit_run outjson-sailwarm "$sail" verify -- --output-json
+      CARGO_TARGET_DIR="$work/target-sail" edit_run outjson-sailwarm "$sail" verify -- --output-json
       CARGO_TARGET_DIR="$work/target-plain" edit_run time-plain cargo verus verify -- --time
-      edit_run time-sail "$sail" verify -- --time
+      CARGO_TARGET_DIR="$work/target-sail" edit_run time-sail "$sail" verify -- --time
       same time-plain time-sail "rc err"
       timing() { sed -E '/^  (Version|Toolchain):/d; s/[0-9]+/N/g' "$1"; }
       if ! cmp -s <(timing "$work/time-plain.out") <(timing "$work/time-sail.out"); then
@@ -348,7 +309,7 @@ RS
         exit 1
       fi
       CARGO_TARGET_DIR="$work/target-plain" edit_run outjson-plain cargo verus verify -- --output-json
-      edit_run outjson-sail "$sail" verify -- --output-json
+      CARGO_TARGET_DIR="$work/target-sail" edit_run outjson-sail "$sail" verify -- --output-json
       same outjson-plain outjson-sail "rc err"
       python3 - "$work/outjson-plain.out" "$work/outjson-sail.out" <<'PY'
 import json, sys
@@ -409,6 +370,47 @@ RS
       same partial-plain partial-sail
       grep -q "Partial verification must use" "$work/partial-plain.err"
       echo "e2e: combined output, passing, unchanged, compile error, --time, --output-json, partial verification and a -p/--features workspace identical to cargo verus verify"
+      # Setups managed verification cannot bind to a proof receipt (ADR 0046)
+      # are verified as plain Cargo-Verus verifies them: one note line, then
+      # Cargo-Verus's own output and exit code. Each side runs once to warm
+      # its target; the second runs are compared, with Cargo's `Finished ... in
+      # Ns` timing blanked.
+      unbound_normalize() { sed -E '/^note\[SAIL3112\]/d; s/^( +Finished .* in )[0-9.]+s$/\1Ns/' "$1"; }
+      unbound_compare() { # label
+        local label="$1" part
+        if [ "$(grep -c '^note\[SAIL3112\]' "$work/$label-sail.err")" != 1 ]; then
+          echo "e2e: $label: expected one note[SAIL3112] line" >&2
+          cat "$work/$label-sail.err" >&2
+          exit 1
+        fi
+        for part in rc out err; do
+          if ! cmp -s <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part"); then
+            echo "e2e: $label $part differs from plain cargo verus verify" >&2
+            diff -u <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part") >&2 || true
+            exit 1
+          fi
+        done
+      }
+      unbound_case() { # label; rest = the arguments for both sides
+        local label="$1"; shift
+        plain_run "$label-plainwarm" cargo verus verify "$@"
+        plain_run "$label-plain" cargo verus verify "$@"
+        sail_run "$label-sailwarm" "$sail" verify "$@"
+        sail_run "$label-sail" "$sail" verify "$@"
+        unbound_compare "$label"
+      }
+      unbound_case config --config build.jobs=2
+      unbound_case tests --tests
+      # An explicit target directory: each side its own, both warmed.
+      run target-dir-plainwarm cargo verus verify --target-dir "$work/td-plain"
+      run target-dir-plain cargo verus verify --target-dir "$work/td-plain"
+      run target-dir-sailwarm "$sail" verify --target-dir "$work/td-sail"
+      run target-dir-sail "$sail" verify --target-dir "$work/td-sail"
+      unbound_compare target-dir
+      # Last: plain Cargo-Verus then treats the crate as fresh for any later
+      # Verus arguments, since `--no-verify` builds it successfully.
+      unbound_case no-verify -- --no-verify
+      echo "e2e: --no-verify, --config, --tests and --target-dir verified as plain cargo verus verify"
       bash "$sail_portfolio_test"
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ]; then
