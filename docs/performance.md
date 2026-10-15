@@ -193,7 +193,7 @@ a new project or worktree with the donor's `Cargo.lock` (seconds):
 | vest, new worktree | 52.3 | 25.7 | 66.1 |
 
 To reproduce on a project (vest from its repository at `11af01dd`, with
-`-p vest_lib`): run `sail verify --incremental` in it with an empty
+`-p vest_lib`): run `sail verify` in it with an empty
 `SAIL_CACHE_DIR`, copy the project directory, and time the same command in
 the copy. `scripts/dependency-store-check.py` does this for the demo and also
 compares each run with plain stock Verus

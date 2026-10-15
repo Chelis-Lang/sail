@@ -401,11 +401,10 @@ RS
       }
       unbound_case config --config build.jobs=2
       unbound_case tests --tests
-      # An explicit target directory: each side its own, both warmed.
-      run target-dir-plainwarm cargo verus verify --target-dir "$work/td-plain"
-      run target-dir-plain cargo verus verify --target-dir "$work/td-plain"
-      run target-dir-sailwarm "$sail" verify --target-dir "$work/td-sail"
-      run target-dir-sail "$sail" verify --target-dir "$work/td-sail"
+      # An explicit target directory: each side its own, already built by the
+      # cases above (a fresh one would add two cold builds to this job).
+      run target-dir-plain cargo verus verify --target-dir "$work/target-plain"
+      run target-dir-sail "$sail" verify --target-dir "$work/target-sail"
       unbound_compare target-dir
       # Last: plain Cargo-Verus then treats the crate as fresh for any later
       # Verus arguments, since `--no-verify` builds it successfully.

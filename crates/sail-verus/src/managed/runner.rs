@@ -1790,12 +1790,11 @@ pub(crate) fn run_engine_held(
     // after a prune) may start from the machine's dependency store (ADR 0045).
     // Focused runs build in a separate directory and verify no dependency. A
     // run without proof reuse neither reads nor fills the store (ADR 0046).
-    let store_candidates =
-        if paths.reuse && super::store::enabled() && !focused(&config.args) {
-            super::store::candidates(&data, &expected, &compiler_hash)
-        } else {
-            Vec::new()
-        };
+    let store_candidates = if paths.reuse && super::store::enabled() && !focused(&config.args) {
+        super::store::candidates(&data, &expected, &compiler_hash)
+    } else {
+        Vec::new()
+    };
     let new_target = super::store::new_target(&paths.target);
     super::build_inputs::family::begin(
         &paths.compiler_inputs,
