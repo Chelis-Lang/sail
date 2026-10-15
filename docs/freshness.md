@@ -82,7 +82,24 @@ its report is kept as the record of that run.
 Build-script coverage does not wait for scripts outside an explicit `-p`
 selection's dependency closure, because they never run for it. Without an exact
 selection or a complete, unambiguous resolve graph, every resolved package is in
-scope.
+scope. Cargo's resolve graph is wider than the build, though: it keeps
+dev-dependencies, other platforms' dependencies, and features that only another
+workspace member enables. So after a run that Cargo finished (one
+`build-finished` record), coverage also does not wait for a script package of
+which Cargo reported no unit at all, compiled or fresh: nothing that run
+compiled used its output. A package Cargo reported any unit of still needs its
+script's record ([#121](https://github.com/Chelis-Lang/sail/issues/121)).
+
+Files that build scripts generate inside Sail's own Cargo target and that the
+compiler then reads, such as serde's `OUT_DIR/private.rs`, are build products,
+not inputs. The target belongs to the run, which may clean a package and rerun
+its script, so such a file can be rewritten with the same bytes or appear for
+the first time. They are left out of the comparison across the run (content
+and stamps); the inputs of the scripts that write them, outside the target,
+are still compared. Rustc reads a generated file only after its script has
+finished, so its content at the end of the run is the content compiled, and
+that content is bound into the proof receipts and the read-time record like
+any other input ([#120](https://github.com/Chelis-Lang/sail/issues/120)).
 
 ### What these checks do not catch
 

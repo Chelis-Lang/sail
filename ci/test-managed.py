@@ -405,6 +405,37 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert all(t["reused"] and "dependency_store" not in t for t in repeated["targets"]), diagnostic(repeated)
         assert vstd(repeated)["establishing_run"] == stored_vstd["establishing_run"], diagnostic(repeated)
 
-        print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus and prune passed")
+        # Build scripts must not stop reuse. The crate gains a build script
+        # that declares no inputs (Cargo then watches the whole package),
+        # serde (whose build scripts generate the included OUT_DIR/private.rs)
+        # and a dev-dependency with a build script that `cargo verus verify`
+        # never builds.
+        manifest = project / "Cargo.toml"
+        text = manifest.read_text()
+        assert "[dependencies]\n" in text, text
+        text = text.replace("[dependencies]\n", "[dependencies]\nserde = \"=1.0.228\"\n", 1)
+        manifest.write_text(text + "\n[dev-dependencies]\nlibc = \"0.2\"\n")
+        (project / "build.rs").write_text("fn main() {}\n")
+        scripts_run, scripts, scripts_target = managed()
+        assert scripts_run.returncode == 0 and scripts_target["complete"], diagnostic(scripts)
+        # Issues #120 and #121: the cold run is Current (the generated include
+        # and the unbuilt dev-dependency script no longer withhold it), and the
+        # unchanged run after it verifies nothing.
+        assert scripts["currentness"] == "current", diagnostic(scripts)
+        unchanged_run, unchanged, unchanged_target = managed()
+        assert unchanged_run.returncode == 0 and unchanged["currentness"] == "current", diagnostic(unchanged)
+        assert unchanged["execution"]["verifier_invocations"] == 0, diagnostic(unchanged)
+        assert unchanged_target["reused"], diagnostic(unchanged)
+        # Issue #119: a comment-only edit verifies only the edited crate; vstd
+        # keeps its build-script records and its receipt.
+        source.write_text(source.read_text() + "// comment-only edit\n")
+        edited_run, edited, edited_target = managed()
+        assert edited_run.returncode == 0 and edited["currentness"] == "current", diagnostic(edited)
+        assert edited["execution"]["verifier_invocations"] == 1, diagnostic(edited)
+        assert not edited_target["reused"] and edited_target["complete"], diagnostic(edited)
+        assert vstd(edited)["reused"], diagnostic(edited)
+        assert b"Compiling vstd" not in edited_run.stderr, edited_run.stderr.decode()
+
+        print("managed acceptance: failing first runs keep vstd, cold, unchanged, dependency store seeding, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, prune and build-script reuse passed")
     finally:
         stop_daemon()
