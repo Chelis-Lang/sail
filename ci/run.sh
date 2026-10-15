@@ -23,7 +23,9 @@
 #                        report agrees with Verus's own --output-json; then
 #                        one `verify` call through `sail mcp`, agreeing with
 #                        that document; managed receipts, durable jobs and
-#                        asynchronous MCP; repair CLI/MCP against a
+#                        asynchronous MCP (`managed`), and reuse across build
+#                        scripts (`scripts`; one project with `managed` when
+#                        all phases run); repair CLI/MCP against a
 #                        validated prebuilt engine
 #   conformance TIER [pr | SELECTION...]
 #                        plain stock Verus vs Sail's Verus (the fork) run as

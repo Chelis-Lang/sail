@@ -10,9 +10,9 @@
 # `loop`: combined output, passing proofs, an unchanged re-run, a compile
 # error and partial verification. `loader`: a loader variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
-# a `-p`/`--features` workspace. Every cold build verifies vstd (about two
-# minutes on a CI runner), so CI runs `loop`, `loader` and `flags` as
-# separate jobs with at most two each; `extra`, which needs four, is
+# a `-p`/`--features` workspace. Every cold build verifies vstd (one to two
+# minutes on a two-CPU CI runner), so CI runs `loop`, `loader` and `flags` as
+# separate jobs with two each, run at once; `extra`, which needs six, is
 # local-only (`ci/local.sh e2e extra`).
 set -euo pipefail
 sail="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
