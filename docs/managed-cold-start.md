@@ -29,7 +29,11 @@ A run that ends in ordinary proof errors keeps vstd and the other compiled
 dependencies, as plain `cargo verus verify` does, so the passing run after a
 fix verifies only the edited crate. This needs a Current, unfocused run in
 which every selected target's verifier finished normally with a complete
-result.
+result. It holds for a project's first managed run too, which records the
+build scripts' declared inputs: there Sail also requires that Cargo finished
+its build and ran every build script it keeps a record for. Before this, a
+project whose first runs failed verified vstd again on every run until one
+passed (about 21–27 s each).
 
 A run that ends in a compile error in a selected crate keeps them too, again
 as plain Cargo does, when the run is Current and Cargo's own records show

@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- **Fixed: a failing first managed run no longer costs vstd on every later
+  run** (#123). When a project's first `sail verify --incremental`, MCP
+  `verify` or background job failed a proof or hit a compile error in the
+  user crate, Sail discarded the dependencies' build-script records, so every
+  later managed run rebuilt them and verified vstd again (about 21–27 s) until
+  one passed. A Current, unfocused failing run now keeps them, as a passing
+  run does, when Cargo finished its build and ran every recorded build
+  script; the next run reuses vstd and any other dependency that verified.
+  The failing crate still gets no receipt. Verdicts and diagnostics are
+  unchanged.
 - **Sail's Verus is pinned to fork `73dea021`** (runtimes
   `engine-runtime-73dea021-linux` and `-macos`). Two more run-to-run
   differences are gone from every Sail verification: `--output-json --time`

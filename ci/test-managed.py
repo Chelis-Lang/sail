@@ -69,7 +69,11 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
     { if a > b { a } else { b } }
     }
     """
-        source.write_text(good)
+        bad = good.replace("r >= b", "r >  b")
+        assert len(bad) == len(good)
+        # A project's first managed runs usually fail. Start with a failing
+        # proof: vstd must still be kept for reuse (issue #123).
+        source.write_text(bad)
 
         def recorded_cli(label, arguments):
             # Retain only this fixture's public CLI output and operation timing.
@@ -136,7 +140,50 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
             assert len(selected) == 1, selected
             return run, result, selected[0]
 
+        def vstd(document):
+            found = [t for t in document["targets"] if t["target"] == "vstd"]
+            assert len(found) == 1 and not found[0]["requested"], diagnostic(document)
+            return found[0]
+
+        def verdicts(target):
+            return target["report"]["summary"], sorted(
+                (function["module"], function["function"], function["verdict"])
+                for unit in target["report"]["crates"] for function in unit["functions"])
+
+        def errors(run):
+            return [line for line in run.stderr.decode().splitlines() if line.startswith("error")]
+
+        first_run, first, first_failure = managed()
+        assert first_run.returncode != 0 and first["exit_code"] != 0, diagnostic(first)
+        assert not first_failure["complete"] and not first_failure["reused"], diagnostic(first)
+        assert first_failure["report"]["summary"]["failed"] == 1, first_failure
+        assert b"postcondition not satisfied" in first_run.stderr, first_run.stderr.decode()
+        assert first["currentness"] in ("current", "historical"), diagnostic(first)
+        # As for a passing run, a historical cold run establishes nothing; the
+        # next Current run does.
+        if first["currentness"] == "historical":
+            first_run, first, first_failure = managed()
+            assert first_run.returncode != 0 and first["currentness"] == "current", diagnostic(first)
+        established_vstd = vstd(first)
+        assert established_vstd["complete"], diagnostic(first)
+
+        # The failing proof again: only the selected crate is verified, with the
+        # same verdicts and errors; vstd is reused from the failing run.
+        again_run, again, again_failure = managed()
+        assert again_run.returncode == first_run.returncode, diagnostic(again)
+        assert again["execution"]["verifier_invocations"] == 1, diagnostic(again)
+        reused_vstd = vstd(again)
+        assert reused_vstd["reused"] and reused_vstd["complete"], diagnostic(again)
+        assert reused_vstd["establishing_run"] == established_vstd["establishing_run"], diagnostic(again)
+        assert reused_vstd["report"] == established_vstd["report"], "reuse must preserve vstd's report"
+        assert not again_failure["reused"] and not again_failure["complete"], diagnostic(again)
+        assert verdicts(again_failure) == verdicts(first_failure), (verdicts(again_failure), verdicts(first_failure))
+        assert errors(again_run) == errors(first_run), (errors(again_run), errors(first_run))
+
+        source.write_text(good)
         cold_run, cold, target = managed()
+        assert cold["execution"]["verifier_invocations"] == 1, diagnostic(cold)
+        assert vstd(cold)["reused"], diagnostic(cold)
         assert cold_run.returncode == 0 and cold["exit_code"] == 0, cold_run.stderr.decode()
         assert target["complete"] and not target["reused"], target
         assert cold["currentness"] in ("current", "historical"), cold
@@ -257,8 +304,6 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         # Change a proof into a failure without changing size or mtime. This verifies
         # the content/receipt binding independently of Cargo's timestamp behaviour.
         stamp = source.stat()
-        bad = good.replace("r >= b", "r >  b")
-        assert len(bad) == len(good)
         source.write_text(bad)
         os.utime(source, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
         failed_run, failed, failure = managed()
@@ -306,6 +351,6 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-") as temporary
         assert reread_target["establishing_run"] == rebuilt_target["establishing_run"], reread_target
         assert reread_target["report"] == rebuilt_target["report"], "reuse must preserve the rebuilt report"
 
-        print("managed acceptance: cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus and prune passed")
+        print("managed acceptance: failing first runs keep vstd, cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus and prune passed")
     finally:
         stop_daemon()
