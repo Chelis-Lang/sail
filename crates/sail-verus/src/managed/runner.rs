@@ -3842,7 +3842,7 @@ mod tests {
         data["sail_source_inputs_by_package"] =
             serde_json::json!({"serde": [source.clone(), generated.clone()]});
         let bound = target_revision(&data, "serde");
-        assert!(!bound.is_empty());
+        assert_ne!(bound, String::new());
         std::fs::write(&generated, "pub mod private { pub fn changed() {} }")?;
         let changed = snapshot_metadata(&data, &[]);
         assert_ne!(
